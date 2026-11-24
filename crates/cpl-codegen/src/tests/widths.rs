@@ -592,3 +592,18 @@ print(at[P(1)])
     assert!(out.contains("(missing image)"), "{out}");
     assert!(out.contains("(duplicate image)"), "{out}");
 }
+
+#[test]
+fn a_rolling_hash_keeps_its_prefixes_and_powers_as_two_pair_lists() {
+    let out = cpp("use std.strings.{RollingHash}
+let s: Str = read()
+let h = RollingHash(s)
+print(yes(h.slice(0, s.len) == h.all))
+");
+    assert!(
+        out.contains("std::vector<std::tuple<ll, ll>> pre;")
+            && out.contains("std::vector<std::tuple<ll, ll>> pow;"),
+        "{out}"
+    );
+    assert!(!out.contains("pow1"), "{out}");
+}

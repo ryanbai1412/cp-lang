@@ -1448,10 +1448,8 @@ impl Hashable for HashVal:
 /// not a container: `len` is the hashed string's length; it holds hashes, not elements.
 pub struct RollingHash:
     pub bases: (Int, Int)
-    p1: List<Int>
-    p2: List<Int>
-    pow1: List<Int>
-    pow2: List<Int>
+    pre: List<(Int, Int)>
+    pow: List<(Int, Int)>
 
     /// A double-modulus polynomial rolling hash of `seq`; call it as `RollingHash(seq)`.
     ///
@@ -1468,7 +1466,7 @@ pub struct RollingHash:
     @lint(hand_rolled_string_algo, from: "for c in seq:\n    h = (h * b + w) % m", to: "let h = RollingHash.new(seq)", holes: "h, b, m, w")
     pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash:
         let bs = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
-        var h = RollingHash(bs, [0], [0], [1], [1])
+        var h = RollingHash(bs, [(0, 0)], [(1, 1)])
         for x in seq: h.push(x)
         h
 
@@ -1479,14 +1477,14 @@ pub struct RollingHash:
     /// example: `var h = RollingHash("ab"); h.push('a'); h.all == h.hash_of("aba")`
     pub fn push<T: Hashable>(mut self, x: T):
         let (b1, b2) = bases
-        let n = p1.len - 1
+        let n = pre.len - 1
         let t = x.hash_token
         let x1 = if 0 <= t < RH_M1 - 1: t + 1 else: t % RH_M1 - 1 + 1
         let x2 = if 0 <= t < RH_M2 - 1: t + 1 else: t % RH_M2 - 1 + 1
-        p1.push((p1[n] * b1 + x1) % RH_M1)
-        p2.push((p2[n] * b2 + x2) % RH_M2)
-        pow1.push(pow1[n] * b1 % RH_M1)
-        pow2.push(pow2[n] * b2 % RH_M2)
+        let (h1, h2) = pre[n]
+        let (q1, q2) = pow[n]
+        pre.push(((h1 * b1 + x1) % RH_M1, (h2 * b2 + x2) % RH_M2))
+        pow.push((q1 * b1 % RH_M1, q2 * b2 % RH_M2))
 
     /// Removes the last element of the hashed sequence.
     ///
@@ -1494,11 +1492,9 @@ pub struct RollingHash:
     /// traps: when the hash is empty
     /// example: `var h = RollingHash("abc"); h.pop(); h.all == h.hash_of("ab")`
     pub fn pop(mut self):
-        assert p1.len > 1, "`pop` on an empty hash"
-        let _ = p1.pop()
-        let _ = p2.pop()
-        let _ = pow1.pop()
-        let _ = pow2.pop()
+        assert pre.len > 1, "`pop` on an empty hash"
+        let _ = pre.pop()
+        let _ = pow.pop()
 
     /// The hash `seq` would have under `self`'s bases, without building a `RollingHash` of it;
     /// compare it with any slice of `self`.
@@ -1535,36 +1531,39 @@ pub struct RollingHash:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `RollingHash("abc").len == 3`
-    @get pub fn len(self) -> Int = p1.len - 1
+    @get pub fn len(self) -> Int = pre.len - 1
 
     /// True when no elements are hashed.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `RollingHash("").is_empty == true`
-    @get pub fn is_empty(self) -> Bool = p1.len == 1
+    @get pub fn is_empty(self) -> Bool = pre.len == 1
 
     /// The hash of the whole sequence, `self.get(0..self.len)`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `let h = RollingHash("abc"); h.all == h.get(0..3)`
-    @get pub fn all(self) -> HashVal = self.slice(0, p1.len - 1)
+    @get pub fn all(self) -> HashVal = self.slice(0, pre.len - 1)
 
     fn raw_slice(self, l: Int, r: Int) -> HashVal:
-        let d = r - l
         unchecked:
-            return HashVal(
-                (p1[r] - p1[l] * pow1[d]) % RH_M1,
-                (p2[r] - p2[l] * pow2[d]) % RH_M2,
-            )
+            let (r1, r2) = pre[r]
+            let (l1, l2) = pre[l]
+            let (q1, q2) = pow[r - l]
+            return HashVal((r1 - l1 * q1) % RH_M1, (r2 - l2 * q2) % RH_M2)
         HashVal(0, 0)
 
     fn eq_sub(self, a: Int, b: Int, len: Int) -> Bool:
         unchecked:
-            if ((p1[a + len] - p1[b + len]) - (p1[a] - p1[b]) * pow1[len]) % RH_M1 != 0:
-                return false
-            return ((p2[a + len] - p2[b + len]) - (p2[a] - p2[b]) * pow2[len]) % RH_M2 == 0
+            let (ae1, ae2) = pre[a + len]
+            let (be1, be2) = pre[b + len]
+            let (a1, a2) = pre[a]
+            let (b1, b2) = pre[b]
+            let (q1, q2) = pow[len]
+            if ((ae1 - be1) - (a1 - b1) * q1) % RH_M1 != 0: return false
+            return ((ae2 - be2) - (a2 - b2) * q2) % RH_M2 == 0
         false
 
     /// The hash of the half-open slice `l..r` (0-based); `HashVal(0, 0)` when `l == r`.
@@ -1573,7 +1572,7 @@ pub struct RollingHash:
     /// traps: when `l > r`, `l < 0` or `r > self.len`
     /// example: `let h = RollingHash("abab"); h.slice(0, 2) == h.slice(2, 4) and h.slice(1, 1) == HashVal(0, 0)`
     pub fn slice(self, l: Int, r: Int) -> HashVal:
-        assert 0 <= l <= r <= p1.len - 1, "`slice(l, r)` needs `0 <= l <= r <= len`"
+        assert 0 <= l <= r <= pre.len - 1, "`slice(l, r)` needs `0 <= l <= r <= len`"
         if l == r: return HashVal(0, 0)
         self.raw_slice(l, r)
 
@@ -1594,9 +1593,8 @@ pub struct RollingHash:
     /// traps: when `b_len < 0` or `b_len >= 2^31`
     /// example: `let h = RollingHash("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
     pub fn combine(self, a: HashVal, b: HashVal, b_len: Len) -> HashVal:
-        let fits = b_len < pow1.len
-        let q1 = if fits: pow1[b_len] else: pow_mod(bases.0, b_len, RH_M1)
-        let q2 = if fits: pow2[b_len] else: pow_mod(bases.1, b_len, RH_M2)
+        let fits = b_len < pow.len
+        let (q1, q2) = if fits: pow[b_len] else: (pow_mod(bases.0, b_len, RH_M1), pow_mod(bases.1, b_len, RH_M2))
         HashVal((a.h1 * q1 + b.h1) % RH_M1, (a.h2 * q2 + b.h2) % RH_M2)
 
     /// The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on
@@ -1610,7 +1608,7 @@ pub struct RollingHash:
     /// example: `RollingHash("abcd", bases: Some((131, 137))).lcp(1, 1, of: RollingHash("xbcx", bases: Some((131, 137)))) == 2`
     pub fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int:
         if let o = of: return self.lcp_of(a, o, b)
-        let n = p1.len - 1
+        let n = pre.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "`lcp` needs both starts in `0..=len`"
         (1..=min(n - a, n - b)).last_true(mid => self.eq_sub(a, b, mid)) ?? 0
 
@@ -1621,7 +1619,7 @@ pub struct RollingHash:
     /// traps: when `a` or `b` is outside `0..=self.len`
     /// example: `RollingHash("xabyab").lcs(3, 6) == 2`
     pub fn lcs(self, a: Int, b: Int) -> Int:
-        let n = p1.len - 1
+        let n = pre.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "`lcs` needs both ends in `0..=len`"
         (1..=min(a, b)).last_true(mid => self.eq_sub(a - mid, b - mid, mid)) ?? 0
 
