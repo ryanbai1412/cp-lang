@@ -718,7 +718,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v,
                     &mut self.stack,
                     caller,
-                    true,
+                    chunk.traced,
                 );
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
                 self.show_lent()?;
@@ -757,7 +757,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v,
                     &mut self.stack,
                     caller,
-                    true,
+                    chunk.traced,
                 );
                 let value = returned?;
                 if let Some(Flow::Return(v) | Flow::Give(v)) = self.fed_left.take() {
