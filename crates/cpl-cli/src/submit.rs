@@ -261,7 +261,7 @@ pub(crate) fn list_judges(
                 ),
                 ("source_limit_kb", int(profile.limit() as u64 / 1024)),
                 ("time_limit_ms", int(profile.time_ms)),
-                ("memory_limit_kb", int(profile.memory_mb as u64 * 1024)),
+                ("memory_limit_kb", int(profile.memory_mb * 1024)),
                 ("evidence", text(&profile.evidence)),
             ]));
             continue;
