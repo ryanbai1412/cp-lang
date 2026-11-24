@@ -762,6 +762,49 @@ class LandTest(unittest.TestCase):
         self.assertIn("cpl_y is 101 B gzipped, over its budget of 100", r.stderr)
         self.assertNotIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
 
+    def _check(self, ours_gz, budgets, parent_gz=None):
+        """The commit tier's wasm step (ci.py wasm_data runs scripts/wasm-warm.sh --check)
+        through the real wasm-crates.mjs: a build measuring `ours_gz` (crate -> B gz)
+        against HEAD's recorded sizes `parent_gz`, or none, under `budgets`."""
+        data = "data (std source, strings)"
+        repo = self.clone("ours")
+        web = repo / "web" / "scripts"
+        web.mkdir(parents=True)
+        shutil.copy(HERE.parent / "web" / "scripts" / "wasm-crates.mjs", web)
+        (web / "wasm-crate-budgets.json").write_text(json.dumps({data: 100, **budgets}))
+        (web / "wasm-sort-copies.json").write_text('{"max": 0}\n')
+        shutil.copytree(HERE.parent / "handbook" / "domains", repo / "handbook" / "domains")
+        (repo / "crates" / "cpl-x").mkdir(parents=True)
+        (repo / "crates" / "cpl-x" / "lib.rs").write_text("x\n")
+        self.commit(repo, "gate")
+        wasm = self.tmp / "gate.wasm"
+        wasm.write_text(json.dumps({"crates": {data: 90, **ours_gz}, "sorts": 0}))
+        if parent_gz is not None:
+            sizes = self.tmp / "tgt" / "wasm-warm" / "sizes"
+            sizes.mkdir(parents=True)
+            tree = git(repo, "rev-parse", "HEAD^{tree}").strip()
+            (sizes / f"{tree}.json").write_text(json.dumps({"crates": {data: 90, **parent_gz}, "sorts": 0}))
+        env = {**os.environ, "CARGO_TARGET_DIR": str(self.tmp / "tgt")}
+        return subprocess.run(["bash", "scripts/wasm-warm.sh", "--check", str(wasm), "HEAD", "cpl-x"],
+                              cwd=repo, env=env, capture_output=True, text=True)
+
+    def test_the_commit_tier_passes_a_crate_over_budget_that_shrank(self):
+        # D8's follow-up cut cpl_check 277 B and the commit tier still refused it.
+        r = self._check({"cpl_x": 149}, {"cpl_x": 100}, parent_gz={"cpl_x": 150})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("but no more than its parent's 150 B", r.stderr)
+
+    def test_the_commit_tier_refuses_a_crate_over_budget_that_grew(self):
+        r = self._check({"cpl_x": 151}, {"cpl_x": 100}, parent_gz={"cpl_x": 150})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("it grew 1 B against its parent's 150 B", r.stderr)
+
+    def test_the_commit_tier_without_parent_sizes_holds_touched_crates_to_their_budgets(self):
+        r = self._check({"cpl_x": 149}, {"cpl_x": 100})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("wasm-warm: no wasm sizes of HEAD's tree", r.stderr)
+        self.assertIn("cpl_x is 149 B gzipped, over its budget of 100", r.stderr)
+
     def test_land_never_waits_on_a_wasm_build_it_lacks(self):
         ours = self._crate_change("cpl-y")
         r = self.land(ours, **self._wasm(ours, 1))

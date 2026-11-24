@@ -524,17 +524,12 @@ class CommitTest(unittest.TestCase):
         outs = {self.TREE: "cpl-check v0.1.0\n", "rustc --print target-libdir": f"{ci.ROOT}\n"}
         code, ev, _, _, _, _ = self._commit(sel, outs=outs)
         self.assertEqual(code, 0)
-        gate = [e for e in ev if e.startswith(("cargo check -q -p cpl-wasm", "scripts/build-wasm.sh", "node web/scripts/wasm-crates.mjs"))]
-        self.assertEqual([g.split()[0] for g in gate], ["cargo", "scripts/build-wasm.sh", "node"])
-        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm"), gate[2])
-        # c07bfb98a: cpl_interp over its budget on main refused every cut of it.
-        code, ev, out, _, _, _ = self._commit(sel, outs={**outs, "scripts/wasm-warm.sh --parent": "/w/sizes/t.json\n"})
-        self.assertEqual(code, 0)
-        node = [e for e in ev if e.startswith("node web/scripts/wasm-crates.mjs")]
-        self.assertTrue(node[0].endswith("cpl.wasm --parent /w/sizes/t.json --touched cpl_check"), node)
-        warm = [e for e in ev if e.startswith("scripts/wasm-warm.sh --parent")]
-        self.assertTrue(warm and warm[0].endswith(" cpl-check"), warm)
-        code, _, _, err, _, _ = self._commit(sel, outs=outs, codes={"node": 1})
+        gate = [e for e in ev if e.startswith(("cargo check -q -p cpl-wasm", "scripts/build-wasm.sh", "scripts/wasm-warm.sh"))]
+        self.assertEqual([g.split()[0] for g in gate], ["cargo", "scripts/build-wasm.sh", "scripts/wasm-warm.sh"])
+        # c07bfb98a: cpl_interp over its budget on main refused every cut of it; the commit
+        # tier holds a crate to its parent's sizes by land.sh's own rule, crate dirs and all.
+        self.assertRegex(gate[2], r"^scripts/wasm-warm.sh --check \S*wasm-data-gate/cpl.wasm \S+ cpl-check$")
+        code, _, _, err, _, _ = self._commit(sel, outs=outs, codes={"scripts/wasm-warm.sh": 1})
         self.assertEqual(code, 1)
         self.assertIn("cpl.wasm's data segment or a touched crate is over its budget", err)
 

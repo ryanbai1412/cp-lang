@@ -237,10 +237,10 @@ wasm_touched=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*|\1|p' |
 if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
     if ! wasm=$(scripts/wasm-warm.sh --current $wasm_touched); then
         echo "land: no current wasm build; CI checks it" >&2
-    elif ! parent=$(scripts/wasm-warm.sh --parent FETCH_HEAD $wasm_touched); then
+    elif ! scripts/wasm-warm.sh --parent FETCH_HEAD $wasm_touched >/dev/null; then
         echo "land: no wasm sizes of main's tip to compare with; CI checks it" >&2
     else
-        node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$parent" >&2 ||
+        scripts/wasm-warm.sh --check "$wasm" FETCH_HEAD $wasm_touched >&2 ||
             { echo "land: a cpl.wasm crate grew past main while over its budget, or crossed its budget (above), touched here or not; cut it at its source and land again" >&2; exit 1; }
     fi
 fi

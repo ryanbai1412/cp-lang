@@ -544,21 +544,11 @@ class Tail:
         out = target_dir() / "wasm-data-gate"
         if self.call(["scripts/build-wasm.sh", "--names", str(out)]):
             raise Failed(f"scripts/build-wasm.sh --names failed; rerun: scripts/build-wasm.sh --names {out}")
-        crates = [p.replace("-", "_") for p in pkgs]
-        # Held to the parent's sizes like land.sh's check: a crate main already has over
-        # its budget refuses only if it grew, so a lane can still cut it back under.
+        # The rule land.sh applies (scripts/wasm-warm.sh --check): held to the parent's
+        # sizes, a crate main already has over its budget refuses only if it grew, so a
+        # lane can still cut it back under; without them, the touched crates' budgets.
         base = self.run(["git", "merge-base", "HEAD", "origin/main"], cwd=ROOT, capture_output=True, text=True)
-        # wasm-warm.sh takes the crates' directories: crates/cpl_ir matched no path, so any
-        # recorded build passed for the parent, even the change's own before its rebase.
-        parent = self.run(["scripts/wasm-warm.sh", "--parent", base.stdout.strip() or "HEAD", *pkgs],
-                          cwd=ROOT, capture_output=True, text=True)
-        held = ["--parent", parent.stdout.strip()] if parent.returncode == 0 and parent.stdout.strip() else []
-        if not held:
-            print("note: no wasm sizes of the parent (scripts/wasm-warm.sh); touched crates over budget only"
-                  " warn here, land.sh and CI's per-tip ratchet hold them to the parent")
-        argv = ["node", "web/scripts/wasm-crates.mjs", "--data", str(out / "cpl.wasm")]
-        if held:
-            argv += [*held, "--touched", ",".join(crates)]
+        argv = ["scripts/wasm-warm.sh", "--check", str(out / "cpl.wasm"), base.stdout.strip() or "HEAD", *pkgs]
         if self.call(argv):
             raise Failed("cpl.wasm's data segment or a touched crate is over its budget (named above); rerun: "
                          + " ".join(argv))

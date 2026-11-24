@@ -13,6 +13,12 @@
 #   scripts/wasm-warm.sh --parent BASE CRATE...
 #                                   print the per-crate sizes of a build of BASE's tree, or of
 #                                   one that differs from it outside these crates and std; else fail
+#   scripts/wasm-warm.sh --check WASM BASE CRATE...
+#                                   the wasm rule the commit tier (ci.py) and land.sh share:
+#                                   with BASE's sizes, every crate is held to the shrink-only
+#                                   ratchet (one over its budget refuses only if it grew);
+#                                   without them, says so and holds the touched crates to
+#                                   their budgets
 # Each recorded build writes its sizes to sizes/<tree>.json, and --wait also builds
 # HEAD's merge-base with origin/main when it has none, so land can hold a crate over
 # its budget to its parent's size (web/scripts/wasm-crates.mjs --parent).
@@ -48,6 +54,15 @@ case "${1:-}" in
             fi
         done
         exit 1 ;;
+    --check)
+        wasm=$2 base=$3
+        shift 3
+        touched=$(printf '%s\n' "$@" | tr - _ | paste -sd, -)
+        if sizes=$(bash "$0" --parent "$base" "$@"); then
+            exec node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$sizes" --touched "$touched"
+        fi
+        echo "wasm-warm: no wasm sizes of $base's tree (scripts/wasm-warm.sh --wait records them); holding the touched crates to their budgets" >&2
+        exec node web/scripts/wasm-crates.mjs --data "$wasm" --touched "$touched" ;;
     --wait)
         mkdir -p "$out"
         exec 9>"$out.lock"
@@ -82,5 +97,5 @@ case "${1:-}" in
         mkdir -p "$out"
         nohup nice -n 10 "$0" --wait >"$out.log" 2>&1 </dev/null &
         echo "wasm-warm: building $out/cpl.wasm in the background (log: $out.log)" ;;
-    *) echo "usage: scripts/wasm-warm.sh [--wait | --current CRATE... | --parent BASE CRATE...]" >&2; exit 2 ;;
+    *) echo "usage: scripts/wasm-warm.sh [--wait | --current CRATE... | --parent BASE CRATE... | --check WASM BASE CRATE...]" >&2; exit 2 ;;
 esac
