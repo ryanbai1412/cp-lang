@@ -29,6 +29,12 @@ pub enum Def {
         lends: bool,
         row_bounds: RowBounds,
         trait_bounds: Vec<(String, String)>,
+        /// `S: Seq<T>`: each bound's trait arguments, over the fn's
+        /// generics, so a call binds `T` from the `S` it is given.
+        bound_args: Vec<(String, String, Vec<Ty>)>,
+        /// `of: T -> U = x => x`: the generic a defaulted identity lambda's
+        /// result is, and the type it is when the call leaves it out.
+        default_binds: Vec<(String, Ty)>,
         /// `@droppable`: its result may be dropped without W0101.
         droppable: bool,
         /// A written `@get`: `x.name` reads it as the call `name(x)` (R02.6.6).
@@ -293,6 +299,8 @@ impl Def {
                 lends,
                 row_bounds,
                 trait_bounds,
+                bound_args,
+                default_binds,
                 droppable,
                 getter,
                 ..
@@ -303,6 +311,8 @@ impl Def {
                 lends,
                 row_bounds,
                 trait_bounds,
+                bound_args,
+                default_binds,
                 droppable,
                 getter,
             },

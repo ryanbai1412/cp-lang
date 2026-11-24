@@ -131,4 +131,78 @@ impl Checker<'_> {
         }
         None
     }
+
+    /// At a call: each generic a bound's trait arguments name, from the
+    /// type the bound's parameter is bound to, so `sum(xs)` over
+    /// `S: Seq<T>` given a `List<Int>` has `T = Int`.
+    pub(crate) fn bind_bound_args(&mut self, bindings: &mut crate::ty::Bindings) {
+        for (param, trait_name, args) in self.call_bound_args.clone() {
+            let Some(actual) = bindings.get(&param).cloned() else {
+                continue;
+            };
+            let actual = self.settle(&actual);
+            if let Some(given) = self.trait_args_of(&actual, &trait_name, args.len()) {
+                for (want, got) in args.iter().zip(&given) {
+                    want.unify(got, bindings);
+                }
+            }
+        }
+    }
+
+    /// The arguments `ty` gives trait `trait_name`: a bound's in a generic
+    /// body, an `impl`'s as written, or a built-in sequence's key and
+    /// element.
+    pub(crate) fn trait_args_of(&mut self, ty: &Ty, trait_name: &str, n: usize) -> Option<Vec<Ty>> {
+        if let Ty::Param(p) = ty {
+            return (self.param_bound_args.iter().rev())
+                .find(|(q, t, args)| q == p && t == trait_name && args.len() == n)
+                .map(|(_, _, args)| args.clone());
+        }
+        if let Ty::Named { name, .. } = ty {
+            let mut impls: Vec<_> = (self.global(&crate::def::impl_name(Some(trait_name), name)))
+                .into_iter()
+                .collect();
+            impls.extend(
+                (self.env.impls(name).into_iter())
+                    .filter(|(t, _)| {
+                        t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name)
+                    })
+                    .map(|(_, d)| d),
+            );
+            for def in impls {
+                if let Def::Impl {
+                    trait_args, target, ..
+                } = &*def
+                {
+                    if trait_args.len() == n {
+                        let mut on = crate::ty::Bindings::default();
+                        target.unify(ty, &mut on);
+                        return Some(trait_args.iter().map(|t| t.subst(&on)).collect());
+                    }
+                }
+            }
+        }
+        if n == 0
+            || !self.trait_implies(trait_name, "Seq")
+            || !self.implements_trait(ty, trait_name)
+        {
+            return None;
+        }
+        let elem = self.element_ty(ty);
+        if elem.has_vague() {
+            return None;
+        }
+        let key = match ty {
+            Ty::Array { index, .. } if index.len() == 1 => index[0].clone(),
+            Ty::Str => Ty::list_index(),
+            Ty::Named { name, .. } if name == "List" => Ty::list_index(),
+            _ => Ty::Unknown,
+        };
+        let mut out = vec![Ty::Unknown; n - 1];
+        if let Some(last) = out.last_mut() {
+            *last = key;
+        }
+        out.push(elem);
+        Some(out)
+    }
 }

@@ -8,6 +8,8 @@ use cpl_syntax::ast::{self, Expr, ExprKind, TypeKind};
 
 /// Types by the name they are filed under: a body's method signatures.
 type Named = Vec<(String, Ty)>;
+/// `(param, trait, args)` of each bound that gives its trait arguments.
+type BoundArgs = Vec<(String, String, Vec<Ty>)>;
 impl<'a> Checker<'a> {
     /// R04.2.11: for `P = (A, B)`, `[P]T` and `[A, B]T` are one type, kept
     /// as one index per factor.
@@ -837,12 +839,13 @@ impl<'a> Checker<'a> {
     pub(crate) fn fn_bounds(
         &mut self,
         f: &ast::FnDecl,
-    ) -> (crate::def::RowBounds, Vec<(String, String)>) {
+    ) -> (crate::def::RowBounds, Vec<(String, String)>, BoundArgs) {
         let outer = self.generics.len();
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
         let mut rows = Vec::new();
         let mut traits = Vec::new();
+        let mut bound_args = Vec::new();
         for b in &f.bounds {
             for t in &b.traits {
                 match &t.kind {
@@ -853,15 +856,19 @@ impl<'a> Checker<'a> {
                             .collect();
                         rows.push((b.name.text.clone(), resolved));
                     }
-                    TypeKind::Named { name: tname, .. } => {
+                    TypeKind::Named { name: tname, args } => {
                         traits.push((b.name.text.clone(), tname.text.clone()));
+                        if !args.is_empty() {
+                            let args = args.iter().map(|a| self.resolve_type(a)).collect();
+                            bound_args.push((b.name.text.clone(), tname.text.clone(), args));
+                        }
                     }
                     _ => {}
                 }
             }
         }
         self.generics.truncate(outer);
-        (rows, traits)
+        (rows, traits, bound_args)
     }
 
     /// The definitions a top-level statement gives to the names it declares.
@@ -1007,7 +1014,8 @@ impl<'a> Checker<'a> {
                         },
                     ));
                 }
-                let (row_bounds, trait_bounds) = self.fn_bounds(f);
+                let (row_bounds, trait_bounds, bound_args) = self.fn_bounds(f);
+                let default_binds = identity_defaults(f, &ty);
                 out.push((
                     f.name.text.clone(),
                     Def::Fn {
@@ -1017,6 +1025,8 @@ impl<'a> Checker<'a> {
                         lends: f.lends.is_some(),
                         row_bounds,
                         trait_bounds,
+                        bound_args,
+                        default_binds,
                         droppable: stmt.decorators.iter().any(|d| d.name.text == "droppable"),
                         // An unwritten getter is still answered by lowering.
                         getter: stmt.decorators.iter().any(|d| d.name.text == "get")
@@ -2038,4 +2048,33 @@ fn value_domains(fields: &[&str], body: &[ast::Stmt]) -> Vec<String> {
             _ => None,
         })
         .collect()
+}
+
+/// `of: T -> U = x => x`: each generic a defaulted identity lambda gives
+/// back, with the parameter type it then is (`U` is `T`).
+fn identity_defaults(f: &ast::FnDecl, ty: &Ty) -> Vec<(String, Ty)> {
+    let Ty::Fn { params, .. } = ty else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for p in &f.params {
+        let Some(ast::Expr {
+            kind: ExprKind::Lambda {
+                params: lp, body, ..
+            },
+            ..
+        }) = &p.default
+        else {
+            continue;
+        };
+        let identity = matches!((lp.as_slice(), &body.kind),
+            ([one], ExprKind::Name(b)) if matches!(&one.kind, ast::PatternKind::Name(x) if x == b));
+        let sig = params.iter().find(|q| q.name == p.name.text).map(|q| &q.ty);
+        if let (true, Some(Ty::Fn { params: takes, ret })) = (identity, sig) {
+            if let ([taken], Ty::Param(r)) = (takes.as_slice(), ret.as_ref()) {
+                out.push((r.clone(), taken.ty.clone()));
+            }
+        }
+    }
+    out
 }

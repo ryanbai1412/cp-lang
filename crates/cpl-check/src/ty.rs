@@ -352,6 +352,24 @@ impl Ty {
         }
     }
 
+    /// True when the type, or any part of it, is a generic parameter.
+    pub fn mentions_param(&self) -> bool {
+        match self {
+            Ty::Param(_) => true,
+            Ty::Array { index, elem } => {
+                index.iter().any(Ty::mentions_param) || elem.mentions_param()
+            }
+            Ty::Optional(t) => t.mentions_param(),
+            Ty::Tuple(ts) => ts.iter().any(Ty::mentions_param),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| t.mentions_param()),
+            Ty::Named { args, .. } => args.iter().any(Ty::mentions_param),
+            Ty::Fn { params, ret } => {
+                params.iter().any(|p| p.ty.mentions_param()) || ret.mentions_param()
+            }
+            _ => false,
+        }
+    }
+
     /// True when the type, or any part of it, comes from code that was
     /// already reported.
     pub fn has_error(&self) -> bool {
@@ -748,7 +766,7 @@ impl Ty {
 
     /// What a `D` is when a `List<T>` is given where a `[D]T` is asked
     /// for: the list's own positions, `0..len`.
-    fn list_index() -> Ty {
+    pub(crate) fn list_index() -> Ty {
         Ty::Named {
             name: "List".to_string(),
             args: Vec::new(),

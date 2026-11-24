@@ -192,7 +192,7 @@ pub trait Reversible:
 /// example: `fold(+, [1, 2, 3]) == 6`
 /// example: `fold(+, 0..0) == 0`
 /// example: `fold(Affine.monoid(), [Affine(2, 0), Affine(1, 1)]).eval(5) == 11`
-pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
+pub fn fold<T, M, S: Seq<T>>(m: M, xs: S) -> T:
     let k = Monoid<T>.of(m)
     var acc = k.id
     for x in xs:

@@ -1301,7 +1301,6 @@ impl<'a> Checker<'a> {
         match callee_ty {
             Ty::Fn { params, ret } => {
                 let mut bindings = Bindings::default();
-                self.args(&callee_text, "takes", &params, args, call, &mut bindings);
                 let callee_name = match &callee.kind {
                     ExprKind::Name(n) => Some(n.as_str()),
                     ExprKind::Generic { base, .. } => match &base.kind {
@@ -1310,6 +1309,24 @@ impl<'a> Checker<'a> {
                     },
                     _ => None,
                 };
+                let (bound_args, default_binds) =
+                    match callee_name.and_then(|n| self.global(n)).as_deref() {
+                        Some(Def::Fn {
+                            bound_args,
+                            default_binds,
+                            ..
+                        }) => (bound_args.clone(), default_binds.clone()),
+                        _ => Default::default(),
+                    };
+                let outer = std::mem::replace(&mut self.call_bound_args, bound_args);
+                self.args(&callee_text, "takes", &params, args, call, &mut bindings);
+                self.call_bound_args = outer;
+                for (generic, ty) in default_binds {
+                    if !bindings.contains_key(&generic) {
+                        let ty = ty.subst(&bindings);
+                        bindings.insert(generic, ty);
+                    }
+                }
                 if let Some(fn_name) = callee_name {
                     if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
                         for (param, traits) in bounds {

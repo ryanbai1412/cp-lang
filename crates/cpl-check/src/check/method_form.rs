@@ -519,12 +519,21 @@ impl<'a> Checker<'a> {
             self.chosen_methods.retain(|r| r.0 != span);
             self.chosen_methods.push((span, resolved));
         }
-        if plain_value(&ty) || self.declared_value(&ty) {
+        // A built-in container's own member, `xs.sorted(..)` on a `List`, is
+        // the catalog's to check; a library fn's container result is modelled.
+        if plain_value(&ty) || self.declared_value(&ty) || (!own_member && self.modelled(&ty)) {
             // The probe's facts went with it, and the caller checks nothing
             // more: check the call for real so its arguments keep their
             // hovers, refs and warnings (a lambda's body).
             let (hovers, refs) = (self.hovers.len(), self.resolved.len());
+            let calls = self.exprs.calls.len();
             self.infer(&free);
+            // The call is the method's, `xs.sorted()`, not the free form's.
+            let mut at = 0;
+            self.exprs.calls.retain(|c| {
+                at += 1;
+                at <= calls || c.call != call.span
+            });
             let mut at = 0;
             self.hovers.retain(|h| {
                 at += 1;
@@ -694,8 +703,23 @@ impl Checker<'_> {
         let Ty::Named { name, args } = ty else {
             return false;
         };
-        args.iter().all(plain_value)
+        args.iter().all(|a| self.modelled(a))
             && (self.type_def(name)).is_some_and(|d| matches!(&*d, Def::Struct { .. }))
+    }
+
+    /// A type the checker models in full: a plain value, a declared struct,
+    /// or a built-in container its catalog gives the members of, over such
+    /// types: `Map<Int, List<Int>>` from `xs.group(by: f)`.
+    fn modelled(&mut self, ty: &Ty) -> bool {
+        if plain_value(ty) || self.declared_value(ty) {
+            return true;
+        }
+        let Ty::Named { name, args } = ty else {
+            return false;
+        };
+        let catalogued =
+            (crate::builtins::BUILTIN_TYPES.iter()).any(|b| b.name == name && b.members.is_some());
+        catalogued && args.iter().all(|a| self.modelled(a))
     }
 
     /// E0701: two candidates fit the receiver equally well.
