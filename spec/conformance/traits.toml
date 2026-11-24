@@ -895,6 +895,20 @@ for (k, x) in xs.items: print(k, x)
 """
 out = "0 3\\n1 1\\n2 2"
 
+[case."Seq/Keys/iter"]
+code = """
+var xs = [3, 1, 2]
+for x in xs.keyed(): print(x)
+"""
+out = "3\\n1\\n2"
+
+[case."Keyed/Keys/items"]
+code = """
+var xs = [3, 1, 2]
+for (k, x) in xs.keyed(keys: 5..).items: print(k, x)
+"""
+out = "5 3\\n6 1\\n7 2"
+
 [case."Sized/List/len"]
 code = """
 var xs = [3, 1, 2]
