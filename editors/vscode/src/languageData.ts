@@ -154,7 +154,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'rsearch', 'same_dir', 'sample_points_shift', 'scc_times', 'search', 'seg_dist',
     'segment_intersect', 'segments_meet', 'shift_and', 'show_fields', 'sieve_multiplicative',
     'sign_eps', 'simplex', 'smallest_topo', 'smawk', 'sort', 'sorted', 'sorted_diff',
-    'sorted_intersect', 'sorted_union', 'sos', 'span', 'spanning_forest', 'spanning_tree', 'spans',
+    'sorted_intersect', 'sorted_union', 'sos', 'spanning_forest', 'spanning_tree', 'spans',
     'sparse_det', 'sparse_solve', 'sphere_dist', 'split', 'split_once', 'split_whitespace',
     'splitmix64', 'sqrt', 'stable_matching', 'stable_partition_in_place', 'stirling1_col',
     'stirling1_row', 'stirling2_col', 'stirling2_row', 'submasks', 'subsequences', 'subset_exp',
