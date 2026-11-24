@@ -25,7 +25,7 @@ for f in friends:
         events.push((hi + 1, -1))
 events.sort()
 
-var seen_by: [0..=n]Int = 0  // positions watched by exactly this many friends
+var seen_by: [0..=n]0..=r - l + 1 = 0  // positions watched by exactly this many friends
 var (watching, from) = (0, l)
 for e in events:
     seen_by[watching] += e.pos - from
