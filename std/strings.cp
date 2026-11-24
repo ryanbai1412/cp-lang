@@ -3512,7 +3512,7 @@ fn suffix_array_lcp_queries_cross_rmq_blocks():
             if hi - lo >= 2:
                 let least = min(sa.lcp[k] for k in lo..hi - 1)!
                 assert sa.lcp_of_ranks(lo..hi) == least
-                assert sa.split(lo..hi) == (lo + 1..hi).first(k => sa.lcp[k - 1] == least)!
+                assert sa.split(lo..hi) == (lo + 1..hi).find(k => sa.lcp[k - 1] == least)!
 
 @test
 fn suffix_array_struct_queries_match_brute():

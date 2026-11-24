@@ -3389,7 +3389,8 @@ fn arb_merge<W: Add + Sub>(mut h: ArbHeap<W>, a: Int, b: Int) -> Int:
     arb_push(mut h, a)
     arb_push(mut h, b)
     let (x, y) = if h.w[b] < h.w[a]: (b, a) else: (a, b)
-    h.r[x] = arb_merge(mut h, h.r[x], y)
+    let merged = arb_merge(mut h, h.r[x], y)
+    h.r[x] = merged
     let left = if h.l[x] >= 0: h.rank[h.l[x]] else: 0
     if left < h.rank[h.r[x]]:
         let t = h.l[x]
