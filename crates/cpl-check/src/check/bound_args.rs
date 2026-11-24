@@ -431,6 +431,7 @@ impl Checker<'_> {
                 continue;
             };
             let actual = self.settle(&actual);
+            let item = matches!(&actual, Ty::Named { name, .. } if name.starts_with("type_of("));
             if let Some(given) = self.trait_args_of(&actual, trait_name, args.len()) {
                 // `impl<T> Acts<T, T> for Plus`: the impl's own `T` is the
                 // bound's, where the call already fixed it.
@@ -442,11 +443,9 @@ impl Checker<'_> {
                     }
                 }
                 for (want, got) in args.iter().zip(&given) {
-                    // An impl generic nothing fixed yet (`impl<T> Op<T> for type_of(max)`) waits,
-                    // as does a value's half-known one: a later `a: [D]T` fixes the `T` of a
-                    // `Monoid([..] (i, j) => if i == j: Some(0) else: None, chain)`.
+                    // An impl generic nothing fixed yet (`impl<T> Op<T> for type_of(max)`) waits.
                     let got = self.settle(&got.subst(&open));
-                    if !got.has_vague() {
+                    if !(item && got.has_vague()) {
                         want.unify(&got, bindings);
                     }
                 }
