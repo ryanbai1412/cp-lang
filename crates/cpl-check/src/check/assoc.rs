@@ -6,13 +6,17 @@ use super::types::type_head;
 use super::*;
 use cpl_syntax::ast::{self, Stmt, StmtKind};
 
-/// The associated types a trait body declares, each with its bound's traits.
-pub(super) fn declared(body: &[Stmt]) -> Vec<(String, Vec<String>)> {
+/// The associated types a trait body declares, each with its bound's traits
+/// and the default it writes (`type Item = Int`), if any.
+pub(super) fn declared(body: &[Stmt]) -> Vec<(String, Vec<String>, Option<&ast::Type>)> {
     body.iter()
         .filter_map(|s| match &s.kind {
-            StmtKind::TypeAlias { name, bounds, .. } => Some((
+            StmtKind::TypeAlias {
+                name, bounds, ty, ..
+            } => Some((
                 name.text.clone(),
                 bounds.iter().filter_map(type_head).collect(),
+                (!matches!(ty.kind, ast::TypeKind::Error)).then_some(ty),
             )),
             _ => None,
         })
@@ -44,6 +48,36 @@ impl Checker<'_> {
             }
         }
         None
+    }
+
+    /// An impl's associated types with the trait's defaults for the ones it
+    /// leaves out, seen with `Self` as the impl's target (decision 469).
+    pub(super) fn with_assoc_defaults(
+        &mut self,
+        trait_ty: Option<&ast::Type>,
+        self_ty: &Ty,
+        mut assoc: Vec<(String, Ty)>,
+    ) -> Vec<(String, Ty)> {
+        let Some(Def::Trait {
+            assoc: declared, ..
+        }) = trait_ty
+            .and_then(type_head)
+            .and_then(|n| self.global(&n))
+            .as_deref()
+            .cloned()
+        else {
+            return assoc;
+        };
+        let mut on = crate::ty::Bindings::default();
+        on.insert("Self".into(), self_ty.clone());
+        for (name, _, default) in declared {
+            if let Some(default) = default {
+                if assoc.iter().all(|(n, _)| *n != name) {
+                    assoc.push((name, default.subst(&on)));
+                }
+            }
+        }
+        assoc
     }
 
     /// The methods impls for fn types give a fn value of type `of`.
@@ -102,7 +136,7 @@ impl Checker<'_> {
         else {
             return;
         };
-        let assoc: Vec<String> = declared.iter().map(|(n, _)| n.clone()).collect();
+        let assoc: Vec<String> = declared.iter().map(|(n, ..)| n.clone()).collect();
         let trait_text = self.quote(trait_ty.span);
         let chosen: Vec<&ast::Name> = body
             .iter()
@@ -126,7 +160,7 @@ impl Checker<'_> {
             let StmtKind::TypeAlias { name, ty, .. } = &s.kind else {
                 continue;
             };
-            let Some((_, bounds)) = declared.iter().find(|(n, _)| *n == name.text) else {
+            let Some((_, bounds, _)) = declared.iter().find(|(n, ..)| *n == name.text) else {
                 continue;
             };
             let chosen = self.quietly(|c| c.resolve_type(ty));
@@ -152,10 +186,11 @@ impl Checker<'_> {
                 }
             }
         }
-        let missing: Vec<String> = assoc
+        // A defaulted associated type may be left out (decision 469).
+        let missing: Vec<String> = declared
             .iter()
-            .filter(|a| chosen.iter().all(|c| &c.text != *a))
-            .cloned()
+            .filter(|(a, _, default)| default.is_none() && chosen.iter().all(|c| &c.text != a))
+            .map(|(a, ..)| a.clone())
             .collect();
         if !missing.is_empty() {
             let message = format!(

@@ -1194,8 +1194,14 @@ impl<'a> Checker<'a> {
                         _ => None,
                     })
                     .collect();
+                let assoc = super::assoc::declared(&body.stmts)
+                    .into_iter()
+                    .map(|(n, bounds, default)| {
+                        let default = default.map(|t| self.quietly(|c| c.resolve_type(t)));
+                        (n, bounds, default)
+                    })
+                    .collect();
                 self.leave_body(scope);
-                let assoc = super::assoc::declared(&body.stmts);
                 vec![(
                     name.text.clone(),
                     Def::Trait {
@@ -1245,6 +1251,7 @@ impl<'a> Checker<'a> {
                         _ => None,
                     })
                     .collect();
+                let assoc = self.with_assoc_defaults(trait_name.as_ref(), &self_ty, assoc);
                 let outer_assoc = std::mem::replace(&mut self.self_assoc, assoc.clone());
                 let owned = self.owned(&target_name, &body.stmts);
                 let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);

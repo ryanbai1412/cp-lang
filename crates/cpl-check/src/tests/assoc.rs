@@ -142,3 +142,24 @@ impl Keyed for P:
         vec![]
     );
 }
+
+#[test]
+fn an_impl_that_leaves_out_a_defaulted_associated_type_gets_the_default() {
+    let src = "\
+trait Box:
+    type Item = Int
+    fn get(self) -> Self.Item
+struct IntBox: v: Int
+impl Box for IntBox:
+    fn get(self) -> Int = self.v
+fn take<B: Box>(b: B) -> B.Item = b.get()
+let x: Int = take(IntBox(4))
+";
+    assert_eq!(check(src), vec![]);
+    let found = check(&src.replace("type Item = Int", "type Item"));
+    assert_eq!(found.len(), 1, "{found:#?}");
+    assert_eq!(found[0].code.0, "E0606");
+    let found = check(&src.replace("let x: Int", "let x: Bool"));
+    assert_eq!(found.len(), 1, "{found:#?}");
+    assert_eq!(found[0].code.0, "E0302");
+}

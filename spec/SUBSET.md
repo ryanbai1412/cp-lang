@@ -205,5 +205,4 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/closure-capturing-a-view-keeps-its-source-lent.cp: compiler: a closure capturing a view keeps the source lent
 - std-bag/closure-captures-a-range-view.cp: compiler: a captured bag range view is typed `()`
 - core-04/grid-rows-view-lends-the-grid.cp: compiler: a bound `lends` getter view (`g.rows`) keeps the grid lent
-- core-08/associated-type-default-and-override.cp: compiler: associated type defaults (decision 469)
 - core-04/grid-row-from-rows-lends-the-grid.cp: compiler: a row from a bound `lends` getter view keeps the grid lent
