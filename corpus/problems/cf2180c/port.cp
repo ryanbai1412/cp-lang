@@ -1,4 +1,5 @@
 // Source: Codeforces 2180C (XOR-factorization), https://codeforces.com/contest/2180/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: given n <= 1e9 and k <= 1e5, print k integers in 0..=n whose XOR is n and whose sum is
 //   as large as possible. Multitest, sum of k <= 1e5.
 // Solution: odd k: k copies of n. Even k: go from the top bit down, keeping a prefix of the

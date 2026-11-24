@@ -1,4 +1,5 @@
 // Source: Codeforces 2187F1 (Al Fine, max version), https://codeforces.com/contest/2187/problem/F1
+// limits: 3000 ms, 512 MB
 // Problem: two DFS orders a, b of a rooted tree on vertices 0..=n (2 <= n <= 1e6; both start at
 //   root 0, so only a_1..a_n and b_1..b_n are given). Print the largest depth (edges to the
 //   root) of a tree that has both as DFS orders. Multitest, sum n <= 1e6.

@@ -1,5 +1,6 @@
 // Source: Codeforces 2211B (Mickey Mouse Constructive),
 //   https://codeforces.com/contest/2211/problem/B
+// limits: 1500 ms, 256 MB
 // Problem: f(a) counts the partitions of a into subarrays that all have the same sum. Over
 //   arrays of x copies of 1 and y copies of -1 (x, y <= 2e5), print the least f(a) mod
 //   676767677 and an array reaching it. Multitest, sums of x and of y <= 2e5.
@@ -13,7 +14,7 @@ const MOD = 676_767_677
 type Z = Mod<MOD>
 
 @!multitest
-let (x_in, y_in): (0..=100_000, 0..=100_000) = read()
+let (x_in, y_in): (0..=200_000, 0..=200_000) = read()
 let (x, y) = (min(x_in, y_in), max(x_in, y_in))
 let vx = if x_in > y_in: -1 else: 1
 

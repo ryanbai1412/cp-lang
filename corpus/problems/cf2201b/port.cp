@@ -1,4 +1,5 @@
 // Source: Codeforces 2201B, Recollect Numbers, https://codeforces.com/contest/2201/problem/B
+// limits: 2000 ms, 256 MB
 // Problem: multitest (t <= 1e3, sum n <= 3e5), n <= 3e5, k <= 1e6. Arrange cards 1, 1, ..., n, n
 //   in a row so that the statement's greedy flipping strategy takes exactly k turns; print YES
 //   and the row, or NO.

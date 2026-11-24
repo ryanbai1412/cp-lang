@@ -1,5 +1,6 @@
 // Source: Codeforces 2201A1 (Lost Civilization, Easy Version),
 //   https://codeforces.com/contest/2201/problem/A1
+// limits: 2000 ms, 256 MB
 // Problem: a sequence grows by inserting x + 1 right after some element x. Given the result a
 //   (n <= 3e5, a_i <= 1e9), print the length of the shortest sequence that can produce it.
 //   Multitest, sum of n <= 3e5.

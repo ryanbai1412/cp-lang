@@ -1,4 +1,5 @@
 // Source: Codeforces 2187G (Many Cartesian Trees), https://codeforces.com/contest/2187/problem/G
+// limits: 2000 ms, 256 MB
 // Problem: for a permutation q (n <= 3000), p_1 = q and each p_i adds n to the minimum of
 //   p_(i-1). Given the n x n 0/1 matrix of S, the union of the (child, parent) edges of the
 //   Cartesian trees of p_1..p_n, print any q that gives S. Multitest, sum of n^2 <= 9e6.

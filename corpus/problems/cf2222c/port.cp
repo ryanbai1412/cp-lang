@@ -1,4 +1,5 @@
 // Source: Codeforces 2222C (Median Partition), https://codeforces.com/contest/2222/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: an array of odd length n < 5000 (a_i <= 1e9). Cut it into the most subarrays of
 //   odd length that all have the same median; print that number. Multitest, sum of n^2 <=
 //   5000^2.
