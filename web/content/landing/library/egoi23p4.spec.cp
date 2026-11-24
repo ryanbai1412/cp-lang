@@ -6,7 +6,7 @@ let widest = Semiring(max, min)
 let narrowest = Semiring(min, max)
 fn fits(u: V, v: V) -> Bool = (wide[u, v] ?? -1) >= (narrow[u, v] ?? inf)
 fn only_fits(d: [V, V]?Int) -> [V, V]?Int = [V, V] (u, v) => if u != v and fits(u, v): d[u, v] else: None
-fn closes_to(d: [V, V]?Int, over: Semiring, want: [V, V]?Int) -> Bool:
+fn closes_to<A, M>(d: [V, V]?Int, over: Semiring<A, M>, want: [V, V]?Int) -> Bool:
     let c = d.closure(over: over)!
     (V, V).all((u, v) => u == v or c[u, v] == want[u, v])
 if not (closes_to(wide, widest, wide) and closes_to(narrow, narrowest, narrow)
