@@ -355,17 +355,15 @@ impl Playground {
         let limits = cpl_interp::Limits {
             stack_bytes: stack as usize,
         };
-        cpl_interp::replay::replay_on_this_thread(
-            &recorded,
-            &before,
-            &after,
+        let rerun = cpl_interp::replay::Rerun {
+            recorded: &recorded,
+            original: &before,
+            edited: &after,
             input,
-            &call,
-            config(edited),
-            limits,
-            cpl_interp::Stop::after(RUN_LIMIT),
-        )
-        .json()
+            call: &call,
+        };
+        let stop = cpl_interp::Stop::after(RUN_LIMIT);
+        cpl_interp::replay::replay_on_this_thread(rerun, config(edited), limits, stop).json()
     }
 
     /// `cpl stress --explain --format json`, running in-process on `cpl-interp`

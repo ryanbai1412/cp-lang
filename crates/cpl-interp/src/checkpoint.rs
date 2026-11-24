@@ -120,6 +120,16 @@ impl Checkpoint {
     }
 }
 
+/// Where a frame's values are: its registers, the loops it is in, and
+/// whether its locals are to be read from the stack instead.
+#[derive(Clone, Copy)]
+struct Held<'a> {
+    regs_i: &'a [i64],
+    regs_v: &'a [Value],
+    loops: &'a [LoopReg],
+    from_stack: bool,
+}
+
 /// A frame and, up from it, the frames that called it.
 struct Chain {
     frame: FrameAt,
@@ -740,16 +750,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         let regs_i = &vm_regs_i[base_i..base_i + chunk.num_i];
         let at = (self.base, span, doms);
-        let frame = self.frame_at(
-            chunk,
-            caller_fn,
-            at,
+        let held = Held {
             regs_i,
             regs_v,
-            &edge.loops,
-            None,
-            false,
-        )?;
+            loops: &edge.loops,
+            from_stack: false,
+        };
+        let frame = self.frame_at(chunk, caller_fn, at, held, None)?;
         Some(Checkpoint {
             ticks: self.ckpt.ticks(self.countdown),
             printed: self.ckpt.printed + self.out.len() as u64,
@@ -817,16 +824,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         // they stay in the caller's registers.
         let to_fn = !matches!(s.callee, Body::Closure(_));
         let from_stack = (caller.has_by_ref_closure && to_fn) || s.fallback.is_some();
-        let Some(mut frame) = self.frame_at(
-            caller,
-            caller_fn,
-            at,
+        let held = Held {
             regs_i,
             regs_v,
-            &site.loops,
-            site_at,
+            loops: &site.loops,
             from_stack,
-        ) else {
+        };
+        let Some(mut frame) = self.frame_at(caller, caller_fn, at, held, site_at) else {
             return Snap::No;
         };
         let kept = self.ckpt.kept.get(k).map_or(&[][..], Vec::as_slice);
@@ -841,19 +845,21 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     /// One frame: `chunk`'s, run for `callee` on the stack
-    /// at `base`, in `loops`, waiting on `site` unless it is the innermost.
-    #[allow(clippy::too_many_arguments)]
+    /// at `base`, in `held.loops`, waiting on `site` unless it is the innermost.
     fn frame_at(
         &self,
         chunk: &Chunk<'p>,
         callee: Body,
         (base, span, doms): (usize, Span, usize),
-        regs_i: &[i64],
-        regs_v: &[Value],
-        loops: &[LoopReg],
+        held: Held,
         site: Option<(&'p Stmt, &'p cpl_ir::Expr)>,
-        from_stack: bool,
     ) -> Option<FrameAt> {
+        let Held {
+            regs_i,
+            regs_v,
+            loops,
+            from_stack,
+        } = held;
         let (n, body) = self.body_of(callee);
         let stacked = matches!(callee, Body::Main | Body::Setup) || chunk.needs_stack;
         let mut locals = match stacked {
