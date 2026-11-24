@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -232,6 +233,9 @@ class LandTest(unittest.TestCase):
             "    if not first:\n"
             "        subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'race'], cwd=os.environ['RACE'], check=True)\n"
             "    subprocess.run(['git', 'push', '-q', 'origin', 'HEAD:main'], cwd=os.environ['RACE'], check=True)\n"
+            "if os.environ.get('LOCKS'):\n"
+            "    held = subprocess.run(['git', 'ls-remote', 'origin', 'refs/land/lock'], capture_output=True, text=True).stdout\n"
+            "    open(os.environ['LOCKS'], 'a').write((held.split() or ['free'])[0] + '\\n')\n"
             "sys.exit('warning: field `0` is never read' if 'wasm' in sys.argv[-1] else 0)\n")
         self.commit(repo, "a commit tier")
         git(repo, "push", "-q", "origin", "HEAD:main")
@@ -322,6 +326,79 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("taking over a land lock", r.stderr)
         self.assertEqual(self.lock_on_remote(), "")
+
+    def test_a_lock_taken_after_a_wait_is_stamped_when_it_is_taken(self):
+        repo, other = self.clone("lane"), self.clone("other")
+        self.lock(repo)
+        stamps = self.tmp / "stamps"
+        hook = self.tmp / "remote.git" / "hooks" / "pre-receive"
+        hook.write_text("#!/bin/sh\nwhile read old new ref; do\n"
+                        f'  [ "$ref" != refs/land/lock ] || git log -1 --format=%s "$new" >>"{stamps}" 2>/dev/null || :\n'
+                        "done\n")
+        hook.chmod(0o755)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        freed = []
+        timer = threading.Timer(3, lambda: (freed.append(time.time()),
+                                            git(other, "push", "-q", "origin", ":refs/land/lock")))
+        timer.start()
+        r = self.land(repo)
+        timer.join()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("took the land lock after", r.stderr)
+        taken = [int(s.split()[3]) for s in stamps.read_text().splitlines() if " other " not in f" {s} "]
+        self.assertTrue(taken and taken[0] >= int(freed[0]), (taken, freed))
+
+    def test_a_land_that_loses_the_race_reruns_without_the_land_lock(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        pending, runs = self._steps_runner(ours)
+        git(theirs, "pull", "-q", "origin", "main")
+        (theirs / "theirs.txt").write_text("x\n")
+        self.commit(theirs, "theirs")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        pending.write_text("nextest\n")
+        locks = self.tmp / "locks"
+        r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), LOCKS=str(locks), CPL_LAND_TRIES="2")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pushed", r.stdout)
+        # The rerun after the lost race ran while another lane could take the lock.
+        self.assertEqual(locks.read_text(), "free\nfree\n")
+        self.assertEqual(self.lock_on_remote(), "")
+
+    def test_a_lock_held_past_120s_is_stale_by_default(self):
+        repo = self.clone("lane")
+        self.lock(repo, age=150)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("taking over a land lock held over 120s", r.stderr)
+
+    def test_two_lanes_cant_both_take_over_one_stale_lock(self):
+        repo, rival = self.clone("lane"), self.clone("rival")
+        self.lock(repo, age=1000)
+        empty = git(rival, "hash-object", "-t", "tree", "/dev/null").strip()
+        theirs = git(rival, "commit-tree", empty, "-m", f"land-lock rival 2 {int(time.time())} infra").strip()
+        # The rival takes the stale lock over between this lane's look and its takeover.
+        shim = self.tmp / "bin"
+        shim.mkdir()
+        real = shutil.which("git")
+        (shim / "git").write_text(
+            "#!/bin/sh\n"
+            'case "$*" in *"--force-with-lease=refs/land/lock:"[0-9a-f]*)\n'
+            f'  [ -e "{self.tmp}/rival.done" ] || {{ touch "{self.tmp}/rival.done"; '
+            f'"{real}" -C "{rival}" push -q -f origin "{theirs}:refs/land/lock"; }} ;;\n'
+            "esac\n"
+            f'exec "{real}" "$@"\n')
+        (shim / "git").chmod(0o755)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}", CPL_LAND_LOCK_WAIT="2")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("taking over a land lock", r.stderr)
+        self.assertIn("waiting for the land lock (land-lock rival", r.stderr)
+        self.assertTrue(self.lock_on_remote().startswith(theirs))
 
     def test_a_refused_land_drops_the_land_lock(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
