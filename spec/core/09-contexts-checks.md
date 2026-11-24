@@ -109,6 +109,14 @@ Each row has one check name, used by `with checks(...)`,
 `@cache` and laws are stress-only and have no name. This is the one list;
 other chapters link here.
 
+An `assert` whose whole condition is a key test, `assert i in s.keys`, is
+a `bounds` check, not an assert: it fails as an index does, trapping R0101
+naming `i` and `s.keys`, and `bounds` turns it on and off in every build.
+That is how a library view (`a.step(2)[i]`, a user's keyed type) gives a
+key outside its keys the same trap as `a[i]`. Any other condition, even one
+that contains a key test (`i in s.keys and i > 0`), is an ordinary assert
+(R0401). (R09.3.10)
+
 Reads (`read<1..=n>()`) are input validation: they are checked in
 checked builds and, like other checks, skipped in release unless
 `release_checks: [reads]` is set.

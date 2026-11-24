@@ -8502,3 +8502,10 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 `fn dfs(.., seen: ?mut [V]Bool = None)` (R12, std.graph) had no meaning: the checker didn't count `seen` as `mut`, so `seen: mut x` was E0402, and the body had no way to write through it. The rule now: a `?mut T` param takes a `mut x` (x: T) or nothing. In the body, `p` itself is read-only, and `if let s = p:` binds `s` mutably to the caller's place, so `s[v] = true` reaches `x`. No new syntax; it is the `if let` every optional already uses.
 Lowering gives each call shape its own instance (a fn with a `?mut` param is a template, like a generic fn). Given `mut x`, the param is `mut p: T` by reference, and `if let s = p` is always true with `s` = `p`. Left out, the param is `p: ?T = None`. So neither engine needs a nullable reference, and the C++ is the plain `mut` param.
 Reverse: drop `opt_mut_params`/`note_opt_mut` in the checker and `opt_mut_instance`/`opt_mut_alias`/`param_marker` in cpl-ir lowering (declare.rs), and `seen: mut x` is E0402 again.
+
+## 446. An assert that is only a key test is a bounds check (spec, 2026-11-23)
+
+- **Call.** `assert i in s.keys`, with nothing else in the condition, traps R0101 naming the key and `s.keys`, and is the `bounds` check, not `asserts` (R09.3.10). Every other assert stays R0401.
+- **Why.** A library view such as `a.step(2)` checks its keys with an `assert`, so a skipped key trapped R0401 while `a[i]` on a slice traps R0101 (core-04/h-step-skipped-key-traps). Libraries had no way to raise the index trap, which is stdlib privilege for core views. Reading the one condition that already says "not a key" as an index check keeps assert's surface unchanged; a trap-kind argument (`assert c, as: key`) would add surface for the same single case.
+- **Reverse.** Drop R09.3.10; give `assert` a named trap kind instead, or leave library key checks at R0401.
+
