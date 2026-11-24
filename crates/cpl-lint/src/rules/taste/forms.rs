@@ -3,6 +3,7 @@
 
 use super::{breaks_after_setting, pushed_onto, var_decl};
 use crate::std_fn;
+use crate::Calls;
 use cpl_syntax::ast::*;
 
 /// `var name = init` followed by a `for` loop: a loop whose job may be to
@@ -14,6 +15,8 @@ pub(super) struct AccLoop<'a> {
     pub pat: &'a Pattern,
     pub iter: &'a Expr,
     pub body: &'a Block,
+    /// Asks the checker about the loop's calls.
+    pub calls: Calls<'a>,
 }
 
 /// What an [`AccLoop`] does with its variable.
@@ -34,7 +37,7 @@ pub(super) enum Form<'a> {
 }
 
 impl<'a> AccLoop<'a> {
-    pub(super) fn of(decl: &'a Stmt, next: &'a Stmt) -> Option<AccLoop<'a>> {
+    pub(super) fn of(decl: &'a Stmt, next: &'a Stmt, calls: Calls<'a>) -> Option<AccLoop<'a>> {
         let (name, init) = var_decl(decl)?;
         let StmtKind::For {
             label: None,
@@ -62,6 +65,7 @@ impl<'a> AccLoop<'a> {
             pat,
             iter,
             body,
+            calls,
         })
     }
 
@@ -107,12 +111,14 @@ impl<'a> AccLoop<'a> {
             StmtKind::Assign { target, op, value } if matches!(&target.kind, ExprKind::Name(n) if n == self.name) =>
             {
                 let (op, value) = match op {
-                    AssignOp::Set => spelled_out(self.name, value)?,
+                    AssignOp::Set => spelled_out(self.name, value, self.calls)?,
                     _ => (op, value),
                 };
                 Some(Form::Fold { cond, op, value })
             }
-            StmtKind::Expr(e) => pushed_onto(e, self.name).map(|value| Form::Build { cond, value }),
+            StmtKind::Expr(e) => {
+                pushed_onto(e, self.name, self.calls).map(|value| Form::Build { cond, value })
+            }
             _ => None,
         }
     }
@@ -126,7 +132,11 @@ static MIN: AssignOp = AssignOp::Min;
 
 /// `x = x + v` and `x = max(x, v)`, C++'s spellings of `x += v` and `x max= v`:
 /// the operator and `v`.
-fn spelled_out<'a>(name: &str, value: &'a Expr) -> Option<(&'static AssignOp, &'a Expr)> {
+fn spelled_out<'a>(
+    name: &str,
+    value: &'a Expr,
+    calls: Calls,
+) -> Option<(&'static AssignOp, &'a Expr)> {
     let other = |a: &'a Expr, b: &'a Expr| {
         let is_self = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
         match (is_self(a), is_self(b)) {
@@ -144,8 +154,8 @@ fn spelled_out<'a>(name: &str, value: &'a Expr) -> Option<(&'static AssignOp, &'
         } => Some((&ADD, other(lhs, rhs)?)),
         ExprKind::Call { callee, args } => {
             let op = match &callee.kind {
-                ExprKind::Name(n) if n == std_fn::MAX => &MAX,
-                ExprKind::Name(n) if n == std_fn::MIN => &MIN,
+                ExprKind::Name(_) if calls.is(value, std_fn::MAX) => &MAX,
+                ExprKind::Name(_) if calls.is(value, std_fn::MIN) => &MIN,
                 ExprKind::Name(_) => {
                     let is_self = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
                     return match &args[..] {

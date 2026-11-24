@@ -1,7 +1,9 @@
 //! L0517-L0522: DSU, sieve, binary lifting, prefix sums, copy-sort-writeback.
 
 use super::*;
+use crate::facts::Facts;
 use crate::std_fn;
+use crate::Calls;
 
 /// Flags hand-rolled union-find (L0517), prime/SPF sieve (L0518), and
 /// binary-lifting tables (L0519) that duplicate `std.dsu`, `std.math`, and
@@ -782,6 +784,7 @@ pub(super) fn prefix_zero_decl<'a>(
     loop_idx: usize,
     arr: &str,
     kind: &PrefixLoopKind<'_>,
+    facts: Option<&Facts>,
 ) -> Option<(usize, u32, &'a Stmt)> {
     if loop_idx == 0 {
         return None;
@@ -841,18 +844,15 @@ pub(super) fn prefix_zero_decl<'a>(
                 }
                 return None;
             }
-            let ExprKind::Call { callee, args } = &walk::unparen(val).kind else {
+            let call = walk::unparen(val);
+            let ExprKind::Call { callee, args } = &call.kind else {
                 return None;
             };
-            let ExprKind::Field {
-                base: recv,
-                name: mname,
-            } = &walk::unparen(callee).kind
-            else {
+            let ExprKind::Field { base: recv, .. } = &walk::unparen(callee).kind else {
                 return None;
             };
             if shapes::name(recv) == Some("List")
-                && mname.text == std_fn::FILLED
+                && Calls::new(facts, base).is(call, std_fn::FILLED)
                 && args.len() == 2
                 && is_zero_init(&args[1].value)
             {
@@ -1002,6 +1002,7 @@ pub(super) fn match_in_place_mut_stmt(
     src: &str,
     stmt_entry: &(u32, &Stmt),
     sub_name: &str,
+    facts: Option<&Facts>,
 ) -> Option<(&'static str, String)> {
     let (base, stmt) = *stmt_entry;
     let StmtKind::Expr(expr) = &stmt.kind else {
@@ -1010,23 +1011,19 @@ pub(super) fn match_in_place_mut_stmt(
     let ExprKind::Call { callee, args, .. } = &expr.kind else {
         return None;
     };
-    let ExprKind::Field {
-        base: recv,
-        name: method,
-    } = &callee.kind
-    else {
+    let ExprKind::Field { base: recv, .. } = &callee.kind else {
         return None;
     };
     if !matches!(&recv.kind, ExprKind::Name(n) if n == sub_name) {
         return None;
     }
-    let m = match method.text.as_str() {
-        std_fn::SORT => std_fn::SORT,
-        std_fn::REVERSE => std_fn::REVERSE,
-        std_fn::ROTATE_LEFT => std_fn::ROTATE_LEFT,
-        std_fn::ROTATE_RIGHT => std_fn::ROTATE_RIGHT,
-        "scan_in_place" => "scan_in_place",
-        "suffix_scan_in_place" => "suffix_scan_in_place",
+    let m = match Calls::new(facts, base).name(expr) {
+        Some(std_fn::SORT) => std_fn::SORT,
+        Some(std_fn::REVERSE) => std_fn::REVERSE,
+        Some(std_fn::ROTATE_LEFT) => std_fn::ROTATE_LEFT,
+        Some(std_fn::ROTATE_RIGHT) => std_fn::ROTATE_RIGHT,
+        Some("scan_in_place") => "scan_in_place",
+        Some("suffix_scan_in_place") => "suffix_scan_in_place",
         _ => return None,
     };
     Some((m, call_args_text(src, base, expr.span, callee.span, args)))
@@ -1206,7 +1203,10 @@ pub(super) fn is_slice_writeback_loop(
 /// A running total stored at each step of a loop: `for x in a: run += x; out.push(run)`,
 /// `for i in I: run += a[i]; s[i] = run`, or `for x in a: ps.push(ps[ps.len - 1] + x)` (also
 /// `ps.last! + x`). Returns the table, the loop variable and the term added each step.
-pub(super) fn running_total_loop(stmt: &Stmt) -> Option<(&str, &str, &Expr)> {
+pub(super) fn running_total_loop<'s>(
+    stmt: &'s Stmt,
+    calls: Calls,
+) -> Option<(&'s str, &'s str, &'s Expr)> {
     let StmtKind::For { pat, body, .. } = &stmt.kind else {
         return None;
     };
@@ -1219,7 +1219,7 @@ pub(super) fn running_total_loop(stmt: &Stmt) -> Option<(&str, &str, &Expr)> {
             let StmtKind::Expr(e) = &one.kind else {
                 return None;
             };
-            let (table, value) = push_call(e)?;
+            let (table, value) = push_call(e, calls)?;
             let ExprKind::Binary {
                 op: BinOp::Add,
                 lhs,
@@ -1249,7 +1249,7 @@ pub(super) fn running_total_loop(stmt: &Stmt) -> Option<(&str, &str, &Expr)> {
             let acc = shapes::name(target)?;
             let table = match &store.kind {
                 StmtKind::Expr(e) => {
-                    let (table, v) = push_call(e)?;
+                    let (table, v) = push_call(e, calls)?;
                     (shapes::name(v) == Some(acc)).then_some(table)?
                 }
                 StmtKind::Assign {
@@ -1269,15 +1269,15 @@ pub(super) fn running_total_loop(stmt: &Stmt) -> Option<(&str, &str, &Expr)> {
     }
 }
 
-fn push_call(e: &Expr) -> Option<(&str, &Expr)> {
+fn push_call<'e>(e: &'e Expr, calls: Calls) -> Option<(&'e str, &'e Expr)> {
     let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
-    let ExprKind::Field { base, name } = &callee.kind else {
+    let ExprKind::Field { base, .. } = &callee.kind else {
         return None;
     };
     match args.as_slice() {
-        [arg] if name.text == std_fn::PUSH && arg.name.is_none() => {
+        [arg] if arg.name.is_none() && calls.is(e, std_fn::PUSH) => {
             Some((shapes::name(base)?, &arg.value))
         }
         _ => None,
@@ -1304,7 +1304,8 @@ impl Taste<'_> {
     /// A running total stored each step (L0521, help only): the loop also does what the
     /// table's reads need, so `cpl fix` leaves the rewrite to the contestant.
     pub(super) fn running_total(&mut self, base: u32, stmt: &Stmt) {
-        let Some((table, var, added)) = running_total_loop(stmt) else {
+        let Some((table, var, added)) = running_total_loop(stmt, Calls::new(self.facts, base))
+        else {
             return;
         };
         let added = &self.src[(base + added.span.start) as usize..(base + added.span.end) as usize];

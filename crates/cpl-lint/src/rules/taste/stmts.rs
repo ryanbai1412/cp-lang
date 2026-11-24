@@ -2,6 +2,7 @@
 
 use crate::std_fn;
 use crate::walk::{self, Visitor};
+use crate::Calls;
 use cpl_syntax::ast::*;
 
 pub(super) fn var_decl(stmt: &Stmt) -> Option<(&str, &Expr)> {
@@ -77,16 +78,16 @@ pub(super) fn breaks_after_setting(stmts: &[Stmt], name: &str) -> bool {
 }
 
 /// `xs.push(e)`: `e`.
-pub(super) fn pushed_onto<'e>(e: &'e Expr, name: &str) -> Option<&'e Expr> {
+pub(super) fn pushed_onto<'e>(e: &'e Expr, name: &str, calls: Calls) -> Option<&'e Expr> {
     let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
-    let ExprKind::Field { base, name: method } = &callee.kind else {
+    let ExprKind::Field { base, .. } = &callee.kind else {
         return None;
     };
     match (&base.kind, &args[..]) {
         (ExprKind::Name(n), [arg])
-            if n == name && method.text == std_fn::PUSH && arg.name.is_none() =>
+            if n == name && arg.name.is_none() && calls.is(e, std_fn::PUSH) =>
         {
             Some(&arg.value)
         }

@@ -232,7 +232,8 @@ impl<'a> Taste<'a> {
             if let Some((next_base, next)) = stmts.get(i + 1) {
                 self.next_base = *next_base;
                 self.symmetric(stmt, next);
-                let Some(acc) = AccLoop::of(stmt, next) else {
+                let Some(acc) = AccLoop::of(stmt, next, Calls::new(self.facts, self.next_base))
+                else {
                     continue;
                 };
                 for form in acc.forms() {
@@ -404,7 +405,7 @@ impl<'a> Taste<'a> {
             found.arr
         ));
         if let Some((decl_idx, decl_base, decl_stmt)) =
-            prefix_zero_decl(self.src, stmts, i, found.arr, &found.kind)
+            prefix_zero_decl(self.src, stmts, i, found.arr, &found.kind, self.facts)
         {
             if let Some(reads) = collect_pure_index_reads(&stmts[i + 1..], found.arr) {
                 let expr = match &found.kind {
@@ -583,9 +584,12 @@ impl<'a> Taste<'a> {
                     }
                     // Form 2a (3 statements): `var sub = xs[l..r].to_list()` + `sub.sort(..)` + writeback
                     if calls.is(init, std_fn::TO_LIST) && args.is_empty() {
-                        if let Some((method, args)) =
-                            match_in_place_mut_stmt(self.src, stmts.get(i + 1)?, sub_name)
-                        {
+                        if let Some((method, args)) = match_in_place_mut_stmt(
+                            self.src,
+                            stmts.get(i + 1)?,
+                            sub_name,
+                            self.facts,
+                        ) {
                             return Some(CopyMutate {
                                 target,
                                 range,
@@ -625,6 +629,7 @@ impl<'a> Taste<'a> {
                                         self.src,
                                         stmts.get(i + 1)?,
                                         sub_name,
+                                        self.facts,
                                     ) {
                                         return Some(CopyMutate {
                                             target,
@@ -665,11 +670,16 @@ impl<'a> Taste<'a> {
             let StmtKind::Expr(call) = &push.kind else {
                 return None;
             };
-            let (base, ix) = plain_index(pushed_onto(call, sub_name)?)?;
+            let (base, ix) = plain_index(pushed_onto(
+                call,
+                sub_name,
+                Calls::new(self.facts, loop_base),
+            )?)?;
             if shapes::name(ix) != Some(var.as_str()) || base == sub_name {
                 return None;
             }
-            let (method, args) = match_in_place_mut_stmt(self.src, stmts.get(i + 2)?, sub_name)?;
+            let (method, args) =
+                match_in_place_mut_stmt(self.src, stmts.get(i + 2)?, sub_name, self.facts)?;
             return Some(CopyMutate {
                 target: base.to_string(),
                 range: at(loop_base, iter.span).to_string(),
@@ -819,6 +829,7 @@ impl<'a> Taste<'a> {
             pat,
             iter,
             body,
+            ..
         } = *acc;
         let init_text = self.text(init.span);
         let int_lit = |t: &str| {
