@@ -1,9 +1,8 @@
 // n: 32768
-use std.flow.{FlowGraph, CostFlow, Arc, Matching, GraphicMatroid, ColorMatroid}
+use std.flow.{FlowGraph, CostFlow, Arc, Matching, GraphicMatroid}
 let n: Int = read()
 domain V = 0..n
 domain E = 0..n
-domain C = 0..4
 domain W = 0..n / 16
 var s = 0
 for _ in 0..1024:
@@ -12,14 +11,9 @@ for _ in 0..1024:
 for _ in 0..32768:
     s += (Matching<W, W>().back(W(n / 16 - 1)) ?? W(0)).ord // timed: flow.Matching.new
 let es = [E] e => (u: V(e.ord), v: V((e.ord * 7 + 3) % n))
-let col = [E] e => C(e.ord % 4)
-let lim = [C] _ => n
 for _ in 0..64:
     let gm = GraphicMatroid(es) // timed: flow.GraphicMatroid.new
     if gm.can_add(E(0)): s += 1
-for _ in 0..1024:
-    let cm = ColorMatroid(col, lim) // timed: flow.ColorMatroid.new
-    if cm.can_add(E(0)): s += 1
 var g = FlowGraph<V>()
 var cf = CostFlow<V>()
 var arcs = List<Arc>()

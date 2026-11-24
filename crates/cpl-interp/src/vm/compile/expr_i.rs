@@ -1,3 +1,4 @@
+use super::stmt::Callee;
 use super::{Compiler, GiveTarget, ModSuperOp};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -97,14 +98,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 dst
             }
-            ExprKind::IsSome(inner) => {
+            ExprKind::IsSome(inner) | ExprKind::IsVariant(inner, _) => {
                 if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() {
                     let (_, s) = self.compile_expr_opt_i(inner);
                     s
                 } else {
                     let src_v = self.compile_expr_v(inner);
                     let dst_i = self.alloc_i();
-                    self.emit(Op::IsSomeV { dst_i, src_v }, span);
+                    let tag = match expr.kind {
+                        ExprKind::IsVariant(_, tag) => tag as u32,
+                        _ => 1,
+                    };
+                    self.emit(Op::IsVariantI { dst_i, src_v, tag }, span);
                     dst_i
                 }
             }
@@ -146,12 +151,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Field(base, 0)
                 if matches!(
                     ScalarKind::of_ty(&base.ty, self.program),
-                    Some(ScalarKind::OneIntStruct)
+                    Some(ScalarKind::OneIntStruct | ScalarKind::OneU64Struct)
                 ) =>
             {
                 self.compile_expr_i(base)
             }
-            ExprKind::Field(base, idx) => {
+            ExprKind::Field(base, idx) | ExprKind::Payload(base, _, idx) => {
                 if let ExprKind::Local(slot) = &base.kind {
                     if let SlotLoc::SmallTuple { base: b, len, .. } = self.slot_loc(*slot) {
                         if *idx < len as usize {
@@ -174,9 +179,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                if obj_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: obj_v }, span);
-                }
                 dst
             }
             ExprKind::RangeCheck {
@@ -372,7 +374,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 };
                 let src_v = self.compile_expr_v(opt);
                 let some = self.alloc_i();
-                self.emit(Op::IsSomeV { dst_i: some, src_v }, span);
+                self.emit(
+                    Op::IsVariantI {
+                        dst_i: some,
+                        src_v,
+                        tag: 1,
+                    },
+                    span,
+                );
                 if src_v >= self.num_local_v {
                     self.emit(Op::ClearV { reg: src_v }, span);
                 }
@@ -384,8 +393,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Cmp(op, lhs, rhs)
-                if lhs.ty == Ty::U64
-                    && rhs.ty == Ty::U64
+                if self.is_u64_scalar(&lhs.ty)
+                    && self.is_u64_scalar(&rhs.ty)
                     && matches!(
                         op,
                         CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
@@ -400,8 +409,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Cmp(op, lhs, rhs)
                 if ScalarKind::of_ty(&lhs.ty, self.program).is_some()
                     && ScalarKind::of_ty(&rhs.ty, self.program).is_some()
-                    && lhs.ty != Ty::U64
-                    && rhs.ty != Ty::U64
+                    && !self.is_u64_scalar(&lhs.ty)
+                    && !self.is_u64_scalar(&rhs.ty)
                     && ty_uses_structural_cmp(&lhs.ty, self.program)
                     && matches!(
                         op,
@@ -417,10 +426,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Cmp(op, lhs, rhs)
                 if matches!(
                     ScalarKind::of_opt_ty(&lhs.ty, self.program),
-                    Some(k) if k != ScalarKind::U64
+                    Some(k) if !matches!(k, ScalarKind::U64 | ScalarKind::OneU64Struct)
                 ) && matches!(
                     ScalarKind::of_opt_ty(&rhs.ty, self.program),
-                    Some(k) if k != ScalarKind::U64
+                    Some(k) if !matches!(k, ScalarKind::U64 | ScalarKind::OneU64Struct)
                 ) && ty_uses_structural_cmp(&lhs.ty, self.program)
                     && matches!(
                         op,
@@ -1317,24 +1326,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     dst
                 } else {
                     let f = &self.program.fns[*fn_id];
-                    let can_vm = !self.program.judge_fns.contains(fn_id)
-                        && !f.params.iter().any(|p| p.mutable)
+                    let can_vm = !f.params.iter().any(|p| p.mutable)
                         && self.program.fn_guarded_domains(&f.ret, &f.body).is_empty()
                         && (0..f.params.len())
                             .all(|i| ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some())
                         && ScalarKind::of_ty(&f.ret, self.program).is_some()
                         && args.len() <= 8;
-                    let values: Option<Vec<&'p Expr>> = args
-                        .iter()
-                        .map(|a| match a {
-                            Arg::Value(e) => Some(e),
-                            _ => None,
-                        })
-                        .collect();
-                    if let (true, Some(values)) = (can_vm, values) {
-                        let mut evaluated = Vec::with_capacity(values.len());
-                        for ae in values {
-                            evaluated.push(self.compile_expr_i(ae));
+                    if can_vm {
+                        // No `mut` param, so each arg is a value.
+                        let mut evaluated = Vec::with_capacity(args.len());
+                        for a in args {
+                            if let Arg::Value(ae) = a {
+                                evaluated.push(self.compile_expr_i(ae));
+                            }
                         }
                         let arg_base = self.next_i;
                         for r in evaluated {
@@ -1348,7 +1352,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             Op::CallVmI {
                                 fn_id: *fn_id as u16,
                                 arg_base,
-                                argc: args.len() as u8,
                                 dst,
                             },
                             span,
@@ -1359,7 +1362,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     {
                         dst
                     } else {
-                        self.emit_fallback_expr_i(expr)
+                        self.emit_traced_call(span, Callee::Fn(*fn_id), args, true)
                     }
                 }
             }
@@ -1369,7 +1372,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 {
                     dst
                 } else {
-                    self.emit_fallback_expr_i(expr)
+                    self.emit_traced_call(span, Callee::Value(callee), args, true)
                 }
             }
             _ => self.emit_fallback_expr_i(expr),
@@ -1448,5 +1451,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
         }
         Some((map, boxed))
+    }
+}
+
+impl Compiler<'_, '_> {
+    /// Whether `ty` is held as unsigned bits: a `U64`, or a struct of one.
+    fn is_u64_scalar(&self, ty: &Ty) -> bool {
+        matches!(
+            ScalarKind::of_ty(ty, self.program),
+            Some(ScalarKind::U64 | ScalarKind::OneU64Struct)
+        )
     }
 }

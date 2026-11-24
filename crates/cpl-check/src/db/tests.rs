@@ -336,6 +336,14 @@ fn a_bound_reaches_its_supers_methods_typed() {
 }
 
 #[test]
+fn a_place_under_a_lends_mut_index_beside_a_get_is_typed() {
+    let src = "struct C:\n    var n: Int\n    fn bump(mut self, by: Int):\n        n += by\nstruct Node:\n    var c: C\n    var kids: List<Int>\nstruct Pool:\n    _xs: List<Node>\n    pub fn at(mut self, i: Int) -> lends mut Node:\n        lend mut _xs[i]\n    pub fn get(self, i: Int) -> Int = _xs[i].c.n\nvar p = Pool([Node(C(1), [2])])\np[0].c.bump(4)\np[0].c.n = 2\np[0].kids[0] += 1\np[0].kids.push(3)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    let read = format!("{src}let n: Int = p[0].abs()\n");
+    assert_eq!(silent_unknowns_of(&read).1, 0);
+}
+
+#[test]
 fn a_silent_unknown_names_its_cause() {
     let mut db = Database::new();
     db.set_file("main.cp", "print([])\n");
@@ -395,4 +403,42 @@ fn a_free_fold_and_a_stepped_range_type_by_the_seq_element() {
 fn a_static_fns_untyped_lambda_takes_the_generic_its_body_binds() {
     let src = "domain V = 0..5\nfn up(v: V) -> ?V = None\nstruct Walk<V>(next: V -> ?V):\n    pub fn of(next: V -> ?V) -> Walk<V> = Walk<V>(next)\n    pub fn of2<W>(next: W -> ?W) -> Walk<W> = Walk<W>(next)\n    pub fn steps(self, v: V) -> Int = 0\nprint(Walk.of(v => up(v)).steps(V(3)))\nprint(Walk.of2(w => up(w)).steps(V(3)))\n";
     assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}
+
+#[test]
+fn a_struct_view_walks_its_own_seq_element_at_a_bound_and_a_join() {
+    let base = "struct Twice<A, T>(a: A)\nimpl Seq<(T, T)> for Twice<A: Seq<T>, T>:\n    fn iter(self) -> yields (T, T):\n        for x in a: yield (x, x)\nfn twice<A: Seq<T>, T>(a: A) -> Twice<A, T> = Twice(a)\n";
+    let join =
+        format!("{base}let joined = [(0, 0)] + twice([4, 5])\nprint(joined.len, joined[2].1)\n");
+    assert_eq!(silent_unknowns_of(&join), (vec![], 0));
+    let nested = "struct Both<A, B, T, U>(a: A, b: B)\nimpl Seq<(T, U)> for Both<A: Seq<T>, B: Positional<U>, T, U>:\n    fn iter(self) -> yields (T, U):\n        var i = 0\n        for x in a:\n            if i == b.len: return\n            yield (x, b.nth(i))\n            i += 1\nimpl Sized for Both<A: Sized, B: Sized, T, U>:\n    @get fn len(self) -> Int = min(a.len, b.len)\nimpl Positional<(T, U)> for Both<A: Positional<T>, B: Positional<U>, T, U>:\n    fn nth(self, k: Int) -> (T, U) = (a.nth(k), b.nth(k))\nfn both<A: Seq<T>, B: Positional<U>, T, U>(a: A, b: B) -> Both<A, B, T, U> = Both(a, b)\nfor ((u, v), (l, r)) in both([(1, 2), (3, 4)], both([10, 20], [\"a\", \"b\"])):\n    print(u + v + l, r)\n";
+    assert_eq!(silent_unknowns_of(nested), (vec![], 0));
+}
+
+#[test]
+fn method_fits_imports_a_files_methods_once_per_analysis() {
+    let mut db = Database::new();
+    db.set_file("main.cp", "let xs = [3, 1]\nprint(xs)\n");
+    let names = ["sorted", "sum", "no_such_method"];
+    let first = db.method_fits("main.cp", &Ty::Int, &names);
+    let analysis = db.analyze("main.cp").unwrap();
+    let scope = db.memo_calling("main.cp", &analysis, &names);
+    assert!(Arc::ptr_eq(
+        &scope,
+        &db.memo_calling("main.cp", &analysis, &names)
+    ));
+    assert_eq!(db.method_fits("main.cp", &Ty::Int, &names), first);
+    assert!(!Arc::ptr_eq(
+        &scope,
+        &db.memo_calling("main.cp", &analysis, &names[..2])
+    ));
+
+    db.set_file("main.cp", "let xs = [3, 2, 1]\nprint(xs)\n");
+    let edited = db.analyze("main.cp").unwrap();
+    assert!(!Arc::ptr_eq(
+        &scope,
+        &db.memo_calling("main.cp", &edited, &names)
+    ));
+    db.remove_file("main.cp");
+    assert!(db.callings.is_empty());
 }

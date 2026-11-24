@@ -19,9 +19,6 @@ fn main() -> ExitCode {
         eprintln!("error: {problem}");
         return ExitCode::from(2);
     }
-    if cpl_env::FORCE_ICE.is("1") {
-        cpl_cli::invariant::broken_invariant("no ICE is forced: CPL_FORCE_ICE is unset");
-    }
     // `cpl lsp` and `cpl lsp --stdio` are the same: stdio is the only transport.
     if args.first().map(String::as_str) == Some("lsp") && args[1..].iter().all(|a| a == "--stdio") {
         return ExitCode::from(cpl_cli::lsp());

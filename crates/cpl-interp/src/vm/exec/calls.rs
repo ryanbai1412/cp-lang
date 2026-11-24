@@ -1,26 +1,26 @@
-use super::resume::put_ret;
+use super::frames::{pass_args, Callee, ClosureRet, FnRet, Ret, Stop};
 use crate::checkpoint::Body;
 use crate::observe::Observer;
 use crate::value::{Array, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{bug, trap, Flow, Interp, Res};
-use cpl_ir::{BinOp, CmpOp};
+use crate::{bug, interp_failed, trap, Flow, Interp, Res};
+use cpl_ir::CmpOp;
 use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     #[allow(clippy::too_many_arguments)]
     #[inline]
-    pub(super) fn exec_fields_and_calls(
+    pub(super) fn exec_fields_and_calls<'c>(
         &mut self,
         op: Op,
         cur_pc: usize,
-        compiled: &CompiledProgram<'p>,
+        compiled: &'c CompiledProgram<'p>,
         chunk: &Chunk<'p>,
         base_i: usize,
         vm_regs_i: &mut Vec<i64>,
         regs_v: &mut [Value],
-    ) -> Res<Option<ExecExit>> {
+    ) -> Res<Option<Stop<'c, 'p>>> {
         let spans = chunk.spans.as_slice();
         let mut regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
         if self.ckpt.waits() && self.resume_op(op, cur_pc, compiled, chunk, regs_i, regs_v)? {
@@ -47,6 +47,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let val = match &regs_v[obj_v as usize] {
                     Value::Tuple(TupleVal::Boxed(fs)) => fs[field as usize].clone(),
                     Value::Tuple(TupleVal::OneInt(v)) => Value::Int(*v),
+                    Value::Enum(_, ps) => ps[field as usize].clone(),
                     _ => Value::Unit,
                 };
                 if obj_v as usize >= chunk.num_local_v {
@@ -202,7 +203,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::ToList { dst, src_v } => {
                 regs_v[dst as usize] = match &regs_v[src_v as usize] {
-                    Value::Array(arr) => Value::List(Rc::new(arr.data.clone())),
+                    Value::Array(arr) => Value::List(Rc::clone(&arr.data)),
                     Value::List(items) => Value::List(Rc::new((**items).clone())),
                     Value::ListView(view) => {
                         Value::List(Rc::new(crate::value::Cells::from(view.to_vec())))
@@ -330,7 +331,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         );
                     }
                     let a = Rc::make_mut(arr);
-                    match &mut a.data {
+                    match &mut **a {
                         Cells::Values(vs) => std::mem::replace(&mut vs[idx as usize], Value::Unit),
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
@@ -351,7 +352,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         );
                     }
                     let a = Rc::make_mut(arr);
-                    match &mut a.data {
+                    match &mut **a {
                         Cells::Values(vs) => std::mem::replace(&mut vs[idx as usize], Value::Unit),
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
@@ -541,37 +542,21 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Float(f64::from_bits(chunk.consts_i[idx as usize] as u64));
             }
             Op::FloatBin { dst, a, b, op } => {
-                let (Value::Float(fa), Value::Float(fb)) =
-                    (&regs_v[a as usize], &regs_v[b as usize])
-                else {
-                    return bug(spans[cur_pc], "expected float");
-                };
-                let res = match op {
-                    BinOp::Add => *fa + *fb,
-                    BinOp::Sub => *fa - *fb,
-                    BinOp::Mul => *fa * *fb,
-                    BinOp::Div => *fa / *fb,
-                    BinOp::Pow => fa.powf(*fb),
-                    _ => return bug(spans[cur_pc], "unsupported float op"),
-                };
-                regs_v[dst as usize] = Value::Float(res);
+                let (l, r) = (regs_v[a as usize].clone(), regs_v[b as usize].clone());
+                regs_v[dst as usize] = crate::arith::binary(op, l, r, spans[cur_pc])?;
             }
             Op::FloatMinMax { dst, a, b, is_max } => {
-                let (Value::Float(fa), Value::Float(fb)) =
-                    (&regs_v[a as usize], &regs_v[b as usize])
-                else {
-                    return bug(spans[cur_pc], "expected float");
-                };
+                let (fa, fb) = (regs_v[a as usize].float(), regs_v[b as usize].float());
                 let res = if is_max {
-                    if *fa >= *fb {
-                        *fa
+                    if fa >= fb {
+                        fa
                     } else {
-                        *fb
+                        fb
                     }
-                } else if *fa <= *fb {
-                    *fa
+                } else if fa <= fb {
+                    fa
                 } else {
-                    *fb
+                    fb
                 };
                 regs_v[dst as usize] = Value::Float(res);
             }
@@ -592,61 +577,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::CallVmI {
                 fn_id,
                 arg_base,
-                argc,
                 dst,
             } => {
-                let f = &self.program.fns[fn_id as usize];
-                self.tick(spans[cur_pc])?;
-                self.stack_left(spans[cur_pc], Some(&f.name))?;
-                let Some(callee) = compiled.fns[fn_id as usize].as_ref() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                let call = FnRet {
+                    fn_id,
+                    args: (arg_base, 0),
+                    ret_mode: CallRet::I,
+                    dst: (dst, 0, 0),
+                    lend_back: false,
                 };
-                let ab = arg_base as usize;
-                let mut arg_buf = [0i64; 8];
-                let n = argc as usize;
-                arg_buf[..n].copy_from_slice(&regs_i[ab..ab + n]);
-                let needs_stack = callee.needs_stack;
-                if chunk.has_by_ref_closure {
-                    sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                }
-                let saved_base = self.base;
-                if needs_stack {
-                    self.base = self.stack.len();
-                    self.stack.resize(self.base + f.locals.len(), Value::Unit);
-                    self.frame_locals.push(&f.locals);
-                }
-                let frameless = self.frameless_base;
-                if !needs_stack {
-                    self.frameless_base = Some(saved_base);
-                }
-                self.call_frames.push((f.name.as_str(), spans[cur_pc]));
-                self.suspend(
-                    chunk,
-                    cur_pc,
-                    base_i,
-                    regs_v,
-                    Body::Fn(usize::from(fn_id)),
-                    saved_base,
-                );
-                let res = self.exec_chunk(compiled, callee, &arg_buf[..n], vm_regs_i);
-                self.unsuspend();
-                self.frameless_base = frameless;
-                if needs_stack {
-                    self.frame_locals.pop();
-                    self.stack.truncate(self.base);
-                    self.base = saved_base;
-                }
-                let val = res?;
-                self.call_frames.pop();
-                regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                if chunk.has_by_ref_closure {
-                    sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                }
-                regs_i[dst as usize] = ScalarKind::unbox_val(&val);
-                self.keep_result(chunk, cur_pc, regs_i, regs_v);
+                return self.call_fn_vm(compiled, call, (chunk, cur_pc, base_i), vm_regs_i, regs_v);
             }
             Op::CallTraced {
                 fn_id,
@@ -722,17 +662,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
                 self.hide_lent()?;
                 self.leave_fallback(outer);
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    caller,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, caller);
                 let value = returned?;
                 if let Some(Flow::Return(v) | Flow::Give(v)) = self.fed_left.take() {
-                    return Ok(Some(ExecExit::Return(v)));
+                    return Ok(Some(Stop::Exit(ExecExit::Return(v))));
                 }
                 if dst_i != u16::MAX {
                     regs_i[dst_i as usize] = ScalarKind::unbox_val(&value);
@@ -750,78 +683,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 dst_some,
                 ret_mode,
             } => {
-                let f = &self.program.fns[fn_id as usize];
-                self.tick(spans[cur_pc])?;
-                self.stack_left(spans[cur_pc], Some(&f.name))?;
-                let Some(callee) = compiled.fns[fn_id as usize].as_ref() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                let call = FnRet {
+                    fn_id,
+                    args: (arg_base_i, arg_base_v),
+                    ret_mode,
+                    dst: (dst_i, dst_some, dst_v),
+                    lend_back: false,
                 };
-                let mut ni = 0usize;
-                let mut nv = 0usize;
-                for loc in callee.slot_map.iter().take(callee.param_count) {
-                    match loc {
-                        SlotLoc::I(..) => ni += 1,
-                        SlotLoc::OptI { .. } => ni += 2,
-                        SlotLoc::V(_) => nv += 1,
-                        SlotLoc::SmallTuple { len, .. } => ni += *len as usize,
-                    }
-                }
-                let mut arg_buf_i = [0i64; 8];
-                let abi = arg_base_i as usize;
-                arg_buf_i[..ni].copy_from_slice(&regs_i[abi..abi + ni]);
-                let abv = arg_base_v as usize;
-                let needs_stack = callee.needs_stack;
-                if chunk.has_by_ref_closure {
-                    sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                }
-                let saved_base = self.base;
-                if needs_stack {
-                    self.base = self.stack.len();
-                    self.stack.resize(self.base + f.locals.len(), Value::Unit);
-                    self.frame_locals.push(&f.locals);
-                }
-                let frameless = self.frameless_base;
-                if !needs_stack {
-                    self.frameless_base = Some(saved_base);
-                }
-                self.call_frames.push((f.name.as_str(), spans[cur_pc]));
-                self.suspend(
-                    chunk,
-                    cur_pc,
-                    base_i,
-                    regs_v,
-                    Body::Fn(usize::from(fn_id)),
-                    saved_base,
-                );
-                let res = self.exec_chunk_mix(
-                    compiled,
-                    callee,
-                    &mut arg_buf_i[..ni],
-                    &mut regs_v[abv..abv + nv],
-                    &f.params,
-                    vm_regs_i,
-                );
-                self.unsuspend();
-                self.frameless_base = frameless;
-                if needs_stack {
-                    self.frame_locals.pop();
-                    self.stack.truncate(self.base);
-                    self.base = saved_base;
-                }
-                let val = res?;
-                self.call_frames.pop();
-                regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                if chunk.has_by_ref_closure {
-                    sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                }
-                if f.params.iter().any(|p| p.mutable) {
-                    regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);
-                }
-                put_ret(ret_mode, regs_i, regs_v, (dst_i, dst_some, dst_v), val);
-                self.keep_result(chunk, cur_pc, regs_i, regs_v);
+                return self.call_fn_vm(compiled, call, (chunk, cur_pc, base_i), vm_regs_i, regs_v);
             }
             Op::CallClosure {
                 callee_v,
@@ -841,18 +710,20 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if callee_v as usize >= chunk.num_local_v {
                         regs_v[callee_v as usize] = Value::Unit;
                     }
-                    let call = Op::CallVmMix {
+                    let call = FnRet {
                         fn_id,
-                        arg_base_i,
-                        arg_base_v,
-                        dst_i,
-                        dst_v,
-                        dst_some,
+                        args: (arg_base_i, arg_base_v),
                         ret_mode,
+                        dst: (dst_i, dst_some, dst_v),
+                        lend_back: false,
                     };
-                    let (bi, rv) = (base_i, regs_v);
-                    return self
-                        .exec_fields_and_calls(call, cur_pc, compiled, chunk, bi, vm_regs_i, rv);
+                    return self.call_fn_vm(
+                        compiled,
+                        call,
+                        (chunk, cur_pc, base_i),
+                        vm_regs_i,
+                        regs_v,
+                    );
                 }
                 if let Value::Closure(cid, _) = &regs_v[callee_v as usize] {
                     if let Some(fast) = compiled.fast_closures[*cid] {
@@ -953,6 +824,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 regs_i[dst_some as usize] = 1;
                             }
                             CallRet::V => regs_v[dst_v as usize] = Value::Int(res_i),
+                            CallRet::Tuple(_) => {
+                                return bug(spans[cur_pc], "a tuple from an Int closure")
+                            }
                         }
                         self.keep_result(chunk, cur_pc, regs_i, regs_v);
                         return Ok(None);
@@ -973,230 +847,138 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     sync_reachable_to_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
                     self.show_lent()?;
                 }
-                // The `mut` params' values, for their arg slots once the frame is synced.
-                let mut lent_back: Vec<Value> = Vec::new();
+                let shown = self.show_held_captures(&caps)?;
                 // A variable the closure holds by reference is lent to its frame
                 // on the stack for the call, as `run_chunk_lending` lends it.
                 let by_val = caps.iter().all(|c| matches!(c, crate::CaptureVal::Val(_)));
+                // With `lends` the frame is already on the stack.
+                let has_frame = chunk.needs_stack && !lends;
+                let mut call = ClosureRet {
+                    cid,
+                    muts,
+                    args: (arg_base_i, arg_base_v),
+                    ret_mode,
+                    dst: (dst_i, dst_some, dst_v),
+                    lends,
+                    held: None,
+                    refs: !by_val && has_frame,
+                };
                 let lendable = |c: &&Chunk<'p>| {
                     let tuple = |cap: &cpl_ir::Capture| {
                         cap.by_ref && matches!(c.slot_map[cap.inner], SlotLoc::SmallTuple { .. })
                     };
                     by_val || !c.traced && !def.captures.iter().any(tuple)
                 };
-                // With `lends` the frame is already on the stack.
-                let has_frame = chunk.needs_stack && !lends;
-                let val = if let Some(callee) = compiled.closures[cid].as_ref().filter(lendable) {
-                    self.tick(spans[cur_pc])?;
-                    self.stack_left(spans[cur_pc], None)?;
-                    if !by_val && has_frame {
+                if let Some(callee) = compiled.closures[cid].as_ref().filter(lendable) {
+                    let span = spans[cur_pc];
+                    self.tick(span)?;
+                    self.stack_left(span, None)?;
+                    if call.refs {
                         sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                     }
-                    let needs_stack = callee.needs_stack || !by_val;
-                    let saved_base = self.base;
-                    if needs_stack {
-                        self.base = self.stack.len();
-                        self.stack.resize(self.base + def.locals.len(), Value::Unit);
-                        self.frame_locals.push(&def.locals);
-                    }
-                    let frameless = self.frameless_base;
-                    if !needs_stack {
-                        self.frameless_base = Some(saved_base);
-                    }
-                    self.call_frames.push(("<closure>", spans[cur_pc]));
                     // The args go straight from this frame's registers to the callee's.
-                    let c_base_i = vm_regs_i.len();
-                    vm_regs_i.resize(c_base_i + callee.num_i, 0);
-                    let mut c_regs_v = self.take_regs_v(callee.num_v);
-                    let mut ii = base_i + arg_base_i as usize;
-                    let mut iv = arg_base_v as usize;
-                    for loc in callee.slot_map.iter().take(callee.param_count) {
-                        match *loc {
-                            SlotLoc::I(r, _) => {
-                                vm_regs_i[c_base_i + r as usize] = vm_regs_i[ii];
-                                ii += 1;
-                            }
-                            SlotLoc::OptI { val, some, .. } => {
-                                vm_regs_i[c_base_i + val as usize] = vm_regs_i[ii];
-                                vm_regs_i[c_base_i + some as usize] = vm_regs_i[ii + 1];
-                                ii += 2;
-                            }
-                            SlotLoc::V(r) => {
-                                c_regs_v[r as usize] =
-                                    std::mem::replace(&mut regs_v[iv], Value::Unit);
-                                iv += 1;
-                            }
-                            SlotLoc::SmallTuple { .. } => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                )
-                            }
-                        }
+                    let (c_base_i, mut c_regs_v) = self.callee_regs(callee, vm_regs_i);
+                    let args = (base_i + arg_base_i as usize, arg_base_v as usize);
+                    pass_args(callee, vm_regs_i, c_base_i, regs_v, &mut c_regs_v, args);
+                    let at = (chunk, cur_pc, base_i, &*regs_v);
+                    let body = Body::Closure(cid);
+                    // A leaf borrows the variables in place: nothing it runs can look.
+                    let leaf = callee.leaf;
+                    let on_stack = callee.needs_stack || !(by_val || leaf);
+                    let (locals, name) = (&def.locals[..], "<closure>");
+                    let entered = self.enter_vm_call(on_stack, locals, name, span, at, body);
+                    let in_closure = std::mem::replace(&mut self.in_closure, true);
+                    if !by_val {
+                        call.held = Some(self.lent.len());
                     }
-                    self.suspend(
-                        chunk,
-                        cur_pc,
-                        base_i,
-                        regs_v,
-                        Body::Closure(cid),
-                        saved_base,
-                    );
-                    let prev_in_closure = std::mem::replace(&mut self.in_closure, true);
-                    let lent_mark = self.lent.len();
                     for (cap, cval) in def.captures.iter().zip(caps.iter()) {
                         let (loc, c_regs_i) =
                             (&callee.slot_map[cap.inner], &mut vm_regs_i[c_base_i..]);
-                        let part = match cval {
-                            crate::CaptureVal::Val(v) => {
-                                write_slot(loc, c_regs_i, &mut c_regs_v, v.clone());
-                                continue;
+                        let v = match cval {
+                            crate::CaptureVal::Val(v) => v.clone(),
+                            _ if leaf => std::mem::replace(self.held_mut(cval)?, Value::Moved),
+                            _ => {
+                                let part = match cval {
+                                    &crate::CaptureVal::StackRef(at) => self.alias_part(false, at),
+                                    &crate::CaptureVal::GlobalRef(id) => self.alias_part(true, id),
+                                    crate::CaptureVal::PartRef(part) => Rc::clone(part),
+                                    crate::CaptureVal::Val(_) => {
+                                        return Err(interp_failed(spans[cur_pc]))
+                                    }
+                                };
+                                let v = std::mem::replace(self.lender(&part)?, Value::Moved);
+                                self.lent.push((self.base + cap.inner, part));
+                                v
                             }
-                            &crate::CaptureVal::StackRef(at) => self.alias_part(false, at),
-                            &crate::CaptureVal::GlobalRef(id) => self.alias_part(true, id),
-                            crate::CaptureVal::PartRef(part) => Rc::clone(part),
                         };
-                        let v = std::mem::replace(self.lender(&part)?, Value::Moved);
                         write_slot(loc, c_regs_i, &mut c_regs_v, v);
-                        self.lent.push((self.base + cap.inner, part));
                     }
-                    let dom_mark = self.saved_domains.len();
-                    for &d in &callee.guarded_domains {
-                        self.saved_domains.push((d, self.domains[d]));
+                    let mut back = self.vm_back(callee, entered, Ret::Closure(call, in_closure));
+                    if leaf {
+                        back.leaf = Some(caps);
                     }
-                    let res = self.exec_chunk_inner(
-                        compiled,
-                        callee,
-                        c_base_i,
-                        vm_regs_i,
-                        &mut c_regs_v,
-                        0,
-                    );
-                    let c_regs_i = &vm_regs_i[c_base_i..];
-                    let held = self.lent.split_off(lent_mark);
-                    self.give_back(callee, held, c_regs_i, &mut c_regs_v)?;
-                    if res.is_ok() && muts != 0 {
-                        for (k, &pslot) in def.params.iter().enumerate() {
-                            if muts & 1 << k == 0 {
-                                continue;
-                            }
-                            match take_slot(&callee.slot_map[pslot], c_regs_i, &mut c_regs_v) {
-                                Some(v) => lent_back.push(v),
-                                None => {
-                                    return trap(
-                                        spans[cur_pc],
-                                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    self.unsuspend();
-                    self.frameless_base = frameless;
-                    self.restore_domains(dom_mark);
-                    self.return_regs_v(c_regs_v);
-                    vm_regs_i.truncate(c_base_i);
-                    self.in_closure = prev_in_closure;
-                    if needs_stack {
-                        self.frame_locals.pop();
-                        self.stack.truncate(self.base);
-                        self.base = saved_base;
-                    }
-                    let v = res?;
-                    self.call_frames.pop();
-                    regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                    if !by_val && has_frame {
-                        sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                    }
-                    v
-                } else {
-                    let mut boxed = Vec::with_capacity(def.params.len());
-                    let mut ii = arg_base_i as usize;
-                    let mut iv = arg_base_v as usize;
-                    for &pslot in &def.params {
-                        let ty = &def.locals[pslot].ty;
-                        if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
-                            boxed.push(kind.box_val(regs_i[ii]));
-                            ii += 1;
-                        } else if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
-                            boxed.push(kind.box_opt(regs_i[ii], regs_i[ii + 1]));
-                            ii += 2;
-                        } else {
-                            boxed.push(std::mem::replace(&mut regs_v[iv], Value::Unit));
-                            iv += 1;
-                        }
-                    }
-                    // The closure reaches this frame only through what it
-                    // and its kin captured by reference.
-                    if has_frame {
-                        sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                    }
-                    let lent: Vec<usize> = (0..def.params.len())
-                        .filter(|k| muts & 1 << k != 0)
-                        .collect();
-                    let res =
-                        self.call_lending(Value::Closure(cid, caps), boxed, &lent, spans[cur_pc]);
-                    regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                    let res = res.map(|(val, back)| {
-                        lent_back = back;
-                        val
-                    });
-                    if has_frame {
-                        sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                    }
-                    res?
-                };
-                if lends {
-                    self.hide_lent()?;
-                    let (lent, base) = (&self.lent, self.base);
-                    sync_reachable_from_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
+                    back.shown = shown;
+                    return Ok(Some(Stop::Call(Callee {
+                        chunk: callee,
+                        body,
+                        base_i: c_base_i,
+                        regs_v: c_regs_v,
+                        pc: cur_pc,
+                        back,
+                    })));
                 }
-                if !lent_back.is_empty() {
-                    let mut back = lent_back.into_iter();
-                    let (mut ii, mut iv) = (arg_base_i as usize, arg_base_v as usize);
-                    for (k, &pslot) in def.params.iter().enumerate() {
-                        let ty = &def.locals[pslot].ty;
-                        let v = if muts & 1 << k != 0 {
-                            back.next()
-                        } else {
-                            None
-                        };
-                        if ScalarKind::of_ty(ty, self.program).is_some() {
-                            if let Some(v) = v {
-                                regs_i[ii] = ScalarKind::unbox_val(&v);
-                            }
-                            ii += 1;
-                        } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
-                            if let Some(v) = v {
-                                (regs_i[ii], regs_i[ii + 1]) = ScalarKind::unbox_opt(&v);
-                            }
-                            ii += 2;
-                        } else {
-                            if let Some(v) = v {
-                                regs_v[iv] = v;
-                            }
-                            iv += 1;
-                        }
+                let mut boxed = Vec::with_capacity(def.params.len());
+                let mut ii = arg_base_i as usize;
+                let mut iv = arg_base_v as usize;
+                for &pslot in &def.params {
+                    let ty = &def.locals[pslot].ty;
+                    if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
+                        boxed.push(kind.box_val(regs_i[ii]));
+                        ii += 1;
+                    } else if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
+                        boxed.push(kind.box_opt(regs_i[ii], regs_i[ii + 1]));
+                        ii += 2;
+                    } else {
+                        boxed.push(std::mem::replace(&mut regs_v[iv], Value::Unit));
+                        iv += 1;
                     }
                 }
-                put_ret(ret_mode, regs_i, regs_v, (dst_i, dst_some, dst_v), val);
-                self.keep_result(chunk, cur_pc, regs_i, regs_v);
+                // The closure reaches this frame only through what it
+                // and its kin captured by reference.
+                if has_frame {
+                    sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                }
+                let lent: Vec<usize> = (0..def.params.len())
+                    .filter(|k| muts & 1 << k != 0)
+                    .collect();
+                let res = self.call_lending(Value::Closure(cid, caps), boxed, &lent, spans[cur_pc]);
+                regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                if has_frame {
+                    sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                }
+                let (val, lent_back) = res?;
+                self.hide_held_captures(shown)?;
+                self.closure_returned((chunk, cur_pc), call, (val, lent_back), regs_i, regs_v)?;
             }
             Op::RetI { src } => {
                 let raw = regs_i[src as usize];
                 let kind = chunk.ret_kind.unwrap_or(ScalarKind::Int);
-                return Ok(Some(ExecExit::Return(kind.box_val(raw))));
+                return Ok(Some(Stop::Exit(ExecExit::Return(kind.box_val(raw)))));
             }
             Op::RetV { src } => {
-                return Ok(Some(ExecExit::Return(std::mem::replace(
-                    &mut regs_v[src as usize],
-                    Value::Unit,
-                ))));
+                let v = std::mem::replace(&mut regs_v[src as usize], Value::Unit);
+                return Ok(Some(Stop::Exit(ExecExit::Return(v))));
             }
-            Op::RetUnit => return Ok(Some(ExecExit::Return(Value::Unit))),
-            Op::IsSomeV { dst_i, src_v } => {
-                regs_i[dst_i as usize] =
-                    i64::from(!matches!(regs_v[src_v as usize], Value::Opt(OptVal::None)));
+            Op::RetSmallTuple { base, len, kinds } => {
+                let (b, n) = (base as usize, len as usize);
+                self.ret_tuple[..n].copy_from_slice(&regs_i[b..b + n]);
+                self.ret_tuple_len = len;
+                self.ret_tuple_kinds = kinds;
+                return Ok(Some(Stop::Exit(ExecExit::ReturnTuple)));
+            }
+            Op::RetUnit => return Ok(Some(Stop::Exit(ExecExit::Return(Value::Unit)))),
+            Op::IsVariantI { dst_i, src_v, tag } => {
+                regs_i[dst_i as usize] = i64::from(regs_v[src_v as usize].is_variant(tag));
             }
             Op::UnwrapV { dst_v, src_v } => {
                 let v = match &regs_v[src_v as usize] {
@@ -1272,12 +1054,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
             }
-            _ => {
-                return trap(
-                    spans[cur_pc],
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
+            _ => return Err(interp_failed(spans[cur_pc])),
         }
         Ok(None)
     }

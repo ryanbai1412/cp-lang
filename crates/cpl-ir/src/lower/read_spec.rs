@@ -4,11 +4,24 @@
 
 use super::*;
 
+/// `List<T>` as lowering resolves it: a count, then that many `T`s.
+#[derive(Clone, PartialEq, Debug)]
+pub(in crate::lower) struct Counted(pub Box<ReadSpec>);
+
+impl SpecList for Counted {
+    fn ty(&self) -> Ty {
+        Ty::list(self.0.ty())
+    }
+}
+
+/// A spec as lowering resolves it, before `readable` spells out its lists.
+pub(in crate::lower) type ReadSpec = Spec<Counted>;
+
 impl<'a> Lowerer<'a> {
     /// A count, then that many `each`, as a `List`.
-    pub(super) fn counted_list(&mut self, each: Spec) -> Spec {
+    pub(super) fn counted_list(&mut self, each: Spec, each_ty: Ty) -> Spec {
         let span = Span::default();
-        let list = Ty::list(each.ty());
+        let list = Ty::list(each_ty.clone());
         let call = self.do_expr(Some(&list), span, |lw, out| {
             let place = |lw: &Self, slot, ty: &Ty| Place {
                 kind: PlaceKind::Local(slot),
@@ -22,7 +35,7 @@ impl<'a> Lowerer<'a> {
             let empty = lw.mk(ExprKind::Tuple(Vec::new()), list.clone(), span);
             out.push_let(acc, empty);
             let lid = lw.open_loop(None);
-            let item = lw.read(each, span);
+            let item = lw.read_readable(each, each_ty, span);
             let push =
                 ExprKind::Mutate(Mutation::Push, Box::new(place(lw, acc, &list)), vec![item]);
             let one = lw.int_lit(1, span);
@@ -40,7 +53,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `Str(len: lo..=hi) of "01"`: the length's bounds, when `values`.
-    pub(super) fn str_spec(&mut self, ty: &ast::Type, values: bool) -> Spec {
+    pub(super) fn str_spec(&mut self, ty: &ast::Type, values: bool) -> ReadSpec {
         let ast::TypeKind::ConstrainedStr { alphabet, len } = &ty.kind else {
             return Spec::Plain(Ty::Str);
         };
@@ -57,8 +70,9 @@ impl<'a> Lowerer<'a> {
     }
 }
 
-/// The type inside `spec` that has no input format, if any.
-pub(super) fn unreadable(spec: &Spec) -> Option<Ty> {
+/// The type inside `spec`, a read of a `whole`, that has no input format,
+/// if any.
+pub(super) fn unreadable(spec: &Spec, whole: &Ty) -> Option<Ty> {
     match spec {
         Spec::Plain(ty) => match ty {
             Ty::Int
@@ -74,12 +88,13 @@ pub(super) fn unreadable(spec: &Spec) -> Option<Ty> {
             other => Some(other.clone()),
         },
         Spec::Int { .. } | Spec::Str { .. } | Spec::Call(_) | Spec::Line => None,
-        Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
-        Spec::Array { elem, .. } | Spec::List(elem) => unreadable(elem),
-        Spec::Opt(inner, None) => unreadable(inner),
+        Spec::Fields(_, fields) => fields.iter().find_map(|f| unreadable(f, whole)),
+        Spec::Array { elem, .. } | Spec::Opt(elem, None) => unreadable(elem, whole),
+        Spec::List(never) => match *never {},
         Spec::Opt(inner, Some(_)) => match &**inner {
             Spec::Plain(Ty::Int | Ty::Pos(_)) | Spec::Int { .. } => None,
-            _ => Some(spec.ty()),
+            Spec::Plain(ty) | Spec::Fields(ty, _) => Some(Ty::opt(ty.clone())),
+            _ => Some(whole.clone()),
         },
     }
 }

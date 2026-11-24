@@ -542,7 +542,11 @@ impl<'a> Lowerer<'a> {
                         self.suggest_last(name.span, s);
                     }
                     None => {
-                        self.unsupported(name.span, &format!("`.{other}` of a domain as a value"))
+                        self.report(
+                            name.span,
+                            msgs::ir::UNKNOWN_FIELD_A_DOMAIN_HAS_NO,
+                            &[&other],
+                        );
                     }
                 }
                 self.err_expr(span)
@@ -1145,7 +1149,8 @@ impl<'a> Lowerer<'a> {
                 Ty::Str | Ty::StrView => (v, Ty::Char),
                 Ty::Range(e) => {
                     let e = (**e).clone();
-                    let list = self.walked_list(Iter::RangeVal(v, false), e.clone(), base.span);
+                    let list =
+                        self.walked_list(Iter::RangeVal(v, false).into(), e.clone(), base.span);
                     (list, e)
                 }
                 Ty::Set(e) | Ty::HashSet(e) => {
@@ -1333,14 +1338,14 @@ impl<'a> Lowerer<'a> {
     ) -> Expr {
         let (iter, elem_ty) = self.iter(base);
         match iter {
-            Iter::Seq(seq, false) => self.map_seq(seq, elem_ty, func_ast, span),
+            Head::Iter(Iter::Seq(seq, false)) => self.map_seq(seq, elem_ty, func_ast, span),
             iter => self.lower_map_iter(iter, elem_ty, func_ast, span),
         }
     }
 
     pub(in crate::lower) fn lower_map_iter(
         &mut self,
-        iter: Iter,
+        iter: Head,
         elem_ty: Ty,
         func_ast: &ast::Expr,
         span: Span,
@@ -1378,7 +1383,7 @@ impl<'a> Lowerer<'a> {
                     let mut stmts = bind_stmts;
                     stmts.push(push);
                     let lid = lw.fresh_loop();
-                    out.push(Stmt::For(lid, item, iter, Block { stmts }));
+                    lw.push_for(out, lid, item, iter, Block { stmts });
                     out.push_give(lw.local(acc, span));
                 });
             }
@@ -1409,14 +1414,15 @@ impl<'a> Lowerer<'a> {
                 span,
             );
             let push_stmt = push(lw, mapped);
-            out.push(Stmt::For(
+            lw.push_for(
+                out,
                 lid,
                 item,
                 iter,
                 Block {
                     stmts: vec![push_stmt],
                 },
-            ));
+            );
         })
     }
 
@@ -1448,7 +1454,7 @@ impl<'a> Lowerer<'a> {
                         },
                         Block::default(),
                     ));
-                    out.push(Stmt::For(lid, item, iter, Block { stmts: bind_stmts }));
+                    lw.push_for(out, lid, item, iter, Block { stmts: bind_stmts });
                 });
             }
         }
@@ -1475,7 +1481,7 @@ impl<'a> Lowerer<'a> {
                     Block::default(),
                 )],
             };
-            out.push(Stmt::For(lid, item, iter, body));
+            lw.push_for(out, lid, item, iter, body);
         })
     }
 
@@ -1543,7 +1549,7 @@ impl<'a> Lowerer<'a> {
                     },
                 )],
             };
-            out.push(Stmt::For(lid, item, iter, body));
+            lw.push_for(out, lid, item, iter, body);
             let res = lw.mk(
                 ExprKind::Tuple(vec![lw.local(yes, span), lw.local(no, span)]),
                 pair_ty.clone(),

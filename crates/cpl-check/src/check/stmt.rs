@@ -922,17 +922,29 @@ impl<'a> Checker<'a> {
                         let is_param = self.local(src).is_some_and(|l| l.keyword == "param");
                         // A `var xs` parameter opens its body with this binding, spanning the name.
                         let var_param = pat.span == *src_span;
-                        if *mutable && is_param && src_is_heap && !var_param {
+                        // A fn reads top-level state lent, as it does a parameter (§11).
+                        let top_level = self.in_fn > 0
+                            && self.local(src).is_none()
+                            && matches!(self.global(src).as_deref(), Some(Def::Value { .. }));
+                        let msg = if top_level {
+                            msgs::check::USE_AFTER_MOVE_VAR_FROM_TOP_LEVEL
+                        } else {
+                            msgs::check::USE_AFTER_MOVE_VAR_FROM_LENT_PARAM
+                        };
+                        if *mutable && src_is_heap && (top_level || is_param && !var_param) {
                             let name = self.quote(pat.span);
                             let what = format!("var {name}");
-                            if let Some(diag) = self.report(
-                                *src_span,
-                                msgs::check::USE_AFTER_MOVE_VAR_FROM_LENT_PARAM,
-                                &[&what, src],
-                            ) {
+                            if let Some(diag) = self.report(*src_span, msg, &[&what, src]) {
                                 diag.help = Some(format!(
                                     "keep your own copy: `var {name} = {src}.clone()`"
                                 ));
+                                diag.fixes.push(cpl_diag::Fix {
+                                    title: format!("copy `{src}` with `.clone()`"),
+                                    edits: vec![(
+                                        Span::new(src_span.end, src_span.end),
+                                        ".clone()".to_string(),
+                                    )],
+                                });
                             }
                         }
                     }
@@ -1301,6 +1313,7 @@ impl<'a> Checker<'a> {
                 if *op == AssignOp::Set && matches!(target.kind, ExprKind::Name(_)) {
                     self.assigning_name = Some(target.span);
                 }
+                self.lent_places.extend(super::index_at::lent_path(target));
                 let target_ty = self.assign_target(target);
                 let prev_bounds_range = self.expected_bounds_range;
                 self.expected_bounds_range |= Self::expects_bounds_range(&target_ty);
@@ -1329,7 +1342,7 @@ impl<'a> Checker<'a> {
                 self.require_mutable(target, "assigned");
                 let not_assignable = self.sink.len() > before_mutable;
                 if let ExprKind::Field { base, name } = &target.kind {
-                    let base_ty = self.quietly(|c| c.infer(base));
+                    let base_ty = self.infer_quietly(base);
                     if let Ty::Named { name: sname, .. } = &base_ty {
                         let fixed_field = match self.type_def(sname).as_deref() {
                             Some(Def::Struct {

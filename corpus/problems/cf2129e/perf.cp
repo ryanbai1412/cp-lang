@@ -26,11 +26,11 @@ let first_arc = [V.cuts] b => Arc.cuts.nth(degs.prefix(b))
 let q: 1..=150_000 = read()
 let asks: [0..q](l: V, r: V, k: 1..=n) = read()
 
-var f: [V]Int = 0
+var f: [V]0..bit_ceil(n + 1) = 0
 const BLOCK = 512
 let top = bit_ceil(n + 1)
-var count = List.filled(top, 0)
-var block_count = List.filled(top / BLOCK + 1, 0)
+var count: List<0..=n> = List.filled(top, 0)
+var block_count: List<0..=n> = List.filled(top / BLOCK + 1, 0)
 count[0] = n
 block_count[0] = n
 var arcs_in: [E]0..=2 = 0

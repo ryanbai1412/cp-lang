@@ -451,20 +451,6 @@ impl<'p> Emitter<'p> {
                 self.need("sym_idx");
                 Code::primary(format!("cpl::tri_idx({}, {})", text(0), text(1)))
             }
-            Builtin::PosOffset(d) => {
-                self.need("pos_ops");
-                let dn = dom_ident(self.program, d);
-                Code::primary(format!(
-                    "cpl::pos_offset({}, {}, {dn}_len)",
-                    text(0),
-                    text(1)
-                ))
-            }
-            Builtin::PosCyc(d) => {
-                self.need("pos_ops");
-                let dn = dom_ident(self.program, d);
-                Code::primary(format!("cpl::pos_cyc({}, {}, {dn}_len)", text(0), text(1)))
-            }
             Builtin::BoundStepL(d) => {
                 self.need("pos_ops");
                 let dn = dom_ident(self.program, d);

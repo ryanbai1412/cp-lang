@@ -8,6 +8,8 @@ the shipped programs; `cpl bench --corpus` and
 `bench/v03_perf_bench.py` time the frozen copy so the perf series stays
 comparable. Its inputs are the live problem's tests and `gen.py`.
 
-Never edit a copy. Owner: idioms. Deletion plan: none; this is the regression
+A copy changes only through a `cpl fix` migration: when a rule breaks old
+code, the commit holds nothing but `cpl fix` output (decisions.md records
+why), never a hand edit. Owner: idioms. Deletion plan: none; this is the regression
 corpus the re-port is checked against (`v02_port_files` counts the live ports
 not yet re-ported).

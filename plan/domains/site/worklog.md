@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- 2026-11-24: search was over its cap unseen (657,873 of 600,000 B gz on main; CI's site build stops at wasm first) and missed 4 of 31 tasks. The index now full-text-indexes only `content` (url, type and breadcrumbs were a third of it), table rows drop their padded header, and reference pages keep their "Start here" list and each item's "Elsewhere" row (`lower_bound`, `unordered_map`); the I/O guide's description says how to read the input. 530,523 B gz, cap lowered to 560,000; tests/search-tasks.mjs 31/31.
 - 2026-11-23: CI's site Build step on ccf30acf4 sat 33 min until the job timed out, with no log kept; the same prebuild runs in ~1.5 min here. prebuild now prints each stage's time and kills a stage after PREBUILD_STAGE_SECONDS (600) by name. Checked by hand with a stub stage that never exits (killed at 2 s, exit 1); no automated test, since the chains are fixed in the script.
 - 2026-11-23: M2 Learn: Read chapters 14 String algorithms (prefix/z function, period, find_all, KmpAutomaton, manacher) and 15 More graphs (floyd_warshall, scc, bridges, FlowGraph); 5 practice problems retargeted. Gap seen: is_palindrome, manacher and KmpAutomaton need `use std.strings` while prefix_function/z_function are in scope.
 - 2026-11-23: M2 Learn: Read chapter 13, Number theory and modular arithmetic (Mod<P>, /, **, pow_mod, Comb, Sieve, Mat), examples from judged practice refs; Choose, Power tower, Prime count, Prime ranges and Fibonacci mod now follow it.

@@ -142,9 +142,12 @@ impl<'a> Checker<'a> {
         if self.local(name).is_some() || (self.free_global(name).is_some() && shadowed) {
             return None;
         }
+        if name == "gen" && args.is_empty() && matches!(callee.kind, ExprKind::Name(_)) {
+            self.bare_gens.push(call.span);
+        }
         let tys: Vec<Ty> = args
             .iter()
-            .map(|arg| self.quietly(|c| c.infer(&arg.value)))
+            .map(|arg| self.infer_quietly(&arg.value))
             .collect();
         match (name.as_str(), tys.as_slice()) {
             ("gen", [_]) if matches!(args[0].value.kind, ExprKind::Range { .. }) => Some(Ty::Int),
@@ -342,13 +345,30 @@ impl<'a> Checker<'a> {
         {
             return None;
         }
-        let Ty::Array { index, elem } = self.quietly(|c| c.infer(&args[0].value)) else {
+        let Ty::Array { index, elem } = self.infer_quietly(&args[0].value) else {
             return None;
         };
         if index.len() != 2 || !index.iter().all(|d| matches!(d, Ty::Pos(_))) {
             return None;
         }
         self.infer(&args[0].value);
+        let has_new = !matches!(
+            self.global(&shape).as_deref(),
+            Some(crate::def::Def::Struct { ctor: None, .. })
+        );
+        if !has_new {
+            let at = self.report(
+                callee.span,
+                cpl_diag::msgs::check::NO_METHOD_ON,
+                &[&"struct", &name, &"new"],
+            );
+            if let Some(diag) = at {
+                diag.help = Some(format!(
+                    "`{name}(a)` on a 2-D array calls `new(a)` of the `{name}` with three type parameters"
+                ));
+            }
+            return Some(Ty::Error);
+        }
         Some(Ty::Named {
             name: shape.to_string(),
             args: vec![index[0].clone(), index[1].clone(), *elem],
@@ -369,7 +389,7 @@ impl<'a> Checker<'a> {
         if self.local(name).is_some() || !takes_list || args.len() != 1 || args[0].name.is_some() {
             return None;
         }
-        let elem = match self.quietly(|c| c.infer(&args[0].value)) {
+        let elem = match self.infer_quietly(&args[0].value) {
             Ty::Array { index, elem } if index.len() == 1 && index[0].is_int() => *elem,
             Ty::Named { name, mut args } if name == "List" && args.len() == 1 => args.remove(0),
             _ => return None,
@@ -448,7 +468,7 @@ impl<'a> Checker<'a> {
     /// (R06.1.8).
     /// Gives what the fn returns.
     pub(crate) fn fn_value_takes(&mut self, method: &str, arg: &Expr, given: usize) -> Ty {
-        let Ty::Fn { params, ret } = self.quietly(|c| c.infer(arg)) else {
+        let Ty::Fn { params, ret } = self.infer_quietly(arg) else {
             return Ty::Unknown;
         };
         let Some(missing) = params

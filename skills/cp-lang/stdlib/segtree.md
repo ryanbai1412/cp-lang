@@ -17,7 +17,7 @@ Point update and range fold.
 Fields: `t: List<T>`, `lz: List<F>`, `has_lz: List<Bool>`, `size: Len`, `log: Int`, `act: ?Action<T, F>`.
 
 - `fn new<M, A: Acts<T, F>, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>` — \(O(\lvert D \rvert)\); \(O(\log(hi - lo))\) with `over: lo..hi`, which then makes at; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`; a tree
-- `fn apply(mut self, r: Range<D>, f: F)` — \(O(\log \lvert D \rvert)\); Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f` applied, through the action given to `act:`.; traps: when a non-empty `r` reaches outside `D`
+- `fn apply(mut self, r: Range<D>, f: F)` — \(O(\log \lvert D \rvert)\) tag puts; a put is one `compose_in` (else `compose`) on a; Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f` applied, through the action given to `act:`.; traps: when a non-empty `r` reaches outside `D`
 - `fn apply_all(mut self, f: F)` — \(O(1)\) amortized when the tags commute, else \(O(\lvert D \rvert)\); Apply tag `f` to every position; `apply(D.all, f)`.
 - `fn fold(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.; traps: when a non-empty `r` reaches outside `D`
 - `fn right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>` — \(O(\log \lvert D \rvert)\); The last cut `d` at or right of `from` such that `ok(fold(from..d))` holds.; traps: when `ok(identity)` is false

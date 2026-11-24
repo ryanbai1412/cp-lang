@@ -300,10 +300,7 @@ fn observe(
             .take();
         let Some(io) = taken else {
             return Observed {
-                trap: Some(Trap::said(
-                    Span::default(),
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )),
+                trap: Some(*interp_failed(Span::default())),
                 ..Observed::default()
             };
         };
@@ -413,6 +410,12 @@ fn run_from<O: Observer>(
     let _checks = release::Set::new(io.checks);
     let seed = io.seed;
     let last_values = io.last_values;
+    let feeds = cpl_ir::pushed::Feeds::of(program);
+    let watched = |f: fn(&O) -> bool| O::ON && tracer.as_deref().is_some_and(f);
+    let (traced, profiled) = (watched(O::traces), watched(O::times_steps));
+    let vm = Rc::new(vm::CompiledProgram::compile(
+        program, &feeds, traced, profiled,
+    ));
     let mut interp = Interp {
         program,
         globals: vec![Value::Unit; program.globals.len()],
@@ -443,6 +446,7 @@ fn run_from<O: Observer>(
         sink: output,
         stack_top: std::ptr::addr_of!(top) as usize,
         stack_budget: limits.stack_bytes,
+        frame_bytes: 0,
         frame_locals: Vec::new(),
         call_frames: Vec::new(),
         current_case: None,
@@ -453,18 +457,22 @@ fn run_from<O: Observer>(
         countdown: stop::EVERY,
         ckpt,
         debug_out: Vec::new(),
-        feeds: cpl_ir::pushed::Feeds::of(program),
+        feeds,
         fed: HashMap::new(),
         fed_loops: Vec::new(),
         in_closure: false,
         fed_left: None,
-        vm: None,
+        vm,
         vm_regs_i: Vec::new(),
+        ret_tuple: [0; 5],
+        ret_tuple_len: 0,
+        ret_tuple_kinds: [value::SmallFieldKind::Int; 5],
         fed_bodies: 0,
         fed_hosts: Vec::new(),
         lent: Vec::new(),
         frameless_base: None,
         vm_pool_v: Vec::new(),
+        vm_frames: Vec::new(),
         view_locals: Vec::new(),
         trace_shown: trace::ShowTexts::default(),
         trace_show_tys: show_hook::ShowTys::default(),
@@ -547,15 +555,44 @@ fn stmt_failure(stmt: &Stmt, message: Option<Value>) -> Box<Trap> {
             failed
         }
         Stmt::Trap(message, span) => Box::new(Trap::written(*span, message.clone())),
-        _ => Box::new(Trap::said(
-            Span::default(),
-            cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-        )),
+        _ => interp_failed(Span::default()),
     }
 }
 
+/// The trap for a value or shape the VM's compiler should have ruled out.
+#[cold]
+#[inline(never)]
+fn interp_failed(span: Span) -> Box<Trap> {
+    Box::new(Trap::said(
+        span,
+        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+    ))
+}
+
 fn trap<T>(span: Span, said: cpl_diag::msgs::Said) -> Res<T> {
-    Err(Box::new(Trap::said(span, said)))
+    Err(trapped(span, said))
+}
+
+/// [`trap`]'s box, made out of line: a trap is rare, and each of the many
+/// places that can trap then takes a call, not the boxing.
+#[cold]
+#[inline(never)]
+fn trapped(span: Span, said: cpl_diag::msgs::Said) -> Box<Trap> {
+    Box::new(Trap::said(span, said))
+}
+
+/// The bounds `domains` holds for `doms` pushed on `saved`, for
+/// [`Interp::restore_domains`] from the mark it gives.
+fn save_domains(
+    saved: &mut Vec<(cpl_ir::DomainId, (i64, i64))>,
+    domains: &[(i64, i64)],
+    doms: &[cpl_ir::DomainId],
+) -> usize {
+    let mark = saved.len();
+    for &d in doms {
+        saved.push((d, domains[d]));
+    }
+    mark
 }
 
 /// An interpreter bug at `site`, a value lowering should have ruled out:
@@ -697,6 +734,8 @@ struct Interp<'p, 'o, O: Observer> {
     /// may use: the program's recursion is the interpreter's.
     stack_top: usize,
     stack_budget: usize,
+    /// Bytes the VM's heap frames hold: its calls run on no Rust stack.
+    frame_bytes: usize,
     /// The locals of each active fn, innermost last; `main` when empty.
     frame_locals: Vec<&'p [cpl_ir::Local]>,
     /// Active call frames `(fn_name, call_site_span)` from outermost to innermost.
@@ -725,10 +764,14 @@ struct Interp<'p, 'o, O: Observer> {
     in_closure: bool,
     /// How the fed loop that just ended was left, if not by a plain `break`.
     fed_left: Option<Flow>,
-    /// Compiled register bytecode program for plain (untraced, unprofiled) runs.
-    vm: Option<Rc<vm::CompiledProgram<'p>>>,
+    /// The program compiled to register bytecode.
+    vm: Rc<vm::CompiledProgram<'p>>,
     /// Shared unboxed `i64` register stack for the VM.
     vm_regs_i: Vec<i64>,
+    /// The fields a VM `RetSmallTuple` returned, until its caller takes them.
+    ret_tuple: [i64; 5],
+    ret_tuple_len: u8,
+    ret_tuple_kinds: [value::SmallFieldKind; 5],
     /// Fed loop bodies running, which take no checkpoint.
     fed_bodies: u32,
     /// Traced VM frames, by base, running a fallback that may feed a loop their chunk holds.
@@ -739,6 +782,8 @@ struct Interp<'p, 'o, O: Observer> {
     frameless_base: Option<usize>,
     /// Reusable pool of `Value` register frames for VM calls.
     vm_pool_v: Vec<Vec<Value>>,
+    /// Emptied frame stacks of the VM's runs, kept for the next.
+    vm_frames: Vec<Vec<vm::VmFrame>>,
     /// The allocation [`Interp::view`] lists locals in, kept between steps.
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
     /// The text of each value a trace shows through its `impl Show`.
@@ -784,67 +829,19 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.stack.clear();
         self.stack.resize(program.main_locals.len(), Value::Unit);
         self.base = 0;
-        {
-            let mut has_mut_view = program
-                .main_locals
-                .iter()
-                .any(|l| matches!(l.ty, Ty::MutView(..)))
-                || program
-                    .fns
-                    .iter()
-                    .any(|f| f.locals.iter().any(|l| matches!(l.ty, Ty::MutView(..))))
-                || program
-                    .closures
-                    .iter()
-                    .any(|c| c.locals.iter().any(|l| matches!(l.ty, Ty::MutView(..))));
-            if !has_mut_view {
-                let mut check = |e: &cpl_ir::Expr| {
-                    if matches!(e.kind, ExprKind::MutSlice(..) | ExprKind::MutLine(..))
-                        || matches!(e.ty, Ty::MutView(..))
-                    {
-                        has_mut_view = true;
-                    }
-                };
-                cpl_ir::walk::deep_exprs(&program.main, &mut check);
-                for f in &program.fns {
-                    cpl_ir::walk::deep_exprs(&f.body, &mut check);
-                }
-                for c in &program.closures {
-                    cpl_ir::walk::deep_exprs(&c.body, &mut check);
-                }
-            }
-            if !has_mut_view {
-                let (traced, profiled) = (self.observed(), self.times_steps());
-                self.vm = Some(Rc::new(vm::CompiledProgram::compile(
-                    program,
-                    &self.feeds,
-                    traced,
-                    profiled,
-                )));
-            }
-        }
+        let compiled = Rc::clone(&self.vm);
         if let Some(from) = self.ckpt.resume.take() {
             return self.resume(from);
         }
         if !program.multitest {
-            if let Some(compiled) = self.vm.clone() {
-                self.run_main_vm(&compiled)?;
-                return Ok(());
-            }
-            self.block(&program.main)?;
-            return Ok(());
+            return self.run_main_vm(&compiled);
         }
         // Above `@!multitest`: once. A top-level `return` there ends the
         // program.
         if let Some(tracer) = &mut self.tracer {
             tracer.on(crate::observe::Event::BeginCases);
         }
-        let vm = self.vm.clone();
-        let returned = match vm.as_ref().and_then(|c| Some((c, c.setup.as_ref()?))) {
-            Some((compiled, setup)) => self.run_setup_vm(compiled, setup)?,
-            None => matches!(self.block(&program.setup)?, Flow::Return(_)),
-        };
-        if returned {
+        if self.run_setup_vm(&compiled, &compiled.setup)? {
             return Ok(());
         }
         self.run_after_setup()
@@ -1031,9 +1028,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Value::StrView(view) => pick(view.len).and_then(|i| view.get(i)).map(Value::Char),
             Value::Array(array) => pick(array.len()).and_then(|i| array.get(i)),
             Value::Range(lo, hi) => (lo < hi).then(|| Value::Int(if last { hi - 1 } else { *lo })),
-            Value::Range128(r) => {
-                (r.0 < r.1).then(|| Value::I128((if last { r.1 - 1 } else { r.0 }).into()))
-            }
+            Value::Range128(r) => (r.0 < r.1).then(|| r.2.item(if last { r.1 - 1 } else { r.0 })),
             _ => return bug(span, "`first`/`last` of a value without ends"),
         })
     }
@@ -1102,14 +1097,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             | ExprKind::Cast(..)
             | ExprKind::Tuple(_)
             | ExprKind::Variant(..)
-            | ExprKind::IsVariant(..)
-            | ExprKind::Payload(..)
-            | ExprKind::ReadFrom(..) => {
+            | ExprKind::ReadFrom(..)
+            | ExprKind::Print(..)
+            | ExprKind::Debug(..) => {
                 let vals = self.eval_operands(e)?;
                 self.apply(e, vals)?
             }
             ExprKind::Index(base, indices) => self.index(base, indices, span)?,
-            ExprKind::Field(base, index) => {
+            ExprKind::Field(base, index) | ExprKind::Payload(base, _, index) => {
                 // A field of a variable is read in place, without first
                 // copying the whole value.
                 let direct = match &base.kind {
@@ -1128,12 +1123,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             Some(field) => field,
                             None => return bug(span, "field of a value without fields"),
                         },
+                        Value::Enum(_, payload) => payload[*index].clone(),
                         _ => return bug(span, "field of a value without fields"),
                     },
                 }
             }
-            ExprKind::IsSome(value) => {
-                Value::Bool(matches!(self.eval(value)?, Value::Opt(opt) if opt.is_some()))
+            ExprKind::IsSome(value) | ExprKind::IsVariant(value, _) => {
+                let tag = match &e.kind {
+                    ExprKind::IsVariant(_, tag) => *tag as u32,
+                    _ => 1,
+                };
+                Value::Bool(self.eval(value)?.is_variant(tag))
             }
             ExprKind::Unwrap(value, _) => match self.eval(value)? {
                 Value::Opt(opt) => match opt.unwrap_owned() {
@@ -1205,8 +1205,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             ExprKind::Range { lo, hi } => {
                 if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::Float) {
                     Value::RangeF(self.eval(lo)?.float(), self.eval(hi)?.float())
-                } else if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
-                    Value::range128(self.eval(lo)?.i128(), self.eval(hi)?.i128())
+                } else if let Some(wide) = crate::value::WideElem::of_range(&e.ty) {
+                    Value::range128(self.eval(lo)?.i128(), self.eval(hi)?.i128(), wide)
                 } else {
                     let lo = self.eval(lo)?.int();
                     let hi = self.eval(hi)?.int();
@@ -1227,67 +1227,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let hi = self.eval(hi)?.int();
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
-                let part = self.part_of(place, &mut indices.into_iter());
-                let (target, base_lo, base_len, step, key0) = match self.part(&part) {
-                    Some(Value::List(items)) => (part, 0usize, items.len(), 1, 0),
-                    Some(Value::Array(arr)) => (part, 0usize, arr.len(), 1, 0),
-                    Some(Value::MutView(mv)) => {
-                        (mv.target.clone(), mv.lo, mv.len, mv.step, mv.key0)
-                    }
-                    Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-                    _ => {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::SLICE_EXPECTS_LIST_OR_ARRAY.at(&[]),
-                        )
-                    }
-                };
-                if lo < 0 || hi < lo || hi as usize > base_len {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::SLICE_OUTSIDE_LIST_LENGTH
-                            .at(&[&lo, &hi, &base_len]),
-                    );
-                }
-                Value::MutView(Rc::new(MutViewVal {
-                    target,
-                    lo: base_lo + lo as usize * step,
-                    len: (hi - lo) as usize,
-                    step,
-                    key0: key0 + lo,
-                }))
+                self.mut_view(place, None, lo, hi, indices, span)?
             }
             ExprKind::MutLine(place, at, axis) => {
                 let at = self.eval(at)?.int();
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
-                let part = self.part_of(place, &mut indices.into_iter());
-                let (rows, cols) = match self.part(&part) {
-                    Some(Value::Array(arr)) if arr.dims.len() == 2 => {
-                        (arr.dims[0] as usize, arr.dims[1] as usize)
-                    }
-                    Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-                    _ => return bug(span, "a grid line needs a 2D array"),
-                };
-                let (fixed, len, step) = if *axis == 1 {
-                    (rows, cols, 1)
-                } else {
-                    (cols, rows, cols)
-                };
-                let Some(at) = usize::try_from(at).ok().filter(|at| *at < fixed) else {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INDEX_OUTSIDE_AXIS_LENGTH.at(&[&at, &fixed]),
-                    );
-                };
-                let lo = if *axis == 1 { at * cols } else { at };
-                Value::MutView(Rc::new(MutViewVal {
-                    target: part,
-                    lo,
-                    len,
-                    step,
-                    key0: 0,
-                }))
+                self.mut_view(place, Some(*axis), at, 0, indices, span)?
             }
             ExprKind::Mutate(op, place, args) => {
                 let value = self.mutate(*op, place, args, span)?;
@@ -1301,204 +1247,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 };
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
-                let cell = self.resolve(place, &mut indices.iter())?;
-                let taken = std::mem::replace(cell, Value::Moved);
-                enum SortKind {
-                    List,
-                    Array(Vec<i64>),
-                    Str,
-                    MutView(Rc<MutViewVal>),
-                }
-                let (mut items_vec, kind) = match taken {
-                    Value::List(items) => {
-                        let v = value::Cells::unwrap_values(items);
-                        (v, SortKind::List)
-                    }
-                    Value::Array(arr) => {
-                        let a = Rc::try_unwrap(arr).unwrap_or_else(|r| (*r).clone());
-                        let dims = a.dims.clone();
-                        (a.data.into_values(), SortKind::Array(dims))
-                    }
-                    Value::Str(bytes) => {
-                        let v = bytes.iter().copied().map(Value::Char).collect();
-                        (v, SortKind::Str)
-                    }
-                    Value::MutView(mv) => {
-                        *self.resolve(place, &mut indices.iter())? = Value::MutView(Rc::clone(&mv));
-                        let v = self.mut_view_to_vec(&mv, span)?;
-                        (v, SortKind::MutView(mv))
-                    }
-                    _ => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-                };
-                let elem_ty = match &place.ty {
-                    Ty::List(e) | Ty::MutView(e, _) | Ty::Array { elem: e, .. } => (**e).clone(),
-                    Ty::Str => Ty::Char,
-                    _ => Ty::Int,
-                };
-                match sort_by {
-                    SortBy::Natural => {
-                        items_vec = self.merge_sort_ty(items_vec, &elem_ty, desc, span)?;
-                    }
-                    SortBy::Key(slot, key) => {
-                        let base = self.base;
-                        let mut keyed = Vec::with_capacity(items_vec.len());
-                        for item in items_vec {
-                            self.stack[base + slot] = item.clone();
-                            keyed.push((self.eval(key)?, item));
-                        }
-                        keyed = self.merge_sort_keyed(keyed, &key.ty, desc, span)?;
-                        items_vec = keyed.into_iter().map(|(_, item)| item).collect();
-                    }
-                    SortBy::Fn { func, is_order } => {
-                        let fv = self.eval(func)?;
-                        if *is_order {
-                            // Merge-sort using fallible comparator `fv(a, b) -> Bool`,
-                            // trapping on strict-weak-order violations (matching `cpl::sort_cmp` under LOCAL).
-                            items_vec = self.checked_merge_sort_by(items_vec, &fv, desc, span)?;
-                        } else {
-                            let key_ty = match &func.ty {
-                                Ty::Fn(_, r) => (**r).clone(),
-                                _ => Ty::Int,
-                            };
-                            let mut keyed = Vec::with_capacity(items_vec.len());
-                            for item in items_vec {
-                                let k = self.call_value(fv.clone(), vec![item.clone()], span)?;
-                                keyed.push((k, item));
-                            }
-                            keyed = self.merge_sort_keyed(keyed, &key_ty, desc, span)?;
-                            items_vec = keyed.into_iter().map(|(_, item)| item).collect();
-                        }
-                    }
-                }
-                match kind {
-                    SortKind::MutView(mv) => {
-                        let target = self.part_mut(&mv.target, span)?;
-                        match target {
-                            Value::List(items) => {
-                                let dst = Rc::make_mut(items);
-                                for (k, item) in items_vec.into_iter().enumerate() {
-                                    dst.set(mv.lo + k * mv.step, item);
-                                }
-                            }
-                            Value::Array(arr) => {
-                                let dst = Rc::make_mut(arr);
-                                for (k, item) in items_vec.into_iter().enumerate() {
-                                    dst.set(mv.lo + k * mv.step, item);
-                                }
-                            }
-                            _ => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-                        }
-                    }
-                    SortKind::Array(dims) => {
-                        *self.resolve(place, &mut indices.iter())? =
-                            Value::Array(Rc::new(Array::from_values(dims, items_vec)));
-                    }
-                    SortKind::List => {
-                        *self.resolve(place, &mut indices.iter())? = Value::list(items_vec);
-                    }
-                    SortKind::Str => {
-                        let bytes: Vec<u8> = items_vec
-                            .into_iter()
-                            .map(|v| match v {
-                                Value::Char(c) => c,
-                                _ => 0,
-                            })
-                            .collect();
-                        *self.resolve(place, &mut indices.iter())? = Value::Str(Rc::new(bytes));
-                    }
-                }
-                // Not a step of its own, as before: the next step shows it.
-                if let (Some(_), Some(tracer)) = (place.root_global(), self.tracer.as_mut()) {
-                    tracer.on(crate::observe::Event::GlobalsMayChange);
-                }
-                Value::Unit
+                self.sort_place(place, sort_by, desc, indices, span)?
             }
             ExprKind::Read(spec) => self.read(spec, span, &[])?,
-            ExprKind::Debug(line, args) => {
-                let mut values = Vec::new();
-                for arg in args {
-                    values.push(self.eval(&arg.value)?);
-                }
-                self.fill_shown();
-                let view = self.view();
-                // A string literal names the checkpoint; without one the
-                // arguments as written do, and each value is shown by name.
-                let label: Vec<&str> = args
-                    .iter()
-                    .zip(&values)
-                    .filter(|(arg, _)| arg.label)
-                    .filter_map(|(_, value)| match value {
-                        Value::Str(bytes) => std::str::from_utf8(bytes).ok(),
-                        _ => None,
-                    })
-                    .collect();
-                let shown: Vec<(&cpl_ir::DebugArg, &Value)> = args
-                    .iter()
-                    .zip(&values)
-                    .filter(|(arg, _)| !arg.label)
-                    .collect();
-                let name = if label.is_empty() {
-                    shown
-                        .iter()
-                        .map(|(arg, _)| arg.text.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                } else {
-                    label.join(" ")
-                };
-                let text = shown
-                    .iter()
-                    .map(|(arg, value)| {
-                        let value = trace::text_of(value, &arg.value.ty, &view);
-                        if label.is_empty() {
-                            format!("{} = {value}", arg.text)
-                        } else {
-                            value
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let json = match shown.as_slice() {
-                    [(arg, value)] => trace::json_of(value, &arg.value.ty, &view),
-                    many => {
-                        let parts: Vec<String> = many
-                            .iter()
-                            .map(|(arg, value)| trace::json_of(value, &arg.value.ty, &view))
-                            .collect();
-                        format!("[{}]", parts.join(","))
-                    }
-                };
-                let prefix = if label.is_empty() {
-                    String::new()
-                } else {
-                    format!("{name}: ")
-                };
-                self.debug_out
-                    .extend_from_slice(format!("[line {line}] {prefix}{text}\n").as_bytes());
-                let name = name.clone();
-                self.traced(|tracer, view| {
-                    tracer.on(crate::observe::Event::Debugged {
-                        view,
-                        at: span,
-                        name: &name,
-                        text,
-                        json,
-                    });
-                });
-                Value::Unit
-            }
-            ExprKind::Print(args, end) => {
-                let mut vals = Vec::with_capacity(args.len());
-                for arg in args {
-                    vals.push(self.eval(&arg.value)?);
-                }
-                let end = match end {
-                    Some(end) => Some(self.eval(end)?),
-                    None => None,
-                };
-                self.print_values(args, &vals, end.as_ref(), span)?;
-                Value::Unit
-            }
             ExprKind::Format(pieces) => {
                 let mut vals = Vec::new();
                 for piece in pieces {

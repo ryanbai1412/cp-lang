@@ -438,10 +438,7 @@ impl Replay {
         match sent.ok().and_then(|()| answer.recv().ok()) {
             Some(observed) => observed,
             None => Observed {
-                trap: Some(crate::Trap::said(
-                    cpl_diag::Span::default(),
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )),
+                trap: Some(*crate::interp_failed(cpl_diag::Span::default())),
                 ..Observed::default()
             },
         }

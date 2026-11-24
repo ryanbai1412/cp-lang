@@ -1,25 +1,85 @@
-//! `s[k]` on a struct with an `at` method reads as `s.at(k)` (R12.4.13).
+//! `s[k]` on a struct with an `at` method reads as `s.at(k)` (R12.4.13); beside a `get`,
+//! only as a place written through a `lends mut` `at` (R05.6.3).
 
 use super::*;
 use cpl_syntax::ast::{self, Expr, ExprKind};
 
+/// The `s[k]` along a place's path, `a[i]` of `a[i].kids[0]` and the target itself.
+pub(super) fn lent_path(mut e: &Expr) -> Vec<Span> {
+    let mut out = Vec::new();
+    loop {
+        match &e.kind {
+            ExprKind::Index { base, .. } => {
+                out.push(e.span);
+                e = base;
+            }
+            ExprKind::Field { base, .. } => e = base,
+            ExprKind::Paren(inner) => e = inner,
+            _ => return out,
+        }
+    }
+}
+
 impl Checker<'_> {
-    /// R12.4.13: `s[k]` on a struct with an `at` method is `s.at(k)`.
+    /// Whether calling `name` on a `base_ty` changes it: a `mut self` method.
+    pub(super) fn changes_self(&mut self, base_ty: &Ty, name: &str) -> bool {
+        let members = match base_ty {
+            Ty::Named { name, .. } => self.members_of(name),
+            _ => None,
+        };
+        match &members {
+            Some(m) if m.members.iter().any(|(n, _)| n == name) => {
+                m.mutators.iter().any(|m| m == name)
+            }
+            _ => self.takes_mut_self(base_ty, name),
+        }
+    }
+
+    /// `a[i].c.bump(1)`: a `mut self` call's receiver is a place, so each `s[k]`
+    /// on its path is written through (R05.6.3).
+    pub(super) fn lent_receiver(&mut self, callee: &Expr) {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return;
+        };
+        let path: Vec<Span> = (lent_path(base).into_iter())
+            .filter(|s| self.lent_places.insert(*s))
+            .collect();
+        if path.is_empty() {
+            return;
+        }
+        let base_ty = self.quietly(|c| c.infer(base));
+        if !self.changes_self(&base_ty, &name.text) {
+            for s in path {
+                self.lent_places.remove(&s);
+            }
+        }
+    }
+
+    /// R12.4.13: `s[k]` on a struct with an `at` method is `s.at(k)`; beside a `get`,
+    /// only as a place a `lends mut` `at` lends (R05.6.3), as in lowering.
     pub(super) fn index_by_at(&mut self, expr: &Expr, base: &Expr, index: &Expr) -> Option<Ty> {
         if matches!(index.kind, ExprKind::Range { .. }) {
             return None;
         }
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         let Ty::Named { name, .. } = &base_ty else {
             return None;
         };
         let name = name.clone();
         let def = self.type_def(&name)?;
-        let Def::Struct { methods, .. } = &*def else {
+        let Def::Struct {
+            methods,
+            projections,
+            ..
+        } = &*def
+        else {
             return None;
         };
-        // A struct's own `get` is its `[]`, as in lowering (`Compressed`).
-        if !methods.iter().any(|(m, _)| m == "at") || methods.iter().any(|(m, _)| m == "get") {
+        let has = |m: &str| methods.iter().any(|(n, _)| n == m);
+        let lent = self.lent_places.contains(&expr.span)
+            && (projections.iter()).any(|p| p.name == "at" && p.mutable);
+        // A struct's own `get` is its `[]` when read, as in lowering (`Compressed`).
+        if !has("at") || has("get") && !lent {
             return None;
         }
         // A position given for a cut is its right cut (R07.1.6), as plain indexing reads it.
@@ -28,7 +88,7 @@ impl Checker<'_> {
                 && matches!(ty, Ty::Fn { params, .. } if params.last().is_some_and(|p|
                     matches!(&p.ty, Ty::Named { name, .. } if name == "Cut")))
         });
-        if takes_cut && matches!(self.quietly(|c| c.infer(index)), Ty::Pos(_)) {
+        if takes_cut && matches!(self.infer_quietly(index), Ty::Pos(_)) {
             return None;
         }
         let callee = Expr {

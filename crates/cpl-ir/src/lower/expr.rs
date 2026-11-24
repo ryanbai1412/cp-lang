@@ -456,7 +456,7 @@ impl<'a> Lowerer<'a> {
                 self.try_coerce(out, &plain).unwrap_or_else(|e| e)
             }
             ast::ExprKind::Field { base, name } => self.field(e, base, name, inner_hint),
-            ast::ExprKind::Generic { base, args } => self.generic_expr(base, args, span),
+            ast::ExprKind::Generic { base, args } => self.generic_expr(base, args, hint, span),
             ast::ExprKind::Tuple(items) if items.is_empty() => {
                 self.mk(ExprKind::Unit, Ty::Unit, span)
             }

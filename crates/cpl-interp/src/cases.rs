@@ -54,11 +54,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             self.stack.clear();
             self.stack.resize(program.main_locals.len(), Value::Unit);
-            if let Some(compiled) = self.vm.clone() {
-                self.run_main_vm(&compiled)?;
-                continue;
-            }
-            self.block(&program.main)?;
+            self.run_main_vm(&std::rc::Rc::clone(&self.vm))?;
         }
         Ok(())
     }

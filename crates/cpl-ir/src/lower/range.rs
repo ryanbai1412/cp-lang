@@ -212,13 +212,25 @@ impl RangeInfo {
     }
 
     /// A scalar range as the [`Spec::Int`] the IR carries.
-    pub(super) fn spec(&self) -> Option<Spec> {
+    pub(super) fn spec<L>(&self) -> Option<Spec<L>> {
         let b = self.scalar()?;
         Some(Spec::Int {
             lo: b.lo.clone().map(Box::new),
             hi: b.hi.clone().map(Box::new),
             text: b.text.clone(),
         })
+    }
+
+    /// A sequence's cell range and how many indexes reach it: `[V][W]0..5`
+    /// is `(2, 0..5)`.
+    pub(super) fn cell_spec(&self) -> Option<(u8, Spec)> {
+        let mut info = self.elem()?;
+        let mut depth = 1u8;
+        while let Some(inner) = info.elem() {
+            info = inner;
+            depth += 1;
+        }
+        Some((depth, info.spec()?))
     }
 
     pub(super) fn scalar(&self) -> Option<&RangeBounds> {
@@ -305,7 +317,7 @@ impl RangeInfo {
         self.elem()?.narrow_value_layout(elem_ty)
     }
 
-    pub(super) fn from_spec(spec: &Spec) -> Option<Self> {
+    pub(super) fn from_spec(spec: &ReadSpec) -> Option<Self> {
         match spec {
             Spec::Int { lo, hi, text } => {
                 let lo_expr = lo.as_deref().cloned();
@@ -519,6 +531,9 @@ impl<'a> Lowerer<'a> {
         ranges: &HashMap<Slot, RangeInfo>,
     ) {
         for (&slot, info) in ranges {
+            if let Some(cell) = info.cell_spec() {
+                self.cell_ranges.insert(ElemLoc::Local(scope, slot), cell);
+            }
             if let Some(l) = locals.get(slot).filter(|l| is_narrowable_elem_ty(&l.ty)) {
                 if let Some(layout) = info.narrow_elem_layout(&l.ty) {
                     self.narrow_elems
@@ -885,8 +900,8 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The values an `Int` loop over `lo..hi` gives its variable.
-    pub(super) fn loop_var_range(&self, iter: &Iter) -> Option<RangeInfo> {
-        let Iter::Range { lo, hi, closed, .. } = iter else {
+    pub(super) fn loop_var_range(&self, head: &Head) -> Option<RangeInfo> {
+        let Head::Iter(Iter::Range { lo, hi, closed, .. }) = head else {
             return None;
         };
         let (lo_min, _) = self.bound_limits(lo)?;
@@ -1625,13 +1640,13 @@ impl<'a> Lowerer<'a> {
                     )
                 {
                     let (
-                        Iter::Range {
+                        Head::Iter(Iter::Range {
                             lo,
                             hi,
                             step: None,
                             rev: false,
                             closed,
-                        },
+                        }),
                         ty,
                     ) = self.iter(range)
                     else {

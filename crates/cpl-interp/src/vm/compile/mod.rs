@@ -32,6 +32,14 @@ struct LoopTargets {
     resumable: Option<LoopReg>,
 }
 
+/// A `break` (`brk`) or `continue` jump at `pc` to loop `to` (`None`: the
+/// innermost), which the loop it names claims when its body is compiled.
+struct LoopJump {
+    to: Option<LoopId>,
+    brk: bool,
+    pc: usize,
+}
+
 /// The jumps a loop body left: where its `break`s and `continue`s go.
 #[derive(Default)]
 struct LoopExits {
@@ -97,10 +105,10 @@ pub(super) struct Compiler<'p, 'f> {
     feed_calls: Vec<FeedCallSpec>,
     fed_bodies: Vec<(LoopId, u32)>,
     consts_v: Vec<Value>,
-    prints: Vec<PrintSpec<'p>>,
     formats: Vec<FormatSpec<'p>>,
     applies: Vec<ApplySpec<'p>>,
     applies_sync: bool,
+    view_roots: Vec<u16>,
     fallback_stmts: Vec<&'p Stmt>,
     fails: Vec<&'p Stmt>,
     fallback_exprs: Vec<&'p Expr>,
@@ -115,9 +123,12 @@ pub(super) struct Compiler<'p, 'f> {
     num_local_v: u16,
     pinned_v: u16,
     loops: Vec<LoopTargets>,
+    jumps: Vec<LoopJump>,
     give_targets: Vec<GiveTarget>,
     cur_fn: Option<FnId>,
     pub(in crate::vm) feed_acc: Option<usize>,
+    /// The small tuple shape this body returns in registers (`RetSmallTuple`).
+    pub(in crate::vm) tuple_ret: Option<(u8, [crate::value::SmallFieldKind; 5])>,
     pub(in crate::vm) allow_fed_loops: bool,
     inline_slots: Option<Vec<SlotLoc>>,
     inline_ret: Option<(u16, Vec<usize>)>,
@@ -190,6 +201,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 slot_map.push(SlotLoc::OptI { val, some, kind });
             } else if idx >= param_count
                 || tuple_params.is_some_and(|f| tuple_param_len(program, f, idx).is_some())
+                || cur_fn.is_none()
             {
                 if let Some((len, kinds)) = small_tuple_shape(&local.ty, program) {
                     let base = next_i;
@@ -222,10 +234,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
             feed_calls: Vec::new(),
             fed_bodies: Vec::new(),
             consts_v: Vec::new(),
-            prints: Vec::new(),
             formats: Vec::new(),
             applies: Vec::new(),
             applies_sync: false,
+            view_roots: Vec::new(),
             fallback_stmts: Vec::new(),
             fails: Vec::new(),
             fallback_exprs: Vec::new(),
@@ -239,9 +251,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
             num_local_v: next_v,
             pinned_v: next_v,
             loops: Vec::new(),
+            jumps: Vec::new(),
             give_targets: Vec::new(),
             cur_fn,
             feed_acc: None,
+            tuple_ret: None,
             allow_fed_loops: true,
             inline_slots: None,
             inline_ret: None,
@@ -263,11 +277,29 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn finish(self) -> Chunk<'p> {
+        debug_assert!(
+            self.jumps.is_empty(),
+            "a `break` or `continue` names no loop"
+        );
         let needs_stack = !self.fallback_stmts.is_empty()
             || !self.fallback_exprs.is_empty()
             || self.applies_sync
             || !self.trace_points.is_empty()
             || (self.ops.iter()).any(|op| matches!(op, Op::CallTraced { .. }));
+        // `dom_clears` counts the calls, feeds and fallbacks `emit` saw.
+        let leaf = !needs_stack
+            && self.dom_clears == 0
+            && !(self.ops.iter()).any(|op| {
+                matches!(
+                    op,
+                    Op::MakeClosure { .. }
+                        | Op::MutatePlace { .. }
+                        | Op::SortByKeysPlaceCmp { .. }
+                        | Op::Format { .. }
+                )
+            })
+            && !(self.applies.iter())
+                .any(|a| matches!(a.expr.kind, ExprKind::Print(..) | ExprKind::Debug(..)));
         Chunk {
             ops: self.ops,
             spans: self.spans,
@@ -279,7 +311,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             fed_bodies: self.fed_bodies,
             traced_feeds: self.traced_feeds,
             consts_v: self.consts_v,
-            prints: self.prints,
             formats: self.formats,
             applies: self.applies,
             fallback_stmts: self.fallback_stmts,
@@ -301,9 +332,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             param_count: 0,
             ret_kind: None,
             guarded_domains: Vec::new(),
+            leaf: leaf && !self.ref_all && self.ref_slots.is_empty(),
             needs_stack: needs_stack || self.ref_all || !self.ref_slots.is_empty(),
             has_by_ref_closure: self.ref_all || !self.ref_slots.is_empty(),
+            takes_fn: false,
             ref_slots: (!self.ref_all).then_some(self.ref_slots),
+            view_roots: self.view_roots,
             back_edges: self.back_edges,
             call_sites: self.call_sites,
             keeps: {
@@ -519,6 +553,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     kind: ScalarKind::of_opt_ty(ret(fn_id), self.program)?,
                 }),
                 CallRet::V => Some(SlotLoc::V(dst_v)),
+                CallRet::Tuple(len) => Some(SlotLoc::SmallTuple {
+                    base: dst_i,
+                    len,
+                    kinds: small_tuple_shape(ret(fn_id), self.program)?.1,
+                }),
             },
             Op::CallClosure {
                 dst_i,
@@ -538,6 +577,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     kind: ScalarKind::of_opt_ty(&call.ty, self.program)?,
                 }),
                 CallRet::V => Some(SlotLoc::V(dst_v)),
+                CallRet::Tuple(_) => None,
             },
             _ => return None,
         })
@@ -608,6 +648,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
             CallRet::I => (self.alloc_i(), 0, 0),
             CallRet::OptI => (self.alloc_i(), 0, self.alloc_i()),
             CallRet::V => (0, self.alloc_v(), 0),
+            CallRet::Tuple(len) => {
+                let base = self.next_i;
+                for _ in 0..len {
+                    self.alloc_i();
+                }
+                (base, 0, 0)
+            }
         };
         self.emit(
             Op::CallClosure {
@@ -909,19 +956,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         && simple_expr(e, f, program)
                 }
                 Stmt::Return(Some(e)) | Stmt::Give(e) | Stmt::Expr(e) => simple_expr(e, f, program),
-                Stmt::If(c, t, e) => {
-                    if let Some(b) = Compiler::const_bool(c) {
-                        if b {
-                            simple_block(t, f, program)
-                        } else {
-                            simple_block(e, f, program)
-                        }
-                    } else {
+                Stmt::Trap(..) => true,
+                Stmt::If(c, t, e) => match Compiler::const_bool(c) {
+                    Some(b) => simple_block(if b { t } else { e }, f, program),
+                    None => {
                         simple_expr(c, f, program)
                             && simple_block(t, f, program)
                             && simple_block(e, f, program)
                     }
-                }
+                },
                 _ => false,
             }
         }
@@ -1086,7 +1129,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     pub(super) fn iter_mentions_slot(iter: &Iter, target: Slot) -> bool {
         match iter {
-            Iter::Walk { .. } => true,
             Iter::Range { lo, hi, .. } => {
                 Self::expr_mentions_slot(lo, target) || Self::expr_mentions_slot(hi, target)
             }

@@ -469,7 +469,7 @@ impl<'p> Emitter<'p> {
                     && !self.ref_bound.contains(slot)
                     && crate::lend::holds_heap(self.program, &e.ty) =>
             {
-                Code::primary(format!("std::move({})", self.names[*slot]))
+                Code::primary(self.move_of(&e.ty, &self.names[*slot]))
             }
             ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),
             ExprKind::Global(id) => match self.devirt.global_target(*id) {
@@ -1470,6 +1470,7 @@ impl<'p> Emitter<'p> {
                 self.need("parse_str");
                 let ty = self.ty(&e.ty);
                 let text = self.expr(text).text;
+                let taken = self.move_of(&e.ty, "cpl_value");
                 self.lambda(&ty, |this, out| {
                     let lead = pad(this.indent);
                     out.push_str(&format!("{lead}cpl::parse_scope cpl_scope({text});\n"));
@@ -1479,7 +1480,7 @@ impl<'p> Emitter<'p> {
                     this.indent -= 1;
                     out.push_str(&format!("{lead}    auto cpl_value = {value};\n"));
                     out.push_str(&format!(
-                        "{lead}    if (cpl_scope.whole()) return {ty}(std::move(cpl_value));\n"
+                        "{lead}    if (cpl_scope.whole()) return {ty}({taken});\n"
                     ));
                     out.push_str(&format!("{lead}}} catch (const cpl::parse_failed&) {{}}\n"));
                     out.push_str(&format!("{lead}return {ty}();\n"));
@@ -1677,14 +1678,18 @@ impl Emitter<'_> {
             Sign::NonNeg => Some(0),
             Sign::Unknown => None,
         };
-        let Some(floor) = sign.max(self.facts.lower_bound(home, value, 0)) else {
-            return false;
-        };
+        let floor = sign.max(self.facts.lower_bound(home, value, 0));
         let top = || self.facts.upper_bound(home, value, 0);
-        let lo_ok = lo.is_none_or(|lo| matches!(lo.kind, ExprKind::Int(l) if l <= floor));
+        let lo_ok = lo.is_none_or(|lo| match lo.kind {
+            ExprKind::Int(l) => floor.is_some_and(|f| l <= f),
+            _ => self.facts.at_least(home, value, lo, 0),
+        });
         let hi_ok = hi.is_none_or(|hi| match hi.kind {
             ExprKind::Int(h) => top().is_some_and(|t| t <= h),
-            _ => self.facts.sign(home, hi) != Sign::Unknown && top().is_some_and(|t| t <= 0),
+            _ => {
+                (self.facts.sign(home, hi) != Sign::Unknown && top().is_some_and(|t| t <= 0))
+                    || self.facts.at_most(home, value, hi, 0)
+            }
         });
         lo_ok && hi_ok
     }

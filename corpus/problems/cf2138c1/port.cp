@@ -16,13 +16,15 @@ let (n, k): (2..=1000, 0..=1000) = read()
 domain V = 1..=n
 domain S = 0..=n
 let raw_par: [2..=n]V = read()
-var par: [V]?V = None
-for i in 2..=n: par[V(i)] = raw_par[i]
-let t = Rooted.from_parents(par)
-
-let leaf_depth = min(t.depth(v) for v in V if t.size(v) == 1)!
+// parents come before their kids, so one sweep sets every depth
+var depth: [V]Int = 0
+var leaf: [V]Bool = true
+for i in 2..=n:
+    depth[V(i)] = depth[raw_par[i]] + 1
+    leaf[raw_par[i]] = false
+let leaf_depth = min(depth[v] for v in V if leaf[v])!
 var freq: [0..n]Int = 0
-for v in V: freq[t.depth(v)] += 1
+for v in V: freq[depth[v]] += 1
 
 fn is_good(l: Int) -> Bool:
     let deep = sum(freq[i] for i in l..n)

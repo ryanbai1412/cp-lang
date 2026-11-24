@@ -56,7 +56,7 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
     /// which `Monoid.of` gives every stock op (all commutative), `.commutative()` and a
     /// `Reversible` value's own `monoid()`.
     ///
-    /// cost: one call of `rev`
+    /// cost: \(O(1)\) plus one call of `rev`
     /// traps: when the monoid was made without `rev:`
     /// example: `Monoid<Int>.of(+).reversed(5) == 5`
     /// trap: `Monoid<Int>(0, +).reversed(5)`
@@ -164,7 +164,7 @@ pub struct Action<T, F>(
 
     /// Set `old` to `compose(new, old)`: in place through `compose_in` when given.
     ///
-    /// cost: one `compose_in` or `compose` call
+    /// cost: \(O(1)\) plus one `compose_in` or `compose` call
     /// traps: never
     /// example: `var f = 2; Action<Int, Int>(apply: (d, x, span) => x + d * span).compose_onto(mut f, 5); f == 7`
     pub fn compose_onto(self, mut old: F, new: F):

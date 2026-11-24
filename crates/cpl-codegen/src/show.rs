@@ -496,9 +496,7 @@ impl<'p> Emitter<'p> {
         };
         match spec {
             Spec::Line => plain(self, "read_line"),
-            Spec::List(_) => {
-                crate::invariant::broken_invariant("lowering spells out a counted list read")
-            }
+            Spec::List(never) => match *never {},
             Spec::Int {
                 lo: None, hi: None, ..
             }

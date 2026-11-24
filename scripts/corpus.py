@@ -423,6 +423,9 @@ HEADER_LINE = re.compile(r"//\s*(Source|Problem|Solution|Bounds):")
 HEADER_KEY = re.compile(r"// ?([A-Za-z][\w-]*):")
 TIMEOUT = 20
 SLOWER, FLOOR = 1.5, 0.1
+# One timed run at a time: two at once share caches and memory bandwidth, which
+# CPU time counts against whichever side happens to run beside a heavy neighbour.
+TIMED = threading.Lock()
 TARGET_BYTES = 32 * 1024
 GEN_SEEDS, GEN_SIZES = (1, 2, 3), (5, 50)
 RANGE = re.compile(rb"error\[R05\d\d\]|outside its range")
@@ -774,6 +777,54 @@ def max_short_mode(args):
               file=sys.stderr)
         return 1
     print(f"corpus: {len(pkgs)} --max input(s): {len(got['max_short'])} max-short, {len(got['max_unread'])} max-unread")
+    return 0
+
+
+DREAM_OVER = "research/dream-over-32kb.json"
+
+
+def dream_size_of(job):
+    """One dream's C++ for its package's judge, in a worker process: (id, bytes), or (id, None)
+    when it doesn't build."""
+    pid, cpl = job
+    pkg = next(problems(ids=[pid]))
+    with tempfile.TemporaryDirectory() as tmp:
+        cpp = os.path.join(tmp, f"{pid}.cpp")
+        r = subprocess.run([cpl, "build", "--judge", pkg.judge(), str(pkg.dream), "-o", cpp], capture_output=True)
+        return pid, None if r.returncode else os.path.getsize(cpp)
+
+
+def dream_sizes_mode(args):
+    """Every dream.cp's C++ against the 32 KB every solution should fit (goal 5), -j at a time;
+    dreams.yml runs it. `--write` records the dreams over it in research/dream-over-32kb.json
+    for the shrink-only dream_over_32kb counter; without it, a record that differs from what
+    it measures fails, and so does a dream that doesn't build."""
+    import concurrent.futures
+    cpl = args.cpl or default_cpl()
+    pkgs = [p for p in problems() if p.dream]
+    with concurrent.futures.ProcessPoolExecutor(args.j) as ex:
+        sizes = sorted(ex.map(dream_size_of, [(p.id, cpl) for p in pkgs]))
+    unbuilt = [pid for pid, n in sizes if n is None]
+    over = [pid for pid, n in sizes if n is not None and n > TARGET_BYTES]
+    for pid, n in sizes:
+        if n is None or n > TARGET_BYTES:
+            print(f"dream-over-32kb {pid} {n}" if n else f"dream-unbuilt {pid} -")
+    if unbuilt:
+        print(f"corpus: {len(unbuilt)} dream(s) don't build: {' '.join(unbuilt)}", file=sys.stderr)
+        return 1
+    got = {"dream_over_32kb": over}
+    path = Path(ROOT, DREAM_OVER)
+    if args.write:
+        path.write_text(json.dumps(got, indent=2) + "\n")
+        return 0
+    had = json.loads(path.read_text()) if path.is_file() else {}
+    if had != got:
+        for pid in sorted(set(over) ^ set(had.get("dream_over_32kb", []))):
+            print(f"corpus: {'new' if pid in over else 'gone'}: {pid}", file=sys.stderr)
+        print(f"corpus: {DREAM_OVER} is stale; cut a new one under 32 KB, or record a gone one with "
+              "`dream-sizes --write`", file=sys.stderr)
+        return 1
+    print(f"corpus: {len(pkgs)} dream(s), {len(over)} over 32 KB")
     return 0
 
 
@@ -1193,14 +1244,15 @@ def at_max(pkg, cpl, exe, orig, data):
     # The port and the accepted C++ take turns, each going first in turn, and
     # each side keeps its best CPU time: a burst of load hits both sides.
     runs, wants = [], []
-    for i in range(3):
-        for side in ((exe, orig) if i % 2 == 0 else (orig, exe)):
-            if side == exe:
-                runs.append(measure(exe, data, 2 * ms / 1000 + 1))
-            elif side:
-                wants.append(measure(orig, data, 4 * ms / 1000 + 1))
-        if any(r is None or r[0] != 0 for r in runs):
-            return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
+    with TIMED:
+        for i in range(3):
+            for side in ((exe, orig) if i % 2 == 0 else (orig, exe)):
+                if side == exe:
+                    runs.append(measure(exe, data, 2 * ms / 1000 + 1))
+                elif side:
+                    wants.append(measure(orig, data, 4 * ms / 1000 + 1))
+            if any(r is None or r[0] != 0 for r in runs):
+                return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
     mine, theirs = min(r[2] for r in runs), None
     if orig:
         if all(w is not None and w[0] == 0 for w in wants):
@@ -1667,15 +1719,23 @@ def base_findings(found, modes, base, cpl, run=subprocess.run):
     target = os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))
     # The base gets half the timeout: a case near it (btoi06p5 08.in, 56 s either side of 60) times
     # out or not with the box's load, so only a base well inside it makes a candidate timeout new.
-    env = {**os.environ, "CARGO_TARGET_DIR": target, "CPL_INTERP_TIMEOUT": str(INTERP_TIMEOUT // 2)}
+    # The base target sits under the main checkout's .git, so its dev cpl's std guard would
+    # see that checkout, not `wt`, and give no verdict (idioms' four interp timeouts).
+    env = {**os.environ, "CARGO_TARGET_DIR": target, "CPL_INTERP_TIMEOUT": str(INTERP_TIMEOUT // 2),
+           "CPL_STD_DIR": str(wt / "std")}
     print(f"corpus: rerunning {len(ids)} package(s) with findings at the base {rev[:9]}", file=sys.stderr)
     profile = "debug" if "debug" in Path(cpl).parts else "release"  # the timeouts are the candidate's build's
     build = ["cargo", "build", "-q", "-p", "cpl-cli", *(["--release"] if profile == "release" else [])]
-    if run(build, cwd=wt, env=env).returncode:
+    if (b := run(build, cwd=wt, env=env, capture_output=True, text=True)).returncode:
+        # Every finding then counts as new; say why, so a refusal names a broken base, not the change.
+        print(f"corpus: no verdict at the base {rev[:9]}: `{' '.join(build)}` exited {b.returncode} in {wt}:\n"
+              + "\n".join(((b.stderr or "") + (b.stdout or "")).splitlines()[-15:]), file=sys.stderr)
         return set()
     r = run([sys.executable, "scripts/corpus.py", "verify", *ids, "--only", ",".join(modes),
              "--cpl", os.path.join(target, profile, "cpl")], cwd=wt, env=env, capture_output=True, text=True)
     if r.returncode not in (0, 1):
+        print(f"corpus: no verdict at the base {rev[:9]}: its verify exited {r.returncode}:\n"
+              + "\n".join(((r.stderr or "") + (r.stdout or "")).splitlines()[-15:]), file=sys.stderr)
         return set()
     old = set(r.stdout.splitlines()) & set(found)
     with open(common / "cpl-preexisting-reds.log", "a") as log:
@@ -1931,6 +1991,10 @@ def cli(argv):
     ms.add_argument("--write", action="store_true", help="record the findings in " + MAX_SHORT)
     ms.add_argument("--cpl")
     ms.add_argument("-j", type=int, default=os.cpu_count() or 4)
+    ds = sub.add_parser("dream-sizes", help="each dream.cp whose C++ is over 32 KB")
+    ds.add_argument("--write", action="store_true", help="record the findings in " + DREAM_OVER)
+    ds.add_argument("--cpl")
+    ds.add_argument("-j", type=int, default=os.cpu_count() or 4)
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
     ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")
@@ -1956,6 +2020,8 @@ def cli(argv):
         return seed(args)
     if args.mode == "max-short":
         return max_short_mode(args)
+    if args.mode == "dream-sizes":
+        return dream_sizes_mode(args)
     if args.mode == "gaps":
         return gaps(args)
     if args.mode == "ls":

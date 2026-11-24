@@ -366,6 +366,9 @@ def backend_std_names(root: Path) -> list[str]:
 
 STD_PUB_NAME_RE = re.compile(r"^pub (?:fn|struct|enum|trait|type) (\w+)")
 NAME_BAN_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
+# Modules outside name resolution, lowering and codegen: the build-option tables a CLI flag
+# parses (`cpl build --checks all`), whose strings are flag values, not std names (decision 635).
+NAME_BAN_OUT_OF_SCOPE = ("crates/cpl-ir/src/checks.rs",)
 
 
 def std_names_outside_rt(root: Path) -> list[str]:
@@ -375,7 +378,7 @@ def std_names_outside_rt(root: Path) -> list[str]:
              for line in _lines(root / rel) if (m := STD_PUB_NAME_RE.match(line))}
     hits: set[str] = set()
     for p in _rs_files(root, *(f"crates/{c}/src" for c in NAME_BAN_CRATES), tests=False):
-        if "test" in p.name:
+        if "test" in p.name or _rel(root, p) in NAME_BAN_OUT_OF_SCOPE:
             continue
         for line in _lines(p):
             if not line.lstrip().startswith("//"):
@@ -1031,6 +1034,20 @@ def corpus_max_unread(root: Path) -> list[str]:
     """v03 ports whose --max sizes the max-short check can't read (a multitest port, a size its
     prefix can't compute), so nothing shows they reach their Bounds (owner: Idioms)."""
     return _max_short_record(root, "max_unread")
+
+
+DREAM_OVER_32KB = "research/dream-over-32kb.json"
+
+
+def dream_over_32kb(root: Path) -> list[str]:
+    """dream.cp files whose C++ for their judge is over 32 KB (goal 5; owner: Dreams).
+    `scripts/corpus.py dream-sizes --write` records them; dreams.yml fails a record that
+    differs from what it measures, and a missing record counts."""
+    p = root / DREAM_OVER_32KB
+    rec = json.loads(p.read_text()) if p.is_file() else {}
+    if "dream_over_32kb" not in rec:
+        return [f"{DREAM_OVER_32KB}: no dream_over_32kb; run `scripts/corpus.py dream-sizes --write`"]
+    return list(rec["dream_over_32kb"])
 
 
 TOOLS_TEST_TIMES = "research/perf/tools-test-times.json"
@@ -2080,6 +2097,8 @@ RETRY_FETCHES = {
     "gh run": r"gh run view ",
     "micromamba": r"\"?\S*/micromamba\"? create ",
     "git push race": r"(sh -c 'git pull -q --rebase origin main && git push |push( |$)|push_reservation,)",
+    "git push holding the land lock": r"push_held( |$)",
+    "git push deleting the land lock": r"delete_lock( |$)",
     "chat completion": r"post_chat,",
     "gradle fetch": r"\./gradlew --no-daemon --init-script \S+ prefetch\b",
     "cargo install": r"cargo install --locked --root ",
@@ -2982,31 +3001,30 @@ PASS_ROW_RE = re.compile(r'\bpass\(\s*"([\w-]+)",\s*"([\w/.]+)",\s*(\w+)')
 IR_WALK_RE = re.compile(r"\bdeep_\w+\(")
 
 
+def _private_walks(root: Path) -> list[tuple[str, int]]:
+    """Each line of codegen outside uses/ that walks IR bodies itself (a `deep_*` call)."""
+    src = root / "crates/cpl-codegen/src"
+    return [(rel, i) for rel, i, line in _src_lines(root, "crates/cpl-codegen/src")
+            if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses")
+            and (root / rel) != src / "walk.rs"]
+
+
 def opt_without_uses(root: Path) -> list[str]:
-    """Codegen passes that decide what code does without the Uses table: each `Unasked` row
-    of the PASSES table (crates/cpl-codegen/src/passes.rs), and each module that walks IR
-    bodies with no row there. Every optimization asks the effects/Uses table what code does."""
+    """Codegen that decides what code does without the Uses table: each `Unasked` row of the
+    PASSES table (crates/cpl-codegen/src/passes.rs), each module that walks IR bodies with no
+    row there, and each line outside uses/ that walks IR bodies itself (a `deep_*` call), even
+    in a pass whose row asks the table: that walk belongs in uses/ as a named query every pass
+    can ask. Every optimization asks the effects/Uses table what code does."""
     src = root / "crates/cpl-codegen/src"
     table = src / "passes.rs"
     rows = PASS_ROW_RE.findall(table.read_text(encoding="utf-8")) if table.is_file() else []
     out = [f"{_rel(root, src / module)}: {name} asks no Uses query"
            for name, module, evidence in rows if evidence == "Unasked"]
     listed = {_rel(root, src / module) for _, module, _ in rows}
-    walkers = {rel for rel, _, line in _src_lines(root, "crates/cpl-codegen/src")
-               if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses")
-               and (root / rel) != src / "walk.rs"}
-    out += [f"{rel}: walks IR with no PASSES row" for rel in sorted(walkers - listed)]
+    walks = _private_walks(root)
+    out += [f"{rel}: walks IR with no PASSES row" for rel in sorted({rel for rel, _ in walks} - listed)]
+    out += [f"{rel}:{i}: walks IR itself, not through a named uses/ query" for rel, i in walks]
     return sorted(out)
-
-
-def opt_private_walks(root: Path) -> list[str]:
-    """Each line of codegen outside uses/ that walks IR bodies itself (a `deep_*` call),
-    even in a pass whose PASSES row asks the Uses table: the walk belongs in uses/ as a
-    named query every pass can ask. Folds into `opt_without_uses` once it is 0."""
-    src = root / "crates/cpl-codegen/src"
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-codegen/src")
-            if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses")
-            and (root / rel) != src / "walk.rs"]
 
 
 # Every tracked list file outside test data: the counter that counts its
@@ -3122,7 +3140,8 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 HARD_ZERO = frozenset({
     "unreferenced_scripts",
-    "cpp_deep_copies", "conformance_wrong_output", "spec_avoidable_copies",
+    "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
+    "spec_avoidable_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
@@ -3130,7 +3149,7 @@ HARD_ZERO = frozenset({
     "uncached_installs",
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_no_limits", "stale_arch_paths",
-    "own_databases", "string_keyed_maps", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
+    "own_databases", "string_keyed_maps", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "cpp_std_functions", "or_true", "codemods_outside_fix",
     "pending_tests", "unchecked_fix_paths", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs", "opt_without_uses",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
@@ -3195,6 +3214,7 @@ COUNTERS = {
     "corpus_max_short": ("v03 --max inputs reading a size under the port's Bounds (generator's lane)",
                          corpus_max_short, True),
     "corpus_max_unread": ("v03 --max inputs whose sizes max-short can't read (Idioms)", corpus_max_unread, True),
+    "dream_over_32kb": ("dream.cp files whose C++ is over 32 KB (Dreams)", dream_over_32kb, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "tools_tests_over_30s": ("tools crates' tests over 30 s (Tools)", tools_tests_over_30s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
@@ -3250,7 +3270,6 @@ COUNTERS = {
                                 explain_copy_mismatches, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "opt_without_uses": ("codegen passes deciding what code does without the Uses table (PASSES)", opt_without_uses, True),
-    "opt_private_walks": ("codegen lines walking IR themselves instead of a named uses/ query", opt_private_walks, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, True),
     "crate_edges": ("shipped crate edges", crate_edges, False),

@@ -49,11 +49,11 @@ impl Checker<'_> {
     fn index_reads_two_ways(&mut self, expr: &Expr, base: &Expr, index: &Expr) -> bool {
         if matches!(index.kind, ExprKind::Range { .. })
             || Self::says_cut(index)
-            || !matches!(self.quietly(|c| c.infer(index)), Ty::Int | Ty::Range { .. })
+            || !matches!(self.infer_quietly(index), Ty::Int | Ty::Range { .. })
         {
             return false;
         }
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         self.bare_int_cut(expr, base, index, &base_ty)
     }
 
@@ -71,7 +71,7 @@ impl Checker<'_> {
             },
             _ => return false,
         };
-        let zero_based = match self.quietly(|c| c.infer(base)) {
+        let zero_based = match self.infer_quietly(base) {
             Ty::Str => true,
             Ty::Named { name, .. } => name == "List",
             Ty::Array { index, .. } => {

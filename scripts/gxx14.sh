@@ -11,6 +11,11 @@ if [ ! -x "$gxx" ]; then
     . "$(dirname "$0")/retry.sh"
     mm="$dir.mamba"
     mkdir -p "$mm"
+    # cpl-conform's workers all start here at once; one fetches, the rest wait for it.
+    exec 9>"$dir.lock"
+    flock 9
+fi
+if [ ! -x "$gxx" ]; then
     echo "gxx14: fetching g++ 14 from conda-forge into $dir (once)" >&2
     [ -x "$mm/bin/micromamba" ] ||
         retry sh -c "curl -fsSL https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj -C '$mm' bin/micromamba"

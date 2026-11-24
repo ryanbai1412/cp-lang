@@ -1,0 +1,61 @@
+name: dreams
+
+# Every main tip's dreams against their accepted C++, in a queue of their own:
+# in ci-slow.yml they waited behind 90-240 min jobs and every run in between
+# was cancelled. A red here holds edge (scripts/release/shippable.sh).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  # Restores the dev target/ that ci.yml saves.
+  TARGET_KEY: target-ci-v2
+
+concurrency:
+  group: dreams-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Every dream.cp still agrees with its accepted C++ on this tip
+  # (problem-packages/R10): a std or compiler change can break a dream whose
+  # file didn't change, and the corpus gate's static modes can't see that.
+  # Too slow for ci.yml's 3 minutes, so it queues on its own: a tip waits
+  # for the run before it, never for ci-slow's hour-long jobs (ci/R41).
+  dreams:
+    name: every dream agrees with its C++ (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: release
+      - name: Build cpl
+        run: cargo build --profile ci --bin cpl
+      - name: Cache hour
+        id: hour
+        run: echo "hour=$(date -u +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        with:
+          path: target/corpus-tests
+          key: corpus-tests-${{ steps.hour.outputs.hour }}
+          restore-keys: corpus-tests-
+      - name: Every dream's C++ against research/dream-over-32kb.json
+        if: matrix.shard == 1
+        run: just corpus-dream-sizes --cpl target/ci/cpl -j "$(nproc)"
+      - name: Dreams agree with the accepted C++
+        run: |
+          mapfile -t ids < <(printf '%s\n' corpus/problems/*/dream.cp | cut -d/ -f3 |
+            awk -v s=${{ matrix.shard }} '(++n - 1) % 2 == s - 1')
+          just corpus-tests-make --cpl target/ci/cpl "${ids[@]}" >/dev/null
+          just corpus-verify --only dream --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"

@@ -10,6 +10,7 @@ mod foreign;
 pub(crate) use foreign::declare_on_first_assignment;
 mod alias;
 mod arms;
+mod array_dims;
 mod assoc;
 mod bound_args;
 mod bounded_str;
@@ -74,6 +75,11 @@ use std::sync::Arc;
 pub(crate) trait Env {
     /// The definition of a top-level name.
     fn global(&mut self, name: &str) -> Option<Arc<Def>>;
+    /// The public trait `name` of a module this file reaches, past a value or
+    /// variant of that name the file declares.
+    fn imported_def(&mut self, _name: &str) -> Option<Arc<Def>> {
+        None
+    }
     /// The module a top-level `name` comes from (`std.seq`), or `None` when
     /// this file declares it.
     fn origin(&mut self, _name: &str) -> Option<String> {
@@ -224,7 +230,7 @@ pub struct GlobalRef {
 
 /// What `Checker::quietly` puts back after its probe.
 struct Hushed {
-    lens: [usize; 7],
+    lens: [usize; 8],
     exprs: [usize; 6],
     moved: crate::names::NameMap<Span>,
     lambda_params: Vec<(Span, Vec<Ty>)>,
@@ -242,6 +248,10 @@ pub(crate) struct Checker<'a> {
     /// `s` to the caller's place, so it is mutable.
     opt_mut_params: crate::fx::HashSet<Span>,
     generics: Vec<String>,
+    /// Each bare `gen()`, and those [`Checker::note_read`] gave a type: the
+    /// rest have no type to draw (E0501).
+    bare_gens: Vec<Span>,
+    gens_given_a_type: crate::fx::HashSet<Span>,
     /// The `type` aliases whose right side is being resolved, innermost last.
     defining_aliases: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
@@ -254,6 +264,8 @@ pub(crate) struct Checker<'a> {
     present: Vec<String>,
     /// The name about to be read stands where an optional is asked for.
     as_written: bool,
+    /// The callee of the call being checked: `gen<P>()` calls a `P.gen` whose text has no `()` after it.
+    callee: Option<Span>,
     /// What the fns declared inside the item being checked assign.
     mutators: narrow::Mutators,
     /// Where a step along a domain stays inside it, in the item being
@@ -263,6 +275,8 @@ pub(crate) struct Checker<'a> {
     resolved: Vec<(Span, Resolved)>,
     /// The method each `x.f` calls (R11.3.4), kept through quiet probes.
     chosen_methods: Vec<(Span, Resolved)>,
+    /// Each `s[k]` written through (R05.6.3): it reads as the lending `at`, not `get`.
+    lent_places: std::collections::HashSet<Span>,
     /// Each `x.f` E0701 rejects, with every candidate it was torn between.
     ambiguous: Vec<(Span, Vec<Resolved>)>,
     pub(crate) typed_indexes: Vec<TypedIndex>,
@@ -365,17 +379,21 @@ impl<'a> Checker<'a> {
             scopes: scopes::Scopes::default(),
             opt_mut_params: Default::default(),
             generics: Vec::new(),
+            bare_gens: Vec::new(),
+            gens_given_a_type: Default::default(),
             defining_aliases: Vec::new(),
             param_bounds: Vec::new(),
             param_bound_args: Vec::new(),
             hovers: Vec::new(),
             present: Vec::new(),
             as_written: false,
+            callee: None,
             mutators: narrow::Mutators::default(),
             steps: Default::default(),
             refs: Vec::new(),
             resolved: Vec::new(),
             chosen_methods: Vec::new(),
+            lent_places: Default::default(),
             ambiguous: Vec::new(),
             typed_indexes: Vec::new(),
             fixed_io: Vec::new(),
@@ -486,6 +504,17 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `name` where only a trait can stand (an impl's trait, a bound): this file's
+    /// trait, else the one it reaches, so a value or variant named `Random` can't hide it.
+    pub(crate) fn trait_global(&mut self, name: &str) -> Option<Arc<Def>> {
+        let is_trait = |d: &Arc<Def>| matches!(&**d, Def::Trait { .. });
+        let first = self.global(name);
+        if first.as_ref().is_none_or(is_trait) {
+            return first;
+        }
+        self.env.imported_def(name).filter(is_trait).or(first)
+    }
+
     /// `name` as a plain call: a `@get` fn is read as `.name` (R06.4.2), so it
     /// never shadows the prelude fn of its name, `swap(mut a, mut b)`.
     pub(crate) fn free_global(&mut self, name: &str) -> Option<Arc<Def>> {
@@ -546,6 +575,11 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn finish(mut self) -> Checked {
+        for span in std::mem::take(&mut self.bare_gens) {
+            if !self.gens_given_a_type.contains(&span) {
+                self.report(span, cpl_diag::msgs::ir::GEN_TAKES, &[]);
+            }
+        }
         let resolved = self.with_chosen_methods();
         Checked {
             diagnostics: self.sink.finish(),
@@ -634,6 +668,12 @@ impl<'a> Checker<'a> {
         out
     }
 
+    /// The type of `e`, inferred without leaving diagnostics or facts.
+    #[inline(never)]
+    fn infer_quietly(&mut self, e: &cpl_syntax::ast::Expr) -> Ty {
+        self.quietly(|c| c.infer(e))
+    }
+
     /// What `quietly` restores, kept out of line so its many callers share it.
     #[inline(never)]
     fn hush(&mut self) -> Hushed {
@@ -646,6 +686,7 @@ impl<'a> Checker<'a> {
                 self.fixed_io.len(),
                 self.io_costs.len(),
                 self.lends.conflicts.len(),
+                self.bare_gens.len(),
             ],
             exprs: self.exprs.mark(),
             moved: self.moved.clone(),
@@ -657,7 +698,8 @@ impl<'a> Checker<'a> {
 
     #[inline(never)]
     fn unhush(&mut self, kept: Hushed) {
-        let [hovers, refs, typed, resolved, fixed, io, conflicts] = kept.lens;
+        let [hovers, refs, typed, resolved, fixed, io, conflicts, gens] = kept.lens;
+        self.bare_gens.truncate(gens);
         self.sink = kept.sink;
         self.moved = kept.moved;
         self.lambda_params = kept.lambda_params;
@@ -683,7 +725,7 @@ impl<'a> Checker<'a> {
             .unwrap_or_default();
         match given.iter().rev().find(|(at, _)| *at == base.span) {
             Some((_, ty)) => ty.clone(),
-            None => self.quietly(|c| c.infer(base)),
+            None => self.infer_quietly(base),
         }
     }
 
@@ -921,7 +963,7 @@ impl<'a> Checker<'a> {
         let target_depth = self.var_depth(root);
         let how = format!("stored in `{root}` from an outer scope");
         for arg in args {
-            let arg_ty = self.quietly(|c| c.infer(&arg.value));
+            let arg_ty = self.infer_quietly(&arg.value);
             self.check_expr_domain_escape(&arg.value, &arg_ty, target_depth, &how, &[], false);
         }
     }

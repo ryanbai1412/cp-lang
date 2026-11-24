@@ -10,12 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// The variables that change what `cpl build` and `cpl explain` print.
-const ENV: &[&str] = &[
-    "CPL_STD_DIR",
-    "CPL_STD_SOURCE",
-    "CPL_FORCE_ICE",
-    "CPL_CHANNEL",
-];
+const ENV: &[&str] = &["CPL_STD_DIR", "CPL_STD_SOURCE", "CPL_CHANNEL"];
 
 pub struct ResultCache {
     dir: Option<PathBuf>,

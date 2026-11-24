@@ -196,20 +196,6 @@ fn memo_on_a_fn_with_a_value_and_plain_arguments_is_fine() {
     }
 }
 
-/// `adj.out(u)` reads a table of neighbour lists. On any other table the
-/// checker says so, as `cpl run` and `cpl build` do.
-#[test]
-fn out_on_a_table_that_holds_no_lists_is_reported() {
-    let rest = "let n = 3\ndomain V = 0..n\n";
-    let d = one(&format!(
-        "{rest}let a: [V]Int = [V] v => 0\nprint(a.out(V(1)))\n"
-    ));
-    assert_eq!(d.code.0, "E0203", "{d:?}");
-    assert_eq!(d.help.as_deref(), Some("index it: `a[v]`"));
-    let ok = format!("{rest}var adj: [V]List<V> = [V] v => []\nprint(adj.out(V(0)).len)\n");
-    assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
-}
-
 /// The branch an `if const` does not pick is not compiled, so it is not
 /// checked; one whose test waits for a type argument still is.
 #[test]

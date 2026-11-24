@@ -12,10 +12,7 @@ use cpl_ir::OrdHook;
 pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
     match &e.kind {
         ExprKind::Cmp(_, lhs, rhs) => vec![lhs, rhs],
-        ExprKind::Unary(_, x)
-        | ExprKind::Cast(_, x)
-        | ExprKind::IsVariant(x, _)
-        | ExprKind::Payload(x, ..) => vec![x],
+        ExprKind::Unary(_, x) | ExprKind::Cast(_, x) => vec![x],
         ExprKind::Tuple(items)
         | ExprKind::Variant(_, items)
         | ExprKind::Builtin(_, items)
@@ -32,6 +29,12 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
                 .collect()
         }
         ExprKind::Index(base, indices) => std::iter::once(&**base).chain(indices).collect(),
+        ExprKind::Print(args, end) => args
+            .iter()
+            .map(|a| &a.value)
+            .chain(end.as_deref())
+            .collect(),
+        ExprKind::Debug(_, args) => args.iter().map(|a| &a.value).collect(),
         _ => Vec::new(),
     }
 }
@@ -60,7 +63,8 @@ fn spec_exprs(spec: &Spec) -> Option<Vec<&Expr>> {
                 out.extend(absent.as_deref());
                 todo.push(inner);
             }
-            Spec::Call(_) | Spec::List(_) => return None,
+            Spec::Call(_) => return None,
+            Spec::List(never) => match *never {},
         }
     }
     Some(out)
@@ -86,8 +90,8 @@ pub(crate) fn applies(e: &Expr) -> bool {
             | ExprKind::Cast(..)
             | ExprKind::Tuple(_)
             | ExprKind::Variant(..)
-            | ExprKind::IsVariant(..)
-            | ExprKind::Payload(..)
+            | ExprKind::Print(..)
+            | ExprKind::Debug(..)
     )
 }
 
@@ -208,10 +212,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         // Inserted one by one: `collect` would sort first, a second
                         // sort of `Value` in cpl.wasm.
                         let Value::Set(mut set) = crate::value::zero(&e.ty, self.program) else {
-                            return trap(
-                                e.span,
-                                cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                            );
+                            return Err(interp_failed(e.span));
                         };
                         let span = e.span;
                         let keys = Rc::make_mut(&mut set);
@@ -225,16 +226,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
             ExprKind::Variant(tag, _) => Value::Enum(*tag as u32, Rc::new(vals)),
-            ExprKind::IsVariant(_, tag) => match operand_values(vals, span)? {
-                [Value::Enum(actual, _)] => Value::Bool(actual as usize == *tag),
-                _ => Value::Bool(false),
-            },
-            ExprKind::Payload(_, tag, index) => match operand_values(vals, span)? {
-                [Value::Enum(actual, payload)] if actual as usize == *tag => {
-                    payload[*index].clone()
-                }
-                _ => return bug(span, "payload of another variant"),
-            },
             ExprKind::Unary(op, _) => {
                 let [value] = operand_values(vals, span)?;
                 match (op, value) {
@@ -297,6 +288,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let mut indices = vals;
                 let arg_vals = indices.split_off(place::index_count(place));
                 return self.mutated(*op, place, args, indices, arg_vals, span);
+            }
+            ExprKind::Print(args, end) => {
+                let end = end.is_some().then(|| &vals[args.len()]);
+                self.print_values(args, &vals[..args.len()], end, span)?;
+                Value::Unit
+            }
+            ExprKind::Debug(line, args) => {
+                self.debug_values(*line, args, &vals, span);
+                Value::Unit
             }
             _ => return bug(span, "no shared evaluation for this expression"),
         })
@@ -374,7 +374,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 }
 
 /// The values `apply` was handed for an expression with `N` operands.
-fn operand_values<const N: usize>(vals: Vec<Value>, span: Span) -> Res<[Value; N]> {
+pub(crate) fn operand_values<const N: usize>(vals: Vec<Value>, span: Span) -> Res<[Value; N]> {
     match <[Value; N]>::try_from(vals) {
         Ok(vals) => Ok(vals),
         Err(_) => bug(span, "no shared evaluation for this expression"),

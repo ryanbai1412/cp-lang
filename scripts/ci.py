@@ -30,6 +30,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import tomllib
+
 # Which --fast leaves to --full (the reasons are in scripts/check.sh's nextest step).
 SLOW_TESTS = (
     "products_and_variable_divisors_are_never_decided_wrongly",
@@ -37,14 +39,17 @@ SLOW_TESTS = (
     "recovery_scoreboard",
     "fix_it_scoreboard",
     "committed_scoreboard_ratchet",
-    "every_port_compiles_with_every_judges_flags",
 )
+# Tests split into `<name>_<shard>` shards: --fast leaves every shard to --full.
+SLOW_SHARDED_TESTS = ("every_port_compiles_with_every_judges_flags",)
 
 # Wall-clock assertions (decision 225): a timing budget can fail on a loaded
 # machine with no code change, so no blocking tier runs one. CI reports them
 # in a job that never fails the workflow (--timing); --full runs them too (ci/R34).
 WALL_CLOCK_TESTS = (
     "lsp_requests_are_under_100_ms",
+    "lsp_opens_of_5000_lines_are_under_100_ms",
+    "lsp_keystrokes_in_5000_lines_are_under_100_ms",
     "keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95",
     "largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms",
     "the_checks_of_a_typical_function_fit_the_budget",
@@ -63,7 +68,8 @@ def _tests(names: tuple[str, ...]) -> str:
 
 def slow_filter() -> str:
     """Nextest filter for every test a blocking tier skips."""
-    return "binary(budget)" + _tests(SLOW_TESTS) + _tests(WALL_CLOCK_TESTS)
+    sharded = "".join(f" or test(/(^|::){n}_[0-9]+$/)" for n in SLOW_SHARDED_TESTS)
+    return "binary(budget)" + _tests(SLOW_TESTS) + sharded + _tests(WALL_CLOCK_TESTS)
 
 
 def wall_filter() -> str:
@@ -74,19 +80,33 @@ def wall_filter() -> str:
 NEXTEST_LINE = re.compile(r"\b(?:PASS|FAIL|TIMEOUT|SIG[A-Z]+)\s+\[\s*([0-9.]+)s\]\s+(?:\(\s*\d+/\d+\)\s+)?(\S+)\s+(\S+)")
 
 
-def time_shard(listing: str, times: dict, shard: str) -> list[tuple[str, str]]:
+def listed_tests(listing: str) -> list[tuple[str, str]]:
+    """(binary id, test) of each test a `cargo nextest list --message-format json` matched."""
+    return sorted((b, t) for b, suite in json.loads(listing)["rust-suites"].items()
+                  for t, case in suite["testcases"].items()
+                  if case["filter-match"]["status"] == "matches" and not case.get("ignored"))
+
+
+def whole_machine_filter() -> str:
+    """The nextest filters of .config/nextest.toml's `threads-required = 'num-cpus'` tests."""
+    conf = tomllib.loads((ROOT / ".config" / "nextest.toml").read_text())
+    return " | ".join(f"({o['filter']})" for prof in conf.get("profile", {}).values()
+                      for o in prof.get("overrides", []) if o.get("threads-required") == "num-cpus")
+
+
+def time_shard(listing: str, times: dict, shard: str, whole: frozenset = frozenset(),
+               cores: int = 1) -> list[tuple[str, str]]:
     """Shard k/n of the tests a `cargo nextest list --message-format json` matched, dealt by
     measured time (longest first, each to the least-loaded shard) so the shards end
-    together; a test with no time weighs `default_s`. Every shard deals the same list the
-    same way, so each test runs in exactly one."""
+    together; a test with no time weighs `default_s`, and a `whole` one (it holds the
+    runner's `cores` alone) weighs its time on every core. Every shard deals the same list
+    the same way, so each test runs in exactly one."""
     k, n = (int(x) for x in shard.split("/"))
     if not 1 <= k <= n:
         raise ValueError(f"time:{shard}: the shard must be 1..{n}")
     secs, default = times.get("tests", {}), float(times.get("default_s", 1.0))
-    weight = lambda bt: secs.get(f"{bt[0]} {bt[1]}", default)
-    tests = sorted((b, t) for b, suite in json.loads(listing)["rust-suites"].items()
-                   for t, case in suite["testcases"].items()
-                   if case["filter-match"]["status"] == "matches" and not case.get("ignored"))
+    weight = lambda bt: secs.get(f"{bt[0]} {bt[1]}", default) * (cores if bt in whole else 1)
+    tests = listed_tests(listing)
     load, mine = [0.0] * n, []
     for bt in sorted(tests, key=lambda bt: -weight(bt)):
         i = min(range(n), key=lambda j: (load[j], j))
@@ -298,8 +318,8 @@ STEPS = {
               "committed_scoreboard_ratchet"),
              "a passing case regressed against research/scoreboard.json; rerun: cargo test -p cpl-conform --test ratchet"),
         Step("cargo test: every port compiled with every judge profile's flags",
-             ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--", "--exact",
-              "every_port_compiles_with_every_judges_flags"),
+             ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--",
+              "every_port_compiles_with_every_judges_flags_", "--test-threads=1"),
              "a port fails to compile under a judge profile; rerun: cargo test -p cpl-cli --test judges",
              needs=("g++",)),
         Step("cargo test: the budget tests, alone", ("cargo", "test", "-p", "cpl-cli", "--test", "budget", "--",
@@ -906,8 +926,16 @@ class Tail:
                                    "--message-format", "json"], cwd=ROOT, capture_output=True, text=True)
                 if listed.returncode:
                     raise Failed("cargo nextest list failed; the lines above say why")
+                whole: frozenset = frozenset()
+                if wf := whole_machine_filter():
+                    held = self.run(["cargo", "nextest", "list", *src, "--profile", "gate",
+                                     "-E", f"({wf}) & not ({slow_filter()})", "--message-format", "json"],
+                                    cwd=ROOT, capture_output=True, text=True)
+                    if held.returncode:
+                        raise Failed("cargo nextest list failed; the lines above say why")
+                    whole = frozenset(listed_tests(held.stdout))
                 times = json.loads(TEST_TIMES.read_text())
-                mine = time_shard(listed.stdout, times, part.removeprefix("time:"))
+                mine = time_shard(listed.stdout, times, part.removeprefix("time:"), whole, os.cpu_count() or 1)
                 first = target_dir() / "nextest-priorities.toml"
                 first.parent.mkdir(parents=True, exist_ok=True)
                 first.write_text(time_priorities(mine, times))
@@ -1020,7 +1048,7 @@ class Tail:
                     raise Failed("a doctest failed; rerun: cargo test --workspace --doc")
             else:
                 self.step("cargo test --workspace (without the --full tests)")
-                skips = [a for t in (*SLOW_TESTS, *UNTIMED_TESTS) for a in ("--skip", t)]
+                skips = [a for t in (*SLOW_TESTS, *SLOW_SHARDED_TESTS, *UNTIMED_TESTS) for a in ("--skip", t)]
                 if self.call(["cargo", "test", "--workspace", "--", *skips]):
                     raise Failed("a workspace test failed; rerun: cargo test --workspace")
             self.save("nextest_doc")
@@ -1129,7 +1157,8 @@ def _guard(mode: str, root: Path) -> None:
 
 
 
-TIMING_EXTRA = ("every_corpus_program_and_conformance_case_is_served", "every_port_compiles_with_every_judges_flags")
+TIMING_EXTRA = ("test(=every_corpus_program_and_conformance_case_is_served)",
+                "test(/^every_port_compiles_with_every_judges_flags_[0-9]+$/)")
 FAST_BUDGET_S = 180
 AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only header)"
 
@@ -1176,7 +1205,7 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         g = gate_part(part, mode)
         if mode == "timing":
             print("\n==> wall-clock budgets (reported, never blocking)", flush=True)
-            expr = " or ".join([wall_filter(), *(f"test(={t})" for t in TIMING_EXTRA)])
+            expr = " or ".join([wall_filter(), *TIMING_EXTRA])
             walls = run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr], cwd=ROOT).returncode
             print("\n==> every touched-path slice against its limit (reported, never blocking)", flush=True)
             slices = run([sys.executable, "scripts/affected.py", "--run-slices", "all"], cwd=ROOT).returncode

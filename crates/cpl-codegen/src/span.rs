@@ -6,7 +6,7 @@
 //! `2 * n`, one conditional subtract is the whole remainder.
 
 use crate::ranges::{Facts, Sign};
-use cpl_ir::{BinOp, Cast, Expr, ExprKind, Spec, Ty};
+use cpl_ir::{BinOp, Builtin, Cast, Expr, ExprKind, Spec, Ty};
 
 /// `k * n + c` for the count `n`.
 type Lin = (i64, i64);
@@ -30,6 +30,52 @@ pub(crate) fn same_count(a: &Expr, b: &Expr) -> bool {
 }
 
 impl Facts<'_> {
+    /// Whether `e <= hi` in every run where both are read at one point:
+    /// `e` is `hi` itself or a `min` with an argument at most `hi`, or
+    /// their constant bounds say so.
+    pub(crate) fn at_most(&self, fn_id: Option<usize>, e: &Expr, hi: &Expr, depth: u8) -> bool {
+        self.ordered(fn_id, e, hi, Builtin::Min, depth)
+    }
+
+    /// Whether `e >= lo`, as [`Facts::at_most`] with `max`.
+    pub(crate) fn at_least(&self, fn_id: Option<usize>, e: &Expr, lo: &Expr, depth: u8) -> bool {
+        self.ordered(fn_id, e, lo, Builtin::Max, depth)
+    }
+
+    fn ordered(&self, fn_id: Option<usize>, e: &Expr, end: &Expr, op: Builtin, depth: u8) -> bool {
+        if depth > 8 {
+            return false;
+        }
+        let calm = crate::uses::effects::writes_nothing;
+        if calm(e) && calm(end) && crate::stmt::same_path(e, end) {
+            return true;
+        }
+        let bounds = if op == Builtin::Min {
+            (
+                self.upper_bound(fn_id, e, depth),
+                self.lower_bound(fn_id, end, depth),
+            )
+        } else {
+            (
+                self.upper_bound(fn_id, end, depth),
+                self.lower_bound(fn_id, e, depth),
+            )
+        };
+        if matches!(bounds, (Some(small), Some(big)) if small <= big) {
+            return true;
+        }
+        match &e.kind {
+            ExprKind::Builtin(b, args) if *b == op => {
+                (args.iter()).any(|a| calm(e) && self.ordered(fn_id, a, end, op, depth + 1))
+            }
+            ExprKind::If(_, a, b) => {
+                self.ordered(fn_id, a, end, op, depth + 1)
+                    && self.ordered(fn_id, b, end, op, depth + 1)
+            }
+            _ => false,
+        }
+    }
+
     /// A constant `x` with `x <= e` in every run, mirroring `upper_bound`.
     pub(crate) fn lower_bound(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {
         if depth > 8 || e.ty != Ty::Int {
@@ -63,9 +109,25 @@ impl Facts<'_> {
                 at(l)?.checked_sub(self.upper_bound(fn_id, r, depth + 1)?)
             }
             ExprKind::If(_, a, b) => Some(at(a)?.min(at(b)?)),
-            ExprKind::Call(id, _) => (self.returned(*id)?.iter())
-                .map(|r| self.lower_bound(Some(*id), r, depth + 2))
-                .try_fold(i64::MAX, |lo, r| Some(lo.min(r?))),
+            // At least any argument with a bound.
+            ExprKind::Builtin(Builtin::Max, args) => args.iter().filter_map(at).max(),
+            ExprKind::Builtin(Builtin::Min, args) if !args.is_empty() => args
+                .iter()
+                .map(at)
+                .try_fold(i64::MAX, |lo, a| Some(lo.min(a?))),
+            ExprKind::RangeCheck { value, lo, .. } => (lo.as_deref())
+                .and_then(at)
+                .into_iter()
+                .chain(at(value))
+                .max(),
+            ExprKind::Call(id, _) => self.call_bound(*id, depth, false),
+            ExprKind::Index(..) => (match self.spec(fn_id, e) {
+                Some(Spec::Int { lo: Some(lo), .. }) => at(lo),
+                _ => None,
+            })
+            .into_iter()
+            .chain(self.guard_lo(e, depth))
+            .max(),
             ExprKind::Field(base, idx) => (self.field_range(&base.ty, *idx).map(|r| r.0))
                 .into_iter()
                 .chain(self.guard_lo(e, depth))

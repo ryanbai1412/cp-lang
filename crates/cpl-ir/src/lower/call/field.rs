@@ -406,6 +406,21 @@ impl<'a> Lowerer<'a> {
                 }
             }
             (Ty::Pos(_) | Ty::Bound(_), "ord" | "idx") => self.cast(Cast::Ord, value, Ty::Int),
+            // A cell of a product is that product's position (R04.2.11), so it has its `ord`.
+            (Ty::Tuple(ts), "ord" | "idx")
+                if ts.len() > 1 && ts.iter().all(|t| matches!(t, Ty::Pos(_))) =>
+            {
+                let factors = ts
+                    .iter()
+                    .filter_map(|t| self.ty_to_product_factor(t).map(|f| (None, f)))
+                    .collect();
+                let d = self.intern_anon_product_domain(factors);
+                let mut defs = Vec::new();
+                self.def_anon_product_domain(d, span, &mut defs);
+                self.cx.pending.extend(defs);
+                let pos = self.coerce(value, &Ty::Pos(d), span);
+                self.cast(Cast::Ord, pos, Ty::Int)
+            }
             (Ty::Int, "ord" | "idx" | "r" | "right") => value,
             (Ty::Int, "l" | "left") => self.int_add(value, -1),
             (Ty::Pos(d), "label") => self.cast(Cast::Label(*d), value, Ty::Int),

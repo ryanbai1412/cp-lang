@@ -32,7 +32,7 @@ for (i, v) in qs:
 fn slow():
     let cb = Comb<Z>()
     for (i, v) in qs:
-        var b = a
+        var b = a.clone()
         b[i - 1] += v
         var p: [0..=n]Int = 0
         for j in 0..n:

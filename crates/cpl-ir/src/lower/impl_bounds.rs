@@ -5,6 +5,9 @@
 
 use super::*;
 
+/// A trait's args read off one impl, with the impl's params bound.
+type TraitArgs = (Vec<Ty>, GenEnv);
+
 impl GenArg {
     /// What a key dimension binds a key generic to: its domain, or `Int` for a plain index.
     pub(super) fn of_key(dim: Dim) -> Option<GenArg> {
@@ -26,7 +29,23 @@ impl<'a> Lowerer<'a> {
         m: ModId,
         env: &mut GenEnv,
     ) -> bool {
-        let mut open = Vec::new();
+        self.bind_bounds_open(bounds, m, &[], env)
+    }
+
+    /// [`Self::bind_impl_bounds`] where `declared` names the generics a fn
+    /// declares, open even when they shadow a module name such as a domain `V`.
+    pub(super) fn bind_bounds_open(
+        &mut self,
+        bounds: &[ast::Bound],
+        m: ModId,
+        declared: &[String],
+        env: &mut GenEnv,
+    ) -> bool {
+        let mut open: Vec<String> = declared
+            .iter()
+            .filter(|n| !env.contains_key(*n))
+            .cloned()
+            .collect();
         for tr in bounds.iter().flat_map(|b| &b.traits) {
             for name in self.impl_params(m, tr) {
                 if !env.contains_key(&name) && !open.contains(&name) {
@@ -35,20 +54,27 @@ impl<'a> Lowerer<'a> {
             }
         }
         for b in bounds {
-            let Some(GenArg::Ty(seq)) = env.get(&b.name.text).cloned() else {
-                continue;
+            let seq = match env.get(&b.name.text) {
+                Some(GenArg::Ty(t)) => t.clone(),
+                Some(GenArg::Domain(d)) => Ty::Pos(*d),
+                _ => continue,
             };
             for tr in &b.traits {
                 let ast::TypeKind::Named { name, args } = &tr.kind else {
                     continue;
                 };
                 let trait_name = name.text.as_str();
+                let is_struct = matches!(seq, Ty::Struct(_));
+                if is_struct && !self.implements(&seq, trait_name) {
+                    return false;
+                }
                 let roles = (self.seq_roles(trait_name).map(|r| (r.key, r.elem)))
-                    .or((trait_name == "Sized").then_some((None, None)));
+                    .or((trait_name == "Sized").then_some((None, None)))
+                    .filter(|_| !is_struct);
                 let (key, elem) = match roles {
                     Some((k, e)) => (k.and_then(|i| args.get(i)), e.and_then(|i| args.get(i))),
                     None => {
-                        let known = self.known_trait_args(args, m, env);
+                        let known = self.known_trait_args(args, m, &open, env);
                         if let Some((given, opened)) =
                             self.impl_trait_args(&seq, trait_name, &known)
                         {
@@ -65,8 +91,7 @@ impl<'a> Lowerer<'a> {
                     "IndexedMut" => seq.is_indexed_mut(),
                     _ => seq.is_seq(),
                 };
-                if !builtin && !(matches!(seq, Ty::Struct(_)) && self.implements(&seq, trait_name))
-                {
+                if !builtin {
                     return false;
                 }
                 if let Some(k) = key {
@@ -124,22 +149,59 @@ impl<'a> Lowerer<'a> {
         Some(env)
     }
 
+    /// The generic env impl `idx` binds when it is for `ty`: its struct's
+    /// args, the domain of a blanket domain impl, or what a shape pattern
+    /// (`[V]S`, `(T, T) -> T`, a row record) binds.
+    pub(super) fn impl_env(&mut self, idx: usize, ty: &Ty) -> Option<GenEnv> {
+        if let Ty::Struct(sid) = *ty {
+            return self.struct_impl_env(idx, sid);
+        }
+        let (m, offset, target) = (
+            self.impls[idx].mod_id,
+            self.impls[idx].offset,
+            self.impls[idx].target,
+        );
+        if let ast::TypeKind::Named { name, .. } = &target.kind {
+            if let Some(Sym::Struct(_) | Sym::GenStruct(_)) = self.mod_syms[m].get(&name.text) {
+                return None;
+            }
+        }
+        if let Some(param) = self.domain_blanket_param(idx) {
+            return match ty {
+                Ty::Pos(d) => Some(GenEnv::from([(param, GenArg::Domain(*d))])),
+                Ty::Bound(_) => Some(GenEnv::from([(param, GenArg::Ty(ty.clone()))])),
+                Ty::Tuple(ts) if ts.iter().all(|t| matches!(t, Ty::Pos(_))) => {
+                    Some(GenEnv::from([(param, GenArg::Ty(ty.clone()))]))
+                }
+                _ => None,
+            };
+        }
+        let env = if self.is_pattern_impl(idx) {
+            self.pattern_impl_env(idx, ty)?
+        } else {
+            GenEnv::default()
+        };
+        let (got, env) = self.quietly_in(m, offset, env, |l| {
+            (l.resolve_ty(target), std::mem::take(&mut l.gen_env))
+        });
+        (got == *ty).then_some(env)
+    }
+
     /// The args `ty`'s impl of the trait `name` gives it: `Arr<E>`, with
     /// `impl<D: Domain> Versioned<D, Int> for Arr<D>`, gives `[E, Int]`.
     /// The bound's args that `env` already fixes: `T` in `A: Acts<T, F>` once `xs` gave it.
-    fn known_trait_args(&mut self, args: &[ast::Type], m: ModId, env: &GenEnv) -> Vec<Option<Ty>> {
+    fn known_trait_args(
+        &mut self,
+        args: &[ast::Type],
+        m: ModId,
+        open: &[String],
+        env: &GenEnv,
+    ) -> Vec<Option<Ty>> {
         args.iter()
             .map(|a| {
-                let fixed = self.impl_params(m, a).iter().all(|n| env.contains_key(n));
-                fixed.then(|| {
-                    let saved = (
-                        std::mem::replace(&mut self.cur_mod, m),
-                        std::mem::replace(&mut self.gen_env, env.clone()),
-                    );
-                    let ty = self.resolve_ty(a);
-                    (self.cur_mod, self.gen_env) = saved;
-                    ty
-                })
+                let fixed = self.impl_params(m, a).iter().all(|n| env.contains_key(n))
+                    && !open.iter().any(|n| mono::ty_mentions(a, n));
+                fixed.then(|| self.quietly_in(m, self.offset, env.clone(), |l| l.resolve_ty(a)))
             })
             .collect()
     }
@@ -165,39 +227,20 @@ impl<'a> Lowerer<'a> {
         name: &str,
         known: &[Option<Ty>],
     ) -> Option<(Vec<Ty>, GenEnv)> {
-        let Ty::Struct(sid) = *ty else {
-            return None;
-        };
         for idx in 0..self.impls.len() {
             if self.impls[idx].trait_name.as_deref() != Some(name) {
                 continue;
             }
-            let Some(mut env) = self.struct_impl_env(idx, sid) else {
+            let key = (idx, ty.clone());
+            if self.growth.impl_args.contains(&key) {
                 continue;
-            };
-            let (m, offset) = (self.impls[idx].mod_id, self.impls[idx].offset);
-            let trait_args = self.impls[idx].trait_args.clone();
-            let open = self.open_impl_params(idx, &env);
-            for (t, k) in trait_args.iter().zip(known) {
-                if let Some(k) = k {
-                    self.unify_ast_ty(t, k, m, &open, &mut env);
-                }
             }
-            if open.iter().any(|n| !env.contains_key(n)) {
-                return None;
+            self.growth.impl_args.push(key);
+            let got = self.impl_trait_args_at(idx, ty, known);
+            self.growth.impl_args.pop();
+            if let Some(got) = got {
+                return got;
             }
-            let opened: GenEnv = open
-                .iter()
-                .map(|n| (format!("impl{idx}.{n}"), env[n].clone()))
-                .collect();
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-                std::mem::replace(&mut self.gen_env, env),
-            );
-            let out = trait_args.iter().map(|t| self.resolve_ty(t)).collect();
-            (self.cur_mod, self.offset, self.gen_env) = saved;
-            return Some((out, opened));
         }
         None
     }
@@ -215,6 +258,38 @@ impl<'a> Lowerer<'a> {
             env.insert(n, arg);
         }
         Some(env)
+    }
+
+    /// [`Self::impl_trait_args`] through impl `idx`: `None` when it is not for `ty`.
+    fn impl_trait_args_at(
+        &mut self,
+        idx: usize,
+        ty: &Ty,
+        known: &[Option<Ty>],
+    ) -> Option<Option<TraitArgs>> {
+        let mut env = self.impl_env(idx, ty)?;
+        let (m, offset) = (self.impls[idx].mod_id, self.impls[idx].offset);
+        if !self.bind_impl_bounds(self.impls[idx].bounds, m, &mut env) {
+            return None;
+        }
+        let trait_args = self.impls[idx].trait_args.clone();
+        let open = self.open_impl_params(idx, &env);
+        for (t, k) in trait_args.iter().zip(known) {
+            if let Some(k) = k {
+                self.unify_ast_ty(t, k, m, &open, &mut env);
+            }
+        }
+        if open.iter().any(|n| !env.contains_key(n)) {
+            return Some(None);
+        }
+        let opened: GenEnv = open
+            .iter()
+            .map(|n| (format!("impl{idx}.{n}"), env[n].clone()))
+            .collect();
+        let out = self.quietly_in(m, offset, env, |l| {
+            trait_args.iter().map(|t| l.resolve_ty(t)).collect()
+        });
+        Some(Some((out, opened)))
     }
 
     /// `act.tag0()` on a `Plus` the enclosing fn bound as `A: Acts<T, F>`:

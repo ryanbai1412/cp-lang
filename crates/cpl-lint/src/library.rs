@@ -7,7 +7,7 @@ use crate::walk::Visitor;
 use crate::{File, Finding, Group, Level, Lint};
 use cpl_check::Analysis;
 use cpl_diag::{Code, Span};
-use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind, Type};
+use cpl_syntax::ast::{Cond, Expr, ExprKind, Stmt, StmtKind, Type};
 use cpl_syntax::library_lint::{self, is_name, Bound, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
 use std::collections::HashMap;
@@ -40,6 +40,11 @@ pub(crate) struct Declared {
     /// Names `from` declares with a written type and `to` declares again
     /// without one: the fix may change their type.
     rebinds: Vec<String>,
+    /// `reads:`: the read `from`'s name has later, and what the fix writes
+    /// for each.
+    reads: Option<(Vec<(K, String)>, String)>,
+    /// Per name `to` declares, the holes its initializer uses.
+    inits: Vec<(String, Vec<String>)>,
     /// The module's public names `to` uses, each as the linted file spells
     /// it (`sq` -> `geo.sq` under `use mylib.geo`).
     spell: Vec<(String, String)>,
@@ -117,6 +122,22 @@ fn declare(
     let rebinds = (declared_in(&from, true).into_iter())
         .filter(|n| to_names.contains(n))
         .collect();
+    let reads = (decl.reads.split_once("->"))
+        .and_then(|(r, w)| Some((library_lint::code(r.trim())?, w.trim().to_string())));
+    let (to_run, to_ends) = library_lint::run(&decl.to).unwrap_or_default();
+    let mut inits = Vec::new();
+    let mut start = 0;
+    for end in to_ends {
+        let stmt = &to_run[std::mem::replace(&mut start, end)..end];
+        if let ([(K::Let | K::Var, _), (K::Ident, n), ..], Some(eq)) =
+            (stmt, stmt.iter().position(|t| t.0 == K::Eq))
+        {
+            let hs = (stmt[eq + 1..].iter())
+                .filter(|t| decl.holes.contains(&t.1))
+                .map(|t| t.1.clone());
+            inits.push((n.clone(), hs.collect()));
+        }
+    }
     let mut also = Vec::new();
     for line in decl.also.lines().filter(|l| !l.trim().is_empty()) {
         also.push(library_lint::code(line)?);
@@ -130,6 +151,8 @@ fn declare(
         labels,
         receiver,
         rebinds,
+        reads,
+        inits,
         decl,
         module: module.to_string(),
         from,
@@ -286,6 +309,9 @@ struct Spans {
     /// keeps out of the program's own fn of its fn's name, which the fix
     /// would make call itself.
     fns: Vec<(String, Span)>,
+    /// Each branch of an `if` with an `elif` or `else`: where its test
+    /// starts and its body ends. A branch matches an `if` from alone.
+    branches: Vec<(u32, u32)>,
 }
 
 impl Visitor for Spans {
@@ -305,6 +331,25 @@ impl Visitor for Spans {
         }
         if let ExprKind::Keep { target, .. } = &expr.kind {
             self.places.push(target.span.shift(self.base).start);
+        }
+        if let ExprKind::If {
+            branches,
+            otherwise,
+        } = &expr.kind
+        {
+            for (cond, body) in branches
+                .iter()
+                .filter(|_| branches.len() > 1 || otherwise.is_some())
+            {
+                let test = match cond {
+                    Cond::Expr(e) | Cond::Const(e) | Cond::Guard { test: e, .. } => e.span,
+                    Cond::Let { pat, .. } => pat.span,
+                };
+                if let Some(last) = body.stmts.last() {
+                    (self.branches)
+                        .push((test.shift(self.base).start, last.span.shift(self.base).end));
+                }
+            }
         }
     }
     fn ty(&mut self, ty: &Type) {
@@ -396,7 +441,17 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     file.walk(&mut spans, |s, base| s.base = base);
     (spans.blocks).push(file.top_level().map(|(b, s)| s.span.shift(b)).collect());
     // A statement's span can run past its last token (a block's newline).
-    let before = |at: u32| toks.partition_point(|t| t.span.start < at);
+    // How many tokens start before each offset, looked up once per site and lint.
+    let mut starting_before = Vec::with_capacity(file.src.len() + 1);
+    for at in 0..=file.src.len() as u32 {
+        let seen = starting_before.last().copied().unwrap_or(0);
+        let more = toks[seen..]
+            .iter()
+            .take_while(|t| t.span.start < at)
+            .count();
+        starting_before.push(seen + more);
+    }
+    let before = |at: u32| starting_before[(at as usize).min(file.src.len())];
     let mut ends: HashMap<u32, Vec<u32>> = HashMap::new();
     for e in (spans.exprs.iter()).chain(&spans.types).chain(&spans.pats) {
         ends.entry(e.start).or_default().push(e.end);
@@ -417,6 +472,15 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         (c.0 as u64) << 32 | (u32::MAX as usize - c.1) as u64
     });
     candidates.dedup_by_key(|c| (c.0, c.1));
+    // An `if` branch from its keyword: an `elif` matches `from`'s `if`.
+    let branches: Vec<Span> = (spans.branches.iter())
+        .filter_map(|&(test, end)| {
+            let kw = (0..before(test))
+                .rev()
+                .find(|&i| matches!(kinds.get(i), Some(K::If | K::Elif)))?;
+            Some(Span::new(toks[kw].span.start, end))
+        })
+        .collect();
     let tok_range = |s: &Span| {
         let (start, stop) = (before(s.start), before(s.end));
         (start < stop).then_some((start, stop))
@@ -499,6 +563,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             1 => {
                 let mut one: Vec<Vec<Span>> = (candidates.iter().map(|c| c.2))
                     .chain(spans.blocks.iter().flatten().copied())
+                    .chain(branches.iter().copied())
                     .map(|s| vec![s])
                     .collect();
                 cpl_diag::sort_by_key(&mut one, |r| r[0].order());
@@ -514,7 +579,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 runs
             }
         };
-        let plain = vec![false; d.also.iter().fold(0, |n, p| n.max(p.len()))];
+        let reads = d.reads.iter().map(|r| &r.0);
+        let plain = vec![false; d.also.iter().chain(reads).fold(0, |n, p| n.max(p.len()))];
         let taken = taken.entry((&d.decl.name, d.decl.item)).or_default();
         // A hole whose parameter is written as a scalar type matches only
         // code of that type, where the checker's types are at hand.
@@ -573,38 +639,62 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             if !used {
                 continue;
             }
-            // A method's lint another type's method also declares holds
-            // only on its own type's values (a rewrite's text, untyped,
-            // keeps it).
-            let shared = |ty: &String| {
-                (declared.iter()).any(|o| {
-                    o.lint.code == d.lint.code && o.decl.receiver.as_ref().is_some_and(|r| r != ty)
-                })
+            // A method's lint another type's method also declares does not
+            // hold on that type's values, which its own lint covers (any
+            // other value, typed or not, keeps it).
+            let others: Vec<&str> = (declared.iter())
+                .filter(|o| o.lint.code == d.lint.code && o.decl.receiver != d.decl.receiver)
+                .filter_map(|o| o.decl.receiver.as_deref())
+                .collect();
+            let at = d
+                .decl
+                .holes
+                .iter()
+                .position(|h| h == "self")
+                .and_then(|i| holes[i]);
+            let place = |(a, b): (usize, usize)| {
+                let at = Span::new(toks[a].span.start, toks[b - 1].span.end);
+                file.facts.and_then(|f| f.place_type(at))
             };
-            let receiver =
-                (d.decl.receiver.as_ref()).filter(|ty| file.facts.is_some() && shared(ty));
-            let receiver = receiver.and_then(|ty| {
-                let at = d.decl.holes.iter().position(|h| h == "self");
-                let (a, b) = at.and_then(|i| holes[i])?;
-                Some((Span::new(toks[a].span.start, toks[b - 1].span.end), ty))
-            });
-            let place = |at: Span| file.facts.and_then(|f| f.place_type(at));
-            if receiver.is_some_and(|(at, ty)| !place(at).is_some_and(|t| t.is_one_of(&[ty]))) {
+            if d.decl.receiver.is_some() && at.and_then(place).is_some_and(|t| t.is_one_of(&others))
+            {
                 continue;
             }
             let first = before(span.start);
             let commented = (first..stop - 1).any(|i| {
                 file.src[toks[i].span.end as usize..toks[i + 1].span.start as usize].contains("//")
             });
-            let got: HashMap<&str, &str> = (d.decl.holes.iter().zip(&holes))
-                .filter_map(|(h, run)| {
-                    let (a, b) = (*run)?;
-                    Some((
-                        h.as_str(),
-                        &file.src[toks[a].span.start as usize..toks[b - 1].span.end as usize],
-                    ))
+            // `to`'s `let p = ..` can't use code that reads `p`: that `p`
+            // is not declared yet.
+            let named = |n: &str| {
+                let hole = d.decl.holes.iter().position(|h| h == n);
+                match hole.and_then(|h| holes[h]) {
+                    Some((a, b)) => Some(text[a..b].concat()),
+                    None => names.iter().find(|u| u.0 == n).map(|u| u.1.clone()),
+                }
+            };
+            let reads_own = d.inits.iter().any(|(n, hs)| {
+                named(n).is_some_and(|user| {
+                    (hs.iter()
+                        .filter_map(|h| holes[d.decl.holes.iter().position(|x| x == h)?]))
+                    .any(|(a, b)| (a..b).any(|j| kinds[j] == K::Ident && text[j] == user))
                 })
-                .collect();
+            });
+            if reads_own {
+                continue;
+            }
+            let got_of = |holes: &[Option<(usize, usize)>]| -> HashMap<&str, &str> {
+                (d.decl.holes.iter().zip(holes))
+                    .filter_map(|(h, run)| {
+                        let (a, b) = (*run)?;
+                        Some((
+                            h.as_str(),
+                            &file.src[toks[a].span.start as usize..toks[b - 1].span.end as usize],
+                        ))
+                    })
+                    .collect()
+            };
+            let got = got_of(&holes);
             let column = |at: u32| {
                 let line = file.src[..at as usize].rfind('\n').map_or(0, |i| i + 1);
                 (line, at as usize - line)
@@ -621,6 +711,10 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 .take_while(|c| *c == ' ' || *c == '\t')
                 .collect();
             let fix = fill(&d.decl.to, &got, &names, &d.spell, &indent, &stmts);
+            let fix = match kinds.get(before(span.start)) {
+                Some(K::Elif) => format!("el{fix}"),
+                _ => fix,
+            };
             let subject = (to.iter().zip(&to_labels))
                 .filter(|(_, label)| !**label)
                 .map(|(t, _)| &d.decl.to[t.span.start as usize..t.span.end as usize])
@@ -661,6 +755,44 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 format!("use `{}`", d.decl.suggests)
             };
             fixed.fix(fix_title, span, fix);
+            // `reads:` rewrites every later use of the name; one that is no
+            // such read (a write, `p.len`) leaves the code unfixed.
+            let reads = d.reads.as_ref().map(|(pat, write)| {
+                let m = Matcher {
+                    repeated: vec![false; d.decl.holes.len()],
+                    ..matcher(pat, &plain[..pat.len()], &plain[..pat.len()])
+                };
+                let (_, user) = (pat.iter()).find_map(|(_, t)| names.iter().find(|n| n.0 == *t))?;
+                let last = site[site.len() - 1];
+                let end = block_end(&spans.blocks, last);
+                let mut edits: Vec<(Span, String)> = Vec::new();
+                for j in (0..toks.len()).filter(|&j| {
+                    toks[j].span.start >= last.end
+                        && toks[j].span.end <= end
+                        && kinds[j] == K::Ident
+                        && text[j] == user
+                        && (j == 0 || kinds[j - 1] != K::Dot)
+                }) {
+                    if edits.last().is_some_and(|e| e.0.end > toks[j].span.start) {
+                        return None;
+                    }
+                    let (mut h, mut n) = (holes.clone(), names.clone());
+                    let c = candidates.iter().find(|c| {
+                        (h, n) = (holes.clone(), names.clone());
+                        c.0 == j && m.go(0, c.0, c.1, &mut h, &mut n)
+                    })?;
+                    edits.push((
+                        c.2,
+                        fill(write, &got_of(&h), &n, &d.spell, "", &HashMap::new()),
+                    ));
+                }
+                Some(edits)
+            });
+            match reads {
+                Some(None) => fixed = diag.clone(),
+                Some(Some(edits)) => fixed.fixes[0].edits.extend(edits),
+                None => {}
+            }
             if !d.rebinds.is_empty()
                 && !rebinding_holds(
                     file.src,
@@ -699,11 +831,7 @@ fn rebinding_holds(
     diag: &cpl_diag::Diagnostic,
 ) -> bool {
     let last = site[site.len() - 1];
-    let end = (blocks.iter())
-        .filter(|b| b.contains(&last))
-        .filter_map(|b| b.last().map(|s| s.end))
-        .max()
-        .unwrap_or(last.end);
+    let end = block_end(blocks, last);
     let text = |t: &Token| &src[t.span.start as usize..t.span.end as usize];
     let rest: Vec<&Token> = (toks.iter())
         .filter(|t| t.span.start >= last.end && t.span.end <= end)
@@ -721,6 +849,15 @@ fn rebinding_holds(
             })
         });
     !whole && crate::recheck::fix_keeps_verdict(src, diag)
+}
+
+/// Where the block holding `stmt` ends.
+fn block_end(blocks: &[Vec<Span>], stmt: Span) -> u32 {
+    (blocks.iter())
+        .filter(|b| b.contains(&stmt))
+        .filter_map(|b| b.last().map(|s| s.end))
+        .max()
+        .unwrap_or(stmt.end)
 }
 
 struct Matcher<'a> {
@@ -806,7 +943,9 @@ impl Matcher<'_> {
                 return false;
             }
         }
-        self.kinds[j] == *kind && self.text[j] == text && self.go(p + 1, j + 1, stop, holes, names)
+        let elif = p == 0 && *kind == K::If && self.kinds[j] == K::Elif;
+        (elif || (self.kinds[j] == *kind && self.text[j] == text))
+            && self.go(p + 1, j + 1, stop, holes, names)
     }
 
     /// The ends of the expressions, types and binding patterns starting at
@@ -972,7 +1111,11 @@ fn fill(
             let delimited = ((labelled
                 || matches!(before, Some(K::LParen | K::LBracket | K::Comma) | None))
                 && matches!(after, Some(K::RParen | K::RBracket | K::Comma) | None))
-                || (before == Some(K::Eq) && after.is_none());
+                || (before == Some(K::Eq) && after.is_none())
+                || (before == Some(K::LBracket)
+                    && after == Some(K::For)
+                    && !clauses(m.trim_matches(['(', ')'])))
+                || (matches!(before, Some(K::If | K::Elif | K::While)) && after == Some(K::Colon));
             let inner = m
                 .strip_prefix('(')
                 .and_then(|m| m.strip_suffix(')'))
@@ -1016,6 +1159,20 @@ fn balanced(s: &str) -> bool {
 }
 
 /// No operator outside brackets: `xs[i].len`, `f(a + b)`, `3`.
+/// Whether `src` has a `for`, `if` or `=>` outside brackets, which would
+/// run on into a comprehension's `for` (`[e for i in r]`).
+fn clauses(src: &str) -> bool {
+    let mut depth = 0;
+    library_lint::tokens(src).iter().any(|t| {
+        match t.kind {
+            K::LParen | K::LBracket => depth += 1,
+            K::RParen | K::RBracket => depth -= 1,
+            _ => {}
+        }
+        depth == 0 && matches!(t.kind, K::For | K::If | K::FatArrow)
+    })
+}
+
 fn atomic(src: &str) -> bool {
     let mut depth = 0;
     library_lint::tokens(src).iter().all(|t| {

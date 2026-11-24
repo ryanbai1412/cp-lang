@@ -12,12 +12,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     ) -> Res<Flow> {
         let base = self.base;
         let span = match iter {
-            Iter::Walk { .. } => {
-                return trap(
-                    Span::default(),
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
             Iter::Range { lo: e, .. }
             | Iter::RangeVal(e, _)
             | Iter::Seq(e, _)
@@ -47,9 +41,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         };
         match iter {
-            Iter::Walk { .. } => {
-                return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]))
-            }
             Iter::Range {
                 lo,
                 hi,
@@ -172,7 +163,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (ExprKind::Call(callee, args), Some((_, acc))) =
                     (&seq.kind, self.is_fed(id, seq, body))
                 else {
-                    return trap(seq.span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+                    return Err(interp_failed(seq.span));
                 };
                 let fed = Fed {
                     callee: 0,
@@ -203,13 +194,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// The items a `for` loop over sequence `held` walks, in order: a
     /// string's are its chars, a map's its `(key, value)` pairs.
     pub(crate) fn seq_items(&self, held: &Value, span: Span) -> Res<Vec<Value>> {
+        if let Some(cells) = held.cells() {
+            return Ok(cells.to_values());
+        }
         Ok(match held {
-            Value::List(xs) => xs.iter().collect(),
             Value::ListView(v) => (0..v.len)
                 .map(|k| v.base.get_unchecked_val(v.pos(k)))
                 .collect(),
             Value::MutView(mv) => self.mut_view_to_vec(mv, span)?,
-            Value::Array(a) => (0..a.len()).map(|k| a.get_unchecked_val(k)).collect(),
             Value::Str(bytes) => bytes.iter().map(|&c| Value::Char(c)).collect(),
             Value::StrView(v) => (0..v.len).map(|k| Value::Char(v.base[v.pos(k)])).collect(),
             Value::Set(items) => items.iter().cloned().collect(),
@@ -217,8 +209,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
                 .collect(),
             Value::Range(lo, hi) => (*lo..*hi).map(Value::Int).collect(),
-            Value::Range128(r) => (r.0..r.1).map(|v| Value::I128(v.into())).collect(),
-            _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+            Value::Range128(r) => (r.0..r.1).map(|v| r.2.item(v)).collect(),
+            _ => return Err(interp_failed(span)),
         })
     }
 
@@ -255,7 +247,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Value::Map(entries) => (entries.range(lo, hi, &mut cmp)?)
                 .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
                 .collect(),
-            _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+            _ => return Err(interp_failed(span)),
         })
     }
 }

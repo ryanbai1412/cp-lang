@@ -1155,9 +1155,9 @@ impl<'a> Lowerer<'a> {
                     self.map_proj_head(iter)
                 };
                 let (iter, elem) = match (&cells, &items, &map_proj) {
-                    (Some(cells), _, _) => (cells.range(), Ty::Unit),
-                    (None, Some(items), _) => (items.range(), Ty::Unit),
-                    (None, None, Some(proj)) => (proj.iter(), Ty::Unit),
+                    (Some(cells), _, _) => (cells.range().into(), Ty::Unit),
+                    (None, Some(items), _) => (items.range().into(), Ty::Unit),
+                    (None, None, Some(proj)) => (proj.iter().into(), Ty::Unit),
                     (None, None, None) => self.iter(iter),
                 };
                 let id = self.open_loop(label.as_ref().map(|l| l.text.clone()));
@@ -1174,7 +1174,9 @@ impl<'a> Lowerer<'a> {
                 };
                 // An element of a range-typed list keeps its range, so storing it back
                 // into a cell of that range needs no check.
-                if let (ast::PatternKind::Name(_), Iter::Seq(seq, _)) = (&pat.kind, &iter) {
+                if let (ast::PatternKind::Name(_), Head::Iter(Iter::Seq(seq, _))) =
+                    (&pat.kind, &iter)
+                {
                     if let Some(RangeInfo::Elem(inner)) = self.expr_range(seq) {
                         self.cx.local_ranges.insert(slot, *inner);
                     }
@@ -1198,8 +1200,11 @@ impl<'a> Lowerer<'a> {
                 self.cx.local_syms.pop();
                 self.cx.scopes.pop();
                 self.cx.loops.pop();
-                let iter = loops::hoist_call_args(iter, out);
-                out.push(Stmt::For(id, slot, iter, Block { stmts }));
+                let iter = match iter {
+                    Head::Iter(iter) => Head::Iter(loops::hoist_call_args(iter, out)),
+                    walk => walk,
+                };
+                self.push_for(out, id, slot, iter, Block { stmts });
                 self.end_loop_else(id, else_flag, else_body.as_ref(), out);
             }
             ast::StmtKind::Return(value) => {

@@ -141,3 +141,31 @@ pub(crate) fn jumps_out(block: &Block) -> bool {
     });
     found
 }
+
+/// An innermost loop that walks a grid's last axis, `c[i, l] max= a + b[j, l]` in `for l`.
+/// Each cell's address is its own base plus `l`, and at -O2 g++ steps one pointer per grid
+/// or an index plus a compare, by register pressure elsewhere in the function: a round of
+/// about 8 uops then takes 2 or 3 cycles. Two cells a round take one loop's overhead
+/// between them, as a row of `List<List<Int>>` does in hand C++. An AVX2 judge unrolls already.
+pub(crate) fn sweeps_grid_row(slot: usize, body: &Block) -> bool {
+    let row = |ty: &cpl_ir::Ty, at: &[Expr]| {
+        matches!(ty, cpl_ir::Ty::Array { dims, .. } if dims.len() > 1)
+            && matches!(at.last().map(|e| &e.kind), Some(ExprKind::Local(s)) if *s == slot)
+    };
+    let (mut nested, mut sweeps) = (false, false);
+    walk::deep_stmts(body, &mut |stmt| match stmt {
+        Stmt::For(..) | Stmt::While(..) => nested = true,
+        Stmt::Assign(place, ..) => {
+            if let cpl_ir::PlaceKind::Index(base, at) = &place.kind {
+                sweeps |= row(&base.ty, at);
+            }
+        }
+        _ => {}
+    });
+    walk::deep_exprs(body, &mut |e| {
+        if let ExprKind::Index(base, at) = &e.kind {
+            sweeps |= row(&base.ty, at);
+        }
+    });
+    sweeps && !nested
+}

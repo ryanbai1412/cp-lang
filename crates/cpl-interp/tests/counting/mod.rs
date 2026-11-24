@@ -16,12 +16,17 @@ thread_local! {
     /// may free what another allocated.
     static IN_USE: Cell<isize> = const { Cell::new(0) };
     static CALLS: Cell<usize> = const { Cell::new(0) };
+    /// Bytes this thread allocated, never less what it freed.
+    static ALLOCATED: Cell<usize> = const { Cell::new(0) };
 }
 
 /// Adds to this thread's counts; a thread being torn down has none left.
 fn count(bytes: isize, calls: usize) {
     let _ = IN_USE.try_with(|n| n.set(n.get().wrapping_add(bytes)));
     let _ = CALLS.try_with(|n| n.set(n.get() + calls));
+    if bytes > 0 {
+        let _ = ALLOCATED.try_with(|n| n.set(n.get() + bytes as usize));
+    }
 }
 
 unsafe impl GlobalAlloc for Counting {
@@ -44,10 +49,14 @@ unsafe impl GlobalAlloc for Counting {
 #[global_allocator]
 static COUNTING: Counting = Counting;
 
-/// The bytes this thread has in use now, and how many allocations (and
-/// reallocations) it made so far.
-fn usage() -> (isize, usize) {
-    (IN_USE.with(Cell::get), CALLS.with(Cell::get))
+/// The bytes this thread has in use now, how many allocations (and
+/// reallocations) it made so far, and the bytes they asked for.
+fn usage() -> (isize, usize, usize) {
+    (
+        IN_USE.with(Cell::get),
+        CALLS.with(Cell::get),
+        ALLOCATED.with(Cell::get),
+    )
 }
 
 /// What a measured closure allocated on this thread.
@@ -56,6 +65,8 @@ pub struct Usage {
     pub held: isize,
     /// Allocations and reallocations it made.
     pub calls: usize,
+    /// Bytes those allocations asked for, freed or not.
+    pub allocated: usize,
 }
 
 /// Runs programs on the measuring thread, the only thread `measure` counts.
@@ -85,9 +96,9 @@ pub fn measure<T>(run: impl FnOnce(&OnThisThread) -> T) -> (T, Usage) {
     let here = OnThisThread {
         ran: Cell::new(false),
     };
-    let (held, calls) = usage();
+    let (held, calls, allocated) = usage();
     let value = run(&here);
-    let (now_held, now_calls) = usage();
+    let (now_held, now_calls, now_allocated) = usage();
     assert!(
         here.ran.get(),
         "measure: no program ran on this thread, and a run on another thread is not counted"
@@ -95,6 +106,7 @@ pub fn measure<T>(run: impl FnOnce(&OnThisThread) -> T) -> (T, Usage) {
     let usage = Usage {
         held: now_held - held,
         calls: now_calls - calls,
+        allocated: now_allocated - allocated,
     };
     (value, usage)
 }
@@ -108,7 +120,7 @@ fn measure_counts_a_run_on_this_thread() {
         measure(|here| here.observe(&program, cpl_interp::Io::fixed(b""), &mut out, None));
     assert!(observed.trap.is_none());
     assert_eq!(out, b"999\n");
-    assert!(usage.calls > 0 && usage.held < 1 << 20);
+    assert!(usage.calls > 0 && usage.allocated > 0 && usage.held < 1 << 20);
 }
 
 /// A closure whose work runs on another thread fails instead of counting 0.
@@ -133,7 +145,7 @@ fn the_counting_allocator_hands_each_call_to_the_system_one() {
             held.len()
         }
     });
-    let (before, calls) = usage();
+    let (before, calls, _) = usage();
     both.wait();
     let mut v: Vec<u64> = (0..1000).collect();
     assert!(usage().0 >= before + 8000);

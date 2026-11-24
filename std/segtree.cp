@@ -256,16 +256,17 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             if w == 0: return
             if leaf or not dual: t[p] = act!.apply(f, t[p], w)
             if not leaf:
-                act!.compose_onto(mut lz[p], f)
-                has_lz[p] = true
+                if has_lz[p]: act!.compose_onto(mut lz[p], f)
+                else:
+                    lz[p] = f
+                    has_lz[p] = true
 
     // Hand node `p`'s pending tag to its children `l` and `r`, holding `wl` and `wr` positions.
     fn push(mut self, p: Int, l: Int, r: Int, wl: Int, wr: Int, leaf: Bool):
         unchecked:
             if not has_lz[p]: return
-            let f = lz[p]
-            lz[p] = act!.id
             has_lz[p] = false
+            let f = lz[p]
             self.put(l, f, wl, leaf)
             self.put(r, f, wr, leaf)
 
@@ -306,31 +307,36 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         if let f = pend: return Some(act!.compose(f, lz[p]))
         Some(lz[p])
 
-    // Walk right from `from` under node `p` (covering `nl..nr`): the first leaf where `ok` fails,
-    // or -1, and the fold so far. Reads pending tags on the way down instead of pushing them.
-    fn right_from(self, p: Int, nl: Int, nr: Int, from: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
-        if nr <= from: return (-1, acc)
+    // Walk right from `from` under node `p` (covering `nl..nr`), folding the leaves `ok` holds on
+    // into `acc` (None before the first): the first leaf where `ok` fails, or -1. Reads pending
+    // tags on the way down instead of pushing them.
+    fn right_from(self, p: Int, nl: Int, nr: Int, from: Int, pend: ?F, mut acc: ?T, ok: T -> Bool) -> Int:
+        if nr <= from: return -1
         if from <= nl:
-            let w = m.op(acc, self.seen(pend, p, nl, nr))
-            if ok(w): return (-1, w)
-            if nr - nl == 1: return (nl, acc)
+            let w = if acc == None: self.seen(pend, p, nl, nr) else: m.op(acc!, self.seen(pend, p, nl, nr))
+            if ok(w):
+                acc = Some(w)
+                return -1
+            if nr - nl == 1: return nl
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
-        let (at, x) = self.right_from(self.kid(p, false), nl, mid, from, down, acc, ok)
-        if at >= 0: return (at, x)
-        self.right_from(self.kid(p, true), mid, nr, from, down, x, ok)
+        let at = self.right_from(self.kid(p, false), nl, mid, from, down, mut acc, ok)
+        if at >= 0: return at
+        self.right_from(self.kid(p, true), mid, nr, from, down, mut acc, ok)
 
-    fn left_from(self, p: Int, nl: Int, nr: Int, to: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
-        if nl >= to: return (-1, acc)
+    fn left_from(self, p: Int, nl: Int, nr: Int, to: Int, pend: ?F, mut acc: ?T, ok: T -> Bool) -> Int:
+        if nl >= to: return -1
         if nr <= to:
-            let w = m.op(self.seen(pend, p, nl, nr), acc)
-            if ok(w): return (-1, w)
-            if nr - nl == 1: return (nr, acc)
+            let w = if acc == None: self.seen(pend, p, nl, nr) else: m.op(self.seen(pend, p, nl, nr), acc!)
+            if ok(w):
+                acc = Some(w)
+                return -1
+            if nr - nl == 1: return nr
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
-        let (at, x) = self.left_from(self.kid(p, true), mid, nr, to, down, acc, ok)
-        if at >= 0: return (at, x)
-        self.left_from(self.kid(p, false), nl, mid, to, down, x, ok)
+        let at = self.left_from(self.kid(p, true), mid, nr, to, down, mut acc, ok)
+        if at >= 0: return at
+        self.left_from(self.kid(p, false), nl, mid, to, down, mut acc, ok)
 
     // `x`, folded over `n` leaves under node `p`, with the tags of `p`'s ancestors applied.
     fn lift(self, x: T, n: Int, p: Int) -> T:
@@ -350,7 +356,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f`
     /// applied, through the action given to `act:`.
     ///
-    /// cost: \(O(\log \lvert D \rvert)\)
+    /// cost: \(O(\log \lvert D \rvert)\) tag puts; a put is one `compose_in` (else `compose`) on a
+    /// node that holds a tag and one copy of the tag onto a node that holds none
     /// empty: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..1, 10); s.all == 6`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(0..2, 10); s.all == 26`
@@ -406,21 +413,30 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..3, 1); s.fold(1..3) == 7`
     pub fn fold(self, r: Range<D>) -> T:
         let (lo, hi) = r.ends
+        if lc.len > 0 or act != None: return self.fold_tagged(lo, hi)
+        self.fold_leaves(lo + size, hi + size)
+
+    // Without tags or a dynamic tree, a fold is this one loop, short enough for g++ to inline
+    // into the caller's query loop the way a hand-written segment tree's is.
+    fn fold_leaves(self, lo: Int, hi: Int) -> T:
+        var (l, h) = (lo, hi)
+        var (a, b) = (m.id, m.id)
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    a = m.op(a, t[l])
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    b = m.op(t[h], b)
+                l /= 2
+                h /= 2
+        m.op(a, b)
+
+    fn fold_tagged(self, lo: Int, hi: Int) -> T:
         if lc.len > 0: return if lo < hi: self.fold_at(1, 0, size, self.slot(lo), self.slot(hi - 1) + 1, None) else: m.id
         var (l, h) = (lo + size, hi + size)
         var (a, b) = (m.id, m.id)
-        if act == None:
-            unchecked:
-                while l < h:
-                    if l % 2 == 1:
-                        a = m.op(a, t[l])
-                        l += 1
-                    if h % 2 == 1:
-                        h -= 1
-                        b = m.op(t[h], b)
-                    l /= 2
-                    h /= 2
-            return m.op(a, b)
         let f = act!
         if let set = f.replaces: return if lo < hi: self.fold_set(1, 0, size, lo, hi, set) else: m.id
         // `a` folds `na` leaves under node `l - 1`, `b` folds `nb` under node `h`; each takes the
@@ -473,7 +489,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         let k = self.count
         let x = from.ord - base
         if x == k: return from
-        let (at, _) = self.right_from(1, 0, size, x, None, m.id, ok)
+        var acc: ?T = None
+        let at = self.right_from(1, 0, size, x, None, mut acc, ok)
         D.cut(base + (if at < 0: k else: at))
 
     /// The first cut `d` at or left of `to` such that `ok(fold(d..to))` holds. `ok` must be
@@ -489,7 +506,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         assert ok(m.id), "`ok` must hold on the identity"
         let x = to.ord - base
         if x == 0: return to
-        let (at, _) = self.left_from(1, 0, size, x, None, m.id, ok)
+        var acc: ?T = None
+        let at = self.left_from(1, 0, size, x, None, mut acc, ok)
         D.cut(base + (if at < 0: 0 else: at))
 
     /// A tree whose position `i` holds `f(i)`. `f` is kept: when something it reads changes,

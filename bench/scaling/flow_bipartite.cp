@@ -35,7 +35,7 @@ for _ in 0..8 * n:
     s += Int(mm.is_empty) // timed: flow.Matching.is_empty
 for _ in 0..1024:
     for (l, r) in mm.items: s += r.ord // timed: flow.Matching.items
-for _ in 0..16:
+for _ in 0..32:
     s += max_weight_matching((l: L, r: R) => (l.ord * 7919 + r.ord * 31) % 1009).total // timed: flow.max_weight_matching
 s += min_weight_matching((l: L, r: R) => (l.ord * 7919 + r.ord * 31) % 1009).total // timed: flow.min_weight_matching
 let bip: [E](l: L, r: R, w: Int) = [E] e => (l: L(e.ord / k), r: R(e.ord % k), w: (e.ord * 7919) % 1009)

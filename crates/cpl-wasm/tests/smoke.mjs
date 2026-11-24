@@ -49,6 +49,19 @@ const provideStd = (module, source) => {
 const DOUBLE = "let n: Int = read()\nprint(n * 2)\n";
 const recurse = (depth) =>
   `fn down(n: Int) -> Int:\n    if n == 0:\n        return 0\n    down(n - 1) + 1\nprint(down(${depth}))\n`;
+// A walk `n` calls deep through a closure that holds `count` by reference.
+const capturing = (n) => `fn walk(n: Int) -> Int:
+    var count = 0
+    fn visit(u: Int):
+        count += 1
+        if u < n:
+            if count > 0:
+                visit(u + 1)
+    visit(1)
+    count
+print("searching")
+print(walk(${n}))
+`;
 // A depth-first search down a path of `n` nodes, with the call a few
 // statements deep, so that each call takes more of the engine's stack.
 const search = (n) => `let n: 1..=100000 = ${n}
@@ -317,8 +330,9 @@ test("lsp is the language server without the stdio framing", () => {
 });
 
 test("recursion a browser's stack can hold runs", () => {
-  assert.equal(cpl.run(recurse(300)).stdout, "300\n");
-  assert.equal(cpl.run(search(100)).stdout, "searching\n100\n");
+  // VM calls run on heap frames, so they nest as deep as on a judge.
+  assert.equal(cpl.run(recurse(300_000)).stdout, "300000\n");
+  assert.equal(cpl.run(search(5000)).stdout, "searching\n5000\n");
 });
 
 test("twenty million loop rounds finish inside the run limit", () => {
@@ -336,17 +350,18 @@ test("recursion that never ends is a diagnostic, not a crash", () => {
 });
 
 test("recursion too deep for the engine's stack is that diagnostic too", () => {
-  // Each call here is heavy enough that the engine's stack fills before the
-  // module's limit on the stack calls take: the run is tried again under a
-  // lower one.
-  const source = search(5000);
-  const run = cpl.run(source);
+  // A closure capturing a variable by reference is called by the
+  // tree-walker, on the engine's stack, which fills before the module's
+  // limit on the stack calls take: the run is tried again under a lower one.
+  const source = capturing(5000);
+  provideStd(core, source);
+  const run = core.run(source);
   assert.deepEqual([run.exitCode, run.stdout], [3, "searching\n"]);
   const [failure] = run.diagnostics;
-  assert.equal(failure.message, "the stack ran out: `visit` never stops calling itself?");
-  assert.equal(source.slice(failure.start, failure.end), "visit(v)");
+  assert.equal(failure.message, "the stack ran out: a closure never stops calling itself?");
+  assert.equal(source.slice(failure.start, failure.end), "visit(u + 1)");
   assert.ok(run.maxStack >= 16 << 10 && run.maxStack < 3 << 20, `stopped at ${run.maxStack}`);
-  assert.equal(cpl.run(DOUBLE, "21").stdout, "42\n");
+  assert.equal(core.run(DOUBLE, "21").stdout, "42\n");
 });
 
 test("a trap is a CplError, and the next call starts clean", () => {

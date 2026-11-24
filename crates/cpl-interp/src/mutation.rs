@@ -106,12 +106,10 @@ pub(crate) fn mutate_cell(
             Rc::make_mut(bytes).clear();
             Value::Unit
         }
-        (Mutation::Reverse, Value::List(items)) => {
-            Rc::make_mut(items).reverse();
-            Value::Unit
-        }
-        (Mutation::Reverse, Value::Array(arr)) => {
-            Rc::make_mut(arr).reverse();
+        (Mutation::Reverse, cells @ (Value::List(_) | Value::Array(_))) => {
+            if let Some(cells) = cells.cells_mut() {
+                cells.reverse();
+            }
             Value::Unit
         }
         (Mutation::Reverse, Value::Str(bytes)) => {
@@ -267,21 +265,17 @@ pub(crate) fn mutate_cell(
         (Mutation::Extend, Value::List(items)) => {
             let v = Rc::make_mut(items);
             match arg {
-                Value::List(other) => v.extend(other.iter()),
-                Value::Array(arr) => v.extend((0..arr.len()).map(|i| arr.get_unchecked_val(i))),
+                _ if let Some(cells) = arg.cells() => v.extend(cells.iter()),
                 Value::Str(bytes) => v.extend(bytes.iter().copied().map(Value::Char)),
                 Value::Set(set) => v.extend(set.iter().cloned()),
                 _ => {}
             }
             Value::Unit
         }
-        (Mutation::Fill, Value::Array(arr)) => {
-            let a = Rc::make_mut(arr);
-            a.fill(arg);
-            Value::Unit
-        }
-        (Mutation::Fill, Value::List(items)) => {
-            Rc::make_mut(items).fill(arg);
+        (Mutation::Fill, cells @ (Value::List(_) | Value::Array(_))) => {
+            if let Some(cells) = cells.cells_mut() {
+                cells.fill(arg);
+            }
             Value::Unit
         }
         (Mutation::Fill, Value::Str(bytes)) => {

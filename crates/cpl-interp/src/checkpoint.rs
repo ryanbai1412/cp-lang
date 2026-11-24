@@ -1233,11 +1233,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 /// The top-level chunk at `chunk`: what is above `@!multitest` when it is
 /// that, else the file's top-level code.
 fn top_of<'c, 'p>(compiled: &'c CompiledProgram<'p>, chunk: *const ()) -> (&'c Chunk<'p>, Body) {
-    match &compiled.setup {
-        Some(setup) if std::ptr::eq(setup as *const Chunk<'p> as *const (), chunk) => {
-            (setup, Body::Setup)
-        }
-        _ => (&compiled.main, Body::Main),
+    let setup = &compiled.setup;
+    match std::ptr::eq(setup as *const Chunk<'p> as *const (), chunk) {
+        true => (setup, Body::Setup),
+        false => (&compiled.main, Body::Main),
     }
 }
 
@@ -1248,7 +1247,7 @@ pub(crate) fn chunk_of<'c, 'p>(
 ) -> Option<&'c Chunk<'p>> {
     match body {
         Body::Main => Some(&compiled.main),
-        Body::Setup => compiled.setup.as_ref(),
+        Body::Setup => Some(&compiled.setup),
         Body::Fn(id) => compiled.fns[id].as_ref(),
         // A traced program feeds a loop from the fn's own chunk.
         Body::Fed(id) => compiled.fed_fns[id].as_ref().or(compiled.fns[id].as_ref()),
@@ -1426,9 +1425,8 @@ fn loop_top(op: &crate::vm::Op) -> Option<usize> {
 /// How many rounds a `for` over `seq` walks.
 fn seq_len(seq: &Value) -> i64 {
     match seq {
-        Value::List(items) => items.len() as i64,
+        _ if let Some(cells) = seq.cells() => cells.len() as i64,
         Value::ListView(view) => view.len as i64,
-        Value::Array(arr) => arr.len() as i64,
         Value::Str(bytes) => bytes.len() as i64,
         Value::StrView(view) => view.len as i64,
         _ => 0,

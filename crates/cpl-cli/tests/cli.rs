@@ -180,27 +180,29 @@ fn a_read_that_names_a_domain_inside_a_tuple_is_an_error() {
 }
 
 #[test]
-fn a_range_of_u64_is_unsupported_not_a_mismatch() {
+fn a_range_of_u64_runs_up_to_its_greatest_value() {
     let dir = std::env::temp_dir().join(format!("cpl-cli-wide-range-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    for src in [
-        "let r = U64(0)..=U64(3)\nprint(r.len)\n",
-        "let lo = U64(1)\nprint((lo..=U64(10)).first_true(x => x >= U64(3))!)\n",
+    for (src, want) in [
+        ("let r = U64(0)..=U64(3)\nprint(r.len)\n", "4\n"),
+        (
+            "let lo = U64(1)\nprint((lo..=U64(10)).first_true(x => x >= U64(3))!)\n",
+            "3\n",
+        ),
+        (
+            "for x in U64(-2)..=U64(-1): print(x)\n",
+            "18446744073709551614\n18446744073709551615\n",
+        ),
     ] {
         let path = dir.join("wide_range.cp");
         std::fs::write(&path, src).unwrap();
         let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .arg("check")
+            .arg("run")
             .arg(&path)
             .output()
             .expect("cpl runs");
-        assert_eq!(out.status.code(), Some(1));
-        let stderr = String::from_utf8(out.stderr).unwrap();
-        assert!(
-            stderr.contains("can't handle a range of `U64` values"),
-            "{stderr}"
-        );
-        assert!(!stderr.contains("expected `U64`, found `U64`"), "{stderr}");
+        assert_eq!(String::from_utf8_lossy(&out.stdout), want, "{src}");
+        assert_eq!(out.status.code(), Some(0), "{src}");
     }
 }
 
@@ -485,10 +487,8 @@ fn build_drops_the_source_header_before_it_passes_64_kb() {
 
 #[test]
 fn build_refuses_cpp_over_64_kb() {
-    let mut source = String::new();
-    for i in 0..6000 {
-        source += &format!("print({i} + {i})\n");
-    }
+    // One long literal: the C++ is over the limit without checking 6000 lines.
+    let source = format!("print(\"{}\")\n", "x".repeat(70_000));
     let path = scratch("build-big", "big.cp", source.as_bytes());
     let out = cpl(
         &[
@@ -1736,6 +1736,24 @@ fn a_user_library_uses_std_names_in_check_run_and_build() {
 /// cf2178h never reads the `back` witness of `fixed_cost_paths`, a grid
 /// over 4e6 states: the field, its allocation and its stores are left out,
 /// and `cpl explain` says so (decision 178).
+#[test]
+fn explain_lists_each_check_the_loop_bounds_prove() {
+    let port =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/split_cuts.cp");
+    let explained = cpl(
+        &["explain".as_ref(), port.as_os_str(), "--json".as_ref()],
+        b"",
+    );
+    assert!(explained.status.success(), "{explained:?}");
+    let explained = String::from_utf8_lossy(&explained.stdout);
+    let dropped = "\"lowering\":\"check_dropped\",\"detail\":\"an empty range has no cell in `V.ranges`: the bounds of the loops it is in prove it never fails\"";
+    assert_eq!(
+        explained.matches(dropped).count(),
+        2,
+        "both pieces' checks: {explained}"
+    );
+}
+
 #[test]
 fn a_witness_field_nothing_reads_is_left_out_of_the_cpp() {
     let source = "\

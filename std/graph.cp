@@ -53,6 +53,25 @@ pub trait Target<V>:
     /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.to == 1`
     @get fn to(self) -> V = self
 
+impl<V: Domain> Target<V> for V:
+    @get fn to(self) -> V = self
+
+impl<V, R: (to: V, ..)> Target<V> for R:
+    @get fn to(self) -> V = self.to
+
+impl Target<Int> for Int:
+    @get fn to(self) -> Int = self
+
+impl<V: Domain, S: Seq<A>, A: Target<V>> Next<V> for [V]S:
+    type Arc = A
+    fn out(self, u: V) -> yields A:
+        for a in self[u]: yield a
+
+impl<V: Domain, S: Seq<A>, A: Target<V>> Next<V> for V -> S:
+    type Arc = A
+    fn out(self, u: V) -> yields A:
+        for a in self(u): yield a
+
 // A record arc with a `to` field; a plain vertex arc is not one.
 trait ToField<V>:
     @get fn to(self) -> V
@@ -995,7 +1014,7 @@ fn topo_orders_a_dag_and_rejects_a_cycle():
     for (i, v) in [(i, order[i]) for i in 0..order.len]: pos[v] = i
     for u in V:
         for v in out[u]: assert pos[u] < pos[v]
-    assert topo<V>(v => [v.cyc(1)]) == None
+    assert topo<V>(v => [V.wrap(v.ord + 1)]) == None
     let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.ord]]
     assert topo<V>(v => stuck[v]) == None
 

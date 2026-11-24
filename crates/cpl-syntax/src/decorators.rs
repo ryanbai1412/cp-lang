@@ -57,12 +57,20 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "`@word(name)` on a std struct: the lowercase call that builds it",
     ),
     (
+        "member",
+        "`@member(name)` on a std struct: the domain member (`D.name`) whose positions it is",
+    ),
+    (
         "lint",
         "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint",
     ),
     (
         "on_unimplemented",
         "on a trait: the message when a type lacks its impl",
+    ),
+    (
+        "aka",
+        "`@aka(name, ..)` on a fn: other languages' names for it, for their fix",
     ),
     (
         "was",

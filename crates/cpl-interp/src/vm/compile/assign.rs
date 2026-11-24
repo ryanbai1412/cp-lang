@@ -1007,7 +1007,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return None;
         };
         match self.slot_loc(slot) {
-            SlotLoc::I(r, ScalarKind::OneIntStruct) if f == 0 => Some(r),
+            SlotLoc::I(r, ScalarKind::OneIntStruct | ScalarKind::OneU64Struct) if f == 0 => Some(r),
             SlotLoc::SmallTuple { base, len, .. } if f < usize::from(len) => Some(base + f as u16),
             _ => None,
         }
@@ -1435,7 +1435,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let src_v = self.compile_expr_v(inner);
                 let r_some = self.alloc_i();
                 self.emit(
-                    Op::IsSomeV {
+                    Op::IsVariantI {
+                        tag: 1,
                         dst_i: r_some,
                         src_v,
                     },

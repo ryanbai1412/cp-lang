@@ -171,8 +171,71 @@ print(go(b), bump(mut b))
 ");
     // `u` is a size over 4 or `b.free` where it is >= 0, and a literal's
     // walk stays between its least and greatest cell.
-    assert!(!out.contains("check_range(u,"), "{out}");
-    assert!(!out.contains("check_range(v,"), "{out}");
+    for v in ["u", "v"] {
+        assert!(!out.contains(&format!("check_range({v},")), "{out}");
+        assert!(!out.contains(&format!("check_arg({v},")), "{out}");
+    }
     // A store to the field ends its guard.
-    assert!(out.contains("check_range(w,"), "{out}");
+    assert!(out.contains("take(cpl::check_arg(w,"), "{out}");
+}
+
+#[test]
+fn a_min_with_the_range_end_or_a_max_with_its_start_stores_unchecked() {
+    let out = cpp("fn f(n: 1..=100, x: 0..=1000, y: Int) -> Int:
+    domain V = 0..n
+    var c: 0..=V.count = 0
+    c = min(x, V.count)
+    var d: 3..=10 = 3
+    d = max(min(y, 10), 3)
+    var e: 0..=V.count = 0
+    e = min(y, V.count)
+    c + d + e
+print(f(read(), read(), read()))
+");
+    assert!(out.contains("c = std::min<ll>(x, V_0_len);"), "{out}");
+    assert!(
+        out.contains("d = std::max<ll>(std::min<ll>(y, 10), 3);"),
+        "{out}"
+    );
+    // `y` may be negative, below the range's start.
+    assert!(
+        out.contains("e = cpl::check_range(std::min<ll>(y, V_0_len), 0, V_0_len"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_range_typed_array_cell_reads_at_its_declared_range() {
+    let out = cpp("fn f(n: 1..=100, k: Int) -> Int:
+    domain V = 0..n
+    var e: [V]0..=V.count = 0
+    let u = V.first!
+    e[u] = min(e[u] + 1, V.count)
+    var c: 0..=V.count = 0
+    c = e[u]
+    e[u] = e[u] + k
+    c + e[u]
+print(f(read(), read()))
+");
+    assert!(
+        out.contains("e[u] = uint32_t(std::min<ll>(ll(e[u]) + 1, V_0_len));"),
+        "{out}"
+    );
+    assert!(out.contains("c = ll(e[u]);"), "{out}");
+    // `k` may take the cell out of its range.
+    assert!(
+        out.contains("check_range(cpl::iadd(ll(e[u]), k), 0, V_0_len"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_call_takes_its_checked_return_range() {
+    let out = cpp("type Len = 0..2_147_483_648
+fn f(x: Int) -> Len = x
+fn g(x: Int) -> Int = x
+print(f(read<Int>()) + 63, g(read<Int>()) + 63)
+");
+    assert!(!out.contains("cpl::iadd(f("), "{out}");
+    assert!(out.contains("cpl::iadd(g("), "{out}");
 }

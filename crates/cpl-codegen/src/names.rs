@@ -257,6 +257,10 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
                 format!("cpl::Range<{}>", crate::width::pos_cpp(program, d))
             }
             Ty::I128 => "cpl::Range<__int128>".into(),
+            ref elem @ Ty::U64 => format!(
+                "cpl::Range<cpl::u64, {}>",
+                wider_range_ends(elem).unwrap_or("__int128")
+            ),
             Ty::Float => "cpl::Range<double>".into(),
             _ => "cpl::Range<ll>".into(),
         },
@@ -590,4 +594,10 @@ pub(crate) fn fixed_len(program: &Program, dim: &cpl_ir::Dim) -> Option<u32> {
         cpl_ir::Dim::Pos(d) => program.fixed_lens.get(*d).copied().flatten(),
         _ => None,
     }
+}
+
+/// The C++ type a range of `elem` holds its ends in when it is wider than
+/// `elem`: a `U64` range's ends are `I128`s, so `..= U64.MAX` has an end.
+pub(crate) fn wider_range_ends(elem: &Ty) -> Option<&'static str> {
+    matches!(elem, Ty::U64).then_some("__int128")
 }

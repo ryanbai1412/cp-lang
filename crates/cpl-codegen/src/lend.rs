@@ -69,55 +69,37 @@ fn whole_reads_by(
     by_ref: &dyn Fn(usize, usize) -> bool,
 ) -> std::collections::BTreeSet<usize> {
     let (mut uses, mut parts) = (Vec::new(), Vec::new());
+    crate::uses::places::each_local(block, &mut |s| uses.push(s));
+    crate::uses::places::each_call(block, &mut |f, args| {
+        for (i, a) in args.iter().enumerate() {
+            if let cpl_ir::Arg::Value(Expr {
+                kind: ExprKind::Local(s),
+                ..
+            }) = a
+            {
+                if by_ref(f, i) {
+                    parts.push(*s);
+                }
+            }
+        }
+    });
     let local = |e: &Expr| match e.kind {
         ExprKind::Local(s) => Some(s),
         _ => None,
     };
-    walk::deep_exprs(block, &mut |e| match &e.kind {
-        ExprKind::Local(s) => uses.push(*s),
-        ExprKind::Call(f, args) => {
-            for (i, a) in args.iter().enumerate() {
-                if let cpl_ir::Arg::Value(Expr {
-                    kind: ExprKind::Local(s),
-                    ..
-                }) = a
-                {
-                    if by_ref(*f, i) {
-                        parts.push(*s);
-                    }
-                }
-            }
+    crate::uses::places::each_shown(block, &mut |e| parts.extend(local(e)));
+    crate::uses::places::each_builtin(block, &mut |b, args| {
+        if reads_first(b) {
+            parts.extend(args.first().and_then(local));
         }
-        ExprKind::Print(args, _) => parts.extend(args.iter().filter_map(|a| local(&a.value))),
-        ExprKind::Format(pieces) => parts.extend(pieces.iter().filter_map(|p| match p {
-            cpl_ir::FmtPiece::Value(a) => local(&a.value),
-            _ => None,
-        })),
-        ExprKind::Builtin(cpl_ir::Builtin::ShowStr, args) => {
-            parts.extend(args.iter().filter_map(local))
-        }
-        ExprKind::Builtin(b, args) if reads_first(b) => parts.extend(args.first().and_then(local)),
-        ExprKind::Index(..)
-        | ExprKind::Field(..)
-        | ExprKind::Payload(..)
-        | ExprKind::IsVariant(..)
-        | ExprKind::Builtin(cpl_ir::Builtin::Len, _) => {
-            let base = match &e.kind {
-                ExprKind::Builtin(_, args) if args.len() == 1 => &args[0],
-                ExprKind::Index(base, _)
-                | ExprKind::Field(base, _)
-                | ExprKind::Payload(base, ..)
-                | ExprKind::IsVariant(base, _) => &**base,
-                _ => return,
-            };
-            if let ExprKind::Local(s) = base.kind {
-                parts.push(s);
-            }
-        }
-        _ => {}
     });
-    walk::deep_stmts(block, &mut |stmt| {
-        if let Stmt::For(_, _, cpl_ir::Iter::Seq(seq, _), _) = stmt {
+    crate::uses::places::each_part_base(block, &mut |base| {
+        if let ExprKind::Local(s) = base.kind {
+            parts.push(s);
+        }
+    });
+    crate::uses::loops::each_loop(block, &mut |_, head| {
+        if let crate::uses::loops::Loop::For(_, cpl_ir::Iter::Seq(seq, _)) = head {
             if let ExprKind::Local(s) = seq.kind {
                 parts.push(s);
             }
@@ -172,7 +154,7 @@ pub(crate) fn copied_at_test(slot: usize, rest: &[Stmt]) -> bool {
         stmts: [&then.stmts[copies..], &otherwise.stmts, after].concat(),
     };
     let mut seen = Touch::of_block(&later).closures;
-    walk::deep_exprs(&later, &mut |e| seen |= local(e));
+    crate::uses::places::each_local(&later, &mut |s| seen |= s == slot);
     !seen
 }
 
@@ -223,9 +205,9 @@ fn gives_own_locals(block: &cpl_ir::Block, ty: &Ty) -> Option<Vec<usize>> {
         return None;
     }
     let (mut own, mut out) = (Vec::new(), Vec::new());
-    walk::deep_stmts(block, &mut |stmt| match stmt {
-        Stmt::Let(slot, _) => own.push(*slot),
-        Stmt::Give(value) => out.push(match &value.kind {
+    crate::uses::places::each_declared(block, &mut |slot| own.push(slot));
+    crate::uses::split::each_give(block, &mut |value| {
+        out.push(match &value.kind {
             ExprKind::Local(slot) => Some(*slot),
             ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => match of.first() {
                 Some(Expr {
@@ -235,8 +217,7 @@ fn gives_own_locals(block: &cpl_ir::Block, ty: &Ty) -> Option<Vec<usize>> {
                 _ => None,
             },
             _ => None,
-        }),
-        _ => {}
+        })
     });
     let all = out.iter().all(|g| g.is_some_and(|s| own.contains(&s)));
     (!out.is_empty() && all).then(|| out.into_iter().flatten().collect())
@@ -257,10 +238,9 @@ pub(crate) fn returned_places(body: &Block) -> Option<Vec<&Expr>> {
         }
     }
     let (mut out, mut bare) = (Vec::new(), false);
-    walk::deep_stmts(body, &mut |s| match s {
-        Stmt::Return(Some(e)) => arms(e, &mut out),
-        Stmt::Return(None) => bare = true,
-        _ => {}
+    crate::uses::places::each_return(body, &mut |value| match value {
+        Some(e) => arms(e, &mut out),
+        None => bare = true,
     });
     (!bare && !out.is_empty()).then_some(out)
 }
@@ -275,10 +255,8 @@ pub(crate) fn given_root(
     match &value.kind {
         ExprKind::Do(block) if gives_outer_place(block, &value.ty) => {
             let mut root = None;
-            walk::deep_stmts(block, &mut |s| {
-                if let Stmt::Give(g) = s {
-                    root = root.or_else(|| given_root(g, lent_roots));
-                }
+            crate::uses::split::each_give(block, &mut |g| {
+                root = root.or_else(|| given_root(g, lent_roots));
             });
             root
         }
@@ -392,10 +370,8 @@ impl<'p> Emitter<'p> {
     /// they were, so the reference it returns still names what it gave.
     fn keeps_given_roots(&self, block: &cpl_ir::Block) -> bool {
         let mut roots = Vec::new();
-        walk::deep_stmts(block, &mut |s| {
-            if let Stmt::Give(g) = s {
-                roots.push(given_root(g, &self.lent_roots));
-            }
+        crate::uses::split::each_give(block, &mut |g| {
+            roots.push(given_root(g, &self.lent_roots));
         });
         let touch = self.block_touch(block);
         roots
@@ -432,19 +408,16 @@ impl<'p> Emitter<'p> {
         };
         let (mut uses, mut keys) = (0usize, 0usize);
         for block in blocks {
-            walk::deep_exprs(block, &mut |e| match &e.kind {
-                ExprKind::Local(s) if *s == slot => uses += 1,
-                ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => {
-                    keys += usize::from(matches!(func.kind, ExprKind::Local(s) if s == slot));
-                }
-                ExprKind::Closure(cid) => {
-                    let caps = &program.closures[*cid].captures;
-                    uses += caps
-                        .iter()
-                        .filter(|c| !c.is_global && c.outer == slot)
-                        .count();
-                }
-                _ => {}
+            crate::uses::places::each_local(block, &mut |s| uses += usize::from(s == slot));
+            crate::uses::places::each_sort_key(block, &mut |func| {
+                keys += usize::from(matches!(func.kind, ExprKind::Local(s) if s == slot));
+            });
+            crate::uses::places::each_closure(block, &mut |cid| {
+                let caps = &program.closures[cid].captures;
+                uses += caps
+                    .iter()
+                    .filter(|c| !c.is_global && c.outer == slot)
+                    .count();
             });
         }
         uses == 1 && keys == 1
@@ -762,15 +735,14 @@ impl<'p> Emitter<'p> {
         };
         let local = |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == slot);
         let (mut reads, mut lendable) = (0, 0);
-        walk::deep_exprs(&block, &mut |e| match &e.kind {
-            ExprKind::Local(s) if *s == slot => reads += 1,
-            ExprKind::IsSome(x) if local(x) => lendable += 1,
-            ExprKind::Binary(BinOp::Coalesce, x, _) if local(x) && x.ty != e.ty => lendable += 1,
-            _ => {}
+        crate::uses::places::each_local(&block, &mut |s| reads += usize::from(s == slot));
+        crate::uses::places::each_tested(&block, &mut |x| lendable += usize::from(local(x)));
+        crate::uses::places::each_coalesce(&block, &mut |whole, x| {
+            lendable += usize::from(local(x) && x.ty != whole.ty);
         });
-        walk::deep_stmts(&block, &mut |stmt| {
-            if let Stmt::Let(t, Some(x)) = stmt {
-                if local(x) && self.locals()[*t].name.is_empty() {
+        crate::uses::split::each_let_run(&block, &mut |run| {
+            if let Some((t, x)) = run {
+                if local(x) && self.locals()[t].name.is_empty() {
                     lendable += 1;
                 }
             }
@@ -922,7 +894,7 @@ impl Emitter<'_> {
         };
         let root = walk::root(base);
         let (mut found, mut mentions) = (None, 0);
-        walk::deep_expr(value, &mut |e| match &e.kind {
+        crate::uses::places::each_part(value, &mut |e| match &e.kind {
             ExprKind::Local(s) if root == (false, *s) => mentions += 1,
             ExprKind::Global(g) if root == (true, *g) => mentions += 1,
             ExprKind::Binary(BinOp::Coalesce, got, _) if !e.ty.is_scalar() => {
@@ -1015,19 +987,12 @@ fn moved_while_live(
     });
     let Some(block) = home else {
         let mut named = false;
-        walk::deep_exprs(body, &mut |e| {
-            named |= matches!(e.kind, ExprKind::Local(s) if s == slot)
-        });
+        crate::uses::places::each_local(body, &mut |s| named |= s == slot);
         return named;
     };
     let names = |stmt: &Stmt| {
         let mut found = matches!(stmt, Stmt::Let(s, _) if *s == slot);
-        walk::deep_exprs(
-            &Block {
-                stmts: vec![stmt.clone()],
-            },
-            &mut |e| found |= matches!(e.kind, ExprKind::Local(s) if s == slot),
-        );
+        crate::uses::places::each_variable_in(stmt, &mut |v| found |= v == (false, slot));
         found
     };
     let at: Vec<usize> = (0..block.stmts.len())
@@ -1064,37 +1029,33 @@ pub(crate) fn opt_fn_param_only_called(
 fn opt_only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
     let is_slot = |e: &cpl_ir::Expr| matches!(e.kind, ExprKind::Local(s) if s == slot);
     let (mut uses, mut ok, mut escapes) = (0usize, 0usize, false);
-    walk::deep_stmts(body, &mut |stmt| match stmt {
-        Stmt::Assign(place, _, _) => escapes |= walk::root(place) == (false, slot),
-        Stmt::Let(s, Some(init)) => match &init.kind {
+    crate::uses::places::each_put(body, &mut |at, init| match at {
+        crate::uses::places::Put::Store(place, _) => escapes |= walk::root(place) == (false, slot),
+        crate::uses::places::Put::Let(s) => match &init.kind {
             ExprKind::Local(_) if is_slot(init) => {
                 ok += 1;
-                escapes |= depth == 0 || !opt_only_called(program, body, *s, depth - 1);
+                escapes |= depth == 0 || !opt_only_called(program, body, s, depth - 1);
             }
             ExprKind::Unwrap(inner, _) if is_slot(inner) => {
                 ok += 1;
-                escapes |= !only_called(program, body, *s, depth);
+                escapes |= !only_called(program, body, s, depth);
             }
             ExprKind::Binary(cpl_ir::BinOp::Coalesce, opt, default)
                 if is_slot(opt) && plain_closure(program, default) =>
             {
                 ok += 1;
-                escapes |= !only_called(program, body, *s, depth);
+                escapes |= !only_called(program, body, s, depth);
             }
             _ => {}
         },
-        _ => {}
     });
-    walk::deep_exprs(body, &mut |e| match &e.kind {
-        ExprKind::Local(s) if *s == slot => uses += 1,
-        ExprKind::IsSome(inner) if is_slot(inner) => ok += 1,
-        ExprKind::Closure(cid) => {
-            escapes |= program.closures[*cid]
-                .captures
-                .iter()
-                .any(|c| !c.is_global && c.outer == slot);
-        }
-        _ => {}
+    crate::uses::places::each_local(body, &mut |s| uses += usize::from(s == slot));
+    crate::uses::places::each_tested(body, &mut |inner| ok += usize::from(is_slot(inner)));
+    crate::uses::places::each_closure(body, &mut |cid| {
+        escapes |= program.closures[cid]
+            .captures
+            .iter()
+            .any(|c| !c.is_global && c.outer == slot);
     });
     !escapes && uses == ok
 }
@@ -1138,60 +1099,54 @@ fn only_called_in(
     let mut passed_on = std::collections::BTreeSet::new();
     // A closure bound by `let` is kept only as long as that name is.
     let mut bound = std::collections::BTreeMap::new();
-    walk::deep_stmts(body, &mut |stmt| match stmt {
-        Stmt::Assign(place, _, _) => escapes |= walk::root(place) == (false, slot),
-        Stmt::Let(s, Some(init)) => {
+    crate::uses::places::each_put(body, &mut |at, init| match at {
+        crate::uses::places::Put::Store(place, _) => escapes |= walk::root(place) == (false, slot),
+        crate::uses::places::Put::Let(s) => {
             if let ExprKind::Closure(cid) = init.kind {
-                bound.insert(cid, *s);
+                bound.insert(cid, s);
             }
         }
-        _ => {}
     });
     let lent = |args: &[Arg]| {
         args.iter()
             .any(|a| matches!(a, Arg::Mut(place) if walk::root(place) == (false, slot)))
     };
-    walk::deep_exprs(body, &mut |e| match &e.kind {
-        ExprKind::Local(s) if *s == slot => uses += 1,
-        ExprKind::CallExpr(callee, args) => {
-            calls += usize::from(matches!(callee.kind, ExprKind::Local(s) if s == slot));
-            escapes |= lent(args);
-        }
-        ExprKind::Call(f, args) => {
-            escapes |= lent(args);
-            for (j, arg) in args.iter().enumerate() {
-                let Arg::Value(value) = arg else { continue };
-                let onward = || depth > 0 && fn_param_only_called_at(program, *f, j, depth - 1);
-                match value.kind {
-                    ExprKind::Closure(cid) if this == Some((*f, j)) || onward() => {
-                        _ = passed_on.insert(cid)
-                    }
-                    ExprKind::Local(s) if s == slot && (this == Some((*f, j)) || onward()) => {
-                        calls += 1
-                    }
-                    _ => {}
+    crate::uses::places::each_local(body, &mut |s| uses += usize::from(s == slot));
+    crate::uses::places::each_value_call(body, &mut |callee, args| {
+        calls += usize::from(matches!(callee.kind, ExprKind::Local(s) if s == slot));
+        escapes |= lent(args);
+    });
+    crate::uses::places::each_call(body, &mut |f, args| {
+        escapes |= lent(args);
+        for (j, arg) in args.iter().enumerate() {
+            let Arg::Value(value) = arg else { continue };
+            let onward = || depth > 0 && fn_param_only_called_at(program, f, j, depth - 1);
+            match value.kind {
+                ExprKind::Closure(cid) if this == Some((f, j)) || onward() => {
+                    _ = passed_on.insert(cid)
                 }
+                ExprKind::Local(s) if s == slot && (this == Some((f, j)) || onward()) => calls += 1,
+                _ => {}
             }
         }
-        ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => {
-            calls += usize::from(matches!(func.kind, ExprKind::Local(s) if s == slot));
+    });
+    crate::uses::places::each_sort_key(body, &mut |func| {
+        calls += usize::from(matches!(func.kind, ExprKind::Local(s) if s == slot));
+    });
+    crate::uses::places::each_closure(body, &mut |cid| {
+        let def = &program.closures[cid];
+        for cap in def
+            .captures
+            .iter()
+            .filter(|c| !c.is_global && c.outer == slot)
+        {
+            let held = passed_on.contains(&cid)
+                || closure_name(body, cid).is_some_and(|s| {
+                    s == slot || (depth > 0 && only_called(program, body, s, depth - 1))
+                });
+            escapes |=
+                !held || !only_called(program, &def.body, cap.inner, depth.saturating_sub(1));
         }
-        ExprKind::Closure(cid) => {
-            let def = &program.closures[*cid];
-            for cap in def
-                .captures
-                .iter()
-                .filter(|c| !c.is_global && c.outer == slot)
-            {
-                let held = passed_on.contains(cid)
-                    || closure_name(body, *cid).is_some_and(|s| {
-                        s == slot || (depth > 0 && only_called(program, body, s, depth - 1))
-                    });
-                escapes |=
-                    !held || !only_called(program, &def.body, cap.inner, depth.saturating_sub(1));
-            }
-        }
-        _ => {}
     });
     !escapes && uses == calls
 }
@@ -1199,10 +1154,10 @@ fn only_called_in(
 /// The slot of the `let f = closure` that names closure `cid` in `body`.
 fn closure_name(body: &Block, cid: usize) -> Option<usize> {
     let mut name = None;
-    walk::deep_stmts(body, &mut |stmt| {
-        if let Stmt::Let(s, Some(init)) = stmt {
+    crate::uses::split::each_let_run(body, &mut |run| {
+        if let Some((s, init)) = run {
             if matches!(init.kind, ExprKind::Closure(c) if c == cid) {
-                name = Some(*s);
+                name = Some(s);
             }
         }
     });
@@ -1362,7 +1317,7 @@ impl Emitter<'_> {
                 return None;
             }
             let text = self.expr(inner).text;
-            let text = self.moved_if(true, text);
+            let text = self.moved_if(true, &inner.ty, text);
             return Some(format!("{}({text})", self.ty(&value.ty)));
         }
         let ExprKind::Local(slot) = inner.kind else {
@@ -1396,7 +1351,11 @@ impl Emitter<'_> {
             !matches!(c, Copied::Let(span, why, _) | Copied::Library(span, _, why)
                 if *span == inner.span && *why == SOME_COPY)
         });
-        Some(format!("{}(std::move({}))", self.ty(ty), self.names[slot]))
+        Some(format!(
+            "{}({})",
+            self.ty(ty),
+            self.move_of(&inner.ty, &self.names[slot])
+        ))
     }
 
     /// Records the copy `.to_str()` / `.to_list()` makes of the view `e`
@@ -1585,7 +1544,12 @@ impl Emitter<'_> {
     /// Records the copy `return place;` makes when the fn or block gives a
     /// part of a named value it does not own by value: `return self.id;`.
     pub(crate) fn note_given_copy(&mut self, value: &Expr, text: &str, is_return: bool) {
-        let by_ref = self.give_ref || (is_return && self.closure_id.is_none() && self.lends_result);
+        let by_ref = self.give_ref
+            || (is_return
+                && match self.closure_id {
+                    Some(cid) => self.lending_closures.contains(&cid),
+                    None => self.lends_result,
+                });
         let mut value = value;
         while let (ExprKind::Builtin(_, args), true) = (&value.kind, is_place_text(text)) {
             match args.as_slice() {
@@ -1692,18 +1656,16 @@ pub(crate) fn copy_sites(
     copies: &[Copied],
 ) -> Vec<(cpl_diag::Span, String, &'static str)> {
     let mut at = std::collections::BTreeMap::new();
-    let mut visit = |e: &Expr| {
-        if let ExprKind::Closure(cid) = e.kind {
-            at.entry(cid).or_insert(e.span);
-        }
+    let mut visit = |cid, span| {
+        at.entry(cid).or_insert(span);
     };
-    cpl_ir::walk::deep_exprs(&program.setup, &mut visit);
-    cpl_ir::walk::deep_exprs(&program.main, &mut visit);
+    crate::uses::places::each_closure_at(&program.setup, &mut visit);
+    crate::uses::places::each_closure_at(&program.main, &mut visit);
     for f in &program.fns {
-        cpl_ir::walk::deep_exprs(&f.body, &mut visit);
+        crate::uses::places::each_closure_at(&f.body, &mut visit);
     }
     for c in &program.closures {
-        cpl_ir::walk::deep_exprs(&c.body, &mut visit);
+        crate::uses::places::each_closure_at(&c.body, &mut visit);
     }
     let mut once: Vec<_> = copies
         .iter()
@@ -1828,22 +1790,19 @@ impl Emitter<'_> {
             (None, None) => cpl_ir::ScopeId::Main,
         };
         let mut reads = false;
-        let mut read = |e: &Expr| {
-            reads |= match e.kind {
-                ExprKind::Local(s) => held.contains(&(scope, s)),
-                ExprKind::Global(g) => globals.contains(&g),
-                _ => false,
+        crate::uses::places::each_variable_in(stmt, &mut |(global, s)| {
+            reads |= match global {
+                false => held.contains(&(scope, s)),
+                true => globals.contains(&s),
             };
-        };
-        walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, &mut read));
-        walk::stmt_blocks(stmt, &mut |b| walk::deep_exprs(b, &mut read));
+        });
         reads
     }
 
     /// `std::move(text)` when `item` is one of the literal's taken items.
     pub(crate) fn taken_item(&self, item: &Expr, text: String) -> String {
         match self.taken_items.contains(&(item as *const Expr)) {
-            true => format!("std::move({text})"),
+            true => self.move_of(&item.ty, &text),
             false => text,
         }
     }
@@ -1869,10 +1828,21 @@ impl Emitter<'_> {
     }
 
     /// `std::move(text)` when `dies`.
-    pub(crate) fn moved_if(&self, dies: bool, text: String) -> String {
+    pub(crate) fn moved_if(&self, dies: bool, ty: &Ty, text: String) -> String {
         match dies && !text.starts_with("std::move(") {
-            true => format!("std::move({text})"),
+            true => self.move_of(ty, &text),
             false => text,
+        }
+    }
+
+    /// `std::move(text)` for a `ty` value, the one place the C++ moves one. A
+    /// value that holds no heap (an int, `std::tuple<int, int>`, `OptInt`, a
+    /// niche optional) is its bytes, so it is named, not moved: the move only
+    /// copies, and newer g++ rejects one from a `const T&` (-Wredundant-move).
+    pub(crate) fn move_of(&self, ty: &Ty, text: &str) -> String {
+        match holds_heap(self.program, ty) || matches!(ty, Ty::Fn(..)) {
+            true => format!("std::move({text})"),
+            false => text.to_string(),
         }
     }
 
@@ -1958,8 +1928,8 @@ impl Emitter<'_> {
         // A `const T&` name cannot be moved from; `std::move` of it only copies.
         let lent =
             path_of(init).is_some_and(|((global, s), _)| !global && self.ref_bound.contains(&s));
-        match taken && !lent && !init.ty.is_scalar() && !text.starts_with("std::move(") {
-            true => format!("std::move({text})"),
+        match taken && !lent && !text.starts_with("std::move(") {
+            true => self.move_of(&init.ty, &text),
             false => text,
         }
     }
@@ -2094,10 +2064,8 @@ pub(crate) fn loop_vars(program: &cpl_ir::Program) -> BTreeMap<*const Block, usi
         .chain(program.fns.iter().map(|f| &f.body))
         .chain(program.closures.iter().map(|c| &c.body));
     for body in bodies {
-        walk::deep_stmts(body, &mut |stmt| {
-            if let Stmt::For(_, slot, _, body) = stmt {
-                vars.insert(body as *const Block, *slot);
-            }
+        crate::uses::places::each_for_body(body, &mut |slot, body| {
+            vars.insert(body as *const Block, slot);
         });
     }
     vars

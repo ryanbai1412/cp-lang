@@ -85,15 +85,16 @@ impl<'p> Emitter<'p> {
                 return;
             }
         }
-        for (_, ptr, own, at) in self
+        for (slot, ptr, own, at) in self
             .rebinds
             .get(&(place as *const Place))
             .cloned()
             .unwrap_or_default()
         {
+            let moved = self.move_of(&self.locals()[slot].ty, &at);
             self.line(
                 out,
-                &format!("if ({ptr} != &{own}) {{ {own} = std::move({at}); {ptr} = &{own}; }}"),
+                &format!("if ({ptr} != &{own}) {{ {own} = {moved}; {ptr} = &{own}; }}"),
             );
         }
         self.mark_moved_entry(place, op, value);
@@ -210,9 +211,13 @@ impl<'p> Emitter<'p> {
         let marks = (self.found.len(), self.pinned.len());
         let at = at as *const Expr;
         let copy = copies.iter().find(|c| c.1 == at).map(|c| c.0);
+        let entry = match &base.ty {
+            Ty::Map(_, v) | Ty::HashMap(_, v) => &**v,
+            ty => ty,
+        };
         let pin = match copy {
-            Some(c) if self.moved_entry.remove(&(c as usize)) => (c, format!("std::move({cell})")),
-            _ if self.moved_entry.remove(&(at as usize)) => (at, format!("std::move({cell})")),
+            Some(c) if self.moved_entry.remove(&(c as usize)) => (c, self.move_of(entry, &cell)),
+            _ if self.moved_entry.remove(&(at as usize)) => (at, self.move_of(entry, &cell)),
             _ => (at, cell.clone()),
         };
         self.pinned.push(pin);
@@ -301,21 +306,13 @@ impl<'p> Emitter<'p> {
                         .iter()
                         .any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built))
                 });
-            if made_here
-                && !self.ref_bound.contains(built)
-                && !value.ty.is_scalar()
-                && !matches!(value.ty, Ty::Fn(..))
-            {
-                v.text = format!("std::move({})", v.text);
+            if made_here && !self.ref_bound.contains(built) && !matches!(value.ty, Ty::Fn(..)) {
+                v.text = self.move_of(&value.ty, &v.text);
             }
         }
         if let (AssignOp::Set, ExprKind::Global(_)) = (op, &value.kind) {
-            if last
-                && std::ptr::eq(value, whole)
-                && !value.ty.is_scalar()
-                && !matches!(value.ty, Ty::Fn(..))
-            {
-                v.text = format!("std::move({})", v.text);
+            if last && std::ptr::eq(value, whole) && !matches!(value.ty, Ty::Fn(..)) {
+                v.text = self.move_of(&value.ty, &v.text);
             }
         }
         if let (AssignOp::Set, ExprKind::Some(inner)) = (op, &value.kind) {
@@ -484,7 +481,7 @@ impl<'p> Emitter<'p> {
                 let tmp = self.temp();
                 self.note_set_copy(value, &v.text);
                 self.line(out, &format!("auto {tmp} = {};", v.text));
-                self.line(out, &format!("{p} = std::move({tmp});"));
+                self.line(out, &format!("{p} = {};", self.move_of(&value.ty, &tmp)));
             }
             AssignOp::Set => {
                 let text = match self.place_elem_layout(place).cloned() {

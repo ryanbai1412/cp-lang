@@ -57,6 +57,16 @@ pub fn show_fields<T>(a: T) -> Str:
 /// example: `struct P(a: Int, b: Int); read_fields<P>().b == 5` (stdin `4 5`)
 pub fn read_fields<T>() -> T = T(read() for _ in fields(T))
 
+/// A random `T`, each field drawn by its own type's `gen()`:
+/// `impl Random for P: fn gen() -> P = gen_fields<P>()`.
+///
+/// cost: \(O(\mathit{fields})\) plus what each field's draw costs
+/// empty: `struct E(); let e = gen_fields<E>(); gen(1..=1) == 1`
+/// order: declaration order
+/// traps: never
+/// example: `struct P(a: 1..=9); gen_fields<P>().a <= 9`
+pub fn gen_fields<T>() -> T = T(gen() for _ in fields(T))
+
 /// A value's 64-bit hash: equal values hash equal. `Int`, `I128`, `U64`, `Char`, `Bool` and
 /// `Str` have it here (splitmix64, decision 28.8); a struct gets it from `hash_fields`, and
 /// `@structural` gives a tuple, record, optional or array it when each part has it.

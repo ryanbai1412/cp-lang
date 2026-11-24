@@ -263,7 +263,7 @@ pub(super) fn view_rereads(
     let item = &items[index];
     let mut out = Vec::new();
     if let Some(stmt) = item.parsed.stmts.first() {
-        let chain = rewalk_kind(items, index, false).is_some();
+        let chain = rewalk_kind(items, checks, index, false).is_some();
         let later = (index + 1..items.len()).map(|k| {
             let refs = checks.get(k).map_or(&[][..], |c| &c.refs[..]);
             (items[k].parsed.stmts.as_slice(), Binder::Global(refs))
@@ -299,6 +299,7 @@ pub(super) fn view_rereads(
 /// such as `std.graph.dfs`.
 pub(super) fn rewalk_kind(
     items: &[Arc<ItemSyntax>],
+    checks: &[Arc<ItemCheck>],
     index: usize,
     gen_typed: bool,
 ) -> Option<(cpl_diag::Code, &'static str)> {
@@ -312,7 +313,8 @@ pub(super) fn rewalk_kind(
     else {
         return None;
     };
-    fn lazy(e: &ast::Expr) -> bool {
+    let facts = checks.get(index).map(|c| &c.exprs);
+    fn lazy(e: &ast::Expr, facts: Option<&crate::facts::ExprFacts>) -> bool {
         let ExprKind::Call { callee, .. } = &crate::check::lends::unparen(e).kind else {
             return false;
         };
@@ -320,36 +322,33 @@ pub(super) fn rewalk_kind(
             return false;
         };
         match name.text.as_str() {
-            "filter" | "take_while" | "drop_while" | "flat_map" => true,
-            "map" | "take" | "drop" | "enumerate" => lazy(base),
-            _ => false,
+            "map" | "take" | "drop" => lazy(base, facts),
+            // A method over a sequence whose value is walk-only: a generator
+            // (`-> yields T`) such as `take_while`, or a `Filtered` view.
+            _ => facts.is_some_and(|f| {
+                f.last_type(e.span)
+                    .is_some_and(|t| t.is_seq() && !t.is_sized())
+                    && f.last_type(base.span).is_some_and(Ty::is_seq)
+            }),
         }
     }
-    if lazy(init) {
+    if lazy(init, facts) {
         return Some((codes::CHAIN_WALKED_TWICE, "a lazy chain"));
     }
     let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {
         return None;
     };
-    let ExprKind::Name(f) = &callee.kind else {
-        return None;
-    };
-    if !args
-        .iter()
-        .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
+    if !matches!(callee.kind, ExprKind::Name(_))
+        || !args
+            .iter()
+            .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
     {
         return None;
     }
     let generator = gen_typed
-        || items.iter().any(|item| {
-            item.parsed.stmts.iter().any(|s| match &s.kind {
-            StmtKind::Fn(decl) => {
-                decl.name.text == *f
-                    && matches!(&decl.ret, Some(t) if matches!(t.kind, ast::TypeKind::Yields(_)))
-            }
-            _ => false,
-        })
-        });
+        || facts
+            .and_then(|f| f.last_type(init.span))
+            .is_some_and(|t| matches!(t, Ty::Named { name, .. } if name == "Gen"));
     generator.then_some((
         codes::MUT_GENERATOR_REWALKED,
         "a generator holding a `mut` lend",

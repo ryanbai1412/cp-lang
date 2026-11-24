@@ -289,7 +289,6 @@ impl<'a> Checker<'a> {
         }
         let positional = match &base_ty {
             Ty::Domain(_) => ["nth", "at", "wrap"].contains(&name.text.as_str()),
-            Ty::Pos(_) => ["offset", "ahead", "back"].contains(&name.text.as_str()),
             _ => false,
         };
         if positional && matches!(ty, Ty::Fn { .. }) {
@@ -566,19 +565,11 @@ impl<'a> Checker<'a> {
             return Ty::Error;
         }
         let renamed = match name.text.as_str() {
-            "bsearch_first" => Some((
-                "first_true",
-                "`r.first_true(ok)` gives the first element where `ok` holds, as `?`",
-            )),
-            "bsearch_last" => Some((
-                "last_true",
-                "`r.last_true(ok)` gives the last element where `ok` holds, as `?`",
-            )),
             "bounds" if matches!(base_ty, Ty::Domain(_)) => Some((
                 "cuts",
-                "`D.cuts` is the gaps between and around `D`'s positions",
+                Some("`D.cuts` is the gaps between and around `D`'s positions".to_string()),
             )),
-            _ => None,
+            old => crate::prelude::renamed(old).map(|to| (to, None)),
         };
         if let Some((to, help)) = renamed {
             if let Some(diag) = self.report(
@@ -586,7 +577,7 @@ impl<'a> Checker<'a> {
                 msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0,
                 &[&name.text, &to],
             ) {
-                diag.help = Some(help.to_string());
+                diag.help = help;
                 diag.fixes.push(cpl_diag::Fix {
                     title: format!("use `.{to}`"),
                     edits: vec![(name.span, to.to_string())],
@@ -774,6 +765,10 @@ impl<'a> Checker<'a> {
         let found = match &base_ty {
             Ty::Record(fields) => {
                 if !fields.iter().any(|(n, _)| *n == name.text) {
+                    let by_impl = self.shape_impl_member(&base_ty, &name.text);
+                    if by_impl != Ty::Unknown {
+                        return by_impl;
+                    }
                     if let Some(ty) = self.shape_default_member(&base_ty, &name.text) {
                         return ty;
                     }
@@ -832,67 +827,23 @@ impl<'a> Checker<'a> {
                         "ord" | "idx" | "label" => return Ty::Int,
                         "l" | "r" => return Ty::Pos(format!("{type_name}.cuts")),
                         "prev" | "next" => return Ty::Optional(Box::new(base_ty.clone())),
-                        "offset" | "ahead" | "back" => {
-                            return Ty::Fn {
-                                params: vec![crate::ty::Param {
-                                    name: "k".into(),
-                                    ty: Ty::Int,
-                                    mutable: false,
-                                    has_default: false,
-                                    named_only: false,
-                                    variadic: false,
-                                    lazy: false,
-                                }],
-                                ret: Box::new(Ty::Optional(Box::new(base_ty.clone()))),
-                            };
-                        }
                         _ => {}
                     }
                 }
+                if let Some(trait_hits) =
+                    (self.member_traits(type_name, &name.text)).filter(|t| t.len() >= 2)
                 {
-                    let has_inherent = match self.type_def(type_name).as_deref() {
-                        Some(Def::Struct { methods, .. } | Def::Enum { methods, .. }) => {
-                            methods.iter().any(|(m, _)| m == &name.text)
-                        }
-                        _ => false,
-                    };
-                    if !has_inherent {
-                        let mut trait_hits: Vec<String> = Vec::new();
-                        for (trait_name, def) in self.env.impls(type_name) {
-                            let Some(tn) = trait_name else { continue };
-                            let has_in_impl = matches!(
-                                &*def,
-                                Def::Impl { methods, .. }
-                                    if methods.iter().any(|(m, _)| m == &name.text)
-                            );
-                            let has_in_trait = self
-                                .type_def(tn.split('<').next().unwrap_or(&tn))
-                                .as_deref()
-                                .is_some_and(|d| {
-                                    matches!(
-                                        d,
-                                        Def::Trait { methods, .. }
-                                            if methods.iter().any(|m| m.name == name.text)
-                                    )
-                                });
-                            if (has_in_impl || has_in_trait) && !trait_hits.contains(&tn) {
-                                trait_hits.push(tn);
-                            }
-                        }
-                        if trait_hits.len() >= 2 {
-                            if let Some(diag) = self.report(
-                                name.span,
-                                msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND_2,
-                                &[&type_name, &name.text, &trait_hits[0], &trait_hits[1]],
-                            ) {
-                                diag.help = Some(format!(
-                                    "disambiguate with `{}.{}(...)` or `{}.{}(...)`",
-                                    trait_hits[0], name.text, trait_hits[1], name.text
-                                ));
-                            }
-                            return Ty::Error;
-                        }
+                    if let Some(diag) = self.report(
+                        name.span,
+                        msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND_2,
+                        &[&type_name, &name.text, &trait_hits[0], &trait_hits[1]],
+                    ) {
+                        diag.help = Some(format!(
+                            "disambiguate with `{}.{}(...)` or `{}.{}(...)`",
+                            trait_hits[0], name.text, trait_hits[1], name.text
+                        ));
                     }
+                    return Ty::Error;
                 }
                 self.members_of(type_name).map(|members| {
                     let bindings = members.bindings(args);
@@ -1044,20 +995,6 @@ impl<'a> Checker<'a> {
                 match name.text.as_str() {
                     "ord" | "idx" | "label" => return Ty::Int,
                     "prev" | "next" => return Ty::Optional(Box::new(Ty::Pos(domain.clone()))),
-                    "offset" | "ahead" | "back" => {
-                        return Ty::Fn {
-                            params: vec![crate::ty::Param {
-                                name: "k".into(),
-                                ty: Ty::Int,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            }],
-                            ret: Box::new(Ty::Optional(Box::new(Ty::Pos(domain.clone())))),
-                        };
-                    }
                     // The cuts on either side of a position.
                     // R04.2.19: the pieces on either side of a position.
                     "before" | "after" if !domain.ends_with(".cuts") => {
@@ -1081,7 +1018,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                return self.domain_impl_member(&base_ty, &name.text);
+                return self.shape_impl_member(&base_ty, &name.text);
             }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {
@@ -1130,7 +1067,7 @@ impl<'a> Checker<'a> {
             // A fn type's impls answer their own members; any other name is a std fn
             // taking it as `self` (`f.opt()`), resolved once std is loaded.
             Ty::Fn { .. } => {
-                let methods = self.fn_impl_members(&base_ty);
+                let methods = self.shape_impl_members(&base_ty);
                 (methods.iter().any(|(m, _)| *m == name.text)).then(|| (None, Vec::new(), methods))
             }
             _ => None,

@@ -162,6 +162,52 @@ fn a_library_lint_matches_a_run_of_statements() {
     }
 }
 
+/// `reads: "p[k] -> p.at(k)"` rewrites, with the fix, every later read of
+/// a name `from` declares; a later use that is no such read (a write,
+/// `p.len`) leaves the finding without a fix.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn reads_rewrites_the_later_reads_of_a_name_from_declares() {
+    let decl = "@lint(table_by_hand, from: \"var p = List.filled(xs.len + 1, 0)\\nfor i in 0..xs.len:\\n    p[i + 1] = p[i] + xs[i]\", to: \"let p = table(xs)\", reads: \"p[k] -> p.at(k)\", holes: \"k\")\npub fn table(xs: List<Int>) -> List<Int> = xs\n";
+    let fixed = |body: &str| -> (usize, String) {
+        let src = format!("{decl}{body}");
+        let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "table_by_hand")
+            .collect();
+        let (text, _) = cpl_diag::splice_fixes(&src, &found);
+        (found.len(), text[decl.len()..].to_string())
+    };
+    let head = "let a = [1, 2]\nvar p = List.filled(a.len + 1, 0)\nfor i in 0..a.len:\n    p[i + 1] = p[i] + a[i]\n";
+    assert_eq!(
+        fixed(&format!("{head}print(p[2] - p[a[0]])\nprint(p[1])\n")),
+        (
+            1,
+            "let a = [1, 2]\nlet p = table(a)\nprint(p.at(2) - p.at(a[0]))\nprint(p.at(1))\n"
+                .into()
+        )
+    );
+    for unread in ["p[0] = 5\nprint(p[1])\n", "print(p.len)\n", "print(p)\n"] {
+        let body = format!("{head}{unread}");
+        assert_eq!(fixed(&body), (1, body.clone()), "{unread}");
+    }
+}
+
+/// A hole `to` puts in the initializer of a name it declares (`let p =
+/// table(..)`) does not match code that reads that name.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_declared_name_s_initializer_does_not_read_the_name() {
+    let decl = "@lint(table_by_hand, from: \"for i in 0..n:\\n    p[i + 1] = p[i] + e\", advice: \"let p = table([e for i in 0..n])\", holes: \"n, p, e\")\npub fn table(xs: List<Int>) -> List<Int> = xs\n";
+    let found = |step: &str| {
+        let src = format!("{decl}let a = [1, 2]\nvar q = List.filled(3, 0)\nfor i in 0..2:\n    q[i + 1] = q[i] + {step}\nprint(q)\n");
+        (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "table_by_hand")
+            .count()
+    };
+    assert_eq!(found("a[i]"), 1);
+    assert_eq!(found("q[i] * 2"), 0);
+}
+
 /// `holes:` names more holes than the fn's parameters; `to` may drop one
 /// when it matched code that calls nothing, `to` may use the fn as a getter
 /// (`xs.walk`), and a lint named like a `spec/lints` record reports as it.
@@ -169,7 +215,9 @@ fn a_library_lint_matches_a_run_of_statements() {
 #[test]
 fn declared_holes_match_free_names_and_a_record_name_keeps_its_code() {
     let found = |name: &str, body: &str| -> Vec<(String, String)> {
-        let decl = format!("@lint({name}, from: \"for i in 0..n:\\n    print(xs[i])\", to: \"for x in xs.walk:\\n    print(x)\", holes: \"n\")\npub fn walk(xs: List<Int>) -> List<Int> = [x for x in xs]\n");
+        let decl = format!(
+            "@lint({name}, from: \"for i in 0..n:\\n    print(xs[i])\", to: \"for x in xs.walk:\\n    print(x)\", holes: \"n\")\npub fn walk(xs: List<Int>) -> List<Int> = [x for x in xs]\n"
+        );
         crate::lint(&format!("{decl}{body}"), &crate::Config::default())
             .into_iter()
             .filter(|d| d.code.0 == "L0557" || d.code.0 == name)
@@ -458,10 +506,14 @@ fn a_hole_matches_a_binding_pattern() {
 #[test]
 fn a_no_fix_lint_drops_a_statement_hole_and_keeps_its_on_types() {
     let lint = |name: &str| {
-        format!("@lint({name}, from: \"while let (d, u) = pq.pop():\\n    if d > dist[u]:\\n        continue\\n    rest\", to: \"settle(pq, from: 0)\", holes: \"dist, rest\")\npub fn settle(pq: MinHeap<(Int, Int)>, from: Int) = ()\n")
+        format!(
+            "@lint({name}, from: \"while let (d, u) = pq.pop():\\n    if d > dist[u]:\\n        continue\\n    rest\", to: \"settle(pq, from: 0)\", holes: \"dist, rest\")\npub fn settle(pq: MinHeap<(Int, Int)>, from: Int) = ()\n"
+        )
     };
     let body = |q: &str| {
-        format!("var pq = {q}\npq.push((0, 1))\nlet best = [0, 0]\nwhile let (c, v) = pq.pop():\n    if c > best[v]:\n        continue\n    print(v)\n")
+        format!(
+            "var pq = {q}\npq.push((0, 1))\nlet best = [0, 0]\nwhile let (c, v) = pq.pop():\n    if c > best[v]:\n        continue\n    print(v)\n"
+        )
     };
     let found = |name: &str, q: &str| -> Vec<(String, usize)> {
         crate::lint(
@@ -484,7 +536,9 @@ fn a_no_fix_lint_drops_a_statement_hole_and_keeps_its_on_types() {
 #[test]
 fn a_no_fix_finding_ends_before_its_statement_hole() {
     let decl = "@lint(manual_mex, from: \"while i < q.len:\\n    let v = q[i]\\n    i += 1\\n    rest\", to: \"walk(q)\", holes: \"i, rest\")\npub fn walk(q: List<Int>) -> Int = 0\n";
-    let src = format!("{decl}var q = [1]\nvar i = 0\nwhile i < q.len:\n    let v = q[i]\n    i += 1\n    print(v)\n");
+    let src = format!(
+        "{decl}var q = [1]\nvar i = 0\nwhile i < q.len:\n    let v = q[i]\n    i += 1\n    print(v)\n"
+    );
     let spans: Vec<String> = crate::lint(&src, &crate::Config::default())
         .into_iter()
         .filter(|d| d.message == "write `walk(q)`")
@@ -669,17 +723,18 @@ fn a_library_lint_the_wider_fix_keeps_is_shown_with_it() {
     );
 }
 
-/// A method's `@lint` holds only where `self` matched a value of its type;
-/// another type's method of the same name may share the lint's name. Rule: R06.4.9.
+/// A method's `@lint` does not hold where `self` matched a value of
+/// another type whose method shares the lint's name; a third type's value
+/// keeps it. Rule: R06.4.9.
 #[test]
 fn a_method_lint_fires_only_on_its_own_type() {
-    let src = "pub struct Cell(v: Int):\n    @get pub fn get(self) -> Int = v\n    @lint(next_by_hand, from: \"self.get + 1\", to: \"self.next()\")\n    pub fn next(self) -> Int = v + 1\npub struct Other(v: Int):\n    @get pub fn get(self) -> Int = v\n    @lint(next_by_hand, from: \"self.get + 2\", to: \"self.next()\")\n    pub fn next(self) -> Int = v + 2\nlet c = Cell(1)\nlet o = Other(2)\nprint(c.get + 1, o.get + 1, o.get + 2)\n";
+    let src = "pub struct Cell(v: Int):\n    @get pub fn get(self) -> Int = v\n    @lint(next_by_hand, from: \"self.get + 1\", to: \"self.next()\")\n    pub fn next(self) -> Int = v + 1\npub struct Other(v: Int):\n    @get pub fn get(self) -> Int = v\n    @lint(next_by_hand, from: \"self.get + 2\", to: \"self.next()\")\n    pub fn next(self) -> Int = v + 2\npub struct Third(v: Int):\n    @get pub fn get(self) -> Int = v\nlet c = Cell(1)\nlet o = Other(2)\nlet t = Third(3)\nprint(c.get + 1, o.get + 1, o.get + 2, t.get + 1)\n";
     let found: Vec<String> = crate::lint(src, &crate::Config::default())
         .into_iter()
         .filter(|d| d.code.0 == "next_by_hand")
         .map(|d| d.fixes[0].edits[0].1.clone())
         .collect();
-    assert_eq!(found, ["c.next()", "o.next()"]);
+    assert_eq!(found, ["c.next()", "o.next()", "t.next()"]);
 }
 
 /// A library's lint keeps out of the program's own fn of its fn's name: the
@@ -716,4 +771,68 @@ fn a_no_fix_lint_reports_in_the_program_s_fn_of_its_name() {
         .filter(|d| d.message == "write `word(n > 0)`")
         .collect();
     assert_eq!(found.len(), 1, "{found:?}");
+}
+
+/// A hole `to` writes as a comprehension's item, `[e for i in 0..n]`, takes
+/// the matched code bare, as the brackets delimit it; code that has its own
+/// `for`, `if` or `=>` keeps its parentheses. Rule: R06.4.9.
+#[test]
+fn a_comprehension_item_hole_takes_its_code_bare() {
+    let decl = "@lint(table_by_hand, from: \"for i in 0..n:\\n    p[i + 1] = p[i] + e\", to: \"p = table([e for i in 0..n])\", holes: \"n, p, e\")\npub fn table(xs: List<Int>) -> List<Int> = xs\n";
+    let fixed = |e: &str| {
+        let src = format!("{decl}let a = [1, 2]\nvar p = [0, 0, 0]\nfor i in 0..2:\n    p[i + 1] = p[i] + {e}\nprint(p)\n");
+        let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "table_by_hand")
+            .collect();
+        let (text, _) = cpl_diag::splice_fixes(&src, &found);
+        text[decl.len()..]
+            .lines()
+            .nth(2)
+            .unwrap_or_default()
+            .to_string()
+    };
+    assert_eq!(fixed("a[i] * 2"), "p = table([a[i] * 2 for i in 0..2])");
+    assert_eq!(
+        fixed("(if a[i] > 1: a[i] else: 0)"),
+        "p = table([(if a[i] > 1: a[i] else: 0) for i in 0..2])"
+    );
+}
+
+/// A hole that is a whole condition is written bare: `if n == 0:`, not
+/// `if (n == 0):`. Rule: R06.4.9.
+#[test]
+fn a_hole_written_as_a_whole_condition_keeps_no_parens() {
+    let decl = "@lint(elif_unwrap, from: \"if a:\\n    first\\nelif (self ?? c) > y:\\n    let w = self!\\n    body\", to: \"if a:\\n    first\\nelif let w = self, w > y:\\n    body\", holes: \"a, first, c, y, body\")\npub fn some_and(self: ?Int, p: Int -> Bool) -> Bool = if let Some(v) = self: p(v) else: false\n";
+    let src = format!("{decl}let n = 2\nlet best: ?Int = Some(7)\nif n == 0:\n    print(0)\nelif (best ?? 0) > 4:\n    let b = best!\n    print(b)\n");
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "elif_unwrap")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(
+        fixes,
+        ["if n == 0:\n    print(0)\nelif let b = best, b > 4:\n    print(b)"]
+    );
+}
+
+/// An `if` `from` matches one branch of an `if` chain, an `elif` as its
+/// `if`, and the fix keeps the other branches. Rule: R06.4.9.
+#[test]
+fn an_if_from_matches_one_branch_of_an_if_chain() {
+    let decl = "@lint(pos, from: \"if a > 0:\\n    b\", to: \"if pos(a):\\n    b\", holes: \"b\")\npub fn pos(a: Int) -> Bool = a > 0\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "pos")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let chain = "fn f(x: Int, y: Int):\n    if x > 0:\n        print(1)\n    elif y > 0:\n        print(2)\n    else:\n        print(3)\nf(1, 2)\n";
+    assert_eq!(
+        found(chain),
+        [
+            "if pos(x):\n        print(1)",
+            "elif pos(y):\n        print(2)"
+        ]
+    );
 }

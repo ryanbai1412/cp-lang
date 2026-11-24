@@ -7,7 +7,7 @@ cpl=${CPL:-$here/../../target/release/cpl}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 names=("$@")
-[ ${#names[@]} -gt 0 ] || names=(modint ntt sieve sieve_new matpow maxplus crt comb combinv polypow polycompose labelmod matat wrap matwalk matlazy)
+[ ${#names[@]} -gt 0 ] || names=(modint ntt sieve sieve_new matpow maxplus maxwalk crt comb combinv polypow polycompose labelmod matat wrap matwalk matlazy)
 
 printf '%-10s %8s %8s %7s %8s\n' name cplang c++ ratio bytes
 ratios=()

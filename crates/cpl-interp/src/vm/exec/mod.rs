@@ -6,11 +6,15 @@ use crate::Flow;
 use crate::{bug, describe, release, trap, Interp, Res};
 use cpl_diag::msgs::interp as rows;
 use cpl_ir::{CmpOp, FnId, LoopId};
+pub(crate) use frames::VmFrame;
+use frames::{Escaped, Stop};
 use std::rc::Rc;
 
 mod calls;
 mod containers;
 mod entry;
+mod ext;
+mod frames;
 mod places;
 mod resume;
 mod trace;
@@ -21,99 +25,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         &mut self,
         compiled: &CompiledProgram<'p>,
         chunk: &Chunk<'p>,
-        args_i: &[i64],
         vm_regs_i: &mut Vec<i64>,
     ) -> Res<Value> {
-        let base_i = vm_regs_i.len();
-        vm_regs_i.resize(base_i + chunk.num_i, 0);
-        for (i, &v) in args_i.iter().enumerate() {
-            if let Some(SlotLoc::I(r, _)) = chunk.slot_map.get(i) {
-                vm_regs_i[base_i + *r as usize] = v;
-            }
-        }
-        let mut regs_v = self.take_regs_v(chunk.num_v);
-        let dom_mark = self.saved_domains.len();
-        for &d in &chunk.guarded_domains {
-            self.saved_domains.push((d, self.domains[d]));
-        }
+        let (base_i, mut regs_v) = self.callee_regs(chunk, vm_regs_i);
+        let dom_mark = crate::save_domains(
+            &mut self.saved_domains,
+            &self.domains,
+            &chunk.guarded_domains,
+        );
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v, 0);
         self.restore_domains(dom_mark);
-        self.return_regs_v(regs_v);
-        vm_regs_i.truncate(base_i);
-        res
-    }
-
-    fn exec_chunk_mix(
-        &mut self,
-        compiled: &CompiledProgram<'p>,
-        chunk: &Chunk<'p>,
-        args_i: &mut [i64],
-        args_v: &mut [Value],
-        params: &[cpl_ir::ParamDef],
-        vm_regs_i: &mut Vec<i64>,
-    ) -> Res<Value> {
-        let base_i = vm_regs_i.len();
-        vm_regs_i.resize(base_i + chunk.num_i, 0);
-        let mut regs_v = self.take_regs_v(chunk.num_v);
-        let mut ii = 0usize;
-        let mut iv = 0usize;
-        for loc in chunk.slot_map.iter().take(chunk.param_count) {
-            match *loc {
-                SlotLoc::I(r, _) => {
-                    vm_regs_i[base_i + r as usize] = args_i[ii];
-                    ii += 1;
-                }
-                SlotLoc::OptI { val, some, .. } => {
-                    vm_regs_i[base_i + val as usize] = args_i[ii];
-                    vm_regs_i[base_i + some as usize] = args_i[ii + 1];
-                    ii += 2;
-                }
-                SlotLoc::V(r) => {
-                    regs_v[r as usize] = std::mem::replace(&mut args_v[iv], Value::Unit);
-                    iv += 1;
-                }
-                SlotLoc::SmallTuple { base, len, .. } => {
-                    let (b, n) = (base_i + base as usize, len as usize);
-                    vm_regs_i[b..b + n].copy_from_slice(&args_i[ii..ii + n]);
-                    ii += n;
-                }
-            }
-        }
-        let dom_mark = self.saved_domains.len();
-        for &d in &chunk.guarded_domains {
-            self.saved_domains.push((d, self.domains[d]));
-        }
-        let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v, 0);
-        self.restore_domains(dom_mark);
-        if res.is_ok() && params.iter().any(|p| p.mutable) {
-            let mut ii = 0usize;
-            let mut iv = 0usize;
-            for (k, loc) in chunk.slot_map.iter().take(chunk.param_count).enumerate() {
-                let is_mut = params[k].mutable;
-                match *loc {
-                    SlotLoc::I(r, _) => {
-                        if is_mut {
-                            args_i[ii] = vm_regs_i[base_i + r as usize];
-                        }
-                        ii += 1;
-                    }
-                    SlotLoc::OptI { val, some, .. } => {
-                        if is_mut {
-                            args_i[ii] = vm_regs_i[base_i + val as usize];
-                            args_i[ii + 1] = vm_regs_i[base_i + some as usize];
-                        }
-                        ii += 2;
-                    }
-                    SlotLoc::V(r) => {
-                        if is_mut {
-                            args_v[iv] = std::mem::replace(&mut regs_v[r as usize], Value::Unit);
-                        }
-                        iv += 1;
-                    }
-                    SlotLoc::SmallTuple { len, .. } => ii += len as usize,
-                }
-            }
-        }
         self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         res
@@ -128,30 +49,26 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         regs_v: &mut [Value],
         start_pc: usize,
     ) -> Res<Value> {
-        let exit = self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, regs_v, start_pc, None);
-        if chunk.traced {
-            // The end of the run and a trap show the locals as they were left.
-            let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-            sync_to_stack(
-                &chunk.slot_map,
-                regs_i,
-                regs_v,
-                &mut self.stack,
-                self.base,
-                true,
-            );
-            if exit.is_err() {
-                self.keep_trap_frame();
-            }
-        }
-        match exit? {
-            ExecExit::Return(v) => Ok(v),
-            ExecExit::FeedNext | ExecExit::FeedBreak => Ok(Value::Unit),
+        let exit = self.exec_chunk_exit(compiled, chunk, base_i, vm_regs_i, regs_v, start_pc)?;
+        Ok(self.exit_value(exit))
+    }
+
+    fn exit_value(&mut self, exit: ExecExit) -> Value {
+        match exit {
+            ExecExit::Return(v) => v,
+            ExecExit::ReturnTuple => self.boxed_ret_tuple(),
+            ExecExit::FeedNext | ExecExit::FeedBreak => Value::Unit,
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn exec_chunk_core(
+    /// What the last `RetSmallTuple` returned, boxed.
+    pub(super) fn boxed_ret_tuple(&self) -> Value {
+        let (n, kinds) = (self.ret_tuple_len as usize, self.ret_tuple_kinds);
+        let fs = crate::value::Shared::collect(n, |k| kinds[k].box_val(self.ret_tuple[k]));
+        Value::Tuple(TupleVal::Boxed(fs))
+    }
+
+    fn exec_chunk_exit(
         &mut self,
         compiled: &CompiledProgram<'p>,
         chunk: &Chunk<'p>,
@@ -159,13 +76,33 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         vm_regs_i: &mut Vec<i64>,
         regs_v: &mut [Value],
         start_pc: usize,
-        mut fed: Option<&mut FedCtx<'_, 'p>>,
     ) -> Res<ExecExit> {
+        let exit =
+            self.exec_chunk_core(compiled, (chunk, base_i, start_pc), vm_regs_i, regs_v, None);
+        if chunk.traced {
+            let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+            self.left_traced(chunk, regs_i, regs_v, exit.is_err());
+        }
+        exit
+    }
+
+    /// The ops of one frame, from `start_pc` until it ends or calls.
+    #[allow(clippy::too_many_arguments)]
+    fn run_ops<'c>(
+        &mut self,
+        compiled: &'c CompiledProgram<'p>,
+        chunk: &Chunk<'p>,
+        base_i: usize,
+        vm_regs_i: &mut Vec<i64>,
+        regs_v: &mut [Value],
+        start_pc: usize,
+        escaped: &mut Escaped,
+        fed: &mut Option<&mut FedCtx<'_, 'p>>,
+    ) -> Res<Stop<'c, 'p>> {
         let ops = chunk.ops.as_slice();
         let spans = chunk.spans.as_slice();
         let mut pc: usize = start_pc;
         let mut regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-        let mut escaped: Option<(bool, Option<LoopId>)> = None;
 
         loop {
             // Bounds checks here cost the loop bench about a fifth; the
@@ -788,19 +725,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_i[dst_val as usize] = ord - 1;
                     regs_i[dst_some as usize] = i64::from(ok);
                 }
-                Op::PosOffset {
-                    dst_val,
-                    dst_some,
-                    src,
-                    delta,
-                    dom,
-                } => {
-                    let len = self.domains[dom as usize].1;
-                    let target = regs_i[src as usize].saturating_add(regs_i[delta as usize]);
-                    let ok = target >= 0 && target < len;
-                    regs_i[dst_val as usize] = target;
-                    regs_i[dst_some as usize] = i64::from(ok);
-                }
                 Op::PosTryOrd {
                     dst_val,
                     dst_some,
@@ -864,9 +788,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     innermost,
                     target,
                 } => {
-                    if let Some((was_brk, was)) = escaped {
+                    if let Some((was_brk, was)) = *escaped {
                         if was_brk == brk && (was == Some(id) || (was.is_none() && innermost)) {
-                            escaped = None;
+                            *escaped = None;
                             pc = target as usize;
                         }
                     }
@@ -1539,13 +1463,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_i[dst as usize] = regs_i[a as usize] ^ regs_i[b as usize];
                 }
                 Op::FieldI { dst, obj_v, field } => {
-                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
-                        Value::Tuple(TupleVal::Boxed(fs)) => {
-                            ScalarKind::unbox_val(&fs[field as usize])
-                        }
-                        Value::Tuple(TupleVal::OneInt(v)) => *v,
-                        _ => 0,
-                    };
+                    // A one-Int tuple unboxes to its field.
+                    regs_i[dst as usize] = ScalarKind::unbox_val(match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => &fs[field as usize],
+                        Value::Enum(_, ps) => &ps[field as usize],
+                        v => v,
+                    });
                     if obj_v as usize >= chunk.num_local_v {
                         regs_v[obj_v as usize] = Value::Unit;
                     }
@@ -1760,139 +1683,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 other => {
                     if let Some(exit) = self.exec_ext_op(
-                        other,
-                        cur_pc,
-                        compiled,
-                        chunk,
-                        base_i,
-                        vm_regs_i,
-                        regs_v,
-                        &mut escaped,
-                        &mut fed,
+                        other, cur_pc, compiled, chunk, base_i, vm_regs_i, regs_v, escaped, fed,
                     )? {
                         return Ok(exit);
                     }
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 }
             }
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    #[inline]
-    fn exec_ext_op(
-        &mut self,
-        op: Op,
-        cur_pc: usize,
-        compiled: &CompiledProgram<'p>,
-        chunk: &Chunk<'p>,
-        base_i: usize,
-        vm_regs_i: &mut Vec<i64>,
-        regs_v: &mut [Value],
-        escaped: &mut Option<(bool, Option<LoopId>)>,
-        fed: &mut Option<&mut FedCtx<'_, 'p>>,
-    ) -> Res<Option<ExecExit>> {
-        match op {
-            Op::FieldOptI { .. }
-            | Op::FieldV { .. }
-            | Op::LoadFieldArr1I { .. }
-            | Op::FieldArrLen { .. }
-            | Op::StrGetI { .. }
-            | Op::GStrGetI { .. }
-            | Op::MakeTuple { .. }
-            | Op::MakeTupleI { .. }
-            | Op::MakeList { .. }
-            | Op::ListFilled { .. }
-            | Op::ToList { .. }
-            | Op::MakeFill { .. }
-            | Op::ListSlice { .. }
-            | Op::StrSlice { .. }
-            | Op::TakeLArr1V { .. }
-            | Op::TakeGArr1V { .. }
-            | Op::TakeLList1V { .. }
-            | Op::TakeGList1V { .. }
-            | Op::LoadLArr2V { .. }
-            | Op::LoadGArr2V { .. }
-            | Op::LoadArrNV { .. }
-            | Op::StoreLArr2V { .. }
-            | Op::StoreGArr2V { .. }
-            | Op::ConstF64 { .. }
-            | Op::FloatBin { .. }
-            | Op::FloatMinMax { .. }
-            | Op::CmpV { .. }
-            | Op::CallVmI { .. }
-            | Op::CallVmMix { .. }
-            | Op::CallTraced { .. }
-            | Op::CallClosure { .. }
-            | Op::RetI { .. }
-            | Op::RetV { .. }
-            | Op::RetUnit
-            | Op::IsSomeV { .. }
-            | Op::UnwrapV { .. }
-            | Op::UnwrapVI { .. }
-            | Op::WrapSomeV { .. }
-            | Op::ConstNoneV { .. }
-            | Op::SeqLastV { .. }
-            | Op::SeqLastOptI { .. }
-            | Op::SeqFirstV { .. }
-            | Op::SeqFirstOptI { .. } => {
-                self.exec_fields_and_calls(op, cur_pc, compiled, chunk, base_i, vm_regs_i, regs_v)
-            }
-            Op::SeqLenI { .. }
-            | Op::CutI { .. }
-            | Op::RangeLoI { .. }
-            | Op::RangeHiI { .. }
-            | Op::RangeBoundsI { .. }
-            | Op::BitCeilI { .. }
-            | Op::MinMaxGArr1SmallTuple { .. }
-            | Op::MinMaxLArr1SmallTuple { .. }
-            | Op::ListPushGArr1I { .. }
-            | Op::ListPushGArr1V { .. }
-            | Op::ListPushLArr1I { .. }
-            | Op::ListPushLArr1V { .. }
-            | Op::ListPushLV { .. }
-            | Op::ListPushGV { .. }
-            | Op::ListPushLI { .. }
-            | Op::ListPushGI { .. }
-            | Op::ListPopLV { .. }
-            | Op::ListPopGV { .. }
-            | Op::ListPopOptIL { .. }
-            | Op::ListPopOptIG { .. }
-            | Op::ListPopDiscardL { .. }
-            | Op::ListPopDiscardG { .. }
-            | Op::LoadGlobalVMove { .. }
-            | Op::StoreLFieldIdx1I { .. }
-            | Op::StoreLFieldIdx1V { .. }
-            | Op::LoadFieldList1SmallTuple { .. }
-            | Op::FieldListLen { .. }
-            | Op::StoreLFieldIdx1SmallTuple { .. }
-            | Op::StoreLFieldIdx1OptI { .. }
-            | Op::ListPushFieldLI { .. }
-            | Op::ListPushFieldLV { .. }
-            | Op::ListPushFieldSmallTuple { .. }
-            | Op::ListPopDiscardFieldL { .. }
-            | Op::StoreGList1V { .. }
-            | Op::StoreLList1V { .. }
-            | Op::LoadGList1V { .. }
-            | Op::LoadLList1V { .. }
-            | Op::LoadLList1OptI { .. }
-            | Op::SeqItems { .. }
-            | Op::TreeRangeItems { .. }
-            | Op::ListPopFieldOptIL { .. }
-            | Op::MakeRange { .. }
-            | Op::CmpOptI { .. }
-            | Op::CmpSmallTuple { .. }
-            | Op::LoadGIdxFieldI { .. }
-            | Op::StoreGIdxFieldI { .. }
-            | Op::LoadLIdxFieldI { .. }
-            | Op::StoreLIdxFieldI { .. } => {
-                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                self.exec_seq_and_list(op, cur_pc, chunk, regs_i, regs_v)?;
-                Ok(None)
-            }
-            _ => self.exec_places_and_fallback(
-                op, cur_pc, compiled, chunk, base_i, vm_regs_i, regs_v, escaped, fed,
-            ),
         }
     }
 }

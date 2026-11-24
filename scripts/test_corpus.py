@@ -587,6 +587,31 @@ class MaxShortTest(unittest.TestCase):
             self.assertEqual(corpus.max_short_mode(args), 1)
 
 
+class DreamSizesTest(unittest.TestCase):
+    def run_mode(self, root, sizes, write=False):
+        with mock.patch.object(corpus, "ROOT", root), mock.patch.object(corpus, "problems", return_value=[]), \
+                mock.patch("concurrent.futures.ProcessPoolExecutor") as pool, \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            pool.return_value.__enter__.return_value.map.return_value = sizes
+            return corpus.dream_sizes_mode(argparse.Namespace(cpl="cpl", j=1, write=write))
+
+    def test_a_stale_record_fails_and_write_records_the_dreams_over_32kb(self):
+        sizes = [("a", corpus.TARGET_BYTES + 1), ("b", corpus.TARGET_BYTES)]
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "research"))
+            self.assertEqual(self.run_mode(root, sizes), 1)
+            self.assertEqual(self.run_mode(root, sizes, write=True), 0)
+            self.assertEqual(json.loads(Path(root, corpus.DREAM_OVER).read_text()), {"dream_over_32kb": ["a"]})
+            self.assertEqual(self.run_mode(root, sizes), 0)
+            self.assertEqual(self.run_mode(root, [("a", 100), ("b", 100)]), 1)
+
+    def test_a_dream_that_does_not_build_fails_and_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "research"))
+            self.assertEqual(self.run_mode(root, [("a", None)], write=True), 1)
+            self.assertFalse(Path(root, corpus.DREAM_OVER).exists())
+
+
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
         d = self.package("p", port_cp="", interactor_py="")
@@ -920,7 +945,12 @@ class AtMax(unittest.TestCase):
     def findings(self, safe, mine, theirs=(0, b"1\n", 0.05, 10), limits=(2000, 256)):
         self.order = []
         result = {"safe": safe, "exe": mine, "orig": theirs}
-        for name, fake in (("measure", lambda exe, data, t: self.order.append(exe) or result[exe]),
+        def measure(exe, data, t):
+            self.order.append(exe)
+            self.held.append(corpus.TIMED.locked())
+            return result[exe]
+        self.held = []
+        for name, fake in (("measure", measure),
                            ("checked", lambda *a: "safe"),
                            ("limits", lambda port: limits)):
             self.addCleanup(setattr, corpus, name, getattr(corpus, name))
@@ -960,6 +990,13 @@ class AtMax(unittest.TestCase):
     def test_the_port_and_the_accepted_cpp_take_turns(self):
         self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
         self.assertEqual(self.order, ["safe", "exe", "orig", "orig", "exe", "exe", "orig"])
+
+    def test_the_timed_runs_hold_the_lock_and_let_it_go(self):
+        self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
+        self.assertEqual(self.held, [False] + [True] * 6)
+        self.assertFalse(corpus.TIMED.locked())
+        self.findings((0, b"1\n", 0.1, 10), None)
+        self.assertFalse(corpus.TIMED.locked())
 
     def test_an_accepted_cpp_that_fails_the_max_is_a_finding(self):
         self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 10), (139, b"", 0.01, 10)), ["reference-fails p --max"])
@@ -1437,10 +1474,18 @@ class AtBaseTest(unittest.TestCase):
                 mock.patch("builtins.open", mock.mock_open()), mock.patch("sys.stderr", new_callable=io.StringIO):
             corpus.base_findings(self.FOUND, ["run"], "HEAD", "target/release/cpl", run=run)
         self.assertEqual(envs[1]["CPL_INTERP_TIMEOUT"], str(corpus.INTERP_TIMEOUT // 2))
+        # The base target is under the main checkout's .git: without its own std the dev cpl's
+        # guard sees that checkout and gives no verdict (idioms' four interp timeouts).
+        self.assertEqual(envs[1]["CPL_STD_DIR"], str(Path("/base") / "std"))
 
     def test_a_base_with_no_verdict_admits_nothing(self):
         self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", build=101)[0], set())
         self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", code=2)[0], set())
+
+    def test_a_base_with_no_verdict_says_why(self):
+        # Idioms' btoi06p5: the base build failed inside land.sh and every finding read as new, silently.
+        self.assertIn("no verdict at the base", self._base("interp-timeout yac6p6 08.in\n", build=101)[1])
+        self.assertIn("verify exited 2", self._base("interp-timeout yac6p6 08.in\n", code=2)[1])
 
 
 if __name__ == "__main__":

@@ -8,6 +8,15 @@ use super::*;
 impl<'a> Lowerer<'a> {
     /// Lowers `e` to see its type, keeping no diagnostics or context.
     pub(in crate::lower) fn probe_expr(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
+        // `B<Int, Int>` probed as `B<Int, Int>.new(..)`'s receiver is a type:
+        // its constructor closure would instantiate `B` inside a dropped lambda.
+        if let ast::ExprKind::Generic { base, .. } = &e.kind {
+            if let ast::ExprKind::Name(name) = &base.kind {
+                if matches!(self.get_sym(name), Some(Sym::GenStruct(_))) {
+                    return self.err_expr(e.span);
+                }
+            }
+        }
         let saved_diags = self.diags.len();
         let saved_cx = self.cx.clone();
         let saved_outer = self.outer_cxs.clone();

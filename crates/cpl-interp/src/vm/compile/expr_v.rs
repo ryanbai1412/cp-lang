@@ -4,7 +4,7 @@ use crate::vm::ir::*;
 use cpl_diag::Span;
 use cpl_ir::Prim;
 use cpl_ir::{
-    BinOp, Builtin, Cast, Expr, ExprKind, FmtArg, FmtPiece, Mutation, Place, PlaceKind, Stmt, Ty,
+    BinOp, Builtin, Cast, Expr, ExprKind, FmtPiece, Mutation, Place, PlaceKind, Stmt, Ty,
 };
 use std::rc::Rc;
 
@@ -138,6 +138,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 return self.make_tuple_i(fields, kind, span);
             }
         }
+        self.compile_expr_v_kind(expr)
+    }
+
+    /// `expr` into a value register by its kind alone, whatever its type.
+    pub(super) fn compile_expr_v_kind(&mut self, expr: &'p Expr) -> u16 {
+        let span = expr.span;
         match &expr.kind {
             ExprKind::Format(pieces) => self.compile_format(pieces, span),
             ExprKind::Str(bytes) => {
@@ -159,7 +165,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 dst
             }
-            ExprKind::Field(base, idx) => {
+            ExprKind::Field(base, idx) | ExprKind::Payload(base, _, idx) => {
                 let obj_v = self.compile_expr_v(base);
                 let dst = self.alloc_v();
                 self.emit(
@@ -170,9 +176,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                if obj_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: obj_v }, span);
-                }
                 dst
             }
             ExprKind::Index(base, indices) if Self::indexes_nd_cell(&base.ty, indices) => {
@@ -241,14 +244,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::ConstF64 { dst, idx }, span);
                 dst
             }
-            ExprKind::Binary(op, a, b)
-                if matches!(a.ty, Ty::Float)
-                    && matches!(b.ty, Ty::Float)
-                    && matches!(
-                        op,
-                        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow
-                    ) =>
-            {
+            ExprKind::Binary(op, a, b) if a.ty == b.ty && matches!(a.ty, Ty::Float | Ty::I128) => {
                 let ra = self.compile_expr_v(a);
                 let rb = self.compile_expr_v(b);
                 let dst = self.alloc_v();
@@ -595,7 +591,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let lv = self.compile_expr_v(lhs);
                 let is_some = self.alloc_i();
                 self.emit(
-                    Op::IsSomeV {
+                    Op::IsVariantI {
+                        tag: 1,
                         dst_i: is_some,
                         src_v: lv,
                     },
@@ -682,6 +679,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 self.emit_fallback_expr_v(expr)
             }
+            ExprKind::MutSlice(place, lo, hi) => {
+                self.compile_view(ViewOp::Slice(place), place, &[lo, hi], true, expr)
+            }
+            ExprKind::MutLine(place, at, axis) => {
+                self.compile_view(ViewOp::Line(place, *axis), place, &[at], true, expr)
+            }
             ExprKind::Closure(cid) => {
                 let def = &self.program.closures[*cid];
                 {
@@ -746,9 +749,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::DomainValV { dst, dom }, span);
                 dst
             }
-            ExprKind::Range { lo, hi } if matches!(&expr.ty, Ty::Range(inner) if matches!(**inner, Ty::Float | Ty::I128)) =>
+            ExprKind::Range { lo, hi } if matches!(&expr.ty, Ty::Range(inner) if matches!(**inner, Ty::Float | Ty::I128 | Ty::U64)) =>
             {
-                let float = matches!(&expr.ty, Ty::Range(inner) if **inner == Ty::Float);
+                let wide = crate::value::WideElem::of_range(&expr.ty);
                 let lo_v = self.compile_expr_v(lo);
                 let hi_v = self.compile_expr_v(hi);
                 let dst = self.alloc_v();
@@ -757,7 +760,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         dst,
                         lo: lo_v,
                         hi: hi_v,
-                        float,
+                        wide,
                     },
                     span,
                 );
@@ -789,10 +792,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_fallback_expr_v(expr)
                 }
             }
-            ExprKind::Cast(Cast::IntToFloat, inner) => {
+            ExprKind::Cast(c @ (Cast::IntToFloat | Cast::IntToI128), inner) => {
                 let src = self.compile_expr_i(inner);
                 let dst = self.alloc_v();
-                self.emit(Op::IntToFloat { dst, src }, span);
+                let float = matches!(c, Cast::IntToFloat);
+                self.emit(Op::IntToFloat { dst, src, float }, span);
                 dst
             }
             ExprKind::Intrinsic(Prim::Sqrt, args) if args.len() == 1 && args[0].ty == Ty::Float => {
@@ -802,6 +806,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if src >= self.num_local_v {
                     self.emit(Op::ClearV { reg: src }, span);
                 }
+                dst
+            }
+            ExprKind::Sort(place, by, desc) => {
+                self.compile_sort(place, by, desc.as_deref(), expr);
+                let dst = self.alloc_v();
+                self.emit(Op::ConstUnit { dst }, span);
                 dst
             }
             ExprKind::Unit => {
@@ -1204,23 +1214,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
-    pub(super) fn compile_print(&mut self, args: &'p [FmtArg], end: Option<&'p Expr>, span: Span) {
-        let regs: Vec<u16> = args.iter().map(|a| self.compile_expr_v(&a.value)).collect();
-        let end = end.map(|e| self.compile_expr_v(e));
-        let idx = self.prints.len() as u32;
-        self.prints.push(PrintSpec {
-            args,
-            regs: regs.clone(),
-            end,
-        });
-        self.emit(Op::Print { idx }, span);
-        for reg in regs.into_iter().chain(end) {
-            if reg >= self.num_local_v {
-                self.emit(Op::ClearV { reg }, span);
-            }
-        }
-    }
-
     pub(super) fn compile_format(&mut self, pieces: &'p [FmtPiece], span: Span) -> u16 {
         let regs: Vec<u16> = pieces
             .iter()
@@ -1326,7 +1319,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let span = expr.span;
         match &expr.kind {
             ExprKind::Tuple(fs) if fs.len() == len as usize => {
-                let mut regs = [0u16; 4];
+                let mut regs = [0u16; 5];
                 for (k, f) in fs.iter().enumerate() {
                     regs[k] = self.compile_expr_i(f);
                 }
@@ -1363,18 +1356,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         }
                     }
                 }
-                SlotLoc::V(src_v) => {
-                    self.emit(
-                        Op::UnboxSmallTuple {
-                            dst_base,
-                            len,
-                            src_v,
-                        },
-                        span,
-                    );
-                }
                 _ => {
-                    let src_v = self.emit_fallback_expr_v(expr);
+                    let src_v = self.compile_expr_v(expr);
                     self.emit(
                         Op::UnboxSmallTuple {
                             dst_base,
@@ -1451,55 +1434,68 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             );
                         }
                     }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            if indices.len() == 2 {
-                                let r_j = self.compile_expr_i(&indices[1]);
-                                self.emit(
-                                    Op::LoadLArr2SmallTuple {
-                                        dst_base,
-                                        len,
-                                        arr_v,
-                                        r_i,
-                                        r_j,
-                                    },
-                                    span,
-                                );
-                            } else {
-                                self.emit(
-                                    Op::LoadLArr1SmallTuple {
-                                        dst_base,
-                                        len,
-                                        arr_v,
-                                        r_i,
-                                    },
-                                    span,
-                                );
-                            }
-                        } else {
-                            let src_v = self.emit_fallback_expr_v(expr);
+                    _ => {
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        if indices.len() == 2 {
+                            let r_j = self.compile_expr_i(&indices[1]);
                             self.emit(
-                                Op::UnboxSmallTuple {
+                                Op::LoadLArr2SmallTuple {
                                     dst_base,
                                     len,
-                                    src_v,
+                                    arr_v,
+                                    r_i,
+                                    r_j,
+                                },
+                                span,
+                            );
+                        } else {
+                            self.emit(
+                                Op::LoadLArr1SmallTuple {
+                                    dst_base,
+                                    len,
+                                    arr_v,
+                                    r_i,
                                 },
                                 span,
                             );
                         }
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
                     }
-                    _ => {
-                        let src_v = self.emit_fallback_expr_v(expr);
-                        self.emit(
-                            Op::UnboxSmallTuple {
-                                dst_base,
-                                len,
-                                src_v,
-                            },
-                            span,
-                        );
+                }
+            }
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args)
+                if self.call_returns_small_tuple(expr, len) =>
+            {
+                let call = match &expr.kind {
+                    ExprKind::Call(fn_id, _) => {
+                        self.try_compile_call_mix(*fn_id, args, CallRet::Tuple(len), span)
                     }
+                    ExprKind::CallExpr(callee, _) => {
+                        self.try_compile_call_closure(callee, args, CallRet::Tuple(len), span)
+                    }
+                    _ => None,
+                };
+                if let Some((dst_i, _, _)) = call {
+                    for k in 0..u16::from(len) {
+                        if dst_i + k != dst_base + k {
+                            let mv = Op::MoveI {
+                                dst: dst_base + k,
+                                src: dst_i + k,
+                            };
+                            self.emit(mv, span);
+                        }
+                    }
+                } else {
+                    let src_v = self.compile_expr_v(expr);
+                    let unbox = Op::UnboxSmallTuple {
+                        dst_base,
+                        len,
+                        src_v,
+                    };
+                    self.emit(unbox, span);
                 }
             }
             _ => {

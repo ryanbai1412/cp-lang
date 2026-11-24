@@ -50,6 +50,7 @@ be good at is its charter, `handbook/domains/infra.md`; the rules are in
 | Public-history hygiene | `scripts/public-hosts.txt`, the staged scan in `check.sh` | Added lines link only listed hosts; no secret patterns, home paths or local sensitive words. |
 | Main CI | `.github/workflows/ci.yml` | The sharded fast gate, editors, CLI on 3 OSes, acceptance and differential checks, the corpus audit, the site build. |
 | Non-blocking CI | `.github/workflows/ci-slow.yml` | Wall-clock budgets and LSP latency; its own queue. |
+| Dreams | `.github/workflows/dreams.yml` | Every dream against its accepted C++ on each main tip; its own queue; a red holds edge. |
 | After CI | `commit-status.yml`, `culprit.yml`, `watchdog.yml`; `scripts/commit_status.py`, `scripts/culprit.py`, `scripts/ci-watchdog.sh` | Per-commit status, culprit naming, the stall alert. |
 | Release | `.github/workflows/release.yml`, `scripts/release/{plan.sh,shippable.sh,build.sh,package.py,editors.py,manifest.py,publish.sh}`, tests `scripts/test_release.py` | Edge hourly from the newest shippable commit, stable on dispatch; 5 targets, reproducible archives, editor assets, `latest.json` and `SHA256SUMS`. |
 | Installers | `web/public/install.sh`, `web/public/install.ps1`; tested by `crates/cpl-cli/tests/toolchain.rs` | Pick the target, read `latest.json`, verify sha256, unpack into `~/.cpl/toolchains/<id>/`, launcher at `~/.cpl/bin/cpl`. |

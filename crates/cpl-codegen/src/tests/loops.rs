@@ -156,6 +156,56 @@ fn a_max_plus_row_is_one_branch_free_pass_on_an_avx2_judge_only() {
 }
 
 #[test]
+fn every_grid_row_sweep_takes_two_cells_a_round_off_an_avx2_judge() {
+    let program = crate::tests::lower(concat!(
+        "let n: 1..=8 = read()\n",
+        "domain S = 0..n\n",
+        "type Mat = [S, S]Int\n",
+        "type Cube = [S, S, S]Int\n",
+        "fn add(a: Mat, b: Mat) -> Mat:\n",
+        "    var c = a\n",
+        "    for i in S:\n",
+        "        for j in S:\n",
+        "            c[i, j] += b[i, j]\n",
+        "    c\n",
+        "fn row_sum(g: Cube, x: S, y: S) -> Int:\n",
+        "    var s = 0\n",
+        "    for z in S: s += g[x, y, z]\n",
+        "    s\n",
+        "fn column(a: Mat, j: S) -> Int:\n",
+        "    var s = 0\n",
+        "    for i in S: s += a[i, j]\n",
+        "    s\n",
+        "let a: Mat = [S, S] (i, j) => i.ord + j.ord\n",
+        "let g: Cube = [S, S, S] (i, j, k) => i.ord * j.ord + k.ord\n",
+        "let f = S.first!\n",
+        "print(add(a, a)[f, f] + row_sum(g, f, f) + column(a, f))\n",
+    ));
+    let plain = crate::emit_for(&program, "t.cp", None, &crate::Target::default());
+    let loop_of = |at: &str| {
+        let head = &plain[..plain.find(at).expect(&plain)];
+        head[head.rfind("for (").expect(&plain) - 24..].to_string()
+    };
+    // A loop over a row's last index takes the rule; a column walk doesn't.
+    for at in ["c_row[(size_t)(j)] = ", "g_2(x, y, z)"] {
+        assert!(
+            loop_of(at).contains("_Pragma(\"GCC unroll 2\") for ("),
+            "{at}\n{plain}"
+        );
+    }
+    assert!(
+        !loop_of("a_2_row[(size_t)(j)]").contains("GCC unroll 2"),
+        "{plain}"
+    );
+    let avx2 = crate::Target {
+        cpu: vec!["avx2".into()],
+        ..crate::Target::default()
+    };
+    let fast = crate::emit_for(&program, "t.cp", None, &avx2);
+    assert!(!fast.contains("GCC unroll 2"), "{fast}");
+}
+
+#[test]
 fn a_grids_keys_walk_one_loop_per_axis_and_divide_nothing() {
     let source = concat!(
         "let n: 1..=1500 = read()\n",
@@ -200,12 +250,11 @@ fn a_ranges_table_is_indexed_by_plain_index_math() {
     assert!(body.contains("cpl::tri_idx("), "{body}");
     assert!(!body.contains("cpl::sym_idx("), "{body}");
     // `r` is a key, so its own cell has no empty check; `drop`, `drop_last`
-    // and the split pieces read the ends without copying a `Range`.
+    // and the split pieces read the ends without copying a `Range`. The
+    // pieces' checks go too: the cut walks `r.drop(1)`, so both are proven
+    // non-empty.
     let checks = body.matches("an empty range has no cell").count();
-    assert_eq!(
-        checks, 6,
-        "the two drops, the two pieces and the two `I.range`s: {body}"
-    );
+    assert_eq!(checks, 4, "the two drops and the two `I.range`s: {body}");
     assert!(!body.contains("cpl::Range<int> piece"), "{body}");
     assert!(!body.contains("cpl::Range<int> range = r"), "{body}");
     // `r.splits` runs in place as the loop over its cuts: no callback form.
@@ -213,6 +262,58 @@ fn a_ranges_table_is_indexed_by_plain_index_math() {
     assert!(body.contains("for (int p = "), "{body}");
     // `min` over the splits starts from its identity: no first-value branch.
     assert!(body.contains("9223372036854775807LL"), "{body}");
+}
+
+#[test]
+fn a_split_of_a_cut_walking_a_drop_has_no_empty_check() {
+    // A user fn shaped like `splits`: the bounds of the loop over the cuts
+    // prove both pieces non-empty, whatever the fn is called.
+    let source = concat!(
+        "fn halves<D>(r: Range<D>) -> yields (Range<D>, Range<D>):\n",
+        "    for p in r.drop(1):\n",
+        "        let m = (p..p).l\n",
+        "        yield (r.l..m, m..r.r)\n",
+        "let n: 1..=3000 = read()\ndomain I = 1..=n\nlet a: [I]Int = read()\n",
+        "var cost: [I.ranges]Int = 0\n",
+        "for r in I.ranges:\n",
+        "    if r.len >= 2:\n",
+        "        cost[r] = min(cost[x] + cost[y] + a[r.first] for (x, y) in halves(r))!\n",
+        "print(cost[I.range])\n",
+    );
+    let body = body(source);
+    let checks = body.matches("an empty range has no cell").count();
+    assert_eq!(checks, 1, "only `I.range`'s: {body}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let report = crate::explain::report("t.cp", source, &program);
+    assert_eq!(
+        report.matches(crate::explain::PROVEN).count(),
+        2,
+        "{report}"
+    );
+}
+
+#[test]
+fn a_split_whose_cut_can_reach_an_end_keeps_its_check() {
+    // The cut walks all of `r`, so `r.l..m` is empty at the first one.
+    let body = body(concat!(
+        "fn halves<D>(r: Range<D>) -> yields (Range<D>, Range<D>):\n",
+        "    for p in r:\n",
+        "        let m = (p..p).l\n",
+        "        yield (r.l..m, m..r.r)\n",
+        "let n: 1..=3000 = read()\ndomain I = 1..=n\n",
+        "var cost: [I.ranges]Int = 0\n",
+        "for r in I.ranges:\n",
+        "    if r.len >= 2:\n",
+        "        cost[r] = min(cost[x] + cost[y] for (x, y) in halves(r))!\n",
+        "print(cost[I.range])\n",
+    ));
+    assert_eq!(
+        body.matches("an empty range has no cell").count(),
+        2,
+        "{body}"
+    );
 }
 
 #[test]
@@ -312,5 +413,14 @@ fn a_loop_over_the_rows_of_a_grid_walks_them_by_pointer() {
     assert!(
         !rebound.contains("c_row"),
         "a grid the loop replaces: {rebound}"
+    );
+}
+
+#[test]
+fn a_counted_list_read_reaches_the_backend_as_its_loop() {
+    let out = cpp("let rows: List<List<Int>> = read()\nprint(rows.len)\n");
+    assert!(
+        out.contains("ll t2 = cpl::read_int();") && out.contains("while (t0 > 0) {"),
+        "{out}"
     );
 }

@@ -1,6 +1,5 @@
 use super::seq_load::SeqKind;
-use super::sort::sort_key_of;
-use super::{Compiler, GiveTarget, LoopExits, LoopTargets};
+use super::{Compiler, GiveTarget, LoopExits, LoopJump, LoopTargets};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use cpl_diag::Span;
@@ -25,7 +24,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         resumable: Option<LoopReg>,
         stmts: &'p [Stmt],
     ) -> LoopExits {
-        let depth = self.loops.len();
+        let (depth, first_jump) = (self.loops.len(), self.jumps.len());
         self.loops.push(LoopTargets {
             id,
             breaks: Vec::new(),
@@ -38,6 +37,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
         for lt in self.loops.drain(depth..) {
             exits.breaks.extend(lt.breaks);
             exits.continues.extend(lt.continues);
+        }
+        // A jump to a loop further out stays for that loop to claim.
+        let jumps: Vec<LoopJump> = self.jumps.drain(first_jump..).collect();
+        for j in jumps {
+            match j.to {
+                Some(to) if to != id => self.jumps.push(j),
+                _ if j.brk => exits.breaks.push(j.pc),
+                _ => exits.continues.push(j.pc),
+            }
         }
         exits
     }
@@ -227,6 +235,25 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// `Trace`, and anything else is left to the tree-walker, which
     /// reports it. Returns whether `stmt` was compiled.
     pub(super) fn compile_traced_stmt(&mut self, stmt: &'p Stmt) -> bool {
+        if let Stmt::For(id, slot, Iter::Seq(seq, false), body) = stmt {
+            if let Some((fn_id, feed, args)) = self.traced_feed(*id, *slot, seq, body) {
+                let eager = self.emit(Op::JmpEager { target: 0 }, seq.span);
+                let dst = self.emit_traced_call(seq.span, Callee::Fn(fn_id), args, false);
+                // `emit_traced_call` ends with its `CallTraced`.
+                let call = self.ops.len() - 1;
+                self.traced_feeds.push((call as u32, feed));
+                self.note_fed_site(call, stmt, seq);
+                if dst >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: dst }, seq.span);
+                }
+                let j_end = self.emit(Op::Jmp { target: 0 }, seq.span);
+                self.patch(eager, self.ops.len() as u32);
+                self.compile_eager_for(stmt, *id, *slot, seq, body);
+                self.patch(j_end, self.ops.len() as u32);
+                self.compile_fed_body(*id, body);
+                return true;
+            }
+        }
         match stmt {
             Stmt::Let(slot, Some(init))
                 if self.feed_acc != Some(*slot) && self.traced_quiet(init) =>
@@ -295,32 +322,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if dst >= self.num_local_v {
                     self.emit(Op::ClearV { reg: dst }, e.span);
                 }
-            }
-            Stmt::For(id, slot, Iter::Seq(seq, false), body)
-                if self.fed_body_ok(*id, seq, body) =>
-            {
-                match self.traced_feed(*id, *slot, seq, body) {
-                    Some((fn_id, feed, args)) => {
-                        let eager = self.emit(Op::JmpEager { target: 0 }, seq.span);
-                        let dst = self.emit_traced_call(seq.span, Callee::Fn(fn_id), args, false);
-                        // `emit_traced_call` ends with its `CallTraced`.
-                        let call = self.ops.len() - 1;
-                        self.traced_feeds.push((call as u32, feed));
-                        self.note_fed_site(call, stmt, seq);
-                        if dst >= self.num_local_v {
-                            self.emit(Op::ClearV { reg: dst }, seq.span);
-                        }
-                        let j_end = self.emit(Op::Jmp { target: 0 }, seq.span);
-                        self.patch(eager, self.ops.len() as u32);
-                        self.compile_eager_for(stmt, *id, *slot, seq, body);
-                        self.patch(j_end, self.ops.len() as u32);
-                    }
-                    None => {
-                        self.emit_fallback_stmt(stmt);
-                        self.emit_escapes();
-                    }
-                }
-                self.compile_fed_body(*id, body);
             }
             Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => {
                 match self.traced_quiet_iter(iter) {
@@ -427,11 +428,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
             // the tree-walker for one that captures a local by reference.
             ExprKind::Closure(_) => true,
             // Reported as each runs: a write by `reporting_write`, a sort
-            // by `trace_sorted`, a print by `print_values`.
+            // by `trace_sorted`, a print or debug as it runs.
             ExprKind::Mutate(_, place, _) => {
                 quiet_place(place, cpl_ir::walk::root(place)) && !self.yields_into(place)
             }
-            ExprKind::Print(..) => true,
+            ExprKind::Print(..) | ExprKind::Debug(..) => true,
+            // A view writes nothing until written through.
+            ExprKind::MutSlice(..) | ExprKind::MutLine(..) => true,
             ExprKind::Sort(place, ..) => {
                 quiet_place(place, cpl_ir::walk::root(place)) && !self.yields_into(place)
             }
@@ -449,7 +452,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// in it traces its own lets as a `let` initializer's would.
     fn traced_quiet_iter(&self, iter: &'p Iter) -> Option<Span> {
         match iter {
-            Iter::Walk { .. } => None,
             Iter::Range { lo, hi, step, .. } => (self.traced_quiet(lo)
                 && self.traced_quiet(hi)
                 && step.as_ref().is_none_or(|s| self.traced_quiet(s)))
@@ -581,22 +583,25 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.applies.push(ApplySpec {
             expr: e,
             regs: vec![src],
+            view: None,
         });
         let dst = self.alloc_v();
         self.emit(Op::MutatePlace { idx, path, dst }, e.span);
         self.emit(Op::ClearV { reg: dst }, e.span);
     }
 
-    /// Whether the tree-walker can run the body of the fed loop `id` from
-    /// this traced chunk.
-    fn fed_body_ok(&self, id: LoopId, seq: &'p Expr, body: &'p Block) -> bool {
-        self.allow_fed_loops
+    /// The list the fed loop `id` is fed into, when this traced chunk can
+    /// run its body.
+    fn fed_acc(&self, id: LoopId, seq: &'p Expr, body: &'p Block) -> Option<usize> {
+        let ok = self.allow_fed_loops
             && self.feed_acc.is_none()
             && self.inline_slots.is_none()
             && self.inline_ret.is_none()
             && (self.give_targets.is_empty() || !cpl_ir::walk::has_give(&body.stmts))
-            && self.feeds.feeds(id, seq, body).is_some()
-            && !Self::block_has_outer_loop_jump(body, id)
+            && !Self::block_has_outer_loop_jump(body, id);
+        ok.then(|| self.feeds.feeds(id, seq, body))
+            .flatten()
+            .map(|(_, acc)| acc)
     }
 
     /// The fed loop `id`'s call, when this chunk makes it itself.
@@ -607,12 +612,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
         seq: &'p Expr,
         body: &'p Block,
     ) -> Option<(FnId, TracedFeed<'p>, &'p [Arg])> {
-        let (_, acc) = self.feeds.feeds(id, seq, body)?;
-        let Some((Callee::Fn(fn_id), args)) = self.traced_call(seq) else {
+        // A judge's or `@cpp` fn traps as `CallTraced` makes it, as any call.
+        let ExprKind::Call(fn_id, args) = &seq.kind else {
             return None;
         };
+        let acc = self.fed_acc(id, seq, body)?;
         Some((
-            fn_id,
+            *fn_id,
             TracedFeed {
                 id,
                 slot,
@@ -803,25 +809,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 if ScalarKind::of_ty(&expr.ty, self.program).is_some() {
                     let _ = self.compile_expr_i(expr);
-                } else if let ExprKind::Print(args, end) = &expr.kind {
-                    self.compile_print(args, end.as_deref(), expr.span);
                 } else if let ExprKind::Mutate(op, place, args) = &expr.kind {
-                    if self.try_compile_mutate_stmt(*op, place, args, expr.span) {
-                    } else if let Some(dst) = self.try_compile_mutate_place(expr) {
+                    if !super::apply::through_view(place)
+                        && self.try_compile_mutate_stmt(*op, place, args, expr.span)
+                    {
+                    } else if let Some(dst) = self.try_compile_apply_v(expr) {
                         self.emit(Op::ClearV { reg: dst }, expr.span);
                     } else {
                         self.emit_fallback_stmt(stmt);
                     }
-                } else if let ExprKind::Sort(place, cpl_ir::SortBy::Natural, desc) = &expr.kind {
-                    if !self.try_compile_sort_stmt(place, desc.as_deref(), expr.span)
-                        && !self.try_compile_sort_cmp_stmt(expr, place, desc.as_deref())
-                    {
-                        self.emit_fallback_stmt(stmt);
-                    }
-                } else if let Some((place, by, desc)) = sort_key_of(&expr.kind) {
-                    if !self.try_compile_sort_key_stmt(expr, place, by, desc) {
-                        self.emit_fallback_stmt(stmt);
-                    }
+                } else if let ExprKind::Sort(place, by, desc) = &expr.kind {
+                    self.compile_sort(place, by, desc.as_deref(), expr);
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
                     if self
                         .try_compile_call_mix(*fn_id, args, CallRet::Unit, expr.span)
@@ -880,7 +878,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.patch(j_ok, end_pc);
             }
             Stmt::Assign(place, op, value) => {
-                if !self.try_compile_assign(place, *op, value) {
+                if super::apply::through_view(place) {
+                    let write = ViewOp::Write(place, *op);
+                    let reg = self.compile_view(write, place, &[value], true, value);
+                    self.emit(Op::ClearV { reg }, place.span);
+                } else if !self.try_compile_assign(place, *op, value) {
                     self.emit_fallback_stmt(stmt);
                 }
                 self.in_dom
@@ -941,29 +943,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_fallback_stmt(stmt);
                 }
             }
-            Stmt::Break(id) => {
-                let target_pos = match id {
-                    Some(id) => self.loops.iter().rposition(|l| l.id == *id),
-                    None => self.loops.len().checked_sub(1),
-                };
-                if let Some(pos) = target_pos {
-                    let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
-                    self.loops[pos].breaks.push(pc);
-                } else {
-                    self.emit_fallback_stmt(stmt);
-                }
-            }
-            Stmt::Continue(id) => {
-                let target_pos = match id {
-                    Some(id) => self.loops.iter().rposition(|l| l.id == *id),
-                    None => self.loops.len().checked_sub(1),
-                };
-                if let Some(pos) = target_pos {
-                    let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
-                    self.loops[pos].continues.push(pc);
-                } else {
-                    self.emit_fallback_stmt(stmt);
-                }
+            Stmt::Break(to) | Stmt::Continue(to) => {
+                let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
+                let brk = matches!(stmt, Stmt::Break(_));
+                self.jumps.push(LoopJump { to: *to, brk, pc });
             }
             Stmt::Give(e) => {
                 if let Some(target) = self.give_targets.last() {
@@ -1037,17 +1020,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     if let Some((_, jumps)) = &mut self.inline_ret {
                         jumps.push(pc);
                     }
-                } else if self.cur_fn.is_some() {
-                    if ScalarKind::of_ty(&e.ty, self.program).is_some() {
-                        let r = self.compile_expr_i(e);
-                        self.emit(Op::RetI { src: r }, e.span);
-                    } else {
-                        let r = self.compile_expr_v(e);
-                        let r = self.ret_v(r, e.span);
-                        self.emit(Op::RetV { src: r }, e.span);
-                    }
+                } else if self.cur_fn.is_none() {
+                    // The program's own block: its value ends the program.
+                    let _ = self.compile_expr_v(e);
+                    self.emit(Op::RetUnit, e.span);
+                } else if let Some((len, kinds)) = self.tuple_ret_of(e) {
+                    let base = self.small_tuple_operand(e, len);
+                    self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
+                } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
+                    let r = self.compile_expr_i(e);
+                    self.emit(Op::RetI { src: r }, e.span);
                 } else {
-                    self.emit_fallback_stmt(stmt);
+                    let r = self.compile_expr_v(e);
+                    let r = self.ret_v(r, e.span);
+                    self.emit(Op::RetV { src: r }, e.span);
                 }
             }
             Stmt::Return(val) => {
@@ -1072,7 +1058,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 } else if self.feed_acc.is_some() {
                     self.emit(Op::FeedEnd, Span::default());
                 } else if let Some(e) = val {
-                    if ScalarKind::of_ty(&e.ty, self.program).is_some() {
+                    if let Some((len, kinds)) = self.tuple_ret_of(e) {
+                        let base = self.small_tuple_operand(e, len);
+                        self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
+                    } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
                         let r = self.compile_expr_i(e);
                         self.emit(Op::RetI { src: r }, e.span);
                     } else {
@@ -1260,8 +1249,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let in_i = matches!(self.slot_loc(slot), SlotLoc::I(..));
         match iter {
-            // An `I128` range, or one whose items aren't ints, walks its items.
-            Iter::RangeVal(e, rev) if !in_i => {
+            // An `I128` or `U64` range, or one whose items aren't ints, walks its items.
+            Iter::RangeVal(e, rev)
+                if !in_i || crate::value::WideElem::of_range(&e.ty).is_some() =>
+            {
                 self.compile_for_seq(id, slot, e, None, *rev, body);
                 return true;
             }

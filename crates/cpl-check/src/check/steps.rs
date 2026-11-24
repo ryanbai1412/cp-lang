@@ -119,7 +119,7 @@ impl Checker<'_> {
         {
             return;
         }
-        if super::advice::called_next(self.src.get(expr.span.end as usize..).unwrap_or("")) {
+        if self.is_called(expr) {
             return;
         }
         let shown = format!("{}.{}", self.quote(base.span), name.text);
@@ -137,7 +137,7 @@ impl Checker<'_> {
         }
         let with_identity = ["+", "*", "^", "|", "&", "max", "min", "gcd", "or", "and"];
         !with_identity.contains(&self.text(op.span))
-            && matches!(self.quietly(|c| c.infer(op)), Ty::Fn { .. })
+            && matches!(self.infer_quietly(op), Ty::Fn { .. })
     }
 
     /// R02.1.3: a struct's name is a type, not an operation: `a.fold(MaxSub)` is
@@ -167,7 +167,7 @@ impl Checker<'_> {
         };
         let init_slot = init.name.as_ref().is_none_or(|n| n.text == "init");
         let is_fn = matches!(f.value.kind, ExprKind::Lambda { .. })
-            || matches!(self.quietly(|c| c.infer(&f.value)), Ty::Fn { .. });
+            || matches!(self.infer_quietly(&f.value), Ty::Fn { .. });
         if f.name.is_some() || !init_slot || !is_fn {
             return None;
         }

@@ -194,7 +194,7 @@ impl<'a> Checker<'a> {
             }
             _ => return,
         };
-        let map = self.quietly(|c| c.infer(base));
+        let map = self.infer_quietly(base);
         let Ty::Named { name, args } = &map else {
             return;
         };

@@ -245,6 +245,9 @@ impl FileState {
     }
 }
 
+/// The analysis and names a `calling` scope was built from, and the scope.
+type Calling = (Arc<Analysis>, Vec<String>, Arc<Scope>);
+
 struct SyntaxMemo {
     item: Arc<ItemSyntax>,
     last_used: u64,
@@ -287,6 +290,9 @@ pub struct Database {
     syntax: HashMap<u64, SyntaxMemo>,
     defs: HashMap<(u32, u64, String), DefMemo>,
     checks: HashMap<(u32, u64), CheckMemo>,
+    /// `calling`'s scope per file, for the analysis and names it was built
+    /// from: every `.` completed in an unchanged file imports the methods once.
+    callings: crate::names::NameMap<Calling>,
     stats: Stats,
     loader: Box<dyn Loader>,
     /// Where the item whose `use` is being imported starts, so an import's fix can reach
@@ -321,6 +327,7 @@ impl Database {
             syntax: HashMap::default(),
             defs: HashMap::default(),
             checks: HashMap::default(),
+            callings: Default::default(),
             stats: Stats::default(),
             loader,
             import_base: None,
@@ -384,6 +391,7 @@ impl Database {
 
     pub fn remove_file(&mut self, path: &str) {
         self.edits += 1;
+        self.callings.remove(path);
         if let Some(file) = self.files.remove(path) {
             self.defs.retain(|key, _| key.0 != file.id);
             self.checks.retain(|key, _| key.0 != file.id);
@@ -1098,7 +1106,7 @@ impl Database {
                 let gen_typed = checks[def_index].hovers.iter().any(|h| {
                     h.name == r.name && matches!(&h.ty, Ty::Named { name, .. } if name == "Gen")
                 });
-                let Some((code, what)) = rewalk_kind(&items, def_index, gen_typed) else {
+                let Some((code, what)) = rewalk_kind(&items, &checks, def_index, gen_typed) else {
                     continue;
                 };
                 let Some(first) = (def_index + 1..index).find(|&k| {
@@ -1478,7 +1486,7 @@ impl Database {
         let Some(analysis) = self.analyze(path) else {
             return vec![None; names.len()];
         };
-        let scope = Arc::new(self.calling(path, &analysis.scope, names));
+        let scope = self.memo_calling(path, &analysis, names);
         let Some(mut ctx) = self.file_ctx(path, &analysis, scope) else {
             return vec![None; names.len()];
         };
@@ -1486,6 +1494,23 @@ impl Database {
         (names.iter())
             .map(|name| checker.method_fit(receiver, name))
             .collect()
+    }
+
+    /// `calling` for `analysis` of `path`, built once until the file's
+    /// analysis or `names` change.
+    fn memo_calling(&mut self, path: &str, analysis: &Arc<Analysis>, names: &[&str]) -> Arc<Scope> {
+        if let Some((of, named, scope)) = self.callings.get(path) {
+            if Arc::ptr_eq(of, analysis)
+                && named.iter().map(String::as_str).eq(names.iter().copied())
+            {
+                return scope.clone();
+            }
+        }
+        let scope = Arc::new(self.calling(path, &analysis.scope, names));
+        let named = names.iter().map(|n| n.to_string()).collect();
+        let memo = (analysis.clone(), named, scope.clone());
+        self.callings.insert(path.to_string(), memo);
+        scope
     }
 
     /// `scope` as it would be had the file written `.name` for each of

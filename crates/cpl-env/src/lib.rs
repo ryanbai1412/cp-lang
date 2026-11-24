@@ -71,8 +71,6 @@ vars! {
     COMMIT = "CPL_COMMIT";
     /// At build time: the release channel stamped into `cpl --version` (default `dev`).
     CHANNEL = "CPL_CHANNEL";
-    /// `1`: `cpl` panics on start, to test the crash report.
-    FORCE_ICE = "CPL_FORCE_ICE";
     /// Where crash reports go (default `~/.cpl/crashes`).
     CRASH_DIR = "CPL_CRASH_DIR";
     /// The VS Code command `cpl setup` installs the extension with (default `code`).

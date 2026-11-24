@@ -1,0 +1,47 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":16,"label":"let n: 1..=100 = read()","stage":"main","values":{"stdout":[],"n":4},"locals":{},"frames":[{"fn":"main","line":16}]},
+{"id":1,"line":6,"label":"var dep: [V]0..=V.count = 0","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[0,0,0,0]},"frames":[{"fn":"walk","line":6},{"fn":"main","line":17}]},
+{"id":2,"line":7,"label":"var c: 0..=V.count = 0","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[0,0,0,0],"c":0},"frames":[{"fn":"walk","line":7},{"fn":"main","line":17}]},
+{"id":3,"line":8,"label":"for v in V:","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[0,0,0,0],"c":0,"v":0},"frames":[{"fn":"walk","line":8},{"fn":"main","line":17}]},
+{"id":4,"line":9,"label":"let u = V.first!","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[0,0,0,0],"c":0,"v":0,"u":0},"frames":[{"fn":"walk","line":9},{"fn":"main","line":17}]},
+{"id":5,"line":10,"label":"dep[v] = min(dep[u] + 1, V.count)","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,0,0,0],"c":0,"v":0,"u":0},"frames":[{"fn":"walk","line":10},{"fn":"main","line":17}]},
+{"id":6,"line":11,"label":"c = dep[v]","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,0,0,0],"c":1,"v":0,"u":0},"frames":[{"fn":"walk","line":11},{"fn":"main","line":17}]},
+{"id":7,"line":8,"label":"for v in V:","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,0,0,0],"c":1,"v":1,"u":0},"frames":[{"fn":"walk","line":8},{"fn":"main","line":17}]},
+{"id":8,"line":9,"label":"let u = V.first!","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,0,0,0],"c":1,"v":1,"u":0},"frames":[{"fn":"walk","line":9},{"fn":"main","line":17}]},
+{"id":9,"line":10,"label":"dep[v] = min(dep[u] + 1, V.count)","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,0,0],"c":1,"v":1,"u":0},"frames":[{"fn":"walk","line":10},{"fn":"main","line":17}]},
+{"id":10,"line":11,"label":"c = dep[v]","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,0,0],"c":2,"v":1,"u":0},"frames":[{"fn":"walk","line":11},{"fn":"main","line":17}]},
+{"id":11,"line":8,"label":"for v in V:","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,0,0],"c":2,"v":2,"u":0},"frames":[{"fn":"walk","line":8},{"fn":"main","line":17}]},
+{"id":12,"line":9,"label":"let u = V.first!","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,0,0],"c":2,"v":2,"u":0},"frames":[{"fn":"walk","line":9},{"fn":"main","line":17}]},
+{"id":13,"line":10,"label":"dep[v] = min(dep[u] + 1, V.count)","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,2,0],"c":2,"v":2,"u":0},"frames":[{"fn":"walk","line":10},{"fn":"main","line":17}]},
+{"id":14,"line":11,"label":"c = dep[v]","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,2,0],"c":2,"v":2,"u":0},"frames":[{"fn":"walk","line":11},{"fn":"main","line":17}]},
+{"id":15,"line":8,"label":"for v in V:","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,2,0],"c":2,"v":3,"u":0},"frames":[{"fn":"walk","line":8},{"fn":"main","line":17}]},
+{"id":16,"line":9,"label":"let u = V.first!","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,2,0],"c":2,"v":3,"u":0},"frames":[{"fn":"walk","line":9},{"fn":"main","line":17}]},
+{"id":17,"line":10,"label":"dep[v] = min(dep[u] + 1, V.count)","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,2,2],"c":2,"v":3,"u":0},"frames":[{"fn":"walk","line":10},{"fn":"main","line":17}]},
+{"id":18,"line":11,"label":"c = dep[v]","stage":"main","values":{"stdout":[],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,2,2],"c":2,"v":3,"u":0},"frames":[{"fn":"walk","line":11},{"fn":"main","line":17}]},
+{"id":19,"line":12,"label":"print → 2 2","stage":"main","values":{"stdout":["2 2"],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,2,2],"c":2,"v":3,"u":0},"checkpoint":"print 1","frames":[{"fn":"walk","line":12},{"fn":"main","line":17}]},
+{"id":20,"line":13,"label":"let u = V.first!","stage":"main","values":{"stdout":["2 2"],"n":4},"locals":{"n":4,"k":2,"dep":[1,2,2,2],"c":2,"v":3,"u":0,"u":0},"frames":[{"fn":"walk","line":13},{"fn":"main","line":17}]},
+{"id":21,"line":14,"label":"dep[u] = dep[u] + k","stage":"main","values":{"stdout":["2 2"],"n":4},"locals":{"n":4,"k":2,"dep":[3,2,2,2],"c":2,"v":3,"u":0,"u":0},"frames":[{"fn":"walk","line":14},{"fn":"main","line":17}]},
+{"id":22,"line":17,"label":"print → 3","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":17}]},
+{"id":23,"line":6,"label":"var dep: [V]0..=V.count = 0","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[0,0,0,0]},"frames":[{"fn":"walk","line":6},{"fn":"main","line":18}]},
+{"id":24,"line":7,"label":"var c: 0..=V.count = 0","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[0,0,0,0],"c":0},"frames":[{"fn":"walk","line":7},{"fn":"main","line":18}]},
+{"id":25,"line":8,"label":"for v in V:","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[0,0,0,0],"c":0,"v":0},"frames":[{"fn":"walk","line":8},{"fn":"main","line":18}]},
+{"id":26,"line":9,"label":"let u = V.first!","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[0,0,0,0],"c":0,"v":0,"u":0},"frames":[{"fn":"walk","line":9},{"fn":"main","line":18}]},
+{"id":27,"line":10,"label":"dep[v] = min(dep[u] + 1, V.count)","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,0,0,0],"c":0,"v":0,"u":0},"frames":[{"fn":"walk","line":10},{"fn":"main","line":18}]},
+{"id":28,"line":11,"label":"c = dep[v]","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,0,0,0],"c":1,"v":0,"u":0},"frames":[{"fn":"walk","line":11},{"fn":"main","line":18}]},
+{"id":29,"line":8,"label":"for v in V:","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,0,0,0],"c":1,"v":1,"u":0},"frames":[{"fn":"walk","line":8},{"fn":"main","line":18}]},
+{"id":30,"line":9,"label":"let u = V.first!","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,0,0,0],"c":1,"v":1,"u":0},"frames":[{"fn":"walk","line":9},{"fn":"main","line":18}]},
+{"id":31,"line":10,"label":"dep[v] = min(dep[u] + 1, V.count)","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,2,0,0],"c":1,"v":1,"u":0},"frames":[{"fn":"walk","line":10},{"fn":"main","line":18}]},
+{"id":32,"line":11,"label":"c = dep[v]","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,2,0,0],"c":2,"v":1,"u":0},"frames":[{"fn":"walk","line":11},{"fn":"main","line":18}]},
+{"id":33,"line":8,"label":"for v in V:","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,2,0,0],"c":2,"v":2,"u":0},"frames":[{"fn":"walk","line":8},{"fn":"main","line":18}]},
+{"id":34,"line":9,"label":"let u = V.first!","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,2,0,0],"c":2,"v":2,"u":0},"frames":[{"fn":"walk","line":9},{"fn":"main","line":18}]},
+{"id":35,"line":10,"label":"dep[v] = min(dep[u] + 1, V.count)","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,2,2,0],"c":2,"v":2,"u":0},"frames":[{"fn":"walk","line":10},{"fn":"main","line":18}]},
+{"id":36,"line":11,"label":"c = dep[v]","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,2,2,0],"c":2,"v":2,"u":0},"frames":[{"fn":"walk","line":11},{"fn":"main","line":18}]},
+{"id":37,"line":8,"label":"for v in V:","stage":"main","values":{"stdout":["2 2","3"],"n":4},"locals":{"n":4,"k":4,"dep":[1,2,2,0],"c":2,"v":3,"u":0},"frames":[{"fn":"walk","line":8},{"fn":"main","line":18}]},
+... 6 more lines, 1382 bytes, fnv64 ac4f317233c50ff1
+stderr:
+error[R0201]: 5 is outside `0..=V.count`
+  --> range_array_cells_traps.cp:14:5
+   |
+14 |     dep[u] = dep[u] + k
+   |     ^^^^^^
+   = note: call stack: walk (range_array_cells_traps.cp:14) <- top level (range_array_cells_traps.cp:18)
+   = help: the value leaves the range its variable was declared with: widen the type, or check the value first

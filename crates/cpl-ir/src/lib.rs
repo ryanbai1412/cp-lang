@@ -552,7 +552,7 @@ impl Ty {
 /// range of an integer and the length of a count-indexed dimension. This
 /// is what `read()` follows and what `var a: [n]Int = 0` allocates from.
 #[derive(Clone, PartialEq, Debug)]
-pub enum Spec {
+pub enum Spec<L = std::convert::Infallible> {
     /// Any type with nothing to add.
     Plain(Ty),
     Int {
@@ -570,21 +570,33 @@ pub enum Spec {
         text: String,
     },
     /// A tuple, a record, or a struct, field by field.
-    Fields(Ty, Vec<Spec>),
+    Fields(Ty, Vec<Spec<L>>),
     Array {
         dims: Vec<DimSpec>,
-        elem: Box<Spec>,
+        elem: Box<Spec<L>>,
     },
     /// `?T`, and the number that stands for `none` in the input, from
     /// `read(none: 0)`.
-    Opt(Box<Spec>, Option<Box<Expr>>),
+    Opt(Box<Spec<L>>, Option<Box<Expr>>),
     /// A type its own `impl Read` reads: the call to its `read()`.
     Call(Box<Expr>),
     /// `read_line()`: the rest of the current line (skipping a trailing `\r?\n` after a token).
     Line,
-    /// `List<T>`: a count, then that many `T`s (R10.2.3). Lowering spells it
-    /// out as a `Call` before a read reaches a backend.
-    List(Box<Spec>),
+    /// `List<T>`: a count, then that many `T`s (R10.2.3), as lowering
+    /// resolves a type. Lowering spells it out as a `Call` before it builds
+    /// a read, so in the IR `L` is uninhabited and no backend sees one.
+    List(L),
+}
+
+/// What a [`Spec::List`] holds: lowering's counted list, or nothing in the IR.
+pub trait SpecList {
+    fn ty(&self) -> Ty;
+}
+
+impl SpecList for std::convert::Infallible {
+    fn ty(&self) -> Ty {
+        match *self {}
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -612,7 +624,7 @@ impl DimSpec {
     }
 }
 
-impl Spec {
+impl<L: SpecList> Spec<L> {
     pub fn ty(&self) -> Ty {
         match self {
             Spec::Plain(ty) | Spec::Fields(ty, _) => ty.clone(),
@@ -624,7 +636,7 @@ impl Spec {
             Spec::Opt(inner, _) => Ty::opt(inner.ty()),
             Spec::Call(call) => call.ty.clone(),
             Spec::Line | Spec::Str { .. } => Ty::Str,
-            Spec::List(each) => Ty::list(each.ty()),
+            Spec::List(each) => each.ty(),
         }
     }
 }
@@ -1001,9 +1013,6 @@ pub enum Builtin {
     /// `SymIdx` of ends known to be in order, `lo <= last`: the cell of a
     /// `V.ranges` key, whose non-emptiness is already checked or proven.
     TriIdx,
-    /// `v.offset(k)` / `v + k` -> `?V`, and `v.cyc(k)` -> `V`.
-    PosOffset(DomainId),
-    PosCyc(DomainId),
     /// `v.l(k)` / `v.r(k)` -> `Bound(d)` (checked in `0..=K`).
     BoundStepL(DomainId),
     BoundStepR(DomainId),
@@ -1158,10 +1167,9 @@ impl Stmt {
             Stmt::If(cond, ..) | Stmt::While(_, cond, _) => cond.span,
             Stmt::For(_, _, iter, _) => match iter {
                 Iter::Range { lo, hi, .. } => join(lo.span, hi.span),
-                Iter::Walk { len: e, .. }
-                | Iter::RangeVal(e, _)
-                | Iter::Seq(e, _)
-                | Iter::TreeRange { container: e, .. } => e.span,
+                Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::TreeRange { container: e, .. } => {
+                    e.span
+                }
             },
             Stmt::Assert { span, .. } | Stmt::Trap(_, span) => *span,
             Stmt::DefDomain { len, .. } => len.span,
@@ -1197,19 +1205,6 @@ pub enum Iter {
     /// The elements of an array, list, set or string, or the `(key,
     /// value)` pairs of a map. `rev` walks backward.
     Seq(Expr, bool),
-    /// The values of a library domain in ordinal order, or backward when
-    /// `rev`: `nth(k)` for each `k` in `0..len`, with `k` in slot `k` and
-    /// `len` read once into slot `n`. Lowering expands it into an `Int`
-    /// range loop before any backend sees it. With `recv` (a read of the
-    /// walked value), `nth` is its method: `nth(recv, k)`.
-    Walk {
-        k: Slot,
-        n: Slot,
-        len: Expr,
-        nth: FnId,
-        recv: Option<Expr>,
-        rev: bool,
-    },
     /// Keys (for `Set`) or `(key, value)` pairs (for `Map`) in a bounded range,
     /// walking the underlying ordered tree directly in O(log n + k).
     TreeRange {
@@ -1585,6 +1580,10 @@ pub struct Program {
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays, grids,
     /// nested arrays, lists, and all-ranged tuple elements.
     pub narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
+    /// The declared range of each cell of a range-typed array, grid or list
+    /// (`var dep: [V]0..=V.count`), with how many indexes reach the cell:
+    /// every store into a cell is checked into it.
+    pub cell_ranges: std::collections::BTreeMap<ElemLoc, (u8, Spec)>,
     /// Each `mut` argument in the user's file passed as a copy and written
     /// back after its call: a place with no address of its own (a `Bool`
     /// element).
@@ -1812,7 +1811,7 @@ impl Program {
                                 self.collect_defined_domains_expr(s, escaping, seen, out);
                             }
                         }
-                        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Walk { len: e, .. } => {
+                        Iter::RangeVal(e, _) | Iter::Seq(e, _) => {
                             self.collect_defined_domains_expr(e, escaping, seen, out);
                         }
                         Iter::TreeRange {

@@ -38,7 +38,14 @@ threads-required = 'num-cpus'
 # std or the corpus; beside the rest of the suite a personal-library shard of
 # std_items took 41 s against 9 s alone. Give them the machine.
 [[profile.default.overrides]]
-filter = 'binary_id(cpl-lsp::std_items) | binary_id(cpl-lsp::completion_replay) | binary_id(cpl-cli::front_end_fuzz)'
+filter = 'binary_id(cpl-lsp::std_items) | binary_id(cpl-lsp::completion_replay) | binary_id(cpl-cli::front_end_fuzz) | binary_id(cpl-cli::rename_replay)'
+threads-required = 'num-cpus'
+
+# The judges matrix, corpus, limit and size shards each build and compile
+# their ports one thread per core; beside the rest of the suite a 20 s
+# shard took 122 s. Give them the machine.
+[[profile.default.overrides]]
+filter = 'binary_id(cpl-cli::judges) & (test(/^every_port_compiles_with_every_judges_flags_[0-9]/) | test(/^every_passing_corpus_port_compiles_with_every_judges_flags_[0-9]/) | test(/^every_port_is_written_for_every_judge_within_its_limit_/) | test(/^the_size_report_of_every_port_adds_up_to_its_file_[0-9]/))'
 threads-required = 'num-cpus'
 
 # The commit tier (scripts/check.sh --commit) skips the end-to-end suites:

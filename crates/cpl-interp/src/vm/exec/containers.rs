@@ -2,7 +2,7 @@ use crate::observe::Observer;
 use crate::value::{OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{bug, trap, Interp, Res};
+use crate::{bug, interp_failed, trap, Interp, Res};
 use cpl_ir::CmpOp;
 use std::rc::Rc;
 
@@ -34,6 +34,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Array(arr) => arr.len() as i64,
                     Value::List(items) => items.len() as i64,
                     Value::ListView(view) => view.len as i64,
+                    Value::MutView(view) => view.len as i64,
                     Value::Str(bytes) => bytes.len() as i64,
                     Value::StrView(view) => view.len as i64,
                     Value::Map(m) => m.len() as i64,
@@ -135,7 +136,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let Some((stride, data)) = a.data.flat_rows_mut() {
+                    if let Some((stride, data)) = (**a).flat_rows_mut() {
                         let off = idx as usize * stride;
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
@@ -144,7 +145,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     } else {
                         let vs = a.as_mut_values();
-                        let mut cur = [0i64; 4];
+                        let mut cur = [0i64; 5];
                         if let Value::Tuple(TupleVal::Boxed(fs)) = &vs[idx as usize] {
                             for k in 0..n {
                                 cur[k] = ScalarKind::unbox_val(&fs[k]);
@@ -188,7 +189,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let Some((stride, data)) = a.data.flat_rows_mut() {
+                    if let Some((stride, data)) = (**a).flat_rows_mut() {
                         let off = idx as usize * stride;
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
@@ -197,7 +198,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     } else {
                         let vs = a.as_mut_values();
-                        let mut cur = [0i64; 4];
+                        let mut cur = [0i64; 5];
                         if let Value::Tuple(TupleVal::Boxed(fs)) = &vs[idx as usize] {
                             for k in 0..n {
                                 cur[k] = ScalarKind::unbox_val(&fs[k]);
@@ -824,7 +825,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst_some as usize] = s;
             }
             Op::SeqItems { dst, src } => {
-                let items = self.seq_items(&regs_v[src as usize], spans[cur_pc])?;
+                // A view reads its root where it was lent.
+                let held = &regs_v[src as usize];
+                let lent = matches!(held, Value::MutView(_));
+                if lent {
+                    self.show_lent()?;
+                }
+                let items = self.seq_items(held, spans[cur_pc]);
+                if lent {
+                    self.hide_lent()?;
+                }
+                let items = items?;
                 regs_v[dst as usize] = Value::List(Rc::new(crate::value::Cells::from(items)));
             }
             Op::TreeRangeItems { dst, src, lo, hi } => {
@@ -982,10 +993,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         let a = Rc::make_mut(arr);
-                        if let Some((stride, data)) = a.data.flat_rows_mut() {
+                        if let Some((stride, data)) = (**a).flat_rows_mut() {
                             data[idx as usize * stride + field as usize] = raw;
                         } else {
-                            match &mut a.data.as_mut_values()[idx as usize] {
+                            match &mut (**a).as_mut_values()[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     crate::value::Shared::make_mut(fs)[field as usize] =
                                         kind.box_val(raw);
@@ -1083,10 +1094,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         let a = Rc::make_mut(arr);
-                        if let Some((stride, data)) = a.data.flat_rows_mut() {
+                        if let Some((stride, data)) = (**a).flat_rows_mut() {
                             data[idx as usize * stride + field as usize] = raw;
                         } else {
-                            match &mut a.data.as_mut_values()[idx as usize] {
+                            match &mut (**a).as_mut_values()[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     crate::value::Shared::make_mut(fs)[field as usize] =
                                         kind.box_val(raw);
@@ -1116,12 +1127,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     _ => return bug(spans[cur_pc], "expected array or list"),
                 }
             }
-            _ => {
-                return trap(
-                    spans[cur_pc],
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
+            _ => return Err(interp_failed(spans[cur_pc])),
         }
         Ok(())
     }

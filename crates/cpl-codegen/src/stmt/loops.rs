@@ -105,7 +105,11 @@ impl<'p> Emitter<'p> {
             self.spread.insert((self.current_scope(), slot), names);
             return Some((params, Vec::new()));
         }
-        let moved_in: Vec<String> = names.iter().map(|n| format!("std::move({n})")).collect();
+        let moved_in: Vec<String> = names
+            .iter()
+            .zip(parts.iter())
+            .map(|(n, t)| self.move_of(t, n))
+            .collect();
         let mut lines = vec![format!("{decl} = {cpp}{{{}}};", moved_in.join(", "))];
         lines.extend(first.iter().cloned());
         Some((params, lines))
@@ -238,7 +242,15 @@ impl<'p> Emitter<'p> {
         let close = match (returns, outermost, &result) {
             (false, ..) => "});".to_string(),
             (true, false, _) => "}) == 2) return 2;".to_string(),
-            (true, true, Some(held)) => format!("}}) == 2) return std::move(*{held});"),
+            (true, true, Some(held)) => {
+                let ret = self
+                    .fn_id
+                    .map_or(Ty::Error, |f| self.program.fns[f].ret.clone());
+                format!(
+                    "}}) == 2) return {};",
+                    self.move_of(&ret, &format!("*{held}"))
+                )
+            }
             (true, true, None) if self.in_setup => "}) == 2) return false;".to_string(),
             (true, true, None) => "}) == 2) return;".to_string(),
         };
@@ -376,9 +388,6 @@ impl<'p> Emitter<'p> {
         }
         let cpp = if enum_range { "ll".to_string() } else { cpp };
         match iter {
-            Iter::Walk { .. } => {
-                crate::invariant::broken_invariant("lowering expands every Iter::Walk")
-            }
             Iter::Range {
                 lo,
                 hi,
@@ -450,6 +459,11 @@ impl<'p> Emitter<'p> {
                                 let unroll = match (known(lo), known(hi)) {
                                     (Some(lo), Some(hi)) if (1..=16).contains(&(hi - lo)) => {
                                         format!("_Pragma(\"GCC unroll {}\") ", hi - lo)
+                                    }
+                                    _ if !self.target.has("avx2")
+                                        && crate::uses::loops::sweeps_grid_row(slot, body) =>
+                                    {
+                                        "_Pragma(\"GCC unroll 2\") ".to_string()
                                     }
                                     _ => String::new(),
                                 };
@@ -554,7 +568,23 @@ impl<'p> Emitter<'p> {
                 self.line(out, "{");
                 self.indent += 1;
                 self.line(out, &format!("auto {held} = {};", r_code.text));
-                if *rev {
+                let wider = match &r_expr.ty {
+                    Ty::Range(elem) => crate::names::wider_range_ends(elem),
+                    _ => None,
+                };
+                // Ends wider than the items: walk the ends and narrow each one.
+                if let Some(ends) = wider {
+                    let w = self.temp();
+                    let mut lines = vec![format!("{cpp} {var} = ({cpp}){w};")];
+                    lines.extend(first.iter().cloned());
+                    let head = if *rev {
+                        format!("for ({ends} {w} = {held}.hi; {w}-- > {held}.lo; ) {{")
+                    } else {
+                        format!("for ({ends} {w} = {held}.lo; {w} < {held}.hi; {w}++) {{")
+                    };
+                    self.line(out, &head);
+                    self.loop_body(id, &lines, body, out);
+                } else if *rev {
                     self.line(
                         out,
                         &format!("for ({cpp} {var} = {held}.hi; {var}-- > {held}.lo; ) {{"),
@@ -682,7 +712,16 @@ impl<'p> Emitter<'p> {
                 let effects = Touch::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
-                let untouched_by_body = |seq: &Expr| match held_root(crate::uses::in_place(seq)) {
+                // What a fn lends from its argument (`t.order`) lives in that argument.
+                let walked_root = |seq: &Expr| {
+                    held_root(crate::uses::in_place(seq)).or_else(|| match &seq.kind {
+                        ExprKind::Call(f, _) if self.lent_roots.contains_key(f) => {
+                            crate::lend::given_root(seq, &self.lent_roots)
+                        }
+                        _ => None,
+                    })
+                };
+                let untouched_by_body = |seq: &Expr| match walked_root(seq) {
                     Some((false, local)) => {
                         !effects.writes.contains(&(false, local))
                             || fields_untouched(crate::uses::in_place(seq), body)
@@ -824,6 +863,12 @@ impl<'p> Emitter<'p> {
                             &format!("const cpl::Held<{holder_ty}> {held}_h = {call};"),
                         );
                         self.line(out, &format!("const {holder_ty}& {held} = *{held}_h;"));
+                    } else if matches!(&seq.kind, ExprKind::CallExpr(_, args)
+                        if args.iter().all(|a| matches!(a, cpl_ir::Arg::Value(v) if v.ty.is_scalar())))
+                    {
+                        // A lambda given only scalars returns a temporary, or a place
+                        // nothing changes ([`Emitter::closure_lends`]): both outlive the walk.
+                        self.line(out, &format!("const {holder_ty}& {held} = {seq_text};"));
                     } else {
                         self.line(out, &format!("{holder_ty} {held} = {seq_text};"));
                         let lent = matches!(&seq.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(f));

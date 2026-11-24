@@ -92,7 +92,12 @@ pub fn crash_dir() -> PathBuf {
 /// Installs the global panic hook that saves `~/.cpl/crashes/<ts>/` and prints
 /// the one-line `cpl report --last` hint.
 pub fn install_ice_hook() {
-    std::panic::set_hook(Box::new(|info| {
+    install_ice_hook_saying(|hint| eprintln!("{hint}"));
+}
+
+/// [`install_ice_hook`], handing the hint line to `say` instead of stderr.
+pub fn install_ice_hook_saying(say: impl Fn(&str) + Send + Sync + 'static) {
+    std::panic::set_hook(Box::new(move |info| {
         let msg = if let Some(s) = info.payload().downcast_ref::<&str>() {
             (*s).to_string()
         } else if let Some(s) = info.payload().downcast_ref::<String>() {
@@ -110,7 +115,7 @@ pub fn install_ice_hook() {
             .unwrap_or_else(|| "unknown".to_string());
         let ctx = context_cell().lock().map(|g| g.clone()).unwrap_or_default();
         let _ = write_crash_bundle(&crash_dir(), &ctx, &msg, &location, &bt);
-        eprintln!("this is a cpl bug: run `cpl report --last`");
+        say("this is a cpl bug: run `cpl report --last`");
     }));
 }
 

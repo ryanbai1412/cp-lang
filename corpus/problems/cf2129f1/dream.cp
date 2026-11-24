@@ -19,7 +19,7 @@ let no_queries: List<Query> = []
 let room_of: [Query]Int = [Query] q => if q == Query.first: 300 else: 60
 
 fn build_masks() -> [MaxVal]Mask:
-    var room = room_of
+    var room = room_of.clone()
     let no_masks: List<Mask> = []
     var chosen = Set(no_masks)
     var out: List<Mask> = []

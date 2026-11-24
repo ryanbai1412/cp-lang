@@ -19,7 +19,6 @@ mod globals;
 mod gridrow;
 mod inline;
 mod into;
-mod invariant;
 mod lap;
 mod lend;
 mod lent_fields;
@@ -237,7 +236,12 @@ fn prepared_with(program: &cpl_ir::Program, target: &Target, inline: bool) -> cp
         &mut program,
         target.checks.keeps(cpl_ir::checks::Check::Asserts),
     );
-    splice::splice(&mut program, target.checks != Checks::None, inline);
+    // `for v in f.out(u)` passes on `f(u)`, a call one more run splices in turn.
+    for _ in 0..3 {
+        if !splice::splice(&mut program, target.checks != Checks::None, inline) {
+            break;
+        }
+    }
     unpack::unpack(&mut program);
     optfn::known_options(&mut program);
     capfn::zero_size_captures(&mut program);
@@ -294,6 +298,9 @@ pub struct Lowered {
     /// Each `Int` `+ - *` the file writes, by span, and whether a build
     /// that keeps checks tests it for overflow.
     pub overflows: Vec<(cpl_diag::Span, bool)>,
+    /// Each check its loops' bounds prove never fails, so the C++ drops it:
+    /// by span, with what it checks ([`explain::PROVEN`]).
+    pub proven: Vec<(cpl_diag::Span, String)>,
 }
 
 pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
@@ -312,7 +319,7 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
         checks: Checks::Traps,
         ..judge_target()
     };
-    let (mut checks, mut overflows) =
+    let (mut checks, mut overflows, proven) =
         emit::Emitter::new(&crate::prepared(program, &traps), &traps).checks();
     checks.sort_by_key(|(span, index)| (span.start, span.end, *index));
     checks.dedup_by_key(|(span, _)| (span.start, span.end));
@@ -325,6 +332,7 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
         specializations: width::explained(&prepared),
         checks,
         overflows,
+        proven,
     }
 }
 

@@ -82,6 +82,10 @@ impl Checker<'_> {
             self.push_scope();
             self.bind_whole(&clause.pat, &elem, false, "for");
             let got = self.infer(body);
+            if want.is_none() {
+                // `T(gen() for _ in fields(T))`: each field's own type, known per `T`.
+                self.gens_given_a_type.insert(body.span);
+            }
             if let (Some(i), Some(fields)) = (i, want) {
                 let field = &fields[i];
                 self.expect_fits(&got, &field.ty, body, &|c, got, want| {
@@ -159,13 +163,12 @@ impl Checker<'_> {
                     }
                     let before = self.sink.len();
                     // `new<A: Acts<T, F>>(.., act: A)`: `F` is what `A`'s impl gives.
-                    let through = (method_rows.iter())
-                        .find(|(m, _, _)| m == "new" && !is_generated_ctor)
-                        .map(|(_, _, through)| through.clone());
+                    let new = (method_rows.iter()).find(|(m, ..)| m == "new" && !is_generated_ctor);
+                    let through = new.map(|r| r.2.clone());
                     let outer = std::mem::replace(&mut self.call_bound_args, through);
                     self.args(callee_text, verb, params, args, call, &mut bindings);
                     let through = std::mem::replace(&mut self.call_bound_args, outer);
-                    if let Some(bounds) = &through {
+                    if let Some((.., bounds)) = new {
                         self.method_bounds_hold(
                             callee_text,
                             (bounds, params),
@@ -625,7 +628,7 @@ impl Checker<'_> {
         if arg.name.is_some() {
             return;
         }
-        let ty = self.quietly(|c| c.infer(&arg.value));
+        let ty = self.infer_quietly(&arg.value);
         let text = self.text(arg.value.span).to_string();
         let of = methods.iter().any(|(m, _)| m == "of") && !receivers.iter().any(|r| r == "of");
         let list = matches!(&ty, Ty::Array { .. })

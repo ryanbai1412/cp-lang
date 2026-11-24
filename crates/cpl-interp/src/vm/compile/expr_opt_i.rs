@@ -1,5 +1,7 @@
+use super::stmt::Callee;
 use super::{Compiler, GiveTarget};
 use crate::vm::ir::*;
+use cpl_diag::Span;
 use cpl_ir::{BinOp, Builtin, Expr, ExprKind, Mutation, PlaceKind, Ty};
 
 impl<'p, 'f> Compiler<'p, 'f> {
@@ -96,23 +98,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         dst_val,
                         dst_some,
                         src,
-                    },
-                    span,
-                );
-                (dst_val, dst_some)
-            }
-            ExprKind::Builtin(Builtin::PosOffset(d), args) if args.len() == 2 => {
-                let src = self.compile_expr_i(&args[0]);
-                let delta = self.compile_expr_i(&args[1]);
-                let dst_val = self.alloc_i();
-                let dst_some = self.alloc_i();
-                self.emit(
-                    Op::PosOffset {
-                        dst_val,
-                        dst_some,
-                        src,
-                        delta,
-                        dom: *d as u16,
                     },
                     span,
                 );
@@ -627,18 +612,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 {
                     (dst_val, dst_some)
                 } else {
-                    let src_v = self.emit_fallback_expr_v(expr);
-                    let dst_val = self.alloc_i();
-                    let dst_some = self.alloc_i();
-                    self.emit(
-                        Op::UnboxOptI {
-                            dst_val,
-                            dst_some,
-                            src_v,
-                        },
-                        span,
-                    );
-                    (dst_val, dst_some)
+                    let src_v = self.emit_traced_call(span, Callee::Fn(*fn_id), args, false);
+                    self.unbox_opt_i(src_v, span)
                 }
             }
             ExprKind::CallExpr(callee, args) => {
@@ -647,18 +622,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 {
                     (dst_val, dst_some)
                 } else {
-                    let src_v = self.emit_fallback_expr_v(expr);
-                    let dst_val = self.alloc_i();
-                    let dst_some = self.alloc_i();
-                    self.emit(
-                        Op::UnboxOptI {
-                            dst_val,
-                            dst_some,
-                            src_v,
-                        },
-                        span,
-                    );
-                    (dst_val, dst_some)
+                    let src_v = self.emit_traced_call(span, Callee::Value(callee), args, false);
+                    self.unbox_opt_i(src_v, span)
                 }
             }
             ExprKind::Binary(BinOp::Coalesce, lhs, rhs)
@@ -817,40 +782,35 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         return (dst_val, dst_some);
                     }
                 }
-                let src_v = match self.compile_place_path(place) {
-                    Some(path) => {
-                        let dst = self.alloc_v();
-                        self.emit(Op::TakePlaceV { dst, path }, span);
-                        dst
-                    }
-                    None => self.emit_fallback_expr_v(expr),
-                };
-                let dst_val = self.alloc_i();
-                let dst_some = self.alloc_i();
-                self.emit(
-                    Op::UnboxOptI {
+                if let PlaceKind::Global(gid) = place.kind {
+                    let (dst_val, dst_some) = (self.alloc_i(), self.alloc_i());
+                    let gid = gid as u16;
+                    let load = Op::LoadGlobalOptI {
                         dst_val,
                         dst_some,
-                        src_v,
-                    },
-                    span,
-                );
-                (dst_val, dst_some)
+                        gid,
+                    };
+                    self.emit(load, span);
+                    return (dst_val, dst_some);
+                }
+                let src_v = self.compile_expr_v_kind(expr);
+                self.unbox_opt_i(src_v, span)
             }
             _ => {
-                let src_v = self.emit_fallback_expr_v(expr);
-                let dst_val = self.alloc_i();
-                let dst_some = self.alloc_i();
-                self.emit(
-                    Op::UnboxOptI {
-                        dst_val,
-                        dst_some,
-                        src_v,
-                    },
-                    span,
-                );
-                (dst_val, dst_some)
+                let src_v = self.compile_expr_v_kind(expr);
+                self.unbox_opt_i(src_v, span)
             }
         }
+    }
+
+    fn unbox_opt_i(&mut self, src_v: u16, span: Span) -> (u16, u16) {
+        let (dst_val, dst_some) = (self.alloc_i(), self.alloc_i());
+        let unbox = Op::UnboxOptI {
+            dst_val,
+            dst_some,
+            src_v,
+        };
+        self.emit(unbox, span);
+        (dst_val, dst_some)
     }
 }

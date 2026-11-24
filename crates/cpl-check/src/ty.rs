@@ -673,6 +673,22 @@ impl Ty {
         })
     }
 
+    /// A result `(domain C, comp: [V]C)` with each fresh domain a binding mentions renamed
+    /// apart, so a caller's own `C` bound into `V` stays its own.
+    pub fn fresh_apart(&self, on: &Bindings) -> Ty {
+        let mut out = self.clone();
+        if let Ty::Record(fs) = self {
+            for (_, t) in fs {
+                if let Ty::Domain(d) = t {
+                    if on.values().any(|b| b.mentioned_domains().contains(d)) {
+                        out = out.rename_domain(d, &format!("{d}'"));
+                    }
+                }
+            }
+        }
+        out
+    }
+
     /// Base domain names mentioned anywhere in this type (stripping `.cuts`/`.subsets`).
     pub fn mentioned_domains(&self) -> Vec<String> {
         let mut out = Vec::new();

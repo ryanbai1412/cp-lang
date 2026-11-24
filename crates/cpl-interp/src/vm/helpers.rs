@@ -1,6 +1,6 @@
 use super::ir::*;
 use crate::value::{Array, Cells, TupleVal, Value};
-use crate::{bug, release, trap, Part, Res};
+use crate::{bug, interp_failed, release, trap, Part, Res};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
@@ -34,6 +34,7 @@ pub(super) fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
         Ty::List(t) | Ty::Opt(t) => ty_uses_structural_cmp(t, program),
         Ty::Array { elem, .. } => ty_uses_structural_cmp(elem, program),
         Ty::Int
+        | Ty::I128
         | Ty::Float
         | Ty::Bool
         | Ty::Char
@@ -50,10 +51,9 @@ pub(super) fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
 #[inline(always)]
 /// The items a `yield from` of `seq` feeds: its elements, in order.
 pub(crate) fn yielded_items(seq: Value, span: Span) -> Res<Vec<Value>> {
-    match seq {
-        Value::List(xs) => Ok(xs.iter().collect()),
-        Value::Array(a) => Ok((0..a.len()).map(|i| a.get_unchecked_val(i)).collect()),
-        _ => bug(span, "a `yields` fn did something else to its list"),
+    match seq.cells() {
+        Some(cells) => Ok(cells.to_values()),
+        None => bug(span, "a `yields` fn did something else to its list"),
     }
 }
 
@@ -158,6 +158,7 @@ pub(super) fn sync_refs_from_stack(
             }
         }
     }
+    keep_view_roots(chunk, regs_v, stack, base);
 }
 
 /// The slots of `chunk`'s frame a call can reach while the frame lends
@@ -233,6 +234,7 @@ pub(super) fn sync_reachable_from_stack(
             }
         }
     }
+    keep_view_roots(chunk, regs_v, stack, base);
 }
 
 /// Hands the moved values back to their registers after a trace point,
@@ -246,6 +248,29 @@ pub(super) fn take_back_values(
     for (slot, loc) in slot_map.iter().enumerate() {
         if let SlotLoc::V(r) = *loc {
             regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
+        }
+    }
+}
+
+/// Takes back every local `sync_to_stack` put on the stack, leaving there
+/// the roots of `chunk`'s views.
+pub(super) fn sync_back(
+    chunk: &Chunk,
+    regs_i: &mut [i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+) {
+    sync_from_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced);
+    keep_view_roots(chunk, regs_v, stack, base);
+}
+
+/// Leaves on the stack a share of each local a view of `chunk` writes
+/// into, where reading through the view looks.
+pub(super) fn keep_view_roots(chunk: &Chunk, regs_v: &[Value], stack: &mut [Value], base: usize) {
+    for &slot in &chunk.view_roots {
+        if let SlotLoc::V(r) = chunk.slot_map[slot as usize] {
+            stack[base + slot as usize] = regs_v[r as usize].clone();
         }
     }
 }
@@ -284,11 +309,7 @@ fn slot_from_stack(
             regs_i[some as usize] = s;
         }
         SlotLoc::SmallTuple { base: b, len, .. } => {
-            if let Value::Tuple(TupleVal::Boxed(fs)) = &stack[base + slot] {
-                for (k, f) in fs.iter().take(len as usize).enumerate() {
-                    regs_i[b as usize + k] = ScalarKind::unbox_val(f);
-                }
-            }
+            unbox_small_tuple(&stack[base + slot], &mut regs_i[b as usize..], len)
         }
         SlotLoc::V(r) => {
             regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
@@ -325,7 +346,7 @@ pub(super) fn nested_read_i(
     }
     match (v, rest.is_empty()) {
         (Value::Array(arr), true) => Ok(read_array_i(arr, i as usize)),
-        (Value::Array(arr), false) => match &arr.data {
+        (Value::Array(arr), false) => match &*arr.data {
             Cells::Values(vs) => nested_read_i(&vs[i as usize], rest, regs_i, span),
             _ => bug(span, "expected nested array"),
         },
@@ -347,12 +368,21 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
     );
     // SAFETY: in range, as asserted above.
     unsafe {
-        match &arr.data {
+        match &*arr.data {
             Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked(at),
             Cells::Bool(v) | Cells::Char(v) => i64::from(*v.get_unchecked(at)),
             Cells::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
             Cells::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
             Cells::Float(_) | Cells::Rows { .. } => 0,
+        }
+    }
+}
+
+/// The fields of small tuple `held` into `regs`, one register each.
+pub(crate) fn unbox_small_tuple(held: &Value, regs: &mut [i64], len: u8) {
+    if let Value::Tuple(TupleVal::Boxed(fs)) = held {
+        for (k, f) in fs.iter().take(len as usize).enumerate() {
+            regs[k] = ScalarKind::unbox_val(f);
         }
     }
 }
@@ -369,7 +399,7 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
     );
     // SAFETY: in range, as asserted above.
     unsafe {
-        match &mut arr.data {
+        match &mut **arr {
             Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked_mut(at) = val,
             Cells::Bool(v) => *v.get_unchecked_mut(at) = u8::from(val != 0),
             Cells::Char(v) => *v.get_unchecked_mut(at) = val as u8,
@@ -401,7 +431,7 @@ pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
     );
     // SAFETY: in range, as asserted above.
     unsafe {
-        match &arr.data {
+        match &*arr.data {
             Cells::OptInt(v) => match *v.get_unchecked(at) {
                 Some(x) => (x, 1),
                 None => (0, 0),
@@ -422,7 +452,7 @@ pub(super) fn write_array_opt_i(arr: &mut Array, at: usize, val: i64, some: i64,
         "cell {at} past the array's {}",
         arr.data.len()
     );
-    match &mut arr.data {
+    match &mut **arr {
         // SAFETY: in range, as asserted above.
         Cells::OptInt(v) if kind == ScalarKind::Int => unsafe {
             *v.get_unchecked_mut(at) = if some != 0 { Some(val) } else { None };
@@ -642,19 +672,19 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
 }
 
 /// The elements of a list or an array, with the array's dims.
-pub(super) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i64>>)> {
+pub(crate) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i64>>)> {
     match seq {
         Value::List(items) => Ok((crate::value::Cells::unwrap_values(items), None)),
-        Value::Array(arr) => Ok((
-            (0..arr.len()).map(|k| arr.get_unchecked_val(k)).collect(),
-            Some(arr.dims.clone()),
-        )),
+        Value::Array(arr) => {
+            let arr = Rc::unwrap_or_clone(arr);
+            Ok((crate::value::Cells::unwrap_values(arr.data), Some(arr.dims)))
+        }
         _ => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
     }
 }
 
 /// The inverse of `seq_items`.
-pub(super) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
+pub(crate) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
     match dims {
         None => Value::list(items),
         Some(dims) => Value::Array(Rc::new(Array::from_values(dims, items))),
@@ -679,9 +709,9 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
         }
         Value::Array(arr) => {
             let a = Rc::make_mut(arr);
-            a.data.sort_unstable();
+            (**a).sort_unstable();
             if desc {
-                a.data.reverse();
+                (**a).reverse();
             }
         }
         _ => return bug(span, "cannot sort this value"),
@@ -691,6 +721,8 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
 
 pub(super) enum ExecExit {
     Return(Value),
+    /// A `RetSmallTuple`: the fields are in `Interp::ret_tuple`.
+    ReturnTuple,
     FeedNext,
     FeedBreak,
 }
@@ -791,9 +823,7 @@ pub(super) fn array_flat_index(
     span: Span,
 ) -> Res<usize> {
     match step {
-        PlaceStep::Key(_) | PlaceStep::Some => {
-            trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]))
-        }
+        PlaceStep::Key(_) | PlaceStep::Some => Err(interp_failed(span)),
         PlaceStep::Index1(r_i) => {
             let idx = regs_i[r_i as usize];
             let len = arr.dims[0];
@@ -926,11 +956,11 @@ pub(super) fn with_place_cell<R>(
     {
         let container = walk_place_mut(root, prefix, regs_i, keys, span)?;
         if let Value::Array(arr) = container {
-            if !matches!(arr.data, Cells::Values(_)) {
+            if !matches!(*arr.data, Cells::Values(_)) {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 let Some(mut cell) = a.get(flat) else {
-                    return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+                    return Err(interp_failed(span));
                 };
                 let out = f(&mut cell)?;
                 a.set(flat, cell);
@@ -983,7 +1013,7 @@ pub(super) fn walk_place_mut<'a>(
                 Value::Array(arr) => {
                     let flat = array_flat_index(arr, step, regs_i, span)?;
                     let a = Rc::make_mut(arr);
-                    match &mut a.data {
+                    match &mut **a {
                         Cells::Values(vs) => cur = &mut vs[flat],
                         _ => return bug(span, "expected boxed array element"),
                     }
@@ -994,7 +1024,7 @@ pub(super) fn walk_place_mut<'a>(
                 Value::Array(arr) => {
                     let flat = array_flat_index(arr, step, regs_i, span)?;
                     let a = Rc::make_mut(arr);
-                    match &mut a.data {
+                    match &mut **a {
                         Cells::Values(vs) => cur = &mut vs[flat],
                         _ => return bug(span, "expected boxed array element"),
                     }
@@ -1016,7 +1046,7 @@ pub(super) fn store_place_leaf_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) => Err(interp_failed(span)),
         PlaceStep::Some => {
             *crate::assign::inside_mut(container, span)? = kind.box_val(raw);
             Ok(())
@@ -1036,7 +1066,7 @@ pub(super) fn store_place_leaf_scalar(
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
-                match &mut a.data {
+                match &mut **a {
                     Cells::Int(v) | Cells::OneIntStruct(v) => v[flat] = raw,
                     Cells::Bool(v) => v[flat] = u8::from(raw != 0),
                     Cells::Char(v) => v[flat] = raw as u8,
@@ -1072,7 +1102,7 @@ pub(super) fn store_place_leaf_scalar(
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
-                match &mut a.data {
+                match &mut **a {
                     Cells::Int(v) | Cells::OneIntStruct(v) => v[flat] = raw,
                     Cells::Bool(v) => v[flat] = u8::from(raw != 0),
                     Cells::Char(v) => v[flat] = raw as u8,
@@ -1097,7 +1127,7 @@ pub(super) fn store_place_leaf_opt_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) => Err(interp_failed(span)),
         PlaceStep::Some => {
             *crate::assign::inside_mut(container, span)? = kind.box_opt(raw, some);
             Ok(())
@@ -1113,7 +1143,7 @@ pub(super) fn store_place_leaf_opt_scalar(
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
-                match &mut a.data {
+                match &mut **a {
                     Cells::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
                     Cells::Values(v) => v[flat] = kind.box_opt(raw, some),
                     _ => a.set(flat, kind.box_opt(raw, some)),
@@ -1138,7 +1168,7 @@ pub(super) fn store_place_leaf_opt_scalar(
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
-                match &mut a.data {
+                match &mut **a {
                     Cells::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
                     Cells::Values(v) => v[flat] = kind.box_opt(raw, some),
                     _ => a.set(flat, kind.box_opt(raw, some)),
@@ -1159,7 +1189,7 @@ pub(super) fn store_place_leaf_val(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) => Err(interp_failed(span)),
         PlaceStep::Some => {
             *crate::assign::inside_mut(container, span)? = val;
             Ok(())
@@ -1358,7 +1388,7 @@ pub(super) fn assign_place_leaf_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) => Err(interp_failed(span)),
         PlaceStep::Some => {
             let cell = crate::assign::inside_mut(container, span)?;
             let next = apply_scalar_assign_op(ScalarKind::unbox_val(cell), rhs, op, kind, span)?;
@@ -1383,7 +1413,7 @@ pub(super) fn assign_place_leaf_scalar(
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
-                match &mut a.data {
+                match &mut **a {
                     Cells::Int(v) | Cells::OneIntStruct(v) => {
                         v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
                     }
@@ -1424,7 +1454,7 @@ pub(super) fn assign_place_leaf_scalar(
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
-                match &mut a.data {
+                match &mut **a {
                     Cells::Int(v) | Cells::OneIntStruct(v) => {
                         v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
                     }

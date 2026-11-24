@@ -56,7 +56,7 @@ pub struct Mat<T>:
         var d = List<T>()
         for r in R:
             for c in C: d.push(a[r, c])
-        Mat(R.count, C.count, d, ring_of(over))
+        Mat<T>.built(R.count, C.count, d, ring_of(over))
 
     /// A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read
     /// as nested lists. Row `i` is `rows[i]`.
@@ -82,7 +82,14 @@ pub struct Mat<T>:
     /// example: `Mat<?Int>.filled(2, 2, None, over: Semiring(min, +)).get(0, 1) == None`
     pub fn filled<S>(rows: Len, cols: Len, fill: T, over: S = Semiring(+, *)) -> Mat<T>:
         assert rows >= 0 and cols >= 0, "Mat.filled requires rows >= 0 and cols >= 0"
-        Mat(rows, cols, List.filled(rows * cols, fill), ring_of(over))
+        Mat<T>.built(rows, cols, List.filled(rows * cols, fill), ring_of(over))
+
+    // A matrix under `ring`, in its sentinel form when the ring has one.
+    fn built(rows: Len, cols: Len, cells: List<T>, ring: ?Ring<T>) -> Mat<T>:
+        if let g = ring:
+            if let form = g.form:
+                if let raw = form(cells): return Mat(rows, cols, [], ring, raw)
+        Mat(rows, cols, cells, ring)
 
     /// A `rows x cols` matrix of `T.zero`.
     ///
@@ -771,6 +778,9 @@ struct Ring<T>:
     var most: Bool = false
     /// An entry of `flat`'s sentinel form.
     var peek: ?(Int -> T) = None
+    /// Entries, row by row, in `flat`'s sentinel form: a matrix built under this ring stores it,
+    /// so its first product reads it as it is, like a product's result.
+    var form: ?(List<T> -> ?List<Int>) = None
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
@@ -802,6 +812,8 @@ fn lift_ring<W, S>(over: S) -> Ring<?W>:
                     ) => W.tropical(a, fa, b, fb, r, m, c, most)
                 )
                 g.peek = Some((v: Int) => W.peek(v))
+                if g.most: g.form = Some((a: List<?W>) => W.form(a, true))
+                else: g.form = Some((a: List<?W>) => W.form(a, false))
     g
 
 /// The semiring over `W` lifted to `?W`, `None` the zero. Kept apart from `lift_ring` so each `W`
@@ -836,6 +848,10 @@ pub trait TropicalProduct:
 
     /// The entry a sentinel-form `v` holds.
     fn peek(v: Int) -> ?Self
+
+    /// `a`, row by row, in the sentinel form `tropical` reads under `max` (`most`) or `min`;
+    /// `None` when an entry is past what that form holds.
+    fn form(a: List<?Self>, most: Bool) -> ?List<Int>
 
 /// `a` with `None` as `far`, then the largest `|entry|`.
 fn sentinel_form(a: List<?Int>, far: Int) -> List<Int>:
@@ -892,6 +908,10 @@ impl TropicalProduct for Int:
         Some(out)
 
     fn peek(v: Int) -> ?Int = if abs(v) == 1 << 62: None else: Some(v)
+
+    fn form(a: List<?Int>, most: Bool) -> ?List<Int>:
+        let out = sentinel_form(a, if most: -(1 << 62) else: 1 << 62)
+        if out[a.len] < 1 << 60: Some(out) else: None
 
 /// Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
 /// Every operation is \(O(W)\) where W <= 63 (`merge` is \(O(W \cdot \mathit{rank})\)).

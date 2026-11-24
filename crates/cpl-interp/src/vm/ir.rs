@@ -1,6 +1,6 @@
 use crate::value::SmallFieldKind;
 use cpl_diag::Span;
-use cpl_ir::{AssignOp, BinOp, CmpOp, Expr, FmtArg, FmtPiece, FnId, LoopId, Place, Slot};
+use cpl_ir::{AssignOp, BinOp, CmpOp, Expr, FmtPiece, FnId, LoopId, Mutation, Place, Slot};
 
 pub(crate) use super::program::*;
 pub(super) use super::scalar::small_tuple_shape;
@@ -18,7 +18,7 @@ pub(crate) enum SlotLoc {
     SmallTuple {
         base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     V(u16),
 }
@@ -29,6 +29,8 @@ pub(crate) enum CallRet {
     I,
     OptI,
     V,
+    /// A small tuple of this many fields, in the Int registers from `dst_i`.
+    Tuple(u8),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -318,13 +320,6 @@ pub(crate) enum Op {
         dst_some: u16,
         src: u16,
     },
-    PosOffset {
-        dst_val: u16,
-        dst_some: u16,
-        src: u16,
-        delta: u16,
-        dom: u16,
-    },
     PosTryOrd {
         dst_val: u16,
         dst_some: u16,
@@ -367,14 +362,14 @@ pub(crate) enum Op {
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     StoreLArr1SmallTuple {
         arr_v: u16,
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     LoadGArr2SmallTuple {
         dst_base: u16,
@@ -396,7 +391,7 @@ pub(crate) enum Op {
         r_j: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     StoreLArr2SmallTuple {
         arr_v: u16,
@@ -404,13 +399,13 @@ pub(crate) enum Op {
         r_j: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     BoxSmallTuple {
         dst_v: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     UnboxSmallTuple {
         dst_base: u16,
@@ -741,7 +736,6 @@ pub(crate) enum Op {
     CallVmI {
         fn_id: u16,
         arg_base: u16,
-        argc: u8,
         dst: u16,
     },
     CallVmMix {
@@ -785,12 +779,22 @@ pub(crate) enum Op {
     RetV {
         src: u16,
     },
+    /// Returns the small tuple in `len` Int registers from `base`: a
+    /// `CallRet::Tuple` call takes them as they are, any other caller boxed.
+    RetSmallTuple {
+        base: u16,
+        len: u8,
+        kinds: [SmallFieldKind; 5],
+    },
     RetUnit,
 
     // General V-channel optionals & sequence/range/bit/list ops
-    IsSomeV {
+    /// Whether `src_v` is variant `tag`: an enum's, or an optional's
+    /// `None` (0) or `Some` (1).
+    IsVariantI {
         dst_i: u16,
         src_v: u16,
+        tag: u32,
     },
     UnwrapV {
         dst_v: u16,
@@ -969,7 +973,7 @@ pub(crate) enum Op {
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     StoreLFieldIdx1OptI {
         obj_v: u16,
@@ -991,7 +995,7 @@ pub(crate) enum Op {
         field: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     ListPushFieldLV {
         obj_v: u16,
@@ -1164,6 +1168,7 @@ pub(crate) enum Op {
         dst: u16,
         idx: u16,
     },
+    /// `F64` or `I128` arithmetic, by `arith::binary`.
     FloatBin {
         dst: u16,
         a: u16,
@@ -1298,14 +1303,6 @@ pub(crate) enum Op {
         path: u16,
         desc_r: u16,
     },
-    /// `SortPlace` for an element type with a user `<`: a stable merge
-    /// sort through the interpreter's comparison, the frame synced so the
-    /// `<` can run. `idx`: the sort expression, in `applies`.
-    SortPlaceCmp {
-        idx: u32,
-        path: u16,
-        desc_r: u16,
-    },
     /// `SortByKeysPlace` for a key type with a user `<` (`idx`: the sort
     /// expression, in `applies`).
     SortByKeysPlaceCmp {
@@ -1410,20 +1407,22 @@ pub(crate) enum Op {
         dst: u16,
         src: u16,
     },
+    /// An `Int` as an `F64`, or as an `I128` when not `float`.
     IntToFloat {
         dst: u16,
         src: u16,
+        float: bool,
     },
     FloatSqrt {
         dst: u16,
         src: u16,
     },
-    /// `lo..hi` with `F64` (or else `I128`) ends, held in value registers.
+    /// `lo..hi` with `F64` ends, or `I128` ends of `wide` items, held in value registers.
     MakeRangeV {
         dst: u16,
         lo: u16,
         hi: u16,
-        float: bool,
+        wide: Option<crate::value::WideElem>,
     },
     /// A domain as a value: its current `(lo, len)`.
     DomainValV {
@@ -1528,9 +1527,6 @@ pub(crate) enum Op {
         dst: u16,
         idx: u32,
     },
-    Print {
-        idx: u32,
-    },
     Format {
         idx: u32,
         dst: u16,
@@ -1620,7 +1616,7 @@ pub(crate) enum CapSrc {
     LocalSmallTuple {
         base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     LocalV(u16),
     /// A local captured by reference: its stack slot, and the register that
@@ -1670,21 +1666,34 @@ pub(crate) enum FeedBack {
     PlaceOptI(u16, ScalarKind),
 }
 
-pub(crate) struct PrintSpec<'p> {
-    pub args: &'p [FmtArg],
-    pub regs: Vec<u16>,
-    pub end: Option<u16>,
-}
-
 pub(crate) struct FormatSpec<'p> {
     pub pieces: &'p [FmtPiece],
     pub regs: Vec<u16>,
+}
+
+/// What an `Op::ApplyV` does through a mutable view.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ViewOp<'p> {
+    /// `mut place[lo..hi]`.
+    Slice(&'p Place),
+    /// Line `at` of the grid at `place` along the axis.
+    Line(&'p Place, usize),
+    /// A mutation of a place reached through a view.
+    Mutate(Mutation, &'p Place, &'p [Expr]),
+    /// An assignment to a place reached through a view.
+    Write(&'p Place, AssignOp),
+    /// A sort of a place the VM's own sorts don't take, such as a view or
+    /// a list with a user `<`, descending when its operand says so.
+    Sort(&'p Place, &'p cpl_ir::SortBy),
 }
 
 /// An expression applied to the values of its operands, in `regs`.
 pub(crate) struct ApplySpec<'p> {
     pub expr: &'p Expr,
     pub regs: Vec<u16>,
+    /// What it does through a mutable view instead, its first `.1`
+    /// registers the operands and the rest the place's indices.
+    pub view: Option<(ViewOp<'p>, usize)>,
 }
 
 /// One of main's loops, as a checkpoint finds it in the registers.

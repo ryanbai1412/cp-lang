@@ -450,7 +450,7 @@ impl<'a> Lowerer<'a> {
                     out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
                 })
             }
-            "gen" => self.gen_call(None, args, span),
+            "gen" => self.gen_wanted(args, hint, span),
             "rand" => match self.positional_any(name, args, 2, span) {
                 Some(exprs) => {
                     let lo = self.expr_as(exprs[0], &Ty::Int);
@@ -625,14 +625,15 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     lw.cx.loops.pop();
-                    out.push(Stmt::For(
+                    lw.push_for(
+                        out,
                         lid,
                         slot,
                         iter,
                         Block {
                             stmts: vec![Stmt::Expr(ins)],
                         },
-                    ));
+                    );
                     let res = lw.local(acc, span);
                     out.push_give(res);
                 })
@@ -942,7 +943,7 @@ impl<'a> Lowerer<'a> {
             // A range goes up already: its list is what it goes over.
             Ty::Range(elem) => {
                 let elem = (**elem).clone();
-                self.walked_list(Iter::RangeVal(value, false), elem, span)
+                self.walked_list(Iter::RangeVal(value, false).into(), elem, span)
             }
             ty if let Some(elem) = ty.seq_elem() => {
                 if !self.ordered(&elem) {
@@ -953,7 +954,7 @@ impl<'a> Lowerer<'a> {
                     );
                     return self.err_expr(span);
                 }
-                let list = self.walked_list(Iter::Seq(value, false), elem.clone(), span);
+                let list = self.walked_list(Iter::Seq(value, false).into(), elem.clone(), span);
                 self.mk_builtin(Builtin::Sorted, [list], Ty::list(elem), span)
             }
             Ty::Error => value,
@@ -1024,14 +1025,15 @@ impl<'a> Lowerer<'a> {
                 step: None,
                 rev: false,
                 closed: false,
-            },
+            }
+            .into(),
             elem,
             span,
         )
     }
 
     /// The list of what `iter` goes over, in the order it goes.
-    pub(in crate::lower) fn walked_list(&mut self, iter: Iter, elem: Ty, span: Span) -> Expr {
+    pub(in crate::lower) fn walked_list(&mut self, iter: Head, elem: Ty, span: Span) -> Expr {
         self.collected(elem.clone(), span, |lw, out, push| {
             let item = lw.temp(elem);
             let lid = lw.fresh_loop();
@@ -1039,7 +1041,7 @@ impl<'a> Lowerer<'a> {
             let body = Block {
                 stmts: vec![push(lw, at)],
             };
-            out.push(Stmt::For(lid, item, iter, body));
+            lw.push_for(out, lid, item, iter, body);
         })
     }
 
@@ -1056,7 +1058,7 @@ impl<'a> Lowerer<'a> {
             },
             _ => Iter::RangeVal(range, true),
         };
-        self.walked_list(iter, elem, span)
+        self.walked_list(iter.into(), elem, span)
     }
 
     /// `sorted(xs, by: ...)`
@@ -1077,7 +1079,7 @@ impl<'a> Lowerer<'a> {
             (kind, Ty::Range(of)) => {
                 let of = (**of).clone();
                 let range = Expr { kind, ..value };
-                self.walked_list(Iter::RangeVal(range, false), of, span)
+                self.walked_list(Iter::RangeVal(range, false).into(), of, span)
             }
             (kind, _) => Expr { kind, ..value },
         };
@@ -1109,7 +1111,7 @@ impl<'a> Lowerer<'a> {
                 Ty::Set(_) | Ty::HashSet(_) => {
                     lw.mk_builtin(Builtin::Sorted, [value], list_ty.clone(), span)
                 }
-                _ => lw.walked_list(Iter::Seq(value, false), elem.clone(), span),
+                _ => lw.walked_list(Iter::Seq(value, false).into(), elem.clone(), span),
             };
             let slot = lw.temp(list_ty.clone());
             out.push_let(slot, init);
@@ -1128,7 +1130,7 @@ impl<'a> Lowerer<'a> {
     /// The spec of a type that says everything `read()` needs on its own.
     /// `read_output()` of a value laid out as `spec`: a `read()` from
     /// what the solution printed, then back to the input.
-    pub(in crate::lower) fn read_printed(&mut self, spec: Spec, span: Span) -> Expr {
+    pub(in crate::lower) fn read_printed(&mut self, spec: ReadSpec, span: Span) -> Expr {
         let want = spec.ty();
         self.do_expr(Some(&want), span, |lw, out| {
             let swap = lw.mk(
@@ -1145,11 +1147,11 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    pub(in crate::lower) fn spec_of(&mut self, ty: &Ty) -> Option<Spec> {
+    pub(in crate::lower) fn spec_of(&mut self, ty: &Ty) -> Option<ReadSpec> {
         Some(match ty {
             Ty::Struct(id) => self.struct_spec(*id),
             Ty::Tuple(_) | Ty::Record(_) if let Some(fields) = ty.fields() => {
-                let specs: Option<Vec<Spec>> = fields.iter().map(|f| self.spec_of(f)).collect();
+                let specs: Option<Vec<ReadSpec>> = fields.iter().map(|f| self.spec_of(f)).collect();
                 Spec::Fields(ty.clone(), specs?)
             }
             Ty::Array { dims, elem } => {
@@ -1169,7 +1171,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             Ty::Opt(inner) => Spec::Opt(Box::new(self.spec_of(inner)?), None),
-            Ty::List(elem) => Spec::List(Box::new(self.spec_of(elem)?)),
+            Ty::List(elem) => Spec::List(Counted(Box::new(self.spec_of(elem)?))),
             // `l r`, the inclusive `l..=r`, checked `l <= r`. (R10.2.3)
             Ty::Range(inner) if **inner == Ty::Int => {
                 let span = Span::default();
@@ -1207,15 +1209,17 @@ impl<'a> Lowerer<'a> {
 
     /// `read()` of a value shaped like `spec`.
     /// A spec with each `Range<Int>` inside spelled out as its read of `l r`.
-    pub(in crate::lower) fn readable(&mut self, spec: Spec) -> Spec {
+    pub(in crate::lower) fn readable(&mut self, spec: ReadSpec) -> Spec {
         match spec {
             Spec::Plain(ty @ (Ty::Range(_) | Ty::List(_))) => match self.spec_of(&ty) {
-                Some(Spec::List(each)) => self.readable(Spec::List(each)),
-                spec => spec.unwrap_or(Spec::Plain(ty)),
+                Some(list @ Spec::List(_)) => self.readable(list),
+                Some(Spec::Call(call)) => Spec::Call(call),
+                _ => Spec::Plain(ty),
             },
-            Spec::List(each) => {
+            Spec::List(Counted(each)) => {
+                let ty = each.ty();
                 let each = self.readable(*each);
-                self.counted_list(each)
+                self.counted_list(each, ty)
             }
             // `with io(base: 1)`: a counted domain's `1` is its first position.
             Spec::Plain(Ty::Pos(d)) if self.base_one() && self.counted.contains(&d) => {
@@ -1256,7 +1260,21 @@ impl<'a> Lowerer<'a> {
                 elem: Box::new(self.readable(*elem)),
             },
             Spec::Opt(inner, absent) => Spec::Opt(Box::new(self.readable(*inner)), absent),
-            other => other,
+            Spec::Plain(ty) => Spec::Plain(ty),
+            Spec::Int { lo, hi, text } => Spec::Int { lo, hi, text },
+            Spec::Str {
+                lo,
+                hi,
+                alphabet,
+                text,
+            } => Spec::Str {
+                lo,
+                hi,
+                alphabet,
+                text,
+            },
+            Spec::Call(call) => Spec::Call(call),
+            Spec::Line => Spec::Line,
         }
     }
 
@@ -1271,7 +1289,7 @@ impl<'a> Lowerer<'a> {
         let variants = self.enums[id].variants.clone();
         let mut fields = Vec::with_capacity(variants.len());
         for (_, tys) in &variants {
-            let specs: Option<Vec<Spec>> = tys.iter().map(|ty| self.spec_of(ty)).collect();
+            let specs: Option<Vec<ReadSpec>> = tys.iter().map(|ty| self.spec_of(ty)).collect();
             fields.push(specs?);
         }
         let tokens: Vec<String> = (0..variants.len())
@@ -1324,7 +1342,7 @@ impl<'a> Lowerer<'a> {
 
     pub(in crate::lower) fn read_with_args(
         &mut self,
-        mut spec: Spec,
+        mut spec: ReadSpec,
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {

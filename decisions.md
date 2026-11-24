@@ -9155,7 +9155,18 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 
 ## 600. (reserved, stdlib)
 
-## 601. (reserved, unknown)
+## 601. `cpl bench --zero-cost --check` gates the pairs on the median over code layouts (2026-11-24)
+
+- **Decision.** Supersedes 253. Each program is built at the four code
+  layouts of `LAYOUTS` in `crates/cpl-contest/src/zero_cost.rs`, and its
+  time is the median over layouts of each layout's fastest run.
+  `--check` fails the run on a pair over the 1.05x bar.
+- **Why.** One build's fastest run says where g++ put the hot loop:
+  `iterators` has the same 13-instruction loop in both binaries, yet one
+  build reads 1.047x and the same `.cpp` at `-falign-loops=32` reads
+  1.28x, and `segtree_prefix` read 1.078x on one fastest-of-five run.
+  `perf stat` cycles and instructions are `<not supported>` on the VM.
+- **Reverse.** Drop `--check` and set `LAYOUTS` to one entry.
 
 ## 602. Bounded `max`/`min` fold to `T`; unbounded ones and identity-less ops fold to `?T` (stdlib, 2026-11-24)
 
@@ -9179,7 +9190,43 @@ field's default now resolves names in the struct's module, as a fn param's defau
 already did. Next, a known missing `rev` becomes a compile error through a general
 mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
-## 603. (reserved, unknown)
+## 603. A flat grid's row sweep is unrolled by two below AVX2 (perf, 2026-11-24)
+
+- **Decision.** A `for` over a domain whose body indexes a grid of two or
+  more dims by the loop's slot in the last position, with no loop nested
+  in it, is emitted with `_Pragma("GCC unroll 2")`. A column walk (the slot
+  in an earlier position) is not. A profile with `isa = "avx2"`, whose
+  `GCC optimize` asks for O3 and vectorises the sweep, gets no pragma.
+- **Why.** g++ -O2 steps two induction pointers on the row sweep
+  (`mul`'s inner loop in `bench/zero-cost/grids`) instead of one shared
+  index, and runs it 1.4x slower than hand C++. Hoisted per-row pointers
+  and one linear index stay slow; unrolling by two brings it back to hand
+  C++ speed. `grids` abstract, ms, pinned median of 9:
+
+  | g++ and flags | unroll 2 | none | hand C++ |
+  |---|---|---|---|
+  | 11 -O2 | 160 | 241 | 169 |
+  | 11 -O2 -march=x86-64-v3 | 160 | 242 | 180 |
+  | 13.2 -O2 (Codeforces, CSES 13.3) | 148 | 162 | 175 |
+  | 13.2 -O2 -march=x86-64-v3 | 234 | 290 | |
+  | 15.2 -O2 (Kattis) | 156 | 229 | 169 |
+  | 15.2 -O2 -march=x86-64-v3 (AtCoder's `-march=native`) | 190 | 257 | |
+  | 11, `isa = "avx2"` (O3) | 83 | 79 | 159 |
+  | 13.2, `isa = "avx2"` (O3) | 87 | 92 | 175 |
+  | 15.2, `isa = "avx2"` (O3) | 94 | 88 | 179 |
+
+  With 42f4eb47e's row pointer stepped by the row counter, g++ 11 -O2
+  still runs `grids` at 135 ms with unroll 2, 174 ms without and 146 ms
+  for hand C++ (pinned median of 15).
+
+  The 74 corpus ports whose C++ the pragma changes run their `--max`
+  input at a median 1.00x of without. Each one past 2% at one layout,
+  retimed as a three-layout pinned median, reads 0.94x-1.01x, inside the
+  1.03x that two builds of identical C++ read.
+- **Reverse.** Drop the `sweeps_grid_row` arm in
+  `crates/cpl-codegen/src/stmt/loops.rs`, its query in
+  `crates/cpl-codegen/src/uses/loops.rs` and its test in
+  `crates/cpl-codegen/src/tests/loops.rs`.
 
 ## 604. (reserved, perf)
 
@@ -9231,7 +9278,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Why.** Rooted's shape became the std enum `TreeShape` (e9b2b7b44) instead of a compiler name table, so old source lost its spelling. Reading the variants from the enum's declaration migrates it with no table of old names, and works for any enum a std or user signature asks for.
 - **Reverse.** Drop the case-folded lookup; a misspelled variant is a bare unresolved-name error again.
 
-## 615. (reserved, compiler)
+## 615. Names stay `String`; the pointer interner was measured larger and shelved (compiler, 2026-11-24)
+
+- **Call.** `ast::Name.text` stays a `String`. An interned `cpl_syntax::Sym(&'static str)` (hash and equality by pointer, order and printing by text, a two-order byte-identical output test) was built and measured, and it does not land. Coordinator ruling for Core of 2026-11-24.
+- **Why.** Named build against 857edb337: cpl_syntax 153,096 -> 154,232 B gz (+1,136, over its 154,000 budget), cpl_check 303,695 -> 304,105 (+410), and the whole cpl.wasm +3,031 B gz. That was after cutting it down: a sorted-`Vec` table instead of a hash set (the hashbrown table alone was +1.1 KB raw), `Name` made `Copy`, and no new `Sym`-keyed maps. Raw cpl_syntax stays flat, but every derived `Clone`/`PartialEq` over the AST changes, and the ~300 `.text` sites that still need a `String` now convert it. Any win would have to come from re-keying the checker's maps on `Sym` later, which was never shown. u32 ids carry the same table and conversions plus a lookup on every read. Size comes down by removing duplicated code (step 6), not by changing how names are stored.
+- **Reverse.** Revisit only with a named build where `Sym` and the re-keyed checker maps together come out net negative on every crate over budget.
 
 ## 616. (reserved, stdlib)
 
@@ -9285,9 +9336,17 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Status.** Accepted; std's `sort`/`sorted` move to it with the arm's
   deletion.
 
-## 625. (reserved, compiler)
+## 625. A fn's `var` bound to a top-level heap value is E0608, migrated by `cpl fix` (compiler, 2026-11-24)
 
-## 626. (reserved, stdlib)
+- **Call.** Inside a fn, `var b = g` where `g` is a top-level heap value (List, Map, Str, a struct holding one, ...) is E0608 with the fix `var b = g.clone()`; `let b = g` stays a lend. A fn reads top-level state lent, as it does a parameter (R05.2.2, R05.4.1), so the binding can neither move `g` out of the file body nor copy it silently. The frozen `tests/v02-snapshot` copies change only through `cpl fix` output, the codemod path every breaking rule uses. Core ruling of 2026-11-24.
+- **Why.** The binding used to compile to a silent deep copy, a cost the source never spelled. Making it E0608 keeps costs visible: `.clone()` is the one O(n) copy.
+- **Reverse.** Drop the rule; `var b = g` in a fn compiles to the copy again, and the migrated `.clone()`s stay valid.
+
+## 626. `Subset` is plain std: GAPS:7 closes (stdlib, 2026-11-24)
+
+- **Call.** No compiler table names `Subset` any more: 9be132046 made `B.subsets` std's `@member(subsets)` and dropped the prelude rows, and both engines run `std/subset.cp`'s bodies (an edit to `Subset.len` in std changes `cpl run` and the C++ alike). So Q3 (a)'s move for `Subset` is done with no lowering moved and no C++ change, and GAPS:7, which said `cpl run` answers `Subset` calls itself, closes (std_gaps 5 -> 4, prelude_privilege tightened 24 -> 23 to what main measures). Stdlib's Q3 (a) ruling of 2026-11-24.
+- **Why.** Small core, no privileged stdlib, and a gap line must state what is true. The 55 conformance cases that name `Subset` or `.subsets` pass on both engines.
+- **Reverse.** Reopen GAPS:7 if a compiler table names `Subset` again.
 
 ## 627. (reserved, content)
 
@@ -9315,6 +9374,55 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Why.** A hand-kept list of required copies drifts from codegen, and decision 606's count kept 4 avoidable copies as required. One fact gives explain, the counter and codegen one answer, and the rewrite test catches the fact when it is wrong either way.
 - **Reverse.** Count `// copies:` headers over spec/conformance again as `spec_required_copies`, shrink-only.
 
-## 632. (reserved, stdlib)
+## 633. `@aka(..)` states other languages' names for a fn (compiler, 2026-11-24)
 
-## 633. (reserved, compiler)
+- **Call.** A fn declares the names another language gives it, `@aka(upper, toUpperCase, uppercase)` above `pub fn to_upper(self: Str)`; the checker builds its foreign-name fixes for a receiver type from these decorators, and the `foreign_str_fn` name table in the compiler is deleted. `to_lower`, `to_upper`, `trim`, `trim_start` and `trim_end` move first. Compiler ruling of 2026-11-24.
+- **Why.** No privileged stdlib: a std name the compiler spells is one a user library cannot match; `@aka` is the sibling of `@was` (older std names) and any library may write it. Diagnostics are unchanged.
+- **`@was` on fns.** `@was(bsearch_last)` above `pub fn last_true` states a fn's older std name, as it already did for structs and enums; the checker's member migration (E0503 with its fix) reads it, and the `bsearch_first`/`bsearch_last` arms in `check/expr/member.rs` are deleted.
+- **Reverse.** Restore the table in `builtins/foreign.rs` and drop the decorator.
+
+## 636. (reserved, compiler)
+
+## 637. (reserved, compiler)
+
+## 638. (reserved, compiler)
+
+## 632. A bare `gen()` takes its type from where it goes; `gen_fields` closes GAPS:12 (stdlib, 2026-11-24)
+
+- **Call.** `gen()` with no type and no range draws the type its value goes to, as a generic fn's return-only type parameter binds from the expected type (the lowerer's `call_hint`): the type a `let` declares (`let x: 1..=9 = gen()`), each field's written type in a `fields` constructor, else the type the context wants. With no such type, the checker reports E0501 (it had typed the call `Unknown` and left the error to lowering). The checker binds the same way: a call to a fn whose result is a type parameter none of its parameters names (`fn mk<T: Default>() -> T`) takes the type its value goes to, and `T(.. for _ in fields(T))` in a fn generic over `T` is a `T`, so silent unknowns fall rather than grow. That lets std write `gen_fields<T>() -> T = T(gen() for _ in fields(T))` beside `read_fields`, so a struct's whole `Random` is `fn gen() -> P = gen_fields<P>()`. GAPS:12 closes: the trait is std's `Random` (decision 587), so no compiler table names a `Gen` that std would overlap, and std_gaps goes 4 -> 3. Core's ruling of 2026-11-24.
+- **Why.** Coherent stdlib: `read()` and `gen()` both take their type from where the value goes, and the field-wise derive is plain std on `fields` like the other derives. `read()` keeps its own I/O arms (`none:`, `from:`, fixed-size reads), which are about input layout, not about inferring a type.
+- **Reverse.** Drop the bare-`gen()` arm (`Lowerer::gen_wanted`) and `gen_fields`; callers write `gen<T>()` per field.
+
+## 639. (reserved, compiler)
+
+## 634. A wasm budget moves with its code, never up in total (site, 2026-11-24)
+
+- **Call.** A land may raise a bucket's budget in `web/scripts/wasm-crate-budgets.json`
+  only by what it lowers others (the total never rises), and only by what the lowered
+  buckets' normalized code dropped against the exact parent (`budgetTransfer` in
+  `web/scripts/wasm-crates.mjs`, run by `scripts/wasm-warm.sh --check`). A raise no
+  wasm build measured refuses at land. The receiving bucket still meets the per-bucket
+  rule: over budget after the change, its normalized code may not grow.
+- **Why.** Budgets are per crate, and a std generic is charged to the crate its type
+  lives in. So moving a type (VM-memory's `IntWidth`, from cpl_ir to cpl_rt, for
+  cpl-check) moves its instantiations' bytes, and the receiving crate reads as grown
+  with no new code. Netting growth across crates would let real growth hide behind a
+  cut; a transfer bounded by the moved code can't.
+- **Measure.** Normalized code is raw bytes and budgets are gzip, so the bound is loose
+  (raw exceeds gz); it still caps a transfer at code that left the source crate.
+- **Reverse.** Delete `budgetTransfer`'s two call sites; budgets go back to only
+  lowering. Charging a generic to the crate that instantiates it
+  (`plan/QUESTIONS.md`) would make most transfers unnecessary.
+- **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.
+
+## 640. (reserved, unknown)
+
+## 641. (reserved, compiler)
+
+## 642. (reserved, compiler)
+
+## 635. `std_names_outside_rt` scans name resolution, lowering and codegen, not flag tables (compiler, 2026-11-24)
+
+- **Call.** The name-ban counter skips the build-option tables a CLI flag parses, listed by path in `NAME_BAN_OUT_OF_SCOPE` in `scripts/debt-ratchet.py`: today only `crates/cpl-ir/src/checks.rs`, whose `"all"` is the `--checks all` value. A std name in any lowering, checker or codegen module still counts. Factory ruling of 2026-11-24.
+- **Why.** The counter measures compiler code that matches a std name. A flag value that happens to be spelled like a std fn is not such a match. A path scope keeps it structural, where a name allowlist would also hide real arms that use the same spelling.
+- **Reverse.** Empty `NAME_BAN_OUT_OF_SCOPE`. The counter then scans every module of the four crates again.

@@ -230,6 +230,14 @@ impl<'a> Checker<'a> {
             },
             _ if left.is_numeric() && right.is_numeric() => Ty::Float,
             BinOp::Add if left == Ty::Str && right == Ty::Str => Ty::Str,
+            // `xs + view`: a struct view joins as the list its walk yields (R04a.2.3).
+            BinOp::Add
+                if let (Some(le), Ty::Named { .. }) = (seq_concat_elem(&left), &right)
+                    && right.seq_elem().is_none()
+                    && self.walked_elem(&right).as_ref() == Some(le) =>
+            {
+                Ty::list(le.clone())
+            }
             BinOp::Add
                 if let (Some(le), Some(re)) = (seq_concat_elem(&left), seq_concat_elem(&right)) =>
             {
@@ -497,7 +505,7 @@ impl Checker<'_> {
         }
         // `a.last += 1`: `last` is no place, which lowering reports and fixes.
         if let ExprKind::Field { base, name } = &target.kind {
-            let base_ty = self.quietly(|c| c.infer(base));
+            let base_ty = self.infer_quietly(base);
             let listed = matches!(&base_ty, Ty::Array { .. })
                 || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
             if name.text == "last" && listed {

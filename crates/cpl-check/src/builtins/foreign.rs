@@ -65,15 +65,8 @@ pub fn foreign_iter_call(name: &str) -> bool {
     matches!(name, "iter" | "into_iter" | "chars")
 }
 
-/// Another language's name for a std `Str` function: Python's `upper`
-/// or `strip`, Java's `toUpperCase`.
+/// Another language's name for a `Str` fn (`upper`, `strip`), as std's
+/// `@aka` states it.
 pub fn foreign_str_fn(name: &str) -> Option<&'static str> {
-    match name {
-        "upper" | "toUpperCase" | "uppercase" => Some("to_upper"),
-        "lower" | "toLowerCase" | "lowercase" => Some("to_lower"),
-        "strip" => Some("trim"),
-        "lstrip" | "trimStart" | "trimLeft" => Some("trim_start"),
-        "rstrip" | "trimEnd" | "trimRight" => Some("trim_end"),
-        _ => None,
-    }
+    crate::prelude::aka("Str", name)
 }

@@ -9,9 +9,7 @@
 use crate::uses::loops::{each_loop, Loop};
 use crate::uses::places::{each_call, each_closure, each_write, Write};
 use crate::walk;
-use cpl_ir::{
-    Arg, Block, ClosureId, CmpOp, Expr, ExprKind, FnId, Iter, Local, Program, Slot, Stmt, Ty,
-};
+use cpl_ir::{Arg, Block, ClosureId, CmpOp, Expr, ExprKind, FnId, Local, Program, Slot, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -48,13 +46,7 @@ pub(crate) fn known_options(program: &mut Program) {
 /// `(fn, slot)` of each `?F` parameter whose every call fills it the same way.
 fn shapes(program: &Program) -> BTreeMap<(FnId, Slot), Shape> {
     let mut out: BTreeMap<(FnId, Slot), Shape> = BTreeMap::new();
-    let mut walked: BTreeSet<FnId> = BTreeSet::new();
-    let mut see = |block: &Block, out: &mut BTreeMap<(FnId, Slot), Shape>| {
-        each_loop(block, &mut |_, head| {
-            if let Loop::For(_, Iter::Walk { nth, .. }) = head {
-                walked.insert(*nth);
-            }
-        });
+    let see = |block: &Block, out: &mut BTreeMap<(FnId, Slot), Shape>| {
         each_call(block, &mut |callee, args| {
             let f = &program.fns[callee];
             for (slot, arg) in args.iter().enumerate().take(f.params.len()) {
@@ -93,7 +85,6 @@ fn shapes(program: &Program) -> BTreeMap<(FnId, Slot), Shape> {
             && !program.entry_fns.contains(&id)
             && !program.judge_fns.contains(&id)
             && !program.is_hook(id)
-            && !walked.contains(&id)
             && !assigned(&program.fns[id].body).contains(&slot)
     });
     out

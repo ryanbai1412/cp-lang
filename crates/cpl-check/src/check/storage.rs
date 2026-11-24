@@ -19,7 +19,7 @@ impl Checker<'_> {
             return;
         };
         let base: &Expr = base;
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         if !matches!(&base_ty, Ty::Named { name, .. } if name == "Range") {
             return;
         }

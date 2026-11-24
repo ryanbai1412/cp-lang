@@ -27,7 +27,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// the loop, and the fn stops where it is.
     pub(super) fn feed(&mut self, value: Value, span: Span) -> Res<Value> {
         let Some(fed) = self.fed_loops.last() else {
-            return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+            return Err(interp_failed(span));
         };
         let (callee, caller, slot, id, body) = (fed.callee, fed.caller, fed.slot, fed.id, fed.body);
         let locals = self.frame_locals.pop();
@@ -58,7 +58,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         };
         match self.fed_loops.last_mut() {
             Some(fed) => fed.left = Some(left),
-            None => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+            None => return Err(interp_failed(span)),
         }
         Err(Box::new(Trap::said(
             span,
@@ -71,6 +71,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     /// Calls a fn; with `fed`, each value it yields runs that loop's body.
+    /// The trap for a call to a judge's or `@cpp` fn: only the judge or
+    /// the C++ build has its body.
+    pub(crate) fn no_body<T>(&self, id: FnId, span: Span) -> Res<T> {
+        let cpp = self.program.cpp_bodies.iter().any(|(c, _)| *c == id);
+        let said = if cpp {
+            &cpl_diag::msgs::interp::CPP_ONLY
+        } else {
+            &cpl_diag::msgs::interp::NO_GRADER
+        };
+        trap(span, said.at(&[]))
+    }
+
     pub(super) fn call_feeding(
         &mut self,
         id: FnId,
@@ -79,15 +91,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         fed: Option<Fed<'p>>,
     ) -> Res<Value> {
         let f = &self.program.fns[id];
-        if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
-            let cpp = self.program.cpp_bodies.iter().any(|(c, _)| *c == id);
-            let said = if cpp {
-                &cpl_diag::msgs::interp::CPP_ONLY
-            } else {
-                &cpl_diag::msgs::interp::NO_GRADER
-            };
-            return trap(span, said.at(&[]));
-        }
         self.stack_left(span, Some(&f.name))?;
         let base = match args {
             [] => {
@@ -163,6 +166,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         fed: Option<Fed<'p>>,
     ) -> Res<Value> {
         let f = &self.program.fns[id];
+        if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
+            return self.no_body(id, span);
+        }
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
@@ -189,21 +195,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             });
         }
         let in_closure = std::mem::replace(&mut self.in_closure, false);
-        let dom_mark = self.saved_domains.len();
-        for &d in &self.fn_guarded[id] {
-            self.saved_domains.push((d, self.domains[d]));
-        }
+        let dom_mark =
+            crate::save_domains(&mut self.saved_domains, &self.domains, &self.fn_guarded[id]);
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
-        let fed_ok = !feeding || self.vm.as_ref().is_some_and(|c| c.main.traced);
-        let flow = if fed_ok {
-            if let Some(compiled) = self.vm.clone() {
-                if compiled.fns.get(id).is_some_and(Option::is_some) {
-                    self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
-                } else {
-                    self.fell_back(|| format!("fn:{}(uncompiled)", f.name), false);
-                    self.block(&f.body)
-                }
+        let compiled = Rc::clone(&self.vm);
+        let flow = if !feeding || compiled.main.traced {
+            if compiled.fns.get(id).is_some_and(Option::is_some) {
+                self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
             } else {
+                self.fell_back(|| format!("fn:{}(uncompiled)", f.name), false);
                 self.block(&f.body)
             }
         } else {

@@ -36,7 +36,7 @@ impl<'a> Checker<'a> {
                 }
             });
         }
-        let ty = self.quietly(|c| c.infer(e));
+        let ty = self.infer_quietly(e);
         self.io_fixed(&ty)
     }
 
@@ -57,10 +57,41 @@ impl<'a> Checker<'a> {
         let ExprKind::Name(name) = &callee.kind else {
             return;
         };
-        let reads = (name == "read" && args.is_empty()) || name == "ask";
+        let reads = (matches!(name.as_str(), "read" | "gen") && args.is_empty())
+            || name == "ask"
+            || self.returns_only_its_own_param(name);
         if reads && self.local(name).is_none() && !want.is_vague() && *want != Ty::Error {
+            if name == "gen" {
+                self.gens_given_a_type.insert(value.span);
+            }
             self.exprs.types.push((value.span, want.clone()));
         }
+    }
+
+    /// Whether `name` is a generic fn whose result is a type parameter none of
+    /// its parameters names, `fn mk<T: Default>() -> T`: only the type its
+    /// value goes to can bind it.
+    fn returns_only_its_own_param(&mut self, name: &str) -> bool {
+        let Some(Def::Fn {
+            ty: Ty::Fn { params, ret },
+            generics,
+            ..
+        }) = self.global(name).as_deref().cloned()
+        else {
+            return false;
+        };
+        let Ty::Param(p) = &*ret else {
+            return false;
+        };
+        let names_p = |t: &Ty| {
+            let mut hit = false;
+            t.map(&mut |x| {
+                hit |= matches!(x, Ty::Param(q) if q == p);
+                None
+            });
+            hit
+        };
+        generics.contains(p) && !params.iter().any(|q| names_p(&q.ty))
     }
 
     /// [`Checker::narrowed`], after [`Checker::note_read`] on `at`.
@@ -103,7 +134,7 @@ impl<'a> Checker<'a> {
             if self.fixed_size(&arg.value) {
                 continue;
             }
-            let ty = self.quietly(|c| c.infer(&arg.value));
+            let ty = self.infer_quietly(&arg.value);
             if let (ExprKind::Name(name), Ty::Named { name: list, args }) = (&arg.value.kind, &ty) {
                 if list == "List" && args.len() == 1 && self.io_fixed(&args[0]) {
                     terms.push(format!("{name}.len"));
@@ -172,7 +203,7 @@ impl<'a> Checker<'a> {
                 && !Self::generator_test(callee, args)
                 && self.local(n).is_none()
             {
-                let over = self.quietly(|c| c.infer(&arg.value));
+                let over = self.infer_quietly(&arg.value);
                 self.bool_count(call, &over);
             }
         }
@@ -703,17 +734,7 @@ impl<'a> Checker<'a> {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
             return;
         }
-        let members = match &base_ty {
-            Ty::Named { name, .. } => self.members_of(name),
-            _ => None,
-        };
-        let mutates = match &members {
-            Some(m) if m.members.iter().any(|(n, _)| n == &name.text) => {
-                m.mutators.contains(&name.text)
-            }
-            _ => self.takes_mut_self(&base_ty, &name.text),
-        };
-        if mutates {
+        if self.changes_self(&base_ty, &name.text) {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
         }
     }
@@ -774,7 +795,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         if !self.builtin_get(&base_ty, &name.text) {
             return None;
         }
@@ -801,7 +822,7 @@ impl<'a> Checker<'a> {
         };
         let Ty::Named {
             name: type_name, ..
-        } = self.quietly(|c| c.infer(base))
+        } = self.infer_quietly(base)
         else {
             return None;
         };
@@ -861,7 +882,7 @@ impl<'a> Checker<'a> {
         else {
             return None;
         };
-        let given = self.quietly(|c| c.infer(&only.value));
+        let given = self.infer_quietly(&only.value);
         let array = matches!(given, Ty::Array { .. });
         let suffix = match given.clone() {
             Ty::Named { name: list, args } if list == "List" => match args.as_slice() {
@@ -953,31 +974,9 @@ impl<'a> Checker<'a> {
         let Ty::Named { name: owner, .. } = base_ty else {
             return false;
         };
-        let own = match self.type_def(owner).as_deref() {
-            Some(Def::Struct { methods, .. } | Def::Enum { methods, .. }) => {
-                methods.iter().any(|(m, _)| *m == name.text)
-            }
-            _ => false,
-        };
-        if own {
+        let Some(traits) = self.member_traits(owner, &name.text) else {
             return false;
-        }
-        let mut traits = Vec::new();
-        for (trait_name, def) in self.env.impls(owner) {
-            match (trait_name, &*def) {
-                (None, Def::Impl { methods, .. })
-                    if methods.iter().any(|(m, _)| *m == name.text) =>
-                {
-                    return false;
-                }
-                (Some(t), Def::Impl { methods, .. })
-                    if methods.iter().any(|(m, _)| *m == name.text) =>
-                {
-                    traits.push(t)
-                }
-                _ => {}
-            }
-        }
+        };
         let [first, second, ..] = traits.as_slice() else {
             return false;
         };
@@ -1045,7 +1044,7 @@ impl<'a> Checker<'a> {
                             c.pop_scope();
                             ret
                         }),
-                        _ => match self.quietly(|c| c.infer(&arg.value)) {
+                        _ => match self.infer_quietly(&arg.value) {
                             Ty::Fn { ret, .. } => (*ret).clone(),
                             _ => Ty::Unknown,
                         },
@@ -1123,7 +1122,7 @@ impl<'a> Checker<'a> {
                         args,
                         [arg] if arg.name.is_none()
                             && (matches!(arg.value.kind, ExprKind::Lambda { .. })
-                                || matches!(self.quietly(|c| c.infer(&arg.value)), Ty::Fn { .. }))
+                                || matches!(self.infer_quietly(&arg.value), Ty::Fn { .. }))
                     ) =>
                 {
                     return Some(Ty::Optional(Box::new(elem)));
@@ -1140,7 +1139,7 @@ impl<'a> Checker<'a> {
                 "sorted" => {
                     return Some(Ty::list(elem));
                 }
-                "argmax" | "argmin" if !base_ty.is_keyed() => {
+                "argmax" | "argmin" if !self.implements_trait(&base_ty, "Keyed") => {
                     self.report(
                         name.span,
                         msgs::check::MISSING_IMPL_REQUIRES_KEYED_BUT_HAS,
@@ -1150,7 +1149,9 @@ impl<'a> Checker<'a> {
                 }
                 "sort" | "reverse" if !matches!(base_ty, Ty::Domain(_)) => {
                     // A read-only view (`xs.rev`) is reported once, as not writable.
-                    if !base_ty.is_indexed_mut() && !self.is_readonly_view(base) {
+                    if !self.implements_trait(&base_ty, "IndexedMut")
+                        && !self.is_readonly_view(base)
+                    {
                         self.report(
                             name.span,
                             msgs::check::MISSING_IMPL_REQUIRES_INDEXEDMUT_BUT_HAS,
@@ -1255,19 +1256,6 @@ impl<'a> Checker<'a> {
                     elem,
                 })
             }
-            // `adj.out(u)` is `adj[u]` for a table of neighbour lists only.
-            Ty::Array { index, elem }
-                if name.text == "out"
-                    && !elem.is_vague()
-                    && !matches!(&*elem, Ty::Named { name, .. } if name == "List") =>
-            {
-                let shown = Ty::Array { index, elem }.to_string();
-                let message = cpl_diag::msgs::check::OUT_V_READS_TABLE.at(&[&shown]);
-                if let Some(diag) = self.report_said(name.span, message) {
-                    diag.help = Some("index it: `a[v]`".to_string());
-                }
-                Some(Ty::Error)
-            }
             // `v.l(k)`, `v.r(k)`: the far end of a window of `k` at `v`.
             Ty::Pos(domain)
                 if matches!(name.text.as_str(), "l" | "r") && !domain.ends_with(".cuts") =>
@@ -1344,43 +1332,60 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `Graph.directed(flights)`: a static method's row bounds, read off its declared
-    /// parameters, as `rows_hold` checks a free fn's.
-    fn static_rows_hold(
+    /// `Graph.directed(flights)`, `s.apply(f)`: a method's bounds, read off its declared
+    /// parameters and the type it is called on, as a free fn's are.
+    fn method_rows_hold(
         &mut self,
         call: &Expr,
         callee_text: &str,
         base: &Expr,
         method: &str,
         args: &[Arg],
+        bindings: &Bindings,
     ) {
-        let ty_name = match &base.kind {
-            ExprKind::Generic { base, .. } => match &base.kind {
-                ExprKind::Name(n) => n,
-                _ => return,
-            },
-            ExprKind::Name(n) => n,
+        let recv = self.quietly(|c| c.infer(base));
+        let ty_name = match &recv {
+            Ty::TypeName(n) | Ty::Named { name: n, .. } => n.clone(),
             _ => return,
         };
-        if self.local(ty_name).is_some() {
-            return;
+        let impls = self.env.impls(&ty_name).into_iter().map(|(_, d)| d);
+        let mut found = None;
+        for def in self.type_def(&ty_name).into_iter().chain(impls) {
+            let (methods, rows, target) = match &*def {
+                Def::Struct {
+                    generics,
+                    methods,
+                    method_rows,
+                    ..
+                } => (
+                    methods,
+                    method_rows,
+                    Ty::Named {
+                        name: ty_name.clone(),
+                        args: generics.iter().cloned().map(Ty::Param).collect(),
+                    },
+                ),
+                Def::Impl {
+                    methods,
+                    method_rows,
+                    target,
+                    ..
+                } => (methods, method_rows, target.clone()),
+                _ => continue,
+            };
+            if let (Some((_, Ty::Fn { params, .. })), Some(row)) = (
+                methods.iter().find(|m| m.0 == method),
+                rows.iter().find(|r| r.0 == method),
+            ) {
+                found = Some((params.clone(), row.clone(), target));
+                break;
+            }
         }
-        let Some(Def::Struct {
-            methods,
-            method_rows,
-            ..
-        }) = self.type_def(ty_name).as_deref().cloned()
-        else {
+        let Some((params, (_, rows, through, traits), target)) = found else {
             return;
         };
-        let Some((_, rows, through)) = method_rows.into_iter().find(|(m, _, _)| m == method) else {
-            return;
-        };
-        let Some((_, Ty::Fn { params, .. })) = methods.into_iter().find(|(m, _)| m == method)
-        else {
-            return;
-        };
-        let mut bindings = Bindings::default();
+        let mut bindings = bindings.clone();
+        target.unify(&recv, &mut bindings);
         let mut positional = params.iter().filter(|p| !p.named_only);
         for arg in args {
             let param = match &arg.name {
@@ -1388,7 +1393,7 @@ impl<'a> Checker<'a> {
                 None => positional.next(),
             };
             if let Some(param) = param {
-                let got = self.quietly(|c| c.infer(&arg.value));
+                let got = self.infer_quietly(&arg.value);
                 param.ty.unify(&got, &mut bindings);
             }
         }
@@ -1402,7 +1407,10 @@ impl<'a> Checker<'a> {
                 held.unify(&elem, &mut bindings);
             }
         }
-        self.method_bounds_hold(callee_text, (&through, &params), &bindings, (args, call));
+        self.method_bounds_hold(method, (&traits, &params), &bindings, (args, call));
+        if !matches!(recv, Ty::TypeName(_)) {
+            return;
+        }
         // A tuple argument (`Graph.directed(pairs)`) is read by another path; only a record
         // can miss a field.
         bindings.retain(|_, t| matches!(t, Ty::Record(_)));
@@ -1444,91 +1452,61 @@ impl<'a> Checker<'a> {
                         self.bare_ops_take_monoid(bound_args, &params, args, &mut bindings);
                     }
                 }
-                if let (Some(fn_name), Some(Def::Fn { bound_args, .. })) =
-                    (callee_name, callee_def.as_deref())
+                if let (
+                    Some(fn_name),
+                    Some(Def::Fn {
+                        bound_args, bounds, ..
+                    }),
+                ) = (callee_name, callee_def.as_deref())
                 {
-                    let bound_args = bound_args.clone();
-                    self.shared_bound_args_agree(fn_name, &bound_args, &bindings, call.span);
+                    self.shared_bound_args_agree(fn_name, bound_args, &bindings, call.span);
+                    let bounds = (bounds.iter())
+                        .flat_map(|(p, ts)| ts.iter().map(move |t| (p.clone(), t.clone())))
+                        .collect::<Vec<_>>();
+                    self.method_bounds_hold(fn_name, (&bounds, &params), &bindings, (args, call));
                 }
-                if let Some(fn_name) = callee_name {
-                    if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
-                        for (param, traits) in bounds {
-                            if let Some(bound_ty) = bindings.get(&param) {
-                                let bound_ty = self.settle(bound_ty);
-                                for trait_name in traits {
-                                    if !self.implements_trait(&bound_ty, &trait_name) {
-                                        let help = self.unmet_bound_help(&bound_ty);
-                                        if let Some(diag) = self.report(
-                                            call.span,
-                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
-                                            &[&bound_ty, &trait_name, &fn_name],
-                                        ) {
-                                            diag.help = help;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if let ExprKind::Name(fname) = &callee.kind {
-                    if let Some(Def::Fn {
+                if let (
+                    ExprKind::Name(_),
+                    Some(Def::Fn {
                         row_bounds,
                         trait_bounds,
                         ..
-                    }) = self.global(fname).as_deref().cloned()
-                    {
-                        for (param, tname) in trait_bounds {
-                            let Some(actual) = bindings.get(&param) else {
-                                continue;
-                            };
-                            let Some(Def::Trait { fields, .. }) =
-                                self.global(&tname).as_deref().cloned()
-                            else {
-                                continue;
-                            };
-                            if fields.is_empty() {
-                                continue;
-                            }
-                            match actual {
-                                Ty::Record(actual_fs) => {
-                                    for (req_name, req_ty) in &fields {
-                                        let found = actual_fs.iter().find(|(n, _)| n == req_name);
-                                        if !matches!(found, Some((_, got_ty)) if self.fits(got_ty, req_ty))
-                                        {
-                                            self.report(
-                                                call.span,
-                                                msgs::check::MISSING_IMPL_RECORD_DOES_NOT_SATISFY,
-                                                &[&actual, &tname, &req_name, &req_ty],
-                                            );
-                                        }
-                                    }
+                    }),
+                ) = (&callee.kind, callee_def.as_deref())
+                {
+                    for (param, tname) in trait_bounds {
+                        let Some(actual) = bindings.get(param) else {
+                            continue;
+                        };
+                        let Some(Def::Trait { fields, .. }) =
+                            self.global(tname).as_deref().cloned()
+                        else {
+                            continue;
+                        };
+                        if fields.is_empty() {
+                            continue;
+                        }
+                        if let Ty::Record(actual_fs) = actual {
+                            for (req_name, req_ty) in &fields {
+                                let found = actual_fs.iter().find(|(n, _)| n == req_name);
+                                if !matches!(found, Some((_, got_ty)) if self.fits(got_ty, req_ty))
+                                {
+                                    self.report(
+                                        call.span,
+                                        msgs::check::MISSING_IMPL_RECORD_DOES_NOT_SATISFY,
+                                        &[&actual, &tname, &req_name, &req_ty],
+                                    );
                                 }
-                                Ty::Named { name: sname, .. } => {
-                                    let has_impl = self.env.impls(sname).iter().any(|(tn, _)| {
-                                        tn.as_deref().and_then(|t| t.split('<').next())
-                                            == Some(tname.as_str())
-                                    });
-                                    if !has_impl {
-                                        self.report(
-                                            call.span,
-                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_STRUCTS,
-                                            &[&sname, &tname, &tname, &sname],
-                                        );
-                                    }
-                                }
-                                _ => {}
                             }
                         }
-                        self.rows_hold(call, &callee_text, args, row_bounds, &bindings);
                     }
+                    self.rows_hold(call, &callee_text, args, row_bounds.clone(), &bindings);
                 }
                 if let ExprKind::Field { base, name } = &callee.kind {
-                    self.static_rows_hold(call, &callee_text, base, &name.text, args);
+                    self.method_rows_hold(call, &callee_text, base, &name.text, args, &bindings);
                 }
                 self.record_instantiation(call, &bindings);
-                self.settle(&ret.subst(&bindings))
+                self.settle(&ret.fresh_apart(&bindings).subst(&bindings))
             }
             Ty::Named {
                 name,
@@ -1644,6 +1622,14 @@ impl<'a> Checker<'a> {
                     }
                 }
                 Ty::Error
+            }
+            // `T(read() for _ in fields(T))` in a fn generic over `T` makes a `T`.
+            _ if let ExprKind::Name(n) = &callee.kind
+                && self.local(n).is_none()
+                && self.generics.iter().any(|g| g == n) =>
+            {
+                self.plain_args(args);
+                Ty::Param(n.clone())
             }
             _ => {
                 self.plain_args(args);

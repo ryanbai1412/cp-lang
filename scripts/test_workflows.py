@@ -303,6 +303,17 @@ class WorkflowTest(unittest.TestCase):
         with open(os.path.join(ROOT, "scripts", "ci.py"), encoding="utf-8") as f:
             self.assertIn('env.get("CPL_NEXTEST_ARCHIVE")', f.read())
 
+    def test_the_dreams_queue_on_their_own_and_hold_edge(self):
+        with open(os.path.join(ROOT, ".github/workflows/dreams.yml"), encoding="utf-8") as f:
+            dreams = f.read()
+        self.assertIn("group: dreams-", dreams)
+        self.assertIn("cancel-in-progress: false", dreams)
+        self.assertIn("corpus-verify --only dream", dreams)
+        with open(os.path.join(ROOT, ".github/workflows/ci-slow.yml"), encoding="utf-8") as f:
+            self.assertNotIn("--only dream", f.read(), "dreams wait behind ci-slow's hour-long jobs (ci/R41)")
+        with open(os.path.join(ROOT, "scripts/release/shippable.sh"), encoding="utf-8") as f:
+            self.assertIn("--workflow dreams.yml", f.read())
+
     def test_no_ci_job_fails_without_turning_main_red(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             self.assertNotIn("continue-on-error", f.read(),

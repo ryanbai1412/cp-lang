@@ -2003,3 +2003,31 @@ fn every_literal_word_parses_as_a_literal() {
     }
     assert!(matches!(expr("none").kind, ExprKind::Name(n) if n == "none"));
 }
+
+#[test]
+fn every_decorator_is_in_the_spec() {
+    fn read(dir: &std::path::Path, text: &mut String) {
+        for entry in std::fs::read_dir(dir).expect("spec/ reads") {
+            let path = entry.expect("a spec entry").path();
+            if path.is_dir() {
+                read(&path, text);
+            } else if path.extension().is_some_and(|e| e == "md") {
+                text.push_str(&std::fs::read_to_string(&path).expect("a spec file reads"));
+            }
+        }
+    }
+    let mut spec = String::new();
+    read(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec"),
+        &mut spec,
+    );
+    let missing: Vec<&str> = crate::decorators::DECORATORS
+        .iter()
+        .map(|(name, _)| *name)
+        .filter(|name| !spec.contains(&format!("`@{name}")))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "decorators the spec never names: {missing:?}"
+    );
+}

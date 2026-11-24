@@ -71,7 +71,7 @@ impl Emitter<'_> {
         }
         let main = std::ptr::eq(block, &self.program.main);
         for (global, id) in read_last(self.program, block, k) {
-            let name = match global {
+            let (name, ty) = match global {
                 true if main
                     && self.main_only.contains(&id)
                     && !self.released.contains(&id)
@@ -79,7 +79,7 @@ impl Emitter<'_> {
                     && matches!(self.program.globals[id].ty, Ty::List(_) | Ty::Str)
                     && self.owns_heap_storage(id) =>
                 {
-                    global_ident(self.program, id)
+                    (global_ident(self.program, id), &self.program.globals[id].ty)
                 }
                 false
                     if !self.ref_bound.contains(&id)
@@ -87,11 +87,12 @@ impl Emitter<'_> {
                         && !self.reused.contains(&id)
                         && matches!(self.locals()[id].ty, Ty::List(_) | Ty::Str) =>
                 {
-                    self.names[id].clone()
+                    (self.names[id].clone(), &self.locals()[id].ty)
                 }
                 _ => continue,
             };
-            self.line(out, &format!("{{ auto cpl_freed = std::move({name}); }}"));
+            let freed = self.move_of(ty, &name);
+            self.line(out, &format!("{{ auto cpl_freed = {freed}; }}"));
         }
     }
 

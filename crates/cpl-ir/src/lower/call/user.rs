@@ -78,7 +78,7 @@ impl<'a> Lowerer<'a> {
             };
             lw.cx.loops.pop();
             let set = Stmt::Assign(place, AssignOp::Set, value);
-            out.push(Stmt::For(lid, slot, iter, Block { stmts: vec![set] }));
+            lw.push_for(out, lid, slot, iter, Block { stmts: vec![set] });
             let res = lw.local(acc, span);
             out.push_give(res);
         })
@@ -901,14 +901,15 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     lw.cx.loops.pop();
-                    out.push(Stmt::For(
+                    lw.push_for(
+                        out,
                         lid,
                         slot,
                         iter,
                         Block {
                             stmts: vec![Stmt::Expr(m)],
                         },
-                    ));
+                    );
                     let res = lw.local(acc, span);
                     out.push_give(res);
                 });
@@ -1661,6 +1662,18 @@ impl<'a> Lowerer<'a> {
                     }
                 };
                 self.bind(&clause.pat, value, &mut stmts);
+            }
+            if let Ty::Struct(id) = own {
+                if let Some(field) = self.structs[id].decl.and_then(|d| d.fields.get(i)) {
+                    let s = &self.structs[id];
+                    self.want_written = Some((
+                        body.span,
+                        field.ty.clone(),
+                        s.mod_id,
+                        s.offset,
+                        s.env.clone(),
+                    ));
+                }
             }
             let v = self.expr_as(body, fty);
             let range = match &own {

@@ -194,6 +194,20 @@ pub(crate) fn closure_writes(program: &cpl_ir::Program, id: Option<usize>, root:
     })
 }
 
+/// Every `Int` `x / y` and `x % y` in `block` whose divisor is not a
+/// literal, with its two operands.
+pub(crate) fn int_divisions(block: &Block) -> Vec<(&Expr, &Expr, &Expr)> {
+    let mut out = Vec::new();
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Binary(cpl_ir::BinOp::Div | cpl_ir::BinOp::Rem, l, r) = &e.kind {
+            if e.ty == cpl_ir::Ty::Int && !matches!(r.kind, ExprKind::Int(_)) {
+                out.push((e, &**l, &**r));
+            }
+        }
+    });
+    out
+}
+
 /// Whether running `e` may read or write the variable `root`: anything
 /// that calls code counts.
 pub(crate) fn may_touch(e: &Expr, root: (bool, usize)) -> bool {

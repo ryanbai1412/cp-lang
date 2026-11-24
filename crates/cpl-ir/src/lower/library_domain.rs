@@ -6,6 +6,32 @@ use super::*;
 use cpl_diag::msgs;
 use std::collections::BTreeSet;
 
+/// What a `for` walks while it is lowered: an [`Iter`], or the values of a
+/// library domain, which [`Lowerer::push_for`] spells out, so no `Iter`
+/// holds one.
+pub(in crate::lower) enum Head {
+    Iter(Iter),
+    Walk(Walk),
+}
+
+/// `nth(k)` for each `k` in `0..len`, backward when `rev`, with `k` in slot
+/// `k` and `len` read once into slot `n`. With `recv` (a read of the walked
+/// value), `nth` is its method: `nth(recv, k)`.
+pub(in crate::lower) struct Walk {
+    pub k: Slot,
+    pub n: Slot,
+    pub len: Expr,
+    pub nth: FnId,
+    pub recv: Option<Expr>,
+    pub rev: bool,
+}
+
+impl From<Iter> for Head {
+    fn from(iter: Iter) -> Self {
+        Head::Iter(iter)
+    }
+}
+
 impl<'a> Lowerer<'a> {
     /// `S.nth(k)` from user code: `k` must lie in `0..S.count`. Walks call the
     /// impl's `nth` directly, unchecked.
@@ -192,15 +218,15 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The walk of a library domain: `nth(k)` for `k` in `0..count`.
-    pub(super) fn walk(&mut self, dom: DomainId, nth: FnId, span: Span) -> Iter {
-        Iter::Walk {
+    pub(super) fn walk(&mut self, dom: DomainId, nth: FnId, span: Span) -> Head {
+        Head::Walk(Walk {
             k: self.temp(Ty::Int),
             n: self.temp(Ty::Int),
             len: self.mk(ExprKind::DomainLen(dom), Ty::Int, span),
             nth,
             recv: None,
             rev: false,
-        }
+        })
     }
 
     /// `T.find(p)`, `T.count(p)`, `T.min(by: f)`, …: the `Seq` query as one
@@ -249,68 +275,56 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// Expands each `Iter::Walk` in `block` into the loop it stands for, so
-    /// no backend sees one: `n = len`, then `k` over `0..n` (from `n - 1`
-    /// down when reversed), binding the item to `nth(k)`.
-    pub(super) fn expand_walks(&self, block: &mut Block) {
-        walk::blocks_mut(block, &mut |b| {
-            if !b
-                .stmts
-                .iter()
-                .any(|st| matches!(st, Stmt::For(_, _, Iter::Walk { .. }, _)))
-            {
-                return;
-            }
-            let mut stmts = Vec::with_capacity(b.stmts.len() + 1);
-            for stmt in std::mem::take(&mut b.stmts) {
-                let Stmt::For(
-                    lid,
-                    item,
-                    Iter::Walk {
-                        k,
-                        n,
-                        len,
-                        nth,
-                        recv,
-                        rev,
-                    },
-                    mut body,
-                ) = stmt
-                else {
-                    stmts.push(stmt);
-                    continue;
-                };
-                let span = len.span;
-                let at = |slot: Slot| Expr {
-                    kind: ExprKind::Local(slot),
-                    ty: Ty::Int,
-                    span,
-                };
-                let ty = self.sigs[nth].ret.clone().unwrap_or(Ty::Unit);
-                let value = Expr {
-                    kind: ExprKind::Call(
-                        nth,
-                        recv.map(Arg::Value)
-                            .into_iter()
-                            .chain([Arg::Value(at(k))])
-                            .collect(),
-                    ),
-                    ty,
-                    span,
-                };
-                body.stmts.insert(0, Stmt::Let(item, Some(value)));
-                stmts.push_let(n, len);
-                let ords = Iter::Range {
-                    lo: self.int_lit(0, span),
-                    hi: at(n),
-                    step: None,
-                    rev,
-                    closed: false,
-                };
-                stmts.push(Stmt::For(lid, k, ords, body));
-            }
-            b.stmts = stmts;
-        });
+    /// `for item in head: body`, pushed onto `out`. A walk is an `Int`
+    /// range loop over its ordinals that binds `item` to `nth` of each.
+    pub(super) fn push_for(
+        &self,
+        out: &mut Vec<Stmt>,
+        lid: LoopId,
+        item: Slot,
+        head: Head,
+        mut body: Block,
+    ) {
+        let walk = match head {
+            Head::Iter(iter) => return out.push(Stmt::For(lid, item, iter, body)),
+            Head::Walk(walk) => walk,
+        };
+        let Walk {
+            k,
+            n,
+            len,
+            nth,
+            recv,
+            rev,
+        } = walk;
+        let span = len.span;
+        let at = |slot: Slot| Expr {
+            kind: ExprKind::Local(slot),
+            ty: Ty::Int,
+            span,
+        };
+        let ty = self.sigs[nth].ret.clone().unwrap_or(Ty::Unit);
+        let value = Expr {
+            kind: ExprKind::Call(
+                nth,
+                recv.map(Arg::Value)
+                    .into_iter()
+                    .chain([Arg::Value(at(k))])
+                    .collect(),
+            ),
+            ty,
+            span,
+        };
+        body.stmts.insert(0, Stmt::Let(item, Some(value)));
+        out.push_let(n, len);
+        let ords = Iter::Range {
+            lo: self.int_lit(0, span),
+            hi: at(n),
+            step: None,
+            rev,
+            closed: false,
+        };
+        out.push(Stmt::For(lid, k, ords, body));
     }
 
     /// `B.subsets` is `Subset<B>` (spec/lib/search-dp.md), std's `impl Index` struct.

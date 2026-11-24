@@ -193,6 +193,10 @@ super::msgs! {
     USED_WHILE_LENT_CAN_T_BE_HERE = USED_WHILE_LENT, "`{}` can't be {} here: the `for` loop is going over `{}`, and that lends it for reading until the loop ends";
     USED_WHILE_LENT_CAN_T_BE_HERE_2 = USED_WHILE_LENT, "`{}` can't be {} here: `{}` is {}lent to `{}` until its last use ({})";
     TYPE_MISMATCH_OPEN_RANGE_END = TYPE_MISMATCH, "an open range counts from 0 or to the end of a domain, so its end is an `Int` or a domain value, not `{}`";
+    TYPE_MISMATCH_TYPE_ARGS_WITHOUT_PARAMS = TYPE_MISMATCH,
+        "`{}` has no type parameters, so it takes no type arguments";
+    TYPE_MISMATCH_DIM_START = TYPE_MISMATCH,
+        "an array dimension counts its cells from a number, not from `{}`";
     TYPE_MISMATCH_FULL_RANGE = TYPE_MISMATCH, "`..` takes its domain from its place, so it stands only as an index or an argument";
     TYPE_MISMATCH_A_RANGE_OF_F64 = TYPE_MISMATCH, "a range of `F64`s has no elements to walk";
     UNKNOWN_FIELD_HAS_NO_MEMBER = UNKNOWN_FIELD, "{} has no member `{}`";
@@ -274,6 +278,7 @@ super::msgs! {
     USE_AFTER_MOVE_WAS_ALREADY_MOVED = USE_AFTER_MOVE, "`{}` was already moved";
     /// R05.7.1: a parameter is lent, so a `var` can't take it from the caller.
     USE_AFTER_MOVE_VAR_FROM_LENT_PARAM = USE_AFTER_MOVE, "`{}` would take `{}` from the caller: a parameter is lent, never moved";
+    USE_AFTER_MOVE_VAR_FROM_TOP_LEVEL = USE_AFTER_MOVE, "`{}` would take `{}` from the file body: a fn reads top-level state lent, never moved";
     UNRESOLVED_NAME_WAS_REPLACED_BY = UNRESOLVED_NAME, "`{}` was replaced by `{}`";
     /// R02.7.1: a variant is spelled as its enum declares it.
     UNRESOLVED_NAME_IS_A_VARIANT_SPELLED = UNRESOLVED_NAME, "no `{}` in scope; `{}` has the variant `{}`";
@@ -299,7 +304,6 @@ super::msgs! {
     HAS_TYPE_BOOL_WHICH_2 = MISSING_IMPL, "`{}` has type `Bool`, which does not implement `Show`; use `print(yes({}))`";
     HAS_TYPE_WHICH_DOES = MISSING_IMPL, "`{}` has type `{}`, which does not implement `Show`";
     NOT_EXACTLY_F64_WRITE = TYPE_MISMATCH, "`{}` is not exactly an F64; write `F64({})` to round it";
-    OUT_V_READS_TABLE = UNKNOWN_FIELD, "`.out(v)` reads a table of neighbour lists, not a `{}`";
     CAN_T_MODIFIED_WHILE = BAD_MEMO, "`{}` can't be modified while `@memo` fn `{}` captures it";
     CODE_AFTER_LEND_CHANGES = BAD_PROJECTION, "code after the `lend` changes `self`, so `{}` takes `mut self`";
     DECLARED_LENDS_WITHOUT_MUT = BAD_PROJECTION, "`{}` is declared `lends` without `mut`, so it can't `lend mut`";

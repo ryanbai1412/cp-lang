@@ -1,6 +1,7 @@
 //! Closures: captures, recursion slots and the lambda C++ they emit.
 
 use super::*;
+use std::collections::BTreeSet;
 
 /// A closure's lambda C++ in pieces, so a closure type can reuse its body.
 pub(crate) struct ClosureText {
@@ -22,7 +23,7 @@ impl<'p> Emitter<'p> {
                 return code;
             }
         }
-        let t = self.closure_text(cid, skip_captures);
+        let t = self.closure_text(cid, skip_captures, true);
         Code::primary(format!(
             "[{}]({}) mutable -> {} {{\n{}",
             t.captures.join(", "),
@@ -69,7 +70,7 @@ impl<'p> Emitter<'p> {
         );
         self.need("bound");
         self.written.bound.insert(cid);
-        let t = self.closure_text(cid, true);
+        let t = self.closure_text(cid, true, false);
         let aliases: String = t
             .captured
             .iter()
@@ -163,7 +164,13 @@ impl<'p> Emitter<'p> {
         );
         let mut cases = String::new();
         for (k, alt) in alts.iter().enumerate() {
-            out.push_str(&format!("    {name}({alt} f) : v(std::move(f)) {{}}\n"));
+            let def = &self.program.closures[cids[k]];
+            let params = def.params.iter().map(|&s| def.locals[s].ty.clone());
+            let fn_ty = Ty::Fn(params.collect(), Box::new(def.ret.clone()));
+            out.push_str(&format!(
+                "    {name}({alt} f) : v({}) {{}}\n",
+                self.move_of(&fn_ty, "f")
+            ));
             let case = match k + 1 == alts.len() {
                 true => "default".to_string(),
                 false => format!("case {k}"),
@@ -182,7 +189,7 @@ impl<'p> Emitter<'p> {
     /// The call operator of `cpl_clN`: the lambda's body, each capture
     /// named by a reference to its member.
     pub(crate) fn functor_body(&mut self, cid: usize) -> String {
-        let t = self.closure_text(cid, true);
+        let t = self.closure_text(cid, true, false);
         let caps = &self.program.closures[cid].captures;
         let aliases: String = t
             .captured
@@ -218,7 +225,9 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    fn closure_text(&mut self, cid: usize, skip_captures: bool) -> ClosureText {
+    /// `may_lend`: the lambda's own return type is free to be `const T&`
+    /// ([`Emitter::closure_lends`]); a bound or functor body keeps its signature.
+    fn closure_text(&mut self, cid: usize, skip_captures: bool, may_lend: bool) -> ClosureText {
         let def = &self.program.closures[cid];
         let rec_slot = self.rec_slot.take();
         // Prepare inner names for the closure's locals.
@@ -254,6 +263,8 @@ impl<'p> Emitter<'p> {
         let mut cap_parts = Vec::new();
         let mut global_ref_aliases = Vec::new();
         let borrow_immutable = self.borrow_closures.contains(&cid);
+        // The captures the lambda refers to in place, whose outer name nothing changes.
+        let mut held = BTreeSet::new();
         if !skip_captures {
             for cap in &def.captures {
                 let inner = &inner_names[cap.inner];
@@ -275,6 +286,9 @@ impl<'p> Emitter<'p> {
                     let lent = borrow_immutable
                         && non_scalar
                         && (self.const_globals.contains(&cap.outer) || scoped);
+                    if lent && self.global_unchanged(cap.outer) {
+                        held.insert(cap.inner);
+                    }
                     if cap.by_ref || lent {
                         let constant = if lent || self.const_globals.contains(&cap.outer) {
                             "const "
@@ -291,6 +305,13 @@ impl<'p> Emitter<'p> {
                     let outer = &self.names[cap.outer];
                     let owns = self.capture_owns.get(&(cid, cap.outer)).copied();
                     if cap.by_ref || (borrow_immutable && non_scalar && owns.is_none()) {
+                        if !cap.by_ref
+                            && !self.spent.contains(&cap.outer)
+                            && !self.uses.of_binding(self.home(), cap.outer).mutated
+                            && self.facts.stable(self.facts_local(cap.outer))
+                        {
+                            held.insert(cap.inner);
+                        }
                         cap_parts.push(format!("&{inner} = {outer}"));
                     } else {
                         cap_parts.push(format!("{inner} = {outer}"));
@@ -317,7 +338,7 @@ impl<'p> Emitter<'p> {
             .map(|c| inner_names[c.inner].clone())
             .collect();
 
-        let ret_cpp = self.ty(&def.ret);
+        let mut ret_cpp = self.ty(&def.ret);
         let pre_visible = def.params.len() + def.captures.len();
         let inner_hoisted = crate::scope::hoisted(&def.body, pre_visible);
 
@@ -335,6 +356,15 @@ impl<'p> Emitter<'p> {
         let (breaks, continues) = crate::uses::loops::labeled_jumps(&def.body);
         let saved_brk = std::mem::replace(&mut self.break_targets, breaks);
         let saved_cont = std::mem::replace(&mut self.continue_targets, continues);
+        if may_lend && self.closure_lends(cid, &held) {
+            ret_cpp = format!("const {ret_cpp}&");
+            self.lending_closures.insert(cid);
+        }
+        let pins = self.pinned.len();
+        if !skip_captures && !saved_in_setup {
+            let in_body = saved_closure.is_some() || self.fn_id.is_some();
+            self.made_once_quotients(cid, rec_slot, in_body, &saved_names, &mut cap_parts);
+        }
 
         let mut text = String::new();
         self.indent += 1;
@@ -370,6 +400,7 @@ impl<'p> Emitter<'p> {
             ));
         }
         self.block(&def.body, &mut text);
+        self.pinned.truncate(pins);
         self.indent -= 1;
         text.push_str(&pad(self.indent));
         text.push('}');
@@ -416,6 +447,188 @@ impl<'p> Emitter<'p> {
 }
 
 impl Emitter<'_> {
+    /// Rule 4 for a lambda: each return gives a field or element of a
+    /// global nothing changes, or of a capture in `held`, so the lambda
+    /// returns `const T&` to it, which outlives every call.
+    fn closure_lends(&self, cid: usize, held: &BTreeSet<usize>) -> bool {
+        let def = &self.program.closures[cid];
+        if def.ret.is_scalar()
+            || def.ret == Ty::Unit
+            || !crate::lend::holds_heap(self.program, &def.ret)
+            || self.caches_on_read(&def.ret)
+        {
+            return false;
+        }
+        let layout = self.elem_layout(cpl_ir::ElemLoc::ClosureRet(cid));
+        crate::lend::returned_places(&def.body).is_some_and(|places| {
+            places.iter().all(|e| {
+                e.ty == def.ret
+                    && self.expr_elem_layout(e) == layout
+                    && match self.part_root(e) {
+                        Some((true, g)) => self.global_unchanged(g),
+                        Some((false, slot)) => held.contains(&slot),
+                        None => false,
+                    }
+            })
+        })
+    }
+
+    /// The variable a field or element path `e` is part of: `adj` in `adj[u]`.
+    fn part_root(&self, e: &cpl_ir::Expr) -> Option<(bool, usize)> {
+        use cpl_ir::{ExprKind, NarrowLayout};
+        let mut at = e;
+        loop {
+            at = match &at.kind {
+                ExprKind::Field(base, _) if matches!(base.ty, Ty::Struct(_)) => base,
+                ExprKind::Index(base, _)
+                    if matches!(base.ty, Ty::List(_) | Ty::Array { .. })
+                        && matches!(
+                            self.expr_elem_layout(base),
+                            None | Some(NarrowLayout::Seq(_))
+                        ) =>
+                {
+                    base
+                }
+                ExprKind::Local(slot) if !std::ptr::eq(at, e) => return Some((false, *slot)),
+                ExprKind::Global(g) if !std::ptr::eq(at, e) => return Some((true, *g)),
+                _ => return None,
+            };
+        }
+    }
+
+    /// Whether global `g` is set once and no fn or closure writes it.
+    fn global_unchanged(&self, g: usize) -> bool {
+        self.facts.stable((None, true, g))
+            && (0..self.program.fns.len()).all(|f| !self.uses.effects(f).writes.contains(&g))
+            && (0..self.program.closures.len()).all(|c| {
+                self.uses
+                    .table
+                    .closure_access(self.program, c)
+                    .is_some_and(|a| !a.writes.contains(&(true, g)))
+            })
+    }
+
+    /// `x / y` and `x % y` in closure `cid` whose operands stay fixed while it
+    /// lives (by-value captures it never writes, literals and, for a closure
+    /// made in a fn's body, globals set once at the top level) and whose
+    /// divisor is positive, so working one out early can't trap: each is a
+    /// capture worked out once when the lambda is made, not per call.
+    fn made_once_quotients(
+        &mut self,
+        cid: usize,
+        rec_slot: Option<usize>,
+        in_body: bool,
+        outer_names: &[String],
+        cap_parts: &mut Vec<String>,
+    ) {
+        let program = self.program;
+        let def = &program.closures[cid];
+        let mut written = std::collections::BTreeSet::new();
+        crate::uses::places::each_written(&def.body, &mut |p| {
+            written.extend(p.root_local());
+        });
+        let mut fixed = BTreeMap::new();
+        for cap in &def.captures {
+            if cap.by_ref || written.contains(&cap.inner) {
+                continue;
+            }
+            if cap.is_global {
+                if self.const_globals.contains(&cap.outer) {
+                    fixed.insert(cap.inner, global_ident(program, cap.outer));
+                }
+            } else if Some(cap.outer) != rec_slot {
+                fixed.insert(cap.inner, outer_names[cap.outer].clone());
+            }
+        }
+        let set_once = if in_body {
+            self.set_once_globals()
+        } else {
+            Default::default()
+        };
+        let mut found: Vec<&Expr> = Vec::new();
+        {
+            let still = |e: &Expr| match e.kind {
+                ExprKind::Int(_) => true,
+                ExprKind::Local(s) => fixed.contains_key(&s),
+                ExprKind::Global(g) => self.const_globals.contains(&g) || set_once.contains(&g),
+                _ => false,
+            };
+            for (e, l, r) in crate::uses::effects::int_divisions(&def.body) {
+                if still(l)
+                    && still(r)
+                    && self.facts.sign(self.facts_home(), r) == crate::ranges::Sign::Positive
+                {
+                    found.push(e);
+                }
+            }
+        }
+        if found.is_empty() {
+            return;
+        }
+        let mut names = self.names.clone();
+        for (&slot, name) in &fixed {
+            names[slot] = name.clone();
+        }
+        let inner = std::mem::replace(&mut self.names, names);
+        let mut made: Vec<(String, String)> = Vec::new();
+        let mut pins = Vec::new();
+        for e in found {
+            let code = self.expr(e).text;
+            let name = match made.iter().find(|(c, _)| *c == code) {
+                Some((_, name)) => name.clone(),
+                None => {
+                    let mut k = 0;
+                    let mut name = format!("q{cid}_{k}");
+                    while self.taken.contains(&name) || self.top_names.contains(&name) {
+                        k += 1;
+                        name = format!("q{cid}_{k}");
+                    }
+                    self.taken.insert(name.clone());
+                    cap_parts.push(format!("{name} = {code}"));
+                    made.push((code, name.clone()));
+                    name
+                }
+            };
+            pins.push((e as *const Expr, name));
+        }
+        self.names = inner;
+        self.pinned.extend(pins);
+    }
+
+    /// The globals one top-level statement of the program sets, written
+    /// nowhere else: a `let` read in, which no fn or closure can change.
+    fn set_once_globals(&self) -> std::collections::BTreeSet<usize> {
+        let program = self.program;
+        self.set_once_globals
+            .get_or_init(|| {
+                let mut writes = BTreeMap::<usize, usize>::new();
+                let mut count = |block: &cpl_ir::Block| {
+                    crate::uses::places::each_written(block, &mut |p| {
+                        if let Some(g) = p.root_global() {
+                            *writes.entry(g).or_default() += 1;
+                        }
+                    });
+                };
+                count(&program.main);
+                program.fns.iter().for_each(|f| count(&f.body));
+                program.closures.iter().for_each(|c| count(&c.body));
+                program
+                    .main
+                    .stmts
+                    .iter()
+                    .filter_map(|s| match s {
+                        Stmt::Assign(p, cpl_ir::AssignOp::Set, _) => match p.kind {
+                            PlaceKind::Global(g) => Some(g),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .filter(|g| writes.get(g) == Some(&1))
+                    .collect()
+            })
+            .clone()
+    }
+
     /// The C++ type of a value that is stored or passed: a `()` held in a
     /// tuple, a list or a parameter is a `cpl::Unit`, since C++ has no
     /// `void` value.

@@ -49,10 +49,12 @@ inline OptPos prev_pos(ll v) { return v > 0 ? OptPos((int)(v - 1)) : OptPos(); }
         name: "range",
         needs: &["fail"],
         code: "\
-template <class T> struct Range {
-    T lo = 0, hi = 0;
-    static Range make(T lo, T hi) { return {lo, hi}; }
-    using U = std::conditional_t<sizeof(T) == 16, unsigned __int128, unsigned long long>;
+// `S` holds the ends: wider than `T` when the end of `..=` can pass `T`'s greatest value.
+template <class T, class S = T> struct Range {
+    S lo = 0, hi = 0;
+    static Range make(S lo, S hi) { return {lo, hi}; }
+    using U = std::conditional_t<sizeof(S) == 16, unsigned __int128, unsigned long long>;
+    using W = std::common_type_t<S, ll>;
     U span() const { return hi <= lo ? 0 : (U)hi - (U)lo; }
     ll len() const {
         if constexpr (sizeof(T) < sizeof(ll)) return (ll)span();
@@ -60,14 +62,14 @@ template <class T> struct Range {
         return (ll)span();
     }
     bool empty() const { return hi <= lo; }
-    bool has(T x) const { return x >= lo && x < hi; }
-    std::optional<T> first() const { return lo < hi ? std::optional<T>(lo) : std::nullopt; }
+    bool has(T x) const { return (S)x >= lo && (S)x < hi; }
+    std::optional<T> first() const { return lo < hi ? std::optional<T>((T)lo) : std::nullopt; }
     std::optional<T> last() const { return lo < hi ? std::optional<T>((T)(hi - 1)) : std::nullopt; }
-    T operator[](ll i) const { return (T)((ll)lo + i); }
-    std::optional<T> get(ll i) const { return i < 0 || (U)i >= span() ? std::optional<T>() : std::optional<T>((T)(lo + (T)i)); }
+    T operator[](ll i) const { return (T)((W)lo + i); }
+    std::optional<T> get(ll i) const { return i < 0 || (U)i >= span() ? std::optional<T>() : std::optional<T>((T)((W)lo + i)); }
     std::vector<T> rev() const {
         std::vector<T> out;
-        if (lo < hi) { out.reserve((size_t)len()); for (T x = hi; x-- > lo;) out.push_back(x); }
+        if (lo < hi) { out.reserve((size_t)len()); for (S x = hi; x-- > lo;) out.push_back((T)x); }
         return out;
     }
     bool operator==(const Range& o) const { return lo == o.lo && hi == o.hi; }
@@ -146,8 +148,6 @@ template <class T> ll key_pos(const Range<T>& r, ll k) { ll i = k - (ll)r.lo, n 
         needs: &["fail", "niche"],
         code: "\
 inline OptPos pos_try_ord(ll i, ll len) { return (i >= 0 && i < len) ? OptPos((int)i) : OptPos(); }
-inline OptPos pos_offset(ll i, ll d, ll len) { ll t = i + d; return (t >= 0 && t < len) ? OptPos((int)t) : OptPos(); }
-inline int pos_cyc(ll i, ll d, ll len) { ll r = (i + d) % len; return (int)(r < 0 ? r + len : r); }
 inline int bound_step(ll b, ll len) { if (b < 0 || b > len) fail(\"window leaves domain\"); return (int)b; }
 inline OptPos bound_left(ll b) { return b > 0 ? OptPos((int)(b - 1)) : OptPos(); }
 inline OptPos bound_right(ll b, ll len) { return b < len ? OptPos((int)b) : OptPos(); }

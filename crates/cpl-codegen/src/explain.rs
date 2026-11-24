@@ -41,6 +41,7 @@ pub fn report_with(
         specializations,
         checks,
         overflows,
+        proven,
     } = crate::explain_lowered(program);
     let view_ops = explain_views(text, program);
     let sunk = explain_sunk(text, program);
@@ -113,6 +114,7 @@ pub fn report_with(
         }
         chosen_and_checked(stdout, path, text, &specializations, &checks);
         overflow_checked(stdout, path, text, &overflows);
+        proven_dropped(stdout, path, text, &proven);
         return out;
     }
     if !entries.is_empty() {
@@ -221,6 +223,7 @@ pub fn report_with(
     }
     chosen_and_checked(stdout, path, text, &specializations, &checks);
     overflow_checked(stdout, path, text, &overflows);
+    proven_dropped(stdout, path, text, &proven);
     out
 }
 
@@ -252,8 +255,28 @@ impl Index {
 /// Why an `Int` `+ - *` has no overflow check.
 pub const FITS: &str = "its operands' proven ranges keep it in `Int`";
 
+/// Why a check is dropped: its loops' bounds prove it never fails.
+pub const PROVEN: &str = "the bounds of the loops it is in prove it never fails";
+
 /// Each `Int` `+ - *` with whether the checked builds test it for overflow,
 /// as the shared range facts decide; nothing when the file has none.
+/// Each check the C++ drops because its loops' bounds prove it never fails.
+fn proven_dropped(
+    stdout: &mut String,
+    path: &str,
+    text: &str,
+    dropped: &[(cpl_diag::Span, String)],
+) {
+    if dropped.is_empty() {
+        return;
+    }
+    let _ = writeln!(stdout, "Checks dropped for {path}, proven never to fail:");
+    for (span, what) in dropped {
+        let (line, col) = line_col(text, *span);
+        let _ = writeln!(stdout, "  [no check] {line}:{col}  {what} -> {PROVEN}");
+    }
+}
+
 fn overflow_checked(stdout: &mut String, path: &str, text: &str, ops: &[(cpl_diag::Span, bool)]) {
     if ops.is_empty() {
         return;

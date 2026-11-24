@@ -14,7 +14,7 @@
 //!   caller's bytecode stream at compile time.
 //! - Hot contest loops use superinstructions (`ForInc`, `ForIncClosed`,
 //!   `ForDec`, `LoadGArr1I`/`StoreGArr1I`, `LoadGArr2I`/`StoreGArr2I`,
-//!   `LoadGArr2OptI`/`StoreGArr2OptI`, `PosNext`/`PosPrev`/`PosOffset`,
+//!   `LoadGArr2OptI`/`StoreGArr2OptI`, `PosNext`/`PosPrev`,
 //!   `JmpLtI`/`JmpLeI`/`JmpEqI`/`JmpNeI`).
 //! - Any IR construct not lowered natively executes via `FallbackStmt` /
 //!   `FallbackExpr`, syncing live local slots with `Interp` so 100% of CP Lang
@@ -27,11 +27,13 @@ mod ir;
 mod program;
 mod scalar;
 
+pub(crate) use exec::VmFrame;
 #[cfg(not(target_family = "wasm"))]
 pub(crate) use helpers::stmt_tag;
 #[cfg(not(target_family = "wasm"))]
 pub(crate) use helpers::VmStats;
 pub(crate) use helpers::{read_slot, undeclared};
+pub(crate) use helpers::{seq_items, seq_of_items};
 pub(crate) use ir::CompiledProgram;
 pub(crate) use ir::Op;
 pub(crate) use ir::{Chunk, LoopReg, SeqHeld, SlotLoc};

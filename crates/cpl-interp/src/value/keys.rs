@@ -86,7 +86,7 @@ impl Entry for (Value, Value) {
 const RUN: usize = 512;
 
 /// A run and an offset in it; `(runs.len(), 0)` is the end.
-type Pos = (usize, usize);
+pub(crate) type Pos = (usize, usize);
 
 /// Entries sorted by key in runs of at most `RUN`, so an insert or a removal moves one run, not
 /// the whole set, and a search takes \(O(\log n)\) compares, one per step.
@@ -573,6 +573,22 @@ impl KeyMap {
                 Ok((r, o)) => Some(&mut v.runs[r][o].1),
                 Err(_) => None,
             }),
+        }
+    }
+
+    /// Where `key`'s entry is in a map sorted by a user `Ord`, so its search can run user
+    /// code while the map is out of its place; `None` for a missing key or a B-tree map.
+    pub(crate) fn sorted_pos(&self, key: &Value, less: &mut Less) -> Res<Option<Pos>> {
+        match self {
+            KeyMap::Tree(_) => Ok(None),
+            KeyMap::Sorted(ty, v) => Ok(v.find(ty, key, less)?.ok()),
+        }
+    }
+
+    pub(crate) fn sorted_at_mut(&mut self, (r, o): Pos) -> Option<&mut Value> {
+        match self {
+            KeyMap::Tree(_) => None,
+            KeyMap::Sorted(_, v) => v.runs.get_mut(r)?.get_mut(o).map(|e| &mut e.1),
         }
     }
 

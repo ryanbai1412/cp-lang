@@ -14,6 +14,8 @@ for i in 0..64 * n:
     t.swap(k, (k + 1) % n) // timed: builtin.Str.swap
     s += t.cut_after(k) // timed: builtin.Str.cut_after
     s += t.cut_before(k) // timed: builtin.Str.cut_before
+    if let c = t.first: s += Int(c) // timed: builtin.Str.first
+    if let c = t.last: s += Int(c) // timed: builtin.Str.last
 for i in 0..4 * n:
     let c = Char(97 + i % 26)
     s += u.first_ge(c) ?? 0 // timed: builtin.Str.first_ge

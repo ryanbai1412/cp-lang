@@ -85,7 +85,10 @@ pub fn describe(rep: &cpl_check::Representation) -> String {
             format!("{} per element, no bound on the count", bytes(per))
         }
         (Some(each), _, _) => bytes(each),
-        (None, _, _) => "on the heap, as large as it grows".to_string(),
+        (None, _, _) => match &rep.held {
+            Some(held) => format!("on the heap, as large as it grows; {held}"),
+            None => "on the heap, as large as it grows".to_string(),
+        },
     };
     match rep.none_is_spare {
         Some(true) => out += ", None is a spare value (no flag)",

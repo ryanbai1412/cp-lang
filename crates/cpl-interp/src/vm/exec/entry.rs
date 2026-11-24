@@ -31,7 +31,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// chunk that left the loop to the tree-walker, if one holds it.
     pub(crate) fn fed_body_vm(&mut self, id: LoopId, caller: usize) -> Option<Res<Flow>> {
         let &(_, host) = self.fed_hosts.iter().rev().find(|h| h.0 == caller)?;
-        let compiled = self.vm.clone()?;
+        let compiled = Rc::clone(&self.vm);
         let chunk = compiled
             .chunks()
             .find(|c| std::ptr::eq(*c as *const Chunk<'p> as *const (), host))?;
@@ -49,15 +49,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             self.base,
             true,
         );
-        let exit = self.exec_chunk_core(
-            &compiled,
-            chunk,
-            base_i,
-            &mut vm_regs_i,
-            &mut regs_v,
-            pc as usize,
-            None,
-        );
+        let at = (chunk, base_i, pc as usize);
+        let exit = self.exec_chunk_core(&compiled, at, &mut vm_regs_i, &mut regs_v, None);
         let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
         sync_to_stack(
             &chunk.slot_map,
@@ -74,6 +67,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             ExecExit::FeedNext => Flow::Next,
             ExecExit::FeedBreak => Flow::Break(Some(id)),
             ExecExit::Return(value) => Flow::Return(value),
+            ExecExit::ReturnTuple => Flow::Return(self.boxed_ret_tuple()),
         }))
     }
 
@@ -82,7 +76,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         if vm_regs_i.capacity() < 4096 {
             vm_regs_i.reserve(4096);
         }
-        let res = self.exec_chunk(compiled, &compiled.main, &[], &mut vm_regs_i);
+        let res = self.exec_chunk(compiled, &compiled.main, &mut vm_regs_i);
         self.vm_regs_i = vm_regs_i;
         let _ = res?;
         Ok(())
@@ -96,7 +90,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         setup: &Chunk<'p>,
     ) -> Res<bool> {
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
-        let res = self.exec_chunk(compiled, setup, &[], &mut vm_regs_i);
+        let res = self.exec_chunk(compiled, setup, &mut vm_regs_i);
         self.vm_regs_i = vm_regs_i;
         Ok(!matches!(res?, Value::Int(1)))
     }
@@ -129,10 +123,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         resume: Option<(&[FrameAt], usize)>,
     ) -> Res<Value> {
         let Some(chunk) = chunk_of(compiled, body) else {
-            return trap(
-                cpl_diag::Span::default(),
-                cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-            );
+            return Err(crate::interp_failed(cpl_diag::Span::default()));
         };
         let mut params = 0..0;
         let mut by_ref;
@@ -159,17 +150,37 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// `k` of `frames` was, and leaves its locals on the stack.
     /// The place an alias to slot `at` (of the globals or the stack)
     /// finally names, following aliases of aliases.
-    pub(super) fn alias_part(&self, mut global: bool, mut at: usize) -> Rc<Part> {
+    pub(super) fn alias_part(&self, global: bool, at: usize) -> Rc<Part> {
+        let (global, at) = self.alias_target(global, at);
+        Rc::new(Part {
+            global,
+            at,
+            steps: Vec::new(),
+        })
+    }
+
+    fn alias_target(&self, mut global: bool, mut at: usize) -> (bool, usize) {
         while let Value::Alias(g, a) = match global {
             true => &self.globals[at],
             false => &self.stack[at],
         } {
             (global, at) = (*g, *a);
         }
-        Rc::new(Part {
-            global,
-            at,
-            steps: Vec::new(),
+        (global, at)
+    }
+
+    /// The variable a closure holds by reference, as `cap`, for a leaf
+    /// chunk to borrow without a frame or a `lent` entry.
+    pub(super) fn held_mut(&mut self, cap: &crate::CaptureVal) -> Res<&mut Value> {
+        let (global, at) = match *cap {
+            crate::CaptureVal::StackRef(at) => self.alias_target(false, at),
+            crate::CaptureVal::GlobalRef(id) => self.alias_target(true, id),
+            crate::CaptureVal::PartRef(ref part) => return self.lender(part),
+            crate::CaptureVal::Val(_) => return Err(crate::interp_failed(Default::default())),
+        };
+        Ok(match global {
+            true => &mut self.globals[at],
+            false => &mut self.stack[at],
         })
     }
 
@@ -189,10 +200,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 false => take_slot(&chunk.slot_map[at - self.base], regs_i, regs_v),
             };
             let Some(val) = val else {
-                return trap(
-                    cpl_diag::Span::default(),
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                );
+                return Err(crate::interp_failed(cpl_diag::Span::default()));
             };
             *self.lender(&part)? = val;
         }

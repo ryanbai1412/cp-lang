@@ -240,6 +240,10 @@ corpus-tests-make *args:
 corpus-max-short *args:
     uv run python scripts/corpus.py max-short {{args}}
 
+# Check each dream.cp's C++ is under 32 KB against research/dream-over-32kb.json (--write records it).
+corpus-dream-sizes *args:
+    uv run python scripts/corpus.py dream-sizes {{args}}
+
 # Drop the g++ cache's binaries unused since `since` (epoch seconds); CI runs it before saving the cache.
 cxx-trim since *dirs:
     uv run python scripts/ci.py cxx-trim --since {{since}} {{dirs}}

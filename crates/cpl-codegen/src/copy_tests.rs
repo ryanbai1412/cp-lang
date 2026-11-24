@@ -221,7 +221,7 @@ fn a_yields_fn_run_as_pushes_reserves_no_list() {
     let cpp = cpp(concat!(
         "fn walk(xs: List<Int>) -> yields Int:\n",
         "    for x in xs:\n",
-        "        yield x\n",
+        "        yield x + 1\n",
         "fn total(xs: List<Int>, w: Int -> Int) -> Int:\n",
         "    var t = 0\n",
         "    for x in walk(xs): t += w(x)\n",
@@ -230,7 +230,7 @@ fn a_yields_fn_run_as_pushes_reserves_no_list() {
     ));
     let each = cpp.rsplit("int cpl_each_walk(").next().unwrap();
     let body = each.split("\n}\n").next().unwrap();
-    assert!(body.contains("cpl_f(x)"), "{cpp}");
+    assert!(body.contains("cpl_f(cpl::iadd(x, 1))"), "{cpp}");
     assert!(!body.contains(".reserve("), "{cpp}");
 }
 
@@ -456,4 +456,22 @@ fn a_zip_points_to_its_sequences_even_when_one_is_a_temporary() {
             );
         }
     }
+}
+
+#[test]
+fn a_niche_packed_optional_lends_like_any_other() {
+    let cpp = cpp(concat!(
+        "struct Box(n: Int, items: List<Int>)\n",
+        "struct Holder:\n",
+        "    var b: ?Box = None\n",
+        "fn total(found: ?Box) -> Int:\n",
+        "    if let b = found: return b.n + b.items.len\n",
+        "    -1\n",
+        "var h = Holder()\n",
+        "h.b = Some(Box(3, [1, 2]))\n",
+        "print(total(h.b))\n",
+    ));
+    assert!(cpp.contains("cpl::OptField<&Box::n> b;"), "{cpp}");
+    assert!(cpp.contains("total(cpl::Lent<Box> found)"), "{cpp}");
+    assert!(cpp.contains("total(cpl::lend_opt(h.b))"), "{cpp}");
 }

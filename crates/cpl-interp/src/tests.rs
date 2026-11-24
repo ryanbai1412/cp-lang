@@ -4,7 +4,9 @@
 
 use crate::{run, run_on_this_thread, Limits};
 
+mod scaling;
 mod vm_alone;
+mod vm_ops;
 
 /// Runs `source` on `input`: what it printed, and the failure if it
 /// ended in one.
@@ -175,6 +177,47 @@ fn dfs(v: V) -> Int:
 print(dfs(V.first!))
 ";
     assert_eq!(outcome(source, "1000000"), ("1000000\n".to_string(), None));
+}
+
+#[test]
+fn recursion_on_a_browser_sized_stack_runs_300000_calls_deep() {
+    // A browser gives the interpreter a few megabytes of stack: each kind of
+    // VM call nests on heap frames, so none of them fills it.
+    let sources = [
+        "fn depth(n: Int) -> Int = if n == 0: 0 else: 1 + depth(n - 1)\nprint(depth(300000))\n",
+        "fn walk(n: Int, f: Int -> Int) -> Int:\n    if n == 0: return 0\n    f(n) + walk(n - 1, f)\nprint(walk(300000, x => x % 2))\n",
+        "fn fill(n: Int, mut xs: List<Int>):\n    if n > 0:\n        xs.push(n)\n        fill(n - 1, mut xs)\nvar xs: List<Int> = []\nfill(300000, mut xs)\nprint(xs.len)\n",
+    ];
+    let expected = ["300000", "150000", "300000"];
+    for (source, want) in sources.into_iter().zip(expected) {
+        let mut db = cpl_check::Session::new();
+        db.set_file("t.cp", source);
+        let analysis = db.analyze("t.cp").expect("set");
+        assert!(
+            analysis.diagnostics.is_empty(),
+            "{source}: {:?}",
+            analysis.diagnostics
+        );
+        let program = cpl_ir::lower(&analysis).expect("lowers");
+        let limits = Limits {
+            stack_bytes: 3 << 20,
+        };
+        let (out, res) = std::thread::Builder::new()
+            .stack_size(4 << 20)
+            .spawn(move || {
+                let mut out = Vec::new();
+                let res = run_on_this_thread(&program, b"", &mut out, limits);
+                (out, res.map_err(crate::Trap::into_message))
+            })
+            .expect("a 4 MB thread starts")
+            .join()
+            .expect("the run does not crash");
+        assert_eq!(
+            (String::from_utf8_lossy(&out).trim(), res),
+            (want, Ok(())),
+            "{source}"
+        );
+    }
 }
 
 #[test]
@@ -641,10 +684,11 @@ print(by_second(xs))
             f.name
         );
         assert!(count("CmpSmallTuple") > 0, "{ops:?}");
+        // The comparator closure takes its entries in Int registers too.
         assert_eq!(
             count("BoxSmallTuple"),
-            2 * count("CallClosure"),
-            "{} boxes an entry outside the comparator call: {ops:?}",
+            0,
+            "{} boxes an entry: {ops:?}",
             f.name
         );
     }
@@ -691,10 +735,10 @@ print(cuts, rcuts, yes(b != None), yes(n == None), yes(b == None), max(xs[0], xs
         .map(|op| format!("{op:?}"))
         .collect();
     let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
-    // Only `xs.rev` (making the view) is left to the tree-walker.
-    assert_eq!(count("ApplyV"), 1, "{ops:?}");
+    // `xs.rev` (making the view) and the print apply to their values.
+    assert_eq!(count("ApplyV"), 2, "{ops:?}");
     assert_eq!(count("CutI"), 2, "{ops:?}");
-    assert_eq!(count("IsSomeV"), 3, "{ops:?}");
+    assert_eq!(count("IsVariantI"), 3, "{ops:?}");
     assert!(
         compiled.forwards.iter().any(Option::is_some),
         "`pair` is called through a closure"
@@ -707,7 +751,8 @@ print(cuts, rcuts, yes(b != None), yes(n == None), yes(b == None), max(xs[0], xs
 #[test]
 fn vm_builds_wide_int_structs_from_int_registers() {
     // bench/ranges/lazy_assign's `join`: a 5-field struct of bounded Ints is
-    // built straight from Int registers, each field checked against constant bounds.
+    // built straight from Int registers, each field checked against constant bounds,
+    // and returned in them: no tuple is boxed.
     let source = "
 struct Run(a: 0..=100, b: 0..=100, c: 0..=100, d: 0..=100, e: 0..=100)
 fn join(x: Run, y: Run) -> Run = Run(x.a + y.a, x.b + y.b, x.c, y.d, x.e + 1)
@@ -731,7 +776,8 @@ print(big.a)
     let chunk = compiled.fns[join].as_ref().expect("join is on the VM");
     let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
     let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
-    assert_eq!(count("MakeTupleI"), 1, "{ops:?}");
+    assert_eq!(count("MakeTupleI"), 0, "{ops:?}");
+    assert_eq!(count("RetSmallTuple"), 1, "{ops:?}");
     assert_eq!(count("RangeCheckImmI"), 3, "{ops:?}");
     assert_eq!(count("BoxI"), 0, "{ops:?}");
     assert_eq!(count("ConstImmI"), 0, "{ops:?}");
@@ -739,6 +785,67 @@ print(big.a)
     assert_eq!(out, "11 22 3 40 6\n");
     let msg = trap.expect("expected out-of-range trap");
     assert!(msg.contains("101 is outside"), "unexpected trap: {msg}");
+}
+
+#[test]
+fn vm_holds_a_one_u64_struct_as_its_bits() {
+    // atcoder_dp_u's `Subset<R>`: a struct of one `U64` is a scalar, passed
+    // and returned in an Int register, its high bit kept.
+    let source = "
+struct W(b: U64)
+fn sub(x: W, y: W) -> W = W(x.b & (y.b ^ (U64(0) - U64(1))))
+let all = W(U64(0) - U64(1))
+let r = sub(all, W(U64(6)))
+print(r.b, yes(r == all), yes(sub(r, r) == W(U64(0))))
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let sub = program.fns.iter().position(|f| f.name == "sub").unwrap();
+    let chunk = compiled.fns[sub].as_ref().expect("sub is on the VM");
+    let held = format!("{:?}", &chunk.slot_map[..2]);
+    assert_eq!(held.matches("OneU64Struct").count(), 2, "{held}");
+    let (out, trap) = outcome(source, "");
+    assert!(trap.is_none(), "{trap:?}");
+    assert_eq!(out, "18446744073709551609 NO YES\n");
+}
+
+#[test]
+fn vm_passes_a_mut_opt_element_to_a_fn() {
+    // SegTree's `act.compose_onto(mut lz[p], f)` over `?Bool` tags: a `mut`
+    // arg at an indexed `?T` place stays on the VM.
+    let source = "
+fn put(mut old: ?Bool, new: ?Bool):
+    if new != None: old = new
+var lz: List<?Bool> = [None, Some(true), None]
+for i in 0..3: put(mut lz[i], if i == 2: Some(false) else: None)
+for x in lz: print(if x == None: 0 elif x == Some(true): 1 else: 2)
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let fallback =
+        (compiled.main.ops.iter()).any(|op| matches!(op, crate::vm::Op::FallbackStmt { .. }));
+    assert!(!fallback, "{:?}", compiled.main.ops);
+    let (out, trap) = outcome(source, "");
+    assert!(trap.is_none(), "{trap:?}");
+    assert_eq!(out, "0\n1\n2\n");
 }
 
 #[test]
@@ -1986,30 +2093,4 @@ fn internal_traps_say_the_shared_row_and_user_traps_their_own() {
     let user = interp::DIV_BY_ZERO_OP.at(&[&"7", &"/"]);
     assert_eq!(user.code(), cpl_diag::codes::DIVISION_BY_ZERO);
     assert_eq!(user.as_str(), "division by zero: `7 / 0`");
-}
-
-#[test]
-fn user_ordered_set_scales_as_n_log_n() {
-    // A set over a user `Ord` key keeps it in sorted runs; one sorted list, shifted whole on each
-    // insert, took egoi23p2 144 s at n = 200000.
-    let src = "\
-let n = read<Int>()
-var s = Set<(Int, Desc<Int>)>()
-for i in 0..n: s.insert((i % 7, desc(i)))
-for i in 0..n: s.remove((i % 7, desc(i)))
-print(s.len)
-";
-    let time = |n: usize| {
-        let started = std::time::Instant::now();
-        let (out, trap) = outcome(src, &format!("{n}\n"));
-        assert!(trap.is_none(), "unexpected trap: {trap:?}");
-        assert_eq!(out, "0\n");
-        started.elapsed().as_secs_f64()
-    };
-    let (small, big) = (time(5_000), time(40_000));
-    assert!(
-        big < 20.0 * small,
-        "8x the keys took {:.1}x the time",
-        big / small
-    );
 }

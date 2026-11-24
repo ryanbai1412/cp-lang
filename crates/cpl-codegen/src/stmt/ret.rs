@@ -101,7 +101,7 @@ impl Emitter<'_> {
                     && self.fn_id.is_some()
                     && self.call_item_alone(items, idx);
                 if let (ExprKind::Local(slot), true) = (&item.kind, dies) {
-                    let moved = format!("std::move({})", self.names[*slot]);
+                    let moved = self.move_of(&item.ty, &self.names[*slot]);
                     return match struct_id {
                         Some(s) => self.narrow_field_store(s, idx, &moved),
                         None => moved,
@@ -113,11 +113,11 @@ impl Emitter<'_> {
                 {
                     let v = self.expr_with_elem_layout(item, Some(&l)).text;
                     self.last_use_call = false;
-                    return self.moved_if(dies, v);
+                    return self.moved_if(dies, &item.ty, v);
                 }
                 let v = self.expr(item).text;
                 self.last_use_call = false;
-                let v = self.moved_if(dies, v);
+                let v = self.moved_if(dies, &item.ty, v);
                 match struct_id {
                     Some(s) => self.narrow_field_store(s, idx, &v),
                     None => v,

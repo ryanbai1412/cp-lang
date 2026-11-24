@@ -14,13 +14,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// VM from where it was to its end.
     pub(crate) fn resume_frame(&mut self, frames: &[FrameAt], k: usize) -> Res<Flow> {
         let frame = &frames[k];
-        let compiled = (self.vm.clone()).filter(|c| chunk_of(c, frame.body).is_some());
+        let compiled = std::rc::Rc::clone(&self.vm);
         let base = self.base;
-        let exit = match &compiled {
-            Some(compiled) => self.run_body_vm(compiled, frame.body, Some((frames, k))),
+        let exit = match chunk_of(&compiled, frame.body) {
+            Some(_) => self.run_body_vm(&compiled, frame.body, Some((frames, k))),
             None => Ok(Value::Unit),
         };
-        if (self.unwait() || compiled.is_none()) && exit.is_ok() {
+        if (self.unwait() || chunk_of(&compiled, frame.body).is_none()) && exit.is_ok() {
             return trap(
                 frame.span,
                 cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
@@ -64,6 +64,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 dst_v,
                 dst_some,
                 ret_mode,
+                ..
             } => {
                 let args = (arg_base_i as usize, arg_base_v as usize);
                 (ret_mode, (dst_i, dst_some, dst_v), args, Some(fn_id))
@@ -82,7 +83,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         };
         if let Some(callee) = fn_id.and_then(|id| compiled.fns[id as usize].as_ref()) {
             if !self.ckpt.lent_back.is_empty() {
-                self.lend_back_resumed(callee, regs_i, regs_v, args)?;
+                self.lend_back_resumed(callee, regs_i, regs_v, args);
             }
         }
         put_ret(ret, regs_i, regs_v, dst, val);
@@ -130,7 +131,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         regs_i: &mut [i64],
         regs_v: &mut [Value],
         (arg_i, arg_v): (usize, usize),
-    ) -> Res<()> {
+    ) {
         let back = std::mem::take(&mut self.ckpt.lent_back);
         let (mut ii, mut iv) = (arg_i, arg_v);
         for (loc, v) in callee.slot_map.iter().take(callee.param_count).zip(back) {
@@ -147,15 +148,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[iv] = v;
                     iv += 1;
                 }
-                SlotLoc::SmallTuple { .. } => {
-                    return trap(
-                        cpl_diag::Span::default(),
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    )
+                SlotLoc::SmallTuple { len, .. } => {
+                    unbox_small_tuple(&v, &mut regs_i[ii..], len);
+                    ii += usize::from(len);
                 }
             }
         }
-        Ok(())
     }
 }
 
@@ -176,5 +174,12 @@ pub(super) fn put_ret(
             regs_i[dst_some as usize] = s;
         }
         CallRet::V => regs_v[dst_v as usize] = val,
+        CallRet::Tuple(len) => {
+            if let Value::Tuple(crate::value::TupleVal::Boxed(fs)) = &val {
+                for (k, f) in fs.iter().take(len as usize).enumerate() {
+                    regs_i[dst_i as usize + k] = ScalarKind::unbox_val(f);
+                }
+            }
+        }
     }
 }

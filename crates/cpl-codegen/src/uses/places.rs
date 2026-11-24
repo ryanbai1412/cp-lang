@@ -174,7 +174,7 @@ pub(crate) fn each_local(block: &Block, f: &mut dyn FnMut(Slot)) {
 }
 
 /// Every `return` in `block`, at any depth: its value, if any.
-pub(crate) fn each_return(block: &Block, f: &mut dyn FnMut(Option<&Expr>)) {
+pub(crate) fn each_return<'p>(block: &'p Block, f: &mut dyn FnMut(Option<&'p Expr>)) {
     walk::deep_stmts(block, &mut |s| {
         if let Stmt::Return(value) = s {
             f(value.as_ref());
@@ -222,4 +222,133 @@ pub(crate) fn notes_an_assert(block: &Block) -> bool {
         found |= matches!(stmt, Stmt::Assert { note: Some(_), .. });
     });
     found
+}
+
+/// Every closure `block` makes, at any depth, and where.
+pub(crate) fn each_closure_at(block: &Block, f: &mut dyn FnMut(ClosureId, cpl_diag::Span)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Closure(cid) = e.kind {
+            f(cid, e.span);
+        }
+    });
+}
+
+/// Every local or global `stmt` reads, at any depth, as `(is_global, slot)`.
+pub(crate) fn each_variable_in(stmt: &Stmt, f: &mut dyn FnMut((bool, Slot))) {
+    stmt_deep_exprs(stmt, &mut |e| match e.kind {
+        ExprKind::Local(s) => f((false, s)),
+        ExprKind::Global(g) => f((true, g)),
+        _ => {}
+    });
+}
+
+/// Every `for` loop in `block`, at any depth: its variable and body.
+pub(crate) fn each_for_body<'p>(block: &'p Block, f: &mut dyn FnMut(Slot, &'p Block)) {
+    walk::deep_stmts(block, &mut |stmt| {
+        if let Stmt::For(_, slot, _, body) = stmt {
+            f(*slot, body);
+        }
+    });
+}
+
+/// Every `let` in `block`, at any depth, with or without a value: its slot.
+pub(crate) fn each_declared(block: &Block, f: &mut dyn FnMut(Slot)) {
+    walk::deep_stmts(block, &mut |stmt| {
+        if let Stmt::Let(slot, _) = stmt {
+            f(*slot);
+        }
+    });
+}
+
+/// Every optional `block` tests (`x != None`), at any depth: the optional.
+pub(crate) fn each_tested<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::IsSome(x) = &e.kind {
+            f(x);
+        }
+    });
+}
+
+/// Every `opt ?? default` in `block`, at any depth: the whole and the optional.
+pub(crate) fn each_coalesce<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr, &'p Expr)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Binary(cpl_ir::BinOp::Coalesce, opt, _) = &e.kind {
+            f(e, opt);
+        }
+    });
+}
+
+/// Every sort by a key fn in `block`, at any depth: the key fn.
+pub(crate) fn each_sort_key<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) = &e.kind {
+            f(func);
+        }
+    });
+}
+
+/// Every local or global `block` reads, at any depth, as `(is_global, slot)`.
+pub(crate) fn each_variable(block: &Block, f: &mut dyn FnMut((bool, Slot))) {
+    walk::deep_exprs(block, &mut |e| match e.kind {
+        ExprKind::Local(s) => f((false, s)),
+        ExprKind::Global(g) => f((true, g)),
+        _ => {}
+    });
+}
+
+/// Every field read `base.field` in `block`, at any depth: the base and field.
+pub(crate) fn each_field<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr, usize)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Field(base, field) = &e.kind {
+            f(base, *field);
+        }
+    });
+}
+
+/// Every payload read in `block`, at any depth: the read and its base.
+pub(crate) fn each_payload<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr, &'p Expr)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Payload(base, ..) = &e.kind {
+            f(e, base);
+        }
+    });
+}
+
+/// Every value `block` prints, formats or shows, at any depth.
+pub(crate) fn each_shown<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {
+    walk::deep_exprs(block, &mut |e| match &e.kind {
+        ExprKind::Print(args, _) => args.iter().for_each(|a| f(&a.value)),
+        ExprKind::Format(pieces) => pieces.iter().for_each(|p| {
+            if let cpl_ir::FmtPiece::Value(a) = p {
+                f(&a.value);
+            }
+        }),
+        ExprKind::Builtin(cpl_ir::Builtin::ShowStr, args) => args.iter().for_each(&mut *f),
+        _ => {}
+    });
+}
+
+/// Every builtin call in `block`, at any depth, with its arguments.
+pub(crate) fn each_builtin<'p>(
+    block: &'p Block,
+    f: &mut dyn FnMut(&'p cpl_ir::Builtin, &'p [Expr]),
+) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Builtin(b, args) = &e.kind {
+            f(b, args);
+        }
+    });
+}
+
+/// The base of every read of a part of a value in `block`, at any depth: an
+/// index, a field, a payload, a variant test or a length.
+pub(crate) fn each_part_base<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {
+    walk::deep_exprs(block, &mut |e| match &e.kind {
+        ExprKind::Builtin(cpl_ir::Builtin::Len, args) if args.len() == 1 => f(&args[0]),
+        ExprKind::Index(base, _)
+        | ExprKind::Field(base, _)
+        | ExprKind::Payload(base, ..)
+        | ExprKind::IsVariant(base, _) => f(base),
+        _ => {}
+    });
 }

@@ -169,7 +169,7 @@ macro_rules! walkers {
                 }
                 Spec::Fields(_, fields) => fields.$iter().for_each(|field| $spec(field, f)),
                 Spec::Call(call) => f(call),
-                Spec::List(each) => $spec(each, f),
+                Spec::List(never) => match *never {},
                 Spec::Array { dims: ds, elem } => {
                     for dim in ds {
                         if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {
@@ -205,10 +205,6 @@ macro_rules! walkers {
                         step.$iter().for_each(f);
                     }
                     Iter::RangeVal(e, _) | Iter::Seq(e, _) => f(e),
-                    Iter::Walk { len, recv, .. } => {
-                        f(len);
-                        recv.$iter().for_each(f);
-                    }
                     Iter::TreeRange {
                         container, lo, hi, ..
                     } => {

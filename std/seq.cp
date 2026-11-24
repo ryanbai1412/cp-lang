@@ -14,7 +14,7 @@
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.algebra.{Monoid}
-use std.math.{abs}
+use std.math.{abs, popcount, bit}
 use std.prefix.{Prefix}
 use std.range.{Len, RingRange, ends, first_true, last_true}
 use std.rand.{shuffle}
@@ -911,11 +911,16 @@ pub fn runs<S: Indexed, T, K>(
             while j < n and linked(self.nth(j - 1), self.nth(j)): j += 1
             yield piece(self, i, j)
             i = j
-    else:
+    elif n > 0:
+        var k = by(self.nth(0))
         while i < n:
-            let k = by(self.nth(i))
             var j = i + 1
-            while j < n and by(self.nth(j)) == k: j += 1
+            while j < n:
+                let next = by(self.nth(j))
+                if not (next == k):
+                    k = next
+                    break
+                j += 1
             yield self[self.keys.nth(i)..=self.keys.nth(j - 1)]
             i = j
 
@@ -1103,8 +1108,8 @@ pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>
 /// cost: \(O(\log k)\)
 /// empty: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..3).len == 0`
 /// traps: when an end of `r` is not one of the cuts
-/// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..10).len == 2`
 /// order: pieces left to right, keyed by `P`
+/// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..10).len == 2`
 /// trap: `let e: List<Int> = []; let (domain P, piece) = (0..0).pieces(cuts: e); piece.covering(0..1)`
 pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
     if P.count == 0:
@@ -1549,6 +1554,8 @@ pub struct Zipped<A, B, T, U>(
     pub second: B,
 )
 
+fn shorter(a: Int, b: Int) -> Int = if a < b: a else: b
+
 impl Seq<(T, U)> for Zipped<A: Seq<T>, B: Positional<U>, T, U>:
     fn iter(self) -> yields (T, U):
         var i = 0
@@ -1566,18 +1573,18 @@ impl Keyed<D, (T, U)> for Zipped<A: Keyed<D, T>, B: Positional<U>, T, U>:
             i += 1
 
 impl Sized for Zipped<A: Sized, B: Positional<U>, T, U>:
-    @get fn len(self) -> Int = min(first.len, second.len)
+    @get fn len(self) -> Int = shorter(first.len, second.len)
 
 impl Positional<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
     fn nth(self, k: Int) -> (T, U) = (first.nth(k), second.nth(k))
 
 impl Bidir<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
     fn iter_rev(self) -> yields (T, U):
-        for k in (0..min(first.len, second.len)).rev: yield (first.nth(k), second.nth(k))
+        for k in (0..shorter(first.len, second.len)).rev: yield (first.nth(k), second.nth(k))
 
 impl Indexed<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
     fn at(self, i: D) -> (T, U) = (first.at(i), second.nth(i.ord - first.keys.start.ord))
-    @get fn keys(self) -> Range<D> = first.keys.take(min(first.len, second.len))
+    @get fn keys(self) -> Range<D> = first.keys.take(shorter(first.len, second.len))
 
 /// \(O(1)\) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
 pub struct Rev<S>(base: S):
@@ -1634,6 +1641,17 @@ pub struct Rev<S>(base: S):
     /// traps: when `k < 0` or `k >= 2^31`
     /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
     pub fn drop_last(self, k: Len = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
+
+impl Seq<T> for Rev<S: Bidir<T>>:
+    fn iter(self) -> yields T:
+        for x in self.src.iter_rev(): yield x
+
+impl Bidir<T> for Rev<S: Bidir<T>>:
+    fn iter_rev(self) -> yields T:
+        for x in self.src.iter(): yield x
+
+impl Sized for Rev<S: Sized>:
+    @get fn len(self) -> Int = self.src.len
 
 impl Positional<T> for Rev<S: Indexed<D, T>>:
     fn nth(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
@@ -2660,71 +2678,56 @@ pub fn is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool:
 
 // --- Permutations, combinatorics, subsequences, and monotone-stack trees ---
 
-/// \(O(n \log n)\), \(O(n)\) memory. Lexicographic rank of permutation `p` in `0..|V|!` (`|V| <= 20`).
+/// \(O(n)\), \(O(1)\) memory. Lexicographic rank of permutation `p` in `0..|V|!` (`|V| <= 20`).
 ///
-/// cost: \(O(n \log n)\), \(O(n)\) memory
+/// cost: \(O(n)\), \(O(1)\) memory
 /// empty: `domain V = 0..0; let p: [V]V = []; perm_rank(p) == 0`
 /// traps: when `|V| > 20` or `p` is not a permutation
 /// example: `perm_rank([1, 0, 2]) == 2`
 /// trap: `perm_rank([0, 0, 1])`
 pub fn perm_rank<V>(self: [V]V) -> Int:
     let n = V.count
-    var seen: [V]Bool = false
-    for v in V:
-        assert not seen[self[v]], "not a permutation: {self[v]} appears twice"
-        seen[self[v]] = true
-    var bit: List<Int> = List.filled(n + 1, 0)
-    var rank = 0
-    var fact = 1
+    var (seen, rank, fact) = (0, 0, 1)
     for k in (0..n).rev:
         let v = self[V.nth(k)].ord
-        var (j, smaller) = (v, 0)
-        while j > 0:
-            smaller += bit[j]
-            j -= j & -j
-        rank += smaller * fact
+        assert not seen.bit(v), "not a permutation: {self[V.nth(k)]} appears twice"
+        rank += popcount(seen & ((1 << v) - 1)) * fact
         fact *= n - k
-        j = v + 1
-        while j <= n:
-            bit[j] += 1
-            j += j & -j
+        seen |= 1 << v
     rank
 
-/// \(O(n \log n)\), \(O(n)\) memory. The `rank`-th lexicographic permutation of `V` (`0 <= rank < |V|!`).
+/// \(O(n \log n)\), \(O(1)\) memory beyond the result. The `rank`-th lexicographic permutation of `V` (`0 <= rank < |V|!`).
 ///
-/// cost: \(O(n \log n)\), \(O(n)\) memory
+/// cost: \(O(n \log n)\), \(O(1)\) memory beyond the result
 /// empty: `domain V = 0..0; perm_unrank<V>(0) == []`
 /// order: keyed by `V`
 /// traps: when `rank` is not in `0..|V|!`
 /// example: `domain V = 0..3; perm_unrank<V>(2) == [1, 0, 2]`
 pub fn perm_unrank<V>(rank: Int) -> [V]V:
     let n = V.count
-    var digits: List<Int> = List.filled(n, 0)
-    var r = rank
-    for k in 1..=n:
-        digits[n - k] = r % k
-        r /= k
-    assert r == 0, "`rank` is at least |V|!"
-    var bit: List<Int> = List.filled(n + 1, 0)
-    for j in 1..=n:
-        bit[j] += 1
-        if j + (j & -j) <= n: bit[j + (j & -j)] += bit[j]
-    var top = 1
-    while top * 2 <= n: top *= 2
+    var fact = 1
+    for k in 1..n: fact *= k
+    let total = if n == 0: 1 else: fact * n
+    assert rank in 0..total, "`rank` is not in 0..|V|!"
+    var (r, free) = (rank, (1 << n) - 1)
     var out: [V]V = [V] v => v
     for k in 0..n:
-        var (pos, need, step) = (0, digits[k] + 1, top)
-        while step > 0:
-            if pos + step <= n and bit[pos + step] < need:
-                pos += step
-                need -= bit[pos]
-            step /= 2
-        out[V.nth(k)] = V.nth(pos)
-        var j = pos + 1
-        while j <= n:
-            bit[j] -= 1
-            j += j & -j
+        let need = r / fact + 1
+        r %= fact
+        if k + 1 < n: fact /= n - 1 - k
+        let v = (0..n).first_true(x => popcount(free & ((2 << x) - 1)) >= need)!
+        out[V.nth(k)] = V.nth(v)
+        free ^= 1 << v
     out
+
+@test
+fn perm_rank_and_unrank_round_trip_at_twenty():
+    domain V = 0..20
+    let last: [V]V = [V] v => V.nth(19 - v.ord)
+    assert last.perm_rank() == 2432902008176639999
+    assert perm_unrank<V>(2432902008176639999) == last
+    for r in [0, 1, 7, 123456789, 2432902008176639998]:
+        assert perm_unrank<V>(r).perm_rank() == r
 
 /// \(O(n)\), \(O(n)\) memory. Sign/parity of permutation `p` (`+1` even, `-1` odd).
 ///
@@ -3413,7 +3416,7 @@ fn runs_with_by_groups_neighbours_with_the_same_key():
 fn windows_and_zip_walk_in_step():
     assert [w.to_list() for w in [1, 2, 3, 4].windows(2)] == [[1, 2], [2, 3], [3, 4]]
     assert [w.to_list() for w in [1, 2].windows(2)] == [[1, 2]] and [1, 2].windows(3).count() == 0
-    assert zip([1, 2, 3], ["a", "b"]) == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
+    assert zip([1, 2, 3], ["a", "b"]).collect() == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
 
 @test
 fn adjacent_and_with_prev_yield_neighbours():

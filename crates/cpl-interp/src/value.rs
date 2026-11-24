@@ -32,6 +32,8 @@ pub(crate) enum Step {
     Some,
     /// A cell, by the indices it was reached with.
     Index(Vec<Value>),
+    /// The entry of a map whose key type orders by a user `Ord`, by its key.
+    Key(Value),
 }
 
 /// A part of a variable: the variable, on the stack or (`global`) among
@@ -65,10 +67,6 @@ impl OptVal {
             Some(v) => OptVal::some(v),
             None => OptVal::None,
         }
-    }
-
-    pub fn is_some(&self) -> bool {
-        !matches!(self, OptVal::None)
     }
 
     pub fn unwrap_owned(self) -> Option<Value> {
@@ -216,6 +214,39 @@ impl std::fmt::Display for Wide {
     }
 }
 
+/// What a [`Value::Range128`] walks: its items are `I128`s or `U64`s.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum WideElem {
+    I128,
+    U64,
+}
+
+impl WideElem {
+    pub(crate) fn of(elem: &Ty) -> Option<WideElem> {
+        match elem {
+            Ty::I128 => Some(WideElem::I128),
+            Ty::U64 => Some(WideElem::U64),
+            _ => None,
+        }
+    }
+
+    /// What a range of type `range` walks, when it is a `Range128`.
+    pub(crate) fn of_range(range: &Ty) -> Option<WideElem> {
+        match range {
+            Ty::Range(elem) => WideElem::of(elem),
+            _ => None,
+        }
+    }
+
+    /// The item at `v`, which lies between the range's ends.
+    pub(crate) fn item(self, v: i128) -> Value {
+        match self {
+            WideElem::I128 => Value::I128(v.into()),
+            WideElem::U64 => Value::U64(v as u64),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) enum Value {
     #[default]
@@ -233,8 +264,9 @@ pub(crate) enum Value {
     Opt(OptVal),
     /// A half-open range `(lo, hi)`.
     Range(i64, i64),
-    /// A half-open 128-bit integer range `(lo, hi)`.
-    Range128(Rc<(i128, i128)>),
+    /// A half-open range `(lo, hi)` of `I128` or `U64` values, its ends held
+    /// as `i128`s so a `U64` range can end past `U64`'s greatest value.
+    Range128(Rc<(i128, i128, WideElem)>),
     /// An interval of reals `(lo, hi)`: searched, never walked.
     RangeF(f64, f64),
     /// A runtime domain handle `(lo, len)`.
@@ -489,24 +521,24 @@ impl ListViewVal {
 pub(crate) struct Array {
     /// Length of each dimension.
     pub dims: Vec<i64>,
-    /// Cells in row-major order.
-    pub data: Cells,
+    /// Cells in row-major order, shared with the lists and views made from it until one writes.
+    pub data: Rc<Cells>,
 }
 
 impl Array {
     pub fn filled(dims: Vec<i64>, fill: Value) -> Array {
         let cells = dims.iter().product::<i64>() as usize;
-        let data = Cells::filled(cells, fill);
+        let data = Rc::new(Cells::filled(cells, fill));
         Array { dims, data }
     }
 
     pub fn empty(dims: Vec<i64>) -> Array {
-        let data = Cells::Values(Vec::new());
+        let data = Rc::new(Cells::Values(Vec::new()));
         Array { dims, data }
     }
 
     pub fn from_values(dims: Vec<i64>, values: Vec<Value>) -> Array {
-        let data = Cells::from_values(values);
+        let data = Rc::new(Cells::from_values(values));
         Array { dims, data }
     }
 }
@@ -519,12 +551,43 @@ impl std::ops::Deref for Array {
 }
 
 impl std::ops::DerefMut for Array {
+    #[inline(never)]
     fn deref_mut(&mut self) -> &mut Cells {
-        &mut self.data
+        Rc::make_mut(&mut self.data)
     }
 }
 
 impl Value {
+    /// The cells of a list or an array, which share one storage.
+    pub(crate) fn cells(&self) -> Option<&Rc<Cells>> {
+        match self {
+            Value::List(cells) => Some(cells),
+            Value::Array(a) => Some(&a.data),
+            _ => None,
+        }
+    }
+
+    /// The cells of a list or an array to write, unshared first.
+    pub(crate) fn cells_mut(&mut self) -> Option<&mut Cells> {
+        match self {
+            Value::List(cells) => Some(Rc::make_mut(cells)),
+            Value::Array(a) => Some(&mut **Rc::make_mut(a)),
+            _ => None,
+        }
+    }
+
+    /// Whether this is variant `tag`: an enum's, or an optional's `None`
+    /// (0) or `Some` (1).
+    #[inline(always)]
+    pub fn is_variant(&self, tag: u32) -> bool {
+        let actual = match self {
+            Value::Enum(t, _) => *t,
+            Value::Opt(OptVal::None) => 0,
+            _ => 1,
+        };
+        actual == tag
+    }
+
     pub fn int(&self) -> i64 {
         match self {
             Value::Int(v) => *v,
@@ -535,6 +598,7 @@ impl Value {
     pub fn i128(&self) -> i128 {
         match self {
             Value::I128(v) => v.get(),
+            Value::U64(v) => i128::from(*v),
             _ => 0,
         }
     }
@@ -557,8 +621,8 @@ impl Value {
         matches!(self, Value::Bool(true))
     }
 
-    pub fn range128(lo: i128, hi: i128) -> Value {
-        Value::Range128(Rc::new((lo, hi)))
+    pub fn range128(lo: i128, hi: i128, wide: WideElem) -> Value {
+        Value::Range128(Rc::new((lo, hi, wide)))
     }
 
     pub fn some(value: Value) -> Value {
@@ -667,7 +731,9 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Str => Value::Str(Rc::new(Vec::new())),
         Ty::StrView => Value::StrView(Rc::new(StrViewVal::whole(Rc::new(Vec::new()), false))),
         Ty::Opt(_) => Value::Opt(OptVal::None),
-        Ty::Range(inner) if **inner == Ty::I128 => Value::range128(0, 0),
+        Ty::Range(inner) if WideElem::of(inner).is_some() => {
+            Value::range128(0, 0, WideElem::of(inner).unwrap_or(WideElem::I128))
+        }
         Ty::Range(_) => Value::Range(0, 0),
         Ty::DomainVal => Value::DomainVal(0, 0),
         Ty::Fn(..) | Ty::Mut(_) => Value::Unit,

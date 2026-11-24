@@ -102,33 +102,11 @@ impl<'a> Lowerer<'a> {
     /// `B.Item` for `B` bound to `t`: the `type Item = ..` of an impl for `t`.
     pub(in crate::lower) fn assoc_type(&mut self, t: &Ty, item: &str) -> Option<Ty> {
         for idx in 0..self.impls.len() {
-            let (m, offset, target, body) = (
+            let (m, offset, body) = (
                 self.impls[idx].mod_id,
                 self.impls[idx].offset,
-                self.impls[idx].target,
                 self.impls[idx].body,
             );
-            let blanket = self.domain_blanket_param(idx);
-            let opened = match t {
-                Ty::Struct(sid) => self.opened_impl_env(idx, *sid),
-                _ => None,
-            };
-            let head_env = match (t, &target.kind) {
-                (Ty::Pos(d), _) if let Some(blanket) = &blanket => {
-                    Some(GenEnv::from([(blanket.clone(), GenArg::Domain(*d))]))
-                }
-                _ if blanket.is_some() => continue,
-                _ if opened.is_some() => opened,
-                (Ty::Struct(sid), ast::TypeKind::Named { args, .. }) if !args.is_empty() => {
-                    match self.struct_impl_env(idx, *sid) {
-                        Some(env) => Some(env),
-                        None => continue,
-                    }
-                }
-                (_, ast::TypeKind::Named { args, .. }) if args.is_empty() => None,
-                (_, ast::TypeKind::Fn { .. }) => None,
-                _ => continue,
-            };
             let alias = body.stmts.iter().find_map(|s| match &s.kind {
                 ast::StmtKind::TypeAlias {
                     name, generics, ty, ..
@@ -142,31 +120,21 @@ impl<'a> Lowerer<'a> {
                     None => continue,
                 },
             };
-            if let Some(env) = head_env {
-                let saved = (
-                    std::mem::replace(&mut self.cur_mod, m),
-                    std::mem::replace(&mut self.offset, offset),
-                    std::mem::replace(&mut self.gen_env, env),
-                );
-                let found = self.resolve_assoc_src(idx, alias);
-                (self.cur_mod, self.offset, self.gen_env) = saved;
-                return Some(found);
-            }
-            let Some(env) = self.fn_impl_env(m, target, t) else {
+            let opened = match t {
+                Ty::Struct(sid) => self.opened_impl_env(idx, *sid),
+                _ => None,
+            };
+            let Some(env) = opened.or_else(|| self.impl_env(idx, t)) else {
                 continue;
             };
-            let saved_mod = std::mem::replace(&mut self.cur_mod, m);
-            let saved_offset = std::mem::replace(&mut self.offset, offset);
-            let saved_env = env.map(|env| std::mem::replace(&mut self.gen_env, env));
-            let found = (self.resolve_ty(target) == *t).then(|| self.resolve_assoc_src(idx, alias));
-            if let Some(env) = saved_env {
-                self.gen_env = env;
-            }
-            self.cur_mod = saved_mod;
-            self.offset = saved_offset;
-            if found.is_some() {
-                return found;
-            }
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, offset),
+                std::mem::replace(&mut self.gen_env, env),
+            );
+            let found = self.resolve_assoc_src(idx, alias);
+            (self.cur_mod, self.offset, self.gen_env) = saved;
+            return Some(found);
         }
         // Structural trait associated types: if a trait method returns `Self.<item>`
         // or `yields Self.<item>`, recover `<item>` from the concrete type's matching
@@ -254,7 +222,7 @@ impl<'a> Lowerer<'a> {
         for idx in 0..self.impls.len() {
             let imp = &self.impls[idx];
             let (m, offset, target, body) = (imp.mod_id, imp.offset, imp.target, imp.body);
-            if self.domain_blanket_param(idx).is_some() {
+            if self.domain_blanket_param(idx).is_some() || self.row_param(idx).is_some() {
                 continue;
             }
             // `impl Pick for Int -> Bool`: fn values of that type get its methods.

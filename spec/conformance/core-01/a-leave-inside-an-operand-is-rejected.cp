@@ -5,4 +5,5 @@ for i in 0..3:
     print(i + (if i == 1:
         continue  // <- here
     else:
-        i))
+        i
+    ))

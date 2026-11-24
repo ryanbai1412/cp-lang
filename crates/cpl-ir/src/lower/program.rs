@@ -86,20 +86,12 @@ impl Lowerer<'_> {
             };
             first.stmts.splice(0..0, preamble);
         }
-        // A library domain's walks become `Int` range loops, and it is sized
-        // after every definition of a domain it reads.
+        // A library domain is sized after every definition of a domain it
+        // reads.
         let mut main = std::mem::take(&mut lw.main_body);
         let mut setup = std::mem::take(&mut lw.setup_body);
         let mut bodies = std::mem::take(&mut lw.bodies);
         let mut closures = std::mem::take(&mut lw.closures);
-        lw.expand_walks(&mut main);
-        lw.expand_walks(&mut setup);
-        for f in bodies.iter_mut().flatten() {
-            lw.expand_walks(&mut f.body);
-        }
-        for c in &mut closures {
-            lw.expand_walks(&mut c.body);
-        }
         lw.size_library_domains(&mut main, true, &lw.main_locals);
         lw.size_library_domains(&mut setup, true, &lw.main_locals);
         for f in bodies.iter_mut().flatten() {
@@ -164,6 +156,9 @@ impl Lowerer<'_> {
         cpl_diag::sort_by_key(&mut lw.warnings, |d| d.span.order());
         lw.warnings.dedup();
         for (&gid, info) in &lw.global_ranges {
+            if let Some(cell) = info.cell_spec() {
+                lw.cell_ranges.insert(ElemLoc::Global(gid), cell);
+            }
             if let Some(g) = lw.globals.get(gid).filter(|g| is_narrowable_elem_ty(&g.ty)) {
                 if let Some(layout) = info.narrow_elem_layout(&g.ty) {
                     lw.narrow_elems.insert(ElemLoc::Global(gid), layout);
@@ -216,6 +211,7 @@ impl Lowerer<'_> {
             judge_tys: lw.judge_tys,
             raw_lists: lw.raw_lists,
             narrow_elems: lw.narrow_elems,
+            cell_ranges: lw.cell_ranges,
             written_back: {
                 let mut spans = lw.written_back;
                 spans.sort_by_key(|s| (s.start, s.end));

@@ -39,4 +39,7 @@ A run of positions of `D` read cyclically, possibly wrapping past the last posit
 - `fn bsearch<D: Search>(self: Range<D>, ok: D -> Bool, last: Bool = false, steps: ?Int = None) -> D.Found` — \(O(\log n)\) calls of `ok` on \(n\) positions, plus one when the cut is an end; exactly; Where `ok` flips: false then true along `self` by default, true then false with `last: true`.; traps: when `ok` flips the other way (true then false by default, false then true with
 - `fn shift<D>(self: D, r: Range<Int>) -> Range<D>` — \(O(1)\); The elements at distances `r` after `self`, clipped to its domain and possibly empty.
 - `fn shift_saturating<D>(self: D, k: Int) -> D` — \(O(1)\); The position `k` steps from `self`, stopping at the domain's first or last: `v.next(k)` that saturates instead of giving `None`.; traps: never (a domain with a position is not empty)
+- `fn offset<D>(self: D, k: Int) -> ?D` — \(O(1)\); The position `k` steps from `self`, or `None` outside its domain: `v.next` for any `k`.
+- `fn ahead<D>(self: D, k: Int) -> ?D` — \(O(1)\); The position `k` steps after `self`, or `None` past the domain's last: `v.offset(k)`.
+- `fn back<D>(self: D, k: Int) -> ?D` — \(O(1)\); The position `k` steps before `self`, or `None` before the domain's first: `v.offset(-k)`.
 - `@get fn ends<D>(self: Range<D>) -> (Int, Int)` — \(O(1)\); The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.; traps: when the range is written backwards

@@ -78,40 +78,6 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::Pos(d), "offset" | "ahead") => {
-                let d = *d;
-                match self.one_arg(method, args, &Ty::Int, span) {
-                    Some(k) => self.mk_builtin(
-                        Builtin::PosOffset(d),
-                        [value, k],
-                        Ty::opt(Ty::Pos(d)),
-                        span,
-                    ),
-                    None => self.err_expr(span),
-                }
-            }
-            (Ty::Pos(d), "back") => {
-                let d = *d;
-                match self.one_arg("back", args, &Ty::Int, span) {
-                    Some(k) => {
-                        let neg_k = self.mk_unary(UnOp::Neg, k, Ty::Int, span);
-                        self.mk_builtin(
-                            Builtin::PosOffset(d),
-                            [value, neg_k],
-                            Ty::opt(Ty::Pos(d)),
-                            span,
-                        )
-                    }
-                    None => self.err_expr(span),
-                }
-            }
-            (Ty::Pos(d), "cyc") => {
-                let d = *d;
-                match self.one_arg("cyc", args, &Ty::Int, span) {
-                    Some(k) => self.mk_builtin(Builtin::PosCyc(d), [value, k], Ty::Pos(d), span),
-                    None => self.err_expr(span),
-                }
-            }
             (ty, "get") if let Some(elem) = ty.seq_elem() => {
                 let opt = Ty::opt(elem);
                 match self.one_arg("get", args, &Ty::Int, span) {
@@ -969,21 +935,6 @@ impl<'a> Lowerer<'a> {
                 };
                 self.seq_search_method(method, value, elem, dom, args, span)
             }
-            (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
-            // `Neighbours` for a table of neighbour lists: `adj.out(u)` is
-            // `adj[u]`, as it is `adj(u)` for a fn.
-            (Ty::Array { dims, elem }, "out")
-                if dims.len() == 1 && args.len() == 1 && matches!(**elem, Ty::List(_)) =>
-            {
-                let at = ast::Expr {
-                    kind: ast::ExprKind::Index {
-                        base: Box::new(base.clone()),
-                        indices: vec![args[0].value.clone()],
-                    },
-                    span,
-                };
-                self.expr(&at, None)
-            }
             // `r.nth(k)` on a range of positions or cuts: its `k`-th, checked against `r`.
             (Ty::Range(inner), "nth")
                 if matches!(**inner, Ty::Pos(_) | Ty::Bound(_)) && args.len() == 1 =>
@@ -994,14 +945,21 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            // `r.nth(k)` on an I128 range: its `k`-th value, `r.start + k`.
-            (Ty::Range(inner), "nth") if **inner == Ty::I128 && args.len() == 1 => {
+            // `r.nth(k)` on an `I128` or `U64` range, whose ends are `I128`s: its
+            // `k`-th value, `r.start + k`.
+            (Ty::Range(inner), "nth")
+                if matches!(**inner, Ty::I128 | Ty::U64) && args.len() == 1 =>
+            {
                 let Some(k) = self.one_arg("nth", args, &Ty::Int, span) else {
                     return self.err_expr(span);
                 };
                 let k = self.cast(Cast::IntToI128, k, Ty::I128);
                 let lo = self.mk_builtin(Builtin::RangeLo, [value], Ty::I128, span);
-                self.mk_binary(BinOp::Add, lo, k, Ty::I128, span)
+                let at = self.mk_binary(BinOp::Add, lo, k, Ty::I128, span);
+                match **inner {
+                    Ty::U64 => self.cast(Cast::I128ToU64, at, Ty::U64),
+                    _ => at,
+                }
             }
             // `r.nth(k)` on an Int range: its `k`-th value, `r.start + k` (R04b.5.9).
             (Ty::Range(inner), "nth") if **inner == Ty::Int && args.len() == 1 => {

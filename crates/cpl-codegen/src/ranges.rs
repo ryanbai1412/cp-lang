@@ -10,6 +10,8 @@
 //! undo the fact.
 
 use crate::uses::Home;
+
+mod order;
 use cpl_ir::{
     Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, DomainId, Expr, ExprKind, Iter, Place,
     PlaceKind, Program, Spec, Stmt, Ty, UnOp,
@@ -175,6 +177,8 @@ pub(crate) struct Facts<'p> {
     nonneg_vars: BTreeSet<Var>,
     /// Loop variables: the low end of the range they run over.
     loop_lo: BTreeMap<Var, &'p Expr>,
+    /// Loop variables: what they walk ([`order`]).
+    loop_iter: BTreeMap<Var, &'p cpl_ir::Iter>,
     /// Loop variables: the high end of the range, and whether it is reached.
     loop_hi: BTreeMap<Var, (&'p Expr, bool)>,
     /// Each domain's length expression, when defined once.
@@ -194,6 +198,9 @@ pub(crate) struct Facts<'p> {
     /// Ranged params: every call checks its argument into the range, and
     /// every store to the param is checked too (R04.4.24).
     param_ranges: BTreeMap<Var, &'p Spec>,
+    /// Range-typed arrays' cells (`Program::cell_ranges`): how many indexes
+    /// reach a cell, and the range every store into one is checked into.
+    cells: BTreeMap<Var, (u8, &'p Spec)>,
     /// The fns before closure 0 in the [`Facts::key`] numbering.
     fns: usize,
     /// Where each closure is made: a home for each `Closure` expr.
@@ -244,6 +251,15 @@ impl<'p> Facts<'p> {
         };
         facts.block(None, &program.setup);
         facts.block(None, &program.main);
+        for (loc, (levels, spec)) in &program.cell_ranges {
+            let v = match *loc {
+                cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(f), s) => (Some(f), false, s),
+                cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Main, s) => (None, false, s),
+                cpl_ir::ElemLoc::Global(g) => (None, true, g),
+                _ => continue,
+            };
+            facts.cells.insert(v, (*levels, spec));
+        }
         for (id, f) in program.fns.iter().enumerate() {
             // A parameter's value comes from each caller: unknown.
             for (slot, param) in f.params.iter().enumerate() {
@@ -537,12 +553,10 @@ impl<'p> Facts<'p> {
                 Stmt::For(_, slot, iter, body) => {
                     let v = (fn_id, false, *slot);
                     *self.stores.entry(v).or_default() += 1;
+                    self.loop_iter.insert(v, iter);
                     self.taint(v);
                     self.kill(v);
                     match iter {
-                        Iter::Walk { .. } => {
-                            crate::fuse::iter_exprs(iter, &mut |e| self.expr(fn_id, e))
-                        }
                         Iter::Range {
                             lo,
                             hi,
@@ -1013,6 +1027,13 @@ impl<'p> Facts<'p> {
             }
             // A count held in an `int` is below 2^31.
             ExprKind::DomainLen(d) => self.domain_len_hi(*d, depth + 1),
+            ExprKind::Index(..) => (match self.spec(fn_id, e) {
+                Some(Spec::Int { hi: Some(hi), .. }) => self.upper_bound(fn_id, hi, depth + 1),
+                _ => None,
+            })
+            .into_iter()
+            .chain(self.guard_hi(e, depth))
+            .min(),
             ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) => Some(LEN_MAX),
             ExprKind::Field(base, idx) => (self.field_range(&base.ty, *idx).map(|r| r.1))
                 .into_iter()
@@ -1084,6 +1105,11 @@ impl<'p> Facts<'p> {
                     _ => hi,
                 })
             }
+            // At most any argument with a bound.
+            ExprKind::Builtin(Builtin::Min, args) => args
+                .iter()
+                .filter_map(|arg| self.upper_bound(fn_id, arg, depth + 1))
+                .min(),
             ExprKind::Builtin(Builtin::Max, args) if !args.is_empty() => {
                 let mut hi = i64::MIN;
                 for arg in args {
@@ -1119,9 +1145,13 @@ impl<'p> Facts<'p> {
                 let hi = u64::try_from(self.upper_bound(fn_id, &a[0], depth + 1)?.max(1)).ok()?;
                 i64::try_from(hi.checked_next_power_of_two()?).ok()
             }
-            ExprKind::Call(id, _) => (self.returned(*id)?.iter())
-                .map(|r| self.upper_bound(Some(*id), r, depth + 2))
-                .try_fold(i64::MIN, |hi, r| Some(hi.max(r?))),
+            // A range check traps outside its range, so what it gives is inside.
+            ExprKind::RangeCheck { value, hi, .. } => (hi.as_deref())
+                .and_then(|hi| self.upper_bound(fn_id, hi, depth + 1))
+                .into_iter()
+                .chain(self.upper_bound(fn_id, value, depth + 1))
+                .min(),
+            ExprKind::Call(id, _) => self.call_bound(*id, depth, true),
             _ => None,
         }
     }
@@ -1134,6 +1164,20 @@ impl<'p> Facts<'p> {
             .get(&id)
             .map(Vec::as_slice)
             .filter(|r| (1..=RETURNS_MAX).contains(&r.len()))
+    }
+
+    /// A bound (`hi`: upper, else lower) of a call to `id`: the hull of what
+    /// its returns give, each checked into a ranged return type (R03.1.4)
+    /// unless proven inside it.
+    pub(crate) fn call_bound(&self, id: usize, depth: u8, hi: bool) -> Option<i64> {
+        let rets = self.returned(id)?.iter();
+        if hi {
+            rets.map(|r| self.upper_bound(Some(id), r, depth + 2))
+                .try_fold(i64::MIN, |hi, r| Some(hi.max(r?)))
+        } else {
+            rets.map(|r| self.lower_bound(Some(id), r, depth + 2))
+                .try_fold(i64::MAX, |lo, r| Some(lo.min(r?)))
+        }
     }
 
     fn local_hi(&self, v: Var, depth: u8) -> Option<i64> {
@@ -1341,7 +1385,7 @@ impl<'p> Facts<'p> {
     /// The declared range of the value `e` reads, when `e` is a path into
     /// a variable that was read from input and never changed, or a copy of
     /// such a path.
-    fn spec(&self, fn_id: Option<usize>, e: &Expr) -> Option<&'p Spec> {
+    pub(crate) fn spec(&self, fn_id: Option<usize>, e: &Expr) -> Option<&'p Spec> {
         match &e.kind {
             ExprKind::Local(_) | ExprKind::Global(_) => {
                 let v = match &e.kind {
@@ -1363,9 +1407,10 @@ impl<'p> Facts<'p> {
                     _ => None,
                 }
             }
-            ExprKind::Index(base, _) => match self.spec(fn_id, base)? {
-                Spec::Array { elem, .. } => Some(elem),
-                _ => None,
+            ExprKind::Index(base, _) => match self.spec(fn_id, base) {
+                Some(Spec::Array { elem, .. }) => Some(elem),
+                Some(_) => None,
+                None => self.cell(fn_id, e, 0),
             },
             ExprKind::Field(base, index) => match self.spec(fn_id, base)? {
                 Spec::Fields(_, fields) => fields.get(*index),
@@ -1373,6 +1418,24 @@ impl<'p> Facts<'p> {
             },
             _ => None,
         }
+    }
+
+    /// The declared range of the cell `e` reads, `levels` indexes below
+    /// `e`, of a range-typed array of fn `fn_id` itself (a closure's copy
+    /// would read the range's ends in the wrong scope).
+    fn cell(&self, fn_id: Option<usize>, e: &Expr, levels: u8) -> Option<&'p Spec> {
+        let v = match &e.kind {
+            ExprKind::Index(base, _) => return self.cell(fn_id, base, levels + 1),
+            ExprKind::Local(slot) => (fn_id, false, *slot),
+            ExprKind::Global(id) => (None, true, *id),
+            _ => return None,
+        };
+        let &(depth, spec) = self.cells.get(&v)?;
+        (depth == levels && self.local_home(v)).then_some(spec)
+    }
+
+    fn local_home(&self, v: Var) -> bool {
+        v.1 || !self.captured.contains_key(&v)
     }
 
     /// What is known about the sign of the `Int` expression `e`, which
@@ -1608,6 +1671,13 @@ impl<'p> Facts<'p> {
                 Unknown => Unknown,
                 sign => sign,
             },
+            ExprKind::RangeCheck { value, lo, .. } => {
+                match (lo.as_deref().map(|l| &l.kind), of(value)) {
+                    (Some(ExprKind::Int(1..)), _) | (_, Positive) => Positive,
+                    (Some(ExprKind::Int(0)), _) | (_, NonNeg) => NonNeg,
+                    _ => Unknown,
+                }
+            }
             ExprKind::Call(id, _) => match self.returned(*id) {
                 Some(rets) => (rets.iter())
                     .map(|r| self.sign_at(Some(*id), r, depth + 4))

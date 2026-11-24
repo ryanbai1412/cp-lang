@@ -5,7 +5,7 @@ use super::*;
 
 /// Runs `source` on the VM, which must compile its main and its own fns
 /// with no fallback to the tree-walker but on the way to a trap, and on the
-/// tree-walker (a profiled run), which must agree.
+/// tree-walker (a profiled run), which must agree, trap or not.
 fn vm_runs_alone(source: &str, input: &str) -> String {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
@@ -38,11 +38,10 @@ fn vm_runs_alone(source: &str, input: &str) -> String {
         );
     }
     let (out, trap) = outcome(source, input);
-    assert_eq!(trap, None);
     let mut tree = Vec::new();
     let io = crate::Io::fixed(input.as_bytes());
     let observed = crate::run_profiled(&program, io, &mut tree);
-    assert!(observed.trap.is_none());
+    assert_eq!(observed.trap.is_some(), trap.is_some());
     assert_eq!(String::from_utf8(tree).expect("ASCII"), out);
     out
 }
@@ -369,4 +368,117 @@ print(acc, rows[1][2] + rows[0][3], deep(ways))
         trap.as_ref().is_some_and(|t| t.contains("outside")),
         "{trap:?}"
     );
+}
+
+#[test]
+fn vm_lends_a_leaf_closure_its_variables_without_a_frame() {
+    // A nested fn that runs nothing but its own ops (cf2066f's `fit`) is a
+    // leaf: it borrows the variables it holds by reference in place. One
+    // that calls another fn is not, and still lends them to its frame.
+    let source = "
+var total = 0
+fn run(n: Int) -> (Int, Int):
+    var seen = List.filled(n, 0)
+    var hits = 0
+    var best = (0, 0)
+    fn fit(i: Int) -> Bool = seen[i] > 0 or i == 0
+    fn note(i: Int):
+        if seen[i] > best.0: best = (seen[i], i)
+    fn past(i: Int) -> Bool = i > best.1
+    fn bump(i: Int):
+        seen[i] += 1
+        hits += 1
+        total += i
+    fn twice(i: Int):
+        bump(i)
+        if fit(i): bump(i)
+    for i in 0..n:
+        if fit(i) or i % 3 == 1: twice(i)
+        if i + 1 < n and fit(i): bump(i + 1)
+        note(i)
+        if past(i): hits += 0
+    (hits, seen.sum() + best.0 * 100 + best.1 * 1000)
+let (hits, sum) = run(read())
+print(hits, sum, total)
+";
+    let out = vm_runs_alone(source, "10\n");
+    assert_eq!(out, "29 1329 135\n");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let leaves: Vec<bool> = (program.closures.iter().zip(&compiled.closures))
+        .filter(|(def, _)| def.captures.iter().any(|cap| cap.by_ref))
+        .map(|(_, c)| c.as_ref().is_some_and(|c| c.leaf))
+        .collect();
+    assert_eq!(leaves.iter().filter(|&&l| l).count(), 2, "{leaves:?}");
+    assert!(leaves.contains(&false), "{leaves:?}");
+}
+
+#[test]
+fn vm_matches_payload_variants_in_registers() {
+    let source = "\
+enum Slot:
+    Known(t: Int)
+    Pair(a: Int, b: List<Int>)
+    Empty
+
+fn species(s: Slot, mask: Int) -> Int:
+    match s:
+        Known(t) => t
+        Pair(a, b) => a + b.len + (mask >> a) & 1
+        Empty => -1
+
+let slots = [Known(4), Pair(1, [2, 3]), Empty, Known(-2)]
+print([species(s, 6) for s in slots])
+";
+    assert_eq!(vm_runs_alone(source, ""), "4 0 -1 -2\n");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let id = (0..program.fns.len()).find(|&id| program.fns[id].name.ends_with("species"));
+    let chunk = compiled.fns[id.expect("species")]
+        .as_ref()
+        .expect("on the VM");
+    let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
+    let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
+    assert_eq!(count("ApplyV"), 0, "{ops:?}");
+    assert_eq!(count("IsVariantI"), 3, "{ops:?}");
+}
+
+#[test]
+fn vm_traps_a_call_to_a_cpp_fn_itself() {
+    let source = "fn pc(a: Int) -> Int = @cpp(\"return __builtin_popcountll(a);\")\nprint(1)\nprint(pc(7))\n";
+    assert_eq!(vm_runs_alone(source, ""), "1\n");
+}
+
+#[test]
+fn vm_field_of_a_temporary_frees_it_in_the_same_op() {
+    // `FieldI` and `FieldV` drop a temporary they read, with no `ClearV`.
+    let source = "\
+struct Pair(a: Int, b: List<Int>)
+fn mk(i: Int) -> ?Pair = Some(Pair(i, [i, i + 1]))
+fn g(i: Int) -> Int:
+    let l = mk(i)!.b
+    mk(i)!.a + l.len + l[1]
+print([g(i) for i in 0..3])
+";
+    assert_eq!(vm_runs_alone(source, ""), "3 5 7\n");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let id = (0..program.fns.len()).find(|&id| program.fns[id].name.ends_with("g"));
+    let chunk = compiled.fns[id.expect("g")].as_ref().expect("on the VM");
+    let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
+    let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
+    assert_eq!((count("FieldI"), count("FieldV")), (1, 1), "{ops:?}");
+    assert_eq!(count("ClearV"), 0, "{ops:?}");
 }

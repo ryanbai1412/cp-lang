@@ -40,6 +40,7 @@ mod lambda_infer;
 mod later_calls;
 mod lexical_ctx;
 mod library_domain;
+use library_domain::{Head, Walk};
 mod local_gen;
 mod memo;
 mod mono;
@@ -81,6 +82,7 @@ use mono::*;
 use nest::Nest;
 use outer_cx::OuterCxs;
 use range::*;
+use read_spec::{Counted, ReadSpec};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Out-of-line pushes of the two commonest statements: an inlined
@@ -737,6 +739,7 @@ struct Lowerer<'a> {
     judge_tys: Vec<(FnId, Vec<JudgeTy>, JudgeTy)>,
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays/grids/lists/tuples.
     narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
+    cell_ranges: std::collections::BTreeMap<ElemLoc, (u8, Spec)>,
     written_back: Vec<Span>,
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
@@ -816,6 +819,11 @@ struct Lowerer<'a> {
     /// The range ends of the owner struct's parameters for the generic method
     /// call being lowered: `Monoid<T>.of(max)` with `T` a `1..=9` sees `T.MIN == 1`.
     owner_ranges: Vec<(String, GenArg)>,
+    /// The type written where a call's value goes, for a call that takes its
+    /// type from there (`let x: 1..=9 = gen()`, a field in `T(gen() for _ in
+    /// fields(T))`): the call's span, the type, and the module, offset and
+    /// generics it was written in.
+    want_written: Option<(Span, ast::Type, ModId, u32, GenEnv)>,
     self_struct: Option<StructId>,
     /// The trait fns a law being lowered names unqualified (`LawInfo::trait_fns`).
     law_fns: Vec<String>,
@@ -891,6 +899,7 @@ impl<'a> Lowerer<'a> {
             global_ranges: HashMap::new(),
             judge_tys: Vec::new(),
             narrow_elems: std::collections::BTreeMap::new(),
+            cell_ranges: std::collections::BTreeMap::new(),
             written_back: Vec::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),
@@ -955,6 +964,7 @@ impl<'a> Lowerer<'a> {
             gen_env: HashMap::new(),
             call_hint: (None, None),
             owner_ranges: Vec::new(),
+            want_written: None,
             self_struct: None,
             law_fns: Vec::new(),
             default_trait_fns: HashMap::new(),

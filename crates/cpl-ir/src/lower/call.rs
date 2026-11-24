@@ -149,6 +149,30 @@ impl<'a> Lowerer<'a> {
                         break;
                     }
                 }
+                // `Lift.of(v => up[v])`: an untyped lambda's body gives the generics its fn type names.
+                if gen_names.iter().any(|g| !inferred.contains_key(g)) {
+                    let params: Vec<&ast::Param> = mdecl.params.iter().collect();
+                    let mut positional = args.iter().filter(|a| a.name.is_none());
+                    let matched: Vec<Option<&ast::Arg>> = (params.iter())
+                        .map(|p| {
+                            match args
+                                .iter()
+                                .find(|a| a.name.as_ref().is_some_and(|n| n.text == p.label_text()))
+                            {
+                                Some(a) => Some(a),
+                                None => positional.next(),
+                            }
+                        })
+                        .collect();
+                    let tpl = (tpl_mod, self.gen_structs[gid].offset);
+                    self.bind_from_lambda_results(
+                        &params,
+                        &matched,
+                        tpl,
+                        &all_gen_names,
+                        &mut inferred,
+                    );
+                }
             }
         }
         let mut final_args = Vec::with_capacity(gen_names.len());
@@ -890,7 +914,7 @@ pub(super) fn is_place(e: &ast::Expr) -> bool {
 
 /// Makes every `?T` of `spec` read `absent` as `none`; false when it has no
 /// `?T`.
-pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
+pub(super) fn reads_none_as(spec: &mut ReadSpec, absent: &Expr) -> bool {
     match spec {
         Spec::Fields(_, fields) => {
             let mut any = false;
@@ -899,7 +923,7 @@ pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
             }
             any
         }
-        Spec::Array { elem, .. } | Spec::List(elem) => reads_none_as(elem, absent),
+        Spec::Array { elem, .. } | Spec::List(Counted(elem)) => reads_none_as(elem, absent),
         Spec::Opt(_, slot) => {
             *slot = Some(Box::new(absent.clone()));
             true

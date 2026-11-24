@@ -388,7 +388,8 @@ export function intelligence(prefix: string, editable: boolean): Extension {
       { context },
     );
     if (state !== "ready") {
-      void pending.then(() => {
+      // Reopened once the compiler answers or fails to load, which the menu then says.
+      void pending.catch(() => null).then(() => {
         if (completionStatus(view.state) !== "active") return;
         reopened = true;
         startCompletion(view);

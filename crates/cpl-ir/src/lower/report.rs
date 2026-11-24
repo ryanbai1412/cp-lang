@@ -124,7 +124,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Type],
         at: Span,
         values: bool,
-    ) -> Spec {
+    ) -> ReadSpec {
         let gargs = self.resolve_gen_args(args);
         let alias = &self.gen_aliases[gaid];
         let (tpl_mod, tpl_offset, target_ty) = (alias.mod_id, alias.offset, alias.ty);

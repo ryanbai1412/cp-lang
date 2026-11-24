@@ -22,7 +22,7 @@ enum KeyBy<'p> {
 }
 
 /// The parts of a keyed sort statement.
-pub(super) fn sort_key_of(kind: &ExprKind) -> Option<(&Place, SortKey<'_>, Option<&Expr>)> {
+fn sort_key_of(kind: &ExprKind) -> Option<(&Place, SortKey<'_>, Option<&Expr>)> {
     match kind {
         ExprKind::Sort(place, SortBy::Key(slot, key), desc) => {
             Some((place, SortKey::Slot(*slot, key), desc.as_deref()))
@@ -40,9 +40,32 @@ pub(super) fn sort_key_of(kind: &ExprKind) -> Option<(&Place, SortKey<'_>, Optio
 }
 
 impl<'p, 'f> Compiler<'p, 'f> {
+    /// `xs.sort(..)` for its effect: a dedicated sort op where one fits,
+    /// else the shared apply, which runs a user `<` or comparator.
+    pub(super) fn compile_sort(
+        &mut self,
+        place: &'p Place,
+        by: &'p SortBy,
+        desc: Option<&'p Expr>,
+        expr: &'p Expr,
+    ) {
+        let fast = !super::apply::through_view(place)
+            && match sort_key_of(&expr.kind) {
+                Some((_, key, _)) => self.try_compile_sort_key_stmt(expr, place, key, desc),
+                None => {
+                    matches!(by, SortBy::Natural)
+                        && self.try_compile_sort_stmt(place, desc, expr.span)
+                }
+            };
+        if !fast {
+            let reg = self.compile_sort_at(place, by, desc, expr);
+            self.emit(Op::ClearV { reg }, expr.span);
+        }
+    }
+
     /// `xs.sort(by: ..)`: takes `xs`, reads each element's key, then puts the elements back in a stable order
     /// of their keys, as the tree-walker does.
-    pub(super) fn try_compile_sort_key_stmt(
+    fn try_compile_sort_key_stmt(
         &mut self,
         expr: &'p Expr,
         place: &'p Place,
@@ -231,41 +254,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
         true
     }
 
-    /// `xs.sort()` over elements with a user `<`: sorts in place through
-    /// the interpreter's comparison, as the tree-walker does.
-    pub(super) fn try_compile_sort_cmp_stmt(
-        &mut self,
-        expr: &'p Expr,
-        place: &'p Place,
-        desc: Option<&'p Expr>,
-    ) -> bool {
-        match &place.ty {
-            Ty::List(_) => {}
-            Ty::Array { dims, .. } if dims.len() == 1 => {}
-            _ => return false,
-        }
-        let saved = (self.ops.len(), self.spans.len(), self.places.len());
-        let Some(path) = self.compile_place_path_to(place, true) else {
-            self.ops.truncate(saved.0);
-            self.spans.truncate(saved.1);
-            self.places.truncate(saved.2);
-            return false;
-        };
-        let desc_r = match desc {
-            Some(e) => self.compile_expr_i(e),
-            None => u16::MAX,
-        };
-        let idx = self.push_sort_spec(expr);
-        self.emit(Op::SortPlaceCmp { idx, path, desc_r }, expr.span);
-        true
-    }
-
     /// Records the sort `expr` for an op that compares with a user `<`,
     /// which can run user code and so needs the frame on the stack.
     fn push_sort_spec(&mut self, expr: &'p Expr) -> u32 {
         self.applies_sync = true;
         let idx = self.applies.len() as u32;
-        self.applies.push(ApplySpec { expr, regs: vec![] });
+        self.applies.push(ApplySpec {
+            expr,
+            regs: vec![],
+            view: None,
+        });
         idx
     }
 

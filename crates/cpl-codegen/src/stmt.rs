@@ -593,6 +593,21 @@ impl<'p> Emitter<'p> {
             }
             return;
         }
+        // A check the loops' bounds prove never fails; a profile counts it.
+        if let ([Stmt::Trap(what, span)], true) =
+            (then.stmts.as_slice(), otherwise.stmts.is_empty())
+        {
+            if lead.trim().is_empty()
+                && self.sites.is_none()
+                && self
+                    .facts
+                    .order(self.program, self.facts_home())
+                    .never(cond)
+            {
+                self.note_proven(*span, what);
+                return;
+            }
+        }
         let fused = found_entry(cond, then);
         // A profiled build counts the step's own line, so it keeps the branch.
         if fused.is_none()
@@ -680,7 +695,9 @@ impl<'p> Emitter<'p> {
         callee.ret == Ty::Unit && callee.params.first().is_some_and(|p| p.fills_cache)
     }
 
-    pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
+    /// What starts every statement however it is emitted: its trap line,
+    /// and in a profiled build the count of its site.
+    pub(crate) fn start_stmt(&mut self, stmt: &Stmt, out: &mut String) {
         self.note_site(stmt);
         if let (Some(sites), Some(span)) = (&mut self.sites, stmt.span()) {
             if self.counted.contains(&(stmt as *const Stmt)) {
@@ -692,6 +709,10 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("cpl_prof::mark({id});"));
             }
         }
+    }
+
+    pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
+        self.start_stmt(stmt, out);
         let program = self.program;
         match stmt {
             Stmt::Let(slot, _)
@@ -863,13 +884,19 @@ impl<'p> Emitter<'p> {
                 if later {
                     self.line(
                         out,
-                        &format!("auto {name} = cpl::memo(std::move({body}_body), {text});"),
+                        &format!(
+                            "auto {name} = cpl::memo({}, {text});",
+                            self.move_of(&value.ty, &format!("{body}_body"))
+                        ),
                     );
                     self.line(out, &format!("auto {body} = {name}.body();"));
                 } else {
                     self.line(
                         out,
-                        &format!("auto {name} = cpl::memo(std::move({body}), {text});"),
+                        &format!(
+                            "auto {name} = cpl::memo({}, {text});",
+                            self.move_of(&value.ty, &body)
+                        ),
                     );
                 }
             }
@@ -1037,7 +1064,10 @@ impl<'p> Emitter<'p> {
                                 if self.spent.contains(of)
                                     && !self.spread.contains_key(&(self.current_scope(), *of)) =>
                             {
-                                format!("std::get<{index}>(std::move({}))", self.names[*of])
+                                format!(
+                                    "std::get<{index}>({})",
+                                    self.move_of(&base.ty, &self.names[*of])
+                                )
                             }
                             _ => {
                                 if fixed_len.is_some() {
@@ -1078,11 +1108,10 @@ impl<'p> Emitter<'p> {
                     ExprKind::Local(built)
                         if text == self.names[built]
                             && !self.ref_bound.contains(&built)
-                            && !init.ty.is_scalar()
                             && !matches!(init.ty, Ty::Fn(..))
                             && built_in(whole, built) =>
                     {
-                        format!("std::move({text})")
+                        self.move_of(&init.ty, &text)
                     }
                     _ => text,
                 };
@@ -1240,12 +1269,13 @@ impl<'p> Emitter<'p> {
                         && matches!(value.kind, ExprKind::Field(..) | ExprKind::Index(..))
                         && self.returned_item_dies(std::slice::from_ref(value), 0)
                     {
-                        text = self.moved_if(true, text);
+                        text = self.moved_if(true, &value.ty, text);
                     }
                     if let Some(local) = rekeyed {
                         let name = &self.names[local];
                         if let Some(rest) = text.strip_prefix(&format!("cpl::rekey_own({name}, ")) {
-                            text = format!("cpl::rekey_own(std::move({name}), {rest}");
+                            text =
+                                format!("cpl::rekey_own({}, {rest}", self.move_of(&value.ty, name));
                         }
                     }
                     self.last_use_call = false;
@@ -1702,7 +1732,7 @@ impl Emitter<'_> {
             } else {
                 let (cpp, held) = (self.ty(ty), self.temp());
                 self.line(out, &format!("{cpp} {held} = {text};"));
-                args.push(format!("std::move({held})"));
+                args.push(self.move_of(ty, &held));
             }
         }
         args.join(", ")
@@ -1735,7 +1765,7 @@ impl Emitter<'_> {
                 let text = self.expr(part).text;
                 self.line(out, &format!("auto {tmp} = {text};"));
                 cpp.push(format!("decltype({tmp})"));
-                vals.push(format!("std::move({tmp})"));
+                vals.push(self.move_of(ty, &tmp));
             } else {
                 cpp.push(self.ty(ty));
                 vals.push(self.expr(part).text);

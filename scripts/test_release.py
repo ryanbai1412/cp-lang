@@ -146,7 +146,7 @@ class ReleaseScriptsTest(unittest.TestCase):
 
 SHIP_GH = """#!/bin/sh
 case "$1 $2" in
-  "run list") cat "$FAKE_CI/runs" ;;
+  "run list") case "$*" in *dreams.yml*) [ ! -f "$FAKE_CI/dreams" ] || cat "$FAKE_CI/dreams" ;; *) cat "$FAKE_CI/runs" ;; esac ;;
   "run view") cat "$FAKE_CI/jobs-$3" ;;
   "api repos/"*) r="${2##*/}"; cat "$FAKE_CI/compare-$r" 2>/dev/null || echo behind ;;
   *) exit 2 ;;
@@ -235,6 +235,15 @@ class ShippableTest(unittest.TestCase):
         self.run_ci("b2", pending=["acceptance solutions stay AC (1/1)"])
         self.assertEqual(self.pick(), "a1")
 
+
+    def test_a_commit_at_or_after_a_red_dreams_run_is_held(self):
+        self.run_ci("a1")
+        self.run_ci("b2")
+        (self.ci / "dreams").write_text("failure b2\nsuccess a1\n")
+        (self.ci / "compare-b2...b2").write_text("identical")
+        (self.ci / "compare-b2...a1").write_text("behind")
+        (self.ci / "compare-a1...a1").write_text("identical")
+        self.assertEqual(self.pick(), "a1")
 
 WATCH_GH = """#!/bin/sh
 echo "$*" >>"$FAKE_CI/calls"

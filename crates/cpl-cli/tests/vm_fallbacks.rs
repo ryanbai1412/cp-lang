@@ -47,6 +47,14 @@ fn the_code_above_multitest_runs_on_the_vm() {
 }
 
 #[test]
+fn a_tuple_local_lent_as_a_mut_arg_runs_on_the_vm() {
+    let program = tests_dir().join("programs/mut_tuple_arg_write_back.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}
+
+#[test]
 fn a_query_over_a_library_domain_runs_on_the_vm() {
     for program in [
         "programs/generic_library_domain_seq_queries.cp",
@@ -67,5 +75,43 @@ fn a_pop_from_any_list_place_runs_on_the_vm() {
     let program = tests_dir().join("programs/vm_pop_places.cp");
     for traced in [false, true] {
         assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}
+
+#[test]
+fn int_calls_past_the_mixed_frame_run_on_the_vm() {
+    let program = tests_dir().join("programs/vm_calls_past_the_mixed_frame.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}
+
+#[test]
+fn an_optional_int_runs_on_the_vm() {
+    let program = tests_dir().join("programs/vm_opt_int_shapes.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}
+
+#[test]
+fn a_small_tuple_from_a_field_array_runs_on_the_vm() {
+    let program = tests_dir().join("programs/vm_small_tuple_from_field_array.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}
+
+#[test]
+fn sort_print_and_debug_as_values_run_on_the_vm() {
+    let debug = "../../../spec/conformance/tools-trace/debug-as-a-value-prints-with-its-line.cp";
+    for program in ["programs/vm_unit_effects_as_values.cp", debug] {
+        for traced in [false, true] {
+            assert_eq!(
+                walked(&tests_dir().join(program), traced),
+                0,
+                "{program} traced: {traced}"
+            );
+        }
     }
 }

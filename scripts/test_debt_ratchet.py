@@ -1313,6 +1313,13 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.corpus_max_short(root), ["max-short a m"])
             self.assertEqual(dr.corpus_max_unread(root), [])
 
+    def test_dream_over_32kb_reads_the_dream_sizes_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(len(dr.dream_over_32kb(root)), 1)
+            self._write(root, dr.DREAM_OVER_32KB, json.dumps({"dream_over_32kb": ["a"]}))
+            self.assertEqual(dr.dream_over_32kb(root), ["a"])
+
     def test_interp_max_over_20s_reads_the_corpus_board(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1684,12 +1691,13 @@ class DebtRatchetTest(unittest.TestCase):
             (src / "passes.rs").write_text(
                 'pass("loop-fusion", "fuse.rs", Uses(&["Touch"]), "t"),\n'
                 'pass("presize", "presize.rs", Unasked, "t"),\n')
+            walk = "walks IR itself, not through a named uses/ query"
             self.assertEqual(dr.opt_without_uses(root),
-                             ["crates/cpl-codegen/src/presize.rs: presize asks no Uses query",
-                              "crates/cpl-codegen/src/stray.rs: walks IR with no PASSES row"])
-            self.assertEqual(dr.opt_private_walks(root),
-                             ["crates/cpl-codegen/src/fuse.rs:2", "crates/cpl-codegen/src/presize.rs:1",
-                              "crates/cpl-codegen/src/stray.rs:1"])
+                             [f"crates/cpl-codegen/src/fuse.rs:2: {walk}",
+                              "crates/cpl-codegen/src/presize.rs: presize asks no Uses query",
+                              f"crates/cpl-codegen/src/presize.rs:1: {walk}",
+                              "crates/cpl-codegen/src/stray.rs: walks IR with no PASSES row",
+                              f"crates/cpl-codegen/src/stray.rs:1: {walk}"])
 
     def test_stress_hand_json_and_helper_env_vars(self) -> None:
         with tempfile.TemporaryDirectory() as d:
@@ -1802,6 +1810,16 @@ class DebtRatchetTest(unittest.TestCase):
                         "pub fn pop(self: Heap<Int>) -> Int = 0\n")
             self._write(root, "std/vec.cp", "pub struct Vec<T>():\n")
             self.assertEqual(dr.std_shadowed(root), ["Subset", "runs", "take"])
+
+    def test_std_names_outside_rt_skips_flag_values_not_lowering(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            self._write(root, "std/seq.cp", "pub fn all<S>(self: S) -> Bool = true\npub fn any<S>(self: S) -> Bool = true\n")
+            self._write(root, "crates/cpl-ir/src/checks.rs", 'match name { "all" => Checks::All, _ => None }\n')
+            self._write(root, "crates/cpl-ir/src/lower/call.rs", 'match name { "any" => {}, _ => {} }\n')
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+            self.assertEqual(dr.std_names_outside_rt(root), ["any"])
 
     def test_ir_builtin_names_reads_tuple_arms(self) -> None:
         with tempfile.TemporaryDirectory() as d:

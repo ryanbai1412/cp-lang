@@ -141,7 +141,34 @@ pub(crate) fn cli_binary() -> Result<PathBuf, String> {
     if !cpl.exists() {
         return Err(format!("no `cpl` next to cpl-conform ({})", cpl.display()));
     }
-    Ok(cpl)
+    static STALE: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    match STALE.get_or_init(|| stale_cli(&cpl)) {
+        Some(why) => Err(why.clone()),
+        None => Ok(cpl),
+    }
+}
+
+/// Why `cpl` is older than a file cargo built it from (its dep-info, `cpl.d`
+/// beside it), if it is: `cargo run -p cpl-conform` rebuilds only this runner,
+/// and a `cpl` left from another revision checks against this run's std with
+/// that revision's compiler.
+pub(crate) fn stale_cli(cpl: &Path) -> Option<String> {
+    let linked = std::fs::metadata(cpl).and_then(|m| m.modified()).ok()?;
+    let deps = std::fs::read_to_string(cpl.with_extension("d")).ok()?;
+    let (_, inputs) = deps.split_once(": ")?;
+    let newer = inputs
+        .replace("\\ ", "\0")
+        .split_whitespace()
+        .map(|input| input.replace('\0', " "))
+        .find(|input| {
+            std::fs::metadata(input)
+                .and_then(|m| m.modified())
+                .map_or(true, |at| at > linked)
+        })?;
+    Some(format!(
+        "`{}` is older than {newer}, which it is built from; rebuild it (`cargo build -p cpl-cli`, with --release for a release run)",
+        cpl.display()
+    ))
 }
 
 /// Links `bin` (or copies it, where links fail) into `dir`, keeping its file
@@ -1027,6 +1054,104 @@ mod tests {
         let rendered = "error[R0202]: overflow\n  --> a.cp:6:7\n";
         assert!(rendered_at(rendered, 6));
         assert!(!rendered_at(rendered, 7));
+    }
+
+    #[test]
+    fn a_cpl_older_than_a_source_it_was_built_from_is_refused() {
+        let dir = std::env::temp_dir().join(format!("cpl-conform-stale-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("my src")).unwrap();
+        let (cpl, source) = (dir.join("cpl"), dir.join("my src/gen.rs"));
+        let at = |path: &Path, secs: u64| {
+            let file = std::fs::File::options().write(true).open(path).unwrap();
+            let when = std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs);
+            file.set_modified(when).unwrap();
+        };
+        std::fs::write(&cpl, "").unwrap();
+        std::fs::write(&source, "").unwrap();
+        assert_eq!(stale_cli(&cpl), None, "no dep-info, nothing to compare");
+        let deps = format!(
+            "{}: {}\n",
+            cpl.display(),
+            source.display().to_string().replace(' ', "\\ ")
+        );
+        std::fs::write(cpl.with_extension("d"), deps).unwrap();
+        at(&source, 1_000);
+        at(&cpl, 2_000);
+        assert_eq!(stale_cli(&cpl), None);
+        at(&source, 3_000);
+        let why = stale_cli(&cpl).expect("a source changed after cpl was linked");
+        assert!(
+            why.contains("my src/gen.rs") && why.contains("rebuild"),
+            "{why}"
+        );
+        std::fs::remove_file(&source).unwrap();
+        assert!(
+            stale_cli(&cpl).is_some(),
+            "a source that is gone is a change too"
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// What `text`'s `@gen fn input` draws and its program prints on that
+    /// input, the same on the VM and the C++ build, and both C++ sources,
+    /// built in `db`.
+    fn built(db: &mut Session, text: &str) -> [String; 4] {
+        let analysis = db.analyze_text("t.cp", text);
+        db.remove_file("t.cp");
+        assert!(
+            analysis.diagnostics.is_empty(),
+            "{:?}",
+            analysis.diagnostics
+        );
+        let gen = cpl_ir::lower_gen(&analysis, "input", 3).expect("the @gen fn lowers");
+        let program = cpl_ir::lower(&analysis).expect("the program lowers");
+        let both = |program: &cpl_ir::Program, input: &[u8]| {
+            let vm = runner::run_interp(program, "t.cp", text, input);
+            assert!(vm.trap.is_none(), "{}", vm.trap_rendered);
+            let native = run_cpp_build(program, "t.cp", text, input).expect("the C++ builds");
+            assert!(!native.trapped, "{}", native.trap_rendered);
+            assert_eq!(
+                vm.stdout, native.stdout,
+                "the VM and C++ disagree on {text}"
+            );
+            vm.stdout
+        };
+        let drawn = both(&gen, b"");
+        let printed = both(&program, &drawn);
+        [
+            String::from_utf8_lossy(&drawn).into_owned(),
+            String::from_utf8_lossy(&printed).into_owned(),
+            cpl_codegen::emit(&gen, "t", Some(text)),
+            cpl_codegen::emit(&program, "t", Some(text)),
+        ]
+    }
+
+    #[test]
+    fn a_program_builds_the_same_after_another_in_one_session() {
+        let graph = "\
+domain V = 0..5
+@gen fn input():
+    let g = gen<Graph<V, (to: V, w: 1..=9)>>(simple: true, connected: true)
+    assert V.all(v => g.out(v).all(e => e.to != v and 1 <= e.w and e.w <= 9))
+    print(V.count)
+let k: Int = read()
+print(k)
+";
+        let plain = "\
+@gen fn input():
+    print(gen(1..=9))
+let k: Int = read()
+print(k + 1)
+";
+        let alone = [graph, plain].map(|text| built(&mut Session::new(), text));
+        assert_eq!(alone[0][..2], ["5\n", "5\n"]);
+        let mut db = Session::new();
+        for order in [[0, 1], [1, 0], [0, 0]] {
+            for i in order {
+                let text = [graph, plain][i];
+                assert_eq!(built(&mut db, text), alone[i], "{text}");
+            }
+        }
     }
 
     #[test]

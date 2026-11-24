@@ -32,7 +32,7 @@ fn search(starts: List<V>) -> (root: V, below: [V]?V):
     var below: [V]?V = None
     var seen: [V]Bool = false
     var mark: [V]?V = None
-    var left = blocks
+    var left = blocks.clone()
     var root = starts.first!
     for s in starts:
         if seen[s]: continue

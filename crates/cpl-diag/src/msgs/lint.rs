@@ -2,7 +2,6 @@
 
 super::msgs! {
     ANSWER_SEARCH = "L0520", "a hand-rolled binary search: this is `{}`";
-    PREFIX_SUM = "L0521", "a hand-rolled prefix sum into `{}`: use `Prefix(...)`";
     COPY_SORT_WRITEBACK = "L0522", "copies `{}[{}]`, mutates it, and writes it back: use `{}`";
     DISCARDED_RESULT = "L0502", "`let _ =` throws away what `{}` returns";
     SYMMETRIC_WRITE = "L0503", "one fact written twice, once for each order";

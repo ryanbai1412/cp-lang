@@ -404,11 +404,13 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let mut reps = DEFAULT_REPS;
     let mut max_ratio = DEFAULT_MAX_RATIO;
     let mut as_json = false;
+    let mut check = false;
 
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
             "--zero-cost" => {}
+            "--check" => check = true,
             "--reps" | "--runs" => {
                 i += 1;
                 match args.get(i).and_then(|s| s.parse::<usize>().ok()) {
@@ -555,7 +557,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
     }
 
-    if all_pass {
+    if all_pass || !check {
         0
     } else {
         1

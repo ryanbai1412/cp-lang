@@ -12,7 +12,7 @@ impl<'a> Lowerer<'a> {
     /// The type `ty` names. With `values`, also the lengths and ranges
     /// written in it, lowered where the type stands.
     /// The type `ty` names; a library type it instantiates is asked for here.
-    pub(in crate::lower) fn resolve(&mut self, ty: &ast::Type, values: bool) -> Spec {
+    pub(in crate::lower) fn resolve(&mut self, ty: &ast::Type, values: bool) -> ReadSpec {
         let outer = self
             .asked_at
             .enter(ty.span.shift(self.offset), self.cur_mod);
@@ -21,7 +21,7 @@ impl<'a> Lowerer<'a> {
         spec
     }
 
-    pub(in crate::lower) fn resolve_at(&mut self, ty: &ast::Type, values: bool) -> Spec {
+    pub(in crate::lower) fn resolve_at(&mut self, ty: &ast::Type, values: bool) -> ReadSpec {
         match &ty.kind {
             ast::TypeKind::Named { name, args } => self.named(name, args, values),
             ast::TypeKind::Array { index, elem }
@@ -66,11 +66,11 @@ impl<'a> Lowerer<'a> {
             }
             ast::TypeKind::Tuple(items) if items.is_empty() => Spec::Plain(Ty::Unit),
             ast::TypeKind::Tuple(items) => {
-                let specs: Vec<Spec> = items.iter().map(|t| self.resolve(t, values)).collect();
+                let specs: Vec<ReadSpec> = items.iter().map(|t| self.resolve(t, values)).collect();
                 Spec::Fields(Ty::Tuple(specs.iter().map(Spec::ty).collect()), specs)
             }
             ast::TypeKind::Record(fields) => {
-                let specs: Vec<Spec> = fields
+                let specs: Vec<ReadSpec> = fields
                     .iter()
                     .map(|(_, t)| self.resolve(t, values))
                     .collect();
@@ -172,9 +172,9 @@ impl<'a> Lowerer<'a> {
         name: &ast::Name,
         args: &[ast::Type],
         values: bool,
-    ) -> Spec {
+    ) -> ReadSpec {
         if let ([elem], true, "List") = (args, values, name.text.as_str()) {
-            return Spec::List(Box::new(self.resolve(elem, true)));
+            return Spec::List(Counted(Box::new(self.resolve(elem, true))));
         }
         let arg = |lw: &mut Self, i: usize| match args.get(i) {
             Some(ty) => lw.resolve_ty(ty),
@@ -321,7 +321,12 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(Ty::ListView(e, key))
                 }
                 Ty::Str | Ty::StrView => return Spec::Plain(Ty::StrView),
-                _ => {}
+                Ty::Array { elem, dims } if dims.len() == 1 => {
+                    return Spec::Plain(Ty::ListView(elem, dims[0]))
+                }
+                Ty::Array { elem, .. } => return Spec::Plain(Ty::List(elem)),
+                Ty::Struct(_) => {}
+                other => return Spec::Plain(other),
             }
         }
         let ty = match name.text.as_str() {
@@ -333,14 +338,6 @@ impl<'a> Lowerer<'a> {
             "Char" => Ty::Char,
             "Str" => Ty::Str,
             "List" | "Iter" => Ty::list(arg(self, 0)),
-            "Slice" | "Rev" => match arg(self, 0) {
-                Ty::List(e) => Ty::ListView(e, Dim::Int),
-                Ty::ListView(e, d) | Ty::MutView(e, d) => Ty::ListView(e, d),
-                Ty::Str | Ty::StrView => Ty::StrView,
-                Ty::Array { elem, dims } if dims.len() == 1 => Ty::ListView(elem, dims[0]),
-                Ty::Array { elem, .. } => Ty::List(elem),
-                other => other,
-            },
             "Opt" => Ty::opt(arg(self, 0)),
             "Set" => Ty::Set(Box::new(arg(self, 0))),
             "HashSet" => Ty::HashSet(Box::new(arg(self, 0))),
@@ -462,7 +459,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// A struct's fields as they are read from input: with their ranges.
-    pub(in crate::lower) fn struct_spec(&mut self, id: StructId) -> Spec {
+    pub(in crate::lower) fn struct_spec(&mut self, id: StructId) -> ReadSpec {
         if let Some(fn_id) = self.own_method(id, "read") {
             if self.sigs[fn_id].params.is_empty() {
                 let call = self.method_call(fn_id, None, &[], Span::default());
@@ -478,7 +475,7 @@ impl<'a> Lowerer<'a> {
                     let param_ty = self.sigs[fn_id].params[0].ty.clone();
                     let arg_spec = self.spec_of(&param_ty).map(|spec| self.readable(spec));
                     if let Some(arg_spec) =
-                        arg_spec.filter(|spec| read_spec::unreadable(spec).is_none())
+                        arg_spec.filter(|spec| read_spec::unreadable(spec, &param_ty).is_none())
                     {
                         let read_arg = self.mk_read(arg_spec, param_ty, Span::default());
                         let call = self.mk(
@@ -715,10 +712,8 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 };
                 let Some(first) = first else {
-                    self.unsupported(
-                        lo.span,
-                        "an array dimension that starts at anything but a number",
-                    );
+                    let start = self.source(lo.span).to_string();
+                    self.report(lo.span, msgs::check::TYPE_MISMATCH_DIM_START, &[&start]);
                     self.help("name the range: `domain D = lo..=hi`, then `[D]T`");
                     return None;
                 };

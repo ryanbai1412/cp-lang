@@ -10,13 +10,13 @@ let rows = [[Z(rnd[i * n + j] % 1000003) for j in 0..n] for i in 0..n]
 let vec = [Z(i + 1) for i in 0..n]
 let a = Mat<Z>.of(rows)
 let p = MatPow(a, 16)
-for _ in 0..16:
+for _ in 0..32:
     acc += MatPow(a, 16).apply_pow(5, vec)[0] // timed: matrix.MatPow.new
 for i in 0..64 * n:
     acc += p.apply_pow(i % 16, vec)[0] // timed: matrix.MatPow.apply_pow
 let lp = Mat<F64>.identity(n)
 let ones = [1.0 for _ in 0..n]
 var val = 0.0
-for _ in 0..320:
+for _ in 0..640:
     val += (simplex(lp, ones, ones))!.val // timed: matrix.simplex
 print(acc, val)

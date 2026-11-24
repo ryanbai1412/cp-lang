@@ -77,11 +77,11 @@ impl Checker<'_> {
     pub(crate) fn method_bounds_hold(
         &mut self,
         callee: &str,
-        (bounds, params): (&crate::def::BoundArgs, &[crate::ty::Param]),
+        (bounds, params): (&[(String, String)], &[crate::ty::Param]),
         bindings: &crate::ty::Bindings,
         (args, call): (&[ast::Arg], &ast::Expr),
     ) {
-        for (param, trait_name, _) in bounds {
+        for (param, trait_name) in bounds {
             let Some(ty) = bindings.get(param) else {
                 continue;
             };

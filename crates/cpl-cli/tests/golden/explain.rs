@@ -53,7 +53,8 @@ fn explain_json_lists_each_copy_and_why() {
         .at(&["detail"])
         .as_str()
         .unwrap()
-        .contains("changed later"));
+        .contains("is changed while what it copies is still read"));
+    assert_eq!(copy.at(&["kept"]).as_bool(), Some(true));
 }
 
 /// A file's explanation ends with the specializations its C++ takes and
@@ -232,4 +233,27 @@ fn explain_counts_a_narrow_array_at_the_cpp_width() {
     assert!(built.status.success(), "{}", text(&built.stderr));
     let cpp = std::fs::read_to_string(dir.join("m.cpp")).unwrap();
     assert!(cpp.contains("std::vector<uint32_t> b"), "{cpp}");
+}
+
+/// A struct on the heap lists its fields, its type arguments in place: a max-plus
+/// `Mat<?Int>` shows the `raw List<Int>` its products and its build store, beside `cells`.
+#[test]
+fn explain_a_struct_on_the_heap_lists_its_fields() {
+    let dir = scratch("explain_struct_fields");
+    let src = "domain V = 0..3\nlet d: [V, V]?Int = [V, V] (i, j) => if i.ord <= j.ord: Some(i.ord) else: None\n\
+               let m = Mat(d, over: Semiring(max, +))\nprint((m * m).get(0, 2) ?? -1)\n";
+    std::fs::write(dir.join("m.cp"), src).unwrap();
+    let out = text(&cpl(&dir, &["explain", "m.cp"]).stdout);
+    let line = out
+        .lines()
+        .find(|l| l.trim_start().starts_with("m "))
+        .unwrap_or("");
+    assert!(
+        line.contains("cells List<?Int>: grows on the heap; ?Int: 8 B each"),
+        "{out}"
+    );
+    assert!(
+        line.contains("raw List<Int>: grows on the heap; Int: 8 B each"),
+        "{out}"
+    );
 }

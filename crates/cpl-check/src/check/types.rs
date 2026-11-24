@@ -82,6 +82,9 @@ impl<'a> Checker<'a> {
                 self.named_type(&name.text, name.span, args)
             }
             TypeKind::Array { index, elem } => {
+                for dim in index {
+                    self.dim_starts_at_a_number(dim);
+                }
                 let index = index.iter().map(|i| self.resolve_type(i)).collect();
                 Ty::Array {
                     index: self.flat_index(index),
@@ -276,7 +279,7 @@ impl<'a> Checker<'a> {
     /// A field's declared type, or its default's when written `total = 0`.
     pub(crate) fn field_type(&mut self, f: &ast::FieldDecl) -> Ty {
         match (&f.ty.kind, &f.default) {
-            (TypeKind::Infer, Some(default)) => self.quietly(|c| c.infer(default)).widen(),
+            (TypeKind::Infer, Some(default)) => self.infer_quietly(default).widen(),
             _ => self.resolve_type(&f.ty),
         }
     }
@@ -694,7 +697,7 @@ impl<'a> Checker<'a> {
         // expression reports is reported where the body is checked.
         match (ty, init) {
             (Some(ty), _) => self.resolve_type(ty),
-            (None, Some(init)) => self.quietly(|c| c.infer(init)).widen(),
+            (None, Some(init)) => self.infer_quietly(init).widen(),
             (None, None) => Ty::Error,
         }
     }
@@ -994,21 +997,7 @@ impl<'a> Checker<'a> {
                     .collect();
                 let (methods, getters, mutators, selves) =
                     self.method_sigs_and_selves(&s.methods, &self_ty);
-                let method_rows = (s.methods.iter())
-                    .filter_map(|m| match &m.kind {
-                        ast::StmtKind::Fn(f) => {
-                            let decl = self.trait_params_generic(f);
-                            let f = &*decl;
-                            let rows = self.fn_bounds(f).0;
-                            let outer = self.generics.len();
-                            (self.generics).extend(f.generics.iter().map(|g| g.text.clone()));
-                            let through = self.quietly(|c| c.bound_args(&f.bounds));
-                            self.generics.truncate(outer);
-                            Some((f.name.text.clone(), rows, through))
-                        }
-                        _ => None,
-                    })
-                    .collect();
+                let method_rows = self.method_rows(&s.methods, &[]);
                 self.leave_body(body);
                 // `fn new(..)` without `self` says how the struct is built.
                 let ctor = s.methods.iter().find_map(|m| match &m.kind {
@@ -1212,7 +1201,8 @@ impl<'a> Checker<'a> {
                 };
                 let generics = self.impl_generics(trait_name.as_ref(), target, bounds);
                 let scope = self.enter_body(&generics, Ty::Unknown);
-                let self_ty = self.quietly(|c| c.resolve_type(target));
+                let shape = super::impl_head::row_bound(target, bounds).unwrap_or(target);
+                let self_ty = self.quietly(|c| c.resolve_type(shape));
                 self.self_ty = Some(self_ty.clone());
                 let (trait_args, bound_args) = self.impl_head_args(trait_name.as_ref(), bounds);
                 let out_ty: Option<Ty> = body.stmts.iter().find_map(|s| match &s.kind {
@@ -1237,6 +1227,7 @@ impl<'a> Checker<'a> {
                 let outer_assoc = std::mem::replace(&mut self.self_assoc, assoc.clone());
                 let owned = self.owned(&target_name, &body.stmts);
                 let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);
+                let method_rows = self.method_rows(&body.stmts, bounds);
                 self.self_assoc = outer_assoc;
                 self.leave_body(scope);
                 let trait_head = trait_name.as_ref().and_then(trait_impl_key);
@@ -1253,6 +1244,7 @@ impl<'a> Checker<'a> {
                         target: self_ty,
                         bound_args,
                         assoc,
+                        method_rows,
                     },
                 )]
             }
@@ -1528,10 +1520,12 @@ impl<'a> Checker<'a> {
         self_ty: &Ty,
         bounds: &[ast::Bound],
     ) {
-        let outer = self.param_bounds.len();
+        let outer = (self.param_bounds.len(), self.param_bound_args.len());
         self.param_bounds.extend(extract_bounds(bounds));
+        let bound_args = self.quietly(|c| c.bound_args(bounds));
+        self.param_bound_args.extend(bound_args);
         self.methods(methods, self_ty);
-        self.param_bounds.truncate(outer);
+        self.leave_bounds(outer);
     }
 
     /// True when trait `sub` is `want` or transitively inherits from `want`.
@@ -1546,14 +1540,15 @@ impl<'a> Checker<'a> {
                 continue;
             }
             seen.push(cur.clone());
-            match cur.as_str() {
-                "Ord" => stack.push("Eq".into()),
-                "IndexedMut" => stack.push("Indexed".into()),
+            let core: &[&str] = match cur.as_str() {
+                "Ord" => &["Eq"],
+                "IndexedMut" => &["Indexed"],
                 // A file sees std/seq.cp's core traits without their decls.
-                "Keyed" | "Bidir" | "Positional" => stack.push("Seq".into()),
-                "Indexed" => stack.extend(["Keyed".into(), "Positional".into(), "Bidir".into()]),
-                _ => {}
-            }
+                "Keyed" | "Bidir" | "Positional" => &["Seq"],
+                "Indexed" => &["Keyed", "Positional", "Bidir"],
+                _ => &[],
+            };
+            stack.extend(core.iter().map(|s| s.to_string()));
             if let Some(Def::Trait { supers, .. }) = self.type_def(&cur).as_deref() {
                 stack.extend(supers.iter().cloned());
             }
@@ -1578,6 +1573,27 @@ impl<'a> Checker<'a> {
     pub(crate) fn implements_trait(&mut self, ty: &Ty, trait_name: &str) -> bool {
         let mut seen = Vec::new();
         self.implements_trait_inner(ty, trait_name, &mut seen)
+    }
+
+    /// `Zero`, `One` and `Bounded` are met by the constants they name: every number has `zero`
+    /// and `one`, numbers, `Char` and `Bool` have `MIN` and `MAX` (decision 580), and a struct
+    /// meets each with its own (`Mod<P>`'s `zero` and `one`).
+    fn has_named_constants(&mut self, ty: &Ty, trait_name: &str) -> bool {
+        let names: &[&str] = match trait_name {
+            "Zero" => &["zero"],
+            "One" => &["one"],
+            _ => &["MIN", "MAX"],
+        };
+        match ty {
+            Ty::Bool | Ty::Char => trait_name == "Bounded",
+            Ty::Named { name, .. } => match self.type_def(name).as_deref() {
+                Some(Def::Struct { owned, .. }) => {
+                    (names.iter()).all(|c| owned.iter().any(|(n, _)| n == c))
+                }
+                _ => false,
+            },
+            _ => ty.is_numeric(),
+        }
     }
 
     pub(super) fn implements_trait_inner(
@@ -1606,19 +1622,7 @@ impl<'a> Checker<'a> {
                 .iter()
                 .all(|s| self.implements_trait_inner(ty, s, seen));
         }
-        let impl_key = match ty {
-            Ty::Named { name, .. } => Some(name.as_str()),
-            Ty::Int => Some("Int"),
-            Ty::I128 => Some("I128"),
-            Ty::U64 => Some("U64"),
-            Ty::Float => Some("F64"),
-            Ty::Bool => Some("Bool"),
-            Ty::Char => Some("Char"),
-            Ty::Str => Some("Str"),
-            Ty::Fn { .. } => Some("fn"),
-            Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
-            _ => None,
-        };
+        let impl_key = super::impl_head::ty_impl_name(ty);
         if impl_key.is_some_and(|name| self.impl_holds(name, ty, trait_name, seen)) {
             return true;
         }
@@ -1629,8 +1633,9 @@ impl<'a> Checker<'a> {
             "Seq" => ty.is_seq() || self.walks_by_each(ty),
             "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
-            "Positional" => ty.rev_source().unwrap_or(ty).is_indexed(),
-            super::views::INDEXED_BY_WALK => ty.rev_source().unwrap_or(ty).is_indexed(),
+            "Positional" | super::views::INDEXED_BY_WALK => {
+                ty.rev_source().unwrap_or(ty).is_indexed()
+            }
             "Bidir" => ty.is_bidir(),
             "Keyed" => ty.is_keyed(),
             "IndexedMut" => ty.is_indexed_mut(),
@@ -1647,6 +1652,8 @@ impl<'a> Checker<'a> {
             },
             "Add" => ty.is_numeric() || matches!(ty, Ty::Str),
             "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" | "Num" => ty.is_numeric(),
+            "Zero" | "One" | "Bounded" => self.has_named_constants(ty, trait_name),
+            "BitAnd" | "BitOr" | "BitXor" => ty.is_int(),
             "Index" => ty.is_int() || matches!(ty, Ty::Pos(_) | Ty::Char),
             "Domain" => match ty {
                 Ty::Pos(_) | Ty::Domain(_) => true,
@@ -1662,7 +1669,6 @@ impl<'a> Checker<'a> {
                 Ty::Named { .. } => false,
                 _ => true,
             },
-            "Next" => matches!(ty, Ty::Array { .. } | Ty::Fn { .. }),
             _ => match ty {
                 Ty::Record(fields) => self.meets_by_shape(fields, trait_name),
                 Ty::Tuple(items) => self.meets_by_shape(&positional(items), trait_name),
@@ -1723,7 +1729,7 @@ impl<'a> Checker<'a> {
             fields: wanted,
             supers,
             ..
-        }) = self.global(trait_name).as_deref().cloned()
+        }) = self.type_def(trait_name).as_deref().cloned()
         else {
             return true;
         };

@@ -140,7 +140,7 @@ impl Found {
                     Iter::Seq(seq, _)
                     | Iter::RangeVal(seq, _)
                     | Iter::TreeRange { container: seq, .. } => self.order(program, &seq.ty),
-                    Iter::Range { .. } | Iter::Walk { .. } => {}
+                    Iter::Range { .. } => {}
                 }
             }
         });

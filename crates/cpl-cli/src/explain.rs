@@ -194,6 +194,11 @@ pub(crate) fn explain_file(
             };
             rows.push(row(&format!("{line}:{col}"), lowering, index.why()));
         }
+        for (span, what) in &lowered.proven {
+            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
+            let why = format!("{what}: {}", cpl_codegen::explain::PROVEN);
+            rows.push(row(&format!("{line}:{col}"), "check_dropped", &why));
+        }
         for &(span, checked) in &lowered.overflows {
             let (line, col) = cpl_codegen::explain::line_col(&compiled.text, span);
             let (lowering, why) = match checked {

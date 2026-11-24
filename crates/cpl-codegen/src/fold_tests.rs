@@ -147,3 +147,236 @@ fn instances_differing_in_whole_types_fold_on_those_types() {
         "{cpp}"
     );
 }
+
+#[test]
+fn literals_that_fold_as_integers_include_hex_and_bools() {
+    let o = origins();
+    let base = file("+");
+    let hex = base
+        .replace("if(r>=7)r-=7;", "if(r>=0x1e)r-=0x1e;")
+        .replace("if(r>=11)r-=11;", "if(r>=0x2e)r-=0x2e;");
+    let folded = fold(&hex, &o);
+    assert_eq!(folded.members.len(), 2, "{}", folded.cpp);
+    assert!(
+        folded.cpp.contains("Mod_7_1_add<Mod_7_1,0x1e>("),
+        "{}",
+        folded.cpp
+    );
+    let flag = |r: &str| format!("long long r=a.v+b.v;\nif(r>={r})");
+    let bools = base
+        .replace(&flag("7"), "long long r=a.v+b.v;bool t=true;\nif(r>=7)")
+        .replace(&flag("11"), "long long r=a.v+b.v;bool t=false;\nif(r>=11)");
+    let folded = fold(&bools, &o);
+    assert!(folded.cpp.contains("bool t=V1;"), "{}", folded.cpp);
+    assert!(
+        folded.cpp.contains("Mod_7_1_add<Mod_7_1,true,7>("),
+        "{}",
+        folded.cpp
+    );
+    assert!(
+        folded.cpp.contains("Mod_7_1_add<Mod_11_2,false,11>("),
+        "{}",
+        folded.cpp
+    );
+}
+
+#[test]
+fn a_generic_fn_with_one_instance_is_left_as_written() {
+    let mut o = origins();
+    o.insert("Mod_11_2_add".into(), "Mod.sub".into());
+    let cpp = file("+");
+    let folded = fold(&cpp, &o);
+    assert!(folded.members.is_empty(), "{}", folded.cpp);
+    assert_eq!(folded.cpp, cpp);
+}
+
+#[test]
+fn instances_differing_in_a_plain_enum_fold_on_it() {
+    let cpp = "namespace prog {\nenum E1{a1,b1};\nenum E2{a2,b2};\n\
+        inline long long E1_f(E1 e){\nreturn (long long)e+1;\n}\n\
+        inline long long E2_f(E2 e){\nreturn (long long)e+1;\n}\n\
+        long long both(){return E1_f(a1)+E2_f(b2);}\n}\n";
+    let o: BTreeMap<String, String> = [("E1_f", "f"), ("E2_f", "f"), ("both", "both")]
+        .into_iter()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect();
+    let folded = fold(cpp, &o);
+    assert_eq!(folded.members.len(), 2, "{}", folded.cpp);
+    assert!(
+        folded.cpp.contains("E1_f<E1>(a1)+E1_f<E2>(b2)"),
+        "{}",
+        folded.cpp
+    );
+}
+
+#[test]
+fn a_template_calling_another_passes_on_each_of_its_parameters() {
+    let cpp = file("+").replace(
+        "long long both(){",
+        "inline long long G7(){\nreturn Mod_7_1_add(Mod_7_1{3},Mod_7_1{5}).v;\n}\n\
+         inline long long G11(){\nreturn Mod_11_2_add(Mod_11_2{3},Mod_11_2{5}).v;\n}\n\
+         long long both(){",
+    );
+    let mut o = origins();
+    o.insert("G7".into(), "g".into());
+    o.insert("G11".into(), "g".into());
+    let folded = fold(&cpp, &o);
+    assert!(
+        folded
+            .cpp
+            .contains("return Mod_7_1_add<T0,V1>(T0{3},T0{5}).v;"),
+        "{}",
+        folded.cpp
+    );
+}
+
+#[test]
+fn template_parameters_avoid_a_name_the_file_uses() {
+    let cpp = file("+").replace("long long r=", "long long T0=1;(void)T0;long long r=");
+    let folded = fold(&cpp, &origins());
+    assert!(
+        folded.cpp.contains("template<class T_0,auto V1>"),
+        "{}",
+        folded.cpp
+    );
+}
+
+#[test]
+fn a_type_or_integer_that_names_or_splits_something_never_folds() {
+    let o = origins();
+    let base = file("+");
+    let scoped = base
+        .replace(
+            "long long r=a.v+b.v;\nif(r>=7)",
+            "long long r=a.v+b.v+Mod_7_1::k;\nif(r>=7)",
+        )
+        .replace(
+            "long long r=a.v+b.v;\nif(r>=11)",
+            "long long r=a.v+b.v+Mod_11_2::k;\nif(r>=11)",
+        );
+    let tagged = base
+        .replace(
+            "long long r=a.v+b.v;\nif(r>=7)",
+            "struct Mod_7_1 c=a;long long r=c.v+b.v;\nif(r>=7)",
+        )
+        .replace(
+            "long long r=a.v+b.v;\nif(r>=11)",
+            "struct Mod_11_2 c=a;long long r=c.v+b.v;\nif(r>=11)",
+        );
+    let fraction = base
+        .replace(
+            "long long r=a.v+b.v;\nif(r>=7)",
+            "long long r=a.v+b.v+(long long)1.5;\nif(r>=7)",
+        )
+        .replace(
+            "long long r=a.v+b.v;\nif(r>=11)",
+            "long long r=a.v+b.v+(long long)1.7;\nif(r>=11)",
+        );
+    for cpp in [scoped, tagged, fraction] {
+        let folded = fold(&cpp, &o);
+        assert!(folded.members.is_empty(), "{}", folded.cpp);
+        assert_eq!(folded.cpp, cpp);
+    }
+}
+
+#[test]
+fn a_call_of_a_folded_instance_is_rewritten_word_by_word() {
+    let calls: BTreeMap<String, String> = [("f_1", "f<A,1>"), ("h_1", "h2")]
+        .into_iter()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect();
+    let called = |text: &str| crate::fold::called(text, &calls);
+    assert_eq!(called("x=f_1(a)+g_1(b)+xf_1;"), "x=f<A,1>(a)+g_1(b)+xf_1;");
+    assert_eq!(
+        called("y=f_1>=z;q=f_1;"),
+        "y=f<A,1> >=z;q=f_1;".replacen("q=f_1", "q=f<A,1>", 1)
+    );
+    assert_eq!(called("v=f_1>w"), "v=f<A,1> >w");
+    assert_eq!(called("h_1>=0"), "h2>=0");
+    assert_eq!(crate::fold::called("f_1", &BTreeMap::new()), "f_1");
+}
+
+#[test]
+fn a_whole_type_is_a_known_name_with_its_arguments_and_refs_on_one_line() {
+    let spans = |cpp: &str| crate::fold::whole_types(cpp, &["ll", "P", "Mod", "p_t"]);
+    assert_eq!(
+        spans("std::tuple<ll,P> f(const std::tuple<ll,P>& x, P& a, P* b, P** c, const P d);\n"),
+        [
+            "std::tuple<ll,P>",
+            "const std::tuple<ll,P>&",
+            "P&",
+            "P*",
+            "P**",
+            "const P"
+        ]
+    );
+    assert_eq!(
+        spans("cpl::Mod<7> g(cpl::Other<ll> y, std::vector<p_t> z);\n"),
+        ["cpl::Mod<7>", "std::vector<p_t>"]
+    );
+    let none: [&str; 0] = [];
+    assert_eq!(
+        spans("P q, ll r, prog::P& z, a::std::vector<ll> v, std::less<ll> c;\n"),
+        none
+    );
+    assert_eq!(
+        spans("ll h(std::vector<ll>::iterator i, std::array<ll,3+1> a);\n"),
+        none
+    );
+    assert_eq!(spans("ll n(x:const P&y);\n"), ["const P&"]);
+    assert_eq!(spans("ll u(Q& a, const Q b, Q* c, std::Q<ll> d);\n"), none);
+    assert_eq!(spans("ll k(std::vector<ll,\nll> v);\n"), none);
+}
+
+#[test]
+fn a_folded_fn_is_declared_by_its_own_signature_before_its_first_use() {
+    let cpp = "namespace prog {\n\
+         inline long long A_1(long long n){\nreturn n?A_1(n-1):0;\n}\n\
+         inline long long A_2(long long n){\nreturn n?A_2(n-1):0;\n}\n\
+         long long both(){return A_1(3)+A_2(4);}\n\
+         }\n";
+    let o: BTreeMap<String, String> = [("A_1", "A"), ("A_2", "A"), ("both", "both")]
+        .into_iter()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect();
+    assert_eq!(
+        fold(cpp, &o).cpp,
+        "namespace prog {\ninline long long A_1(long long n);\n\
+         inline long long A_1(long long n){\nreturn n?A_1(n-1):0;\n}\n\
+         long long both(){return A_1(3)+A_1(4);}\n}\n"
+    );
+    let whole = fold(&file("+"), &origins());
+    assert_eq!(
+        whole.members["Mod_11_2_add"].as_deref(),
+        Some(
+            "template<class T0,auto V1>\ninline T0 Mod_7_1_add(const T0&a,const T0&b){\n\
+             long long r=a.v+b.v;\nif(r>=V1)r-=V1;\nreturn T0{r};\n}\n"
+        )
+    );
+    assert_eq!(whole.members["Mod_7_1_add"], None);
+    let folded = whole.cpp;
+    assert!(
+        folded.contains(
+            "\ntemplate<class T0,auto V1>inline T0 Mod_7_1_add(const T0&a,const T0&b);\n\
+             template<class T0,auto V1>\ninline T0 Mod_7_1_add(const T0&a,const T0&b){\n"
+        ),
+        "{folded}"
+    );
+    let spaced = file("+")
+        .replace(
+            "(const Mod_7_1&a,const Mod_7_1&b)",
+            "( const Mod_7_1 & a, const Mod_7_1&b )",
+        )
+        .replace(
+            "(const Mod_11_2&a,const Mod_11_2&b)",
+            "( const Mod_11_2 & a, const Mod_11_2&b )",
+        );
+    let folded = fold(&spaced, &origins()).cpp;
+    assert!(
+        folded.contains(
+            "\ntemplate<class T0,auto V1>inline T0 Mod_7_1_add(const T0&a,const T0&b);\n\
+             template<class T0,auto V1>\ninline T0 Mod_7_1_add( const T0 & a, const T0&b ){\n"
+        ),
+        "{folded}"
+    );
+}

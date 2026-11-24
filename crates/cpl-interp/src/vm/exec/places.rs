@@ -4,7 +4,7 @@ use crate::value::keys::{tree_only, Edge};
 use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{bug, trap, Flow, Interp, Res};
+use crate::{bug, interp_failed, trap, Flow, Interp, Res};
 use cpl_ir::{CmpOp, LoopId};
 use std::rc::Rc;
 
@@ -26,19 +26,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         } = ctx;
         let (chunk, base_i, pc) = (*caller_chunk, *caller_base_i, *body_pc);
         match parent.as_deref_mut() {
-            None => {
-                self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, caller_regs_v, pc, None)
-            }
+            None => self.exec_chunk_core(
+                compiled,
+                (chunk, base_i, pc),
+                vm_regs_i,
+                caller_regs_v,
+                None,
+            ),
             Some(p) => p.with(&mut |up| {
-                self.exec_chunk_core(
-                    compiled,
-                    chunk,
-                    base_i,
-                    vm_regs_i,
-                    caller_regs_v,
-                    pc,
-                    Some(up),
-                )
+                let at = (chunk, base_i, pc);
+                self.exec_chunk_core(compiled, at, vm_regs_i, caller_regs_v, Some(up))
             }),
         }
     }
@@ -105,10 +102,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let Some((&last, prefix)) = pp.steps.split_last() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 store_place_leaf_scalar(container, last, raw, kind, regs_i, spans[cur_pc])?;
@@ -125,10 +119,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let Some((&last, prefix)) = pp.steps.split_last() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 store_place_leaf_opt_scalar(
@@ -147,10 +138,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let Some((&last, prefix)) = pp.steps.split_last() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 // A map entry (a `mut` arg taken by its path) is put back whole.
                 if let PlaceStep::Key(_) = last {
@@ -171,10 +159,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let Some((&last, prefix)) = pp.steps.split_last() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 assign_place_leaf_scalar(container, last, rhs, op, kind, regs_i, spans[cur_pc])?;
@@ -255,49 +240,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 exec_sort_place(target, desc, spans[cur_pc])?;
             }
-            Op::SortPlaceCmp { idx, path, desc_r } => {
-                let span = spans[cur_pc];
-                let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
-                let cpl_ir::ExprKind::Sort(place, _, _) = &chunk.applies[idx as usize].expr.kind
-                else {
-                    return bug(span, "not a sort");
-                };
-                let (cpl_ir::Ty::List(elem) | cpl_ir::Ty::Array { elem, .. }) = &place.ty else {
-                    return bug(span, "not a sequence sort");
-                };
-                let pp = &chunk.places[path as usize];
-                let keys = place_keys(pp, regs_v);
-                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let seq = std::mem::replace(
-                    walk_place_mut(root, &pp.steps, regs_i, &keys, span)?,
-                    Value::Unit,
-                );
-                let (items, dims) = seq_items(seq, span)?;
-                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_to_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
-                self.show_lent()?;
-                let sorted = self.merge_sort_ty(items, elem, desc, span);
-                self.hide_lent()?;
-                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
-                let sorted = seq_of_items(sorted?, dims);
-                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                *walk_place_mut(root, &pp.steps, regs_i, &keys, span)? = sorted;
-            }
             Op::SortByKeysPlaceCmp {
                 idx,
                 path,
@@ -336,14 +278,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let sorted = self.merge_sort_keyed(keyed, key_ty, desc, span);
                 self.hide_lent()?;
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let sorted = seq_of_items(sorted?.into_iter().map(|(_, x)| x).collect(), dims);
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
@@ -414,18 +349,23 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 match target {
-                    Value::List(items) => Rc::make_mut(items).reverse(),
-                    Value::Array(arr) => Rc::make_mut(arr).reverse(),
                     Value::Str(bytes) => Rc::make_mut(bytes).reverse(),
-                    _ => return bug(spans[cur_pc], "cannot reverse this value"),
+                    _ => match target.cells_mut() {
+                        Some(cells) => cells.reverse(),
+                        None => return bug(spans[cur_pc], "cannot reverse this value"),
+                    },
                 }
             }
             Op::BitWidthI { dst, src } => {
                 regs_i[dst as usize] =
                     i64::from(64 - (regs_i[src as usize] as u64).leading_zeros());
             }
-            Op::IntToFloat { dst, src } => {
-                regs_v[dst as usize] = Value::Float(regs_i[src as usize] as f64);
+            Op::IntToFloat { dst, src, float } => {
+                let x = regs_i[src as usize];
+                regs_v[dst as usize] = match float {
+                    true => Value::Float(x as f64),
+                    false => Value::I128(i128::from(x).into()),
+                };
             }
             Op::FloatSqrt { dst, src } => {
                 let x = regs_v[src as usize].float();
@@ -442,12 +382,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let (lo, len) = self.domains[dom as usize];
                 regs_v[dst as usize] = Value::DomainVal(lo, len);
             }
-            Op::MakeRangeV { dst, lo, hi, float } => {
+            Op::MakeRangeV { dst, lo, hi, wide } => {
                 let (lo, hi) = (&regs_v[lo as usize], &regs_v[hi as usize]);
-                regs_v[dst as usize] = if float {
-                    Value::RangeF(lo.float(), hi.float())
-                } else {
-                    Value::range128(lo.i128(), hi.i128())
+                regs_v[dst as usize] = match wide {
+                    Some(wide) => Value::range128(lo.i128(), hi.i128(), wide),
+                    None => Value::RangeF(lo.float(), hi.float()),
                 };
             }
             Op::ContainsV { dst, src_v, key_v } => {
@@ -457,10 +396,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Map(entries) => {
                         entries.contains_key(needle, &mut tree_only(spans[cur_pc]))?
                     }
-                    Value::List(items) => items.contains(needle),
                     Value::ListView(view) => view.contains(needle),
-                    Value::Array(arr) => arr.contains(needle),
-                    _ => false,
+                    other => other.cells().is_some_and(|cells| cells.contains(needle)),
                 };
                 regs_i[dst as usize] = i64::from(found);
             }
@@ -732,7 +669,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let i1 = regs_i[r_j as usize];
                         let arr_mut = Rc::make_mut(arr);
-                        let Cells::Values(rows) = &mut arr_mut.data else {
+                        let Cells::Values(rows) = &mut **arr_mut else {
                             return bug(spans[cur_pc], "expected nested array");
                         };
                         let Value::Array(row_arr) = &mut rows[i0 as usize] else {
@@ -746,7 +683,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         let row_mut = Rc::make_mut(row_arr);
-                        match &mut row_mut.data {
+                        match &mut **row_mut {
                             Cells::OptInt(v) => {
                                 let slot = &mut v[i1 as usize];
                                 let replace = match *slot {
@@ -808,7 +745,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         i0 as usize
                     };
                     let arr_mut = Rc::make_mut(arr);
-                    match &mut arr_mut.data {
+                    match &mut **arr_mut {
                         Cells::OptInt(v) => {
                             let slot = &mut v[flat];
                             let replace = match *slot {
@@ -871,7 +808,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
-                        match &arr.data {
+                        match &*arr.data {
                             Cells::Values(v) => &v[i as usize],
                             _ => return bug(spans[cur_pc], "expected struct element"),
                         }
@@ -937,7 +874,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
-                        match &arr.data {
+                        match &*arr.data {
                             Cells::Values(v) => &v[i as usize],
                             _ => return bug(spans[cur_pc], "expected nested array"),
                         }
@@ -1001,7 +938,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
-                        match &arr.data {
+                        match &*arr.data {
                             Cells::Values(v) => &v[i as usize],
                             _ => return bug(spans[cur_pc], "expected sequence element"),
                         }
@@ -1066,8 +1003,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 (Some(part), _) if !part.steps.is_empty() => {
                                     CaptureVal::PartRef(part)
                                 }
-                                (Some(part), _) if part.global => CaptureVal::GlobalRef(part.at),
-                                (Some(part), _) => CaptureVal::StackRef(part.at),
+                                // The frame holds the lent value; a call shows it
+                                // back to its place, behind the slot's alias.
+                                (Some(_), _) => CaptureVal::StackRef(at),
                                 (None, Some(Value::Alias(true, id))) => CaptureVal::GlobalRef(*id),
                                 (None, Some(Value::Alias(false, at))) => CaptureVal::StackRef(*at),
                                 (None, Some(Value::Part(part))) => {
@@ -1110,10 +1048,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::CallVmFeed { spec } => {
                 let fc = &chunk.feed_calls[spec as usize];
                 let Some(fed_chunk) = compiled.fed_fns[fc.fn_id].as_ref() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let callee_base_i = vm_regs_i.len();
                 vm_regs_i.resize(callee_base_i + fed_chunk.num_i, 0);
@@ -1143,12 +1078,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 callee_regs_v[r as usize] = regs_v[fc.args_v[iv] as usize].clone();
                                 iv += 1;
                             }
-                            SlotLoc::SmallTuple { .. } => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                )
-                            }
+                            SlotLoc::SmallTuple { .. } => return Err(interp_failed(spans[cur_pc])),
                         }
                     }
                 }
@@ -1164,13 +1094,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 );
                 let dom_mark = match &resumed {
                     Some(frames) => frames[0].doms,
-                    None => self.saved_domains.len(),
-                };
-                if resumed.is_none() {
-                    for &d in &fed_chunk.guarded_domains {
-                        self.saved_domains.push((d, self.domains[d]));
+                    None => {
+                        let doms = &fed_chunk.guarded_domains;
+                        crate::save_domains(&mut self.saved_domains, &self.domains, doms)
                     }
-                }
+                };
                 let caller_base = self.base;
                 let pushed_stack = fed_chunk.needs_stack;
                 if pushed_stack {
@@ -1198,13 +1126,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     var_loc: fc.var_loc,
                     parent: fed.as_deref_mut().map(|f| f as &mut dyn FedParent<'p>),
                 };
+                let at = (fed_chunk, callee_base_i, start_pc);
                 let res = self.exec_chunk_core(
                     compiled,
-                    fed_chunk,
-                    callee_base_i,
+                    at,
                     vm_regs_i,
                     &mut callee_regs_v,
-                    start_pc,
                     Some(&mut ctx),
                 );
                 if pushed_stack {
@@ -1240,21 +1167,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                         vm_regs_i[callee_base_i + some as usize],
                                     )
                                 }
-                                _ => {
-                                    return trap(
-                                        spans[cur_pc],
-                                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                    )
-                                }
+                                _ => return Err(interp_failed(spans[cur_pc])),
                             };
                             let (FeedBack::Place(path)
                             | FeedBack::PlaceI(path, _)
                             | FeedBack::PlaceOptI(path, _)) = to
                             else {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                );
+                                return Err(interp_failed(spans[cur_pc]));
                             };
                             let pp = &chunk.places[path as usize];
                             let keys = place_keys(pp, regs_v);
@@ -1287,15 +1206,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     ExecExit::FeedBreak if fed.is_some() => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::FeedNext | ExecExit::FeedBreak => {}
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
+                    ExecExit::ReturnTuple => return Ok(Some(ExecExit::ReturnTuple)),
                 }
             }
             Op::FeedYieldI { src, kind, back } => {
                 let raw = regs_i[src as usize];
                 let Some(ctx) = fed.as_deref_mut() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 match ctx.var_loc {
                     SlotLoc::I(r, _) => {
@@ -1309,10 +1226,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         ctx.caller_regs_v[r as usize] = kind.box_val(raw);
                     }
                     SlotLoc::SmallTuple { .. } => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                        );
+                        return Err(interp_failed(spans[cur_pc]));
                     }
                 }
                 // The body may run a yielded closure that writes this frame's locals.
@@ -1342,6 +1256,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     ExecExit::FeedNext => {}
                     ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
+                    ExecExit::ReturnTuple => return Ok(Some(ExecExit::ReturnTuple)),
                 }
             }
             Op::FeedYieldV { src, back } => {
@@ -1352,10 +1267,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[src as usize].clone()
                 };
                 let Some(ctx) = fed.as_deref_mut() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 store_fed_val(ctx, vm_regs_i, val);
                 // The body may run a yielded closure that writes this frame's locals.
@@ -1385,15 +1297,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     ExecExit::FeedNext => {}
                     ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
+                    ExecExit::ReturnTuple => return Ok(Some(ExecExit::ReturnTuple)),
                 }
             }
             Op::FeedYieldExtend { src } => {
                 let seq = regs_v[src as usize].clone();
                 let Some(ctx) = fed.as_deref_mut() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let items = yielded_items(seq, spans[cur_pc])?;
                 for item in items {
@@ -1416,6 +1326,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         ExecExit::FeedNext => {}
                         ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
                         ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
+                        ExecExit::ReturnTuple => return Ok(Some(ExecExit::ReturnTuple)),
                     }
                 }
             }
@@ -1430,28 +1341,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::ZeroV { dst, ty } => {
                 regs_v[dst as usize] = crate::zero(chunk.fill_tys[ty as usize], self.program);
-            }
-            Op::Print { idx } => {
-                let spec = &chunk.prints[idx as usize];
-                let vals: Vec<Value> = spec
-                    .regs
-                    .iter()
-                    .map(|&r| regs_v[r as usize].clone())
-                    .collect();
-                let end = spec.end.map(|r| regs_v[r as usize].clone());
-                let base = self.base;
-                // The tracer's view of a print reads the locals off the stack.
-                let shown = chunk.traced && self.observed();
-                if shown {
-                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, base, true);
-                    self.show_lent()?;
-                }
-                let printed = self.print_values(spec.args, &vals, end.as_ref(), spans[cur_pc]);
-                if shown {
-                    self.hide_lent()?;
-                    take_back_values(&chunk.slot_map, regs_v, &mut self.stack, base);
-                }
-                printed?;
             }
             Op::Format { idx, dst } => {
                 let spec = &chunk.formats[idx as usize];
@@ -1488,17 +1377,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         chunk.traced,
                     );
                     self.show_lent()?;
-                    let val = self.apply(spec.expr, vals);
+                    let val = match spec.view {
+                        Some((op, n)) => self.view_op(op, vals, n, spans[cur_pc]),
+                        None => self.apply(spec.expr, vals),
+                    };
                     self.hide_lent()?;
                     let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                    sync_from_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
+                    sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                     val
                 } else {
                     self.apply(spec.expr, vals)
@@ -1572,14 +1457,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.fed_hosts.pop();
                 }
                 self.leave_fallback(outer);
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let flow = flow?;
                 match flow {
                     Flow::Next => {}
@@ -1606,14 +1484,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.show_lent()?;
                 let val = self.eval(expr);
                 self.hide_lent()?;
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let val = val?;
                 regs_i[dst as usize] = ScalarKind::unbox_val(&val);
             }
@@ -1635,24 +1506,46 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.show_lent()?;
                 let val = self.eval(expr);
                 self.hide_lent()?;
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let val = val?;
                 regs_v[dst as usize] = val;
             }
-            _ => {
-                return trap(
-                    spans[cur_pc],
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
+            _ => return Err(interp_failed(spans[cur_pc])),
         }
         Ok(None)
+    }
+}
+
+impl<'p, O: Observer> Interp<'p, '_, O> {
+    /// `op` on the stack, given its first `operands` `vals` and then its
+    /// place's indices.
+    fn view_op(
+        &mut self,
+        op: ViewOp<'p>,
+        mut vals: Vec<Value>,
+        operands: usize,
+        span: cpl_diag::Span,
+    ) -> Res<Value> {
+        let indices = vals.split_off(operands);
+        match op {
+            ViewOp::Slice(place) => {
+                let [lo, hi] = crate::apply::operand_values(vals, span)?;
+                self.mut_view(place, None, lo.int(), hi.int(), indices, span)
+            }
+            ViewOp::Line(place, axis) => {
+                let [at] = crate::apply::operand_values(vals, span)?;
+                self.mut_view(place, Some(axis), at.int(), 0, indices, span)
+            }
+            ViewOp::Mutate(op, place, args) => self.mutated(op, place, args, indices, vals, span),
+            ViewOp::Sort(place, by) => {
+                let desc = vals.first().is_some_and(|d| d.bool());
+                self.sort_place(place, by, desc, indices, span)
+            }
+            ViewOp::Write(place, op) => {
+                let [value] = crate::apply::operand_values(vals, span)?;
+                self.assign_value(place, op, value, indices)?;
+                Ok(Value::Unit)
+            }
+        }
     }
 }

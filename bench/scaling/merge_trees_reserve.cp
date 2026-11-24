@@ -6,7 +6,7 @@ use std.segtree.{MergeTree, MergeTrees}
 let n: Int = read()
 domain V = 0..n
 var s = 0
-for _ in 0..4000:
+for _ in 0..8000:
     var p = MergeTrees<V, Int>()
     for i in 0..n:
         var t = MergeTree<V>()

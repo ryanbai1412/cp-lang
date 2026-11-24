@@ -71,7 +71,7 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    pub(in crate::lower) fn iter(&mut self, e: &ast::Expr) -> (Iter, Ty) {
+    pub(in crate::lower) fn iter(&mut self, e: &ast::Expr) -> (Head, Ty) {
         let span = e.span;
         if let Some(alias) = self.subsets_alias(e) {
             return self.iter(&alias);
@@ -80,7 +80,7 @@ impl<'a> Lowerer<'a> {
             .sorted_view_iter(e, span)
             .or_else(|| self.stepped_range_iter(e))
         {
-            return res;
+            return lift(res);
         }
         // Direct zero-overhead range iteration for `V.after(pos)` and `V.before(pos)`.
         if let ast::ExprKind::Call { callee, args } = &e.kind {
@@ -96,7 +96,7 @@ impl<'a> Lowerer<'a> {
                         } else {
                             (self.int_lit(0, span), self.cast(Cast::Ord, pos, Ty::Int))
                         };
-                        return (
+                        return lift((
                             Iter::Range {
                                 lo,
                                 hi,
@@ -105,7 +105,7 @@ impl<'a> Lowerer<'a> {
                                 closed: false,
                             },
                             Ty::Pos(id),
-                        );
+                        ));
                     }
                 }
             }
@@ -135,7 +135,7 @@ impl<'a> Lowerer<'a> {
         }
         let error = |lw: &mut Self| {
             let zero = lw.int_lit(0, span);
-            (
+            lift((
                 Iter::Range {
                     lo: zero.clone(),
                     hi: zero,
@@ -144,12 +144,12 @@ impl<'a> Lowerer<'a> {
                     closed: false,
                 },
                 Ty::Error,
-            )
+            ))
         };
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.iter(inner),
             ast::ExprKind::Name(n) if let Some(factors) = self.alias_factors(n) => {
-                self.product_walk(factors, span)
+                lift(self.product_walk(factors, span))
             }
             ast::ExprKind::Tuple(items) if !items.is_empty() => {
                 let factors: Option<Vec<(Option<String>, ProductFactor)>> = items
@@ -157,7 +157,7 @@ impl<'a> Lowerer<'a> {
                     .map(|it| self.expr_to_product_factor(it).map(|f| (None, f)))
                     .collect();
                 if let Some(factors) = factors {
-                    return self.product_walk(factors, span);
+                    return lift(self.product_walk(factors, span));
                 }
                 let value = self.expr(e, None);
                 self.report(
@@ -176,7 +176,7 @@ impl<'a> Lowerer<'a> {
                     })
                     .collect();
                 if let Some(factors) = factors {
-                    return self.product_walk(factors, span);
+                    return lift(self.product_walk(factors, span));
                 }
                 let value = self.expr(e, None);
                 self.report(
@@ -210,7 +210,7 @@ impl<'a> Lowerer<'a> {
                     let pos = lw.cast(Cast::Trust, ord, Ty::Pos(domain));
                     (None, lw.mk_some(pos, some_ty, span))
                 });
-                (Iter::Seq(all, false), elem)
+                lift((Iter::Seq(all, false), elem))
             }
             ast::ExprKind::Range {
                 lo: Some(lo),
@@ -220,6 +220,11 @@ impl<'a> Lowerer<'a> {
             } => {
                 let lo = self.expr(lo, None);
                 let ty = lo.ty.clone();
+                if matches!(ty, Ty::I128 | Ty::U64) && step.is_none() {
+                    let hi = self.expr_as(hi, &ty);
+                    let range = self.wide_range(lo, hi, *inclusive, ty.clone(), span);
+                    return (Head::Iter(Iter::RangeVal(range, false)), ty);
+                }
                 if !matches!(ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_) | Ty::Error) {
                     self.report(
                         span,
@@ -240,7 +245,7 @@ impl<'a> Lowerer<'a> {
                     hi = self.int_add(hi, 1);
                 }
                 let step = step.as_ref().map(|s| self.expr_as(s, &Ty::Int));
-                (
+                lift((
                     Iter::Range {
                         lo,
                         hi,
@@ -249,7 +254,7 @@ impl<'a> Lowerer<'a> {
                         closed,
                     },
                     ty,
-                )
+                ))
             }
             ast::ExprKind::Range {
                 lo: Some(lo),
@@ -267,7 +272,7 @@ impl<'a> Lowerer<'a> {
                             hi = self.int_add(hi, 1);
                         }
                         let step = step.as_ref().map(|s| self.expr_as(s, &Ty::Int));
-                        (
+                        lift((
                             Iter::Range {
                                 lo: lo_ord,
                                 hi,
@@ -276,13 +281,13 @@ impl<'a> Lowerer<'a> {
                                 closed: false,
                             },
                             if cuts { Ty::Bound(d) } else { Ty::Pos(d) },
-                        )
+                        ))
                     }
                     // `for i in 3..:` counts up until the body leaves.
                     Ty::Int => {
                         let hi = self.int_lit(INF, span);
                         let step = step.as_ref().map(|s| self.expr_as(s, &Ty::Int));
-                        (
+                        lift((
                             Iter::Range {
                                 lo,
                                 hi,
@@ -291,7 +296,7 @@ impl<'a> Lowerer<'a> {
                                 closed: false,
                             },
                             Ty::Int,
-                        )
+                        ))
                     }
                     Ty::Error => error(self),
                     _ => {
@@ -320,7 +325,7 @@ impl<'a> Lowerer<'a> {
                         if *inclusive {
                             hi_ord = self.int_add(hi_ord, 1);
                         }
-                        (
+                        lift((
                             Iter::Range {
                                 lo: lo_ord,
                                 hi: hi_ord,
@@ -329,12 +334,12 @@ impl<'a> Lowerer<'a> {
                                 closed: false,
                             },
                             if cuts { Ty::Bound(d) } else { Ty::Pos(d) },
-                        )
+                        ))
                     }
                     // `for k in ..3:` counts 0, 1, 2.
                     Ty::Int => {
                         let lo = self.int_lit(0, span);
-                        (
+                        lift((
                             Iter::Range {
                                 lo,
                                 hi,
@@ -343,7 +348,7 @@ impl<'a> Lowerer<'a> {
                                 closed: *inclusive,
                             },
                             Ty::Int,
-                        )
+                        ))
                     }
                     Ty::Error => error(self),
                     _ => {
@@ -363,7 +368,7 @@ impl<'a> Lowerer<'a> {
             {
                 let lo = self.int_lit(0, span);
                 let hi = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
-                (
+                lift((
                     Iter::Range {
                         lo,
                         hi,
@@ -372,7 +377,7 @@ impl<'a> Lowerer<'a> {
                         closed: false,
                     },
                     Ty::Pos(id),
-                )
+                ))
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
@@ -381,7 +386,7 @@ impl<'a> Lowerer<'a> {
                 let lo = self.int_lit(0, span);
                 let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                 let hi = self.int_add(len, 1);
-                (
+                lift((
                     Iter::Range {
                         lo,
                         hi,
@@ -390,7 +395,7 @@ impl<'a> Lowerer<'a> {
                         closed: false,
                     },
                     Ty::Bound(id),
-                )
+                ))
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
@@ -399,7 +404,7 @@ impl<'a> Lowerer<'a> {
             {
                 let lo = self.int_lit(0, span);
                 let hi = self.int_lit(self.enums[eid].variants.len() as i64, span);
-                (
+                lift((
                     Iter::Range {
                         lo,
                         hi,
@@ -408,7 +413,7 @@ impl<'a> Lowerer<'a> {
                         closed: false,
                     },
                     Ty::Enum(eid),
-                )
+                ))
             }
             ast::ExprKind::Name(_) | ast::ExprKind::Generic { .. }
                 if let Some(sid) = self.index_struct_of(e)
@@ -424,13 +429,13 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::By { walk, step } => {
                 let (iter, ty) = self.iter(walk);
                 let step = self.expr_as(step, &Ty::Int);
-                let Iter::Range {
+                let Head::Iter(Iter::Range {
                     lo,
                     hi,
                     step: None,
                     rev,
                     closed,
-                } = iter
+                }) = iter
                 else {
                     self.report(span, cpl_diag::msgs::ir::STEPS_RANGE_NUMBERS_WRITTEN, &[]);
                     return (iter, ty);
@@ -442,7 +447,7 @@ impl<'a> Lowerer<'a> {
                         msgs::ir::TYPE_MISMATCH_BY_STEPS_A_RANGE,
                         &[&self.show(&ty)],
                     );
-                    return (
+                    return lift((
                         Iter::Range {
                             lo,
                             hi,
@@ -451,7 +456,7 @@ impl<'a> Lowerer<'a> {
                             closed,
                         },
                         ty,
-                    );
+                    ));
                 }
                 if !rev {
                     let iter = Iter::Range {
@@ -461,7 +466,7 @@ impl<'a> Lowerer<'a> {
                         rev,
                         closed,
                     };
-                    return (iter, ty);
+                    return lift((iter, ty));
                 }
                 let down = |lw: &mut Self, lo: Expr, hi: Expr, step: Expr| {
                     let bin =
@@ -488,7 +493,7 @@ impl<'a> Lowerer<'a> {
                     .into_iter()
                     .all(crate::lower::stmt::settled)
                 {
-                    return (down(self, lo, hi, step), ty);
+                    return lift((down(self, lo, hi, step), ty));
                 }
                 // Ends that do work are worked out once, ahead of the walk.
                 let list = self.collected(Ty::Int, span, |lw, out, push| {
@@ -502,7 +507,7 @@ impl<'a> Lowerer<'a> {
                     };
                     out.push(Stmt::For(lid, item, iter, body));
                 });
-                (Iter::Seq(list, false), ty)
+                lift((Iter::Seq(list, false), ty))
             }
             // `xs.rev()` walks the same way as `xs.rev`.
             ast::ExprKind::Call { callee, args }
@@ -514,47 +519,38 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Field { base, name } if name.text == "rev" => {
                 let (iter, ty) = self.iter(base);
                 let iter = match iter {
-                    Iter::Range {
-                        lo,
-                        hi,
-                        step,
-                        rev,
-                        closed,
-                    } => Iter::Range {
-                        lo,
-                        hi,
-                        step,
-                        rev: !rev,
-                        closed,
-                    },
-                    Iter::RangeVal(value, rev) => Iter::RangeVal(value, !rev),
-                    Iter::Seq(value, rev) => Iter::Seq(value, !rev),
-                    Iter::Walk {
-                        k,
-                        n,
-                        len,
-                        nth,
-                        recv,
-                        rev,
-                    } => Iter::Walk {
-                        k,
-                        n,
-                        len,
-                        nth,
-                        recv,
-                        rev: !rev,
-                    },
-                    Iter::TreeRange {
-                        container,
-                        lo,
-                        hi,
-                        rev,
-                    } => Iter::TreeRange {
-                        container,
-                        lo,
-                        hi,
-                        rev: !rev,
-                    },
+                    Head::Walk(walk) => Head::Walk(Walk {
+                        rev: !walk.rev,
+                        ..walk
+                    }),
+                    Head::Iter(iter) => Head::Iter(match iter {
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step,
+                            rev,
+                            closed,
+                        } => Iter::Range {
+                            lo,
+                            hi,
+                            step,
+                            rev: !rev,
+                            closed,
+                        },
+                        Iter::RangeVal(value, rev) => Iter::RangeVal(value, !rev),
+                        Iter::Seq(value, rev) => Iter::Seq(value, !rev),
+                        Iter::TreeRange {
+                            container,
+                            lo,
+                            hi,
+                            rev,
+                        } => Iter::TreeRange {
+                            container,
+                            lo,
+                            hi,
+                            rev: !rev,
+                        },
+                    }),
                 };
                 (iter, ty)
             }
@@ -574,7 +570,7 @@ impl<'a> Lowerer<'a> {
                 let lo = self.int_lit(0, span);
                 let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                 let hi = self.int_add(len, 1);
-                (
+                lift((
                     Iter::Range {
                         lo,
                         hi,
@@ -583,7 +579,7 @@ impl<'a> Lowerer<'a> {
                         closed: false,
                     },
                     Ty::Bound(id),
-                )
+                ))
             }
             _ => {
                 if let ast::ExprKind::Field { base, name } = &e.kind {
@@ -598,7 +594,7 @@ impl<'a> Lowerer<'a> {
                             if let Some(&dom_id) = self.structs[sid].owned_domains.get(&name.text) {
                                 let lo = self.int_lit(0, span);
                                 let hi = self.mk(ExprKind::DomainLen(dom_id), Ty::Int, span);
-                                return (
+                                return lift((
                                     Iter::Range {
                                         lo,
                                         hi,
@@ -607,7 +603,7 @@ impl<'a> Lowerer<'a> {
                                         closed: false,
                                     },
                                     Ty::Pos(dom_id),
-                                );
+                                ));
                             }
                         }
                     }
@@ -616,7 +612,7 @@ impl<'a> Lowerer<'a> {
                 if let ExprKind::DomainVal(dom_id) = value.kind {
                     let lo = self.int_lit(0, span);
                     let hi = self.mk(ExprKind::DomainLen(dom_id), Ty::Int, span);
-                    return (
+                    return lift((
                         Iter::Range {
                             lo,
                             hi,
@@ -625,10 +621,10 @@ impl<'a> Lowerer<'a> {
                             closed: false,
                         },
                         Ty::Pos(dom_id),
-                    );
+                    ));
                 }
                 if let Ty::Range(inner) = value.ty.clone() {
-                    return (Iter::RangeVal(value, false), *inner);
+                    return lift((Iter::RangeVal(value, false), *inner));
                 }
                 // A struct with a zero-arg `each(self)` (such as `Bitset<D>`), or the
                 // `iter(self)` of its `impl Seq`, walks what that call gives.
@@ -639,7 +635,7 @@ impl<'a> Lowerer<'a> {
                             Ty::list(elem.clone()),
                             span,
                         );
-                        return (Iter::Seq(call, false), elem);
+                        return lift((Iter::Seq(call, false), elem));
                     }
                     // A struct with `len` and `nth(self, j)` (an `Indexed` view such
                     // as `Stepped<S>`) walks `nth(j)` for `j` in `0..len`.
@@ -678,14 +674,14 @@ impl<'a> Lowerer<'a> {
                                 Ty::Int,
                                 span,
                             );
-                            let iter = Iter::Walk {
+                            let iter = Head::Walk(Walk {
                                 k: self.temp(Ty::Int),
                                 n: self.temp(Ty::Int),
                                 len,
                                 nth: nth_fn,
                                 recv: Some(at),
                                 rev: false,
-                            };
+                            });
                             return (iter, elem);
                         }
                     }
@@ -717,8 +713,13 @@ impl<'a> Lowerer<'a> {
                         return error(self);
                     }
                 };
-                (Iter::Seq(value, false), elem)
+                lift((Iter::Seq(value, false), elem))
             }
         }
     }
+}
+
+/// An `Iter` and the type of each value, as a [`Head`].
+fn lift((iter, ty): (Iter, Ty)) -> (Head, Ty) {
+    (Head::Iter(iter), ty)
 }

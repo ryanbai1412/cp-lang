@@ -46,14 +46,6 @@ for i in 0..64 * n:
     var e: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k) // timed: bag.AugSortedBag.new
     var f: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k) // timed: bag.AugSortedSet.new
     s += e.len + f.len
-for r in 0..64:
-    var e: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k)
-    for x in xs: e.add(x)
-    e.reserve(2 * n) // timed: bag.AugSortedBag.reserve
-    var f: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k)
-    for x in xs: f.add(x)
-    f.reserve(2 * n) // timed: bag.AugSortedSet.reserve
-    s += e.len + f.len
 for r in 0..16:
     for x in b.each(): // timed: bag.AugSortedBag.each
         s += x // timed: bag.AugSortedBag.each

@@ -78,7 +78,12 @@ impl<'a> Lowerer<'a> {
         };
         let sid = self.instantiate_struct(gid, gargs);
         let Some(fn_id) = self.own_method(sid, "new") else {
-            self.unsupported(span, "this 2-D shape has no `new` constructor");
+            let written = shape.split('\'').next().unwrap_or(shape);
+            self.report(
+                span,
+                msgs::check::NO_METHOD_ON,
+                &[&"struct", &written, &"new"],
+            );
             return self.err_expr(span);
         };
         let ret = self.ret_of(fn_id, span);

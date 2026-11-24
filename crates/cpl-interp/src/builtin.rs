@@ -15,6 +15,30 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         values: Vec<Value>,
     ) -> Res<Value> {
         let span = e.span;
+        let mut values = values;
+        // These read a view as the slice it shows.
+        if matches!(
+            op,
+            Builtin::Join
+                | Builtin::ListToStr
+                | Builtin::ListToArray
+                | Builtin::Contains
+                | Builtin::Sorted
+                | Builtin::Reach
+                | Builtin::KeySlice
+                | Builtin::ToList
+                | Builtin::ListConcat
+        ) {
+            for v in &mut values {
+                if let Value::MutView(mv) = v {
+                    let items = self.mut_view_to_vec(&Rc::clone(mv), span)?;
+                    let mut view =
+                        ListViewVal::whole(Rc::new(crate::value::Cells::from(items)), false);
+                    view.shift = mv.key0;
+                    *v = Value::ListView(crate::value::Shared::new(view));
+                }
+            }
+        }
         let mut values = values.into_iter();
         let first = values.next().unwrap_or_default();
         let optional = |value: Option<Value>| Value::Opt(OptVal::from_option(value));
@@ -145,10 +169,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         owned = view.to_vec();
                         &owned
                     }
-                    Value::MutView(mv) => {
-                        owned = self.mut_view_to_vec(mv, span)?;
-                        &owned
-                    }
                     Value::Array(array) => {
                         owned = array.to_values();
                         &owned
@@ -247,41 +267,25 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         .collect();
                     Value::Str(Rc::new(bytes))
                 }
-                Value::MutView(mv) => {
-                    let bytes: Vec<u8> = self
-                        .mut_view_to_vec(&mv, span)?
-                        .into_iter()
-                        .map(|v| match v {
-                            Value::Char(c) => c,
-                            _ => 0,
-                        })
-                        .collect();
-                    Value::Str(Rc::new(bytes))
-                }
                 other => other,
             },
             Builtin::ArrayToList => match first {
-                Value::Array(arr) => Value::List(Rc::new(arr.data.clone())),
+                Value::Array(arr) => Value::List(Rc::clone(&arr.data)),
                 other => other,
             },
             Builtin::ListToArray => match first {
-                Value::List(items) => Value::Array(Rc::new(Array::from_values(
-                    vec![items.len() as i64],
-                    items.to_values(),
-                ))),
+                Value::List(items) => Value::Array(Rc::new(Array {
+                    dims: vec![items.len() as i64],
+                    data: items,
+                })),
                 Value::ListView(view) => {
                     let items = view.to_vec();
-                    Value::Array(Rc::new(Array::from_values(vec![items.len() as i64], items)))
-                }
-                Value::MutView(mv) => {
-                    let items = self.mut_view_to_vec(&mv, span)?;
                     Value::Array(Rc::new(Array::from_values(vec![items.len() as i64], items)))
                 }
                 other => other,
             },
             Builtin::Len => Value::Int(match &first {
-                Value::Array(array) => array.len() as i64,
-                Value::List(items) => items.len() as i64,
+                _ if let Some(cells) = first.cells() => cells.len() as i64,
                 Value::ListView(view) => view.len as i64,
                 Value::MutView(mv) => mv.len as i64,
                 Value::Str(bytes) => bytes.len() as i64,
@@ -345,10 +349,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     .map(|a| value::strip_cached(&needle, &a.ty, self.program))
                     .unwrap_or_else(|| needle.clone());
                 Value::Bool(match &first {
-                    Value::List(items) => items.contains(&needle),
+                    _ if let Some(cells) = first.cells() => cells.contains(&needle),
                     Value::ListView(view) => view.contains(&needle),
-                    Value::MutView(mv) => self.mut_view_to_vec(mv, span)?.contains(&needle),
-                    Value::Array(array) => array.contains(&needle),
                     Value::Set(items) => items
                         .contains(&key_needle, &mut |t, a, b| self.less_ty_val(t, a, b, span))?,
                     Value::Map(entries) => entries.contains_key(&key_needle, &mut |t, a, b| {
@@ -454,11 +456,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Ty::List(elem) => (**elem).clone(),
                     _ => Ty::Int,
                 };
-                let packed = match &first {
-                    Value::List(items) => crate::sort::sorted_packed(items, &elem_ty, false),
-                    Value::Array(arr) => crate::sort::sorted_packed(&arr.data, &elem_ty, false),
-                    _ => None,
-                };
+                let packed = (first.cells())
+                    .and_then(|cells| crate::sort::sorted_packed(cells, &elem_ty, false));
                 if let Some(sorted) = packed {
                     return Ok(Value::List(Rc::new(sorted)));
                 }
@@ -471,15 +470,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                     Value::ListView(view) => {
                         let sorted = self.merge_sort_ty(view.to_vec(), &elem_ty, false, span)?;
-                        Value::List(Rc::new(crate::value::Cells::from(sorted)))
-                    }
-                    Value::MutView(mv) => {
-                        let sorted = self.merge_sort_ty(
-                            self.mut_view_to_vec(&mv, span)?,
-                            &elem_ty,
-                            false,
-                            span,
-                        )?;
                         Value::List(Rc::new(crate::value::Cells::from(sorted)))
                     }
                     Value::Array(arr) => {
@@ -502,10 +492,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let pred = values.next().unwrap_or_default();
                 let cyclic = values.next().unwrap_or_default().bool();
                 let elems: Vec<Value> = match first {
-                    Value::List(items) => items.to_values(),
+                    _ if let Some(cells) = first.cells() => cells.to_values(),
                     Value::ListView(view) => view.to_vec(),
-                    Value::MutView(mv) => self.mut_view_to_vec(&mv, span)?,
-                    Value::Array(arr) => arr.to_values(),
                     Value::Str(bytes) => bytes.iter().copied().map(Value::Char).collect(),
                     Value::StrView(view) => view.to_vec().into_iter().map(Value::Char).collect(),
                     _ => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
@@ -584,7 +572,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::Str(bytes) => Value::StrView(Rc::new(StrViewVal::whole(bytes, true))),
                 Value::StrView(view) => Value::StrView(Rc::new(view.reversed())),
                 Value::Array(arr) => Value::ListView(crate::value::Shared::new(
-                    ListViewVal::whole(Rc::new(crate::value::Cells::from(arr.to_values())), true),
+                    ListViewVal::whole(Rc::clone(&arr.data), true),
                 )),
                 other => other,
             },
@@ -692,7 +680,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let mut view = match first {
                     Value::List(items) => ListViewVal::whole(items, false),
                     Value::Array(a) if a.dims.len() == 1 => {
-                        ListViewVal::whole(Rc::new(crate::value::Cells::from(a.to_values())), false)
+                        ListViewVal::whole(Rc::clone(&a.data), false)
                     }
                     Value::ListView(v) => (*v).clone(),
                     _ => return trap(span, cpl_diag::msgs::interp::REKEY_NEEDS_LIST.at(&[])),
@@ -713,19 +701,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(items) => {
                         Value::ListView(crate::value::Shared::new(ListViewVal::whole(items, false)))
                     }
-                    Value::Array(a) if a.dims.len() == 1 => {
-                        Value::ListView(crate::value::Shared::new(ListViewVal::whole(
-                            Rc::new(crate::value::Cells::from(a.to_values())),
-                            false,
-                        )))
-                    }
-                    Value::MutView(mv) => {
-                        let items = self.mut_view_to_vec(&mv, span)?;
-                        let mut view =
-                            ListViewVal::whole(Rc::new(crate::value::Cells::from(items)), false);
-                        view.shift = mv.key0;
-                        Value::ListView(crate::value::Shared::new(view))
-                    }
+                    Value::Array(a) if a.dims.len() == 1 => Value::ListView(
+                        crate::value::Shared::new(ListViewVal::whole(Rc::clone(&a.data), false)),
+                    ),
                     other => other,
                 };
                 let (first_key, len) = match &first {
@@ -793,9 +771,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::ListView(view) => {
                     Value::List(Rc::new(crate::value::Cells::from(view.to_vec())))
                 }
-                Value::MutView(mv) => Value::List(Rc::new(crate::value::Cells::from(
-                    self.mut_view_to_vec(&mv, span)?,
-                ))),
                 other => other,
             },
             Builtin::StrConcat => {
@@ -821,19 +796,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Builtin::ListConcat => {
                 let rhs = values.next().unwrap_or_default();
                 let mut out = match first {
-                    Value::List(a) => a.to_values(),
+                    _ if let Some(cells) = first.cells() => cells.to_values(),
                     Value::ListView(v) => v.to_vec(),
-                    Value::MutView(mv) => self.mut_view_to_vec(&mv, span)?,
-                    Value::Array(arr) => arr.to_values(),
                     _ => Vec::new(),
                 };
                 match rhs {
-                    Value::List(b) => out.extend(b.iter()),
-                    Value::ListView(v) => {
-                        out.extend(v.iter());
-                    }
-                    Value::MutView(mv) => out.extend(self.mut_view_to_vec(&mv, span)?),
-                    Value::Array(arr) => out.extend(arr.to_values()),
+                    _ if let Some(cells) = rhs.cells() => out.extend(cells.iter()),
+                    Value::ListView(v) => out.extend(v.iter()),
                     _ => {}
                 }
                 Value::List(Rc::new(crate::value::Cells::from(out)))
@@ -862,22 +831,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let lo = first.int();
                 let last = values.next().unwrap_or_default().int();
                 Value::Int(last * (last + 1) / 2 + lo)
-            }
-            Builtin::PosOffset(d) => {
-                let (_, len) = self.domains[d];
-                let ord = first.int();
-                let delta = values.next().unwrap_or_default().int();
-                let target = ord.saturating_add(delta);
-                optional((target >= 0 && target < len).then_some(Value::Int(target)))
-            }
-            Builtin::PosCyc(d) => {
-                let (_, len) = self.domains[d];
-                if len <= 0 {
-                    return trap(span, cpl_diag::msgs::interp::CYC_ON_EMPTY_DOMAIN.at(&[]));
-                }
-                let ord = first.int();
-                let delta = values.next().unwrap_or_default().int();
-                Value::Int((ord + delta).rem_euclid(len))
             }
             Builtin::BoundStepL(d) => {
                 let (_, len) = self.domains[d];
@@ -960,11 +913,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(Rc::new(crate::value::Cells::from(out)))
                 }
                 Value::Range128(r) => {
-                    let (lo, hi) = *r;
+                    let (lo, hi, wide) = *r;
                     let mut out = Vec::with_capacity(hi.saturating_sub(lo).max(0) as usize);
                     let mut v = hi - 1;
                     while v >= lo {
-                        out.push(Value::I128(v.into()));
+                        out.push(wide.item(v));
                         if v == lo {
                             break;
                         }
@@ -985,8 +938,7 @@ pub(crate) fn cut_beside(seq: &Value, key: i64, after: bool, span: Span) -> Res<
         Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
         Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
         Value::MutView(v) => (v.key0, v.len as i64, false),
-        Value::Array(a) => (0, a.len() as i64, false),
-        Value::List(items) => (0, items.len() as i64, false),
+        _ if let Some(cells) = seq.cells() => (0, cells.len() as i64, false),
         Value::Str(bytes) => (0, bytes.len() as i64, false),
         _ => return trap(span, cpl_diag::msgs::interp::CUTS_NEED_SEQUENCE.at(&[])),
     };

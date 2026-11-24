@@ -394,29 +394,28 @@ fn real_mistakes_name_the_place_the_rule_and_a_fix() {
     let _ = fs::remove_dir_all(&scratch);
     fs::create_dir_all(&scratch).unwrap();
     let cpl = |args: &[&str]| {
-        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .args(args)
-            .current_dir(&scratch)
-            .env("NO_COLOR", "1")
-            .output()
-            .expect("cpl starts");
-        String::from_utf8_lossy(&out.stderr).to_string() + &String::from_utf8_lossy(&out.stdout)
+        let out = cpl_cli::run(args);
+        out.stderr + &String::from_utf8_lossy(&out.stdout)
     };
     let mistakes = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/mistakes");
-    let mut wrong = Vec::new();
-    for entry in fs::read_dir(mistakes).unwrap() {
-        let path = entry.unwrap().path();
+    let mut paths: Vec<PathBuf> = (fs::read_dir(mistakes).unwrap())
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    paths.sort();
+    // In process on every core: a `cpl` per mistake and step was most of the time.
+    let wrong: Vec<String> = parallel::parallel(&paths, |path| {
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
-        let src = fs::read_to_string(&path).unwrap();
+        let src = fs::read_to_string(path).unwrap();
         let here: u32 = src
             .lines()
             .next()
             .and_then(|l| l.strip_prefix("// here: "))
             .and_then(|n| n.trim().parse().ok())
             .unwrap_or_else(|| panic!("{name}: first line must be `// here: N`"));
-        let file = format!("{name}.cp");
-        fs::write(scratch.join(&file), &src).unwrap();
-        let shown = cpl(&["check", &file]);
+        let copy = scratch.join(format!("{name}.cp"));
+        fs::write(&copy, &src).unwrap();
+        let file = copy.to_str().unwrap();
+        let shown = cpl(&["check", file]);
         let at = shown
             .lines()
             .find_map(|l| l.trim_start().strip_prefix("--> "))
@@ -433,14 +432,15 @@ fn real_mistakes_name_the_place_the_rule_and_a_fix() {
             .lines()
             .nth(1)
             .is_some_and(|l| l.starts_with("// no fix"));
-        cpl(&["fix", &file]);
-        if !no_fix && !cpl(&["check", &file]).contains("no errors") {
+        cpl(&["fix", file]);
+        if !no_fix && !cpl(&["check", file]).contains("no errors") {
             misses.push("`cpl fix` leaves errors".to_string());
         }
-        if !misses.is_empty() {
-            wrong.push(format!("{name}: {}\n{shown}", misses.join(", ")));
-        }
-    }
+        (!misses.is_empty()).then(|| format!("{name}: {}\n{shown}", misses.join(", ")))
+    })
+    .into_iter()
+    .flatten()
+    .collect();
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
 
@@ -475,25 +475,21 @@ fn every_habit_row_gives_its_help_where_its_mistake_is() {
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("habit-rows");
     let _ = fs::remove_dir_all(&scratch);
     fs::create_dir_all(&scratch).unwrap();
-    let cpl = |args: &[&str]| {
-        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .args(args)
-            .current_dir(&scratch)
-            .env("NO_COLOR", "1")
-            .output()
-            .expect("cpl starts");
-        String::from_utf8_lossy(&out.stdout).to_string()
-    };
+    let cpl = |args: &[&str]| String::from_utf8_lossy(&cpl_cli::run(args).stdout).to_string();
+    let all: Vec<_> = cpl_diag::habits::all().collect();
     let mut keys = std::collections::BTreeSet::new();
-    let mut wrong = Vec::new();
-    for row in cpl_diag::habits::all() {
+    for row in &all {
         assert!(keys.insert(row.key), "two rows are keyed `{}`", row.key);
-        let file = format!("{}.cp", row.key);
-        let Ok(mistake) = fs::read_to_string(rows.join(&file)) else {
-            wrong.push(format!("{}: no tests/habits/{file}", row.key));
-            continue;
+    }
+    // In process on every core: a `cpl` per row and step was most of the time.
+    let mut wrong: Vec<String> = parallel::parallel(&all, |row| {
+        let name = format!("{}.cp", row.key);
+        let Ok(mistake) = fs::read_to_string(rows.join(&name)) else {
+            return Some(format!("{}: no tests/habits/{name}", row.key));
         };
-        fs::write(scratch.join(&file), &mistake).unwrap();
+        let copy = scratch.join(&name);
+        fs::write(&copy, &mistake).unwrap();
+        let file = copy.to_str().unwrap();
         let here = (mistake.lines().find_map(|l| l.strip_prefix("// here: ")))
             .and_then(|n| n.trim().parse().ok())
             .or_else(|| {
@@ -502,7 +498,7 @@ fn every_habit_row_gives_its_help_where_its_mistake_is() {
                     .position(|l| l.ends_with("// <- here"))
                     .map(|i| i as i64 + 1)
             });
-        let shown = cpl_json::parse(&cpl(&["check", "--json", &file])).expect("cpl check --json");
+        let shown = cpl_json::parse(&cpl(&["check", "--json", file])).expect("cpl check --json");
         let diags = shown.at(&["files"]).as_array().unwrap_or_default()[0].at(&["diagnostics"]);
         let gives = diags.as_array().unwrap_or_default().iter().any(|d| {
             let texts = std::iter::once(d.at(&["help"])).chain(
@@ -523,8 +519,8 @@ fn every_habit_row_gives_its_help_where_its_mistake_is() {
                 row.code.0
             ));
         }
-        cpl(&["fix", &file]);
-        let fixed = cpl_json::parse(&cpl(&["check", "--json", &file])).is_ok_and(|v| {
+        cpl(&["fix", file]);
+        let fixed = cpl_json::parse(&cpl(&["check", "--json", file])).is_ok_and(|v| {
             v.at(&["files"]).as_array().unwrap_or_default()[0]
                 .at(&["ok"])
                 .as_bool()
@@ -536,10 +532,11 @@ fn every_habit_row_gives_its_help_where_its_mistake_is() {
         if !row.no_fix.is_empty() && fixed {
             misses.push("`cpl fix` mends it, so drop `no_fix`".to_string());
         }
-        if !misses.is_empty() {
-            wrong.push(format!("{}: {}", row.key, misses.join(", ")));
-        }
-    }
+        (!misses.is_empty()).then(|| format!("{}: {}", row.key, misses.join(", ")))
+    })
+    .into_iter()
+    .flatten()
+    .collect();
     for entry in fs::read_dir(&rows).unwrap() {
         let name = entry.unwrap().file_name().to_string_lossy().to_string();
         if !keys.contains(name.trim_end_matches(".cp")) {

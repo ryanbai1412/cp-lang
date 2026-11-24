@@ -257,8 +257,12 @@ pub(crate) fn producer(seq: &Expr) -> Option<Producer<'_>> {
 
 /// [`producer`] for the block of a `do`.
 pub(crate) fn block_producer(do_block: &Block) -> Option<Producer<'_>> {
-    let [Stmt::Let(vec, Some(init)), Stmt::For(id, slot, iter, body), Stmt::Give(given)] =
-        do_block.stmts.as_slice()
+    stmts_producer(&do_block.stmts)
+}
+
+/// [`block_producer`] for a `do` block's statements.
+pub(crate) fn stmts_producer(stmts: &[Stmt]) -> Option<Producer<'_>> {
+    let [Stmt::Let(vec, Some(init)), Stmt::For(id, slot, iter, body), Stmt::Give(given)] = stmts
     else {
         return None;
     };
@@ -281,12 +285,6 @@ pub(crate) fn block_producer(do_block: &Block) -> Option<Producer<'_>> {
 
 pub(crate) fn iter_exprs<'p>(iter: &'p Iter, f: &mut dyn FnMut(&'p Expr)) {
     match iter {
-        Iter::Walk { len, recv, .. } => {
-            f(len);
-            if let Some(r) = recv {
-                f(r);
-            }
-        }
         Iter::Range { lo, hi, step, .. } => {
             f(lo);
             f(hi);

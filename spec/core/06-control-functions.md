@@ -180,8 +180,11 @@ library or by this spec:
   not `Hash`).
 - `@word(name)` on a std struct: `name(args)` is a call of its
   constructor (std's `@word(prefix)` on `Prefix`).
+- `@member(name)` on a std struct `S<B>`: `D.name` is a domain whose
+  positions are the values of `S<D>` (std's `@member(subsets)` on `Subset`,
+  so `V.subsets` is the domain of `V`'s subsets).
 - Documented where they act: `@bits` on a field and `@law` (chapter 5),
-  `@on_unimplemented`, `@was(..)` and `@stress(kind)` (chapter 12). Any
+  `@on_unimplemented`, `@was(..)`, `@aka(..)` and `@stress(kind)` (chapter 12). Any
   other `@name` is E0107, naming the nearest decorator, so no later pass
   meets one. (R06.4.11)
 - `@lint(name, from: "<code>", to: "<code>")` on a `pub fn` or a struct's
@@ -203,7 +206,9 @@ library or by this spec:
   parameters), which match any name consistently. A hole that stands as a
   whole statement of a block (`body` in `if c:\n    body`) matches the
   rest of that block's statements, and the fix moves them with it, at the
-  site's indentation. A finding names the lint (`warning[name]`),
+  site's indentation. An `if` `from` matches one branch of an `if` with
+  an `elif` or `else` too, an `elif` as its `if`; the fix keeps the other
+  branches. A finding names the lint (`warning[name]`),
   is in the `idiom` group, warns by default, and `with lint(name: allow)`
   turns it off; its fix is `to` with each hole replaced by what it matched,
   written over the matched code up to its last token.
@@ -227,16 +232,20 @@ library or by this spec:
   a member or an index, never whole (`print(m)`), and the file with the fix
   checks as before. `to` calls the fn by name, as
   a method or getter (`xs.f`), as its compound assignment (`x max= e`,
-  R01.6.4), or calls nothing and writes only operators the fn's
-  one-expression body writes (`self % d` on `divmod`, whose body is
-  `(self / d, self % d)`). On a fn that documents a compiler built-in,
+  R01.6.4), or calls nothing, writes an operator, comparison or `let`
+  condition the fn's one-expression body writes, and writes no other that
+  `from` does not (`self % d` on `divmod`, whose body is
+  `(self / d, self % d)`; `while let w = e, w > y` on `is_some_and`, whose
+  body is `if let`). On a fn that documents a compiler built-in,
   `builtin: "filled"` lets `to` call that built-in in its place
   (`[n, m].filled(c)` on a grid fn), since std cannot declare it. Or `from` calls the fn and `to` does not:
   the lint drops a needless call (`let x = s.last!` then `s.pop()` is
   `let x = s.pop()!`, declared on `last`), its fix titled "drop `f`". A hole
   that `from` evaluates once per item of a comprehension (anywhere in its
   brackets but its first `for`'s iterable) and `to` evaluates once matches
-  only code that calls nothing. A compound `to` runs its right side before the
+  only code that calls nothing. A hole `to` writes as a comprehension's
+  item (`[e for i in 0..n]`) takes the code bare unless it has its own
+  `for`, `if` or `=>`. A compound `to` runs its right side before the
   place's indices, so then every hole matches only code that calls
   nothing. A hole whose parameter is written
   as a scalar type (`Int`, `I128`, `U64`, `F64`, `Bool`, `Char`, `Str`)
@@ -260,6 +269,12 @@ library or by this spec:
   and a named argument's label (`from:`) is never a hole; where a comment
   falls inside the match it
   has no fix, since `to` would drop the comment.
+  A hole `to` uses in the initializer of a name it declares (`let p =
+  Prefix([e for i in 0..n])`) does not match code that reads that name.
+  `reads: "p[k] -> p.cut(k)"` makes the fix rewrite, too, every later
+  use of a name `from` declares, in the rest of its block: each must
+  match the read (`k` a hole), else the finding has no fix (a write
+  `p[0] = 5`, or `p.len`); `to` or the rewrite calls the fn.
   A finding inside a wider one is shown with it when `from` still
   matches the wider fix's text, which keeps the code it is about.
   It applies in every file that uses the module, and in the module outside
@@ -268,7 +283,8 @@ library or by this spec:
   (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:` (or has both `to:` and `advice:`), when `from`,
   `to` or an `also:` line is not one expression or
-  statement or a run of statements, when `to` drops a parameter `from` matches or uses one it does
+  statement or a run of statements, when `reads:` is not two expressions
+  around `->`, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name neither `from` nor `also:` uses, when `when:` is not
   holes `from` uses compared with integers, when neither `to` (not `advice:`) calls the
   fn (or its `builtin:`) or writes only its body's operators nor `from`

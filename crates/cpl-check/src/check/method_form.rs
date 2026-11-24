@@ -288,7 +288,7 @@ impl Checker<'_> {
         let ExprKind::Field { base, name } = &expr.kind else {
             return None;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
             return None;
         };
@@ -709,7 +709,7 @@ impl<'a> Checker<'a> {
         if self.quietly(|c| c.library_domain_walk(base)).is_some() {
             return None;
         }
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         if name.text == "split" && base_ty == Ty::Str && self.split_on_str(args) {
             return Some(Ty::Error);
         }
@@ -881,28 +881,37 @@ impl Checker<'_> {
         let Ty::Named { name: owner, .. } = base else {
             return false;
         };
+        self.member_traits(owner, name)
+            .is_none_or(|t| !t.is_empty())
+    }
+
+    /// The traits whose impl for `owner` or own body gives it `name`, or `None` when
+    /// `owner` declares `name` itself, in its body or an impl of no trait.
+    pub(super) fn member_traits(&mut self, owner: &str, name: &str) -> Option<Vec<String>> {
         if let Some(Def::Struct { methods, .. } | Def::Enum { methods, .. }) =
             self.type_def(owner).as_deref()
         {
             if methods.iter().any(|(m, _)| m == name) {
-                return true;
+                return None;
             }
         }
+        let mut traits = Vec::new();
         for (trait_name, def) in self.env.impls(owner) {
-            if matches!(&*def, Def::Impl { methods, .. } if methods.iter().any(|(m, _)| m == name))
-            {
-                return true;
-            }
-            let trait_def = (trait_name.as_deref())
-                .and_then(|t| t.split('<').next())
-                .and_then(|t| self.type_def(t));
-            if matches!(trait_def.as_deref(), Some(Def::Trait { methods, .. })
-                if methods.iter().any(|m| m.name == name))
-            {
-                return true;
+            let in_impl = matches!(&*def, Def::Impl { methods, .. } if methods.iter().any(|(m, _)| m == name));
+            let Some(t) = trait_name else {
+                if in_impl {
+                    return None;
+                }
+                continue;
+            };
+            let trait_def = self.type_def(t.split('<').next().unwrap_or(&t));
+            let in_trait = matches!(trait_def.as_deref(), Some(Def::Trait { methods, .. })
+                if methods.iter().any(|m| m.name == name));
+            if (in_impl || in_trait) && !traits.contains(&t) {
+                traits.push(t);
             }
         }
-        false
+        Some(traits)
     }
 
     /// Whether `base.name(args)` gives arguments its built-in member's row
@@ -954,7 +963,7 @@ impl Checker<'_> {
         let Some((row, _)) = self.catalog_row(base, &name.text) else {
             return false;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
             Pick::NoFit => self.pick_method(&base_ty, &name.text),
             pick => pick,

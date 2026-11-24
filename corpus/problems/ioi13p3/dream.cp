@@ -47,7 +47,7 @@ fn mul(x: Matrix, y: Matrix) -> Matrix:
 
 fn solve_block(blk: Block) -> Matrix:
     let rows = List(Row.filter(row => row.ord / B == blk.ord))
-    var out = identity
+    var out = identity.clone()
     for i in Col:
         for row in rows:
             for g in Gap: out[i, Col(g.ord + 1)] min= out[i, Col(g.ord)] + h[row, g]

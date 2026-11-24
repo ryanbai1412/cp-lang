@@ -92,7 +92,7 @@ impl<'a> Lowerer<'a> {
     /// Whether `x[k]` names a key: a view keeps its source's keys (R04b.1),
     /// and a range's keys are its own elements (R04.4.31).
     pub(super) fn keyed_index(ty: &Ty) -> bool {
-        Self::keyed_view(ty) || matches!(ty, Ty::Range(of) if **of != Ty::I128)
+        Self::keyed_view(ty) || matches!(ty, Ty::Range(of) if !matches!(**of, Ty::I128 | Ty::U64))
     }
 
     /// The domain `rest` that `prefix` holds: `D` of `let xs = compress(all)`, `t.Idx` of a rebase.
@@ -272,13 +272,13 @@ impl<'a> Lowerer<'a> {
         let dim = match &seq.ty {
             Ty::ListView(_, dim) | Ty::Keyed(_, dim) => *dim,
             Ty::StrView => Dim::Int,
-            _ => return self.lower_map_iter(Iter::Seq(seq, false), elem_ty, func_ast, span),
+            _ => return self.lower_map_iter(Iter::Seq(seq, false).into(), elem_ty, func_ast, span),
         };
         let seq = self.hold_view(seq, span);
         let lo = self.key_lo(&seq, span);
         let len = self.len_of(seq.clone(), span);
         let hi = self.int_sum(lo.clone(), len);
-        let mapped = self.lower_map_iter(Iter::Seq(seq, false), elem_ty, func_ast, span);
+        let mapped = self.lower_map_iter(Iter::Seq(seq, false).into(), elem_ty, func_ast, span);
         let Ty::List(out_elem) = mapped.ty.clone() else {
             return mapped;
         };
@@ -534,7 +534,7 @@ impl<'a> Lowerer<'a> {
             };
             let stmts = vec![push(lw, kept)];
             let body = vec![Stmt::If(keep, Block { stmts }, Block::default())];
-            out.push(Stmt::For(lid, item, iter, Block { stmts: body }));
+            lw.push_for(out, lid, item, iter, Block { stmts: body });
         }))
     }
 }

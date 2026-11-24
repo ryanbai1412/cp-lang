@@ -10,8 +10,8 @@ use crate::walk::{self, Bind, Visitor};
 use crate::Calls;
 use crate::{
     File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
-    HAND_ROLLED_ANSWER_SEARCH, HAND_ROLLED_PREFIX_SUM, INDEX_ONLY_LOOP, LOOP_REDUCTION,
-    NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
+    HAND_ROLLED_ANSWER_SEARCH, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP,
+    SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::msgs;
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -22,13 +22,11 @@ mod forms;
 mod search;
 mod stdlib_algo;
 mod stmts;
-mod string_algo;
 mod text;
 use forms::{AccLoop, Form};
 use search::*;
 use stdlib_algo::*;
 use stmts::*;
-use string_algo::*;
 use text::*;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -229,7 +227,6 @@ impl<'a> Taste<'a> {
             self.discarded(stmt);
             self.index_only(stmt);
             self.answer_search(stmts, i);
-            self.prefix_sum(stmts, i);
             self.copy_mutate_writeback(stmts, i);
             if let Some((next_base, next)) = stmts.get(i + 1) {
                 self.next_base = *next_base;
@@ -368,100 +365,6 @@ impl<'a> Taste<'a> {
             }
         }
         self.push(&HAND_ROLLED_ANSWER_SEARCH, diag);
-    }
-
-    /// Hand-rolled 1D/2D prefix-sum loop (L0521). When the preceding statement
-    /// declares `var p` as zero-initialized and every later reference in the
-    /// same block is a read `p[e]`, `cpl fix` folds the declaration, loop, and
-    /// reads into `let p = Prefix(...)` and `p.prefix(e)` (`p.cut(e)` on `Int` keys).
-    fn prefix_sum(&mut self, stmts: &[(u32, &Stmt)], i: usize) {
-        let (base, stmt) = stmts[i];
-        let Some(found) = prefix_sum_loop(stmt) else {
-            self.running_total(base, stmt);
-            return;
-        };
-        let at = |b: u32, span: Span| &self.src[(b + span.start) as usize..(b + span.end) as usize];
-        let rhs_text = at(base, found.rhs.span);
-        if mentions(rhs_text, found.arr) || has_try(stmt) {
-            return;
-        }
-        let mut diag = msgs::lint::PREFIX_SUM.warning(stmt.span, &[&found.arr])
-        .with_help(format!(
-            "`let {} = Prefix(..)` builds the prefix table in O(n) with O(1) `.fold(range)` and `.prefix(cut)`",
-            found.arr
-        ));
-        if let Some((decl_idx, decl_base, decl_stmt)) =
-            prefix_zero_decl(stmts, i, found.arr, &found.kind, self.facts)
-        {
-            if let Some(reads) = collect_pure_index_reads(&stmts[i + 1..], found.arr) {
-                let expr = match &found.kind {
-                    PrefixLoopKind::Domain1d { var, domain } => {
-                        if let Some((src_arr, ix)) = plain_index(found.rhs) {
-                            if shapes::name(ix) == Some(var) && src_arr != found.arr {
-                                format!("Prefix({src_arr})")
-                            } else {
-                                format!("Prefix([{domain}] {var} => {rhs_text})")
-                            }
-                        } else {
-                            format!("Prefix([{domain}] {var} => {rhs_text})")
-                        }
-                    }
-                    PrefixLoopKind::RangeZero { var, hi } => {
-                        let hi_text = at(base, hi.span);
-                        if let Some((src_arr, ix)) = plain_index(found.rhs) {
-                            if shapes::name(ix) == Some(var)
-                                && src_arr != found.arr
-                                && hi_text == format!("{src_arr}.len")
-                            {
-                                format!("Prefix({src_arr})")
-                            } else {
-                                format!("Prefix([{rhs_text} for {var} in 0..{hi_text}])")
-                            }
-                        } else {
-                            format!("Prefix([{rhs_text} for {var} in 0..{hi_text}])")
-                        }
-                    }
-                    PrefixLoopKind::RangeOne | PrefixLoopKind::Grid2d => String::new(),
-                };
-                if !expr.is_empty() && decl_idx + 1 == i {
-                    let end = trim_end(self.src, base, stmt.span) + base - decl_base;
-                    let mut edits = vec![(
-                        Span {
-                            start: decl_stmt.span.start,
-                            end,
-                        },
-                        format!("let {} = {expr}", found.arr),
-                    )];
-                    let read = match &found.kind {
-                        PrefixLoopKind::RangeZero { .. } => std_fn::CUT,
-                        _ => std_fn::PREFIX,
-                    };
-                    for (rb, idx_expr_span, ix_span) in reads {
-                        let ix_text = at(rb, ix_span);
-                        edits.push((
-                            Span {
-                                start: idx_expr_span.start + rb - decl_base,
-                                end: idx_expr_span.end + rb - decl_base,
-                            },
-                            format!("{}.{read}({ix_text})", found.arr),
-                        ));
-                    }
-                    diag.span = Span {
-                        start: stmt.span.start + base - decl_base,
-                        end: stmt.span.end + base - decl_base,
-                    };
-                    diag.fixes.push(Fix {
-                        title: "use `Prefix(...)`".to_string(),
-                        edits,
-                    });
-                    self.base = decl_base;
-                    self.push(&HAND_ROLLED_PREFIX_SUM, diag);
-                    self.base = base;
-                    return;
-                }
-            }
-        }
-        self.push(&HAND_ROLLED_PREFIX_SUM, diag);
     }
 
     /// Copy-mutate-writeback on a slice (L0522):

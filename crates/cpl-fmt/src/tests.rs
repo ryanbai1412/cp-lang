@@ -291,6 +291,37 @@ fn breaks_a_comprehension_and_an_if_else_at_their_clauses() {
 }
 
 #[test]
+fn a_block_if_in_nested_brackets_keeps_its_else_at_the_header() {
+    // core-01/a-leave-inside-an-operand-is-rejected.cp: the `else:` took the
+    // bracket count's depth, the body's, so it no longer closed the block.
+    let src =
+        "for i in 0..3:\n    print(i + (if i == 1:\n        continue\n    else:\n        i))\n";
+    let want = "for i in 0..3:\n    print(i + (if i == 1:\n        continue\n    else:\n        i\n    ))\n";
+    assert_eq!(fmt(src), want);
+    let src = "let x = 1 + (if true:\n    5\nelse:\n    6)\n";
+    assert_eq!(fmt(src), "let x = 1 + (if true:\n    5\nelse:\n    6\n)\n");
+    let src = "f(\n    a,\n    (if x:\n        1\n    else:\n        2),\n)\n";
+    let out = fmt(src);
+    assert!(out.contains("\nelse:\n"), "{out}");
+    // core-01/an-arm-of-a-whole-value-leaves.cp: a block inside braces
+    // indents from its own header line, not the brace's.
+    // corpus/problems/cco20p5/dream.cp: a group closed on its own line
+    // before a block lambda is not the block's header.
+    let src = "let s = f(q, mark: () => (\n    len: n,\n    s:,\n), undo: m =>\n    while n > m.len:\n        n -= 1\n    s = m.s,\n)\n";
+    let out = fmt(src);
+    assert_eq!(fmt(&out), out);
+    assert!(
+        out.contains("\n    while n > m.len:\n        n -= 1\n    s = m.s,\n"),
+        "{out}"
+    );
+    let src = "fn blk(n: Int) -> Int:\n    let v = {\n        if n > 5:\n            return 99\n        n * 2\n    }\n    v\n";
+    // ...and its closing brace stays on its own line, not `n * 2 }`.
+    assert_eq!(fmt(src), src);
+    let src = "let w = match i % 3:\n    0 => 0\n    _ => {\n        if i == 5:\n            break\n        i * 100\n    }\n";
+    assert_eq!(fmt(src), src);
+}
+
+#[test]
 fn breaks_a_chain_at_its_operators_before_its_last_operand() {
     let src = "fn below(a: Int, b: Int, c: Int, d: Int) -> Int:
     sum(f(i) for i in 0..a) + sum(f(i + a) for i in 0..b) + sum(f(i + b) for i in 0..c) + sum(f(a + b + c + i) for i in 0..=d)

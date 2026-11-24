@@ -9,6 +9,8 @@ for i in 0..64 * n:
     a.swap(k, (k + 1) % n) // timed: builtin.Array.swap
     s += a.cut_after(k) // timed: builtin.Array.cut_after
     s += a.cut_before(k) // timed: builtin.Array.cut_before
+    s += a.first ?? 0 // timed: builtin.Array.first
+    s += a.last ?? 0 // timed: builtin.Array.last
 for i in 0..4 * n:
     let k = i * 13 % n
     s += b.first_ge(k) ?? 0 // timed: builtin.Array.first_ge

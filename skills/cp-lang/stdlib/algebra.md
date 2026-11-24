@@ -20,7 +20,7 @@ An associative operation with an identity: the pair `(id, op)`, written `Monoid<
 
 - `fn of<M>(m: M) -> Monoid<T>` — \(O(1)\); The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its identity: zero for `+`, `^`, `\|` and `gcd`, one for `*`, all bits for `&`, and for `min` / `max` the far end of `T` (`None` on a `?T`).; traps: never (an operator without a known identity is a compile-time error)
 - `fn monoid(self) -> Monoid<T>` — \(O(1)\); A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a bare operator.
-- `fn reversed(self, x: T) -> T` — one call of `rev`; `x`, a fold of some elements, as the fold of the same elements read backwards: by `rev`, which `Monoid.of` gives every stock op (all commutative), `.commutative()` and a `Reversible` value's own `monoid()`.; traps: when the monoid was made without `rev:`
+- `fn reversed(self, x: T) -> T` — \(O(1)\) plus one call of `rev`; `x`, a fold of some elements, as the fold of the same elements read backwards: by `rev`, which `Monoid.of` gives every stock op (all commutative), `.commutative()` and a `Reversible` value's own `monoid()`.; traps: when the monoid was made without `rev:`
 - `fn commutative(self) -> Comm<T>` — \(O(1)\); `self` with the law `op(a, b) == op(b, a)` stated, so folds may reorder and lazy tags skip push-down; `cpl stress` samples the law like any other.
 
 ## `struct Comm<T>(pub m: Monoid<T>)`

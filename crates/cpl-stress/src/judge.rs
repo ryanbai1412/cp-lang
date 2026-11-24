@@ -757,16 +757,16 @@ impl std::io::Write for Says<'_> {
         locked(self.clock).heard();
         // A solution that has left hears nothing; the interactor finds out
         // when it next reads.
-        if let Some(pipe) = self.pipe.as_mut() {
-            if pipe.write_all(bytes).and_then(|()| pipe.flush()).is_err() {
-                self.pipe = None;
-            }
-        }
         self.line.extend_from_slice(bytes);
         if let Some(end) = self.line.iter().rposition(|&b| b == b'\n') {
             let text = String::from_utf8_lossy(&self.line[..=end]).into_owned();
             locked(self.transcript).say(Side::Interactor, &text);
             self.line.drain(..=end);
+        }
+        if let Some(pipe) = self.pipe.as_mut() {
+            if pipe.write_all(bytes).and_then(|()| pipe.flush()).is_err() {
+                self.pipe = None;
+            }
         }
         Ok(bytes.len())
     }
@@ -821,7 +821,8 @@ impl Clock {
 }
 
 /// Copies `from` to `to` as it arrives, noting each chunk on the clock
-/// first and each line in the transcript, and returns all of it. Once
+/// first and each line in the transcript before `to` hears it (the other
+/// side's answer is then never put first), and returns all of it. Once
 /// `to` is gone, `from` is still read to its end, so the side writing it
 /// never blocks.
 fn relay(
@@ -837,6 +838,13 @@ fn relay(
     let mut line = Vec::new();
     while let Ok(read @ 1..) = from.read(&mut chunk) {
         note();
+        all.extend_from_slice(&chunk[..read]);
+        line.extend_from_slice(&chunk[..read]);
+        if let Some(end) = line.iter().rposition(|&b| b == b'\n') {
+            let text = String::from_utf8_lossy(&line[..=end]).replace("\r\n", "\n");
+            locked(transcript).say(side, &text);
+            line.drain(..=end);
+        }
         if let Some(pipe) = to.as_mut() {
             if pipe
                 .write_all(&chunk[..read])
@@ -845,13 +853,6 @@ fn relay(
             {
                 to = None;
             }
-        }
-        all.extend_from_slice(&chunk[..read]);
-        line.extend_from_slice(&chunk[..read]);
-        if let Some(end) = line.iter().rposition(|&b| b == b'\n') {
-            let text = String::from_utf8_lossy(&line[..=end]).replace("\r\n", "\n");
-            locked(transcript).say(side, &text);
-            line.drain(..=end);
         }
     }
     drop(to);
@@ -1024,6 +1025,40 @@ pub(crate) fn interaction(talked: Talked, expected: String) -> Wrong {
         verdict,
         ruling: Some(ruling),
     })
+}
+
+#[cfg(test)]
+mod relay_tests {
+    use super::{relay, Side, Transcript};
+    use std::sync::Mutex;
+
+    /// Hears what `relay` forwards and asks, as the other side would
+    /// answer it, whether the transcript already holds it.
+    struct Answers<'a>(&'a Mutex<Transcript>, Vec<usize>);
+
+    impl std::io::Write for Answers<'_> {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.1.push(self.0.lock().unwrap().lines.len());
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn a_relayed_line_is_in_the_transcript_before_the_other_side_hears_it() {
+        let transcript = Mutex::new(Transcript::default());
+        let mut heard = Answers(&transcript, Vec::new());
+        relay(
+            &b"? 5\n"[..],
+            &mut heard,
+            Side::Solution,
+            &transcript,
+            || {},
+        );
+        assert_eq!(heard.1, [1]);
+    }
 }
 
 #[cfg(test)]

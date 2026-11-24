@@ -53,6 +53,36 @@ impl<'a> Lowerer<'a> {
         ))
     }
 
+    /// A range of `I128` or `U64` values keeps its ends as `I128`s, so the end
+    /// of `..=` is one past any last value, `U64`'s greatest included.
+    pub(in crate::lower) fn wide_range(
+        &mut self,
+        l: Expr,
+        r: Expr,
+        inclusive: bool,
+        elem: Ty,
+        span: Span,
+    ) -> Expr {
+        let [l, r] = [l, r].map(|e| match e.ty {
+            Ty::U64 => self.cast(Cast::U64ToI128, e, Ty::I128),
+            _ => self.coerce(e, &Ty::I128, span),
+        });
+        let hi = if inclusive {
+            let one = self.coerce(self.int_lit(1, span), &Ty::I128, span);
+            self.mk_binary(BinOp::Add, r, one, Ty::I128, span)
+        } else {
+            r
+        };
+        self.mk(
+            ExprKind::Range {
+                lo: Box::new(l),
+                hi: Box::new(hi),
+            },
+            Ty::range(elem),
+            span,
+        )
+    }
+
     pub(in crate::lower) fn range_val(
         &mut self,
         lo: Option<&ast::Expr>,
@@ -79,23 +109,12 @@ impl<'a> Lowerer<'a> {
                         span,
                     )
                 }
-                (Ty::I128, Ty::I128) | (Ty::I128, Ty::Int) | (Ty::Int, Ty::I128) => {
-                    let l = self.coerce(l, &Ty::I128, span);
-                    let r = self.coerce(r, &Ty::I128, span);
-                    let hi = if inclusive {
-                        let one = self.coerce(self.int_lit(1, span), &Ty::I128, span);
-                        self.mk_binary(BinOp::Add, r, one, Ty::I128, span)
-                    } else {
-                        r
-                    };
-                    self.mk(
-                        ExprKind::Range {
-                            lo: Box::new(l),
-                            hi: Box::new(hi),
-                        },
-                        Ty::range(Ty::I128),
-                        span,
-                    )
+                (Ty::I128, Ty::I128)
+                | (Ty::I128, Ty::Int)
+                | (Ty::Int, Ty::I128)
+                | (Ty::U64, Ty::U64) => {
+                    let elem = if l.ty == Ty::U64 { Ty::U64 } else { Ty::I128 };
+                    self.wide_range(l, r, inclusive, elem, span)
                 }
                 (Ty::Pos(d), Ty::Pos(d2)) if d == d2 => {
                     let d = *d;
@@ -159,11 +178,6 @@ impl<'a> Lowerer<'a> {
                     self.err_expr(span)
                 }
                 (Ty::Error, _) | (_, Ty::Error) => self.err_expr(span),
-                (Ty::U64, _) | (_, Ty::U64) => {
-                    self.unsupported(span, "a range of `U64` values");
-                    self.help("loop over an `Int` or `I128` range and narrow inside: `U64(x)`");
-                    self.err_expr(span)
-                }
                 _ => {
                     self.bad_range_ends((lo, hi), (&l.ty, &r.ty), inclusive, span);
                     self.err_expr(span)

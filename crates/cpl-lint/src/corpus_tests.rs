@@ -223,8 +223,7 @@ pub(crate) fn teach_apart(src: &str, config: &Config, outer: &Diagnostic, inner:
     count(&fixed) >= count(src)
 }
 
-#[test]
-fn nested_findings_shown_together_teach_two_things() {
+fn nested_findings_teach_apart(shard: usize, of: usize) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut found = std::collections::BTreeSet::new();
     let sets = [
@@ -232,21 +231,22 @@ fn nested_findings_shown_together_teach_two_things() {
         (crate::STD_DIR, ""),
         ("corpus/problems", "port.cp"),
     ];
-    for (dir, leaf) in sets {
-        for file in files(&root, dir, leaf) {
-            let src = std::fs::read_to_string(&file).unwrap();
-            let (config, _) = Config::discover(&file);
-            let diags = lint(&src, &config);
-            for outer in &diags {
-                for inner in &diags {
-                    if outer.code != inner.code
-                        && outer.span != inner.span
-                        && outer.span.contains(inner.span)
-                        && !teach_apart(&src, &config, outer, inner.code.0)
-                    {
-                        let rel = file.strip_prefix(&root).unwrap().display().to_string();
-                        found.insert((rel, outer.code.0, inner.code.0));
-                    }
+    let all: Vec<PathBuf> = (sets.iter())
+        .flat_map(|(dir, leaf)| files(&root, dir, leaf))
+        .collect();
+    for file in all.into_iter().skip(shard).step_by(of) {
+        let src = std::fs::read_to_string(&file).unwrap();
+        let (config, _) = Config::discover(&file);
+        let diags = lint(&src, &config);
+        for outer in &diags {
+            for inner in &diags {
+                if outer.code != inner.code
+                    && outer.span != inner.span
+                    && outer.span.contains(inner.span)
+                    && !teach_apart(&src, &config, outer, inner.code.0)
+                {
+                    let rel = file.strip_prefix(&root).unwrap().display().to_string();
+                    found.insert((rel, outer.code.0, inner.code.0));
                 }
             }
         }
@@ -255,6 +255,18 @@ fn nested_findings_shown_together_teach_two_things() {
         found.is_empty(),
         "a lint's fix rewrites away a finding nested in it, yet both are shown: {found:?}"
     );
+}
+
+crate::shards! {
+    nested_findings_shown_together_teach_two_things, nested_findings_teach_apart,
+    shard_0 = 0,
+    shard_1 = 1,
+    shard_2 = 2,
+    shard_3 = 3,
+    shard_4 = 4,
+    shard_5 = 5,
+    shard_6 = 6,
+    shard_7 = 7,
 }
 
 /// The lints named by a `// expect:` comment in a newcomer file; `missing x`

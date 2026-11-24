@@ -54,21 +54,20 @@ pub(crate) fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>))
         false => access.unnamed(),
     };
     let (mut uses, mut elsewhere) = (0usize, 0usize);
-    walk::deep_exprs(&block, &mut |e| match &e.kind {
-        ExprKind::Local(s) if (false, *s) == *root => uses += 1,
-        ExprKind::Global(g) if (true, *g) == *root => uses += 1,
-        ExprKind::Field(base, f) if fields.first().is_some_and(|f0| f0 != f) => {
+    crate::uses::places::each_variable(&block, &mut |v| uses += usize::from(v == *root));
+    crate::uses::places::each_field(&block, &mut |base, f| {
+        if fields.first().is_some_and(|f0| *f0 != f) {
             elsewhere +=
                 usize::from(path_of(base).is_some_and(|(r, fs)| r == *root && fs.is_empty()));
         }
-        ExprKind::Payload(base, ..) => {
-            elsewhere += usize::from(
-                path_of(e).is_some_and(|(r, fs)| {
-                    r == *root && fs.len() == 1 && fields.first().is_some_and(|f0| *f0 != fs[0])
-                }) && path_of(base).is_some_and(|(_, fs)| fs.is_empty()),
-            );
-        }
-        _ => {}
+    });
+    // A payload of a sibling field reads the root, not the field.
+    crate::uses::places::each_payload(&block, &mut |e, base| {
+        elsewhere += usize::from(
+            path_of(e).is_some_and(|(r, fs)| {
+                r == *root && fs.len() == 1 && fields.first().is_some_and(|f0| *f0 != fs[0])
+            }) && path_of(base).is_some_and(|(_, fs)| fs.is_empty()),
+        );
     });
     let stored = match stmt {
         Stmt::Let(..) | Stmt::Expr(_) => false,

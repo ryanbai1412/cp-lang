@@ -199,7 +199,7 @@ impl<'a> Checker<'a> {
         if arg.mutable {
             return true;
         }
-        let ty = self.quietly(|c| c.infer(&arg.value));
+        let ty = self.infer_quietly(&arg.value);
         matches!(
             ty,
             Ty::Array { .. } | Ty::Named { .. } | Ty::Str | Ty::Tuple(_) | Ty::Record(_)
@@ -250,7 +250,7 @@ impl<'a> Checker<'a> {
             }
             match &callee.kind {
                 ExprKind::Field { base, name } => {
-                    let base_ty = self.quietly(|c| c.infer(base));
+                    let base_ty = self.infer_quietly(base);
                     if self.own_mutator(&base_ty, &name.text)
                         || self.row_mutator(&base_ty, &name.text, args)
                     {

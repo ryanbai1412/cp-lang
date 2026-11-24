@@ -45,7 +45,6 @@ pub(crate) struct Chunk<'p> {
     /// The `CallTraced` ops, by pc, that run a fed loop.
     pub traced_feeds: Vec<(u32, TracedFeed<'p>)>,
     pub consts_v: Vec<Value>,
-    pub prints: Vec<PrintSpec<'p>>,
     pub formats: Vec<FormatSpec<'p>>,
     pub applies: Vec<ApplySpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,
@@ -69,9 +68,18 @@ pub(crate) struct Chunk<'p> {
     pub ret_kind: Option<ScalarKind>,
     pub guarded_domains: Vec<cpl_ir::DomainId>,
     pub needs_stack: bool,
+    /// Runs no code but its own (no call, closure, feed, fallback, print or
+    /// format) and needs no stack frame, so nothing it runs can read a
+    /// variable while it is lent to the chunk.
+    pub leaf: bool,
     pub has_by_ref_closure: bool,
+    /// A param holds a fn value, which may reach a place the caller holds lent.
+    pub takes_fn: bool,
     /// The slots `has_by_ref_closure` syncs around a call; `None` is all.
     pub ref_slots: Option<Vec<u16>>,
+    /// The locals a `mut` view made here writes into, kept on the stack too
+    /// once synced so that reads through the view find them.
+    pub view_roots: Vec<u16>,
     pub back_edges: Vec<BackEdge>,
     pub call_sites: Vec<CallSite<'p>>,
     /// The call ops, by pc in order, whose result a call site's `before`
@@ -181,17 +189,15 @@ fn forward_of(def: &cpl_ir::ClosureDef, fns: &[Option<Chunk<'_>>]) -> Option<u16
         && args.iter().zip(&def.params).all(|(a, &p)| {
             matches!(a, cpl_ir::Arg::Value(x) if matches!(x.kind, ExprKind::Local(s) if s == p))
         });
-    let callee = fns.get(*fid)?.as_ref()?;
-    let plain = (callee.slot_map.iter().take(callee.param_count))
-        .all(|l| !matches!(l, SlotLoc::SmallTuple { .. }));
-    (in_order && plain).then_some(*fid as u16)
+    fns.get(*fid)?.as_ref()?;
+    in_order.then_some(*fid as u16)
 }
 
 pub(crate) struct CompiledProgram<'p> {
     pub main: Chunk<'p>,
     /// What is above `@!multitest`. It ends in `RetI` of 1, so a run
     /// that falls off its end is told apart from a top-level `return`.
-    pub setup: Option<Chunk<'p>>,
+    pub setup: Chunk<'p>,
     pub fns: Vec<Option<Chunk<'p>>>,
     pub fed_fns: Vec<Option<Chunk<'p>>>,
     pub closures: Vec<Option<Chunk<'p>>>,
@@ -206,7 +212,7 @@ impl<'p> CompiledProgram<'p> {
     pub(crate) fn chunks(&self) -> impl Iterator<Item = &Chunk<'p>> {
         let bodies = self.fns.iter().chain(&self.fed_fns).chain(&self.closures);
         std::iter::once(&self.main)
-            .chain(self.setup.as_ref())
+            .chain([&self.setup])
             .chain(bodies.flatten())
     }
 
@@ -249,6 +255,7 @@ impl<'p> CompiledProgram<'p> {
                 return None;
             }
             fchunk.param_count = f.params.len();
+            fchunk.takes_fn = (f.locals.iter().take(f.params.len())).any(|l| l.ty.has_fn(program));
             fchunk.ret_kind = None;
             fchunk.guarded_domains = guarded_domains;
             Some(fchunk)
@@ -277,9 +284,14 @@ impl<'p> CompiledProgram<'p> {
             c.traced = traced;
             c.profiled = profiled;
             let ret_kind = ScalarKind::of_ty(ret, program);
+            if !traced && !profiled {
+                c.tuple_ret = small_tuple_shape(ret, program);
+            }
             c.compile_block(body, ret_kind, true);
             let mut chunk = c.finish();
             chunk.param_count = params;
+            chunk.takes_fn =
+                (locals.iter().take(params)).any(|l: &cpl_ir::Local| l.ty.has_fn(program));
             chunk.ret_kind = ret_kind;
             chunk.guarded_domains = program.fn_guarded_domains(ret, body);
             chunk
@@ -334,7 +346,7 @@ impl<'p> CompiledProgram<'p> {
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let main = main_c.finish();
-        let setup = program.multitest.then(|| {
+        let setup = {
             let mut c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0, None);
             c.traced = traced;
             c.profiled = profiled;
@@ -342,9 +354,8 @@ impl<'p> CompiledProgram<'p> {
             let done = c.alloc_i();
             c.emit_const_i(done, 1, Span::default());
             c.emit(Op::RetI { src: done }, Span::default());
-            let setup = c.finish();
-            setup
-        });
+            c.finish()
+        };
         let forwards = (program.closures.iter())
             .map(|def| forward_of(def, &fns).filter(|_| !profiled && !traced))
             .collect();

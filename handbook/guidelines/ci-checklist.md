@@ -381,3 +381,13 @@ skipped: every test still runs, and a new red still refuses.
 *Example:* with `cpl-codegen tests::only_the_runtime_a_program_uses_is_written`
 red on main, an interp-only cut lands and names it as pre-existing.
 *Enforced by:* `scripts/new_reds.py`, `scripts/ci.py`, `scripts/test_land.py`.
+
+### ci/R41
+
+A check too slow for `ci.yml` that must still hold main runs in a workflow
+of its own, queued one run at a time and never behind an hour-long job, and
+`scripts/release/shippable.sh` holds edge on its red.
+*Why:* the dreams job shared `ci-slow.yml` with 90-240 min suites, so one
+run took an hour and all 30 runs in between were cancelled; three dream
+reds reached main unseen. *Example:* `dreams.yml`.
+*Enforced by:* `scripts/test_workflows.py`, `scripts/test_release.py`.

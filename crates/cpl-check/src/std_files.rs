@@ -29,24 +29,49 @@ pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 
 /// What every scan of std's declarations reads, line for line with `text`:
 /// each top-level line of code, each line that declares a `fn` (a `///`
-/// doc aside) or a method's `@lint`, and the rest of a header still open on its next line. A fn
+/// doc aside), and the rest of a header still open on its next line. A fn
 /// whose body is on the lines below gets `todo` for it; the other lines
 /// are blank, so a line number in the outline is the file's. A fn with
 /// its return type written keeps `= todo` for a one-line body, and `todo`
-/// for an `=` body on the next line.
+/// for an `=` body on the next line. An `@lint` line stays, a method's
+/// too; one whose `to` does not name its fn keeps the fn whole, since
+/// such a `to` is checked against the body.
 pub fn outline(text: &str) -> String {
     let mut out = String::with_capacity(text.len() / 4);
     let mut open = 0i32;
     let mut header: Option<usize> = None;
     let mut body: Option<usize> = None;
+    let (mut tos, mut whole) = (Vec::new(), None::<usize>);
     for line in text.split_inclusive('\n') {
         let code = line.trim_end_matches(['\n', '\r']);
         let trimmed = code.trim_start();
         let comment = trimmed.starts_with("//");
         let top = !trimmed.is_empty() && trimmed.len() == code.len() && !comment;
         let declares = code.contains("fn ") && !comment;
-        // A method's `@lint` reaches cpl-lint only through the outline.
-        let lint = trimmed.starts_with("@lint(");
+        let indent = code.len() - trimmed.len();
+        if whole.is_some_and(|at| trimmed.is_empty() || comment || indent > at) {
+            out.push_str(if comment { &line[code.len()..] } else { line });
+            continue;
+        }
+        whole = None;
+        if trimmed.starts_with("@lint(") {
+            out.push_str(line);
+            tos.extend(
+                trimmed
+                    .split_once("to: \"")
+                    .and_then(|(_, to)| to.split('"').next()),
+            );
+            continue;
+        }
+        if declares && !tos.is_empty() {
+            let name = code.split(['(', '<']).next().unwrap_or_default();
+            let name = name.rsplit(' ').next().unwrap_or_default();
+            if tos.drain(..).any(|to| !to.contains(name)) {
+                out.push_str(line);
+                whole = Some(indent);
+                continue;
+            }
+        }
         if top {
             open = 0;
         }
@@ -72,7 +97,7 @@ pub fn outline(text: &str) -> String {
             }
             continue;
         }
-        if open > 0 || top || declares || lint {
+        if open > 0 || top || declares {
             out.push_str(line);
             if !comment {
                 if declares && open == 0 {
@@ -186,5 +211,15 @@ mod tests {
             super::outline(text),
             "pub fn f(x: Int) -> Int =\n    todo\n"
         );
+    }
+
+    /// An `@lint` whose `to` writes its fn's body, not its name, keeps the
+    /// fn whole in the outline, at a struct's method too; other bodies,
+    /// one named by its `@lint` among them, become `todo`, line for line.
+    #[test]
+    fn an_outline_keeps_a_fn_whole_whose_lint_writes_its_body() {
+        let text = "@lint(l, from: \"a + 0\", to: \"a + 1\")\npub fn f(a: Int) -> Int:\n    // why\n    a + 1\npub fn g() -> Int:\n    2\npub struct S:\n    x: Int\n    @lint(m, from: \"s.x\", to: \"s.h\")\n    pub fn h(self) -> Int:\n        self.x\n    @lint(n, from: \"s.x == 0\", to: \"s.x != 0\")\n    pub fn k(self) -> Bool:\n        self.x != 0\n";
+        let want = "@lint(l, from: \"a + 0\", to: \"a + 1\")\npub fn f(a: Int) -> Int:\n\n    a + 1\npub fn g() -> Int:\n    todo\npub struct S:\n\n    @lint(m, from: \"s.x\", to: \"s.h\")\n    pub fn h(self) -> Int:\n        todo\n    @lint(n, from: \"s.x == 0\", to: \"s.x != 0\")\n    pub fn k(self) -> Bool:\n        self.x != 0\n";
+        assert_eq!(super::outline(text), want);
     }
 }

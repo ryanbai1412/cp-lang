@@ -93,7 +93,7 @@ impl Checker<'_> {
                     _ => (None, None),
                 }
             }
-            ExprKind::Call { .. } => match self.quietly(|c| c.infer(expr)) {
+            ExprKind::Call { .. } => match self.infer_quietly(expr) {
                 Ty::Range { lo, hi, .. } => (lo, hi),
                 _ => (None, None),
             },

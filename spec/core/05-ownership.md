@@ -576,6 +576,10 @@ write it. R10 treats such a fn's use of a top-level `var` as part of every
 call to it. No fn may store anything lent in a top-level `var` (R8); the file
 body's own statements may, under R8's block rule, since it is their block.
 
+A fn reads top-level state lent, as it reads a parameter: `let b = g`
+lends `g`, and `var b = g` on a heap `g` is E0608, since it would take `g`
+from the file body; `var b = g.clone()` is the copy. (R05.11.1)
+
 ## 12. How to evaluate a snippet
 
 1. **Mark each binding** owned or lent (R6). For lent ones, note the

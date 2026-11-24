@@ -182,7 +182,7 @@ The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: e
 
 Fields: `l: [Node]Node`, `last: [Node]I`, `lo: [Node]V`, `hi: [Node]V`.
 
-- `fn new(p: [I]V) -> PermTree<I, V, _>` — \(O(n)\); The binary permutation tree of `p`, built by one stack pass from left to right: a run that keeps extending in one direction builds left-deep, so `[0, 1, 2]` is `((0, 1), 2)`.; traps: when `I` is empty, `I.count != V.count`, or `p` is not a bijection
+- `fn new(p: [I]V) -> PermTree<I, V, _>` — \(O(n)\); memory: the 2n nodes' fields, plus two rows of n narrow ints and the stack while building; The binary permutation tree of `p`, built by one stack pass from left to right: a run that keeps extending in one direction builds left-deep, so `[0, 1, 2]` is `((0, 1), 2)`.; traps: when `I` is empty, `I.count != V.count`, or `p` is not a bijection
 - `fn node(self, v: Node) -> PermNode<I, Node>` — \(O(1)\); The view of `v` to match on (decision 132): `Leaf(i)` or `Inner(l, r, kind)`.
 - `fn leaf(self, i: I) -> Node` — \(O(1)\); The leaf of position `i`.
 - `fn left(self, v: Node) -> Node` — \(O(1)\); The earlier child of the inner node `v`.; traps: when `v` is a leaf
