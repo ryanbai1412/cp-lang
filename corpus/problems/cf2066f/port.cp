@@ -11,26 +11,15 @@
 //   only needs the latest reachable start. Replay in decreasing sum, the free one by [x] and
 //   then by its piece. O(n^2 m).
 @!multitest
-use std.algebra.{MaxSub}
+use std.algebra.{MaxSub, MaxSubAt}
 domain PosA = read(1..=500)
 domain PosB = read(1..=500)
 let a: [PosA]-1e6..=1e6 = read()
 let b: [PosB]-1e6..=1e6 = read()
 
-fn widest_max(r: Range<PosA>) -> Range<PosA>:
-    let f = r.first!
-    var best = (a[f], 1, f.l..f.r)
-    var (start, run) = (r.start, 0)
-    for i in r:
-        if run < 0: (start, run) = (i.l, 0)
-        run += a[i]
-        let key = (run, i.r.ord - start.ord, start..i.r)
-        if (key.0, key.1) >= (best.0, best.1): best = key
-    best.2
-
 fn cool(r: Range<PosA>) -> List<Range<PosA>>:
     if r.is_empty: return []
-    let m = widest_max(r)
+    let m = a[r].items.map((i, v) => MaxSubAt.of(i, v)).fold(+).at
     cool(r.start..m.start) + [m] + cool(m.end..r.end)
 
 let spans = cool(PosA.first!..=PosA.last!)
