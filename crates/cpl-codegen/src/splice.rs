@@ -34,7 +34,7 @@ pub(crate) fn splice(program: &mut Program) {
         let devirt = Devirt::collect(program);
         let mut scan = |owner: Owner, home: Option<FnId>, body: &Block| {
             each_loop(body, &mut |id, head| {
-                if let Loop::For(Iter::Seq(seq, false)) = head {
+                if let Loop::For(_, Iter::Seq(seq, false)) = head {
                     if let ExprKind::CallExpr(callee, _) = &seq.kind {
                         if let Some(cid) = devirt.target(home, callee) {
                             if skippable(callee) {

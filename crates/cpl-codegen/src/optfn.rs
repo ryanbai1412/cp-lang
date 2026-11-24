@@ -6,6 +6,8 @@
 //! and `c` is the parameter. It majorizes: the same expressions run in the
 //! same order, and a name for a value no one changes is that value.
 
+use crate::uses::loops::{each_loop, Loop};
+use crate::uses::places::{each_call, each_closure, each_write, Write};
 use crate::walk;
 use cpl_ir::{
     Arg, Block, ClosureId, CmpOp, Expr, ExprKind, FnId, Iter, Local, Program, Slot, Stmt, Ty,
@@ -48,16 +50,13 @@ fn shapes(program: &Program) -> BTreeMap<(FnId, Slot), Shape> {
     let mut out: BTreeMap<(FnId, Slot), Shape> = BTreeMap::new();
     let mut walked: BTreeSet<FnId> = BTreeSet::new();
     let mut see = |block: &Block, out: &mut BTreeMap<(FnId, Slot), Shape>| {
-        walk::deep_stmts(block, &mut |s| {
-            if let Stmt::For(_, _, Iter::Walk { nth, .. }, _) = s {
+        each_loop(block, &mut |_, head| {
+            if let Loop::For(_, Iter::Walk { nth, .. }) = head {
                 walked.insert(*nth);
             }
         });
-        walk::deep_exprs(block, &mut |e| {
-            let ExprKind::Call(callee, args) = &e.kind else {
-                return;
-            };
-            let f = &program.fns[*callee];
+        each_call(block, &mut |callee, args| {
+            let f = &program.fns[callee];
             for (slot, arg) in args.iter().enumerate().take(f.params.len()) {
                 if !optional_fn(&f.locals[slot].ty) {
                     continue;
@@ -73,7 +72,7 @@ fn shapes(program: &Program) -> BTreeMap<(FnId, Slot), Shape> {
                     }) => Shape::Some,
                     _ => Shape::Mixed,
                 };
-                let seen = out.entry((*callee, slot)).or_insert(shape);
+                let seen = out.entry((callee, slot)).or_insert(shape);
                 if *seen != shape {
                     *seen = Shape::Mixed;
                 }
@@ -207,10 +206,8 @@ fn rewrite_param(
 
 fn closures_in(body: &Block) -> BTreeSet<ClosureId> {
     let mut out = BTreeSet::new();
-    walk::deep_exprs(body, &mut |e| {
-        if let ExprKind::Closure(cid) = e.kind {
-            out.insert(cid);
-        }
+    each_closure(body, &mut |cid| {
+        out.insert(cid);
     });
     out
 }
@@ -218,26 +215,14 @@ fn closures_in(body: &Block) -> BTreeSet<ClosureId> {
 /// Local slots a statement of `body` stores to, loops over, or passes `mut`.
 fn assigned(body: &Block) -> BTreeSet<Slot> {
     let mut out = BTreeSet::new();
-    walk::deep_stmts(body, &mut |s| match s {
-        Stmt::Assign(place, ..) => {
-            if let (false, slot) = walk::root(place) {
-                out.insert(slot);
-            }
+    each_write(body, &mut |how, place| {
+        if let (Write::Store | Write::Mut, (false, slot)) = (how, walk::root(place)) {
+            out.insert(slot);
         }
-        Stmt::For(_, slot, ..) => {
-            out.insert(*slot);
-        }
-        _ => {}
     });
-    walk::deep_exprs(body, &mut |e| {
-        if let ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) = &e.kind {
-            for arg in args {
-                if let Arg::Mut(place) = arg {
-                    if let (false, slot) = walk::root(place) {
-                        out.insert(slot);
-                    }
-                }
-            }
+    each_loop(body, &mut |_, head| {
+        if let Loop::For(slot, _) = head {
+            out.insert(slot);
         }
     });
     out

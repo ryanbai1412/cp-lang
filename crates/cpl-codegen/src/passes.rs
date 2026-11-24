@@ -217,7 +217,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "known-optional-fn",
         "optfn.rs",
-        Unasked,
+        Uses(&["each_call", "each_closure", "each_write", "each_loop"]),
         "an_optional_fn_param_every_call_fills_alike_is_called_directly",
     ),
     pass(

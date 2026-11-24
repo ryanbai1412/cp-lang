@@ -1,21 +1,21 @@
 //! How code runs: its loops, how far its labeled jumps reach, and its size.
 
 use crate::walk;
-use cpl_ir::{Block, Iter, LoopId, Stmt};
+use cpl_ir::{Block, Iter, LoopId, Slot, Stmt};
 use std::collections::BTreeSet;
 
 /// A loop's head.
 #[derive(Clone, Copy)]
 pub(crate) enum Loop<'a> {
-    /// `for _ in iter`.
-    For(&'a Iter),
+    /// `for slot in iter`.
+    For(Slot, &'a Iter),
     While,
 }
 
 /// Every loop in `block`, at any depth: its id and head.
 pub(crate) fn each_loop(block: &Block, f: &mut dyn FnMut(LoopId, Loop)) {
     walk::deep_stmts(block, &mut |stmt| match stmt {
-        Stmt::For(id, _, iter, _) => f(*id, Loop::For(iter)),
+        Stmt::For(id, slot, iter, _) => f(*id, Loop::For(*slot, iter)),
         Stmt::While(id, ..) => f(*id, Loop::While),
         _ => {}
     });

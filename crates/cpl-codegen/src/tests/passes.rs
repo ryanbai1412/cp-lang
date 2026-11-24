@@ -275,7 +275,7 @@ fn each_loop_and_stmt_count_see_nested_loops() {
     each_loop(body, &mut |id, head| {
         ids.push(id);
         match head {
-            Loop::For(_) => fors += 1,
+            Loop::For(..) => fors += 1,
             Loop::While => whiles += 1,
         }
     });
@@ -302,4 +302,24 @@ fn labeled_jumps_sees_a_labeled_break_and_continue_in_a_closure() {
         out.contains("goto"),
         "the labeled jumps leave the inner loop:\n{out}"
     );
+}
+
+#[test]
+fn each_call_and_each_closure_see_inside_a_fn() {
+    use crate::uses::places::{each_call, each_closure};
+    let program = lower(concat!(
+        "fn twice(x: Int) -> Int = x * 2\n",
+        "fn f(n: Int) -> Int:\n",
+        "    let g = (k: Int) => twice(k) + n\n",
+        "    twice(g(n))\n",
+        "print(f(3))\n",
+    ));
+    let f = program.fns.iter().position(|f| f.name == "f").expect("f");
+    let (mut calls, mut closures) = (Vec::new(), 0);
+    each_call(&program.fns[f].body, &mut |callee, args| {
+        calls.push((program.fns[callee].name.clone(), args.len()));
+    });
+    each_closure(&program.fns[f].body, &mut |_| closures += 1);
+    assert_eq!(calls, [("twice".to_string(), 1)], "g's body is its own");
+    assert_eq!(closures, 1);
 }

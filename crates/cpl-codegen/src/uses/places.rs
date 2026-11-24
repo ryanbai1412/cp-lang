@@ -1,7 +1,8 @@
-//! Where code puts values: the places it writes and the structs it builds.
+//! Where code puts values: the places it writes, the structs it builds,
+//! the fns it passes them to and the closures it makes.
 
 use crate::walk;
-use cpl_ir::{Arg, Block, Expr, ExprKind, Mutation, Place, Stmt, Ty};
+use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, Mutation, Place, Stmt, Ty};
 
 /// How a write changes its place.
 #[derive(Clone, Copy)]
@@ -52,6 +53,24 @@ pub(crate) fn each_built(block: &Block, f: &mut dyn FnMut(usize, &[Expr])) {
     walk::deep_exprs(block, &mut |e| {
         if let (ExprKind::Tuple(fields), Ty::Struct(s)) = (&e.kind, &e.ty) {
             f(*s, fields);
+        }
+    });
+}
+
+/// Every call by name in `block`, at any depth: the fn and its arguments.
+pub(crate) fn each_call(block: &Block, f: &mut dyn FnMut(FnId, &[Arg])) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Call(callee, args) = &e.kind {
+            f(*callee, args);
+        }
+    });
+}
+
+/// Every closure `block` makes, at any depth.
+pub(crate) fn each_closure(block: &Block, f: &mut dyn FnMut(ClosureId)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Closure(cid) = e.kind {
+            f(cid);
         }
     });
 }
