@@ -341,6 +341,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Map, "contains", Method, "k: K", "Bool", false, "True when `k` is a key; `k in m` reads the same. O(log n).\n\ncost: O(log n)", "m.contains(1)", "Bool"),
     row!(Map, "remove", Method, "k: K", "?V", true, "Takes `k` out and gives the value it had. O(log n).\n\ncost: O(log n)", "m.remove(1)", "?Int"),
     row!(Map, "clear", Method, "", "", true, "Removes every key.", "m.clear()", ""),
+    row!(Map, "reserve", Method, "n: Int", "", true, "Makes room for at least `n` keys, so a hash map fills without rehashing; a sorted map has nothing to reserve.", "m.reserve(5)", ""),
     row!(Map, "clone", Method, "", "Map<K, V>", false, "A separate map with the same entries.", "m.clone()", "Map<Int, Int>"),
     row!(Map, "pop_first", Method, "", "?(K, V)", true, "Takes out the smallest key with its value. O(log n).\n\ncost: O(log n)", "m.pop_first()", "?(Int, Int)"),
     row!(Map, "pop_last", Method, "", "?(K, V)", true, "Takes out the largest key with its value. O(log n).\n\ncost: O(log n)", "m.pop_last()", "?(Int, Int)"),

@@ -208,6 +208,14 @@ pub(crate) fn mutate_cell(
             v.reserve(extra);
             Value::Unit
         }
+        // A map is a tree here: it has no capacity to reserve.
+        (Mutation::Reserve, Value::Map(_)) => {
+            let n = arg.int();
+            if n < 0 {
+                return trap(span, format!("reserve to negative capacity {n}"));
+            }
+            Value::Unit
+        }
         (Mutation::Extend, Value::List(items)) => {
             let v = Rc::make_mut(items);
             match arg {

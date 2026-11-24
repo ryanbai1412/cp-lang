@@ -972,3 +972,11 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   type mismatch too, as the checker and `compare_mismatch` already have it.
   std-seq/span-rejects-cuts-of-two-domains is unchanged.
 - The checker unit's span checks pass cuts: the std `span` takes cuts only (decision 124).
+
+### Core, for std-unshadow and Content (2026-11-23): `HashMap.reserve(n)`
+
+- A map takes `reserve(n)` like a List (the Map row in cpl-check builtins and the same
+  `Mutation::Reserve`), so std's `Counter.reserve`/`SortedMap.reserve` can preallocate a
+  backing hash map. The C++ `unordered_map` reserves; a sorted map, and the interpreter's
+  tree map, have no capacity, so it only checks `n >= 0` there.
+- Case: core-10/map-reserve-keeps-entries.

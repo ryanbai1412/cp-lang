@@ -341,10 +341,12 @@ impl<'a> Lowerer<'a> {
                 Some(n) => mutate(self, Mutation::Truncate, vec![n], Ty::Unit),
                 None => self.err_expr(span),
             },
-            (Ty::List(_), "reserve") => match self.one_arg(method, args, &Ty::Int, span) {
-                Some(n) => mutate(self, Mutation::Reserve, vec![n], Ty::Unit),
-                None => self.err_expr(span),
-            },
+            (Ty::List(_) | Ty::Map(..) | Ty::HashMap(..), "reserve") => {
+                match self.one_arg(method, args, &Ty::Int, span) {
+                    Some(n) => mutate(self, Mutation::Reserve, vec![n], Ty::Unit),
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::List(_), "extend") => match self.positional_any(method, args, 1, span) {
                 Some(exprs) => {
                     let other = self.expect(exprs[0], &ty);

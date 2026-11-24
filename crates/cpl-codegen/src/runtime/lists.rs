@@ -42,10 +42,12 @@ template <class T, size_t N> std::vector<T> list_of(T (&&a)[N]) {
         name: "reserve",
         needs: &[],
         code: "\
-// `xs.reserve(n)`: reserve capacity for at least n elements. A negative n stops the program.
+// `xs.reserve(n)`: reserve capacity for at least n elements (a sorted map has none). A negative n stops the program.
+template <class S> inline auto reserve_room(S& s, size_t n, int) -> decltype(s.reserve(n), void()) { s.reserve(n); }
+template <class S> inline void reserve_room(S&, size_t, long) {}
 template <class S> inline void reserve(S& s, ll n) {
     if (__builtin_expect(n < 0, 0)) { cpl::flush(); fprintf(stderr, \"reserve to negative capacity %lld\\n\", n); exit(3); }
-    s.reserve((size_t)n);
+    reserve_room(s, (size_t)n, 0);
 }
 ",
     },
