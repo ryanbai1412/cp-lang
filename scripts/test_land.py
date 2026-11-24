@@ -861,11 +861,10 @@ class LandTest(unittest.TestCase):
         newer = out / "sizes" / f'{git(ours, "rev-parse", "HEAD^{tree}").strip()}.json'
         newer.write_text("{}")
         os.utime(newer, (time.time() + 60, time.time() + 60))
-        for touched in ("cpl-x", "cpl_x"):
-            r = warm("--parent", "origin/main", touched)
-            self.assertEqual(r.stdout.strip(), str(out / "sizes" / f"{main_tree}.json"), touched)
+        r = warm("--parent", "origin/main", "cpl-x")
+        self.assertEqual(r.stdout.strip(), str(out / "sizes" / f"{main_tree}.json"))
 
-    def test_wasm_warm_parent_reads_a_cpl_x_name_as_its_crate_and_std_as_an_input(self):
+    def test_wasm_warm_parent_reads_a_crate_and_std_as_its_inputs(self):
         ours = self.clone("ours")
         out = self.tmp / "tgt" / "wasm-warm"
         (out / "sizes").mkdir(parents=True)
@@ -880,12 +879,11 @@ class LandTest(unittest.TestCase):
             edit.parent.mkdir(parents=True, exist_ok=True)
             edit.write_text("two\n")
             self.commit(ours, "two")
-            for name in ("cpl-x", "cpl_x"):
-                self.assertEqual(warm("--parent", "HEAD", name).returncode, 1, (edit, name))
+            self.assertEqual(warm("--parent", "HEAD", "cpl-x").returncode, 1, edit)
             git(ours, "reset", "-q", "--hard", "HEAD~1")
         (ours / "README.md").write_text("elsewhere\n")
         self.commit(ours, "elsewhere")
-        self.assertEqual(warm("--parent", "HEAD", "cpl_x").stdout.strip(), str(out / "sizes" / f"{old}.json"))
+        self.assertEqual(warm("--parent", "HEAD", "cpl-x").stdout.strip(), str(out / "sizes" / f"{old}.json"))
 
 
 if __name__ == "__main__":

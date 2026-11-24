@@ -9,7 +9,7 @@
 #   scripts/wasm-warm.sh --current CRATE...
 #                                   print the build's cpl.wasm if it is of HEAD's tree, or of
 #                                   one that differs from it outside these crates and std
-#                                   (a crate is named as its directory or its cpl_x name); else fail
+#                                   (a crate is named as its directory); else fail
 #   scripts/wasm-warm.sh --parent BASE CRATE...
 #                                   print the per-crate sizes of a build of BASE's tree, or of
 #                                   one that differs from it outside these crates and std; else fail
@@ -38,7 +38,7 @@ case "${1:-}" in
     --current)
         shift
         built=$(cat "$out/tree" 2>/dev/null) && [ -s "$out/cpl.wasm" ] || exit 1
-        dirs=(std Cargo.toml Cargo.lock); for c in "$@"; do dirs+=("crates/${c//_/-}"); done
+        dirs=(std Cargo.toml Cargo.lock); for c in "$@"; do dirs+=("crates/$c"); done
         [ "$built" = "$(git rev-parse 'HEAD^{tree}')" ] ||
             git diff --quiet "$built" 'HEAD^{tree}' -- "${dirs[@]}" 2>/dev/null || exit 1
         echo "$out/cpl.wasm" ;;
