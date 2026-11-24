@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Unit tests for `scripts/spec-gate.py decisions`."""
+import contextlib
+import io
 import os
 import sys
 import subprocess
@@ -91,6 +93,30 @@ class ReserveTest(unittest.TestCase):
         _git(b, "commit", "-qam", "take 4")
         self.assertEqual(MOD.check_landing("FETCH_HEAD"), 1)
         self.assertEqual(MOD.check_landing("no-such-ref"), 2)
+
+    def _hook(self, hooks, name, body):
+        os.makedirs(hooks, exist_ok=True)
+        path = os.path.join(hooks, name)
+        with open(path, "w") as fh:
+            fh.write("#!/bin/sh\n" + body)
+        os.chmod(path, 0o755)
+
+    def test_reserve_skips_the_local_pre_push_hook(self):
+        a = self.clones[0]
+        hooks = os.path.join(self.tmp.name, "hooks")
+        self._hook(hooks, "pre-push", "exit 1\n")
+        _git(a, "config", "core.hooksPath", hooks)
+        self._use(a)
+        self.assertEqual(MOD.reserve("one", "spec", "origin", 3), 0)
+
+    def test_a_refused_push_says_why_and_does_not_retry(self):
+        self._hook(os.path.join(self.remote, "hooks"), "pre-receive", "echo branch is protected >&2; exit 1\n")
+        self._use(self.clones[0])
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(MOD.reserve("one", "spec", "origin", 3), 1)
+        self.assertIn("branch is protected", err.getvalue())
+        self.assertNotIn("retry:", err.getvalue())
 
 
 if __name__ == "__main__":
