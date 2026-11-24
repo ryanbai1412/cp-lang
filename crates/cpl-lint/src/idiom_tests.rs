@@ -730,3 +730,20 @@ fn min_assign_is_suggested_on_scalars_not_tuples() {
         crate::lint(tuple, &crate::Config::default())
     );
 }
+
+/// The item type comes from the list type the checker gives, so an alias
+/// of `List<Int>` reads the same as the written `List<Int>`.
+#[test]
+fn read_loop_reads_the_item_type_from_the_checker() {
+    let fill = |decl: &str| {
+        let src = format!(
+            "type Row = List<Int>\nlet n: 1..=9 = read()\n{decl}\nfor _ in 0..n:\n    xs.push(read())\nprint(xs.len)\n"
+        );
+        crate::lint(&src, &crate::Config::default())
+            .into_iter()
+            .find(|d| d.code == crate::READ_LOOP.code)
+            .and_then(|d| d.help)
+    };
+    let written = fill("var xs: List<Int> = []").expect("fires on List<Int>");
+    assert_eq!(fill("var xs: Row = []").as_deref(), Some(written.as_str()));
+}

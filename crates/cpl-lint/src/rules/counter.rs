@@ -9,6 +9,7 @@ use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{is_std, File, Finding, COUNTER_BY_MAP};
+use cpl_check::CalleeKind;
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::{AssignOp, BinOp, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind};
 use std::collections::HashSet;
@@ -67,7 +68,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 if name(key) != Some(var.as_str()) || int(value) != Some(1) {
                     continue;
                 }
-                let Some(made) = stmts[..i].iter().rposition(|&(_, s)| empty_map(s, map)) else {
+                let Some(made) = stmts[..i]
+                    .iter()
+                    .rposition(|&(b, s)| empty_map(s, map, self.facts, b))
+                else {
                     continue;
                 };
                 let mut uses = Uses {
@@ -198,7 +202,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 }
 
 /// `var map = Map()` or `var map: Map<K, Int> = Map()` (or `HashMap`).
-fn empty_map(stmt: &Stmt, map: &str) -> bool {
+fn empty_map(stmt: &Stmt, map: &str, facts: Option<&Facts>, base: u32) -> bool {
     let StmtKind::Let {
         mutable: true,
         pat,
@@ -208,12 +212,16 @@ fn empty_map(stmt: &Stmt, map: &str) -> bool {
     else {
         return false;
     };
-    let ExprKind::Call { callee, args } = &init.kind else {
+    let (ExprKind::Call { args, .. }, Some(facts)) = (&init.kind, facts) else {
         return false;
     };
+    let at = init.span.shift(base);
     matches!(&pat.kind, PatternKind::Name(n) if n == map)
         && args.is_empty()
-        && matches!(name(callee), Some("Map" | "HashMap"))
+        && facts.callee(at).is_some_and(|c| c.kind == CalleeKind::Ctor)
+        && facts
+            .type_of(at)
+            .is_some_and(|t| t.is_one_of(&["Map", "HashMap"]))
 }
 
 /// Whether the statements walked use `map` as more than a counter: a

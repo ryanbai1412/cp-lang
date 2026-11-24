@@ -37,10 +37,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                         .facts
                         .and_then(|f| f.place_type(pat.span.shift(self.base)));
                     let lists = match (ty, &init.kind) {
-                        (Some(Ty::Named { name, args }), ExprKind::Comprehension { body, .. }) => {
-                            name == "List"
-                                && matches!(&args[..], [a] if is_list(a))
-                                && is_empty_list(body)
+                        (Some(ty), ExprKind::Comprehension { body, .. }) if ty.is_list() => {
+                            ty.held_elem().is_some_and(is_list) && is_empty_list(body)
                         }
                         (Some(Ty::Array { elem, .. }), _) => is_list(elem) && is_empty_list(init),
                         _ => false,

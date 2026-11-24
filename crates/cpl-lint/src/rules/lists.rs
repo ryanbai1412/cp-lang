@@ -31,21 +31,6 @@ fn is_list_ty(ty: &Ty) -> bool {
     ty.is_list()
 }
 
-/// `[]`, `[1, 2]`, `List<Int>()`.
-pub(crate) fn is_list_value(expr: &Expr) -> bool {
-    match &unparen(expr).kind {
-        ExprKind::List(_) => true,
-        ExprKind::Call { callee, .. } => match &callee.kind {
-            ExprKind::Generic { base, .. } => {
-                matches!(&base.kind, ExprKind::Name(n) if n == "List")
-            }
-            ExprKind::Name(name) => name == "List",
-            _ => false,
-        },
-        _ => false,
-    }
-}
-
 /// An open scope.
 struct Open {
     scope: Scope,
@@ -215,12 +200,10 @@ impl Visitor for Indexes<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         self.binding_list = None;
         match &stmt.kind {
-            StmtKind::Let { pat, ty, init, .. } => {
-                self.binding_list = match ty {
-                    _ if !matches!(pat.kind, PatternKind::Name(_)) => None,
-                    Some(_) => self.declares_list(pat.span),
-                    None => init.as_ref().filter(|e| is_list_value(e)).map(|_| true),
-                };
+            StmtKind::Let { pat, .. } => {
+                self.binding_list = matches!(pat.kind, PatternKind::Name(_))
+                    .then(|| self.declares_list(pat.span))
+                    .flatten();
             }
             StmtKind::Fn(decl) => {
                 // A `@test` is not what a judge times.

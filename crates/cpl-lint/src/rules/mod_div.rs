@@ -330,7 +330,7 @@ struct Scanner<'a> {
 impl Scanner<'_> {
     fn typed_mod(&self, expr: &Expr) -> Option<String> {
         match self.facts.place_type(expr.span.shift(self.base)) {
-            Some(ty @ Ty::Named { name, .. }) if name == "Mod" => {
+            Some(ty) if ty.is_one_of(&["Mod"]) => {
                 let ty = ty.to_string();
                 let alias = self.aliases.iter().find(|(_, written)| *written == ty);
                 Some(alias.map_or(ty, |(name, _)| name.clone()))

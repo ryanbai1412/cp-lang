@@ -53,12 +53,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 (Some(Some(Ty::Array { elem, .. })), _) if is_int(elem) => {
                     constant(init).map(|v| (v, init.span))
                 }
-                (
-                    Some(Some(Ty::Named { name, args })),
-                    ExprKind::Comprehension { body, clauses },
-                ) if name == "List"
-                    && matches!(&args[..], [a] if is_int(a))
-                    && clauses.len() == 1 =>
+                (Some(Some(ty)), ExprKind::Comprehension { body, clauses })
+                    if ty.held_elem().is_some_and(is_int) && clauses.len() == 1 =>
                 {
                     constant(body).map(|v| (v, body.span))
                 }
