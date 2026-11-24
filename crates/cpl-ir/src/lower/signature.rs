@@ -673,32 +673,34 @@ impl<'a> Lowerer<'a> {
         owner: Option<&Ty>,
     ) -> Option<Ty> {
         let (trait_name, owner) = (trait_name?, owner?);
-        let (f, generics, m, o): (&'a ast::FnDecl, Vec<&str>, _, _) =
+        let mut env = self.gen_env.clone();
+        env.insert("Self".into(), GenArg::Ty(owner.clone()));
+        let mut bind = |k: usize, g: &str| {
+            env.insert(
+                g.into(),
+                GenArg::Ty(trait_args.get(k).unwrap_or(owner).clone()),
+            );
+        };
+        let (f, m, o): (&'a ast::FnDecl, _, _) =
             match self.traits.iter().find(|t| t.name == trait_name) {
-                Some(t) => (
-                    t.methods.iter().find(|f| f.name.text == method)?,
-                    t.generics.clone(),
-                    t.mod_id,
-                    t.offset,
-                ),
+                Some(t) => {
+                    t.generics.iter().enumerate().for_each(|(k, g)| bind(k, g));
+                    let f = t.methods.iter().find(|f| f.name.text == method)?;
+                    (f, t.mod_id, t.offset)
+                }
                 None => {
                     let (generics, f) = cpl_check::core_trait_fn(trait_name, method)?;
-                    let names = generics.iter().map(|g| g.text.as_str()).collect();
-                    (f, names, self.cur_mod, self.offset)
+                    generics
+                        .iter()
+                        .enumerate()
+                        .for_each(|(k, g)| bind(k, &g.text));
+                    (f, self.cur_mod, self.offset)
                 }
             };
         let ty = match at {
             Some(i) => f.params.get(i)?.ty.as_ref(),
             None => f.ret.as_ref(),
         }?;
-        let mut env = self.gen_env.clone();
-        env.insert("Self".into(), GenArg::Ty(owner.clone()));
-        for (k, g) in generics.into_iter().enumerate() {
-            env.insert(
-                g.into(),
-                GenArg::Ty(trait_args.get(k).unwrap_or(owner).clone()),
-            );
-        }
         Some(self.quietly_in(m, o, env, |lw| lw.resolve_ty(ty)))
     }
 }
