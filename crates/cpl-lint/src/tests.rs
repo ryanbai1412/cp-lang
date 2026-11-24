@@ -1895,6 +1895,17 @@ fn loop_reduction_keeps_a_widening_call_in_a_typed_lambda() {
 }
 
 /// A level prints as the word `cp.toml` reads back.
+#[test]
+fn levels_round_trip_through_their_names() {
+    for (level, name) in [
+        (Level::Allow, "allow"),
+        (Level::Warn, "warn"),
+        (Level::Deny, "deny"),
+    ] {
+        assert_eq!(level.as_str(), name);
+        assert_eq!(Level::parse(name), Some(level));
+    }
+}
 
 /// `desc:` is gone from `sort` (decisions 290, 366): a negated key, field or
 /// not, becomes `desc(..)`. Rule: `idiomatic-code/R3`.

@@ -740,3 +740,23 @@ fn loops_and_indexes_together_match_each_alone() {
     }
     assert!(seen >= 2, "corpus ports moved");
 }
+
+#[test]
+fn parsed_facts_agree_with_the_facts_of_the_source() {
+    let src = "let (n, q): (1..=200000, 1..=1000) = read()\ndomain V = 1..=n\nlet a: [V]Int = 0\nvar xs: List<Int> = []\nfor i in 0..q: xs.push(i)\nfn f() -> Int:\n    var s = 0\n    for i in 0..q: s += i\n    s\nprint(a.sum(), xs.len, f())\n";
+    let parsed = cpl_syntax::parse_file(src);
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let items: Vec<_> = parsed.items.iter().map(|(o, p)| (*o, p)).collect();
+    assert_eq!(crate::list_sizes(src), [("xs".to_string(), 1000)]);
+    assert_eq!(crate::domain_sizes(src), [("V".to_string(), 200000)]);
+    assert_eq!(
+        crate::domain_sizes_parsed(src, &items),
+        crate::domain_sizes(src)
+    );
+    let sizes = crate::proven_sizes(src);
+    assert!(!sizes.is_empty());
+    assert_eq!(crate::proven_sizes_parsed(src, &items), sizes);
+    let fns = crate::proven_fns(src);
+    assert!(!fns.is_empty());
+    assert_eq!(crate::proven_fns_parsed(src, &items), fns);
+}
