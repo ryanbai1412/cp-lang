@@ -151,6 +151,7 @@ pub fn explain_closures(
         if matches!(g.ty, Ty::Fn(..)) {
             let mode = match devirt.global_target(id) {
                 Some(closure) => ClosureMode::StaticDirect { closure },
+                None if devirt.main_auto_global(id) => ClosureMode::StaticLocalAuto,
                 None => erased(program, &g.ty, "top-level fn var"),
             };
             out.push(ClosureLowering {

@@ -212,6 +212,15 @@ impl<'p> Emitter<'p> {
     fn store(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
         let whole = value;
         let value = self.flatten(value, out);
+        if let (AssignOp::Set, PlaceKind::Global(g)) = (op, &place.kind) {
+            if self.devirt.main_auto_global(*g) && self.fn_id.is_none() && self.closure_id.is_none()
+            {
+                let name = self.place(place);
+                let text = self.expr(value).text;
+                self.line(out, &format!("auto {name} = {text};"));
+                return;
+            }
+        }
         if matches!(op, AssignOp::Set) && self.let_lent_main(place, value, out) {
             return;
         }

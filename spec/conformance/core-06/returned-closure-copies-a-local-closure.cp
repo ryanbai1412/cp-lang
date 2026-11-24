@@ -1,7 +1,6 @@
 // expect: ok, output "7 7 8"
 // rule: 05.10.1
 // `inner` captures only a copied `Int`, so it is an owned value and a plain `let`; the returned closure copies it in (decision 471).
-// std_functions: 1
 fn mk(n: Int) -> (Int -> Int):
     let inner = (j: Int) => j * n
     (k: Int) => inner(k) + 1

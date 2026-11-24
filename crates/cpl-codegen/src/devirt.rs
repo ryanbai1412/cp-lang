@@ -138,6 +138,8 @@ pub(crate) struct Devirt<'p> {
     /// Fns whose result is one closure, made at their one `return`: the
     /// C++ fn returns `auto`, that lambda's own type.
     lambda_returns: BTreeSet<FnId>,
+    /// See [`Devirt::main_auto_global`].
+    main_auto_globals: BTreeSet<usize>,
     /// Struct fn fields holding one capturing closure, stored as its own type.
     functor_fields: BTreeMap<(usize, usize), ClosureId>,
     /// The closures those fields hold, each built as a `cpl_clN` value.
@@ -173,6 +175,7 @@ impl<'p> Devirt<'p> {
             same,
             globals: BTreeMap::new(),
             lambda_returns: BTreeSet::new(),
+            main_auto_globals: BTreeSet::new(),
             functor_fields: BTreeMap::new(),
             functors: BTreeSet::new(),
             changed: true,
@@ -202,6 +205,7 @@ impl<'p> Devirt<'p> {
         pass.compute_template_params();
         pass.globals = pass.called_globals();
         pass.lambda_returns = pass.lambda_returning_fns();
+        pass.main_auto_globals = pass.main_auto_globals();
         pass
     }
 
@@ -246,6 +250,76 @@ impl<'p> Devirt<'p> {
                 )
             })
             .collect()
+    }
+
+    /// Fn globals only `main` uses, set once by one of its own top-level
+    /// lines to a closure or to a call returning one: that line declares
+    /// them `auto`, the closure's own type.
+    fn main_auto_globals(&self) -> BTreeSet<usize> {
+        let program = self.program;
+        let mut elsewhere = BTreeSet::new();
+        crate::globals::touched(&program.setup, &mut elsewhere);
+        for f in &program.fns {
+            crate::globals::touched(&f.body, &mut elsewhere);
+        }
+        for c in &program.closures {
+            elsewhere.extend(c.captures.iter().filter(|c| c.is_global).map(|c| c.outer));
+            crate::globals::touched(&c.body, &mut elsewhere);
+        }
+        let mut sets: BTreeMap<usize, usize> = BTreeMap::new();
+        walk::deep_stmts(&program.main, &mut |stmt| {
+            if let Stmt::Assign(place, _, _) = stmt {
+                if let (true, g) = walk::root(place) {
+                    *sets.entry(g).or_default() += 1;
+                }
+            }
+        });
+        walk::deep_exprs(&program.main, &mut |e| {
+            if let ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) = &e.kind {
+                if let (true, g) = walk::root(place) {
+                    *sets.entry(g).or_default() += 2;
+                }
+            }
+            if let ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) = &e.kind {
+                for arg in args {
+                    if let Arg::Mut(place) = arg {
+                        if let (true, g) = walk::root(place) {
+                            *sets.entry(g).or_default() += 2;
+                        }
+                    }
+                }
+            }
+        });
+        program
+            .main
+            .stmts
+            .iter()
+            .filter_map(|stmt| match stmt {
+                Stmt::Assign(place, AssignOp::Set, value) => match place.kind {
+                    PlaceKind::Global(g) => Some((g, value)),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .filter(|(g, value)| {
+                matches!(program.globals[*g].ty, Ty::Fn(..))
+                    && !self.globals.contains_key(g)
+                    && !elsewhere.contains(g)
+                    && sets.get(g) == Some(&1)
+                    && match value.kind {
+                        ExprKind::Closure(_) => true,
+                        ExprKind::Call(f, _) => self.lambda_returns.contains(&f),
+                        _ => false,
+                    }
+            })
+            .map(|(g, _)| g)
+            .collect()
+    }
+
+    /// Global `g` is declared `auto` where `main` sets it (see
+    /// [`Devirt::main_auto_globals`]).
+    pub fn main_auto_global(&self, g: usize) -> bool {
+        self.main_auto_globals.contains(&g)
     }
 
     /// Fn `id` returns `auto` (see [`Devirt::lambda_returns`]).

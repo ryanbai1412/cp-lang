@@ -769,3 +769,29 @@ fn a_name_for_a_template_fn_parameter_is_that_functor_not_a_std_function() {
     ));
     assert!(!out.contains("std::function"), "{out}");
 }
+
+#[test]
+fn a_top_level_fn_let_only_main_uses_is_its_closures_own_type() {
+    let src = concat!(
+        "fn adder(k: Int) -> (Int -> Int) = x => x + k\n",
+        "let n: Int = read()\n",
+        "let f = adder(n)\n",
+        "let g = (x: Int) => x * n\n",
+        "print(f(3), g(2))\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("auto f = adder("), "{out}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    let f = explained
+        .iter()
+        .find(|e| e.site == "top-level f")
+        .expect("f");
+    assert!(
+        matches!(f.mode, crate::ClosureMode::StaticLocalAuto),
+        "{explained:?}"
+    );
+}
