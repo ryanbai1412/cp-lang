@@ -80,6 +80,10 @@ pub struct Item {
     pub examples: Vec<Example>,
     /// Fields, variants and methods.
     pub members: Vec<Item>,
+    /// What it is called in C++, Python, Rust or the AtCoder Library
+    /// (`lower_bound` for `first_ge`): std items only, from
+    /// `spec/lib/inventory.md`.
+    pub aliases: Vec<String>,
 }
 
 impl Item {
@@ -311,6 +315,7 @@ impl Extractor<'_> {
             cost: None,
             line: at + 1,
             members: Vec::new(),
+            aliases: Vec::new(),
         }
     }
 
@@ -543,6 +548,7 @@ pub fn builtins() -> Module {
             line: 0,
             examples: Vec::new(),
             members,
+            aliases: Vec::new(),
         }
     };
     let items = cpl_check::BUILTIN_TYPES

@@ -184,8 +184,6 @@ STEPS = {
         Step("std model cases match their brute force on both engines (scripts/std-models.py)",
              ("scripts/std-models.py",),
              "a std type disagrees with its model; the line above gives the shortest failing op sequence"),
-        Step("every inventory spelling is a documented std name (scripts/std-inventory.py)",
-             ("scripts/std-inventory.py",), "spec/lib/inventory.md names something cpl doc does not document; see above"),
         Step("std's public signatures match their snapshot (scripts/std-api-snapshot.py)",
              ("scripts/std-api-snapshot.py",),
              "std's public API changed; review the diff above and run scripts/std-api-snapshot.py --write"),

@@ -21,6 +21,7 @@ mod highlight;
 mod markdown;
 mod model;
 
+pub mod aliases;
 pub mod cli;
 pub mod examples;
 pub mod html;
@@ -100,6 +101,10 @@ pub mod json {
         list(w, &item.examples, example);
         w.key("links");
         list(w, &links, link);
+        w.key("aliases");
+        list(w, &item.aliases, |w, alias| {
+            w.str(alias);
+        });
         w.key("members");
         list(w, &item.members, |w, member| {
             self::item(w, modules, m, Some(&item.name), member)

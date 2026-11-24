@@ -232,10 +232,13 @@ function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared =
     for (const [n, t, d] of params) lines.push(`| ${cell(n)} | ${cell(t)} | ${d ? cell(d) : 'required'} |`);
     lines.push('');
   }
-  if (facts.length) {
+  // What spec/lib/inventory.md says it is called in C++, Python, Rust or ACL.
+  const elsewhere = (item.aliases ?? []).map(cell).join(', ');
+  if (facts.length || elsewhere) {
     lines.push('| | |', '|---|---|');
     for (const [k, v] of facts)
       lines.push(`| **${k[0].toUpperCase()}${k.slice(1)}** | ${linked(ctx.math(v, name, k === 'cost'), item.links ?? []).replace(/\|/g, '\\|')} |`);
+    if (elsewhere) lines.push(`| **Elsewhere** | ${elsewhere} |`);
     lines.push('');
   }
   if (examples.length) {

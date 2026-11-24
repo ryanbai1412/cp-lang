@@ -220,7 +220,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Spec and std agree on names and named arguments | unmatched `f(k: v)` in spec blocks | rule `std-api/R6`; `scripts/spec-gate.py sigs`, gap list only shrinks |
 | Each type's common tasks are one short call | journeys per type with a tested example (`SortedBag`: insert, erase one, erase at cursor, predecessor, successor, range) | rule `std-api/R13`; `scripts/std-api-lint.py` R13 (each journey has a case in `spec/conformance/std-journeys/`) |
 | Composes: views, keys and ops pass through each other | pairs of std features that fail together (`.rev` into `zip`, `Window` into `maximal`) | rule `std-api/R14`; `missing` (pairwise composition suite) |
-| Every common operation from the C++ STL, Python, Rust and the AtCoder Library has a spelling | inventory operations with no spelling and no listed gap | rule `std-api/R15`; `scripts/std-inventory.py` (every spelling in `spec/lib/inventory.md` is a name `cpl doc --format json std` documents) |
+| Every common operation from the C++ STL, Python, Rust and the AtCoder Library has a spelling | inventory operations with no spelling and no listed gap | rule `std-api/R15`; `crates/cpl-doc/src/tests.rs` (`every_inventory_name_finds_its_std_spelling`: every spelling in `spec/lib/inventory.md` is a name `cpl doc` documents for std) |
 | The obvious code is the fast code | std calls that look O(1) and are not | rule `std-api/R16`; `bench/scaling.py --check` (time per call at n and 4n against the `cost:` line; `scaling_mismatches` hard zero, `std_fns_unscaled` only shrinks) |
 
 ### Discoverable (J2, J5)
@@ -229,7 +229,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 |---|---|---|
 | Any value a program gets, it can name without a `use` | std types named by prelude signatures but not exported | rule `std-api/R18`; `scripts/prelude-signatures.py` (in `scripts/check.sh`) |
 | Spec tables and the prelude agree | missing prelude names | `scripts/spec-gate.py prelude`; `scripts/spec-gate.py std-docs` the other way |
-| Findable without knowing the name (`lower_bound` finds `first_ge`) | common C++/Python names with no alias line in docs | `missing` (alias table checked against the docs index) |
+| Findable without knowing the name (`lower_bound` finds `first_ge`) | inventory names whose search finds no std spelling | `cpl doc` reads `spec/lib/inventory.md` into each std item's `aliases` (page filter, the site's Elsewhere row); `crates/cpl-doc/src/tests.rs` (`every_inventory_name_finds_its_std_spelling`, every row) |
 | Hover and completion show the full signature, options and bounds | std fns whose `cpl doc --format json` lacks bounds or defaults | rule `std-docs/R5`; `scripts/test_std_doc_json.py` (every public fn's bounds and defaults in its doc JSON signature) |
 | Go-to-definition opens readable std source | std files over the size cap, fns with no doc | `scripts/debt-ratchet.py` caps; `scripts/spec-gate.py std-docs --audit` |
 

@@ -10,7 +10,8 @@ use crate::{links, Item, Kind, Module};
 pub const STYLE: &str = include_str!("style.css");
 
 /// Filters the page's items as the reader types, by name or by what the
-/// row says (a search for `unordered_map` finds `HashMap`). `/` focuses the box.
+/// row says, or by its names elsewhere ([`Item::aliases`]: a search for
+/// `lower_bound` finds `first_ge`). `/` focuses the box.
 const FILTER: &str = "\
 const box = document.querySelector('.top input');
 const rows = [...document.querySelectorAll('[data-name]')];
@@ -165,6 +166,16 @@ impl Site<'_> {
     }
 }
 
+/// What the filter matches a row by: its name, then its names elsewhere.
+fn searched(name: &str, item: &Item) -> String {
+    let mut out = name.to_lowercase();
+    for alias in &item.aliases {
+        out.push(' ');
+        out.push_str(&alias.to_lowercase());
+    }
+    out
+}
+
 fn item_html(
     site: &Site,
     module: &Module,
@@ -181,7 +192,7 @@ fn item_html(
     let mut out = format!(
         "<section class=\"{class}\" id=\"{id}\" data-name=\"{name}\">\n<div class=\"sig\"><span class=\"decl\">{decl}</span>",
         id = escape(&anchor),
-        name = escape(&anchor.to_lowercase()),
+        name = escape(&searched(&anchor, item)),
         decl = highlight(&item.signature),
     );
     if let Some(cost) = &item.cost {
@@ -266,7 +277,7 @@ fn index_page(modules: &[Module], files: &[String], options: &Options) -> String
         for item in &module.items {
             main.push_str(&format!(
                 "<tr data-name=\"{lower}\"><td><a href=\"{file}#{id}\">{name}</a></td><td>{summary}</td></tr>\n",
-                lower = escape(&item.name.to_lowercase()),
+                lower = escape(&searched(&item.name, item)),
                 id = escape(&item.anchor(None)),
                 name = escape(&item.name),
                 summary = markdown::render_inline(item.summary()),

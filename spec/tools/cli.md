@@ -124,7 +124,8 @@ per code: the lint's `rule` when `mode` is `lint`, else the `input` its
 `cpl explain d --json` prints `[{"site", "lowering", "detail"}]`, one entry
 per choice it explains.
 `cpl doc --format json` prints `{"modules": [{"name", "path", "doc", "items",
-"examples", "links"}]}`.
+"examples", "links"}]}`; each item carries its `aliases`, the names
+`spec/lib/inventory.md` gives it elsewhere (empty outside std).
 `cpl test --format json` prints `{"passed_count", "case_count", "cases": [{"name",
 "verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
 `cpl stress --format json` prints `{"status", "build"?, "case_count", "saved_count"?,

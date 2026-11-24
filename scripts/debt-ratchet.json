@@ -143,7 +143,7 @@
     "perf": 3,
     "site": 0,
     "spec": 0,
-    "stdlib": 10,
+    "stdlib": 9,
     "tech-debt": 0,
     "tools": 11
   },
@@ -198,7 +198,7 @@
   "web_skip_only": 0,
   "ts_ignore": 0,
   "habit_matchers": 124,
-  "unchecked_fix_paths": 7,
+  "unchecked_fix_paths": 6,
   "stress_engines": 2,
   "conformance_failing": 11,
   "conformance_wrong_output": 1,

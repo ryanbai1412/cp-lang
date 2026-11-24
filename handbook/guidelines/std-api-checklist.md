@@ -185,7 +185,7 @@ Every common operation in the C++ STL, Python builtins and `itertools`, Rust's i
 
 - **Why:** a contestant arrives knowing one of these, and a missing operation costs a hand-written loop mid-contest.
 - **Example:** `itertools.accumulate` is `a.scan(+)`, `collections.Counter` is `xs.tally()`, Rust's `windows(2)` is `a.windows(2)`.
-- **Enforced by:** `scripts/std-inventory.py` checks every spelling in `spec/lib/inventory.md` against `cpl doc --format json std` (in `scripts/check.sh`).
+- **Enforced by:** cpl-doc's `every_inventory_name_finds_its_std_spelling` checks every spelling in `spec/lib/inventory.md` against what `cpl doc` documents for std, and that each name elsewhere finds it.
 
 ## Cost
 

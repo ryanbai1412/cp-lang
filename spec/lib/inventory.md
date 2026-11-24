@@ -4,9 +4,10 @@ Common operations from the C++ STL, Python builtins and `itertools`,
 Rust's iterators and collections, and the AtCoder Library, each with its
 CP Lang spelling (rule `std-api/R15`). The left-hand names are also the alias
 table: searching for one finds the std name on the right
-(handbook/domains/stdlib.md, "Findable without knowing the name").
-`scripts/std-inventory.py` fails when a spelling names something
-`cpl doc --format json std` doesn't document.
+(handbook/domains/stdlib.md, "Findable without knowing the name"):
+`cpl doc` gives each std item the names on the left as its `aliases`.
+cpl-doc's `every_inventory_name_finds_its_std_spelling` fails when a
+spelling names something std doesn't document.
 
 | From | Operation | CP Lang |
 |---|---|---|
