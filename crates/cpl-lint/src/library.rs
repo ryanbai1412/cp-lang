@@ -216,7 +216,10 @@ impl Visitor for Spans {
             .push(stmts.iter().map(|s| s.span.shift(base)).collect());
     }
     fn expr(&mut self, expr: &Expr) {
-        self.exprs.push(expr.span.shift(self.base));
+        // A bare generator is a fold's argument, not a value a hole can move.
+        if !expr.is_generator() {
+            self.exprs.push(expr.span.shift(self.base));
+        }
         if let ExprKind::Keep { target, .. } = &expr.kind {
             self.places.push(target.span.shift(self.base).start);
         }

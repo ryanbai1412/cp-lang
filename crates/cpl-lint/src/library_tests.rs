@@ -374,3 +374,20 @@ fn a_compound_to_needs_pure_holes_and_a_comment_drops_the_fix() {
         ]
     );
 }
+
+/// A hole does not match a bare generator: `total(x * x for x in a)` folds
+/// the generator, and `(x * x for x in a).total()` is no value to call on.
+/// Rule: R06.4.9.
+#[test]
+fn a_hole_does_not_match_a_bare_generator() {
+    let decl = "@lint(total_free, from: \"total(xs)\", to: \"xs.total()\")\npub fn total(xs: List<Int>) -> Int = xs.len\n";
+    let src = format!(
+        "{decl}let a = [3, 1]\nprint(total(a), total(x * x for x in a), total([x for x in a]))\n"
+    );
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "total_free")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(fixes, ["a.total()", "[x for x in a].total()"]);
+}

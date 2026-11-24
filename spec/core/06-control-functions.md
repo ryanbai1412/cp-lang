@@ -213,7 +213,9 @@ library or by this spec:
   record reports as that record: its code, level and explanation, and
   with no fix when the record gives `no_fix` (its `to` is then only the
   advice). `from` does not match an assigned place (`xs[i] = v`) or the
-  base it indexes. The finding spans the matched
+  base it indexes, and a hole does not match a bare generator (`x * x
+  for x in xs` in `sum(..)`), a fold's argument rather than a value. The
+  finding spans the matched
   tokens and labels what `to`'s first hole matched (the receiver a
   record's `on` types name); where a comment falls inside the match it
   has no fix, since `to` would drop the comment.
