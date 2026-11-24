@@ -1179,12 +1179,14 @@ impl<'a> Checker<'a> {
                         (n, bounds, default)
                     })
                     .collect();
+                let super_args = self.super_args(supers);
                 self.leave_body(scope);
                 vec![(
                     name.text.clone(),
                     Def::Trait {
                         generics: generics.clone(),
                         supers: supers.iter().filter_map(type_head).collect(),
+                        super_args,
                         methods,
                         fields,
                         alias: *alias,

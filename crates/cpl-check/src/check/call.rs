@@ -1394,10 +1394,12 @@ impl<'a> Checker<'a> {
         }
         // `S: Indexed<E, R>`: `R` is what the `S` given holds.
         for (param, trait_name, trait_args) in &through {
-            let holds = matches!(trait_name.as_str(), "Indexed" | "Seq" | "Positional");
+            let held = self
+                .seq_elem_role(trait_name)
+                .and_then(|i| trait_args.get(i));
             let elem = bindings.get(param).and_then(|t| t.seq_elem());
-            if let (true, Some(elem), Some(last)) = (holds, elem, trait_args.last()) {
-                last.unify(&elem, &mut bindings);
+            if let (Some(held), Some(elem)) = (held, elem) {
+                held.unify(&elem, &mut bindings);
             }
         }
         self.method_bounds_hold(callee_text, (&through, &params), &bindings, (args, call));

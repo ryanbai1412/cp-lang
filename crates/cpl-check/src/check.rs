@@ -40,6 +40,7 @@ mod pattern;
 mod question;
 pub(crate) mod removed;
 mod scopes;
+mod seq_roles;
 mod spelling;
 mod steps;
 mod stmt;
