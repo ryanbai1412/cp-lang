@@ -74,16 +74,10 @@ impl<'a> Lowerer<'a> {
                     self.mk(ExprKind::Float(value as f64), Ty::Float, span)
                 }
                 Ok(value)
-                    if matches!(
-                        inner_hint,
-                        Some(Ty::Pos(d))
-                            if !self.product_domains.contains_key(d)
-                                && !self.sum_enums.contains_key(d)
-                    ) =>
+                    if let Some(Ty::Pos(d)) = inner_hint
+                        && !self.product_domains.contains_key(d)
+                        && !self.sum_enums.contains_key(d) =>
                 {
-                    let Some(Ty::Pos(d)) = inner_hint else {
-                        unreachable!()
-                    };
                     let lit = self.mk(ExprKind::Int(value), Ty::Int, span);
                     self.cast(Cast::FromLabel(*d), lit, Ty::Pos(*d))
                 }
@@ -186,8 +180,7 @@ impl<'a> Lowerer<'a> {
                 step: None,
             } => match (lo, hi, hint) {
                 // `..` where a `Range<D>` is wanted is all of `D`.
-                (None, None, Some(Ty::Range(of))) if matches!(**of, Ty::Pos(_)) => {
-                    let Ty::Pos(d) = **of else { unreachable!() };
+                (None, None, Some(Ty::Range(of))) if let Ty::Pos(d) = **of => {
                     let lo = self.int_lit(0, span);
                     let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                     self.mk(
@@ -420,7 +413,10 @@ impl<'a> Lowerer<'a> {
                 if indices.len() == 1 && Self::keyed_index(&base_expr.ty) {
                     let view = self.hold_view(base_expr, span);
                     let (indices, ty) = self.index_args(&view.ty, indices, span);
-                    let out = self.key_index(view, indices.into_iter().next().unwrap(), ty, span);
+                    let Ok([key]) = <[Expr; 1]>::try_from(indices) else {
+                        return self.err_expr(span);
+                    };
+                    let out = self.key_index(view, key, ty, span);
                     let plain = self.plain_ty(&out.ty);
                     return self.try_coerce(out, &plain).unwrap_or_else(|e| e);
                 }
@@ -705,13 +701,15 @@ impl<'a> Lowerer<'a> {
                 };
                 let mut values = Vec::with_capacity(fields.len());
                 for (idx, (fname, fty)) in fields.iter().enumerate() {
-                    if let Some((_, val_expr)) =
-                        updates.iter().rev().find(|(n, _)| &n.text == fname)
-                    {
-                        values.push(lw.expr_as(val_expr, fty));
-                    } else {
-                        let base_ref = lw.local(tmp.expect("needs_tmp"), span);
-                        values.push(lw.mk_field(base_ref, idx, fty.clone(), span));
+                    let update = updates.iter().rev().find(|(n, _)| &n.text == fname);
+                    // With no `tmp`, every field has an update.
+                    match (update, tmp) {
+                        (Some((_, val_expr)), _) => values.push(lw.expr_as(val_expr, fty)),
+                        (None, Some(tmp)) => {
+                            let base_ref = lw.local(tmp, span);
+                            values.push(lw.mk_field(base_ref, idx, fty.clone(), span));
+                        }
+                        (None, None) => {}
                     }
                 }
                 let built = lw.mk(ExprKind::Tuple(values), ty, span);
@@ -726,7 +724,9 @@ impl<'a> Lowerer<'a> {
                 match value.ty.clone() {
                     Ty::Opt(inside) => self.mk_unwrap(value, true, *inside, span),
                     Ty::Error => value,
-                    ref ty if Self::unwraps_cells(ty) => self.unwrap_cells(value, span),
+                    ref ty if let Some(cells) = Self::cells_of(ty) => {
+                        self.unwrap_cells(value, cells, span)
+                    }
                     // Inside a generic function (e.g. `bsearch_first<I>` instantiated with `I = Int`),
                     // `(base + mid)!` is a no-op when `base + mid` is already non-optional `Int`.
                     _ if !self.gen_env.is_empty() => value,

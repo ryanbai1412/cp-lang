@@ -3,28 +3,43 @@
 
 use super::super::*;
 
+/// A one-axis collection of optional cells, as `cells_of` finds it.
+pub(in crate::lower) struct Cells {
+    dim: Dim,
+    cell: Ty,
+    inside: Ty,
+    list: bool,
+}
+
 impl<'a> Lowerer<'a> {
-    pub(in crate::lower) fn unwraps_cells(ty: &Ty) -> bool {
-        match ty {
-            Ty::Array { dims, elem } => {
-                matches!(dims[..], [Dim::Pos(_) | Dim::Int | Dim::IntFrom(_)])
-                    && matches!(**elem, Ty::Opt(_))
-            }
-            Ty::List(elem) => matches!(**elem, Ty::Opt(_)),
-            _ => false,
-        }
+    /// The axis and cells of `[D]?T` or `List<?T>`, the shapes `xs!` unwraps.
+    pub(in crate::lower) fn cells_of(ty: &Ty) -> Option<Cells> {
+        let (dim, cell, list) = match ty {
+            Ty::Array { dims, elem } => match dims[..] {
+                [dim @ (Dim::Pos(_) | Dim::Int | Dim::IntFrom(_))] => (dim, elem, false),
+                _ => return None,
+            },
+            Ty::List(elem) => (Dim::Int, elem, true),
+            _ => return None,
+        };
+        let Ty::Opt(inside) = &**cell else {
+            return None;
+        };
+        Some(Cells {
+            dim,
+            cell: (**cell).clone(),
+            inside: (**inside).clone(),
+            list,
+        })
     }
 
-    pub(in crate::lower) fn unwrap_cells(&mut self, value: Expr, span: Span) -> Expr {
-        let (dim, cell, list) = match &value.ty {
-            Ty::Array { dims, elem } => (dims[0], (**elem).clone(), false),
-            Ty::List(elem) => (Dim::Int, (**elem).clone(), true),
-            _ => unreachable!("checked by unwraps_cells"),
-        };
-        let Ty::Opt(inside) = cell.clone() else {
-            unreachable!("checked by unwraps_cells")
-        };
-        let inside = *inside;
+    pub(in crate::lower) fn unwrap_cells(&mut self, value: Expr, cells: Cells, span: Span) -> Expr {
+        let Cells {
+            dim,
+            cell,
+            inside,
+            list,
+        } = cells;
         let at = self.span(span);
         let source = self.source(span);
         let name = source.trim_end().trim_end_matches('!').to_string();
