@@ -188,14 +188,7 @@ impl Checker<'_> {
                             })
                             .collect()
                     });
-                    let mut bounds: Vec<(String, Vec<String>)> = Vec::new();
-                    for (p, tr, _) in &bound_args {
-                        match bounds.iter_mut().find(|(q, _)| q == p) {
-                            Some((_, traits)) => traits.push(tr.clone()),
-                            None => bounds.push((p.clone(), vec![tr.clone()])),
-                        }
-                    }
-                    self.fn_items_take_bound_types(&bounds, params, args, &mut bindings);
+                    self.fn_items_take_bound_types(&bound_args, params, args, &mut bindings);
                     if !is_generated_ctor && self.sink.len() > before {
                         self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
                     }

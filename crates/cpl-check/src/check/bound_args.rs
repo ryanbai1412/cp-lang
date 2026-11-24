@@ -240,16 +240,41 @@ impl Checker<'_> {
         args: &[ast::Arg],
         bindings: &mut crate::ty::Bindings,
     ) {
-        let Def::Fn { bounds, .. } = def else {
-            return;
-        };
-        self.fn_items_take_bound_types(bounds, params, args, bindings);
+        if let Def::Fn {
+            bounds, bound_args, ..
+        } = def
+        {
+            let mut all = bound_args.clone();
+            for (p, traits) in bounds {
+                for t in traits {
+                    if !all.iter().any(|(q, w, _)| q == p && w == t) {
+                        all.push((p.clone(), t.clone(), Vec::new()));
+                    }
+                }
+            }
+            self.fn_items_take_bound_types(&all, params, args, bindings);
+        }
     }
 
-    /// [`Self::fn_items_take_their_type`] under `bounds`, each generic's trait names.
+    /// Each bound a fn item's own type meets, with the trait arguments the call gave it.
+    fn note_item_args(&mut self, bound_args: &BoundArgs, bindings: &crate::ty::Bindings) {
+        for (param, trait_name, args) in bound_args {
+            if let Some(Ty::Named { name, .. }) = bindings.get(param) {
+                let known: Vec<Ty> = args.iter().map(|a| a.subst(bindings)).collect();
+                if name.starts_with("type_of(")
+                    && !known.iter().any(|a| a.mentions_param() || a.has_vague())
+                {
+                    self.item_args
+                        .push((name.clone(), trait_name.clone(), known));
+                }
+            }
+        }
+    }
+
+    /// [`Self::fn_items_take_their_type`] under `bound_args`.
     pub(crate) fn fn_items_take_bound_types(
         &mut self,
-        bounds: &[(String, Vec<String>)],
+        bound_args: &BoundArgs,
         params: &[crate::ty::Param],
         args: &[ast::Arg],
         bindings: &mut crate::ty::Bindings,
@@ -273,13 +298,9 @@ impl Checker<'_> {
             if matches!(&arg.value.kind, ast::ExprKind::Name(n) if !self.names_fn_item(n)) {
                 continue;
             }
-            let Some((_, traits)) = bounds.iter().find(|(p, _)| p == m) else {
-                continue;
-            };
             let has_impl = self.env.impls(&item).iter().any(|(t, _)| {
-                t.as_deref()
-                    .and_then(|t| t.split('<').next())
-                    .is_some_and(|t| traits.iter().any(|w| w == t))
+                let t = t.as_deref().and_then(|t| t.split('<').next());
+                bound_args.iter().any(|(p, w, _)| p == m && Some(&**w) == t)
             });
             if has_impl {
                 bindings.insert(
@@ -291,6 +312,7 @@ impl Checker<'_> {
                 );
             }
         }
+        self.note_item_args(bound_args, bindings);
     }
 
     /// At a call: each generic a bound's trait arguments name, from the
@@ -300,11 +322,13 @@ impl Checker<'_> {
         let Some(bound_args) = self.call_bound_args.take() else {
             return;
         };
+        self.note_item_args(&bound_args, bindings);
         for (param, trait_name, args) in &bound_args {
             let Some(actual) = bindings.get(param).cloned() else {
                 continue;
             };
             let actual = self.settle(&actual);
+            let item = matches!(&actual, Ty::Named { name, .. } if name.starts_with("type_of("));
             if let Some(given) = self.trait_args_of(&actual, trait_name, args.len()) {
                 // `impl<T> Acts<T, T> for Plus`: the impl's own `T` is the
                 // bound's, where the call already fixed it.
@@ -316,7 +340,11 @@ impl Checker<'_> {
                     }
                 }
                 for (want, got) in args.iter().zip(&given) {
-                    want.unify(&got.subst(&open), bindings);
+                    // An impl generic nothing fixed yet (`impl<T> Op<T> for type_of(max)`) waits.
+                    let got = self.settle(&got.subst(&open));
+                    if !(item && got.has_vague()) {
+                        want.unify(&got, bindings);
+                    }
                 }
             }
         }

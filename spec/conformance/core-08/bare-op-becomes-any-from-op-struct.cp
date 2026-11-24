@@ -1,7 +1,7 @@
 // expect: ok, output "5 5"
 // rule: 08.1.9
 // A bare operator passed where a struct with a `@from_op` static fn is wanted becomes that fn's call, a user's struct as much as std's `Monoid`; at a trait bound it keeps its own type instead (R08.1.9).
-struct Sum<T>(id: T, op: (T, T) -> T):
+struct Sum<T: Add + Zero>(id: T, op: (T, T) -> T):
     @from_op
     pub fn of<M>(m: M) -> Sum<T> = Sum(T.zero, (a, b) => a + b)
 trait Op3<T>:
