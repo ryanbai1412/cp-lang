@@ -3,9 +3,6 @@
 // quick fixes, completion, signature help and inlay hints all come from the
 // server's capabilities.
 
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
     LanguageClient,
@@ -20,51 +17,16 @@ export const SELECTOR = [
     { language: 'cp', scheme: 'untitled' },
 ];
 
-const INSTALL =
-    process.platform === 'win32'
-        ? 'Install it with `irm https://cp-lang.org/install.ps1 | iex` in PowerShell, or point `cp.server.path` at the binary.'
-        : 'Install it with `curl -fsSL https://cp-lang.org/install.sh | sh`, or point `cp.server.path` at the binary.';
-
-/** Why CP Lang doesn't run `cpl` in a folder VS Code hasn't been told to trust. */
-const RESTRICTED =
-    'This folder is in Restricted Mode, so CP Lang highlights .cp files but does not run `cpl`: no diagnostics, completion or runs. Trust the folder to turn them on.';
-
-/** What to tell the contestant when there is no `cpl` to run. */
+/** What the editor says when it may not, or could not, start `cpl`. */
 export function missingCpl(trusted: boolean): string {
-    return trusted ? `Couldn't find \`cpl\`. ${INSTALL}` : RESTRICTED;
+    return trusted
+        ? "Couldn't start `cpl`. Install it from https://cp-lang.org/install (it goes on `PATH`), or point `cp.server.path` at the binary."
+        : 'This folder is in Restricted Mode, so CP Lang highlights .cp files but does not run `cpl`. Trust the folder to turn it on.';
 }
 
-/**
- * The `cpl` binary the settings point at, or undefined when it can't be found.
- * A path is taken as written, relative to each workspace folder. A bare name is
- * looked up on `PATH`, where the installer and cargo put it (an editor started
- * from the dock doesn't see the shell's `PATH`), then in each folder's newer
- * `target/` build, so the extension works inside the cp-lang repository.
- */
+/** `cp.server.path` as written, in a trusted workspace: `cpl` from `PATH`, where the installer puts it. */
 export function serverBinary(): string | undefined {
-    const configured = vscode.workspace.getConfiguration('cp').get<string>('server.path', 'cpl');
-    if (!vscode.workspace.isTrusted || configured.trim() === '') {
-        return undefined;
-    }
-    const folders = (vscode.workspace.workspaceFolders ?? []).map(folder => folder.uri.fsPath);
-    const names = process.platform === 'win32' && !/\.exe$/i.test(configured) ? [configured, `${configured}.exe`] : [configured];
-    const at = (dir: string) => names.map(name => path.resolve(dir, name)).find(file => fs.statSync(file, { throwIfNoEntry: false })?.isFile());
-    if (path.isAbsolute(configured) || /[\\/]/.test(configured)) {
-        return path.isAbsolute(configured) ? at('/') : folders.map(at).find(Boolean);
-    }
-    const home = os.homedir();
-    const built = (folder: string) =>
-        ['release', 'debug']
-            .map(profile => path.join(folder, 'target', profile))
-            .sort((a, b) => (fs.statSync(path.join(b, names[0]), { throwIfNoEntry: false })?.mtimeMs ?? 0) - (fs.statSync(path.join(a, names[0]), { throwIfNoEntry: false })?.mtimeMs ?? 0));
-    const dirs = [
-        ...(process.env.PATH ?? '').split(path.delimiter).filter(Boolean),
-        ...(process.env.CPL_HOME ? [path.join(process.env.CPL_HOME, 'bin')] : []),
-        path.join(home, '.cpl', 'bin'),
-        path.join(home, '.cargo', 'bin'),
-        ...folders.flatMap(built),
-    ];
-    return dirs.map(at).find(Boolean);
+    return vscode.workspace.isTrusted ? vscode.workspace.getConfiguration('cp').get<string>('server.path', 'cpl') : undefined;
 }
 
 export class CpClient implements vscode.Disposable {
@@ -84,7 +46,8 @@ export class CpClient implements vscode.Disposable {
     async start(): Promise<void> {
         const binary = serverBinary();
         if (!binary) {
-            this.missingBinary();
+            this.setStatus('cpl: Restricted Mode', vscode.LanguageStatusSeverity.Warning, missingCpl(false));
+            this.warnOnce(missingCpl(false), 'Manage Workspace Trust', 'workbench.trust.manage');
             return;
         }
         this.binary = binary;
@@ -140,6 +103,7 @@ export class CpClient implements vscode.Disposable {
         } catch (error) {
             this.setStatus('cpl: failed to start', vscode.LanguageStatusSeverity.Error, binary);
             this.output.appendLine(`could not start \`${binary} ${args.join(' ')}\`: ${error}`);
+            this.warnOnce(missingCpl(true), 'Set the Path', 'workbench.action.openSettings', 'cp.server.path');
             return;
         }
         const info = client.initializeResult?.serverInfo;
@@ -198,40 +162,11 @@ export class CpClient implements vscode.Disposable {
         this.status.detail = detail ?? this.binary;
     }
 
-    private missingBinary(): void {
-        const configured = vscode.workspace.getConfiguration('cp').get<string>('server.path', 'cpl');
-        this.status.command = {
-            command: 'workbench.action.openSettings',
-            title: 'Set Path',
-            arguments: ['cp.server.path'],
-        };
-        this.setStatus('cpl: not found', vscode.LanguageStatusSeverity.Error, `\`${configured}\` is not on PATH`);
-        // Highlighting and snippets still work without the server.
-        if (this.warnedMissing) {
-            return;
+    /** Highlighting and snippets still work without the server, so say it once. */
+    private warnOnce(message: string, action: string, command: string, ...args: string[]): void {
+        if (!this.warnedMissing) {
+            this.warnedMissing = true;
+            void vscode.window.showWarningMessage(message, action).then(choice => choice && vscode.commands.executeCommand(command, ...args));
         }
-        this.warnedMissing = true;
-        if (!vscode.workspace.isTrusted) {
-            this.setStatus('cpl: Restricted Mode', vscode.LanguageStatusSeverity.Warning, RESTRICTED);
-            const trust = 'Manage Workspace Trust';
-            void vscode.window.showWarningMessage(RESTRICTED, trust).then(choice => {
-                if (choice === trust) {
-                    void vscode.commands.executeCommand('workbench.trust.manage');
-                }
-            });
-            return;
-        }
-        const choose = 'Set the Path';
-        void vscode.window
-            .showWarningMessage(
-                `Couldn't find \`${configured}\`, so live diagnostics, hover and quick fixes are off. ` +
-                    INSTALL,
-                choose,
-            )
-            .then(choice => {
-                if (choice === choose) {
-                    void vscode.commands.executeCommand('workbench.action.openSettings', 'cp.server.path');
-                }
-            });
     }
 }

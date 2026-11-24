@@ -631,7 +631,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "std/core.cp", "pub fn foo(x: Int) -> Int:\n    x\n")
             self._write(root, "editors/vscode/src/languageData.ts",
                         "export const KEYWORDS = ['fn', 'let'];\nexport const CONTEXTUAL_KEYWORDS = ['by'];\n")
-            self._write(root, "editors/vscode/src/extension.ts", "activate();\n")
+            self._write(root, "editors/vscode/src/extension.ts",
+                        "activate();\nif (ready) start();\nshow('wait for it && go');\nconst a = b ?? c;\n")
             self._write(root, "editors/vscode/src/runner.ts", "// runs\nconst a = 1;\n\nrun();\n")
             self._write(root, "editors/vscode/test/unit/x.ts", "check();\n")
             self._write(root, "web/lib/kinds.ts", "const k = ['fn', 'let', 'E0301', 'other'];\n"
@@ -653,7 +654,8 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.judge_tables(root), ["crates/a/src/lib.rs:4"])
             self.assertEqual(dr.event_models(root), ["crates/cpl-interp/src/lib.rs:6"])
             self.assertEqual(dr.editor_logic_lines(root),
-                             ["editors/vscode/src/runner.ts:2", "editors/vscode/src/runner.ts:4"])
+                             ["editors/vscode/src/extension.ts:2", "editors/vscode/src/extension.ts:4",
+                              "editors/vscode/src/runner.ts:2", "editors/vscode/src/runner.ts:4"])
 
     def test_raw_repo_wide_counters(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -2497,16 +2497,24 @@ EDITOR_GLUE = frozenset({
 })
 EDITOR_SOURCE_RE = re.compile(r"^editors/(?!tree-sitter-cp/)(?!.*(?:/tests?/|/scripts/|smoke|\.test\.)).*\.(?:ts|js|kt|rs|lua|el|vim)$")
 EDITOR_COMMENT = ("//", "/*", "*", "#", ";", "--", '"')
+# In an `EDITOR_GLUE` file a line is client wiring unless it decides or computes:
+# a branch, a loop, a condition, or a search or transform of data (strings blanked).
+EDITOR_DECIDES_RE = re.compile(r"\b(?:if|else|for|while|switch|case|catch|when)\b|\?\?|&&|\|\||\s\?\s"
+                               r"|\.(?:map|filter|find|flatMap|sort|reduce|split|replace|match|test|some|every|includes)\(")
+EDITOR_STRING_RE = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`")
 
 
 def editor_logic_lines(root: Path) -> list[str]:
-    """Code lines in editor sources other than LSP-client wiring (`EDITOR_GLUE`):
-    editors stay thin, with completion, running, results and tracing in the server."""
+    """Code lines in editor sources other than LSP-client wiring: every code line,
+    and in an `EDITOR_GLUE` file each line that decides or computes (`EDITOR_DECIDES_RE`).
+    Editors stay thin, with completion, running, results and tracing in the server."""
     out = []
     for rel in _git(root, "ls-files", "editors"):
-        if EDITOR_SOURCE_RE.match(rel) and rel not in EDITOR_GLUE and (root / rel).is_file():
+        if EDITOR_SOURCE_RE.match(rel) and (root / rel).is_file():
+            glue = rel in EDITOR_GLUE
             out += [f"{rel}:{i}" for i, line in enumerate(_lines(root / rel), 1)
-                    if line.strip() and not line.strip().startswith(EDITOR_COMMENT)]
+                    if line.strip() and not line.strip().startswith(EDITOR_COMMENT)
+                    and (not glue or EDITOR_DECIDES_RE.search(EDITOR_STRING_RE.sub("''", line)))]
     return out
 
 

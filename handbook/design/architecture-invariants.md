@@ -59,7 +59,7 @@ Factory owns it.
 | Integer widths and overflow | One width table, read by both the interpreter and codegen | Core | `width_tables` (narrow-width match arms outside `cpl_ir::IntWidth`) |
 | Input and output | One I/O contract, tested across the interpreter, the C++ runtime and the browser | Core, with Factory for the browser | to build: an I/O parity suite |
 | Problems | One problem package (`corpus/problems/<id>/`) and one walker, `scripts/corpus.py` `problems()`, used by ports, bench, stress and judge | Content, with Factory for bench | `corpus_walkers` (any other glob of `corpus/problems`), `dream_unverified` (a `dream.cp` without a current `dream_stress` record) |
-| Editors | Editors stay thin, with all logic in the LSP | Consumers | `editor_logic_lines` (editor code lines beyond the LSP-client wiring in `EDITOR_GLUE`) |
+| Editors | Editors stay thin, with all logic in the LSP | Consumers | `editor_logic_lines` (editor code lines beyond LSP-client wiring: every line outside `EDITOR_GLUE`, and each line in it that decides or computes) |
 | Modules | One module loader and resolver for CLI, LSP, wasm and judge | Core | `module_loaders` |
 | Judges and targets | One judge/target table that drives the emitter | Core | `judge_tables` (judges named outside cpl-judge, by id or enum variant) |
 | Codegen optimizations | Every optimization reads the effects/Uses table | Core, with Factory | `codegen_effect_guesses`; to build: `opt_without_uses` once codegen lists its passes |

@@ -91,7 +91,7 @@ Highlights worth noting:
 
 ## Language server (`cpl lsp`) and inlay hints
 
-The extension launches `cpl lsp` over stdio (`cp.server.path`, default `cpl`, searched on `PATH` and then in workspace `target/release` and `target/debug`).
+The extension launches `cpl lsp` over stdio (`cp.server.path`, default `cpl` from `PATH`; VS Code reads the login shell's `PATH` even when started from the dock).
 
 - **From `cpl lsp`:** live diagnostics with error codes and related spans, hover types, go-to-definition, find-references (Shift+F12), rename (F2, refused for library names), document outline symbols and diagnostic quick fixes.
 - **Completion and signature help from `cpl lsp`:** `xs.` lists the receiver's fields, `@get` properties (shown as properties, so `q.len` never gets parentheses) and methods, even on a half-typed line; bare names list locals, this file's declarations, imports and prelude exports with signatures and `///` docs; `use std.` lists modules. Typing `(` or `,` shows the parameter names, types and the argument being typed.
@@ -149,7 +149,7 @@ Every setting the extension reads; `crates/cpl-cli/tests/vscode_sync.rs` checks 
 
 | Setting | Default | What it does |
 |---|---|---|
-| `cp.server.path` | `"cpl"` | The `cpl` binary. A bare name is looked up on `PATH`, then in the workspace's `target/release` and `target/debug`. |
+| `cp.server.path` | `"cpl"` | The `cpl` binary: a name on `PATH` (the installer puts `cpl` there) or an absolute path, such as a cp-lang checkout's `target/debug/cpl`. |
 | `cp.server.args` | `["lsp"]` | Arguments that start the language server. The server speaks LSP on stdio. |
 | `cp.trace.server` | `"off"` | Log the messages between VS Code and the language server. |
 | `cp.codeLens.enabled` | `true` | Show Run, Stress and Trace lenses above the file, its samples and its `@alt`/`@check`/`@interactor` functions. |
