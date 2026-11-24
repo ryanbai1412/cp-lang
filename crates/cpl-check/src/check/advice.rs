@@ -973,9 +973,12 @@ pub(super) fn in_place_twin(name: &str, recv: &str) -> Option<String> {
     };
     for stem in stems {
         // A list method `builtin_catalog` runs, so `cpl run` has it.
-        let listed = crate::builtins::BUILTIN_MEMBERS
-            .iter()
-            .any(|m| m.receiver == crate::builtins::Receiver::List && m.mutates && m.name == stem);
+        let listed = crate::builtins::BUILTIN_MEMBERS.iter().any(|m| {
+            m.receiver == crate::builtins::Receiver::List
+                && m.mutates
+                && m.params.is_empty()
+                && m.name == stem
+        });
         if listed {
             return Some(format!(
                 "{lead}`{stem}` changes the list in place and returns nothing; for a changed copy, write `var ys = {copy}`, then `ys.{stem}()`"
