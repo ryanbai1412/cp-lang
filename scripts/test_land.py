@@ -604,7 +604,7 @@ class LandTest(unittest.TestCase):
         env["GIT_COMMITTER_DATE"] = f"{int(stamp) - age} +0000"
         sha = subprocess.run(["git", "commit-tree", empty, "-m", "land ticket other"], cwd=repo, env=env,
                              capture_output=True, text=True, check=True).stdout.strip()
-        git(repo, "push", "-q", "origin", f"{sha}:refs/locks/queue/{name}")
+        git(repo, "push", "-q", "origin", f"+{sha}:refs/locks/queue/{name}")
 
     def tickets_on_remote(self, repo):
         out = git(repo, "ls-remote", "origin", "refs/locks/queue/*")
@@ -657,14 +657,72 @@ exec {shutil.which("git")} "$@"
         self.assertNotIn("refuses", r.stderr)
 
     def test_a_dead_waiters_ticket_expires(self):
+        # Dead means its sha stopped changing (no heartbeat), by the waiter's clock.
         repo = self.clone("lane")
-        self.ticket(repo, "1000000000000000000-1-dead", age=150)
+        self.ticket(repo, "1000000000000000000-1-dead")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_LOCK_STALE="2")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dropping queue ticket 1000000000000000000-1-dead: no heartbeat for over 2s", r.stderr)
+        self.assertEqual(self.tickets_on_remote(repo), [])
+
+    def test_a_malformed_ticket_is_dropped(self):
+        repo = self.clone("lane")
+        self.ticket(repo, "1795545766843135466-380144-")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("dropping queue ticket 1795545766843135466-380144-: malformed name", r.stderr)
+        self.assertEqual(self.tickets_on_remote(repo), [])
+
+    def test_a_live_waiter_in_a_long_line_never_times_out(self):
+        repo = self.clone("lane")
+        self.ticket(repo, "1000000000000000000-1-other")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")},
+               "CPL_LAND_TRIES": "1"}
+        land = subprocess.Popen(["bash", "scripts/land.sh"], cwd=repo, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for line in land.stderr:
+            if "waiting in line behind 1000000000000000000-1-other" in line:
+                break
+        # Ours heartbeats its ticket (every 10 s) and keeps waiting, past what
+        # lock_wait would have allowed, until the earlier waiter is gone.
+        ours = lambda: [l.split() for l in git(repo, "ls-remote", "origin", "refs/locks/queue/*").splitlines()
+                        if "-other" not in l]
+        first = ours()
+        while ours() == first:
+            self.assertIsNone(land.poll())
+        self.ticket(repo, "1000000000000000000-1-other")  # the earlier waiter's heartbeat
+        git(repo, "push", "-q", "origin", ":refs/locks/queue/1000000000000000000-1-other")
+        out, err = land.communicate(timeout=120)
+        self.assertEqual(land.returncode, 0, err)
+        self.assertIn("pushed", out)
+        self.assertNotIn("no land lock", err)
+        self.assertEqual(self.tickets_on_remote(repo), [])
+
+    def test_a_rejected_push_tries_again_holding_the_lock_and_its_place(self):
+        repo = self.clone("lane")
+        rejected = self.tmp / "rejected"
+        hook = self.tmp / "remote.git" / "hooks" / "pre-receive"
+        hook.write_text("#!/bin/sh\nwhile read old new ref; do\n"
+                        f'  [ "$ref" != refs/heads/main ] || [ -e "{rejected}" ] || '
+                        f'{{ touch "{rejected}"; echo failed >&2; exit 1; }}\n'
+                        "done\n")
+        hook.chmod(0o755)
+        self.ticket(repo, "9000000000000000000-1-later")
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
         r = self.land(repo, CPL_LAND_LOCK_WAIT="2")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertNotIn("waiting in line", r.stderr)
-        self.assertEqual(self.tickets_on_remote(repo), [])
+        self.assertTrue(rejected.exists())
+        self.assertIn("the push failed; trying again holding the land lock", r.stderr)
+        self.assertIn("(try 1)", r.stdout)
+        self.assertEqual(self.lock_on_remote(), "")
+        self.assertEqual(self.tickets_on_remote(repo), ["9000000000000000000-1-later"])
 
     def test_a_lock_whose_holder_cant_be_read_is_never_taken_over(self):
         repo = self.clone("lane")
