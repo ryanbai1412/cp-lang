@@ -4,11 +4,12 @@ and at 4n, against the growth the documented complexity predicts.
 
     python3 bench/scaling.py [--cpl PATH] [--write] [--check] [CASE...]
 
-A case is bench/scaling/<name>.cp. It reads `n`, builds what the call needs,
-and marks each line whose time is the fn's with `// timed`; a header names
-the fn as `cpl doc --format json std` does (`// scaling: bag.SortedBag.add`),
-and may hold symbols at a constant (`// fixed: K`) or set the base size
-(`// n: 4096`, default N). Each case runs under `cpl profile --native`, the
+A case is bench/scaling/<name>.cp. It reads `n`, builds what the calls
+need, and marks each line whose time is a fn's with `// timed: <fn>`, the
+fn named as `cpl doc --format json std` does (`bag.SortedBag.add`); one
+case may time several fns. A header may name the fn a bare `// timed`
+means (`// scaling: bag.SortedBag.add`), hold symbols at a constant
+(`// fixed: K`) or set the base size (`// n: 4096`, default N). Each case runs under `cpl profile --native`, the
 judge's C++ with a counter per statement, RUNS times at n and at 4n; the
 time per hit of the timed lines (the fastest run) gives the measured growth.
 The documented growth is the `cost:` formula evaluated at 4n over n, every
@@ -101,25 +102,37 @@ def header(text):
     return out
 
 
-def per_hit(cpl, case, n, timed, tmp):
-    """Fastest nanoseconds per hit of the `timed` lines over RUNS runs at size n."""
+def per_hit(cpl, case, n, groups, tmp):
+    """fn -> fastest nanoseconds per hit of its timed lines over RUNS runs at size n."""
     inp = os.path.join(tmp, f"{os.path.basename(case)}.{n}.in")
     with open(inp, "w") as f:
         f.write(f"{n}\n")
-    best = None
+    best = {}
     for _ in range(RUNS):
         run = subprocess.run([cpl, "profile", "--native", case, inp, "--format", "json"],
                              cwd=ROOT, capture_output=True, text=True, timeout=300)
         if run.returncode != 0:
             raise RuntimeError(run.stderr.strip().splitlines()[0] if run.stderr.strip() else "profile failed")
-        lines = [l for l in json.loads(run.stdout)["lines"] if l["line"] in timed]
-        ns, hits = sum(l["time_ns"] for l in lines), sum(l["hit_count"] for l in lines)
-        if not hits:
-            raise RuntimeError("no timed line ran")
-        if ns < MIN_NS:
-            raise RuntimeError(f"the timed lines take {ns} ns at n={n}, under {MIN_NS}; raise `// n:`")
-        best = min(best or math.inf, ns / hits)
+        by_line = {l["line"]: l for l in json.loads(run.stdout)["lines"]}
+        for fn, timed in groups.items():
+            lines = [by_line[i] for i in timed if i in by_line]
+            ns, hits = sum(l["time_ns"] for l in lines), sum(l["hit_count"] for l in lines)
+            if not hits:
+                raise RuntimeError(f"no line timing {fn} ran")
+            if ns < MIN_NS:
+                raise RuntimeError(f"the lines timing {fn} take {ns} ns at n={n}, under {MIN_NS}; raise `// n:`")
+            best[fn] = min(best.get(fn, math.inf), ns / hits)
     return best
+
+
+def timed_lines(text, default):
+    """fn -> the line numbers marked `// timed` (the header's fn) or `// timed: fn`."""
+    groups = {}
+    for i, line in enumerate(text.splitlines(), 1):
+        m = re.search(r"//\s*timed(?::\s*(\S+))?\s*$", line)
+        if m:
+            groups.setdefault(m.group(1) or default, set()).add(i)
+    return groups
 
 
 def judge(measured, documented):
@@ -128,29 +141,36 @@ def judge(measured, documented):
 
 
 def run_case(cpl, case, costs, tmp):
+    """(`case::fn`, record) for each fn the case times."""
     text = open(case).read()
     head = header(text)
     rel = os.path.relpath(case, ROOT)
-    fn = head.get("scaling")
-    rec = {"fn": fn}
-    if fn not in costs:
-        return rel, {**rec, "ok": False, "why": f"`// scaling: {fn}` names no std fn with a cost"}
-    timed = {i for i, l in enumerate(text.splitlines(), 1) if l.rstrip().endswith("// timed")}
-    if not timed:
-        return rel, {**rec, "ok": False, "why": "no line is marked `// timed`"}
+    groups = timed_lines(text, head.get("scaling"))
+    if not groups:
+        return [(f"{rel}::", {"fn": None, "ok": False, "why": "no line is marked `// timed`"})]
     n = int(head.get("n", N))
     fixed = tuple(s.strip() for s in head.get("fixed", "").split(",") if s.strip())
-    formula = big_o(costs[fn])
+    out, documented = [], {}
+    for fn in groups:
+        formula = big_o(costs[fn]) if fn in costs else None
+        try:
+            if fn not in costs:
+                raise ValueError(f"`{fn}` is no std fn with a cost")
+            if not formula:
+                raise ValueError(f"no O(...) in its cost: {costs[fn]}")
+            documented[fn] = (formula, growth(formula, fixed, n=float(n)))
+        except ValueError as e:
+            out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}))
     try:
-        documented = growth(formula, fixed, n=float(n)) if formula else None
-        if documented is None:
-            raise ValueError(f"no O(...) in its cost: {costs[fn]}")
-        measured = per_hit(cpl, case, 4 * n, timed, tmp) / per_hit(cpl, case, n, timed, tmp)
-    except (RuntimeError, ValueError, subprocess.TimeoutExpired) as e:
-        return rel, {**rec, "ok": False, "why": str(e)}
-    ok = judge(measured, documented)
-    return rel, {**rec, "cost": formula, "n": n, "documented": round(documented, 2),
-                 "measured": round(measured, 2), "ok": ok}
+        small = per_hit(cpl, case, n, groups, tmp)
+        big = per_hit(cpl, case, 4 * n, groups, tmp)
+    except (RuntimeError, subprocess.TimeoutExpired) as e:
+        return out + [(f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}) for fn in documented]
+    for fn, (formula, want) in documented.items():
+        measured = big[fn] / small[fn]
+        out.append((f"{rel}::{fn}", {"fn": fn, "cost": formula, "n": n, "documented": round(want, 2),
+                                      "measured": round(measured, 2), "ok": judge(measured, want)}))
+    return out
 
 
 def main():
@@ -169,7 +189,8 @@ def main():
     cases = args.cases or sorted(glob.glob(os.path.join(CASES, "*.cp")))
     import tempfile
     with tempfile.TemporaryDirectory() as tmp, ThreadPoolExecutor(args.j) as pool:
-        results = dict(pool.map(lambda c: run_case(args.cpl, os.path.abspath(c), costs, tmp), cases))
+        results = dict(r for rs in pool.map(lambda c: run_case(args.cpl, os.path.abspath(c), costs, tmp), cases)
+                       for r in rs)
     scaled = {r["fn"] for r in results.values()}
     board = {"cases": results, "unscaled": sorted(set(costs) - scaled)}
     bad = 0
@@ -194,7 +215,8 @@ def main():
         except (OSError, ValueError):
             old = {}
         if not args.cases and (old.get("unscaled") != board["unscaled"]
-                               or sorted(old.get("cases", {})) != sorted(results)):
+                               or sorted(old.get("cases", {})) != sorted(results)
+                               or any(not r["ok"] for r in old.get("cases", {}).values()) != bool(bad)):
             print(f"scaling: {os.path.relpath(BOARD, ROOT)} is stale; run bench/scaling.py --write",
                   file=sys.stderr)
             return 1

@@ -1,26 +1,42 @@
 {
  "cases": {
-  "bench/scaling/deque_push.cp": {
+  "bench/scaling/deque_push.cp::deque.Deque.push": {
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.push",
-   "measured": 1.01,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/sortedbag_add.cp": {
+  "bench/scaling/sortedbag.cp::bag.SortedBag.add": {
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.add",
-   "measured": 1.25,
+   "measured": 1.29,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/sortedbag_contains.cp": {
+  "bench/scaling/sortedbag.cp::bag.SortedBag.contains": {
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.contains",
-   "measured": 1.08,
+   "measured": 1.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/sortedbag.cp::bag.SortedBag.count": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "bag.SortedBag.count",
+   "measured": 1.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/sortedbag.cp::bag.SortedBag.remove": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "bag.SortedBag.remove",
+   "measured": 1.27,
    "n": 16384,
    "ok": true
   }
@@ -115,7 +131,6 @@
   "bag.SortedBag.absorb",
   "bag.SortedBag.add_many",
   "bag.SortedBag.clear",
-  "bag.SortedBag.count",
   "bag.SortedBag.count_of",
   "bag.SortedBag.cursor_at",
   "bag.SortedBag.cursor_first",
@@ -148,7 +163,6 @@
   "bag.SortedBag.prev_cursor",
   "bag.SortedBag.range",
   "bag.SortedBag.rank",
-  "bag.SortedBag.remove",
   "bag.SortedBag.remove_all",
   "bag.SortedBag.reserve",
   "bag.SortedBag.split_at",

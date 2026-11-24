@@ -46,11 +46,16 @@ class Header(unittest.TestCase):
         text = "// scaling: bag.SortedBag.add\n// fixed: K\n// n: 512\nlet n: Int = read()\n// n: 9\n"
         self.assertEqual(scaling.header(text), {"scaling": "bag.SortedBag.add", "fixed": "K", "n": "512"})
 
-    def test_every_case_names_its_fn_and_a_timed_line(self):
+    def test_each_timed_line_names_its_fn_or_takes_the_headers(self):
+        text = "// scaling: a.f\nx // timed\ny\nz // timed: b.g\nw // timed: b.g\n"
+        self.assertEqual(scaling.timed_lines(text, "a.f"), {"a.f": {2}, "b.g": {4, 5}})
+
+    def test_every_case_times_a_named_fn(self):
         for f in sorted(os.listdir(scaling.CASES)):
             text = open(os.path.join(scaling.CASES, f)).read()
-            self.assertIn("scaling", scaling.header(text), f)
-            self.assertIn("// timed", text, f)
+            groups = scaling.timed_lines(text, scaling.header(text).get("scaling"))
+            self.assertTrue(groups, f)
+            self.assertNotIn(None, groups, f)
 
 
 if __name__ == "__main__":
