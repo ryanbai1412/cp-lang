@@ -16,6 +16,43 @@ pub(crate) use cpl_ir::effects::{
     in_domain, known_with, pure_path, trap_free_stmts, trap_free_with, Effects,
 };
 
+/// Whether every call of `f` sets `root` whole before anything reads it:
+/// the global `(true, g)` or the `mut` param `(false, i)`. A call of such a
+/// fn ends the old value as a store would, so a name may take it first.
+/// `alias` is a global the param is lent from: nothing up to the store may
+/// reach it by name.
+pub(crate) fn sets_whole_first(
+    program: &Program,
+    f: FnId,
+    root: (bool, usize),
+    alias: Option<usize>,
+    open: &mut Vec<FnId>,
+) -> bool {
+    let fun = &program.fns[f];
+    if open.contains(&f) || (!root.0 && root.1 >= fun.params.len()) {
+        return false;
+    }
+    if let Some(g) = alias {
+        let stored = |s: &Stmt| {
+            matches!(s, Stmt::Assign(p, cpl_ir::AssignOp::Set, _)
+                if p.kind == PlaceKind::Local(root.1))
+        };
+        let upto = fun.body.stmts.iter().position(stored).map_or(0, |k| k + 1);
+        let before = Block {
+            stmts: fun.body.stmts[..upto].to_vec(),
+        };
+        let mut reached = false;
+        walk::deep_exprs(&before, &mut |e| reached |= may_touch(e, (true, g)));
+        if reached {
+            return false;
+        }
+    }
+    open.push(f);
+    let set = crate::lend::set_before_read(program, &(root, Vec::new()), &fun.body.stmts, open);
+    open.pop();
+    set
+}
+
 /// [`cpl_ir::effects::pure_fns`], knowing the closures `devirt` resolves.
 pub(crate) fn pure_fns(program: &Program, devirt: &Devirt, traps: bool) -> BTreeSet<usize> {
     cpl_ir::effects::pure_fns(program, traps, &|home, callee| devirt.target(home, callee))

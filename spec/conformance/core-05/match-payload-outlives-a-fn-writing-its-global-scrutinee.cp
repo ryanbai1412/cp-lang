@@ -1,7 +1,7 @@
 // expect: ok, output "ab\nnone"
 // rule: 05.3.2
-// A payload a match binds keeps its value when a fn called in the arm reassigns the global scrutinee (adversarial round 47).
-// copies: 1
+// A payload a match binds keeps its value when a fn called in the arm reassigns the global scrutinee (adversarial round 47):
+// the fn sets it whole before reading it, so the payload is moved out first, not copied.
 enum Q = Ask(s: Str) | Skip
 var q = Q.Ask("ab")
 fn clear():
