@@ -65,17 +65,26 @@ class ProblemsTest(Corpus):
         pkg = corpus.Package.at(d)
         self.assertEqual([pkg.case_input(c) for c in pkg.cases()], ["1 2\n", "1\n7\n"])
 
-    def test_gnu_extension_sources_build_with_gxx(self):
-        self.assertIs(corpus.accepted_cxx('#include "bits/extc++.h"\n__gnu_pbds::tree<int> t;'), corpus.GNU_CXX)
-        self.assertIs(corpus.accepted_cxx('#include "bits/extc++.h"\nint main() {}'), corpus.ACCEPTED_CXX)
-
-    def test_gnu_dialect_clang_rejects_builds_with_gxx(self):
-        src = self.root / "vla.cpp"
-        src.write_text("#include <cstdio>\nint main(){int n=3; int a[n] {}; printf(\"%d\\n\", a[2]);}\n")
+    def test_accepted_cpp_builds_with_the_judges_gxx(self):
+        src = self.root / "judged.cpp"
+        src.write_text("#include <bits/extc++.h>\nusing namespace std;\n"
+                       "struct S { int v; int get(this S const& s) { return s.v; } };\n"
+                       "int main(){int n=3; int a[n] {}; vector<int> r(3); ranges::iota(r, 1);\n"
+                       "__gnu_pbds::tree<int, __gnu_pbds::null_type> t; t.insert(r[2]);\n"
+                       "printf(\"%d %d %d\\n\", a[2], S{4}.get(), (int)*t.begin());}\n")
         self.addCleanup(setattr, corpus, "CXX_CACHE", corpus.CXX_CACHE)
         corpus.CXX_CACHE = str(self.root / "cxx")
         out = subprocess.run([corpus.binary(src)], capture_output=True, text=True).stdout
-        self.assertEqual(out, "0\n")
+        self.assertEqual(out, "0 4 3\n")
+
+    def test_a_gxx_older_than_14_is_not_the_reference(self):
+        old = self.root / "g++"
+        old.write_text("#!/bin/sh\necho 13.3.0\n")
+        old.chmod(0o755)
+        with mock.patch("shutil.which", lambda name: str(old) if name == "g++" else None), \
+                self.assertRaises(RuntimeError) as e:
+            corpus.reference_cxx.__wrapped__()
+        self.assertIn("g++ 14", str(e.exception))
 
     def test_reference_falls_back_to_an_accepted_submission(self):
         d = self.package("p1", orig_cpp="")
@@ -114,19 +123,19 @@ class DreamStressTest(Corpus):
         good = json.dumps({"dream_stress": {"ok": True, "cases": 8, "sha": "abc"}})
         d = self.package("p1", dream_cp="print(1)\n", orig_cpp=ECHO_CPP, gen_py=GEN, meta_json=good)
         args = argparse.Namespace(ids=["p1"], cpl=os.path.join(corpus.ROOT, "target", "release", "cpl"), check=False)
-        broken = mock.Mock(side_effect=RuntimeError("No module named ziglang"))
+        broken = mock.Mock(side_effect=RuntimeError("no g++ 14 or newer on PATH"))
         err = io.StringIO()
         with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
                 mock.patch.object(corpus, "binary", broken), contextlib.redirect_stderr(err):
             self.assertEqual(corpus.verify(args), 2)
         self.assertEqual((d / "meta.json").read_text(), good)
-        self.assertIn("No module named ziglang", err.getvalue())
+        self.assertIn("no g++ 14 or newer on PATH", err.getvalue())
 
-    def test_a_python_without_the_wheel_and_no_venv_stops_naming_it(self):
-        with mock.patch("importlib.util.find_spec", return_value=None), \
-                mock.patch.object(corpus, "ROOT", tempfile.mkdtemp()), self.assertRaises(SystemExit) as e:
+    def test_verify_without_the_reference_gxx_stops_naming_it(self):
+        with mock.patch.object(corpus, "reference_cxx", mock.Mock(side_effect=RuntimeError("no g++ 14"))), \
+                self.assertRaises(SystemExit) as e:
             corpus.toolchain(["verify", "p1"])
-        self.assertIn("ziglang", str(e.exception))
+        self.assertIn("g++ 14", str(e.exception))
 
     def test_check_fails_a_disagreeing_dream_and_writes_nothing(self):
         self.assertEqual(self.check("let _t = read<Int>()\nlet x = read<Int>()\nprint(x + 1)\n"), (1, {}))

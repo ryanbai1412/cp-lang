@@ -11,8 +11,8 @@ fastest user+sys CPU time over its runs, across:
 
 The emitted C++ is compiled with `g++ -std=c++17 -O2 -w`, originals with
 `-std=gnu++20` (judge originals use C++20 headers). An original g++ cannot build
-(C++23: deducing `this`, <format>) is built with `--cxx23 CMD` (a clang; default
-`python3 -m ziglang c++` when the running interpreter has `pip install ziglang`) at `-std=c++23`, and its pair's emitted C++ with the same
+(C++23: deducing `this`, <format>) is built with `--cxx23 CMD` (default: g++ 14 or
+newer, the corpus's reference compiler) at `-std=c++23`, and its pair's emitted C++ with the same
 CMD, so both sides of a ratio use one compiler. Outputs are verified for exact
 token-level output agreement (1e-6 float tolerance), or by the problem's
 `checker.py` where it has one (problems with many valid answers). Also reported: peak RSS
@@ -33,7 +33,6 @@ import argparse
 import concurrent.futures
 import glob
 import hashlib
-import importlib.util
 import json
 import math
 import os
@@ -152,17 +151,14 @@ def run_once(binary, inp, outp, timeout):
     return cpu, "ok" if pr.returncode == 0 else f"exit {pr.returncode}", rss
 
 
-CXX23_SHIM = os.path.join(ROOT, "bench", "cxx23-shim")
-
-
 # Originals that use C++23 (deducing `this`, <format>) need a newer compiler
-# than the system g++; the ziglang wheel ships one clang on every platform.
-DEFAULT_CXX23 = f"{sys.executable} -m ziglang c++" if importlib.util.find_spec("ziglang") else ""
+# than the system g++: the g++ 14+ that builds the corpus's references.
+DEFAULT_CXX23 = next((c for c in ("g++-15", "g++-14") if shutil.which(c)), "")
 
 
 def timed_gxx(src, out, std="c++17", cxx=None):
     """g++ (or the `cxx` command line) on `src`; returns (CompletedProcess, ms)."""
-    cmd = (cxx or ["g++"]) + [f"-std={std}", "-O2", "-w"] + (["-I", CXX23_SHIM] if cxx else [])
+    cmd = (cxx or ["g++"]) + [f"-std={std}", "-O2", "-w"]
     t0 = time.perf_counter()
     r = subprocess.run(cmd + [src, "-o", out], capture_output=True, text=True)
     ms = (time.perf_counter() - t0) * 1000.0
@@ -536,8 +532,7 @@ def main():
     ap.add_argument(
         "--cxx23",
         default=os.environ.get("CPL_BENCH_CXX23", DEFAULT_CXX23),
-        help="C++23 compiler command for originals g++ cannot build (default: the ziglang"
-        " package's clang when installed, `pip install ziglang`)",
+        help="C++23 compiler command for originals g++ cannot build (default: g++-15 or g++-14 on PATH)",
     )
     args = ap.parse_args()
     cxx23 = args.cxx23.split() or None

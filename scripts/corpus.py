@@ -21,7 +21,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, hashlib, importlib.util, json, os, re, subprocess, sys, tempfile, tomllib
+import argparse, functools, hashlib, importlib.util, json, os, re, shutil, subprocess, sys, tempfile, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -118,19 +118,26 @@ def blob_sha(path):
     return subprocess.run(["git", "hash-object", str(path)], capture_output=True, text=True, check=True).stdout.strip()
 
 
-# Accepted submissions use C++23 (deducing `this`, <ranges>), so they build with
-# the clang the ziglang wheel ships on every platform, with a bits/stdc++.h shim.
-ACCEPTED_CXX = [sys.executable, "-m", "ziglang", "c++", "-std=c++23", "-O2", "-w",
-                "-I", os.path.join(ROOT, "bench", "cxx23-shim")]
-# libstdc++'s GNU extensions (policy-based data structures, rope) exist only
-# under g++, the judges' compiler.
-GNU_EXT = re.compile(r"__gnu_pbds|__gnu_cxx|ext/pb_ds|ext/rope")
-GNU_CXX = ["g++", "-std=gnu++2b", "-O2", "-w"]
+# Accepted submissions were judged by g++: C++23 (deducing `this`, <ranges>), GNU
+# dialect (`int a[n] {};`) and libstdc++'s extensions (pb_ds, rope). So references
+# build with one compiler, g++ 14 or newer (deducing `this` needs 14), statically linked so a toolchain
+# outside the system's (conda-forge's on the dev VM) runs them too.
+REFERENCE_GXX = ("g++-15", "g++-14", "g++")
+REFERENCE_FLAGS = ["-std=gnu++23", "-O2", "-w", "-static-libstdc++", "-static-libgcc"]
 
 
-def accepted_cxx(text):
-    """The compiler command for accepted C++ `text`."""
-    return GNU_CXX if GNU_EXT.search(text) else ACCEPTED_CXX
+@functools.cache
+def reference_cxx():
+    """The g++ 14+ command that builds accepted C++, and its version."""
+    for name in REFERENCE_GXX:
+        path = shutil.which(name)
+        if not path:
+            continue
+        version = subprocess.run([path, "-dumpfullversion"], capture_output=True, text=True).stdout.strip()
+        if version and int(version.split(".")[0]) >= 14:
+            return [path, *REFERENCE_FLAGS], version
+    raise RuntimeError(f"no g++ 14 or newer on PATH (tried {', '.join(REFERENCE_GXX)}); "
+                       "accepted C++ needs the judges' C++23 g++ (README: Setup)")
 
 
 class InfraError(Exception):
@@ -138,18 +145,14 @@ class InfraError(Exception):
 
 
 def binary(src):
-    """`src` built with ACCEPTED_CXX, cached by content under target/corpus-cxx/."""
+    """`src` built with reference_cxx(), cached by content and compiler under target/corpus-cxx/."""
     os.makedirs(CXX_CACHE, exist_ok=True)
+    cxx, version = reference_cxx()
     data = Path(src).read_bytes()
-    key = hashlib.sha1(data).hexdigest()[:16]
+    key = hashlib.sha1(data + b"\0gcc " + version.encode()).hexdigest()[:16]
     exe = os.path.join(CXX_CACHE, key)
     if not os.path.exists(exe):
-        cxx = accepted_cxx(data.decode(errors="replace"))
         r = subprocess.run([*cxx, "-o", exe, str(src)], capture_output=True, text=True)
-        if r.returncode and cxx is ACCEPTED_CXX:
-            # The judge accepted it under g++: GNU dialect clang rejects
-            # (`int a[n] {};`) is still the reference.
-            r = subprocess.run([*GNU_CXX, "-o", exe, str(src)], capture_output=True, text=True)
         if r.returncode:
             raise RuntimeError("c++: " + r.stderr[:200])
     return exe
@@ -386,15 +389,13 @@ def cli(argv):
 
 
 def toolchain(argv):
-    """Modes that build C++ need ACCEPTED_CXX's ziglang wheel: run under the repo's
-    .venv when this python lacks it, else stop and name it."""
-    if not argv or argv[0] != "verify" or importlib.util.find_spec("ziglang"):
+    """Modes that build C++ need reference_cxx(): stop and name it when it's missing."""
+    if not argv or argv[0] != "verify":
         return
-    venv = Path(ROOT, ".venv", "bin", "python")
-    if venv.exists() and Path(sys.prefix).resolve() != venv.parent.parent.resolve():
-        os.execv(str(venv), [str(venv), __file__, *argv])
-    sys.exit("corpus.py: this python has no ziglang wheel (ACCEPTED_CXX); run `uv sync`, "
-             "or `uv run python scripts/corpus.py`")
+    try:
+        reference_cxx()
+    except RuntimeError as e:
+        sys.exit(f"corpus.py: {e}")
 
 
 if __name__ == "__main__":

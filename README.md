@@ -119,7 +119,7 @@ Ryan's accepted contest submissions:
 
 [mise](https://mise.jdx.dev) pins every tool in `mise.toml` (Rust, Python,
 Node, pnpm, uv, just, cargo-nextest). On Linux or macOS, with `g++` on the
-path:
+path (corpus references need g++ 14 or newer, as `g++-14` or `g++`):
 
 ```text
 $ curl https://mise.run | sh && eval "$(~/.local/bin/mise activate bash)"
