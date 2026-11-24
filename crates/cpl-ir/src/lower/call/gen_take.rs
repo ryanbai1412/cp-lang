@@ -18,6 +18,21 @@ impl<'a> Lowerer<'a> {
         if k.name.is_some() {
             return None;
         }
+        // `g(a).map(f).filter(p).take(k)`: the adapters run inside the fed loop.
+        let mut base = base;
+        let mut adapters = Vec::new();
+        while let ast::ExprKind::Call { callee, args } = &base.kind {
+            let (ast::ExprKind::Field { base: inner, name }, [f]) = (&callee.kind, args.as_slice())
+            else {
+                break;
+            };
+            if f.name.is_some() || !matches!(name.text.as_str(), "map" | "filter") {
+                break;
+            }
+            adapters.push((name.text == "map", &f.value));
+            base = inner;
+        }
+        adapters.reverse();
         let callee = match &base.kind {
             ast::ExprKind::Call { callee, .. } => Some(callee),
             // `x.g` on a `@get` generator.
@@ -54,10 +69,42 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
-            let elem = match &seq.ty {
+            let mut elem = match &seq.ty {
                 Ty::List(e) => (**e).clone(),
                 _ => Ty::Error,
             };
+            let x = lw.temp(elem.clone());
+            let mut scope = HashMap::default();
+            let mut step = Vec::new();
+            let mut cur = x;
+            for (i, (map, f)) in adapters.iter().enumerate() {
+                let hint = Ty::Fn(vec![elem.clone()], Box::new(Ty::Error));
+                let fv = lw.expr(f, Some(&hint));
+                let ret = match &fv.ty {
+                    Ty::Fn(_, r) => (**r).clone(),
+                    _ => Ty::Error,
+                };
+                let f_name = format!("__take_f{i}");
+                let f_slot = lw.new_slot(&f_name, fv.ty.clone());
+                out.push(Stmt::Let(f_slot, Some(fv)));
+                let x_name = format!("__take_x{i}");
+                scope.insert(f_name.clone(), f_slot);
+                scope.insert(x_name.clone(), cur);
+                let at = |kind| ast::Expr { kind, span };
+                let call = at(ast::ExprKind::Call {
+                    callee: Box::new(at(ast::ExprKind::Name(f_name))),
+                    args: vec![ast::Arg {
+                        name: None,
+                        mutable: false,
+                        value: at(ast::ExprKind::Name(x_name)),
+                    }],
+                });
+                if *map {
+                    elem = ret.clone();
+                    cur = lw.temp(ret);
+                }
+                step.push((*map, call, cur));
+            }
             let list_ty = Ty::list(elem.clone());
             ty = list_ty.clone();
             let count = lw.expr(&k.value, Some(&Ty::Int));
@@ -74,7 +121,6 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Let(taken, Some(zero)));
             let id = lw.next_loop;
             lw.next_loop += 1;
-            let x = lw.temp(elem);
             let place = |slot, ty| Place {
                 kind: PlaceKind::Local(slot),
                 ty,
@@ -82,7 +128,11 @@ impl<'a> Lowerer<'a> {
             };
             let (acc_place, taken_place) = (place(acc, list_ty.clone()), place(taken, Ty::Int));
             let push = lw.mk(
-                ExprKind::Mutate(Mutation::Push, Box::new(acc_place), vec![lw.local(x, span)]),
+                ExprKind::Mutate(
+                    Mutation::Push,
+                    Box::new(acc_place),
+                    vec![lw.local(cur, span)],
+                ),
                 Ty::Unit,
                 span,
             );
@@ -96,7 +146,21 @@ impl<'a> Lowerer<'a> {
                 Ty::Bool,
                 span,
             );
-            let body = vec![
+            lw.cx.scopes.push(scope);
+            let mut body = Vec::new();
+            for (map, call, to) in step {
+                let v = lw.expr(&call, None);
+                body.push(if map {
+                    Stmt::Let(to, Some(v))
+                } else {
+                    let skip = Block {
+                        stmts: vec![Stmt::Continue(Some(id))],
+                    };
+                    Stmt::If(v, Block::default(), skip)
+                });
+            }
+            lw.cx.scopes.pop();
+            body.extend([
                 Stmt::Expr(push),
                 Stmt::Assign(taken_place, AssignOp::Binary(BinOp::Add), one),
                 Stmt::If(
@@ -106,7 +170,7 @@ impl<'a> Lowerer<'a> {
                     },
                     Block::default(),
                 ),
-            ];
+            ]);
             let positive = lw.mk(
                 ExprKind::Cmp(
                     CmpOp::Gt,
