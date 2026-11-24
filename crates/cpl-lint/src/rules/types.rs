@@ -1,7 +1,7 @@
 //! `domain_keyed_map` and `position_arithmetic`: both are about using a
 //! domain as if it were a number.
 
-use crate::walk::{unparen, Visitor};
+use crate::walk::{unparen, Scope, Visitor};
 use crate::{
     File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, REDUNDANT_ARG_NAME,
     TURBOFISH_TYPE_ARGS,
@@ -10,19 +10,32 @@ use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
 use std::collections::{HashMap, HashSet};
 
-/// The names of the file's domains, wherever they are declared.
+/// The names of the domains declared outside every fn: a domain a fn
+/// declares is the fn's own (`Types::fns`).
 pub(crate) fn domains(file: &File) -> HashSet<String> {
-    struct Domains(HashSet<String>);
+    #[derive(Default)]
+    struct Domains {
+        names: HashSet<String>,
+        depth: usize,
+    }
     impl Visitor for Domains {
         fn stmt(&mut self, stmt: &Stmt) {
             if let StmtKind::Domain { name, .. } = &stmt.kind {
-                self.0.insert(name.text.clone());
+                if self.depth == 0 {
+                    self.names.insert(name.text.clone());
+                }
             }
         }
+        fn enter(&mut self, scope: Scope) {
+            self.depth += usize::from(scope == Scope::Fn);
+        }
+        fn exit(&mut self, scope: Scope) {
+            self.depth -= usize::from(scope == Scope::Fn);
+        }
     }
-    let mut found = Domains(HashSet::new());
+    let mut found = Domains::default();
     file.walk(&mut found, |_, _| {});
-    found.0
+    found.names
 }
 
 /// Each domain's first label, where its definition writes it as a literal.
@@ -48,6 +61,11 @@ struct Types<'a> {
     src: &'a str,
     base: u32,
     domains: HashSet<String>,
+    /// For each fn being walked, innermost last: its type params, which hide
+    /// a domain of the same name, and the domains it declares.
+    fns: Vec<(Vec<String>, HashSet<String>)>,
+    /// The type params of the fn whose scope opens next.
+    generics: Vec<String>,
     /// Each domain's literal first label: a label and a position agree when it is 0.
     firsts: HashMap<String, i128>,
     lines: cpl_diag::LineIndex,
@@ -66,6 +84,18 @@ struct Types<'a> {
 }
 
 impl Types<'_> {
+    fn is_domain(&self, name: &str) -> bool {
+        for (generics, domains) in self.fns.iter().rev() {
+            if generics.iter().any(|g| g == name) {
+                return false;
+            }
+            if domains.contains(name) {
+                return true;
+            }
+        }
+        self.domains.contains(name)
+    }
+
     /// Reports `Map<K, V>` or `Set<K>` when `K` is a domain.
     fn keyed(&mut self, name: &str, args: &[Type], span: Span) {
         let texts: Vec<&str> = args
@@ -76,7 +106,7 @@ impl Types<'_> {
             Some(TypeKind::Named { name, args }) if args.is_empty() => name.text.as_str(),
             _ => return,
         };
-        if !self.domains.contains(key) {
+        if !self.is_domain(key) {
             return;
         }
         let start = span.shift(self.base).start;
@@ -310,7 +340,31 @@ impl Types<'_> {
 }
 
 impl Visitor for Types<'_> {
+    fn enter(&mut self, scope: Scope) {
+        if scope == Scope::Fn {
+            self.fns
+                .push((std::mem::take(&mut self.generics), HashSet::new()));
+        }
+    }
+
+    fn exit(&mut self, scope: Scope) {
+        if scope == Scope::Fn {
+            self.fns.pop();
+        }
+    }
+
     fn stmt(&mut self, stmt: &Stmt) {
+        match &stmt.kind {
+            StmtKind::Fn(decl) => {
+                self.generics = decl.generics.iter().map(|g| g.text.clone()).collect();
+            }
+            StmtKind::Domain { name, .. } => {
+                if let Some((_, domains)) = self.fns.last_mut() {
+                    domains.insert(name.text.clone());
+                }
+            }
+            _ => {}
+        }
         // `var free: Set<V> = Set<V>()` with a `free.first` below.
         if let StmtKind::Let { pat, ty, init, .. } = &stmt.kind {
             if matches!(&pat.kind, PatternKind::Name(name) if self.ordered.contains(name)) {
@@ -410,7 +464,7 @@ impl Visitor for Types<'_> {
                 let [arg] = args.as_slice() else {
                     return;
                 };
-                if !self.domains.contains(domain) {
+                if !self.is_domain(domain) {
                     return;
                 }
                 let first = self.firsts.get(domain).copied();
@@ -475,6 +529,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         domains: domains(file),
+        fns: Vec::new(),
+        generics: Vec::new(),
         firsts: first_labels(file),
         ordered: ordered(file),
         inner: HashSet::new(),
@@ -489,6 +545,30 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 
 #[cfg(test)]
 mod tests {
+
+    /// A fn's `<K, V>` hides a domain `K`, and a domain a fn declares is
+    /// that fn's alone (std/seq.cp, where a `@test` fn declares `K`).
+    #[test]
+    fn a_domain_is_keyed_only_where_its_name_is_in_scope() {
+        let codes = |src: &str| -> Vec<String> {
+            crate::lint(src, &crate::Config::default())
+                .into_iter()
+                .map(|d| d.code.0.to_string())
+                .filter(|c| c == "L0412")
+                .collect()
+        };
+        let local = "fn t():\n    domain K = 0..3\n    var m = Map<K, Int>()\n    m[K.first] = 1\n    print(m.len)\n";
+        let generic = "fn size<K, V>(m: Map<K, V>) -> Int = m.len\n";
+        assert_eq!(codes(local), ["L0412"]);
+        assert!(codes(&format!("{local}{generic}")).len() == 1);
+        assert!(codes(&format!("{generic}{local}")).len() == 1);
+        let top = "domain K = 0..3\n";
+        assert!(codes(&format!("{top}{generic}")).is_empty());
+        assert_eq!(
+            codes(&format!("{top}fn f(m: Map<K, Int>) -> Int = m.len\n")),
+            ["L0412"]
+        );
+    }
 
     #[test]
     fn a_nested_value_type_is_quoted_whole() {
