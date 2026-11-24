@@ -1,6 +1,7 @@
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -267,26 +268,100 @@ where
         .unwrap_or(4)
         .min(items.len().max(1));
     let next = AtomicUsize::new(0);
+    let done = AtomicBool::new(false);
     let results: Mutex<BTreeMap<String, R>> = Mutex::new(BTreeMap::new());
+    *RUNNING.lock().unwrap() = vec![String::new(); workers];
     std::thread::scope(|s| {
-        for _ in 0..workers {
-            s.spawn(|| {
-                let mut db = Database::new();
-                loop {
-                    let idx = next.fetch_add(1, Ordering::Relaxed);
-                    if idx >= items.len() {
-                        break;
+        s.spawn(|| watch_memory(&done));
+        let handles: Vec<_> = (0..workers)
+            .map(|w| {
+                let (next, results, work) = (&next, &results, &work);
+                s.spawn(move || {
+                    WORKER.set(w);
+                    let mut db = Database::new();
+                    loop {
+                        let idx = next.fetch_add(1, Ordering::Relaxed);
+                        if idx >= items.len() {
+                            break;
+                        }
+                        running(&format!("item {idx}"));
+                        let t0 = Instant::now();
+                        let (key, val) = work(&mut db, &items[idx]);
+                        let secs = t0.elapsed().as_secs_f64();
+                        CASE_SECONDS.lock().unwrap().push((key.clone(), secs));
+                        results.lock().unwrap().insert(key, val);
                     }
-                    let t0 = Instant::now();
-                    let (key, val) = work(&mut db, &items[idx]);
-                    let secs = t0.elapsed().as_secs_f64();
-                    CASE_SECONDS.lock().unwrap().push((key.clone(), secs));
-                    results.lock().unwrap().insert(key, val);
-                }
-            });
+                })
+            })
+            .collect();
+        let joined: Vec<_> = handles.into_iter().map(|h| h.join()).collect();
+        done.store(true, Ordering::Relaxed);
+        for j in joined {
+            if let Err(panic) = j {
+                std::panic::resume_unwind(panic);
+            }
         }
     });
     results.into_inner().unwrap()
+}
+
+thread_local! {
+    static WORKER: Cell<usize> = const { Cell::new(usize::MAX) };
+}
+
+/// The case each `parallel_with_db` worker is on, for the memory-limit report.
+static RUNNING: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Names the case the calling worker is running, so a run stopped for its
+/// memory use says which cases were in flight.
+pub fn running(name: &str) {
+    if let Some(slot) = RUNNING.lock().unwrap().get_mut(WORKER.get()) {
+        *slot = name.to_string();
+    }
+}
+
+/// Stops the process once its resident memory passes the limit, naming the
+/// cases in flight: past the machine's memory the OOM killer would take the
+/// run without a word, and a CI runner with it.
+fn watch_memory(done: &AtomicBool) {
+    let Some(limit) = memory_limit_mb() else {
+        return;
+    };
+    while !done.load(Ordering::Relaxed) {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let Some(rss) = proc_kb("/proc/self/status", "VmRSS:").map(|kb| kb / 1024) else {
+            return;
+        };
+        if rss > limit {
+            let running = RUNNING.lock().unwrap().clone();
+            let running: Vec<_> = running.into_iter().filter(|r| !r.is_empty()).collect();
+            eprintln!(
+                "cpl-conform: stopped at {rss} MB of memory, over the {limit} MB limit \
+                 (CPL_CONFORM_MAX_RSS_MB); cases running: {}",
+                running.join(", ")
+            );
+            std::process::exit(3);
+        }
+    }
+}
+
+/// `CPL_CONFORM_MAX_RSS_MB`, else three quarters of the machine's memory,
+/// capped at 10 GB; `None` where /proc can't tell.
+fn memory_limit_mb() -> Option<u64> {
+    if let Some(mb) = std::env::var("CPL_CONFORM_MAX_RSS_MB")
+        .ok()
+        .and_then(|s| s.parse().ok())
+    {
+        return Some(mb);
+    }
+    let total = proc_kb("/proc/meminfo", "MemTotal:")? / 1024;
+    Some((total / 4 * 3).min(10 * 1024))
+}
+
+fn proc_kb(file: &str, key: &str) -> Option<u64> {
+    let text = std::fs::read_to_string(file).ok()?;
+    let line = text.lines().find(|l| l.starts_with(key))?;
+    line[key.len()..].split_whitespace().next()?.parse().ok()
 }
 
 pub fn first_line_trimmed(s: &str, max_len: usize) -> String {

@@ -30,6 +30,16 @@ enum DiffTarget {
     },
 }
 
+impl DiffTarget {
+    fn id(&self) -> &str {
+        match self {
+            DiffTarget::Conformance { id, .. }
+            | DiffTarget::Corpus { id, .. }
+            | DiffTarget::Variant { id, .. } => id,
+        }
+    }
+}
+
 fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
     let mut targets = Vec::new();
 
@@ -511,15 +521,12 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
     };
 
     let outcomes = runner::parallel_with_db(&targets, |db, target| {
+        runner::running(target.id());
         let (id, outcome) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             run_one(db, &cache_dir, target)
         }))
         .unwrap_or_else(|_| {
-            let id = match target {
-                DiffTarget::Conformance { id, .. }
-                | DiffTarget::Corpus { id, .. }
-                | DiffTarget::Variant { id, .. } => id.clone(),
-            };
+            let id = target.id().to_string();
             (
                 id,
                 CaseOutcome {
