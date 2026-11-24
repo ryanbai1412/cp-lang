@@ -294,16 +294,131 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// The statements that print `e` straight into `out`: a joined list or a
+    /// shown value is written item by item, with no `Capture` to collect it
+    /// first, and a list built on the spot is never built.
     fn show_expr(&mut self, e: &cpl_ir::Expr, digits: &str) -> String {
-        if let cpl_ir::ExprKind::Builtin(cpl_ir::Builtin::StrConcat, args) = &e.kind {
-            if args.len() == 2 && e.ty == Ty::Str {
+        use cpl_ir::{Builtin, ExprKind};
+        match (&e.kind, &e.ty) {
+            (ExprKind::Builtin(Builtin::StrConcat, args), Ty::Str) if args.len() == 2 => {
                 let a = self.show_expr(&args[0], digits);
                 let b = self.show_expr(&args[1], digits);
-                return format!("{a} {b}");
+                format!("{a} {b}")
+            }
+            (ExprKind::Builtin(Builtin::ShowStr, args), _) if args.len() == 1 => {
+                self.show_expr(&args[0], crate::expr::FLOAT_DIGITS)
+            }
+            (ExprKind::Builtin(Builtin::Join, args), _) if args.len() >= 2 => {
+                let elem = match &args[1].ty {
+                    Ty::List(elem)
+                    | Ty::ListView(elem, _)
+                    | Ty::Keyed(elem, _)
+                    | Ty::MutView(elem, _)
+                    | Ty::Array { elem, .. } => (**elem).clone(),
+                    other => other.clone(),
+                };
+                let sep = self.expr(&args[0]).text;
+                let none_text = args.get(2).map(|n| self.expr(n).text);
+                self.stream_join(&sep, &args[1], &elem, none_text, crate::expr::FLOAT_DIGITS)
+            }
+            (ExprKind::Format(pieces), _) if self.streams_format(pieces) => {
+                let mut parts = Vec::new();
+                for piece in pieces {
+                    match piece {
+                        cpl_ir::FmtPiece::Text(bytes) => parts.push(self.put_text(bytes)),
+                        cpl_ir::FmtPiece::Value(arg) => {
+                            parts.push(self.show_expr(&arg.value, &arg.digits.to_string()))
+                        }
+                        cpl_ir::FmtPiece::Number(..) => {}
+                    }
+                }
+                parts.join(" ")
+            }
+            (_, Ty::List(elem)) if crate::fuse::producer(e).is_some_and(|p| self.streams(&p)) => {
+                let sep = match sep_of(elem, &self.program.structs) {
+                    Sep::None => "\"\"",
+                    Sep::Space => "\" \"",
+                    Sep::Line => "\"\\n\"",
+                };
+                let elem = (**elem).clone();
+                self.stream_join(sep, e, &elem, None, digits)
+            }
+            _ => {
+                let code = self.expr(e);
+                self.show_stmt(&code, &e.ty, digits)
             }
         }
-        let code = self.expr(e);
-        self.show_stmt(&code, &e.ty, digits)
+    }
+
+    /// `join(sep, items)` printed: each item and separator goes to `out` as
+    /// it comes. A producer (`do { let v = []; for .. { v.push(e) }; give v }`)
+    /// runs its loop with the show at each push, when the loop can neither
+    /// trap nor do I/O, so nothing it would print could come out early.
+    fn stream_join(
+        &mut self,
+        sep: &str,
+        seq: &cpl_ir::Expr,
+        elem: &Ty,
+        none_text: Option<String>,
+        digits: &str,
+    ) -> String {
+        let item = |this: &mut Self, item: &str| {
+            let stmt = match (elem, &none_text) {
+                (Ty::Opt(inner), Some(text)) => {
+                    let some = this.show_stmt(&Code::new(format!("*{item}"), UNARY), inner, digits);
+                    format!("if ({item}) {{ {some} }} else cpl::put_str({text});")
+                }
+                _ => this.show_stmt(&Code::primary(item.to_string()), elem, digits),
+            };
+            format!("if (!cpl_first) cpl::put_str(cpl_sep); cpl_first = false; {stmt}")
+        };
+        let head = format!("{{ const auto& cpl_sep = {sep}; bool cpl_first = true;");
+        if let Some(p) = crate::fuse::producer(seq).filter(|p| self.streams(p)) {
+            let put = self.temp();
+            let body = item(self, "cpl_item");
+            let mut out = format!("{head} auto {put} = [&](const auto& cpl_item) {{ {body} }};\n");
+            self.fused_pushes.push((
+                *p.vec,
+                crate::fuse::FusedPush {
+                    var: String::new(),
+                    cpp: String::new(),
+                    first: Vec::new(),
+                    body: std::rc::Rc::new(cpl_ir::Block { stmts: Vec::new() }),
+                    sink: Some(put),
+                },
+            ));
+            self.for_stmt(*p.id, *p.slot, p.iter, p.body, &mut out);
+            self.fused_pushes.pop();
+            return format!("{out}{}}}", pad(self.indent));
+        }
+        let seq = self.expr(seq).text;
+        let body = item(self, "cpl_item");
+        format!("{head} for (const auto& cpl_item : {seq}) {{ {body} }} }}")
+    }
+
+    /// A text with no `{n:05}` piece and no value that runs code: what
+    /// it prints is the same written piece by piece.
+    fn streams_format(&self, pieces: &[cpl_ir::FmtPiece]) -> bool {
+        pieces.iter().all(|piece| match piece {
+            cpl_ir::FmtPiece::Text(_) => true,
+            cpl_ir::FmtPiece::Value(arg) => {
+                let touch = self.touch(&arg.value);
+                !touch.io
+                    && touch.writes.is_empty()
+                    && touch.binds.is_empty()
+                    && touch.calls.is_empty()
+            }
+            cpl_ir::FmtPiece::Number(..) => false,
+        })
+    }
+
+    fn streams(&self, p: &crate::fuse::Producer<'_>) -> bool {
+        let mut touch = self.block_touch(p.body);
+        crate::fuse::iter_exprs(p.iter, &mut |e| touch.merge(self.touch(e)));
+        let traps = self.target.checks != crate::Checks::None;
+        !touch.io
+            && crate::uses::effects::trap_free_block(p.body, *p.vec, traps)
+            && !self.hoisted.contains(p.vec)
     }
 
     /// `print(a, b)` as one line of statements.
@@ -315,7 +430,7 @@ impl<'p> Emitter<'p> {
         // showed something: `start` is where the line began.
         let sparse = args.len() > 1 && args.iter().any(|arg| arg.value.ty.may_show_nothing());
         if sparse {
-            parts.push("{ size_t cpl_line = cpl::out.size();".to_string());
+            parts.push("{ cpl::capturing++; size_t cpl_line = cpl::out.size();".to_string());
         }
         let shown_values: Vec<&cpl_ir::Expr> = args.iter().map(|a| &a.value).chain(end).collect();
         let marked = self.mark_read_in_place(&shown_values, None, &[]);
@@ -331,7 +446,7 @@ impl<'p> Emitter<'p> {
             }
         }
         if sparse {
-            parts.push("}".to_string());
+            parts.push("cpl::capturing--; }".to_string());
         }
         match end {
             Some(end) => {
@@ -393,10 +508,9 @@ impl<'p> Emitter<'p> {
             Spec::Plain(Ty::Pos(d)) => {
                 // A position from the input is checked like `V(x)`: nothing
                 // later tests an index of its domain.
-                self.need("read_int");
-                self.need("at");
+                self.need("read_in");
                 let d = dom_ident(program, *d);
-                Code::primary(format!("cpl::pos(cpl::read_int() - {d}_lo, {d}_len)"))
+                Code::primary(format!("cpl::read_pos({d}_lo, {d}_len)"))
             }
             Spec::Plain(Ty::Range(inner)) if matches!(**inner, Ty::Int | Ty::Pos(_)) => {
                 self.need("read_int");
@@ -405,7 +519,7 @@ impl<'p> Emitter<'p> {
                 let ty = self.ty(&spec.ty());
                 let dom_ident = match &**inner {
                     Ty::Pos(d) => {
-                        self.need("at");
+                        self.need("read_in");
                         Some(dom_ident(program, *d))
                     }
                     _ => None,
@@ -414,10 +528,10 @@ impl<'p> Emitter<'p> {
                     let lead = pad(this.indent);
                     if let Some(d) = dom_ident {
                         out.push_str(&format!(
-                            "{lead}int cpl_lo = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"
+                            "{lead}int cpl_lo = cpl::read_pos({d}_lo, {d}_len);\n"
                         ));
                         out.push_str(&format!(
-                            "{lead}int cpl_hi = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"
+                            "{lead}int cpl_hi = cpl::read_pos({d}_lo, {d}_len);\n"
                         ));
                         out.push_str(&format!(
                             "{lead}if (cpl_lo > cpl_hi) cpl::fail(\"range end is before start\");\n"

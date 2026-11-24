@@ -525,6 +525,44 @@ fn a_ranged_read_checks_its_bounds() {
 }
 
 #[test]
+fn a_domain_read_takes_the_unsigned_scan() {
+    let cpp = cpp("let n: 1..=9 = read()\ndomain V = 1..=n\nlet v: V = read()\nprint(v)\n");
+    assert!(cpp.contains("cpl::read_pos(V_lo, V_len)"), "{cpp}");
+    assert!(!cpp.contains("cpl::pos(cpl::read_int()"), "{cpp}");
+}
+
+#[test]
+fn the_input_buffer_drops_what_was_read() {
+    let cpp = cpp("let n: Int = read()\nprint(n)\n");
+    assert!(cpp.contains("in.erase(0, keep)"), "{cpp}");
+    assert!(
+        cpp.contains("if (in_at + k >= in.size() && !more())"),
+        "{cpp}"
+    );
+}
+
+#[test]
+fn a_printed_sequence_streams_into_out() {
+    for src in [
+        "let n: 1..=9 = read()\nprint(0..n)\n",
+        "let n: 1..=9 = read()\nprint(i for i in 1..=n)\n",
+        "let n: 1..=9 = read()\nlet xs = [i * 7 - n for i in 0..n]\nprint(xs, sep: \"\\n\")\n",
+    ] {
+        let cpp = cpp(src);
+        let body = &cpp[cpp.find("void solve()").unwrap()..];
+        assert!(!body.contains("Capture"), "{body}");
+        assert!(!body.contains("-> std::vector<ll>"), "{body}");
+    }
+    let put = cpp("let s: Str = read()\nprint(s, 7)\n");
+    assert!(put.contains("out += s; spill(); }"), "{put}");
+    let put_int = &put[put.find("inline void put_int").unwrap()..];
+    assert!(
+        put_int[..put_int.find("\n}").unwrap()].contains("spill();"),
+        "{put}"
+    );
+}
+
+#[test]
 fn the_program_runs_on_a_thread_with_the_profile_stack() {
     let source = "let n: Int = read()\nprint(n)\n";
     let cpp = cpp(source);

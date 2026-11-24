@@ -8,7 +8,7 @@ use crate::names::{
     cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_bitset_ty, is_plain_enum,
 };
 use crate::walk;
-const FLOAT_DIGITS: &str = "10";
+pub(crate) const FLOAT_DIGITS: &str = "10";
 
 use cpl_ir::{
     Arg, BinOp, Builtin, Cast, CmpOp, DimSpec, Expr, ExprKind, FmtPiece, Mutation, NumKind, Place,
