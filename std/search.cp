@@ -128,38 +128,6 @@ pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
 pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I:
     golden_pick(r, f, larger: false)
 
-/// A point of `[lo, hi]` where a continuous unimodal `f` is largest, by golden-section search,
-/// within `(hi - lo) * 0.618^steps` of the maximizer.
-///
-/// Two interior probes start the search; each of the `steps` rounds keeps the side holding the
-/// larger probe and adds one probe. The result is the midpoint of the final bracket. On a plateau
-/// at the maximum it is whichever plateau point the bracket closes on.
-///
-/// cost: \(O(\mathit{steps})\) calls of `f`, exactly `steps + 2`
-/// empty: `ternary_max_real(2.0, 2.0, x => x) == 2.0`
-/// ties: `let x = ternary_max_real(0.0, 4.0, t => min(t, 2.0) - max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
-/// traps: when `lo > hi` or `steps < 0`
-/// example: `abs(ternary_max_real(0.0, 4.0, x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
-/// example: `ternary_max_real(2.0, 2.0, x => x) == 2.0`
-pub fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64:
-    golden_real(lo, hi, f, steps, larger: true)
-
-/// A point of `[lo, hi]` where a continuous unimodal `f` is smallest, by golden-section search,
-/// within `(hi - lo) * 0.618^steps` of the minimizer.
-///
-/// Two interior probes start the search; each of the `steps` rounds keeps the side holding the
-/// smaller probe and adds one probe. The result is the midpoint of the final bracket. On a plateau
-/// at the minimum it is whichever plateau point the bracket closes on.
-///
-/// cost: \(O(\mathit{steps})\) calls of `f`, exactly `steps + 2`
-/// empty: `ternary_min_real(1.5, 1.5, x => x) == 1.5`
-/// ties: `let x = ternary_min_real(0.0, 4.0, t => max(2.0 - t, 0.0) + max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
-/// traps: when `lo > hi` or `steps < 0`
-/// example: `abs(ternary_min_real(-3.0, 3.0, x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`
-/// example: `ternary_min_real(1.5, 1.5, x => x) == 1.5`
-pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64:
-    golden_real(lo, hi, f, steps, larger: false)
-
 /// Many binary searches over one timeline `r` at once: `out[q]` is the first `t` of `r` such
 /// that `ok(q)` holds once every event of `r` up to and including `t` is applied, or `None`
 /// when it never holds.

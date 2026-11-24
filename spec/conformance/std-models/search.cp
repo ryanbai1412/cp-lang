@@ -3,8 +3,6 @@
 // model: bsearch_real
 // model: ternary_max
 // model: ternary_min
-// model: ternary_max_real
-// model: ternary_min_real
 // model: peak
 // model: valley
 // model: parallel_bsearch
@@ -35,10 +33,10 @@ for k in 0..n:
         let m = (a + b) / 2.0
         if m >= t: b = m else: a = m
     let want: ?F64 = if hi >= t: Some(b) else: None
-    if bsearch_real(lo, hi, x => x >= t, steps: steps) != want: bad = "op {k}: bsearch_real({lo}, {hi}, >= {t}, steps: {steps})"
+    if bsearch_real(lo, hi, x => x >= t, steps:) != want: bad = "op {k}: bsearch_real({lo}, {hi}, >= {t}, steps: {steps})"
     let c = lo + (hi - lo) * rng.float()
-    if not near(ternary_max_real(lo, hi, x => -(x - c) * (x - c)), c): bad = "op {k}: ternary_max_real at {c}"
-    elif not near(ternary_min_real(lo, hi, x => (x - c) * (x - c)), c): bad = "op {k}: ternary_min_real at {c}"
+    if not near((lo..hi).peak(by: x => -(x - c) * (x - c)), c): bad = "op {k}: peak of a parabola at {c}"
+    elif not near((lo..hi).valley(by: x => (x - c) * (x - c)), c): bad = "op {k}: valley of a parabola at {c}"
     elif not near((lo..hi).peak(by: x => -abs(x - c)), c): bad = "op {k}: peak at {c}"
     elif not near((lo..hi).valley(by: x => abs(x - c)), c): bad = "op {k}: valley at {c}"
     if bad != "": break
@@ -83,7 +81,7 @@ for k in 0..n:
     let got = dinkelbach(0.0, solve: l => ch[(0..ch.len).max(by: i => ch[i].num - l * ch[i].den)!])
     if not near(got, best): bad = "op {k}: dinkelbach {got} want {best}"
     let groups = [(l..l + rng.int(0, len - l)) for l in [rng.int(0, len) for _ in 0..rng.int(0, 3)]]
-    let vals = [f[i] for g in groups for i in g].sorted(by: x => -x)
+    let vals = [f[i] for g in groups for i in g].sorted(by: x => desc(x))
     if split_best(groups, range: g => g, best: (_, r) => r.map(i => (f[i], i)).max()!).collect() != vals: bad = "op {k}: split_best"
     if bad != "": break
 print(if bad == "": "ok" else: bad)

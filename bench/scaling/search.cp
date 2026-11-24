@@ -3,16 +3,12 @@ use std.search.{gallop_first}
 let n: Int = read()
 let m = n / 16
 let up = (x: F64) => x >= 0.3 // within: search.bsearch_real
-let hill = (x: F64) => -(x - 1.0) * (x - 1.0) // within: search.ternary_max_real
-let bowl = (x: F64) => (x - 2.0) * (x - 2.0) // within: search.ternary_min_real
 let top = (x: F64) => -(x - 1.0) * (x - 1.0) // within: search.peak
 let pit = (x: F64) => (x - 2.0) * (x - 2.0) // within: search.valley
 var s = 0
 var t = 0.0
 for i in 0..512:
     if bsearch_real(0.0, 1.0, up, steps: m) != None: s += 1 // timed: search.bsearch_real
-    t += ternary_max_real(0.0, 4.0, hill, steps: m) // timed: search.ternary_max_real
-    t += ternary_min_real(0.0, 4.0, bowl, steps: m) // timed: search.ternary_min_real
     t += (0.0..4.0).peak(by: top, steps: m) // timed: search.peak
     t += (0.0..4.0).valley(by: pit, steps: m) // timed: search.valley
 for i in 0..2 * n:
@@ -25,13 +21,13 @@ for i in 0..8 * n:
     s += gallop_first(0, ok) ?? 0 // timed: search.gallop_first
 let solve = (l: F64) => if l < 1.0: (num: 3.0, den: 2.0) else: (num: 2.0, den: 1.0) // within: search.dinkelbach
 for i in 0..8 * n:
-    t += dinkelbach(0.0, solve: solve) // timed: search.dinkelbach
+    t += dinkelbach(0.0, solve:) // timed: search.dinkelbach
 var c = 0
 let reset = () => c = 0 // within: search.parallel_bsearch
 let apply = (_: Int) => c += 1 // within: search.parallel_bsearch
 let past = (q: Int) => c > q // within: search.parallel_bsearch
 for i in 0..8:
-    let ans = parallel_bsearch(n, 0..n, reset: reset, apply: apply, ok: past) // timed: search.parallel_bsearch
+    let ans = parallel_bsearch(n, 0..n, reset:, apply:, ok: past) // timed: search.parallel_bsearch
     s += ans[i] ?? 0
 let a = [i * 7919 % n for i in 0..n]
 let whole = (g: Range<Int>) => g // within: search.split_best

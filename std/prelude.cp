@@ -201,9 +201,7 @@ use std.search.{
     bsearch_real,
     split_best,
     ternary_max,
-    ternary_max_real,
     ternary_min,
-    ternary_min_real,
     dinkelbach,
     parallel_bsearch,
 }

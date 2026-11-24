@@ -419,7 +419,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine |
 |---|---|---|---|---|---|
-| hand_rolled_ternary_real | fixed-iteration `100` loop trisecting a `Float` range | `ternary_max_real` / `ternary_min_real` | fix? | #1 | loop |
+| hand_rolled_ternary_real | fixed-iteration `100` loop trisecting a `Float` range | `(lo..hi).peak(by:)` / `.valley(by:)` | fix? | #1 | loop |
 | hand_rolled_gallop_search | exponential step `1, 2, 4, ...` then binary search | `gallop_first` | fix? | #1 | loop |
 | hand_rolled_split_best | binary search on monotone split point minimizing `max(f(i), g(i))` | `split_best` | warn | #1 | loop |
 
