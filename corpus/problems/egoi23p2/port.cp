@@ -3,51 +3,46 @@
 // Problem: N players, M matches (N, M <= 2e5); on day i, x_i beats y_i, gets a new medal and all
 //   of y_i's medals. Each medal finally goes to whoever held it the most nights up to day M (ties:
 //   smallest index). Print every player's final medal count.
-// Solution: make each match the parent of the last earlier win of each of its two players (whose
-//   medals it collects). Medal i then sits with winner[e] for every e from match i up to its root,
-//   for parent(e) - e nights (M - e at the root). A DFS from each root adds those nights on the
-//   way down and takes them back on the way up; an ordered set of (nights, -player) names the
-//   leader at each match. O((N + M) log N).
-// Runnable on proto/cpc today.
+// Solution: each match takes the medals of the last earlier win of each of its two players, so
+//   the matches form a forest. Medal e sits with the winner of every match from e up to its root,
+//   for (the next match up) - e nights (M - e at the root). A walk from each root adds those
+//   nights on the way down and takes them back on the way up; an ordered set of
+//   (nights, desc(player)) names the leader at each match. O((N + M) log N).
 // original: corpus/submissions/5678050.cpp
-// Bounds: n, m: 1..=2e5; u, v: 0..n
+// Bounds: n, m: 1..=2e5; matches.x, matches.y: 0..n
+
 let n: 1..=2e5 = read()
 let m: 1..=2e5 = read()
 domain Player = 0..n
-domain Event = 0..m
+domain Match = 0..m
+let matches: [Match](x: Player, y: Player) = read()
 
-var winner: [Event]Player = Player.first!
-var children: [Event]List<Event> = []
-var rep: [Player]?Event = None
-for e in Event:
-    let u: Player = read()
-    let v: Player = read()
-    winner[e] = u
-    if let pu = rep[u]: children[e].push(pu)
-    if let pv = rep[v]: children[e].push(pv)
-    rep[u] = e
-    rep[v] = None
+var takes: [Match]List<Match> = []  // the last earlier win of each of its two players
+var last_win: [Player]?Match = None
+for e in Match:
+    let (x, y) = matches[e]
+    if let w = last_win[x]: takes[e].push(w)
+    if let w = last_win[y]: takes[e].push(w)
+    last_win[x] = e
+    last_win[y] = None
 
-var cnt: [Player]Int = 0
-var board = Set<(Int, Int)>()
-for p in Player: board.insert((0, -p.idx))
+var nights: [Player]Int = 0
+var board = Set<(Int, Desc<Player>)>()  // the max is the leader: most nights, then least index
+for p in Player: board.insert((0, desc(p)))
 
-fn add_time(p: Player, delta: Int):
-    board.remove((cnt[p], -p.idx))
-    cnt[p] += delta
-    board.insert((cnt[p], -p.idx))
+fn hold(p: Player, d: Int):
+    board.remove((nights[p], desc(p)))
+    nights[p] += d
+    board.insert((nights[p], desc(p)))
 
-var ans: [Player]Int = 0
-fn dfs(u: Event, next_time: Int) -> ():
-    let dt = next_time - u.idx
-    let w = winner[u]
-    add_time(w, dt)
-    let best = board.max()!
-    ans[Player(-best.1)] += 1
-    for v in children[u]: dfs(v, u.idx)
-    add_time(w, -dt)
+var medals: [Player]Int = 0
+fn walk(e: Match, until: Int) -> ():
+    let x = matches[e].x
+    hold(x, until - e.ord)
+    medals[board.max()!.1.x] += 1
+    for w in takes[e]: walk(w, e.ord)
+    hold(x, e.ord - until)
 
 for p in Player:
-    if let root = rep[p]: dfs(root, m)
-
-print(ans)
+    if let root = last_win[p]: walk(root, m)
+print(medals)
