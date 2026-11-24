@@ -80,20 +80,10 @@ How to reverse it: a moved name goes back into the builtin table; its std body s
 Meanwhile: move nothing; std bodies become the reference the builtins are tested against, and the list is classified with tech-debt.
 
 ### stdlib: Q4 one `split` for strings and sequences
-`lib/sequence-patterns.md` gives `a.split(sep: p)` with a predicate, on lists and `Str` alike (`line.split(sep: c => c == ' ')`), as views. `std/strings.cp` also has `s.split(',') -> List<Str>`, and since free functions don't overload by argument type, the `Str` one wins, so `"ab cd".split(sep: c => c == ' ')` fails (std-seq/split-on-separator-predicate). Corpus use: 5 `s.split(',')`, 0 `Str` predicate splits.
-- (a) One `split(sep:)` taking either a value or a predicate, through a `Sep<T>` trait implemented by `T` (equality) and `T -> Bool`. It works on every `Indexed` and yields views; `Str` pieces compare and print as strings.
-- (b) Keep both and rename the `Str` one (`s.split_at_char(',')`).
-Recommendation: (a), one spelling per idea; it waits on views of `Str` comparing equal to `Str`.
-How to reverse it: restore `split(self: Str, sep: Char) -> List<Str>` in std/strings.cp.
-Meanwhile: both stay; the predicate case keeps failing on `Str`.
+Answered 2026-11-23 by (a): decision 456, associated types chosen by impl.
 
 ### stdlib: Q5 decision 419's real searches need one name over two return types
-Decision 419 makes `(lo..hi).bsearch(ok, steps:)`, `.peak(by:, steps:)` and `.valley(by:, steps:)` on a `Range<F64>` the real searches, replacing `bsearch_real` and `ternary_*_real`. But `r.bsearch` on a domain range returns `Cut<D>` and the real one returns `?F64`, and fns don't overload by parameter type (E0702, R07.1.7), so std can't add the real forms beside the integer ones (std-search/real-bsearch-is-a-range-method). Same root cause as Q4.
-- (a) A trait the element type implements, with an associated result type: `bsearch<D: Search>(self: Range<D>, ok, last:, steps:) -> D.Found`, where a domain's `Found` is `Cut<D>` and `F64`'s is `?F64`. One generic fn per name, no overloading.
-- (b) Reverse decision 419: keep the `_real` free fns.
-Recommendation: (a), since it's the same mechanism Q4 (a) needs. It waits on the checker accepting an `impl` for every domain plus one for `F64`.
-How to reverse it: restore the three free fns.
-Meanwhile: `bsearch_real` and `ternary_*_real` stay, and the case keeps failing.
+Answered 2026-11-23 by (a): decision 456, associated types chosen by impl.
 
 ### idioms: the re-port bar for the 305 tracked ports
 Options: (a) rethink each from `dream.cp` to the EXEMPLARS bar (slow, defines idiomatic); (b) migrate `port.cp` mechanically to v0.3 (fast, gives judge proof and the lint FP corpus, keeps C++ shape).
@@ -118,9 +108,4 @@ Answered 2026-11-22 by the recommendation: decision 267, yes, behaviour-free mov
 Answered 2026-11-22 by the recommendation: decision 268, hard-fail; a named `--update` plus a decision raises one.
 
 ### stdlib: Q6 folds of an identity-less op are `?T` only through the op's type (needs compiler)
-`lib/ops-ranges.md` §2 says an `Op` without an identity still builds every structure and its folds return `?T` (`op.opt()`); spec confirmed `SegTree.all` is included. But `SegTree.new<M>(op: M, a: [D]T)` returns `SegTree<D, T, F>`, whose `fold`/`all` return `T`; making them `?T` only when `M` has no identity means the return type depends on the op's kind, and fns don't overload (R07.1.7). Today `SegTree(f.opt(), a.map(Some))` works (cac7b89df); `SegTree(f, a)` fails in `Monoid.of` (std-segtree/closure-op-picks-index).
-- (a) An associated type on the op: `trait Op<T>: type Fold`, with `Fold = T` for anything `Monoid.of` accepts and `Fold = ?T` otherwise; `SegTree<D, T, F>` stores `M.Fold` cells and its folds return `M.Fold`. Same associated-type mechanism as Q5 (a). Needs: associated types chosen by impl, and an impl "for every op without `zero`" (or the checker picking `opt()` when `Monoid.of` has no identity).
-- (b) Keep folds `T` and require `f.opt()` plus `Some` cells at the call; reverse the §2 sentence.
-Recommendation: (a); it's the mechanism Q4 and Q5 need too, so the three land together.
-How to reverse it: drop the associated type; folds return `T`.
-Meanwhile: `op.opt()` is the spelling; closure-op-picks-index stays known-failing.
+Answered 2026-11-23 by (a): decision 456, associated types chosen by impl.

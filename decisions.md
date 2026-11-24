@@ -8540,3 +8540,9 @@ learns of the overlap only from `t.roots`. Reverse by restoring the trap and the
 - **Why.** The two meant the same thing and the report already said `@alt`, so a contestant had to remember which decorator to write for one idea (use case stress/U27, R06.4.3's closed decorator set).
 - **Reverse.** Drop the `"brute"` arm of the removed-decorator match in `crates/cpl-syntax/src/parser/stmt.rs`.
 Tool gaps `lint expr Cpp` and `trace expr Cpp` are intended debt: a lint has nothing to read inside opaque C++, and the interpreter, which traces, can't run it. Drop them when lint records or traced programs can hold an `@cpp` fn (a C++-build trace).
+
+## 456. Associated types chosen by impl answer Q4, Q5 and Q6 (compiler, 2026-11-23)
+
+- **Call.** A trait may declare `type Name` (optionally bounded); each impl chooses it, and a generic fn names it in its signature as `M.Name`. It answers plan/QUESTIONS.md Q4 (one `split(sep:)` through `Sep<T>`), Q5 (`bsearch` returns `D.Found`: `Cut<D>` on a domain, `?F64` on `F64`) and Q6 (`Op<T>` has `type Fold`: `T` for a `Monoid`, `?T` for an op with no identity, so `SegTree(f, a)` folds `?T` and `SegTree(monoid, a)` folds `T`).
+- **Why.** One general mechanism, familiar from Rust, replaces three special cases (a second `split`, the `_real` searches, `f.opt()` plus `Some` cells at every call). It keeps folds over a monoid at `T`, as Ryan asked, without overloading fns by parameter type (R07.1.7). Spec writes the rule in core/08 §8.1 with its cases; the checker lands first behind them, then std moves SegTree/Window, `split` and `bsearch` onto it.
+- **Reverse.** Drop associated types from traits; folds return `T` and an identity-less op needs `f.opt()`; restore `split(self: Str, sep: Char) -> List<Str>` and the `bsearch_real`/`ternary_*_real` free fns.
