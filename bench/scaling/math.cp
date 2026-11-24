@@ -1,6 +1,6 @@
 // fixed: k, d, lcm, base, lo
 // let: popcount = \log n
-use std.math.{gcd, lcm, isqrt, ceil_sqrt, iroot, fixed, choose, choose2, ext_gcd, ceil_div, divmod, bit_len, digits, to_str, sign, Sign, bit, is_pow2, splitmix64, inv_mod, crt, mul_mod, pow_mod, is_prime, primitive_root, mod_sqrt, floor_sum, linear_diophantine, linear_congruence, jacobi, min_mod_in_range, continued_fraction, best_rational}
+use std.math.{gcd, lcm, isqrt, ceil_sqrt, iroot, fixed, choose, choose2, ext_gcd, ceil_div, divmod, bit_len, digits, to_str, sign, Sign, bit, is_pow2, splitmix64, inv_mod, crt, mul_mod, pow_mod, is_prime, primitive_root, mod_sqrt, floor_sum, linear_diophantine, linear_congruence, jacobi, min_mod_in_range, continued_fraction, best_rational, phi, Exp, pow_exp, pow_tower}
 let n: Int = read()
 var p = n
 while not is_prime(p): p += 1
@@ -44,5 +44,7 @@ for i in 0..8 * n:
 for i in 0..n / 2:
     let x = n + i % n
     acc += mod_sqrt(x % p, p) ?? 0 // timed: math.mod_sqrt
+    acc += pow_exp(x, Exp.of(i * 7919, p - 1), p).v // timed: math.pow_exp
+    acc += pow_tower([x, i, 3], p) // timed: math.pow_tower
 print(acc)
 print(h)

@@ -753,6 +753,69 @@ pub fn phi(x: Int) -> Int:
     for (p, _) in factor(x): acc = acc / p * (p - 1)
     acc
 
+/// An exponent `e >= 0` kept small enough to reduce: `v` is `e` itself when `e < m`, else
+/// `e % m + m`. With `m == phi(M)`, `pow_mod(a, x.v, M)` is `a ** e mod M` for every `a`, coprime
+/// to `M` or not (Euler's theorem in its extended form), so `pow_exp` can raise by it and a tower
+/// `a ** b ** c mod M` walks the totient chain `M`, `phi(M)`, ... (decision 562).
+pub struct Exp(pub v: Int, pub m: Int):
+    /// `e` kept for the modulus `m`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `e < 0` or `m < 1`
+    /// example: `Exp.of(5, 7).v == 5 and Exp.of(12, 7).v == 12 and Exp.of(19, 7).v == 12`
+    /// example: `Exp.of(0, 1).v == 0 and Exp.of(9, 1).v == 1`
+    pub fn of(e: Int, m: Int) -> Exp:
+        assert e >= 0 and m >= 1, "`Exp.of(e, m)` takes `e >= 0` and `m >= 1`"
+        Exp(v: capped(e, m), m:)
+
+fn capped(e: Int, m: Int) -> Int = if e < m: e else: e % m + m
+
+fn mul_capped(x: Int, y: Int, m: Int) -> Int:
+    if x <= SQRT_MAX and y <= SQRT_MAX: return capped(x * y, m)
+    let z = I128(x) * I128(y)
+    if z < I128(m): Int(z) else: Int(z % I128(m)) + m
+
+/// `a ** e` kept for the modulus `m`, where `x` keeps `e` for `phi(m)`: `pow_exp(a, x, m).v % m` is
+/// `a ** e mod m`, and the result is the exponent the next modulus up, the `M` with
+/// `phi(M) == m`, raises by. `pow_mod` is the plain form with an exact `Int` exponent.
+///
+/// cost: \(O(\log x.v)\) multiplications, each \(O(1)\)
+/// traps: when `a < 0` or `m < 1`
+/// example: `pow_exp(2, Exp.of(10, phi(7)), 7).v % 7 == pow_mod(2, 10, 7)`
+/// example: `pow_exp(3, Exp.of(2, phi(100)), 100).v == 9`
+/// example: `pow_exp(6, Exp.of(1_000_000, phi(8)), 8).v % 8 == pow_mod(6, 1_000_000, 8)`
+pub fn pow_exp(a: Int, x: Exp, m: Int) -> Exp:
+    assert a >= 0 and m >= 1, "`pow_exp(a, x, m)` takes `a >= 0` and `m >= 1`"
+    var (acc, b, k) = (capped(1, m), capped(a, m), x.v)
+    while k > 0:
+        if k % 2 == 1: acc = mul_capped(acc, b, m)
+        k /= 2
+        if k > 0: b = mul_capped(b, b, m)
+    Exp(v: acc, m:)
+
+/// The power tower `xs[0] ** (xs[1] ** (... ** xs[k]))` modulo `m`, in `0..m`, for non-negative
+/// entries of any size: `pow_exp` down the totient chain `m`, `phi(m)`, .... The empty tower is 1.
+///
+/// cost: \(O(k \log m)\) multiplications and \(O(\min(k, \log m))\) `phi` calls
+/// empty: `pow_tower(List<Int>(), 7) == 1`
+/// traps: when an entry is negative or `m < 1`
+/// example: `pow_tower([2, 3, 2], 1000) == 512`
+/// example: `pow_tower([2, 2, 2, 2, 2], 1_000_000_007) == pow_mod(2, 65536, 1_000_000_007)`
+/// example: `pow_tower([0, 0], 5) == 1 and pow_tower([0, 3], 5) == 0`
+pub fn pow_tower(xs: List<Int>, m: Int) -> Int:
+    assert m >= 1, "`pow_tower(xs, m)` takes `m >= 1`"
+    let a = xs
+    if a.is_empty: return 1 % m
+    var chain = [m]
+    while chain.len < a.len: chain.push(if chain.last! == 1: 1 else: phi(chain.last!))
+    assert a.last! >= 0, "`pow_tower` takes non-negative entries"
+    var x = Exp.of(a.last!, chain[a.len - 1])
+    var i = a.len - 1
+    while i > 0:
+        i -= 1
+        x = pow_exp(a[i], x, chain[i])
+    x.v % m
+
 /// The smallest primitive root modulo the prime `p`: the least `g >= 1` whose powers reach every
 /// non-zero residue.
 ///

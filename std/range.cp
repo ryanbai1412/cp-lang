@@ -160,6 +160,18 @@ pub fn shift<D>(self: D, r: Range<Int>) -> Range<D>:
     if lo == hi: return D.nth(0)..D.nth(0)
     D.nth(lo)..=D.nth(hi - 1)
 
+/// The position `k` steps from `self`, stopping at the domain's first or last: `v.next(k)` that
+/// saturates instead of giving `None`. One definition for positions and cuts, like `shift`.
+///
+/// cost: \(O(1)\)
+/// traps: never (a domain with a position is not empty)
+/// example: `domain V = 0..6; V(4).shift_saturating(1) == V(5) and V(4).shift_saturating(9) == V(5)`
+/// example: `domain V = 0..6; V(1).shift_saturating(-3) == V(0) and V(0).l.shift_saturating(9) == V.cuts.last!`
+pub fn shift_saturating<D>(self: D, k: Int) -> D:
+    let n = D.count
+    let o = self.ord
+    D.nth(if k >= n - 1 - o: n - 1 elif k <= -o: 0 else: o + k)
+
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
 /// as if it were empty. `l..l` is in order and empty.

@@ -8976,3 +8976,10 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Reverse.** None planned; a second front end or verdict picker raises `stress_engines` and fails the gate.
 
 ## 563. (reserved, unknown)
+## 561. (reserved, stress)
+
+## 562. Tower exponents are `Exp`, raised by `pow_exp`; `pow_tower` is the whole tower (stdlib, 2026-11-24)
+
+- **Call.** `std.math` adds `Exp(v, m)`, an exponent kept as `e` below `m` and `e % m + m` past it, made by `Exp.of(e, m)`; `pow_exp(a, x, m)` raises `a` by an exponent kept for `phi(m)` and returns one kept for `m`; `pow_tower(xs, m)` is `xs[0] ** xs[1] ** ... mod m`. Positions and cuts get `v.shift_saturating(k)`, `v.next(k)` that stops at the domain's ends instead of giving `None`.
+- **Why.** Towers mod `m` (etsr23r4p2, a^b^c problems) were hand-written totient chains with a reached-the-threshold flag beside each value. `pow_exp` sits beside `pow_mod` with the same argument order and only the exponent's type changes; `shift_saturating` is the clamped form of a step and pairs with the range-valued `shift`.
+- **Reverse.** Fold `Exp` into an `Int` exponent with a `phi:` argument on `pow_mod`, or rename `shift_saturating` to a `next(k, saturate: true)` option.
