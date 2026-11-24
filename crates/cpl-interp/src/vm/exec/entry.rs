@@ -157,6 +157,48 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// a variable a closure captured by reference) holds the value while
     /// the chunk runs. Run from a checkpoint, it goes on from where frame
     /// `k` of `frames` was, and leaves its locals on the stack.
+    /// The place an alias to slot `at` (of the globals or the stack)
+    /// finally names, following aliases of aliases.
+    pub(super) fn alias_part(&self, mut global: bool, mut at: usize) -> Rc<Part> {
+        while let Value::Alias(g, a) = match global {
+            true => &self.globals[at],
+            false => &self.stack[at],
+        } {
+            (global, at) = (*g, *a);
+        }
+        Rc::new(Part {
+            global,
+            at,
+            steps: Vec::new(),
+        })
+    }
+
+    /// Puts each value `held` lent to `chunk`'s frame back where it was
+    /// lent from, out of the frame's registers (a traced chunk leaves its
+    /// locals on the stack).
+    pub(super) fn give_back(
+        &mut self,
+        chunk: &Chunk<'p>,
+        held: Vec<(usize, Rc<Part>)>,
+        regs_i: &[i64],
+        regs_v: &mut [Value],
+    ) -> Res<()> {
+        for (at, part) in held {
+            let val = match chunk.traced {
+                true => Some(std::mem::replace(&mut self.stack[at], Value::Moved)),
+                false => take_slot(&chunk.slot_map[at - self.base], regs_i, regs_v),
+            };
+            let Some(val) = val else {
+                return trap(
+                    cpl_diag::Span::default(),
+                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                );
+            };
+            *self.lender(&part)? = val;
+        }
+        Ok(())
+    }
+
     fn run_chunk_lending(
         &mut self,
         compiled: &CompiledProgram<'p>,
@@ -164,33 +206,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         lent: &mut dyn Iterator<Item = usize>,
         resume: Option<(&[FrameAt], usize)>,
     ) -> Res<Value> {
-        let mut aliases: Vec<(usize, Rc<Part>)> = Vec::new();
+        let lent_mark = self.lent.len();
         for k in lent {
             let part = match &self.stack[self.base + k] {
-                &Value::Alias(mut global, mut at) => {
-                    while let Value::Alias(g, a) = match global {
-                        true => &self.globals[at],
-                        false => &self.stack[at],
-                    } {
-                        (global, at) = (*g, *a);
-                    }
-                    Rc::new(Part {
-                        global,
-                        at,
-                        steps: Vec::new(),
-                    })
-                }
+                &Value::Alias(global, at) => self.alias_part(global, at),
                 Value::Part(part) => Rc::clone(part),
                 _ => continue,
             };
             let val = std::mem::replace(self.lender(&part)?, Value::Moved);
             self.stack[self.base + k] = val;
-            aliases.push((k, part));
+            self.lent.push((self.base + k, part));
         }
-        let lent = self.lent.len();
-        let base = self.base;
-        let held = aliases.iter().map(|(k, part)| (base + k, Rc::clone(part)));
-        self.lent.extend(held);
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         let base_i = vm_regs_i.len();
         vm_regs_i.resize(base_i + chunk.num_i, 0);
@@ -227,28 +253,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 true,
             );
         }
-        self.lent.truncate(lent);
-        for (k, part) in aliases {
-            // A traced chunk leaves its locals on the stack.
-            let val = match chunk.slot_map[k] {
-                _ if chunk.traced => {
-                    std::mem::replace(&mut self.stack[self.base + k], Value::Moved)
-                }
-                SlotLoc::I(r, kind) => kind.box_val(vm_regs_i[base_i + r as usize]),
-                SlotLoc::OptI { val, some, kind } => kind.box_opt(
-                    vm_regs_i[base_i + val as usize],
-                    vm_regs_i[base_i + some as usize],
-                ),
-                SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
-                SlotLoc::SmallTuple { .. } => {
-                    return trap(
-                        cpl_diag::Span::default(),
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    )
-                }
-            };
-            *self.lender(&part)? = val;
-        }
+        let held = self.lent.split_off(lent_mark);
+        self.give_back(chunk, held, &vm_regs_i[base_i..], &mut regs_v)?;
         self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         self.vm_regs_i = vm_regs_i;

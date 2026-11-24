@@ -691,6 +691,19 @@ pub(super) fn store_fed_val(ctx: &mut FedCtx<'_, '_>, vm_regs_i: &mut [i64], val
 }
 
 /// Puts `val` in the local at `loc`: [`read_slot`]'s inverse.
+/// The value a slot holds, boxed from its registers; a `V` register is left
+/// `Unit`. `None` for a small tuple, which no lent place holds.
+pub(super) fn take_slot(loc: &SlotLoc, regs_i: &[i64], regs_v: &mut [Value]) -> Option<Value> {
+    Some(match *loc {
+        SlotLoc::I(r, kind) => kind.box_val(regs_i[r as usize]),
+        SlotLoc::OptI { val, some, kind } => {
+            kind.box_opt(regs_i[val as usize], regs_i[some as usize])
+        }
+        SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
+        SlotLoc::SmallTuple { .. } => return None,
+    })
+}
+
 pub(super) fn write_slot(loc: &SlotLoc, regs_i: &mut [i64], regs_v: &mut [Value], val: Value) {
     match *loc {
         SlotLoc::I(r, _) => regs_i[r as usize] = ScalarKind::unbox_val(&val),

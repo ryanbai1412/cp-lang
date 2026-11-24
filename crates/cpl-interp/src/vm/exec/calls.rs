@@ -975,14 +975,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 // The `mut` params' values, for their arg slots once the frame is synced.
                 let mut lent_back: Vec<Value> = Vec::new();
-                // A closure holding a variable by reference runs on its frame on
-                // the stack, where the variable is lent to it.
-                let by_val = || caps.iter().all(|c| matches!(c, crate::CaptureVal::Val(_)));
-                let val = if let Some(callee) = compiled.closures[cid].as_ref().filter(|_| by_val())
-                {
+                // A variable the closure holds by reference is lent to its frame
+                // on the stack for the call, as `run_chunk_lending` lends it.
+                let by_val = caps.iter().all(|c| matches!(c, crate::CaptureVal::Val(_)));
+                let lendable = |c: &&Chunk<'p>| {
+                    let tuple = |cap: &cpl_ir::Capture| {
+                        cap.by_ref && matches!(c.slot_map[cap.inner], SlotLoc::SmallTuple { .. })
+                    };
+                    by_val || !c.traced && !def.captures.iter().any(tuple)
+                };
+                // With `lends` the frame is already on the stack.
+                let has_frame = chunk.needs_stack && !lends;
+                let val = if let Some(callee) = compiled.closures[cid].as_ref().filter(lendable) {
                     self.tick(spans[cur_pc])?;
                     self.stack_left(spans[cur_pc], None)?;
-                    let needs_stack = callee.needs_stack;
+                    if !by_val && has_frame {
+                        sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                    }
+                    let needs_stack = callee.needs_stack || !by_val;
                     let saved_base = self.base;
                     if needs_stack {
                         self.base = self.stack.len();
@@ -1033,32 +1043,22 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         saved_base,
                     );
                     let prev_in_closure = std::mem::replace(&mut self.in_closure, true);
+                    let lent_mark = self.lent.len();
                     for (cap, cval) in def.captures.iter().zip(caps.iter()) {
-                        let crate::CaptureVal::Val(v) = cval else {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                            );
+                        let (loc, c_regs_i) =
+                            (&callee.slot_map[cap.inner], &mut vm_regs_i[c_base_i..]);
+                        let part = match cval {
+                            crate::CaptureVal::Val(v) => {
+                                write_slot(loc, c_regs_i, &mut c_regs_v, v.clone());
+                                continue;
+                            }
+                            &crate::CaptureVal::StackRef(at) => self.alias_part(false, at),
+                            &crate::CaptureVal::GlobalRef(id) => self.alias_part(true, id),
+                            crate::CaptureVal::PartRef(part) => Rc::clone(part),
                         };
-                        match callee.slot_map[cap.inner] {
-                            SlotLoc::I(r, _) => {
-                                vm_regs_i[c_base_i + r as usize] = ScalarKind::unbox_val(v);
-                            }
-                            SlotLoc::OptI { val, some, .. } => {
-                                let (rv, rs) = ScalarKind::unbox_opt(v);
-                                vm_regs_i[c_base_i + val as usize] = rv;
-                                vm_regs_i[c_base_i + some as usize] = rs;
-                            }
-                            SlotLoc::SmallTuple { base: b, len, .. } => {
-                                if let Value::Tuple(TupleVal::Boxed(fs)) = v {
-                                    for (k, f) in fs.iter().take(len as usize).enumerate() {
-                                        vm_regs_i[c_base_i + b as usize + k] =
-                                            ScalarKind::unbox_val(f);
-                                    }
-                                }
-                            }
-                            SlotLoc::V(r) => c_regs_v[r as usize] = v.clone(),
-                        }
+                        let v = std::mem::replace(self.lender(&part)?, Value::Moved);
+                        write_slot(loc, c_regs_i, &mut c_regs_v, v);
+                        self.lent.push((self.base + cap.inner, part));
                     }
                     let dom_mark = self.saved_domains.len();
                     for &d in &callee.guarded_domains {
@@ -1072,29 +1072,23 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         &mut c_regs_v,
                         0,
                     );
+                    let c_regs_i = &vm_regs_i[c_base_i..];
+                    let held = self.lent.split_off(lent_mark);
+                    self.give_back(callee, held, c_regs_i, &mut c_regs_v)?;
                     if res.is_ok() && muts != 0 {
                         for (k, &pslot) in def.params.iter().enumerate() {
                             if muts & 1 << k == 0 {
                                 continue;
                             }
-                            lent_back.push(match callee.slot_map[pslot] {
-                                SlotLoc::I(r, kind) => {
-                                    kind.box_val(vm_regs_i[c_base_i + r as usize])
-                                }
-                                SlotLoc::OptI { val, some, kind } => kind.box_opt(
-                                    vm_regs_i[c_base_i + val as usize],
-                                    vm_regs_i[c_base_i + some as usize],
-                                ),
-                                SlotLoc::V(r) => {
-                                    std::mem::replace(&mut c_regs_v[r as usize], Value::Unit)
-                                }
-                                SlotLoc::SmallTuple { .. } => {
+                            match take_slot(&callee.slot_map[pslot], c_regs_i, &mut c_regs_v) {
+                                Some(v) => lent_back.push(v),
+                                None => {
                                     return trap(
                                         spans[cur_pc],
                                         cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
                                     )
                                 }
-                            });
+                            }
                         }
                     }
                     self.unsuspend();
@@ -1111,6 +1105,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let v = res?;
                     self.call_frames.pop();
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    if !by_val && has_frame {
+                        sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                    }
                     v
                 } else {
                     let mut boxed = Vec::with_capacity(def.params.len());
@@ -1129,8 +1126,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             iv += 1;
                         }
                     }
-                    // With `lends` the frame is already on the stack.
-                    let has_frame = chunk.needs_stack && !lends;
                     // The closure reaches this frame only through what it
                     // and its kin captured by reference.
                     if has_frame {

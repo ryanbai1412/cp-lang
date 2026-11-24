@@ -295,3 +295,38 @@ fn vm_combines_boxed_values_in_place_itself() {
         include_str!("../../../cpl-cli/tests/programs/vm_assign_op_values.out")
     );
 }
+
+#[test]
+fn vm_lends_variables_held_by_reference_to_a_closure_call() {
+    // Nested fns holding their fn's `var`s by reference, as cf2066f's `fit`
+    // reads its DP table: a leaf reader in a hot loop, a recursive writer of
+    // an Int, an optional and a list, one calling another that reads what
+    // the caller holds, and a global.
+    let out = vm_runs_alone(
+        "
+var visits = 0
+fn walk(n: Int) -> (Int, Int, Int):
+    var seen = List.filled(n, false)
+    var depth = 0
+    var deepest: ?Int = None
+    fn peek(i: Int) -> Bool = seen[i]
+    fn mark(i: Int):
+        visits += 1
+        seen[i] = true
+        depth += 1
+        deepest = Some(max(deepest ?? 0, depth))
+        for j in [2 * i + 1, 2 * i + 2]:
+            if j < n and not peek(j): mark(j)
+        depth -= 1
+    mark(0)
+    var hits = 0
+    for i in 0..n:
+        if peek(i): hits += 1
+    (hits, deepest ?? -1, depth)
+let (hits, deepest, depth) = walk(read())
+print(hits, deepest, depth, visits)
+",
+        "10\n",
+    );
+    assert_eq!(out, "10 4 0 10\n");
+}
