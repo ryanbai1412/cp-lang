@@ -11,30 +11,6 @@ use cpl_diag::msgs::lint_rules;
 use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::StmtKind;
 use std::collections::HashSet;
-use std::sync::OnceLock;
-
-/// `(module, name)` for each name `std/prelude.cp` lists, the module
-/// written `std.tree`, read off the prelude the checker reads.
-fn prelude() -> &'static HashSet<(String, String)> {
-    static NAMES: OnceLock<HashSet<(String, String)>> = OnceLock::new();
-    NAMES.get_or_init(|| {
-        let mut found = HashSet::new();
-        let preludes = cpl_check::loaded_std()
-            .iter()
-            .filter(|(name, _)| *name == "prelude");
-        for (_, text) in preludes {
-            for (_, item) in cpl_syntax::parse_file(text).items {
-                for stmt in item.stmts {
-                    if let StmtKind::Use { path, names, .. } = stmt.kind {
-                        let module = dotted(&path);
-                        found.extend(names.iter().map(|n| (module.clone(), n.text.clone())));
-                    }
-                }
-            }
-        }
-        found
-    })
-}
 
 fn dotted(path: &[cpl_syntax::ast::Name]) -> String {
     path.iter()
@@ -69,7 +45,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         })
         .collect();
     let redundant = |module: &str, name: &str| {
-        !declared.contains(name) && prelude().contains(&(module.to_string(), name.to_string()))
+        !declared.contains(name)
+            && (cpl_check::prelude_uses().iter())
+                .any(|(path, n)| n.text == name && dotted(path) == module)
     };
     let mut out = Vec::new();
     let mut run_start: Option<(u32, u32)> = None;

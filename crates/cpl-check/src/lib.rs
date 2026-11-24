@@ -57,9 +57,9 @@ pub use modules::{
 pub use overflow::Overflow;
 pub use prelude::{
     arity_key, import_edit, labels_fit, method_key, method_module, methods as std_methods,
-    overload_key, overload_part, required_labels, set_domain, std_family, std_module, std_names,
-    std_self_heads, ty as prelude_type, type_arity, word_type, written_name, SetDomain,
-    VALUE_NAMES as PRELUDE_VALUES,
+    names as prelude_uses, overload_key, overload_part, required_labels, set_domain, std_family,
+    std_module, std_names, std_self_heads, ty as prelude_type, type_arity, word_type, written_name,
+    SetDomain, VALUE_NAMES as PRELUDE_VALUES,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};
