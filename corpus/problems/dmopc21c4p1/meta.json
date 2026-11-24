@@ -9,6 +9,9 @@
   "dream": [
    "corpus/problems/dmopc21c4p1/dream.cp"
   ],
+  "original": [
+   "corpus/problems/dmopc21c4p1/orig.cpp"
+  ],
   "spec": [
    "corpus/problems/dmopc21c4p1/spec.cp"
   ]
