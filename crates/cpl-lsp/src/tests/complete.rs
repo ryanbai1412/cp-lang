@@ -508,7 +508,7 @@ fn signature_help_shows_defaults_and_named_only_parameters() {
     assert!(active > 2, "{active}");
     // A stdlib method's default, as its declaration writes it.
     let (label, ..) = signature("use std.mod.{Comb}\nlet c = Comb<7>.new(|)\n");
-    assert!(label.starts_with("new(limit: Int = 0) -> Comb<"), "{label}");
+    assert!(label.starts_with("new(limit: 0.. = 0) -> Comb<"), "{label}");
 }
 
 #[test]
