@@ -459,7 +459,9 @@ operations support it:
 
 A tree built with `act:` and no fold op reads one point at a time: `st[k]` is
 `a[k]` with every `apply` whose range covers `k` composed onto it, in the order
-the applies were made (`std-segtree/dual-add-point-read.cp`).
+the applies were made (`std-segtree/dual-add-point-read.cp`). Its op is
+`NoOp`, so its type is `SegTree<D, T, F, NoOp>` and it has no `fold` or `all`
+(`std-segtree/dual-tree-type-names-noop.cp`).
 
 **What merges:**
 - `LazySegTree` and `DualSegTree` become `SegTree` with `act:`.

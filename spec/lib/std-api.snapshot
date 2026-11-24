@@ -1541,29 +1541,29 @@ std/segtree.cp: MergeTrees.scale(mut self, t: MergeTree<D>, k: Z)
 std/segtree.cp: MergeTrees.set(mut self, mut t: MergeTree<D>, x: D, v: Z)
 std/segtree.cp: MergeTrees.sum(self, t: MergeTree<D>, r: Range<D>) -> Z
 std/segtree.cp: MergeTrees.total(self, t: MergeTree<D>) -> Z
-std/segtree.cp: SegTree.all(self) -> T
+std/segtree.cp: SegTree.all(self) -> M.Fold
 std/segtree.cp: SegTree.apply(mut self, r: Range<D>, f: F)
 std/segtree.cp: SegTree.apply_all(mut self, f: F)
-std/segtree.cp: SegTree.at(mut self, i: D) -> lends mut T
+std/segtree.cp: SegTree.at(mut self, i: D) -> lends mut M.Fold
 std/segtree.cp: SegTree.clear(mut self, fill: ?T = None)
-std/segtree.cp: SegTree.fold(self, r: Range<D>) -> T
-std/segtree.cp: SegTree.get(self, i: D) -> T
-std/segtree.cp: SegTree.left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>
-std/segtree.cp: SegTree.monoid(self) -> Monoid<T>
-std/segtree.cp: SegTree.new<M, A: Acts<T, F>, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>
-std/segtree.cp: SegTree.of<M>(op: M, f: D -> T) -> SegTree<D, T, F>
+std/segtree.cp: SegTree.fold(self, r: Range<D>) -> M.Fold
+std/segtree.cp: SegTree.get(self, i: D) -> M.Fold
+std/segtree.cp: SegTree.left_while(self, to: Cut<D>, ok: M.Fold -> Bool) -> Cut<D>
+std/segtree.cp: SegTree.monoid(self) -> Monoid<M.Fold>
+std/segtree.cp: SegTree.new<N: Op<T>, A: Acts<N.Fold, F>, O>(op: N = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F, N>
+std/segtree.cp: SegTree.of<N: Op<T>>(op: N, f: D -> T) -> SegTree<D, T, F, N>
 std/segtree.cp: SegTree.refresh(mut self, i: D)
-std/segtree.cp: SegTree.right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>
+std/segtree.cp: SegTree.right_while(self, from: Cut<D>, ok: M.Fold -> Bool) -> Cut<D>
 std/segtree.cp: SegTree.set(mut self, i: D, x: T)
-std/segtree.cp: SegTree.try_fold(self, r: Range<D>) -> ?T
-std/segtree.cp: SegTree.update(mut self, i: D, f: T -> T)
-std/segtree.cp: SegTree.walk(self, r: Range<D>) -> yields T
-std/segtree.cp: SegTree2D.all(self) -> T
-std/segtree.cp: SegTree2D.fold(self, rows: Range<R>, cols: Range<C>) -> T
-std/segtree.cp: SegTree2D.get(self, r: R, c: C) -> T
-std/segtree.cp: SegTree2D.new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T>
+std/segtree.cp: SegTree.try_fold(self, r: Range<D>) -> ?M.Fold
+std/segtree.cp: SegTree.update(mut self, i: D, f: M.Fold -> M.Fold)
+std/segtree.cp: SegTree.walk(self, r: Range<D>) -> yields M.Fold
+std/segtree.cp: SegTree2D.all(self) -> M.Fold
+std/segtree.cp: SegTree2D.fold(self, rows: Range<R>, cols: Range<C>) -> M.Fold
+std/segtree.cp: SegTree2D.get(self, r: R, c: C) -> M.Fold
+std/segtree.cp: SegTree2D.new<N: Op<T>>(op: N, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T, N>
 std/segtree.cp: SegTree2D.set(mut self, r: R, c: C, x: T)
-std/segtree.cp: SegTree2D.update(mut self, r: R, c: C, f: T -> T)
+std/segtree.cp: SegTree2D.update(mut self, r: R, c: C, f: M.Fold -> M.Fold)
 std/segtree.cp: WaveletMatrix.count_in(self, r: Range<D>, lo_v: Int, hi_v: Int) -> Int
 std/segtree.cp: WaveletMatrix.count_lt(self, r: Range<D>, x: Int) -> Int
 std/segtree.cp: WaveletMatrix.kth(self, r: Range<D>, k: 0..) -> ?Int
