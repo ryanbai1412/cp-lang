@@ -162,8 +162,19 @@ fn drop_unread(body: &mut Block, lets: &BTreeSet<Slot>) {
     });
     let dead: BTreeSet<Slot> = lets.difference(&read).copied().collect();
     fn go(b: &mut Block, dead: &BTreeSet<Slot>) {
-        b.stmts
-            .retain(|s| !matches!(s, Stmt::Let(slot, Some(_)) if dead.contains(slot)));
+        // The `let` still runs where it is written, as a profile counts it.
+        for s in &mut b.stmts {
+            if let Stmt::Let(slot, Some(init)) = s {
+                if dead.contains(slot) {
+                    let (ty, span) = (cpl_ir::Ty::Unit, init.span);
+                    *s = Stmt::Expr(Expr {
+                        kind: ExprKind::Unit,
+                        ty,
+                        span,
+                    });
+                }
+            }
+        }
         for stmt in &mut b.stmts {
             match stmt {
                 Stmt::If(_, then, otherwise) => {
