@@ -1,6 +1,6 @@
 //! C++ names for the program's names, and C++ types for its types.
 
-use cpl_ir::{JudgeTy, Program, Ty};
+use cpl_ir::{spare, JudgeTy, Program, Ty};
 use std::collections::BTreeSet;
 
 /// Names the emitted file can't give to the user's things: C++ keywords,
@@ -218,20 +218,97 @@ pub(crate) struct Niches {
     pub chars: bool,
 }
 
-/// `?S` for a struct with a field whose type has a niche no value of it
-/// holds (an `Int` at `INT64_MIN`, a position at -1) stores `none` there,
-/// so it is as wide as `S` (decision 28.10). A field narrowed below 64 bits
-/// has no free value, so it is passed over.
-pub(crate) fn struct_niche(program: &Program, id: usize) -> Option<&str> {
+/// Where `?S` keeps its `None` when `S` has a spare value (R03.2.2): in the
+/// first field, in declaration order, that has one, reached through the
+/// member pointers `path`, at the spare value after the `taken` ones the
+/// packed optionals along the path keep for their own `None`s.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub(crate) struct StructNiche {
+    pub field: String,
+    pub path: Vec<String>,
+    pub taken: u32,
+    pub spares: u128,
+}
+
+/// `?S` for a struct with a spare value is as wide as `S` (decision 28.10),
+/// counted by `cpl_check::ty::spare`'s rules, as layout and `cpl explain` count.
+pub(crate) fn struct_niche(program: &Program, id: usize) -> Option<StructNiche> {
+    struct_niche_at(program, id, 0)
+}
+
+fn struct_niche_at(program: &Program, id: usize, depth: u32) -> Option<StructNiche> {
+    if depth > 8 {
+        return None;
+    }
     let def = &program.structs[id];
-    def.fields
-        .iter()
-        .enumerate()
-        .find_map(|(at, (name, ty))| match ty {
-            Ty::Int if !def.narrow_ints.contains_key(&at) => Some(name.as_str()),
-            Ty::Pos(_) | Ty::Bound(_) => Some(name.as_str()),
+    let owner = ident(&def.name);
+    let counts = def.fields.iter().enumerate().map(|(at, (name, ty))| {
+        let member = format!("&{owner}::{}", ident(name));
+        let range = match (def.int_ranges.get(&at), def.narrow_ints.contains_key(&at)) {
+            (Some(&(lo, hi)), _) => Some(Some((lo as i128, hi as i128))),
+            // A narrowed field's width comes from bounds not kept here.
+            (None, true) => None,
+            (None, false) => Some(None),
+        };
+        field_niche(program, member, ty, range, depth)
+    });
+    let found: Vec<Option<(u128, Vec<String>, u32)>> = counts.collect();
+    let (at, spares) = spare::first(found.iter().map(|f| f.as_ref().map_or(0, |f| f.0)))?;
+    let (_, path, taken) = found[at].clone()?;
+    Some(StructNiche {
+        field: def.fields[at].0.clone(),
+        path,
+        taken,
+        spares,
+    })
+}
+
+/// A field's spare values, the path to the scalar holding them and how many
+/// of them its packed optionals take; `range` is an `Int`'s bounds when
+/// known, `None` when they are unknown.
+fn field_niche(
+    program: &Program,
+    member: String,
+    ty: &Ty,
+    range: Option<Option<(i128, i128)>>,
+    depth: u32,
+) -> Option<(u128, Vec<String>, u32)> {
+    let int = |range: Option<Option<(i128, i128)>>| match range? {
+        Some((lo, hi)) => Some(spare::of_range(lo, hi)),
+        None => Some(1),
+    };
+    let inside = || format!("&decltype({})::raw", member.trim_start_matches('&'));
+    match ty {
+        Ty::Int => Some((int(range)?, vec![member], 0)),
+        Ty::Pos(_) | Ty::Bound(_) => Some((spare::MANY, vec![member], 0)),
+        Ty::Struct(id) => {
+            let inner = struct_niche_at(program, *id, depth + 1)?;
+            let path = std::iter::once(member).chain(inner.path).collect();
+            Some((inner.spares, path, inner.taken))
+        }
+        Ty::Opt(inner) => match inner.as_ref() {
+            Ty::Int => Some((
+                spare::of_opt(int(range)?),
+                vec![member.clone(), inside()],
+                1,
+            )),
+            Ty::Pos(_) | Ty::Bound(_) => Some((
+                spare::of_opt(spare::MANY),
+                vec![member.clone(), inside()],
+                1,
+            )),
+            Ty::Struct(id) => {
+                let held = struct_niche_at(program, *id, depth + 1)?;
+                let path = [member.clone(), inside()]
+                    .into_iter()
+                    .chain(held.path)
+                    .collect();
+                Some((spare::of_opt(held.spares), path, held.taken + 1))
+            }
             _ => None,
-        })
+        },
+        _ => None,
+    }
 }
 
 /// The C++ type of a value of type `ty`.
@@ -293,11 +370,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
                 }
             }
             Ty::Struct(id) => match struct_niche(program, id) {
-                Some(field) => format!(
-                    "cpl::OptField<&{}::{}>",
-                    ident(&program.structs[id].name),
-                    ident(field)
-                ),
+                Some(niche) => format!("cpl::OptField<{}, {}>", niche.taken, niche.path.join(", ")),
                 None => format!("std::optional<{}>", cty(program, niches, inner)),
             },
             Ty::Mut(ref of) => format!("std::optional<{}>", cty(program, niches, of)),

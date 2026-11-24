@@ -27,6 +27,8 @@ pub mod sites;
 pub mod stress_target;
 pub mod walk;
 
+/// The spare-value count a `?T` packs its `None` into, shared with layout and `cpl explain`.
+pub use cpl_check::spare;
 pub use cpl_rt::{Prim, Scalar};
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
 /// Every diagnostic the front end has for a file: the checker's, and when

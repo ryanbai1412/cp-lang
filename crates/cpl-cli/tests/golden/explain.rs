@@ -233,3 +233,43 @@ fn explain_counts_a_narrow_array_at_the_cpp_width() {
     let cpp = std::fs::read_to_string(dir.join("m.cpp")).unwrap();
     assert!(cpp.contains("std::vector<uint32_t> b"), "{cpp}");
 }
+
+/// A heap node linked by `?Id` handles (std.heap's MeldNode in an arena) takes
+/// the handle's spare value for `None`, so it is 32 B, not 40, and explain and
+/// the C++ say the same size.
+#[test]
+fn explain_and_the_cpp_agree_on_a_node_with_generic_optional_links() {
+    let dir = scratch("explain_generic_struct_niche");
+    let src = "use std.marks.{Id}\nstruct MNode<T>:\n    var key: T\n\
+               \x20   var l: ?Id<MNode<T>> = None\n    var r: ?Id<MNode<T>> = None\n\
+               \x20   var stamp: -1..=2_147_483_647 = 0\n\
+               let n: 1..=1000 = read()\n\
+               var nodes: [0..n]MNode<(at: Int, cnt: Int)> = MNode(key: (at: 0, cnt: 0))\n\
+               nodes[0].l = Some(Id(0))\nlet m = nodes[0]\n\
+               print(m.key.at + m.key.cnt + m.stamp, yes(m.r == None), m.l!.raw)\n";
+    std::fs::write(dir.join("m.cp"), src).unwrap();
+    let out = text(&cpl(&dir, &["explain", "m.cp"]).stdout);
+    assert!(out.contains("32 B per element x 1000"), "{out}");
+    let built = cpl(&dir, &["build", "m.cp", "-o", "m.cpp"]);
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    if Command::new("g++").arg("--version").output().is_err() {
+        return;
+    }
+    let cpp = std::fs::read_to_string(dir.join("m.cpp")).unwrap();
+    let node = cpp
+        .split("struct ")
+        .find(|s| s.starts_with("MNode_"))
+        .unwrap();
+    let node = &node[..node.find(' ').unwrap()];
+    std::fs::write(
+        dir.join("size.cpp"),
+        format!("{cpp}\nstatic_assert(sizeof(prog::{node}) == 32, \"a node is 32 B\");\n"),
+    )
+    .unwrap();
+    let cc = Command::new("g++")
+        .args(["-std=c++17", "-fsyntax-only", "size.cpp"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(cc.status.success(), "{}", text(&cc.stderr));
+}
