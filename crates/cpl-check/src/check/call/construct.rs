@@ -267,9 +267,6 @@ impl Checker<'_> {
         let mut misnamed = false;
         let mut pack: Vec<Ty> = Vec::new();
         let mut named_pack: Vec<(String, Ty)> = Vec::new();
-        if !variadic && labeled {
-            self.lambda_takes_later_args(params, args, bindings);
-        }
         for (i, arg) in args.iter().enumerate() {
             let param = match &arg.name {
                 Some(name) if labeled => match params.iter().find(|p| p.name == name.text) {
@@ -334,9 +331,7 @@ impl Checker<'_> {
             self.expected_piece = false;
             let mut typed_lambda = false;
             if let Some(p) = param {
-                let expected = self
-                    .graph_lambda_want(&p.ty, bindings)
-                    .unwrap_or_else(|| p.ty.subst(bindings));
+                let expected = p.ty.subst(bindings);
                 if Self::expects_bounds_range(&expected) {
                     self.expected_bounds_range = true;
                 }
@@ -667,77 +662,6 @@ impl Checker<'_> {
     /// `sum(xs, of: x => x * x)`: a lambda whose parameters it leaves
     /// unwritten takes the ones the fn's earlier arguments fixed, so its
     /// body, and the generic its result binds, are checked with them.
-    /// `bfs(p => .., from: [s])`: the arguments after a lambda with unwritten
-    /// parameters bind the generics it takes before it is checked.
-    fn lambda_takes_later_args(&mut self, params: &[Param], args: &[Arg], bindings: &mut Bindings) {
-        let untyped = |a: &Arg| {
-            matches!(&a.value.kind, ExprKind::Lambda { param_tys, .. }
-                if param_tys.iter().all(Option::is_none))
-        };
-        let Some(first) = args.iter().position(untyped) else {
-            return;
-        };
-        let positional: Vec<&Param> = params.iter().filter(|p| !p.named_only).collect();
-        let mut next = args[..=first].iter().filter(|a| a.name.is_none()).count();
-        for arg in &args[first + 1..] {
-            let param = match &arg.name {
-                Some(n) => params.iter().find(|p| p.name == n.text),
-                None => {
-                    next += 1;
-                    positional.get(next - 1).copied()
-                }
-            };
-            let Some(param) = param.filter(|_| !matches!(arg.value.kind, ExprKind::Lambda { .. }))
-            else {
-                continue;
-            };
-            let got = self.quietly(|c| c.infer(&arg.value));
-            if got.has_vague() {
-                continue;
-            }
-            match &param.ty {
-                Ty::Named { name, args: want }
-                    if matches!(self.type_def(name).as_deref(), Some(Def::Trait { .. })) =>
-                {
-                    for (w, g) in want.iter().zip(
-                        self.trait_args_of(&got, name, want.len())
-                            .unwrap_or_default(),
-                    ) {
-                        w.unify(&g, bindings);
-                    }
-                }
-                ty => ty.unify(&got, bindings),
-            }
-        }
-    }
-
-    /// `g: G` with `G: Next<V>` given a lambda: any closure from a vertex to
-    /// its arcs is a graph, so it takes a `V` (lib/graphs-trees.md).
-    fn graph_lambda_want(&self, ty: &Ty, bindings: &Bindings) -> Option<Ty> {
-        let Ty::Param(g) = ty else {
-            return None;
-        };
-        let (_, _, args) =
-            (self.call_bound_args.as_ref()?.iter()).find(|(p, t, _)| p == g && t == "Next")?;
-        let [v] = args.as_slice() else {
-            return None;
-        };
-        let v = v.subst(bindings);
-        let param = Param {
-            name: String::new(),
-            ty: v,
-            mutable: false,
-            has_default: false,
-            named_only: false,
-            variadic: false,
-            lazy: false,
-        };
-        Some(Ty::Fn {
-            params: vec![param],
-            ret: Box::new(Ty::Unknown),
-        })
-    }
-
     fn lambda_takes(&mut self, arg: &Arg, expected: &Ty) -> bool {
         let (ExprKind::Lambda { param_tys, .. }, Ty::Fn { params, .. }) =
             (&arg.value.kind, expected)
