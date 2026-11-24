@@ -2432,12 +2432,48 @@ def rs_over_cap(root: Path, max_rs_lines: int) -> dict[str, int]:
     return dict(sorted(over.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
+def _count(name: str, root: Path) -> int:
+    return len(COUNTERS[name][1](root))
+
+
+def _counts(names: list[str], root: Path) -> dict[str, int]:
+    """Each counter's count, measured in forked processes: serially they take
+    longer than the commit tier's whole budget."""
+    jobs = min(len(names), os.cpu_count() or 1)
+    if jobs < 2 or not hasattr(os, "fork"):
+        return {n: _count(n, root) for n in names}
+    import multiprocessing
+    import traceback
+    ctx = multiprocessing.get_context("fork")
+    results = ctx.SimpleQueue()
+
+    def work(chunk: list[str]) -> None:
+        for n in chunk:
+            try:
+                results.put((n, _count(n, root), None))
+            except BaseException:
+                results.put((n, None, traceback.format_exc()))
+
+    procs = [ctx.Process(target=work, args=(names[i::jobs],)) for i in range(jobs)]
+    for p in procs:
+        p.start()
+    counts, failures = {}, []
+    for _ in names:
+        n, count, failure = results.get()
+        counts[n] = count
+        if failure:
+            failures.append(f"{n}:\n{failure}")
+    for p in procs:
+        p.join()
+    if failures:
+        raise RuntimeError("debt-ratchet: a counter failed\n" + "\n".join(failures))
+    return {n: counts[n] for n in names}
+
+
 def measure(root: Path = ROOT, max_rs_lines: int = DEFAULT_MAX_RS_LINES) -> dict:
     """Current file sizes over the cap, every ratcheted count, and the crate edges."""
     data: dict = {"max_rs_lines": max_rs_lines, "rs_file_size_allowlist": rs_over_cap(root, max_rs_lines)}
-    for name, (_, fn, gated) in COUNTERS.items():
-        if gated:
-            data[name] = len(fn(root))
+    data.update(_counts([name for name, (_, _, gated) in COUNTERS.items() if gated], root))
     data["register_rows_by_domain"] = register_rows_by_domain(root)
     data["crate_edges"] = crate_edges(root)
     data["a4_edges"] = a4_edges(root)
