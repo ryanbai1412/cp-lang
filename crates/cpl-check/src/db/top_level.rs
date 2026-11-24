@@ -68,7 +68,7 @@ pub(super) fn map_recomputed(
         return None;
     };
     if !matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "map")
-        || rewalk_kind(items, index).is_some()
+        || rewalk_kind(items, index, false).is_some()
     {
         return None;
     }
@@ -92,11 +92,13 @@ pub(super) fn map_recomputed(
 }
 
 /// What makes the top-level `let` at `index` walkable once: a lazy chain
-/// (L0602) or a call of one of the file's generators with a `mut` argument
-/// (L0604).
+/// (L0602) or a call of a generator with a `mut` argument (L0604): one of
+/// the file's, or any whose value the checker typed as one (`gen_typed`),
+/// such as `std.graph.dfs`.
 pub(super) fn rewalk_kind(
     items: &[Arc<ItemSyntax>],
     index: usize,
+    gen_typed: bool,
 ) -> Option<(cpl_diag::Code, &'static str)> {
     use ast::ExprKind;
     let stmt = items[index].parsed.stmts.first()?;
@@ -136,15 +138,16 @@ pub(super) fn rewalk_kind(
     {
         return None;
     }
-    let generator = items.iter().any(|item| {
-        item.parsed.stmts.iter().any(|s| match &s.kind {
+    let generator = gen_typed
+        || items.iter().any(|item| {
+            item.parsed.stmts.iter().any(|s| match &s.kind {
             StmtKind::Fn(decl) => {
                 decl.name.text == *f
                     && matches!(&decl.ret, Some(t) if matches!(t.kind, ast::TypeKind::Yields(_)))
             }
             _ => false,
         })
-    });
+        });
     generator.then_some((
         codes::MUT_GENERATOR_REWALKED,
         "a generator holding a `mut` lend",
