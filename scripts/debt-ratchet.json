@@ -207,6 +207,6 @@
   "std_fns_unscaled": 1173,
   "std_types_shown_empty": 77,
   "edge_labels_unrun": 1,
-  "std_model_gaps": 26,
+  "std_model_gaps": 23,
   "cpp_optional_copies": 9
 }

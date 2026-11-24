@@ -13,6 +13,7 @@ use std.seq.{collect}
 
 const SEED = 998_244_353
 const RAND_HI = 2_000_000_000
+const WIEDEMANN_TRIES = 32
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
 pub struct Mat<T>:
@@ -1172,7 +1173,8 @@ pub struct PrefixXorBasis:
 /// `entries` lists `(row, col, value)`; repeated cells add up, and missing cells are zero.
 /// Randomized with a fixed seed and retried until the minimal polynomial is certified, so the
 /// answer is always exact and deterministic; only the running time is an expectation. `P` must be
-/// prime.
+/// prime. A small `P` (about `n` or less) can make certification impossible; after 32 failed
+/// tries it falls back to dense Gaussian elimination, \(O(n^3)\).
 ///
 /// cost: \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space
 /// empty: `let e: List<(Int, Int, Mod<998244353>)> = []; sparse_det(0, e) == Mod<998244353>(1)`
@@ -1188,7 +1190,7 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
     ) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_det entry outside 0..n"
     if n == 0: return Mod<P>(1)
     var rng = Rng(SEED)
-    loop:
+    for _ in 0..WIEDEMANN_TRIES:
         let w = wiedemann(n, entries, mut rng)
         if w.singular: return Mod<P>(0)
         if w.f.len == n + 1:
@@ -1196,12 +1198,13 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
             if n % 2 == 1: det *= Mod<P>(-1)
             for d in w.diag: det /= d
             return det
+    sparse_dense(n, entries).det()
 
 /// Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in
 /// `sparse_det`.
 ///
 /// Returns the unique solution, or `None` when `A` is singular (even if `b` happens to be in its
-/// range). Deterministic, like `sparse_det`.
+/// range). Deterministic, and falls back to dense elimination for a small `P`, like `sparse_det`.
 ///
 /// cost: \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space
 /// empty: `let e: List<(Int, Int, Mod<998244353>)> = []; let b: List<Mod<998244353>> = []; sparse_solve(0, e, b) == Some([])`
@@ -1219,7 +1222,7 @@ pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>
     ) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_solve entry outside 0..n"
     if n == 0: return Some([])
     var rng = Rng(SEED)
-    loop:
+    for _ in 0..WIEDEMANN_TRIES:
         let w = wiedemann(n, entries, mut rng)
         if w.singular: return None
         if w.f.len == n + 1:
@@ -1233,6 +1236,14 @@ pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>
             let ax = sparse_apply(n, entries, [Mod<P>(1) for _ in 0..n], x)
             let ok = (0..n).all(k => ax[k] == b[k])
             if ok: return Some(x)
+    let a = sparse_dense(n, entries)
+    if a.det() == Mod<P>(0): return None
+    a.solve(b)
+
+fn sparse_dense<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mat<Mod<P>>:
+    var flat = List.filled(n * n, Mod<P>(0))
+    for (r, c, a) in entries: flat[r * n + c] += a
+    Mat.from_flat(n, n, flat)
 
 fn sparse_apply<P>(
     n: Int,
