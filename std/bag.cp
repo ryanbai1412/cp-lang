@@ -31,21 +31,24 @@ const BAG_OPS = ["none", "add", "remove", "clear"]
 ///
 /// Elements are ordered by `K`'s `<`; copies of one key are equal and indistinguishable, so
 /// no method here has a tie to break between them. `n` in every cost is `len`.
+// A node or slot of a bag, or -1 for none.
+type Spot = -1..2_147_483_648
+
 pub struct SortedBag<K>:
     var keys: List<K>
     var ws: List<Int>
     // Per node: fill, next leaf, previous leaf, and its block in `kids` (or -1).
-    var meta: List<Int>
-    var kids: List<Int>
-    var root: Int
+    var meta: List<Spot>
+    var kids: List<Spot>
+    var root: Spot
     var height: Int
     var live: Int
     var total: Int
     var stamp: Int
     var last_op: Int
-    var head: Int
-    var tail: Int
-    var free: Int
+    var head: Spot
+    var tail: Spot
+    var free: Spot
     var pay: Bool
     var got: Int
 
@@ -762,11 +765,11 @@ pub struct SortedBag<K>:
             for _ in 0..c: t = t + k
         t
 
-    fn kid(self, n: Int, i: Int) -> Int:
+    fn kid(self, n: Spot, i: Int) -> Spot:
         unchecked: return kids[self.kix(n) * BAG_B + i]
 
     // Copy entry `i` of node `a` to entry `j` of node `b`; an `inner` entry carries a child too.
-    fn mv(mut self, a: Int, i: Int, b: Int, j: Int, inner: Bool):
+    fn mv(mut self, a: Spot, i: Int, b: Spot, j: Int, inner: Bool):
         let s = a * BAG_B + i
         self.put(b * BAG_B + j, keys[s], ws[s], if inner or pay: self.kid(a, i) else: -1)
 
@@ -775,7 +778,7 @@ pub struct SortedBag<K>:
         ws[s] = w
         if k >= 0: kids[self.kix(s / BAG_B) * BAG_B + s % BAG_B] = k
 
-    fn node(mut self, x: K, inner: Bool) -> Int:
+    fn node(mut self, x: K, inner: Bool) -> Spot:
         var u = meta.len / 4
         if free >= 0:
             u = free
@@ -797,28 +800,28 @@ pub struct SortedBag<K>:
             for _ in 0..BAG_B: kids.push(-1)
         u
 
-    fn fill(self, n: Int) -> Int = meta[4 * n]
+    fn fill(self, n: Spot) -> Spot = meta[4 * n]
 
-    fn nxt(self, n: Int) -> Int = meta[4 * n + 1]
+    fn nxt(self, n: Spot) -> Spot = meta[4 * n + 1]
 
-    fn prv(self, n: Int) -> Int = meta[4 * n + 2]
+    fn prv(self, n: Spot) -> Spot = meta[4 * n + 2]
 
-    fn kix(self, n: Int) -> Int = meta[4 * n + 3]
+    fn kix(self, n: Spot) -> Spot = meta[4 * n + 3]
 
     // Node `b` (or the end, -1) follows `a`; a leaf followed by nothing is the tail.
-    fn link(mut self, a: Int, b: Int, inner: Bool):
+    fn link(mut self, a: Spot, b: Spot, inner: Bool):
         meta[4 * a + 1] = b
         if b != -1: meta[4 * b + 2] = a
         elif not inner: tail = a
 
-    fn release(mut self, n: Int):
+    fn release(mut self, n: Spot):
         meta[4 * n + 1] = free
         free = n
 
-    fn weight(self, n: Int) -> Int = slot_sum(ws, n * BAG_B, self.fill(n))
+    fn weight(self, n: Spot) -> Int = slot_sum(ws, n * BAG_B, self.fill(n))
 
     // The first `i` in `a..` the fill of `n` whose key fails `go`; the keys passing `go` form a prefix.
-    fn at(self, n: Int, a: Int, x: K, upper: Bool) -> Int:
+    fn at(self, n: Spot, a: Int, x: K, upper: Bool) -> Int:
         var l = a
         var r = 0
         r = self.fill(n)
@@ -840,7 +843,7 @@ pub struct SortedBag<K>:
 
     // Make room for an entry at `p` of node `n`, splitting a full node in half; returns the
     // new right half (or -1) and the slot to fill.
-    fn room(mut self, n: Int, inner: Bool, p: Int, x: K) -> (Int, Int):
+    fn room(mut self, n: Spot, inner: Bool, p: Int, x: K) -> (Int, Int):
         let f = self.fill(n)
         if f < BAG_B:
             if keys.len == n * BAG_B + f:
@@ -868,9 +871,9 @@ pub struct SortedBag<K>:
     // Insert `c` copies of `x` under node `n` at height `h`: -2 when `unique` finds `x`, else
     // the new right sibling of `n` after a split, or -1.
     // Whether leaf `n`'s slot `p`, the first not below `x`, holds `x`.
-    fn holds(self, n: Int, p: Int, x: K) -> Bool = p < self.fill(n) and not x < keys[n * BAG_B + p]
+    fn holds(self, n: Spot, p: Int, x: K) -> Bool = p < self.fill(n) and not x < keys[n * BAG_B + p]
 
-    fn ins(mut self, n: Int, h: Int, x: K, c: Int, unique: Bool) -> Int:
+    fn ins(mut self, n: Spot, h: Int, x: K, c: Int, unique: Bool) -> Int:
         if h == 0:
             let p = self.at(n, 0, x, false)
             let s = n * BAG_B + p
@@ -894,7 +897,7 @@ pub struct SortedBag<K>:
         return if r >= 0: self.adopt(n, i, r) else: -1
 
     // Child `i` of inner node `n` split off `r`: link `r` after it; returns `n`'s own split, or -1.
-    fn adopt(mut self, n: Int, i: Int, r: Int) -> Int:
+    fn adopt(mut self, n: Spot, i: Int, r: Int) -> Int:
         let w = self.weight(r)
         ws[n * BAG_B + i] -= w
         let k = keys[r * BAG_B]
@@ -928,7 +931,7 @@ pub struct SortedBag<K>:
 
     // Child `i` of inner node `n` fell below a quarter full: merge it with a neighbour, or move
     // entries over one at a time until the two are even.
-    fn fix(mut self, n: Int, i: Int, inner: Bool):
+    fn fix(mut self, n: Spot, i: Int, inner: Bool):
         let a = if i + 1 < self.fill(n): i else: i - 1
         let x = self.kid(n, a)
         let y = self.kid(n, a + 1)
@@ -962,7 +965,7 @@ pub struct SortedBag<K>:
 
     // Remove one copy of `x` (every copy when `all`) under node `n` at height `h`; returns how
     // many were removed.
-    fn del(mut self, n: Int, h: Int, x: K, all: Bool) -> Int:
+    fn del(mut self, n: Spot, h: Int, x: K, all: Bool) -> Int:
         if h == 0:
             let p = self.at(n, 0, x, false)
             let s = n * BAG_B + p
