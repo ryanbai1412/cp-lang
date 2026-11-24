@@ -4,21 +4,10 @@
 // Solution: scores are positive, so prefix sums increase and at most one is half the total:
 //   scan for the first prefix with 2 * prefix == total. O(n).
 // original: corpus/submissions/4264907.cpp
-
-let n: Int = read()
+let n: 1..=1_000_000 = read()
 domain V = 1..=n
-let a: [V]Int = read()
-
-var total = 0
-for i in V: total += a[i]
-
-var cur = 0
-var ans: ?V = None
-for i in V:
-    cur += a[i]
-    if 2 * cur == total:
-        ans = i
-        break
-
-if let idx = ans: print(idx)
+let score: [V]1..=100 = read()
+let before = Prefix<V, Int>(score)
+let total = score.sum()
+if let spot = V.find(i => 2 * before.fold(V.first!..=i) == total): print(spot)
 else: print("Andrew is sad.")
