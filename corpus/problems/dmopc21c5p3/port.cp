@@ -7,42 +7,28 @@
 //   game; win[d] for every distance d up to the largest n (sieve, then try primes until one
 //   reaches a losing d). n <= 2 is -1; if win[n - 1], print 1..n. Otherwise swap the last
 //   two values, except n = 11, 36, 311, whose last three values are n, n - 2, n - 1.
-// Runnable port (proto/cp.py lib-run) of dmopc21c5p3.cp
 // original: corpus/submissions/4218397.cpp
-
-let t: Int = read()
-var ns: List<Int> = []
-for _ in 0..t:
-    let n: Int = read()
-    ns.push(n)
-let limit = max(ns.max(), 2)
-let sieve = Sieve.new(limit)
-
 // win[i]: the player to move wins a pile of i when a move removes a prime.
-var win: List<Bool> = [false for _ in 0..=limit]
-for i in 1..=limit:
+
+const MAX_N = 1e5
+let sieve = Sieve.new(MAX_N)
+
+// win[i]: the player to move wins a pile of i when a move removes a prime
+var win: [0..=MAX_N]Bool = false
+for i in 1..=MAX_N:
     for p in sieve.primes:
         if p > i: break
         if not win[i - p]:
             win[i] = true
             break
 
-fn show(xs: List<Int>):
-    var line = ""
-    for x in xs:
-        if line.len > 0: line += " "
-        line += "{x}"
-    print(line)
-
-for n in ns:
-    if n <= 2:
-        print(-1)
-    elif win[n - 1]:
-        show(List(1..=n))
-    else:
-        // A losing pile: perturb the tail. Three sizes need the 3-cycle
-        // (n, n-2, n-1); every other one is fixed by swapping the last two.
-        var tail = [n, n - 1]
-        if n == 11 or n == 36 or n == 311: tail = [n, n - 2, n - 1]
-        let head = [i for i in 1..=(n - tail.len)]
-        show(head + tail)
+@!multitest
+let n: 1..=MAX_N = read()
+if n <= 2:
+    print(-1)
+elif win[n - 1]:
+    print((1..=n).collect())
+else:
+    // a losing pile: perturb the tail; three sizes need the 3-cycle (n, n - 2, n - 1)
+    let tail = if n == 11 or n == 36 or n == 311: [n, n - 2, n - 1] else: [n, n - 1]
+    print((1..=n - tail.len).collect() + tail)

@@ -9,41 +9,23 @@
 //   N = 4 is 3 1 4 2. One sieve to 1e6, then O(N) per test plus the prime scan.
 // original: corpus/submissions/4223525.cpp
 
-let maxn = 1000005
-let sv = Sieve.new(maxn)
+let sieve = Sieve.new(1e6)
 
-fn find_pair(target: Int) -> (Int, Int):
-    for a in sv.primes:
-        let b = target - a
-        if b > a and sv.is_prime(b):
-            return (a, b)
-    (0, 0)
-
-fn solve_one(n: Int):
-    if n == 1:
-        print(1)
-        return
-    if n <= 3:
-        print(-1)
-        return
-    if n == 4:
-        print(3, 1, 4, 2)
-        return
-    let target = if n == 5 or n == 7 or (n % 2 == 0 and n != 6): n else: n - 1
-    let ab = find_pair(target)
-    let a = ab.0
-    let b = ab.1
-    var ans: List<Int> = []
-    var cur = 0
-    for i in 0..n:
-        ans.push(cur + 1)
-        if cur + a < n:
-            cur += a
-        else:
-            cur -= b
-    print(ans)
-
-let t: 1..=1e5 = read()
-for _ in 0..t:
-    let n: 1..=1e6 = read()
-    solve_one(n)
+@!multitest
+let n: 1..=1e6 = read()
+if n == 1:
+    print(1)
+elif n <= 3:
+    print(-1)
+elif n == 4:
+    print(3, 1, 4, 2)
+else:
+    let total = if n == 5 or n == 7 or (n % 2 == 0 and n != 6): n else: n - 1
+    let up = sieve.primes.find(a => total - a > a and sieve.is_prime(total - a))!
+    let down = total - up
+    var at = 1
+    var walk: List<Int> = []
+    for _ in 0..n:
+        walk.push(at)
+        at = if at + up <= n: at + up else: at - down
+    print(walk)
