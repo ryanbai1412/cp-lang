@@ -266,5 +266,6 @@
   "corpus_max_short": 0,
   "corpus_max_unread": 0,
   "dream_over_32kb": 3,
-  "invariant_sites": 0
+  "invariant_sites": 0,
+  "domain_member_names": 0
 }

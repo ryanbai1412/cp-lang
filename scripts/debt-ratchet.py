@@ -385,6 +385,21 @@ def std_names_outside_rt(root: Path) -> list[str]:
     return sorted(hits)
 
 
+def domain_member_names(root: Path) -> list[str]:
+    """Domain members std declares with `@member(name)` written as string literals in
+    compiler source: lowering and checking read them off std, not a name match."""
+    names = {m for p in sorted((root / "std").glob("*.cp"))
+             for m in re.findall(r"@member\((\w+)\)", p.read_text())}
+    hits: list[str] = []
+    for p in _rs_files(root, *(f"crates/{c}/src" for c in NAME_BAN_CRATES), tests=False):
+        if "test" in p.name:
+            continue
+        for i, line in enumerate(_lines(p), 1):
+            if not line.lstrip().startswith("//"):
+                hits.extend(f"{_rel(root, p)}:{i} {n}" for n in re.findall(r'"(\w+)"', line) if n in names)
+    return hits
+
+
 @functools.lru_cache(maxsize=4)
 def _fn_bodies(root: Path) -> tuple:
     return tuple(_walk_fn_bodies(root))
@@ -3109,7 +3124,7 @@ HARD_ZERO = frozenset({
     "unreferenced_scripts",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
-    "lint_name_matchers", "lint_type_syntax",
+    "lint_name_matchers", "lint_type_syntax", "domain_member_names",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
     "stdlib_todo", "editor_logic_lines",
     "uncached_installs",
@@ -3191,6 +3206,8 @@ COUNTERS = {
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
     "std_names_outside_rt": ("public std names as string literals in compiler source, outside cpl-rt",
                              std_names_outside_rt, True),
+    "domain_member_names": ("std `@member` domain member names as string literals in compiler source",
+                            domain_member_names, True),
     "lint_std_names": ("std fn names as string literals in lint rules, not through std_fn", lint_std_names, True),
     "lint_name_matchers": ("lint rule lines matching a call by its written std fn name, not its callee", lint_name_matchers, True),
     "lint_type_syntax": ("lint rule lines reading a written type instead of checker facts", lint_type_syntax, True),

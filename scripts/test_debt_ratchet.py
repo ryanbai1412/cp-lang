@@ -417,6 +417,14 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "std/bag.cp", "pub struct Counter {}\n")
             self.assertEqual(dr.prelude_privilege(root), ["Counter", "sum"])
 
+    def test_domain_member_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/subset.cp", "@member(subsets)\npub struct Subset<B>(bits: U64):\n")
+            self._write(root, "crates/cpl-ir/src/a.rs",
+                        '// "subsets" in a comment\nif matches!(m, "cuts" | "subsets") {}\n')
+            self.assertEqual(dr.domain_member_names(root), ["crates/cpl-ir/src/a.rs:2 subsets"])
+
     def test_cfg_test_skips_only_the_item_it_gates(self) -> None:
         src = ["a.unwrap();", "#[cfg(test)]", "#[allow(x)]", "fn t() {", '    let s = "}";', "    t.unwrap();",
                "}", "b.unwrap();", "#[cfg(test)]", "mod helpers;", "c.unwrap();", "#[cfg(test)]",
