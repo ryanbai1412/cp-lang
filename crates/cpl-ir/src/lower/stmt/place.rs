@@ -163,14 +163,9 @@ impl<'a> Lowerer<'a> {
             // `xs.last!` and `xs.first!` are the cells `xs[xs.len - 1]` and
             // `xs[0]`: places, as `xs[i]` is.
             ast::ExprKind::Unwrap(inner)
-                if matches!(
-                    &inner.kind,
-                    ast::ExprKind::Field { name, .. } if matches!(name.text.as_str(), "first" | "last")
-                ) =>
+                if let ast::ExprKind::Field { base, name } = &inner.kind
+                    && matches!(name.text.as_str(), "first" | "last") =>
             {
-                let ast::ExprKind::Field { base, name } = &inner.kind else {
-                    unreachable!("matched above")
-                };
                 let seq = self.place(base);
                 let elem = match &seq.ty {
                     Ty::List(elem) => (**elem).clone(),
