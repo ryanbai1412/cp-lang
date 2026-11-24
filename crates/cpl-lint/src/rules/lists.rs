@@ -12,9 +12,10 @@
 use super::shapes::flip;
 use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
+use cpl_check::Ty;
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{
-    BinOp, CmpOp, Cond, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, Type, TypeKind, UnOp,
+    BinOp, CmpOp, Cond, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, UnOp,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -24,8 +25,8 @@ const HOT_DEPTH: usize = 2;
 /// The index `xs.len - 1`, which a guard proves when it shows `xs` is not empty.
 const LAST: &str = "len - 1";
 
-pub(crate) fn is_list_type(ty: &Type) -> bool {
-    matches!(&ty.kind, TypeKind::Named { name, .. } if name.text == "List")
+fn is_list_ty(ty: &Ty) -> bool {
+    matches!(ty, Ty::Named { name, .. } if name == "List")
 }
 
 /// `[]`, `[1, 2]`, `List<Int>()`.
@@ -57,6 +58,7 @@ struct Open {
 
 struct Indexes<'a> {
     src: &'a str,
+    facts: Option<&'a crate::Facts>,
     base: u32,
     /// The names bound at the top level, and whether each is a `List`.
     globals: HashMap<String, Option<bool>>,
@@ -73,6 +75,13 @@ struct Indexes<'a> {
 }
 
 impl Indexes<'_> {
+    /// Whether the checker types the name declared at `span` as a `List`;
+    /// `None` when it has no answer.
+    fn declares_list(&self, span: Span) -> Option<bool> {
+        let ty = self.facts?.place_type(span.shift(self.base))?;
+        Some(is_list_ty(ty))
+    }
+
     /// Loops open since the enclosing fn began.
     fn loop_depth(&self) -> usize {
         self.scopes
@@ -206,7 +215,7 @@ impl Visitor for Indexes<'_> {
             StmtKind::Let { pat, ty, init, .. } => {
                 self.binding_list = match ty {
                     _ if !matches!(pat.kind, PatternKind::Name(_)) => None,
-                    Some(ty) => Some(is_list_type(ty)),
+                    Some(_) => self.declares_list(pat.span),
                     None => init.as_ref().filter(|e| is_list_value(e)).map(|_| true),
                 };
             }
@@ -218,7 +227,13 @@ impl Visitor for Indexes<'_> {
                 self.list_params = decl
                     .params
                     .iter()
-                    .map(|param| (param.name.text.clone(), param.ty.as_ref().map(is_list_type)))
+                    .map(|param| {
+                        let list = param
+                            .ty
+                            .as_ref()
+                            .and_then(|_| self.declares_list(param.name.span));
+                        (param.name.text.clone(), list)
+                    })
                     .collect();
             }
             _ => {}
@@ -334,6 +349,7 @@ impl Visitor for Indexes<'_> {
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut indexes = Indexes {
         src: file.src,
+        facts: file.facts,
         base: 0,
         globals: HashMap::new(),
         scopes: Vec::new(),
