@@ -6,7 +6,7 @@ line when the gap closes and the body lands.
 
 - subset: every `Subset` method: `Subset` is built into the compiler (`crates/cpl-ir/src/lower/expr.rs`, `library_domain.rs`, cpl-check `prelude.rs`), so `cpl run` answers its calls itself instead of running these bodies.
 - tree: `Lift.of(next)` without type arguments: `V` is not inferred from the lambda `next: V -> ?V` (E0302 "`Lift.of` needs a domain for `V`, and `Int` is not one"), so programs write `Lift<V, ()>.of(next)`.
-- window, `undoing`/`Tracked` with a tuple-pattern closure: `(mut d, (u, v)) => ...` is E0302 "a `Int` can't be taken apart into 2 names" (the element type is not inferred from the callee), so btoi20p3 writes `e: (V, V)`.
+- window, `undoing`/`Tracked` with a tuple-pattern closure passed straight to another call: `g.minimal(undoing(Dsu<V>(..), (mut d, (u, v)) => ..))` is E0302, because T must come from the outer call; a `let` binding takes T from a later `push` (std-window/undoing-infers-from-later-push). btoi20p3 writes `e: (V, V)`.
 - io: `read_all`: CP Lang has no end-of-input test (the interpreter has one internally, `Input::at_eof`), so reading to the end can't be written; blocks ioi05p2 and the site's `read_all<Cmd>(until:)` snippets.
 - seq, `filter` / `map`: `Filtered<S>` and `Mapped<S, U>` have no fields and no `T` parameter to hold the closure, and a struct cannot implement `Seq` yet; the compiler's built-in views serve these calls.
 - segtree, `SegTree.new` (and so `all`, `monoid`, `try_fold`, `clear`, `walk`, which need a tree to test): `apply`'s tag type `F` is not a declared parameter (`F is not a type cpl run knows`), the struct's header parameter `m: Monoid<T>` captures the `op` argument, and `at`'s `-> lends mut T` does not parse.
