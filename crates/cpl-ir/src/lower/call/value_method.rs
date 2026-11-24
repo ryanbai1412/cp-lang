@@ -121,10 +121,7 @@ impl<'a> Lowerer<'a> {
             }
             (ty, "at") if let Some(elem) = ty.seq_elem().filter(|_| Self::keyed_view(ty)) => {
                 match self.one_arg("at", args, &Ty::Int, span) {
-                    Some(at) => {
-                        let view = self.hold_view(value, span);
-                        self.key_index(view, at, elem, span)
-                    }
+                    Some(at) => self.guarded_read(value, at, elem, true, span),
                     None => self.err_expr(span),
                 }
             }
@@ -140,6 +137,9 @@ impl<'a> Lowerer<'a> {
                 }) =>
             {
                 match self.one_arg("nth", args, &Ty::Int, span) {
+                    Some(at) if Self::keyed_view(ty) => {
+                        self.guarded_read(value, at, elem, false, span)
+                    }
                     Some(at) => self.mk_index(value, vec![at], elem, span),
                     None => self.err_expr(span),
                 }
@@ -791,7 +791,7 @@ impl<'a> Lowerer<'a> {
                     }
                 };
                 // A view must not outlive its cells, so a temporary gets a slot.
-                let value = if matches!(value.kind, ExprKind::Local(_)) {
+                let value = if matches!(value.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
                     value
                 } else {
                     let slot = self.new_slot("cells", value.ty.clone());
@@ -803,8 +803,13 @@ impl<'a> Lowerer<'a> {
                 } else {
                     Ty::ListView(Box::new(elem.clone()), dim)
                 };
+                let guard = self.std_gen_fn("rekey").filter(|_| self.cur_mod == 0);
                 self.do_expr(Some(&res.clone()), span, |lw, out| {
                     let keys = lw.hold(keys, out);
+                    if let Some(gid) = guard {
+                        let binds = vec![("self", value.clone()), ("keys", keys.clone())];
+                        lw.std_fn_asserts(gid, binds, span, out);
+                    }
                     let lo = lw.mk_builtin(Builtin::RangeLo, [keys.clone()], Ty::Int, span);
                     let hi = lw.mk_builtin(Builtin::RangeHi, [keys], Ty::Int, span);
                     let view = lw.mk_builtin(Builtin::Rekey, [value, lo, hi], res, span);
