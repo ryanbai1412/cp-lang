@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3741 (3600 passing). Rules: 617.
+Cases: 3743 (3602 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3741 (3600 passing). Rules: 617.
 - R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 97 rules, 263 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 265 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -453,7 +453,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R07: 07-sequences.md
 
 - R07.5.3 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]` on a slice whose keys start elsewhere...
-- R07.3.5 [8+ 3-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
+- R07.3.5 [9+ 4-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
 - R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [2+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has \(O(1)\) `.len`; ...
 - R07.1.3 [3+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
@@ -984,7 +984,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
-- R0001 Runtime trap: 12 case(s)
+- R0001 Runtime trap: 13 case(s)
 - R0101 Index out of range: 35 case(s)
 - R0102 Value outside a domain: 7 case(s)
 - R0201 Range store out of range: 11 case(s)
