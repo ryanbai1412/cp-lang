@@ -2,7 +2,7 @@
 
 # std.lazy
 
-Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
+Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `SeqFold`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
 
 In prelude (no `use` needed): `Flip`.
 
@@ -30,6 +30,22 @@ Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose
 - `fn query_path<R>(mut self, i: D, f: (mut T) -> ?R) -> ?R` — \(O(\log n)\) expected calls of `f`; The first `Some` that `f` gives on the pieces holding position `i`'s value, oldest first: the value stored at `i`, then each tag still pending above it, without pushing any tag down.; traps: when `i` is outside `D`
 - `fn set(mut self, i: D, x: T)` — \(O(\log n)\) expected; Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.; traps: when `i` is outside `D`
 - `fn to_array(mut self) -> [D]T` — \(O(\lvert D \rvert)\); The current values in position order, with every pending tag merged in.
+
+## `struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>)`
+
+A sequence of `T` that folds any run with a monoid, under lazy range tags and range reversal: an implicit treap whose nodes keep each subtree's fold in both directions, so `reverse` is a swap of the two even when `op` does not commute.
+
+Fields: `lc: List<Int>`, `rc: List<Int>`, `pri: List<Int>`, `sz: List<Int>`, `val: List<T>`, `fwd: List<T>`, `bwd: List<T>`, `tag: List<?F>`, `rev: List<Bool>`, `rng: Rng`.
+
+- `fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>` — \(O(n \log n)\) expected; The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a `Monoid(id, op)`, which need not commute.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of elements.
+- `@get fn total(self) -> T` — \(O(1)\); The fold of every element in order, with every tag and reversal applied.
+- `fn push(mut self, x: T)` — \(O(\log n)\) expected; Append `x` at the end.
+- `fn insert_at(mut self, pos: Int, x: T)` — \(O(\log n)\) expected; Insert `x` so that it becomes the element at position `pos`; `pos == len` appends.; traps: when `pos < 0` or `pos > len`
+- `fn get(mut self, pos: Int) -> T` — \(O(\log n)\) expected; The element at position `pos`, with every tag and reversal applied.; traps: when `pos < 0` or `pos >= len`
+- `fn fold(mut self, r: Range<Int>) -> T` — \(O(\log n)\) expected; The fold of the elements at positions `r`, in order.; traps: when a non-empty `r` reaches outside `0..len`
+- `fn apply(mut self, r: Range<Int>, f: F)` — \(O(\log n)\) expected; Apply tag `f` to every element at positions `r`.; traps: when the sequence was built without `act:`, or a non-empty `r` reaches outside `0..len`
+- `fn reverse(mut self, r: Range<Int>)` — \(O(\log n)\) expected; Reverse the order of the elements at positions `r`.; traps: when a non-empty `r` reaches outside `0..len`
 
 ## Functions
 

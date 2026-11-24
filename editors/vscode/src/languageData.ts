@@ -65,14 +65,14 @@ export const STDLIB_TYPES: readonly string[] = [
     'PrimePowerComb', 'Pt', 'Pt3', 'RangeFenwick', 'RangeKth', 'Ratio', 'Rebased', 'Rect',
     'RelaxedConvolve', 'Rev', 'Reversible', 'Reweighted', 'Ring', 'RingRange', 'RingSlice', 'Rng',
     'RollbackArray', 'RollingHash', 'RollingHash61', 'Rooted', 'Rope', 'SegTree', 'SegTree2D',
-    'Selective', 'SemiRelaxedConvolve', 'Semigroup', 'Semiring', 'Sep', 'Seq', 'Settle', 'Sieve',
-    'Sign', 'SimpleGraph', 'Sized', 'Slice', 'SortedBag', 'SortedMap', 'SortedRange', 'SortedSet',
-    'SosOver', 'SparseFenwick2D', 'SparseIntervalMap', 'SparseIntervalSet', 'SparseSet',
-    'SparseTable', 'SparseTable2D', 'Step', 'StepKeys', 'Stepped', 'SubproductTree', 'SubseqStep',
-    'Subset', 'SuffixArray', 'SuffixAutomaton', 'SuffixTreeEdge', 'Sweep', 'SweepAdd', 'Target',
-    'Ties', 'TimeStep', 'TimeTree', 'Track', 'Tracked', 'Tree', 'Trie', 'TwoSat', 'Undo', 'Undoing',
-    'Vec', 'Vec3', 'Version', 'VirtualTree', 'Visit', 'Walk', 'WaveletMatrix', 'Weighted',
-    'WeightedNext', 'Window', 'Wire', 'XorBasis', 'XorFenwick', 'XorTrie',
+    'Selective', 'SemiRelaxedConvolve', 'Semigroup', 'Semiring', 'Sep', 'Seq', 'SeqFold', 'Settle',
+    'Sieve', 'Sign', 'SimpleGraph', 'Sized', 'Slice', 'SortedBag', 'SortedMap', 'SortedRange',
+    'SortedSet', 'SosOver', 'SparseFenwick2D', 'SparseIntervalMap', 'SparseIntervalSet',
+    'SparseSet', 'SparseTable', 'SparseTable2D', 'Step', 'StepKeys', 'Stepped', 'SubproductTree',
+    'SubseqStep', 'Subset', 'SuffixArray', 'SuffixAutomaton', 'SuffixTreeEdge', 'Sweep', 'SweepAdd',
+    'Target', 'Ties', 'TimeStep', 'TimeTree', 'Track', 'Tracked', 'Tree', 'Trie', 'TwoSat', 'Undo',
+    'Undoing', 'Vec', 'Vec3', 'Version', 'VirtualTree', 'Visit', 'Walk', 'WaveletMatrix',
+    'Weighted', 'WeightedNext', 'Window', 'Wire', 'XorBasis', 'XorFenwick', 'XorTrie',
 ];
 
 /**
