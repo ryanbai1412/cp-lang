@@ -179,10 +179,8 @@ impl<'a> Lowerer<'a> {
                     path_to_mod.insert(imported.path.clone(), id);
                     self.mods.push(&imported.analysis);
                     self.mod_syms.push(HashMap::new());
-                    match imported.name.as_str() {
-                        "std.mod" => self.std_mod = Some(id),
-                        "std.io" => self.io_mod = Some(id),
-                        _ => {}
+                    if imported.name == "std.mod" {
+                        self.std_mod = Some(id);
                     }
                     queue.push(id);
                 }

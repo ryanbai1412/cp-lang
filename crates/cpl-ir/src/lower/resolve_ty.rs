@@ -193,6 +193,18 @@ impl<'a> Lowerer<'a> {
         }
         if args.is_empty() {
             if let Some(ga) = self.gen_env.get(&name.text).cloned() {
+                // `read<T>()` in a generic fn reads the type `T` stands for.
+                if let (true, GenArg::Ty(ty)) = (values, &ga) {
+                    if let Some(spec) = self.spec_of(ty) {
+                        return spec;
+                    }
+                }
+                if let (true, GenArg::Range(lo, hi)) = (values, &ga) {
+                    let bounds = RangeInfo::Scalar(self.const_bounds(*lo, *hi, name.span));
+                    if let Some(spec) = bounds.spec() {
+                        return spec;
+                    }
+                }
                 return Spec::Plain(match ga {
                     GenArg::Ty(t) => t,
                     GenArg::Domain(d) => Ty::Pos(d),
@@ -415,9 +427,11 @@ impl<'a> Lowerer<'a> {
     }
 
     /// True when `id` is declared in another module and has a field
-    /// without `pub`, which code here can't name (R11.1.4).
+    /// without `pub`, which code here can't name (R11.1.4). A generic fn
+    /// reads it where a fn of its module asked for the instance.
     pub(in crate::lower) fn private_fields(&self, id: StructId) -> bool {
         self.structs[id].mod_id != self.cur_mod
+            && !self.lowered_for(self.structs[id].mod_id)
             && self.structs[id]
                 .decl
                 .is_some_and(|decl| decl.fields.iter().any(|f| !f.public))

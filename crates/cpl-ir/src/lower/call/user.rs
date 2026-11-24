@@ -908,11 +908,6 @@ impl<'a> Lowerer<'a> {
                 });
             }
         }
-        if let (Some(Sym::GenFn(gfid)), [ty]) = (self.get_sym(name), types) {
-            if name == "read_all" && self.io_mod == Some(self.gen_fns[gfid].mod_id) {
-                return self.read_all(ty, args, span);
-            }
-        }
         let lookup = self.arity_name(name, types.len());
         match self.get_sym(&lookup) {
             Some(Sym::GenStruct(gid)) => {
