@@ -1686,7 +1686,8 @@ pub struct Hash61(v: U64)
 ///
 /// not a container: `len` is the hashed string's length; it holds hashes, not elements.
 pub struct RollingHash61:
-    base: U64
+    /// The base every hash is taken under; pass it as `base:` so another `RollingHash61` hashes comparably.
+    pub base: U64
     pre: List<U64>
     pow: List<U64>
 
