@@ -32,20 +32,24 @@ let high = [
     ] for d in 0..moduli.len
 ]
 
-fn power(e: Int, big: Bool, depth: Int) -> (big: Bool, val: Int):
-    let m = modulus(depth)
-    let exp = if big: e + modulus(depth + 1) else: e
-    var (reached, acc) = (m <= 1, 1)
-    if base > 1:
-        for _ in 0..exp:  // base^exp >= m within log2(m) <= 27 factors
-            acc *= base
-            if acc >= m:
-                reached = true
-                break
-    let d = min(depth, moduli.len - 1)
-    (big: reached, val: low[d][exp % step] * high[d][exp / step] % m)
+// the least k with base^k >= modulus(d), None when base^k never gets there
+fn reach_of(m: Int) -> ?Int:
+    if m <= 1: return 0
+    if base == 1: return None
+    var (k, acc) = (0, 1)
+    while acc < m:
+        acc *= base
+        k += 1
+    k
 
-// x raised s times, mod modulus(depth).
+let reach = [reach_of(modulus(d)) for d in 0..moduli.len]
+
+fn power(e: Int, big: Bool, depth: Int) -> (big: Bool, val: Int):
+    let exp = if big: e + modulus(depth + 1) else: e
+    let d = min(depth, moduli.len - 1)
+    let reached = if let k = reach[d]: exp >= k else: false
+    (big: reached, val: low[d][exp % step] * high[d][exp / step] % moduli[d])
+
 fn tower(s: Int, x: Int, depth: Int) -> (big: Bool, val: Int):
     if s == 0: return (big: x >= modulus(depth), val: x % modulus(depth))
     let below = tower(s - 1, x, depth + 1)
