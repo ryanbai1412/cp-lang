@@ -22,7 +22,7 @@ Where everything lives: one line per top-level path.
 | `.githooks/` | `pre-commit` (commit tier), `commit-msg`, `pre-push`; `scripts/install-hooks.sh` turns them on. |
 | `.cargo/`, `.config/` | Cargo settings and the nextest profiles. |
 | `.gitignore`, `.gitattributes` | Ignored build output; line endings and diff drivers. |
-| `spec/` | The normative language. |
+| `spec/` | Every rule of the language. |
 | `std/` | The standard library. |
 | `crates/` | The toolchain (Rust). |
 | `corpus/` | Real contest problems. |

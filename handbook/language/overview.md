@@ -10,9 +10,8 @@
 CP Lang is a language for competitive programming that compiles to one
 C++17 file. This page is the whole design in one sitting: what it is for,
 the handful of ideas a contestant holds in their head, and how they fit
-together. Each idea has its own design doc, linked where it comes up; the
-spec (`spec/`) states every rule precisely and wins wherever the two seem
-to differ. Terms are defined in `spec/GLOSSARY.md`.
+together. Each idea has its own design doc, linked where it comes up; handbook leads design; spec/ is its downstream exhaustive form, so a
+difference between this page and `spec/` is a bug to fix in one of them. Terms are defined in `spec/GLOSSARY.md`.
 
 ## The problem
 

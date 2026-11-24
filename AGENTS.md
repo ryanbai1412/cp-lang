@@ -17,9 +17,10 @@ order:
    decides), `change.md` (how a change flows), `quality.md`.
 4. `handbook/domains/README.md`: find your domain, read its charter, then
    `plan/domains/<domain>/` and `plan/QUESTIONS.md`.
-5. `handbook/language/` leads the language design; `spec/` (`spec/core/`,
-   `spec/lib/`, `spec/tools/`) and `std/` state it precisely. The two change
-   together; a disagreement is a bug to resolve, not a rule to pick from.
+5. `handbook/language/` and `spec/` (`spec/core/`, `spec/lib/`,
+   `spec/tools/`, with `std/`): handbook leads design; spec/ is its
+   downstream exhaustive form. The two change together; a disagreement is a
+   bug to resolve, not a rule to pick from.
 6. `plan/STATUS.md` (generated: every domain's metrics and open questions)
    and `spec/README.md`: where the work stands today.
 7. As needed: `handbook/design/` (architecture; the target is

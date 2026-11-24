@@ -62,8 +62,9 @@ it or are generated from it; they don't restate it.
 | Why a major change was made | `handbook/rfcs/`, `decisions.md` |
 | What the code actually does | the code, checked by tests against the above |
 
-**Language design and spec move together.** The handbook's language docs
-lead: they say what we mean. The spec states the same design precisely. A
+**Language design and spec move together:** handbook leads design; spec/
+is its downstream exhaustive form. The language docs say what we mean, and
+the spec states every rule of the same design. A
 language change, by an RFC or a direct edit, updates both in the same
 change, and an edit made to the spec first also updates the matching
 handbook section. If the two disagree, that's a consistency bug for the spec
@@ -222,8 +223,8 @@ The domain's `PLAN.md`, `metrics.toml` and `worklog.md` stay in
 ## What happens to existing files
 
 - `AGENTS.md` keeps a short version of the mission and rules, since every
-  agent loads it automatically, and points here. Its rule that `spec/` is
-  the only normative source becomes the rule above.
+  agent loads it automatically, and points here. Its authority line is
+  the sentence above.
 - `plan/OPERATING.md`, `plan/DOMAINS.md`, `plan/LAYOUT.md`, `REPO.md`,
   `plan/PORTING.md` and `handbook/design/architecture.md` are folded in.
 - `plan/product/` has moved to `product/`; `BLOCKERS.md` and `notes.md` stay

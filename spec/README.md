@@ -1,14 +1,15 @@
 # CP Lang 0.3.0 specification
 
-This tree is the language and library we intend. It is normative: where an
+This tree is the language and library we intend, every rule of it:
+handbook leads design; spec/ is its downstream exhaustive form. Where an
 older document (`design/spec/`, `plan/1x-*.md`) disagrees, this tree wins,
-and `decisions.md` records why each call was made and how to reverse it.
+and `decisions.md` records each call and how to reverse it.
 Implementation follows and is measured against these files; what is not
 built yet is listed in `delta/`.
 
 Status: being assembled into 0.3.0 (2026-11-21). Chapters marked *draft*
 are written; *planned* ones are placeholders in this index only. Where the
-work stands, the dream/spec loop and the open questions: `STATUS.md`.
+work stands and the open questions: `plan/STATUS.md`.
 
 ## Reading order
 

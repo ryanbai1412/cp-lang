@@ -42,6 +42,7 @@ def render():
            "`plan/QUESTIONS.md`; edit those instead. Values are as recorded; each metric's",
            "`command` in its `metrics.toml` measures it again. Unchecked rows are quality-register",
            "rows naming no existing check, from `scripts/debt-ratchet.json`; they only go down.", "",
+           "Authority: handbook leads design; spec/ is its downstream exhaustive form.", "",
            "| Domain | Metrics | Unchecked rows | Open questions |", "|---|---|---|---|"]
     body = []
     for d in domains:

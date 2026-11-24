@@ -45,7 +45,7 @@ the end.
 | `.cargo/`, `.config/` | Cargo settings and the nextest profiles. |
 | `.gitignore`, `.gitattributes` | Ignored build output; line endings and diff drivers. |
 
-## `spec/`: the normative language
+## `spec/`: every rule of the language
 
 | Path | Job |
 |---|---|

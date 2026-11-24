@@ -84,7 +84,7 @@ domain with its path.
 
 | Interface | Used by | Held by |
 |---|---|---|
-| Normative text: where `spec/` disagrees with any other doc, `spec/` wins | every domain | this charter; `spec-vocab.py` |
+| Authority: handbook leads design; spec/ is its downstream exhaustive form. A handbook/spec disagreement is a bug spec resolves; every other doc yields to both | every domain | this charter; `spec-vocab.py` |
 | Rule ids `Rnn.n.n` | compiler, diagnostics (`spec/diagnostics.md` cites them), site, idioms | `cpl-conform --rules`, `conformance-coverage.py --check` |
 | The conformance case format (`// expect:`, `// rule:`, `// input:`, `// timeout:`, `// has:` headers; a code's line ends with `// <- here`) | compiler, stdlib (`std-*` groups), tools, diagnostics | `crates/cpl-conform/tests/ratchet.rs`, `spec/conformance/README.md` |
 | The pass list in `research/scoreboard.json` | compiler (its headline number), infra (the `cpl-conform ratchet` gate step) | `cpl-conform all --check` |

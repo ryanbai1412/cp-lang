@@ -12,7 +12,7 @@ Ordered by [Milestone 1](../../../handbook/product/milestones.md) (deadline abou
 
 1. **Interpreter == C++ (Milestone 1).** `cpl-conform diff` to 0 mismatches: `corpus/dmopc21c5p2` first. Each fix adds a `crates/cpl-cli/tests/programs/` pair that both back ends run.
 2. **No silent wrong answers (Milestone 1).** The 11 `wrong output` causes in `--causes`, `corpus/aac5p4`. A construct that can't be made right in the time gets a named error instead (spec R-rule: compile-time error, then trap, never wrong).
-3. **Gaps named (Milestone 1).** Internal traps (`etsr23r4p2`: `expected closure`) become errors naming the unsupported construct; the corpus `error` cases split by owner, compiler causes fixed biggest first; the `--causes` list goes to spec for `spec/STATUS.md`.
+3. **Gaps named (Milestone 1).** Internal traps (`etsr23r4p2`: `expected closure`) become errors naming the unsupported construct; the corpus `error` cases split by owner, compiler causes fixed biggest first; the `--causes` list goes to spec for `plan/STATUS.md`.
 4. **`cpl run` and stress speed (Milestone 1, only where slow).** Time every runnable corpus sample; VM work only for one over 1 s.
 5. **Products and keyed slices (M2).** `wip-product-domain` (tuple positions, Q1 default) and the `E0302` cluster (29 cases, top cause).
 6. **The long tail (M2).** By cause: `matrix/index` methods (`E0203`, 21 cases), generic inference (`E0501`), lends (`E0603`), `Gen` for `core-06/gen-*` with stdlib.
