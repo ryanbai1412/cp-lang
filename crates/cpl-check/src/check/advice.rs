@@ -1380,6 +1380,45 @@ pub(super) fn index_of(src: &str, base: Span, name: &Name, ty: &Ty) -> Option<(S
     Some((help, fix))
 }
 
+/// C++'s and Rust's `a.partition_point(p)`: the first position where `p` turns false. CP Lang's
+/// `bsearch` takes the test that turns true there, so `p` is negated.
+pub(super) fn partition_point(src: &str, name: &Name) -> Option<(String, Fix)> {
+    if name.text != "partition_point" {
+        return None;
+    }
+    let open = name.span.end as usize;
+    let rest = src.get(open..)?.strip_prefix('(')?;
+    let mut depth = 0;
+    let close = rest.char_indices().find_map(|(i, c)| {
+        match c {
+            '(' | '[' | '{' => depth += 1,
+            ')' if depth == 0 => return Some(Some(i)),
+            ')' | ']' | '}' => depth -= 1,
+            ',' if depth == 0 => return Some(None),
+            _ => {}
+        }
+        None
+    })??;
+    let arg = rest[..close].trim();
+    let ok = match arg.split_once("=>") {
+        Some((x, body)) if !x.trim().is_empty() && !body.trim().is_empty() => {
+            format!("{} => not ({})", x.trim(), body.trim())
+        }
+        _ if !arg.is_empty() => format!("x => not {arg}(x)"),
+        _ => return None,
+    };
+    let end = name.span.end + 1 + close as u32 + 1;
+    let new = format!("bsearch({ok})");
+    let help = format!(
+        "`partition_point` is where its test turns false; `bsearch` takes the test that turns true there: `{new}`"
+    );
+    let fix = Fix {
+        title: format!("write `{new}`"),
+        edits: vec![(Span::new(name.span.start, end), new)],
+    };
+    Some((help, fix))
+}
+
 /// `sort(a.begin(), a.end())` as `a.sort()`, `max_element(..)` as
 /// `a.max()!`, `lower_bound(.., x) - a.begin()` as `(a.first_ge(x) ?? a.len)`.
 pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix> {
