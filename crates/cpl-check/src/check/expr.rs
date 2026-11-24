@@ -2452,18 +2452,7 @@ impl<'a> Checker<'a> {
                             elem: Box::new(Ty::Bool),
                         }),
                     },
-                    "wrap" | "nth" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "x".into(),
-                            ty: Ty::Int,
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
-                        ret: Box::new(Ty::Pos(domain.clone())),
-                    },
+                    "wrap" | "nth" => int_fn(Ty::Pos(domain.clone())),
                     "bounds" | "cuts" => range_ty(Ty::Pos(format!("{domain}.cuts"))),
                     "Cut" => {
                         self.planned(name.span, &cpl_syntax::planned::CUT_DOMAIN);
@@ -2611,20 +2600,9 @@ impl<'a> Checker<'a> {
                     };
                     match name.text.as_str() {
                         "count" | "len" if !self.in_call_callee => return Ty::Int,
-                        "at" => {
-                            return Ty::Fn {
-                                params: vec![crate::ty::Param {
-                                    name: "i".into(),
-                                    ty: Ty::Int,
-                                    mutable: false,
-                                    has_default: false,
-                                    named_only: false,
-                                    variadic: false,
-                                    lazy: false,
-                                }],
-                                ret: Box::new(Ty::Optional(Box::new(elem))),
-                            };
-                        }
+                        // The ordinal members a domain has (R04.2).
+                        "at" | "try_at" => return int_fn(Ty::Optional(Box::new(elem))),
+                        "wrap" | "nth" => return int_fn(elem),
                         "first" | "last" => return Ty::Optional(Box::new(elem)),
                         "all" | "rev" => {
                             return range_ty(elem);
@@ -3962,5 +3940,21 @@ fn range_ty(of: Ty) -> Ty {
     Ty::Named {
         name: "Range".into(),
         args: vec![of],
+    }
+}
+
+/// `fn(i: Int) -> ret`: a domain's member from an ordinal or label.
+fn int_fn(ret: Ty) -> Ty {
+    Ty::Fn {
+        params: vec![crate::ty::Param {
+            name: "i".into(),
+            ty: Ty::Int,
+            mutable: false,
+            has_default: false,
+            named_only: false,
+            variadic: false,
+            lazy: false,
+        }],
+        ret: Box::new(ret),
     }
 }

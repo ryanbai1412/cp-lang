@@ -41,6 +41,7 @@ mod mono;
 mod names;
 mod op_value;
 mod or_pattern;
+mod ord_space;
 mod prefix;
 mod product;
 mod range;
@@ -3842,37 +3843,6 @@ impl<'a> Lowerer<'a> {
         self.mk(
             ExprKind::Cast(Cast::Label(id), Box::new(first)),
             Ty::Int,
-            span,
-        )
-    }
-
-    /// `V.wrap(x)`: the position labelled `x` modulo `V.count` (R04.2.13).
-    fn domain_wrap(&mut self, id: DomainId, label: Expr, span: Span) -> Expr {
-        let lo = self.domain_first_label(id, span);
-        let off = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(label), Box::new(lo)),
-            Ty::Int,
-            span,
-        );
-        let rem = |lw: &mut Self, e: Expr| {
-            let len = lw.mk(ExprKind::DomainLen(id), Ty::Int, span);
-            lw.mk(
-                ExprKind::Binary(BinOp::Rem, Box::new(e), Box::new(len)),
-                Ty::Int,
-                span,
-            )
-        };
-        let once = rem(self, off);
-        let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
-        let shifted = self.mk(
-            ExprKind::Binary(BinOp::Add, Box::new(once), Box::new(len)),
-            Ty::Int,
-            span,
-        );
-        let ord = rem(self, shifted);
-        self.mk(
-            ExprKind::Cast(Cast::FromOrd(id), Box::new(ord)),
-            Ty::Pos(id),
             span,
         )
     }
