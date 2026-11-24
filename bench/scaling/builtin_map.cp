@@ -51,4 +51,14 @@ for r in 0..16:
 for i in 0..64 * n:
     s += st.min() ?? 0 // timed: builtin.Set.min
     s += st.max() ?? 0 // timed: builtin.Set.max
-print(s + s0)
+for r in 0..64:
+    s += m.items.len // timed: builtin.Map.items
+    var c = m.clone() // timed: builtin.Map.clone
+    var d = st.clone() // timed: builtin.Set.clone
+    s += (d.sorted().first ?? 0) // timed: builtin.Set.sorted
+    c.clear() // timed: builtin.Map.clear
+    d.clear() // timed: builtin.Set.clear
+    s += c.len + d.len
+for i in 0..64 * n:
+    m.reserve(i) // timed: builtin.Map.reserve
+print(s + s0 + m.len)

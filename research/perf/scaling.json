@@ -2400,11 +2400,27 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/builtin_map.cp::builtin.Map.clear": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Map.clear",
+   "measured": 4.5,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Map.clone",
+   "measured": 6.26,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/builtin_map.cp::builtin.Map.contains": {
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Map.contains",
-   "measured": 1.05,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -2420,7 +2436,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Map.first_gt",
-   "measured": 1.21,
+   "measured": 1.46,
    "n": 16384,
    "ok": true
   },
@@ -2428,7 +2444,15 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Map.get",
-   "measured": 1.71,
+   "measured": 1.92,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Map.items",
+   "measured": 4.89,
    "n": 16384,
    "ok": true
   },
@@ -2436,7 +2460,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Map.keys",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2444,7 +2468,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Map.last_le",
-   "measured": 1.02,
+   "measured": 1.15,
    "n": 16384,
    "ok": true
   },
@@ -2452,7 +2476,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Map.last_lt",
-   "measured": 1.06,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -2460,7 +2484,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Map.pop_first",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2468,7 +2492,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Map.pop_last",
-   "measured": 0.95,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2476,7 +2500,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Map.range",
-   "measured": 1.03,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -2484,7 +2508,15 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Map.remove",
-   "measured": 0.95,
+   "measured": 1.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.reserve": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Map.reserve",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2492,7 +2524,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Map.values",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2500,7 +2532,23 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.add",
-   "measured": 1.08,
+   "measured": 1.22,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.clear": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Set.clear",
+   "measured": 4.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Set.clone",
+   "measured": 5.41,
    "n": 16384,
    "ok": true
   },
@@ -2508,7 +2556,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.contains",
-   "measured": 1.62,
+   "measured": 1.86,
    "n": 16384,
    "ok": true
   },
@@ -2516,7 +2564,7 @@
    "cost": "k \\log n",
    "documented": 4.57,
    "fn": "builtin.Set.drain",
-   "measured": 4.21,
+   "measured": 4.22,
    "n": 16384,
    "ok": true
   },
@@ -2524,7 +2572,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.first_ge",
-   "measured": 1.06,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -2532,7 +2580,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.first_gt",
-   "measured": 0.96,
+   "measured": 1.11,
    "n": 16384,
    "ok": true
   },
@@ -2540,7 +2588,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.insert",
-   "measured": 1.19,
+   "measured": 1.23,
    "n": 16384,
    "ok": true
   },
@@ -2548,7 +2596,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.last_le",
-   "measured": 1.07,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
@@ -2556,7 +2604,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.last_lt",
-   "measured": 1.01,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -2564,7 +2612,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.max",
-   "measured": 0.93,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2572,7 +2620,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.min",
-   "measured": 0.92,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2580,7 +2628,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.pop_first",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2588,7 +2636,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.pop_last",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2596,7 +2644,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Set.range",
-   "measured": 0.97,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2604,7 +2652,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.remove",
-   "measured": 1.17,
+   "measured": 1.36,
    "n": 16384,
    "ok": true
   },
@@ -2612,7 +2660,15 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Set.set",
-   "measured": 0.97,
+   "measured": 1.14,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.sorted": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Set.sorted",
+   "measured": 7.49,
    "n": 16384,
    "ok": true
   },
