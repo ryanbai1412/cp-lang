@@ -78,8 +78,11 @@ cp "$built" "$out/cpl.wasm"
 build
 cp "$built" "$out/cpl-build.wasm"
 cp "$root"/crates/cpl-wasm/js/* "$out/"
+# std module texts, which a --lazy-std cpl.wasm fetches on first use.
+mkdir -p "$out/std"
+cp "$root"/std/*.cp "$out/std/"
 
-for file in "$out"/*; do
+for file in "$out"/*.*; do
     printf '%8d bytes  %s\n' "$(wc -c <"$file")" "${file#"$root"/}"
 done
 if command -v gzip >/dev/null; then

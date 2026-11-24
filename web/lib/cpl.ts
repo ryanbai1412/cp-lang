@@ -14,6 +14,8 @@ type Worker = {
   build(source: string): Promise<BuildOutcome>;
   explain(source: string): Promise<ExplainOutcome>;
   lsp(message: object): Promise<unknown[]>;
+  stdNeeded?(source: string): Promise<string[]>;
+  provideStd?(module: string, text: string): Promise<{ changed: boolean } | { error: string }>;
   terminate(): void;
 };
 
@@ -42,10 +44,50 @@ export async function stop() {
   worker = null;
 }
 
-async function call<T>(f: (w: Worker) => Promise<T>): Promise<T> {
+// cpl.wasm carries only std's outline; a module's text is fetched the first
+// time a program needs it, then given to every later worker by cpl.js.
+const stdTexts = new Map<string, Promise<string>>();
+
+function stdText(module: string): Promise<string> {
+  let text = stdTexts.get(module);
+  if (!text) {
+    text = fetch(`${location.origin}/wasm/std/${module}.cp`).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.text();
+    });
+    text.catch(() => stdTexts.delete(module));
+    stdTexts.set(module, text);
+  }
+  return text;
+}
+
+export async function provideStd(w: Worker, source: string | undefined) {
+  if (source === undefined || !w.stdNeeded || !w.provideStd) return;
+  for (let need = await w.stdNeeded(source); need.length; need = await w.stdNeeded(source)) {
+    await Promise.all(
+      need.map(async (module) => {
+        let text: string;
+        try {
+          text = await stdText(module);
+        } catch (error) {
+          throw Object.assign(
+            new Error(`cpl: can't load std.${module}: ${(error as Error).message}; check the connection and try again`),
+            { kind: 'load' },
+          );
+        }
+        const given = await w.provideStd!(module, text);
+        if ('error' in given) throw Object.assign(new Error(given.error), { kind: 'bug' });
+      }),
+    );
+  }
+}
+
+async function call<T>(f: (w: Worker) => Promise<T>, source?: string): Promise<T> {
   if (state !== 'ready') state = 'loading';
   try {
-    const result = await f(await compiler());
+    const w = await compiler();
+    await provideStd(w, source);
+    const result = await f(w);
     state = 'ready';
     return result;
   } catch (error) {
@@ -59,14 +101,20 @@ async function call<T>(f: (w: Worker) => Promise<T>): Promise<T> {
   }
 }
 
+/** The whole text an LSP notification opens or changes a document to. */
+export function documentText(message: object): string | undefined {
+  const params = (message as { params?: { textDocument?: { text?: string }; contentChanges?: { text?: string }[] } }).params;
+  return params?.textDocument?.text ?? params?.contentChanges?.at(-1)?.text;
+}
+
 export const cpl = {
-  check: (src: string) => call((w) => w.check(src)),
-  lint: (src: string) => call((w) => w.lint(src)),
-  run: (src: string, stdin = '') => call((w) => w.run(src, stdin)),
-  trace: (src: string, stdin = '') => call((w) => w.trace(src, stdin)),
-  stress: (src: string, options?: StressOptions) => call((w) => w.stress(src, options)),
-  sample: (src: string, options?: SampleOptions) => call((w) => w.sample(src, options)),
-  build: (src: string) => call((w) => w.build(src)),
-  explain: (src: string) => call((w) => w.explain(src)),
-  lsp: (message: object) => call((w) => w.lsp(message)),
+  check: (src: string) => call((w) => w.check(src), src),
+  lint: (src: string) => call((w) => w.lint(src), src),
+  run: (src: string, stdin = '') => call((w) => w.run(src, stdin), src),
+  trace: (src: string, stdin = '') => call((w) => w.trace(src, stdin), src),
+  stress: (src: string, options?: StressOptions) => call((w) => w.stress(src, options), src),
+  sample: (src: string, options?: SampleOptions) => call((w) => w.sample(src, options), src),
+  build: (src: string) => call((w) => w.build(src), src),
+  explain: (src: string) => call((w) => w.explain(src), src),
+  lsp: (message: object) => call((w) => w.lsp(message), documentText(message)),
 };
