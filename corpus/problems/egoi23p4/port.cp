@@ -1,4 +1,5 @@
 // Source: EGOI 2023 Day 1 P4 (Bikes vs Cars), https://dmoj.ca/problem/egoi23p4
+// limits: 5000 ms, 1024 MB
 // Problem: build a connected network of at most 2023 streets on n <= 500 places; each street has
 //   width W <= 1e6, split into a bike lane b and a car lane W - b. For every pair i < j the widest
 //   car that can travel between them must be exactly C[i][j] and the widest bike B[i][j]. Print

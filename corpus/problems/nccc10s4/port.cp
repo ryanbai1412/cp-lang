@@ -1,4 +1,5 @@
 // Source: Mock CCC '22 2 S4 (Kaguya Wants to Build a Great Wall), https://dmoj.ca/problem/nccc10s4
+// limits: 8000 ms, 1024 MB
 // Problem: n <= 12 distinct lines, each given by two lattice points with |coordinate| <= 2000.
 //   Count the distinct simple n-sided polygons with exactly one side (of positive length) on
 //   each line.
@@ -33,7 +34,6 @@ for _ in 0..n:
 
 var id_of: Map<(Int, Int, Int), Int> = Map()
 var along: List<List<Int>> = []          // the crossings on each line, in order
-var place: Map<(Int, Int), Int> = Map()  // (crossing, line) -> where it is in along[line]
 for i in 0..n:
     var found: List<Hom> = []
     for other in lines:
@@ -44,10 +44,12 @@ for i in 0..n:
         let key = (p.x, p.y, p.w)
         if not id_of.contains(key): id_of[key] = id_of.len
         let id = id_of[key]
-        if ids.is_empty or ids.last != id:
-            place[(id, i)] = ids.len
-            ids.push(id)
+        if ids.is_empty or ids.last != id: ids.push(id)
     along.push(ids)
+
+var place: [0..id_of.len, 0..n]Int = -1  // [crossing, line] -> where it is in along[line], or -1
+for i in 0..n:
+    for (k, id) in along[i].items: place[id, i] = k
 
 var used: List<Bool> = List.filled(n, false)
 var spent: List<Bool> = List.filled(id_of.len, false)
@@ -57,21 +59,23 @@ fn walk(corner: Int):
     if sides == n: return
     for i in 0..n:
         if used[i]: continue
-        let here = place.get((corner, i)) else: continue
+        let here = place[corner, i]
+        if here < 0: continue
         used[i] = true
         sides += 1
         for step in [1, -1]:
-            var passed: List<Int> = []
             var j = here + step
             while 0 <= j < along[i].len:
                 let next = along[i][j]
                 if sides == n and next == start: polygons += 1
                 if spent[next]: break
                 spent[next] = true
-                passed.push(next)
                 walk(next)
                 j += step
-            for v in passed: spent[v] = false
+            var k = here + step
+            while k != j:
+                spent[along[i][k]] = false
+                k += step
         sides -= 1
         used[i] = false
 

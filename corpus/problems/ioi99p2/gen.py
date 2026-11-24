@@ -1,5 +1,8 @@
 import sys, random, string
 # usage: gen.py seed size; size >= 1e6 gives a 1e6-letter text and 100 words
+# --max: 100 words planted in a 1e6-letter text in spans up to the 1000-letter limit.
+MAX = sys.argv[1:] == ["--max"]
+if MAX: sys.argv[1:] = ["1999", "1000000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 L = string.ascii_letters
 if S < 1000000:
@@ -8,7 +11,7 @@ if S < 1000000:
     text = "".join(r.choice(al) for _ in range(r.randint(1, max(1, S))))
     if r.random() < 0.5:  # long gaps of filler around the 1000-letter span limit
         text = "".join(c + "z" * r.choice([0, 0, 300, 499, 500, 998, 999]) for c in text)[:1000000]
-elif r.random() < 0.5:  # time: 100 words of 100 letters, a random text
+elif not MAX and r.random() < 0.5:  # time: 100 words of 100 letters, a random text
     words = ["".join(r.choice(L) for _ in range(100)) for _ in range(100)]
     text = "".join(r.choice(L) for _ in range(1000000))
 else:  # planted words spread to spans of exactly 1000 or 1001 letters

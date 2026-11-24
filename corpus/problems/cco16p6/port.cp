@@ -1,4 +1,5 @@
 // Source: CCO 2016 P6 (Pirates), https://dmoj.ca/problem/cco16p6
+// limits: 7000 ms, 1024 MB
 // Problem: 2 <= N <= 1e6 pirates share 1 <= K <= 1e18 coins: with X left, the oldest proposes
 //   a split and needs V[X] yes votes, else he is thrown overboard. Pirates first stay alive,
 //   then maximize coins, then the number thrown, then the oldest pirates' coins;

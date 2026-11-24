@@ -1,4 +1,5 @@
 // Source: NOIP 2018 Senior P3 (Constructing Tracks), https://dmoj.ca/problem/noip18p3
+// limits: 1000 ms, 512 MB
 // Problem: a tree of n <= 5e4 junctions with road lengths <= 1e4. Build m <= n - 1 tracks,
 //   each a path, no road in two tracks; print the largest possible length of the shortest.
 // Solution: binary search the length k. For one k, go up the tree: each junction gets the

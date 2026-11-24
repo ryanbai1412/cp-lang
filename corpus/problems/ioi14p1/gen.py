@@ -1,6 +1,19 @@
 import sys, random
-if sys.argv[1] == "--max":  # the largest case the bounds allow
-    sys.argv[1:] = ["1", "5000"]
+
+if sys.argv[1:] == ["--max"]:
+    # N = 5000 stations spread over the 1e6 blocks, random types, station 0 a C.
+    r = random.Random(2014)
+    n, M = 5000, 1_000_000
+    blocks = sorted(r.sample(range(M), n))
+    kinds = [r.randint(1, 2) for _ in range(n)]
+    kinds[0], kinds[-1] = 1, 2
+    z = r.choice([i for i in range(n) if kinds[i] == 1])
+    rest = [i for i in range(n) if i != z]; r.shuffle(rest)
+    order = [z] + rest
+    print(n)
+    print(" ".join(str(blocks[i]) for i in order))
+    print(" ".join(str(kinds[i]) for i in order))
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 M = 1_000_000
 n = r.randint(1, S) if S < 1000 else S

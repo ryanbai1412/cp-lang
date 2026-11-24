@@ -1,4 +1,16 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # N = 1e6 pirates, K = 1e18, every V[i] shape mixed (random, near i, near half, small).
+    rng = random.Random(2016)
+    n = 10**6
+    v = []
+    for i in range(1, n + 1):
+        k = rng.randrange(4)
+        v.append([rng.randint(1, i), rng.randint(max(1, i - 3), i), (i + 1) // 2, rng.randint(1, max(1, i // 3))][k])
+    print(n)
+    print(10**18)
+    print("\n".join(map(str, v)))
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 if size <= 20:

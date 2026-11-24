@@ -1,4 +1,5 @@
 // Source: CCO 2020 P5 (Interval Collection), https://dmoj.ca/problem/cco20p5
+// limits: 3500 ms, 1024 MB
 // Problem: Q <= 5e5 events add or remove one copy of an interval [l, r] (1 <= l < r <= 1e6). After
 //   each, pick a non-empty subset S: prefer one whose intervals share no common interval of
 //   positive length, else the smallest such greatest common interval, then the shortest least

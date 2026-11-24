@@ -1,4 +1,5 @@
 // Source: IOI 2014 P1 (Rail), https://dmoj.ca/problem/ioi14p1
+// limits: 2500 ms, 256 MB
 // Problem: interactive (function task). n stations sit in distinct blocks of a rail line of at
 //   most 1e6 blocks, each type C or D; station 0 is type C at block `first`. getDistance(i, j)
 //   gives the shortest route length; recover every station's block and type within each

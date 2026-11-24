@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 6 #3 (Naboj), https://dmoj.ca/problem/coci21c6p3
+// limits: 1000 ms, 512 MB
 // Problem: a connected simple graph, n <= 2e5 balls and 1 <= m <= 5e5 wires, each wire
 //   wanting its electrons at a given end. Charging a ball + pulls every wire at it towards
 //   it, - pushes them away; the last charge on a wire's ends decides it. Print -1 or a sequence of k <= 2e5 chargings.

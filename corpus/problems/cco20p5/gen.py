@@ -1,4 +1,24 @@
 import sys, random
+
+if sys.argv[1:] == ["--max"]:
+    # Q = 5e5 events on [1, 1e6]: wide random intervals, nested ones around the centre and
+    # repeated copies, 40% removals of a live copy (never emptying the collection).
+    rng = random.Random(2020)
+    q, C = 500_000, 1_000_000
+    live, ops = [], []
+    for _ in range(q):
+        if len(live) > 1 and rng.random() < 0.4:
+            i = rng.randrange(len(live)); live[i], live[-1] = live[-1], live[i]
+            l, r = live.pop(); ops.append(f"R {l} {r}")
+            continue
+        k = rng.random()
+        if live and k < 0.15: l, r = rng.choice(live)
+        elif k < 0.5: m = C // 2; l, r = m - rng.randint(0, m - 1), m + rng.randint(1, m)
+        else: l, r = sorted(rng.sample(range(1, C + 1), 2))
+        live.append((l, r)); ops.append(f"A {l} {r}")
+    print(q)
+    print("\n".join(ops))
+    sys.exit()
 # seed size: Q = size events (capped at 5e5) adding or removing one copy of [l, r],
 # 1 <= l < r <= C; removals name a live copy and never empty the collection.
 # shapes: tiny coordinates (duplicates, shared ends), wide random, short intervals

@@ -1,4 +1,7 @@
 import sys, random
+# --max: n = 500, W = 1e6, a real network of 2023 streets with distinct widths (YES).
+MAX = sys.argv[1:] == ["--max"]
+if MAX: sys.argv[1:] = ["2023", "1000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 # statement: 2 <= N <= 500, 1 <= W <= 1e6, 0 <= C, B <= W; group shapes: W = 1, all B equal,
 # all C and B equal. Most inputs come from a real street network (YES), some are perturbed or
@@ -6,6 +9,7 @@ r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = r.randint(2, min(500, 3 + 2 * S)) if S < 1000 else 500 - r.randrange(3)
 W = r.choice([1, r.randint(1, 10), r.randint(1, 10**6), 10**6])
 mode = r.choice(["net", "net", "net", "flat", "perturb", "random"])
+if MAX: n, W, mode = 500, 10**6, "net"
 
 def matrices(streets):
     # widest bike (max over paths of min b) and widest car (max over paths of min W - b)
@@ -29,8 +33,8 @@ elif mode == "random":
     C = [[r.randint(0, W) for _ in range(n)] for _ in range(n)]
     B = [[r.randint(0, W) for _ in range(n)] for _ in range(n)]
 else:
-    m = r.randint(n - 1, min(2023, 3 * n))
-    vals = [r.randint(0, W) for _ in range(r.choice([1, 2, 3, 10**6]))]
+    m = 2023 if MAX else r.randint(n - 1, min(2023, 3 * n))
+    vals = [r.randint(0, W) for _ in range(10**6 if MAX else r.choice([1, 2, 3, 10**6]))]
     perm = list(range(n)); r.shuffle(perm)
     streets = [(perm[i], perm[r.randrange(i)], r.choice(vals)) for i in range(1, n)]
     while len(streets) < m:

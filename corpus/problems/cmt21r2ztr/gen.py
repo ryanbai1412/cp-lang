@@ -1,4 +1,18 @@
 import sys, random
+
+if sys.argv[1:] == ["--max"]:
+    # n = m = 1e5 facts with true medians (YES) of a planted array: values across 1..1e9, a
+    # third of them from 50 shared values so pins repeat.
+    rng = random.Random(2021)
+    n = m = 100_000
+    vals = sorted(rng.sample(range(1, 10**9 + 1), 50))
+    a = [rng.choice(vals) if rng.random() < 0.33 else rng.randint(1, 10**9) for _ in range(n)]
+    out = [f"{n} {m}"]
+    for _ in range(m):
+        i, j, k = rng.sample(range(n), 3)
+        out.append(f"{i + 1} {j + 1} {k + 1} {sorted([a[i], a[j], a[k]])[1]}")
+    print("\n".join(out))
+    sys.exit()
 # gen.py SEED SIZE: n, m <= SIZE (capped at 1e5; each is SIZE 30% of the time), distinct i, j, k.
 # Most cases plant a hidden array (values 1..1e9, often few distinct so pins repeat) and take each
 # query's true median, so the answer is YES; some then corrupt one median, and some draw queries

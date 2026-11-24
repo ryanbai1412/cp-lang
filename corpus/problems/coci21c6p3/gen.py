@@ -1,5 +1,8 @@
 import sys, random
 # usage: gen.py seed size; a connected simple graph, solvable unless some wires get flipped
+# --max: n = 2e5, m = 5e5, solvable (every ball charged).
+MAX = sys.argv[1:] == ["--max"]
+if MAX: sys.argv[1:] = ["2021", "200000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 if S >= 200000: n, m = 200000, 500000
 else:
@@ -14,7 +17,7 @@ while len(edges) < m:
 order = list(range(n)); r.shuffle(order); when = [0] * n
 for t, v in enumerate(order): when[v] = t
 sign = [r.randint(0, 1) for _ in range(n)]
-flip = r.choice([0, 0, 1, 3])
+flip = 0 if MAX else r.choice([0, 0, 1, 3])
 out = []
 for a, b in edges:
     late = a if when[a] > when[b] else b

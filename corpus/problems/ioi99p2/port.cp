@@ -1,4 +1,5 @@
 // Source: IOI 1999 Day 1 P2 (Hidden Codes), https://dmoj.ca/problem/ioi99p2
+// limits: 1000 ms, 1024 MB
 // Problem: 1 <= N <= 100 case-sensitive code words (letters, length <= 100, IDs 1..=N) and
 //   a text of length 1..=1e6. A covering sequence of a word is a substring that starts and
 //   ends with the word's first and last letters and contains it as a subsequence, of length

@@ -1,4 +1,5 @@
 // Source: CCO 2024 Day 2 P1 (Infiltration), https://dmoj.ca/problem/cco24p4
+// limits: 1000 ms, 1024 MB
 // Problem: output-only strategy on a tree of N = 100 rooms (N - 1 edges given). Two agents
 //   start in different unknown rooms u, v; Ondrej may step to a neighbour on odd minutes,
 //   Edward on even ones. Print T <= 1440, then each agent's room at times 1..T for every

@@ -7,11 +7,14 @@ import math
 import random
 import sys
 
+# --max: n = 12 lines through random points with |coordinate| <= 2000 (general position).
+if sys.argv[1:] == ["--max"]:
+    sys.argv[1:] = ["2022", "12", "2000"]
 seed = int(sys.argv[1])
 rng = random.Random(seed)
 max_n = int(sys.argv[2]) if len(sys.argv) > 2 else 7
 c = int(sys.argv[3]) if len(sys.argv) > 3 else rng.choice([2, 3, 5, 2000])
-n = rng.randint(3, max_n)
+n = 12 if sys.argv[1:] == ["2022", "12", "2000"] else rng.randint(3, max_n)
 seen = set()
 rows = []
 while len(rows) < n:

@@ -1,4 +1,13 @@
 import sys, random
+
+if sys.argv[1:] == ["--max"]:
+    # N = 100 rooms on a path (the largest depth and distances), labels and edges shuffled.
+    r = random.Random(2024); n = 100
+    perm = r.sample(range(n), n)
+    e = [(perm[v - 1], perm[v]) for v in range(1, n)]; r.shuffle(e)
+    print(n)
+    for a, b in e: print(*((a, b) if r.random() < .5 else (b, a)))
+    sys.exit()
 # seed size: a tree on N = 100 rooms (size ignored); shapes: random, path, star, caterpillar, broom, binary
 r = random.Random(int(sys.argv[1])); n = 100
 shape = int(sys.argv[1]) % 6
