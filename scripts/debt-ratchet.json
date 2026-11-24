@@ -174,7 +174,7 @@
   "trace_engine_refs": 11,
   "corpus_known": 326,
   "site_rederived": 0,
-  "browser_lsp_gaps": 17,
+  "browser_lsp_gaps": 0,
   "allow_attrs": 42,
   "unsafe_blocks": 26,
   "cpl_env_reads": 45,

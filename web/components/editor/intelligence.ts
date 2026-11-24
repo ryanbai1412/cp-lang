@@ -29,6 +29,7 @@ import {
 } from "@codemirror/view";
 import { compilerState, started } from "@/lib/cpl";
 import { LspDoc } from "@/lib/lsp";
+import { lspActions } from "./lsp-actions";
 
 type Position = { line: number; character: number };
 type Range = { start: Position; end: Position };
@@ -416,7 +417,11 @@ export function intelligence(prefix: string, editable: boolean): Extension {
       pos,
     );
     const loc = Array.isArray(def) ? def[0] : def;
-    if (!loc) return;
+    if (loc) await go(view, loc);
+  }
+
+  // Shows `loc`: a place in this editor, or the docs page of a std item.
+  async function go(view: EditorView, loc: Location) {
     if (loc.uri === view.plugin(server)!.doc.uri) {
       const from = fromLsp(view, loc.range.start);
       if (from === null) return;
@@ -436,6 +441,17 @@ export function intelligence(prefix: string, editable: boolean): Extension {
       "noopener",
     );
   }
+
+  const actions = lspActions({
+    editable,
+    uri: (view) => view.plugin(server)!.doc.uri,
+    request: <T,>(view: EditorView, method: string, params: object = {}) =>
+      view.plugin(server)!.doc.request<T>(method, params).catch(() => null),
+    toLsp,
+    fromLsp,
+    wanted,
+    go,
+  });
 
   // Parameter hints while typing a call, from `textDocument/signatureHelp`.
   const signature = ViewPlugin.fromClass(
@@ -480,6 +496,7 @@ export function intelligence(prefix: string, editable: boolean): Extension {
     editable ? autocompletion({ override: [complete] }) : [],
     editable ? Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])) : [],
     editable ? [signatureField, signature] : [],
+    actions.extension,
     keymap.of([
       {
         key: "F12",
@@ -496,7 +513,9 @@ export function intelligence(prefix: string, editable: boolean): Extension {
         const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
         if (pos === null) return false;
         event.preventDefault();
-        void definition(view, pos);
+        void actions.link(view, pos).then((hit) => {
+          if (!hit) void definition(view, pos);
+        });
         return true;
       },
     }),

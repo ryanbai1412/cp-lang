@@ -54,7 +54,7 @@ The browser editor adds no analysis of its own; a feature the language server ha
 
 - **Why:** two engines answer differently, and the browser one falls behind.
 - **Example:** hover, completion, go to definition and inlay hints in the playground are requests to the same language server Neovim and VS Code use, compiled to wasm and called through `Playground::lsp`.
-- **Enforced by:** `web/lib/lsp-parity.test.ts` (every request the editor sends is a capability the browser build advertises; advertised ones it never asks for are the `browser_lsp_gaps` counter in `scripts/debt-ratchet.py`), `web/tests/intelligence.mjs`.
+- **Enforced by:** `web/lib/lsp-parity.test.ts` (the browser build answers every request `web/components/editor/` sends; an advertised capability the editor never asks for fails the `browser_lsp_gaps` counter in `scripts/debt-ratchet.py`, held at 0), `web/tests/intelligence.mjs`.
 
 ## site/R7: Pages fit a phone and load light
 

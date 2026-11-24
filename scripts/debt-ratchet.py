@@ -425,20 +425,35 @@ def site_rederived(root: Path, types: set[str] | None = None) -> list[str]:
 
 
 LSP_NESTED_KEYS = {"prepareProvider", "resolveProvider"}
-LSP_METHOD_RE = re.compile(r'"(?:textDocument|workspace)/(\w+)"')
+LSP_METHOD_RE = re.compile(r'"((?:textDocument|workspace)/\w+)')
+# The LSP spec's methods whose capability isn't `<method>Provider`.
+LSP_IRREGULAR = {
+    "textDocument/formatting": "documentFormatting",
+    "textDocument/rangeFormatting": "documentRangeFormatting",
+    "textDocument/onTypeFormatting": "documentOnTypeFormatting",
+    "textDocument/prepareCallHierarchy": "callHierarchy",
+    "workspace/symbol": "workspaceSymbol",
+}
+
+
+def lsp_capability(method: str) -> str:
+    return LSP_IRREGULAR.get(method, method.partition("/")[2]) + "Provider"
 
 
 def browser_lsp_gaps(root: Path) -> list[str]:
     """Capabilities cpl-lsp advertises (`capabilities()` in server.rs) that the browser
-    editor never asks for: `textDocument/fooBar` asks for `fooBarProvider`."""
+    editor (web/components/editor/) never asks for: `textDocument/fooBar` asks for
+    `fooBarProvider`, but for the spec's few irregular names."""
     try:
         server = (root / "crates/cpl-lsp/src/server.rs").read_text(encoding="utf-8")
-        editor = (root / "web/components/editor/intelligence.ts").read_text(encoding="utf-8")
     except OSError:
         return []
+    editor = "".join(p.read_text(encoding="utf-8")
+                     for p in sorted((root / "web/components/editor").glob("*.ts"))
+                     if not p.name.endswith(".test.ts"))
     body = server.partition("\nfn capabilities()")[2].partition("\n}\n")[0]
     advertised = set(re.findall(r'"([a-z]\w*Provider)"', body)) - LSP_NESTED_KEYS
-    used = {m + "Provider" for m in LSP_METHOD_RE.findall(editor)}
+    used = {lsp_capability(m) for m in LSP_METHOD_RE.findall(editor)}
     return sorted(advertised - used)
 
 
@@ -1547,7 +1562,7 @@ HARD_ZERO = frozenset({
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers",
     "measure_broken", "mono_unguarded", "ts_ignore",
-    "site_rederived",
+    "site_rederived", "browser_lsp_gaps",
     "unrun_script_tests",
     "permits",
     "plan_delta_lines",

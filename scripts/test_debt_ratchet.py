@@ -384,8 +384,11 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "web/content/generated/b.js", "const e = 'E0308';\n")
             self._write(root, "crates/cpl-lsp/src/server.rs", "\n".join(["use a;",
                 "fn capabilities() -> Value {", '    ("hoverProvider", true.into()),',
-                '    ("renameProvider", obj([("prepareProvider", true.into())])),', "}", ""]))
+                '    ("renameProvider", obj([("prepareProvider", true.into())])),',
+                '    ("workspaceSymbolProvider", true.into()),', "}", ""]))
             self._write(root, "web/components/editor/intelligence.ts", 'ask("textDocument/hover");\n')
+            self._write(root, "web/components/editor/more.ts", 'ask("workspace/symbol");\n')
+            self._write(root, "web/components/editor/x.test.ts", 'ask("textDocument/rename");\n')
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.site_rederived(root), [
                 "web/lib/a.ts:1 type Int", "web/lib/a.ts:2 code E0308", "web/lib/a.ts:3 capability hoverProvider",

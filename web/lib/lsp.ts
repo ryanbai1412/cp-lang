@@ -10,6 +10,10 @@ const open = new Map<string, string>();
 let session: { worker: unknown; ready: Promise<void> } | null = null;
 let ids = 1;
 let names = 0;
+let advertised: Capabilities = {};
+
+/** What the server's `initialize` reply advertises. */
+export type Capabilities = Record<string, unknown>;
 
 const notify = (method: string, params: object) => cpl.lsp({ jsonrpc: '2.0', method, params });
 const didOpen = (uri: string, text: string) => notify('textDocument/didOpen', { textDocument: { uri, languageId: 'cp', version: 1, text } });
@@ -21,7 +25,9 @@ async function ready() {
   const worker = compiler();
   if (session?.worker !== worker) {
     const start = async () => {
-      await cpl.lsp({ jsonrpc: '2.0', id: 0, method: 'initialize', params: {} });
+      const replies = (await cpl.lsp({ jsonrpc: '2.0', id: 0, method: 'initialize', params: {} })) as Reply[];
+      const init = replies.find((r) => r.id === 0)?.result as { capabilities?: Capabilities } | undefined;
+      advertised = init?.capabilities ?? {};
       await notify('initialized', {});
       for (const [uri, text] of open) await didOpen(uri, text);
     };
@@ -33,6 +39,12 @@ async function ready() {
     session = null;
     throw error;
   }
+}
+
+/** The server's capabilities, once it is running. */
+export async function capabilities(): Promise<Capabilities> {
+  await ready();
+  return advertised;
 }
 
 export class LspDoc {
