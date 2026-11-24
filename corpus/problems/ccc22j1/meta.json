@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "4794202", "language": "PYPY3", "result": "AC", "time": 0.523286933, "memory_kb": 60164.0, "file": "corpus/submissions/4794202.py"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ccc22j1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The only accepted submission is Python, so there is no accepted C++ reference. orig.cpp is a corpus-written one-liner (8R + 3S - 28), checked against the statement samples, the Python AC and an independent brute on 60 random cases. The statement gives no upper bound on R or S, so tests.toml has no --max case."
 }
