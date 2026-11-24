@@ -89,9 +89,45 @@ pub fn scalar_decl(line: &str) -> Option<&str> {
 /// optional, as a `?T` argument used to be. Counted apart from
 /// [`container_copies`], under its own `// optional_copies:` header.
 pub fn optional_copies(cpp: &str) -> usize {
+    let mut lent = std::collections::BTreeSet::new();
     cpp.lines()
-        .map(|l| optional_copies_on(l.trim(), &is_container))
+        .map(|l| {
+            // A column-0 `}` ends a fn: its `const T&` names end with it.
+            if l.starts_with('}') {
+                lent.clear();
+            }
+            let line = l.trim();
+            lent.extend(const_ref_names(line));
+            optional_copies_on(&unmoved(line, &lent), &is_container)
+        })
         .sum()
+}
+
+/// The names a line declares `const T&`, as a local or a range-for element.
+fn const_ref_names(line: &str) -> Vec<String> {
+    if !line.contains("const ") {
+        return Vec::new();
+    }
+    line.match_indices("& ")
+        .filter_map(|(at, _)| {
+            let rest = &line[at + 2..];
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            let after = &rest[name.len()..];
+            (!name.is_empty() && (after.starts_with(" = ") || after.starts_with(" : ")))
+                .then_some(name)
+        })
+        .collect()
+}
+
+/// `line` with each `std::move(x)` of a `const T&` name `x` written `x`:
+/// moving from a reference to const copies.
+fn unmoved(line: &str, lent: &std::collections::BTreeSet<String>) -> String {
+    lent.iter().fold(line.to_string(), |text, name| {
+        text.replace(&format!("std::move({name})"), name)
+    })
 }
 
 pub fn is_container(ty: &str) -> bool {

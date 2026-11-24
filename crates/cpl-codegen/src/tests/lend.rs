@@ -1414,6 +1414,42 @@ fn pairs_of_a_lazy_sequence_collects_it_once() {
 }
 
 #[test]
+fn a_loops_const_ref_element_is_never_moved_from() {
+    let out = cpp(concat!(
+        "fn lo(xs: List<?Int>) -> ?Int:\n",
+        "    var best: ?Int = None\n",
+        "    for x in xs:\n",
+        "        if let v = x:\n",
+        "            if best == None or v < best!: best = Some(v)\n",
+        "    best\n",
+        "print(lo([Some(3), None, Some(1)])!)\n",
+    ));
+    assert!(out.contains("for (const cpl::OptInt& x : xs)"), "{out}");
+    assert!(
+        !out.contains("std::move(x)"),
+        "`std::move` of a `const T&` element only copies, and newer g++ rejects it: {out}"
+    );
+}
+
+#[test]
+fn a_loop_over_a_list_that_dies_with_it_moves_its_elements_out() {
+    let walk = |after: &str| {
+        cpp(&format!(
+            "fn longest() -> ?Str:\n    let xs = read<List<Str>>()\n    var best: ?Str = None\n    for x in xs:\n        if best == None or x.len > best!.len: best = Some(x)\n{after}    best\nprint(longest()!)\n"
+        ))
+    };
+    let dies = walk("");
+    assert!(dies.contains("for (std::string& x : xs)"), "{dies}");
+    assert!(dies.contains("std::move(x)"), "{dies}");
+    let read_after = walk("    print(xs.len)\n");
+    assert!(
+        read_after.contains("for (const std::string& x : xs)"),
+        "{read_after}"
+    );
+    assert!(!read_after.contains("std::move(x)"), "{read_after}");
+}
+
+#[test]
 fn a_loop_over_a_list_only_it_holds_moves_its_elements_out() {
     let out = cpp("fn word(i: Int) -> Str = \"w\".repeat(i % 4 + 1)
 let n = read<Int>()
@@ -1453,4 +1489,22 @@ print(best!, xs.len)
         named.contains("](const std::string& w)"),
         "a yielded place is lent, not copied into the callback: {named}"
     );
+}
+
+#[test]
+fn a_loop_over_a_list_of_main_nothing_reads_after_moves_its_elements_out() {
+    let walk = |after: &str| {
+        cpp(&format!(
+            "let xs = read<List<Str>>()\nvar best: ?Str = None\nfor x in xs:\n    if best == None or x.len > best!.len: best = Some(x)\n{after}print(best!)\n"
+        ))
+    };
+    let dies = walk("");
+    assert!(dies.contains("for (std::string& x : xs)"), "{dies}");
+    assert!(dies.contains("std::move(x)"), "{dies}");
+    let read_after = walk("print(xs.len)\n");
+    assert!(
+        read_after.contains("for (const std::string& x : xs)"),
+        "{read_after}"
+    );
+    assert!(!read_after.contains("std::move(x)"), "{read_after}");
 }

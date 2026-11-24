@@ -353,7 +353,15 @@ fn an_if_let_over_a_place_written_after_its_last_read_is_lent() {
         "    best\n",
         "print(longest(read<List<Str>>())!)\n",
     );
-    assert_eq!(copy_reasons(source), [] as [&str; 0]);
+    // `best = Some(x)` copies the element out of the `const T&` loop name:
+    // `std::move` of it would copy too, only unlisted.
+    assert_eq!(
+        copy_reasons(source),
+        [
+            "an optional holds its own value",
+            "an optional holds its own value"
+        ]
+    );
     let out = super::cpp(source);
     assert!(
         !out.contains("std::optional<std::string> t0 = best;"),

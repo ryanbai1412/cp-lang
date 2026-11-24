@@ -695,6 +695,7 @@ impl<'p> Emitter<'p> {
                         // Every value the fn yields is one it makes: take each owned.
                         (format!("{cpp} {var}"), &first)
                     } else {
+                        self.ref_bound.insert(slot);
                         (format!("const {cpp}& {var}"), &first)
                     };
                     let mut read = !pushed_first.is_empty();
@@ -798,16 +799,22 @@ impl<'p> Emitter<'p> {
                     self.expr_elem_layout(seq),
                     Some(cpl_ir::NarrowLayout::Tuple(_))
                 );
-                // The walked list is a copy only the loop holds: it dies with the loop.
+                // The walked list dies with the loop: a copy only it holds, or a
+                // list nothing reads after it ([`crate::uses::Uses::dying_loops`]).
                 let dying = !is_grid
                     && !is_map
                     && matches!(seq.ty, Ty::List(_) | Ty::Array { .. })
-                    && owned_holder;
+                    && (owned_holder
+                        || (!opened
+                            && self.uses.dying_loops.contains(&id)
+                            && !matches!(seq.kind, ExprKind::Local(xs) if self.ref_bound.contains(&xs))));
                 let decl = if ty.is_scalar() || var != name || narrow_tuple_iter {
                     format!("{cpp} {var}")
                 } else if dying {
                     format!("{cpp}& {var}")
                 } else {
+                    // A `const T&` element cannot be moved from: `std::move` of it only copies.
+                    self.ref_bound.insert(slot);
                     format!("const {cpp}& {var}")
                 };
                 if is_map {
