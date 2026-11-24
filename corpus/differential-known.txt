@@ -1,5 +1,4 @@
 # corpus/differential.py findings not yet fixed; this list only shrinks.
-cpl-test-no-cases ucup5s02f -
 over-32kb cf2201e -
 over-32kb cf2229i -
 over-32kb ucup5s05f -
