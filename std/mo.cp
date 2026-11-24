@@ -3,10 +3,10 @@ use std.range.{ends}
 use std.math.{isqrt}
 
 /// The order in which to visit `queries` so a sliding window moves its endpoints
-/// \(O((n + q) \sqrt n)\) times, as a permutation of `0..queries.len`.
+/// \(O(n \sqrt q)\) times, as a permutation of `0..queries.len`.
 ///
-/// Let `lo` be the least start and `n` the distance from `lo` to the greatest end over all
-/// queries, and `b = max(1, isqrt(n))`. Query `i` falls in block `(queries[i].start - lo) / b`.
+/// Let `n` be the greatest end over all `q` queries and `b = max(1, n / isqrt(q))`. Query `i`
+/// falls in block `queries[i].start / b`.
 /// Blocks are visited in increasing order; within an even block queries go by increasing end,
 /// within an odd block by decreasing end (the snake that saves the return sweep).
 ///
