@@ -439,8 +439,8 @@ protects every array, loop and read over vertices. The alternatives:
 `i`" are both `i` in C++, so `pre[i]` against `pre[i + 1]` is a coin flip.
 A domain of n positions has n + 1 cuts, and `pre[v]` (through `v`) and
 `pre[c]` (left of `c`) are different types (decision 349). On plain `Int`
-keys the two are both `Int`, so `pre[k]` is fixed to mean the cut, the
-fold of the first `k`. Keeping only half-open `Int` ranges (the Python
+keys the two are both `Int`, so `pre[k]` is E0320 and a count reads the
+table as `pre.cut(k)`, the fold of the first `k` (decision 507). Keeping only half-open `Int` ranges (the Python
 and C++ convention) gets the empty range right but leaves every prefix
 index to be shifted by hand.
 

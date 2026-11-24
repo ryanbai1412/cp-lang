@@ -25,7 +25,7 @@ window.push(0)
 var oldest = n + 1  // the position of the window's front
 
 for i in (1..=n).rev:
-    let rem = pref.prefix(i) % r
+    let rem = pref.cut(i) % r
     last_occ[rem] = i
     occ_heap.push((i, rem))
 

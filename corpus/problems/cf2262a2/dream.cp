@@ -39,7 +39,7 @@ ways[n] = 1
 var tot: Z = 1
 var hi = n + 1
 for i in (0..n).rev:
-    if cover.prefix(i + 1) == 0:
+    if cover.cut(i + 1) == 0:
         ways[i] = tot
         tot += ways[i]
     while hi > need_suf[i]:

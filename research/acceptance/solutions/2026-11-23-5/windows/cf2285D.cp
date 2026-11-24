@@ -8,7 +8,7 @@ let a: [0..n]Int = read()
 let pre = prefix(a)
 let total = a.sum()
 // d[s] for cut s in 1..n-1: prefix(s) + prefix(n-s) - total; 0 means the cut matches its mirror
-let keyed = [(pre.prefix(s) + pre.prefix(n - s) - total, s) for s in 1..n].sorted()
+let keyed = [(pre.cut(s) + pre.cut(n - s) - total, s) for s in 1..n].sorted()
 fn count(d: Int, lo: Int, hi: Int) -> Int:
     if lo > hi: return 0
     let len = keyed.len

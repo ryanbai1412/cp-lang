@@ -8730,7 +8730,11 @@ from `just next-decision`.
 - **Why.** `at N` counted from the first line after the header directives, so every header line added or removed (a `// gap:`, a `// has:`) moved the target, and a plain comment after the directives counted as program line 1, a rule each new case author relearned. The other fix, counting from the file's first line, still drifts whenever a header line comes or goes; the marker sits on the line itself, so nothing can drift.
 - **Reverse.** Count from the file's first line: replace each marker with `at <its line>` in the header.
 
-## 507. (reserved, content)
+## 507. An `Int` index into a cut table is E0320; a count reads `pre.cut(k)` (spec, 2026-11-24)
+
+- **Call.** On `Int` keys (a `List`, `[n]T` or `[0..n]T` scan, a `Prefix<T>`, a filling table) `pre[k]` is E0320, whose fix is `pre.cut(k)`: the fold of the first `k`, the identity at `0` and `all` at the count. `cut(k: Int)` is a method on every 1-D prefix table, whatever its key type, so on `domain D = 5..=7` `cut(2)` is still the first two. A typed cut or position (`pre[v]`, `pre[v.r]`, `pre[c]`) and a literal into a typed cut parameter (`p.prefix(2)` on a domain table, R04.2.18) stay as they are. `Prefix<T>.prefix(k)` over a `List` is renamed `cut(k)`, its one spelling. Ryan's call (debt cleanup, call 4); this supersedes the `Int`-key half of decision 349.
+- **Why.** Decision 349 fixed `pre[k]` to mean the cut, but the reader of `pre[i]` still has to know that rule to tell "through `i`" from "before `i`", the exact coin flip 349 removed for domains. A named count costs five characters and reads the same on every key type.
+- **Reverse.** Accept an `Int` index into a cut table as the cut again (decision 349), keeping `cut(k)` as a method.
 
 ## 508. (reserved, content)
 

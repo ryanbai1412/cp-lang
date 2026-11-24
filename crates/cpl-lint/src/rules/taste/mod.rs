@@ -352,7 +352,7 @@ impl<'a> Taste<'a> {
     /// Hand-rolled 1D/2D prefix-sum loop (L0521). When the preceding statement
     /// declares `var p` as zero-initialized and every later reference in the
     /// same block is a read `p[e]`, `cpl fix` folds the declaration, loop, and
-    /// reads into `let p = Prefix(...)` and `p.prefix(e)`.
+    /// reads into `let p = Prefix(...)` and `p.prefix(e)` (`p.cut(e)` on `Int` keys).
     fn prefix_sum(&mut self, stmts: &[(u32, &Stmt)], i: usize) {
         let (base, stmt) = stmts[i];
         let Some(found) = prefix_sum_loop(stmt) else {
@@ -415,6 +415,10 @@ impl<'a> Taste<'a> {
                         },
                         format!("let {} = {expr}", found.arr),
                     )];
+                    let read = match &found.kind {
+                        PrefixLoopKind::RangeZero { .. } => "cut",
+                        _ => "prefix",
+                    };
                     for (rb, idx_expr_span, ix_span) in reads {
                         let ix_text = at(rb, ix_span);
                         edits.push((
@@ -422,7 +426,7 @@ impl<'a> Taste<'a> {
                                 start: idx_expr_span.start + rb - decl_base,
                                 end: idx_expr_span.end + rb - decl_base,
                             },
-                            format!("{}.prefix({ix_text})", found.arr),
+                            format!("{}.{read}({ix_text})", found.arr),
                         ));
                     }
                     diag.span = Span {

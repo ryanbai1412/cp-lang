@@ -5,5 +5,5 @@
 let n: 2..=2e5 = read()
 let a: [0..n]-1e9..=1e9 = read()
 let s = prefix(a)
-let sums = [s.prefix(i) for i in 1..=n]
+let sums = [s.cut(i) for i in 1..=n]
 print(if sums.min()! < 0: -1 else: sums.inversions())

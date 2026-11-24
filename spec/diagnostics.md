@@ -57,6 +57,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0316 | field_bound_from_input | `x: 0..=n` in `struct P`: a field's bounds are fixed before input is read, but `n` is read; bound it by a constant or keep the value outside the struct (R03.1.3) |
 | E0317 | getter_needs_defaults | `@get fn f(self, k: Int)`: a getter is read like a field, so every parameter but `self` needs a default; give `k` one or drop `@get` (R02.6.6) |
 | E0318 | unreachable_arm | unreachable arm: `less` above already matches everything; a lowercase name in a pattern binds, did you mean `Less`? (R01.7.3) |
+| E0320 | int_index_on_cut_table *(0.3)* | `pre[k]`: an `Int` index into a cut table can't say position or cut; write `pre.cut(k)` for the fold of the first `k`, or index by a typed cut or position (R07.1.6) |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | `a` is a `let`, so it can't be passed as `mut` |

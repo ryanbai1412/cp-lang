@@ -22,8 +22,8 @@ for i in 1..=l:
     for k in 0..n:
         let start = k + 1 - i
         let wraps = (n - start) / n
-        let window_sum = pref.prefix(k + 1) - (
-            pref.prefix(start + n * wraps) - pref.prefix(n) * wraps
+        let window_sum = pref.cut(k + 1) - (
+            pref.cut(start + n * wraps) - pref.cut(n) * wraps
         )
         dp[k] = window_sum * inv_i
 print(dp)

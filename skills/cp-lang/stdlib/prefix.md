@@ -2,7 +2,7 @@
 
 # std.prefix
 
-Prefix sums, prefix/suffix monoid folds, and offline difference arrays.  Call `Prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in \(O(n)\) or \(O(r \cdot c)\), then answer any `.fold(...)` or `.prefix(...)` query in \(O(1)\). Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) / \(O(r \cdot c)\) `finish()`.
+Prefix sums, prefix/suffix monoid folds, and offline difference arrays.  Call `Prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in \(O(n)\) or \(O(r \cdot c)\), then answer any `.fold(...)`, `.cut(k)` or `.prefix(...)` query in \(O(1)\). Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) / \(O(r \cdot c)\) `finish()`.
 
 In prelude (no `use` needed): `Diff`, `Prefix`, `scan`.
 
@@ -19,6 +19,7 @@ Fields: `p: [D.cuts]T`.
 - `fn set(mut self, i: D, x: T)` — \(O(1)\); Write the next cell in fill order (`D.first..=D.last` for `Forward`, reverse for `Reverse`).; traps: when `i` is not the next position in fill order (out of order, repeated, or after
 - `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of boundary `b`; zero at the first cut.; traps: when a position left of `b` is not yet written (with `Reverse`, every position left
 - `fn at(self, c: Cut<D>) -> T` — \(O(1)\); `f[c]`: the same as `prefix(c)`, as on a built `Prefix`; at a position `v`, `f[v]` is the sum through `v`, the same as `f[v.r]` (R07.1.6).; traps: when a position left of `c` is not yet written
+- `fn cut(self, k: Int) -> T` — \(O(1)\); The sum of the first `k` positions, whatever `D`'s base: `prefix` at the cut `k` positions in.; traps: when `k` is not in `0..=D.count`, or a position among the first `k` is not yet written
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty.; traps: when `r` is non-empty and contains a position not yet written
 
 ## `struct Prefix<D, T: Add + Sub>`
@@ -34,6 +35,7 @@ Fields: `p: [D.cuts]T`, `sums: Bool`, `rises: Bool`, `back: Bool`.
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn cyclic_sum(self, r: RingRange<D>) -> T` — \(O(1)\); The sum over a wrapping run of positions, e.g.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn at(self, c: Cut<D>) -> T` — \(O(1)\); `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`; at a position `v`, `p[v]` is the sum through `v`, the same as `p[v.r]` (R07.1.6).
+- `fn cut(self, k: Int) -> T` — \(O(1)\); The fold of the first `k` positions, whatever `D`'s base: the value at the cut `k` positions in, the identity at `0` and `all` at `D.count`.; traps: when `k` is not in `0..=D.count`
 - `fn suffix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.; traps: on a table from `scan(f)` with `f` other than `+`
 - `@get fn all(self) -> T` — \(O(1)\); The sum of the entire domain: `prefix` at the last cut (a suffix table's first), zero for an empty domain.
 - `fn first_ge(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
@@ -67,7 +69,7 @@ Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling
 Fields: `p: List<T>`.
 
 - `fn set(mut self, i: Int, x: T)` — \(O(1)\); Write index `i` in fill order (`0..n` for `Forward`, `(0..n).rev` for `Reverse`).; traps: when `i` is not the next index in fill order (including any `i` outside `0..n`)
-- `fn prefix(self, k: Int) -> T` — \(O(1)\); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`, or one of the first `k` values is not yet written
+- `fn cut(self, k: Int) -> T` — \(O(1)\); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`, or one of the first `k` values is not yet written
 - `fn fold(self, r: Range<Int>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.; traps: when `r` is non-empty and reaches outside `0..n` or holds an index not yet written
 
 ## `struct _PrefixList <T: Sub>`
@@ -78,7 +80,7 @@ Fields: `p: List<T>`.
 
 - `fn new(a: List<T>) -> Prefix<T>` — \(O(a.\mathit{len})\) time and space; Build 1-D prefix sums over `a: List<T>`; `Prefix(a)` on a list calls it.
 - `fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>` — \(O(n)\) time and space; Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)` in `order`.; traps: when `n < 0`
-- `fn prefix(self, k: Int) -> T` — \(O(1)\); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`
+- `fn cut(self, k: Int) -> T` — \(O(1)\); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`
 - `fn fold(self, r: Range<Int>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.; traps: when `r` is non-empty and reaches outside `0..n`
 
 ## `struct Diff<D, T: Add + Sub>`

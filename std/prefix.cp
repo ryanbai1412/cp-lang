@@ -1,7 +1,7 @@
 //! Prefix sums, prefix/suffix monoid folds, and offline difference arrays.
 //!
 //! Call `Prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in \(O(n)\) or
-//! \(O(r \cdot c)\), then answer any `.fold(...)` or `.prefix(...)` query in \(O(1)\).
+//! \(O(r \cdot c)\), then answer any `.fold(...)`, `.cut(k)` or `.prefix(...)` query in \(O(1)\).
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) /
 //! \(O(r \cdot c)\) `finish()`.
 use std.algebra.{Monoid}
@@ -84,6 +84,14 @@ pub struct FillPrefix<D, T: Add + Sub>:
     /// traps: when a position left of `c` is not yet written
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 5); f.set(1, 7); f[D(1)] == 12`
     pub fn at(self, c: Cut<D>) -> T = self.prefix(c)
+
+    /// The sum of the first `k` positions, whatever `D`'s base: `prefix` at the cut `k` positions
+    /// in. An `Int` index `f[k]` is an error (E0320); this is how a count reads the table.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `k` is not in `0..=D.count`, or a position among the first `k` is not yet written
+    /// example: `domain D = 1..=3; var f = Prefix<D, Int>.filling(); f.set(1, 5); f.set(2, 7); f.cut(2) == 12`
+    pub fn cut(self, k: Int) -> T = self.prefix(D.cuts.nth(k))
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty.
     ///
@@ -217,8 +225,18 @@ pub struct Prefix<D, T: Add + Sub>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p[D(1)] == 3`
-    /// example: `[5, -3, -2].scan(+)[3] == 0`
     pub fn at(self, c: Cut<D>) -> T = self.p[c]
+
+    /// The fold of the first `k` positions, whatever `D`'s base: the value at the cut `k`
+    /// positions in, the identity at `0` and `all` at `D.count`. An `Int` index `pre[k]` is an
+    /// error (E0320, decision 507): a count reads the table here, a typed cut or position by `[]`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `k` is not in `0..=D.count`
+    /// example: `[5, -3, -2].scan(+).cut(1) == 5`
+    /// example: `[5, -3, -2].scan(+).cut(3) == 0`
+    /// example: `domain D = 1..=3; let p: [D]Int = [4, 1, 2]; p.scan(max).cut(2) == 4`
+    pub fn cut(self, k: Int) -> T = self.p[D.cuts.nth(k)]
 
     /// The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.
     ///
@@ -409,7 +427,7 @@ pub struct _FillPrefixList <T: Add + Sub>:
     ///
     /// cost: \(O(1)\)
     /// traps: when `i` is not the next index in fill order (including any `i` outside `0..n`)
-    /// example: `var f = Prefix<Int>.filling(3); f.set(0, 3); f.set(1, 1); f.prefix(2) == 4`
+    /// example: `var f = Prefix<Int>.filling(3); f.set(0, 3); f.set(1, 1); f.cut(2) == 4`
     pub fn set(mut self, i: Int, x: T):
         let in_order = i == next
         assert in_order
@@ -424,8 +442,8 @@ pub struct _FillPrefixList <T: Add + Sub>:
     ///
     /// cost: \(O(1)\)
     /// traps: when `k` is not in `0..=n`, or one of the first `k` values is not yet written
-    /// example: `var f = Prefix<Int>.filling(3); f.set(0, 3); f.set(1, 1); f.prefix(1) == 3`
-    pub fn prefix(self, k: Int) -> T:
+    /// example: `var f = Prefix<Int>.filling(3); f.set(0, 3); f.set(1, 1); f.cut(1) == 3`
+    pub fn cut(self, k: Int) -> T:
         if k == 0: return T.zero
         let in_filled = if rev: next < 0 else: k <= next
         assert in_filled
@@ -443,7 +461,7 @@ pub struct _FillPrefixList <T: Add + Sub>:
             let in_filled = r.start > next
             assert in_filled
             return self.p[r.start] - self.p[r.end]
-        self.prefix(r.end) - self.prefix(r.start)
+        self.cut(r.end) - self.cut(r.start)
 
 /// Internal list shape of `Prefix<T>`, constructed by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
 pub struct _PrefixList <T: Sub>:
@@ -454,7 +472,7 @@ pub struct _PrefixList <T: Sub>:
     /// cost: \(O(a.\mathit{len})\) time and space
     /// empty: a table whose every query is zero
     /// traps: never
-    /// example: `Prefix<Int>([3, 1, 4]).prefix(3) == 8`
+    /// example: `Prefix<Int>([3, 1, 4]).cut(3) == 8`
     pub fn new(a: List<T>) -> Prefix<T>:
         var p = List.filled(a.len + 1, T.zero)
         for i in 0..a.len:
@@ -476,9 +494,9 @@ pub struct _PrefixList <T: Sub>:
     ///
     /// cost: \(O(1)\)
     /// traps: when `k` is not in `0..=n`
-    /// example: `Prefix<Int>([3, 1, 4]).prefix(2) == 4`
-    /// example: `Prefix<Int>([3, 1, 4]).prefix(0) == 0`
-    pub fn prefix(self, k: Int) -> T = self.p[k]
+    /// example: `Prefix<Int>([3, 1, 4]).cut(2) == 4`
+    /// example: `Prefix<Int>([3, 1, 4]).cut(0) == 0`
+    pub fn cut(self, k: Int) -> T = self.p[k]
 
     /// The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.
     ///
@@ -788,7 +806,7 @@ fn a_plain_range_and_list_take_plain_ints():
         for hi in lo..=5:
             let want = sum(xs[i] for i in lo..hi)
             assert p.fold(lo..hi) == want
-            assert p.prefix(hi) - p.prefix(lo) == want
+            assert p.cut(hi) - p.cut(lo) == want
 
 @test
 fn prefix_and_suffix_folds_cover_outside_ranges():
@@ -879,7 +897,7 @@ fn filling_list_forward_and_reverse_match_brute():
     var f = Prefix<Int>.filling(8)
     for i in 0..8:
         f.set(i, xs[i])
-        assert f.prefix(i + 1) == full.prefix(i + 1)
+        assert f.cut(i + 1) == full.cut(i + 1)
     var b = Prefix<Int>.filling(8, order: FillOrder.Reverse)
     for i in (0..8).rev:
         b.set(i, xs[i])

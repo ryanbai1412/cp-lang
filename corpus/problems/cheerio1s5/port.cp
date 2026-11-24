@@ -27,6 +27,6 @@ for i in (0..n).rev:
     for used in 0..=k:
         best[i, used] = best[i + 1, used]
         for j in i + 1..=n:
-            let now = used + heads.prefix(j) - heads.prefix(i)
+            let now = used + heads.cut(j) - heads.cut(i)
             if now <= k: best[i, used] max= clear[i, j] + best[j, now]
 print(best[0, 0])

@@ -12,7 +12,7 @@ let n: 1..=2e5 = read()
 let k: 1..=n = read()
 let a = read<[n]-1e9..=1e9>().sorted()
 let pref = prefix(a)
-let st = (0..n).find(c => pref.prefix(c) + a[c] * c > 0) ?? n
+let st = (0..n).find(c => pref.cut(c) + a[c] * c > 0) ?? n
 fn cost(j: Int, i: Int) -> I128 = I128(pref.fold(j..i)) * (i - j)
 let rest = n - k + 1
 if rest <= st: return print(cost(0, rest) + pref.fold(rest..n))

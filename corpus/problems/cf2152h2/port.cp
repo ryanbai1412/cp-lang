@@ -76,4 +76,4 @@ let q: 1..=250_000 = read()
 let asks: [0..q]1..=1e9 = read()
 for l in asks:
     let k = breaks.partition_point(b => b >= l)
-    print(l * k - below.prefix(k))
+    print(l * k - below.cut(k))

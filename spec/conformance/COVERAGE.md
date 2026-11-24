@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3315 (1093 passing). Rules: 609.
+Cases: 3316 (1093 passing). Rules: 609.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3315 (1093 passing). Rules: 609.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 250 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 92 rules, 229 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 92 rules, 230 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 30 rules, 100 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -54,7 +54,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 25 | 25 (100%) | 17 | 17 (100%) | 25 (100%) |
-| R07 | 92 | 92 (100%) | 28 | 28 (100%) | 92 (100%) |
+| R07 | 92 | 92 (100%) | 29 | 29 (100%) | 92 (100%) |
 | R08 | 30 | 30 (100%) | 11 | 11 (100%) | 30 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
 | R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 609 | 605 (99%) | 248 | 240 (96%) | 599 (98%) |
+| all | 609 | 605 (99%) | 249 | 241 (96%) | 599 (98%) |
 
 ## Rules
 
@@ -457,7 +457,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.1.3 [3+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
 - R07.1.4 [1+ 1-]: **Identity everywhere.** Every slice keeps its source's keys (`a[l..=r][i] == a[i]`, `s[2....
 - R07.1.5 [1+ 2-]: **Views are lent values with the rules of `mut a[i]`.** A value built from a lent part is ...
-- R07.1.6 [7+ 0-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
+- R07.1.6 [8+ 1-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
 - R07.1.7 [1+ 1-]: **Costs show.** \(O(1)\) things are getters or views, allocation is named, options are nam...
 - R07.2.1 [2+ 0-]: | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in t...
 - R07.2.2 [3+ 0-]: | **indexed sequence** (`Indexed<K, T>`) | a sequence that also has \(O(1)\) `s[k]`, `.key...
@@ -787,7 +787,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
-- E0302 Type mismatch: 60 case(s)
+- E0302 Type mismatch: 61 case(s)
 - E0303 Wrong number of arguments: 18 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
@@ -804,6 +804,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0316 Field bound from input: 1 case(s)
 - E0317 Getter needs defaults: 1 case(s)
 - E0318 Unreachable match arm: 1 case(s)
+- E0320 int_index_on_cut_table *(0.3)*: **no case**
 - E0401 Assignment to immutable `let` binding: 5 case(s)
 - E0402 Missing `mut` at call site: 4 case(s)
 - E0403 `mut` of an immutable binding: 5 case(s)
@@ -986,7 +987,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-86 of 223 testable codes have no negative case.
+87 of 224 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -1025,7 +1026,7 @@ prepends it.
   - line 978: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
-  - line 226: `fn divisors(n: Int) -> yields Int:`
+  - line 227: `fn divisors(n: Int) -> yields Int:`
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
 - 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
@@ -1079,7 +1080,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `RangeKth`, `RangeKth.new`, `PersistentLazySegTree.fold_rec`, `PMultiset`
 - **poly** (56/57 named by a case)
   - uncovered: `prod_linear`
-- **prefix** (46/58 named by a case)
+- **prefix** (48/60 named by a case)
   - uncovered: `FillPrefix`, `Prefix.of_rev_scan`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
@@ -1099,7 +1100,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2261 of 2379 std items are named by a case.
+2263 of 2381 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

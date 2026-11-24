@@ -26,7 +26,7 @@ fn away(side: List<Int>, step: Int) -> List<Int>:
     fn seen(t: Int, i: Int) -> ?Int:
         let visits = min(t - (i + 1) * step, i + 1)
         if visits < 0: return None
-        Some(-(passed.prefix(i + 1) - order.quantile_sum(0..i + 1, i + 1 - visits)))
+        Some(-(passed.cut(i + 1) - order.quantile_sum(0..i + 1, i + 1 - visits)))
     // with more days it never pays to turn round sooner, so the best last city only moves away
     [if let b = best: -b.val else: 0 for best in monotone_minima(days + 1, side.len, seen)]
 

@@ -16,7 +16,7 @@ let pre = prefix([a[i] for i in 0..n])
 
 for len in 2..=n:
     for l in 0..=n - len:
-        if is_prime(pre.prefix(l + len) - pre.prefix(l)):
+        if is_prime(pre.cut(l + len) - pre.cut(l)):
             print("Shortest primed subsequence is length {len}:", [a[i] for i in l..l + len])
             return
 print("This sequence is anti-primed.")

@@ -28,10 +28,11 @@ ends, `.first`/`.last` are optional.
    and returned only by a fn declared `lends`. In-place verbs
    work on views (`a[l..=r].sort()`); each has a copying twin (`sorted`). (R07.1.5)
 6. **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`;
-   `pre[v]` folds through `v`. On `Int` keys (a `List`, `[n]T`) a position
-   and a cut are both `Int`, so `pre[k]` is the cut: the fold of the first
-   `k`; through position `k` is `pre[k + 1]`. A domain keeps the two apart
-   (decision 349). (R07.1.6)
+   `pre[v]` folds through `v`. A bare `Int` index into a cut table
+   (`pre[k]` on a `List`, `[n]T` or `[0..n]T` scan, a `Prefix<T>`) is
+   E0320: there a position and a cut are both `Int`, so the index can't say
+   which it means. A count reads the table by name: `pre.cut(k)` folds the
+   first `k` on every key type (decisions 349, 507). (R07.1.6)
 7. **Costs show.** \(O(1)\) things are getters or views, allocation is named,
    options are named arguments (`max(by:)`), and there is no overloading. (R07.1.7)
 
@@ -347,7 +348,7 @@ a[l..r].keys.max(by: i => a[i])!   // argmax inside a piece, still a position of
 ## Scans are prefix sums over cuts
 
 `a.scan(op)` gives a `Prefix<D, T>`: n + 1 exclusive folds indexed by `D`'s
-cuts (a `List`'s cuts are `Int`s: `xs.scan(+)[k]` folds the first `k`). Walking backwards gives suffix folds, indexed by the same cuts:
+cuts (`xs.scan(+).cut(k)` folds the first `k`; `xs.scan(+)[k]` with an `Int` `k` is E0320). Walking backwards gives suffix folds, indexed by the same cuts:
 
 <!-- spec-only: expression tour, one form per line -->
 ```python

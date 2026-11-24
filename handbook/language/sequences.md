@@ -62,8 +62,8 @@ What a contestant holds in their head:
 3. **Folds are methods on anything walkable.** `sum`, `max`, `count`,
    `fold`, `any`, `find` take a generator, a filter or a list, and the
    receiver's type picks the algorithm (a range sums in closed form).
-4. **Scans are indexed by cuts.** `pre[k]` on a `List` is the fold of the
-   first `k` elements; through position `k` is `pre[k + 1]`.
+4. **Scans are indexed by cuts.** `pre.cut(k)` is the fold of the first
+   `k` elements; a bare `Int` index `pre[k]` is an error (E0320).
 5. **Pieces, then folds.** Windows, runs, splits and two-pointer spans are
    all "cut the sequence into keyed pieces, then fold each piece".
 
@@ -205,11 +205,14 @@ what a `SegTree` over `MaxSub` calls.
 **Chosen.** A prefix scan is a table over cuts: `pre[c]` folds everything
 left of cut `c`, and for a domain position `v`, `pre[v]` folds through
 `v` (`pre[v.r]`). On `Int` keys a position and a cut are both `Int`, so
-`pre[k]` is the cut: the fold of the first `k`. A domain keeps the two
+`pre[k]` is an error (E0320, decision 507) and `pre.cut(k)` names the
+fold of the first `k`. A domain keeps the two
 apart, and a sum over `l..=r` is `pre[r.r] - pre[l.l]` with no `+ 1`
 to forget. `a.rev.scan(+)` is the suffix table, also indexed by cut.
 
-**Lost.** Inclusive scans (`std::partial_sum`, `itertools.accumulate`),
+**Lost.** `pre[k]` on a `List`, the shortest spelling of the commonest
+read, because the reader of `pre[i]` can't tell a position from a cut.
+Inclusive scans (`std::partial_sum`, `itertools.accumulate`),
 which make every range sum `pre[r] - pre[l - 1]` with a special case at
 0, and the "pad with a leading zero" convention that every codebase
 spells differently.

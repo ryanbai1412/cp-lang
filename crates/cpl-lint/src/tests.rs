@@ -1535,7 +1535,7 @@ fn running_totals_teach_prefix() {
 
 #[test]
 fn hand_rolled_prefix_sum_becomes_prefix() {
-    // 1D List.filled + 0..a.len -> Prefix(a) and p.prefix(...)
+    // 1D List.filled + 0..a.len -> Prefix(a) and p.cut(...)
     let list_pref = "\
 let a = [1, 2, 3, 4]
 var p = List.filled(a.len + 1, 0)
@@ -1546,7 +1546,7 @@ print(p[3] - p[1])
     assert_eq!(taste_codes(list_pref), ["L0521"]);
     assert_eq!(
         fixed(list_pref),
-        "let a = [1, 2, 3, 4]\nlet p = Prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n"
+        "let a = [1, 2, 3, 4]\nlet p = Prefix(a)\nprint(p.cut(3) - p.cut(1))\n"
     );
 
     // 1D domain bounds (corpus/problems/atcoder_dp_m/port.cp shape) -> Prefix(ways) and pre.prefix(...)
@@ -1574,7 +1574,7 @@ print(pre[n] - pre[1])
     assert_eq!(taste_codes(range_pref), ["L0521"]);
     assert_eq!(
         fixed(range_pref),
-        "let n = 4\nlet a = [1, 2, 3, 4]\nlet pre = Prefix([a[i] * 2 for i in 0..n])\nprint(pre.prefix(n) - pre.prefix(1))\n"
+        "let n = 4\nlet a = [1, 2, 3, 4]\nlet pre = Prefix([a[i] * 2 for i in 0..n])\nprint(pre.cut(n) - pre.cut(1))\n"
     );
 
     // 1D 1..=n and 2D inclusion-exclusion warn (no auto-fix).
