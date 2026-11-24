@@ -221,17 +221,49 @@ pub(crate) fn reads_apart(e: &Expr, slot: usize, fields: &[usize]) -> bool {
     !closure && reads == apart
 }
 
-/// The statements of `rest` (those after a `let` of `slot`) while `slot`
-/// lives: up to the last one that mentions it.
-pub(crate) fn live<'s>(program: &Program, rest: &'s [Stmt], slot: usize) -> &'s [Stmt] {
-    if mentions(program, rest, slot).kept {
-        return rest;
+/// The code of `rest` (the statements after a `let` of `slot`) that runs
+/// while `slot` lives: up to the last statement that mentions it or a `let`
+/// built from it (which may point into it), and of a last `if`, its test
+/// and the same of each branch: a write after the last read cannot change
+/// what was read.
+pub(crate) fn live(program: &Program, rest: &[Stmt], slot: usize) -> Vec<Stmt> {
+    live_of(program, rest, BTreeSet::from([slot]))
+}
+
+fn live_of(program: &Program, stmts: &[Stmt], mut names: BTreeSet<usize>) -> Vec<Stmt> {
+    let mut end = 0;
+    for (i, stmt) in stmts.iter().enumerate() {
+        let one = std::slice::from_ref(stmt);
+        let (mut any, mut kept) = (false, false);
+        for &name in &names {
+            let m = mentions(program, one, name);
+            (any, kept) = (any || m.any, kept || m.kept);
+        }
+        if !any {
+            continue;
+        }
+        end = i + 1;
+        match stmt {
+            Stmt::Let(bound, Some(init)) if !holds_closure(init) => _ = names.insert(*bound),
+            _ if kept => return stmts.to_vec(),
+            _ => {}
+        }
     }
-    let end = rest
-        .iter()
-        .rposition(|stmt| mentions(program, std::slice::from_ref(stmt), slot).any)
-        .map_or(0, |i| i + 1);
-    &rest[..end]
+    let mut out = stmts[..end].to_vec();
+    if let Some(Stmt::If(cond, then, otherwise)) = out.last() {
+        let branch = |b: &Block| Block {
+            stmts: live_of(program, &b.stmts, names.clone()),
+        };
+        let trimmed = Stmt::If(cond.clone(), branch(then), branch(otherwise));
+        *out.last_mut().expect("an if") = trimmed;
+    }
+    out
+}
+
+fn holds_closure(e: &Expr) -> bool {
+    let mut found = false;
+    walk::deep_expr(e, &mut |x| found |= matches!(x.kind, ExprKind::Closure(_)));
+    found
 }
 
 /// Whether the local `slot`, which statement `k` of `block` reads, is
@@ -526,7 +558,7 @@ impl crate::emit::Emitter<'_> {
         Some(Tail {
             tested: copied_at_test(*slot, rest),
             lendable: self.lendable_reads(*slot, rest),
-            ..self.tail(live)
+            ..self.tail(&live)
         })
     }
 }

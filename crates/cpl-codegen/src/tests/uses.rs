@@ -308,3 +308,23 @@ fn a_clone_written_in_a_library_fn_is_listed_at_its_fn() {
         .collect();
     assert_eq!(whats, ["a read in inversions"]);
 }
+
+#[test]
+fn an_if_let_over_a_place_written_after_its_last_read_is_lent() {
+    let source = concat!(
+        "fn longest(xs: List<Str>) -> ?Str:\n",
+        "    var best: ?Str = None\n",
+        "    for x in xs:\n",
+        "        if let b = best:\n",
+        "            if x.len > b.len: best = Some(x)\n",
+        "        else: best = Some(x)\n",
+        "    best\n",
+        "print(longest(read<List<Str>>())!)\n",
+    );
+    assert_eq!(copy_reasons(source), [] as [&str; 0]);
+    let out = super::cpp(source);
+    assert!(
+        !out.contains("std::optional<std::string> t0 = best;"),
+        "`best` is set only after `b`'s last read, so the `if let` reads it in place:\n{out}"
+    );
+}
