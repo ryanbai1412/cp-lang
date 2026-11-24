@@ -97,12 +97,19 @@ class AffectedTest(unittest.TestCase):
 
     def test_a_std_signature_change_runs_the_cases_that_call_it(self):
         # 8f1685382 made splice_back's `other` mut; three cases calling it went red on main.
-        diff = ("--- a/std/deque.cp\n+++ b/std/deque.cp\n@@ -1 +1 @@\n"
-                "-    pub fn splice_back(mut self, other: LinkedList<T>):\n"
-                "+    pub fn splice_back(mut self, mut other: LinkedList<T>):\n"
-                "-    fn helper(x: Int):\n+    fn helper(y: Int):\n"
-                "-    pub fn moved(a: Int):\n+    pub fn moved(a: Int):\n")
-        self.assertEqual(affected.changed_pub_fns(diff), ["splice_back"])
+        old = {"std/deque.cp": "    pub fn splice_back(mut self, other: LinkedList<T>):\n"
+                               "    fn helper(x: Int):\n    pub fn moved(a: Int):\n        pass\n"}
+        new = {"std/deque.cp": "    pub fn splice_back(mut self, mut other: LinkedList<T>):\n"
+                               "    fn helper(y: Int):\n    pub fn moved(a: Int):\n        pass\n"}
+        self.assertEqual(affected.changed_pub_fns(old, new), ["splice_back"])
+        # ea6920634 changed only matroid_intersection's `weight:` line; flow-matching calls it
+        # as `matroid_intersection<E>(..)` and went red on main.
+        sig = "pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (\n    a: A,\n    weight: {} ,\n) -> [E]Bool:\n    loop:\n"
+        self.assertEqual(affected.changed_pub_fns({"std/flow.cp": sig.format("?(E -> Int) = None")},
+                                                  {"std/flow.cp": sig.format("E -> Int = _ => 0")}),
+                         ["matroid_intersection"])
+        self.assertEqual(affected.changed_pub_fns({"std/flow.cp": sig.format("x")}, {"std/flow.cp": sig.format("x") + "        pass\n"}), [])
+        self.assertIn("spec/conformance/std-models/flow-matching.cp", affected.callers(["matroid_intersection"]))
         found = affected.callers(["splice_back"])
         self.assertIn("spec/conformance/std-deque/splice-empty-lists.cp", found)
         self.assertFalse([f for f in found if not f.startswith(("spec/conformance/", "corpus/problems/"))])
