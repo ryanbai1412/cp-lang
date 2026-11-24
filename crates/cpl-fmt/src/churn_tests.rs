@@ -13,7 +13,6 @@ fn sources() -> Vec<PathBuf> {
             files.push(dir.join(name));
         }
     }
-    files.extend(cpl_corpus::programs::v02_snapshot_ports(&root));
     for entry in std::fs::read_dir(root.join("std")).unwrap().flatten() {
         files.push(entry.path());
     }

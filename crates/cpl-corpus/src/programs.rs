@@ -1,27 +1,9 @@
 //! The programs the corpus suites walk, shared so none drifts: the corpus and
-//! conformance sources, plus the frozen v0.2 ports
-//! (`tests/v02-snapshot/<id>/port.cp`) the suites keep covering while
-//! `corpus/problems/<id>/port.cp` is re-ported in place.
+//! conformance sources. A frozen v0.2 port (`tests/v02-snapshot/<id>/port.cp`)
+//! records what an old release accepted, so only its pinned release builds it
+//! (`pinned_release.rs`); today's checker sees the live ports instead.
 
 use std::path::{Path, PathBuf};
-
-/// The snapshot ports whose live `corpus/problems/<id>/port.cp` differs or is
-/// gone; an identical live port already stands for its snapshot.
-pub fn v02_snapshot_ports(repo: &Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    let Ok(dirs) = std::fs::read_dir(repo.join("tests/v02-snapshot")) else {
-        return out;
-    };
-    for dir in dirs.flatten() {
-        let old = dir.path().join("port.cp");
-        let live = crate::package(repo, &dir.file_name().to_string_lossy()).join("port.cp");
-        if old.is_file() && std::fs::read(&old).ok() != std::fs::read(&live).ok() {
-            out.push(old);
-        }
-    }
-    out.sort();
-    out
-}
 
 /// The problem directory a port's tests live in: its own for a corpus port,
 /// `corpus/problems/<id>` for a snapshot port.
@@ -36,13 +18,9 @@ pub fn problem_dir(port: &Path) -> PathBuf {
 }
 
 /// The `.cp` files one directory down from the corpus problems and the
-/// conformance cases, plus the snapshot ports that differ from their live port:
-/// what the build-and-agree suites run.
+/// conformance cases: what the build-and-agree suites run.
 pub fn corpus_and_conformance(repo: &Path) -> Vec<PathBuf> {
-    let mut found = shipped(repo);
-    found.extend(v02_snapshot_ports(repo));
-    found.sort();
-    found
+    shipped(repo)
 }
 
 /// The corpus and conformance sources without the snapshot: what the idiom

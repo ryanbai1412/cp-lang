@@ -41,7 +41,7 @@ fn without(a: List<Z>, b: List<Z>) -> List<Z>:
 
 // A part hanging off an edge: pick inside it, or pick its top vertex alone.
 fn hung(inside: List<Z>) -> List<Z>:
-    var f = inside.clone()
+    var f = inside
     if f.len == 1: f.push(Z(0))
     f[1] += 1
     f

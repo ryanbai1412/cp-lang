@@ -9216,4 +9216,8 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 619. (reserved, content)
 
-## 620. (reserved, perf)
+## 620. A frozen port is built by its pinned release only (judge, 2026-11-24)
+
+- **Call.** `tests/v02-snapshot/<id>/port.cp` is never checked, built or formatted by today's `cpl`: `pinned_release.rs` builds every one with the release `pinned_release/cpl.toml` pins, and the corpus, LSP, fmt and fix suites walk only the live ports. A frozen source is not edited; 2df3d568f's edits to 7 of them are undone. Core ruling of 2026-11-24.
+- **Why.** A pin promises a byte-for-byte rebuild of what an old release accepted. A checker rule that rejects an old spelling would otherwise force an edit to the frozen input, and the record would then measure a different program.
+- **Reverse.** Re-snapshot the ports with today's release and re-record the pin.

@@ -62,11 +62,6 @@ fn programs() -> Vec<String> {
             paths.push(port);
         }
     }
-    for port in cpl_corpus::programs::v02_snapshot_ports(&r) {
-        if has_cases(&cpl_corpus::programs::problem_dir(&port)) {
-            paths.push(port);
-        }
-    }
     let mut out: Vec<String> = paths
         .iter()
         .map(|p| {

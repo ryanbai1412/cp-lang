@@ -22,7 +22,7 @@ let grid: [Row, Col]Char = read(gen: random_grid)
 // a coin flips its neighbours. Returns the removal order, which covers every
 // coin iff the line can be cleared.
 fn peel<D>(start: [D]Bool) -> List<D>:
-    var up = start.clone()
+    var up = start
     var gone: [D]Bool = false
     var ready = Set<D>()
     for i in D:
@@ -41,7 +41,7 @@ fn peel<D>(start: [D]Bool) -> List<D>:
 
 @alt(peel)
 fn peel_slow<D>(start: [D]Bool) -> List<D>:
-    var up = start.clone()
+    var up = start
     var gone: [D]Bool = false
     var order: List<D> = []
     var progress = true

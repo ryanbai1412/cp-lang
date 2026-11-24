@@ -281,7 +281,6 @@ fn every_corpus_program_and_conformance_case_is_served() {
     for dir in cpl_corpus::packages(&root) {
         cp_files(&dir, &mut files);
     }
-    files.extend(cpl_corpus::programs::v02_snapshot_ports(&root));
     let corpus = files.len();
     cp_files(&root.join("spec/conformance"), &mut files);
     assert!(

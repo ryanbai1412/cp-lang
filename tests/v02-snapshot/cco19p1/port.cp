@@ -43,7 +43,7 @@ fn wins(board: Board, who: Player) -> F64:
             let p: Cell = (r, c)
             for q in p.adj4:
                 if board[q] == None: continue
-                var next = board.clone()
+                var next = board
                 next[q] = Some(who)
                 next[p] = None
                 chances.push(1.0 - wins(next, other(who)))

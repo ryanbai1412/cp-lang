@@ -1,6 +1,7 @@
 //! Re-porting a v0.2 port in place can't lose its regression coverage: every
 //! port not yet in `corpus/sets/v03.txt` has its frozen copy under
-//! `tests/v02-snapshot/`, and the corpus suites walk the copies that differ.
+//! `tests/v02-snapshot/`, which only its pinned release builds
+//! (`pinned_release.rs`): today's checker sees the live ports.
 
 use std::path::Path;
 
@@ -29,5 +30,18 @@ fn a_snapshot_port_runs_on_its_live_problem_tests() {
     assert_eq!(
         cpl_corpus::programs::problem_dir(&live),
         live.parent().unwrap()
+    );
+}
+
+#[test]
+fn no_suite_walks_a_frozen_port_with_todays_checker() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let frozen: Vec<_> = cpl_corpus::programs::corpus_and_conformance(&repo)
+        .into_iter()
+        .filter(|p| p.components().any(|c| c.as_os_str() == "v02-snapshot"))
+        .collect();
+    assert!(
+        frozen.is_empty(),
+        "only pinned_release builds a frozen port (decision 620): {frozen:?}"
     );
 }
