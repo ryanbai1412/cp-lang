@@ -954,7 +954,7 @@ var buckets: [0..2]List<Int> = []
 buckets[1].push(3)
 buckets[1].push(1)
 buckets[1].push(4)
-buckets[1].sort(desc: true)
+buckets[1].sort(by: x => desc(x))
 buckets[1].pop()
 var u: U64 = U64(5)
 u = u * U64(7) + U64(1)

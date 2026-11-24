@@ -2,10 +2,10 @@ let n: Int = read()
 var xs: List<Int> = [i * 37 % 11 for i in 0..n]
 xs.sort(by: x => x % 3)
 print(xs)
-xs.sort(by: x => -x, desc: n > 5)
+if n > 5: xs.sort(by: x => desc(-x)) else: xs.sort(by: x => -x)
 print(xs)
 var ws = ["pear", "fig", "banana", "kiwi", "plum", "apple"]
-ws.sort(by: w => w.len, desc: true)
+ws.sort(by: w => desc(w.len))
 print(ws)
 ws.sort(by: w => (w.len, w))
 print(ws)
@@ -32,8 +32,8 @@ for i in 0..n:
     hgroups[i % 2].push(i * 3 % 8)
 groups[0].sort()
 groups[1].sort(by: x => -x)
-hgroups[1].sort(desc: true)
-hgroups[0].sort(by: x => x % 4, desc: true)
+hgroups[1].sort(by: x => desc(x))
+hgroups[0].sort(by: x => desc(x % 4))
 print(groups[0], groups[1], hgroups[0], hgroups[1])
 fn mod5(x: Int) -> Int: x % 5
 fn by_name(p: (Int, Str)) -> (Str, Int): (p.1, -p.0)
@@ -41,7 +41,7 @@ var ys = [i * 7 % 13 for i in 0..n]
 ys.sort(by: mod5)
 print(ys)
 let last = (x: Int) => x % 10
-ys.sort(by: last, desc: true)
+ys.sort(by: x => desc(last(x)))
 print(ys)
 ps.sort(by: by_name)
 print(ps)

@@ -681,8 +681,9 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// `xs.sort(x => -x)` or `reverse: true`: the key goes by name, and
-    /// largest first is a descending key, `by: x => desc(x)` (decision 290).
+    /// `xs.sort(x => -x)`, `reverse: true` or the dropped `desc: true`: the
+    /// key goes by name, and largest first is a descending key,
+    /// `by: x => desc(x)` (decision 290).
     pub(super) fn sort_reverse_arg(&mut self, args: &[ast::Arg]) -> bool {
         if let [arg] = args {
             if arg.name.is_none() && matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
@@ -698,12 +699,15 @@ impl<'a> Lowerer<'a> {
         }
         let Some((name, value)) = args.iter().find_map(|a| {
             (a.name.as_ref())
-                .filter(|n| n.text == "reverse")
+                .filter(|n| matches!(n.text.as_str(), "reverse" | "desc"))
                 .map(|n| (n, &a.value))
         }) else {
             return false;
         };
-        let message = "a sort puts the largest first with a descending key, not `reverse:`";
+        let message = format!(
+            "a sort puts the largest first with a descending key, not `{}:`",
+            name.text
+        );
         self.error(codes::WRONG_ARG_COUNT, name.span, message);
         let by = (args.iter()).find(|a| {
             a.name
@@ -761,7 +765,6 @@ impl<'a> Lowerer<'a> {
         self.error(codes::UNKNOWN_ARG_NAME, name.span, message);
         let foreign = match name.text.as_str() {
             "key" | "cmp" => Some("by"),
-            "reverse" => Some("desc"),
             _ => None,
         };
         if let Some(label) = foreign.filter(|l| labels.contains(l)) {

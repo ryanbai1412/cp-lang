@@ -188,7 +188,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/map-entry-index-key-lends.cp: compiler
 - core-06/gen-graph-simple-connected.cp: stdlib (generated edge record has no `all`)
 - core-07/chain-takes-any-number.cp: stdlib
-- core-07/sorted-has-no-desc-flag.cp: compiler (the IR lowers `desc:` itself)
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf

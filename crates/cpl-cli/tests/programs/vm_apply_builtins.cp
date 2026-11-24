@@ -19,4 +19,4 @@ var hi = 1.0
 for w in ["pear", "fig", "kiwi"]:
     lo = min(lo, w)
     hi = max(hi, -F64(w.len))
-print(lo, hi, abs(-hi), [3, 1, 2].sorted(desc: true), [i * i for i in 0..4].rev)
+print(lo, hi, abs(-hi), [3, 1, 2].sorted(by: x => desc(x)), [i * i for i in 0..4].rev)

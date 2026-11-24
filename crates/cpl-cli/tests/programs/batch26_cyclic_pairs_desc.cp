@@ -17,8 +17,8 @@ print(best, [a * b for (a, b) in [2, 3, 5].cyclic_pairs()])
 var ts = [(2, 0), (1, 1), (2, 2), (1, 3), (3, 4)]
 let k: Int = read()
 let flip = k == 1
-ts.sort(by: t => t.0, desc: flip)
+if flip: ts.sort(by: t => desc(t.0)) else: ts.sort(by: t => t.0)
 print(ts)
-ts.sort(by: t => t.0, desc: not flip)
+if not flip: ts.sort(by: t => desc(t.0)) else: ts.sort(by: t => t.0)
 print(ts)
-print(sorted([(1, 0), (2, 1), (1, 2)], by: t => -t.0, desc: true))
+print(sorted([(1, 0), (2, 1), (1, 2)], by: t => desc(-t.0)))

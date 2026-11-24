@@ -38,5 +38,5 @@
 {"id":37,"line":7,"label":"m[i % 5] = i","stage":"main","values":{"stdout":[],"seen":[0,1,2,3,4,5,6],"m":[[0,15],[1,16],[2,17],[3,13],[4,14]]},"locals":{"i":17},"frames":[{"fn":"main","line":7}]},
 {"id":38,"line":6,"label":"seen.add(i * 3 % 7)","stage":"main","values":{"stdout":[],"seen":[0,1,2,3,4,5,6],"m":[[0,15],[1,16],[2,17],[3,13],[4,14]]},"locals":{"i":18},"frames":[{"fn":"main","line":6}]},
 {"id":39,"line":7,"label":"m[i % 5] = i","stage":"main","values":{"stdout":[],"seen":[0,1,2,3,4,5,6],"m":[[0,15],[1,16],[2,17],[3,18],[4,14]]},"locals":{"i":18},"frames":[{"fn":"main","line":7}]},
-... 68 more lines, 18282 bytes, fnv64 149bb6a7b0f615fd
+... 68 more lines, 18294 bytes, fnv64 d6365d45c3337fc5
 stderr:

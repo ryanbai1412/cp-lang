@@ -22,32 +22,6 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
-        // `desc: true`: the same sort asking its comparison the other way
-        // round, so the largest comes first and equal keys stay in the
-        // order they had.
-        if let Some(at) = args
-            .iter()
-            .position(|arg| arg.name.as_ref().is_some_and(|name| name.text == "desc"))
-        {
-            let rest: Vec<ast::Arg> = args
-                .iter()
-                .enumerate()
-                .filter(|(k, _)| *k != at)
-                .map(|(_, arg)| arg.clone())
-                .collect();
-            let elem = elem.clone();
-            return self.do_expr(Some(&Ty::Unit), span, |lw, out| {
-                let desc = lw.expect(&args[at].value, &Ty::Bool);
-                let desc = lw.hold(desc, out);
-                let place = lw.settle_indexes(place, out);
-                let mut sort = lw.sort_place(place, &elem, &rest, span);
-                if let ExprKind::Sort(_, _, turned) = &mut sort.kind {
-                    *turned = Some(Box::new(desc));
-                }
-                out.push(Stmt::Expr(sort));
-                out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
-            });
-        }
         // `by: arr` where `arr: [D]T`: an array indexed by the element is the key `x => arr[x]`.
         if let [ast::Arg {
             name: Some(by),
@@ -215,6 +189,12 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::BAD_OPERANDS, body.span, message);
                     return self.err_expr(span);
                 }
+                if let Some(inner) = self.desc_key(&key) {
+                    let turned = self.mk(ExprKind::Bool(true), Ty::Bool, body.span);
+                    let by = SortBy::Key(slot, Box::new(inner));
+                    let kind = ExprKind::Sort(Box::new(place), by, Some(Box::new(turned)));
+                    return self.mk(kind, Ty::Unit, span);
+                }
                 SortBy::Key(slot, Box::new(key))
             }
             [ast::Arg {
@@ -305,6 +285,23 @@ impl<'a> Lowerer<'a> {
             }
         };
         self.mk(ExprKind::Sort(Box::new(place), key, None), Ty::Unit, span)
+    }
+
+    /// `by: x => desc(k)`: the whole key reversed is `k` asked the other way
+    /// round, the same stable order without a `Desc` per element.
+    fn desc_key(&self, key: &Expr) -> Option<Expr> {
+        let ExprKind::Call(fid, args) = &key.kind else {
+            return None;
+        };
+        let [Arg::Value(inner)] = &args[..] else {
+            return None;
+        };
+        let Ty::Struct(sid) = key.ty else {
+            return None;
+        };
+        let desc = self.view_struct("Desc")?;
+        let made = self.structs[sid].origin_gen.as_ref()?.0 == desc;
+        (made && self.sigs[*fid].decl.name.text == "desc").then(|| inner.clone())
     }
 
     pub(in crate::lower) fn array_filled(

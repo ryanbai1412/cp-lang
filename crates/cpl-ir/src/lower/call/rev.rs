@@ -85,7 +85,7 @@ impl<'a> Lowerer<'a> {
 
     /// The std struct `name` that types a built-in view, wherever the
     /// caller's module stands.
-    fn view_struct(&self, name: &str) -> Option<GenStructId> {
+    pub(in crate::lower) fn view_struct(&self, name: &str) -> Option<GenStructId> {
         let found = |m: ModId| match self.mod_syms[m].get(name) {
             Some(Sym::GenStruct(gid)) => Some(*gid),
             _ => None,

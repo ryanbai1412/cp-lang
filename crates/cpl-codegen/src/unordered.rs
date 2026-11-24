@@ -151,7 +151,7 @@ impl Found {
 fn sorted_scans(block: &Block, out: &mut Vec<*const Expr>) {
     walk::deep_exprs(block, &mut |e| {
         let ExprKind::Do(b) = &e.kind else { return };
-        // `sorted(desc: true)` binds its arguments first: plain scalar
+        // a sort may bind its arguments first: plain scalar
         // lets, which run nothing and can't see the list's order.
         let stmts: Vec<&Stmt> = b.stmts.iter().filter(|s| !simple_scalar_let(s)).collect();
         let [Stmt::Let(list, Some(init)), Stmt::Expr(sort), Stmt::Give(give)] = stmts[..] else {
@@ -202,7 +202,7 @@ fn sorted_scans(block: &Block, out: &mut Vec<*const Expr>) {
 }
 
 /// The sort in `sort`, or in `do: let d = desc; sort; ()` that
-/// `sorted(desc: d)` lowers to.
+/// a sort with bound arguments lowers to.
 fn held_sort(sort: &Expr) -> &Expr {
     let ExprKind::Do(b) = &sort.kind else {
         return sort;

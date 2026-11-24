@@ -70,6 +70,6 @@ ml[1].extend(grow_list())
 assert ml[1] == [1, 2, 7, 8]
 ml[1].push(grow_int())
 assert ml[1] == [1, 2, 7, 8, 9]
-ml[1].sort(desc: grow_bool())
+ml[1].sort(by: x => desc(x))
 assert ml[1] == [9, 8, 7, 2, 1]
 print("ok")

@@ -10,5 +10,5 @@ var t = xs.clone()
 t.sort()
 print([f.q for f in t])
 var u = xs
-u.sort(desc: true)
+u.sort(by: x => desc(x))
 print([f.p * 10 + f.q for f in u])

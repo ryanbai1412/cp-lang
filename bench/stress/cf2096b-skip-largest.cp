@@ -4,13 +4,13 @@
 // class: off-by-one
 fn gloves(k: Int, l: List<Int>, r: List<Int>) -> Int:
     let n = l.len
-    let mins = sorted([min(l[i], r[i]) for i in 0..n], desc: true)
+    let mins = sorted([min(l[i], r[i]) for i in 0..n], by: x => desc(x))
     sum(max(l[i], r[i]) for i in 0..n) + mins[1..k].sum() + 1  // planted
 
 @alt(gloves)
 fn gloves_slow(k: Int, l: List<Int>, r: List<Int>) -> Int:
     let n = l.len
-    let mins = sorted([min(l[i], r[i]) for i in 0..n], desc: true)
+    let mins = sorted([min(l[i], r[i]) for i in 0..n], by: x => desc(x))
     sum(max(l[i], r[i]) for i in 0..n) + mins[0..k - 1].sum() + 1
 
 @!multitest
