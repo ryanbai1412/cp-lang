@@ -12,6 +12,9 @@
   "dream": [
    "corpus/problems/ucrpc21g/dream.cp"
   ],
+  "original": [
+   "corpus/problems/ucrpc21g/orig.cpp"
+  ],
   "port": [
    "corpus/problems/ucrpc21g/port.cp"
   ]
