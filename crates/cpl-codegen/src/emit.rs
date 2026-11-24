@@ -167,6 +167,8 @@ pub(crate) struct Emitter<'p> {
     pub memo_pairs: BTreeMap<usize, (usize, bool, bool)>,
     /// Globals stored once, with a literal: emitted as `static constexpr`.
     pub const_globals: BTreeSet<usize>,
+    /// [`Emitter::set_once_globals`], worked out on first use.
+    pub set_once_globals: std::cell::OnceCell<BTreeSet<usize>>,
     /// What follows the `let` being written, in its block.
     pub tail: Option<crate::lend::Tail>,
     /// Local lists kept in one buffer for the whole run: see [`crate::scope::reused`].
@@ -396,6 +398,7 @@ impl<'p> Emitter<'p> {
             rec_slot: None,
             memo_pairs: BTreeMap::new(),
             const_globals: BTreeSet::new(),
+            set_once_globals: Default::default(),
             tail: None,
             in_setup: false,
             spent: BTreeSet::new(),

@@ -1193,3 +1193,37 @@ fn explained(src: &str) -> Vec<crate::ClosureLowering> {
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     crate::explain_closures(&program)
 }
+
+const ROOTED_FOLD: &str = concat!(
+    "let n: 1..=2000 = read()\n",
+    "domain V = 1..=n\n",
+    "let root: V = read()\n",
+    "let a: [V]0..=1000000000 = read()\n",
+    "let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), root)\n",
+    "fn works(ops: Int, d: Int) -> Bool:\n",
+    "    t.up(+, finish: (s, v) => s + a[v] - ops / n - Int(v.label <= ops % n) - ops / d)[root] == 0\n",
+    "print(yes(works(read(), read())))\n",
+);
+
+#[test]
+fn a_quotient_fixed_when_a_closure_is_made_is_worked_out_once_then() {
+    let cpp = cpp(ROOTED_FOLD);
+    let lambda = cpp.split("[ops_2 = ops").nth(1).expect("the finish lambda");
+    let (captures, body) = lambda.split_once("mutable").expect("a lambda");
+    assert!(captures.contains("= cpl::divp(ops, n)"), "{captures}");
+    assert!(captures.contains("= cpl::modp(ops, n)"), "{captures}");
+    let body = body.split("\n  }").next().unwrap();
+    assert!(
+        !body.contains("divp(ops_2, n)") && !body.contains("modp(ops_2, n)"),
+        "{body}"
+    );
+}
+
+#[test]
+fn a_quotient_that_could_trap_stays_where_it_is_divided() {
+    let cpp = cpp(ROOTED_FOLD);
+    let lambda = cpp.split("[ops_2 = ops").nth(1).expect("the finish lambda");
+    let (captures, body) = lambda.split_once("mutable").expect("a lambda");
+    assert!(!captures.contains("d)"), "{captures}");
+    assert!(body.contains("d_2)"), "{body}");
+}

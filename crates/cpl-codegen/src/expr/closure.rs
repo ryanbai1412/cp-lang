@@ -360,6 +360,11 @@ impl<'p> Emitter<'p> {
             ret_cpp = format!("const {ret_cpp}&");
             self.lending_closures.insert(cid);
         }
+        let pins = self.pinned.len();
+        if !skip_captures && !saved_in_setup {
+            let in_body = saved_closure.is_some() || self.fn_id.is_some();
+            self.made_once_quotients(cid, rec_slot, in_body, &saved_names, &mut cap_parts);
+        }
 
         let mut text = String::new();
         self.indent += 1;
@@ -395,6 +400,7 @@ impl<'p> Emitter<'p> {
             ));
         }
         self.block(&def.body, &mut text);
+        self.pinned.truncate(pins);
         self.indent -= 1;
         text.push_str(&pad(self.indent));
         text.push('}');
@@ -500,6 +506,127 @@ impl Emitter<'_> {
                     .closure_access(self.program, c)
                     .is_some_and(|a| !a.writes.contains(&(true, g)))
             })
+    }
+
+    /// `x / y` and `x % y` in closure `cid` whose operands stay fixed while it
+    /// lives (by-value captures it never writes, literals and, for a closure
+    /// made in a fn's body, globals set once at the top level) and whose
+    /// divisor is positive, so working one out early can't trap: each is a
+    /// capture worked out once when the lambda is made, not per call.
+    fn made_once_quotients(
+        &mut self,
+        cid: usize,
+        rec_slot: Option<usize>,
+        in_body: bool,
+        outer_names: &[String],
+        cap_parts: &mut Vec<String>,
+    ) {
+        let program = self.program;
+        let def = &program.closures[cid];
+        let mut written = std::collections::BTreeSet::new();
+        crate::uses::places::each_written(&def.body, &mut |p| {
+            written.extend(p.root_local());
+        });
+        let mut fixed = BTreeMap::new();
+        for cap in &def.captures {
+            if cap.by_ref || written.contains(&cap.inner) {
+                continue;
+            }
+            if cap.is_global {
+                if self.const_globals.contains(&cap.outer) {
+                    fixed.insert(cap.inner, global_ident(program, cap.outer));
+                }
+            } else if Some(cap.outer) != rec_slot {
+                fixed.insert(cap.inner, outer_names[cap.outer].clone());
+            }
+        }
+        let set_once = if in_body {
+            self.set_once_globals()
+        } else {
+            Default::default()
+        };
+        let mut found: Vec<&Expr> = Vec::new();
+        {
+            let still = |e: &Expr| match e.kind {
+                ExprKind::Int(_) => true,
+                ExprKind::Local(s) => fixed.contains_key(&s),
+                ExprKind::Global(g) => self.const_globals.contains(&g) || set_once.contains(&g),
+                _ => false,
+            };
+            for (e, l, r) in crate::uses::effects::int_divisions(&def.body) {
+                if still(l)
+                    && still(r)
+                    && self.facts.sign(self.facts_home(), r) == crate::ranges::Sign::Positive
+                {
+                    found.push(e);
+                }
+            }
+        }
+        if found.is_empty() {
+            return;
+        }
+        let mut names = self.names.clone();
+        for (&slot, name) in &fixed {
+            names[slot] = name.clone();
+        }
+        let inner = std::mem::replace(&mut self.names, names);
+        let mut made: Vec<(String, String)> = Vec::new();
+        let mut pins = Vec::new();
+        for e in found {
+            let code = self.expr(e).text;
+            let name = match made.iter().find(|(c, _)| *c == code) {
+                Some((_, name)) => name.clone(),
+                None => {
+                    let mut k = 0;
+                    let mut name = format!("q{cid}_{k}");
+                    while self.taken.contains(&name) || self.top_names.contains(&name) {
+                        k += 1;
+                        name = format!("q{cid}_{k}");
+                    }
+                    self.taken.insert(name.clone());
+                    cap_parts.push(format!("{name} = {code}"));
+                    made.push((code, name.clone()));
+                    name
+                }
+            };
+            pins.push((e as *const Expr, name));
+        }
+        self.names = inner;
+        self.pinned.extend(pins);
+    }
+
+    /// The globals one top-level statement of the program sets, written
+    /// nowhere else: a `let` read in, which no fn or closure can change.
+    fn set_once_globals(&self) -> std::collections::BTreeSet<usize> {
+        let program = self.program;
+        self.set_once_globals
+            .get_or_init(|| {
+                let mut writes = BTreeMap::<usize, usize>::new();
+                let mut count = |block: &cpl_ir::Block| {
+                    crate::uses::places::each_written(block, &mut |p| {
+                        if let Some(g) = p.root_global() {
+                            *writes.entry(g).or_default() += 1;
+                        }
+                    });
+                };
+                count(&program.main);
+                program.fns.iter().for_each(|f| count(&f.body));
+                program.closures.iter().for_each(|c| count(&c.body));
+                program
+                    .main
+                    .stmts
+                    .iter()
+                    .filter_map(|s| match s {
+                        Stmt::Assign(p, cpl_ir::AssignOp::Set, _) => match p.kind {
+                            PlaceKind::Global(g) => Some(g),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .filter(|g| writes.get(g) == Some(&1))
+                    .collect()
+            })
+            .clone()
     }
 
     /// The C++ type of a value that is stored or passed: a `()` held in a
