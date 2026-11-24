@@ -410,3 +410,30 @@ fn a_profiled_build_counts_the_line_that_tests_an_into_fn() {
         "no site counts `if let h = half(i)`: {spans:?}\n{profiled}"
     );
 }
+
+#[test]
+fn an_if_let_with_one_value_per_arm_is_a_conditional_not_a_lambda() {
+    let cpp = cpp(concat!(
+        "fn pick(fill: ?Int, d: Int) -> Int:\n",
+        "    let v = if let x = fill: x + 1 else: d\n",
+        "    v\n",
+        "print(pick(Some(3), 0), pick(None, 7))\n",
+    ));
+    assert!(!cpp.contains("[&]() -> ll"), "{cpp}");
+    assert!(cpp.contains("fill.has_value() ? "), "{cpp}");
+}
+
+#[test]
+fn an_if_let_whose_arm_runs_a_statement_keeps_its_block() {
+    let cpp = cpp(concat!(
+        "fn pick(fill: ?Int, d: Int) -> Int:\n",
+        "    var n = 0\n",
+        "    let v = if let x = fill:\n",
+        "        n += 1\n",
+        "        x + n\n",
+        "    else: d\n",
+        "    v\n",
+        "print(pick(Some(3), 0), pick(None, 7))\n",
+    ));
+    assert!(cpp.contains("[&]() -> ll"), "{cpp}");
+}

@@ -131,6 +131,68 @@ fn gives_its_place<'e>(block: &'e cpl_ir::Block, ty: &Ty) -> Option<&'e Expr> {
     .then_some(init)
 }
 
+/// `if let x = o: a else: b` whose `let`s each read a place and whose arms each give one
+/// value: the `If` a plain `if` expression is, `o.has_value() ? a : b`, not a lambda.
+fn gives_a_pick(block: &cpl_ir::Block, ty: &Ty) -> Option<Expr> {
+    fn reads(e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Local(_) => true,
+            ExprKind::Field(base, _) | ExprKind::Unwrap(base, false) => reads(base),
+            _ => false,
+        }
+    }
+    fn put_in(e: &Expr, put: &[(usize, Expr)]) -> Option<Expr> {
+        fn go(e: &mut Expr, put: &[(usize, Expr)], ok: &mut bool) {
+            match &e.kind {
+                ExprKind::Local(s) => {
+                    if let Some((_, v)) = put.iter().find(|(p, _)| p == s) {
+                        *e = v.clone();
+                    }
+                    return;
+                }
+                ExprKind::Do(_)
+                | ExprKind::Closure(_)
+                | ExprKind::MutSlice(..)
+                | ExprKind::MutLine(..)
+                | ExprKind::Mutate(..)
+                | ExprKind::Sort(..) => *ok = false,
+                _ => {}
+            }
+            walk::children_mut(e, &mut |c| go(c, put, ok));
+        }
+        let (mut e, mut ok) = (e.clone(), true);
+        go(&mut e, put, &mut ok);
+        ok.then_some(e)
+    }
+    fn pick(stmts: &[Stmt], ty: &Ty, put: &mut Vec<(usize, Expr)>) -> Option<Expr> {
+        match stmts {
+            [Stmt::Let(slot, Some(init)), rest @ ..] if reads(init) => {
+                let init = put_in(init, put)?;
+                put.push((*slot, init));
+                pick(rest, ty, put)
+            }
+            [Stmt::Give(given)] => put_in(given, put),
+            [Stmt::If(test, then, otherwise)] => {
+                let n = put.len();
+                let test = put_in(test, put)?;
+                let a = pick(&then.stmts, ty, put)?;
+                put.truncate(n);
+                let b = pick(&otherwise.stmts, ty, put)?;
+                let span = test.span;
+                let kind = ExprKind::If(Box::new(test), Box::new(a), Box::new(b));
+                Some(Expr {
+                    kind,
+                    ty: ty.clone(),
+                    span,
+                })
+            }
+            _ => None,
+        }
+    }
+    matches!(block.stmts.last(), Some(Stmt::If(..))).then_some(())?;
+    pick(&block.stmts, ty, &mut Vec::new())
+}
+
 /// An `int` expression made `long long`, so arithmetic on it has 64 bits.
 fn widen(code: &Code) -> Code {
     if !code.narrow {
@@ -1119,6 +1181,12 @@ impl<'p> Emitter<'p> {
                 }
                 if let Some(place) = gives_its_place(block, &e.ty) {
                     return self.expr(place);
+                }
+                if let Some(pick) = (self.expr_fixed_len(e).is_none())
+                    .then(|| gives_a_pick(block, &e.ty))
+                    .flatten()
+                {
+                    return self.expr(&pick);
                 }
                 if let Some(join) = self.devirt.join_leaves(e) {
                     let index = self.join_index(&join.pick, &join.leaves);
