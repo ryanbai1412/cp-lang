@@ -198,7 +198,7 @@ pub(crate) struct CompiledProgram<'p> {
     pub main: Chunk<'p>,
     /// What is above `@!multitest`. It ends in `RetI` of 1, so a run
     /// that falls off its end is told apart from a top-level `return`.
-    pub setup: Option<Chunk<'p>>,
+    pub setup: Chunk<'p>,
     pub fns: Vec<Option<Chunk<'p>>>,
     pub fed_fns: Vec<Option<Chunk<'p>>>,
     pub closures: Vec<Option<Chunk<'p>>>,
@@ -213,7 +213,7 @@ impl<'p> CompiledProgram<'p> {
     pub(crate) fn chunks(&self) -> impl Iterator<Item = &Chunk<'p>> {
         let bodies = self.fns.iter().chain(&self.fed_fns).chain(&self.closures);
         std::iter::once(&self.main)
-            .chain(self.setup.as_ref())
+            .chain([&self.setup])
             .chain(bodies.flatten())
     }
 
@@ -347,7 +347,7 @@ impl<'p> CompiledProgram<'p> {
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let main = main_c.finish();
-        let setup = program.multitest.then(|| {
+        let setup = {
             let mut c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0, None);
             c.traced = traced;
             c.profiled = profiled;
@@ -355,9 +355,8 @@ impl<'p> CompiledProgram<'p> {
             let done = c.alloc_i();
             c.emit_const_i(done, 1, Span::default());
             c.emit(Op::RetI { src: done }, Span::default());
-            let setup = c.finish();
-            setup
-        });
+            c.finish()
+        };
         let forwards = (program.closures.iter())
             .map(|def| forward_of(def, &fns).filter(|_| !profiled && !traced))
             .collect();

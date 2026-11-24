@@ -296,7 +296,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     op,
                     Op::MakeClosure { .. }
                         | Op::MutatePlace { .. }
-                        | Op::SortPlaceCmp { .. }
                         | Op::SortByKeysPlaceCmp { .. }
                         | Op::Print { .. }
                         | Op::Format { .. }

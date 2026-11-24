@@ -813,11 +813,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(tracer) = &mut self.tracer {
             tracer.on(crate::observe::Event::BeginCases);
         }
-        let returned = match &compiled.setup {
-            Some(setup) => self.run_setup_vm(&compiled, setup)?,
-            None => matches!(self.block(&program.setup)?, Flow::Return(_)),
-        };
-        if returned {
+        if self.run_setup_vm(&compiled, &compiled.setup)? {
             return Ok(());
         }
         self.run_after_setup()
@@ -1203,13 +1199,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let hi = self.eval(hi)?.int();
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
-                self.mut_slice_view(place, lo, hi, indices, span)?
+                self.mut_view(place, None, lo, hi, indices, span)?
             }
             ExprKind::MutLine(place, at, axis) => {
                 let at = self.eval(at)?.int();
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
-                self.mut_line_view(place, at, *axis, indices, span)?
+                self.mut_view(place, Some(*axis), at, 0, indices, span)?
             }
             ExprKind::Mutate(op, place, args) => {
                 let value = self.mutate(*op, place, args, span)?;

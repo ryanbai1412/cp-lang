@@ -666,7 +666,7 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
 }
 
 /// The elements of a list or an array, with the array's dims.
-pub(super) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i64>>)> {
+pub(crate) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i64>>)> {
     match seq {
         Value::List(items) => Ok((crate::value::Cells::unwrap_values(items), None)),
         Value::Array(arr) => {
@@ -678,7 +678,7 @@ pub(super) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i
 }
 
 /// The inverse of `seq_items`.
-pub(super) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
+pub(crate) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
     match dims {
         None => Value::list(items),
         Some(dims) => Value::Array(Rc::new(Array::from_values(dims, items))),

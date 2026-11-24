@@ -73,7 +73,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         operands_first: bool,
         expr: &'p Expr,
     ) -> u16 {
-        if let (false, slot) = cpl_ir::walk::root(place) {
+        let lent = through_view(place) || matches!(view, ViewOp::Slice(_) | ViewOp::Line(..));
+        let (global, slot) = cpl_ir::walk::root(place);
+        if let (false, slot, true) = (global, slot, lent) {
             let slot = slot as u16;
             if let Err(at) = self.ref_slots.binary_search(&slot) {
                 self.ref_slots.insert(at, slot);
@@ -95,28 +97,45 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if !operands_first {
             regs.rotate_left(indices.len());
         }
-        self.applies_sync = true;
+        self.emit_apply(expr, regs, Some((view, operands.len())), true)
+    }
+
+    /// `Op::ApplyV` of `expr` on `regs` into a fresh value register,
+    /// clearing the temporaries among them after.
+    fn emit_apply(
+        &mut self,
+        expr: &'p Expr,
+        regs: Vec<u16>,
+        view: Option<(ViewOp<'p>, usize)>,
+        sync: bool,
+    ) -> u16 {
+        self.applies_sync |= sync;
         let idx = self.applies.len() as u32;
         self.applies.push(ApplySpec {
             expr,
             regs: regs.clone(),
-            view: Some((view, operands.len())),
+            view,
         });
         let dst = self.alloc_v();
-        self.emit(
-            Op::ApplyV {
-                idx,
-                dst,
-                sync: true,
-            },
-            expr.span,
-        );
+        self.emit(Op::ApplyV { idx, dst, sync }, expr.span);
         for r in regs {
             if r >= self.num_local_v {
                 self.emit(Op::ClearV { reg: r }, expr.span);
             }
         }
         dst
+    }
+
+    /// The sort `expr` of `place`, by the interpreter's sort at a place.
+    pub(super) fn compile_sort_at(
+        &mut self,
+        place: &'p Place,
+        by: &'p cpl_ir::SortBy,
+        desc: Option<&'p Expr>,
+        expr: &'p Expr,
+    ) -> u16 {
+        let desc: Vec<&'p Expr> = desc.into_iter().collect();
+        self.compile_view(ViewOp::Sort(place, by), place, &desc, true, expr)
     }
 
     /// `expr` into a fresh value register by `Op::ApplyV`, when it applies
@@ -132,9 +151,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         if let ExprKind::Sort(place, by, desc) = &expr.kind {
             if through_view(place) {
-                let desc: Vec<&'p Expr> = desc.iter().map(|d| &**d).collect();
-                let view = ViewOp::Sort(place, by);
-                return Some(self.compile_view(view, place, &desc, true, expr));
+                return Some(self.compile_sort_at(place, by, desc.as_deref(), expr));
             }
         }
         if !applies(expr) {
@@ -159,26 +176,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             _ => false,
         };
-        Some(self.emit_apply_v(expr, regs, sync))
-    }
-
-    /// `Op::ApplyV` of `expr` to `regs` into a fresh value register.
-    fn emit_apply_v(&mut self, expr: &'p Expr, regs: Vec<u16>, sync: bool) -> u16 {
-        self.applies_sync |= sync;
-        let idx = self.applies.len() as u32;
-        self.applies.push(ApplySpec {
-            expr,
-            regs: regs.clone(),
-            view: None,
-        });
-        let dst = self.alloc_v();
-        self.emit(Op::ApplyV { idx, dst, sync }, expr.span);
-        for r in regs {
-            if r >= self.num_local_v {
-                self.emit(Op::ClearV { reg: r }, expr.span);
-            }
-        }
-        dst
+        Some(self.emit_apply(expr, regs, None, sync))
     }
 
     /// The pop `expr` of `place` (`pop`, `pop_first`, `pop_last`, which
@@ -195,7 +193,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             .into_iter()
             .map(|x| self.compile_expr_v(x))
             .collect();
-        self.emit_apply_v(expr, regs, true)
+        self.emit_apply(expr, regs, None, true)
     }
 
     /// The mutation `expr` into a fresh value register by

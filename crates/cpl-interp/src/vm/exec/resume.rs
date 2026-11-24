@@ -14,14 +14,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// VM from where it was to its end.
     pub(crate) fn resume_frame(&mut self, frames: &[FrameAt], k: usize) -> Res<Flow> {
         let frame = &frames[k];
-        let compiled =
-            Some(std::rc::Rc::clone(&self.vm)).filter(|c| chunk_of(c, frame.body).is_some());
+        let compiled = std::rc::Rc::clone(&self.vm);
         let base = self.base;
-        let exit = match &compiled {
-            Some(compiled) => self.run_body_vm(compiled, frame.body, Some((frames, k))),
+        let exit = match chunk_of(&compiled, frame.body) {
+            Some(_) => self.run_body_vm(&compiled, frame.body, Some((frames, k))),
             None => Ok(Value::Unit),
         };
-        if (self.unwait() || compiled.is_none()) && exit.is_ok() {
+        if (self.unwait() || chunk_of(&compiled, frame.body).is_none()) && exit.is_ok() {
             return trap(
                 frame.span,
                 cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),

@@ -231,35 +231,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         true
     }
 
-    /// `xs.sort()` over elements with a user `<`: sorts in place through
-    /// the interpreter's comparison, as the tree-walker does.
-    pub(super) fn try_compile_sort_cmp_stmt(
-        &mut self,
-        expr: &'p Expr,
-        place: &'p Place,
-        desc: Option<&'p Expr>,
-    ) -> bool {
-        match &place.ty {
-            Ty::List(_) => {}
-            Ty::Array { dims, .. } if dims.len() == 1 => {}
-            _ => return false,
-        }
-        let saved = (self.ops.len(), self.spans.len(), self.places.len());
-        let Some(path) = self.compile_place_path_to(place, true) else {
-            self.ops.truncate(saved.0);
-            self.spans.truncate(saved.1);
-            self.places.truncate(saved.2);
-            return false;
-        };
-        let desc_r = match desc {
-            Some(e) => self.compile_expr_i(e),
-            None => u16::MAX,
-        };
-        let idx = self.push_sort_spec(expr);
-        self.emit(Op::SortPlaceCmp { idx, path, desc_r }, expr.span);
-        true
-    }
-
     /// Records the sort `expr` for an op that compares with a user `<`,
     /// which can run user code and so needs the frame on the stack.
     fn push_sort_spec(&mut self, expr: &'p Expr) -> u32 {

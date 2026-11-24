@@ -243,42 +243,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 exec_sort_place(target, desc, spans[cur_pc])?;
             }
-            Op::SortPlaceCmp { idx, path, desc_r } => {
-                let span = spans[cur_pc];
-                let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
-                let cpl_ir::ExprKind::Sort(place, _, _) = &chunk.applies[idx as usize].expr.kind
-                else {
-                    return bug(span, "not a sort");
-                };
-                let (cpl_ir::Ty::List(elem) | cpl_ir::Ty::Array { elem, .. }) = &place.ty else {
-                    return bug(span, "not a sequence sort");
-                };
-                let pp = &chunk.places[path as usize];
-                let keys = place_keys(pp, regs_v);
-                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let seq = std::mem::replace(
-                    walk_place_mut(root, &pp.steps, regs_i, &keys, span)?,
-                    Value::Unit,
-                );
-                let (items, dims) = seq_items(seq, span)?;
-                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_to_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
-                self.show_lent()?;
-                let sorted = self.merge_sort_ty(items, elem, desc, span);
-                self.hide_lent()?;
-                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                let sorted = seq_of_items(sorted?, dims);
-                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                *walk_place_mut(root, &pp.steps, regs_i, &keys, span)? = sorted;
-            }
             Op::SortByKeysPlaceCmp {
                 idx,
                 path,
@@ -1592,15 +1556,13 @@ impl<'p, O: Observer> Interp<'p, '_, O> {
         match op {
             ViewOp::Slice(place) => {
                 let [lo, hi] = crate::apply::operand_values(vals, span)?;
-                self.mut_slice_view(place, lo.int(), hi.int(), indices, span)
+                self.mut_view(place, None, lo.int(), hi.int(), indices, span)
             }
             ViewOp::Line(place, axis) => {
                 let [at] = crate::apply::operand_values(vals, span)?;
-                self.mut_line_view(place, at.int(), axis, indices, span)
+                self.mut_view(place, Some(axis), at.int(), 0, indices, span)
             }
-            ViewOp::Mutate(op, place, args) => {
-                self.mutated(op, place, args, indices, vals, span)
-            }
+            ViewOp::Mutate(op, place, args) => self.mutated(op, place, args, indices, vals, span),
             ViewOp::Sort(place, by) => {
                 let desc = vals.first().is_some_and(|d| d.bool());
                 self.sort_place(place, by, desc, indices, span)

@@ -814,33 +814,29 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 } else if let ExprKind::Print(args, end) = &expr.kind {
                     self.compile_print(args, end.as_deref(), expr.span);
                 } else if let ExprKind::Mutate(op, place, args) = &expr.kind {
-                    if super::apply::through_view(place) {
-                        let operands: Vec<&'p Expr> = args.iter().collect();
-                        let view = ViewOp::Mutate(*op, place, args);
-                        let reg = self.compile_view(view, place, &operands, false, expr);
-                        self.emit(Op::ClearV { reg }, expr.span);
-                    } else if self.try_compile_mutate_stmt(*op, place, args, expr.span) {
-                    } else if let Some(dst) = self.try_compile_mutate_place(expr) {
+                    if !super::apply::through_view(place)
+                        && self.try_compile_mutate_stmt(*op, place, args, expr.span)
+                    {
+                    } else if let Some(dst) = self.try_compile_apply_v(expr) {
                         self.emit(Op::ClearV { reg: dst }, expr.span);
                     } else {
                         self.emit_fallback_stmt(stmt);
                     }
-                } else if matches!(&expr.kind, ExprKind::Sort(place, ..) if super::apply::through_view(place))
-                {
-                    if let Some(reg) = self.try_compile_apply_v(expr) {
+                } else if let ExprKind::Sort(place, by, desc) = &expr.kind {
+                    let desc = desc.as_deref();
+                    let fast = !super::apply::through_view(place)
+                        && match sort_key_of(&expr.kind) {
+                            Some((_, key, _)) => {
+                                self.try_compile_sort_key_stmt(expr, place, key, desc)
+                            }
+                            None => {
+                                matches!(by, cpl_ir::SortBy::Natural)
+                                    && self.try_compile_sort_stmt(place, desc, expr.span)
+                            }
+                        };
+                    if !fast {
+                        let reg = self.compile_sort_at(place, by, desc, expr);
                         self.emit(Op::ClearV { reg }, expr.span);
-                    } else {
-                        self.emit_fallback_stmt(stmt);
-                    }
-                } else if let ExprKind::Sort(place, cpl_ir::SortBy::Natural, desc) = &expr.kind {
-                    if !self.try_compile_sort_stmt(place, desc.as_deref(), expr.span)
-                        && !self.try_compile_sort_cmp_stmt(expr, place, desc.as_deref())
-                    {
-                        self.emit_fallback_stmt(stmt);
-                    }
-                } else if let Some((place, by, desc)) = sort_key_of(&expr.kind) {
-                    if !self.try_compile_sort_key_stmt(expr, place, by, desc) {
-                        self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
                     if self

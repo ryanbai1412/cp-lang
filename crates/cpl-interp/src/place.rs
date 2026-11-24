@@ -230,33 +230,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         span: Span,
     ) -> Res<Value> {
         let cell = self.resolve(place, &mut indices.iter())?;
-        let taken = std::mem::replace(cell, Value::Moved);
-        enum SortKind {
-            List,
-            Array(Vec<i64>),
-            Str,
-            MutView(Rc<MutViewVal>),
-        }
-        let (mut items_vec, kind) = match taken {
-            Value::List(items) => {
-                let v = value::Cells::unwrap_values(items);
-                (v, SortKind::List)
-            }
-            Value::Array(arr) => {
-                let a = Rc::try_unwrap(arr).unwrap_or_else(|r| (*r).clone());
-                let dims = a.dims.clone();
-                (value::Cells::unwrap_values(a.data), SortKind::Array(dims))
-            }
-            Value::Str(bytes) => {
-                let v = bytes.iter().copied().map(Value::Char).collect();
-                (v, SortKind::Str)
-            }
+        // A view sorts where it writes, so it stays in its place; `dims`
+        // is a list's or an array's, and neither is a string's.
+        let (mut items_vec, dims, view) = match std::mem::replace(cell, Value::Moved) {
             Value::MutView(mv) => {
-                *self.resolve(place, &mut indices.iter())? = Value::MutView(Rc::clone(&mv));
-                let v = self.mut_view_to_vec(&mv, span)?;
-                (v, SortKind::MutView(mv))
+                *cell = Value::MutView(Rc::clone(&mv));
+                (self.mut_view_to_vec(&mv, span)?, None, Some(mv))
             }
-            _ => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+            Value::Str(bytes) => (bytes.iter().copied().map(Value::Char).collect(), None, None),
+            seq => {
+                let (items, dims) = crate::vm::seq_items(seq, span)?;
+                (items, Some(dims), None)
+            }
         };
         let elem_ty = match &place.ty {
             Ty::List(e) | Ty::MutView(e, _) | Ty::Array { elem: e, .. } => (**e).clone(),
@@ -298,29 +283,26 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
         }
-        match kind {
-            SortKind::MutView(mv) => {
+        let sorted = match (view, dims) {
+            (Some(mv), _) => {
                 for (k, item) in items_vec.into_iter().enumerate() {
                     *self.mut_view_cell(&mv, k, span)? = item;
                 }
+                None
             }
-            SortKind::Array(dims) => {
-                *self.resolve(place, &mut indices.iter())? =
-                    Value::Array(Rc::new(Array::from_values(dims, items_vec)));
-            }
-            SortKind::List => {
-                *self.resolve(place, &mut indices.iter())? = Value::list(items_vec);
-            }
-            SortKind::Str => {
-                let bytes: Vec<u8> = items_vec
+            (None, Some(dims)) => Some(crate::vm::seq_of_items(items_vec, dims)),
+            (None, None) => Some(Value::Str(Rc::new(
+                items_vec
                     .into_iter()
                     .map(|v| match v {
                         Value::Char(c) => c,
                         _ => 0,
                     })
-                    .collect();
-                *self.resolve(place, &mut indices.iter())? = Value::Str(Rc::new(bytes));
-            }
+                    .collect(),
+            ))),
+        };
+        if let Some(sorted) = sorted {
+            *self.resolve(place, &mut indices.iter())? = sorted;
         }
         // Not a step of its own, as before: the next step shows it.
         if let (Some(_), Some(tracer)) = (place.root_global(), self.tracer.as_mut()) {
@@ -329,21 +311,32 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         Ok(Value::Unit)
     }
 
-    /// The view `mut place[lo..hi]`, the place's indices already evaluated.
-    pub(crate) fn mut_slice_view(
+    /// The view `mut place[a..b]`, or with `line` line `a` of the grid at
+    /// `place` along that axis (1: a row), the place's indices already
+    /// evaluated.
+    pub(crate) fn mut_view(
         &self,
         place: &Place,
-        lo: i64,
-        hi: i64,
+        line: Option<usize>,
+        a: i64,
+        b: i64,
         indices: Vec<Value>,
         span: Span,
     ) -> Res<Value> {
         let part = self.part_of(place, &mut indices.into_iter());
-        let (target, base_lo, base_len, step, key0) = match self.part(&part) {
-            Some(Value::List(items)) => (part, 0usize, items.len(), 1, 0),
-            Some(Value::Array(arr)) => (part, 0usize, arr.len(), 1, 0),
-            Some(Value::MutView(mv)) => (mv.target.clone(), mv.lo, mv.len, mv.step, mv.key0),
+        let (base_lo, base_len, step, key0, dims) = match self.part(&part) {
             Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+            Some(Value::Array(arr)) if line.is_some() && arr.dims.len() == 2 => (
+                0,
+                0,
+                1,
+                0,
+                Some((arr.dims[0] as usize, arr.dims[1] as usize)),
+            ),
+            _ if line.is_some() => return bug(span, "a grid line needs a 2D array"),
+            Some(Value::List(items)) => (0usize, items.len(), 1, 0, None),
+            Some(Value::Array(arr)) => (0usize, arr.len(), 1, 0, None),
+            Some(Value::MutView(mv)) => (mv.lo, mv.len, mv.step, mv.key0, None),
             _ => {
                 return trap(
                     span,
@@ -351,56 +344,44 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 )
             }
         };
-        if lo < 0 || hi < lo || hi as usize > base_len {
-            return trap(
-                span,
-                cpl_diag::msgs::interp::SLICE_OUTSIDE_LIST_LENGTH.at(&[&lo, &hi, &base_len]),
-            );
-        }
+        let target = match self.part(&part) {
+            Some(Value::MutView(mv)) => mv.target.clone(),
+            _ => part,
+        };
+        let (lo, len, step, key0) = match (dims, line) {
+            (Some((rows, cols)), Some(axis)) => {
+                let (fixed, len, step) = if axis == 1 {
+                    (rows, cols, 1)
+                } else {
+                    (cols, rows, cols)
+                };
+                let Some(at) = usize::try_from(a).ok().filter(|at| *at < fixed) else {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_AXIS_LENGTH.at(&[&a, &fixed]),
+                    );
+                };
+                (if axis == 1 { at * cols } else { at }, len, step, 0)
+            }
+            _ if a < 0 || b < a || b as usize > base_len => {
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::SLICE_OUTSIDE_LIST_LENGTH.at(&[&a, &b, &base_len]),
+                );
+            }
+            _ => (
+                base_lo + a as usize * step,
+                (b - a) as usize,
+                step,
+                key0 + a,
+            ),
+        };
         Ok(Value::MutView(Rc::new(MutViewVal {
             target,
-            lo: base_lo + lo as usize * step,
-            len: (hi - lo) as usize,
-            step,
-            key0: key0 + lo,
-        })))
-    }
-
-    /// The view of line `at` of the grid at `place` along `axis` (1: a row).
-    pub(crate) fn mut_line_view(
-        &self,
-        place: &Place,
-        at: i64,
-        axis: usize,
-        indices: Vec<Value>,
-        span: Span,
-    ) -> Res<Value> {
-        let part = self.part_of(place, &mut indices.into_iter());
-        let (rows, cols) = match self.part(&part) {
-            Some(Value::Array(arr)) if arr.dims.len() == 2 => {
-                (arr.dims[0] as usize, arr.dims[1] as usize)
-            }
-            Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-            _ => return bug(span, "a grid line needs a 2D array"),
-        };
-        let (fixed, len, step) = if axis == 1 {
-            (rows, cols, 1)
-        } else {
-            (cols, rows, cols)
-        };
-        let Some(at) = usize::try_from(at).ok().filter(|at| *at < fixed) else {
-            return trap(
-                span,
-                cpl_diag::msgs::interp::INDEX_OUTSIDE_AXIS_LENGTH.at(&[&at, &fixed]),
-            );
-        };
-        let lo = if axis == 1 { at * cols } else { at };
-        Ok(Value::MutView(Rc::new(MutViewVal {
-            target: part,
             lo,
             len,
             step,
-            key0: 0,
+            key0,
         })))
     }
 

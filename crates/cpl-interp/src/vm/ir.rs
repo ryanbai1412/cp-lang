@@ -1310,14 +1310,6 @@ pub(crate) enum Op {
         path: u16,
         desc_r: u16,
     },
-    /// `SortPlace` for an element type with a user `<`: a stable merge
-    /// sort through the interpreter's comparison, the frame synced so the
-    /// `<` can run. `idx`: the sort expression, in `applies`.
-    SortPlaceCmp {
-        idx: u32,
-        path: u16,
-        desc_r: u16,
-    },
     /// `SortByKeysPlace` for a key type with a user `<` (`idx`: the sort
     /// expression, in `applies`).
     SortByKeysPlaceCmp {
@@ -1704,7 +1696,8 @@ pub(crate) enum ViewOp<'p> {
     Mutate(Mutation, &'p Place, &'p [Expr]),
     /// An assignment to a place reached through a view.
     Write(&'p Place, AssignOp),
-    /// A sort of a view, descending when its operand says so.
+    /// A sort of a place the VM's own sorts don't take, such as a view or
+    /// a list with a user `<`, descending when its operand says so.
     Sort(&'p Place, &'p cpl_ir::SortBy),
 }
 
