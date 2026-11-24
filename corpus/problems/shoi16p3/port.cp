@@ -20,11 +20,12 @@ let top = read<[Course]1..=1e9>()
 let rank = read<[Course]1..=n>()
 domain Others = 0..n
 let comb = Comb<Z>(n + 2)
+let power: [0..=n + 1, 0..n]Z = [0..=n + 1, 0..n] (x, e) => Z(x) ** e
 
 fn tables(c: Course) -> Z:
     let (above, below) = (rank[c] - 1, n - rank[c])
     lagrange_at(
-        [sum(Z(s) ** below * Z(u - s) ** above for s in 1..=u) for u in 0..=n + 1],
+        [sum(power[s, below] * power[u - s, above] for s in 1..=u) for u in 0..=n + 1],
         Z(top[c]),
     )
 
