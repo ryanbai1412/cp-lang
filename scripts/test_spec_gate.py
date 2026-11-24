@@ -236,6 +236,11 @@ class GatesTest(unittest.TestCase):
     def test_explain_copies(self):
         from specgate import explain_copies as ec
         self.assertEqual(ec.deep_copies("auto b = std::vector<int64_t>(a);\n"), 1)
+        for line in ("a2 = std::array<ll, 4>(a);", "u = std::set<ll>(a);", "a = cpl::sorted(a);",
+                     "g = std::vector<std::vector<ll>>(rows[i]);", "m = std::map<ll, ll>(cpl::at(ms, i));"):
+            self.assertEqual(ec.deep_copies(line + "\n"), 1, line)
+        for line in ("auto v = std::vector<ll>(5);", "auto t = cpl::sorted(f(a));", "auto v = std::vector<ll>(s.begin(), s.end());"):
+            self.assertEqual(ec.deep_copies(line + "\n"), 0, line)
         rows = {"a.cp": ("a.cp", 2, 1), "b.cp": ("b.cp", 1, 1)}
         with Tree({"spec/conformance/a.cp": "", "spec/conformance/b.cp": "", "spec/conformance/c.cp": ""}), \
                 mock.patch.object(ec, "one", lambda cpl, c, tmp: rows.get(c.name)):

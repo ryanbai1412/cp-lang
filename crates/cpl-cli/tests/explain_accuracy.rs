@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
-use cpp_counts::{deep_copies, optional_copies, std_functions};
+use cpp_counts::{deep_copies, is_place, optional_copies, std_functions};
 
 /// The `.cp` files one directory down from the corpus problems and the
 /// conformance cases.
@@ -45,6 +45,92 @@ fn cpp_copies(cpp: &str) -> usize {
     let distinct: Vec<&str> = cpp.lines().filter(|l| seen.insert(l.trim())).collect();
     let distinct = distinct.join("\n");
     deep_copies(&distinct) + optional_copies(&distinct)
+}
+
+/// The containers [`constructed_copies`] sees built from another value.
+const CONSTRUCTED: [&str; 8] = [
+    "std::vector<",
+    "std::array<",
+    "std::map<",
+    "std::set<",
+    "std::unordered_map<",
+    "std::deque<",
+    "cpl::Grid<",
+    "std::string",
+];
+
+/// `xs`, `w[i]`, `self.rows`: a name, then indexes, then fields.
+fn is_indexed_place(text: &str) -> bool {
+    let word = |t: &str| {
+        t.starts_with(|c: char| c.is_alphabetic() || c == '_')
+            && t.chars().all(|c| c.is_alphanumeric() || c == '_')
+    };
+    let (head, fields) = text.split_once('.').unwrap_or((text, ""));
+    let (base, index) = head.split_once('[').unwrap_or((head, ""));
+    let index_ok = index.is_empty()
+        || index.ends_with(']')
+            && index[..index.len() - 1]
+                .split("][")
+                .all(|i| !i.is_empty() && !i.contains(['[', ']']));
+    word(base) && index_ok && (fields.is_empty() || fields.split('.').all(word))
+}
+
+/// The argument of the call whose `(` opens `rest`, when it is a place.
+fn place_arg(rest: &str) -> bool {
+    let Some(arg) = rest.strip_prefix('(') else {
+        return false;
+    };
+    if let Some(at) = arg.strip_prefix("cpl::at(") {
+        return at
+            .split_once(')')
+            .is_some_and(|(inner, after)| !inner.contains('(') && after.starts_with(')'));
+    }
+    arg.split_once(')')
+        .is_some_and(|(a, _)| is_indexed_place(a))
+}
+
+/// A second heap value spelled as a call: a container constructed from a
+/// place (`std::array<ll, 4>(a)`, `std::set<ll>(a)`), `cpl::sorted(xs)`
+/// (which takes its list by value) and `cpl::to_list(..)`. Mirrors `COPY`
+/// in scripts/specgate/explain_copies.py. Counted here on top of
+/// [`deep_copies`], not under the `// copies:` headers.
+fn constructed_copies(cpp: &str) -> usize {
+    cpp.lines()
+        .map(|line| {
+            let sorted = line
+                .match_indices("cpl::sorted(")
+                .filter(|(at, _)| {
+                    line[at + "cpl::sorted(".len()..]
+                        .split_once(')')
+                        .is_some_and(|(a, _)| is_place(a) && !a.starts_with("cpl::"))
+                })
+                .count();
+            let built = CONSTRUCTED
+                .iter()
+                .flat_map(|ty| line.match_indices(ty).map(move |(at, _)| at + ty.len()))
+                .filter(|&start| {
+                    let rest = &line[start..];
+                    if !line[..start].ends_with('<') {
+                        return place_arg(rest);
+                    }
+                    let mut depth = 1;
+                    rest.char_indices()
+                        .find_map(|(i, c)| {
+                            depth += match c {
+                                '<' => 1,
+                                '>' => -1,
+                                ';' | '(' | ')' => return Some(None),
+                                _ => 0,
+                            };
+                            (depth == 0).then_some(Some(i))
+                        })
+                        .flatten()
+                        .is_some_and(|end| place_arg(&rest[end + 1..]))
+                })
+                .count();
+            line.matches("cpl::to_list(").count() + sorted + built
+        })
+        .sum()
 }
 
 /// Each way explain's report on `src` disagrees with the C++ it builds.
@@ -193,7 +279,7 @@ fn listed_and_made(src: &Path, out: &Path) -> (usize, usize) {
     assert_eq!(explained.code, 0, "{}: {}", src.display(), explained.stderr);
     let rows = rows(&String::from_utf8_lossy(&explained.stdout));
     let listed = rows.iter().filter(|(k, _)| k == "copy").count();
-    (listed, cpp_copies(&cpp))
+    (listed, cpp_copies(&cpp) + constructed_copies(&cpp))
 }
 
 #[test]
@@ -219,4 +305,39 @@ const CASES: &[&str] = &[
     "std-hashmap/reserve-keeps-entries.cp",
     "std-poly/advanced-free-fns-match-brute.cp",
     "core-01/while-let-tuple-pattern.cp",
+    "core-05/exercise-34-loop-writes-separate-clone.cp",
+    "std-models/dp-small.cp",
+    "std-models/link-cut.cp",
+    "std-models/historic-beats.cp",
+    "std-models/euler-tour-tree.cp",
+    "std-seq/set-union-intersect-subtract.cp",
 ];
+
+#[test]
+fn a_container_built_from_a_place_or_sorted_is_a_copy() {
+    let copies = [
+        "a2 = std::array<ll, 4>(a);",
+        "u = std::set<ll>(a);",
+        "std::vector<ll> want_2 = std::vector<ll>(sums);",
+        "g = std::vector<std::vector<ll>>(rows[i]);",
+        "auto s = std::string(self.name);",
+        "m = std::map<ll, std::vector<ll>>(cpl::at(ms, i));",
+        "a = cpl::sorted(a);",
+        "show_1(cpl::sorted(self.xs), 10);",
+        "auto v = cpl::to_list(it);",
+    ];
+    for line in copies {
+        assert_eq!(constructed_copies(line), 1, "{line}");
+    }
+    let not_copies = [
+        "std::vector<ll> xs = std::vector<ll>();",
+        "auto v = std::vector<ll>(s.begin(), s.end());",
+        "auto v = std::vector<ll>(5);",
+        "auto t = cpl::sorted(f(a));",
+        "std::vector<std::string> names;",
+        "auto v = std::vector<ll>{k};",
+    ];
+    for line in not_copies {
+        assert_eq!(constructed_copies(line), 0, "{line}");
+    }
+}
