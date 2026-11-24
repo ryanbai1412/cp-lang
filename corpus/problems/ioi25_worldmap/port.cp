@@ -21,7 +21,7 @@ fn create_map<V, E>(pairs: [E](u: V, v: V)) -> [V.count * 2][V.count * 2]V:
     let (tree, tree_edge) = g.dfs_tree(root: V.first!)
     let tour = tree.euler_tour().collect()
     let room = (i: Int) => min(i, 2 * n - 2 - i)  // how far visit i is from either end
-    var best: [V]Int = 0  // the visit of each vertex with the most room
+    var best: [V]Int = 0                          // the visit of each vertex with the most room
     for (i, v) in tour.items:
         if room(i) > room(best[v]): best[v] = i
     var held: [V]List<V> = []

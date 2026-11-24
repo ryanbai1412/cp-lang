@@ -7,7 +7,7 @@
 fn max_coupons(a0: 1..=1e9, prices: List<1..=1e9>, types: List<1..=4>) -> List<Int>:
     domain C = 0..prices.len
     let (p, t) = ([C] c => prices[c.ord], [C] c => types[c.ord])
-    let cap = 3e14                                   // more than every price combined
+    let cap = 3e14  // more than every price combined
     fn buy(a: Int, c: C) -> Int = min((a - p[c]) * t[c], cap)
 
     let (mult, plain) = C.partition(c => t[c] > 1)
@@ -21,10 +21,10 @@ fn max_coupons(a0: 1..=1e9, prices: List<1..=1e9>, types: List<1..=4>) -> List<I
         a = buy(a, c)
         free.push(c)
         left = left.drop(1)
-    let rest = List(left)                            // the DP's rows count from 0
+    let rest = List(left)  // the DP's rows count from 0
 
     domain K = 0..=min(rest.len, 70)
-    var best: [0..=rest.len][K]?Int = None            // most tokens after k of the first i
+    var best: [0..=rest.len][K]?Int = None  // most tokens after k of the first i
     best[0][0] = a
     for (i, c) in rest.items:
         for k in K:
@@ -36,7 +36,7 @@ fn max_coupons(a0: 1..=1e9, prices: List<1..=1e9>, types: List<1..=4>) -> List<I
     fn total(k: K) -> Int = k + (cost.first_gt(best[rest.len][k]!).map(c => Int(c) - 1) ?? plains)
     let k = K.filter(k => best[rest.len][k] != None).max(by: total)!
 
-    var took: List<C> = []                            // walk back: a skip that keeps best was optimal
+    var took: List<C> = []  // walk back: a skip that keeps best was optimal
     var j = k
     for i in (0..rest.len).rev:
         if best[i + 1][j] != best[i][j]:

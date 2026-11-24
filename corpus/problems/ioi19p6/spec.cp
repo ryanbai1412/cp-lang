@@ -61,4 +61,9 @@ for (p, q) in Stop.collect().adjacent if at.get(p).b == at.get(q).b:
 
 let edges = [links.keys] e => links[e]
 let net = Graph.undirected(edges)
-print(dijkstra(net, from: [(at.index_of((b: start, y: 0)), 0)]).get(at.index_of((b: goal, y: 0))) ?? -1)
+print(
+    dijkstra(
+        net,
+        from: [(at.index_of((b: start, y: 0)), 0)],
+    ).get(at.index_of((b: goal, y: 0))) ?? -1
+)

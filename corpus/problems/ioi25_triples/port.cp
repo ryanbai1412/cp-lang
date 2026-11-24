@@ -32,15 +32,23 @@ fn count_triples(h: List<Int>) -> Int:
     let at = 0..h.len
     var found = 0
     fn try(i: Int, j: Int, k: Int, top: Int):
-        if i < j < k and i in at and k in at and h[top] == k - i and sort3(h[i], h[j], h[k]) == sort3(j - i, k - j, k - i):
+        if i < j < k and i in at and k in at and h[top] == k - i and sort3(
+            h[i],
+            h[j],
+            h[k],
+        ) == sort3(
+            j - i,
+            k - j,
+            k - i,
+        ):
             found += 1
 
-    for x in at:                                       // x is an end holding k−i
+    for x in at:  // x is an end holding k−i
         let y = x + h[x]
         if y in at:
             try(x, x + h[y], y, top: x)
             if 2 * h[y] != h[x]: try(x, y - h[y], y, top: x)
-            try(x, y, x + h[y], top: y)                // middle holds k−i, h[i] = j−i
+            try(x, y, x + h[y], top: y)  // middle holds k−i, h[i] = j−i
         let w = x - h[x]
         if w in at:
             try(w, x - h[w], x, top: x)
@@ -68,9 +76,9 @@ fn construct_range(m: 3..=2e5, _k: Int) -> List<Int>:
     fn attempt(seed: Int) -> List<Int>:
         var rng = Rng.new(seed)
         let size = isqrt(6 * m)
-        let evens = (-m / 2 .. 3 * m / 2).filter(x => x % 2 == 0)
+        let evens = (-m / 2..3 * m / 2).filter(x => x % 2 == 0)
         let s = rng.sample(rng.int(2 * size / 3, 4 * size / 3), from: evens).sorted()
-        var h: [0..m]Int = m                              // m: no pair has put a peak here
+        var h: [0..m]Int = m  // m: no pair has put a peak here
         for (x, y) in s.pairs() if (x + y) / 2 in 0..m and (y - x) / 2 in 1..m:
             h[(x + y) / 2] min= (y - x) / 2
         for i in 0..m if h[i] == m: h[i] = rng.int(1, 2)

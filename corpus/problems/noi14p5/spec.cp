@@ -12,7 +12,7 @@ let (n, m, q) = read<(1..=5000, 1..=5000, 0..=50_000)>()
 domain Row = 1..=n
 domain Col = 1..=m
 domain Grid = (Row, Col)
-domain Cell = 1..=n * m // a grid cell numbered in reading order, as the swaps name it
+domain Cell = 1..=n * m  // a grid cell numbered in reading order, as the swaps name it
 domain Value = 1..=n * m
 var board: [Cell]Value = [Cell] p => Value.nth(p.ord)
 var x = x0

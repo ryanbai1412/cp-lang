@@ -8,7 +8,7 @@ let (domain C, xs) = compress(chain(iv.map(x => x.l), iv.map(x => x.r)))
 fn heights(s: S) -> Range<C> = xs.index_of(iv[s].l)..=xs.index_of(iv[s].r)
 
 var cover = SegTree(max, [C] c => 0, act: add)
-var after: [S]?S = None // the first suspect past the longest good group starting at s
+var after: [S]?S = None  // the first suspect past the longest good group starting at s
 var end = S.cuts.first!
 for s in S:
     while let Some(t) = end.r:

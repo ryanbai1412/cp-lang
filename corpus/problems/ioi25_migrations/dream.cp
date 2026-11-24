@@ -24,7 +24,9 @@ fn phase_plan(n: Int) -> List<Phase>:
         while at < n - 3 and plan.len < 5:
             let first = plan.is_empty
             let pairs = (b: Int) => if first: b * (b + 1) / 2 else: b * b
-            let b = (1..=iroot(8 * (m + 1), 3) + 2).argmin(b => (m + 1).ceil_div(b) + (pairs(b) - 1).ceil_div(4))!
+            let b = (1..=iroot(8 * (m + 1), 3) + 2).argmin(
+                b => (m + 1).ceil_div(b) + (pairs(b) - 1).ceil_div(4)
+            )!
             let k = (pairs(b) - 1).ceil_div(4)
             plan.push(Phase(at, m, b, k, first))
             (m, at) = (m.ceil_div(b) + k - 1, at + k)
@@ -39,11 +41,31 @@ fn heard(s: List<Int>, window: Range<Int>) -> Int =
 fn block(xs: List<Int>, x: Int, size: Int) -> List<Int> = xs.drop(x * size).take(size).collect()
 
 fn last3(p: List<Int>, q: List<Int>, me: Int) -> List<(Int, Int)> = [
-    (p[0], q[0]), (p[0], q[1]), (p[0], q[2]), (p[1], q[0]), (p[1], q[1]),
-    (p[0], q[3]), (p[0], me),   (p[1], q[2]), (p[1], q[3]), (p[1], me),
-    (p[2], q[0]), (p[2], q[1]), (p[3], q[0]), (p[3], q[1]), (me, q[0]),
-    (p[2], q[2]), (p[2], q[3]), (p[2], me),   (p[3], q[3]), (p[3], me),
-    (p[3], q[2]), (me, q[1]),   (me, q[2]),   (me, q[3])]
+    (p[0], q[0]),
+    (p[0], q[1]),
+    (p[0], q[2]),
+    (p[1], q[0]),
+    (p[1], q[1]),
+    (p[0], q[3]),
+    (p[0], me),
+    (p[1], q[2]),
+    (p[1], q[3]),
+    (p[1], me),
+    (p[2], q[0]),
+    (p[2], q[1]),
+    (p[3], q[0]),
+    (p[3], q[1]),
+    (me, q[0]),
+    (p[2], q[2]),
+    (p[2], q[3]),
+    (p[2], me),
+    (p[3], q[3]),
+    (p[3], me),
+    (p[3], q[2]),
+    (me, q[1]),
+    (me, q[2]),
+    (me, q[3]),
+]
 
 fn after3(said: Int, p: List<Int>, q: List<Int>, prev: Int) -> (List<Int>, List<Int>) = match said:
     0 => ([p[0], p[1]], [q[0], q[1], q[2]])
@@ -53,8 +75,17 @@ fn after3(said: Int, p: List<Int>, q: List<Int>, prev: Int) -> (List<Int>, List<
     _ => ([prev, p[3]], [q[1], q[2], q[3]])
 
 fn last2(p: List<Int>, q: List<Int>, me: Int) -> List<(Int, Int)> = [
-    (p[0], q[0]), (p[1], q[0]), (p[0], q[1]), (p[1], q[1]), (p[0], q[2]),
-    (me, q[2]),   (me, q[0]),   (me, q[1]),   (p[0], me),   (p[1], me)]
+    (p[0], q[0]),
+    (p[1], q[0]),
+    (p[0], q[1]),
+    (p[1], q[1]),
+    (p[0], q[2]),
+    (me, q[2]),
+    (me, q[0]),
+    (me, q[1]),
+    (p[0], me),
+    (p[1], me),
+]
 
 fn after2(said: Int, p: List<Int>, q: List<Int>, prev: Int) -> (Int, Int, Int) = match said:
     0 => (p[1], p[0], q[0])
@@ -87,7 +118,14 @@ fn say(options: List<(Int, Int)>, per: Int) -> Int:
 @grader(two_phase)
 fn send_message(n: Int, at: 1..10_000, parent: 0..10_000) -> 0..=4:
     if at == 1:
-        (tree, plan, phases_done, p, q, pending) = (JumpTree<Site>(), phase_plan(n), 0, [0], [0], None)
+        (tree, plan, phases_done, p, q, pending) = (
+            JumpTree<Site>(),
+            phase_plan(n),
+            0,
+            [0],
+            [0],
+            None,
+        )
         (u, v, len) = (0, 0, 0)
     tree.add(Site(at), Site(parent))
     if tree.dist(Site(u), Site(at))! > len: (v, len) = (at, len + 1)
