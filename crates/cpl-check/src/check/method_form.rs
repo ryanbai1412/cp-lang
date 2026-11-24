@@ -489,18 +489,23 @@ impl Checker<'_> {
 
     /// The `Resolved` at a method's name: the module of the fn it calls.
     fn record_method(&mut self, name: &ast::Name, key: &str) {
+        let resolved = self.method_resolved(name, key);
+        self.chosen_methods.retain(|r| r.0 != name.span);
+        self.chosen_methods.push((name.span, resolved));
+    }
+
+    /// The `Resolved` of the method `key` a call at `name` could call.
+    fn method_resolved(&mut self, name: &ast::Name, key: &str) -> Resolved {
         let module = if self.local_defs.contains_key(key) {
             None
         } else {
             self.env.origin(key)
         };
-        let resolved = Resolved {
+        Resolved {
             module: module.unwrap_or_default(),
             name: name.text.clone(),
             owner: None,
-        };
-        self.chosen_methods.retain(|r| r.0 != name.span);
-        self.chosen_methods.push((name.span, resolved));
+        }
     }
 
     /// The `Resolved` facts with each method choice not already among them.
@@ -894,6 +899,9 @@ impl Checker<'_> {
                 "import the one you mean and call it as `{method}({shown}, ..)`"
             ));
         }
+        let candidates = keys.iter().map(|k| self.method_resolved(name, k)).collect();
+        self.ambiguous.retain(|a| a.0 != name.span);
+        self.ambiguous.push((name.span, candidates));
     }
 }
 

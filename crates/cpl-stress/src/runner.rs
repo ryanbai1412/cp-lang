@@ -5,7 +5,7 @@
 //! the CLI's built C++, `.cpp`, `.py` and executables run as processes.
 
 use crate::case::{Ran, Ruling, Talked};
-use crate::choices::{self, Drawn};
+use crate::choices::Drawn;
 use crate::judge::Launch;
 use crate::program::Program;
 use crate::run::StressError;
@@ -369,7 +369,6 @@ impl Runner {
                     ))
                 })
             }
-            Runner::Process(generator) => choices::draw(generator, seed),
             _ => Err(self.cannot("draw an input")),
         }
     }
@@ -380,7 +379,6 @@ impl Runner {
             Runner::InProcess(vm) => vm
                 .choose(cpl_interp::Io::fixed(b""), Some(choices.to_vec()), limit)
                 .ok(),
-            Runner::Process(generator) => choices::replay(generator, choices),
             _ => None,
         }
     }

@@ -39,13 +39,6 @@ mod session;
 /// name std's API through these, never a string literal.
 pub mod std_fn {
     include!(concat!(env!("OUT_DIR"), "/std_fn.rs"));
-
-    /// The std modules that declare `name`, empty for a name std lacks.
-    pub fn declared_in(name: &str) -> &'static [&'static str] {
-        DECLARED_IN
-            .binary_search_by(|(n, _)| (*n).cmp(name))
-            .map_or(&[], |i| DECLARED_IN[i].1)
-    }
 }
 mod typed;
 mod walk;
@@ -236,10 +229,7 @@ pub(crate) struct File<'a> {
 /// a compiler builtin member, so a program's own fn of that name is not it. `name` comes from [`std_fn`].
 pub(crate) fn is_std(facts: Option<&Facts>, at: Span, name: &str) -> bool {
     facts.and_then(|f| f.callee(at)).is_some_and(|c| {
-        c.name == name
-            && (c.builtin
-                || c.module == "prelude"
-                || std_fn::declared_in(name).contains(&c.module.as_str()))
+        c.name == name && (c.builtin || c.module == "prelude" || c.module.starts_with("std."))
     })
 }
 
@@ -278,7 +268,7 @@ fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {
     f(&File {
         src,
         items: &items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }
@@ -396,7 +386,7 @@ pub fn proven_fns_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenF
     rules::proven_fns(&File {
         src,
         items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }
@@ -434,7 +424,7 @@ pub fn proven_sizes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<Prove
     rules::proven_sizes(&File {
         src,
         items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }
@@ -455,7 +445,7 @@ pub fn domain_sizes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(Stri
     rules::domain_sizes(&File {
         src,
         items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }
@@ -469,7 +459,7 @@ pub fn proven_indexes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<Pro
     rules::proven_indexes(&File {
         src,
         items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }
@@ -483,7 +473,7 @@ pub fn proven_loops_and_indexes_parsed(
     rules::proven_loops_and_indexes(&File {
         src,
         items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }
@@ -499,7 +489,7 @@ pub fn proven_loops_and_indexes_in_item(
         &File {
             src,
             items,
-            facts: None,
+            facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
             proven: &Default::default(),
         },
         item,
@@ -515,7 +505,7 @@ pub fn proven_loops_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<Prove
     rules::proven_loops(&File {
         src,
         items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }
@@ -531,7 +521,7 @@ pub fn proven_expr_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec
     rules::proven_expr_ranges(&File {
         src,
         items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }
@@ -548,7 +538,7 @@ pub fn proven_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(u32
     rules::proven_ranges(&File {
         src,
         items,
-        facts: None,
+        facts: analyze_alone(src).as_deref().map(|a| &**a.facts()),
         proven: &Default::default(),
     })
 }

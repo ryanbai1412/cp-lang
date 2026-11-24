@@ -54,7 +54,9 @@ template <class T> std::optional<T> set_max(const std::set<T>& s) { return s.emp
         name: "cphash",
         needs: &[],
         code: "\
-// Salted splitmix64 hash for HashMap / HashSet (defeats anti-hash tests).
+// Salted hash for HashMap / HashSet (defeats anti-hash tests). The salt is read once at start-up,
+// so a hash pays no first-use check.
+inline const uint64_t hash_salt = (uint64_t)std::chrono::steady_clock::now().time_since_epoch().count();
 struct CpHash {
     static uint64_t splitmix64(uint64_t x) {
         x += 0x9e3779b97f4a7c15ULL;
@@ -62,14 +64,12 @@ struct CpHash {
         x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
         return x ^ (x >> 31);
     }
-    static uint64_t salt() {
-        static const uint64_t s = (uint64_t)std::chrono::steady_clock::now().time_since_epoch().count();
-        return s;
-    }
-    // Full salted splitmix64 so both prime-mod and power-of-two open-addressing tables stay hack-resistant.
-    // Every integer width, signed or not (`Hash61` is a `U64`), and every enum hash as their 64-bit value.
+    static uint64_t salt() { return hash_salt; }
+    // Every integer width, signed or not (`Hash61` is a `U64`), and every enum hash as their 64-bit
+    // value times a secret odd multiplier: multiply-shift, whose top bits (the table's home) are
+    // universal, and HashTable mixes it with its own seed again.
     template <class I, std::enable_if_t<std::is_integral_v<I> || std::is_enum_v<I>, int> = 0>
-    size_t operator()(I x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
+    size_t operator()(I x) const { return (size_t)((uint64_t)x * (salt() | 1)); }
     size_t operator()(double x) const { return (*this)((ll)std::hash<double>()(x)); }
     size_t operator()(const std::string& s) const {
         uint64_t h = salt();
@@ -196,7 +196,9 @@ template <class E, class K, class KeyOf, class H> struct HashTable {
     // The salted hash keyed by the table's seed, mixed again so a 32-bit size_t still fills the top
     // bits the home is taken from.
     uint64_t hash(const K& k) const { return ((uint64_t)H{}(k) ^ seed) * 0x9e3779b97f4a7c15ULL; }
-    static uint8_t fp(uint64_t h) { return (uint8_t)(0x80 | (h & 0x7f)); }
+    // From the middle bits: the home takes the top ones, and a multiply leaves the low ones
+    // depending only on the key's low bits.
+    static uint8_t fp(uint64_t h) { return (uint8_t)(0x80 | ((h >> 32) & 0x7f)); }
     size_t home(uint64_t h) const { return (size_t)mulhi(h, cap); }
     size_t next(size_t i) const { return i + 1 == cap ? 0 : i + 1; }
     size_t locate(const K& k) const { return n ? locate(k, hash(k)) : cap; }

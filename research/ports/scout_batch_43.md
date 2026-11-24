@@ -6,14 +6,14 @@ Ten diverse, previously unported hard problems from the **ETSR '23** series (exc
 
 ## Problems Included
 
-- `etsr23r1p3.cp` (`corpus/submissions/5494303.cpp`): All-permutation subsequence check via backward occurrence table + `Subset<Alpha>` bitmask DP (`@multitest`).
+- `etsr23r1p3.cp` (submission 5494303, deleted with the package): All-permutation subsequence check via backward occurrence table + `Subset<Alpha>` bitmask DP (`@multitest`).
 - `etsr23r1p4.cp` (`corpus/submissions/5495163.cpp`): Segment Tree Beats for range add, range Euclidean floor-division, range min, and range sum.
 - `etsr23r2p2.cp` (`corpus/submissions/5494433.cpp`): Interval DP for minimum `+`/`*` insertions in a digit string to hit target `<= 250` (`@multitest`).
-- `etsr23r2p3.cp` (`corpus/submissions/5494453.cpp`): Bitwise `ctz` divisibility characterization on sorted triples (`@multitest`).
+- `etsr23r2p3.cp` (submission 5494453, deleted with the package): Bitwise `ctz` divisibility characterization on sorted triples (`@multitest`).
 - `etsr23r2p4.cp` (`corpus/submissions/5494510.cpp`): Bounded-window XOR scheduling DP via `@memo(hash)` over a sliding `Subset<Win>` (`@multitest`).
-- `etsr23r3p1.cp` (`corpus/submissions/5527625.cpp`): Clamped affine + linear-in-initial-x composition via coordinate compression and `LazySegTree` `max_right`/`min_left`.
+- `etsr23r3p1.cp` (submission 5527625, deleted with the package): Clamped affine + linear-in-initial-x composition via coordinate compression and `LazySegTree` `max_right`/`min_left`.
 - `etsr23r3p3.cp` (`corpus/submissions/5521298.cpp`): NOI 2018 Return — Dijkstra + Kruskal Reconstruction Tree + `Rooted.lift_while` replacing a 110-line persistent segment-tree DSU (`@multitest`).
-- `etsr23r4p1.cp` (`corpus/submissions/5521420.cpp`): Permutation cycle decomposition (`Perm<V>.cycles()`) + `Subset<Big>` 2-coloring for balanced brackets, with a co-located `@checker`.
+- `etsr23r4p1.cp` (submission 5521420, deleted with the package): Permutation cycle decomposition (`Perm<V>.cycles()`) + `Subset<Big>` 2-coloring for balanced brackets, with a co-located `@checker`.
 - `etsr23r4p2.cp` (`corpus/submissions/5529698.cpp`): Extended Euler totient power tower with runtime modulus `Mod<p>` and shift-clamping `LazySegTree`.
 - `etsr23r4p3.cp` (`corpus/submissions/5635626.cpp`): ZJOI 2016 Small Stars — inclusion-exclusion over `Subset<V>` + `Rooted<V>` postorder tree DP in wrapping `U64`.
 

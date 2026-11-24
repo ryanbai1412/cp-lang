@@ -10,13 +10,25 @@ C++, and --max gives the same output.
 
 ## Remaining gap: speed
 
-On --max the AC (3890258, avx2 and Ofast pragmas) takes 0.12-0.13 s and 21.1 MB. The port, on
-the `noi` judge of its cp.toml (`isa = "avx2"`: the AC's pragma was accepted there), takes
-0.28 s and 18.4 MB. `?Int max=` is one branch-free max, and the max-plus row loop is one
-vectorised pass (`cpl::keep_max_plus`) whose adds fold their overflow into one flag. Without
-that flag the same pass runs in 0.16-0.18 s. So even with no overflow checks at all, the `none`
-select and the nested rows leave about 1.4x. The port stays out of v03 until a lowering closes
-that gap without dropping the checks.
+The port is now a flat `Mat<?Int>` over `Semiring(max, +)`: `*` for the 2^b powers and a 1 x |State|
+`Mat` for the best-joy row. std's `TropicalProduct for Int` runs the product: while every entry is
+within 2^60 of 0 it holds `None` as -2^62 (std's own sentinel, never seen by the port) and runs an
+unchecked, branch-free ikj pass; past the bound it leaves the product to the `?Int` loop, which traps
+as written (std-matrix/max-plus-past-the-bound-traps-as-the-loop.cp).
+
+Measured on --max, five runs each, noi judge (`isa = "avx2"`):
+
+| Build | Time | RSS |
+|---|---|---|
+| AC as written (Ofast, unroll-loops, avx2) | 0.12-0.15 s | 21.1 MB |
+| AC with O3 in place of Ofast | 0.12 s | |
+| Port | 0.22-0.25 s | 20.3 MB |
+| Port with Ofast in place of O3 | 0.24-0.28 s | |
+
+So Ofast's reassociation is not the gap. perf on the port: 50% is the ikj inner max loop, 22% the
+`?Int` -> flat copies of both operands (and the bound reduction), 12% filling the output, and the
+rest the flat -> `?Int` copy back. The AC keeps its matrices flat between products; the port pays
+two conversions per product. bench/math/maxplus (200x200 `**` 10^6) is 1.12x its C++.
 
 ## Dream
 

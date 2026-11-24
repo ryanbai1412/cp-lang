@@ -359,6 +359,27 @@ impl Database {
         (def.path == path).then_some(def.span)
     }
 
+    /// Every declaration the name at `offset` may mean: the one of
+    /// [`Self::definition_location`], or each candidate of a method call
+    /// E0701 found ambiguous, in the order the checker weighed them.
+    pub fn definitions(&mut self, path: &str, offset: u32) -> Vec<Definition> {
+        let Some(analysis) = self.analyze(path) else {
+            return Vec::new();
+        };
+        let candidates = analysis.item_at(offset).and_then(|(item, at)| {
+            let inside = |s: &Span| s.start <= at && at < s.end;
+            let found = item.check.ambiguous.iter().find(|(s, _)| inside(s));
+            found.map(|(_, c)| c.clone())
+        });
+        match candidates {
+            Some(candidates) => candidates
+                .iter()
+                .filter_map(|r| self.picked_method(path, &analysis, r))
+                .collect(),
+            None => self.definition_location(path, offset).into_iter().collect(),
+        }
+    }
+
     /// Where the name at `offset` is declared, following `use` imports into
     /// their defining module.
     pub fn definition_location(&mut self, path: &str, offset: u32) -> Option<Definition> {

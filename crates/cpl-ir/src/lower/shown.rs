@@ -31,6 +31,7 @@ impl<'a> Lowerer<'a> {
                 .map(|arg| match arg {
                     GenArg::Int(v) => v.to_string(),
                     GenArg::Range(_, _) => "Int".to_string(),
+                    GenArg::OptRange(_, _) => "?Int".to_string(),
                     GenArg::Domain(d) => domains[*d].clone(),
                     GenArg::Ty(ty) => crate::show::ty_name(ty, domains, &structs, &self.enums),
                     GenArg::RuntimeInt(_) => "_".to_string(),

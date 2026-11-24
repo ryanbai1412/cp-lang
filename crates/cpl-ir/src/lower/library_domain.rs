@@ -45,10 +45,10 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let ends = matches!(name.text.as_str(), "first" | "last") && args.is_none();
-        if let (true, Some(dom), Some(&nth)) = (
+        if let (true, Some(dom), Some(nth)) = (
             ends,
             self.structs[sid].index_domain,
-            self.structs[sid].methods.get("nth"),
+            self.own_method(sid, "nth"),
         ) {
             let opt_ty = Ty::opt(Ty::Struct(sid));
             let len = self.mk(ExprKind::DomainLen(dom), Ty::Int, span);
@@ -158,7 +158,7 @@ impl<'a> Lowerer<'a> {
         let &Ty::Struct(sid) = &value.ty else {
             return Err(value);
         };
-        let ord = self.structs[sid].methods.get("ord").copied();
+        let ord = self.own_method(sid, "ord");
         let Some(ord) = ord.filter(|_| self.structs[sid].index_domain == Some(d)) else {
             return Err(value);
         };

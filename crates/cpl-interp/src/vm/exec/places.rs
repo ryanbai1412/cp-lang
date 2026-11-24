@@ -66,21 +66,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     _ => 0,
                 };
             }
-            Op::BinU64 { dst, a, b, op } => {
-                regs_i[dst as usize] =
-                    exec_bin_u64(regs_i[a as usize], regs_i[b as usize], op, spans[cur_pc])?;
-            }
             Op::NegU64 { dst, a } => {
                 regs_i[dst as usize] = (regs_i[a as usize] as u64).wrapping_neg() as i64;
-            }
-            Op::BitAndU64 { dst, a, b } => {
-                regs_i[dst as usize] = regs_i[a as usize] & regs_i[b as usize];
-            }
-            Op::BitOrU64 { dst, a, b } => {
-                regs_i[dst as usize] = regs_i[a as usize] | regs_i[b as usize];
-            }
-            Op::BitXorU64 { dst, a, b } => {
-                regs_i[dst as usize] = regs_i[a as usize] ^ regs_i[b as usize];
             }
             Op::BitNotI { dst, a } => {
                 regs_i[dst as usize] = !regs_i[a as usize];
@@ -699,7 +686,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let row_mut = Rc::make_mut(row_arr);
                         match &mut row_mut.data {
                             Cells::OptInt(v) => {
-                                let slot = unsafe { v.get_unchecked_mut(i1 as usize) };
+                                let slot = &mut v[i1 as usize];
                                 let replace = match *slot {
                                     None => true,
                                     Some(cur) => {
@@ -759,7 +746,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let arr_mut = Rc::make_mut(arr);
                     match &mut arr_mut.data {
                         Cells::OptInt(v) => {
-                            let slot = unsafe { v.get_unchecked_mut(flat) };
+                            let slot = &mut v[flat];
                             let replace = match *slot {
                                 None => true,
                                 Some(cur) => {
@@ -1513,7 +1500,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
                 let hosts = !chunk.fed_bodies.is_empty();
                 if hosts {
-                    self.fed_hosts.push((self.base, chunk as *const Chunk<'p>));
+                    self.fed_hosts
+                        .push((self.base, chunk as *const Chunk<'p> as *const ()));
                 }
                 self.show_lent();
                 let flow = self.stmt(stmt);

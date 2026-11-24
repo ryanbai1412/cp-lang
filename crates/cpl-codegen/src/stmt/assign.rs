@@ -148,7 +148,10 @@ impl<'p> Emitter<'p> {
         }
         // Handle map/hashmap fold-on-missing-key (`max=`, `min=`, `*=`, `+=`, `-=`, `|=`, `^=`, `&=`).
         if let PlaceKind::Index(base, idx) = &place.kind {
-            if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) && op != AssignOp::Set {
+            if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..))
+                && op != AssignOp::Set
+                && self.found_cell(base, idx).is_none()
+            {
                 let b = self.place(base);
                 let k = self.expr(&idx[0]).text;
                 let at = self.map_slot(&idx[0]);

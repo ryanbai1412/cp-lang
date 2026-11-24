@@ -166,6 +166,16 @@ fn list_insert_and_remove_move_the_tail_once() {
 }
 
 #[test]
+fn an_optional_read_checks_for_the_end_of_input_first() {
+    let body =
+        body("var xs = List<Int>()\nwhile let x = read<?Int>():\n    xs.push(x)\nprint(xs.len)\n");
+    assert!(
+        body.contains("if (cpl::at_eof()) return cpl::OptInt();"),
+        "{body}"
+    );
+}
+
+#[test]
 fn the_same_source_gives_the_same_bytes() {
     let source = "var m: Map<Str, Int> = []\nm[\"b\"] = 1\nm[\"a\"] = 2\nvar s: Set<Int> = []\ns.insert(3)\nprint(m, s)\n";
     assert_eq!(cpp(source), cpp(source));
@@ -222,9 +232,31 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     assert!(cpp.contains("struct CpHash"), "{cpp}");
     assert!(cpp.contains("splitmix64"), "{cpp}");
     assert!(cpp.contains("steady_clock"), "{cpp}");
+    // The salt is read once at start-up, and an integer key is one multiply by it.
+    assert!(
+        cpp.contains("static uint64_t salt() { return hash_salt; }"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("return (size_t)((uint64_t)x * (salt() | 1));"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("(uint8_t)(0x80 | ((h >> 32) & 0x7f))"),
+        "{cpp}"
+    );
     // Fingerprinted slots at a load of at most 3/4, sized exactly, freeing the old table as a rehash walks it.
+    // A load of 2/3 measured no faster on bench/containers/hash_reserve_probe and slower on
+    // hash_str_grow and hash_antihash, which grow 1.4x the memory.
     assert!(
         cpp.contains("n + (n + 2) / 3") && cpp.contains("release_pages"),
+        "{cpp}"
+    );
+    // The state bytes are an array of their own, which stays in cache while the entries miss:
+    // a state packed into each Int entry pads it to 24 B, and a group's 8 states before its 8
+    // entries measured slower on hash_reserve_probe.
+    assert!(
+        cpp.contains("uint8_t* st = nullptr; E* e = nullptr;"),
         "{cpp}"
     );
     // Whatever the entry, so a Map<Str, _> doesn't hold both tables whole.
@@ -434,6 +466,21 @@ fn a_product_domain_loop_is_nested_int_loops() {
         product.len(),
         nested.len()
     );
+}
+
+#[test]
+fn a_key_tested_and_then_stored_through_a_path_is_looked_up_once() {
+    let code = cpp(concat!(
+        "struct B(h: Int, len: Int)\n",
+        "var maps: [1..=3]HashMap<Int, Int> = []\n",
+        "maps[2][5] = 0\n",
+        "let b = B(5, 2)\n",
+        "for i in 0..4:\n",
+        "    if maps[b.len].contains(b.h): maps[b.len][b.h] += i\n",
+        "print(maps[2][5])\n",
+    ));
+    assert!(code.contains("cpl::map_slot("), "{code}");
+    assert!(!code.contains(".count(b.h)"), "{code}");
 }
 
 #[test]

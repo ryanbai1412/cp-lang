@@ -22,7 +22,7 @@ let b: [PosB]-1e6..=1e6 = read()
 
 fn cool(r: Range<PosA>) -> List<Range<PosA>>:
     if r.is_empty: return []
-    let m = a[r].items.map((i, v) => MaxSubAt.of(i, v)).fold(+)!.at
+    let m = a[r].items.map((i, v) => MaxSubAt.of(i, v)).fold(+).at
     cool(r.start..m.start) + [m] + cool(m.end..r.end)
 
 let segs = cool(PosA.first!..=PosA.last!)

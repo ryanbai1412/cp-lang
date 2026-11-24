@@ -268,7 +268,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             call_sites: self.call_sites,
             keeps: {
                 let mut keeps = self.keeps;
-                keeps.sort_by_key(|k| k.0);
+                cpl_diag::sort_by_key(&mut keeps, |k| u64::from(k.0));
                 keeps.dedup_by_key(|k| k.0);
                 keeps
             },
@@ -1060,6 +1060,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     || Self::expr_mentions_slot(lo, target)
                     || Self::expr_mentions_slot(hi, target)
             }
+            ExprKind::MutLine(p, at, _) => {
+                Self::place_mentions_slot(p, target) || Self::expr_mentions_slot(at, target)
+            }
             ExprKind::Mutate(_, p, args) => {
                 Self::place_mentions_slot(p, target)
                     || args.iter().any(|x| Self::expr_mentions_slot(x, target))
@@ -1378,6 +1381,7 @@ impl<'p> Effects<'p> {
             | ExprKind::Mutate(..)
             | ExprKind::Sort(..)
             | ExprKind::MutSlice(..)
+            | ExprKind::MutLine(..)
             | ExprKind::Debug(..)
             | ExprKind::Do(_)
             | ExprKind::Builtin(

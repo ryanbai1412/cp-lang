@@ -32,20 +32,32 @@ fn run_around(c: Col, limit: Int) -> Range<Col>:
 
 var layer: [Col]?Layer = None                    // a layer is named by the column that opened it
 var up: [Col]?(Col, Drop) = None
-var open = SortedMap<Col, Col>()                 // layers not yet inside a later run, by first column
+var open: [Col]?Col = None                       // layers not yet inside a later run, by first column
+var placed: [Col]Bool = false                    // columns already inside a layer
 var waiting = Deque.of(Col.all.sorted(by: c => h[c]))   // columns not yet free, driest first
 var home: [Col]?Col = None                       // row-0 layer of each free column
 for r in t.record_highs():                       // rows with a new maximum temperature
-    let opened = waiting.pop_front_while(c => h[c] < t[r])
-    for (id, run) in [(c, run_around(c, t[r])) for c in opened].distinct(by: p => p.1.first!):
+    for id in waiting.pop_front_while(c => h[c] < t[r]):
+        if placed[id]: continue
+        let run = run_around(id, t[r])
         layer[id] = Some(Layer(r, run))
-        for (_, child) in open.drain(after: run.l.l, while: (c, _) => c in run):
-            let below = layer[child]!
-            let warm = coldest.fold(below.row..=r)
-            let cols = below.cols
-            if let first = cols.first_true(c => driest.fold(cols.first!..=c) < warm):
-                let last = cols.last_true(c => driest.fold(c..=cols.last!) < warm)!
-                up[child] = Some((id, Drop(first, last)))
+        // Walk the run, jumping over each open layer inside it; the columns between are new.
+        var at = run.first!
+        while true:
+            var end = at
+            if let child = open[at]:
+                open[at] = None
+                let below = layer[child]!
+                let warm = coldest.fold(below.row..=r)
+                let cols = below.cols
+                end = cols.last!
+                if let first = cols.first_true(c => driest.fold(cols.first!..=c) < warm):
+                    let last = cols.last_true(c => driest.fold(c..=cols.last!) < warm)!
+                    up[child] = Some((id, Drop(first, last)))
+            else:
+                placed[at] = true
+            if end == run.last!: break
+            at = Col(end.ord + 1)
         open[run.first!] = id
         if r == Row.first!:
             for c in run: home[c] = Some(id)

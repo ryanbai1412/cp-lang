@@ -261,7 +261,7 @@ mod generated_cases_tests {
     #[test]
     fn a_package_with_tests_toml_reads_the_cases_corpus_tests_wrote() {
         let root = std::env::temp_dir().join(format!("cpl-generated-{}", std::process::id()));
-        let package = root.join("corpus/problems/p1");
+        let package = root.join("corpus/problems").join("p1");
         let generated = root.join("target/corpus-tests/p1");
         std::fs::create_dir_all(&package).unwrap();
         std::fs::create_dir_all(&generated).unwrap();

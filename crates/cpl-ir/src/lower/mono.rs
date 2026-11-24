@@ -46,6 +46,8 @@ pub(super) enum GenArg {
     RuntimeInt(GlobalId),
     Op(BareOp),
     Range(Option<i64>, Option<i64>),
+    /// `?lo..hi`: an optional of a range, so a field `List<?F>` keeps `F`'s bounds.
+    OptRange(Option<i64>, Option<i64>),
 }
 
 pub(super) type GenEnv = HashMap<String, GenArg>;
@@ -54,6 +56,12 @@ pub(super) type GenEnv = HashMap<String, GenArg>;
 /// parameter, so `[k]T` is a table keyed like that parameter.
 pub(super) fn int_key_marker(k: &str) -> String {
     format!("__int_key_{k}")
+}
+
+/// Marks a fn's own generic `k`: given `Int`, its `[k]T` is the array it was called with,
+/// where a struct's `D = Int` makes `[D]T` a list (R07.3.5).
+pub(super) fn own_generic_marker(k: &str) -> String {
+    format!("__own_generic_{k}")
 }
 
 pub(super) struct GenStructTemplate<'a> {
@@ -169,9 +177,7 @@ impl<'a> Lowerer<'a> {
                 if !path_to_mod.contains_key(&imported.path) {
                     let id = self.mods.len();
                     path_to_mod.insert(imported.path.clone(), id);
-                    // SAFETY: imported.analysis lives inside `root`'s Arc tree for lifetime `'a`.
-                    let ptr: *const Analysis = &*imported.analysis;
-                    self.mods.push(unsafe { &*ptr });
+                    self.mods.push(&imported.analysis);
                     self.mod_syms.push(HashMap::new());
                     match imported.name.as_str() {
                         "std.mod" => self.std_mod = Some(id),
@@ -254,6 +260,7 @@ impl<'a> Lowerer<'a> {
             GenArg::RuntimeInt(gid) => format!("RI{gid}"),
             GenArg::Op(op) => format!("Op_{op:?}"),
             GenArg::Range(lo, hi) => format!("R{:?}_{:?}", lo, hi),
+            GenArg::OptRange(lo, hi) => format!("OR{:?}_{:?}", lo, hi),
         }
     }
 

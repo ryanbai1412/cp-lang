@@ -367,7 +367,7 @@ fn an_unknown_lint_name_is_reported_with_the_closest_one() {
 fn cp_toml_sets_levels() {
     let src = "var total = 0\nlet x: F64 = read()\nprint(total, yes(x == 1.0))\n";
     assert_eq!(codes(src), ["L0201", "L0301"]);
-    let toml = "[project]\nname = \"x\"\n\n[lints]\nvar_never_reassigned = \"allow\"  # noisy here\nfloat_equality = \"deny\"\n\n[judge]\nfloat_equality = \"allow\"\n";
+    let toml = "[project]\nname = \"x\"\nfloat_equality = \"allow\"\n\n[lints]\nvar_never_reassigned = \"allow\"  # noisy here\nfloat_equality = \"deny\"\n";
     let (config, errors) = Config::from_toml(toml);
     assert_eq!(errors, []);
     let found = lint(src, &config);
@@ -766,7 +766,7 @@ fn search_loop_with_a_flag_becomes_any_or_all_from_noi09p1() {
     let more = "let grp = [1, 2]\nvar ok = true\nfor m in grp:\n    print(m)\n    if m < 0:\n        ok = false\n        break\nprint(ok)\n";
     let found = only(more);
     assert_eq!((found.code.0, found.fixes.len()), ("L0501", 0));
-    // corpus/problems/etsr23r4p1, noi09p1: a loop that also moves other state
+    // etsr23r4p1 (since deleted), noi09p1: a loop that also moves other state
     // (a running sum, the walk's position) is not a search.
     let walk = "let a = [1, -2]\nvar psum = 0\nvar ok = true\nfor x in a:\n    psum += x\n    if psum < 0:\n        ok = false\n        break\nprint(ok)\n";
     assert!(!taste_codes(walk).contains(&"L0501"));
@@ -1804,15 +1804,20 @@ fn every_lint_is_on_types_std_or_the_compiler_declares() {
 }
 
 #[test]
-fn std_fn_names_what_std_declares_and_where() {
+fn a_call_is_std_by_the_module_the_checker_resolved_it_to() {
     assert_eq!(crate::std_fn::FIRST_GE, "first_ge");
-    assert!(crate::std_fn::declared_in(crate::std_fn::FIRST_GE).contains(&"std.seq"));
-    assert!(crate::std_fn::declared_in("no_such_std_fn").is_empty());
-    let names: Vec<&str> = crate::std_fn::DECLARED_IN.iter().map(|(n, _)| *n).collect();
-    assert!(
-        names.windows(2).all(|w| w[0] < w[1]),
-        "DECLARED_IN is sorted for its binary search"
-    );
+    let src = "fn sum(a: Int, b: Int) -> Int: a + b\nprint(sum(1, 2), [1, 2].sum())\n";
+    let analysis = crate::analyze_alone(src).expect("checks");
+    let facts = Some(&**analysis.facts());
+    let at = |call: &str| {
+        let start = src.find(call).unwrap() as u32;
+        cpl_diag::Span {
+            start,
+            end: start + call.len() as u32,
+        }
+    };
+    assert!(!crate::is_std(facts, at("sum(1, 2)"), std_fn::SUM));
+    assert!(crate::is_std(facts, at("[1, 2].sum()"), std_fn::SUM));
 }
 
 #[test]

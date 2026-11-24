@@ -148,7 +148,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.input.rewind(start);
                 Value::some(self.read(inner, span, given)?)
             }
-            Spec::Opt(..) => Value::Opt(OptVal::None),
+            // `read<?T>()`: `None` once the input has ended. (R10.2.10)
+            Spec::Opt(inner, None) => {
+                if self.input.at_eof() {
+                    Value::Opt(OptVal::None)
+                } else {
+                    Value::some(self.read(inner, span, given)?)
+                }
+            }
         })
     }
 

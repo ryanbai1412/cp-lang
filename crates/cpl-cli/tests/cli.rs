@@ -796,7 +796,7 @@ fn stress_makes_inputs_with_the_gen_fn_in_the_file_and_shrinks_them() {
     assert_eq!(out.status.code(), Some(1), "{stdout}");
     // The smallest such tree: a star of four, one value just above 50.
     assert!(
-        stdout.contains(" numbers to 11:\n    4\n    1 2\n    1 3\n    1 4\n    51 1 1 1\n"),
+        stdout.contains(" numbers to 11:\n    4\n    1 2\n    2 3\n    2 4\n    1 51 1 1\n"),
         "{stdout}"
     );
 }
@@ -1290,16 +1290,22 @@ fn what_cpl_run_cannot_do_is_an_error_in_cpl_check_that_says_what_to_write() {
 }
 
 #[test]
-fn reading_an_optional_says_how_none_is_written() {
-    let bare = check_errors("read_optional", "let a: ?Int = read()\nprint(a ?? 0)\n");
-    assert!(
-        bare.contains("`read()` has no input format for a `?Int`"),
-        "{bare}"
-    );
-    assert!(bare.contains("`read(none: 0)`"), "{bare}");
-
+fn a_none_number_is_only_for_reading_an_optional() {
     let stray = check_errors("read_none_of_int", "let b: Int = read(none: 0)\nprint(b)\n");
     assert!(stray.contains("`none:` is for reading a `?T`"), "{stray}");
+}
+
+#[test]
+fn reading_a_struct_with_private_fields_says_to_build_it() {
+    let arena = check_errors(
+        "read_arena",
+        "use std.marks.{Arena}\nlet a: Arena<Int> = read()\nprint(1)\n",
+    );
+    assert!(
+        arena.contains("`read()` has no input format for a `Arena"),
+        "{arena}"
+    );
+    assert!(arena.contains("its fields are private"), "{arena}");
 }
 
 #[test]

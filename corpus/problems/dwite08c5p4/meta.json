@@ -2,14 +2,18 @@
  "problem": "dwite08c5p4",
  "source": "dwite",
  "submissions": [
-  {"id": "3659676", "language": "V8JS", "result": "IR", "time": 0.037884255, "memory_kb": 11868.0, "file": null},
-  {"id": "3659678", "language": "V8JS", "result": "AC", "time": 0.00796244, "memory_kb": 12196.0, "file": null}
+  {"id": "3659676", "language": "V8JS", "result": "IR", "time": 0.037884255, "memory_kb": 11868.0, "file": "corpus/submissions/3659676.js"},
+  {"id": "3659678", "language": "V8JS", "result": "AC", "time": 0.00796244, "memory_kb": 12196.0, "file": "corpus/submissions/3659678.js"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dwite08c5p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Statement: the DWITE February 2009 problem 4 page (dwite.ca/questions/wiring_the_server_room.html, Wayback snapshot of 2009-02-24); it shows only the first two of the five maps as the sample, and orig.cpp reads maps until end of input so that sample runs. No C++ submission exists and the only AC (3659678, JS) prints five fixed numbers, so orig.cpp is a Held-Karp reference written for the port; it matches an exhaustive permutation brute on 300 random inputs of up to 8 nodes per map."
 }

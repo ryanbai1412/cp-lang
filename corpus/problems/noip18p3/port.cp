@@ -13,7 +13,7 @@ let (n, m): (2..=5e4, 1..=5e4) = read()
 domain Junction = 1..=n
 domain Road = 1..n
 let roads: [Road](u: Junction, v: Junction, len: 1..=1e4) = read()
-let g = Graph<Junction, Road>.undirected(roads)
+let g = Graph.undirected(roads)
 let tree = Rooted(u => g.out(u), Junction.first!)
 
 var up_len: [Junction]Int = 0  // the road from v to its parent

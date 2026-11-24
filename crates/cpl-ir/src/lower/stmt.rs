@@ -1093,6 +1093,12 @@ impl<'a> Lowerer<'a> {
                     self.nested_for(label, heads, pat, piece, body, else_body, out);
                     return;
                 }
+                if let Some((heads, cell, parts)) = self.product_name_heads(pat, iter, out) {
+                    self.cx.loop_parts = Some(parts);
+                    let (label, else_body) = (label.as_ref(), else_body.as_ref());
+                    self.nested_for(label, heads, pat, (cell, None), body, else_body, out);
+                    return;
+                }
                 if let Some((heads, cell)) = self.product_heads(pat, iter) {
                     self.nested_for(
                         label.as_ref(),
@@ -1175,6 +1181,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.local_syms.pop();
                 self.cx.scopes.pop();
                 self.cx.loops.pop();
+                let iter = loops::hoist_call_args(iter, out);
                 out.push(Stmt::For(id, slot, iter, Block { stmts }));
                 self.end_loop_else(id, else_flag, else_body.as_ref(), out);
             }

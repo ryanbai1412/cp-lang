@@ -22,7 +22,7 @@ for _ in 0..m:
     adj[u] = adj[u].with(v)
     adj[v] = adj[v].with(u)
 let tree_edges: [TE](u: V, v: V) = read()
-let tree = Rooted<V>(Graph<V, TE>.undirected(tree_edges), root: V.first!)
+let tree = Rooted<V>(Graph.undirected(tree_edges), root: V.first!)
 
 var ans: U64 = 0
 var dp: [V, V]U64 = 0

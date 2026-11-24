@@ -27,5 +27,8 @@ for i in 0..4 * n:
     let k = i * 13 % n
     s += b.range(k..k + 8).last ?? 0 // timed: bag.SortedRange.last
     s += b.range(k..k + 8).len // timed: bag.SortedRange.len
+    s += b.range(k..k + 8).first ?? 0 // timed: bag.SortedRange.first
+    s += b.range(k..k + 8).each().count() // timed: bag.SortedRange.each
+    s += b.range(k..k + 8).rev.count() // timed: bag.SortedRange.rev
     if b.range(k..k + 8).is_empty: s += 1 // timed: bag.SortedRange.is_empty
 print(s)

@@ -112,4 +112,10 @@ for i in 0..reps / 8:
     s += e.find(ar, V((i * 13) % n)).ord // timed: dsu.PersistentDsu.find
     if e.same(ar, V((i) % n), V((i * 7 + 3) % n)): s += 1 // timed: dsu.PersistentDsu.same
     s += e.size(ar, V((i * 11) % n)) // timed: dsu.PersistentDsu.size
+for i in 0..reps * 4:
+    let w = e.within(ar) // timed: dsu.PersistentDsu.within
+    s += w.len + i // timed: dsu.PersistentDsuWithin.len
+    if w.is_empty: s += 1 // timed: dsu.PersistentDsuWithin.is_empty
+for _ in 0..2:
+    for (v, r) in e.within(ar).items: s += v.ord + r.ord // timed: dsu.PersistentDsuWithin.items
 print(s, r.components, ar.len)

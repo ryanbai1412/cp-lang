@@ -31,6 +31,9 @@ impl<'p> Emitter<'p> {
             }
             PlaceKind::Some(base) => format!("(*{})", self.place_at(base, false)),
             PlaceKind::Index(base, indices) => {
+                if let Some(cell) = self.found_cell(base, indices) {
+                    return cell;
+                }
                 let b = self.place_at(base, false);
                 if let (Ty::Map(..) | Ty::HashMap(..), [key]) = (&base.ty, indices.as_slice()) {
                     if let Some(at) = self.map_slot(key) {

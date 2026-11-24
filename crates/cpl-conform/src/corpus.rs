@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn max_cases_are_timed_apart_and_an_interactive_case_needs_no_answer() {
         let root = std::env::temp_dir().join(format!("cpl-conform-corpus-{}", std::process::id()));
-        let pkg = root.join("corpus/problems/p");
+        let pkg = root.join("corpus/problems").join("p");
         let cases = root.join("target/corpus-tests/p");
         std::fs::create_dir_all(&pkg).unwrap();
         std::fs::create_dir_all(&cases).unwrap();

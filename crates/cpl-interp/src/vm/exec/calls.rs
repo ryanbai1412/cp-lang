@@ -23,16 +23,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         let spans = chunk.spans.as_slice();
         let mut regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
         match op {
-            Op::FieldI { dst, obj_v, field } => {
-                regs_i[dst as usize] = match &regs_v[obj_v as usize] {
-                    Value::Tuple(TupleVal::Boxed(fs)) => ScalarKind::unbox_val(&fs[field as usize]),
-                    Value::Tuple(TupleVal::OneInt(v)) => *v,
-                    _ => 0,
-                };
-                if obj_v as usize >= chunk.num_local_v {
-                    regs_v[obj_v as usize] = Value::Unit;
-                }
-            }
             Op::FieldOptI {
                 dst_val,
                 dst_some,
@@ -59,39 +49,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[obj_v as usize] = Value::Unit;
                 }
                 regs_v[dst as usize] = val;
-            }
-            Op::LoadFieldList1I {
-                dst,
-                obj_v,
-                field,
-                r_i,
-            } => {
-                let idx = regs_i[r_i as usize];
-                if let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[obj_v as usize] {
-                    if let Value::List(list) = &fs[field as usize] {
-                        if idx < 0 || (idx as usize) >= list.len() {
-                            return trap(
-                                spans[cur_pc],
-                                format!("index {idx} is outside a list of length {}", list.len()),
-                            );
-                        }
-                        regs_i[dst as usize] =
-                            ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected list field");
-                    }
-                } else {
-                    return trap(spans[cur_pc], "internal: expected struct");
-                }
-            }
-            Op::FieldListLen { dst, obj_v, field } => {
-                regs_i[dst as usize] = match &regs_v[obj_v as usize] {
-                    Value::Tuple(TupleVal::Boxed(fs)) => match &fs[field as usize] {
-                        Value::List(list) => list.len() as i64,
-                        _ => 0,
-                    },
-                    _ => 0,
-                };
             }
             Op::LoadFieldArr1I {
                 dst,

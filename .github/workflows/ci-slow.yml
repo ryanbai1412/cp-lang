@@ -48,6 +48,23 @@ jobs:
       - name: Wall-clock budgets
         run: scripts/check.sh --timing
 
+  # The --full suites: fuzzers, metamorphic, flakes, speed, every judge's
+  # flags, case-bugs (scripts/ci.py STEPS["full"]); no other job runs them.
+  full:
+    name: the --full suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: dev
+      - name: The --full suites
+        env:
+          CPL_GATE_PART: full
+        run: scripts/check.sh --full
+
   # Coverage of each crate by its own tests and by all (handbook/process/quality.md#how-suites-are-measured).
   coverage:
     name: coverage matrix

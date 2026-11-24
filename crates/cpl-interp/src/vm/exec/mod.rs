@@ -26,9 +26,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         vm_regs_i.resize(base_i + chunk.num_i, 0);
         for (i, &v) in args_i.iter().enumerate() {
             if let Some(SlotLoc::I(r, _)) = chunk.slot_map.get(i) {
-                unsafe {
-                    *vm_regs_i.get_unchecked_mut(base_i + *r as usize) = v;
-                }
+                vm_regs_i[base_i + *r as usize] = v;
             }
         }
         let mut regs_v = self.take_regs_v(chunk.num_v);
@@ -63,16 +61,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         for loc in chunk.slot_map.iter().take(chunk.param_count) {
             match *loc {
                 SlotLoc::I(r, _) => {
-                    unsafe {
-                        *vm_regs_i.get_unchecked_mut(base_i + r as usize) = args_i[ii];
-                    }
+                    vm_regs_i[base_i + r as usize] = args_i[ii];
                     ii += 1;
                 }
                 SlotLoc::OptI { val, some, .. } => {
-                    unsafe {
-                        *vm_regs_i.get_unchecked_mut(base_i + val as usize) = args_i[ii];
-                        *vm_regs_i.get_unchecked_mut(base_i + some as usize) = args_i[ii + 1];
-                    }
+                    vm_regs_i[base_i + val as usize] = args_i[ii];
+                    vm_regs_i[base_i + some as usize] = args_i[ii + 1];
                     ii += 2;
                 }
                 SlotLoc::V(r) => {
@@ -173,20 +167,37 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         let mut escaped: Option<(bool, Option<LoopId>)> = None;
 
         loop {
+            // Bounds checks here cost the loop bench about a fifth; the
+            // compiler keeps every pc, register and constant in range, and
+            // debug builds (every test) check it.
+            debug_assert!(pc < ops.len(), "pc {pc} past the chunk's {} ops", ops.len());
+            // SAFETY: in range, as asserted above.
             let op = unsafe { *ops.get_unchecked(pc) };
             let cur_pc = pc;
             pc += 1;
             match op {
-                Op::ConstImmI { dst, val } => unsafe {
-                    *regs_i.get_unchecked_mut(dst as usize) = i64::from(val);
-                },
-                Op::ConstI { dst, idx } => unsafe {
-                    *regs_i.get_unchecked_mut(dst as usize) =
-                        *chunk.consts_i.get_unchecked(idx as usize);
-                },
-                Op::MoveI { dst, src } => unsafe {
-                    *regs_i.get_unchecked_mut(dst as usize) = *regs_i.get_unchecked(src as usize);
-                },
+                Op::ConstImmI { dst, val } => {
+                    debug_assert!((dst as usize) < regs_i.len());
+                    // SAFETY: in range, as asserted above.
+                    unsafe { *regs_i.get_unchecked_mut(dst as usize) = i64::from(val) }
+                }
+                Op::ConstI { dst, idx } => {
+                    debug_assert!((dst as usize) < regs_i.len());
+                    debug_assert!((idx as usize) < chunk.consts_i.len());
+                    // SAFETY: in range, as asserted above.
+                    unsafe {
+                        *regs_i.get_unchecked_mut(dst as usize) =
+                            *chunk.consts_i.get_unchecked(idx as usize);
+                    }
+                }
+                Op::MoveI { dst, src } => {
+                    debug_assert!((dst as usize) < regs_i.len() && (src as usize) < regs_i.len());
+                    // SAFETY: in range, as asserted above.
+                    unsafe {
+                        *regs_i.get_unchecked_mut(dst as usize) =
+                            *regs_i.get_unchecked(src as usize);
+                    }
+                }
                 Op::MoveV { dst, src } => {
                     let v = if src as usize >= chunk.num_local_v {
                         std::mem::replace(&mut regs_v[src as usize], Value::Unit)
@@ -194,6 +205,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_v[src as usize].clone()
                     };
                     regs_v[dst as usize] = v;
+                }
+                Op::CloneV { dst, src } => {
+                    regs_v[dst as usize] = regs_v[src as usize].clone();
                 }
                 Op::MoveVConsume { dst, src } => {
                     regs_v[dst as usize] =
@@ -1469,6 +1483,77 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         return trap(spans[cur_pc], "internal: expected list");
                     }
                 }
+                Op::LoadFieldList1I {
+                    dst,
+                    obj_v,
+                    field,
+                    r_i,
+                } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[obj_v as usize] {
+                        if let Value::List(list) = &fs[field as usize] {
+                            if idx < 0 || (idx as usize) >= list.len() {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!(
+                                        "index {idx} is outside a list of length {}",
+                                        list.len()
+                                    ),
+                                );
+                            }
+                            regs_i[dst as usize] =
+                                ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list field");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected struct");
+                    }
+                }
+                Op::FieldListLen { dst, obj_v, field } => {
+                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => match &fs[field as usize] {
+                            Value::List(list) => list.len() as i64,
+                            _ => 0,
+                        },
+                        _ => 0,
+                    };
+                }
+                Op::PopcountI { dst, src } => {
+                    regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).count_ones());
+                }
+                Op::CtzI { dst, src } => {
+                    regs_i[dst as usize] =
+                        i64::from((regs_i[src as usize] as u64).trailing_zeros());
+                }
+                Op::ClzI { dst, src } => {
+                    regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).leading_zeros());
+                }
+                Op::BinU64 { dst, a, b, op } => {
+                    regs_i[dst as usize] =
+                        exec_bin_u64(regs_i[a as usize], regs_i[b as usize], op, spans[cur_pc])?;
+                }
+                Op::BitAndU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] & regs_i[b as usize];
+                }
+                Op::BitOrU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] | regs_i[b as usize];
+                }
+                Op::BitXorU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] ^ regs_i[b as usize];
+                }
+                Op::FieldI { dst, obj_v, field } => {
+                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => {
+                            ScalarKind::unbox_val(&fs[field as usize])
+                        }
+                        Value::Tuple(TupleVal::OneInt(v)) => *v,
+                        _ => 0,
+                    };
+                    if obj_v as usize >= chunk.num_local_v {
+                        regs_v[obj_v as usize] = Value::Unit;
+                    }
+                }
                 Op::LoadLList1I { dst, list_v, r_i } => {
                     let idx = regs_i[r_i as usize];
                     match &regs_v[list_v as usize] {
@@ -1731,11 +1816,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         fed: &mut Option<&mut FedCtx<'_, 'p>>,
     ) -> Res<Option<ExecExit>> {
         match op {
-            Op::FieldI { .. }
-            | Op::FieldOptI { .. }
+            Op::FieldOptI { .. }
             | Op::FieldV { .. }
-            | Op::LoadFieldList1I { .. }
-            | Op::FieldListLen { .. }
             | Op::LoadFieldArr1I { .. }
             | Op::FieldArrLen { .. }
             | Op::StrGetI { .. }
@@ -1783,9 +1865,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::RangeHiI { .. }
             | Op::RangeBoundsI { .. }
             | Op::BitCeilI { .. }
-            | Op::PopcountI { .. }
-            | Op::CtzI { .. }
-            | Op::ClzI { .. }
             | Op::MinMaxGArr1SmallTuple { .. }
             | Op::MinMaxLArr1SmallTuple { .. }
             | Op::ListPushGArr1I { .. }

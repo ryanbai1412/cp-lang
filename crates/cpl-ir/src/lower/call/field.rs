@@ -78,7 +78,7 @@ impl<'a> Lowerer<'a> {
                         return self.eval_struct_const(sid, sc, span);
                     }
                     // A method taking `self` is the value's: `Subset<B>.first` is the domain's.
-                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text).filter(|&&f| {
+                    if let Some(fn_id) = self.own_method(sid, &name.text).filter(|&f| {
                         self.sigs[f].receiver.is_none() || self.structs[sid].index_domain.is_none()
                     }) {
                         return self.method_call(fn_id, None, &[], span);
@@ -165,7 +165,7 @@ impl<'a> Lowerer<'a> {
                     return self.eval_struct_const(id, sc, span);
                 }
                 // A method taking `self` is the value's: `Subset<B>.first` is the domain's.
-                if let Some(&fn_id) = self.structs[id].methods.get(&name.text).filter(|&&f| {
+                if let Some(fn_id) = self.own_method(id, &name.text).filter(|&f| {
                     self.sigs[f].receiver.is_none() || self.structs[id].index_domain.is_none()
                 }) {
                     if let Some(value) = self.static_fn_value(fn_id, hint, span) {
@@ -193,12 +193,10 @@ impl<'a> Lowerer<'a> {
                             return self.eval_struct_const(id, sc, span);
                         }
                         // A method taking `self` is the value's: `Subset<B>.first` is the domain's.
-                        if let Some(&fn_id) =
-                            self.structs[id].methods.get(&name.text).filter(|&&f| {
-                                self.sigs[f].receiver.is_none()
-                                    || self.structs[id].index_domain.is_none()
-                            })
-                        {
+                        if let Some(fn_id) = self.own_method(id, &name.text).filter(|&f| {
+                            self.sigs[f].receiver.is_none()
+                                || self.structs[id].index_domain.is_none()
+                        }) {
                             if let Some(value) = self.static_fn_value(fn_id, hint, span) {
                                 return value;
                             }
@@ -223,7 +221,7 @@ impl<'a> Lowerer<'a> {
                             return self.eval_struct_const(*sid, sc, span);
                         }
                         if self.structs[*sid].getters.contains(&name.text) {
-                            if let Some(&fid) = self.structs[*sid].methods.get(&name.text) {
+                            if let Some(fid) = self.own_method(*sid, &name.text) {
                                 self.queue_fn(fid);
                                 let ret = self.ret_of(fid, span);
                                 return self.mk(ExprKind::Call(fid, Vec::new()), ret, span);
@@ -293,7 +291,7 @@ impl<'a> Lowerer<'a> {
                         return self.eval_struct_const(sid, sc, span);
                     }
                     // A method taking `self` is the value's: `Subset<B>.first` is the domain's.
-                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text).filter(|&&f| {
+                    if let Some(fn_id) = self.own_method(sid, &name.text).filter(|&f| {
                         self.sigs[f].receiver.is_none() || self.structs[sid].index_domain.is_none()
                     }) {
                         return self.method_call(fn_id, None, &[], span);

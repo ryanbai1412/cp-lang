@@ -383,6 +383,28 @@ impl crate::emit::Emitter<'_> {
         }
     }
 
+    /// The root of a place whose indices call fns (`at[p.cut(r)]`) when
+    /// none of them can change it: they run before the name binds.
+    fn keyed_root(&self, e: &Expr) -> Option<(bool, usize)> {
+        let mut keys = Vec::new();
+        let mut at = e;
+        let root = loop {
+            at = match &at.kind {
+                ExprKind::Unwrap(base, _)
+                | ExprKind::Field(base, _)
+                | ExprKind::Payload(base, ..) => base,
+                ExprKind::Index(base, indices) => {
+                    keys.extend(indices);
+                    base
+                }
+                _ => break walk::path_root(at)?,
+            };
+        };
+        keys.iter()
+            .all(|key| self.leaves(key, root))
+            .then_some(root)
+    }
+
     pub(crate) fn source_stays(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
         self.source_change(slot, init, tail).is_none()
     }
@@ -397,7 +419,8 @@ impl crate::emit::Emitter<'_> {
     ) -> Option<&'static str> {
         let temp = |slot: usize| self.locals()[slot].name.is_empty();
         let changed = |yes: bool, why| yes.then_some(why);
-        let Some((global, root)) = crate::stmt::place_root(init) else {
+        let Some((global, root)) = crate::stmt::place_root(init).or_else(|| self.keyed_root(init))
+        else {
             return Some(SOURCE_CALLED);
         };
         let home = self.home();

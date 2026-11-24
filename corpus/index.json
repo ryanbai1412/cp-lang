@@ -1,16 +1,16 @@
 {
- "problems": 1118,
- "with_cpp_ac": 1095,
+ "problems": 1111,
+ "with_cpp_ac": 1111,
  "dream": {
   "draft": 126,
   "gold": 0,
-  "none": 992,
+  "none": 985,
   "reviewed": 0
  },
  "spec": {
   "draft": 99,
   "gold": 0,
-  "none": 1019,
+  "none": 1012,
   "reviewed": 0
  },
  "by_source": {
@@ -38,20 +38,17 @@
   "csps": 1,
   "ctsc": 2,
   "dmopc": 58,
-  "dmpg": 5,
+  "dmpg": 4,
   "dwite": 2,
   "egoi": 16,
-  "eoi": 2,
   "etsr": 6,
   "factorial": 2,
   "fastbit": 1,
-  "gaolian": 2,
   "hci": 1,
   "helloworld": 1,
   "helloworldhard": 1,
-  "help": 1,
   "iati": 6,
-  "ioi": 120,
+  "ioi": 119,
   "jloi": 1,
   "joi": 2,
   "mccc": 16,

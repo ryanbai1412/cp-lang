@@ -3,7 +3,8 @@
 # before every commit; CI runs the full fast gate on every main tip.
 # A commit never waits more than 25 s on it: past that the hook warns, names
 # the step it was in, logs it to .git/cpl-commit-slow.log and allows the
-# commit. Turn it on once per clone with scripts/install-hooks.sh; skip it
+# commit, unless that step was the touched-path slices: the tests a change
+# maps to (scripts/affected.py) refuse rather than reach main unrun. Turn it on once per clone with scripts/install-hooks.sh; skip it
 # for one commit with `git commit --no-verify`.
 set -uo pipefail
 root="$(git rev-parse --show-toplevel)"
@@ -12,8 +13,20 @@ out="$(mktemp)"
 trap 'rm -f "$out"' EXIT
 timeout "$limit" "$root/scripts/check.sh" --commit 2>&1 | tee "$out"
 status=${PIPESTATUS[0]}
-[ "$status" -eq 124 ] || exit "$status"
+if [ "$status" -ne 124 ]; then
+    # land.sh shows this when a failed hook left nothing to land.
+    [ "$status" -eq 0 ] || tail -40 "$out" >"$(git rev-parse --git-common-dir)/cpl-commit-failed.log"
+    exit "$status"
+fi
 slow=$(grep '^==> ' "$out" | tail -1 | cut -c5-)
-echo "pre-commit: WARNING: the commit tier passed ${limit}s in \`${slow:-setup}\`; allowing the commit, CI runs the rest" >&2
 printf '%s\t%ss\t%s\n' "$(date -u +%FT%TZ)" "$limit" "${slow:-setup}" >>"$(git rev-parse --git-common-dir)/cpl-commit-slow.log"
+case "$slow" in
+    "touched-path slices: "*)
+        slices=${slow#touched-path slices: }; slices=${slices%% (*}
+        echo "pre-commit: the commit tier passed ${limit}s in \`$slow\`; refusing: these are the tests this change maps to." >&2
+        echo "pre-commit: run them, then commit again: uv run scripts/affected.py --run-slices $slices" |
+            tee "$(git rev-parse --git-common-dir)/cpl-commit-failed.log" >&2
+        exit 1 ;;
+esac
+echo "pre-commit: WARNING: the commit tier passed ${limit}s in \`${slow:-setup}\`; allowing the commit, CI runs the rest" >&2
 exit 0

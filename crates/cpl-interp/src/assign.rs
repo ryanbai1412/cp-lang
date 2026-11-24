@@ -417,7 +417,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 (Mutation::Reverse, Value::Array(arr)) => {
                     let a = Rc::make_mut(arr);
                     for i in 0..mv.len / 2 {
-                        a.swap(mv.lo + i, mv.lo + mv.len - 1 - i);
+                        a.swap(mv.lo + i * mv.step, mv.lo + (mv.len - 1 - i) * mv.step);
                     }
                     Value::Unit
                 }
@@ -426,7 +426,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let v = Rc::make_mut(items);
                     match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
                         (Some(i), Some(j)) if i < mv.len && j < mv.len => {
-                            v.swap(mv.lo + i, mv.lo + j);
+                            v.swap(mv.lo + i * mv.step, mv.lo + j * mv.step);
                         }
                         _ => {
                             return trap(
@@ -442,7 +442,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let a = Rc::make_mut(arr);
                     match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
                         (Some(i), Some(j)) if i < mv.len && j < mv.len => {
-                            a.swap(mv.lo + i, mv.lo + j);
+                            a.swap(mv.lo + i * mv.step, mv.lo + j * mv.step);
                         }
                         _ => {
                             return trap(
@@ -460,7 +460,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 (Mutation::Fill, Value::Array(arr)) => {
                     let a = Rc::make_mut(arr);
                     for i in 0..mv.len {
-                        a.set(mv.lo + i, arg.clone());
+                        a.set(mv.lo + i * mv.step, arg.clone());
                     }
                     Value::Unit
                 }

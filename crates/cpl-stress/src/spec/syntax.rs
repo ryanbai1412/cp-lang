@@ -653,48 +653,6 @@ pub(super) fn read_gen(expr: &Expr) -> Option<String> {
 
 /// `src` lowered to print what `func()` makes after reading the input
 /// above `line`. `None` when it does not build.
-/// The structs `use std.m.{X}` brings in, or a stdlib name used bare, whose fields are all `Int`,
-/// `Bool` or `Char`, shaped as a declared field of that type would be.
-pub(super) fn std_structs(
-    module: &[String],
-    names: &[&str],
-    glob: bool,
-) -> Vec<(String, Vec<Shape>)> {
-    use cpl_check::Loader;
-    let Some((_, text)) = cpl_check::FsLoader.load("", module) else {
-        return Vec::new();
-    };
-    let field = |ty: &Type| match &ty.kind {
-        TypeKind::Named { name, args } if args.is_empty() => match name.text.as_str() {
-            "Int" => Some(Shape::Int {
-                lo: int(DEFAULT_INT.0),
-                hi: int(DEFAULT_INT.1),
-            }),
-            "Bool" => Some(Shape::Bool),
-            "Char" => Some(Shape::Char { lo: b'a', hi: b'z' }),
-            _ => None,
-        },
-        _ => None,
-    };
-    let parsed = cpl_syntax::parse_file(&text);
-    let mut out = Vec::new();
-    for (_, item) in &parsed.items {
-        for stmt in &item.stmts {
-            let StmtKind::Struct(decl) = &stmt.kind else {
-                continue;
-            };
-            let wanted = glob || names.contains(&decl.name.text.as_str());
-            if !wanted || !decl.generics.is_empty() {
-                continue;
-            }
-            if let Some(parts) = decl.fields.iter().map(|f| field(&f.ty)).collect() {
-                out.push((decl.name.text.clone(), parts));
-            }
-        }
-    }
-    out
-}
-
 pub(super) fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_ir::Program> {
     let name = "input.cp";
     let mut db = cpl_check::Session::new();

@@ -107,8 +107,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     };
                     let target = self.part_mut(&mv.target, span)?;
                     return match target {
-                        Value::List(items) => Ok(Rc::make_mut(items).cell_mut(mv.lo + i)),
-                        Value::Array(arr) => Ok(&mut Rc::make_mut(arr).as_mut_values()[mv.lo + i]),
+                        Value::List(items) => Ok(Rc::make_mut(items).cell_mut(mv.lo + i * mv.step)),
+                        Value::Array(arr) => {
+                            Ok(&mut Rc::make_mut(arr).as_mut_values()[mv.lo + i * mv.step])
+                        }
                         Value::Moved => trap(span, LENT),
                         _ => trap(span, "internal: mutable view target is not a list or array"),
                     };
@@ -219,8 +221,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             );
         }
         match self.part(&mv.target) {
-            Some(Value::List(items)) => Ok(items.get_unchecked_val(mv.lo + idx)),
-            Some(Value::Array(arr)) => Ok(arr.get_unchecked_val(mv.lo + idx)),
+            Some(Value::List(items)) => Ok(items.get_unchecked_val(mv.lo + idx * mv.step)),
+            Some(Value::Array(arr)) => Ok(arr.get_unchecked_val(mv.lo + idx * mv.step)),
             Some(Value::Moved) => trap(span, LENT),
             _ => trap(span, "internal: mutable view target is not a list or array"),
         }
@@ -228,11 +230,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     pub(super) fn mut_view_to_vec(&self, mv: &MutViewVal, span: Span) -> Res<Vec<Value>> {
         match self.part(&mv.target) {
-            Some(Value::List(items)) => Ok(items.values_in(mv.lo, mv.lo + mv.len)),
+            Some(Value::List(items)) if mv.step == 1 => Ok(items.values_in(mv.lo, mv.lo + mv.len)),
+            Some(Value::List(items)) => Ok((0..mv.len)
+                .map(|i| items.get_unchecked_val(mv.lo + i * mv.step))
+                .collect()),
             Some(Value::Array(arr)) => {
                 let mut out = Vec::with_capacity(mv.len);
                 for i in 0..mv.len {
-                    out.push(arr.get_unchecked_val(mv.lo + i));
+                    out.push(arr.get_unchecked_val(mv.lo + i * mv.step));
                 }
                 Ok(out)
             }

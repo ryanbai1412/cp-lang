@@ -19,18 +19,40 @@ remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
 t0=$(date +%s)
 git fetch -q "$remote" main
+# A checkout behind main lands with main's land.sh, so a fix to landing reaches
+# every lane at once instead of after its next rebase.
+if [ -z "${CPL_LAND_MAIN:-}" ] && git cat-file -e FETCH_HEAD:scripts/land.sh 2>/dev/null &&
+    ! git show FETCH_HEAD:scripts/land.sh | cmp -s - scripts/land.sh; then
+    dir="$(git rev-parse --git-common-dir)/cpl-land-main"
+    mkdir -p "$dir"
+    for f in land.sh retry.sh; do git show "FETCH_HEAD:scripts/$f" >"$dir/$f"; done
+    CPL_LAND_MAIN=1 exec bash "$dir/land.sh" "$@"
+fi
 for c in $(git rev-list "FETCH_HEAD..HEAD"); do
     git log -1 --format='%(trailers:key=Domain,valueonly)' "$c" | grep -q . ||
         { echo "land: $(git log -1 --format='%h %s' "$c") has no Domain: trailer" >&2; exit 1; }
 done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
-# A conflict only in generated files is resolved by taking main's copy; CI's
-# regen job regenerates it on the pushed tip. Any other conflict stops here.
-generated='^(spec/conformance/|skills/|pnpm-lock\.yaml$)'
+# A conflict only in generated files (a gen.toml entry's, or pnpm-lock.yaml) is
+# resolved by taking main's copy; CI's regen job regenerates it on the pushed
+# tip. Any other conflict stops here: taking main's side of a hand-written file
+# drops this commit's change to it.
 ratchet=scripts/debt-ratchet.json index=corpus/index.json
 rebasing() { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; }
+# A rebase that worked can still leave the autostash's pop conflicted; say so
+# rather than land around it.
+stash_conflict() {
+    rebasing && return 1
+    left=$(git diff --name-only --diff-filter=U)
+    [ -n "$left" ] || return 1
+    echo "land: your uncommitted changes conflict with main in: $(echo $left); they are kept in" \
+        "$(git stash list -1 --format=%gd); resolve the files, then \`git stash drop\`" >&2
+}
 pull() {
-    git pull -q --rebase --autostash "$remote" main && return 0
+    if git pull -q --rebase --autostash "$remote" main; then
+        stash_conflict && return 1
+        return 0
+    fi
     while rebasing; do
         conflicts=$(git diff --name-only --diff-filter=U)
         # The corpus index sums every package's meta.json: rebuild it from the rebased tree.
@@ -58,7 +80,8 @@ pull() {
                 continue
             fi
         fi
-        if [ -z "$conflicts" ] || printf '%s\n' "$conflicts" | grep -qvE "$generated"; then
+        hand=$(printf '%s\n' $conflicts | grep -vx 'pnpm-lock\.yaml' || :)
+        if [ -z "$conflicts" ] || { [ -n "$hand" ] && ! uv run --quiet python scripts/gen.py --owns $hand >/dev/null; }; then
             echo "land: rebase conflict in $(echo $conflicts); resolve it and run land.sh again" >&2
             return 1
         fi
@@ -70,12 +93,17 @@ pull() {
             { echo "land: git rebase --continue failed" >&2; return 1; }
     done
 }
-pull
+pull || exit 1
 # Only committed work lands (handbook/guidelines/ci-checklist.md ci/R27): a
 # commit whose hook failed left nothing new, and pushing the regeneration
 # alone would ship generated files without their source.
-[ -n "$(git rev-list FETCH_HEAD..HEAD)" ] ||
-    { echo "land: nothing to land: HEAD is already on main (did the commit or its hook fail?)" >&2; exit 1; }
+failed_log="$(git rev-parse --git-common-dir)/cpl-commit-failed.log"
+if [ -z "$(git rev-list FETCH_HEAD..HEAD)" ]; then
+    echo "land: nothing to land: HEAD is already on main (did the commit or its hook fail?)" >&2
+    [ ! -s "$failed_log" ] || { echo "land: the last failed pre-commit ended:" >&2; tail -15 "$failed_log" >&2; }
+    exit 1
+fi
+rm -f "$failed_log"
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
@@ -94,12 +122,16 @@ fi
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
-# The files of this change that rustc rejects (error[E...]) in cargo's output
-# on stdin: two changes each green alone can combine into one that doesn't
-# compile, and that one must not land.
+# The files that rustc rejects (error[E...]) in cargo's output on stdin, in a
+# crate this change touches: two changes each green alone can combine into one
+# that doesn't compile (5246e1c33 retyped a field another file still pushed),
+# and that one must not land.
 own_compile_errors() {
     awk '/^(error|warning)/ {e = /^error\[E/} e && /^ *--> / {sub(/^ *--> /, ""); sub(/:.*/, ""); print}' |
-        sort -u | grep -Fx -- "$changed" || [ $? = 1 ]
+        sort -u | while IFS= read -r f; do
+            c=${f#crates/}; c=${c%%/*}
+            case " $crates " in *" -p $c "*) echo "$f" ;; *) printf '%s\n' "$changed" | grep -Fx -- "$f" || : ;; esac
+        done
 }
 refuse_if_broken() {
     bad=$(printf '%s\n' "$1" | own_compile_errors)
@@ -108,7 +140,7 @@ refuse_if_broken() {
 }
 # Clippy as CI runs it (-D warnings, every target) on the touched crates and
 # the workspace crates that depend on them, at the rebased tip. A compile
-# error in this change's own files refuses the land; past
+# error in a crate this change touches refuses the land; past
 # CPL_LAND_CLIPPY_SECS (cold cache) or on any other failure it warns and
 # lands, leaving it to CI (whose regen job applies `clippy --fix`).
 users=""

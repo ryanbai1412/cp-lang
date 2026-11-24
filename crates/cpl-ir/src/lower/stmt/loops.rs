@@ -30,9 +30,61 @@ impl<'a> Lowerer<'a> {
         if factors.len() != pats.len() {
             return None;
         }
-        let span = iter.span;
+        let (heads, parts) = self.factor_heads(&factors, iter.span);
+        let ty = Ty::Tuple(parts.iter().map(|p| p.ty.clone()).collect());
+        Some((heads, self.mk(ExprKind::Tuple(parts), ty, iter.span)))
+    }
+
+    /// The loop heads and cell of `for p in Square` or `for p in g.keys` over a
+    /// grid: one loop per factor, with `p` built from them.
+    pub(in crate::lower) fn product_name_heads(
+        &mut self,
+        pat: &ast::Pattern,
+        iter: &ast::Expr,
+        out: &mut Vec<Stmt>,
+    ) -> Option<(Vec<LoopHead>, Expr, Vec<Expr>)> {
+        let ast::PatternKind::Name(_) = &pat.kind else {
+            return None;
+        };
+        let id = match (&iter.kind, self.sym(iter)) {
+            (_, Some(Sym::Domain(id))) if self.product_domains.contains_key(&id) => id,
+            (ast::ExprKind::Field { base, name }, _) if name.text == "keys" => {
+                let Some(Ty::Array { dims, .. }) = self.probe_ty_silent(base) else {
+                    return None;
+                };
+                let factors = (dims.len() > 1)
+                    .then(|| {
+                        dims.iter()
+                            .map(|d| match d {
+                                Dim::Pos(d) => Some((None, ProductFactor::Domain(*d))),
+                                _ => None,
+                            })
+                            .collect::<Option<Vec<_>>>()
+                    })
+                    .flatten()?;
+                let id = self.intern_anon_product_domain(factors);
+                self.def_anon_product_domain(id, iter.span, out);
+                id
+            }
+            _ => return None,
+        };
+        let factors: Vec<ProductFactor> = self.product_domains[&id]
+            .iter()
+            .map(|(_, f)| f.clone())
+            .collect();
+        let (heads, parts) = self.factor_heads(&factors, iter.span);
+        let cell = self.encode_product(id, parts.clone(), iter.span);
+        Some((heads, cell, parts))
+    }
+
+    /// One loop head per factor, and the factor's value from its loop variable.
+    fn factor_heads(
+        &mut self,
+        factors: &[ProductFactor],
+        span: Span,
+    ) -> (Vec<LoopHead>, Vec<Expr>) {
         let (mut heads, mut parts) = (Vec::new(), Vec::new());
-        for f in &factors {
+        for f in factors {
             let ty = match f {
                 ProductFactor::Domain(d) => Ty::Pos(*d),
                 _ => Ty::Int,
@@ -49,8 +101,7 @@ impl<'a> Lowerer<'a> {
                 self.product_factor_len(f, span),
             ));
         }
-        let ty = Ty::Tuple(parts.iter().map(|p| p.ty.clone()).collect());
-        Some((heads, self.mk(ExprKind::Tuple(parts), ty, span)))
+        (heads, parts)
     }
 
     /// Runs `body` with `pat` bound to `value` inside one loop per head,
@@ -77,6 +128,7 @@ impl<'a> Lowerer<'a> {
         self.cx.scopes.push(HashMap::new());
         self.cx.local_syms.push(HashMap::new());
         let mut stmts = Vec::new();
+        let mut product_pos = None;
         match (&pat.kind, value.kind) {
             (ast::PatternKind::Tuple(pats), ExprKind::Tuple(parts))
                 if pats.len() == parts.len() =>
@@ -100,12 +152,23 @@ impl<'a> Lowerer<'a> {
             (_, kind) => {
                 let value = Expr { kind, ..value };
                 self.bind(pat, value, &mut stmts);
+                if let (Some(parts), ast::PatternKind::Name(name)) =
+                    (self.cx.loop_parts.take(), &pat.kind)
+                {
+                    if let Some(&slot) = self.cx.scopes.last().and_then(|s| s.get(name)) {
+                        self.cx.product_parts.insert(slot, parts);
+                        product_pos = Some(slot);
+                    }
+                }
                 if let Some(rinfo) = &rinfo {
                     self.bind_range_info(pat, rinfo);
                 }
             }
         }
         stmts.extend(self.block(body, Tail::Discard).stmts);
+        if let Some(slot) = product_pos {
+            drop_unread_let(slot, &mut stmts);
+        }
         self.cx.local_syms.pop();
         self.cx.scopes.pop();
         self.cx.loops.pop();
@@ -435,3 +498,55 @@ impl<'a> Lowerer<'a> {
 
 /// One integer loop: its variable, first value and end.
 pub(in crate::lower) type LoopHead = (Slot, Expr, Expr);
+
+/// Drops `let slot = ..` from `stmts` when nothing after it reads `slot`: a
+/// product position whose every use read a loop variable instead.
+fn drop_unread_let(slot: usize, stmts: &mut Vec<Stmt>) {
+    let Some(at) = stmts
+        .iter()
+        .position(|s| matches!(s, Stmt::Let(s, _) if *s == slot))
+    else {
+        return;
+    };
+    let rest = Block {
+        stmts: stmts[at + 1..].to_vec(),
+    };
+    let mut read = false;
+    crate::walk::deep_exprs(&rest, &mut |e| {
+        read |= matches!(e.kind, ExprKind::Local(s) if s == slot)
+            || matches!(e.kind, ExprKind::Closure(_));
+    });
+    if !read {
+        stmts.remove(at);
+    }
+}
+
+/// `for x in { let a = ..; f(a) }`, as a method view's walk lowers, walks
+/// `f(a)` after the lets: a loop over a `yields` call is fed by it instead
+/// of walking the list it would build.
+pub(in crate::lower) fn hoist_call_args(iter: Iter, out: &mut Vec<Stmt>) -> Iter {
+    let Iter::Seq(seq, rev) = iter else {
+        return iter;
+    };
+    let ExprKind::Do(block) = &seq.kind else {
+        return Iter::Seq(seq, rev);
+    };
+    let hoistable = match block.stmts.split_last() {
+        Some((Stmt::Give(call), lets)) => {
+            matches!(call.kind, ExprKind::Call(..))
+                && lets.iter().all(|s| matches!(s, Stmt::Let(_, Some(_))))
+        }
+        _ => false,
+    };
+    if !hoistable {
+        return Iter::Seq(seq, rev);
+    }
+    let ExprKind::Do(mut block) = seq.kind else {
+        unreachable!()
+    };
+    let Some(Stmt::Give(call)) = block.stmts.pop() else {
+        unreachable!()
+    };
+    out.extend(block.stmts);
+    Iter::Seq(call, rev)
+}

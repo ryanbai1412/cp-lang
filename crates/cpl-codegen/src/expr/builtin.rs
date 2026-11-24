@@ -398,6 +398,15 @@ impl<'p> Emitter<'p> {
                     text(1)
                 ))
             }
+            Builtin::GridLine => {
+                self.need("grid_line");
+                Code::primary(format!(
+                    "cpl::grid_line({}, {}, {})",
+                    text(0),
+                    text(1),
+                    text(2)
+                ))
+            }
             Builtin::KeyLo
             | Builtin::KeyPos
             | Builtin::PosKey

@@ -584,6 +584,42 @@ fn bad_frames_and_bad_json_do_not_stop_the_server() {
 }
 
 #[test]
+fn definition_on_an_ambiguous_method_lists_every_candidate() {
+    let uri = "file:///w/_lsp_ambiguous.cp";
+    let src = "pub fn sum(self: Range<Int>) -> Int = 7\nprint((0..3).sum())\n";
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    server.handle(&notification(
+        "textDocument/didOpen",
+        obj([(
+            "textDocument",
+            obj([
+                ("uri", uri.into()),
+                ("languageId", "cp".into()),
+                ("version", Value::Int(1)),
+                ("text", src.into()),
+            ]),
+        )]),
+    ));
+    let def = server.handle(&request(
+        2,
+        "textDocument/definition",
+        obj([
+            ("textDocument", obj([("uri", uri.into())])),
+            ("position", pos(1, 14)),
+        ]),
+    ));
+    let locations = def[0].at(&["result"]).as_array().unwrap_or(&[]);
+    let uris: Vec<&str> = locations
+        .iter()
+        .filter_map(|l| l.at(&["uri"]).as_str())
+        .collect();
+    assert_eq!(uris.len(), 2, "{def:?}");
+    assert!(uris.contains(&uri), "{uris:?}");
+    assert!(uris.iter().any(|u| u.ends_with("std/seq.cp")), "{uris:?}");
+}
+
+#[test]
 fn imported_module_symbols_hover_and_jump_to_definition() {
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let repo_root = manifest_dir

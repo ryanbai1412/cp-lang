@@ -1048,7 +1048,6 @@ impl<'a> Checker<'a> {
                             let through = self.quietly(|c| c.bound_args(&f.bounds));
                             self.generics.truncate(outer);
                             Some((f.name.text.clone(), rows, through))
-                                .filter(|(_, rows, _)| !rows.is_empty())
                         }
                         _ => None,
                     })
@@ -1079,9 +1078,11 @@ impl<'a> Checker<'a> {
                         _ => None,
                     })
                     .collect();
+                let generic_bounds = struct_generic_bounds(&generics, &s.bounds);
                 vec![(
                     s.name.text.clone(),
                     Def::Struct {
+                        generic_bounds,
                         generics,
                         defaults,
                         fields,
@@ -2014,4 +2015,29 @@ fn value_domains(fields: &[&str], body: &[ast::Stmt]) -> Vec<String> {
             _ => None,
         })
         .collect()
+}
+
+/// `A: Target<V>` on `struct Graph<V, A>` as `(1, "Target", [Some(0)])`.
+fn struct_generic_bounds(
+    generics: &[String],
+    bounds: &[ast::Bound],
+) -> Vec<(usize, String, Vec<Option<usize>>)> {
+    let index = |t: &ast::Type| match &t.kind {
+        ast::TypeKind::Named { name, args } if args.is_empty() => {
+            generics.iter().position(|g| g == &name.text)
+        }
+        _ => None,
+    };
+    let mut out = Vec::new();
+    for b in bounds {
+        let Some(i) = generics.iter().position(|g| g == &b.name.text) else {
+            continue;
+        };
+        for t in &b.traits {
+            if let ast::TypeKind::Named { name, args } = &t.kind {
+                out.push((i, name.text.clone(), args.iter().map(index).collect()));
+            }
+        }
+    }
+    out
 }

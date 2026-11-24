@@ -214,6 +214,15 @@ fn slot_from_stack(
 
 #[inline(always)]
 pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
+    // Bounds checks here cost the array benches about 2%; the VM checks
+    // `at` against the array's domain before it calls this, and debug
+    // builds (every test) check it again.
+    debug_assert!(
+        at < arr.data.len(),
+        "cell {at} past the array's {}",
+        arr.data.len()
+    );
+    // SAFETY: in range, as asserted above.
     unsafe {
         match &arr.data {
             Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked(at),
@@ -227,6 +236,15 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
 
 #[inline(always)]
 pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
+    // Bounds checks here cost the array benches about 2%; the VM checks
+    // `at` against the array's domain before it calls this, and debug
+    // builds (every test) check it again.
+    debug_assert!(
+        at < arr.data.len(),
+        "cell {at} past the array's {}",
+        arr.data.len()
+    );
+    // SAFETY: in range, as asserted above.
     unsafe {
         match &mut arr.data {
             Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked_mut(at) = val,
@@ -250,6 +268,15 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
 
 #[inline(always)]
 pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
+    // Bounds checks here cost the array benches about 2%; the VM checks
+    // `at` against the array's domain before it calls this, and debug
+    // builds (every test) check it again.
+    debug_assert!(
+        at < arr.data.len(),
+        "cell {at} past the array's {}",
+        arr.data.len()
+    );
+    // SAFETY: in range, as asserted above.
     unsafe {
         match &arr.data {
             Cells::OptInt(v) => match *v.get_unchecked(at) {
@@ -264,10 +291,20 @@ pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
 
 #[inline(always)]
 pub(super) fn write_array_opt_i(arr: &mut Array, at: usize, val: i64, some: i64, kind: ScalarKind) {
+    // Bounds checks here cost the array benches about 2%; the VM checks
+    // `at` against the array's domain before it calls this, and debug
+    // builds (every test) check it again.
+    debug_assert!(
+        at < arr.data.len(),
+        "cell {at} past the array's {}",
+        arr.data.len()
+    );
     match &mut arr.data {
+        // SAFETY: in range, as asserted above.
         Cells::OptInt(v) if kind == ScalarKind::Int => unsafe {
             *v.get_unchecked_mut(at) = if some != 0 { Some(val) } else { None };
         },
+        // SAFETY: in range, as asserted above.
         Cells::Values(v) => unsafe {
             *v.get_unchecked_mut(at) = kind.box_opt(val, some);
         },
@@ -301,6 +338,7 @@ pub(super) fn quiet_node(e: &Expr) -> bool {
             | ExprKind::Closure(..)
             | ExprKind::Do(_)
             | ExprKind::MutSlice(..)
+            | ExprKind::MutLine(..)
             | ExprKind::Mutate(..)
             | ExprKind::Sort(..)
             | ExprKind::Print(..)
@@ -379,14 +417,27 @@ pub(super) fn place_root_mut<'a>(
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", inline(never))]
+/// `U64` arithmetic: the wrapping ops and in-range shifts inline into the
+/// dispatch loop, the rest (division, powers, traps) stay out of line.
+#[cfg_attr(not(target_arch = "wasm32"), inline)]
 pub(super) fn exec_bin_u64(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> {
-    let av = a_raw as u64;
-    let bv = b_raw as u64;
+    let (av, bv) = (a_raw as u64, b_raw as u64);
     let out = match op {
         BinOp::Add => av.wrapping_add(bv),
         BinOp::Sub => av.wrapping_sub(bv),
         BinOp::Mul => av.wrapping_mul(bv),
+        BinOp::Shl if bv < 64 => av << bv,
+        BinOp::Shr if bv < 64 => av >> bv,
+        _ => return exec_bin_u64_rest(a_raw, b_raw, op, span),
+    };
+    Ok(out as i64)
+}
+
+#[inline(never)]
+fn exec_bin_u64_rest(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> {
+    let av = a_raw as u64;
+    let bv = b_raw as u64;
+    let out = match op {
         BinOp::Div => {
             if bv == 0 {
                 return release::div_zero(span, format!("division by zero: `{av} / 0`"));
@@ -436,15 +487,10 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
     let Value::List(keys) = keys else {
         return trap(span, "internal: expected the sort keys");
     };
-    let mut order: Vec<usize> = (0..keys.len()).collect();
-    order.sort_by(|&a, &b| {
-        let o = keys.get_unchecked_val(a).cmp(&keys.get_unchecked_val(b));
-        if desc {
-            o.reverse()
-        } else {
-            o
-        }
-    });
+    let order = crate::sort::stable_order(keys.len(), &mut |a, b| {
+        let (a, b) = (keys.get_unchecked_val(a), keys.get_unchecked_val(b));
+        Ok(if desc { a > b } else { a < b })
+    })?;
     match seq {
         Value::List(items) => Ok(Value::List(Rc::new(
             order.iter().map(|&k| items.get_unchecked_val(k)).collect(),
@@ -498,26 +544,9 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
         Value::Str(bytes) => sort_ord(Rc::make_mut(bytes).as_mut_slice(), desc),
         Value::Array(arr) => {
             let a = Rc::make_mut(arr);
-            match &mut a.data {
-                Cells::Int(v) | Cells::OneIntStruct(v) => sort_ord(v, desc),
-                Cells::OptInt(v) => sort_ord(v, desc),
-                Cells::Bool(v) => sort_ord(v, desc),
-                Cells::Char(v) => sort_ord(v, desc),
-                Cells::Values(v) => sort_ord(v, desc),
-                Cells::Float(v) => {
-                    v.sort_unstable_by(f64::total_cmp);
-                    if desc {
-                        v.reverse();
-                    }
-                }
-                Cells::SmallIntTuple { .. } => {
-                    let mut boxed: Vec<Value> =
-                        (0..a.len()).map(|i| a.get_unchecked_val(i)).collect();
-                    sort_ord(&mut boxed, desc);
-                    for (i, val) in boxed.into_iter().enumerate() {
-                        a.set(i, val);
-                    }
-                }
+            a.data.sort_unstable();
+            if desc {
+                a.data.reverse();
             }
         }
         _ => return trap(span, "internal: cannot sort this value"),
@@ -1212,8 +1241,12 @@ pub(super) fn assign_place_leaf_scalar(
     }
 }
 
-#[derive(Default)]
+#[cfg_attr(not(target_family = "wasm"), derive(Default))]
 pub(crate) struct VmStats {
+    /// `CPL_VM_STATS` is native only: the browser's stats are uninhabited, so
+    /// `cpl.wasm` drops the counting and the report.
+    #[cfg(target_family = "wasm")]
+    _never: std::convert::Infallible,
     pub(crate) total_fallbacks: u64,
     pub(crate) loop_fallbacks: u64,
     pub(crate) hot_loop_fallbacks: u64,
@@ -1226,6 +1259,12 @@ pub(crate) struct VmStats {
 }
 
 impl VmStats {
+    #[cfg(target_family = "wasm")]
+    pub(crate) fn from_env() -> Option<Self> {
+        None
+    }
+
+    #[cfg(not(target_family = "wasm"))]
     pub(crate) fn from_env() -> Option<Self> {
         let val = cpl_env::VM_STATS.raw()?;
         if val.is_empty() || val == "0" {
@@ -1252,19 +1291,10 @@ impl VmStats {
     }
 
     pub(crate) fn emit_stderr(&self) {
-        let mut entries: Vec<(&str, u64)> =
-            self.counts.iter().map(|(k, &v)| (k.as_str(), v)).collect();
-        entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
-        let mut loop_entries: Vec<(&str, u64)> = self
-            .loop_counts
-            .iter()
-            .map(|(k, &v)| (k.as_str(), v))
-            .collect();
-        loop_entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        let entries = by_count(&self.counts);
+        let loop_entries = by_count(&self.loop_counts);
         if cpl_env::VM_STATS.is("json") {
-            let mut walked: Vec<_> = self.walked_counts.iter().collect();
-            walked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-            let walked: Vec<(&str, u64)> = walked.iter().map(|(k, &v)| (k.as_str(), v)).collect();
+            let walked = by_count(&self.walked_counts);
             let s = cpl_json::write_with(|w| {
                 w.object().key("total_fallbacks").int(self.total_fallbacks);
                 w.key("loop_fallbacks").int(self.loop_fallbacks);
@@ -1298,6 +1328,14 @@ impl VmStats {
             }
         }
     }
+}
+
+/// `map`'s entries by count, largest first, then by name: `map` iterates by
+/// name and the shared sort is stable.
+fn by_count(map: &std::collections::BTreeMap<String, u64>) -> Vec<(&str, u64)> {
+    let mut v: Vec<(&str, u64)> = map.iter().map(|(k, &n)| (k.as_str(), n)).collect();
+    cpl_diag::sort_by_key(&mut v, |e| u64::MAX - e.1);
+    v
 }
 
 pub(super) fn place_tag(place: &Place) -> &'static str {

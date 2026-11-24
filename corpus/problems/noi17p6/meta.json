@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "5691023", "language": "CPP17", "result": "RTE", "time": 2.467080678, "memory_kb": 23700.0, "file": "corpus/submissions/5691023.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi17p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission (the recorded one is RTE). orig.cpp was written for the corpus: it peels the points into convex layers once, keeps the outer layer's survivors, and fills each gap between two of them with the hull of the survivors on the arcs of the inner layers beyond that chord, down to the first arc that is empty or lost nothing. It matches a brute that rebuilds the hull at every time on 400 generated cases with n <= 33, small grids included."
 }

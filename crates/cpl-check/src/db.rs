@@ -84,6 +84,8 @@ pub struct ItemCheck {
     pub refs: Vec<GlobalRef>,
     /// Where each top-level name used resolves: this file or a module.
     pub resolved: Vec<(Span, Resolved)>,
+    /// Where a method call is ambiguous (E0701): every fn it could be.
+    pub ambiguous: Vec<(Span, Vec<Resolved>)>,
     pub typed_indexes: Vec<TypedIndex>,
     /// Where `print` or `read` is called with values of a fixed size (numbers,
     /// characters and tuples of them): the callee.

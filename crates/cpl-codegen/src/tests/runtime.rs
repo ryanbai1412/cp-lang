@@ -37,6 +37,19 @@ fn interactive_flushes_before_each_read_not_after_each_print() {
 }
 
 #[test]
+fn an_input_refill_reads_into_its_own_buffer_and_zeroes_nothing() {
+    // Growing `in` before read(2) would zero 64 KiB per refill, which an
+    // interactive program pays once per answer.
+    let out = cpp("let wire = Wire()\nlet x: Int = wire.ask(\"? 1\")\nprint(\"! {x}\")\n");
+    let refill = &out[out.find("inline bool more()").expect("the reader refills")..];
+    let refill = &refill[..refill.find("\n}").unwrap_or(refill.len())];
+    assert!(
+        refill.contains("read(0, chunk,") && !refill.contains("resize"),
+        "{refill}"
+    );
+}
+
+#[test]
 fn a_shift_not_proved_in_range_traps_in_a_checked_build() {
     let out = cpp("let k: Int = read()\nvar x = 3\nx <<= k\nprint(1 << k, x)\n");
     assert!(out.contains("cpl::ishl(1, "), "{out}");
@@ -93,4 +106,36 @@ fn every_runtime_piece_comes_after_the_pieces_it_needs() {
             piece.name
         );
     }
+}
+
+#[test]
+fn a_zero_filled_table_comes_from_calloc() {
+    // `vector(n, 0)` writes every page; calloc's pages stay unmapped until used.
+    let out = cpp("var t: [80_000_000]0..=500 = 0\nt[7] = 3\nprint(t[7])\n");
+    assert!(out.contains("cpl::zeros<uint16_t>(80000000)"), "{out}");
+    assert!(out.contains("calloc(n, sizeof(T))"), "{out}");
+    let grid = cpp("let n: 1..=5000 = read()\ndomain R = 0..n\nvar g: [R, R]Int = 0\ng[R(0), R(0)] = n\nprint(g[R(0), R(0)])\n");
+    assert!(
+        grid.contains("cpl::zero_grid<ll, 2>({R_len, R_len})"),
+        "{grid}"
+    );
+    let small = cpp("var t: [1000]0..=500 = 0\nt[7] = 3\nprint(t[7])\n");
+    assert!(!small.contains("zeros<"), "{small}");
+    let ones = cpp("let n: 1..=9_000_000 = read()\nvar t: [n]Int = 1\nt[0] = n\nprint(t[0])\n");
+    assert!(!ones.contains("zeros<"), "{ones}");
+    let opts =
+        cpp("let n: 1..=9_000_000 = read()\nvar t: [n]?Int = None\nt[0] = n\nprint(t[0] ?? 0)\n");
+    assert!(!opts.contains("zeros<"), "{opts}");
+}
+
+#[test]
+fn a_sort_by_holds_half_a_buffer_and_no_sorted_copy() {
+    // Keys, a u32 order and n/2 buffer cells; the permutation is applied in place.
+    let out = cpp(
+        "fn f(x: Int) -> Int: (x * 37) % 11\nvar xs = [5, 3, 9, 1]\nxs.sort(by: f)\nprint(xs)\n",
+    );
+    assert!(out.contains("cpl::sort_by("), "{out}");
+    assert!(out.contains("std::vector<V> buf(b, b + n / 2)"), "{out}");
+    assert!(out.contains("std::vector<uint32_t> order"), "{out}");
+    assert!(!out.contains("std::vector<T> sorted"), "{out}");
 }

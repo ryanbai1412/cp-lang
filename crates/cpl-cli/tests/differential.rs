@@ -39,7 +39,7 @@ const GXX_FLAGS: [&str; 7] = [
 /// and when `sort(by:)` works out a key, `print` arguments that print,
 /// stepped ranges at their edges, arrays of two lengths given for one
 /// `D`, `argmin` on arrays that do not start at 0, `?` inside a larger
-/// expression, how a `Float` prints, `sort(by:)` with a `()` key, and optional fn parameters every call fills alike, and structs that point to a lent value. They are a test of their own,
+/// expression, how a `Float` prints, `sort(by:)` with a `()` key, and optional fn parameters every call fills alike, structs that point to a lent value, and `sort(by:)` permuting a list in place. They are a test of their own,
 /// so a break in either is named as that.
 fn parity_programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity");
@@ -75,6 +75,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "domain_step",
             "domain_step_not_positive",
             "float_digits",
+            "grid_keys",
             "grid_parts_generic",
             "hash_churn",
             "interval_default_on_old",
@@ -601,7 +602,7 @@ print(x, m, y ?? 0)
 let a: ?Int = None
 let b: ?Int = Some(3)
 let m = Monoid<?Int>(None, min)
-print(m.op(a, b) ?? -1, Monoid<?Int>(None, max).op(b, a) ?? -1, [4, 1, 7].fold(min)!)
+print(m.op(a, b) ?? -1, Monoid<?Int>(None, max).op(b, a) ?? -1, [4, 1, 7].fold(min))
 ",
             "3 3 1\n",
         ),
@@ -736,8 +737,8 @@ fn a_read_that_waits_shows_what_was_printed_before_it() {
     assert_eq!(asked_live(Command::new(binary)), expected, "the C++");
 }
 
-/// `@!interactive`: every `print` is written out as it is said, with no
-/// `flush()` and no read after it, in the interpreter and in the C++.
+/// `@!interactive`: what was printed is written out before each read, with
+/// no `flush()`, in the interpreter and in the C++ (spec/core/10-io.md).
 /// It stands with `@!multitest` in either order, once, at the top level.
 #[test]
 fn interactive_writes_each_print_out_at_once() {
@@ -748,9 +749,9 @@ fn interactive_writes_each_print_out_at_once() {
         std::fs::write(&path, source).unwrap();
         path.to_string_lossy().into_owned()
     };
-    // The program never reads and never ends: the line is seen only if
-    // `print` itself wrote it out.
-    let busy = "print(\"! ready\")\nvar k = 0\nwhile k >= 0: k = (k + 1) % 7\n";
+    // The program then waits on a read that never gets an answer: the line
+    // is seen only if the read wrote it out first.
+    let busy = "print(\"! ready\")\nlet k: Int = read()\nprint(k)\n";
     let path = write("busy.cp", &format!("@!interactive\n{busy}"));
     let mut interpreted = Command::new(env!("CARGO_BIN_EXE_cpl"));
     interpreted.args(["run", &path]);

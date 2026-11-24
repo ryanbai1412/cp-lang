@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "6435482", "language": "CPP17", "result": "TLE", "time": 41.110921867, "memory_kb": 196700.0, "file": "corpus/submissions/6435482.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/cco24p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Statement from the CEMC 2024 CCO problem set (Day 1 Problem 3), cross-checked with Luogu P11516. No accepted C++ was collected: the one TLE submission solves the path subtask and an O(N^2) subtask only, and no public full solution was found, so orig.cpp is written here (binary search on the final city, then one reverse-preorder pass with a union-find path minimum; the header comment gives the argument). Checked on both statement samples, on 400 random cases with N <= 10 against an independent exhaustive game search over (city, used roads), and on 200 cases with N <= 1600 against the O(N^2) TLE submission; --max and other N = 300000 shapes run in under 1 s."
 }

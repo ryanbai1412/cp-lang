@@ -175,6 +175,27 @@ struct OptI32 : Niche<ll, int32_t, (-0x7fffffff - 1)> {
 ",
     },
     Piece {
+        name: "niche_opt_opt_i32",
+        needs: &["niche", "niche_int"],
+        code: "\
+// `??lo..hi` inside an int32_t: INT32_MIN is the outer `none`, INT32_MIN + 1 the inner one.
+struct OptOptI32 {
+    static constexpr int32_t NONE = -0x7fffffff - 1, INNER = -0x7fffffff;
+    int32_t raw = NONE;
+    OptOptI32() = default;
+    explicit OptOptI32(const std::optional<OptInt>& o) : raw(!o ? NONE : *o ? (int32_t)**o : INNER) {}
+    OptOptI32& operator=(const std::optional<OptInt>& o) { return *this = OptOptI32(o); }
+    bool has_value() const { return raw != NONE; }
+    explicit operator bool() const { return raw != NONE; }
+    OptInt operator*() const { return raw == INNER ? OptInt() : OptInt((ll)raw); }
+    operator std::optional<OptInt>() const { return *this ? std::optional<OptInt>(**this) : std::nullopt; }
+    friend bool operator==(OptOptI32 a, OptOptI32 b) { return a.raw == b.raw; }
+    friend bool operator!=(OptOptI32 a, OptOptI32 b) { return a.raw != b.raw; }
+    friend bool operator<(OptOptI32 a, OptOptI32 b) { return a.raw < b.raw; }
+};
+",
+    },
+    Piece {
         name: "either",
         needs: &[],
         code: "\

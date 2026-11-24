@@ -146,6 +146,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => None,
         };
+        let mut cands = Vec::new();
         for tr in &self.traits {
             for m in &tr.methods {
                 let Some(ret_ast) = &m.ret else { continue };
@@ -165,11 +166,15 @@ impl<'a> Lowerer<'a> {
                     },
                     _ => (false, false),
                 };
-                if !matched {
-                    continue;
+                if matched {
+                    cands.push((m.name.text.clone(), yielded));
                 }
+            }
+        }
+        for (method, yielded) in cands {
+            {
                 if let Ty::Struct(sid) = t {
-                    if let Some(&fn_id) = self.structs[*sid].methods.get(&m.name.text) {
+                    if let Some(fn_id) = self.own_method(*sid, &method) {
                         if let Some(ret_ty) = &self.sigs[fn_id].ret {
                             if yielded {
                                 if let Some(elem) = unwrap_seq(ret_ty) {
@@ -413,6 +418,16 @@ impl<'a> Lowerer<'a> {
         self.resolve_fn_sig_with(id, trait_name, None, None);
     }
 
+    /// A struct's own method, its signature read now if it was left for
+    /// first use.
+    pub(crate) fn own_method(&mut self, sid: StructId, name: &str) -> Option<FnId> {
+        let id = *self.structs[sid].methods.get(name)?;
+        if self.quiet_sigs.contains(&id) {
+            self.ensure_sig(id, None);
+        }
+        Some(id)
+    }
+
     /// Reads `id`'s signature the first time anything needs it: a call made
     /// while other signatures are still being read (a domain sized from a
     /// parameter type) gets the callee's types, not an empty list.
@@ -427,6 +442,18 @@ impl<'a> Lowerer<'a> {
                     self.definition_cycle(id, call);
                 }
                 false
+            }
+            SigState::Unresolved if self.quiet_sigs.remove(&id) => {
+                // An instance's method whose types don't work out for these
+                // arguments has no signature; the checker reports the template.
+                let dlen = self.diags.len();
+                self.resolve_fn_sig(id, None);
+                if self.diags.len() > dlen {
+                    self.diags.truncate(dlen);
+                    self.sigs[id].params.clear();
+                    self.sigs[id].ret = None;
+                }
+                true
             }
             SigState::Unresolved => {
                 self.resolve_fn_sig(id, None);

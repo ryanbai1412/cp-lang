@@ -58,9 +58,29 @@ impl<'p> Emitter<'p> {
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for k in 0..block.stmts.len() {
             self.tail = self.tail_at(&block.stmts, k);
+            self.slot_written_next = self.slot_written_next(&block.stmts, k);
             self.stmt_owning(block, k, out);
+            self.slot_written_next = false;
         }
         self.tail = None;
+    }
+
+    /// `let p = mut m[k]` right before `p += v` (or `-=`, `|=`, `^=`): that write puts an absent
+    /// key at its zero anyway, so the `let` can put it and walk the map once. `v` must not read the
+    /// map, which would see the key early.
+    fn slot_written_next(&self, stmts: &[Stmt], k: usize) -> bool {
+        let (Stmt::Let(slot, Some(_)), Some(Stmt::Assign(place, AssignOp::Binary(op), value))) =
+            (&stmts[k], stmts.get(k + 1))
+        else {
+            return false;
+        };
+        let PlaceKind::Index(base, idx) = &place.kind else {
+            return false;
+        };
+        self.locals()[*slot].binds.is_some()
+            && matches!(op, BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor)
+            && matches!(idx[0].kind, ExprKind::Local(s) if s == *slot)
+            && !expr_may_alias_root(value, walk::root(base))
     }
 
     /// `let l = limbs` in a fn's body, where `limbs` is a parameter taken by
@@ -330,10 +350,20 @@ impl<'p> Emitter<'p> {
         }
         if let Some((map, key)) = fused {
             let (m, k, it) = (self.expr(map).text, self.expr(key).text, self.temp());
-            out.push_str(&format!(
-                "{lead}if (auto {it} = {m}.find({k}); {it} != {m}.end()) {{\n"
-            ));
-            self.found.push((map.clone(), key.clone(), it));
+            // A map named by a path, not a variable, is found through once.
+            let cell = if matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                out.push_str(&format!(
+                    "{lead}if (auto {it} = {m}.find({k}); {it} != {m}.end()) {{\n"
+                ));
+                format!("{it}->second")
+            } else {
+                self.need("map_slot");
+                out.push_str(&format!(
+                    "{lead}if (auto* {it} = cpl::map_slot({m}, {k})) {{\n"
+                ));
+                format!("(*{it})")
+            };
+            self.found.push((map.clone(), key.clone(), cell));
         } else {
             let c = self.expr(cond).text;
             out.push_str(&format!("{lead}if ({c}) {{\n"));
@@ -443,7 +473,7 @@ impl<'p> Emitter<'p> {
                     .last()
                     .is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) =>
             {
-                self.line(out, "return 0;")
+                self.line(out, "return {};")
             }
             Stmt::Let(slot, Some(init))
                 if matches!(self.locals()[*slot].ty, Ty::Fn(..))
@@ -557,6 +587,18 @@ impl<'p> Emitter<'p> {
                                 let val = self.fill_value(v, elem_l.as_ref());
                                 self.line(out, &format!("{name}.fill({val});"));
                             }
+                            return;
+                        }
+                        let cell = cpp
+                            .strip_prefix("std::vector<")
+                            .and_then(|c| c.strip_suffix('>'))
+                            .unwrap_or_default()
+                            .to_string();
+                        if let Some(zeros) = (!reused)
+                            .then(|| self.zeros(&cell, dims, value.as_deref()))
+                            .flatten()
+                        {
+                            self.line(out, &format!("{cpp} {name} = {};", zeros.text));
                             return;
                         }
                         let args =
@@ -814,20 +856,32 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
     let [map, key] = args.as_slice() else {
         return None;
     };
-    let plain = |e: &Expr| matches!(e.kind, ExprKind::Local(_) | ExprKind::Global(_));
-    if !matches!(map.ty, Ty::Map(..) | Ty::HashMap(..)) || !plain(map) || !plain(key) {
+    if !matches!(map.ty, Ty::Map(..) | Ty::HashMap(..)) || !steady(map) || !steady(key) {
         return None;
     }
-    let (mut reads, mut quiet) = (false, Touch::of_block(then).quiet());
+    // Stores to the entry itself, at the top of the branch, keep it where it is.
+    let entry = |stmt: &Stmt| {
+        matches!(stmt, Stmt::Assign(place, _, value)
+            if Touch::of_expr(value).quiet()
+                && matches!(&place.kind, cpl_ir::PlaceKind::Index(base, at)
+                    if at.len() == 1 && place_is(base, map) && same_path(&at[0], key)))
+    };
+    let rest = Block {
+        stmts: then.stmts.iter().filter(|s| !entry(s)).cloned().collect(),
+    };
+    let (mut uses, mut quiet) = (
+        rest.stmts.len() < then.stmts.len(),
+        Touch::of_block(&rest).quiet(),
+    );
     walk::deep_exprs(then, &mut |e| match &e.kind {
         ExprKind::Index(base, at)
-            if base.kind == map.kind && at.len() == 1 && at[0].kind == key.kind =>
+            if at.len() == 1 && same_path(base, map) && same_path(&at[0], key) =>
         {
-            reads = true
+            uses = true
         }
         _ => {}
     });
-    walk::deep_stmts(then, &mut |stmt| {
+    walk::deep_stmts(&rest, &mut |stmt| {
         if !matches!(
             stmt,
             Stmt::Expr(_) | Stmt::Return(_) | Stmt::Give(_) | Stmt::If(..) | Stmt::Let(..)
@@ -835,7 +889,66 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
             quiet = false;
         }
     });
-    (reads && quiet).then_some((map, key))
+    (uses && quiet).then_some((map, key))
+}
+
+/// A path that runs no code: a variable, or fields and non-map elements of one.
+fn steady(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Int(_)
+        | ExprKind::Bool(_)
+        | ExprKind::Char(_)
+        | ExprKind::DomainLen(_)
+        | ExprKind::Local(_)
+        | ExprKind::Global(_) => true,
+        ExprKind::Field(base, _) | ExprKind::Cast(_, base) => steady(base),
+        ExprKind::Binary(_, a, b) => steady(a) && steady(b),
+        ExprKind::Index(base, at) => {
+            !matches!(base.ty, Ty::Map(..) | Ty::HashMap(..))
+                && steady(base)
+                && at.iter().all(steady)
+        }
+        _ => false,
+    }
+}
+
+/// Whether two [`steady`] paths name the same value, wherever they are written.
+pub(crate) fn same_path(a: &Expr, b: &Expr) -> bool {
+    match (&a.kind, &b.kind) {
+        (ExprKind::Int(x), ExprKind::Int(y)) => x == y,
+        (ExprKind::Bool(x), ExprKind::Bool(y)) => x == y,
+        (ExprKind::Char(x), ExprKind::Char(y)) => x == y,
+        (ExprKind::DomainLen(x), ExprKind::DomainLen(y)) => x == y,
+        (ExprKind::Local(x), ExprKind::Local(y)) => x == y,
+        (ExprKind::Global(x), ExprKind::Global(y)) => x == y,
+        (ExprKind::Field(x, i), ExprKind::Field(y, j)) => i == j && same_path(x, y),
+        (ExprKind::Cast(c, x), ExprKind::Cast(d, y)) => c == d && same_path(x, y),
+        (ExprKind::Binary(o, x1, x2), ExprKind::Binary(p, y1, y2)) => {
+            o == p && same_path(x1, y1) && same_path(x2, y2)
+        }
+        (ExprKind::Index(x, xs), ExprKind::Index(y, ys)) => {
+            same_path(x, y)
+                && xs.len() == ys.len()
+                && xs.iter().zip(ys).all(|(x, y)| same_path(x, y))
+        }
+        _ => false,
+    }
+}
+
+/// Whether the store `place` is the [`steady`] path `e`.
+pub(crate) fn place_is(place: &Place, e: &Expr) -> bool {
+    use cpl_ir::PlaceKind as P;
+    match (&place.kind, &e.kind) {
+        (P::Local(x), ExprKind::Local(y)) => x == y,
+        (P::Global(x), ExprKind::Global(y)) => x == y,
+        (P::Field(x, i), ExprKind::Field(y, j)) => i == j && place_is(x, y),
+        (P::Index(x, xs), ExprKind::Index(y, ys)) => {
+            place_is(x, y)
+                && xs.len() == ys.len()
+                && xs.iter().zip(ys).all(|(x, y)| same_path(x, y))
+        }
+        _ => false,
+    }
 }
 
 /// The arguments of `text` when it is exactly `cpp((size_t)(..), ..)`:
@@ -921,6 +1034,7 @@ fn fields_untouched(seq: &Expr, body: &Block) -> bool {
             }));
         }
         ExprKind::MutSlice(place, _, _)
+        | ExprKind::MutLine(place, _, _)
         | ExprKind::Mutate(_, place, _)
         | ExprKind::Sort(place, _, _) => stores.push(place),
         _ => {}
@@ -946,9 +1060,22 @@ fn built_in(mut e: &Expr, slot: usize) -> bool {
 }
 
 impl<'p> Emitter<'p> {
+    /// The entry an enclosing `if k in m` found, when `base[at]` is it.
+    pub(crate) fn found_cell(&self, base: &Place, at: &[Expr]) -> Option<String> {
+        let [key] = at else {
+            return None;
+        };
+        let found = self.found.iter().rev();
+        found
+            .clone()
+            .find(|(m, k, _)| place_is(base, m) && same_path(key, k))
+            .map(|f| f.2.clone())
+    }
+
     /// `let p = mut m[k]` keyed by `slot`: find the slot once; reads trap on an
     /// absent key and writes make room for it, as `m[k]` does.
     fn let_map_slot(&mut self, slot: usize, map: &'p Place, init: &Expr, out: &mut String) {
+        let put = std::mem::take(&mut self.slot_written_next);
         let name = self.names[slot].clone();
         // A key that is an unchanging parameter needs no copy of its own.
         let param = match init.kind {
@@ -973,7 +1100,12 @@ impl<'p> Emitter<'p> {
         let m = self.place(map);
         let at = self.temp();
         self.need("map_slot");
-        self.line(out, &format!("auto* {at} = cpl::map_slot({m}, {name});"));
+        let find = if put {
+            format!("&{m}[{name}]")
+        } else {
+            format!("cpl::map_slot({m}, {name})")
+        };
+        self.line(out, &format!("auto* {at} = {find};"));
         self.map_slots.insert((self.closure_id, slot), at);
     }
 }

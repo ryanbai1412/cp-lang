@@ -13,19 +13,16 @@ match op:
     _ => print(seq.total.best)
 ```
 
-## std SeqFold now has the edits; it is still heavier than a hand treap
+## The port is the dream's shape; what still differs
 
-`SeqFold` gained `insert_many` (an O(k) Cartesian-tree build), `erase_range` (erased nodes
-are reused), `split_at`, `splice`, 4-byte link, priority and size fields, and `mirror:`
-(`MaxSub.reversed`), which keeps one fold per node instead of a forward and a backward one.
-A port on them is the dream's shape and agrees with the v0.2 port and the accepted C++ on 30
-random cases each, but at --max it takes 0.40 s and 66 MB, against the accepted C++'s 0.28 s
-and 39 MB and the v0.2 hand treap's 0.40 s and 56 MB (the limit is 64 MB). So the port keeps
-the v0.2 hand treap for now. What is left, each general:
+`SeqFold` stores the numbers themselves (`lift: MaxSub.of`, elements `-1000..=1000` in 2
+bytes beside a 4-byte own tag), takes any `Seq` for its build and `insert_many`, so the read
+arrays stream into the treap, and a `?Val` tag over `?(-1000..=1000)` is one `int32_t`
+(codegen packs `??range`). A tag on a run is `MaxSub.of(c).repeat(len)`, O(1) where `pow`
+took O(log len) joins. At --max the port takes 0.29 s user and 42 MB against the accepted
+C++'s 0.27 s and 39 MB (the v0.2 hand treap took 0.40 s and 56 MB; the limit is 64 MB).
 
-- Each node stores its element as a full `MaxSub` (40 bytes) beside its fold, where the
-  accepted C++ stores one int: an element type apart from the summary (`lift:`) is the fix.
-- A generator or `.map` passed where a `Seq` is taken is collected into a `std::vector`
-  first, so building from the input costs a 20 MB `List<MaxSub>` (the port pushes one by
-  one instead).
-- A `?F` tag over `F = ?Int` is a 24-byte `optional<OptInt>`, even for a range-typed `F`.
+- The dream infers `SeqFold`'s three type arguments from `op`, `lift:` and `act:`; the port
+  names them (`SeqFold<MaxSub, ?Val, Val>`).
+- `mirror: .reversed` (a method as a fn value) is spelled `x => x.reversed()`.
+- The assign tag is `Some(read<Val>())`: the dream reads straight into the `?Val` tag type.

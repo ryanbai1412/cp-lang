@@ -7,6 +7,7 @@
 mod fix;
 pub mod habits;
 pub mod json;
+pub mod msgs;
 pub mod plain;
 pub mod registry;
 mod render;

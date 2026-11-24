@@ -8,6 +8,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import affected  # noqa: E402
 
+PKGS = "corpus/problems"
+
 DIRS = {"crates/cpl-fmt/": "cpl-fmt", "crates/cpl-check/": "cpl-check",
         "crates/cpl-prover/": "cpl-prover"}
 
@@ -31,7 +33,7 @@ class AffectedTest(unittest.TestCase):
             self.assertEqual(self.sel(path)["packages"], sorted(DIRS.values()), path)
 
     def test_an_unknown_path_selects_the_whole_fast_gate(self):
-        for path in ("corpus/problems/a/sol.cp", "spec/core/types.md", "new-dir/x", "scripts/no-test.py"):
+        for path in (f"{PKGS}/a/sol.cp", "spec/core/types.md", "new-dir/x", "scripts/no-test.py"):
             s = self.sel("crates/cpl-fmt/src/lib.rs", path)
             self.assertEqual((s["all"], s["reason"]), (True, path))
 
@@ -65,13 +67,13 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual(s["script_tests"], ["scripts/test_check_handbook.py"])
 
     def test_a_corpus_problem_change_runs_the_package_audit(self):
-        self.assertTrue(self.sel("corpus/problems/cf2/checker.py")["audit"])
-        self.assertTrue(self.sel("corpus/problems/cf2/spec.cp")["audit"])
+        self.assertTrue(self.sel(f"{PKGS}/cf2/checker.py")["audit"])
+        self.assertTrue(self.sel(f"{PKGS}/cf2/spec.cp")["audit"])
         self.assertFalse(self.sel("research/acceptance/solutions/x/linux/cf1.cp")["audit"])
 
     def test_a_corpus_package_file_runs_only_the_audit(self):
         for leaf in ("gen.py", "tests.toml", "orig.cpp", "meta.json"):
-            sel = self.sel(f"corpus/problems/cf2/{leaf}")
+            sel = self.sel(f"{PKGS}/cf2/{leaf}")
             self.assertFalse(sel["all"], leaf)
             self.assertTrue(sel["audit"], leaf)
 
@@ -82,17 +84,17 @@ class AffectedTest(unittest.TestCase):
 
     def test_acceptance_and_perf_programs_get_cpl_check_only(self):
         s = self.sel("research/acceptance/solutions/2026-11-23-5/linux/cf1.cp",
-                     "corpus/problems/cf2/perf.cp")
+                     f"{PKGS}/cf2/perf.cp")
         self.assertFalse(s["all"])
         self.assertEqual(s["data_filter"], "")
         self.assertEqual(s["check_files"], ["research/acceptance/solutions/2026-11-23-5/linux/cf1.cp",
-                                            "corpus/problems/cf2/perf.cp"])
+                                            f"{PKGS}/cf2/perf.cp"])
 
     def test_corpus_programs_select_the_tests_that_read_them(self):
-        s = self.sel("corpus/problems/cf1/spec.cp", "corpus/problems/cf2/port.cp")
+        s = self.sel(f"{PKGS}/cf1/spec.cp", f"{PKGS}/cf2/port.cp")
         self.assertEqual((s["all"], s["packages"]), (False, []))
         self.assertEqual(s["data_filter"], "(package(cpl-lint) & test(/corpus_warnings/))")
-        self.assertEqual(s["check_files"], ["corpus/problems/cf1/spec.cp", "corpus/problems/cf2/port.cp"])
+        self.assertEqual(s["check_files"], [f"{PKGS}/cf1/spec.cp", f"{PKGS}/cf2/port.cp"])
 
     def test_site_paths_select_the_snippet_gate(self):
         self.assertTrue(self.sel("web/src/pages/index.astro")["site"])
@@ -112,7 +114,7 @@ class AffectedTest(unittest.TestCase):
 
 
     def test_std_and_vm_paths_select_their_owners_slices(self):
-        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings", "copies"])
+        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings", "ports-check", "copies"])
         self.assertEqual(self.sel("corpus/problems/noip18p4/port.cp")["slices"], ["copies"])
         self.assertEqual(self.sel("spec/conformance/std-bag/x.cp")["slices"], ["copies"])
         self.assertEqual(self.sel("crates/cpl-codegen/src/emit.rs")["slices"], ["copies"])

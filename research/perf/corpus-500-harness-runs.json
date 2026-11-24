@@ -75,10 +75,6 @@
           "line": "OK cheerio1s4: 300 tests agree with 5339437.cpp",
           "verdict": "pass"
         },
-        "cmt21r1xym": {
-          "line": "OK cmt21r1xym: 300 tests agree with 3997206.cpp",
-          "verdict": "pass"
-        },
         "coci21c2p5": {
           "line": "OK coci21c2p5: 300 tests agree with 4143748.cpp",
           "verdict": "pass"
@@ -217,10 +213,6 @@
         },
         "sac22cc3p5": {
           "line": "sac22cc3p5: OK (60 inputs)",
-          "verdict": "pass"
-        },
-        "saspeed": {
-          "line": "saspeed: OK (60 inputs)",
           "verdict": "pass"
         },
         "year2018p7": {
@@ -777,10 +769,6 @@
         },
         "ccc14s4": {
           "line": "ccc14s4: 60 cases agree",
-          "verdict": "pass"
-        },
-        "cmt21peter2": {
-          "line": "cmt21peter2: 60 cases agree (reals compared with a tolerance)",
           "verdict": "pass"
         },
         "dpj": {
@@ -1361,10 +1349,6 @@
         },
         "dmopc21c7p1": {
           "line": "ok   dmopc21c7p1: 150 cases match corpus/submissions/4452959.cpp",
-          "verdict": "pass"
-        },
-        "imo22p6checker": {
-          "line": "ok   imo22p6checker: 150 cases match corpus/submissions/4955728.cpp",
           "verdict": "pass"
         },
         "noi10p3": {
@@ -2007,10 +1991,6 @@
     "proto/ports/scout_batch_43/check.py": {
       "exit_code": 0,
       "ports": {
-        "etsr23r1p3": {
-          "line": "PASS etsr23r1p3: 30/30 cases matched 5494303.cpp",
-          "verdict": "pass"
-        },
         "etsr23r1p4": {
           "line": "PASS etsr23r1p4: 30/30 cases matched 5495163.cpp",
           "verdict": "pass"
@@ -2019,24 +1999,12 @@
           "line": "PASS etsr23r2p2: 30/30 cases matched 5494433.cpp",
           "verdict": "pass"
         },
-        "etsr23r2p3": {
-          "line": "PASS etsr23r2p3: 30/30 cases matched 5494453.cpp",
-          "verdict": "pass"
-        },
         "etsr23r2p4": {
           "line": "PASS etsr23r2p4: 30/30 cases matched 5494510.cpp",
           "verdict": "pass"
         },
-        "etsr23r3p1": {
-          "line": "PASS etsr23r3p1: 30/30 cases matched 5527625.cpp",
-          "verdict": "pass"
-        },
         "etsr23r3p3": {
           "line": "PASS etsr23r3p3: 30/30 cases matched 5521298.cpp",
-          "verdict": "pass"
-        },
-        "etsr23r4p1": {
-          "line": "PASS etsr23r4p1: 30/30 cases matched 5521420.cpp",
           "verdict": "pass"
         },
         "etsr23r4p2": {
@@ -2551,10 +2519,6 @@
           "line": "dmopc21c8p1: stress OK: 50 tests agree (0 rejected by where)",
           "verdict": "pass"
         },
-        "etsr23r1p2": {
-          "line": "etsr23r1p2: stress OK: 50 tests agree (0 rejected by where)",
-          "verdict": "pass"
-        },
         "joi16fp2": {
           "line": "joi16fp2: stress OK: 33 tests agree (17 rejected by where)",
           "verdict": "pass"
@@ -2685,10 +2649,6 @@
       "ports": {
         "btoi19p3": {
           "line": "btoi19p3: stress OK: 200 tests agree (0 rejected by where)",
-          "verdict": "pass"
-        },
-        "cmt21r2ztr": {
-          "line": "cmt21r2ztr: stress OK: 200 tests accepted (0 rejected by where)",
           "verdict": "pass"
         },
         "coci25c3p4": {

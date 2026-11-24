@@ -26,6 +26,23 @@ class SampleInputTest(unittest.TestCase):
                 fmt_check.ROOT = old
 
 
+class SupportTest(unittest.TestCase):
+    def test_a_formatted_copy_gets_the_grader_and_tests_beside_it(self):
+        files = [
+            "p/dream.cp",
+            "p/checker.py",
+            "p/dream.tests/grader.cpp",
+            "p/dream.tests/1.in",
+            "p/tests/2.in",
+            "p/deep/x/y.txt",
+            "q/readme.md",
+        ]
+        self.assertEqual(
+            fmt_check.support(["p/dream.cp"], files),
+            ["p/checker.py", "p/dream.tests/grader.cpp", "p/dream.tests/1.in", "p/tests/2.in"],
+        )
+
+
 class SnippetTest(unittest.TestCase):
     def test_takes_each_cp_block_with_or_without_attributes(self):
         doc = "# t\n```cp\nprint(1)\n```\n```cpp\nint x;\n```\n```cp run input=\"5\"\nprint(2)\n```\n"

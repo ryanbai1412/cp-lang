@@ -19,25 +19,37 @@ fn get(base: &str, path: &str) -> String {
     response.split_once("\r\n\r\n").unwrap().1.to_string()
 }
 
+/// A running `cpl run --trace --live`, killed and reaped when dropped, so a
+/// failing test leaves no server behind.
+struct Server(std::process::Child);
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
 /// Starts `cpl run --trace --live` with `args` and waits for its serving
 /// line, the last it prints before taking requests. Returns the server, its
 /// address and what it printed before. Standard error is closed after: the
 /// server must keep serving and logging without anyone reading it.
-#[allow(clippy::zombie_processes, reason = "the caller kills and waits for it")]
-fn serve(args: &[&std::ffi::OsStr]) -> (std::process::Child, String, String) {
-    let mut server = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(["run", "--trace", "--live"])
-        .args(args)
-        .stdin(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stderr = BufReader::new(server.stderr.take().unwrap());
+fn serve(args: &[&std::ffi::OsStr]) -> (Server, String, String) {
+    let mut server = Server(
+        Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(["run", "--trace", "--live"])
+            .args(args)
+            .stdin(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    );
+    let mut stderr = BufReader::new(server.0.stderr.take().unwrap());
     let mut before = String::new();
     loop {
         let mut line = String::new();
         if stderr.read_line(&mut line).unwrap_or(0) == 0 {
-            let ended = server.wait().unwrap();
+            let ended = server.0.wait().unwrap();
             panic!("no serving line ({ended}): {before}");
         }
         if line.contains("serving the trace") {
@@ -74,7 +86,7 @@ fn live_trace_records_each_save_on_the_pinned_input() {
     let file = dir.join("live.cp");
     std::fs::write(&file, SOURCE).unwrap();
     std::fs::write(dir.join("live.tests/stress-1.in"), "4\n").unwrap();
-    let (mut server, base, input) = serve(&[file.as_os_str()]);
+    let (server, base, input) = serve(&[file.as_os_str()]);
     assert!(input.contains("stress-1.in"), "{input}");
 
     assert_eq!(
@@ -101,8 +113,7 @@ fn live_trace_records_each_save_on_the_pinned_input() {
         "{broken}"
     );
     assert!(get(&base, "/trace.json").contains("total += 2 * i"));
-    server.kill().unwrap();
-    server.wait().unwrap();
+    drop(server);
 }
 
 /// A save made as soon as the serving line is out is a save after the
@@ -115,12 +126,11 @@ fn a_save_right_after_the_serving_line_records_again() {
     let file = dir.join("live.cp");
     std::fs::write(&file, SOURCE).unwrap();
     std::fs::write(dir.join("live.tests/stress-1.in"), "4\n").unwrap();
-    let (mut server, base, _) = serve(&[file.as_os_str()]);
+    let (server, base, _) = serve(&[file.as_os_str()]);
     std::fs::write(&file, SOURCE.replace("total += i", "total += 2 * i")).unwrap();
     let live = until(&base, r#""version":2"#);
     let trace = get(&base, "/trace.json");
-    server.kill().unwrap();
-    server.wait().unwrap();
+    drop(server);
     assert_eq!(live, r#"{"version":2,"changes":1,"error":null}"#);
     assert!(trace.contains("total += 2 * i"));
 }
@@ -195,11 +205,10 @@ fn a_live_trace_of_an_interactive_file_runs_it_against_its_judge() {
             .unwrap();
         steps(&String::from_utf8_lossy(&out.stdout))
     };
-    let (mut server, base, _) = serve(&[file.as_os_str(), input.as_os_str()]);
+    let (server, base, _) = serve(&[file.as_os_str(), input.as_os_str()]);
     let whole = get(&base, "/trace.json");
     let window = get(&base, "/trace.json?from=6");
-    server.kill().unwrap();
-    server.wait().unwrap();
+    drop(server);
     assert!(whole.contains("the program ended"), "{whole}");
     assert_eq!(steps(&whole), traced(&[]));
     assert_eq!(steps(&window), traced(&["--from", "6"]));

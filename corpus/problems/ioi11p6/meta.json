@@ -14,10 +14,14 @@
   {"id": "3735613", "language": "CPP17", "result": "AC", "time": 0.144446468, "memory_kb": 3536.0, "file": "corpus/submissions/3735613.cpp"}
  ],
  "cpp_ac": 5,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi11p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Grader-only (encode/decode), stdio-adapted through interactor.py: N and the message go in, the program prints its parrots, gets them back shuffled (seeded by the case) and prints the message; numbers in [0, 255] and at most 10 N parrots for N <= 32, 15 N above. orig.cpp is accepted submission 3735613 (corpus/submissions/3735613.cpp, 100 points) with send, output and a main that speak that protocol; it passes the statement example, --max and 300 generated messages."
 }

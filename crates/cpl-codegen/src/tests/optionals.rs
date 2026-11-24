@@ -230,3 +230,49 @@ fn opt_max_is_one_compare_and_min_tests_a_built_some_once() {
     let solve = &body[body.find("void solve()").unwrap()..];
     assert_eq!(solve.matches(".has_value()").count(), 3, "{solve}");
 }
+
+#[test]
+fn a_generic_field_keeps_its_range_argument_narrow() {
+    let cpp = cpp(
+        "type Small = -1000..=1000\nstruct Box<F>:\n    x: F\n    xs: List<F>\n    var os: List<?F>\n    var o: ?F\n\
+         var b = Box<Small>(-1000, [1000], [None], Some(5))\nb.os.push(Some(4))\nb.o = None\n\
+         print(b.x + b.xs[0], b.os.len, b.os[1]!, b.o ?? 0)\n",
+    );
+    assert_eq!(decl(&cpp, "x"), "int16_t", "{cpp}");
+    assert_eq!(decl(&cpp, "xs"), "std::vector<int16_t>", "{cpp}");
+    assert_eq!(decl(&cpp, "os"), "std::vector<cpl::OptI32>", "{cpp}");
+    assert_eq!(decl(&cpp, "o"), "cpl::OptI32", "{cpp}");
+}
+
+#[test]
+fn an_optional_of_an_optional_range_is_one_int32() {
+    let code = cpp(
+        "type Small = -1000..=1000\ntype Tag = ?Small\nstruct Box<F>:\n    x: F\n    var os: List<?F>\n    var o: ?F\n\
+         var t = Box<Tag>(None, [None, Some(None)], Some(None))\nt.os.push(Some(Some(-1000)))\nt.o = Some(Some(7))\n\
+         var c: List<?Tag> = [None, Some(None)]\nc.push(Some(Some(3)))\n\
+         print(t.x ?? 0, t.os.len, t.o!! + c[2]!!, yes(t.os[1] == Some(None)))\n",
+    );
+    assert_eq!(decl(&code, "x"), "cpl::OptI32", "{code}");
+    assert_eq!(decl(&code, "os"), "std::vector<cpl::OptOptI32>", "{code}");
+    assert_eq!(decl(&code, "o"), "cpl::OptOptI32", "{code}");
+    assert_eq!(decl(&code, "c"), "std::vector<cpl::OptOptI32>", "{code}");
+    // A range reaching INT32_MIN + 1 leaves no second spare value.
+    let wide = cpp(
+        "type Low = -2_147_483_647..=0\ntype Tag = ?Low\nvar c: List<?Tag> = [None, Some(None)]\nc.push(Some(Some(-3)))\nprint(c.len)\n",
+    );
+    assert_eq!(
+        decl(&wide, "c"),
+        "std::vector<std::optional<cpl::OptInt>>",
+        "{wide}"
+    );
+}
+
+#[test]
+fn a_local_moved_into_a_narrowed_field_is_packed_on_the_way_in() {
+    let code = cpp(
+        "type Small = -1000..=1000\nstruct Box<F>(o: F):\n    fn of(o: F) -> Box<F> = Box<F>(o)\n\
+         let b = Box<?Small>.of(Some(read<Small>()))\nprint(b.o ?? 0)\n",
+    );
+    assert_eq!(decl(&code, "o"), "cpl::OptI32", "{code}");
+    assert!(code.contains("cpl::OptI32(std::move(o))"), "{code}");
+}

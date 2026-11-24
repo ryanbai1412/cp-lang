@@ -274,6 +274,36 @@ fn a_yields_loop_whose_body_calls_a_fn_value_runs_as_the_fn_yields() {
 }
 
 #[test]
+fn a_fed_loop_calling_a_fn_value_sees_only_that_fn_types_effects() {
+    let cpp = cpp(concat!(
+        "var g = [1, 2, 3]\n",
+        "fn gen() -> yields Int:\n    for x in g: yield x\n",
+        "fn bump(x: Int) -> Int:\n    if x < 3: g.push(x + 10)\n    x\n",
+        "fn show(s: Bool) -> Bool: s\n",
+        "fn run(f: Int -> Int, h: Bool -> Bool) -> Int:\n",
+        "    var t = 0\n    for x in gen(): t = t * 100 + f(x)\n    if h(true): t else: 0\n",
+        "print(run(bump, show), g.len)\n",
+    ));
+    // `f` grows `g` while `gen` walks it, so the walk is not fed.
+    assert!(!cpp.contains("cpl_each_gen("), "{cpp}");
+}
+
+#[test]
+fn a_nested_fn_writing_the_callers_var_still_streams_a_generator() {
+    let cpp = cpp(concat!(
+        "fn solve(n: Int) -> Int:\n",
+        "    let h = [i % 7 for i in 0..n]\n",
+        "    var found = 0\n",
+        "    fn crossed(i: Int, j: Int):\n        if (h[i] + h[j]) % 3 == 0: found += 1\n",
+        "    let groups = (0..n).group(by: x => h[x])\n",
+        "    for (_, group) in groups:\n        for (i, j) in group.pairs(): crossed(i, j)\n",
+        "    found\n",
+        "let n: 1..=1000 = read()\nprint(solve(n))\n",
+    ));
+    assert!(cpp.contains("cpl_each_m1_pairs"), "{cpp}");
+}
+
+#[test]
 fn closure_mutating_a_captured_local_is_not_hoisted_static() {
     let cpp = cpp(concat!(
         "fn each(f: (Int) -> ()):\n",
@@ -546,6 +576,18 @@ fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
 }
 
 #[test]
+fn a_recursive_yields_fn_walks_its_own_list_inside_its_callback_form() {
+    let cpp = cpp(concat!(
+        "fn walk(n: Int) -> yields Int:\n    if n > 0:\n        yield n\n",
+        "        for x in walk(n - 1): yield x\n",
+        "var s = 0\nfor x in walk(10):\n    if x == 7: break\n    s += x\nprint(s)\n",
+    ));
+    let each = cpp.rsplit("int cpl_each_walk(").next().unwrap();
+    let each = &each[..each.find("\n}\n").unwrap()];
+    assert!(!each.contains("cpl_each_walk("), "{each}");
+}
+
+#[test]
 fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
     let src = concat!(
         "struct Plus(z: Int):\n",
@@ -593,4 +635,25 @@ fn a_struct_field_two_capturing_closures_reach_stays_std_function() {
             && matches!(&e.mode, crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("different closures"))),
         "{explained:?}"
     );
+}
+
+#[test]
+fn a_fed_body_that_never_stops_says_so_in_its_callback_type() {
+    let cpp = cpp(concat!(
+        "fn upto3(n: Int) -> yields Int:\n    for i in 0..n: yield i\n",
+        "let n: Int = read()\nvar t = 0\n",
+        "for x in upto3(n):\n    if x % 2 == 0: continue\n    t += x\n",
+        "for x in upto3(n):\n    if x > 5: break\n    t += x\n",
+        "print(t)\n",
+    ));
+    let calls: Vec<&str> = cpp
+        .lines()
+        .filter(|l| l.contains("cpl_each_upto3(n, "))
+        .collect();
+    assert_eq!(calls.len(), 2, "{cpp}");
+    assert!(
+        calls[0].contains("-> std::integral_constant<int, 0> {"),
+        "{cpp}"
+    );
+    assert!(calls[1].contains("-> int {"), "{cpp}");
 }

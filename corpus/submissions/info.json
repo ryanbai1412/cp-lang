@@ -18809,28 +18809,6 @@
         "status": "D",
         "time": 1.28954054
     },
-    "4718853": {
-        "case_points": 71.8,
-        "case_total": 100.0,
-        "date": "2022-07-24T17:48:21+00:00",
-        "language": "TEXT",
-        "memory": 1824.0,
-        "problem": "ioi12p1old",
-        "result": "WA",
-        "status": "D",
-        "time": 0.270148453
-    },
-    "4718872": {
-        "case_points": 93.7,
-        "case_total": 100.0,
-        "date": "2022-07-24T18:00:17+00:00",
-        "language": "TEXT",
-        "memory": 1824.0,
-        "problem": "ioi12p1old",
-        "result": "AC",
-        "status": "D",
-        "time": 0.29370305
-    },
     "4722391": {
         "case_points": 76.0,
         "case_total": 100.0,
@@ -22032,61 +22010,6 @@
         "status": "D",
         "time": 8.182126733
     },
-    "4835861": {
-        "case_points": 70.0,
-        "case_total": 100.0,
-        "date": "2022-09-13T03:03:49+00:00",
-        "language": "TEXT",
-        "memory": 1912.0,
-        "problem": "eoi22math2",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003317175
-    },
-    "4835904": {
-        "case_points": 90.0,
-        "case_total": 100.0,
-        "date": "2022-09-13T03:19:08+00:00",
-        "language": "TEXT",
-        "memory": 1912.0,
-        "problem": "eoi22math2",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003389065
-    },
-    "4835936": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-09-13T03:32:54+00:00",
-        "language": "TEXT",
-        "memory": 1868.0,
-        "problem": "eoi22math2",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003480398
-    },
-    "4838787": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2022-09-14T04:42:18+00:00",
-        "language": "TEXT",
-        "memory": 1900.0,
-        "problem": "eoi22math3",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004169947
-    },
-    "4838788": {
-        "case_points": 80.0,
-        "case_total": 100.0,
-        "date": "2022-09-14T04:45:05+00:00",
-        "language": "TEXT",
-        "memory": 1872.0,
-        "problem": "eoi22math3",
-        "result": "WA",
-        "status": "D",
-        "time": 0.00370445
-    },
     "4843159": {
         "case_points": 0.0,
         "case_total": 100.0,
@@ -22802,160 +22725,6 @@
         "status": "D",
         "time": 4.818290058
     },
-    "4930928": {
-        "case_points": 2.0,
-        "case_total": 11.0,
-        "date": "2022-10-12T03:23:55+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003895563
-    },
-    "4930957": {
-        "case_points": 5.0,
-        "case_total": 11.0,
-        "date": "2022-10-12T03:46:36+00:00",
-        "language": "TEXT",
-        "memory": 1712.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003581159
-    },
-    "4930983": {
-        "case_points": 6.0,
-        "case_total": 11.0,
-        "date": "2022-10-12T04:02:38+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003884624
-    },
-    "4931969": {
-        "case_points": 7.0,
-        "case_total": 11.0,
-        "date": "2022-10-12T15:38:22+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003945782
-    },
-    "4931971": {
-        "case_points": 8.0,
-        "case_total": 11.0,
-        "date": "2022-10-12T15:40:38+00:00",
-        "language": "TEXT",
-        "memory": 1712.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003615267
-    },
-    "4933819": {
-        "case_points": 8.0,
-        "case_total": 11.0,
-        "date": "2022-10-13T04:22:03+00:00",
-        "language": "TEXT",
-        "memory": 1712.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003592127
-    },
-    "4933832": {
-        "case_points": 8.0,
-        "case_total": 11.0,
-        "date": "2022-10-13T04:31:06+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003944673
-    },
-    "4933848": {
-        "case_points": 9.0,
-        "case_total": 11.0,
-        "date": "2022-10-13T04:39:38+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003830232
-    },
-    "4933933": {
-        "case_points": 10.0,
-        "case_total": 11.0,
-        "date": "2022-10-13T05:41:54+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003936393
-    },
-    "4936369": {
-        "case_points": 10.0,
-        "case_total": 11.0,
-        "date": "2022-10-14T03:55:05+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2019",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003936444
-    },
-    "4936372": {
-        "case_points": 11.0,
-        "case_total": 11.0,
-        "date": "2022-10-14T03:57:32+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2019",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003964514
-    },
-    "4950597": {
-        "case_points": 3.0,
-        "case_total": 11.0,
-        "date": "2022-10-19T04:55:07+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2020",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003905895
-    },
-    "4950604": {
-        "case_points": 4.0,
-        "case_total": 11.0,
-        "date": "2022-10-19T05:03:00+00:00",
-        "language": "TEXT",
-        "memory": 1712.0,
-        "problem": "gaolian2020",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003580694
-    },
-    "4950613": {
-        "case_points": 5.0,
-        "case_total": 11.0,
-        "date": "2022-10-19T05:06:59+00:00",
-        "language": "TEXT",
-        "memory": 1744.0,
-        "problem": "gaolian2020",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003909898
-    },
     "4951033": {
         "case_points": 100.0,
         "case_total": 100.0,
@@ -22978,94 +22747,6 @@
         "status": "D",
         "time": 1.300138791
     },
-    "4952757": {
-        "case_points": 6.0,
-        "case_total": 11.0,
-        "date": "2022-10-20T00:51:36+00:00",
-        "language": "TEXT",
-        "memory": 1712.0,
-        "problem": "gaolian2020",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003550785
-    },
-    "4963746": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:41:25+00:00",
-        "language": "PYPY3",
-        "memory": 57496.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.06350997
-    },
-    "4963750": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:42:05+00:00",
-        "language": "PYPY3",
-        "memory": 57432.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.057129108
-    },
-    "4963752": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:42:10+00:00",
-        "language": "PYPY3",
-        "memory": 57500.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.062662794
-    },
-    "4963753": {
-        "case_points": 0.0,
-        "case_total": 75.0,
-        "date": "2022-10-23T16:42:25+00:00",
-        "language": "PYPY3",
-        "memory": 61656.0,
-        "problem": "help2022p0",
-        "result": "WA",
-        "status": "D",
-        "time": 0.062561777
-    },
-    "4963756": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:42:47+00:00",
-        "language": "PYPY3",
-        "memory": 57424.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.057154988
-    },
-    "4963768": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:43:49+00:00",
-        "language": "PYPY3",
-        "memory": 57496.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.062449058
-    },
-    "4963771": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:43:55+00:00",
-        "language": "PYPY3",
-        "memory": 57428.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.057042902
-    },
     "4964435": {
         "case_points": 0.0,
         "case_total": 100.0,
@@ -23076,17 +22757,6 @@
         "result": "WA",
         "status": "D",
         "time": 0.067809047
-    },
-    "4964436": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T19:53:18+00:00",
-        "language": "PYPY3",
-        "memory": 57508.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.062962056
     },
     "5024527": {
         "case_points": 0.0,
@@ -23626,50 +23296,6 @@
         "result": "TLE",
         "status": "D",
         "time": 2.870027884
-    },
-    "5031700": {
-        "case_points": 8.0,
-        "case_total": 11.0,
-        "date": "2022-11-14T04:46:32+00:00",
-        "language": "TEXT",
-        "memory": 1720.0,
-        "problem": "gaolian2020",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004019286
-    },
-    "5031728": {
-        "case_points": 8.0,
-        "case_total": 11.0,
-        "date": "2022-11-14T05:04:16+00:00",
-        "language": "TEXT",
-        "memory": 1704.0,
-        "problem": "gaolian2020",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003997056
-    },
-    "5031735": {
-        "case_points": 9.0,
-        "case_total": 11.0,
-        "date": "2022-11-14T05:08:48+00:00",
-        "language": "TEXT",
-        "memory": 1720.0,
-        "problem": "gaolian2020",
-        "result": "WA",
-        "status": "D",
-        "time": 0.00392045
-    },
-    "5032533": {
-        "case_points": 10.0,
-        "case_total": 11.0,
-        "date": "2022-11-14T16:55:09+00:00",
-        "language": "TEXT",
-        "memory": 1680.0,
-        "problem": "gaolian2020",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003726837
     },
     "5032732": {
         "case_points": 100.0,
@@ -29555,50 +29181,6 @@
         "result": "RTE",
         "status": "D",
         "time": 0.017332259
-    },
-    "5200823": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-01-09T06:06:43+00:00",
-        "language": "CPP17",
-        "memory": 4484.0,
-        "problem": "dmpg17g3",
-        "result": "TLE",
-        "status": "D",
-        "time": 4.383161956
-    },
-    "5200825": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-01-09T06:08:16+00:00",
-        "language": "CPP17",
-        "memory": 4692.0,
-        "problem": "dmpg17g3",
-        "result": "RTE",
-        "status": "D",
-        "time": 4.691997323
-    },
-    "5200826": {
-        "case_points": 15.0,
-        "case_total": 100.0,
-        "date": "2023-01-09T06:09:12+00:00",
-        "language": "CPP17",
-        "memory": 4484.0,
-        "problem": "dmpg17g3",
-        "result": "TLE",
-        "status": "D",
-        "time": 11.141657871
-    },
-    "5200842": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-01-09T06:33:49+00:00",
-        "language": "CPP17",
-        "memory": 4488.0,
-        "problem": "dmpg17g3",
-        "result": "AC",
-        "status": "D",
-        "time": 0.401869658
     },
     "5201973": {
         "case_points": 34.0,

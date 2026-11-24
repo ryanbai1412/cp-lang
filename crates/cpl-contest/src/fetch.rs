@@ -12,6 +12,7 @@
 use crate::new::Scaffold;
 use crate::problem::{source_path, tests_dir, Limits};
 use cpl_diag::Shown;
+use cpl_judge::{site_of, Layout, Site, SITES};
 use cpl_stress::args::Args;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -38,37 +39,10 @@ options:
   --json        print what was written as JSON
 ";
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Judge {
-    Codeforces,
-    AtCoder,
-    Cses,
-}
-
-/// The judge whose problem page `url` is.
-pub fn judge_of(url: &str) -> Option<Judge> {
-    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
-    let host = rest.split(['/', '?', '#']).next()?.to_ascii_lowercase();
-    let is = |domain: &str| host == domain || host.ends_with(&format!(".{domain}"));
-    if is("codeforces.com") {
-        Some(Judge::Codeforces)
-    } else if is("atcoder.jp") {
-        Some(Judge::AtCoder)
-    } else if is("cses.fi") {
-        Some(Judge::Cses)
-    } else {
-        None
-    }
-}
-
 /// The built-in judge profile for the judge whose problem page `url` is,
 /// for the `// judge:` line of a new file.
 pub fn judge_profile_of(url: &str) -> Option<&'static str> {
-    match judge_of(url)? {
-        Judge::Codeforces => Some("codeforces"),
-        Judge::AtCoder => Some("atcoder"),
-        Judge::Cses => Some("cses"),
-    }
+    site_of(url).map(|site| site.profile)
 }
 
 /// The contest a problem page belongs to, as its judge names it in the URL:
@@ -77,11 +51,7 @@ pub fn judge_profile_of(url: &str) -> Option<&'static str> {
 pub fn contest_of(url: &str) -> Option<String> {
     let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
     let path: Vec<&str> = rest.split(['?', '#']).next()?.split('/').skip(1).collect();
-    let key = match judge_of(url)? {
-        Judge::Codeforces => ["contest", "gym"].as_slice(),
-        Judge::AtCoder => ["contests"].as_slice(),
-        Judge::Cses => return None,
-    };
+    let key = site_of(url)?.contest_keys;
     let at = path.iter().position(|part| key.contains(part))?;
     let id = path.get(at + 1).filter(|id| !id.is_empty())?;
     id.chars()
@@ -102,10 +72,7 @@ pub fn contest_page(url: &str) -> Option<String> {
         .copied()
         .filter(|p| !p.is_empty())
         .collect();
-    let list = match judge_of(url)? {
-        Judge::AtCoder => "tasks",
-        _ => "problems",
-    };
+    let list = site_of(url)?.problem_list;
     matches!(tail.as_slice(), [] | [_]).then_some(())?;
     (tail.is_empty() || tail == [list]).then_some(contest)
 }
@@ -122,24 +89,24 @@ fn contest_root(url: &str, contest: &str) -> Option<(String, String)> {
 }
 
 /// The page that lists a contest's problems.
-fn contest_list_url(judge: Judge, url: &str, contest: &str) -> Option<String> {
+fn contest_list_url(site: &Site, url: &str, contest: &str) -> Option<String> {
     let (origin, root) = contest_root(url, contest)?;
-    Some(match judge {
-        Judge::AtCoder => format!("{origin}{root}/tasks"),
-        _ => format!("{origin}{root}"),
+    Some(match site.list_apart {
+        true => format!("{origin}{root}/{}", site.problem_list),
+        false => format!("{origin}{root}"),
     })
 }
 
 /// The problem pages a contest's page links to, in its order, each once.
-pub fn problem_urls(judge: Judge, url: &str, contest: &str, html: &str) -> Vec<String> {
+pub fn problem_urls(site: &Site, url: &str, contest: &str, html: &str) -> Vec<String> {
     let Some((origin, root)) = contest_root(url, contest) else {
         return Vec::new();
     };
-    let marker = match judge {
-        Judge::AtCoder => format!("href=\"{root}/tasks/"),
-        Judge::Codeforces => format!("href=\"{root}/problem/"),
-        Judge::Cses => return Vec::new(),
-    };
+    if site.contest_keys.is_empty() {
+        return Vec::new();
+    }
+    let part = site.problem_part;
+    let marker = format!("href=\"{root}/{part}/");
     let mut found: Vec<String> = Vec::new();
     for piece in html.split(marker.as_str()).skip(1) {
         let id: String = piece
@@ -149,10 +116,7 @@ pub fn problem_urls(judge: Judge, url: &str, contest: &str, html: &str) -> Vec<S
         if id.is_empty() || !piece[id.len()..].starts_with('"') {
             continue;
         }
-        let page = match judge {
-            Judge::AtCoder => format!("{origin}{root}/tasks/{id}"),
-            _ => format!("{origin}{root}/problem/{id}"),
-        };
+        let page = format!("{origin}{root}/{part}/{id}");
         if !found.contains(&page) {
             found.push(page);
         }
@@ -161,11 +125,11 @@ pub fn problem_urls(judge: Judge, url: &str, contest: &str, html: &str) -> Vec<S
 }
 
 /// The title, limits and samples on a problem page.
-pub fn parse(judge: Judge, url: &str, html: &str) -> Result<Scaffold, String> {
-    let (title, limits, samples) = match judge {
-        Judge::Codeforces => codeforces(html),
-        Judge::AtCoder => atcoder(html),
-        Judge::Cses => cses(html),
+pub fn parse(site: &Site, url: &str, html: &str) -> Result<Scaffold, String> {
+    let (title, limits, samples) = match site.layout {
+        Layout::Classed => classed(html),
+        Layout::Headed => headed(html),
+        Layout::Labelled => labelled(html),
     };
     if samples.is_empty() {
         return Err(format!(
@@ -177,8 +141,8 @@ pub fn parse(judge: Judge, url: &str, html: &str) -> Result<Scaffold, String> {
         url: Some(url.to_string()),
         limits,
         samples,
-        multitest: judge == Judge::Codeforces && counts_test_cases(html),
-        any_answer: accepts_any_answer(judge, html),
+        multitest: site.states_multitest && counts_test_cases(html),
+        any_answer: accepts_any_answer(site, html),
         ..Scaffold::default()
     })
 }
@@ -201,12 +165,8 @@ fn counts_test_cases(html: &str) -> bool {
 
 /// An output section that accepts any of several answers: "If there are
 /// multiple answers, print any of them".
-fn accepts_any_answer(judge: Judge, html: &str) -> bool {
-    let (start, end) = match judge {
-        Judge::Codeforces => ("class=\"output-specification\"", "class=\"sample-tests\""),
-        Judge::AtCoder => ("<h3>Output</h3>", "<h3>Sample Input"),
-        Judge::Cses => ("<h1 id=\"output\">", "<h1"),
-    };
+fn accepts_any_answer(site: &Site, html: &str) -> bool {
+    let (start, end) = site.output_section;
     let english = html
         .find("<span class=\"lang-en\">")
         .map_or(html, |at| &html[at..]);
@@ -234,7 +194,7 @@ fn accepts_any_answer(judge: Judge, html: &str) -> bool {
 
 type Page = (Option<String>, Option<Limits>, Vec<(String, String)>);
 
-fn codeforces(html: &str) -> Page {
+fn classed(html: &str) -> Page {
     let inputs = pres_after(html, "class=\"input\"");
     let outputs = pres_after(html, "class=\"output\"");
     let samples = inputs
@@ -262,7 +222,7 @@ fn codeforces(html: &str) -> Page {
     (title, limits, samples)
 }
 
-fn atcoder(html: &str) -> Page {
+fn headed(html: &str) -> Page {
     let english = html
         .find("<span class=\"lang-en\">")
         .map_or(html, |at| &html[at..]);
@@ -292,7 +252,7 @@ fn atcoder(html: &str) -> Page {
     (title, limits(number_before(&line, "sec"), memory), samples)
 }
 
-fn cses(html: &str) -> Page {
+fn labelled(html: &str) -> Page {
     let inputs = pres_after(html, "<p>Input:</p>");
     let outputs = pres_after(html, "<p>Output:</p>");
     let samples = inputs
@@ -441,7 +401,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             .map_or("a", |name| name.trim_end_matches(".cp"));
         let url = args
             .iter()
-            .find(|arg| judge_of(arg).is_some())
+            .find(|arg| site_of(arg).is_some())
             .map_or("<url>", String::as_str);
         let _ = writeln!(
             stderr,
@@ -461,9 +421,14 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 ))
             }
         };
-        let judge = judge_of(&url).ok_or_else(|| {
+        let judge = site_of(&url).ok_or_else(|| {
+            let titles: Vec<&str> = SITES.iter().map(|site| site.title).collect();
+            let known = match titles.split_last() {
+                Some((last, rest)) if !rest.is_empty() => format!("{} or {last}", rest.join(", ")),
+                _ => titles.join(""),
+            };
             format!(
-                "`{url}` is not a Codeforces, AtCoder or CSES page; for other judges, \
+                "`{url}` is not a {known} page; for other judges, \
                  `cpl new --listen` takes the problem from Competitive Companion"
             )
         })?;
@@ -486,7 +451,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     .and_then(|html| parse(judge, &url, &html))
     .and_then(|scaffold| {
         let name = name
-            .or_else(|| (judge == Judge::Cses).then(|| cses_name(&url)).flatten())
+            .or_else(|| judge.named_by_id.then(|| cses_name(&url)).flatten())
             .or_else(|| scaffold.short_name())
             .ok_or_else(|| {
                 format!("the page for {url} has no title; name the problem: `cpl fetch {url} d`")
@@ -541,7 +506,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
 /// `cpl fetch` on a contest's page: every problem it lists, each as `cpl
 /// fetch` on that problem's page makes it, in one folder.
 fn fetch_contest(
-    judge: Judge,
+    judge: &Site,
     url: &str,
     contest: &str,
     name: Option<String>,
@@ -727,6 +692,10 @@ fn write(scaffold: &Scaffold, source: &Path) -> Result<bool, String> {
 mod tests {
     use super::*;
 
+    fn site(profile: &str) -> &'static Site {
+        SITES.iter().find(|site| site.profile == profile).unwrap()
+    }
+
     #[test]
     fn a_contest_page_lists_its_problems_once_each() {
         for (url, contest) in [
@@ -748,7 +717,7 @@ mod tests {
             <a href="/contests/abc300/tasks/abc300_a?lang=ja">ja</a>"#;
         assert_eq!(
             problem_urls(
-                Judge::AtCoder,
+                site("atcoder"),
                 "atcoder.jp/contests/abc300",
                 "abc300",
                 atcoder
@@ -762,7 +731,7 @@ mod tests {
             <a href="/contest/104/problem/C">elsewhere</a>"#;
         assert_eq!(
             problem_urls(
-                Judge::Codeforces,
+                site("codeforces"),
                 "https://codeforces.com/gym/104",
                 "104",
                 gym
@@ -774,7 +743,7 @@ mod tests {
         );
         assert_eq!(
             contest_list_url(
-                Judge::AtCoder,
+                site("atcoder"),
                 "https://atcoder.jp/contests/abc300",
                 "abc300"
             )
@@ -786,17 +755,15 @@ mod tests {
     #[test]
     fn a_page_is_known_by_its_host() {
         let cf = "https://codeforces.com/contest/4/problem/A";
-        assert_eq!(judge_of(cf), Some(Judge::Codeforces));
+        assert_eq!(judge_profile_of(cf), Some("codeforces"));
         assert_eq!(
-            judge_of("https://mirror.codeforces.com/gym/1/problem/B"),
-            Some(Judge::Codeforces)
+            judge_profile_of("atcoder.jp/contests/abc300/tasks/abc300_a"),
+            Some("atcoder")
         );
         assert_eq!(
-            judge_of("atcoder.jp/contests/abc300/tasks/abc300_a"),
-            Some(Judge::AtCoder)
+            judge_profile_of("https://example.com/?u=codeforces.com"),
+            None
         );
-        assert_eq!(judge_of("https://notcodeforces.com/x"), None);
-        assert_eq!(judge_of("https://example.com/?u=codeforces.com"), None);
         for (url, contest) in [
             (cf, Some("4")),
             ("https://codeforces.com/gym/104/problem/B", Some("104")),
@@ -831,32 +798,32 @@ mod tests {
 <div class="test-example-line test-example-line-even test-example-line-0">2 3</div><div class="test-example-line test-example-line-odd test-example-line-1">a &lt; b</div></pre></div><div class="output"><div class="title">Output</div><pre>
 YES
 </pre></div><div class="input"><div class="title">Input</div><pre>8<br />1 2<br /></pre></div><div class="output"><div class="title">Output</div><pre>NO<br /></pre></div></div></div></div>"#;
-        let page = parse(Judge::Codeforces, "u", html).unwrap();
+        let page = parse(site("codeforces"), "u", html).unwrap();
         assert!(!page.multitest);
         let multi = html.replace(
             "<p>w</p>",
             "<p>The first line contains one integer <span>t</span> (1 &le; t &le; 10<sup>4</sup>) &mdash; the number of test cases. Each test case is one line.</p>",
         );
-        assert!(parse(Judge::Codeforces, "u", &multi).unwrap().multitest);
+        assert!(parse(site("codeforces"), "u", &multi).unwrap().multitest);
         let stated = html.replace(
             "<p>w</p>",
             "<p>Each test contains multiple test cases. The first line contains the number of test cases <span>t</span>.</p>",
         );
-        assert!(parse(Judge::Codeforces, "u", &stated).unwrap().multitest);
+        assert!(parse(site("codeforces"), "u", &stated).unwrap().multitest);
         let later = html.replace(
             "<p>w</p>",
             "<p>The first line contains n. The answer is the number of test cases you pass.</p>",
         );
-        assert!(!parse(Judge::Codeforces, "u", &later).unwrap().multitest);
+        assert!(!parse(site("codeforces"), "u", &later).unwrap().multitest);
         assert!(!page.any_answer);
         let any = html.replace(
             "<div class=\"sample-tests\">",
             "<div class=\"output-specification\"><div class=\"section-title\">Output</div><p>Print the edges. If there are multiple answers, print any of them.</p></div><div class=\"sample-tests\">",
         );
-        assert!(parse(Judge::Codeforces, "u", &any).unwrap().any_answer);
+        assert!(parse(site("codeforces"), "u", &any).unwrap().any_answer);
         let story = html.replace("<p>w</p>", "<p>Print any of them.</p>");
         assert!(
-            !parse(Judge::Codeforces, "u", &story).unwrap().any_answer,
+            !parse(site("codeforces"), "u", &story).unwrap().any_answer,
             "the input section says nothing of the output"
         );
         assert_eq!(prefix("a\u{e9}b", 2), "a");
@@ -886,7 +853,7 @@ YES
             <h1 id=\"constraints\">Constraints</h1>\n<h1 id=\"example\">Example</h1>\n\
             <p>Input:</p>\n<pre>4 8\n2 7 5 1\n</pre>\n<p>Output:</p>\n<pre>2 4\n</pre></div>";
         let url = "https://cses.fi/problemset/task/1640";
-        let page = parse(Judge::Cses, url, html).unwrap();
+        let page = parse(site("cses"), url, html).unwrap();
         assert_eq!(page.title.as_deref(), Some("Sum of Two Values"));
         let limits = page.limits.unwrap();
         assert_eq!(
@@ -898,7 +865,7 @@ YES
             [("4 8\n2 7 5 1\n".to_string(), "2 4\n".to_string())]
         );
         assert!(page.any_answer && !page.multitest);
-        assert_eq!(judge_of(url), Some(Judge::Cses));
+        assert_eq!(judge_profile_of(url), Some("cses"));
         assert_eq!(contest_of(url), None);
         assert_eq!(cses_name(url).as_deref(), Some("cses1640"));
         assert_eq!(cses_name("https://cses.fi/problemset/").as_deref(), None);
@@ -913,7 +880,7 @@ YES
             <span class=\"lang-en\">\n<h3>Sample Input 1</h3><pre>3 125 175\n200 300 400\n</pre>\n</section>\n</div>\n\
             <div class=\"part\">\n<section>\n<h3>Sample Output 1</h3><pre>2\n</pre>\n<p>We have <var>125+175 = 300</var>.<br />\n\
             <h3>Sample Input 2</h3><pre>1 1 1\n1\n</pre><h3>Sample Output 2</h3><pre>1\n</pre></span>";
-        let page = parse(Judge::AtCoder, "u", html).unwrap();
+        let page = parse(site("atcoder"), "u", html).unwrap();
         assert_eq!(page.title.as_deref(), Some("A - N-choice question"));
         assert_eq!(page.short_name().as_deref(), Some("a"));
         let limits = page.limits.unwrap();
@@ -932,7 +899,7 @@ YES
 
     #[test]
     fn a_page_without_samples_says_so() {
-        let err = parse(Judge::AtCoder, "https://atcoder.jp/x", "<p>Sign in</p>").unwrap_err();
+        let err = parse(site("atcoder"), "https://atcoder.jp/x", "<p>Sign in</p>").unwrap_err();
         assert!(err.contains("found no samples"), "{err}");
     }
 }

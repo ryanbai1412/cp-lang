@@ -107,16 +107,14 @@ fn a_grader_fn_links_in_its_declared_types() {
     assert_eq!(String::from_utf8_lossy(&ran.stdout), expected);
 }
 
-/// A `@grader fn` over its own domain (`p: [C]Int -> List<C>`) is built as
-/// one C++ fn over vectors, `C` bound to the list's length.
-#[test]
-fn a_grader_fn_over_its_own_domain_links() {
+/// Runs `grader_domain/<program>` against `<grader>` and gives its output.
+fn run_in_grader_domain(program: &str, grader: &str) -> String {
     let here = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/grader_domain");
     let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg("run")
-        .arg(here.join("festival.cp"))
+        .arg(here.join(program))
         .arg("--grader")
-        .arg(here.join("grader.cpp"))
+        .arg(here.join(grader))
         .output()
         .expect("cpl runs");
     assert!(
@@ -124,8 +122,23 @@ fn a_grader_fn_over_its_own_domain_links() {
         "{}",
         String::from_utf8_lossy(&ran.stderr)
     );
+    String::from_utf8_lossy(&ran.stdout).into_owned()
+}
+
+/// A `@grader fn` over its own domain (`p: [C]Int -> List<C>`) is built as
+/// one C++ fn over vectors, `C` bound to the list's length.
+#[test]
+fn a_grader_fn_over_its_own_domain_links() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/grader_domain");
     let expected = std::fs::read_to_string(here.join("festival.out")).expect("the expected output");
-    assert_eq!(String::from_utf8_lossy(&ran.stdout), expected);
+    assert_eq!(run_in_grader_domain("festival.cp", "grader.cpp"), expected);
+}
+
+/// Inside a `@grader fn` its own domain is still a domain: a `List<C>` it
+/// builds goes through std's generic `reversed` as a `List<C>`.
+#[test]
+fn a_grader_fns_own_domain_stays_a_domain_inside_it() {
+    assert_eq!(run_in_grader_domain("reversed.cp", "reversed.cpp"), "2 0\n");
 }
 
 /// A range with an open end has no C++ integer to cross in.

@@ -460,20 +460,14 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Index(base, indices)
                 if indices.len() == 1
-                    && self
-                        .found
-                        .iter()
-                        .any(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind) =>
+                    && self.found.iter().any(|(m, k, _)| {
+                        crate::stmt::same_path(m, base) && crate::stmt::same_path(k, &indices[0])
+                    }) =>
             {
-                let it = self
-                    .found
-                    .iter()
-                    .rev()
-                    .find(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind);
-                Code::primary(format!(
-                    "{}->second",
-                    it.map(|f| f.2.as_str()).unwrap_or_default()
-                ))
+                let cell = self.found.iter().rev().find(|(m, k, _)| {
+                    crate::stmt::same_path(m, base) && crate::stmt::same_path(k, &indices[0])
+                });
+                Code::primary(cell.map(|f| f.2.clone()).unwrap_or_default())
             }
             ExprKind::Index(base, indices)
                 if indices.len() == 1
@@ -641,6 +635,9 @@ impl<'p> Emitter<'p> {
                         }
                         Some(cpl_ir::NarrowLayout::OptI32) => {
                             Code::primary(format!("cpl::OptInt({})", code.text))
+                        }
+                        Some(cpl_ir::NarrowLayout::OptOptI32) => {
+                            Code::primary(format!("std::optional<cpl::OptInt>({})", code.text))
                         }
                         Some(cpl_ir::NarrowLayout::Tuple(_)) => {
                             let wide = wide_elem_ty.as_deref().unwrap_or("auto");
@@ -1166,6 +1163,12 @@ impl<'p> Emitter<'p> {
                 let hi = self.expr(hi).text;
                 Code::primary(format!("cpl::mut_slice({p}, {lo}, {hi})"))
             }
+            ExprKind::MutLine(place, at, axis) => {
+                self.need("grid_line");
+                let p = self.place(place);
+                let at = self.expr(at).text;
+                Code::primary(format!("cpl::mut_line({p}, {at}, {axis})"))
+            }
             ExprKind::Sort(place, sort_by, desc) => self.lambda("void", |this, out| {
                 this.sort_stmts(place, sort_by, desc.as_deref(), out)
             }),
@@ -1270,7 +1273,9 @@ impl<'p> Emitter<'p> {
                 if let Some(k) = self.ty_fixed_len(&e.ty) {
                     return self.expr_with_fixed_len(e, Some(k));
                 }
-                if dims.len() == 1 {
+                if let Some(zeros) = self.zeros(&cell, dims, value.as_deref()) {
+                    zeros
+                } else if dims.len() == 1 {
                     let args = self.fill_args(dims, value.as_deref());
                     Code::primary(format!("std::vector<{cell}>({args})"))
                 } else {

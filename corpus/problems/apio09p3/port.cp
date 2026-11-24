@@ -16,7 +16,7 @@ let (start, p): (Spot, Int) = read()
 domain P = 0..p
 let pubs: [P]Spot = read()
 
-let g = Graph<Spot, Road>.directed(roads)
+let g = Graph.directed(roads)
 let (C, comp) = scc<Spot>(u => g.out(u))
 let onward = condense<Spot>(u => g.out(u), comp)
 

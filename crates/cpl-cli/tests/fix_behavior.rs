@@ -194,18 +194,6 @@ fn shard(n: usize) {
         std::fs::write(&file, &text).unwrap();
         copies.push((rel, file, text));
     }
-    let packages: Vec<String> = copies
-        .iter()
-        .map(|(rel, _, _)| root().join(rel))
-        .filter(|src| src.file_name().is_some_and(|n| n == "port.cp"))
-        .map(|src| cpl_corpus::programs::problem_dir(&src))
-        .filter(|dir| dir.join("tests.toml").is_file())
-        .map(|dir| dir.file_name().unwrap().to_string_lossy().into_owned())
-        .collect();
-    let packages: Vec<&str> = packages.iter().map(String::as_str).collect();
-    if !packages.is_empty() {
-        corpus_cases::make(&root(), &packages);
-    }
     // One `cpl fix` over the shard checks the stdlib once; only the
     // programs it edits are run.
     let mut args = vec!["fix".to_string()];
@@ -215,12 +203,28 @@ fn shard(n: usize) {
             .map(|(_, file, _)| file.to_string_lossy().into_owned()),
     );
     cpl_cli::run(&args);
+    let edited: Vec<(&String, &PathBuf, &String, String)> = copies
+        .iter()
+        .map(|(rel, file, text)| (rel, file, text, std::fs::read_to_string(file).unwrap()))
+        .filter(|(_, _, text, fixed)| fixed != *text)
+        .collect();
+    // Only the edited programs run, so only their packages' cases are made:
+    // making every package's cold costs minutes of gen.py and reference runs.
+    let packages: Vec<String> = edited
+        .iter()
+        .map(|(rel, _, _, _)| root().join(rel))
+        .filter(|src| src.file_name().is_some_and(|n| n == "port.cp"))
+        .map(|src| cpl_corpus::programs::problem_dir(&src))
+        .filter(|dir| dir.join("tests.toml").is_file())
+        .map(|dir| dir.file_name().unwrap().to_string_lossy().into_owned())
+        .collect();
+    let packages: Vec<&str> = packages.iter().map(String::as_str).collect();
+    if !packages.is_empty() {
+        corpus_cases::make(&root(), &packages);
+    }
     let mut wrong = Vec::new();
-    for (rel, file, text) in &copies {
-        let fixed = std::fs::read_to_string(file).unwrap();
-        if fixed != *text {
-            wrong.extend(changed(rel, file, text, &fixed));
-        }
+    for (rel, file, text, fixed) in &edited {
+        wrong.extend(changed(rel, file, text, fixed));
     }
     let _ = std::fs::remove_dir_all(&scratch);
     assert!(

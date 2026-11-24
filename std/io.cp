@@ -46,7 +46,6 @@ pub struct Wire():
         flush()
         read<T>()
 
-// blocked: no end-of-input primitive in CP Lang (GAPS.md io)
 /// Every remaining `T` on stdin, for statements that give no count.
 ///
 /// Without `until`, it reads to end of input; a later read then traps as reading past the end.
@@ -60,7 +59,13 @@ pub struct Wire():
 /// example: `read_all<Int>() == [3, 1, 2]` (stdin `3 1 2`)
 /// example: `read_all<Int>(until: x => x == 0) == [5, 7] and read<Int>() == 9` (stdin `5 7 0 9`)
 /// example: `read_all<Int>() == []` (stdin ``)
-pub fn read_all<T>(until: ?(T -> Bool) = None) -> List<T> = todo
+pub fn read_all<T: Read>(until: ?(T -> Bool) = None) -> List<T>:
+    var xs = List<T>()
+    while let x = read<?T>():
+        if let stop = until:
+            if stop(x): break
+        xs.push(x)
+    xs
 
 /// Compile-time I/O settings: 0/1-based counted domains, field separator, `yes` words, and float precision.
 pub context io:

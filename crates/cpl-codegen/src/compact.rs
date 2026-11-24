@@ -124,15 +124,31 @@ fn compact_line(line: &str, rename: &BTreeMap<String, String>) -> String {
                 && tokens.get(i + 1).map(|t| t.1) == Some(":")
                 && tokens.get(i + 2).map(|t| t.1) == Some(":")
         };
-        if qualified("std") && tokens.get(i + 4).map(|t| t.1) == Some("<") {
-            if let Some(alias) = rename.get(&format!("std::{}", tokens[i + 3].1)) {
-                token = alias;
-                i += 3;
+        if qualified("std") && i + 3 < tokens.len() {
+            let name = tokens[i + 3].1;
+            let template = tokens.get(i + 4).map(|t| t.1) == Some("<");
+            if let Some(alias) = rename.get(&format!("std::{name}")) {
+                if template || alias == name {
+                    token = alias;
+                    i += 3;
+                }
             }
         } else if qualified("cpl") && i + 3 < tokens.len() {
             if let Some(short) = rename.get(&format!("cpl::{}", tokens[i + 3].1)) {
                 token = short;
                 i += 3;
+            }
+        }
+        // A call codegen wrote `::prog::f(..)` to keep it from a library fn
+        // of the same name needs no namespace once `f` is a short name with
+        // a capital, which no library name has.
+        let home = [":", ":", "prog", ":", ":"];
+        if tokens.len() > i + 5 && (0..5).all(|k| tokens[i + k].1 == home[k]) {
+            if let Some(short) = rename.get(tokens[i + 5].1) {
+                if short.bytes().any(|b| b.is_ascii_uppercase()) {
+                    token = short;
+                    i += 5;
+                }
             }
         }
         let token = rename.get(token).map_or(token, String::as_str);
@@ -157,7 +173,9 @@ fn compact_line(line: &str, rename: &BTreeMap<String, String>) -> String {
 fn aliases(rename: &BTreeMap<String, String>) -> String {
     let mut out = String::new();
     for (name, short) in rename {
-        if name.starts_with("std::") {
+        if name.strip_prefix("std::") == Some(short) {
+            out += &format!("using {name};\n");
+        } else if name.starts_with("std::") {
             out += &format!("template<class...T>using {short}={name}<T...>;\n");
         } else if TYPEDEFS.contains(&name.as_str()) {
             out += &format!("using {short}={name};\n");
@@ -239,6 +257,12 @@ const STD_TEMPLATES: &[&str] = &[
     "priority_queue",
 ];
 
+/// Library names a `using std::x;` can bring in, so the file writes them
+/// bare where it writes no other `x`.
+const STD_NAMES: &[&str] = &[
+    "move", "get", "max", "min", "string", "nullopt", "tie", "forward",
+];
+
 /// Library type names written bare, which a `using` can stand for.
 const TYPEDEFS: &[&str] = &[
     "size_t", "uint64_t", "uint32_t", "uint8_t", "int64_t", "int32_t",
@@ -260,6 +284,10 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
     // Names written outside namespace cpl without `cpl::`: a local there may
     // share the name, so a runtime name among them keeps its `cpl::`.
     let mut bare_outside: BTreeSet<&str> = BTreeSet::new();
+    // Each name of `STD_NAMES` written after `std::`, and every name written
+    // without it.
+    let mut std_names: BTreeMap<&str, usize> = BTreeMap::new();
+    let mut unqualified: BTreeSet<&str> = BTreeSet::new();
     let mut cpl_depth = 0i32;
     // The names the file's own namespaces define, as well as the runtime's.
     let mut in_cpl: BTreeSet<&str> = runtime_names().clone();
@@ -282,6 +310,9 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
         let Some(tokens) = tokens(code).filter(|_| !code.starts_with('#')) else {
             for t in code.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_')) {
                 keep.insert(t);
+                if !code.starts_with("#include") {
+                    unqualified.insert(t);
+                }
             }
             continue;
         };
@@ -309,6 +340,11 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
                 && (i < 3 || !matches!(tokens[i - 3].1, "cpl" | "prog"));
             if i >= 1 && tokens[i - 1].1 == "." || arrow || scoped && !after_std {
                 members.insert(t);
+            }
+            if !after_std || tokens.get(i + 1).map(|t| t.1) == Some(":") {
+                unqualified.insert(t);
+            } else if STD_NAMES.contains(&t) {
+                *std_names.entry(t).or_default() += 1;
             }
             if after_std {
                 keep.insert(t);
@@ -375,6 +411,13 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
         .map(|(name, short)| (format!("cpl::{name}"), short.clone()))
         .collect();
     rename.extend(bare);
+    // `using std::move;` costs its line, and has no other `move` to meet.
+    rename.extend(
+        std_names
+            .into_iter()
+            .filter(|(name, n)| !unqualified.contains(name) && n * 5 > 13 + name.len())
+            .map(|(name, _)| (format!("std::{name}"), name.to_string())),
+    );
     rename
 }
 
@@ -432,6 +475,47 @@ mod tests {
         assert!(
             short.contains("std::int_fast32_t") && !short.contains("Mod_7_1"),
             "{short}"
+        );
+    }
+
+    #[test]
+    fn a_library_fn_written_often_is_brought_in_unless_the_file_writes_its_name() {
+        let cpp = concat!(
+            "#include <utility>\n",
+            "using ll=long long;\n",
+            "ll f(ll a){ll b=std::move(a),c=std::move(b),d=std::move(c);return std::move(d);}\n",
+            "ll g(ll a){return std::get<0>(std::tie(a))+std::get<0>(std::tie(a))+x.get();}\n",
+        );
+        let names = short_names(cpp);
+        assert_eq!(names.get("std::move").map(String::as_str), Some("move"));
+        assert!(!names.contains_key("std::get"), "{names:?}");
+        let out = compact(cpp, false, &names);
+        assert!(
+            out.contains("using ll=long long;\nusing std::move;\n"),
+            "{out}"
+        );
+        assert!(
+            out.contains("{ll b=move(a),c=move(b),d=move(c);return move(d);}"),
+            "{out}"
+        );
+        assert!(out.contains("std::get<0>"), "{out}");
+    }
+
+    #[test]
+    fn a_shortened_fn_is_called_without_its_namespace() {
+        let cpp = concat!(
+            "using ll=long long;\n",
+            "namespace prog{\n",
+            "ll walk_Int_3(std::vector<ll>&v){return v.size();}\n",
+            "ll solve(std::vector<ll>&v){return ::prog::walk_Int_3(v)+::prog::walk_Int_3(v)+::prog::run(v);}\n",
+            "}\n",
+        );
+        let names = short_names(cpp);
+        let short = &names["walk_Int_3"];
+        let out = compact(cpp, false, &names);
+        assert!(
+            out.contains(&format!("{{return {short}(v)+{short}(v)+::prog::run(v);}}")),
+            "{out}"
         );
     }
 

@@ -996,7 +996,7 @@ impl<'a> Lowerer<'a> {
                 )
             });
         if !inside_self {
-            if let Some(&new_fn) = self.structs[id].methods.get("new") {
+            if let Some(new_fn) = self.own_method(id, "new") {
                 return self.user_call(new_fn, None, args, span);
             }
             if let Some(&new_gfn) = self.structs[id].gen_methods.get("new") {
@@ -1545,7 +1545,9 @@ impl<'a> Lowerer<'a> {
                         let declared = self.sigs[id]
                             .decl
                             .params
-                            .get(at)
+                            .iter()
+                            .filter(|p| p.name.text != "self")
+                            .nth(at)
                             .and_then(|p| p.ty.as_ref());
                         let value = self.expect_declared(&arg.value, &param.ty, declared);
                         let value = match declared.and_then(|t| self.const_param_range(id, t)) {

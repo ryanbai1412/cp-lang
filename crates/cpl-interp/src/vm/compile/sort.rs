@@ -133,7 +133,23 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let Ty::Fn(params, _) = &func.ty else {
                     unreachable!()
                 };
-                self.emit_seq_call(callee_v, &params[0], key_kind, seq_kind, r_seq, r_idx, span);
+                // A key built in place, such as the bound method `t.key`, is a
+                // temporary the call would take: each round calls a copy.
+                let callee = match callee_v >= self.num_local_v {
+                    true => {
+                        let copy = self.alloc_v();
+                        self.emit(
+                            Op::CloneV {
+                                dst: copy,
+                                src: callee_v,
+                            },
+                            span,
+                        );
+                        copy
+                    }
+                    false => callee_v,
+                };
+                self.emit_seq_call(callee, &params[0], key_kind, seq_kind, r_seq, r_idx, span);
                 None
             }
         };

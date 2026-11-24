@@ -32,6 +32,8 @@ fn create_map<V, E>(pairs: [E](u: V, v: V)) -> [V.count * 2][V.count * 2]V:
     for (i, v) in tour.items:
         diags.push([v])
         if i == best[v]: diags.extend([held[v] + [v], [v]])
+    // Cell (x, y) is on diagonal x + y, which enters the grid at row max(0, x + y - (2n - 1));
+    // its place along the diagonal counts from there, and a short diagonal repeats its last colour.
     [2 * n] x => [2 * n] y =>
         let d = diags[x + y]
         d.get(x - max(0, x + y - (2 * n - 1))) ?? d.last!

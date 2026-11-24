@@ -18,11 +18,13 @@ use cpl_syntax::ast::{
     StmtKind, StrPiece, Type, TypeKind, UnOp,
 };
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
-mod build;
+mod choice;
 mod syntax;
-use build::*;
+mod walk;
 use syntax::*;
+use walk::*;
 
 /// The values `Int` takes when a program gives it no range.
 pub const DEFAULT_INT: (i128, i128) = (-1_000_000_000, 1_000_000_000);
@@ -617,6 +619,8 @@ impl InputSpec {
             io_base: 0,
             aliases: HashMap::new(),
             records: HashMap::new(),
+            std_scope: None,
+            bound: Rc::default(),
             none: None,
             values: values(src, &parsed.items),
             elems: elems(&parsed.items),
@@ -781,18 +785,6 @@ impl InputSpec {
                     builder
                         .aliases
                         .insert(name.text.clone(), (builder.base, ty.clone()));
-                }
-                StmtKind::Use {
-                    path, names, glob, ..
-                } if path.first().is_some_and(|root| root.text == "std") => {
-                    let module: Vec<String> = path.iter().map(|n| n.text.clone()).collect();
-                    let names: Vec<&str> = names.iter().map(|n| n.text.as_str()).collect();
-                    for (name, parts) in std_structs(&module, &names, *glob) {
-                        builder
-                            .records
-                            .entry(name)
-                            .or_insert((0, Record::Shaped(parts)));
-                    }
                 }
                 StmtKind::Struct(decl) if decl.generics.is_empty() => {
                     let fields = decl.fields.iter().map(|f| f.ty.clone()).collect();

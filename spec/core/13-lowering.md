@@ -160,7 +160,7 @@ Rules every row follows:
 | `xs[i]` on `List`/`Str` | load | \(O(1)\) | none | bounds check unless proven | none unless `bounds` is kept (R09.3.2) |
 | range `l..r` / cut range `j..i` | two integers; cut range → position range is free (§124) | \(O(1)\) | none | none | none |
 | slice `xs[l..r]` | view (`ptr`, `len`) (§123) | \(O(1)\) | none | bounds check unless proven | none unless `bounds` is kept (R09.3.2) |
-| `[V]T = x` | one heap array, filled | \(O(n)\) | heap, once | none | none |
+| `[V]T = x` | one heap array, filled; a big all-zero one comes from calloc, so untouched pages stay unmapped | \(O(n)\) | heap, once | none | none |
 | `[f(x) for x in s]` (no filter) | reserved vector + loop | \(O(n)\) | heap, once (reserved) | none | none |
 | `xs.push(x)` | amortized vector push | \(O(1)\) amortized | amortized | none | none |
 | `xs.sort(by: k)` | `std::sort` with inlined key | \(O(n \log n)\) | none | none | none |

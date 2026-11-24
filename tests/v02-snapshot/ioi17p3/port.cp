@@ -8,7 +8,7 @@
 //   by BFS over reverse edges. If every live station is good, stop. Otherwise Borzou's
 //   attractor of the non-good stations loses for Arezou: remove it, update live out-degrees
 //   and repeat. Marks give O(1) clears; O(n (n + m)) in all.
-// original: corpus/submissions/5656304.cpp
+// original: corpus/problems/ioi17p3/orig.cpp
 
 let (n, m): (Int, Int) = read()
 domain V = 0..n

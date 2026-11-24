@@ -15,11 +15,15 @@
   {"id": "4533925", "language": "CPP17", "result": "RTE", "time": 0.916625002, "memory_kb": 283912.0, "file": "corpus/submissions/4533925.cpp"},
   {"id": "4533926", "language": "CPP17", "result": "TLE", "time": 44.864791046, "memory_kb": 9664.0, "file": "corpus/submissions/4533926.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noimps22p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Statement: Luogu P8291 ([\u7701\u9009\u8054\u8003 2022] \u5b66\u672f\u793e\u533a, the DMOJ page is behind a challenge). No accepted C++ (every submission is TLE or RTE), so orig.cpp is a corpus-written reference: mutual (a b loushang)(b a louxia) pairs first, then a Dinic matching of next slots to previous slots through per-person hubs, then each matching cycle (all louxia or all loushang) is broken by a swap with the poster's academic message. Orders are not unique, so checker.py checks the count against the answer and replays the order. Its counts match the m <= 16 bitmask DP in 4533926 on 400 generated cases."
 }

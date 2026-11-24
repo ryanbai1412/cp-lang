@@ -259,3 +259,26 @@ fn a_non_negative_dividend_drops_the_sign_fix_up_whatever_the_divisor() {
         "{body}"
     );
 }
+
+#[test]
+fn convolve_past_the_ntt_primes_keeps_their_residues_off_the_halves_path() {
+    let out = cpp(concat!(
+        "use std.ntt.{convolve}\n",
+        "let a = [Mod<1_000_000_007>(x) for x in [1, 2, 3]]\n",
+        "print([c.v for c in convolve(a, a)])\n",
+    ));
+    assert!(out.contains("crt_product"), "{out}");
+    assert!(!out.contains("halves_product"), "{out}");
+}
+
+#[test]
+fn convolve_over_an_ntt_prime_leaves_the_fft_and_crt_paths_out() {
+    let out = cpp(concat!(
+        "use std.ntt.{convolve}\n",
+        "let a = [Mod<998_244_353>(x) for x in [1, 2, 3]]\n",
+        "print([c.v for c in convolve(a, a)])\n",
+    ));
+    assert!(out.contains("halves_product"), "{out}");
+    assert!(!out.contains("split_product"), "{out}");
+    assert!(!out.contains("crt_product"), "{out}");
+}

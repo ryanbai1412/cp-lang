@@ -130,7 +130,7 @@ pub const subset = Disjoint()
 /// for `max`, slopes merged; `Right`: only `b`, `monotone_minima`; `Neither`: the \(O(n m)\) loop by
 /// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
 ///
-/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; four complex FFTs over sqrt(P)-split halves for any other `Mod<P>` below 2^31 while `n log2 n * P` is under 8.6e14, else three NTT primes and Garner's CRT while `(P - 1)^2 * min(n, m)` is under 7.8e25, and for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25; a complex FFT for `F64`), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
+/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two, and in halves of it when `P - 1` has 2^20; four complex FFTs over sqrt(P)-split halves for any other `Mod<P>` below 2^31 while `n log2 n * P` is under 8.6e14, else three NTT primes and Garner's CRT while `(P - 1)^2 * min(n, m)` is under 7.8e25, and for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25; a complex FFT for `F64`), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
 /// empty: `let e: List<Int> = []; convolve([1, 2], e) == [] and convolve(e, [1, 2]) == []`
 /// order: by output index `0..len`; a new `List`, keyed from 0
 /// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows; never for `F64`, whose FFT outputs are each off from the exact sum by up to about `(sum of a[i]^2 + sum of b[j]^2) * log2(n) * 2^-52` (inputs up to 60 long take the exact loop)
@@ -221,20 +221,11 @@ impl FastProduct for Mod<P>:
                     if ai.v == 0: continue
                     for j in 0..nb: out[i + j] += ai * b[j]
             return Some(out)
-        let need = bit_ceil(n_out)
-        if (P - 1) % need != 0: return split_product(a, b) ?? crt_product(a, b)
-        var fa = List.filled(need, Mod<P>(0))
-        var fb = List.filled(need, Mod<P>(0))
-        unchecked:
-            for i in 0..na: fa[i] = a[i]
-            for i in 0..nb: fb[i] = b[i]
-        ntt(mut fa, bit_reversed: true)
-        ntt(mut fb, bit_reversed: true)
-        unchecked:
-            for i in 0..need: fa[i] *= fb[i]
-        ntt(mut fa, inverse: true, bit_reversed: true)
-        fa.truncate(n_out)
-        Some(fa)
+        if let got = ntt_product(a, b): return Some(got)
+        // A `P - 1` with 2^20 in it is an NTT prime's: a product past its power of two is two of
+        // half the length, and the branch folds on `P`, so its C++ has no FFT or CRT.
+        if (P - 1) % (1 << 20) == 0: return Some(halves_product(a, b))
+        split_product(a, b) ?? crt_product(a, b)
 
 impl FastProduct for Int:
     /// Two NTT primes and CRT while `max |a| * max |b| * min(a.len, b.len)` stays under 8e16
@@ -268,9 +259,27 @@ const NTT_P1 = 998_244_353
 const NTT_P2 = 167_772_161
 const NTT_P3 = 469_762_049
 
-// `a * b` modulo `P`, through `Mod<P>`'s NTT product; `None` when `P - 1` lacks the power of two.
+// `a * b` modulo `P` by its NTT; `None` when `P - 1` lacks the product's power of two.
 fn residues<P>(_: Mod<P>, a: List<Int>, b: List<Int>) -> ?List<Mod<P>> =
-    Mod<P>.product([Mod<P>(x) for x in a], [Mod<P>(x) for x in b])
+    ntt_product([Mod<P>(x) for x in a], [Mod<P>(x) for x in b])
+
+fn ntt_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> ?List<Mod<P>>:
+    let (na, nb) = (a.len, b.len)
+    let n_out = na + nb - 1
+    let need = bit_ceil(n_out)
+    if (P - 1) % need != 0: return None
+    var fa = List.filled(need, Mod<P>(0))
+    var fb = List.filled(need, Mod<P>(0))
+    unchecked:
+        for i in 0..na: fa[i] = a[i]
+        for i in 0..nb: fb[i] = b[i]
+    ntt(mut fa, bit_reversed: true)
+    ntt(mut fb, bit_reversed: true)
+    unchecked:
+        for i in 0..need: fa[i] *= fb[i]
+    ntt(mut fa, inverse: true, bit_reversed: true)
+    fa.truncate(n_out)
+    Some(fa)
 
 // Garner over p1 = 998_244_353, p2 = 167_772_161, p3 = 469_762_049: 47_450_712 is 1 / p1 mod p2,
 // 115_990_628 is 1 / (p1 p2) mod p3, and P12 is p1 p2. `garner2` is the value mod p1 p2 and
@@ -282,6 +291,18 @@ fn garner2(r1: Mod<NTT_P1>, r2: Mod<NTT_P2>) -> Int:
 fn garner3(c: Int, r3: Mod<NTT_P3>) -> I128 = I128(c) + I128(garner_digit(c, r3)) * I128(P12)
 
 fn garner_digit(c: Int, r3: Mod<NTT_P3>) -> Int = Int(((r3 - Mod<NTT_P3>(c)) * Mod<NTT_P3>(115_990_628)).v)
+
+// `a * b` for a `Mod<P>` whose NTT can't take the whole product: the longer side's halves, each
+// times the other side, added at their offsets.
+fn halves_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
+    if a.len < b.len: return halves_product(b, a)
+    let h = a.len / 2
+    var out = List.filled(a.len + b.len - 1, Mod<P>(0))
+    for (lo, hi) in [(0, h), (h, a.len)]:
+        let got = Mod<P>.product([a[i] for i in lo..hi], b)!
+        unchecked:
+            for i in 0..got.len: out[lo + i] += got[i]
+    out
 
 // `a * b` for a `Mod<P>` whose `P - 1` lacks the power of two: the exact product of the residues,
 // Splits each value as hi * cut + lo with cut about sqrt(P), packs hi + i lo into one complex

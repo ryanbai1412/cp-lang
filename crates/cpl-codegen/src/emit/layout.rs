@@ -36,6 +36,7 @@ impl<'p> Emitter<'p> {
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,
@@ -146,6 +147,9 @@ impl<'p> Emitter<'p> {
             if *leaf == cpl_ir::NarrowLayout::OptI32 {
                 self.niche_types.set(self.niche_types.get() | 1 << 6);
             }
+            if *leaf == cpl_ir::NarrowLayout::OptOptI32 {
+                self.niche_types.set(self.niche_types.get() | 1 << 8);
+            }
             match ty {
                 Ty::Array { dims, elem } => {
                     if let Some(cell) = l.cpp_elem(elem) {
@@ -184,17 +188,23 @@ impl<'p> Emitter<'p> {
         self.ty(ty)
     }
 
-    /// Whether field `idx` of struct `sid` is a narrowed `?Int`, held as `cpl::OptI32`.
-    fn narrow_opt_field(&self, sid: usize, idx: usize) -> bool {
-        self.narrow_ints.contains_key(&(sid, idx))
-            && crate::scope::is_opt_int(self.program.structs[sid].fields.get(idx).map(|(_, t)| t))
+    /// The niche field `idx` of struct `sid` is held in when it is a narrowed `?Int` or `??Int`.
+    fn narrow_opt_field(
+        &self,
+        sid: usize,
+        idx: usize,
+    ) -> Option<(&'static str, &'static str, u16)> {
+        if !self.narrow_ints.contains_key(&(sid, idx)) {
+            return None;
+        }
+        crate::scope::opt_int_niche(self.program.structs[sid].fields.get(idx).map(|(_, t)| t))
     }
 
-    /// The C++ type of a narrowed field: one rule for `Int` and `?Int` (R03.2).
+    /// The C++ type of a narrowed field: one rule for `Int`, `?Int` and `??Int` (R03.2).
     pub fn narrow_field_cpp(&self, sid: usize, idx: usize, w: cpl_ir::IntWidth) -> String {
-        if self.narrow_opt_field(sid, idx) {
-            self.niche_types.set(self.niche_types.get() | 1 << 6);
-            return "cpl::OptI32".into();
+        if let Some((narrow, _, bit)) = self.narrow_opt_field(sid, idx) {
+            self.niche_types.set(self.niche_types.get() | 1 << bit);
+            return narrow.into();
         }
         w.cpp().into()
     }
@@ -209,8 +219,8 @@ impl<'p> Emitter<'p> {
 
     /// A narrowed field read back at its full width.
     pub fn narrow_field_load(&self, sid: usize, idx: usize, access: &str) -> String {
-        if self.narrow_opt_field(sid, idx) {
-            format!("cpl::OptInt({access})")
+        if let Some((_, wide, _)) = self.narrow_opt_field(sid, idx) {
+            format!("{wide}({access})")
         } else {
             format!("ll({access})")
         }
@@ -220,6 +230,7 @@ impl<'p> Emitter<'p> {
         match layout {
             cpl_ir::NarrowLayout::Int(w) => format!("{}({text})", w.cpp()),
             cpl_ir::NarrowLayout::OptI32 => format!("cpl::OptI32({text})"),
+            cpl_ir::NarrowLayout::OptOptI32 => format!("cpl::OptOptI32({text})"),
             cpl_ir::NarrowLayout::Tuple(ws) => {
                 let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
                 format!("std::tuple<{}>({text})", parts.join(", "))

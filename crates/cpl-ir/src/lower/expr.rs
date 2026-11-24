@@ -269,7 +269,7 @@ impl<'a> Lowerer<'a> {
                             value: idx.clone(),
                         })
                         .collect();
-                    if let Some(&fn_id) = self.structs[sid].methods.get("get") {
+                    if let Some(fn_id) = self.own_method(sid, "get") {
                         return self.method_call(fn_id, Some((base, base_expr)), &ast_args, span);
                     }
                     if let Some(&gfn_id) = self.structs[sid].gen_methods.get("get") {
@@ -334,6 +334,10 @@ impl<'a> Lowerer<'a> {
                         .filter(|&k| is_whole(&indices[k]))
                         .collect();
                     if !whole.is_empty() && !piece_cell && dims.len() == indices.len() {
+                        if let Some(line) = self.grid_line(base, &base_expr, indices, &whole, span)
+                        {
+                            return line;
+                        }
                         let (dims, elem) = (dims.clone(), (**elem).clone());
                         let first = self.axis_key(&whole, &dims).map(|_| self.temp(Ty::Int));
                         let cells = self.collected(elem, span, |lw, out, push| {

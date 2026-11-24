@@ -56,6 +56,15 @@ impl Kind {
             Kind::Variant => "variant",
         }
     }
+
+    /// Whether the std index lists it: a nameable type, trait or function, not a
+    /// member, an impl or a value.
+    pub const fn indexed(self) -> bool {
+        matches!(
+            self,
+            Kind::Builtin | Kind::Struct | Kind::Enum | Kind::Trait | Kind::Fn
+        )
+    }
 }
 
 pub use cpl_syntax::doc::{DocText, Example, Facts};

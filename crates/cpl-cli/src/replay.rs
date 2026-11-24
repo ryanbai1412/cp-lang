@@ -59,14 +59,14 @@ pub(crate) fn replay_call(
         None => compile_side(path, Side::Solution, &mut errors),
     }
     .map_err(|_| format!("the edited file does not build:\n{errors}"))?;
-    let replay = cpl_interp::replay::replay(
-        &recorded,
-        &before.program,
-        &after.program,
+    let rerun = cpl_interp::replay::Rerun {
+        recorded: &recorded,
+        original: &before.program,
+        edited: &after.program,
         input,
-        &call,
-        trace::config(&after.text, None),
-    );
+        call: &call,
+    };
+    let replay = cpl_interp::replay::replay(rerun, trace::config(&after.text, None));
     Ok(replay)
 }
 

@@ -6,7 +6,7 @@ use super::*;
 impl<'a> Lowerer<'a> {
     /// Looks up a binary or unary operator trait method on a concrete struct (`Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`).
     pub(in crate::lower) fn struct_op_fn(&mut self, sid: StructId, method: &str) -> Option<FnId> {
-        let id = self.structs[sid].methods.get(method).copied()?;
+        let id = self.own_method(sid, method)?;
         self.queue_fn(id);
         Some(id)
     }
@@ -27,7 +27,7 @@ impl<'a> Lowerer<'a> {
             self.queue_fn(id);
             return Some((id, want));
         }
-        let id = self.structs[sid].methods.get(method).copied()?;
+        let id = self.own_method(sid, method)?;
         self.queue_fn(id);
         Some((id, Ty::Struct(sid)))
     }

@@ -1076,34 +1076,38 @@ pub struct Rope<D, T>:
 ///
 /// Tags come from an `Action<T, F>` whose `apply(f, x, span)` acts on each element independently
 /// (it is a homomorphism of the fold, as every `Action` is), so a tag and a reversal commute.
-pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> T)):
+pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> T), lift: E -> T):
     lc: List<0..=2_147_483_647>
     rc: List<0..=2_147_483_647>
     pri: List<0..=2_147_483_647>
     sz: List<0..=2_147_483_647>
-    val: List<T>
+    val: List<E>
+    own: List<?F>
     fwd: List<T>
     bwd: List<T>
     tag: List<?F>
     rev: List<Bool>
     var root: Int
     rng: Rng
-    free: List<Int>
+    free: List<0..=2_147_483_647>
 
     /// The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a
     /// `Monoid(id, op)`, which need not commute. `act:` adds range tags (`apply`), such as
     /// `flip_action(op)` or an `Action` of your own over the same monoid. `mirror:` gives a fold's
     /// value for the same run reversed (`MaxSub.reversed`); with it `reverse` mirrors one stored
-    /// fold per node instead of keeping a second, backward one.
+    /// fold per node instead of keeping a second, backward one. `lift:` stores elements of a
+    /// smaller type `E` and folds each as `lift(x)` (`MaxSub.of`), so a node keeps its element and
+    /// its own tag rather than a whole fold; reads (`items`, `get`, `fold`) give folds of type `T`.
     ///
     /// cost: \(O(n)\) expected
-    /// empty: `SeqFold<Str>(Monoid("", (a, b) => a + b), []).total == ""`
+    /// empty: `SeqFold<Str>(Monoid("", (a, b) => a + b), List<Str>()).total == ""`
     /// traps: never
     /// example: `SeqFold<Int>(+, [1, 2, 3]).total == 6`
     /// example: `SeqFold<Int>(+).total == 0`
     /// example: `var s = SeqFold<Int>(+, [1, 2, 3], mirror: x => x); s.reverse(0..2); s.items.collect() == [2, 1, 3] and s.fold(0..1) == 2`
-    pub fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None, mirror: ?(T -> T) = None) -> SeqFold<T, F>:
-        var s = SeqFold<T, F>.blank(Monoid<T>.of(op), act, mirror)
+    /// example: `var s = SeqFold<Int, Int, 0..=9>(+, [1, 2, 3], lift: x => 10 * x); s.push(4); s.total == 100 and s.get(1) == 20`
+    pub fn new<M, S: Seq<E>>(op: M, xs: S = List<E>(), act: ?Action<T, F> = None, mirror: ?(T -> T) = None, lift: E -> T = x => x) -> SeqFold<T, F, E>:
+        var s = SeqFold<T, F, E>.blank(Monoid<T>.of(op), act, mirror, lift)
         s.root = s.build(xs)
         s
 
@@ -1147,7 +1151,7 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
     /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var s = SeqFold<Int>(max); s.push(3); s.push(7); s.total == 7`
-    pub fn push(mut self, x: T):
+    pub fn push(mut self, x: E):
         root = self.join(root, self.leaf(x))
 
     /// Insert `x` so that it becomes the element at position `pos`; `pos == len` appends.
@@ -1155,7 +1159,7 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
     /// cost: \(O(\log n)\) expected
     /// traps: when `pos < 0` or `pos > len`
     /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "c"]); s.insert_at(1, "b"); s.total == "abc"`
-    pub fn insert_at(mut self, pos: Int, x: T):
+    pub fn insert_at(mut self, pos: Int, x: E):
         assert 0 <= pos <= self.len, "`insert_at` position out of range"
         let (a, b) = self.cut(root, pos)
         root = self.join(self.join(a, self.leaf(x)), b)
@@ -1164,10 +1168,10 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
     /// `pos..pos + xs.len` and later elements move up by `xs.len`.
     ///
     /// cost: \(O(k + \log n)\) expected for `k` new elements
-    /// empty: `var s = SeqFold<Int>(+, [1, 2]); s.insert_many(1, []); s.items.collect() == [1, 2]`
+    /// empty: `var s = SeqFold<Int>(+, [1, 2]); s.insert_many(1, List<Int>()); s.items.collect() == [1, 2]`
     /// traps: when `pos < 0` or `pos > len`
     /// example: `var s = SeqFold<Int>(+, [1, 2]); s.insert_many(1, [7, 8, 9]); s.items.collect() == [1, 7, 8, 9, 2] and s.fold(1..4) == 24`
-    pub fn insert_many(mut self, pos: Int, xs: List<T>):
+    pub fn insert_many<S: Seq<E>>(mut self, pos: Int, xs: S):
         assert 0 <= pos <= self.len, "`insert_many` position out of range"
         let (a, b) = self.cut(root, pos)
         root = self.join(self.join(a, self.build(xs)), b)
@@ -1196,15 +1200,16 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
     /// empty: `var s = SeqFold<Int>(+, [1, 2]); let t = s.split_at(2); t.is_empty and s.len == 2`
     /// traps: when `k < 0` or `k > len`
     /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); let t = s.split_at(1); s.items.collect() == [1] and t.items.collect() == [2, 3] and t.total == 5`
-    pub fn split_at(mut self, k: Int) -> SeqFold<T, F>:
+    pub fn split_at(mut self, k: Int) -> SeqFold<T, F, E>:
         assert 0 <= k <= self.len, "`split_at` position out of range"
         let (a, b) = self.cut(root, k)
-        var moved: List<T> = []
-        self.emit(b, None, false, mut moved)
+        var xs: List<E> = []
+        var tags: List<?F> = []
+        self.emit_raw(b, None, false, mut xs, mut tags)
         self.recycle(b)
         root = a
-        var out = SeqFold<T, F>.blank(m, act, mirror)
-        out.root = out.build(moved)
+        var out = SeqFold<T, F, E>.blank(m, act, mirror, lift)
+        out.root = out.build(xs, tags)
         out
 
     /// Move every element of `other` into `self` before position `pos`, in order, leaving `other`
@@ -1214,13 +1219,15 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
     /// empty: `var s = SeqFold<Int>(+, [1, 2]); var t = SeqFold<Int>(+); s.splice(1, mut t); s.items.collect() == [1, 2]`
     /// traps: when `pos < 0` or `pos > len`
     /// example: `var s = SeqFold<Int>(+, [1, 2]); var t = SeqFold<Int>(+, [5, 6]); s.splice(1, mut t); s.items.collect() == [1, 5, 6, 2] and t.is_empty`
-    pub fn splice(mut self, pos: Int, mut other: SeqFold<T, F>):
+    pub fn splice(mut self, pos: Int, mut other: SeqFold<T, F, E>):
         assert 0 <= pos <= self.len, "`splice` position out of range"
-        var moved: List<T> = []
-        other.emit(other.root, None, false, mut moved)
+        var xs: List<E> = []
+        var tags: List<?F> = []
+        other.emit_raw(other.root, None, false, mut xs, mut tags)
         other.recycle(other.root)
         other.root = 0
-        self.insert_many(pos, moved)
+        let (a, b) = self.cut(root, pos)
+        root = self.join(self.join(a, self.build(xs, tags)), b)
 
     /// The element at position `pos`, with every tag and reversal applied.
     ///
@@ -1281,26 +1288,47 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
 
     // Walks `u` in order as if every pending tag `f` and reversal `flip` above it were pushed down.
     fn emit(self, u: Int, f: ?F, flip: Bool, mut out: List<T>):
+        var xs: List<E> = []
+        var tags: List<?F> = []
+        self.emit_raw(u, f, flip, mut xs, mut tags)
+        for i in 0..xs.len:
+            let x = lift(xs[i])
+            out.push(if let a = act: (if let t = tags[i]: a.apply(t, x, 1) else: x) else: x)
+
+    // Each element of `u` in order, with the whole tag it carries once every pending tag is pushed
+    // down; `tags` stays empty without `act:`.
+    fn emit_raw(self, u: Int, f: ?F, flip: Bool, mut xs: List<E>, mut tags: List<?F>):
         if u == 0: return
         let r = flip != rev[u]
         var g = f
         if let a = act:
-            if let t = tag[u]:
-                g = if let h = f: Some(a.compose(h, t)) else: Some(t)
+            g = after(a, f, tag[u])
         let (first, second) = if r: (rc[u], lc[u]) else: (lc[u], rc[u])
-        self.emit(first, g, r, mut out)
-        out.push(if let a = act: (if let h = f: a.apply(h, val[u], 1) else: val[u]) else: val[u])
-        self.emit(second, g, r, mut out)
+        self.emit_raw(first, g, r, mut xs, mut tags)
+        xs.push(val[u - 1])
+        if let a = act: tags.push(after(a, f, own[u]))
+        self.emit_raw(second, g, r, mut xs, mut tags)
 
-    fn blank(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> T)) -> SeqFold<T, F> =
-        SeqFold<T, F>(m, act, mirror, [0], [0], [0], [0], [m.id], [m.id], [m.id], [None], [false], 0, Rng(48), [])
+    // The fold of node `u`'s own element under its own tag.
+    fn one(self, u: Int) -> T:
+        let x = lift(val[u - 1])
+        if let a = act:
+            if let f = own[u]: return a.apply(f, x, 1)
+        x
+
+    fn blank(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> T), lift: E -> T) -> SeqFold<T, F, E> =
+        SeqFold<T, F, E>(m, act, mirror, lift, [0], [0], [0], [0], [], [None], [m.id], [m.id], [None], [false], 0, Rng(48), [])
 
     // A treap of `xs` in order, in O(len): a Cartesian-tree stack keeps the right spine, so each
     // new node takes the run it pops as its left child.
-    fn build(mut self, xs: List<T>) -> Int:
+    // `tags`, when given, are the elements' own tags, one each.
+    fn build<S: Seq<E>>(mut self, xs: S, tags: List<?F> = []) -> Int:
         var spine: List<Int> = []
+        var i = 0
         for x in xs:
             let u = self.leaf(x)
+            if i < tags.len: own[u] = tags[i]
+            i += 1
             var below = 0
             while not spine.is_empty and pri[spine.last!] > pri[u]:
                 below = spine.pop()!
@@ -1322,15 +1350,17 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
                 todo.push(rc[x])
                 free.push(x)
 
-    fn leaf(mut self, x: T) -> Int:
+    fn leaf(mut self, x: E) -> Int:
+        let y = lift(x)
         if let u = free.pop():
             lc[u] = 0
             rc[u] = 0
             pri[u] = Int(rng.next() >> 33)
             sz[u] = 1
-            val[u] = x
-            fwd[u] = x
-            if mirror == None: bwd[u] = x
+            val[u - 1] = x
+            if act != None: own[u] = None
+            fwd[u] = y
+            if mirror == None: bwd[u] = y
             tag[u] = None
             rev[u] = false
             return u
@@ -1339,8 +1369,9 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
         pri.push(Int(rng.next() >> 33))
         sz.push(1)
         val.push(x)
-        fwd.push(x)
-        if mirror == None: bwd.push(x)
+        if act != None: own.push(None)
+        fwd.push(y)
+        if mirror == None: bwd.push(y)
         tag.push(None)
         rev.push(false)
         lc.len - 1
@@ -1349,10 +1380,10 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
     fn put(mut self, u: Int, f: F):
         if u == 0: return
         let a = act!
-        val[u] = a.apply(f, val[u], 1)
+        own[u] = after(a, Some(f), own[u])
         fwd[u] = a.apply(f, fwd[u], sz[u])
         if mirror == None: bwd[u] = a.apply(f, bwd[u], sz[u])
-        tag[u] = if let old = tag[u]: Some(a.compose(f, old)) else: Some(f)
+        tag[u] = after(a, Some(f), tag[u])
 
     fn flip(mut self, u: Int):
         if u == 0: return
@@ -1380,8 +1411,9 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
     fn pull(mut self, u: Int):
         let (a, b) = (lc[u], rc[u])
         sz[u] = 1 + sz[a] + sz[b]
-        fwd[u] = m.op(m.op(fwd[a], val[u]), fwd[b])
-        if mirror == None: bwd[u] = m.op(m.op(bwd[b], val[u]), bwd[a])
+        let x = self.one(u)
+        fwd[u] = m.op(m.op(fwd[a], x), fwd[b])
+        if mirror == None: bwd[u] = m.op(m.op(bwd[b], x), bwd[a])
 
     fn cut(mut self, u: Int, k: Int) -> (Int, Int):
         if u == 0: return (0, 0)
@@ -1410,8 +1442,12 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
         self.pull(b)
         b
 
-impl Show for SeqFold<T, F>:
+impl Show for SeqFold<T, F, E>:
     fn show(s) = "{s.len} elements"
+
+// Tag `f` applied after tag `t`, either of them possibly absent.
+fn after<T, F>(a: Action<T, F>, f: ?F, t: ?F) -> ?F =
+    if let h = f: (if let o = t: Some(a.compose(h, o)) else: Some(h)) else: t
 
 @test
 fn lazy_treap_split_splice_and_erase_match_brute_and_keep_the_arena_small():

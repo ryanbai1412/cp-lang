@@ -400,7 +400,7 @@ impl<'a> Lowerer<'a> {
                     unreachable!()
                 };
                 let dom = self.structs[sid].index_domain.unwrap();
-                if let Some(&nth) = self.structs[sid].methods.get("nth") {
+                if let Some(nth) = self.own_method(sid, "nth") {
                     return (self.walk(dom, nth, span), Ty::Struct(sid));
                 }
                 error(self)
@@ -643,8 +643,8 @@ impl<'a> Lowerer<'a> {
                     }
                     // A struct with `len` and `nth(self, j)` (an `Indexed` view such
                     // as `Stepped<S>`) walks `nth(j)` for `j` in `0..len`.
-                    let len_fn = self.structs[sid].methods.get("len").copied();
-                    let nth_fn = self.structs[sid].methods.get("nth").copied().or_else(|| {
+                    let len_fn = self.own_method(sid, "len");
+                    let nth_fn = self.own_method(sid, "nth").or_else(|| {
                         // `nth<T>(self, j) -> T` over a sequence parameter: `T` is its element.
                         let gfid = *self.structs[sid].gen_methods.get("nth")?;
                         if self.gen_fns[gfid].decl.generics.len() != 1 {

@@ -359,9 +359,9 @@ fn strip_spans(debug: &str) -> String {
     out
 }
 
-/// Every `.cp` file in the repository, at any depth under `proto`,
-/// `examples` and `stdlib`: formatting keeps the tokens (checked inside
-/// `format`), is stable, and leaves the parser's verdict unchanged.
+/// Every `.cp` program in the repository (corpus, cli cases, examples,
+/// spec and std), at any depth: formatting keeps the tokens (checked inside
+/// `format`), is stable, and leaves the parsed AST unchanged.
 #[test]
 fn formats_the_whole_corpus() {
     fn walk(dir: &std::path::Path, files: &mut Vec<std::path::PathBuf>) {
@@ -384,6 +384,8 @@ fn formats_the_whole_corpus() {
         "corpus/lib",
         "crates/cpl-cli/tests/cases",
         "examples",
+        "spec",
+        "std",
     ] {
         walk(&root.join(dir), &mut files);
     }

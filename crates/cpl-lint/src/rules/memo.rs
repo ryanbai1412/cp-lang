@@ -17,7 +17,7 @@ const BYTES_PER_ENTRY: u128 = 8;
 struct Memo<'a> {
     base: u32,
     facts: Option<&'a Facts>,
-    bounds: Bounds,
+    bounds: Bounds<'a>,
     memory_mb: u64,
     findings: Vec<Finding>,
 }

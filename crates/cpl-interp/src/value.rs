@@ -376,6 +376,10 @@ pub(crate) struct MutViewVal {
     pub target: Part,
     pub lo: usize,
     pub len: usize,
+    /// Cell `i` is target cell `lo + i * step`: 1 but on a grid's column.
+    pub step: usize,
+    /// The key of cell 0: `lo` on a list's slice, 0 on a grid's row or column.
+    pub key0: i64,
 }
 
 /// O(1) read-only slice/reverse view into a `List<T>`'s backing `Vec`.

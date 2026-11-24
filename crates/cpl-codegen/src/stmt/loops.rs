@@ -66,15 +66,24 @@ impl<'p> Emitter<'p> {
         if (nested && escapes) || (self.closure_id.is_some() && returns) {
             return false;
         }
+        // Each nested form wraps the callback in a new lambda type, so a
+        // recursive one instantiates without end (g++ ran out at its template
+        // depth after 115 s): a recursive form walks the list instead.
+        let recursive = |f: usize| self.devirt.recursive_fns.contains(&f);
+        if nested && recursive(*callee) && self.fn_id.is_some_and(recursive) {
+            return false;
+        }
         let feeds = cpl_ir::pushed::Feeds {
             summaries: std::mem::take(&mut self.summaries),
             pushers: std::mem::take(&mut self.pushers),
             eager: std::mem::take(&mut self.eager),
+            scope: std::mem::take(&mut self.feed_scope),
         };
         let fed = feeds.feeds(id, seq, body);
         self.summaries = feeds.summaries;
         self.pushers = feeds.pushers;
         self.eager = feeds.eager;
+        self.feed_scope = feeds.scope;
         if fed.is_none() {
             return false;
         }
@@ -87,18 +96,26 @@ impl<'p> Emitter<'p> {
             return false;
         };
         let sep = if call.is_empty() { "" } else { ", " };
+        // A body that never stops says so in its type, so the form's
+        // `if (int cpl_r = cpl_f(..))` folds away even where it isn't inlined.
+        // Inside a pusher, a yield forwards the outer callback's stop.
+        let go = if self.pushing.is_some() || cpl_ir::pushed::stops(body) {
+            "int"
+        } else {
+            "std::integral_constant<int, 0>"
+        };
         if nested {
             // What the callback stops with stops this form too.
             self.line(
                 out,
-                &format!("if (int cpl_r = cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"),
+                &format!("if (int cpl_r = cpl_each_{name}({call}{sep}[&]({decl}) -> {go} {{"),
             );
             self.indent += 1;
             for line in first {
                 self.line(out, line);
             }
             self.block(body, out);
-            self.line(out, "return 0;");
+            self.line(out, "return {};");
             self.indent -= 1;
             self.line(out, "})) return cpl_r;");
             return true;
@@ -124,7 +141,7 @@ impl<'p> Emitter<'p> {
         let open = if returns { "if (" } else { "" };
         self.line(
             out,
-            &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"),
+            &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> {go} {{"),
         );
         self.indent += 1;
         for line in first {
@@ -137,7 +154,7 @@ impl<'p> Emitter<'p> {
         });
         self.block(body, out);
         self.bodies.pop();
-        self.line(out, "return 0;");
+        self.line(out, "return {};");
         self.indent -= 1;
         let close = match (returns, outermost, &result) {
             (false, ..) => "});".to_string(),

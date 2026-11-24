@@ -112,6 +112,9 @@ macro_rules! schema {
 }
 
 schema! {
+    "project" by "no tool": "The project's own notes, such as its `name`; no tool reads them." {
+        "*" => "any key the project keeps for itself",
+    }
     "fmt" by "cpl-fmt": "The layout `cpl fmt` writes." {
         "indent_width" => "spaces per indent, 2 to 8 (default 4)",
         "line_width" => "the width a line wraps at, 40 to 200 (default 100)",

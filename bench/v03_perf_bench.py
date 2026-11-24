@@ -23,6 +23,8 @@ token-level output agreement (1e-6 float tolerance), or by the problem's
 of each run (emitted / original) and g++ time on the emitted C++ (taken while
 `--jobs` builds run at once, so compare runs made with the same `--jobs`).
 Every pair that does not reach a ratio is listed with its reason.
+A pair faster than `--min-ms` is timed over repeated runs per sample (`repeats` in
+its row) until the slower side's sample reaches it, so no pair drops out of the bar.
 
 Each program may keep a tuned in-language variant next to it (`perf.cp`
 beside a corpus `port.cp`, as `cpl bench --corpus` reads it, else `<stem>.perf.cp`,
@@ -587,8 +589,24 @@ def percentile(sorted_vals, q):
     return sorted_vals[lo] * (hi - k) + sorted_vals[hi] * (k - lo)
 
 
+MAX_REPEATS = 1000
+
+
+def repeats(t_o, t_p, min_ms):
+    """Runs one timing sample sums so that the slower side's sample reaches `min_ms`: a
+    pair faster than the floor is timed over repeated runs rather than left out of the bar."""
+    slow = max(t_o, t_p) * 1000.0
+    return 1 if slow >= min_ms else min(MAX_REPEATS, math.ceil(min_ms / max(slow, min_ms / MAX_REPEATS)))
+
+
+def timed(r, min_ms):
+    """A pair whose single runs took at least `min_ms`, or that was timed over repeated runs:
+    its repeat count comes from its first run, so its fastest sample may land just under."""
+    return r.get("status") == "ok" and (r.get("repeats", 1) > 1 or max(r["port_ms"], r["orig_ms"]) >= min_ms)
+
+
 def summarize(rows, min_ms):
-    measured = [r for r in rows if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= min_ms]
+    measured = [r for r in rows if timed(r, min_ms)]
     ratios = sorted(r["ratio"] for r in measured)
     tuned = sorted(min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) for r in measured)
     return {
@@ -751,14 +769,15 @@ def main():
             continue
         t_o, t_p, rss_o, rss_p, inp = max(agreed)
         b["inp"] = inp
-        ts_o = [t_o]
-        ts_p = [t_p]
-        if max(t_o, t_p) * 1000.0 >= args.min_ms:
-            for _ in range(args.runs - 1):
-                to, _, _ = run(b, b["obin"], b["inp"], out_o)
-                tp, _, _ = run(b, b["pbin"], b["inp"], out_p)
-                ts_o.append(to)
-                ts_p.append(tp)
+        reps = repeats(t_o, t_p, args.min_ms)
+
+        def sample(binary, outp):
+            return sum(run(b, binary, b["inp"], outp)[0] for _ in range(reps)) / reps
+
+        ts_o, ts_p = ([t_o], [t_p]) if reps == 1 else ([], [])
+        while len(ts_o) < args.runs:
+            ts_o.append(sample(b["obin"], out_o))
+            ts_p.append(sample(b["pbin"], out_p))
         med_o = min(ts_o) * 1000.0
         med_p = min(ts_p) * 1000.0
         ratio = med_p / med_o if med_o > 0 else 1.0
@@ -771,7 +790,7 @@ def main():
                     ts_t = []
                     tuned = {"tuned_error": f"tuned {s_t if s_t != 'ok' else 'output differs'} on {b['inp']}"}
                     break
-                ts_t.append(tt)
+                ts_t.append((tt + sum(run(b, b["tbin"], b["inp"], out_p)[0] for _ in range(reps - 1))) / reps)
             if ts_t and med_o > 0:
                 tuned = {"tuned_ms": round(min(ts_t) * 1000.0, 2), "tuned_ratio": round(min(ts_t) * 1000.0 / med_o, 3)}
                 if rss_o:
@@ -786,6 +805,7 @@ def main():
                 "port_ms": round(med_p, 2),
                 "orig_ms": round(med_o, 2),
                 "ratio": round(ratio, 3),
+                "repeats": reps,
                 "port_rss_kb": rss_p,
                 "orig_rss_kb": rss_o,
                 "rss_ratio": round(rss_p / rss_o, 3) if rss_o else None,
@@ -805,7 +825,7 @@ def main():
             f"  p50={st['p50']:.3f}x  p90={st['p90']:.3f}x  p95={st['p95']:.3f}x  max={st['max']:.3f}x  "
             f"(>1.1x: {st['gt_1_1']}, >1.5x: {st['gt_1_5']}); tuned max={st['tuned_max']:.3f}x (bar <= {TUNED_BAR}x)"
         )
-        measured = [r for r in sub if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= args.min_ms]
+        measured = [r for r in sub if timed(r, args.min_ms)]
         print(
             f"  peak RSS emitted/orig p50={st['rss_ratio_p50']:.3f}x p95={st['rss_ratio_p95']:.3f}x "
             f"max={st['rss_ratio_max']:.3f}x (>1.5x: {st['rss_gt_1_5']}, >2x: {st['rss_gt_2']}; bars p95 <= 1.5x, max <= 2x) "
@@ -829,7 +849,7 @@ def main():
         f"(>1.1x: {overall['gt_1_1']}, >1.5x: {overall['gt_1_5']}); tuned max={overall['tuned_max']:.3f}x (bar <= {TUNED_BAR}x)"
     )
     print_tuned(overall)
-    measured = [r for r in rows if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= args.min_ms]
+    measured = [r for r in rows if timed(r, args.min_ms)]
     left = [r for r in measured if min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) > TUNED_BAR]
     for r in sorted(left, key=lambda x: -min(x["ratio"], x.get("tuned_ratio") or x["ratio"])):
         if r.get("tuned_ratio"):

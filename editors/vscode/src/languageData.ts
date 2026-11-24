@@ -27,10 +27,11 @@ export const CONTEXTUAL_KEYWORDS: readonly string[] = [
     'as', 'from', 'invariant', 'law', 'yields', 'do',
 ];
 
-// The six name tables are generated (scripts/language-data.js) at compile time.
+// The name tables are generated (scripts/language-data.js) at compile time.
 export {
     PRELUDE_TYPES,
     STDLIB_TYPES,
+    BUILTIN_VALUES,
     PRELUDE_VALUES,
     STDLIB_VALUES,
     PRELUDE_CONSTANTS,

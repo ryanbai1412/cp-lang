@@ -24,9 +24,10 @@ else:
     let total = if n == 5 or n == 7 or (n % 2 == 0 and n != 6): n else: n - 1
     let up = sieve.primes.find(a => total - a > a and sieve.is_prime(total - a))!
     let down = total - up
-    var at = 1
-    var walk: List<Int> = []
+    domain Pos = 1..=n
+    var at = Pos.first!
+    var walk: List<Pos> = []
     for _ in 0..n:
         walk.push(at)
-        at = if at + up <= n: at + up else: at - down
+        at = if Int(at) + up <= n: Pos(Int(at) + up) else: Pos(Int(at) - down)
     print(walk)

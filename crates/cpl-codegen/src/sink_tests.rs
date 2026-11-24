@@ -258,3 +258,18 @@ fn a_loop_over_a_read_array_that_reads_more_reads_the_array_first() {
         "a fixed-size read array is read into the std::array its type is held in:\n{solve}"
     );
 }
+
+#[test]
+fn a_loop_over_a_sorted_range_is_fed_by_its_walk() {
+    let cpp = cpp(concat!(
+        "let m = read<Int>()\n",
+        "let s = SortedSet.of([1, 3, 7, 9])\n",
+        "var t = 0\n",
+        "for _ in 0..m:\n",
+        "    for x in s.range(2..=8): t += x\n",
+        "print(t)\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(solve.contains("cpl_each_"), "{solve}");
+    assert!(!solve.contains("std::vector<ll> t"), "{solve}");
+}

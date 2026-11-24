@@ -14,6 +14,7 @@ std/algebra.cp: MaxCount.zero() -> MaxCount<T>
 std/algebra.cp: MaxSub.join(a: MaxSub, b: MaxSub) -> MaxSub
 std/algebra.cp: MaxSub.monoid() -> Monoid<MaxSub>
 std/algebra.cp: MaxSub.of(v: Int) -> MaxSub
+std/algebra.cp: MaxSub.repeat(self, k: Int) -> MaxSub
 std/algebra.cp: MaxSub.reversed(self) -> MaxSub
 std/algebra.cp: MaxSub.scale(self, k: Int) -> MaxSub
 std/algebra.cp: MaxSub.try_best(self) -> ?Int
@@ -1056,16 +1057,16 @@ std/lazy.cp: SeqFold.apply(mut self, r: Range<Int>, f: F)
 std/lazy.cp: SeqFold.erase_range(mut self, r: Range<Int>)
 std/lazy.cp: SeqFold.fold(mut self, r: Range<Int>) -> T
 std/lazy.cp: SeqFold.get(mut self, pos: Int) -> T
-std/lazy.cp: SeqFold.insert_at(mut self, pos: Int, x: T)
-std/lazy.cp: SeqFold.insert_many(mut self, pos: Int, xs: List<T>)
+std/lazy.cp: SeqFold.insert_at(mut self, pos: Int, x: E)
+std/lazy.cp: SeqFold.insert_many<S: Seq<E>>(mut self, pos: Int, xs: S)
 std/lazy.cp: SeqFold.is_empty(self) -> Bool
 std/lazy.cp: SeqFold.items(self) -> yields T
 std/lazy.cp: SeqFold.len(self) -> Int
-std/lazy.cp: SeqFold.new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None, mirror: ?(T -> T) = None) -> SeqFold<T, F>
-std/lazy.cp: SeqFold.push(mut self, x: T)
+std/lazy.cp: SeqFold.new<M, S: Seq<E>>(op: M, xs: S = List<E>(), act: ?Action<T, F> = None, mirror: ?(T -> T) = None, lift: E -> T = x => x) -> SeqFold<T, F, E>
+std/lazy.cp: SeqFold.push(mut self, x: E)
 std/lazy.cp: SeqFold.reverse(mut self, r: Range<Int>)
-std/lazy.cp: SeqFold.splice(mut self, pos: Int, mut other: SeqFold<T, F>)
-std/lazy.cp: SeqFold.split_at(mut self, k: Int) -> SeqFold<T, F>
+std/lazy.cp: SeqFold.splice(mut self, pos: Int, mut other: SeqFold<T, F, E>)
+std/lazy.cp: SeqFold.split_at(mut self, k: Int) -> SeqFold<T, F, E>
 std/lazy.cp: SeqFold.total(self) -> T
 std/lazy.cp: flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>
 std/marks.cp: Arena.alloc(mut self, x: T) -> Id<T>
@@ -1654,7 +1655,6 @@ std/seq.cp: fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc)
 std/seq.cp: get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V
 std/seq.cp: group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>
 std/seq.cp: index_pairs<D>(self: Range<D>) -> yields (D, D)
-std/seq.cp: insert<T>(mut self: List<T>, i: Int, x: T)
 std/seq.cp: intersect<T>(mut self: Set<T>, o: Set<T>)
 std/seq.cp: inverse<I, V>(self: [I]V) -> [V]I
 std/seq.cp: inversions<S: Seq<T>, T>(self: S) -> Int
@@ -1714,7 +1714,6 @@ std/seq.cp: rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S>
 std/seq.cp: record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D
 std/seq.cp: reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T
 std/seq.cp: rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T
-std/seq.cp: remove<T>(mut self: List<T>, i: Int) -> T
 std/seq.cp: resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T>
 std/seq.cp: rev<S: Bidir>(self: S) -> Rev<S>
 std/seq.cp: reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None)

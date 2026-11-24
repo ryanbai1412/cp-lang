@@ -62,8 +62,12 @@ struct FileFacts {
 
 /// What the top level of a file says about its names.
 #[derive(Default, Clone)]
-pub(crate) struct Bounds {
+pub(crate) struct Bounds<'f> {
+    /// The checker's facts, which say which calls are std's.
+    facts: Option<&'f crate::Facts>,
     file: Rc<FileFacts>,
+    /// The offset of the item being read: its spans are relative to it.
+    pub(crate) base: u32,
     values: HashMap<String, Interval>,
     /// Fns the program declares, which hide the prelude's `min`, `max`, `abs`.
     fns: Rc<HashSet<String>>,
@@ -131,12 +135,16 @@ fn prover_text(expr: &Expr, names: &mut Vec<String>) -> Option<String> {
     })
 }
 
-impl Bounds {
-    pub(crate) fn of(file: &File) -> Bounds {
-        let mut bounds = Bounds::default();
+impl<'f> Bounds<'f> {
+    pub(crate) fn of(file: &File<'f>) -> Bounds<'f> {
+        let mut bounds = Bounds {
+            facts: file.facts,
+            ..Bounds::default()
+        };
         bounds.count_bindings(file);
         // In source order: a bound can only use what is declared above it.
         for (base, stmt) in file.top_level() {
+            bounds.base = base;
             match &stmt.kind {
                 StmtKind::Const {
                     name,
@@ -366,7 +374,8 @@ impl Bounds {
         use cpl_syntax::ast::{Pattern, Stmt};
         use cpl_syntax::visit::{walk_stmt, Visitor};
         #[derive(Default)]
-        struct Scan {
+        struct Scan<'f> {
+            facts: Option<&'f crate::Facts>,
             base: u32,
             changed: HashSet<String>,
             changes: Vec<(String, u32, u32)>,
@@ -380,7 +389,7 @@ impl Bounds {
             pushes: HashMap<String, usize>,
             pops: HashMap<String, usize>,
         }
-        impl Visitor for Scan {
+        impl Visitor for Scan<'_> {
             fn stmt(&mut self, stmt: &Stmt) {
                 let at = (self.base + stmt.span.start, self.base + stmt.span.end);
                 if let StmtKind::Fn(decl) = &stmt.kind {
@@ -445,11 +454,13 @@ impl Bounds {
                                 if let Some(n) = root(base) {
                                     self.change(n, at);
                                     if let ExprKind::Name(n) = &base.kind {
-                                        match (name.text.as_str(), args.len()) {
-                                            (std_fn::PUSH, 1) => {
+                                        let push = self.is_std(expr, std_fn::PUSH);
+                                        let pop = self.is_std(expr, std_fn::POP);
+                                        match (push, pop, args.len()) {
+                                            (true, _, 1) => {
                                                 *self.pushes.entry(n.clone()).or_default() += 1
                                             }
-                                            (std_fn::POP, 0) => {
+                                            (_, true, 0) => {
                                                 *self.pops.entry(n.clone()).or_default() += 1
                                             }
                                             _ => {}
@@ -466,7 +477,7 @@ impl Bounds {
                             self.change_row(&a.value, at);
                         }
                     }
-                    ExprKind::Field { base, name } if name.text == std_fn::LEN => {
+                    ExprKind::Field { base, .. } if self.is_std(expr, std_fn::LEN) => {
                         if let Some(n) = root(base) {
                             self.seqs.insert(n.to_string());
                         }
@@ -481,17 +492,25 @@ impl Bounds {
             }
             fn pattern(&mut self, _: &Pattern) {}
         }
-        impl Scan {
+        impl Scan<'_> {
+            /// Whether `e`, in the item being scanned, calls std's `name`.
+            fn is_std(&self, e: &Expr, name: &str) -> bool {
+                crate::Calls::new(self.facts, self.base).is(e, name)
+            }
             fn record_source(&mut self, target: String, expr: &Expr) {
-                struct Refs {
+                struct Refs<'f> {
                     has_len: bool,
                     names: Vec<String>,
+                    facts: Option<&'f crate::Facts>,
+                    base: u32,
                 }
-                impl Visitor for Refs {
+                impl Visitor for Refs<'_> {
                     fn expr(&mut self, e: &Expr) {
                         match &e.kind {
                             ExprKind::Name(n) => self.names.push(n.clone()),
-                            ExprKind::Field { name, .. } if name.text == std_fn::LEN => {
+                            ExprKind::Field { .. }
+                                if crate::Calls::new(self.facts, self.base).is(e, std_fn::LEN) =>
+                            {
                                 self.has_len = true;
                             }
                             _ => {}
@@ -501,6 +520,8 @@ impl Bounds {
                 let mut refs = Refs {
                     has_len: false,
                     names: Vec::new(),
+                    facts: self.facts,
+                    base: self.base,
                 };
                 cpl_syntax::visit::walk_expr(expr, &mut refs);
                 self.has_len |= refs.has_len;
@@ -535,7 +556,10 @@ impl Bounds {
                 !starts.any(|at| self.bodies.iter().any(|b| outside(b, at)))
             }
         }
-        let mut scan = Scan::default();
+        let mut scan = Scan {
+            facts: self.facts,
+            ..Scan::default()
+        };
         for (base, stmt) in file.top_level() {
             scan.base = base;
             walk_stmt(stmt, &mut scan);
@@ -584,20 +608,16 @@ impl Bounds {
         }
     }
 
-    /// `xs.len` for a sequence whose length is fixed, as the name relations use.
-    pub(crate) fn atom(&self, e: &Expr) -> Option<String> {
-        match &e.kind {
-            ExprKind::Name(n) => Some(n.clone()),
-            ExprKind::Paren(inner) => self.atom(inner),
-            ExprKind::Field { base, name } if name.text == std_fn::LEN => match &base.kind {
-                ExprKind::Name(n) if self.file.tracked.contains(n) => Some(format!("{n}.len")),
-                ExprKind::Index { base, indices } => match (&base.kind, &indices[..]) {
-                    (ExprKind::Name(g), [row]) => match &row.kind {
-                        ExprKind::Name(u) if self.file.tracked.contains(&format!("{g}[]")) => {
-                            Some(format!("{g}[{u}].len"))
-                        }
-                        _ => None,
-                    },
+    /// The length of `seq` as the name relations write it (`xs.len`,
+    /// `g[u].len`), when `seq` is a tracked sequence.
+    pub(crate) fn len_atom(&self, seq: &Expr) -> Option<String> {
+        match &seq.kind {
+            ExprKind::Name(n) if self.file.tracked.contains(n) => Some(format!("{n}.len")),
+            ExprKind::Index { base, indices } => match (&base.kind, &indices[..]) {
+                (ExprKind::Name(g), [row]) => match &row.kind {
+                    ExprKind::Name(u) if self.file.tracked.contains(&format!("{g}[]")) => {
+                        Some(format!("{g}[{u}].len"))
+                    }
                     _ => None,
                 },
                 _ => None,
@@ -606,15 +626,33 @@ impl Bounds {
         }
     }
 
+    /// `xs.len` for a sequence whose length is fixed, as the name relations use.
+    pub(crate) fn atom(&self, e: &Expr) -> Option<String> {
+        match &e.kind {
+            ExprKind::Name(n) => Some(n.clone()),
+            ExprKind::Paren(inner) => self.atom(inner),
+            ExprKind::Field { base, .. } if self.is_std(self.base, e, std_fn::LEN) => {
+                self.len_atom(base)
+            }
+            _ => None,
+        }
+    }
+
+    /// Whether `e`, in the item at `base`, calls std's `name`: the checker's
+    /// answer, never the name as written.
+    pub(crate) fn is_std(&self, base: u32, e: &Expr, name: &str) -> bool {
+        crate::Calls::new(self.facts, base).is(e, name)
+    }
+
     /// Whether `e` reads a `.len` or a name whose value comes from one.
     pub(crate) fn reads_len(&self, e: &Expr) -> bool {
         use cpl_syntax::visit::{walk_expr, Visitor};
-        struct Reads<'a>(&'a Bounds, bool);
-        impl Visitor for Reads<'_> {
+        struct Reads<'a, 'f>(&'a Bounds<'f>, bool);
+        impl Visitor for Reads<'_, '_> {
             fn expr(&mut self, e: &Expr) {
                 self.1 |= match &e.kind {
                     ExprKind::Name(n) => self.0.file.long.contains(n),
-                    ExprKind::Field { name, .. } => name.text == std_fn::LEN,
+                    ExprKind::Field { .. } => self.0.is_std(self.0.base, e, std_fn::LEN),
                     _ => false,
                 };
             }

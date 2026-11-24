@@ -477,6 +477,11 @@ struct FnCx {
     /// The outermost loop a `break` out of a nested loop's innermost
     /// one leaves, for one source loop lowered as several.
     break_out: HashMap<LoopId, LoopId>,
+    /// The factors `nested_for` is about to give the position it binds.
+    loop_parts: Option<Vec<Expr>>,
+    /// A loop's product position, by slot: the factors its nested loops walk,
+    /// so `p.0` reads a loop variable instead of dividing.
+    product_parts: HashMap<Slot, Vec<Expr>>,
     /// A loop with a trailing `else:` (decision 125): its break target's
     /// `Bool` flag, `true` unless a `break` targets that loop.
     loop_else: HashMap<LoopId, Slot>,
@@ -707,8 +712,6 @@ struct Lowerer<'a> {
 
     traits: Vec<TraitInfo<'a>>,
     impls: Vec<ImplInfo<'a>>,
-    /// Generic structs whose instance's methods are being collected, outermost first.
-    collecting_structs: Vec<GenStructId>,
     /// Methods an `impl` gives a built-in type (`impl Hash for Int`).
     prim_methods: Vec<(Ty, String, FnId)>,
     /// The `self` type of each of those methods.
@@ -723,6 +726,8 @@ struct Lowerer<'a> {
     closures: Vec<ClosureDef>,
     queued_fns: Vec<FnId>,
     queued_set: HashSet<FnId>,
+    /// Instance methods whose signature is read on first use, quietly.
+    quiet_sigs: HashSet<FnId>,
     preamble_stmts: Vec<Stmt>,
     /// The top-level fns marked `@memo`.
     memo_fns: HashSet<FnId>,
@@ -851,7 +856,6 @@ impl<'a> Lowerer<'a> {
             gen_consts: Vec::new(),
             traits: Vec::new(),
             impls: Vec::new(),
-            collecting_structs: Vec::new(),
             prim_methods: Vec::new(),
             prim_self: HashMap::new(),
             sigs: Vec::new(),
@@ -862,6 +866,7 @@ impl<'a> Lowerer<'a> {
             closures: Vec::new(),
             queued_fns: Vec::new(),
             queued_set: HashSet::new(),
+            quiet_sigs: HashSet::new(),
             preamble_stmts: Vec::new(),
             memo_fns: HashSet::new(),
             grader_wrappers: Vec::new(),
@@ -1295,12 +1300,14 @@ impl<'a> Lowerer<'a> {
     /// Whether a struct is a number: it has a `zero`, a `one` and a
     /// `new(x: Int)`, so an `Int` is made into it where it is wanted.
     /// `Mod<P>` is one, and so is any struct written the same way.
-    pub(super) fn is_number(&self, sid: StructId) -> bool {
-        let info = &self.structs[sid];
-        let made_from_int = info.methods.get("new").is_some_and(
-            |&new_fn| matches!(self.sigs[new_fn].params.as_slice(), [only] if only.ty == Ty::Int),
+    pub(super) fn is_number(&mut self, sid: StructId) -> bool {
+        let made_from_int = self.own_method(sid, "new").is_some_and(
+            |new_fn| matches!(self.sigs[new_fn].params.as_slice(), [only] if only.ty == Ty::Int),
         );
-        made_from_int && ["zero", "one"].iter().all(|c| info.consts.contains_key(*c))
+        made_from_int
+            && ["zero", "one"]
+                .iter()
+                .all(|c| self.structs[sid].consts.contains_key(*c))
     }
 
     /// Resolves a domain or type alias pointing to a domain (e.g. `type Group = Subset<Rabbit>`).

@@ -339,8 +339,6 @@ enum Part {
     Solution,
     ColdCache,
     Brute,
-    /// The `@gen` fn, called with this size.
-    Gen(i64),
 }
 
 /// A counterexample that crashes, or overflows, is one stress must see.
@@ -386,10 +384,6 @@ fn emit_cpp(
             let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or_else(|| missing("@alt(program)"))?;
             cpl_ir::lower_brute(&analysis, &brute_fn)
         }
-        Part::Gen(size) => {
-            let (gen_fn, _) = cpl_ir::generator(&analysis).ok_or_else(|| missing("@gen"))?;
-            cpl_ir::lower_gen(&analysis, &gen_fn, size)
-        }
     };
     let program = lowered.map_err(|diagnostics| errors(&diagnostics))?;
     let file = source.file_name().unwrap_or_default().to_string_lossy();
@@ -400,11 +394,7 @@ fn emit_cpp(
         checks,
         avx2: profile.avx2,
     };
-    let mut cpp = cpl_codegen::emit_for(&program, &file, None, &target);
-    if matches!(part, Part::Gen(_)) {
-        // Its `rand` and `shuffle` draw from the choices `cpl stress` keeps.
-        cpp.insert_str(0, "#define CPL_GEN 1\n");
-    }
+    let cpp = cpl_codegen::emit_for(&program, &file, None, &target);
     let dir = cache_dir();
     std::fs::create_dir_all(&dir)
         .map_err(|e| BuildError(format!("can't create {}: {e}", dir.shown())))?;
@@ -513,7 +503,7 @@ fn build_linked(
                 host.compiler
             )));
         }
-        return interpreted(source, text, part, &host.compiler);
+        return interpreted(source, text, part);
     }
     if grader.is_none() {
         let text = std::fs::read(&cpp).unwrap_or_default();
@@ -557,12 +547,7 @@ fn found(compiler: &str) -> bool {
 
 /// `part` of `source` run by `cpl run` in the interpreter, on a machine
 /// with no C++ compiler: slower, but the same answers.
-fn interpreted(
-    source: &Path,
-    text: Option<&str>,
-    part: Part,
-    compiler: &str,
-) -> Result<Vec<String>, BuildError> {
+fn interpreted(source: &Path, text: Option<&str>, part: Part) -> Result<Vec<String>, BuildError> {
     let cpl = std::env::current_exe().map_err(|e| {
         BuildError(format!(
             "can't find `cpl` to interpret {}: {e}",
@@ -577,12 +562,6 @@ fn interpreted(
     match part {
         Part::Solution | Part::ColdCache => {}
         Part::Brute => argv.push("--brute".to_string()),
-        Part::Gen(_) => {
-            return Err(BuildError(format!(
-                "there is no {compiler} here to build the `@gen` fn of {}; install it or pass `--gen <program>`",
-                source.shown()
-            )))
-        }
     }
     argv.push(source.display().to_string());
     Ok(argv)
@@ -849,31 +828,7 @@ impl Program {
         })
     }
 
-    /// The `@gen` fn of the `.cp` file `path`, built as a program that
-    /// prints one input of at most `size`.
-    pub fn resolve_gen(path: &Path, fn_name: &str, size: i64) -> Result<Program, BuildError> {
-        Ok(Program {
-            name: format!("{} (`{fn_name}`)", path.shown()),
-            argv: build_judged(path, None, Part::Gen(size), LOCAL)?,
-            env: Vec::new(),
-        })
-    }
-
-    /// The `@gen` fn of the `.cp` file `path` lowered to print one input of
-    /// at most `size` in the interpreter, when no C++ compiler is here to
-    /// build it; `None` when one is.
-    pub fn interpreted_gen(path: &Path, size: i64) -> Result<Option<cpl_ir::Program>, BuildError> {
-        let name = path.shown();
-        let text = std::fs::read_to_string(path)
-            .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
-        let profile = cpl_judge::resolve(path, &text, None).map_err(BuildError)?;
-        if found(&profile.host().compiler) {
-            return Ok(None);
-        }
-        Self::lowered_gen(path, size).map(Some)
-    }
-
-    /// The file's `@gen` fn lowered for the interpreter, compiler or not.
+    /// The file's `@gen` fn lowered for the VM, which draws every input.
     pub fn lowered_gen(path: &Path, size: i64) -> Result<cpl_ir::Program, BuildError> {
         let name = path.shown();
         let text = std::fs::read_to_string(path)

@@ -236,6 +236,8 @@ pub(crate) struct Checker<'a> {
     resolved: Vec<(Span, Resolved)>,
     /// The method each `x.f` calls (R11.3.4), kept through quiet probes.
     chosen_methods: Vec<(Span, Resolved)>,
+    /// Each `x.f` E0701 rejects, with every candidate it was torn between.
+    ambiguous: Vec<(Span, Vec<Resolved>)>,
     pub(crate) typed_indexes: Vec<TypedIndex>,
     pub(crate) fixed_io: Vec<Span>,
     pub(crate) io_costs: Vec<(Span, String, String)>,
@@ -287,7 +289,7 @@ pub(crate) struct Checker<'a> {
     lambda_params: Vec<(Span, Vec<Ty>)>,
     /// The bounds with trait arguments of the fn whose arguments are being
     /// checked: binding `S` binds what `S: Seq<T>` says of `T`.
-    call_bound_args: Option<std::sync::Arc<Def>>,
+    call_bound_args: Option<Vec<(String, String, Vec<crate::ty::Ty>)>>,
     /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
     /// mapped to the span of the move (§128).
     pub(crate) moved: HashMap<String, Span>,
@@ -315,6 +317,7 @@ pub(crate) struct Checked {
     pub hovers: Vec<HoverEntry>,
     pub refs: Vec<GlobalRef>,
     pub resolved: Vec<(Span, Resolved)>,
+    pub ambiguous: Vec<(Span, Vec<Resolved>)>,
     pub typed_indexes: Vec<TypedIndex>,
     pub fixed_io: Vec<Span>,
     pub io_costs: Vec<(Span, String, String)>,
@@ -342,6 +345,7 @@ impl<'a> Checker<'a> {
             refs: Vec::new(),
             resolved: Vec::new(),
             chosen_methods: Vec::new(),
+            ambiguous: Vec::new(),
             typed_indexes: Vec::new(),
             fixed_io: Vec::new(),
             io_costs: Vec::new(),
@@ -518,6 +522,7 @@ impl<'a> Checker<'a> {
             hovers: self.hovers,
             refs: self.refs,
             resolved,
+            ambiguous: self.ambiguous,
             typed_indexes: self.typed_indexes,
             fixed_io: self.fixed_io,
             io_costs: self.io_costs,

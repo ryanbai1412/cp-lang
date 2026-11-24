@@ -146,7 +146,8 @@ impl Reach<'_> {
             | ExprKind::Debug(..)
             | ExprKind::Format(..)
             | ExprKind::Fill(..)
-            | ExprKind::MutSlice(..) => true,
+            | ExprKind::MutSlice(..)
+            | ExprKind::MutLine(..) => true,
         }
     }
 

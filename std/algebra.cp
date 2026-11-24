@@ -251,6 +251,21 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// example: `(MaxSub.of(3) + MaxSub.of(-5)).reversed() == MaxSub.of(-5) + MaxSub.of(3)`
     pub fn reversed(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
 
+    /// The summary of `k` copies of this run, one after another, in \(O(1)\) where `pow` takes
+    /// \(O(\log k)\) joins: what a range assignment of `k` equal elements stores.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `MaxSub.of(4).repeat(0) == MaxSub.zero`
+    /// traps: when `k < 0`
+    /// example: `MaxSub.of(-2).repeat(3) == MaxSub.of(-2) + MaxSub.of(-2) + MaxSub.of(-2)`
+    /// example: `let s = MaxSub.of(-1) + MaxSub.of(3); s.repeat(3) == s + s + s and s.repeat(3).best == 7`
+    pub fn repeat(self, k: Int) -> MaxSub:
+        assert k >= 0, "`repeat` count is negative"
+        if k == 0 or not has: return MaxSub.zero
+        if k == 1: return self
+        let gain = max(total, 0)
+        MaxSub(true, max(best, suf + pre + (k - 2) * gain), k * total, pre + (k - 1) * gain, suf + (k - 1) * gain)
+
     /// The summary of the same elements each multiplied by `k` (the same as `self * k`). Exact
     /// because every maximum scales by a non-negative factor; the empty summary stays empty.
     ///

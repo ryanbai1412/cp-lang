@@ -273,9 +273,7 @@ impl<'a> Lowerer<'a> {
         // Dispatch operator traits (`impl Add/Sub/Mul/Div for Struct`).
         if let Ty::Struct(sid) = l.ty {
             // `z ** e` is the struct's `pow(e: Int)`: `Mod<P>` has one.
-            if let (Pow, Ty::Int, Some(fn_id)) =
-                (op, &r.ty, self.structs[sid].methods.get("pow").copied())
-            {
+            if let (Pow, Ty::Int, Some(fn_id)) = (op, &r.ty, self.own_method(sid, "pow")) {
                 self.queue_fn(fn_id);
                 let ret = self.ret_of(fn_id, span);
                 return self.mk(

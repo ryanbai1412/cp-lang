@@ -1,0 +1,7 @@
+1:NO:a 1:NO:z 2:NO:c 2:YES:a 2:YES:b
+-2.0000000000 -0.0000000010 -0.0000000000 0.0000000000 3.5000000000 1000000000.0000000000
+apple date fig kiwi lime nut pea pear plum yam
+fig nut pea yam date kiwi lime pear plum apple
+apple date kiwi lime pear plum fig nut pea yam
+0 7 14 21 28 35 5 12 19 26 33 3 10 17 24 31 38 1 8 15 22 29 36 6 13 20 27 34 4 11 18 25 32 39 2 9 16 23 30 37
+2 9 16 23 30 37 4 11 18 25 32 39 6 13 20 27 34 1 8 15 22 29 36 3 10 17 24 31 38 5 12 19 26 33 0 7 14 21 28 35

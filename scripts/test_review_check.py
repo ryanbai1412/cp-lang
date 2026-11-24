@@ -7,6 +7,8 @@ import importlib.util, os, subprocess, tempfile, unittest
 from unittest import mock
 from pathlib import Path
 
+PKGS = "corpus/problems"
+
 _spec = importlib.util.spec_from_file_location(
     "review_check", os.path.join(os.path.dirname(os.path.abspath(__file__)), "review-check.py"))
 rc = importlib.util.module_from_spec(_spec)
@@ -73,13 +75,13 @@ class AddedPortNamesTest(unittest.TestCase):
             git = lambda *a: subprocess.run(["git", *a], cwd=d, env=env, check=True, capture_output=True)
             git("init", "-q")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "base")
-            (Path(d) / "corpus/problems/old").mkdir(parents=True)
-            (Path(d) / "corpus/problems/old/spec.cp").write_text("")
+            (Path(d) / f"{PKGS}/old").mkdir(parents=True)
+            (Path(d) / f"{PKGS}/old/spec.cp").write_text("")
             git("add", ".")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "old")
             git("update-ref", "refs/remotes/origin/main", "HEAD~1")
-            (Path(d) / "corpus/problems/new").mkdir(parents=True)
-            (Path(d) / "corpus/problems/new/spec.cp").write_text("")
+            (Path(d) / f"{PKGS}/new").mkdir(parents=True)
+            (Path(d) / f"{PKGS}/new/spec.cp").write_text("")
             git("add", ".")
             root, rc.ROOT = rc.ROOT, Path(d)
             try:

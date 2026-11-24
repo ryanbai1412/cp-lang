@@ -14,7 +14,7 @@ fn plain(x: Str) -> Str = Str(x.map(c => if c == t[0]: '0' else: '1'))
 let (w, p) = (plain(s), plain(t))
 let zeros = w.count(c => c == '0')
 let ones = w.len - zeros
-let hits = w.windows(p.len).count(x => Str(x) == p)
+fn hits() -> Int = w.windows(p.len).count(x => x == p)
 
 fn spread(gaps: List<Int>) -> Int:
     var empty = gaps.count(g => g == 0)
@@ -41,7 +41,7 @@ fn spread(gaps: List<Int>) -> Int:
 
 print(match p:
     "0" => if zeros > 0: -1 else: 0
-    "00" => if zeros > ones + 1: -1 else: hits
-    "010" => (hits + 1) / 2
+    "00" => if zeros > ones + 1: -1 else: hits()
+    "010" => (hits() + 1) / 2
     "000" => if zeros > 2 * (ones + 1): -1 else: spread([g.len for g in w.split('1')])
-    _ => hits)
+    _ => hits())

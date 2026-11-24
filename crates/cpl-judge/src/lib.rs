@@ -798,5 +798,97 @@ fn parse_value(text: &str) -> Result<Value, String> {
         .map_err(|_| format!("`{text}` is not a string, a number, true, false or a list"))
 }
 
+/// How a judge's problem page lays out its statement, for `cpl fetch`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Layout {
+    /// `<div class="input">` / `"output"` samples under a `problem-statement` header.
+    Classed,
+    /// `<h3>Sample Input n</h3>` headings in a `lang-en` span.
+    Headed,
+    /// A `<p>Input:</p>` / `<p>Output:</p>` label before each sample.
+    Labelled,
+}
+
+/// What `cpl fetch` reads off a judge's site.
+#[derive(Debug)]
+pub struct Site {
+    /// The built-in profile a fetched file names in `// judge:`.
+    pub profile: &'static str,
+    /// The site's name in messages.
+    pub title: &'static str,
+    /// Its host, which a mirror's is a subdomain of.
+    pub domain: &'static str,
+    pub layout: Layout,
+    /// The url parts a contest's id follows; empty when the site has none.
+    pub contest_keys: &'static [&'static str],
+    /// The part after a contest's id that lists its problems.
+    pub problem_list: &'static str,
+    /// Whether the list is at that part rather than at the contest's own url.
+    pub list_apart: bool,
+    /// The part after a contest's id that a problem's id follows.
+    pub problem_part: &'static str,
+    /// The markers around a statement's output section.
+    pub output_section: (&'static str, &'static str),
+    /// Whether an input section may say the input holds several test cases.
+    pub states_multitest: bool,
+    /// Whether a problem is named by its url's id (`cses1068`), not its letter.
+    pub named_by_id: bool,
+}
+
+/// The judges `cpl fetch` knows.
+pub const SITES: &[Site] = &[
+    Site {
+        profile: "codeforces",
+        title: "Codeforces",
+        domain: "codeforces.com",
+        layout: Layout::Classed,
+        contest_keys: &["contest", "gym"],
+        problem_list: "problems",
+        list_apart: false,
+        problem_part: "problem",
+        output_section: ("class=\"output-specification\"", "class=\"sample-tests\""),
+        states_multitest: true,
+        named_by_id: false,
+    },
+    Site {
+        profile: "atcoder",
+        title: "AtCoder",
+        domain: "atcoder.jp",
+        layout: Layout::Headed,
+        contest_keys: &["contests"],
+        problem_list: "tasks",
+        list_apart: true,
+        problem_part: "tasks",
+        output_section: ("<h3>Output</h3>", "<h3>Sample Input"),
+        states_multitest: false,
+        named_by_id: false,
+    },
+    Site {
+        profile: "cses",
+        title: "CSES",
+        domain: "cses.fi",
+        layout: Layout::Labelled,
+        contest_keys: &[],
+        problem_list: "problems",
+        list_apart: false,
+        problem_part: "task",
+        output_section: ("<h1 id=\"output\">", "<h1"),
+        states_multitest: false,
+        named_by_id: true,
+    },
+];
+
+/// The site whose page `url` is.
+pub fn site_of(url: &str) -> Option<&'static Site> {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let host = rest.split(['/', '?', '#']).next()?.to_ascii_lowercase();
+    SITES.iter().find(|site| {
+        host == site.domain
+            || host
+                .strip_suffix(site.domain)
+                .is_some_and(|sub| sub.ends_with('.'))
+    })
+}
+
 #[cfg(test)]
 mod tests;

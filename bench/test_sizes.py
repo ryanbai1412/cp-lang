@@ -3,6 +3,8 @@ import os
 import tempfile
 import unittest
 
+PKGS = "corpus/problems"
+
 spec = importlib.util.spec_from_file_location("sizes", os.path.join(os.path.dirname(__file__), "sizes.py"))
 sizes = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sizes)
@@ -52,7 +54,7 @@ class BuildVerdict(unittest.TestCase):
         self.assertIn("bench/a/b.cp does not build", messages[0])
 
     def test_a_corpus_program_that_does_not_build_is_left_to_its_suites(self):
-        _, failed = sizes.build_verdict([("corpus/problems/x/port.cp", "error")])
+        _, failed = sizes.build_verdict([(f"{PKGS}/x/port.cp", "error")])
         self.assertFalse(failed)
 
     def test_there_is_no_unbuilt_list(self):

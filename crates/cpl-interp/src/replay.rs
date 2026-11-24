@@ -57,67 +57,48 @@ pub fn call_at(recorded: &Recording, step: usize, frame: usize) -> Result<Call, 
         .ok_or(format!("no fn call is running at step {}", step + 1))
 }
 
-/// Runs `call` of `recorded`, a run of `original` on `input`, again with the
-/// fns of `edited`.
-pub fn replay(
-    recorded: &Recording,
-    original: &Program,
-    edited: &Program,
-    input: &[u8],
-    call: &Call,
-    config: TraceConfig,
-) -> Replay {
-    replay_by(
-        recorded,
-        original,
-        edited,
-        input,
-        call,
-        config,
-        &|program, input, config| {
-            run_observed(program, Io::fixed(input), &mut Vec::new(), Some(config))
-        },
-    )
+/// What to replay: `call` of `recorded`, a run of `original` on `input`,
+/// run again with the fns of `edited`.
+#[derive(Clone, Copy)]
+pub struct Rerun<'a> {
+    pub recorded: &'a Recording,
+    pub original: &'a Program,
+    pub edited: &'a Program,
+    pub input: &'a [u8],
+    pub call: &'a Call,
+}
+
+/// Runs `rerun`'s call again with the fns of its edited program.
+pub fn replay(rerun: Rerun, config: TraceConfig) -> Replay {
+    replay_by(rerun, config, &|program, input, config| {
+        run_observed(program, Io::fixed(input), &mut Vec::new(), Some(config))
+    })
 }
 
 /// [`replay`] where no thread can be started (WebAssembly), its calls held
 /// to `limits` and each run ended by `stop`.
-#[allow(clippy::too_many_arguments)]
 pub fn replay_on_this_thread(
-    recorded: &Recording,
-    original: &Program,
-    edited: &Program,
-    input: &[u8],
-    call: &Call,
+    rerun: Rerun,
     config: TraceConfig,
     limits: Limits,
     stop: Stop,
 ) -> Replay {
-    replay_by(
+    replay_by(rerun, config, &|program, input, config| {
+        let io = Io::fixed(input).until(stop.clone());
+        observe_on_this_thread(program, io, &mut Vec::new(), limits, Some(config))
+    })
+}
+
+type Runner<'a> = dyn Fn(&Program, &[u8], TraceConfig) -> Observed + 'a;
+
+fn replay_by(rerun: Rerun, config: TraceConfig, observe: &Runner) -> Replay {
+    let Rerun {
         recorded,
         original,
         edited,
         input,
         call,
-        config,
-        &|program, input, config| {
-            let io = Io::fixed(input).until(stop.clone());
-            observe_on_this_thread(program, io, &mut Vec::new(), limits, Some(config))
-        },
-    )
-}
-
-type Runner<'a> = dyn Fn(&Program, &[u8], TraceConfig) -> Observed + 'a;
-
-fn replay_by(
-    recorded: &Recording,
-    original: &Program,
-    edited: &Program,
-    input: &[u8],
-    call: &Call,
-    config: TraceConfig,
-    observe: &Runner,
-) -> Replay {
+    } = rerun;
     let record = |program: &Program, input: &[u8], config: TraceConfig| {
         let observed = observe(program, input, config);
         (observed.recording.unwrap_or_default(), observed.trap)
@@ -394,14 +375,15 @@ for i in 1..=3:
             .find(|c| c.name == "add" && c.ordinal == ordinal)
             .unwrap()
             .clone();
-        replay(
-            &recorded,
-            &original,
-            &program(edit),
-            input.as_bytes(),
-            &call,
-            config(edit),
-        )
+        let edited = program(edit);
+        let rerun = Rerun {
+            recorded: &recorded,
+            original: &original,
+            edited: &edited,
+            input: input.as_bytes(),
+            call: &call,
+        };
+        replay(rerun, config(edit))
     }
 
     #[test]
@@ -557,24 +539,16 @@ for i in 1..=3:
         let limits = Limits {
             stack_bytes: 1 << 20,
         };
-        let here = replay_on_this_thread(
-            &recorded,
-            &original,
-            &program(&edit),
-            b"",
-            &call,
-            config(&edit),
-            limits,
-            Stop::new(),
-        );
-        let there = replay(
-            &recorded,
-            &original,
-            &program(&edit),
-            b"",
-            &call,
-            config(&edit),
-        );
+        let edited = program(&edit);
+        let rerun = Rerun {
+            recorded: &recorded,
+            original: &original,
+            edited: &edited,
+            input: b"",
+            call: &call,
+        };
+        let here = replay_on_this_thread(rerun, config(&edit), limits, Stop::new());
+        let there = replay(rerun, config(&edit));
         assert_eq!(here.json(), there.json());
         assert!(here.json().contains("\"after\":6}"), "{}", here.json());
     }

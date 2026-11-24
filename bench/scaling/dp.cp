@@ -48,7 +48,7 @@ for i in 0..reps:
     s += mh.at(i * 7919 % n) ?? 0 // timed: dp.MonotoneHull.at
     s += mh.len // timed: dp.MonotoneHull.len
     if mh.is_empty: s += 1 // timed: dp.MonotoneHull.is_empty
-for _ in 0..200:
+for _ in 0..500:
     s += mh.items.count() // timed: dp.MonotoneHull.items
 for i in 0..reps:
     var h = MonotoneHull<()>(min)
@@ -108,7 +108,7 @@ fn kids(x: Int) -> yields Int:
         yield 2 * x + 2 // within: dp.backtrack
 for _ in 0..40:
     s += backtrack(0, kids).count() // timed: dp.backtrack [let: visited = 2 n]
-for _ in 0..40:
+for _ in 0..1 << 15:
     for st in backtrack(0, kids):
-        if st.depth == 3: st.prune() // timed: dp.Step.prune
+        if st.depth == 1: st.prune() // timed: dp.Step.prune
 print(s)

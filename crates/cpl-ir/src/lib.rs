@@ -245,6 +245,26 @@ impl Ty {
         }
     }
 
+    /// True when some part is a position or boundary of domain `d`.
+    pub fn mentions_domain(&self, d: DomainId) -> bool {
+        let dim = |dim: &Dim| *dim == Dim::Pos(d);
+        match self {
+            Ty::Pos(e) | Ty::Bound(e) => *e == d,
+            Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
+                t.mentions_domain(d)
+            }
+            Ty::ListView(t, k) | Ty::Keyed(t, k) | Ty::MutView(t, k) => {
+                dim(k) || t.mentions_domain(d)
+            }
+            Ty::Array { dims, elem } => dims.iter().any(dim) || elem.mentions_domain(d),
+            Ty::Tuple(ts) => ts.iter().any(|t| t.mentions_domain(d)),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| t.mentions_domain(d)),
+            Ty::Map(k, v) | Ty::HashMap(k, v) => k.mentions_domain(d) || v.mentions_domain(d),
+            Ty::Fn(ps, r) => ps.iter().any(|t| t.mentions_domain(d)) || r.mentions_domain(d),
+            _ => false,
+        }
+    }
+
     /// True when some part is a fn value, also inside a struct's fields or
     /// an enum's variants.
     pub fn has_fn(&self, program: &Program) -> bool {
@@ -669,6 +689,9 @@ pub enum ExprKind {
     Builtin(Builtin, Vec<Expr>),
     /// O(1) mutable slice view `(place, lo, hi)` into a `List<T>`, 1D `[D]T`, or `MutView<T>`.
     MutSlice(Box<Place>, Box<Expr>, Box<Expr>),
+    /// O(1) mutable view `(grid, at, axis)` of a 2D grid's row or column, the cells
+    /// [`Builtin::GridLine`] reads.
+    MutLine(Box<Place>, Box<Expr>, usize),
     /// A builtin that changes its receiver: `xs.push(x)`.
     Mutate(Mutation, Box<Place>, Vec<Expr>),
     /// Sort in place, naturally, by key expression, or by fn/Order value.
@@ -948,6 +971,9 @@ pub enum Builtin {
     KeySlice,
     /// `(seq, lo, hi)` -> the same cells keyed `lo..hi`; traps unless the lengths match.
     Rekey,
+    /// `(grid, at, axis)` -> row `at` (axis 1 whole) or column `at` (axis 0 whole) of a 2D
+    /// grid, keyed by the whole axis: a view of the grid's cells, not a copy (R04b.1.12).
+    GridLine,
     /// Explicit O(n) copy of a `Str` or `StrView` into an owned `Str`.
     ToStr,
     /// Explicit O(n) copy of a `List` or `ListView` into an owned `List`.
@@ -1319,6 +1345,9 @@ pub enum NarrowLayout {
     Seq(Box<NarrowLayout>),
     /// Leaf element is a `?lo..hi` inside `int32_t` above `INT32_MIN`, which is `none`.
     OptI32,
+    /// Leaf element is a `??lo..hi` inside `int32_t`: `INT32_MIN` is the outer `none` and
+    /// `INT32_MIN + 1` the inner one, both below the range.
+    OptOptI32,
 }
 
 impl NarrowLayout {
@@ -1327,6 +1356,9 @@ impl NarrowLayout {
         match (self, elem_ty) {
             (NarrowLayout::Int(w), Ty::Int) => Some(w.cpp().to_string()),
             (NarrowLayout::OptI32, Ty::Opt(t)) if **t == Ty::Int => Some("cpl::OptI32".to_string()),
+            (NarrowLayout::OptOptI32, Ty::Opt(t)) if **t == Ty::Opt(Box::new(Ty::Int)) => {
+                Some("cpl::OptOptI32".to_string())
+            }
             (NarrowLayout::Tuple(ws), Ty::Tuple(ts)) if ws.len() == ts.len() => {
                 let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
                 Some(format!("std::tuple<{}>", parts.join(", ")))

@@ -190,7 +190,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 match &e.ty {
                     Ty::List(_) => Value::List(Rc::new(crate::value::Cells::from(values))),
                     Ty::Set(_) | Ty::HashSet(_) => {
-                        Value::Set(Rc::new(values.into_iter().collect()))
+                        // Inserted one by one: `collect` would sort first, a second
+                        // sort of `Value` in cpl.wasm.
+                        let mut set = std::collections::BTreeSet::new();
+                        for v in values {
+                            set.insert(v);
+                        }
+                        Value::Set(Rc::new(set))
                     }
                     Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::default()),
                     _ => Value::tuple(values),

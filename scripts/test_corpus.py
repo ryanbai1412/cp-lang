@@ -13,6 +13,9 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
+PKGS = "corpus/problems"
+SUBS_DIR = "corpus/submissions"
+
 _SPEC = importlib.util.spec_from_file_location("corpus", Path(__file__).resolve().parent / "corpus.py")
 assert _SPEC and _SPEC.loader
 corpus = importlib.util.module_from_spec(_SPEC)
@@ -401,6 +404,11 @@ class BoundsTest(unittest.TestCase):
         got = corpus.port_ranges("type City = 1..=n\nlet roads: [0..n]List<(u: City, v: 1..=n)> = read()\n")
         self.assertEqual((got["roads.u"], got["roads.v"]), (("1", "n"), ("1", "n")))
 
+    def test_an_enum_read_is_checked_by_its_variants_fields(self):
+        got = corpus.port_ranges("domain W = 1..=n\nenum Op:\n    @tag(1) Join(u: W, v: W)\n    @tag(2) Split(u: W)\n"
+                                 "    Ask(s: Str, k: 1..=50)\n    Stop\nlet ops = read<[q]Op>()\n")
+        self.assertEqual(got, {"ops.u": ("1", "n"), "ops.v": ("1", "n"), "ops.k": ("1", "50")})
+
     def test_a_read_inside_an_expression_or_a_for_is_checked(self):
         got = corpus.port_ranges("let xs: List<P> = read<[c](x: 1..=n, y: 1..=m)>().sorted()\n"
                                  "for a in read<[0..m]1..=n>():\n    print(a)\nlet z = unread<1..=3>()\n")
@@ -675,7 +683,7 @@ class DeleteTest(Corpus):
         (subs / "info.json").write_text(json.dumps(info, indent=4))
         (subs / "910000001.cpp").write_text("")
         (subs / "910000002.cpp").write_text("")
-        unknowns.write_text("1 corpus/problems/p2/port.cp\n1 corpus/problems/p3/port.cp\n")
+        unknowns.write_text(f"1 {PKGS}/p2/port.cp\n1 {PKGS}/p3/port.cp\n")
         build = mock.Mock(return_value=0)
         with mock.patch.object(corpus, "main", build), mock.patch.object(corpus, "named_by", lambda *_: []), \
                 contextlib.redirect_stdout(io.StringIO()):
@@ -685,7 +693,7 @@ class DeleteTest(Corpus):
         self.assertEqual(json.loads((subs / "info.json").read_text()), {"910000002": {"problem": "p3"}})
         self.assertEqual(sorted(f.name for f in subs.iterdir()), ["910000002.cpp", "info.json"])
         self.assertEqual((self.root / "sets" / "small.txt").read_text(), "# comment\n")
-        self.assertEqual(unknowns.read_text(), "1 corpus/problems/p3/port.cp\n")
+        self.assertEqual(unknowns.read_text(), f"1 {PKGS}/p3/port.cp\n")
 
     def test_a_submission_another_file_names_is_kept_without_its_entry(self):
         subs = self.root / "subs"
@@ -736,6 +744,22 @@ class GraderTest(Corpus):
         self.assertEqual(corpus.judge_args(pkg, pkg.dream),
                          ["--checker", str(d / "checker.py"), "--grader", str(d / "dream.tests" / "grader.cpp")])
         self.assertEqual(corpus.judge_args(pkg, pkg.port), ["--checker", str(d / "checker.py")])
+
+
+class OrphanSubmissionTest(unittest.TestCase):
+    def test_a_submission_file_no_package_lists_is_an_orphan(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(corpus, "SUBS", d), \
+                mock.patch.object(corpus.subprocess, "run", return_value=mock.Mock(returncode=1)):
+            for n in ("1.cpp", "2.txt", "info.json"):
+                Path(d, n).write_text("")
+            metas = {"p": {"submissions": [{"file": f"{SUBS_DIR}/1.cpp"}, {"file": None}]}}
+            self.assertEqual(corpus.orphan_submissions(metas), ["2.txt"])
+
+    def test_a_file_another_tracked_file_names_is_kept(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(corpus, "SUBS", d), \
+                mock.patch.object(corpus.subprocess, "run", return_value=mock.Mock(returncode=0)):
+            Path(d, "2.txt").write_text("")
+            self.assertEqual(corpus.orphan_submissions({}), [])
 
 
 if __name__ == "__main__":

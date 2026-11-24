@@ -36,8 +36,8 @@ fn sweep(rev: Bool):
         if last[u] == None: last[u] = Some(p)
     // skip lists over the values: `nxt[u]` leads to the next present value >= u (m: none),
     // `prv[u + 1]` to one plus the previous present value <= u (0: none); both halve paths
-    var nxt = [0..=m] u => if u < m and last[U(u)] != None: u else: u + 1
-    var prv = [0..=m] i => if i > 0 and last[U(i - 1)] != None: i else: i - 1
+    var nxt: [0..=m]0..=1_000_002 = [0..=m] u => if u < m and last[U(u)] != None: u else: u + 1
+    var prv: [0..=m]-1..=1_000_001 = [0..=m] i => if i > 0 and last[U(i - 1)] != None: i else: i - 1
     nxt[m] = m
     prv[0] = 0
     fn above(u: Int) -> Int:

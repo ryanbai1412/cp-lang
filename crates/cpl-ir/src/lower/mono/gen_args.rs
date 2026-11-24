@@ -139,6 +139,15 @@ impl<'a> Lowerer<'a> {
                 }
                 GenArg::Ty(Ty::Record(resolved_fields))
             }
+            ast::TypeKind::Optional(inner)
+                if matches!(&inner.kind, ast::TypeKind::Range { .. })
+                    || matches!(&inner.kind, ast::TypeKind::Named { args, .. } if args.is_empty()) =>
+            {
+                match self.resolve_gen_arg(inner) {
+                    GenArg::Range(lo, hi) => GenArg::OptRange(lo, hi),
+                    _ => GenArg::Ty(self.resolve_ty(ty)),
+                }
+            }
             _ => {
                 let resolved = self.resolve_ty(ty);
                 match resolved {

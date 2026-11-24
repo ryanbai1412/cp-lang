@@ -11,7 +11,7 @@ CI splits --fast across parallel jobs (.github/workflows/ci.yml):
                     conformance suite, the script unit tests
   tests:doc         the doctests
   tests:<partition> that nextest partition (e.g. tests:hash:1/12)
-Unset runs all of --fast.
+Unset runs all of --fast. With --full, `full` runs only the --full suites (ci-slow.yml).
 """
 from __future__ import annotations
 
@@ -73,6 +73,11 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     out = {"kind": "checks", "suites": "", "shard": "", "partition": ""}
     if part in ("", "checks"):
         return out
+    if part == "full" or mode == "full":
+        if (part, mode) != ("full", "full"):
+            raise ValueError(f"CPL_GATE_PART={part} with --{mode}: only `full` goes with --full")
+        out["kind"] = "full"
+        return out
     if part in ("fmt", "corpus", "conform") or part.startswith(("conform:", "tests:")):
         if mode != "fast":
             raise ValueError(f"CPL_GATE_PART={part} needs --fast")
@@ -90,7 +95,7 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     elif part.startswith("tests:") and part != "tests:":
         out.update(kind="tests", partition=part.removeprefix("tests:"))
     else:
-        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform or tests:<partition>)")
+        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform, tests:<partition>, or full with --full)")
     return out
 
 
@@ -174,6 +179,8 @@ STEPS = {
         gate("prelude", fail="prelude gate failed; see above"),
         gate("std-docs", "--audit", fail="a public std fn lacks a required doc label; see above", quiet=True),
         gate("vocab", fail="a spelling spec/GLOSSARY.md bans; see above"),
+        gate("markers", fail="a diagnostic case counts lines instead of marking `// <- here`;"
+             " rerun: uv run scripts/spec-gate.py markers --fix"),
         Step("std containers print, walk and have is_empty (scripts/std-trait-matrix.py)",
              ("scripts/std-trait-matrix.py", "--max", "0"), "a std container lacks a common trait; see above"),
         Step("std docs follow the std-docs checklist (scripts/std-docs-lint.py)",
@@ -213,6 +220,8 @@ STEPS = {
              fail="cpl explain claims more copies than the C++ makes in more cases; see above"),
         gate("tool-vocab", fail="help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"),
         gate("flakes", "--runs", "2", fail="a conformance case changed verdict between runs; see above"),
+        gate("case-bugs", fail="a known-gap case fails because of the case itself (conformance/R3); fix the case"
+             " named above, then rerun: uv run scripts/spec-gate.py case-bugs"),
         Step("cargo test: every port compiled with every judge profile's flags",
              ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--", "--exact",
               "every_port_compiles_with_every_judges_flags"),
@@ -381,6 +390,8 @@ class Tail:
     sel_packages: str = ""
     sel_filter: str = ""
     sel_site: str = ""
+    sel_slices: str = ""
+    sel_slice_filter: str = ""
     run: Callable = subprocess.run
     popen: Callable = subprocess.Popen
     which: Callable = shutil.which
@@ -512,11 +523,7 @@ class Tail:
         if gen.returncode:
             print((gen.stdout.strip().splitlines() or [""])[-1].removesuffix("; run: just gen"))
             print("note: not blocking, and no need to regenerate them: CI's regen job rewrites these on main")
-        if slices := sel.get("slices", "").split():
-            self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
-            if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
-                raise Failed("a touched-path slice failed or took over 20 s; the lines above name it, rerun:"
-                             f" uv run scripts/affected.py --run-slices {' '.join(slices)}")
+        self._slices(sel.get("slices", "").split())
         not_slow = f" & not ({slow_filter()})"
         if pkgs := sel.get("packages", "").split():
             ps = [a for p in pkgs for a in ("-p", p)]
@@ -767,7 +774,24 @@ class Tail:
                 raise Failed("cargo build -p cpl-cli failed")
             self._corpus_static()
             return "corpus part"
+        if g["kind"] == "full":
+            self.step("cargo build -p cpl-cli -p cpl-conform (the binaries the --full suites run)")
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
+                raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
+            self.step("the --full suites (scripts/ci.py steps full)")
+            if run_steps("full", self.cpl, run=self.run):
+                raise Failed("a --full suite failed; the step above names it")
+            return "full part"
         raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
+
+    def _slices(self, slices: list[str]) -> None:
+        """The touched paths' owner-named tests, ahead of the rest; one over 20 s fails."""
+        if not slices:
+            return
+        self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
+        if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
+            raise Failed("a touched-path slice failed or took over 20 s; the lines above name it, rerun:"
+                         f" uv run scripts/affected.py --run-slices {' '.join(slices)}")
 
     def _tests(self) -> None:
         """The workspace tests. --full runs SLOW_TESTS (why: beside the list)."""
@@ -780,10 +804,13 @@ class Tail:
             print(CACHED)
         elif self.mode == "land":
             # Not cached: a partial run must not vouch for the whole tree.
+            self._slices(self.sel_slices.split())
             self.step(f"cargo nextest of the crates the train reaches: {self.sel_packages or 'none'}")
             if self.sel_packages:
-                if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast",
-                              "-E", f"({self.sel_filter}) & not ({slow})"]):
+                expr = f"({self.sel_filter}) & not ({slow})"
+                if self.sel_slice_filter:
+                    expr += f" & not ({self.sel_slice_filter})"
+                if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr]):
                     raise Failed("a test of a crate the train reaches failed; the lines above name it")
                 self.step("cargo test --doc of the touched crates")
                 pkgs = [a for p in self.sel_packages.split() for a in ("-p", p)]
@@ -970,7 +997,8 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         code = tail.commit(sel)
     else:
         tail = tail_cls(mode, part, cpl, cache_dir, manifest, sel.get("packages", ""), sel.get("filter", ""),
-                        sel.get("site", ""))
+                        sel.get("site", ""), sel_slices=sel.get("slices", ""),
+                        sel_slice_filter=sel.get("slice_filter", ""))
         code = tail()
     if code:
         return 1
@@ -1098,4 +1126,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_steps(args.tier, args.cpl, only=set(args.scripts) or None)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        # A tier past its time limit (the hook's `timeout`) or Ctrl-C: the caller says which step.
+        sys.exit(130)

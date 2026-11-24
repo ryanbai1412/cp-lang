@@ -163,6 +163,32 @@ fn input_longer_than_one_piece_reads_the_same_in_the_judge_build() {
     );
 }
 
+/// A string parsed between two reads of a long input is its own input: the
+/// judge build does not pull the next piece of stdin into it.
+#[test]
+fn a_parse_between_reads_keeps_the_rest_of_a_long_input() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parse_pieces.cp");
+    let n = 40_000u64;
+    let mut input = format!("{n}\n");
+    for i in 0..n {
+        input.push_str(&format!(
+            "{}-{}\n",
+            (i * 2_654_435_761) % 1_000_003,
+            i % 977
+        ));
+    }
+    assert!(input.len() > 4 * (1 << 16), "several pieces");
+    let mut interp = Command::new(env!("CARGO_BIN_EXE_cpl"));
+    interp.arg("run").arg(&source);
+    let interp = run(interp, &input);
+    let judge = run(Command::new(judge_build(&source)), &input);
+    assert!(interp.status.success() && judge.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&interp.stdout),
+        String::from_utf8_lossy(&judge.stdout)
+    );
+}
+
 /// A program that asks and then reads has its question out before it
 /// waits, with no `@interactor` in the file: the judge answers only what
 /// it has seen.

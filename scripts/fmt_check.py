@@ -41,6 +41,22 @@ def tracked(pattern_suffixes):
     return sorted(p for p in out.decode().split("\0") if p and p.endswith(pattern_suffixes))
 
 
+def support(cp_files, files):
+    """The tracked files a program in `cp_files` reads beside it: everything
+    else in its directory (a grader, a checker, tests.toml) and in a
+    `<stem>.tests/` or `tests/` directory there, so a formatted copy runs
+    as the original does."""
+    dirs = {os.path.dirname(p) for p in cp_files}
+    out = []
+    for p in files:
+        if p.endswith(".cp"):
+            continue
+        d = os.path.dirname(p)
+        if d in dirs or (os.path.basename(d).endswith(".tests") or os.path.basename(d) == "tests") and os.path.dirname(d) in dirs:
+            out.append(p)
+    return out
+
+
 def unescape(s):
     out, i = [], 0
     while i < len(s):
@@ -146,7 +162,7 @@ def main():
             shutil.copytree(base, once)
         else:
             files = tracked((".cp",))
-            for path in files + tracked(("cp.toml", "lib.toml")):
+            for path in sorted(set(files + tracked(("cp.toml", "lib.toml")) + support(files, tracked(("",))))):
                 dst = os.path.join(once, path)
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copyfile(os.path.join(ROOT, path), dst)

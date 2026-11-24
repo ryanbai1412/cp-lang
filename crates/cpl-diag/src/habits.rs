@@ -5,7 +5,7 @@
 //! checking, unless the row says why no one edit is right.
 
 use crate::{codes, Code};
-use std::fmt::{Display, Write};
+use std::fmt::Display;
 
 /// Where the foreign spelling stands: called, `stoi(s)`; as a value, `True`;
 /// or a shape the front end recognises, `for (int i = 0; i < n; i++)`.
@@ -38,29 +38,7 @@ pub struct Habit {
 impl Habit {
     /// The help with its `{}` holes filled by `args` in order; `{{` and `}}` are braces.
     pub fn say(&self, args: &[&dyn Display]) -> String {
-        let mut out = String::new();
-        let mut args = args.iter();
-        let mut rest = self.help;
-        while let Some(i) = rest.find(['{', '}']) {
-            out.push_str(&rest[..i]);
-            let tail = &rest[i..];
-            let step = if tail.starts_with("{}") {
-                if let Some(arg) = args.next() {
-                    let _ = write!(out, "{arg}");
-                }
-                2
-            } else {
-                out.push_str(&tail[..1]);
-                if tail.starts_with("{{") || tail.starts_with("}}") {
-                    2
-                } else {
-                    1
-                }
-            };
-            rest = &tail[step..];
-        }
-        out.push_str(rest);
-        out
+        crate::msgs::fill(self.help, args)
     }
 }
 

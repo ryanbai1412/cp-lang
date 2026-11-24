@@ -2,13 +2,17 @@
  "problem": "ioi12p1",
  "source": "ioi",
  "submissions": [
-  {"id": "4730691", "language": "TEXT", "result": "AC", "time": 0.29580549, "memory_kb": 1904.0, "file": null}
+  {"id": "4730691", "language": "TEXT", "result": "AC", "time": 0.29580549, "memory_kb": 1904.0, "file": "corpus/submissions/4730691.txt"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi12p1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Output-only: the accepted submissions are odometer programs, not C++. Packaged as a judged program: the input is a subtask (1-5) and the output its odometer program, which checker.py parses and its C++ simulator runs on that subtask's edge and random grids within the full-score program size and execution length. orig.cpp was written for the corpus and scores full marks on each subtask (subtask 4: size 197, at most 187346 steps; subtask 5: size 435, after the IOI 2012 solution booklet)."
 }

@@ -35,7 +35,8 @@ impl<'a> Lowerer<'a> {
             // `[D]T` with `D = Int` is a list (R07.3.5): `List<T>` is `Indexed<Int, T>`.
             ast::TypeKind::Array { index, elem }
                 if matches!(index.as_slice(), [ast::Type { kind: ast::TypeKind::Named { name, args }, .. }]
-                    if args.is_empty() && self.gen_env.get(&name.text) == Some(&GenArg::Ty(Ty::Int))) =>
+                    if args.is_empty() && self.gen_env.get(&name.text) == Some(&GenArg::Ty(Ty::Int))
+                        && !self.gen_env.contains_key(&mono::own_generic_marker(&name.text))) =>
             {
                 Spec::Plain(Ty::List(Box::new(self.resolve(elem, values).ty())))
             }
@@ -196,16 +197,26 @@ impl<'a> Lowerer<'a> {
                     GenArg::Ty(t) => t,
                     GenArg::Domain(d) => Ty::Pos(d),
                     GenArg::Int(_) | GenArg::RuntimeInt(_) | GenArg::Range(_, _) => Ty::Int,
+                    GenArg::OptRange(_, _) => Ty::Opt(Box::new(Ty::Int)),
                     GenArg::Op(_) => Ty::Unit,
                 });
             }
-            if let Some(ty) = self.cx.local_type_aliases.get(&name.text).cloned() {
-                return Spec::Plain(ty);
-            }
-            for ocx in self.outer_cxs.iter().rev() {
-                if let Some(ty) = ocx.local_type_aliases.get(&name.text).cloned() {
-                    return Spec::Plain(ty);
-                }
+            let local = self
+                .cx
+                .local_type_aliases
+                .get(&name.text)
+                .cloned()
+                .or_else(|| {
+                    self.outer_cxs
+                        .iter()
+                        .rev()
+                        .find_map(|ocx| ocx.local_type_aliases.get(&name.text).cloned())
+                });
+            // A local `type Z = Mod(p)` reads by its struct's input format, as a top-level one does.
+            match local {
+                Some(Ty::Struct(sid)) if values => return self.struct_spec(sid),
+                Some(ty) => return Spec::Plain(ty),
+                None => {}
             }
         }
         // Check qualified module type `mod_alias.Type` or `D.cuts` or `Rooted.Pre`.
@@ -415,19 +426,34 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts }), list_ty, span)
     }
 
+    /// True when `id` is declared in another module and has a field
+    /// without `pub`, which code here can't name (R11.1.4).
+    pub(in crate::lower) fn private_fields(&self, id: StructId) -> bool {
+        self.structs[id].mod_id != self.cur_mod
+            && self.structs[id]
+                .decl
+                .is_some_and(|decl| decl.fields.iter().any(|f| !f.public))
+    }
+
     /// A struct's fields as they are read from input: with their ranges.
     pub(in crate::lower) fn struct_spec(&mut self, id: StructId) -> Spec {
-        if let Some(&fn_id) = self.structs[id].methods.get("read") {
+        if let Some(fn_id) = self.own_method(id, "read") {
             if self.sigs[fn_id].params.is_empty() {
                 let call = self.method_call(fn_id, None, &[], Span::default());
                 return Spec::Call(Box::new(call));
             }
         }
         if self.structs[id].def.fields.len() == 1 {
-            if let Some(&fn_id) = self.structs[id].methods.get("new") {
-                if self.sigs[fn_id].params.len() == 1 {
+            if let Some(fn_id) = self.own_method(id, "new") {
+                // A defaulted parameter (`new(cap: Int = 0)`) is a setting,
+                // not the value the struct is built from.
+                let sig = &self.sigs[fn_id];
+                if sig.params.len() == 1 && sig.decl.params.iter().all(|p| p.default.is_none()) {
                     let param_ty = self.sigs[fn_id].params[0].ty.clone();
-                    if let Some(arg_spec) = self.spec_of(&param_ty) {
+                    let arg_spec = self.spec_of(&param_ty).map(|spec| self.readable(spec));
+                    if let Some(arg_spec) =
+                        arg_spec.filter(|spec| read_spec::unreadable(spec).is_none())
+                    {
                         let read_arg = self.mk(
                             ExprKind::Read(Box::new(arg_spec)),
                             param_ty,
@@ -446,6 +472,11 @@ impl<'a> Lowerer<'a> {
         let Some(decl) = self.structs[id].decl else {
             return Spec::Fields(Ty::Struct(id), Vec::new());
         };
+        // Outside its module a struct reads field by field only when every
+        // field is `pub`: `read()` builds nothing user code couldn't (R11.1.4).
+        if self.private_fields(id) {
+            return Spec::Plain(Ty::Struct(id));
+        }
         let (m, offset, env) = (
             self.structs[id].mod_id,
             self.structs[id].offset,

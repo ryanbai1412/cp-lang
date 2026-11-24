@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "5556845", "language": "CPP17", "result": "WA", "time": 1.837075174, "memory_kb": 4684.0, "file": "corpus/submissions/5556845.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noimps23p2/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission (the recorded one is a WA brute that only answers n <= 20). orig.cpp was written for the corpus: E' is the edge set of a connected set of blocks, so it roots the block-cut tree at its centroid and, for each least component size s, multiplies the choices at the O(n / s) vertices surely in V'. It matches a brute over every nonempty edge subset on 300 generated cases with m <= 15."
 }

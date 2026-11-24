@@ -28,6 +28,14 @@ pub struct FnSummary {
     /// `opaque` to a loop it feeds. A set of `usize`, as `reads` is, so the
     /// browser build carries one set's code.
     pub lent_from: BTreeSet<usize>,
+    /// The fns whose locals a closure it may call writes by reference
+    /// ([`LENT_ELSEWHERE`]: a closure's own frame, or a global), and those
+    /// locals' slots in their owner's frame.
+    pub lent_written_from: BTreeSet<usize>,
+    pub lent_written: BTreeSet<usize>,
+    /// The same for every local such a closure reads or writes by reference.
+    pub lent_seen_from: BTreeSet<usize>,
+    pub lent_seen: BTreeSet<usize>,
     pub reads: BTreeSet<usize>,
     pub writes: BTreeSet<usize>,
 }
@@ -40,6 +48,12 @@ pub struct FnSummary {
 /// monomorphized), so each type called through gets the union of those,
 /// after it.
 pub fn summarize(program: &Program) -> Vec<FnSummary> {
+    summarize_typed(program).0
+}
+
+/// [`summarize`], with the fn types whose values are called, in the order
+/// of their summaries after the all-closures one.
+pub fn summarize_typed(program: &Program) -> (Vec<FnSummary>, Vec<Ty>) {
     let values = program.fns.len();
     let mut called: Vec<Ty> = Vec::new();
     let mut direct_of = |body: &Block, by_ref: bool| {
@@ -88,11 +102,25 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
         .closures
         .iter()
         .zip(owners)
-        .map(|(c, owner)| {
+        .map(|(c, (owner, nested))| {
             let by_ref = c.captures.iter().any(|cap| cap.by_ref);
             let (mut summary, calls, through) = direct_of(&c.body, by_ref);
             if by_ref {
                 summary.lent_from.insert(owner);
+            }
+            let written = Effects::of_block(&c.body).locals;
+            for cap in c.captures.iter().filter(|cap| cap.by_ref) {
+                let from = if nested || cap.is_global {
+                    LENT_ELSEWHERE
+                } else {
+                    owner
+                };
+                summary.lent_seen_from.insert(from);
+                summary.lent_seen.insert(cap.outer);
+                if written.contains(&cap.inner) {
+                    summary.lent_written_from.insert(from);
+                    summary.lent_written.insert(cap.outer);
+                }
             }
             (summary, calls, through)
         })
@@ -131,7 +159,7 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
             }
         }
         if summaries == before {
-            return summaries;
+            return (summaries, called);
         }
     }
 }
@@ -154,9 +182,13 @@ pub fn closure_has_type(c: &ClosureDef, args: &[Ty], ret: &Ty) -> bool {
 /// The owner of what the program's top level makes, beside its fns.
 pub const TOP: usize = usize::MAX;
 
+/// The owner of a local no loop's fn can name: a closure's own, a global
+/// captured by reference, or a loop whose fn is not known.
+pub const LENT_ELSEWHERE: usize = usize::MAX - 1;
+
 /// The fn each closure is made in, through the closures it is made in
-/// ([`TOP`]: the top level).
-fn closure_owners(program: &Program) -> Vec<usize> {
+/// ([`TOP`]: the top level), and whether it is made in another closure.
+fn closure_owners(program: &Program) -> Vec<(usize, bool)> {
     #[derive(Clone, Copy)]
     enum Made {
         Top,
@@ -179,14 +211,15 @@ fn closure_owners(program: &Program) -> Vec<usize> {
     }
     (0..made.len())
         .map(|mut c| {
+            let nested = matches!(made[c], Made::In(_));
             for _ in 0..made.len() {
                 match made[c] {
-                    Made::Top => return TOP,
-                    Made::Fn(id) => return id,
+                    Made::Top => return (TOP, nested),
+                    Made::Fn(id) => return (id, nested),
                     Made::In(outer) => c = outer,
                 }
             }
-            TOP
+            (TOP, nested)
         })
         .collect()
 }
@@ -198,6 +231,12 @@ impl FnSummary {
         self.calls_values |= other.calls_values;
         self.sizes |= other.sizes;
         self.lent_from.extend(other.lent_from.iter().copied());
+        self.lent_written_from
+            .extend(other.lent_written_from.iter().copied());
+        self.lent_written.extend(other.lent_written.iter().copied());
+        self.lent_seen_from
+            .extend(other.lent_seen_from.iter().copied());
+        self.lent_seen.extend(other.lent_seen.iter().copied());
         self.reads.extend(other.reads.iter().copied());
         self.writes.extend(other.writes.iter().copied());
     }
@@ -252,6 +291,7 @@ fn pusher(id: usize, f: &Function, summary: &FnSummary) -> Option<usize> {
         match &e.kind {
             ExprKind::Mutate(_, place, _)
             | ExprKind::MutSlice(place, ..)
+            | ExprKind::MutLine(place, ..)
             | ExprKind::Sort(place, ..) => stored += usize::from(at_acc(place)),
             ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
                 stored += args
@@ -303,6 +343,39 @@ pub struct Feeds {
     pub pushers: BTreeMap<usize, usize>,
     /// The pushers that are not `yields` fns: they run to their end.
     pub eager: BTreeSet<usize>,
+    pub scope: FeedScope,
+}
+
+/// Where each loop is and which fn types are called, so a loop knows whose
+/// locals a closure its body calls writes.
+#[derive(Default, Clone, Debug)]
+pub struct FeedScope {
+    /// The fn types whose summaries follow the all-closures one.
+    pub values: Vec<Ty>,
+    /// The fn each loop is in ([`TOP`]: the top level; [`LENT_ELSEWHERE`]:
+    /// a closure, or more than one place).
+    pub homes: BTreeMap<LoopId, usize>,
+}
+
+impl FeedScope {
+    fn of(program: &Program, values: Vec<Ty>) -> FeedScope {
+        let mut homes = BTreeMap::new();
+        let bodies = [(&program.main, TOP), (&program.setup, TOP)]
+            .into_iter()
+            .chain(program.fns.iter().enumerate().map(|(id, f)| (&f.body, id)))
+            .chain(program.closures.iter().map(|c| (&c.body, LENT_ELSEWHERE)));
+        for (body, home) in bodies {
+            walk::deep_stmts(body, &mut |stmt| {
+                if let Stmt::For(id, ..) = stmt {
+                    let at = homes.entry(*id).or_insert(home);
+                    if *at != home {
+                        *at = LENT_ELSEWHERE;
+                    }
+                }
+            });
+        }
+        FeedScope { values, homes }
+    }
 }
 
 impl Feeds {
@@ -314,7 +387,8 @@ impl Feeds {
 
     /// Every `yields` fn that could feed a loop, fed or not yet.
     pub fn candidates(program: &Program) -> Feeds {
-        let summaries = summarize(program);
+        let (summaries, values) = summarize_typed(program);
+        let scope = FeedScope::of(program, values);
         // Inserted in key order: collecting a BTreeMap sorts, a copy of std's stable sort.
         let mut pushers = BTreeMap::new();
         let mut eager = BTreeSet::new();
@@ -330,6 +404,7 @@ impl Feeds {
             summaries,
             pushers,
             eager,
+            scope,
         }
     }
 
@@ -423,16 +498,32 @@ impl Feeds {
         let summary = &self.summaries[*callee];
         let effects = Effects::of_block(body);
         let mut calls = effects.calls.clone();
+        let fns = self.summaries.len() - 1 - self.scope.values.len();
         walk::deep_exprs(body, &mut |e| {
-            if matches!(e.kind, ExprKind::CallExpr(..)) {
-                calls.insert(self.summaries.len() - 1);
+            if let ExprKind::CallExpr(callee, _) = &e.kind {
+                let typed = self.scope.values.iter().position(|t| *t == callee.ty);
+                calls.insert(typed.map_or(fns, |k| fns + 1 + k));
             }
         });
+        // A closure the body calls may write a local by reference only in
+        // the loop's own fn, and never one the fn is handed.
+        let home = self.scope.homes.get(&id).copied().unwrap_or(LENT_ELSEWHERE);
+        let foreign = |from: &BTreeSet<usize>| {
+            from.iter()
+                .any(|&owner| owner != home || owner == LENT_ELSEWHERE)
+        };
         let mut opaque = false;
+        let mut seen_elsewhere = false;
         let mut writes = effects.globals.clone();
+        let mut lent_written = BTreeSet::new();
+        let mut lent_seen = BTreeSet::new();
         for f in &calls {
-            opaque |= self.summaries[*f].opaque;
-            writes.extend(self.summaries[*f].writes.iter().copied());
+            let s = &self.summaries[*f];
+            opaque |= foreign(&s.lent_written_from);
+            seen_elsewhere |= foreign(&s.lent_seen_from);
+            writes.extend(s.writes.iter().copied());
+            lent_written.extend(s.lent_written.iter().copied());
+            lent_seen.extend(s.lent_seen.iter().copied());
         }
         let mut shared = false;
         let mut touched = false;
@@ -442,13 +533,16 @@ impl Feeds {
                 // The fn works on the caller's variable between the turns
                 // of the body, so the body must not see it at all.
                 Arg::Mut(place) => {
-                    touched |= self.sees(walk::root(place), body, &effects, &calls);
+                    let root = walk::root(place);
+                    touched |= self.sees(root, body, &effects, &calls)
+                        || !root.0 && (seen_elsewhere || lent_seen.contains(&root.1));
                     continue;
                 }
             };
             walk::deep_expr(value, &mut |e| match e.kind {
                 ExprKind::Local(slot) => {
-                    shared |= !e.ty.is_scalar() && effects.locals.contains(&slot)
+                    shared |= !e.ty.is_scalar()
+                        && (effects.locals.contains(&slot) || lent_written.contains(&slot))
                 }
                 ExprKind::Global(g) => shared |= writes.contains(&g),
                 ExprKind::Call(f, _) => shared |= !self.summaries[f].reads.is_disjoint(&writes),
@@ -507,7 +601,6 @@ impl Feeds {
     }
 }
 
-/// True when `body` has a `return` in it.
 /// Whether `body` may leave its loop early: a `break`, `continue` or `return`.
 pub fn escapes(body: &Block) -> bool {
     let mut escapes = false;
@@ -517,6 +610,19 @@ pub fn escapes(body: &Block) -> bool {
     escapes
 }
 
+/// Whether `body` may stop its loop: a `break`, a `return` or a labeled `continue`.
+pub fn stops(body: &Block) -> bool {
+    let mut stops = false;
+    walk::deep_stmts(body, &mut |stmt| {
+        stops |= matches!(
+            stmt,
+            Stmt::Break(_) | Stmt::Return(_) | Stmt::Continue(Some(_))
+        )
+    });
+    stops
+}
+
+/// True when `body` has a `return` in it.
 pub fn returns(body: &Block) -> bool {
     let mut returns = false;
     walk::deep_stmts(body, &mut |stmt| returns |= matches!(stmt, Stmt::Return(_)));

@@ -5,10 +5,14 @@
   {"id": "6435765", "language": "CPP17", "result": "AC", "time": 0.208361413, "memory_kb": 3816.0, "file": "corpus/submissions/6435765.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/cco24p4hard/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": "The accepted C++ is the reference. Many strategies are valid, so checker.py checks the move rules and that every pair of rooms meets by time T, and requires S <= 15 (the CEMC full-marks bound; the hard version takes only full marks). The statement's sample has N = 5, which its own constraints rule out (the reference prints nothing for it), so tests.toml leaves it out. Statement: CEMC's 2024 CCO problem set and Luogu P11517 (the DMOJ page is behind Cloudflare from here)."
+ "notes": "Many strategies are valid, so checker.py checks the move rules and that every pair of rooms meets by time T, and requires S <= 15 (the CEMC full-marks bound; the hard version takes only full marks). The statement's sample has N = 5 although its constraints fix N = 100; the accepted C++ (6435765) returns at once with no output when N != 100, so it fails the sample. orig.cpp is that submission with the N != 100 early return removed: its strategy only needs a root within depth 50, and on the sample it passes checker.py. The statement's sample output is a format illustration (rooms 1 and 0 never meet), so it is not an answer. Statement: CEMC's 2024 CCO problem set and Luogu P11517 (the DMOJ page is behind Cloudflare from here)."
 }

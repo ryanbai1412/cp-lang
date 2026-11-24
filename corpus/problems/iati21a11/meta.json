@@ -19,11 +19,15 @@
   {"id": "5056462", "language": "CPP17", "result": "TLE", "time": 8.205915674, "memory_kb": 97976.0, "file": "corpus/submissions/5056462.cpp"},
   {"id": "5056467", "language": "CPP17", "result": "WA", "time": 2.092645858, "memory_kb": 98108.0, "file": "corpus/submissions/5056467.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/iati21a11/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Statement: IATI 2021 senior day 1 task 1 (Heaps), arena.olimpiici.com problem 1606 (PDF). No accepted submission exists (the 16 C++ ones are WA, RTE or TLE; 5052334 XORs B + S, wrong already for K = 0). orig.cpp computes transfinite Grundy values w c + d: g(b, s) = (b, s - K b) for s >= K b, else the K = 1 table scaled by K, the table built from the rows above it; a brute of the definition (exact prefix-plus-tail rows) agrees on every pair of heaps with b <= 24, s <= 30 for K = 0..4, and it prints the statement example."
 }

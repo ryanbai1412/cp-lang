@@ -94,7 +94,11 @@ impl Emitter<'_> {
                 }
                 let dies = self.handed_item_dies(items, idx, is_return);
                 if let (ExprKind::Local(slot), true) = (&item.kind, dies) {
-                    return format!("std::move({})", self.names[*slot]);
+                    let moved = format!("std::move({})", self.names[*slot]);
+                    return match struct_id {
+                        Some(s) => self.narrow_field_store(s, idx, &moved),
+                        None => moved,
+                    };
                 }
                 if let Some(l) = struct_id
                     .and_then(|s| self.elem_layout(cpl_ir::ElemLoc::Field(s, idx)))

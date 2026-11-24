@@ -17,7 +17,7 @@ impl<'a> Lowerer<'a> {
 
     /// Whether an `if` with an `Int` branch beside a `ty` branch is a `ty`: `F64`, or a number
     /// struct an `Int` is made into (R04.4.28).
-    pub(crate) fn int_joins(&self, ty: &Ty) -> bool {
+    pub(crate) fn int_joins(&mut self, ty: &Ty) -> bool {
         *ty == Ty::Float || matches!(ty, Ty::Struct(sid) if self.is_number(*sid))
     }
 
@@ -274,7 +274,7 @@ impl<'a> Lowerer<'a> {
             // An `Int` where a number struct is wanted is made into it
             // (decision 3.10): `var ans: Z = 1` is `Z(1)`.
             (Ty::Struct(sid), Ty::Int) if self.is_number(*sid) => {
-                match self.structs[*sid].methods.get("new").copied() {
+                match self.own_method(*sid, "new") {
                     Some(new_fn) => {
                         let ret = self.ret_of(new_fn, span);
                         Ok(Expr {
@@ -343,10 +343,10 @@ impl<'a> Lowerer<'a> {
                         return Ok(self.domain_bitset_full(dom, span));
                     }
                 }
-                let Some(&new_fn) = self.structs[sid].methods.get("new") else {
+                let Some(new_fn) = self.own_method(sid, "new") else {
                     return Err(e);
                 };
-                let Some(&ins_fn) = self.structs[sid].methods.get("insert") else {
+                let Some(ins_fn) = self.own_method(sid, "insert") else {
                     return Err(e);
                 };
                 self.queue_fn(new_fn);

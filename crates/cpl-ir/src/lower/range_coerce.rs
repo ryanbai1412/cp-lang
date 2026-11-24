@@ -9,7 +9,11 @@ impl<'a> Lowerer<'a> {
     /// positions are the plain `Int`s the array is indexed with.
     pub(crate) fn is_range_domain(&self, d: DomainId) -> bool {
         self.range_domains.contains_key(&d)
-            && !self.gen_env.values().any(|ga| *ga == GenArg::Domain(d))
+            && !self.gen_env.values().any(|ga| match ga {
+                GenArg::Domain(given) => *given == d,
+                GenArg::Ty(ty) => ty.mentions_domain(d),
+                _ => false,
+            })
     }
 
     /// The type as the caller of a generic fn writes it: a position or

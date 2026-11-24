@@ -412,7 +412,7 @@ fn json_carries_every_field_and_escapes_strings() {
     assert_eq!(
         text,
         "{\"modules\":[{\"name\":\"m\",\"path\":\"m.cp\",\"doc\":\"\",\"examples\":[],\"links\":[],\"items\":[\
-         {\"kind\":\"fn\",\"name\":\"hi\",\"signature\":\"fn hi()\",\"doc\":\"Says \\\"hi\\\"\\\\n.\",\
+         {\"kind\":\"fn\",\"indexed\":true,\"name\":\"hi\",\"signature\":\"fn hi()\",\"doc\":\"Says \\\"hi\\\"\\\\n.\",\
          \"summary\":\"Says \\\"hi\\\"\\\\n.\",\"cost\":\"O(1)\",\
          \"facts\":{\"cost\":null,\"empty\":null,\"order\":null,\"ties\":null,\"traps\":null},\
          \"prose\":\"Says \\\"hi\\\"\\\\n.\",\"line\":3,\"examples\":[],\"links\":[],\"aliases\":[],\"members\":[]}]}]}\n"

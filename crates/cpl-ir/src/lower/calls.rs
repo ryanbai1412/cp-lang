@@ -206,6 +206,10 @@ pub(super) fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
             collect_expr_calls(lo, out);
             collect_expr_calls(hi, out);
         }
+        ExprKind::MutLine(place, at, _) => {
+            collect_place_calls(place, out);
+            collect_expr_calls(at, out);
+        }
         ExprKind::Mutate(_, place, args) => {
             collect_place_calls(place, out);
             for a in args {

@@ -191,7 +191,7 @@ const DIRECTIVES: [(&str, Count); 3] = [
 ];
 
 /// The most of each the corpus may build to, summed over programs.
-const TOTALS: [(&str, Count, usize); 1] = [("sunk_copies", sunk_copies, 16)];
+const TOTALS: [(&str, Count, usize); 1] = [("sunk_copies", sunk_copies, 12)];
 
 /// The value of the header line `// <key>: N` (0 without one), or why the
 /// header is malformed. The header is the file's leading `//` lines.

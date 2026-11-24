@@ -49,6 +49,20 @@ impl Checker<'_> {
 
     /// `x.inv` names a method that does work, so it is called with `()`,
     /// as R07.1.7 asks of built-in members.
+    /// Whether `x.name` on an `owner` names an `@get`, as member resolution
+    /// reads it: `Rebased(a).items` is std's `@get items(self: S)` view, not
+    /// the `items` its `impl Keyed` writes (R02.6.6).
+    fn reads_as_getter(&mut self, name: &str, owner: &str) -> bool {
+        self.method_candidates(name).into_iter().any(|(_, def)| {
+            matches!(&*def, Def::Fn { getter: true, ty: Ty::Fn { params, .. }, .. }
+            if params.first().is_some_and(|p| match &p.ty {
+                Ty::Param(_) => true,
+                Ty::Named { name, .. } => name == owner,
+                _ => false,
+            }))
+        })
+    }
+
     pub(super) fn uncalled_method(
         &mut self,
         expr: &Expr,
@@ -65,7 +79,7 @@ impl Checker<'_> {
             Ty::Unknown => crate::prelude::is_work_method(&name.text),
             _ => false,
         };
-        if !does_work {
+        if !does_work || self.reads_as_getter(&name.text, owner) {
             return;
         }
         if let Some(Def::Struct { fields, .. }) = self.env.global(owner).as_deref() {

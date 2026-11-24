@@ -12,7 +12,7 @@ let (n, k): (1..=200_000, 1..=200_000) = read()
 domain V = 1..=n
 domain E = 0..n - 1
 let edges: [E](u: V, v: V) = read()
-let t = Rooted(Graph<V, E>.undirected(edges), V.first!)
+let t = Rooted(Graph.undirected(edges), V.first!)
 
 fn outposts(radius: Int) -> Int:
     var open: [V]?Int = None  // farthest uncovered vertex below, if any

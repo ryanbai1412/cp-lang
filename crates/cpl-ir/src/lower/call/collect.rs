@@ -157,10 +157,10 @@ impl<'a> Lowerer<'a> {
             let Some(sid) = self.instantiate_bitset(dom, span) else {
                 return self.err_expr(span);
             };
-            let Some(&new_fn) = self.structs[sid].methods.get("new") else {
+            let Some(new_fn) = self.own_method(sid, "new") else {
                 return self.err_expr(span);
             };
-            let Some(&add_fn) = self.structs[sid].methods.get("add") else {
+            let Some(add_fn) = self.own_method(sid, "add") else {
                 return self.err_expr(span);
             };
             self.queue_fn(new_fn);

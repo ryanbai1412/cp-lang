@@ -16,7 +16,7 @@ domain Hall = 0..m
 domain X = 0..k
 let halls: [Hall](u: Room, v: Room, len: 1..=1e9) = read()
 let exits: [X]Room = read()
-let g = Graph<Room, Hall>.undirected(halls)
+let g = Graph.undirected(halls)
 
 var offers: [Room]Int = 0  // ways out seen so far, cheapest first
 var heap = MinHeap<(Int, Room)>()

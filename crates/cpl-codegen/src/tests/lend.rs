@@ -832,8 +832,9 @@ fn mut_alias_of_a_map_key_finds_its_slot_once() {
         "    if gone: m.remove(i % 3)\n",
         "print(m.len)\n",
     ));
-    assert_eq!(code.matches("cpl::map_slot(m, ").count(), 1, "{code}");
-    assert!(code.contains("cpl::map_slot_put(m, "), "{code}");
+    // `p += 1` puts an absent key anyway, so the `let` puts it: one walk, not a find then a put.
+    assert_eq!(code.matches("= &m[").count(), 1, "{code}");
+    assert!(!code.contains("cpl::map_slot(m, "), "{code}");
     assert!(code.contains("cpl::map_slot_at("), "{code}");
     assert!(!code.contains("m.at("), "{code}");
 }
@@ -855,5 +856,51 @@ fn a_getter_that_forwards_a_lent_getter_lends_too() {
             out.contains(&format!("const std::vector<ll>& {f}(")),
             "{f}:\n{out}"
         );
+    }
+}
+
+#[test]
+fn a_map_entry_keyed_by_a_call_is_lent_unless_the_call_writes_the_map() {
+    let lent = body(concat!(
+        "fn key(r: Int) -> Int = r % 3\n",
+        "let n: Int = read()\n",
+        "let at = (0..n).group(by: k => k % 3)\n",
+        "var s = 0\n",
+        "for r in 0..n:\n",
+        "    let xs = at[key(r)]\n",
+        "    s += xs[0]\n",
+        "print(s)\n",
+    ));
+    assert!(
+        lent.contains("const std::vector<ll>& xs = "),
+        "a call that can't change the map leaves the entry lent: {lent}"
+    );
+    let copied = body(concat!(
+        "var at = Map<Int, List<Int>>()\n",
+        "fn key(r: Int) -> Int:\n",
+        "    at[r + 100] = [r]\n",
+        "    r % 3\n",
+        "for r in 0..3: at[r] = [r]\n",
+        "var s = 0\n",
+        "for r in 0..3:\n",
+        "    let xs = at[key(r)]\n",
+        "    s += xs[0]\n",
+        "print(s)\n",
+    ));
+    assert!(
+        copied.contains("std::vector<ll> xs = ") && !copied.contains("& xs = "),
+        "a key that writes the map keeps the copy: {copied}"
+    );
+}
+
+#[test]
+fn mut_alias_of_a_map_key_puts_it_only_when_written() {
+    // A read first traps on an absent key, and `max=` keeps an absent key at its operand.
+    for (first, then) in [("print(p)", "p += 1"), ("p max= 2", "p += 1")] {
+        let code = body(&format!(
+            "var m = HashMap<Int, Int>()\nm[1] = 1\nfor i in 0..10:\n    let p = mut m[i % 3]\n    {first}\n    {then}\nprint(m.len)\n"
+        ));
+        assert!(code.contains("cpl::map_slot(m, "), "{first}: {code}");
+        assert!(!code.contains("= &m["), "{first}: {code}");
     }
 }

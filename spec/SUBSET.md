@@ -53,7 +53,7 @@ documented.
 | R03.3 | 3. Operations on niche types | supported |  |
 | R03.4 | 4. Overflow, in one table | supported |  |
 | R03.5 | 5. Modular numbers | supported |  |
-| R04.2 | The model in one paragraph | supported | 1 known gap |
+| R04.2 | The model in one paragraph | supported |  |
 | R04.3 | Positions and cuts move the same way | supported |  |
 | R04.4 | Two kinds of range, one type | supported |  |
 | R04.7 | Middle of a range | supported |  |
@@ -115,7 +115,7 @@ documented.
 | R04a.8 | G. Revision: changing your mind | supported |  |
 | R04a.9 | H. Keys of the other views | supported |  |
 | R04a.11 | Recommendation: identity everywhere (I) | supported |  |
-| R04b.1 | Methods | supported | 2 known gaps |
+| R04b.1 | Methods | supported | 1 known gap |
 | R04b.3 | User helpers | supported |  |
 | R04b.4 | Library code | supported |  |
 | R04b.5 | Spec changes this implies | supported |  |
@@ -174,7 +174,6 @@ documented.
 
 ## Known gaps
 
-- core-04/rebased-str-indexes-from-zero.cp: fail
 - core-04/zip-keyed-by-first.cp: fail
 - core-05/exercise-04-var-from-lent-param.cp: fail
 - core-05/map-entry-index-key-lends.cp: fail

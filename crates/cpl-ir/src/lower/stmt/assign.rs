@@ -486,7 +486,7 @@ impl<'a> Lowerer<'a> {
                     };
                     // `z **= e` is `z = z.pow(e)`, as `z ** e` is.
                     let pow = match (bin, &value.ty) {
-                        (BinOp::Pow, Ty::Int) => self.structs[sid].methods.get("pow").copied(),
+                        (BinOp::Pow, Ty::Int) => self.own_method(sid, "pow"),
                         _ => None,
                     };
                     if let Some(fn_id) = pow {

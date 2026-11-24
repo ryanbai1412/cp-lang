@@ -8,9 +8,9 @@ impl<'a> Lowerer<'a> {
         if let Some(ty) = super::read_spec::unreadable(&spec) {
             let message = format!("`read()` has no input format for a `{}`", self.show(&ty));
             self.error(codes::UNSUPPORTED, span, message);
-            if let Ty::Opt(inner) = &ty {
-                if matches!(**inner, Ty::Int | Ty::Pos(_)) {
-                    self.help("say which number in the input stands for `none`: `read(none: 0)`");
+            if let Ty::Struct(id) = ty {
+                if self.private_fields(id) {
+                    self.help("its fields are private to the module that declares it (R11.1.4); read the values it is built from and build it");
                 }
             }
             return self.err_expr(span);

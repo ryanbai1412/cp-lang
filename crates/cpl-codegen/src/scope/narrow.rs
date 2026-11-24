@@ -2,9 +2,17 @@
 
 use super::*;
 
-/// A `?Int` field, which a narrow width stores as `cpl::OptI32`.
-pub(crate) fn is_opt_int(ty: Option<&Ty>) -> bool {
-    matches!(ty, Some(Ty::Opt(inner)) if **inner == Ty::Int)
+/// The niche a narrow width stores an optional field in, with the wide type it
+/// reads back as and its bit in `niche_types`: `?Int` is `cpl::OptI32`,
+/// `??Int` is `cpl::OptOptI32`.
+pub(crate) fn opt_int_niche(ty: Option<&Ty>) -> Option<(&'static str, &'static str, u16)> {
+    match ty? {
+        Ty::Opt(inner) if **inner == Ty::Int => Some(("cpl::OptI32", "cpl::OptInt", 6)),
+        Ty::Opt(inner) if matches!(inner.as_ref(), Ty::Opt(t) if **t == Ty::Int) => {
+            Some(("cpl::OptOptI32", "std::optional<cpl::OptInt>", 8))
+        }
+        _ => None,
+    }
 }
 
 /// A sequence built fresh where it is given, so it can be built in whatever
@@ -26,7 +34,7 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
     for (id, def) in program.structs.iter().enumerate() {
         for (field, width) in &def.narrow_ints {
             if matches!(def.fields.get(*field).map(|(_, t)| t), Some(Ty::Int))
-                || is_opt_int(def.fields.get(*field).map(|(_, t)| t))
+                || opt_int_niche(def.fields.get(*field).map(|(_, t)| t)).is_some()
             {
                 narrow.insert((id, *field), *width);
             }
@@ -230,6 +238,7 @@ pub(crate) fn narrow_elems(
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,
@@ -341,11 +350,14 @@ pub(crate) fn narrow_elems(
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,
             ) => args.first().and_then(|a| expr_root(scope, a)),
-            ExprKind::MutSlice(place, _, _) => place_root(scope, place),
+            ExprKind::MutSlice(place, _, _) | ExprKind::MutLine(place, _, _) => {
+                place_root(scope, place)
+            }
             ExprKind::Do(blk) => match blk.stmts.last() {
                 Some(Stmt::Give(inner)) => expr_root(scope, inner),
                 _ => None,
@@ -494,6 +506,7 @@ pub(crate) fn narrow_elems(
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,
@@ -772,6 +785,7 @@ pub(crate) fn narrow_elems(
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,

@@ -1,6 +1,5 @@
-// Tuned: count the pattern's occurrences by comparing characters in place, not one Str per
-// window, and only for the patterns that need them; the zero runs are counted in one pass, not
-// split into strings.
+// Tuned: count the pattern's occurrences by indexing characters in place, not through window
+// views; the zero runs are counted in one pass, not split into strings.
 //
 // Source: CCO 2023 P4 (Flip it and Stick it), https://dmoj.ca/problem/cco23p4
 // limits: 1000 ms, 1024 MB

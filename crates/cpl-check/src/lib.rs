@@ -50,8 +50,8 @@ pub use modules::{
 };
 pub use prelude::{
     arity_key, import_edit, method_key, method_module, methods as std_methods, overload_key,
-    overload_part, set_domain, std_module, std_names, std_self_heads, written_name, SetDomain,
-    VALUE_NAMES as PRELUDE_VALUES,
+    overload_part, set_domain, std_family, std_module, std_names, std_self_heads, type_arity,
+    written_name, SetDomain, VALUE_NAMES as PRELUDE_VALUES,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};

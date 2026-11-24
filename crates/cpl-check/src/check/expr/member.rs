@@ -732,7 +732,22 @@ impl<'a> Checker<'a> {
             Ty::Tuple(items) => {
                 return match name.text.parse::<usize>() {
                     Ok(i) if i < items.len() => items[i].clone(),
-                    _ => self.own_method_at(&base_ty, name).unwrap_or(Ty::Unknown),
+                    _ => match self.own_method_at(&base_ty, name) {
+                        Some(ty) => ty,
+                        // A product, `(W, W).all(..)`, or a fn of the name
+                        // the call picks once it sees the arguments.
+                        None if items
+                            .iter()
+                            .any(|t| matches!(t, Ty::Domain(_) | Ty::TypeName(_)))
+                            || !self.method_candidates(&name.text).is_empty() =>
+                        {
+                            Ty::Unknown
+                        }
+                        None => {
+                            self.unknown_member(name, &base_ty, &[], &[]);
+                            Ty::Error
+                        }
+                    },
                 };
             }
             Ty::Named {

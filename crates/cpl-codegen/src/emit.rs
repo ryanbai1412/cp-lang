@@ -109,7 +109,7 @@ pub(crate) struct Emitter<'p> {
     pub copies: Vec<crate::lend::Copied>,
     /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
     /// the file names, as bits.
-    pub niche_types: std::cell::Cell<u8>,
+    pub niche_types: std::cell::Cell<u16>,
     /// Runtime pieces the program uses, by name.
     pub used: BTreeSet<&'static str>,
     /// Names taken at the top level of the file.
@@ -194,6 +194,8 @@ pub(crate) struct Emitter<'p> {
     pub pushers: BTreeMap<usize, usize>,
     /// The pushers that run to their end, never feeding a loop.
     pub eager: BTreeSet<usize>,
+    /// Where each loop is, for [`cpl_ir::pushed::Feeds::feeds`].
+    pub feed_scope: cpl_ir::pushed::FeedScope,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
     /// The loops over a `yields` fn being written as its callback, innermost last.
@@ -217,6 +219,8 @@ pub(crate) struct Emitter<'p> {
     pub map_slots: BTreeMap<(Option<usize>, usize), String>,
     /// Emitting the plain `let` of such a key, before its slot pointer.
     pub plain_let: bool,
+    /// The statement being written is a `let p = mut m[k]` that [`Emitter::slot_written_next`] holds.
+    pub slot_written_next: bool,
     /// Locals bound as `const T&` to a place they read.
     pub ref_bound: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
@@ -313,6 +317,7 @@ impl<'p> Emitter<'p> {
             lent: BTreeSet::new(),
             map_slots: BTreeMap::new(),
             plain_let: false,
+            slot_written_next: false,
             ref_bound: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
@@ -339,6 +344,7 @@ impl<'p> Emitter<'p> {
             pushed_moves: Vec::new(),
             pushers: BTreeMap::new(),
             eager: BTreeSet::new(),
+            feed_scope: cpl_ir::pushed::FeedScope::default(),
             sinks: BTreeMap::new(),
             sink_pure: BTreeSet::new(),
             sinking: None,
@@ -371,6 +377,7 @@ impl<'p> Emitter<'p> {
         );
         emitter.pushers = feeds.pushers;
         emitter.eager = feeds.eager;
+        emitter.feed_scope = feeds.scope;
         emitter
     }
 
@@ -389,11 +396,16 @@ impl<'p> Emitter<'p> {
                     1
                 )
             ),
-            "in" => piece.code.replacen(
-                "inline bool more() { ",
-                "inline bool more() { if (parsing) return false; ",
-                1,
-            ),
+            // A string being parsed is the whole input: reading on would take stdin into it.
+            "in" => {
+                let code = piece.code.replacen(
+                    "inline bool more() {",
+                    "inline bool more() { if (parsing) return false;",
+                    1,
+                );
+                assert_ne!(code, piece.code, "the `in` piece defines `more()`");
+                code
+            }
             _ => piece.code.to_string(),
         }
     }
@@ -421,6 +433,7 @@ impl<'p> Emitter<'p> {
             "cpl::OptField",
             "cpl::OptI32",
             "cpl::Unit",
+            "cpl::OptOptI32",
         ]
         .iter()
         .enumerate()
@@ -1320,6 +1333,7 @@ impl<'p> Emitter<'p> {
             "niche_field",
             "niche_i32",
             "unit",
+            "niche_opt_opt_i32",
         ]
         .into_iter()
         .enumerate()
