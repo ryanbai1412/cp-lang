@@ -1002,3 +1002,68 @@ fn assign_actions_replace_and_never_commute():
     let set_adds = max_set_add.replaces!
     assert set_adds((set: Some(2), add: 0)) and not set_adds((set: keep, add: 3))
     assert not Action<Int, Int>(apply: (d, x, span) => x + d * span).commutes
+
+impl<T: Add + Zero> Op<T> for type_of(+):
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = a + b
+    fn folds(self) -> Monoid<T> = Monoid(T.zero, (a, b) => a + b, x => x)
+    fn lift(self, x: T) -> T = x
+
+impl<T: Mul + One> Op<T> for type_of(*):
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = a * b
+    fn folds(self) -> Monoid<T> = Monoid(T.one, (a, b) => a * b, x => x)
+    fn lift(self, x: T) -> T = x
+
+impl<T> Op<T> for type_of(^):
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = a ^ b
+    fn folds(self) -> Monoid<T> = Monoid(T.zero, (a, b) => a ^ b, x => x)
+    fn lift(self, x: T) -> T = x
+
+impl<T> Op<T> for type_of(|):
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = a | b
+    fn folds(self) -> Monoid<T> = Monoid(T.zero, (a, b) => a | b, x => x)
+    fn lift(self, x: T) -> T = x
+
+impl<T> Op<T> for type_of(&):
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = a & b
+    fn folds(self) -> Monoid<T> = Monoid(T.zero - T.one, (a, b) => a & b, x => x)
+    fn lift(self, x: T) -> T = x
+
+impl<T> Op<T> for type_of(max):
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = max(a, b)
+    fn folds(self) -> Monoid<T> = Monoid(T.MIN, (a, b) => max(a, b), x => x)
+    fn lift(self, x: T) -> T = x
+
+impl<T> Op<T> for type_of(min):
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = min(a, b)
+    fn folds(self) -> Monoid<T> = Monoid(T.MAX, (a, b) => min(a, b), x => x)
+    fn lift(self, x: T) -> T = x
+
+impl Op<Int> for type_of(gcd):
+    type Fold = Int
+    fn op(self, a: Int, b: Int) -> Int = gcd(a, b)
+    fn folds(self) -> Monoid<Int> = Monoid(0, (a, b) => gcd(a, b), x => x)
+    fn lift(self, x: Int) -> Int = x
+
+impl Op<Bool> for type_of(or):
+    type Fold = Bool
+    fn op(self, a: Bool, b: Bool) -> Bool = a or b
+    fn folds(self) -> Monoid<Bool> = Monoid(false, (a, b) => a or b, x => x)
+    fn lift(self, x: Bool) -> Bool = x
+
+impl Op<Bool> for type_of(and):
+    type Fold = Bool
+    fn op(self, a: Bool, b: Bool) -> Bool = a and b
+    fn folds(self) -> Monoid<Bool> = Monoid(true, (a, b) => a and b, x => x)
+    fn lift(self, x: Bool) -> Bool = x
+
+impl<T> Idempotent<T> for type_of(max)
+impl<T> Selective<T> for type_of(max)
+impl<T> Idempotent<T> for type_of(min)
+impl<T> Selective<T> for type_of(min)
