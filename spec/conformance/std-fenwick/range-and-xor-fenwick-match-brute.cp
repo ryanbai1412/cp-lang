@@ -16,7 +16,7 @@ for step in 0..200:
         rf.add(D(l)..=D(h), x)
         for i in l..=h: a[D(i)] = a[D(i)] + x
         let j = r.int(0, 6)
-        xf.flip(D(j), x + 5)
+        xf.add(D(j), x + 5)
         xa[D(j)] = xa[D(j)] ^ (x + 5)
     var s = 0
     var t = 0

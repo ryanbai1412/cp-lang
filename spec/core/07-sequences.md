@@ -457,7 +457,7 @@ place) are different jobs, not twins.
 | `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order | \(O(1)\) per element (R07.12.2) |
 | `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | \(O(1)\) per step (R07.12.3) |
 | `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | \(O(n)\) (R07.12.4) |
-| `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` turns true (an `Int` on a `List`); the range equal to `x` | \(O(\log n)\) (R07.12.5) |
+| `a.bsearch(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` turns true (an `Int` on a `List`); the range equal to `x` | \(O(\log n)\) (R07.12.5) |
 | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in place; `false` past the end | amortized \(O(1)\) (R07.12.6) |
 | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rotate in place; a rotated copy | \(O(n)\) (R07.12.7) |
 | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ids.len)` | \(O(\log n)\) (R07.12.8) |

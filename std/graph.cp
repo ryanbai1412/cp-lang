@@ -325,8 +325,8 @@ pub struct Graph<V: Domain, A: Target<V>>:
     ///
     /// cost: \(O(\deg u)\)
     /// traps: never
-    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g.has(0, 2) and not g.has(2, 0)`
-    pub fn has(self, u: V, v: V) -> Bool:
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g.contains(0, 2) and not g.contains(2, 0)`
+    pub fn contains(self, u: V, v: V) -> Bool:
         for i in start[u.ord]..start[u.ord + 1]:
             if arcs[i].to == v: return true
         false
@@ -651,14 +651,14 @@ pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 pub fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V:
     for a in self[u]: yield a.to
 
-/// True when the adjacency list has an arc `u -> v`, as `Graph.has` is for a `Graph`. A scan
+/// True when the adjacency list has an arc `u -> v`, as `Graph.contains` is for a `Graph`. A scan
 /// of `u`'s list, not a lookup.
 ///
 /// cost: \(O(\deg u)\)
 /// traps: never
-/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.has(0, 2) and not g.has(2, 0)`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.contains(0, 2) and not g.contains(2, 0)`
 /// empty: false for a vertex with no arcs
-pub fn has<V>(self: [V]List<V>, u: V, v: V) -> Bool = self[u].contains(v)
+pub fn contains<V>(self: [V]List<V>, u: V, v: V) -> Bool = self[u].contains(v)
 
 /// The reverse of an adjacency list: `v` lists `u` once for each arc `u -> v`, `u` ascending.
 ///
@@ -1673,12 +1673,12 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
 /// \(O(1)\).
 /// A variable or its negation: `Lit(x, true)` is "x holds".
 pub struct Lit<X>(pub x: X, pub value: Bool):
-    /// The opposite literal: `Lit(x, v).flip == Lit(x, not v)`.
+    /// The opposite literal: `Lit(x, v).neg == Lit(x, not v)`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `domain X = 0..2; Lit(X(1), true).flip == Lit(X(1), false)`
-    @get pub fn flip(self) -> Lit<X> = Lit(self.x, not self.value)
+    /// example: `domain X = 0..2; Lit(X(1), true).neg == Lit(X(1), false)`
+    @get pub fn neg(self) -> Lit<X> = Lit(self.x, not self.value)
 
 /// A conjunction of two-literal clauses over the variables `X`. Every clause is \(O(1)\)
 /// to add; `solve` is \(O(\lvert X \rvert + \mathit{clauses})\).
@@ -1711,13 +1711,13 @@ pub struct TwoSat<X>:
     pub fn must(mut self, a: Lit<X>):
         self.add_or(a, a)
 
-    /// Adds "if `a` holds then `b` holds" (`add_or(a.flip, b)`).
+    /// Adds "if `a` holds then `b` holds" (`add_or(a.neg, b)`).
     ///
     /// cost: \(O(1)\) amortized
     /// traps: never
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, true])`
     pub fn implies(mut self, a: Lit<X>, b: Lit<X>):
-        self.add_or(a.flip, b)
+        self.add_or(a.neg, b)
 
     /// Adds "at most one of `lits` holds". One helper variable per literal ("some literal so
     /// far holds") keeps it at \(O(k)\) clauses instead of \(O(k^2)\); helpers never appear in
@@ -1747,7 +1747,7 @@ pub struct TwoSat<X>:
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_xor(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
     pub fn add_xor(mut self, a: Lit<X>, b: Lit<X>):
         self.add_or(a, b)
-        self.add_or(a.flip, b.flip)
+        self.add_or(a.neg, b.neg)
 
     /// Adds "`a` and `b` hold together or not at all" (two clauses).
     ///
@@ -1755,8 +1755,8 @@ pub struct TwoSat<X>:
     /// traps: never
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_eq(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(1), false)); s.solve() == Some([false, false])`
     pub fn add_eq(mut self, a: Lit<X>, b: Lit<X>):
-        self.add_or(a.flip, b)
-        self.add_or(a, b.flip)
+        self.add_or(a.neg, b)
+        self.add_or(a, b.neg)
 
     /// An assignment satisfying every clause, or `None` if there is None.
     ///

@@ -144,7 +144,6 @@ use std.seq.{
     Ties,
     pairs,
     partition,
-    partition_point,
     prev_permutation,
     product,
     all,

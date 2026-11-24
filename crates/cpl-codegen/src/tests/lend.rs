@@ -179,7 +179,7 @@ fn a_map_entry_read_through_a_closure_and_a_domain_block_is_never_copied() {
         "var s = 0\n",
         "for hi in 0..4:\n",
         "    let l = m.get(0) ?? []\n",
-        "    s += l.partition_point(x => x >= hi)\n",
+        "    s += l.bsearch(x => x >= hi)\n",
         "print(s)\n",
     ));
     assert!(
@@ -271,12 +271,12 @@ fn a_list_of_lists_element_is_lent_to_a_method_on_it() {
         "for i in 0..20: ends[i % w].push(i)\n",
         "var s = 0\n",
         "for q in 0..20:\n",
-        "    s += ends[q % w].partition_point(x => x >= q)\n",
+        "    s += ends[q % w].bsearch(x => x >= q)\n",
         "print(s)\n",
     ));
     assert!(
         out.contains("-> decltype(auto) {") && out.contains("return (t"),
-        "the element must reach partition_point as a reference: {out}"
+        "the element must reach bsearch as a reference: {out}"
     );
 }
 

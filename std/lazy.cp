@@ -710,8 +710,8 @@ pub struct LazyTreap<T, F>(
     /// cost: \(O(\log n)\) expected
     /// empty: an empty `other` changes nothing
     /// traps: when the total reaches `2^31` elements
-    /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.append(mut u); t.to_list() == [1, 5] and u.is_empty`
-    pub fn append(mut self, mut other: LazyTreap<T, F>):
+    /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.splice_back(mut u); t.to_list() == [1, 5] and u.is_empty`
+    pub fn splice_back(mut self, mut other: LazyTreap<T, F>):
         assert self.len + other.len < 2_147_483_648, "a LazyTreap holds fewer than `2^31` elements"
         let moved = self.copy_from(other, other.root)
         root = self.merge(root, moved)

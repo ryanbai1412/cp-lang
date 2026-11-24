@@ -430,8 +430,8 @@ pub struct XorFenwick<D, T>:
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
-    /// example: `var f = XorFenwick([1, 2, 4]); f.flip(1, 2); f.xor(0..3) == 5`
-    pub fn flip(mut self, i: D, x: T):
+    /// example: `var f = XorFenwick([1, 2, 4]); f.add(1, 2); f.xor(0..3) == 5`
+    pub fn add(mut self, i: D, x: T):
         var p = i.ord + 1
         while p < t.len:
             t[p] ^= x

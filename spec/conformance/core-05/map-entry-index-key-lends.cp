@@ -10,5 +10,5 @@ let at = (0..=n).group(by: k => p.cut(k))
 var s = 0
 for r in 0..=n:
     let xs = at[p.cut(r)]
-    s += xs[xs.partition_point(k => k > 0)]
+    s += xs[xs.bsearch(k => k > 0)]
 print(s)

@@ -29,7 +29,7 @@ for _ in 0..n: tiles.push(read_tile())
 var rows: List<List<Tile>> = []
 sort(mut tiles)
 for t in tiles.rev:
-    let r = Int(rows.partition_point(row => row.last!.b >= t.b))
+    let r = Int(rows.bsearch(row => row.last!.b >= t.b))
     if r < rows.len: rows[r].push(t)
     else: rows.push([t])
 print(rows.len)

@@ -32,8 +32,8 @@ var out: List<Char> = []
 for (a, b) in chords:
     var pred = U64(1) ^ bit.xor(..a) ^ bit.xor(..b)
     if (pred & U64(1)) != U64(0): pred ^= rng.next() << 1
-    bit.flip(a, pred)
-    bit.flip(b, pred)
+    bit.add(a, pred)
+    bit.add(b, pred)
     tot ^= pred
     out.push(if tot == (tot & U64(1)): '1' else: '0')
 

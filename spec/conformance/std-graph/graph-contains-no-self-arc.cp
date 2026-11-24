@@ -3,4 +3,4 @@ domain V = 0..2
 domain E = 0..1
 let es: [E](u: V, v: V) = [(u: 0, v: 1)]
 let g = Graph.directed(es)
-print(yes(g.has(0, 0)), yes(g.has(0, 1)))
+print(yes(g.contains(0, 0)), yes(g.contains(0, 1)))

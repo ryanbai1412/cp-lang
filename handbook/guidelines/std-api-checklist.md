@@ -22,20 +22,27 @@ One idea has one name in every module; a new idea adds a row here in the commit 
 
 - **Why:** a contestant guesses the next type's calls from the last one.
 - **Example:** every set-like container uses `add` and `remove`, never `insert` and `erase`.
-- **Enforced by:** `scripts/spec-gate.py vocab` bans the right-hand column across std, spec and docs; `missing` as an API-consistency lint over `cpl doc --format json std`.
+- **Enforced by:** `scripts/std-api-lint.py` fails a public std fn named by a word in the right-hand column that no row's middle column uses; `scripts/spec-gate.py vocab` bans phrasings across std, spec and docs.
 
 | Idea | Name | Not |
 |---|---|---|
 | size | `s.len` (a getter) | `len()`, `size()`, `count()` |
 | empty test | `s.is_empty` | `empty()` |
+| the empty value of a type | `T.empty` | |
 | insert into a set-like container | `s.add(x)`, returns `Bool` (was new) | `insert`, `put` |
 | delete from a container | `s.remove(x)`, returns `Bool` (maps: the removed `?V`) | `erase`, `delete`, `discard` |
 | flip membership | `s.toggle(x)` | `flip` |
+| negation | `-x`, `not b`, `l.neg` (a literal) | `flip` |
 | membership | `x in s`, method form `s.contains(x)` | `has`, `count(x) > 0` |
 | back of a sequence | `push`, `pop` | `append`, `push_back` |
+| insert at a position of a list | `a.insert(i, x)` | |
+| splice a whole structure onto an end | `t.splice_back(other)`, `t.splice_front(other)` | `append` |
 | front of a sequence | `push_front`, `pop_front` | `appendleft`, `shift` |
 | ends, possibly absent | `first`, `last` (`?T`) | `front`, `back` |
-| monotone search | `r.first_true(ok)`, `r.last_true(ok)` | `binary_search`, `partition_point` |
+| the reverse of a direction or a matching | `d.back` (the opposite direction), `m.back(r)` (`r`'s partner) | |
+| size of the component or subtree holding `v` | `d.size(v)` | |
+| move a function's argument (math) | `p.shift(c)` (`p(x + c)`), `f.shift(d)` | |
+| monotone search | `r.first_true(ok)`, `r.last_true(ok)`; the cut: `r.bsearch(ok)`, `a.bsearch(ok)` | `binary_search`, `partition_point` |
 | point read and write | `t.get(i)`, `t.set(i, x)`, `t.update(i, f)` | `query`, `modify` |
 | range fold | `t.fold(r)`; everything is `t.all` | `query`, `sum(l, r)` |
 | lazy range action | `t.apply(r, f)` | `update(l, r, x)` |

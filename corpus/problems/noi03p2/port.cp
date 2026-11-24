@@ -18,7 +18,7 @@ fn reindex():
     for s in pieces: starts.push(starts.last! + s.len)
 
 // The piece holding position p; pieces.len when p is the end of the text.
-fn piece_at(p: Int) -> Int = starts.partition_point(s => s > p) - 1
+fn piece_at(p: Int) -> Int = starts.bsearch(s => s > p) - 1
 
 // Make position p a piece boundary; the number of pieces before it.
 fn cut(p: Int) -> Int:

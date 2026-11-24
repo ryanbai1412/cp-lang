@@ -210,7 +210,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Quality | Metric | Mechanism |
 |---|---|---|
 | One spelling per idea | banned spellings in std and docs | rule `std-api/R1`; `scripts/spec-gate.py vocab` |
-| Names follow one lexicon (`first_ge`, `count`, `len`, `try_`, `_at`) | signatures that break `guidelines/std-api.md` | rule `std-api/R1`; `missing` (API-consistency lint over `cpl doc --format json std`, shrink-only) |
+| Names follow one lexicon (`first_ge`, `count`, `len`, `try_`, `_at`) | signatures that break `guidelines/std-api.md` | rule `std-api/R1`; `scripts/std-api-lint.py` (public fns named by a lexicon "Not" word, at 0) |
 | Searches and min/max return `?T`, never a sentinel | fns returning `-1`, `n` or `INF` for "none" | rule `std-api/R4`; `scripts/std-api-lint.py` (in `scripts/check.sh`, shrink-only) |
 | Options are named arguments (`by:`), never `_by` variants | `_by`/`_key` names, positional options | rule `std-api/R6`; `scripts/std-api-lint.py` (in `scripts/check.sh`, shrink-only) |
 | One form per operation: method or free fn, not both by accident | operations reachable both ways without a documented reason | rule `std-api/R11`; `scripts/std-api-lint.py` (an operation both a free fn and a method of its first parameter's type) |

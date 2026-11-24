@@ -59,7 +59,7 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 - `fn next(self, u: V) -> yields V` — \(O(1)\) per vertex yielded; Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.
 - `fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self>` — \(O(1)\) to make; `keep` and `from` run per arc walked; The induced view on the vertices `keep` accepts: arcs from or to a rejected vertex are skipped.
 - `fn weighted<E, W>(self, f: A -> W) -> Reweighted<V, E, A, W> where A: Edged<E>` — \(O(1)\) to make; `f` runs on every arc read; The same graph with each arc's `.w` read as `f(a)`; `.to` and `.e` pass through, so it is a `WeightedNext` and stays `Edged`.
-- `fn has(self, u: V, v: V) -> Bool` — \(O(\deg u)\); True when some arc `u -> v` exists.
+- `fn contains(self, u: V, v: V) -> Bool` — \(O(\deg u)\); True when some arc `u -> v` exists.
 - `fn lists(self) -> [V]List<V>` — \(O(n + m)\); The targets of every vertex as plain lists, `lists()[u] == next(u).collect()`: the shape `std.flow` matchings take.
 - `fn hops(self) -> [V, V]Int` — \(O(n (n + m))\) time, \(O(n^2)\) memory; The fewest arcs between every ordered pair, by a BFS from each vertex; `0` on the diagonal.; traps: when some vertex cannot reach another
 - `fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E>` — \(O(1)\) to make, \(O(1)\) per edge; Every edge once, as `Edge(e, u, v)`.
@@ -89,7 +89,7 @@ Fields: `order: List<V>`.
 
 \(O(1)\).
 
-- `@get fn flip(self) -> Lit<X>` — \(O(1)\); The opposite literal: `Lit(x, v).flip == Lit(x, not v)`.
+- `@get fn neg(self) -> Lit<X>` — \(O(1)\); The opposite literal: `Lit(x, v).neg == Lit(x, not v)`.
 
 ## `struct TwoSat<X>`
 
@@ -98,7 +98,7 @@ A conjunction of two-literal clauses over the variables `X`.
 - `fn new() -> TwoSat<X>` — \(O(\lvert X \rvert)\); An instance with no clauses over the variables of `X`; every assignment satisfies it.
 - `fn add_or(mut self, a: Lit<X>, b: Lit<X>)` — \(O(1)\) amortized; Adds the clause "at least one of `a`, `b` holds".
 - `fn must(mut self, a: Lit<X>)` — \(O(1)\) amortized; Adds the clause "`a` holds" (`add_or(a, a)`).
-- `fn implies(mut self, a: Lit<X>, b: Lit<X>)` — \(O(1)\) amortized; Adds "if `a` holds then `b` holds" (`add_or(a.flip, b)`).
+- `fn implies(mut self, a: Lit<X>, b: Lit<X>)` — \(O(1)\) amortized; Adds "if `a` holds then `b` holds" (`add_or(a.neg, b)`).
 - `fn at_most_one(mut self, lits: List<Lit<X>>)` — \(O(k)\) amortized; Adds "at most one of `lits` holds".
 - `fn add_xor(mut self, a: Lit<X>, b: Lit<X>)` — \(O(1)\) amortized; Adds "exactly one of `a`, `b` holds" (two clauses).
 - `fn add_eq(mut self, a: Lit<X>, b: Lit<X>)` — \(O(1)\) amortized; Adds "`a` and `b` hold together or not at all" (two clauses).
@@ -157,7 +157,7 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>` — \(O(n + m)\); `Graph.undirected` on a plain list of `(u, v)` pairs: each pair gives arcs both ways, each arc the target vertex itself.
 - `fn deg<V, A>(self: [V]List<A>, u: V) -> Int` — \(O(1)\); The number of arcs out of `u` in an adjacency list, as `Graph.deg` is for a `Graph`.
 - `fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V` — \(O(1)\) per vertex yielded; Where `u`'s arcs lead in an adjacency list, as `Graph.next` is for a `Graph`: each entry's target, repeats kept.
-- `fn has<V>(self: [V]List<V>, u: V, v: V) -> Bool` — \(O(\deg u)\); True when the adjacency list has an arc `u -> v`, as `Graph.has` is for a `Graph`.
+- `fn contains<V>(self: [V]List<V>, u: V, v: V) -> Bool` — \(O(\deg u)\); True when the adjacency list has an arc `u -> v`, as `Graph.contains` is for a `Graph`.
 - `fn transpose<V>(self: [V]List<V>) -> [V]List<V>` — \(O(n + m)\), a new adjacency list; The reverse of an adjacency list: `v` lists `u` once for each arc `u -> v`, `u` ascending.
 - `fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C)` — \(O(n + m)\); The connected components of an undirected graph, as a fresh domain `C` and each vertex's component.
 - `fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>` — \(O(n + m)\); The arcs between components: `out[comp[u]]` gets `(to: comp[a.to])` for every arc `a` of `u` that leaves its component.

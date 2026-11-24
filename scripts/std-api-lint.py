@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Lint std's public signatures against handbook/guidelines/std-api-checklist.md.
 
+- R1 (#r1-every-name-comes-from-the-lexicon): a public fn named by a word
+  in the lexicon's "Not" column that no row's "Name" column uses.
 - R4 (#r4-nothing-is-t-never-a-sentinel): a public fn returning a number
   whose doc gives a sentinel (`-1`, `INF`, "`len` when none") for "nothing".
   Orderings and signs (`cmp`, `compare`, `*_sign`), where `-1` is a value,
@@ -52,6 +54,37 @@ def both_forms(texts):
                    "keep one form")
 
 
+CHECKLIST = os.path.join(ROOT, "handbook", "guidelines", "std-api-checklist.md")
+WORD = re.compile(r"^`([A-Za-z_]\w*)(?:\(\))?`$")
+
+
+def lexicon(text):
+    """(own, banned): the words R1's table uses, and its bare "Not" words no row uses."""
+    section = text.split("### R1.", 1)[1].split("\n### ", 1)[0]
+    own, banned = set(), set()
+    for row in section.split("\n"):
+        cells = [c.strip() for c in row.strip().strip("|").split("|")]
+        if len(cells) != 3 or not row.startswith("|") or set(cells[1]) <= set("-"):
+            continue
+        for code in re.findall(r"`([^`]*)`", cells[1]):
+            own.update(re.findall(r"[A-Za-z_]\w*", code))
+        for code in re.findall(r"`[^`]*`", cells[2]):
+            w = WORD.match(code)
+            if w:
+                banned.add(w.group(1))
+    return own, banned - own
+
+
+def off_lexicon(texts, banned):
+    """std-api/R1: a public fn named by a word the lexicon bans."""
+    for rel, text in texts:
+        for line_no, line in enumerate(text.split("\n"), 1):
+            m = PUB_FN.match(line)
+            if m and m.group(2) in banned:
+                yield (f"{rel}:{line_no}: std-api/R1: `{m.group(2)}` is not a lexicon word; "
+                       "use the lexicon's name, or add a row in std-api-checklist.md")
+
+
 def findings():
     paths = sorted(glob.glob(os.path.join(ROOT, "std", "*.cp")))
     names = {m.group(2) for p in paths for m in DOC_FN.finditer(open(p).read())}
@@ -69,6 +102,8 @@ def findings():
             if v and name[: v.start()] in names and name not in WORDS:
                 yield f"{rel}:{line}: std-api/R6: `{name}` is a variant; make the option a named argument"
     yield from both_forms((os.path.relpath(p, ROOT), open(p).read()) for p in paths)
+    _, banned = lexicon(open(CHECKLIST).read())
+    yield from off_lexicon(((os.path.relpath(p, ROOT), open(p).read()) for p in paths), banned)
 
 
 def main():

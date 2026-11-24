@@ -8,7 +8,7 @@ for r in 0..24:
     let q = perm_unrank<T4>(r)
     assert perm_rank(q) == r
 let a: [T3]Int = [1, 3, 5]
-print(partition_point(a, x => x > 2).ord, partition_point(a, x => x > 9).ord)
+print(a.bsearch(x => x > 2).ord, a.bsearch(x => x > 9).ord)
 let b: [T4]Int = [1, 3, 3, 5]
 let (e3, e4, e0) = (b.equal_range(3), b.equal_range(4), b.equal_range(0))
 print(e3.l, e3.r, e4.l, e4.r, e0.l, e0.r)

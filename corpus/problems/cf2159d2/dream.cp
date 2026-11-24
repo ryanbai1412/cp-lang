@@ -18,7 +18,7 @@ for (i, x) in a.items:
     while let top = stack.last and top.val >= x: stack.pop()
     var starts = [i + 1] + (stack.last.map(t => t.starts) ?? [0])
     for l in 2..=3 if l < starts.len:
-        let below = stack.partition_point(t => t.val >= ceil_div(x, l))
+        let below = stack.bsearch(t => t.val >= ceil_div(x, l))
         let prev = stack[..below].last.map(t => t.starts) ?? [0]
         starts = starts[..l] + [min(u, v) for (u, v) in zip(starts[l..], prev)]
     stack.push((x, starts))

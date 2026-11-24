@@ -64,10 +64,10 @@ pm[0] = [1, 5, 9]
 var cut = 0
 for hi in [2, 6, 10]:
     let l = pm.get(0) ?? []
-    cut += l.partition_point(x => x >= hi)
+    cut += l.bsearch(x => x >= hi)
 var keys: List<Int> = [3, 1, 2]
 keys.sort()
-print(cut, keys.partition_point(k => k >= 3))
+print(cut, keys.bsearch(k => k >= 3))
 var seen = 0
 for k in 0..2:
     let l = pm.get(0) ?? [7]

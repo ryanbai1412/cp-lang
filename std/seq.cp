@@ -12,7 +12,7 @@
 
 use std.hashmap.{Counter}
 use std.prefix.{Prefix}
-use std.range.{RingRange, ends, first_true}
+use std.range.{RingRange, ends, first_true, last_true}
 
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
@@ -2023,22 +2023,22 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
     assert Int(lo) <= Int(hi)
     lo..hi
 
-// --- Sorted lookup, cut partition point, sorted set ops, and linear-time sorts ---
+// --- Sorted lookup, element bsearch, sorted set ops, and linear-time sorts ---
 
-/// \(O(\log n)\). Cut between the false prefix and true suffix of monotone `ok` on `self` (total; never `None`).
+/// \(O(\log n)\). The cut where monotone `ok` flips on the elements of `self`: false then true by
+/// default, true then false with `last: true`, as `Range.bsearch` is for positions (total; never `None`).
 ///
-/// An `ok` that is true at the start and false at the end (C++'s `lower_bound` habit) stops a
-/// checked build.
+/// An `ok` that flips the other way (C++'s `partition_point` habit) stops a checked build.
 ///
 /// cost: \(O(\log n)\) calls of `ok`, plus one when the cut is an end
 /// empty: the only cut
-/// traps: when `ok` is true at the start and false at the end; any other `ok` that is not
-/// false-then-true gives an unspecified answer
-/// example: `[1, 3, 5].partition_point(x => x > 2).r == 1`
+/// traps: when `ok` flips the other way; any other `ok` that is not monotone gives an
+/// unspecified answer
+/// example: `[1, 3, 5].bsearch(x => x > 2).r == 1`
 /// ties: none: a monotone `ok` has one flip
-pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
-    let lo = (0..D.count).first_true(m => ok(self[D.nth(m)])) ?? D.count
-    D.cuts.nth(lo)
+pub fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>:
+    let at = m => ok(self[D.nth(m)])
+    D.cuts.nth(if last: ((0..D.count).last_true(at) ?? -1) + 1 else: (0..D.count).first_true(at) ?? D.count)
 
 /// \(O(\log n)\). Contiguous range of elements in sorted `self` with `by(x) == target` (empty at insertion cut if absent).
 ///

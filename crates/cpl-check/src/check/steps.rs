@@ -33,10 +33,14 @@ impl Checker<'_> {
 
     /// `push` for `push_back` when `owner` has a public `push`.
     pub(super) fn public_foreign_twin(&mut self, owner: &str, name: &str) -> Option<&'static str> {
-        let own = crate::builtins::foreign_own(name)?;
         let members = self.members_of(owner)?;
-        let has = members.members.iter().any(|(m, _)| m == own);
-        (has && !self.env.is_private_field(owner, own)).then_some(own)
+        crate::builtins::foreign_own(name)
+            .iter()
+            .copied()
+            .find(|own| {
+                members.members.iter().any(|(m, _)| m == own)
+                    && !self.env.is_private_field(owner, own)
+            })
     }
 
     /// The fix for an unknown method: its `_by` twin (`max_by`), or the free

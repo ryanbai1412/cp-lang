@@ -102,26 +102,33 @@ pub fn builtin_members(receiver: Receiver) -> impl Iterator<Item = &'static Buil
 /// Another language's name for a member `receiver` has under its own name:
 /// Python's `append`, C++'s `size` or `push_back`, Java's `containsKey`, C++'s `unique`.
 pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
-    let own = foreign_own(name)?;
-    (builtin_members(receiver).any(|m| m.name == own)
-        || crate::prelude::spec_receiver_method_names().contains(own))
-    .then_some(own)
+    foreign_own(name).iter().copied().find(|own| {
+        builtin_members(receiver).any(|m| m.name == *own)
+            || crate::prelude::spec_receiver_method_names().contains(*own)
+    })
 }
 
-/// The CP Lang name another language's member name stands for, on any type.
-pub fn foreign_own(name: &str) -> Option<&'static str> {
-    Some(match name {
-        "append" | "push_back" | "add" => "push",
-        "pop_back" => "pop",
-        "front" => "first",
-        "back" => "last",
-        "empty" | "isEmpty" => "is_empty",
-        "size" | "length" => "len",
-        "contains_key" | "containsKey" | "has_key" | "has" | "includes" | "count_of" => "contains",
-        "erase" | "discard" | "delete" => "remove",
-        "unique" => "distinct",
-        _ => return None,
-    })
+/// The CP Lang names another language's (or an older std's) member name stands for, on any
+/// type, the first a type has winning: Rust's `append` of a whole list is `splice_back`, of one
+/// value `push`.
+pub fn foreign_own(name: &str) -> &'static [&'static str] {
+    match name {
+        "append" => &["splice_back", "push"],
+        "push_back" | "add" => &["push"],
+        "pop_back" => &["pop"],
+        "front" => &["first"],
+        "back" => &["last"],
+        "empty" | "isEmpty" => &["is_empty"],
+        "size" | "length" => &["len"],
+        "contains_key" | "containsKey" | "has_key" | "has" | "includes" | "count_of" => {
+            &["contains"]
+        }
+        "erase" | "discard" | "delete" => &["remove"],
+        "unique" => &["distinct"],
+        "partition_point" => &["bsearch"],
+        "flip" => &["toggle", "neg", "add"],
+        _ => &[],
+    }
 }
 
 /// C++'s `a.begin() + i` or `a.end()` standing for a position in a list.
