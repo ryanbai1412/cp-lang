@@ -534,7 +534,7 @@ impl Checker<'_> {
                 format!("read<{}>()", read.unwrap_or("Int")),
                 "a value is read from the input with `read`",
             ),
-            ("int" | "float", [s]) if input.is_none() => (
+            ("int" | "float" | "stoi" | "stoll" | "atoi", [s]) if input.is_none() => (
                 format!("{}.parse<{}>()!", operand(self, s), read.unwrap_or("Int")),
                 "a number is read from a string with `parse`",
             ),
@@ -613,7 +613,22 @@ impl Checker<'_> {
                 };
                 (range, "a range is written")
             }
-            ("str", [x]) if simple(self.text(x.value.span)) => (
+            ("string", [n, c]) if self.text(c.value.span).starts_with('\'') => {
+                let c = self.text(c.value.span);
+                (
+                    format!(
+                        "\"{}\".repeat({})",
+                        match &c[1..c.len() - 1] {
+                            "\"" => "\\\"",
+                            "\\'" => "'",
+                            ch => ch,
+                        },
+                        self.text(n.value.span)
+                    ),
+                    "a repeated string is written with `repeat`",
+                )
+            }
+            ("str" | "to_string", [x]) if simple(self.text(x.value.span)) => (
                 format!("\"{{{}}}\"", self.text(x.value.span)),
                 "a string is made by interpolation",
             ),
