@@ -19,6 +19,9 @@
   "dream": [
    "corpus/problems/cmt21r2ztr/dream.cp"
   ],
+  "original": [
+   "corpus/problems/cmt21r2ztr/orig.cpp"
+  ],
   "port": [
    "corpus/problems/cmt21r2ztr/port.cp"
   ],
