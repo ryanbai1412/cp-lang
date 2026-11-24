@@ -243,7 +243,6 @@ pub(crate) const PASSES: &[Pass] = &[
             "each_for_body",
             "each_part",
             "each_part_base",
-            "each_field",
             "each_variable",
             "each_variable_in",
             "each_tested",
