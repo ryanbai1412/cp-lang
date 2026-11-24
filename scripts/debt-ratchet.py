@@ -1537,7 +1537,13 @@ def unchecked_fix_paths(root: Path) -> list[str]:
 
 def stress_engines(root: Path) -> list[str]:
     """Stress-case runners picking a verdict: `fn run_case|stress_source|judge_case`
-    definitions in cpl-stress, plus files besides judge.rs constructing `Verdict::`."""
+    definitions in cpl-stress, plus files besides judge.rs constructing `Verdict::`.
+
+    Its floor is 2 (decision 545): `judge_case`, the one verdict path, and
+    `stress_source`, the in-process front end the browser runs. The CLI's
+    front end builds C++ and runs external programs (`--brute`, `--checker`,
+    `--interactor`, `--gen`, `--fast`) as processes, which wasm can't; both
+    share `stress_with`, `judge_case`, `traced::retrace` and `Verdict`."""
     lines = list(_src_lines(root, "crates/cpl-stress/src"))
     defs = [f"{rel}:{i}" for rel, i, line in lines if re.search(r"\bfn (run_case|stress_source|judge_case)\b", line)]
     files = sorted({rel for rel, _, line in lines
