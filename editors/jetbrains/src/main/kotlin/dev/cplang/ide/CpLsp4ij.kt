@@ -2,6 +2,18 @@ package dev.cplang.ide
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import com.intellij.execution.Executor
+import com.intellij.execution.configurations.RunProfile
+import com.intellij.execution.configurations.RunProfileState
+import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.process.NopProcessHandler
+import com.intellij.execution.process.ProcessOutputTypes
+import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.testframework.sm.SMTestRunnerConnectionUtil
+import com.intellij.execution.testframework.sm.runner.SMTRunnerConsoleProperties
+import com.intellij.execution.testframework.sm.runner.ui.SMTRunnerConsoleView
+import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -69,7 +81,7 @@ class CplExecAction : LSPCommandAction() {
         val source = File(command.getArgumentAt(1, String::class.java)!!)
         run(project, command.arguments).thenAccept {
             CplTrace.open(project, source, it)
-            CplTests.open(project, source, it)
+            CplTestTree.open(project, source, it)
         }
     }
 
@@ -79,6 +91,36 @@ class CplExecAction : LSPCommandAction() {
             LanguageServerManager.getInstance(project).getLanguageServer("cpl").thenCompose {
                 it!!.server.workspaceService.executeCommand(ExecuteCommandParams("cpl.exec", arguments))
             }.thenApply { Gson().toJsonTree(it).asJsonObject }
+    }
+}
+
+/**
+ * A Test lens's cases in IntelliJ's own test tree: its `cpl.exec` answers with the `teamcity`
+ * service messages `cpl test --format teamcity` prints, piped as is into the test console.
+ */
+object CplTestTree {
+    fun open(project: Project, source: File, result: JsonObject) =
+        result.get("teamcity")?.takeIf { it.isJsonPrimitive }?.let { messages ->
+            ApplicationManager.getApplication().invokeLater { show(project, "cpl test ${source.name}", messages.asString) }
+        }
+
+    fun show(project: Project, title: String, messages: String): SMTRunnerConsoleView {
+        val executor = DefaultRunExecutor.getRunExecutorInstance()
+        val profile = object : RunProfile {
+            override fun getName() = title
+
+            override fun getIcon() = CpIcons.FILE
+
+            override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState? = null
+        }
+        val run = NopProcessHandler()
+        val properties = SMTRunnerConsoleProperties(project, profile, "CP Lang", executor)
+        val console = SMTestRunnerConnectionUtil.createAndAttachConsole("CP Lang", run, properties) as SMTRunnerConsoleView
+        run.startNotify()
+        run.notifyTextAvailable(messages, ProcessOutputTypes.STDOUT)
+        run.destroyProcess()
+        RunContentManager.getInstance(project).showRunContent(executor, RunContentDescriptor(console, run, console.component, title))
+        return console
     }
 }
 

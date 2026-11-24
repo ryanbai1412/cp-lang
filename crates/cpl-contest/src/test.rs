@@ -328,32 +328,36 @@ fn service_message(kind: &str, attrs: &[(&str, &str)]) -> String {
     out
 }
 
-/// The results as TeamCity service messages, for IntelliJ's test tree and CI
-/// servers: one test per case located at `DIR/NAME.in`, its output, and a
-/// failure that is an expected/actual comparison when the answer is known.
-pub fn render_teamcity(results: &[CaseResult], dir: &Path) -> String {
+/// A report's `view.tests` as TeamCity service messages, for IntelliJ's test
+/// tree and CI servers: one test per case located at `DIR/NAME.in`, its
+/// output, and a failure that is an expected/actual comparison when the
+/// answer is known. `cpl test --format teamcity` prints it and `cpl lsp`
+/// answers a Test lens's `cpl.exec` with it.
+pub fn teamcity(tests: &cpl_json::Value, dir: &Path) -> String {
     let dir = std::path::absolute(dir).unwrap_or_else(|_| dir.to_path_buf());
     let mut out = String::new();
-    for r in results {
-        let name = r.name.as_str();
+    for test in tests.as_array().unwrap_or(&[]) {
+        let text = |key| test.at(&[key]).as_str();
+        let name = text("name").unwrap_or("");
+        let output = text("output").unwrap_or("");
         let input = dir.join(format!("{name}.in")).display().to_string();
         let hint = format!("file://{}", input.replace('\\', "/"));
         out += &service_message("testStarted", &[("name", name), ("locationHint", &hint)]);
-        if !r.output.is_empty() {
-            out += &service_message("testStdOut", &[("name", name), ("out", &r.output)]);
+        if !output.is_empty() {
+            out += &service_message("testStdOut", &[("name", name), ("out", output)]);
         }
-        if let (Some(verdict), Some(message)) = (&r.verdict, failure_message(r)) {
-            let mut attrs = vec![("name", name), ("message", message.as_str())];
-            if let (Verdict::Wrong(_), Some(expected)) = (verdict, r.expected.as_deref()) {
+        if let Some(message) = text("message") {
+            let mut attrs = vec![("name", name), ("message", message)];
+            if let Some(expected) = text("expected") {
                 attrs.extend([
                     ("type", "comparisonFailure"),
                     ("expected", expected),
-                    ("actual", &r.output),
+                    ("actual", output),
                 ]);
             }
             out += &service_message("testFailed", &attrs);
         }
-        let ms = r.elapsed.as_millis().to_string();
+        let ms = test.at(&["time_ms"]).as_u64().unwrap_or(0).to_string();
         out += &service_message("testFinished", &[("name", name), ("duration", &ms)]);
     }
     out
@@ -733,7 +737,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             match report {
                 Report::Text => _ = write!(stdout, "{}", render(&results)),
                 Report::Json => _ = writeln!(stdout, "{}", render_json(&results)),
-                Report::TeamCity => _ = write!(stdout, "{}", render_teamcity(&results, &dir)),
+                Report::TeamCity => {
+                    let tests = view(&results).to_value();
+                    _ = write!(stdout, "{}", teamcity(tests.at(&["tests"]), &dir))
+                }
             }
             results.iter().any(|r| !r.passed()) as u8
         }

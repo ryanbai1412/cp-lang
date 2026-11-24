@@ -74,9 +74,10 @@ class CpLsp4ijTest : BasePlatformTestCase() {
         assertEquals(1, File(source.parentFile, "k.tests").listFiles { f -> f.name.endsWith(".in") }.orEmpty().size)
         val failing = exec("test", source.path)
         assertTrue(failing.get("code").asInt != 0)
-        val tree = CplTests.show(project, source, failing.getAsJsonObject("view").getAsJsonArray("tests"))
-        val cases = tree.resultsViewer.testsRootNode.allTests.filter { it.isLeaf }
-        assertTrue(cases.toString(), cases.isNotEmpty() && cases.any { it.isDefect })
+        val tree = CplTestTree.show(project, "cpl test k.cp", failing.get("teamcity").asString)
+        eventually("the test tree's failing case") {
+            tree.resultsViewer.testsRootNode.allTests.filter { it.isLeaf }.takeIf { cases -> cases.any { it.isDefect } }
+        }
         Disposer.dispose(tree)
         source.writeText(planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:"))
         assertEquals(0, exec("test", source.path).get("code").asInt)

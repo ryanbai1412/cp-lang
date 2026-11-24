@@ -71,7 +71,9 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   the client's `cp` settings (`cp.stress.args`, `cp.submit.copy`,
   `cp.liveValues.input`, `cp.run.timeoutMs`) and `--format json` (a trace's
   `html`, also sent as a `cpl/page` `{html}` notification). It answers
-  `{view, html, ok, code, stderr}` (`ok`: it exited 0) when the run ends and
+  `{view, html, teamcity, ok, code, stderr}` (`ok`: it exited 0;
+  `teamcity`: a test run's `view.tests` as the service messages
+  `cpl test --format teamcity` prints) when the run ends and
   shows the `view` through the protocol: the panel as a `window/logMessage`
   (Info), the status as a `window/showMessage`, each line's strongest mark
   and the status as inlay hints at the line's end (clipped to
@@ -83,7 +85,7 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   false (VS Code's Restricted Mode) `cpl.exec`, `cpl.import` and live values
   refuse to run, and `cp.inlayHints.enabled` false hides every inlay hint.
   JetBrains forwards its lenses' `cpl.exec` and draws only a trace's `html`
-  and a test run's `view.tests` in its test tree (`CpLsp4ijTest`).
+  and a test run's `teamcity` in IntelliJ's own test tree (`CpLsp4ijTest`).
 - **Replay while debugging**: `initializationOptions.replayLenses`
   `"debugging"` shows the Replay lenses only after a `cpl/debugging`
   `{type: "cp"}` notification and until one with another `type` or none,

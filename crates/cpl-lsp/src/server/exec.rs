@@ -400,9 +400,15 @@ impl Server {
                     ("params", obj([("html", html.clone())])),
                 ]));
             }
+            let tests = view.at(&["tests"]);
+            let teamcity = match tests.as_array() {
+                Some(_) => cpl_contest::test::teamcity(tests, &tests_dir(&job.argv)).into(),
+                None => Value::Null,
+            };
             let result = obj([
                 ("view", view.clone()),
                 ("html", html),
+                ("teamcity", teamcity),
                 ("ok", (code == Some(0)).into()),
                 ("code", code.map_or(Value::Null, |c| c.into())),
                 ("stderr", stderr.into()),
@@ -670,4 +676,17 @@ fn drain<R: Read + Send + 'static>(pipe: Option<R>) -> JoinHandle<String> {
         }
         text
     })
+}
+
+/// Where a `cpl test` run of `argv` reads its cases: `--tests`, else the
+/// problem's own folder, which the `teamcity` messages locate each case in.
+fn tests_dir(argv: &[String]) -> PathBuf {
+    let given = argv.iter().position(|a| a == "--tests");
+    match given.and_then(|i| argv.get(i + 1)) {
+        Some(dir) => PathBuf::from(dir),
+        None => {
+            let file = argv.get(1).map_or("", String::as_str);
+            cpl_contest::problem::find_tests_dir(&cpl_contest::problem::source_path(file))
+        }
+    }
 }

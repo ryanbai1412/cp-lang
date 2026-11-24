@@ -288,6 +288,56 @@ fn a_trace_answers_with_its_page_for_the_editor_to_open() {
 }
 
 #[test]
+fn a_test_run_answers_its_cases_as_teamcity_messages_for_a_test_tree() {
+    let stub = Stub::new("teamcity");
+    let case = |name: &str, outcome: &str, failed: bool| {
+        let mut case = obj([
+            ("name", name.into()),
+            ("outcome", outcome.into()),
+            ("time_ms", 4.into()),
+            ("output", "7\n".into()),
+        ]);
+        if let (true, Some(fields)) = (failed, case.as_object_mut()) {
+            fields.insert("message".into(), "WA: token 1".into());
+            fields.insert("expected".into(), "8\n".into());
+        }
+        case
+    };
+    let tests = vec![case("1", "passed", false), case("2", "failed", true)];
+    let view = obj([("panel", "1/2 passed\n".into()), ("tests", tests.into())]);
+    stub.prints(&obj([("view", view)]).to_string());
+    let mut server = stub.server();
+    let replies = stub.exec(&mut server, &["test"]);
+    let answer = replies
+        .iter()
+        .find(|r| r.at(&["id"]) == &Value::Int(7))
+        .unwrap();
+    let messages = answer.at(&["result", "teamcity"]).as_str().unwrap();
+    let cases = std::path::absolute(stub.dir.join("a.tests")).unwrap();
+    let started = format!(
+        "##teamcity[testStarted name='2' locationHint='file://{}/2.in']",
+        cases.display()
+    );
+    assert!(messages.lines().any(|l| l == started), "{messages}");
+    assert_eq!(
+        messages.matches("##teamcity[testFinished").count(),
+        2,
+        "{messages}"
+    );
+    assert!(
+        messages.contains("##teamcity[testFailed name='2' message='WA: token 1' type='comparisonFailure' expected='8|n' actual='7|n']"),
+        "{messages}"
+    );
+    stub.prints(&report());
+    let replies = stub.exec(&mut server, &["run"]);
+    let answer = replies
+        .iter()
+        .find(|r| r.at(&["id"]) == &Value::Int(7))
+        .unwrap();
+    assert_eq!(answer.at(&["result", "teamcity"]), &Value::Null);
+}
+
+#[test]
 fn live_values_run_quietly_on_each_save() {
     let stub = Stub::new("live");
     stub.prints(&report());
