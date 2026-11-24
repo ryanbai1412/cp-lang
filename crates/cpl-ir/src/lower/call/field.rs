@@ -790,13 +790,14 @@ impl<'a> Lowerer<'a> {
                 Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _),
                 "rev",
             ) => {
-                let elem = (**elem).clone();
+                // A reversed slice keeps its parent's keys (R07.3.5).
+                let (elem, dim) = ((**elem).clone(), ty.seq_key().unwrap_or(Dim::Int));
                 let value = self.hoist_view_base(value, span);
                 builtin(
                     self,
                     Builtin::Reversed,
                     vec![value],
-                    Ty::ListView(Box::new(elem), Dim::Int),
+                    Ty::ListView(Box::new(elem), dim),
                 )
             }
             // `a.rev` keeps the keys of its source (R07.3.5).

@@ -301,6 +301,9 @@ impl Checker<'_> {
         name: &ast::Name,
         base_ty: &Ty,
     ) -> Option<Ty> {
+        if let Some(cut) = Self::cut_member(base_ty, &name.text) {
+            return Some(cut);
+        }
         if let Some(source) = self.slice_source(base_ty, &name.text) {
             return Some(self.member_ty(expr, name, source));
         }

@@ -8478,3 +8478,9 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Call.** Every keyed view with cuts has `s.cut_after(i)` and `s.cut_before(i)`, the cuts on either side of key `i` in walk order: `i.r`/`i.l` forward, `i.l`/`i.r` on `.rev`. O(1); R0101 when `i` is not a key of `s` (R07.4.14).
 - **Why.** Direction is a run-time property of a view, not its type, so a generic `scan<D>(self: [D]T)` cannot tell `a` from `a.rev` and wrote every suffix fold one cut off with `p[i.r] = acc` (core-07/prefix-scan-cuts). Comparing keys can't recover the direction: a one-element walk looks the same both ways. User code folding over cuts has the same need, so it is a method on views, not a std-private helper.
 - **Reverse.** Drop R07.4.14 and the two methods; generic scans then need a direction query or separate forward and reverse versions.
+
+## 444. `cut_after`/`cut_before` are core members matched by name in lowering (compiler, 2026-11-23)
+
+- **Call.** `s.cut_after(i)` and `s.cut_before(i)` (R07.4.14) lower to the `CutAfter`/`CutBefore` builtins, matched by name in `lower/call/value_method.rs`, which raises the `ir_builtin_names` ratchet from 160 to 162.
+- **Why.** They read a view's run-time direction flag, which no std code can see, the same way `nth` reads a view's position. That makes them core members, not stdlib privilege.
+- **Reverse.** Drop `lower/call/cuts.rs`, the two builtins and their rows, then lower the ratchet again.

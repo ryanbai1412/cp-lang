@@ -361,6 +361,27 @@ impl<'p> Emitter<'p> {
                     text(2)
                 ))
             }
+            Builtin::CutAfter | Builtin::CutBefore => {
+                self.need("cut_beside");
+                let v = text(0);
+                let (rev, k0, n) = match args[0].ty {
+                    Ty::ListView(..) => {
+                        (format!("{v}.rev"), format!("{v}.k0"), format!("(ll){v}.n"))
+                    }
+                    Ty::StrView => (
+                        format!("{v}.rev"),
+                        format!("{v}.k0"),
+                        format!("(ll){v}.size()"),
+                    ),
+                    Ty::MutView(..) => ("false".into(), format!("{v}.k0"), format!("(ll){v}.n")),
+                    _ => ("false".into(), "0".into(), format!("(ll){v}.size()")),
+                };
+                let after = matches!(op, Builtin::CutAfter);
+                Code::primary(format!(
+                    "cpl::cut_beside({rev}, {k0}, {n}, {}, {after})",
+                    text(1)
+                ))
+            }
             Builtin::KeyLo
             | Builtin::KeyPos
             | Builtin::PosKey

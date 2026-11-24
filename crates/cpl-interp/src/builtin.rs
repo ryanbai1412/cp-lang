@@ -645,6 +645,29 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::MutView(v) => v.lo as i64,
                 _ => 0,
             }),
+            Builtin::CutAfter | Builtin::CutBefore => {
+                let key = values.next().unwrap_or_default().int();
+                let (lo, len, rev) = match &first {
+                    Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
+                    Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
+                    Value::MutView(v) => (v.lo as i64, v.len as i64, false),
+                    Value::Array(a) => (0, a.len() as i64, false),
+                    Value::List(items) => (0, items.len() as i64, false),
+                    Value::Str(bytes) => (0, bytes.len() as i64, false),
+                    _ => return trap(span, "cuts need a sequence"),
+                };
+                if key < lo || key >= lo + len {
+                    return trap(
+                        span,
+                        format!("key {key} is not one of the view's keys {lo}..{}", lo + len),
+                    );
+                }
+                Value::Int(if (op == Builtin::CutAfter) != rev {
+                    key + 1
+                } else {
+                    key
+                })
+            }
             Builtin::KeyPos | Builtin::PosKey => {
                 let at = values.next().unwrap_or_default().int();
                 let (lo, len, rev) = match &first {

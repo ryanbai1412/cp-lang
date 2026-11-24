@@ -12,6 +12,7 @@ mod laws;
 pub(super) use gen::fixed_domain;
 pub use laws::lower_sampling_laws;
 pub(in crate::lower) use laws::Stress;
+mod cuts;
 mod items;
 mod mut_receiver;
 mod prelude;

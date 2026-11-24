@@ -16,7 +16,7 @@
   "rust_ignore": 15,
   "pending_tests": 0,
   "edition_refs": 0,
-  "ir_builtin_names": 160,
+  "ir_builtin_names": 162,
   "prelude_privilege": 24,
   "backend_std_names": 18,
   "lint_std_names": 140,

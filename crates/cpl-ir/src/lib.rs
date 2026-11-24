@@ -880,6 +880,11 @@ pub enum Builtin {
     KeyPos,
     /// `(view, pos)` -> the key at walk position `pos`.
     PosKey,
+    /// `(seq, key)` -> the cut after `key` in walk order: `key + 1`, or `key`
+    /// on a reversed view; traps unless `key` is a key (R07.4.14).
+    CutAfter,
+    /// `(seq, key)` -> the cut before `key` in walk order (R07.4.14).
+    CutBefore,
     /// `(view, lo, hi)` -> the view narrowed to the keys `lo..hi`, keeping them.
     KeySlice,
     /// `(seq, lo, hi)` -> the same cells keyed `lo..hi`; traps unless the lengths match.

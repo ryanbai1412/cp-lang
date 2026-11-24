@@ -1745,6 +1745,14 @@ inline void put_str(StrView s) { append_str_view(out, s); }
 ",
     },
     Piece {
+        name: "cut_beside",
+        needs: &["fail"],
+        code: "\
+// The cut after (or before) key `k` in walk order (R07.4.14).
+inline ll cut_beside(bool rev, ll k0, ll n, ll k, bool after) { if (k < k0 || k >= k0 + n) key_fail(k, k0, n); return after != rev ? k + 1 : k; }
+",
+    },
+    Piece {
         name: "list_view",
         needs: &["fail"],
         code: "\

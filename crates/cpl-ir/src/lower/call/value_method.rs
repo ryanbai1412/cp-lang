@@ -141,6 +141,9 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
+            (ty, "cut_after" | "cut_before") if Self::has_cuts(ty) => {
+                self.cut_beside(value, ty.clone(), method, args, span)
+            }
             (ty, "nth")
                 if ty.is_indexed()
                     && matches!(
