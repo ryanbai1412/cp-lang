@@ -770,7 +770,7 @@ fn a_printed_sequence_streams_into_out() {
 }
 
 #[test]
-fn a_program_that_sorts_keeps_its_freed_heap() {
+fn a_program_that_sorts_leaves_malloc_its_own_thresholds() {
     let cpp = cpp(concat!(
         "let n: Int = read()\n",
         "for r in 0..n:\n",
@@ -778,11 +778,14 @@ fn a_program_that_sorts_keeps_its_freed_heap() {
         "    v.sort(by: x => -x)\n",
         "    print(v[0])\n",
     ));
-    assert!(cpp.contains("#include <malloc.h>\n"), "{cpp}");
-    assert!(cpp.contains("mallopt(M_TRIM_THRESHOLD, -1);"), "{cpp}");
-    // A big buffer stays mapped: on the untrimmed heap, the blocks a growing
-    // list frees pile up (ioi08p1 went from 61 to 103 MB).
-    assert!(!cpp.contains("M_MMAP_THRESHOLD"), "{cpp}");
+    // Any mallopt freezes glibc's mmap threshold, which otherwise rises to a
+    // freed buffer's size: a trim-only one mapped cf2066f's 4 MB table and
+    // noi20p4's 3 MB bitsets afresh per call (3.7x, 2.5x their C++), a 32 MB
+    // one took ioi08p1 from 61 to 103 MB, and 4 MB still fails heap_grow.
+    assert!(
+        !cpp.contains("mallopt") && !cpp.contains("<malloc.h>"),
+        "{cpp}"
+    );
 }
 
 #[test]
@@ -797,8 +800,7 @@ fn the_program_runs_with_the_profile_stack() {
         cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"),
         "{cpp}"
     );
-    // One thread, so glibc keeps malloc's single-thread fast path; no sort,
-    // so no heap to keep.
+    // One thread, so glibc keeps malloc's single-thread fast path.
     assert!(!cpp.contains("mallopt"), "{cpp}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);

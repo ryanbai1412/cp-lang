@@ -1073,17 +1073,7 @@ impl<'p> Emitter<'p> {
                 .collect();
             *text = crate::runtime::shake::without(text, &here);
         }
-        let out = crate::runtime::shake::without(&out, &unused);
-        // Kept for a sort's merge buffer: once the sort is shaken out, so is it.
-        if out.contains(KEEP_HEAP) && !out.contains("merge_sort(") {
-            for (_, name, text) in &mut self.chunks {
-                if name == "thread stack" {
-                    *text = without_keep_heap(text);
-                }
-            }
-            return without_keep_heap(&out);
-        }
-        out
+        crate::runtime::shake::without(&out, &unused)
     }
 
     fn write_all(&mut self, name: &str, source: Option<&str>) -> String {
@@ -1788,12 +1778,6 @@ impl<'p> Emitter<'p> {
                 runner.push_str(
                     &THREAD_MAIN.replace("STACK_BYTES", &format!("(size_t){} << 20", bytes >> 20)),
                 );
-                // A stable sort allocates its merge buffer anew on each call;
-                // a program that never sorts keeps the bytes.
-                let heap = self.used.contains("sorted");
-                runner = runner
-                    .replace("MALLOC_H", if heap { MALLOC_H } else { "" })
-                    .replace("KEEP_HEAP", if heap { KEEP_HEAP } else { "" });
                 out.push_str(&runner);
                 self.chunks
                     .push((crate::Part::Runtime, "thread stack".into(), runner));
@@ -1859,28 +1843,13 @@ static bool cpl_on(size_t n) {
 }
 ";
 
-/// glibc trims the heap's free top back to the OS, so a sort's merge buffer,
-/// freed and built again on every call, faults its pages in anew: keep them.
-/// Setting the trim threshold also freezes the mmap threshold at 128 KB, so a
-/// big buffer is still mapped and unmapped on its own; on the heap, the blocks
-/// a growing list frees would stay as holes its next buffer can't use.
-const KEEP_HEAP: &str = "    // Freed heap is kept, not trimmed and faulted back in.
-    mallopt(M_TRIM_THRESHOLD, -1);
-";
-
-fn without_keep_heap(text: &str) -> String {
-    text.replacen(KEEP_HEAP, "", 1).replacen(MALLOC_H, "", 1)
-}
-
-const MALLOC_H: &str = "#include <malloc.h>\n";
-
 // ASan follows a thread's stack, not one `setcontext` switched to.
 const POSIX_THREAD: &str = "
 #if defined(__GLIBC__) && !defined(__SANITIZE_ADDRESS__)
-MALLOC_H#include <sys/mman.h>
+#include <sys/mman.h>
 #include <ucontext.h>
 static bool cpl_on(size_t n) {
-KEEP_HEAP    static ucontext_t u;
+    static ucontext_t u;
     void* p = mmap(0, n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_NORESERVE, -1, 0);
     if (p == MAP_FAILED || mprotect(p, 4096, PROT_NONE)) return false;
     getcontext(&u);
