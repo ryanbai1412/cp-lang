@@ -1082,8 +1082,10 @@ impl<'a> Lowerer<'a> {
                 };
                 self.expr(&at, None)
             }
-            // `r.nth(k)` on a range of positions: its `k`-th, checked against `r`.
-            (Ty::Range(inner), "nth") if matches!(**inner, Ty::Pos(_)) && args.len() == 1 => {
+            // `r.nth(k)` on a range of positions or cuts: its `k`-th, checked against `r`.
+            (Ty::Range(inner), "nth")
+                if matches!(**inner, Ty::Pos(_) | Ty::Bound(_)) && args.len() == 1 =>
+            {
                 let elem = (**inner).clone();
                 match self.one_arg("nth", args, &Ty::Int, span) {
                     Some(at) => self.mk_index(value, vec![at], elem, span),

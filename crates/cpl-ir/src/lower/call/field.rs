@@ -731,6 +731,25 @@ impl<'a> Lowerer<'a> {
                 // The bounds are ends, not positions: `hi` is one past the last key
                 // and `lo` is no key at all when the domain is empty.
                 Dim::Pos(d) => self.domain_keys(d, span),
+                // `[D.cuts]T` is keyed by `D`'s cuts, one more than it has positions.
+                Dim::Bound(d) => {
+                    let lo = self.mk(
+                        ExprKind::Cast(Cast::Trust, Box::new(self.int_lit(0, span))),
+                        Ty::Bound(d),
+                        span,
+                    );
+                    let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    let n = self.int_add(len, 1);
+                    let hi = self.mk(ExprKind::Cast(Cast::Trust, Box::new(n)), Ty::Bound(d), span);
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo),
+                            hi: Box::new(hi),
+                        },
+                        Ty::range(Ty::Bound(d)),
+                        span,
+                    )
+                }
                 dim => {
                     let first = if let Dim::IntFrom(first) = dim {
                         first
