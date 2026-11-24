@@ -232,7 +232,7 @@
   "cpp_optional_copies": 0,
   "std_trait_matrix": 0,
   "corpus_no_tests": 0,
-  "silent_unknowns": 24065,
+  "silent_unknowns": 23164,
   "corpus_no_statement": 0,
   "ci_jobs_without_recipe": 0,
   "web_hand_copied": 0,

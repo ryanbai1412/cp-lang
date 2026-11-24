@@ -97,15 +97,13 @@ impl ExprFacts {
 #[derive(Clone, Debug, Default)]
 pub struct Facts {
     revision: Revision,
-    /// The type of each name, member, call, index, unwrap and parenthesised
-    /// expression, by file span.
-    types: Vec<(Span, Ty)>,
     /// The type a member belongs to, by the member name's file span:
     /// `Bitset` for the `first` of `b.first()`.
     owners: BySpan<String>,
     /// The indexes the checker proves by their type, `dist[v]` with `v: V`.
     typed_indexes: Vec<TypedIndex>,
-    /// The type of every expression, one per file span, by start then end.
+    /// The type of every expression, and of each declared name, one per
+    /// file span, by start then end.
     exprs: BySpan<Ty>,
     /// The callee of each call, by the call's file span.
     callees: BySpan<Callee>,
@@ -131,7 +129,7 @@ impl Facts {
             ..Facts::default()
         };
         let (mut exprs, mut owners, mut unresolved) = (Vec::new(), Vec::new(), Vec::new());
-        let mut written = Vec::new();
+        let (mut written, mut named) = (Vec::new(), Vec::new());
         for &(offset, check) in items {
             let shift = |s: Span| s.shift(offset);
             for (span, path) in &check.exprs.unresolved {
@@ -143,8 +141,10 @@ impl Facts {
             for (span, ty) in &check.exprs.written {
                 written.push((shift(*span), ty.clone()));
             }
+            for entry in check.hovers.iter().filter(|e| !e.ty.is_vague()) {
+                named.push((shift(entry.span), entry.ty.clone()));
+            }
             for entry in &check.hovers {
-                facts.types.push((shift(entry.span), entry.ty.clone()));
                 if let ("field", Some(owner)) = (entry.keyword, &entry.owner) {
                     owners.push((shift(entry.span), owner.clone()));
                 }
@@ -158,10 +158,6 @@ impl Facts {
                 });
             }
         }
-        // By end, then start: `place_type` looks a place up by its end.
-        cpl_diag::sort_by_key(&mut facts.types, |(s, _)| {
-            (s.end as u64) << 32 | s.start as u64
-        });
         let (mut callees, mut instantiations) = (Vec::new(), Vec::new());
         for &(offset, check) in items {
             add_calls(offset, check, analysis, &mut callees, &mut instantiations);
@@ -173,8 +169,10 @@ impl Facts {
                 }
             }
         }
-        // The last answer wins, but a vague re-check keeps a known one.
-        facts.exprs = BySpan::merged(exprs, |kept, earlier| {
+        // The last answer wins, but a vague re-check keeps a known one. A
+        // name's declared type answers where no expression is: `x` of `let x`.
+        named.append(&mut exprs);
+        facts.exprs = BySpan::merged(named, |kept, earlier| {
             if kept.is_vague() && !earlier.is_vague() {
                 std::mem::swap(kept, earlier);
             }
@@ -227,16 +225,8 @@ impl Facts {
     /// The type of the place `span` names (`x`, `g[i][j]`, `self.best`): the
     /// widest typed span inside it that ends where it ends.
     pub fn place_type(&self, span: Span) -> Option<&Ty> {
-        let at = self
-            .types
-            .partition_point(|(s, _)| (s.end, s.start) < (span.end, span.start));
-        let named = self.types.get(at).filter(|(s, _)| s.end == span.end);
-        let expr = (self.exprs.within(span)).find(|(s, ty)| s.end == span.end && !ty.is_vague());
-        match (named, expr) {
-            (Some((n, ty)), Some((e, _))) if n.start <= e.start => Some(ty),
-            (_, Some((_, ty))) => Some(ty),
-            (named, None) => named.map(|(_, ty)| ty),
-        }
+        let mut ends = (self.exprs.within(span)).filter(|(s, _)| s.end == span.end);
+        ends.find(|(_, ty)| !ty.is_vague()).map(|(_, ty)| ty)
     }
 
     /// The type the member named at `span` belongs to.
