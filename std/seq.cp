@@ -1187,7 +1187,8 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
 /// cost: \(O(\log n)\)
 /// empty: `None`
 /// ties: the first key past every equal value
-/// traps: never; unsorted input gives an unspecified key
+/// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
+/// otherwise unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].first_gt(3) == Some(3)`
 pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
     let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
@@ -1198,7 +1199,8 @@ pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
 /// cost: \(O(\log n)\)
 /// empty: `None`
 /// ties: the last key before every equal value
-/// traps: never; unsorted input gives an unspecified key
+/// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
+/// otherwise unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].last_lt(3) == Some(0)`
 pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
     let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= target) ?? D.count
@@ -2137,7 +2139,8 @@ pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
 /// cost: \(O(\log n)\)
 /// empty: an empty range
 /// order: the keys of `self` holding `target`, increasing
-/// traps: never; unsorted input gives an unspecified range
+/// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
+/// otherwise unsorted input gives an unspecified range
 /// example: `[1, 3, 3, 5].equal_range(3) == 1..3`
 pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>:
     let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= target) ?? D.count
@@ -2148,7 +2151,8 @@ pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range
 ///
 /// cost: \(O(\log n)\)
 /// empty: 0, as for an empty `r`
-/// traps: never; unsorted input gives an unspecified count
+/// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
+/// otherwise unsorted input gives an unspecified count
 /// example: `[1, 3, 3, 5, 8].count_in(3..6) == 3`
 /// example: `[1, 3, 3, 5, 8].count_in(4..5) == 0`
 pub fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int:
