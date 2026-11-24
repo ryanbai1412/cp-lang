@@ -91,6 +91,9 @@ pub enum Shape {
     /// `?T` read with `read(none: x)`: a value of `T`, or `none`, which
     /// is written as `x`.
     Maybe { inner: Box<Shape>, none: i128 },
+    /// A `while true:` loop's rows, each an `elem`, then `stop`: the
+    /// values its `if a == 0 and b == 0: break` leaves at.
+    Until { elem: Box<Shape>, stop: Vec<i128> },
     /// `read(gen: f)`: what `f()` makes, printed by `program`, which
     /// reads the input above it first.
     Gen {
@@ -604,6 +607,7 @@ impl InputSpec {
             base: 0,
             domains: HashMap::new(),
             products: HashMap::new(),
+            variants: HashMap::new(),
             aliases: HashMap::new(),
             records: HashMap::new(),
             none: None,
@@ -775,6 +779,11 @@ impl InputSpec {
                     );
                 }
                 StmtKind::Enum(decl) if decl.generics.is_empty() => {
+                    for (at, variant) in decl.variants.iter().enumerate() {
+                        builder
+                            .variants
+                            .insert(variant.name.text.clone(), (decl.name.text.clone(), at));
+                    }
                     if let Some(record) = Record::tagged(stmt, decl) {
                         builder
                             .records
@@ -853,6 +862,23 @@ impl InputSpec {
                         (true, _) => hidden.push(field),
                         (false, false) => builder.spec.fields.push(field),
                         (false, true) => {}
+                    }
+                }
+                StmtKind::While { .. } if (in_judge || judge.is_none()) && builder.reads(stmt) => {
+                    let Some(shape) = builder.until(stmt)? else {
+                        return Err(builder.error(
+                                stmt.span,
+                                "this loop reads more than `let name: Type = read()` lines whose types use only names from above it, then `if a == 0: break` on them, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`".into(),
+                            ));
+                    };
+                    let field = Field {
+                        names: vec![None],
+                        shape,
+                        line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
+                    };
+                    match in_judge {
+                        true => hidden.push(field),
+                        false => builder.spec.fields.push(field),
                     }
                 }
                 StmtKind::For { .. } if (in_judge || judge.is_none()) && builder.reads(stmt) => {

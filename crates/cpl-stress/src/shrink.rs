@@ -60,6 +60,19 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
             at: (*at).clamp(0, words.len() as i128 - 1),
             words: words.clone(),
         }),
+        // Rows stay rows and the sentinel stays last.
+        (Shape::Until { elem, stop }, Value::Seq(items)) => {
+            let mut rows = items
+                .iter()
+                .filter(|item| !crate::gen::stops(item, stop))
+                .map(|item| fit_value(elem, item, env))
+                .collect::<Option<Vec<_>>>()?;
+            if rows.iter().any(|row| crate::gen::stops(row, stop)) {
+                return None;
+            }
+            rows.push(crate::gen::stop_row(elem, &mut stop.as_slice())?);
+            Some(Value::Seq(rows))
+        }
         (Shape::Maybe { none, .. }, Value::Int(v)) if v == none => Some(Value::Int(*none)),
         (Shape::Maybe { inner, .. }, value) => fit_value(inner, value, env),
         // A word keeps its letters in its alphabet and its length in range.
@@ -521,6 +534,13 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                     }
                 }
             }
+            (Shape::Until { elem, .. }, Value::Seq(items)) => {
+                for (index, item) in items.iter().enumerate().take(items.len().saturating_sub(1)) {
+                    path.push(index);
+                    walk(elem, item, env, path, out);
+                    path.pop();
+                }
+            }
             (
                 Shape::Array {
                     elem, index: at, ..
@@ -701,7 +721,7 @@ fn inner_sizes(
     out: &mut Vec<Path>,
 ) {
     match (shape, value) {
-        (Shape::Array { elem, .. }, Value::Seq(items)) => {
+        (Shape::Array { elem, .. } | Shape::Until { elem, .. }, Value::Seq(items)) => {
             for (index, item) in items.iter().enumerate() {
                 path.push(index);
                 inner_sizes(spec, elem, item, path, out);

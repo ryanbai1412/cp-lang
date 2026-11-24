@@ -9,6 +9,8 @@ pub(super) struct Builder<'a> {
     pub(super) domains: HashMap<String, (Expr, Expr)>,
     /// `domain Cell = (Row, Col)`: the domains a product domain pairs.
     pub(super) products: HashMap<String, Vec<Type>>,
+    /// Each enum variant's enum and position in it.
+    pub(super) variants: HashMap<String, (String, usize)>,
     /// Each alias with the base of the item that declares it, which its
     /// spans are relative to.
     pub(super) aliases: HashMap<String, (u32, Type)>,
@@ -565,6 +567,117 @@ impl Builder<'_> {
             len: binary(BinOp::Add, binary(BinOp::Sub, hi, lo.clone()), int(1)),
             elem: Box::new(elem),
             index: index.map(|name| (name, lo)),
+        }))
+    }
+
+    /// A `while true:` loop whose body reads a row and leaves at `if a ==
+    /// 0 and b == 0: break` once the reads before it bind `a` and `b`:
+    /// rows of what the body reads, ended by those values.
+    pub(super) fn until(&mut self, stmt: &Stmt) -> Result<Option<Shape>, SpecError> {
+        let StmtKind::While {
+            cond: Cond::Expr(cond),
+            body,
+            else_body: None,
+        } = &stmt.kind
+        else {
+            return Ok(None);
+        };
+        if !matches!(cond.kind, ExprKind::Bool(true)) {
+            return Ok(None);
+        }
+        let stmts = body.stmts.as_slice();
+        if let [Stmt {
+            kind:
+                StmtKind::Expr(Expr {
+                    kind: ExprKind::Match { scrutinee, arms },
+                    ..
+                }),
+            ..
+        }] = stmts
+        {
+            return self.until_variant(scrutinee, arms);
+        }
+        let Some((at, tests)) = stmts
+            .iter()
+            .enumerate()
+            .find_map(|(at, stmt)| sentinel(stmt).map(|tests| (at, tests)))
+        else {
+            return Ok(None);
+        };
+        let mut inside = HashSet::new();
+        let (mut parts, mut binds) = (Vec::new(), Vec::new());
+        if !self.rows(&stmts[..at], &mut inside, &mut parts, &mut binds)? {
+            return Ok(None);
+        }
+        let stop: Option<Vec<i128>> = binds
+            .iter()
+            .flatten()
+            .take(tests.len())
+            .map(|name| {
+                let name = name.as_ref()?;
+                tests.iter().find(|(test, _)| test == name).map(|(_, v)| *v)
+            })
+            .collect();
+        let Some(stop) = stop.filter(|stop| stop.len() == tests.len()) else {
+            return Ok(None);
+        };
+        if !self.rows(&stmts[at + 1..], &mut inside, &mut parts, &mut binds)? {
+            return Ok(None);
+        }
+        Ok(Some(Shape::Until {
+            elem: Box::new(Shape::Tuple { parts, binds }),
+            stop,
+        }))
+    }
+
+    /// `match read<Cmd>():` whose `Stop => break` arm leaves the loop:
+    /// commands until a `Stop`.
+    fn until_variant(
+        &mut self,
+        scrutinee: &Expr,
+        arms: &[cpl_syntax::ast::Arm],
+    ) -> Result<Option<Shape>, SpecError> {
+        let Some((ty, none)) = typed_read(None, scrutinee) else {
+            return Ok(None);
+        };
+        let TypeKind::Named {
+            name: enum_name, ..
+        } = &ty.kind
+        else {
+            return Ok(None);
+        };
+        let stop = arms.iter().find_map(|arm| {
+            let variant = match &arm.pat.kind {
+                PatternKind::Name(name) => name.as_str(),
+                PatternKind::Variant { path, args } if args.is_empty() => {
+                    path.last()?.text.as_str()
+                }
+                _ => return None,
+            };
+            let leaves = matches!(
+                arm.body.stmts.as_slice(),
+                [Stmt {
+                    kind: StmtKind::Break(None),
+                    ..
+                }]
+            );
+            let (of, at) = self.variants.get(variant)?;
+            (leaves && arm.guard.is_none() && *of == enum_name.text).then_some(*at)
+        });
+        let Some(at) = stop else {
+            return Ok(None);
+        };
+        let shape = self.shape_written(&ty, none)?;
+        let Shape::Choice { arms: choices, .. } = &shape else {
+            return Ok(None);
+        };
+        let Some([tag]) = choices.get(at).and_then(|arm| arm.tags.as_deref()) else {
+            return Ok(None);
+        };
+        let stop = vec![*tag];
+        Ok(Some(Shape::Until {
+            elem: Box::new(shape),
+            stop,
         }))
     }
 
@@ -1543,4 +1656,65 @@ impl Builder<'_> {
             _ => vec![None],
         }
     }
+}
+
+/// The names and values `if a == 0 and b == -1: break` leaves a loop at.
+fn sentinel(stmt: &Stmt) -> Option<Vec<(String, i128)>> {
+    let StmtKind::Expr(Expr {
+        kind: ExprKind::If {
+            branches,
+            otherwise: None,
+        },
+        ..
+    }) = &stmt.kind
+    else {
+        return None;
+    };
+    let [(Cond::Expr(cond), then)] = branches.as_slice() else {
+        return None;
+    };
+    if !matches!(
+        then.stmts.as_slice(),
+        [Stmt {
+            kind: StmtKind::Break(None),
+            ..
+        }]
+    ) {
+        return None;
+    }
+    fn tests(cond: &Expr, out: &mut Vec<(String, i128)>) -> Option<()> {
+        match &cond.kind {
+            ExprKind::Binary {
+                op: BinOp::And,
+                lhs,
+                rhs,
+                ..
+            } => {
+                tests(lhs, out)?;
+                tests(rhs, out)
+            }
+            ExprKind::Compare { first, rest } => match (&first.kind, rest.as_slice()) {
+                (ExprKind::Name(name), [(CmpOp::Eq, value)]) => {
+                    let value = match &value.kind {
+                        ExprKind::Int(v) => *v,
+                        ExprKind::Unary {
+                            op: UnOp::Neg,
+                            expr,
+                        } => match expr.kind {
+                            ExprKind::Int(v) => -v,
+                            _ => return None,
+                        },
+                        _ => return None,
+                    };
+                    out.push((name.clone(), value));
+                    Some(())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+    let mut out = Vec::new();
+    tests(cond, &mut out)?;
+    Some(out)
 }

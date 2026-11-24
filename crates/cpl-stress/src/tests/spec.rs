@@ -1345,3 +1345,55 @@ let c: [Subset<C>]Int = read()
         assert_eq!(tokens.len() - at, rest, "{text}");
     }
 }
+
+#[test]
+fn sentinel_ended_loops_end_with_their_sentinel_only() {
+    let pairs = "while true:
+    let (a, b) = read<(0..=3, 0..=3)>()
+    if a == 0 and b == 0:
+        break
+    domain R = 0..a
+    let row = read<[R]1..=2>()
+    print(a + b + row.len)
+";
+    let commands = "enum Cmd:
+    @tag(\"1\") Add(x: 1..=9)
+    @tag(\"2\") Stop
+while true:
+    match read<Cmd>():
+        Add(x) => print(x)
+        Stop => break
+";
+    for seed in 0..30 {
+        let spec = InputSpec::from_source(pairs).unwrap();
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(5))
+            .unwrap()
+            .render();
+        let tokens: Vec<i32> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let mut at = 0;
+        while (tokens[at], tokens[at + 1]) != (0, 0) {
+            let a = tokens[at] as usize;
+            assert!(
+                tokens[at + 2..at + 2 + a]
+                    .iter()
+                    .all(|v| (1..=2).contains(v)),
+                "{text}"
+            );
+            at += 2 + a;
+        }
+        assert_eq!(at + 2, tokens.len(), "{text}");
+        let spec = InputSpec::from_source(commands).unwrap();
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(5))
+            .unwrap()
+            .render();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.last(), Some(&"2"), "{text}");
+        assert!(
+            lines[..lines.len() - 1].iter().all(|l| l.starts_with("1 ")),
+            "{text}"
+        );
+    }
+}

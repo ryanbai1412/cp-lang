@@ -368,6 +368,18 @@ fn build(
             at: pick.pick(0, words.len() as i128 - 1, false),
             words: words.clone(),
         }),
+        Shape::Until { elem, stop } => {
+            let rows = pick.pick(0, MAX_ROWS, true);
+            let mut out = (0..rows)
+                .map(|_| {
+                    (0..20).find_map(|_| {
+                        build(elem, env, sizes, false, pick).filter(|row| !stops(row, stop))
+                    })
+                })
+                .collect::<Option<Vec<_>>>()?;
+            out.push(stop_row(elem, &mut stop.as_slice())?);
+            Some(Value::Seq(out))
+        }
         Shape::Maybe { inner, none } => match pick.pick(0, 3, false) {
             0 => Some(Value::Int(*none)),
             _ => build(inner, env, sizes, false, pick),
@@ -516,6 +528,53 @@ fn shuffle<T>(items: &mut [T], pick: &mut dyn Pick) {
     for i in 0..items.len() {
         let j = pick.pick(i as i128, items.len() as i128 - 1, false);
         items.swap(i, j.clamp(i as i128, items.len() as i128 - 1) as usize);
+    }
+}
+
+/// The most rows a sentinel-ended loop is given.
+const MAX_ROWS: i128 = 1_000;
+
+/// Whether `row` starts with `stop`, the values that end a `while true:` loop.
+pub(crate) fn stops(row: &Value, stop: &[i128]) -> bool {
+    fn ints(value: &Value, out: &mut Vec<i128>) {
+        match value {
+            Value::Tuple(items) | Value::Seq(items) => items.iter().for_each(|v| ints(v, out)),
+            _ => out.push(value.number().unwrap_or(i128::MIN)),
+        }
+    }
+    let mut out = Vec::new();
+    ints(row, &mut out);
+    out.starts_with(stop)
+}
+
+/// The row that ends a `while true:` loop: `stop` in the places `shape`
+/// reads first, and nothing after them.
+pub(crate) fn stop_row(shape: &Shape, stop: &mut &[i128]) -> Option<Value> {
+    let (&first, rest) = stop.split_first()?;
+    match shape {
+        Shape::Tuple { parts, .. } => {
+            let mut out = Vec::new();
+            for part in parts {
+                if stop.is_empty() {
+                    break;
+                }
+                out.push(stop_row(part, stop)?);
+            }
+            Some(Value::Tuple(out))
+        }
+        Shape::Choice { tag, .. } => Some(Value::Tuple(vec![stop_row(tag, stop)?])),
+        Shape::Array { .. } | Shape::Until { .. } | Shape::Maybe { .. } => None,
+        _ => {
+            *stop = rest;
+            Some(match shape {
+                Shape::Char { .. } => Value::Char(first),
+                Shape::Words(words) => Value::Word {
+                    at: first,
+                    words: words.clone(),
+                },
+                _ => Value::Int(first),
+            })
+        }
     }
 }
 
