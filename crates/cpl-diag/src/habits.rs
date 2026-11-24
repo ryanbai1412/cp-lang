@@ -520,7 +520,7 @@ pub static LEFT_OUT_DEFAULT: Habit = shape(
     "left_out_default",
     codes::TYPE_MISMATCH,
     "write `{}` in full: a type param left out takes its default",
-    "",
+    "the param or the value may be the one to change",
 );
 pub static NO_OPERATOR_IMPL: Habit = shape(
     "no_operator_impl",
