@@ -1,7 +1,9 @@
 # ioi00p1
 
-Score: 4/5
-Dream: 4/5 (the friction: the port is the dream)
+Score: 3/5
+Dream: none (no dream.cp and no `## Dream` in the friction)
+
+With no dream (no dream.cp and no `## Dream` in the friction) the port scores at most 3 (README); against the checklist alone it reads as a 4.
 
 Re-ported in v0.3 style.
 
