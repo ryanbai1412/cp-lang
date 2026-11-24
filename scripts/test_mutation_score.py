@@ -27,6 +27,11 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(ms.below({"score": None}, 0.98), 1)
         self.assertEqual(ms.below({"score": 0.1}, None), 0)
 
+    def test_runs_the_baseline_so_a_red_tree_scores_nothing(self) -> None:
+        cmd = ms.mutants_command("cpl-fmt", Path("o"), "4", ["cpl-cli"])
+        self.assertNotIn("--baseline", cmd)
+        self.assertEqual(cmd[-2:], ["--test-package", "cpl-fmt,cpl-cli"])
+
 
 if __name__ == "__main__":
     unittest.main()
