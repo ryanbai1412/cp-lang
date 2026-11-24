@@ -1,6 +1,15 @@
 # The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
 
 [[case]]
+input = "1 2 1 \nabcs-w1234-9s-4zz\n"
+
+[[case]]
+input = "2 3 2 \na-d-d\n"
+
+[[case]]
+input = "3 4 2 \ndi-jkstra2-6\n"
+
+[[case]]
 seed = 1
 size = 4
 
