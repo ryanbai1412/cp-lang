@@ -55,8 +55,9 @@ impl<'p> Compiler<'p, '_> {
     #[inline(never)]
     pub(super) fn call_must_lend(&self, fn_id: FnId, args: &'p [Arg]) -> bool {
         let f = &self.program.fns[fn_id];
-        let has_fn_param =
-            (f.locals.iter().take(f.params.len())).any(|l| matches!(l.ty, Ty::Fn(..)));
+        let has_fn_param = f.locals[..f.params.len()]
+            .iter()
+            .any(|l| matches!(l.ty, Ty::Fn(..)));
         let has_mut = f.params.iter().any(|p| p.mutable);
         has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args)
             || self.fn_args_reach_held(f, args)

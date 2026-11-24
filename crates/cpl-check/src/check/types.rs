@@ -679,32 +679,16 @@ impl<'a> Checker<'a> {
                 methods.iter().find(|m| m.name == method)?.ty.clone(),
             ),
             _ => {
-                let (generics, fns) = prelude::core_trait_decl(&trait_name)?;
-                let f = fns.into_iter().find(|f| f.name.text == method)?;
+                let (generics, body) = prelude::core_trait_decl(&trait_name)?;
                 let generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
                 let outer = self.generics.len();
                 self.generics.push("Self".into());
                 self.generics.extend(generics.iter().cloned());
-                let sig = self.quietly(|c| {
-                    let params = (f.params.iter())
-                        .filter(|p| p.name.text != "self")
-                        .map(|p| crate::ty::Param {
-                            name: p.name.text.clone(),
-                            ty: p.ty.as_ref().map_or(Ty::Unknown, |t| c.resolve_type(t)),
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        })
-                        .collect();
-                    let ret = f.ret.as_ref().map_or(Ty::Unit, |t| c.resolve_type(t));
-                    Ty::Fn {
-                        params,
-                        ret: Box::new(ret),
-                    }
-                });
+                let outer_trait = self.impl_trait.take();
+                let (sigs, ..) = self.quietly(|c| c.method_sigs(body, &Ty::Param("Self".into())));
+                self.impl_trait = outer_trait;
                 self.generics.truncate(outer);
+                let sig = sigs.into_iter().find(|(n, _)| n == method)?.1;
                 (generics, sig)
             }
         };
