@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 7 P4, Mimi and Carrots II, https://dmoj.ca/problem/dmopc20c7p4
+// limits: 2000 ms, 256 MB
 // Problem: a tree on N <= 2e5 cities, none safe at first, Q <= 2e5 events: "1 u" toggles
 //   whether u is safe; "2 u v" prints the number of safe cities on the u-v path or adjacent
 //   to a city on it.

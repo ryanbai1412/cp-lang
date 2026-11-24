@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 7 P2 (Alice and Tiles), https://dmoj.ca/problem/dmopc20c7p2
+// limits: 2000 ms, 256 MB
 // Problem: N <= 2e5 tiles of the square-octagon tiling, given by coordinates |x|, |y| <= 1e9,
 //   form one polygon without holes. Print its vertices clockwise, starting from the one with
 //   least x, then least y.

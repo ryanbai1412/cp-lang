@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 6 P3 (Bread Merchant), https://dmoj.ca/problem/dmopc20c6p3
+// limits: 2000 ms, 256 MB
 // Problem: directed graph, N, M <= 5e5 (self-loops allowed); some cities have police
 //   (p_i = 1). The robber must leave any city with an out-route: police pick the route,
 //   elsewhere the robber picks. He is caught on reaching a city with no out-route. For each

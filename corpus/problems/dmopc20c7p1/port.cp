@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 7 P1 (Bob and Balance), https://dmoj.ca/problem/dmopc20c7p1
+// limits: 2000 ms, 256 MB
 // Problem: 2n weights (n <= 5e5, masses <= 1e9) go on n two-plate scales, one weight per plate.
 //   Maximise the tipped scales (unequal masses); print that number, then each scale's two
 //   weight indices.

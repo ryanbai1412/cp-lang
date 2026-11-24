@@ -23,3 +23,11 @@ input = "1 5\n-1\n2 2 3 -2 -2\n"
 
 [[case]]
 input = "5 4\n-8 -7 -9 -6 8\n-7 8 1 -10\n"
+
+[[case]]
+seed = 1
+size = 8
+
+[[case]]
+seed = 2
+size = 100

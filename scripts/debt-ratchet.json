@@ -129,7 +129,7 @@
   "dead_code_allows": 6,
   "external_crates": 5,
   "corpus_test_files": 0,
-  "corpus_no_max": 169,
+  "corpus_no_max": 155,
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 0,

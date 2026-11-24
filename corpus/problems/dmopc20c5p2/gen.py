@@ -1,6 +1,7 @@
 """gen.py seed size: DMOPC '20 Contest 5 P2. 1 <= N, M <= 1e6.
 size >= 1e6 gives N, M near 1e6 by seed (coprime, equal, one a multiple of the other)."""
 import random, sys
+if sys.argv[1:] == ["--max"]: sys.argv[1:] = ["4", "1000000"]  # the hardest big case
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 if size >= 10 ** 6:

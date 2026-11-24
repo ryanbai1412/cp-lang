@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 5 P2 (On The Clock), https://dmoj.ca/problem/dmopc20c5p2
+// limits: 2000 ms, 256 MB
 // Problem: an N x M pixel grid (N, M <= 1e6), and the segment from its bottom-left to its
 //   top-right corner. Print the number of pixels whose interior it crosses (touching a
 //   corner does not count), then those pixels sorted by (row, column).
