@@ -7,7 +7,6 @@
 //   higher, recurse into its half; else c is the answer if both cells across the line are lower,
 //   else recurse towards the higher one. Each step reads one line: O(N + M) queries. A box: best
 //   of Q / 2 random cells, then walk uphill. Heights are memoised; a cell off the box reads 0.
-// dream.cp has the form with a product-domain sheet and `@memo` questions.
 // original: corpus/submissions/4656860.cpp
 // Bounds: n, m, k: 1..=1e6; q: 1..=1e5
 use std.rand.{Rng}
@@ -51,31 +50,37 @@ fn on_line() -> Int:
             m2 = kept
     (l..r).find(x => at(x) >= max(at(x - 1), at(x + 1))) ?? r
 
-// A sheet [x1, x2] x [y1, y2]: cut the longer side along a line through its middle. (px, py)
-// with height pv is the best cell seen on an earlier line, or pv = -1.
-fn on_sheet(x1: Int, y1: Int, x2: Int, y2: Int, px: Int, py: Int, pv: Int) -> ?(Int, Int):
+type Seen = (x: Int, y: Int, h: Int)
+
+// A sheet [x1, x2] x [y1, y2]: cut the longer side along a line through its middle. `seen` is
+// the best cell found on an earlier line.
+fn on_sheet(x1: Int, y1: Int, x2: Int, y2: Int, seen: ?Seen) -> ?(Int, Int):
     if x1 > x2 or y1 > y2: return None
     fn at(x: Int, y: Int) -> Int = height((x, y, 0))
     if x2 - x1 <= y2 - y1:
         let mid = (y1 + y2) / 2
         let (best, x) = [(at(i, mid), i) for i in x1..=x2].max()!
-        if pv >= best:
-            let half = if py <= mid: on_sheet(x1, y1, x2, mid - 1, px, py, pv) else: on_sheet(x1, mid + 1, x2, y2, px, py, pv)
-            if let found = half: return Some(found)
+        if let p = seen:
+            if p.h >= best:
+                let half = if p.y <= mid: on_sheet(x1, y1, x2, mid - 1, seen) else: on_sheet(x1, mid + 1, x2, y2, seen)
+                if let hit = half: return Some(hit)
         let a = if mid - 1 >= y1: at(x, mid - 1) else: 0
         let c = if mid + 1 <= y2: at(x, mid + 1) else: 0
         if best >= a and best >= c: return Some((x, mid))
-        if a >= c: on_sheet(x1, y1, x2, mid - 1, x, mid, best) else: on_sheet(x1, mid + 1, x2, y2, x, mid, best)
+        let here = Some((x:, y: mid, h: best))
+        if a >= c: on_sheet(x1, y1, x2, mid - 1, here) else: on_sheet(x1, mid + 1, x2, y2, here)
     else:
         let mid = (x1 + x2) / 2
         let (best, y) = [(at(mid, i), i) for i in y1..=y2].max()!
-        if pv >= best:
-            let half = if px <= mid: on_sheet(x1, y1, mid - 1, y2, px, py, pv) else: on_sheet(mid + 1, y1, x2, y2, px, py, pv)
-            if let found = half: return Some(found)
+        if let p = seen:
+            if p.h >= best:
+                let half = if p.x <= mid: on_sheet(x1, y1, mid - 1, y2, seen) else: on_sheet(mid + 1, y1, x2, y2, seen)
+                if let hit = half: return Some(hit)
         let a = if mid - 1 >= x1: at(mid - 1, y) else: 0
         let c = if mid + 1 <= x2: at(mid + 1, y) else: 0
         if best >= a and best >= c: return Some((mid, y))
-        if a >= c: on_sheet(x1, y1, mid - 1, y2, mid, y, best) else: on_sheet(mid + 1, y1, x2, y2, mid, y, best)
+        let here = Some((x: mid, y:, h: best))
+        if a >= c: on_sheet(x1, y1, mid - 1, y2, here) else: on_sheet(mid + 1, y1, x2, y2, here)
 
 // A box: the best of q / 2 random cells, then walk uphill.
 fn in_box() -> Cell:
@@ -88,6 +93,6 @@ let found: Cell =
     if m == 1 and k == 1: (on_line(), 0, 0)
     elif q >= 100_000: in_box()
     else:
-        let (x, y) = on_sheet(0, 0, n - 1, m - 1, -1, -1, -1)!
+        let (x, y) = on_sheet(0, 0, n - 1, m - 1, None)!
         (x, y, 0)
 print("! {found.0 + 1} {found.1 + 1} {found.2 + 1}")

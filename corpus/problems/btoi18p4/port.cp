@@ -3,219 +3,90 @@
 // Problem: a circle of n <= 1e5 segments and m <= 1e5 wires, each covering a cyclic range a..b.
 //   Direct each wire (0 or 1) so every segment is covered by wires of both directions; print
 //   the m digits, or "impossible".
-// Solution: a wire inside another takes its container's opposite direction, so only the k
-//   maximal arcs, in circle order, matter (sort by (l, -r), sweep the doubled circle). k even
-//   or 1: alternate them. k <= 3: try every rotation. Otherwise k is odd, so two neighbours b, c
-//   share a direction: that works iff every other maximal arc is covered by its children and
-//   neighbours, and b..c by the children of b and c plus the arcs either side; try each pair,
-//   alternate from c and verify with a coverage sweep. O((n + m) log m).
+// Solution: a wire inside another takes the opposite direction of its outermost holder, so only
+//   the k outermost wires, in circle order, matter (sweep the doubled circle sorted by start,
+//   longest first). k even or 1: alternate them; k = 3: try each rotation. Otherwise two
+//   neighbours b, c share a direction: that works iff every other top is covered by its own
+//   nested wires and its two neighbours, and b..c by the nested wires of b and c plus the tops
+//   either side; try each pair, alternate from c and verify both directions cover the ring.
+//   O(m log m).
 // original: corpus/submissions/4656863.cpp
-// Bounds: n, m: 1..=1e5; l_in, r_in: 1..=n
-let n: 1..=1e5 = read()
-let m: 1..=1e5 = read()
-domain Wire = 0..m
+// Bounds: n: 3..=1e5; m: 2..=1e5; ends.a, ends.b: 1..=n
+let (n, m) = read<(3..=1e5, 2..=1e5)>()
+domain Seg = 1..=n
+domain Wire = [m]
+let ends = read<[Wire](a: Seg, b: Seg)>()
+let lo = [Wire] w => Int(ends[w].a)
+let hi = [Wire] w => Int(ends[w].b) + (if ends[w].b < ends[w].a: n else: 0)
 
-var arcs: List<(Int, Int, Int)> = []
-for i in 0..m:
-    let l_in: 1..=n = read()
-    let r_in: 1..=n = read()
-    let l = l_in - 1
-    var r = r_in - 1
-    if l > r: r += n
-    arcs.push((l, -r, i))
-arcs.sort()
+// Whether the arcs `on`, each repeated one lap either way, cover segments lo..=hi.
+// O(s log s) in the number of arcs, never O(n), so the per-top checks stay O(m log m) in total.
+fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
+    var upto = part.lo - 1
+    for (l, h) in [(lo[w] + s, hi[w] + s) for w in on for s in [-n, 0, n]].sorted():
+        if upto >= part.hi:
+            break
+        if l > upto + 1:
+            return false
+        upto max= h
+    upto >= part.hi
 
-var al: [0..m]Int = 0
-var ar: [0..m]Int = 0
-var aid: [0..m]Int = 0
-for i in 0..m:
-    let t = arcs[i]
-    al[i] = t.0
-    var r = -t.1
-    if r >= n: r -= n
-    ar[i] = r
-    aid[i] = t.2
+let whole = (lo: 1, hi: n)
+var holder: [Wire]?Wire = None
+var reach: ?(end: Int, by: Wire) = None
+let copies = [(start: lo[w] + s, end: hi[w] + s, w:) for w in Wire for s in [0, n]]
+for c in copies.sorted(by: c => (c.start, desc(c.end))):
+    match reach:
+        Some(r) if c.end <= r.end and r.by != c.w => holder[c.w] = holder[c.w] ?? Some(r.by)
+        _ => reach = Some((end: c.end, by: c.w))
+let top = [Wire] w =>
+    var u = w
+    while let h = holder[u]: u = h
+    u
+let tops = Wire.filter(w => holder[w] == None).collect().sorted(by: w => lo[w])
+domain T = [tops.len]
+var rank: [Wire]?T = None
+for t in T:
+    rank[tops[Int(t)]] = Some(t)
+let inside = Wire.filter(w => holder[w] != None).collect().group(by: w => top[w])
+fn kids(t: T) -> List<Wire> = inside.get(tops[Int(t)]) ?? List()
 
-var par: [0..m]Int = 0
-var best_r = -1
-var best_i = -1
-for step in 0..2 * m:
-    let ci = if step >= m: step - m else: step
-    var l = al[ci]
-    var r = ar[ci]
-    if l > r: r += n
-    if step >= m:
-        l += n
-        r += n
-    if r <= best_r:
-        par[ci] = best_i
+fn spread(side: T -> Bool) -> ?[Wire]Bool:
+    let dir = [Wire] w => if holder[w] == None: side(rank[w]!) else: not side(rank[top[w]]!)
+    let both = [false, true].all(d => covers(Wire.filter(w => dir[w] == d).collect(), whole))
+    if both: Some(dir) else: None
+
+// Top t can share its neighbour's direction when its own nested wires and its two neighbouring
+// tops still cover it from the other side.
+fn alone(t: T) -> Bool =
+    covers(
+        kids(t) + [tops[Int(T.wrap(t.ord - 1))], tops[Int(T.wrap(t.ord + 1))]],
+        (lo: lo[tops[Int(t)]], hi: hi[tops[Int(t)]]),
+    )
+
+let answer: ?[Wire]Bool =
+    if T.count % 2 == 0 or T.count == 1:
+        spread(t => Int(t) % 2 == 1)
+    elif T.count == 3:
+        T.first_some(b => spread(t => T.wrap(t.ord - b.ord).ord % 2 == 0))
+    elif not covers(Wire.collect(), whole):
+        None
     else:
-        par[ci] = ci
-        best_r = r
-        best_i = ci
+        let free = [T] t => alone(t)
+        let good = T.filter(t => free[t]).collect().len
+        T.first_some(b =>
+            let c = T.wrap(b.ord + 1)
+            let (wb, wc) = (tops[Int(b)], tops[Int(c)])
+            let pair = (lo: lo[wb], hi: hi[wc] + (if lo[wc] < lo[wb]: n else: 0))
+            let others = [tops[Int(T.wrap(b.ord - 1))], tops[Int(T.wrap(c.ord + 1))]]
+            if good - Int(free[b]) - Int(free[c]) == T.count - 2 and covers(
+                kids(b) + kids(c) + others,
+                pair,
+            ):
+                spread(t => T.wrap(t.ord - c.ord).ord % 2 == 0)
+            else: None
+        )
 
-for i in 0..m:
-    var u = i
-    while par[u] != u: u = par[u]
-    par[i] = u
-
-var vals: List<Int> = []
-var inds: [0..m]Int = 0
-for i in 0..m:
-    if par[i] == i:
-        inds[i] = vals.len
-        vals.push(i)
-
-fn covers_all(segs: List<(Int, Int)>) -> Bool:
-    var by_l: [0..n]List<Int> = []
-    for idx in 0..segs.len:
-        let s = segs[idx]
-        by_l[s.0].push(s.1)
-    var reach = -1
-    for i in 0..n:
-        for r in by_l[i]: reach max= r
-        if reach < i: return false
-    true
-
-fn covers_arc(segs: List<(Int, Int)>, ql: Int, qr: Int) -> Bool:
-    if segs.len == 0: return false
-    var evts: List<(Int, Int)> = []
-    for idx in 0..segs.len:
-        let s = segs[idx]
-        let l = s.0
-        let r = s.1
-        evts.push((l - n, 1))
-        evts.push((r - n + 1, -1))
-        evts.push((l, 1))
-        evts.push((r + 1, -1))
-        evts.push((l + n, 1))
-        evts.push((r + n + 1, -1))
-    evts.sort()
-    var prev: ?Int = None
-    var cur = 0
-    for idx in 0..evts.len:
-        let e = evts[idx]
-        let pos = e.0
-        if let p = prev:
-            if pos != p and cur == 0:
-                if (ql <= pos - 1 and pos - 1 <= qr) or (ql <= p <= qr):
-                    return false
-        cur += e.1
-        prev = pos
-    true
-
-let k = vals.len
-domain K = 0..k
-
-fn try_color(distr: [K]Bool) -> Bool:
-    var ans: [Wire]Int = 0
-    var s0: List<(Int, Int)> = []
-    var s1: List<(Int, Int)> = []
-    for i in 0..m:
-        let l = al[i]
-        let r = ar[i]
-        let ci = aid[i]
-        let d = distr[K(inds[par[i]])]
-        let bit = if par[i] == i: d else: not d
-        ans[Wire(ci)] = Int(bit)
-        if bit:
-            if l > r:
-                s1.push((l, n - 1))
-                s1.push((0, r))
-            else:
-                s1.push((l, r))
-        else:
-            if l > r:
-                s0.push((l, n - 1))
-                s0.push((0, r))
-            else:
-                s0.push((l, r))
-    if covers_all(s0) and covers_all(s1):
-        var row: [Wire]Char = '0'
-        for w in Wire:
-            if ans[w] == 1: row[w] = '1'
-        print(row)
-        return true
-    false
-
-fn solve():
-    if k % 2 == 0 or k == 1:
-        var distr: [K]Bool = false
-        for i in K: distr[i] = (i.idx % 2 == 1)
-        if not try_color(distr): print("impossible")
-        return
-    if k <= 3:
-        for start in K:
-            var distr: [K]Bool = false
-            var j = start
-            var cur = true
-            for _ in 0..k:
-                distr[j] = cur
-                cur = not cur
-                j = K.wrap(j.ord + 1)
-            if try_color(distr): return
-        print("impossible")
-        return
-
-    var all_s: List<(Int, Int)> = []
-    for i in 0..m:
-        let l = al[i]
-        let r = ar[i]
-        if l > r:
-            all_s.push((l, n - 1))
-            all_s.push((0, r))
-        else:
-            all_s.push((l, r))
-    if not covers_all(all_s):
-        print("impossible")
-        return
-
-    var child: [K]List<(Int, Int)> = []
-    for i in 0..m:
-        let r = if al[i] > ar[i]: ar[i] + n else: ar[i]
-        if par[i] != i:
-            child[K(inds[par[i]])].push((al[i], r))
-    var cl: [K]Int = 0
-    var cr: [K]Int = 0
-    for i in K:
-        let idx = vals[i.idx]
-        cl[i] = al[idx]
-        cr[i] = if al[idx] > ar[idx]: ar[idx] + n else: ar[idx]
-
-    var can: [K]Bool = false
-    var ok_cnt = 0
-    for i in K:
-        let a = K.wrap(i.ord - 1)
-        let b = K.wrap(i.ord + 1)
-        var cur: List<(Int, Int)> = child[i].collect()
-        cur.push((cl[a], cr[a]))
-        cur.push((cl[b], cr[b]))
-        if covers_arc(cur, cl[i], cr[i]):
-            can[i] = true
-            ok_cnt += 1
-
-    for i in K:
-        let a = i
-        let b = K.wrap(i.ord + 1)
-        let c = K.wrap(i.ord + 2)
-        let d = K.wrap(i.ord + 3)
-        var ccnt = ok_cnt
-        if can[b]: ccnt -= 1
-        if can[c]: ccnt -= 1
-        if ccnt != k - 2: continue
-        var cur: List<(Int, Int)> = child[b].collect()
-        for s in child[c]: cur.push(s)
-        cur.push((cl[a], cr[a]))
-        cur.push((cl[d], cr[d]))
-        if not covers_arc(cur, cl[b], cr[c]): continue
-        var distr: [K]Bool = false
-        var u = c
-        var cb = true
-        for _ in 0..k:
-            distr[u] = cb
-            cb = not cb
-            u = K.wrap(u.ord + 1)
-        if try_color(distr): return
-    print("impossible")
-
-solve()
+match answer:
+    Some(dir) => print(dir.map(d => Int(d)), sep: "")
+    None => print("impossible")
