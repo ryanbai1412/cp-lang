@@ -40,6 +40,8 @@ pub(crate) struct Chunk<'p> {
     /// In a traced chunk, the bodies of fed loops it leaves to the
     /// tree-walker, which runs each from here as the fn yields.
     pub fed_bodies: Vec<(LoopId, u32)>,
+    /// The `CallTraced` ops, by pc, that run a fed loop.
+    pub traced_feeds: Vec<(u32, TracedFeed<'p>)>,
     pub consts_v: Vec<Value>,
     pub prints: Vec<PrintSpec<'p>>,
     pub formats: Vec<FormatSpec<'p>>,

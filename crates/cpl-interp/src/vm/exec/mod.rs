@@ -12,6 +12,7 @@ mod containers;
 mod entry;
 mod places;
 mod trace;
+mod traced_feed;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     fn exec_chunk(
@@ -1686,6 +1687,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     pc = skip as usize;
                 }
                 Op::FeedTree { .. } => {}
+                Op::JmpEager { target } => {
+                    let fed_here = self.fed_loops.last().is_some_and(|f| f.callee == self.base);
+                    if self.in_closure || fed_here {
+                        pc = target as usize;
+                    }
+                }
                 Op::Trace { idx } => {
                     self.exec_trace(chunk, idx, regs_i, regs_v);
                 }

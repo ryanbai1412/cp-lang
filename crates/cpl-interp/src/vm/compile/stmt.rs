@@ -241,9 +241,30 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::ClearV { reg: dst }, e.span);
                 }
             }
-            Stmt::For(id, _, Iter::Seq(seq, false), body) if self.fed_body_ok(*id, seq, body) => {
-                self.emit_fallback_stmt(stmt);
-                self.emit_escapes();
+            Stmt::For(id, slot, Iter::Seq(seq, false), body)
+                if self.fed_body_ok(*id, seq, body) =>
+            {
+                match self.traced_feed(*id, *slot, seq, body) {
+                    Some((fn_id, feed, args)) => {
+                        let eager = self.emit(Op::JmpEager { target: 0 }, seq.span);
+                        let dst = self.emit_traced_call(seq, Callee::Fn(fn_id), args, false);
+                        // `emit_traced_call` ends with its `CallTraced`.
+                        let call = self.ops.len() - 1;
+                        self.traced_feeds.push((call as u32, feed));
+                        self.note_fed_site(call, stmt, seq);
+                        if dst >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: dst }, seq.span);
+                        }
+                        let j_end = self.emit(Op::Jmp { target: 0 }, seq.span);
+                        self.patch(eager, self.ops.len() as u32);
+                        self.compile_eager_for(stmt, *id, *slot, seq, body);
+                        self.patch(j_end, self.ops.len() as u32);
+                    }
+                    None => {
+                        self.emit_fallback_stmt(stmt);
+                        self.emit_escapes();
+                    }
+                }
                 self.compile_fed_body(*id, body);
             }
             Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => {
@@ -261,7 +282,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::Expr(e) if self.traced_yield(e).is_some() => {
-                let (acc, place, arg) = self.traced_yield(e).unwrap();
+                let (acc, list_v, place, arg) = self.traced_yield(e).unwrap();
                 let back = match arg.kind {
                     ExprKind::Local(slot) => slot as u16 + 1,
                     _ => 0,
@@ -279,14 +300,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     e.span,
                 );
-                if src >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src }, e.span);
-                }
-                self.emit_fallback_stmt(stmt);
-                self.emit_escapes();
+                // Run eagerly, as by a comprehension, the yield keeps its value.
+                self.emit(Op::ListPushLV { list_v, val_v: src }, e.span);
+                self.emit_trace(TracePoint::Mutated(place, e.span), e.span);
                 let skip = self.ops.len() as u32;
                 if let Op::FeedTree { skip: s, .. } = &mut self.ops[at] {
                     *s = skip;
+                }
+                if src >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src }, e.span);
                 }
             }
             Stmt::Expr(
@@ -449,8 +471,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
-    /// A `yield` of the `yields` fn this chunk is: its list, the place
-    /// and the value.
     /// Whether `place` is this generator's yield list, which the tree-walker
     /// drives while a fed loop runs it.
     pub(super) fn yields_into(&self, place: &Place) -> bool {
@@ -458,14 +478,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
         acc.is_some_and(|&acc| cpl_ir::walk::root(place) == (false, acc))
     }
 
-    fn traced_yield(&self, e: &'p Expr) -> Option<(usize, &'p Place, &'p Expr)> {
+    /// A `yield` of the `yields` fn this chunk is: its list's slot and
+    /// register, the place and the value.
+    fn traced_yield(&self, e: &'p Expr) -> Option<(usize, u16, &'p Place, &'p Expr)> {
         let acc = *self.feeds.pushers.get(&self.cur_fn?)?;
+        let SlotLoc::V(list_v) = self.slot_loc(acc) else {
+            return None;
+        };
         match &e.kind {
             ExprKind::Mutate(Mutation::Push, place, args) => match (&place.kind, args.as_slice()) {
-                (PlaceKind::Local(slot), [arg])
-                    if *slot == acc && (quiet(arg) || self.only_writes_places(arg)) =>
-                {
-                    Some((acc, place, arg))
+                (PlaceKind::Local(slot), [arg]) if *slot == acc && self.traced_quiet(arg) => {
+                    Some((acc, list_v, place, arg))
                 }
                 _ => None,
             },
@@ -480,9 +503,57 @@ impl<'p, 'f> Compiler<'p, 'f> {
             && self.feed_acc.is_none()
             && self.inline_slots.is_none()
             && self.inline_ret.is_none()
-            && self.give_targets.is_empty()
+            && (self.give_targets.is_empty() || !cpl_ir::walk::has_give(&body.stmts))
             && self.feeds.feeds(id, seq, body).is_some()
             && !Self::block_has_outer_loop_jump(body, id)
+    }
+
+    /// The fed loop `id`'s call, when this chunk makes it itself.
+    fn traced_feed(
+        &self,
+        id: LoopId,
+        slot: Slot,
+        seq: &'p Expr,
+        body: &'p Block,
+    ) -> Option<(FnId, TracedFeed<'p>, &'p [Arg])> {
+        let (_, acc) = self.feeds.feeds(id, seq, body)?;
+        let Some((Callee::Fn(fn_id), args)) = self.traced_call(seq) else {
+            return None;
+        };
+        Some((
+            fn_id,
+            TracedFeed {
+                id,
+                slot,
+                acc,
+                body,
+            },
+            args,
+        ))
+    }
+
+    /// The fed loop `id` as the tree-walker runs it where it feeds no
+    /// loop: in a closure, or in a generator a loop is being fed from.
+    fn compile_eager_for(
+        &mut self,
+        stmt: &'p Stmt,
+        id: LoopId,
+        slot: Slot,
+        seq: &'p Expr,
+        body: &'p Block,
+    ) {
+        if !self.traced_quiet(seq) {
+            self.emit_fallback_stmt(stmt);
+            self.emit_escapes();
+            return;
+        }
+        self.traced_loop_var = Some((slot, seq.span));
+        self.in_dom.clear();
+        if !self.try_compile_for_seq(id, slot, seq, false, body) {
+            self.emit_fallback_stmt(stmt);
+        }
+        self.traced_loop_var = None;
+        self.emit_trace(TracePoint::LoopEnd(slot), seq.span);
     }
 
     /// The body of fed loop `id`, out of the way of the chunk's own flow:

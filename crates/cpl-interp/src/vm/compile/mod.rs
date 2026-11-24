@@ -21,7 +21,6 @@ mod seq_load;
 mod sort;
 mod stmt;
 mod traced_effects;
-mod traced_take;
 
 struct LoopTargets {
     id: LoopId,
@@ -125,6 +124,7 @@ pub(super) struct Compiler<'p, 'f> {
     trace_points: Vec<TracePoint<'p>>,
     /// The `for` whose body is compiled next, whose variable each round reports.
     traced_loop_var: Option<(Slot, Span)>,
+    traced_feeds: Vec<(u32, TracedFeed<'p>)>,
     /// The write being compiled, which [`Self::reporting_write`] reports
     /// once it has run.
     reporting: Option<&'p Expr>,
@@ -213,6 +213,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             steps: Vec::new(),
             trace_points: Vec::new(),
             traced_loop_var: None,
+            traced_feeds: Vec::new(),
             reporting: None,
             back_edges: Vec::new(),
             call_sites: Vec::new(),
@@ -235,6 +236,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             closure_specs: self.closure_specs,
             feed_calls: self.feed_calls,
             fed_bodies: self.fed_bodies,
+            traced_feeds: self.traced_feeds,
             consts_v: self.consts_v,
             prints: self.prints,
             formats: self.formats,
@@ -649,6 +651,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             | Op::ForIncClosed { target: t, .. }
             | Op::ForStepEnter { skip: t, .. }
             | Op::ForStepNext { target: t, .. }
+            | Op::JmpEager { target: t }
             | Op::ForDec { target: t, .. } => *t = target,
             _ => unreachable!("patch on non-jump op"),
         }

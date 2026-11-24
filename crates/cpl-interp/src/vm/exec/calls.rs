@@ -3,7 +3,7 @@ use crate::observe::Observer;
 use crate::value::{Array, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{trap, Interp, Res};
+use crate::{trap, Flow, Interp, Res};
 use cpl_ir::{BinOp, CmpOp};
 use std::rc::Rc;
 
@@ -686,7 +686,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 self.stack.extend(args);
                                 let locals = self.program.fns[id].locals.len();
                                 self.stack.resize(base + locals, Value::Unit);
-                                self.call_at(id, base, span, None)
+                                let feed = (chunk.traced_feeds.iter())
+                                    .find(|f| f.0 == cur_pc as u32)
+                                    .map(|f| f.1);
+                                match feed {
+                                    Some(feed) => {
+                                        self.call_traced_feed(chunk, feed, id, base, span)
+                                    }
+                                    None => self.call_at(id, base, span, None),
+                                }
                             }
                         },
                         Err(e) => Err(e),
@@ -703,6 +711,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     true,
                 );
                 let value = returned?;
+                if let Some(Flow::Return(v) | Flow::Give(v)) = self.fed_left.take() {
+                    return Ok(Some(ExecExit::Return(v)));
+                }
                 if dst_i != u16::MAX {
                     regs_i[dst_i as usize] = ScalarKind::unbox_val(&value);
                 } else {
