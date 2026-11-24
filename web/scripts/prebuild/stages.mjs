@@ -21,7 +21,7 @@ export const stages = [
   { name: 'gen-tools', inputs: compiler, outputs: ['web/content/generated/cli.json'] },
   { name: 'gen-debug', inputs: [...compiler, 'web/content/landing/debug', 'tools/trace'], outputs: ['web/content/generated/stress.json', 'web/public/trace-demo.html', 'web/public/trace.html'] },
   { name: 'facts', inputs: ['Cargo.toml', 'CHANGELOG.md', 'spec', 'web/content', 'web/app', 'web/components', 'web/lib', '!web/lib/facts.json'], outputs: ['web/lib/facts.json'] },
-  { name: 'gate', inputs: [...compiler, 'web/content', 'examples', 'corpus/problems', 'dist/wasm', 'web/public/wasm'], outputs: ['web/.gate'] },
+  { name: 'gate', inputs: [...compiler, 'web/content', 'examples', 'corpus/problems', 'scripts/corpus.py', 'dist/wasm', 'web/public/wasm'], outputs: ['web/.gate'] },
 ];
 
 // Run after every other stage, one at a time: stress-parity holds the browser build
