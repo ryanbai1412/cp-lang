@@ -102,6 +102,7 @@ impl<'p> Emitter<'p> {
 
     pub(crate) fn stmt_at(&mut self, block: &Block, k: usize, out: &mut String) {
         self.tail = self.tail_at(&block.stmts, k);
+        self.rebind_sets = self.rebind_at(&block.stmts, k);
         self.slot_written_next = self.slot_written_next(&block.stmts, k);
         self.blank_next = self.filled_next(&block.stmts, k);
         let top = std::ptr::eq(block, &self.program.main);
@@ -114,6 +115,7 @@ impl<'p> Emitter<'p> {
         }
         self.slot_written_next = false;
         self.blank_next = false;
+        self.rebind_sets = None;
     }
 
     /// `let p = mut m[k]` right before `p += v` (or `-=`, `|=`, `^=`): that write puts an absent
@@ -855,6 +857,7 @@ impl<'p> Emitter<'p> {
             Stmt::Let(slot, init) => {
                 self.borrow_if_named_closure(*slot, init.as_ref());
                 let tail = self.tail.take();
+                let rebind = self.rebind_sets.take();
                 let ty = self.locals()[*slot].ty.clone();
                 let name = self.names[*slot].clone();
                 let loc = cpl_ir::ElemLoc::Local(self.current_scope(), *slot);
@@ -1118,6 +1121,19 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("{cpp} {name}({args});"));
                 } else if auto {
                     self.line(out, &format!("auto {name} = {text};"));
+                } else if let Some(sets) = rebind.filter(|_| !text.starts_with("std::move(")) {
+                    // `let old = s.ks` that a store may set again: a pointer to
+                    // the place, moved to its own value only if that store runs.
+                    let own = self.temp();
+                    self.line(out, &format!("const {cpp}* {name} = &{text};"));
+                    self.line(out, &format!("{cpp} {own};"));
+                    for set in sets {
+                        let held = self.rebinds.entry(set).or_default();
+                        held.retain(|h| h.0 != *slot);
+                        held.push((*slot, name.clone(), own.clone(), text.clone()));
+                    }
+                    self.names[*slot] = format!("(*{name})");
+                    self.ref_bound.insert(*slot);
                 } else {
                     self.note_let_copy(*slot, init, &text, tail.as_ref());
                     self.line(out, &format!("{cpp} {name} = {text};"));
