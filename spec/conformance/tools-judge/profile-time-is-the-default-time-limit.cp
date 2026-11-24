@@ -6,8 +6,8 @@
 // has: "TLE"
 // has: "0/1 passed"
 // judge: tiny
-// A problem with no `[limits]` gets its judge profile's `time_ms`: three million steps fit the generic judge's 2 s but not this judge's 1 ms, so `cpl test` reports TLE.
-var s = 0
-for i in 0..3000000:
-    s += i % 7
-print(s)
+// A problem with no `[limits]` gets its judge profile's `time_ms`: twenty million dependent steps fit the generic judge's 2 s but not this judge's 1 ms, so `cpl test` reports TLE. Each step needs the one before, so no optimizer folds the loop away.
+var x = 1
+for i in 0..20000000:
+    x = (x * 31 + i) % 1000000007
+print(x)
