@@ -8,14 +8,13 @@
 //   in topological order, so the cheapest prefix is one forward pass from 1's component and
 //   the dearest suffix one backward pass from n's. O(n + m).
 // original: corpus/submissions/5185139.cpp
-// Bounds: n: 1..=1e5; m: 1..=5e5; price: 1..=100; roads.u, roads.v: 1..=n; roads.ways: 1..=2
+// Bounds: n: 1..=1e5; m: 1..=5e5; price: 1..=100; u, v: 1..=n; ways: 1..=2
 let (n, m): (1..=1e5, 1..=5e5) = read()
 domain City = 1..=n
 let price: [City]1..=100 = read()
-let roads: [0..m](u: City, v: City, ways: 1..=2) = read()
-
 var road: [City]List<City> = []
-for (u, v, ways) in roads:
+for _ in 0..m:
+    let (u, v, ways): (City, City, 1..=2) = read()
     road[u].push(v)
     if ways == 2: road[v].push(u)
 
