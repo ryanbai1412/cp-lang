@@ -83,6 +83,19 @@ class StepsTest(unittest.TestCase):
                 if step.argv[0] == "scripts/spec-gate.py":
                     self.assertIn(step.argv[1], sg.GATES)
 
+    def test_every_spec_gate_runs_somewhere(self) -> None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("spec_gate", ci.SPEC_GATE)
+        sg = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sg)
+        stepped = {s.argv[1] for tier in ci.STEPS.values() for s in tier
+                   if s.argv and s.argv[0] == "scripts/spec-gate.py"}
+        elsewhere = "".join(p.read_text() for p in [ci.ROOT / "gen.toml", ci.ROOT / "scripts/land.sh",
+                                                     *(ci.ROOT / ".github/workflows").glob("*.yml")])
+        for g in sg.GATES:
+            if g not in stepped:
+                self.assertRegex(elsewhere, rf'spec-gate\.py"?,? "?{g}\b|"{g}"\]', f"spec gate {g} is never run")
+
     def test_every_failure_says_how_to_fix_it(self) -> None:
         from test_check_cache import FIX_HINT
         for tier in ci.STEPS.values():
@@ -392,6 +405,21 @@ class TailTest(unittest.TestCase):
         code, _, _, err, _, _ = self._part("corpus", codes={"scripts/corpus.py": 1})
         self.assertEqual(code, 1)
         self.assertIn("names the mode and the package", err)
+
+    def test_the_full_part_runs_only_the_full_suites(self) -> None:
+        self.assertEqual(ci.gate_part("full", "full")["kind"], "full")
+        for part, mode in (("full", "fast"), ("conform", "full")):
+            with self.assertRaisesRegex(ValueError, "only `full` goes with --full"):
+                ci.gate_part(part, mode)
+        with mock.patch.object(ci, "run_steps", return_value=0) as steps:
+            code, ev, out, _, _, _ = self._part("full", mode="full")
+        self.assertEqual((code, ev), (0, ["cargo build -q -p cpl-cli -p cpl-conform"]))
+        self.assertEqual(steps.call_args.args[0], "full")
+        self.assertIn("check: full part passed in", out)
+        with mock.patch.object(ci, "run_steps", return_value=1):
+            code, _, _, err, _, _ = self._part("full", mode="full")
+        self.assertEqual(code, 1)
+        self.assertIn("a --full suite failed", err)
 
     def test_a_part_needs_fast_and_checks_is_not_a_part(self) -> None:
         self.assertEqual(self._part("fmt", mode="land")[0], 1)

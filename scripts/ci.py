@@ -11,7 +11,7 @@ CI splits --fast across parallel jobs (.github/workflows/ci.yml):
                     conformance suite, the script unit tests
   tests:doc         the doctests
   tests:<partition> that nextest partition (e.g. tests:hash:1/12)
-Unset runs all of --fast.
+Unset runs all of --fast. With --full, `full` runs only the --full suites (ci-slow.yml).
 """
 from __future__ import annotations
 
@@ -73,6 +73,11 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     out = {"kind": "checks", "suites": "", "shard": "", "partition": ""}
     if part in ("", "checks"):
         return out
+    if part == "full" or mode == "full":
+        if (part, mode) != ("full", "full"):
+            raise ValueError(f"CPL_GATE_PART={part} with --{mode}: only `full` goes with --full")
+        out["kind"] = "full"
+        return out
     if part in ("fmt", "corpus", "conform") or part.startswith(("conform:", "tests:")):
         if mode != "fast":
             raise ValueError(f"CPL_GATE_PART={part} needs --fast")
@@ -90,7 +95,7 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     elif part.startswith("tests:") and part != "tests:":
         out.update(kind="tests", partition=part.removeprefix("tests:"))
     else:
-        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform or tests:<partition>)")
+        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform, tests:<partition>, or full with --full)")
     return out
 
 
@@ -174,6 +179,8 @@ STEPS = {
         gate("prelude", fail="prelude gate failed; see above"),
         gate("std-docs", "--audit", fail="a public std fn lacks a required doc label; see above", quiet=True),
         gate("vocab", fail="a spelling spec/GLOSSARY.md bans; see above"),
+        gate("markers", fail="a diagnostic case counts lines instead of marking `// <- here`;"
+             " rerun: uv run scripts/spec-gate.py markers --fix"),
         Step("std containers print, walk and have is_empty (scripts/std-trait-matrix.py)",
              ("scripts/std-trait-matrix.py", "--max", "0"), "a std container lacks a common trait; see above"),
         Step("std docs follow the std-docs checklist (scripts/std-docs-lint.py)",
@@ -213,6 +220,8 @@ STEPS = {
              fail="cpl explain claims more copies than the C++ makes in more cases; see above"),
         gate("tool-vocab", fail="help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"),
         gate("flakes", "--runs", "2", fail="a conformance case changed verdict between runs; see above"),
+        gate("case-bugs", fail="a known-gap case fails because of the case itself (conformance/R3); fix the case"
+             " named above, then rerun: uv run scripts/spec-gate.py case-bugs"),
         Step("cargo test: every port compiled with every judge profile's flags",
              ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--", "--exact",
               "every_port_compiles_with_every_judges_flags"),
@@ -765,6 +774,14 @@ class Tail:
                 raise Failed("cargo build -p cpl-cli failed")
             self._corpus_static()
             return "corpus part"
+        if g["kind"] == "full":
+            self.step("cargo build -p cpl-cli -p cpl-conform (the binaries the --full suites run)")
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
+                raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
+            self.step("the --full suites (scripts/ci.py steps full)")
+            if run_steps("full", self.cpl, run=self.run):
+                raise Failed("a --full suite failed; the step above names it")
+            return "full part"
         raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
 
     def _slices(self, slices: list[str]) -> None:
