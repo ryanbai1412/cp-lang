@@ -19,7 +19,7 @@ fn after(r: Int) -> [Pos]Pos:
     a
 
 let rounds = (0..=m).first_true(r => n - after(r).perm_cycles().len <= r)!
-let plan = after(rounds).perm_cycles().flat_map(c => c.adjacent()).collect()
+let plan = after(rounds).perm_cycles().flat_map(c => c.adjacent).collect()
 
 var now = start.clone()
 var at = now.inverse()  // where each value sits

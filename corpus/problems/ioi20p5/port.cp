@@ -18,7 +18,7 @@ domain Mushroom = 0..n
 let hidden: [Mushroom]0..=1 = read()
 assert hidden[Mushroom(0)] == 0
 
-fn use_machine(xs: List<Mushroom>) -> Int = xs.adjacent().count(p => hidden[p.0] != hidden[p.1])
+fn use_machine(xs: List<Mushroom>) -> Int = xs.adjacent.count(p => hidden[p.0] != hidden[p.1])
 
 // a query slot: a mushroom of known species, or the i-th of the unknowns being classified
 enum Slot: Known(0..=1) | Unknown(Int)

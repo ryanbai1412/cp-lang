@@ -1596,7 +1596,7 @@ impl Bidir<(D, T)> for Items<S: Indexed<D, T>>:
 
 impl Positional<(D, T)> for Items<S: Indexed<D, T>>:
     fn nth(self, k: Int) -> (D, T):
-        let i = src.keys[k]
+        let i = src.keys.nth(k)
         (i, src.at(i))
 
 impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
@@ -1695,7 +1695,7 @@ pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(
 /// empty: `let a: List<Int> = []; a.nth(0) == 0` (traps R0101)
 /// traps: when `k` is not in `0..self.len`
 /// example: `[5, 6, 7][1..].nth(0) == 6`
-pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
+pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys.nth(k))
 
 impl<S: Indexed<K, T>, K, T> Seq<T> for Slice<S>:
     fn iter(self) -> yields T:
