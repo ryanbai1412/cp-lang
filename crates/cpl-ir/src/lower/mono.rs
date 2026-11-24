@@ -1971,6 +1971,7 @@ impl<'a> Lowerer<'a> {
                 let tpl = (tpl_mod, tpl_offset);
                 self.unify_lambda_ret(pty, lparams, lbody, tpl, &gen_names, &mut inferred, false);
             }
+            self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
             if inferred.len() == before {
                 // Only after ready lambdas have had a chance to infer `T` (e.g. `init: V -> T`),
                 // fall back to deducing an unbound `T`/`E`/`X` from a bound container generic `S`.

@@ -1731,7 +1731,7 @@ pub fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U:
 /// order: outer order, then each inner sequence's order
 /// traps: never
 /// example: `[1, 2].flat_map(x => 0..x).collect() == [0, 0, 1]`
-pub fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V:
+pub fn flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V:
     for x in self:
         for y in f(x): yield y
 
@@ -1742,7 +1742,7 @@ pub fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V:
 /// order: outer order, then inner order
 /// traps: never
 /// example: `[[1], [], [2, 3]].flatten().collect() == [1, 2, 3]`
-pub fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T:
+pub fn flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T:
     for xs in self:
         for x in xs: yield x
 

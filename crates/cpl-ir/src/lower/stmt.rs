@@ -5318,10 +5318,44 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::If(cond, then, Block { stmts: els }));
             }
             ast::Cond::Let { .. } | ast::Cond::Guard { .. } => {
+                if self.given_ty(tail).is_some_and(|t| t.is_none()) {
+                    self.probe_given_ty(cond, body, tail);
+                }
                 let mut els = Vec::new();
                 self.if_chain(rest, otherwise, tail, &mut els);
                 self.clause_chain(cond, body, tail, &els, out);
             }
+        }
+    }
+
+    /// `if o is Some(x): [x] else: []`: the `else` is lowered before the branch that binds
+    /// `x`, so the branch is read first for the type the `if` gives.
+    fn probe_given_ty(&mut self, cond: &ast::Cond, body: &ast::Block, tail: Tail) {
+        let diag_len = self.diags.len();
+        let saved_cx = self.cx.clone();
+        let saved_outer = self.outer_cxs.clone();
+        self.clause_chain(cond, body, tail, &[], &mut Vec::new());
+        let ty = self.given_ty(tail).flatten().filter(|t| *t != Ty::Error);
+        self.cx = saved_cx;
+        self.outer_cxs = saved_outer;
+        self.diags.truncate(diag_len);
+        match tail {
+            Tail::Return => self.cx.ret = ty,
+            _ => self
+                .cx
+                .dos
+                .last_mut()
+                .into_iter()
+                .for_each(|f| f.ty = ty.clone()),
+        }
+    }
+
+    /// The type a value-giving tail gives so far: `Some(None)` while not yet known.
+    fn given_ty(&self, tail: Tail) -> Option<Option<Ty>> {
+        match tail {
+            Tail::Give => self.cx.dos.last().map(|f| f.ty.clone()),
+            Tail::Return => Some(self.cx.ret.clone()),
+            _ => None,
         }
     }
 
