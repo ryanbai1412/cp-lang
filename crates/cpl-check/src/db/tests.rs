@@ -351,6 +351,20 @@ fn analyze_text_sets_the_file_and_reuses_an_unchanged_analysis() {
 }
 
 #[test]
+fn a_generic_domain_position_has_a_typed_rank() {
+    let src = "fn rank<V: Domain>(xs: List<V>) -> Int:\n    var s = 0\n    for u in xs: s += u.ord + u.idx\n    s\ndomain W = 0..4\nprint(rank([W(1), W(3)]))\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}
+
+#[test]
+fn a_slice_walks_its_source_keys_typed() {
+    let graph = "domain V = 0..3\nlet g = Graph.undirected([(V(0), V(1)), (V(1), V(2))])\nfor (a, w) in g[V(1)].items: print(a + w.ord)\n";
+    assert_eq!(silent_unknowns_of(graph), (vec![], 0));
+    let list = "let xs = [5, 6, 7]\nlet s = xs[1..]\nfor (i, x) in s.items: print(i + x)\n";
+    assert_eq!(silent_unknowns_of(list), (vec![], 0));
+}
+
+#[test]
 fn a_std_yields_method_and_argmin_are_typed() {
     let pairs = "let xs: List<Int> = [1, 2, 3]\nfor (a, b) in xs.cyclic_pairs(): print(a + b)\nfor (a, b) in xs.pairs(): print(a * b)\n";
     assert_eq!(silent_unknowns_of(pairs), (vec![], 0));

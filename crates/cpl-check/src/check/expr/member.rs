@@ -645,7 +645,15 @@ impl<'a> Checker<'a> {
         }
         // `xs.items`: each element with its index (an `I` for `[I]T`, else `Int`).
         if name.text == "items" {
-            let pair = match &base_ty {
+            // A slice keeps its source's keys, so it walks the same pairs (R07.4.5).
+            let mut source = &base_ty;
+            while let Ty::Named { name: slice, args } = source {
+                if slice != "Slice" || args.len() != 1 {
+                    break;
+                }
+                source = &args[0];
+            }
+            let pair = match source {
                 Ty::Named { name: list, args } if list == "List" && args.len() == 1 => {
                     Some((Ty::Int, args[0].clone()))
                 }
@@ -907,6 +915,12 @@ impl<'a> Checker<'a> {
                 return match self.bound_method(param, &name.text) {
                     Some(Ty::Fn { params, ret }) if !self.in_call_callee && params.is_empty() => {
                         *ret
+                    }
+                    // A position of a generic domain has its rank, as one of a named domain.
+                    None if matches!(name.text.as_str(), "ord" | "idx")
+                        && self.param_has_bound(param, "Domain") =>
+                    {
+                        Ty::Int
                     }
                     other => other.unwrap_or(Ty::Unknown),
                 };
