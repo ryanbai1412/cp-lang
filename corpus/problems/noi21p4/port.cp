@@ -5,56 +5,43 @@
 //   dictionary word differs from the query in at most k bits, else 0. Online: after an answer
 //   of 1, every bit of the next query is flipped.
 // Solution: cut words into 16 blocks of 16 bits; at most 15 differing bits leave some block
-//   equal (pigeonhole). Per block, a table from block value to the words with it; a query compares
-//   only the words sharing one of its blocks, by popcount of the xors of their four 64-bit limbs. Random words put
+//   equal (pigeonhole). Per block, the words with each block value; a query compares
+//   only the words sharing one of its blocks, by popcount of the block xors. Random words put
 //   about n / 65536 in a bucket: ~100 candidates of 16 popcounts per query.
+// Bounds: n: 1..=4e5; m: 1..=1.2e5; k: 0..=15
 // original: corpus/submissions/3861375.cpp
 domain Block = 0..16
-domain Limb = 0..4
-domain Half = 0..1 << 16
-type Word = [Limb]U64
+domain Half = 0..1 << 16  // the value of one 16-bit block
+type Word = [Block]Half
 
-let (n, m): (Int, Int) = read()
+let (n, m): (1..=4e5, 1..=1.2e5) = read()
+domain W = 0..n
 var (k1, k2): (U64, U64) = read()  // up to 2^64 - 1: too big for an Int
 
 /// The statement's generator: an xorshift on two 64-bit words, of which one bit is used.
-fn next_bit() -> U64:
+fn next_bit() -> Int:
     var (k3, k4) = (k1, k2)
     k1 = k4
     k3 ^= k3 << 23
     k2 = k3 ^ k4 ^ (k3 >> 17) ^ (k4 >> 26)
-    (k2 + k4) >> 32 & U64(1)
+    Int((k2 + k4) >> 32 & U64(1))
 
-/// The 16-bit block `b` of a word, limb by limb from the high bits.
-fn block(w: Word, b: Block) -> Half = Half(
-    Int(w[Limb(b.ord / 4)] >> (16 * (3 - b.ord % 4)) & U64(0xFFFF))
-)
+fn next_half() -> Half:
+    var v = 0
+    repeat 16: v = v << 1 | next_bit()
+    Half(v)
 
-domain Entry = 0..n
-var dict: [Entry]Word = [Entry] e => [Limb] l => U64(0)
-var sharing: [Block, Half]List<Entry> = []  // block value -> words
-for e in Entry:
-    for l in Limb:
-        var x = U64(0)
-        for _ in 0..64: x = x << 1 | next_bit()
-        dict[e][l] = x
-    for b in Block:
-        let key = block(dict[e], b)
-        sharing[b, key].push(e)
+let dict: [W]Word = [W] _ => [Block] _ => next_half()
+var sharing: [Block, Half]List<W> = []  // the words with each block value
+for i in W:
+    for b in Block: sharing[b, dict[i][b]].push(i)
 
-fn hex(c: Char) -> U64 = U64(if c.is_digit: c - '0' else: 10 + (c - 'A'))
+fn bits_apart(a: Word, b: Word) -> Int = sum(popcount(a[c].ord ^ b[c].ord) for c in Block)
 
 var flip = false
-for _ in 0..m:
-    let (digits, k): (Str, Int) = read()
-    var word: Word = [Limb] l => U64(0)
-    for l in Limb:
-        for i in 0..16: word[l] = word[l] << 4 | hex(digits[l.ord * 16 + i])
-        if flip: word[l] ^= ~U64(0)
-    var close = false
-    for b in Block:
-        let key = block(word, b)
-        for e in sharing[b, key]:
-            if sum(popcount(word[l] ^ dict[e][l]) for l in Limb) <= k: close = true
-    print(if close: 1 else: 0)
-    flip = close
+repeat m:
+    let (digits, k): (Str, 0..=15) = read()
+    let mask = if flip: Half.last!.ord else: 0
+    let word: Word = [Block] b => Half(digits[4 * b.ord..4 * b.ord + 4].parse_int(base: 16)! ^ mask)
+    flip = any(bits_apart(word, dict[i]) <= k for b in Block for i in sharing[b, word[b]])
+    print(if flip: 1 else: 0)

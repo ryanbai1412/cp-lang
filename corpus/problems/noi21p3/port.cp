@@ -4,108 +4,61 @@
 //   x => y or y => x. Each query gives s, t and k <= 2 extra edges usable only by it; print
 //   how many cities lie on some s-to-t walk (0 if t is unreachable).
 // Solution: condense SCCs, weighted by size. The property makes each component's
-//   predecessors a chain, so the condensed DAG's transitive reduction is an out-tree: Kahn's
-//   peel hangs each component under the predecessor that frees it last. Per query, take the
-//   virtual tree of the <= 6 key components plus the extra edges, BFS forward from s and
-//   backward from t, and count each component (or inner path of a tree edge) both reach.
+//   predecessors a chain, so the condensed DAG's transitive reduction is an out-tree: each
+//   component hangs under its last predecessor in a topological order. Per query, take the
+//   virtual tree of the <= 6 key components plus the extra edges, take what s reaches and
+//   what reaches t in it, and count each component (or inner path of a tree edge) both reach.
 //   O(n + m) setup, O(k log n) per query.
-// Bounds: edges.u, edges.v: 1..=n; s_raw, t_raw, eu, ev: 1..=n
+// Bounds: n: 1..=3e5; m: n - 1..=6e5; q: 1..=3e5; k: 0..=2; edges.u, edges.v: 1..=n; s, t: 1..=n; extra.u, extra.v: 1..=n
 
-let (n, m, q, kv): (Int, Int, Int, Int) = read()
+let n: 1..=3e5 = read()
+let (m, q, k): (n - 1..=6e5, 1..=3e5, 0..=2) = read()  // weakly connected: m >= n - 1
 domain V = 1..=n
 domain E = 0..m
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.directed(edges)
 
-// 1. Strongly connected components and component weights.
-let (C, comp) = scc<V>(u => g.out(u))
-var wt: [C]Int = 0
-for u in V: wt[comp[u]] += 1
+let (C, comp) = scc(g)
+var size: [C]Int = 0
+for u in V: size[comp[u]] += 1
 
-// 2. Peel the unique spanning tree of the condensed DAG.
-var dag_adj: [C]List<C> = []
-var indeg: [C]Int = 0
-for e in E:
-    let (cu, cv) = (comp[edges[e].u], comp[edges[e].v])
-    if cu != cv:
-        dag_adj[cu].push(cv)
-        indeg[cv] += 1
-
-var root = C.first!
+// The predecessors of a component form a chain, so its last one in topological order is its
+// parent in the transitive reduction, which is a tree.
+let dag = condense(g, comp)
+let order = topo(dag)!
+var pos: [C]Int = 0
+for (i, c) in order.items: pos[c] = i
+var up: [C]?C = None
 for c in C:
-    if indeg[c] == 0: root = c
+    for a in dag[c]:
+        if up[a.to] == None or pos[c] > pos[up[a.to]!]: up[a.to] = c
+var kids: [C]List<C> = []
+for c in C:
+    if let p = up[c]: kids[p].push(c)
+let tree = Rooted(u => [(to: v, w: size[v]) for v in kids[u]], order[0])
 
-var tree_adj: [C]List<C> = []
-var stack = [root]
-while not stack.is_empty:
-    let u = stack.pop()!
-    for v in dag_adj[u]:
-        indeg[v] -= 1
-        if indeg[v] == 0:
-            tree_adj[u].push(v)
-            stack.push(v)
-
-let tree = Rooted(u => [(to: v, w: wt[v]) for v in tree_adj[u]], root)
-
-// 3. Per-query virtual tree + forward/backward reachability.
-var fwd: [C]List<C> = []
-var rev: [C]List<C> = []
-var vis_f: [C]Bool = false
-var vis_r: [C]Bool = false
-
-for _ in 0..q:
-    let (s_raw, t_raw): (V, V) = read()
-    let (src, dst) = (comp[s_raw], comp[t_raw])
-    var keys = [src, dst]
-    var extra: List<(u: C, v: C)> = []
-    for _ in 0..kv:
-        let (eu, ev): (V, V) = read()
-        let (cu, cv) = (comp[eu], comp[ev])
-        extra.push((u: cu, v: cv))
-        keys.push(cu)
-        keys.push(cv)
-
-    let vt = tree.virtual(keys)
-    for u in vt.at:
-        fwd[u] = []
-        rev[u] = []
-        vis_f[u] = false
-        vis_r[u] = false
+repeat q:
+    let (s, t): (V, V) = read()
+    let extra: [k](u: V, v: V) = read()
+    let vt = tree.virtual([comp[s], comp[t]] + [comp[e.u] for e in extra] + [comp[e.v] for e in extra])
+    fn node(u: V) -> vt.K = vt.at.items.find(p => p.1 == comp[u])!.0
+    var ahead: [vt.K]List<vt.K> = []
+    var behind: [vt.K]List<vt.K> = []
     for x in vt.K:
         if let p = vt.parent[x]:
-            fwd[vt.at[p]].push(vt.at[x])
-            rev[vt.at[x]].push(vt.at[p])
+            ahead[p].push(x)
+            behind[x].push(p)
     for e in extra:
-        fwd[e.u].push(e.v)
-        rev[e.v].push(e.u)
+        ahead[node(e.u)].push(node(e.v))
+        behind[node(e.v)].push(node(e.u))
+    var from_s: [vt.K]Bool = false
+    var to_t: [vt.K]Bool = false
+    for x in reachable(x => ahead[x], [node(s)]): from_s[x] = true
+    for x in reachable(x => behind[x], [node(t)]): to_t[x] = true
 
-    // Forward BFS from src.
-    vis_f[src] = true
-    var qf = [src]
-    var head = 0
-    while head < qf.len:
-        let u = qf[head]
-        head += 1
-        for v in fwd[u]:
-            if not vis_f[v]:
-                vis_f[v] = true
-                qf.push(v)
-
-    // Backward BFS from dst.
-    vis_r[dst] = true
-    var qr = [dst]
-    head = 0
-    while head < qr.len:
-        let u = qr[head]
-        head += 1
-        for v in rev[u]:
-            if not vis_r[v]:
-                vis_r[v] = true
-                qr.push(v)
-
-    var ans = 0
+    var cities = 0
     for x in vt.K:
-        let u = vt.at[x]
-        if vis_f[u] and vis_r[u]: ans += wt[u]
-        if let p = vt.parent[x], vis_f[vt.at[p]] and vis_r[u]: ans += vt.w[x] - wt[u]
-    print(ans)
+        if from_s[x] and to_t[x]: cities += size[vt.at[x]]
+        // the inner components of the tree edge into x
+        if let p = vt.parent[x], from_s[p] and to_t[x]: cities += vt.w[x] - size[vt.at[x]]
+    print(cities)

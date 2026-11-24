@@ -6,47 +6,27 @@
 //   mod 998244353.
 // Solution: the crossing parity of a path set is the parity of the permutation it induces
 //   from the first layer to the last, so by the Lindstrom-Gessel-Viennot lemma the answer is
-//   det of the n_1 x n_1 path-count matrix. Count paths layer by layer, each edge u -> v adding
-//   u's counts from every start to v's, O(n_1 sum m_j), then Gaussian elimination mod p,
-//   O(n_1^3) (the counts are stored transposed; the determinant is the same).
+//   det of the n_1 x n_1 path-count matrix. Count paths layer by layer in a std `Mat<Z>`
+//   (a row per vertex, a column per start), each edge u -> v adding u's row to v's,
+//   O(n_1 sum m_j), then std `det` of the transposed counts, O(n_1^3).
+// Bounds: k: 2..=100; size: 1..=200; edges: 0..=40000; u: 1..=from; v: 1..=to
 // original: corpus/submissions/3893923.cpp
-// Bounds: k: 2..=100
 
-const P = 998244353
-type Z = Mod<P>
-type Mat = List<List<Z>>
+type Z = Mod<998_244_353>
 
-// Row reduction to an upper triangle; a row swap flips the sign.
-fn det(m: Mat) -> Z:
-    var (a, d) = (m, Z.one)
-    let n = a.len
-    for c in 0..n:
-        var pivot = c
-        while pivot < n and a[pivot][c] == Z.zero: pivot += 1
-        if pivot == n: return Z.zero
-        if pivot != c:
-            swap(mut a[pivot], mut a[c])
-            d = -d
-        d *= a[c][c]
-        let inv = a[c][c].inv()
-        for r in c + 1..n:
-            let f = a[r][c] * inv
-            for j in c..n: a[r][j] -= f * a[c][j]
-    d
-
-@!multitest
+@multitest
 let k: 2..=100 = read()
 domain Layer = 0..k
 domain Gap = 0..k - 1
-let size: [Layer]Int = read()  // 1..=200 vertices in each layer
-let edges: [Gap]Int = read()
-let n1 = size[Layer.first!]
-// reach[v][i]: the paths from start i to vertex v of the current layer
-var reach: Mat = [[Z(Int(i == v)) for i in 0..n1] for v in 0..n1]
+let size: [Layer]1..=200 = read()
+let edges: [Gap]0..=40_000 = read()
+let first = size[Layer.first!]
+var paths = Mat<Z>.identity(first)
 for g in Gap:
-    var next: Mat = [[Z.zero for _ in 0..n1] for _ in 0..size[Layer(g.ord + 1)]]
-    for _ in 0..edges[g]:
-        let (u, v): (Int, Int) = read()
-        for i in 0..n1: next[v - 1][i] += reach[u - 1][i]
-    reach = next
-print(det(reach))
+    let (from, to) = (size[Layer(g.ord)], size[Layer(g.ord + 1)])
+    var next = Mat<Z>.zeros(to, first)
+    repeat edges[g]:
+        let (u, v): (1..=from, 1..=to) = read()
+        for s in 0..first: next.at(v - 1, s) += paths.get(u - 1, s)
+    paths = next
+print(paths.det())
