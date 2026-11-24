@@ -418,6 +418,7 @@ place) are different jobs, not twins.
 | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rotate in place; a rotated copy | \(O(n)\) (R07.12.7) |
 | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ids.len)` | \(O(\log n)\) (R07.12.8) |
 | `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)` is the `?V`); `=` inserts or replaces; `op=` starts an absent key at the default of `V` (`0`, `""`, empty) | \(O(\log n)\), \(O(1)\) expected for a hash map (R07.12.9) |
+| `xs.push_id(x)` on a `List` | push `x` and give the index it landed on (the old length): a node arena is `List<Node>` linked by those indices (decision 2.7) | amortized \(O(1)\) (R07.12.10) |
 
 ## Answers to round 2's questions
 

@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3421 (3312 passing). Rules: 615.
+Cases: 3422 (3312 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3421 (3312 passing). Rules: 615.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 95 rules, 249 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 96 rules, 250 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -54,7 +54,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 26 | 26 (100%) | 18 | 18 (100%) | 26 (100%) |
-| R07 | 95 | 95 (100%) | 32 | 32 (100%) | 95 (100%) |
+| R07 | 96 | 96 (100%) | 32 | 32 (100%) | 96 (100%) |
 | R08 | 31 | 31 (100%) | 12 | 12 (100%) | 31 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
 | R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | Rlsp | 9 | 9 (100%) | 2 | 2 (100%) | 9 (100%) |
 | Rstress | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rtrace | 6 | 6 (100%) | 4 | 4 (100%) | 6 (100%) |
-| all | 615 | 615 (100%) | 256 | 256 (100%) | 615 (100%) |
+| all | 616 | 616 (100%) | 256 | 256 (100%) | 616 (100%) |
 
 ## Rules
 
@@ -547,6 +547,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.12.7 [1+ 0-]: | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rot...
 - R07.12.8 [1+ 0-]: | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ...
 - R07.12.9 [3+ 1-]: | `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)...
+- R07.12.10 [1+ 0-]: | `xs.push_id(x)` on a `List` | push `x` and give the index it landed on (the old length):...
 
 ### R08: 08-traits-generics.md
 

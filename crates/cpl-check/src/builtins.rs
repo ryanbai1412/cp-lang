@@ -244,6 +244,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "first", Get, "", "?T", false, "The first element, or `None` when empty. `xs.first(x => x > 1)` is the first one a test holds for.", "xs.first", "?Int"),
     row!(List, "last", Get, "k: Int = 0", "?T", false, "The last element, or `None` when empty. `xs.last(k)` is the one `k` back from it.", "xs.last", "?Int"),
     row!(List, "push", Method, "x: T", "", true, "Adds `x` at the end in O(1) amortized.", "xs.push(4)", ""),
+    row!(List, "push_id", Method, "x: T", "Int", true, "Adds `x` at the end and gives the index it lands on, the list's old length, in O(1) amortized: an arena of nodes linked by index.", "xs.push_id(4)", "Int"),
     row!(List, "pop", Method, "", "?T", true, "Takes the last element off in O(1), or gives `None` when empty.", "xs.pop()", "?Int"),
     row!(List, "get", Method, "i: Int", "?T", false, "The element at `i`, or `None` when `i` is outside the list. O(1).", "xs.get(1)", "?Int"),
     row!(List, "insert", Method, "i: Int, x: T", "", true, "Puts `x` at index `i`, moving the rest up. O(n).", "xs.insert(0, 9)", ""),
