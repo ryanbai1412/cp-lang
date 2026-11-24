@@ -47,8 +47,8 @@ pub use modules::{
     FsLoader, Loader,
 };
 pub use prelude::{
-    import_edit, method_key, method_module, methods as std_methods, std_module, std_names,
-    std_self_heads,
+    import_edit, method_key, method_module, methods as std_methods, set_domain, std_module,
+    std_names, std_self_heads, SetDomain,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};

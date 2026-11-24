@@ -11,6 +11,7 @@
 //! vertices. Bounds can use the values read before them, which is what
 //! lets the generator and the shrinker keep every case valid.
 
+use cpl_check::{set_domain, SetDomain};
 use cpl_diag::Span;
 use cpl_syntax::ast::{
     AssignOp, BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt,
@@ -602,6 +603,7 @@ impl InputSpec {
             src,
             base: 0,
             domains: HashMap::new(),
+            products: HashMap::new(),
             aliases: HashMap::new(),
             records: HashMap::new(),
             none: None,
@@ -715,6 +717,17 @@ impl InputSpec {
                         names_in(&bounds.0, &mut builder.spec.sizes);
                         names_in(&bounds.1, &mut builder.spec.sizes);
                         builder.domains.insert(name.text.clone(), bounds);
+                    } else if let ExprKind::Tuple(parts) = &def.kind {
+                        let parts: Option<Vec<Type>> = parts
+                            .iter()
+                            .map(|part| match &part.kind {
+                                ExprKind::Name(_) => Some(Type::of_index(part)),
+                                _ => None,
+                            })
+                            .collect();
+                        if let Some(parts) = parts {
+                            builder.products.insert(name.text.clone(), parts);
+                        }
                     } else if let Some((lo, hi, inclusive)) = read_size(def) {
                         let (lo, hi) = Builder::inclusive(lo, hi, inclusive);
                         names_in(&lo, &mut builder.spec.sizes);

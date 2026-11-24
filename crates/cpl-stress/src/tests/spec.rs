@@ -1295,3 +1295,53 @@ fn a_range_reads_two_ends_in_order() {
         );
     }
 }
+
+#[test]
+fn derived_domains_counted_lists_and_literal_unions_are_generated() {
+    let src = "let n: 1..=4 = read()
+let m: 1..=3 = read()
+domain R = [n]
+domain C = [m]
+domain Cell = (R, C)
+enum Dir:
+    L
+    U
+    D
+let g: [Cell]0..=9 = read()
+let at: Cell = read()
+let lists: [2]List<5..=7> = read()
+let op: \"add\" | \"del\" = read()
+let open: 3.. = read()
+let a: [R.cuts, Dir]Int = read()
+let b: [Pair<R>]Int = read()
+let c: [Subset<C>]Int = read()
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let text = case.render();
+        let tokens: Vec<&str> = text.split_whitespace().collect();
+        let mut at = 0;
+        let mut next = || {
+            at += 1;
+            tokens[at - 1]
+        };
+        let n: usize = next().parse().unwrap();
+        let m: usize = next().parse().unwrap();
+        for _ in 0..n * m {
+            assert!((0..=9).contains(&next().parse::<i32>().unwrap()), "{text}");
+        }
+        assert!(next().parse::<usize>().unwrap() < n, "{text}");
+        assert!(next().parse::<usize>().unwrap() < m, "{text}");
+        for _ in 0..2 {
+            let k: usize = next().parse().unwrap();
+            for _ in 0..k {
+                assert!((5..=7).contains(&next().parse::<i32>().unwrap()), "{text}");
+            }
+        }
+        assert!(["add", "del"].contains(&next()), "{text}");
+        assert!(next().parse::<i128>().unwrap() >= 3, "{text}");
+        let rest = (n + 1) * 3 + n * (n - 1) / 2 + (1 << m);
+        assert_eq!(tokens.len() - at, rest, "{text}");
+    }
+}

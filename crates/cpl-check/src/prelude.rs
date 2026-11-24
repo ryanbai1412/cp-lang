@@ -935,3 +935,20 @@ mod tests {
         }
     }
 }
+
+/// A library type that is a domain over another: `Pair<V>`, each two
+/// positions of `V`, or `Subset<B>`, each set of them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SetDomain {
+    Pairs,
+    Subsets,
+}
+
+/// The set domain a library type name stands for.
+pub fn set_domain(name: &str) -> Option<SetDomain> {
+    match name {
+        "Pair" => Some(SetDomain::Pairs),
+        "Subset" => Some(SetDomain::Subsets),
+        _ => None,
+    }
+}

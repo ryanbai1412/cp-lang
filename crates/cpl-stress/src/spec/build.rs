@@ -7,6 +7,8 @@ pub(super) struct Builder<'a> {
     pub(super) base: u32,
     /// `domain V = lo..=hi` as inclusive bounds.
     pub(super) domains: HashMap<String, (Expr, Expr)>,
+    /// `domain Cell = (Row, Col)`: the domains a product domain pairs.
+    pub(super) products: HashMap<String, Vec<Type>>,
     /// Each alias with the base of the item that declares it, which its
     /// spans are relative to.
     pub(super) aliases: HashMap<String, (u32, Type)>,
@@ -99,15 +101,59 @@ impl Builder<'_> {
                 inclusive,
             } => Ok(Self::inclusive(lo, hi, *inclusive)),
             TypeKind::Named { name, args } if args.is_empty() => {
-                self.domains.get(&name.text).cloned().ok_or_else(|| {
-                    self.error(
-                        ty.span,
-                        format!("`{}` is not a domain declared above", name.text),
-                    )
-                })
+                if let Some(bounds) = self.domains.get(&name.text) {
+                    return Ok(bounds.clone());
+                }
+                // `V.cuts`: the gaps around `V`'s positions, one more than it has.
+                if let Some(of) = name.text.strip_suffix(".cuts") {
+                    if let Some((lo, hi)) = self.domains.get(of) {
+                        return Ok((lo.clone(), binary(BinOp::Add, hi.clone(), int(1))));
+                    }
+                }
+                // An enum of plain variants is a domain of that many positions.
+                if let Some((_, Record::Enum(variants))) = self.records.get(&name.text) {
+                    if variants.iter().all(|(_, fields)| fields.is_empty()) {
+                        return Ok((int(0), int(variants.len() as i128 - 1)));
+                    }
+                }
+                Err(self.error(
+                    ty.span,
+                    format!("`{}` is not a domain declared above", name.text),
+                ))
+            }
+            // `Pair<V>`: each two positions of `V`; `Subset<B>`: each set of them.
+            TypeKind::Named { name, args }
+                if args.len() == 1 && set_domain(&name.text).is_some() =>
+            {
+                let (lo, hi) = self.index(&args[0])?;
+                let n = binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1));
+                let count = match set_domain(&name.text) {
+                    Some(SetDomain::Pairs) => binary(
+                        BinOp::Div,
+                        binary(BinOp::Mul, n.clone(), binary(BinOp::Sub, n, int(1))),
+                        int(2),
+                    ),
+                    Some(SetDomain::Subsets) | None => binary(BinOp::Shl, int(1), n),
+                };
+                Ok((int(0), binary(BinOp::Sub, count, int(1))))
             }
             _ => Err(self.error(ty.span, "an array is indexed by a domain or a range".into())),
         }
+    }
+
+    /// The bounds of each dimension an index type spans: a product domain
+    /// `(Row, Col)` spans two, anything else one.
+    pub(super) fn dims(&self, ty: &Type) -> Result<Vec<(Expr, Expr)>, SpecError> {
+        if let TypeKind::Named { name, args } = &ty.kind {
+            if let (Some(parts), true) = (self.products.get(&name.text), args.is_empty()) {
+                let mut dims = Vec::new();
+                for part in parts {
+                    dims.extend(self.dims(part)?);
+                }
+                return Ok(dims);
+            }
+        }
+        Ok(vec![self.index(ty)?])
     }
 
     /// The type of one value of a `List<T>` or a one-dimensional array.
@@ -140,12 +186,14 @@ impl Builder<'_> {
                     _ => Err(unsupported(self)),
                 }
             }
-            TypeKind::Range {
-                lo: Some(lo),
-                hi: Some(hi),
-                inclusive,
-            } => {
-                let (lo, hi) = Self::inclusive(lo, hi, *inclusive);
+            // A range open at one end, `0..` or `..=10`, takes `Int`'s there.
+            TypeKind::Range { lo, hi, inclusive } => {
+                let lo = lo.as_deref().cloned().unwrap_or(int(DEFAULT_INT.0));
+                let (hi, inclusive) = match hi {
+                    Some(hi) => ((**hi).clone(), *inclusive),
+                    None => (int(DEFAULT_INT.1), true),
+                };
+                let (lo, hi) = Self::inclusive(&lo, &hi, inclusive);
                 names_in(&lo, &mut self.spec.sizes);
                 names_in(&hi, &mut self.spec.sizes);
                 Ok(Shape::Int { lo, hi })
@@ -173,6 +221,14 @@ impl Builder<'_> {
                 }
                 if let Some((lo, hi)) = self.domains.get(&name.text).cloned() {
                     return Ok(Shape::Int { lo, hi });
+                }
+                // A position of a product domain is one of each part's.
+                if let Some(parts) = self.products.get(&name.text).cloned() {
+                    return parts
+                        .iter()
+                        .map(|part| self.shape(part))
+                        .collect::<Result<_, _>>()
+                        .map(Shape::tuple);
                 }
                 if let Some((base, record)) = self.records.get(&name.text).cloned() {
                     let outer = std::mem::replace(&mut self.base, base);
@@ -202,6 +258,44 @@ impl Builder<'_> {
                 };
                 self.base = outer;
                 shape?.ok_or_else(|| unsupported(self))
+            }
+            // `List<T>` reads a count, then that many `T`s.
+            TypeKind::Named { .. } if self.cell(ty).is_some() => {
+                let count = format!("(count at {})", ty.span.shift(self.base).start);
+                let elem = self.shape(self.cell(ty).unwrap_or(ty))?;
+                self.spec.sizes.insert(count.clone());
+                let len = Expr {
+                    kind: ExprKind::Name(count.clone()),
+                    span: ty.span,
+                };
+                Ok(Shape::Tuple {
+                    parts: vec![
+                        Shape::Int {
+                            lo: int(0),
+                            hi: int(DEFAULT_INT.1),
+                        },
+                        Shape::Array {
+                            len,
+                            elem: Box::new(elem),
+                            index: None,
+                        },
+                    ],
+                    binds: vec![vec![Some(count)], Vec::new()],
+                })
+            }
+            // `'+' | '-'` or `"add" | "del"`: one of these words.
+            TypeKind::LiteralUnion(lits) => {
+                let words: Vec<String> = lits
+                    .iter()
+                    .map(|lit| lit.trim_matches(|c| c == '"' || c == '\'').to_string())
+                    .collect();
+                if words
+                    .iter()
+                    .any(|w| w.is_empty() || w.contains(char::is_whitespace))
+                {
+                    return Err(unsupported(self));
+                }
+                Ok(Shape::Words(words.into()))
             }
             // `Range<T>` reads its two ends `l r` of `T`, `l <= r`.
             TypeKind::Named { name, args } if name.text == "Range" && args.len() == 1 => {
@@ -314,8 +408,11 @@ impl Builder<'_> {
             TypeKind::Array { index, elem } => {
                 let mut shape = self.shape(elem)?;
                 // `[Row, Col]T` is rows of columns.
-                for dimension in index.iter().rev() {
-                    let (lo, hi) = self.index(dimension)?;
+                let mut dims = Vec::new();
+                for dimension in index {
+                    dims.extend(self.dims(dimension)?);
+                }
+                for (lo, hi) in dims.into_iter().rev() {
                     let len = binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1));
                     names_in(&len, &mut self.spec.sizes);
                     shape = Shape::Array {
