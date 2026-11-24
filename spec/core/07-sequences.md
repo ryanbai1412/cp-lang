@@ -379,6 +379,14 @@ query (`pref_min[v]`) is the common one and needs no `.r`.
 \(O(n)\) time and memory. This replaces `scan`, `suffix_scan`, `excl_fold`,
 `scan_in_place` and `Prefix(...)` construction.
 
+- **One spelling for suffix and all-but-one folds.** A suffix fold is
+  `a.rev.scan(op)` and the fold of everything but `i` is
+  `op(pre[i.l], suf[i.r])` over the two scans; std has no `suffix_fold` or
+  `prefix_excl` (decision 511). `cpl fix` rewrites the old spellings:
+  `suffix_fold(op, a)` becomes `a.rev.scan(op)`, and `a.prefix_excl(op)`
+  hoists `let pre = a.scan(op)` and `let suf = a.rev.scan(op)` and becomes
+  `[D] i => op(pre[i.l], suf[i.r])`. (R07.4.16)
+
 ## Ordering and grouping
 
 | Form | Meaning | Cost |
@@ -430,4 +438,4 @@ keeps its name (decision 186).
 `View<T>`, `view()`, 0-based `.at(i)` / `.try_at(i)` on `Indexed`,
 `drop_first` (now `drop`), `skip`, `step_by`, `first_at`,
 `order`, `chunk_by`, `run_ranges`, `excl_fold`, `suffix_scan`,
-`scan_in_place`. Each is a view, a fold over `.keys`, or `.rev.scan`.
+`scan_in_place`, `suffix_fold`, `prefix_excl`. Each is a view, a fold over `.keys`, or `.rev.scan`.

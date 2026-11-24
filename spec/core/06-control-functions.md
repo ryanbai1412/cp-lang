@@ -160,8 +160,11 @@ library or by this spec:
   R02.4.7). (R06.4.8)
 - `@lint(name, from: "<code>", to: "<code>")` on a `pub fn`: a lint the
   library declares, so its users are told to call the fn where they write
-  the code it replaces. `from` and `to` are plain strings, each one
-  expression or statement. The fn's parameter names are the holes: in
+  the code it replaces. `from` and `to` are plain strings: `to` is one
+  expression or statement, and `from` is one expression or statement or a
+  run of consecutive statements in one block (lines joined by `\n`), which
+  matches only the whole run and is replaced by `to`; a hole binds the same
+  tokens across the run. The fn's parameter names are the holes: in
   `from` a hole matches any expression (a bracketed one with its
   brackets), a hole written twice matches the same tokens twice and only
   an expression that calls nothing, and every other name matches itself,
@@ -175,6 +178,12 @@ library or by this spec:
   statement, when `to` drops a parameter `from` matches or uses one it does
   not, when `to` does not call the fn, or when one module declares a name
   twice. (R06.4.9)
+- An idiom whose fix is one library call is declared this way beside the
+  fn it teaches, not as a lint in the linter: std's own idiom lints are
+  `@lint` declarations in `std/`, and the linter keeps only lints a pattern
+  can't state (one that reads types or proven facts, or spans more than one
+  block). The `rust_idiom_lints` counter in `scripts/debt-ratchet.py`
+  counts the rest and is held at 0 (decision 512). (R06.4.10)
 
 User libraries declare their own decorators as ordinary generic
 functions over function types, and their own tool roles with `marker`

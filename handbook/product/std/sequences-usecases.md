@@ -178,15 +178,15 @@ Evidence: program `spec/conformance/std-seq/seq-u23-running-extreme.cp`.
 
 ### seq/U37: suffix folds
 Need: the best value to the right of each position.
-Design: `a.rev.scan(f)`, on the same cuts; `suffix_fold(op, a)`.
+Design: `a.rev.scan(f)`, on the same cuts; it is the one spelling, and `cpl fix` rewrites `suffix_fold(op, a)` to it (decision 511).
 Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u37-suffix-folds.cp`; `suffix_fold(+, a)` is E0201: not in the prelude.
+Evidence: programs `spec/conformance/std-seq/seq-u37-suffix-folds.cp` and `spec/conformance/core-07/suffix-and-all-but-one-folds-are-scans.cp`.
 
 ### seq/U38: fold of everything but one position
 Need: product of all others, or best excluding `i`.
-Design: `a.prefix_excl(op)`, or `pre[i.l]` combined with `suf[i.r]`.
+Design: `let pre = a.scan(op)` and `let suf = a.rev.scan(op)`, then `[D] i => op(pre[i.l], suf[i.r])`; `cpl fix` rewrites `a.prefix_excl(op)` to that (decision 511).
 Milestone: M1-differentiating. Status: supported
-Evidence: program `spec/conformance/std-seq/seq-u38-prefix-excl-method.cp`; it still needs `use std.prefix.{prefix_excl}`.
+Evidence: program `spec/conformance/core-07/suffix-and-all-but-one-folds-are-scans.cp`.
 
 ### seq/U39: a scan of a scan
 Need: running max of two prefix sums.

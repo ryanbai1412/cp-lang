@@ -8751,9 +8751,17 @@ from `just next-decision`.
 
 ## 510. (reserved, content)
 
-## 511. (reserved, content)
+## 511. `suffix_fold` and `prefix_excl` are removed; `cpl fix` rewrites them (spec, 2026-11-24)
 
-## 512. (reserved, content)
+- **Call.** A suffix fold is `a.rev.scan(op)` and the fold of all but `i` is `op(pre[i.l], suf[i.r])` over `let pre = a.scan(op)` and `let suf = a.rev.scan(op)`; `suffix_fold` and `prefix_excl` leave std with no deprecation window (R07.4.16). `cpl fix` rewrites `suffix_fold(op, a)` to `a.rev.scan(op)` and `a.prefix_excl(op)` to the two hoisted scans and `[D] i => op(pre[i.l], suf[i.r])`. Ryan's call (debt cleanup, call 6). The diagnostics work writes the codemod; the stdlib work deletes the two functions.
+- **Why.** Each was a second spelling of a scan the reader already knows, and `suffix_fold` needed a `use` the scan never did. Two spellings for one fold is the drift "Coherent stdlib" forbids.
+- **Reverse.** Restore both as std functions defined by the scans.
+
+## 512. Single-site idiom lints are `@lint` declarations in std (spec, 2026-11-24)
+
+- **Call.** A lint whose finding is one span (an expression, a statement or a run of consecutive statements in one block) and whose fix calls one library fn is declared as `@lint(name, from:, to:)` on that fn in `std/`, and `from` may be a statement run (R06.4.9, R06.4.10). `cpl-lint` keeps only lints a pattern can't state, such as `int_vertex_ids`, which reads which values index a table. The `rust_idiom_lints` counter counts idiom-group lints still in Rust that a from/to pattern could state, computed by script with no list, and is a hard 0. Ryan's call (debt cleanup, call 7). Consumers builds statement-run patterns and moves the lints; each evidenced idiom (`idioms_evidenced_unlinted`) gets a lint the same way.
+- **Why.** An idiom lint is a fact about a library fn ("write `xs.scan(+)` for this loop"), so it belongs beside the fn: a user library teaches its own fns the same way, and a renamed fn can't leave its lint behind. Rust lints for text patterns are a second copy of std's vocabulary.
+- **Reverse.** Keep the single-site idiom lints as Rust rules in `cpl-lint`.
 
 ## 513. Completion offers only what the checker accepts (spec, 2026-11-24)
 
