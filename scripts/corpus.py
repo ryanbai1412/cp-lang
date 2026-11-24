@@ -21,7 +21,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
+import argparse, fcntl, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -386,6 +386,8 @@ def record(pkg, field, value):
 
 HEADER_FIELDS = ("Source", "Problem", "Solution")
 HEADER_LINE = re.compile(r"//\s*(Source|Problem|Solution|Bounds):")
+# Any `// key:` header line, which ends the one before; an indented line continues it.
+HEADER_KEY = re.compile(r"// ?([A-Za-z][\w-]*):")
 TIMEOUT = 20
 SLOWER, FLOOR = 1.5, 0.1
 TARGET_BYTES = 32 * 1024
@@ -431,6 +433,8 @@ def strip_index(t):
 def read_ranges(names, t, domains):
     """name -> (lo, hi) text for every ranged leaf of read type t."""
     t = strip_index(t.strip())
+    while m := re.fullmatch(r"List<(.*)>", t):
+        t = strip_index(m.group(1).strip())
     t = domains.get(t, t)
     if t.startswith("(") and t.endswith(")"):
         parts = split_top(t[1:-1]); out = {}
@@ -468,7 +472,7 @@ def declared_bounds(text):
     for line in text.split("\n"):
         if not line.startswith("//"):
             break
-        m = HEADER_LINE.match(line)
+        m = HEADER_KEY.match(line)
         if m:
             on = m.group(1) == "Bounds"
             if on:
@@ -592,6 +596,12 @@ def check_package(pkg, ctx):
         found.append(f"interactor-no-gen {pkg.id} -")
     if pkg.dir.joinpath("tests").exists():
         found.append(f"committed-tests {pkg.id} -")
+    for size in range(6) if pkg.gen and ctx.run else ():
+        try:
+            pkg.case_input({"seed": 1, "size": size})
+        except (subprocess.SubprocessError, OSError):
+            found.append(f"gen-fails {pkg.id} size={size}")
+            break
     if pkg.dream and pkg.spec:
         code = lambda p: [l.split("//")[0].rstrip() for l in p.read_text(errors="replace").splitlines() if l.split("//")[0].strip()]
         if code(pkg.dream) != code(pkg.spec) and not (pkg.read_meta().get("notes") or "").strip() \
@@ -1056,11 +1066,19 @@ def make_cases(pkg, out=OUT):
     if not pkg.interactor and ref is None:
         raise RuntimeError("no accepted C++ to make answers")
     tests = os.path.join(out, pkg.id)
+    os.makedirs(out, exist_ok=True)
+    # One make of a package at a time, so concurrent makers (nextest runs each
+    # test in its own process) wait for the first and then find it made.
+    with open(os.path.join(out, f".{pkg.id}.lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        made(pkg, ref, tests, out)
+
+
+def made(pkg, ref, tests, out):
     key = os.path.join(tests, ".stamp")
     if os.path.exists(key) and open(key).read() == stamp(pkg, ref):
         return
     exe = binary(ref) if ref else None
-    os.makedirs(out, exist_ok=True)
     # Made aside and renamed in, so a test reading the cases never sees half of them.
     aside = tempfile.mkdtemp(prefix=f".{pkg.id}.", dir=out)
     try:

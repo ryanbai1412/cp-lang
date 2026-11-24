@@ -4,8 +4,11 @@
  "submissions": [
   {"id": "3381135", "language": "JAVA", "result": "AC", "time": 0.903272479, "memory_kb": 60004.0, "file": "corpus/submissions/3381135.java"}
  ],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/nccc8s2/orig.cpp"
+  ],
   "port": [
    "corpus/problems/nccc8s2/port.cp"
   ]

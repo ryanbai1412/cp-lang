@@ -10,11 +10,11 @@
  ],
  "cpp_ac": 3,
  "artifacts": {
-  "original": [
-   "corpus/problems/atcoder_dp_h/orig.cpp"
-  ],
   "dream": [
    "corpus/problems/atcoder_dp_h/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/atcoder_dp_h/orig.cpp"
   ],
   "port": [
    "corpus/problems/atcoder_dp_h/port.cp"

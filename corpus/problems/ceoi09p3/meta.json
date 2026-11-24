@@ -9,6 +9,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/ceoi09p3/orig.cpp"
+  ],
   "port": [
    "corpus/problems/ceoi09p3/port.cp"
   ]

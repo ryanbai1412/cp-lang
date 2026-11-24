@@ -34,6 +34,9 @@
  ],
  "cpp_ac": 18,
  "artifacts": {
+  "original": [
+   "corpus/problems/sac22cc3p5/orig.cpp"
+  ],
   "port": [
    "corpus/problems/sac22cc3p5/port.cp"
   ]

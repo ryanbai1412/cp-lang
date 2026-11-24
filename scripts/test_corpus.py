@@ -80,6 +80,11 @@ class ProblemsTest(Corpus):
         out = subprocess.run([corpus.binary(src)], capture_output=True, text=True).stdout
         self.assertEqual(out, "0 4 3\n")
 
+    def test_a_gen_that_fails_at_a_small_size_is_a_finding(self):
+        gen = "import random, sys\nprint(random.randint(1, int(sys.argv[2])))\n"
+        pkg = corpus.Package.at(self.package("p", gen_py=gen))
+        self.assertIn("gen-fails p size=0", corpus.check_package(pkg, corpus.Context("cpl", run=True)))
+
     def test_a_gxx_older_than_14_is_not_the_reference(self):
         old = self.root / "g++"
         old.write_text("#!/bin/sh\necho 13.3.0\n")
@@ -330,6 +335,14 @@ class MakeTest(Corpus):
         self.assertEqual(corpus.make(args), 0)
         self.assertEqual([(out / pid / "01.in").read_text() for pid in ("p1", "p2", "p3")], ["p1\n", "p2\n", "p3\n"])
 
+    def test_concurrent_makes_of_one_package_both_succeed(self):
+        import concurrent.futures, multiprocessing
+        self.package("p", port_cp="", interactor_py="", tests_toml="".join(f'[[case]]\ninput = "{i}"\n\n' for i in range(200)))
+        out = str(self.root / "out")
+        with concurrent.futures.ProcessPoolExecutor(4, mp_context=multiprocessing.get_context("fork")) as pool:
+            self.assertEqual(list(pool.map(corpus.make_one, [("p", out)] * 8)), [None] * 8)
+        self.assertEqual(len(list((self.root / "out" / "p").glob("*.in"))), 200)
+
     def test_a_failed_make_keeps_the_last_cases_whole(self):
         d = self.package("p", port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "a"\n')
         out = self.root / "out"
@@ -339,7 +352,7 @@ class MakeTest(Corpus):
         with mock.patch.object(corpus.Package, "case_input", side_effect=["b\n", RuntimeError("gen.py fails")]):
             with self.assertRaises(RuntimeError):
                 corpus.make_cases(pkg, str(out))
-        self.assertEqual(sorted(f.name for f in out.iterdir()), ["p"])
+        self.assertEqual(sorted(f.name for f in out.iterdir() if not f.name.endswith(".lock")), ["p"])
         self.assertEqual(sorted(f.name for f in (out / "p").iterdir()), [".stamp", "01.in"])
         self.assertEqual((out / "p" / "01.in").read_text(), "a\n")
 
@@ -381,6 +394,14 @@ class BoundsTest(unittest.TestCase):
         self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\nlet n: 1..=9 = read()\nlet m: 1..=9 = read()\n"),
                          ["bounds-undeclared p m"])
         self.assertEqual(corpus.bounds_findings("p", "let n: Int = read()\n"), [])
+
+    def test_a_read_of_lists_in_an_array_is_checked(self):
+        got = corpus.port_ranges("type City = 1..=n\nlet roads: [0..n]List<(u: City, v: 1..=n)> = read()\n")
+        self.assertEqual((got["roads.u"], got["roads.v"]), (("1", "n"), ("1", "n")))
+
+    def test_bounds_end_at_the_next_header_key(self):
+        text = "// Bounds: n: 1..=9\n// limits: 1000 ms, 256 MB\n//   q: 1..=5\nlet n: 1..=9 = read()\n"
+        self.assertEqual(corpus.declared_bounds(text), {"n": ("1", "9")})
 
     def test_a_read_spelled_read_of_a_type_or_indented_is_checked(self):
         self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\nlet n = read<1..=5>()\n"),
