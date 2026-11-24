@@ -89,6 +89,7 @@ impl<'p> Emitter<'p> {
             .try_fused_bitset_op(e, id, args)
             .or_else(|| self.try_lap_fusion(e, id, args))
             .or_else(|| self.try_sink_call(id, args))
+            .or_else(|| self.try_table_call(id, args))
         {
             return code;
         }

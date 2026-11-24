@@ -654,6 +654,12 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Index(base, indices)
+                if let (Some(t), ExprKind::Local(l)) = (self.tabling, &base.kind)
+                    && t == *l =>
+            {
+                self.tabled_cell(t, indices)
+            }
+            ExprKind::Index(base, indices)
                 if indices.len() == 1
                     && self.found.iter().any(|(m, k, _)| {
                         crate::stmt::same_path(m, base) && crate::stmt::same_path(k, &indices[0])

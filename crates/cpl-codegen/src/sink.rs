@@ -377,6 +377,19 @@ impl Emitter<'_> {
 
 /// `signature` with the list parameter `param` replaced by the callback.
 pub(crate) fn head(signature: &str, name: &str, param: &str) -> Option<String> {
+    variant_head(signature, name, param, "cpl_sink_", "CplG", "cpl_g")
+}
+
+/// `signature` as the fn `{prefix}name`, its parameter `param` taken as
+/// `{class}&& {arg}` of a new template parameter `class`.
+pub(crate) fn variant_head(
+    signature: &str,
+    name: &str,
+    param: &str,
+    prefix: &str,
+    class: &str,
+    arg: &str,
+) -> Option<String> {
     let name = crate::names::fn_name(name);
     let (before, params) = signature.split_once(&format!(" {name}("))?;
     let params = params.strip_suffix(')')?;
@@ -397,7 +410,7 @@ pub(crate) fn head(signature: &str, name: &str, param: &str) -> Option<String> {
     let at = parts
         .iter()
         .position(|p| p.ends_with(&format!(" {param}")) || p.ends_with(&format!("&{param}")))?;
-    parts[at] = "CplG&& cpl_g".to_string();
+    parts[at] = format!("{class}&& {arg}");
     let (tparams, ret) = match before
         .strip_prefix("template <")
         .and_then(|t| t.split_once(">\n"))
@@ -406,7 +419,7 @@ pub(crate) fn head(signature: &str, name: &str, param: &str) -> Option<String> {
         None => (String::new(), before),
     };
     Some(format!(
-        "template <{tparams}class CplG>\n{ret} cpl_sink_{name}({})",
+        "template <{tparams}class {class}>\n{ret} {prefix}{name}({})",
         parts.join(", ")
     ))
 }

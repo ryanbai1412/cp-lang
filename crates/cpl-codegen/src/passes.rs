@@ -436,6 +436,19 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_sum_over_a_generator_builds_no_list",
     ),
     pass(
+        "table",
+        "table.rs",
+        Uses(&[
+            "pure_call",
+            "trap_free_with",
+            "each_call",
+            "each_local",
+            "each_closure",
+            "each_part",
+        ]),
+        "a_prefix_of_a_table_literal_builds_no_table",
+    ),
+    pass(
         "trap-site",
         "site.rs",
         Report,

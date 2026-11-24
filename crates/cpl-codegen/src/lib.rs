@@ -45,6 +45,7 @@ mod span;
 mod splice;
 mod split;
 mod stmt;
+mod table;
 mod unordered;
 mod unpack;
 mod uses;
@@ -665,6 +666,8 @@ mod range_tests;
 mod sink_tests;
 #[cfg(test)]
 mod splice_tests;
+#[cfg(test)]
+mod table_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
