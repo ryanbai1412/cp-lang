@@ -8742,7 +8742,11 @@ from `just next-decision`.
 - **Why.** A Python habit typed into a contest program checks fine and traps at run time, or, before R0101 named the index, read out of bounds in the C++. The literal is visible to the checker, so the mistake costs nothing to catch where it is written, and `last!` already says "this list is not empty".
 - **Reverse.** Drop E0321; a negative literal key traps R0101 at run time like a computed one.
 
-## 509. (reserved, content)
+## 509. `Seq`, generators and `.rev` are std declarations (spec, 2026-11-24)
+
+- **Call.** The sequence traits (`Seq`, `Indexed`, `Bidir`), a generator call's value `Gen<T>` and every adapter, `.rev`'s `Rev<S>` included, are declared with real bodies in `std/seq.cp`; the checker and lowering reach them only through those declarations and keep no list of their names (R07.2.18). Ryan's call (debt cleanup, call 2). Core removes the built-ins; the stdlib unshadow work gives each a body (`rev` is `todo` today).
+- **Why.** "Small core, no privileged stdlib": a built-in `Seq` or `Gen` is a second definition that the docs, LSP and lints each have to rederive, and `ir_builtin_names` and `prelude_privilege` count exactly these. Declaring them in std makes the library the one source, so a user `impl Seq` gets everything a built-in gets.
+- **Reverse.** Keep `Seq`, `Gen` and `.rev` compiler-known, with `std/seq.cp` stubs that only document them.
 
 ## 510. (reserved, content)
 

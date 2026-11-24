@@ -100,6 +100,18 @@ contestant writes `std::next(it, k)` and gets \(O(k)\) without a warning.
 `gen(n).max()` work, because folds need only `Seq` (R07.1.2). The split
 costs nothing where it doesn't matter and errors where it does.
 
+### The sequence vocabulary is std code (decision 509, R07.2.18)
+
+**Chosen.** `Seq`, `Indexed`, `Bidir`, the generator value `Gen<T>` and
+every adapter, `.rev` included, are ordinary declarations in
+`std/seq.cp`. `fn total(s: Seq<Int>)` takes a generator, a list or a
+reversed view because each is a std type implementing a std trait, and
+`.rev` on a generator is the plain bound error "requires `Bidir`".
+
+**Lost.** Compiler-known sequence types, which let the checker special-case
+`.rev` and generators without a library declaration, at the price of a
+second, invisible definition that user code could not read or extend.
+
 ### Identity everywhere: keys in, keys out (decision 143, R07.1.4)
 
 **Chosen.** Every slice keeps its source's keys, and library functions

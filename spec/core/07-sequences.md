@@ -73,6 +73,13 @@ How they relate:
   (`a[a.len - k]` for the `k`-th from the end, `V.wrap(-1)` on a domain).
   A computed negative key traps R0101 like any key out of range
   (decision 508). (R07.2.17)
+- **No built-in sequence names.** `Seq`, `Indexed`, `Bidir`, a generator
+  call's value `Gen<T>` and every adapter, `.rev`'s `Rev<S>` included, are
+  declarations in `std/seq.cp` with real bodies. The checker reaches a
+  `for`'s walk, a generator's type and an adapter through those
+  declarations, as it reaches any library method, and names none of them
+  itself; a program names each in a signature through the prelude
+  (decision 509). (R07.2.18)
 
 <!-- spec-only: expression tour, one form per line -->
 ```python
