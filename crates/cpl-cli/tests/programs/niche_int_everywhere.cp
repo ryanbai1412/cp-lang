@@ -9,7 +9,7 @@ fn lo(xs: List<?Int>) -> ?Int:
 let edges: List<?Int> = [None, Int.MIN, -1, 0, Int.MAX, None]
 var xs = edges.clone()
 xs.push(xs[1])
-print(xs, xs.len)
+print(xs, xs.len, none: "none")
 print(pick(None, Int.MIN) ?? 0, pick(Int.MAX, None) ?? 0, yes(pick(None, None) == None))
 print(lo(edges) ?? 0, yes(lo([]) == None))
 let pair: (?Int, Int) = (Int.MIN, 7)

@@ -32,23 +32,44 @@ impl Checker<'_> {
         // The row's text is no use in the source: hover and references at
         // `span` stay the call's.
         let (hovers, refs) = (self.hovers.len(), self.refs.len());
-        let ret = self.row_ty(member.ret, &elem, &key_value, span);
+        let index = match base_ty {
+            Ty::Array { index, .. } => index.clone(),
+            _ => Vec::new(),
+        };
+        let ret = self.row_ty(member.ret, &elem, &key_value, &index, span);
         self.hovers.truncate(hovers);
         self.refs.truncate(refs);
         ret
     }
 
-    /// A catalog row's type `text` (`?T`, `(K, V)`, `SortedRange<(K, V)>`),
-    /// a named head resolved as any written type is.
-    fn row_ty(&mut self, text: &str, elem: &Option<Ty>, kv: &[Ty], span: Span) -> Option<Ty> {
+    /// A catalog row's type `text` (`?T`, `(K, V)`, `SortedRange<(K, V)>`,
+    /// `[D]T` over the receiver's own `index`), a named head resolved as any
+    /// written type is.
+    pub(in crate::check) fn row_ty(
+        &mut self,
+        text: &str,
+        elem: &Option<Ty>,
+        kv: &[Ty],
+        index: &[Ty],
+        span: Span,
+    ) -> Option<Ty> {
         let text = text.trim();
         if let Some(inner) = text.strip_prefix('?') {
-            return Some(Ty::Optional(Box::new(self.row_ty(inner, elem, kv, span)?)));
+            return Some(Ty::Optional(Box::new(
+                self.row_ty(inner, elem, kv, index, span)?,
+            )));
+        }
+        if let Some(inner) = text.strip_prefix("[D]").filter(|_| !index.is_empty()) {
+            let elem = self.row_ty(inner, elem, kv, index, span)?;
+            return Some(Ty::Array {
+                index: index.to_vec(),
+                elem: Box::new(elem),
+            });
         }
         let items = |c: &mut Self, inner: &str| {
             split_top(inner)
                 .into_iter()
-                .map(|t| c.row_ty(t, elem, kv, span))
+                .map(|t| c.row_ty(t, elem, kv, index, span))
                 .collect::<Option<Vec<_>>>()
         };
         if let Some(inner) = text.strip_prefix('(').and_then(|t| t.strip_suffix(')')) {

@@ -1771,13 +1771,26 @@ impl Checker<'_> {
             return None;
         }
         // `m.get(k)` on a `Map<K, V>` is a `?V`.
-        let key_value = match self.base_ty(base) {
+        let base_ty = self.base_ty(base);
+        let index = match &base_ty {
+            Ty::Array { index, .. } => index.clone(),
+            _ => Vec::new(),
+        };
+        let key_value = match base_ty {
             Ty::Named { name, args } if matches!(name.as_str(), "Map" | "HashMap") => args,
             _ => Vec::new(),
         };
         let ret = match (name.text.as_str(), elem) {
             ("min" | "max", Some(elem)) if member.ret == "?T" => Ty::min_max_of(elem),
-            (_, elem) => catalog_ty(member.ret, &elem, &key_value)?,
+            (_, elem) => {
+                // The row's text is no use in the source: hover and
+                // references at the callee stay the call's.
+                let (hovers, refs) = (self.hovers.len(), self.refs.len());
+                let ret = self.row_ty(member.ret, &elem, &key_value, &index, callee.span);
+                self.hovers.truncate(hovers);
+                self.refs.truncate(refs);
+                ret?
+            }
         };
         // A sum of `1..=1e9`s leaves that range, and may not hold its `0`.
         if name.text == "sum" && matches!(ret, Ty::Range { .. }) {
