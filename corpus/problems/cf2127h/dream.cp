@@ -23,6 +23,8 @@ type Vert = [Deg]Int
 let unit_edge: Edge = [Deg, Deg] (du, dv) => if du.ord >= 1 and dv.ord >= 1: 1 else: 0
 
 // Capped max-plus convolution: res[d] = max_{i + j <= d} (a[i] + b[j]).
+fn flip(e: Edge) -> Edge = [Deg, Deg] (du, dv) => e[dv, du]
+
 fn max_plus_cap(a: Vert, b: Vert) -> Vert:
     var res: Vert = 0
     for d in Deg:
@@ -44,7 +46,9 @@ fn series(a: Edge, mid: Vert, b: Edge) -> Edge =
 
 fn absorb_leaf(host: Vert, e: Edge, leaf: Vert) -> Vert:
     let best_by_host_deg: Vert = [Deg] eh => max_plus_cap(e[eh], leaf)[Deg(2)]
-    max_plus_cap(host, best_by_host_deg)
+    let exact = max_plus_cap(host, best_by_host_deg)
+    // Vert[d] means "at most d incident edges".
+    [Deg] d => max(exact[i] for i in Deg if i <= d)!
 
 @!multitest
 let n: 1..=300_000 = read()
@@ -71,13 +75,19 @@ fn try_queue(v: V):
 
 for v in V: try_queue(v)
 
+// edges[minmax(x, y)] is oriented from the smaller end; take(x, y) orients it x -> y.
+fn take(x: V, y: V) -> Edge:
+    let e = edges.remove(minmax(x, y))!
+    if x < y: e else: flip(e)
+
 while let cur = ready.pop_front():
     if adj[cur].len == 2:
         let u = adj[cur].pop_first()!
         let v = adj[cur].pop_last()!
         adj[u].remove(cur)
         adj[v].remove(cur)
-        let merged = series(edges.remove(minmax(u, cur))!, vert[cur], edges.remove(minmax(cur, v))!)
+        let through = series(take(u, cur), vert[cur], take(cur, v))
+        let merged = if u < v: through else: flip(through)
         edges[minmax(u, v)] = edges.get(minmax(u, v)).map(old => parallel(old, merged)) ?? merged
         adj[u].add(v)
         adj[v].add(u)
@@ -86,7 +96,7 @@ while let cur = ready.pop_front():
     elif adj[cur].len == 1:
         let host = adj[cur].pop_first()!
         adj[host].remove(cur)
-        vert[host] = absorb_leaf(vert[host], edges.remove(minmax(host, cur))!, vert[cur])
+        vert[host] = absorb_leaf(vert[host], take(host, cur), vert[cur])
         try_queue(host)
     else:
         print(vert[cur][Deg(2)])

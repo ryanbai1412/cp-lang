@@ -4,8 +4,9 @@
 // inside a side has even weight, so 2 divides all its max flows.
 use std.flow.{gomory_hu}
 @!multitest
-domain V = read(1..=50)
-let m: 0..=choose2(V.count) = read()
+let n: 1..=50 = read()
+domain V = 1..=n
+let m: 0..=choose2(n) = read()
 let edges = read<[m](u: V, v: V, w: 1..=1e6)>()
 
 fn answer(colors: List<Bitset<V>>):

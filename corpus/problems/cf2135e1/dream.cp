@@ -12,12 +12,12 @@ use std.math.{sieve_multiplicative}
 
 type M = Mod<998_244_353>
 // g reads odd_div_sum up to n + 1.
-let lim = 2e5 + 2
+let lim = 1e6 + 2
 let comb = Comb<M>(lim)
 let odd_div_sum = sieve_multiplicative(lim, (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1))
 
 @!multitest
-let n: 1..=2e5 = read()
+let n: 1..=1e6 = read()
 
 fn g(i: Int) -> M =
     if i <= 0: 0

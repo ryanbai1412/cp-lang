@@ -84,14 +84,18 @@ fn merge(parent: State, child: State, lbl: Label) -> List<(State, Int)>:
     out
 
 @!multitest
-let n: 1..=500 = read()
+let n: 2..=3000 = read()
 domain V = 1..=n
 let label_str: Str = read()
 let label: [V]Label = [V] v => if v == V.first: Label.Zero else: parse_label(label_str[v.ord - 1])
 
 var par: [V]?V = None
+var kids: [V]List<V> = [V] _ => []
 for u in V:
-    repeat read<Int>(): par[read<V>()] = u
+    repeat read<Int>():
+        let c = read<V>()
+        kids[u].push(c)
+        par[c] = u
 let t = Rooted.from_parents(par)
 
 var dp: [V]Map<State, Z> = [V] _ => Map<State, Z>()
@@ -100,7 +104,7 @@ for p in t.Pre.rev:
     var cur: Map<State, Z> = Map()
     cur[State(0, Active.Off, false)] = Z(1)
     cur[State(0, Active.Deferred, false)] = Z(1)
-    for c in t.children(u):
+    for c in kids[u]:
         var next: Map<State, Z> = Map()
         for (parent, w0) in cur.items:
             for (child, w1) in dp[c].items:
