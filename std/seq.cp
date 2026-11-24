@@ -4122,6 +4122,17 @@ impl Show for Slice<S>:
             out += "{x}"
         out
 
+impl Seq<T> for Stepped<S, T>:
+    fn iter(self) -> yields T:
+        for j in 0..self.len: yield self.nth(j)
+
+impl Bidir<T> for Stepped<S, T>:
+    fn iter_rev(self) -> yields T:
+        var j = self.len
+        while j > 0:
+            j -= 1
+            yield self.nth(j)
+
 impl Show for Stepped<S, T>:
     fn show(v):
         var out = ""
