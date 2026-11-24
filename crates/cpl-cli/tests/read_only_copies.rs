@@ -365,6 +365,62 @@ fn explain_gives_one_reason_per_copy_a_library_call_makes() {
 }
 
 #[test]
+fn a_fn_whose_every_arm_returns_a_part_of_self_lends_it_and_explain_lists_no_copy() {
+    for (case, lent) in [
+        (
+            "spec/conformance/std-models/augbag.cp",
+            ["AugSortedBag.all"].as_slice(),
+        ),
+        (
+            "spec/conformance/std-bag/aug-sorted-bag-set-match-brute.cp",
+            &["AugSortedBag.all"],
+        ),
+        (
+            "spec/conformance/std-matrix/min-plus-gaps-fold-in-a-segtree.cp",
+            &["SegTree.blank_at", "SegTree.seen"],
+        ),
+    ] {
+        let src = repo().join(case);
+        let out = std::env::temp_dir().join(format!("cpl-lent-arms-{}.cpp", std::process::id()));
+        let (src_s, out_s) = (src.to_str().unwrap(), out.to_str().unwrap());
+        let built = cpl_cli::run(&["build", src_s, "--full", "-o", out_s]);
+        assert_eq!(built.code, 0, "{case}");
+        let cpp = std::fs::read_to_string(&out).unwrap();
+        let _ = std::fs::remove_file(&out);
+        let explain = cpl_cli::run(&["explain", src.to_str().unwrap()]);
+        let explain = String::from_utf8_lossy(&explain.stdout);
+        for f in lent {
+            let (ty, name) = f.split_once('.').unwrap();
+            let sigs: Vec<&str> = cpp
+                .lines()
+                .filter(|l| {
+                    l.contains(&format!(" {ty}_")) && l.contains(&format!("_{name}(const {ty}_"))
+                })
+                .filter(|l| !l.starts_with("inline ll ") && !l.starts_with("inline bool "))
+                .collect();
+            assert!(
+                !sigs.is_empty(),
+                "{case}: no {f} returning a value in the C++"
+            );
+            for sig in sigs.iter().filter(|_| name != "seen") {
+                assert!(
+                    sig.starts_with("inline const ") && sig.contains("& "),
+                    "{case}: {sig}"
+                );
+            }
+            assert!(
+                !explain
+                    .lines()
+                    .any(|l| l.contains("[copy]") && l.contains(&format!(" in {f} "))),
+                "{case}: explain still lists a copy in {f}:\n{explain}"
+            );
+        }
+    }
+    let arms = "inline const std::vector<ll>& f(const S& self, ll a) {\n  if (a < 0) {\n    return self.id;\n  }\n  return a == 0 ? g(self) : cpl::at(self.agg, a);\n}\n";
+    assert_eq!(deep_copies(arms), 0);
+}
+
+#[test]
 fn a_part_returned_by_value_is_a_copy_and_by_reference_is_not() {
     let by_value = "std::vector<ll> f(const S& self) {\n    return self.xs;\n}\n";
     let lent = "const std::vector<ll>& f(const S& self) {\n    return self.xs;\n}\n";

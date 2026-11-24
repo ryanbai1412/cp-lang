@@ -1169,3 +1169,42 @@ fn a_returned_part_of_an_owned_local_moves_out_even_through_an_if_let() {
         "each part of the tested optional moves out:\n{out}"
     );
 }
+
+#[test]
+fn a_fn_whose_every_return_is_a_part_of_self_lends_it() {
+    let out = cpp(concat!(
+        "struct S:\n    id: List<Int>\n    agg: List<List<Int>>\n    r: Int\n",
+        "    @get pub fn all(self) -> List<Int> = if r < 0: id else: agg[r]\n",
+        "    fn blank(self, a: Int) -> List<Int>:\n",
+        "        if a < 0: return id\n",
+        "        if a > 5: return self.all\n",
+        "        agg[a]\n",
+        "    fn pick(self, a: Int) -> List<Int>:\n",
+        "        return if a == 0: self.blank(a) else: agg[0]\n",
+        "    fn mixed(self, a: Int) -> List<Int>:\n",
+        "        if a < 0: return [a]\n",
+        "        id\n",
+        "    fn tern(self, a: Int) -> List<Int> = if a < 0: [a] else: id\n",
+        "let n: Int = read()\n",
+        "let s = S([1], [[2], [n]], n)\n",
+        "var t = 0\n",
+        "for i in 0..2: t += s.all[0] + s.blank(i)[0] + s.pick(i)[0] + s.mixed(i)[0] + s.tern(i)[0]\n",
+        "print(t)\n",
+    ));
+    for f in ["S_all", "S_blank", "S_pick"] {
+        assert!(
+            out.contains(&format!("const std::vector<ll>& {f}(")),
+            "{f} lends:\n{out}"
+        );
+    }
+    for f in ["S_mixed", "S_tern"] {
+        assert!(
+            out.contains(&format!("std::vector<ll> {f}(")) && !out.contains(&format!("& {f}(")),
+            "a return of a temporary keeps {f} by value:\n{out}"
+        );
+    }
+    assert!(
+        out.contains("return a == 0 ? S_blank(self, a) : cpl::at(self.agg, 0);"),
+        "the conditional of two places returns a reference to one:\n{out}"
+    );
+}

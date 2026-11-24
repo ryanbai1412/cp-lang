@@ -762,33 +762,36 @@ impl<'p> Emitter<'p> {
         (signature, lends)
     }
 
-    /// A fn that gives a field of a parameter it takes by reference (or an element of one) as
-    /// is, last and from its only return, like a `@get` of a stored list, lends it: the caller reads it in place and copies
-    /// it only where it keeps it. So does one that gives what such a fn lends from a place of
-    /// its own (`a.view` where `A.view` lends `xs`), through any chain of them. The answer is
-    /// the parameter the result is a place on.
+    /// A fn each of whose returns gives a part of one parameter it takes by reference, a
+    /// field or an element of one (`return self.id` / `self.agg[r]`, or `c ? self.a : self.b`
+    /// with both arms such parts), lends it, like a `@get` of a stored list: the caller reads it
+    /// in place and copies it only where it keeps it. So does one that gives what such a fn
+    /// lends from a place of its own (`a.view` where `A.view` lends `xs`), through any chain of
+    /// them. The answer is the parameter the result is a place on (see
+    /// [`crate::lend::returned_places`]).
     fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> Option<usize> {
-        use cpl_ir::{ElemLoc, ExprKind, NarrowLayout};
-        // What runs before the one return (a cache's fill) only changes
-        // what the place holds.
-        let Some(Stmt::Return(Some(e))) = f.body.stmts.last() else {
-            return None;
-        };
-        let mut returns = 0;
-        cpl_ir::walk::deep_stmts(&f.body, &mut |s| {
-            returns += matches!(s, Stmt::Return(_)) as usize
-        });
-        if returns != 1 {
+        if f.ret.is_scalar() || f.ret == Ty::Unit || self.caches_on_read(&f.ret) {
             return None;
         }
-        if f.ret.is_scalar()
-            || f.ret == Ty::Unit
-            || e.ty != f.ret
-            || self.caches_on_read(&f.ret)
-            || self.expr_elem_layout(e) != self.elem_layout(ElemLoc::FnRet(id))
-        {
-            return None;
+        let ret_layout = self.elem_layout(cpl_ir::ElemLoc::FnRet(id));
+        let mut root = None;
+        for e in crate::lend::returned_places(&f.body)? {
+            if e.ty != f.ret || self.expr_elem_layout(e) != ret_layout {
+                return None;
+            }
+            let slot = self.lent_place_root(e, by_ref)?;
+            if root.is_some_and(|r| r != slot) {
+                return None;
+            }
+            root = Some(slot);
         }
+        root
+    }
+
+    /// The by-reference parameter `e` is a part of: a field or element path on it, or what a
+    /// fn in `lent_roots` lends from one; never the parameter itself.
+    fn lent_place_root(&self, e: &Expr, by_ref: &[usize]) -> Option<usize> {
+        use cpl_ir::{ExprKind, NarrowLayout};
         let mut at = e;
         loop {
             at = match &at.kind {

@@ -205,6 +205,29 @@ fn gives_own_locals(block: &cpl_ir::Block, ty: &Ty) -> Option<Vec<usize>> {
     (!out.is_empty() && all).then(|| out.into_iter().flatten().collect())
 }
 
+/// What each `return` of a fn body gives, with a conditional's two arms
+/// as two (`c ? self.a : self.b` is a place only when both arms are), or
+/// `None` when a `return` gives nothing. The returns of a fn that
+/// returns `const T&` must each be a place that outlives the call.
+pub(crate) fn returned_places(body: &Block) -> Option<Vec<&Expr>> {
+    fn arms<'e>(e: &'e Expr, out: &mut Vec<&'e Expr>) {
+        match &e.kind {
+            ExprKind::If(_, a, b) => {
+                arms(a, out);
+                arms(b, out);
+            }
+            _ => out.push(e),
+        }
+    }
+    let (mut out, mut bare) = (Vec::new(), false);
+    walk::deep_stmts(body, &mut |s| match s {
+        Stmt::Return(Some(e)) => arms(e, &mut out),
+        Stmt::Return(None) => bare = true,
+        _ => {}
+    });
+    (!bare && !out.is_empty()).then_some(out)
+}
+
 /// The variable `value` reads in place: a path, a `Do` block that gives
 /// one (see [`gives_outer_place`]), or what a fn in `lent_roots` lends
 /// from its argument (`seg[a].l` through `Arena.get`).
