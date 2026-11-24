@@ -1033,3 +1033,6 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   leaves the last element there. The traced `stmt:Expr(Sort)` kind remains only where the
   same sort falls back untraced (an `Ord` impl's sort, operator fns).
 - Regression: tests/programs/vm_traced_statements.cp sorts a local by key and a global.
+- A call's value registers are made in place, not cloned from a `Value::Unit` one by one
+  (vm/exec/mod.rs `take_regs_v`): that clone was 37% of corpus ccc18s4 04.in (30M memo
+  calls), now gone from the profile; the run takes 5.9 s, from 7.3 s.

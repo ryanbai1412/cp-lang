@@ -19,7 +19,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         }
         let mut v = self.vm_pool_v.pop().unwrap_or_default();
         v.clear();
-        v.resize(n, Value::Unit);
+        // Built in place: `resize` would call `Value::clone` per register.
+        v.extend(std::iter::repeat_with(|| Value::Unit).take(n));
         v
     }
 
