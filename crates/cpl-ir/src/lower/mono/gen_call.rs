@@ -5,27 +5,15 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
-    /// A left-out `op: M = NoOp()` binds `M` to its default's type.
-    #[inline(never)]
-    pub(crate) fn bind_default(
-        &mut self,
-        name: &str,
-        default: &'a ast::Expr,
-        at: (ModId, u32),
-        env: &mut GenEnv,
-    ) {
-        if let Some(t) = self.probe_default(default, at, env) {
-            env.insert(name.to_string(), GenArg::Ty(t));
-        }
-    }
-
-    /// A left-out `op: M = NoOp()`: its default's type, read where the template is.
+    /// A left-out `op: M = NoOp()`: its default's type, read where the template is,
+    /// and `M` bound to it in `env` when `bind` names it.
     #[inline(never)]
     pub(crate) fn probe_default(
         &mut self,
         default: &'a ast::Expr,
         (m, offset): (ModId, u32),
-        env: &GenEnv,
+        env: &mut GenEnv,
+        bind: Option<&str>,
     ) -> Option<Ty> {
         let saved = (
             std::mem::replace(&mut self.cur_mod, m),
@@ -34,6 +22,9 @@ impl<'a> Lowerer<'a> {
         );
         let probed = self.probe_ty_silent(default);
         (self.cur_mod, self.offset, self.gen_env) = saved;
+        if let (Some(n), Some(t)) = (bind, &probed) {
+            env.insert(n.to_string(), GenArg::Ty(t.clone()));
+        }
         probed
     }
 
@@ -151,7 +142,12 @@ impl<'a> Lowerer<'a> {
                     && !matches!(default.kind, ast::ExprKind::Lambda { .. })
                 {
                     // An omitted `op: M = NoOp()` binds `M` before the bounds, so `M.Fold` resolves.
-                    self.bind_default(&name.text, default, (tpl_mod, tpl_offset), &mut inferred);
+                    self.probe_default(
+                        default,
+                        (tpl_mod, tpl_offset),
+                        &mut inferred,
+                        Some(&name.text),
+                    );
                 }
             }
             let (Some(pty), Some(arg)) = (&param.ty, arg) else {
@@ -849,7 +845,9 @@ impl<'a> Lowerer<'a> {
                     trait_params.push((decl_idx, probed.ty));
                 }
             } else if let Some(default) = &param.default {
-                if let Some(dty) = self.probe_default(default, (tpl_mod, tpl_offset), &inferred) {
+                if let Some(dty) =
+                    self.probe_default(default, (tpl_mod, tpl_offset), &mut inferred, None)
+                {
                     trait_params.push((decl_idx, dty));
                 }
             }

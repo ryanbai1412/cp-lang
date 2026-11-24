@@ -11,16 +11,20 @@ use cpl_syntax::ast;
 impl Checker<'_> {
     /// The args each super of a trait is written with, resolved in its body.
     pub(super) fn super_args(&mut self, supers: &[ast::Type]) -> Vec<Vec<Ty>> {
-        (supers.iter())
-            .filter_map(|s| match &s.kind {
-                ast::TypeKind::Named { name, args } if !name.text.is_empty() => Some(
-                    args.iter()
-                        .map(|a| self.quietly(|c| c.resolve_type(a)))
-                        .collect(),
-                ),
-                _ => None,
-            })
-            .collect()
+        let mut out = Vec::new();
+        for s in supers {
+            let ast::TypeKind::Named { name, args } = &s.kind else {
+                continue;
+            };
+            if !name.text.is_empty() {
+                let mut resolved = Vec::new();
+                for a in args {
+                    resolved.push(self.quietly(|c| c.resolve_type(a)));
+                }
+                out.push(resolved);
+            }
+        }
+        out
     }
 
     /// Which of `trait_name`'s args is the element its sequences hold.

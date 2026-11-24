@@ -156,7 +156,8 @@ impl<'a> Lowerer<'a> {
                 // `Comb<Z.MOD>`: a number a type holds, by the type's name.
                 if let Some((owner, member)) = name.text.split_once('.') {
                     // `M.Fold` naming a range the impl was given: `Fold.MIN` is its low end.
-                    if let Some(GenArg::Ty(t)) = self.gen_env.get(owner).cloned() {
+                    if let Some(GenArg::Ty(t)) = self.gen_env.get(owner) {
+                        let t = t.clone();
                         self.assoc_range = None;
                         self.assoc_type(&t, member);
                         if let Some(g) = self.assoc_range.take() {

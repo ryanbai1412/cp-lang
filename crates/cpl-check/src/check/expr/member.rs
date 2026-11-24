@@ -1051,6 +1051,7 @@ fn written_path(expr: &Expr) -> Option<Vec<String>> {
 
 /// A position of a declared domain member (`w` in `for w in V.subsets`) has the
 /// members of the struct std declares it with (`@member(subsets)` on `Subset<B>`).
+#[inline(never)]
 fn member_position_as_struct(ty: Ty) -> Ty {
     if let Ty::Pos(domain) = &ty {
         if let Some((d, member)) = domain.rsplit_once('.') {

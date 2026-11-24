@@ -1122,7 +1122,7 @@ impl<'a> Lowerer<'a> {
                 {
                     continue;
                 }
-                self.bind_default(&name.text, d, (tpl_mod, tpl_offset), &mut inferred);
+                self.probe_default(d, (tpl_mod, tpl_offset), &mut inferred, Some(&name.text));
             }
             let bounds: Vec<ast::Bound> =
                 new_fn.bounds.iter().chain(&decl.bounds).cloned().collect();
