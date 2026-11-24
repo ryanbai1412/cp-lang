@@ -308,13 +308,15 @@ template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
         (void)desc;
         return;
     } else {
-    std::vector<K> keys;
-    keys.reserve(seq.size());
-    for (const auto& x : seq) keys.push_back(key(x));
-    // No list in memory holds 2^32 cells.
-    std::vector<uint32_t> order(keys.size());
-    for (size_t i = 0; i < order.size(); i++) order[i] = i;
-    stable_sort_lt(order.begin(), order.end(), [&](uint32_t a, uint32_t b) { return desc ? keys[b] < keys[a] : keys[a] < keys[b]; });
+    // Each key sits next to its cell's index, so a comparison reads one
+    // contiguous pair. No list in memory holds 2^32 cells.
+    std::vector<std::pair<K, uint32_t>> keyed;
+    keyed.reserve(seq.size());
+    for (const auto& x : seq) keyed.emplace_back(key(x), (uint32_t)keyed.size());
+    if (desc) stable_sort_lt(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return b.first < a.first; });
+    else stable_sort_lt(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::vector<uint32_t> order(keyed.size());
+    for (size_t i = 0; i < order.size(); i++) order[i] = keyed[i].second;
     // seq[j] takes the old seq[order[j]], one cycle of the permutation at a time.
     for (size_t i = 0; i < order.size(); i++) {
         if (order[i] == i) continue;
