@@ -495,7 +495,7 @@ pub(crate) fn find(file: &File, declared: &[Declared], only: Option<Code>) -> Ve
             toks: &toks,
             ends: &ends,
             by_end: &by_end,
-            repeated: repeated.clone(),
+            repeated: &repeated,
         };
         let mut start = 0;
         let parts: Vec<Matcher> = (d.ends.iter())
@@ -529,7 +529,8 @@ pub(crate) fn find(file: &File, declared: &[Declared], only: Option<Code>) -> Ve
                 runs
             }
         };
-        let plain = vec![false; d.also.iter().fold(0, |n, p| n.max(p.len()))];
+        let plain =
+            vec![false; (d.also.iter().fold(0, |n, p| n.max(p.len()))).max(d.decl.holes.len())];
         let taken = taken.entry((&d.decl.name, d.decl.item)).or_default();
         // A hole whose parameter is written as a scalar type matches only
         // code of that type, where the checker's types are at hand.
@@ -576,7 +577,7 @@ pub(crate) fn find(file: &File, declared: &[Declared], only: Option<Code>) -> Ve
             let mut used = d.also.is_empty();
             for pat in &d.also {
                 let m = Matcher {
-                    repeated: vec![false; d.decl.holes.len()],
+                    repeated: &plain,
                     ..matcher(pat, &plain[..pat.len()], &plain[..pat.len()])
                 };
                 used |= candidates.iter().any(|c| {
@@ -610,26 +611,27 @@ pub(crate) fn find(file: &File, declared: &[Declared], only: Option<Code>) -> Ve
             let commented = (first..stop - 1).any(|i| {
                 file.src[toks[i].span.end as usize..toks[i + 1].span.start as usize].contains("//")
             });
-            let got: HashMap<&str, &str> = (d.decl.holes.iter().zip(&holes))
-                .filter_map(|(h, run)| {
-                    let (a, b) = (*run)?;
-                    Some((
-                        h.as_str(),
-                        &file.src[toks[a].span.start as usize..toks[b - 1].span.end as usize],
-                    ))
-                })
-                .collect();
+            let mut got = Vec::new();
+            for (h, run) in d.decl.holes.iter().zip(&holes) {
+                if let Some((a, b)) = *run {
+                    let at = toks[a].span.start as usize..toks[b - 1].span.end as usize;
+                    got.push((h.as_str(), &file.src[at]));
+                }
+            }
             let column = |at: u32| {
                 let line = file.src[..at as usize].rfind('\n').map_or(0, |i| i + 1);
                 (line, at as usize - line)
             };
-            let stmts: HashMap<&str, usize> = (d.from.iter().zip(&d.stmt_holes))
-                .filter(|(_, s)| **s)
-                .filter_map(|((_, h), _)| {
-                    let at = d.decl.holes.iter().position(|x| x == h)?;
-                    Some((h.as_str(), column(toks[holes[at]?.0].span.start).1))
-                })
-                .collect();
+            // With no fix the statements a hole matched stay, so the finding
+            // ends before them and the findings inside them stand.
+            let (mut stmts, mut kept) = (Vec::new(), usize::MAX);
+            for ((_, h), &stmt) in d.from.iter().zip(&d.stmt_holes) {
+                let at = d.decl.holes.iter().position(|x| x == h);
+                if let Some((a, _)) = at.and_then(|at| holes[at]).filter(|_| stmt) {
+                    stmts.push((h.as_str(), column(toks[a].span.start).1));
+                    kept = kept.min(a);
+                }
+            }
             let line = column(span.start).0;
             let indent: String = (file.src[line..].chars())
                 .take_while(|c| *c == ' ' || *c == '\t')
@@ -651,15 +653,8 @@ pub(crate) fn find(file: &File, declared: &[Declared], only: Option<Code>) -> Ve
             } else {
                 format!("`{}`", d.module)
             };
-            // With no fix the statements a hole matched stay, so the finding
-            // ends before them and the findings inside them stand.
-            let kept = (d.from.iter().zip(&d.stmt_holes))
-                .filter(|(_, s)| **s)
-                .filter_map(|((_, h), _)| holes[d.decl.holes.iter().position(|x| x == h)?])
-                .map(|(a, _)| a)
-                .min();
             let shown = match kept {
-                Some(a) if d.lint.no_fix.is_some() && a > 0 => {
+                a if d.lint.no_fix.is_some() && a > 0 && a < usize::MAX => {
                     Span::new(span.start, toks[a - 1].span.end)
                 }
                 _ => span,
@@ -759,7 +754,7 @@ struct Matcher<'a> {
     by_end: &'a HashMap<u32, usize>,
     /// Per hole: whether `from` uses it twice or `to` drops it, so it must
     /// be pure.
-    repeated: Vec<bool>,
+    repeated: &'a [bool],
 }
 
 impl Matcher<'_> {
@@ -956,11 +951,11 @@ fn pure(kinds: &[K]) -> bool {
 fn fill(
     to: &str,
     (toks, labels): (&[cpl_syntax::Token], &[bool]),
-    got: &HashMap<&str, &str>,
+    got: &[(&str, &str)],
     names: &[(String, String)],
     spell: &[(String, String)],
     indent: &str,
-    stmts: &HashMap<&str, usize>,
+    stmts: &[(&str, usize)],
 ) -> String {
     let mut out = String::new();
     let mut last = 0;
@@ -970,7 +965,9 @@ fn fill(
             continue;
         }
         let word = &to[t.span.start as usize..t.span.end as usize];
-        let replacement = if let (Some(m), Some(&was)) = (got.get(word), stmts.get(word)) {
+        let got = got.iter().find(|(h, _)| *h == word).map(|(_, m)| *m);
+        let was = stmts.iter().find(|(h, _)| *h == word).map(|(_, w)| *w);
+        let replacement = if let (Some(m), Some(was)) = (got, was) {
             let line = to[..t.span.start as usize].rfind('\n').map_or(0, |i| i + 1);
             let now = indent.len() + t.span.start as usize - line;
             let shift = |l: &str| {
@@ -984,7 +981,7 @@ fn fill(
             let mut it = m.split('\n');
             let first = it.next().unwrap_or_default().to_string();
             it.fold(first, |acc, l| acc + "\n" + &shift(l))
-        } else if let Some(m) = got.get(word).filter(|_| is_name(t.kind, word)) {
+        } else if let Some(m) = got.filter(|_| is_name(t.kind, word)) {
             let before = i.checked_sub(1).map(|i| toks[i].kind);
             let after = toks.get(i + 1).map(|t| t.kind);
             let labelled = before == Some(K::Colon) && i >= 2 && labels[i - 2];
