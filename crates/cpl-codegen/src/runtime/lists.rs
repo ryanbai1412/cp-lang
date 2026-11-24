@@ -158,6 +158,7 @@ template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = t
 template <class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
 template <class T> std::vector<T> sorted(std::vector<T> v) { sort_seq(v.begin(), v.end()); return v; }
 template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
+template <class T, size_t K> std::vector<T> sorted(const std::array<T, K>& a) { std::vector<T> v(a.begin(), a.end()); sort_seq(v.begin(), v.end()); return v; }
 ",
     },
     Piece {
