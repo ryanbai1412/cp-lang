@@ -1,4 +1,5 @@
 // Source: NOI '22 MPTS P4 (Card), https://dmoj.ca/problem/noimps22p4
+// limits: 1000 ms, 512 MB
 // Problem: n <= 1e6 cards with values s_i <= 2000, then m <= 1500 queries, each a list of primes
 //   <= 2000 (total length <= 18000). For each query count the subsets of cards whose product is
 //   divisible by every listed prime, mod 998244353.
@@ -44,8 +45,8 @@ for v in 1..=max_v:
             sm = sm | (1 << j)
             while x % p == 0: x /= p
     small_mask[v] = sm
-    if x > 1:
-        val_big[v] = big_id[x]
+    if x > 1:  // the big prime, or 43^2
+        val_big[v] = big_id[sieve.factor(x)[0].0]
 
 var total_sub = List.filled(1 << small_cnt, 0)
 // Store only non-zero (big_id, mask, count) buckets per big prime, then SOS on demand

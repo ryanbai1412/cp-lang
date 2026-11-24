@@ -1,4 +1,5 @@
 // Source: NOI 2007 P5 (Counting Spanning Trees), https://dmoj.ca/problem/noi07p5
+// limits: 600 ms, 256 MB
 // Problem: vertices 1..=n in a row, an edge between every two at distance at most k
 //   (2 <= k <= 5, k <= n <= 1e15). Print the number of spanning trees modulo 65521.
 // Solution: the counts for k, k + 1, ... vertices satisfy a linear recurrence of bounded

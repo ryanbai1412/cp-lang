@@ -1,4 +1,5 @@
 // Source: NOI 2006 P1 (Network Charges), https://dmoj.ca/problem/noi06p1
+// limits: 1400 ms, 256 MB
 // Problem: 2^N <= 1024 users are the leaves of a full binary tree; each registered paying A
 //   or B, and switching user i costs C_i. Each pair i < j is charged at their LCA P: if P
 //   has fewer A than B leaves, F_ij per A in the pair, else F_ij per B in the pair. Given

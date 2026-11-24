@@ -1,9 +1,19 @@
-import sys, random
-big = sys.argv[1:] == ["--max"]
-if big: sys.argv[1:] = ["1", "2000"]
-r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
-n = 100 if big else r.randint(1, max(1, min(S, 8)))
-m = 2000 if big else r.randint(1, max(1, min(S, 8)))
-top = 998244352 if big or r.random() < 0.3 else r.choice([1, 3])
-print(n, m)
-for _ in range(n): print(*(r.randint(0, top) if r.random() < 0.8 else 0 for _ in range(m)))
+"""noip19p4 generator: n <= 100 methods by m <= 2000 ingredients, 0 <= a_ij < 998244353."""
+import random
+import sys
+
+P = 998244353
+
+
+def emit(rng, n, m, hi):
+    print(n, m)
+    for _ in range(n):
+        print(*(rng.randint(0, hi) for _ in range(m)))
+
+
+if sys.argv[1] == "--max":
+    emit(random.Random(0), 100, 2000, P - 1)
+    sys.exit()
+seed, size = int(sys.argv[1]), int(sys.argv[2])
+rng = random.Random(seed)
+emit(rng, rng.randint(1, max(1, min(100, size))), rng.randint(1, max(1, min(2000, size))), rng.choice([1, 3, P - 1]))

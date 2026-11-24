@@ -4,12 +4,8 @@
 input = "2\n5\n1 2\n2 3\n2 4\n3 5\n7\n1 2\n1 3\n1 4\n3 5\n3 6\n6 7\n"
 
 [[case]]
-seed = 1
-size = 8
-
-[[case]]
 seed = 2
-size = 8
+size = 5
 
 [[case]]
 seed = 3
@@ -17,22 +13,18 @@ size = 8
 
 [[case]]
 seed = 4
-size = 8
+size = 16
 
 [[case]]
 seed = 5
-size = 8
+size = 32
 
 [[case]]
 seed = 6
-size = 8
+size = 300
 
 [[case]]
 seed = 7
-size = 3000
-
-[[case]]
-seed = 8
 size = 3000
 
 [[case]]

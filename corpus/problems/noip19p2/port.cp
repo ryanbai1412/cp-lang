@@ -1,4 +1,5 @@
 // Source: NOIP 2019 Senior P2 (Brackets on a Tree), https://www.luogu.com.cn/problem/P5658
+// limits: 1000 ms, 250 MB
 // Problem: a tree of n <= 5e5 vertices rooted at 1 (parent f_u < u), each vertex holding '(' or
 //   ')'. k_i counts the substrings (by position) of the root-to-i string that are balanced.
 //   Print the xor of i * k_i over all i.

@@ -1,5 +1,6 @@
 // Source: NOI Provincial Selection 2023 P1, Train Station,
 //   https://dmoj.ca/problem/noimps23p1
+// limits: 1000 ms, 512 MB
 // Problem: n stations on a line and m tracks [l, r] (l < r). A train leaves station x along any
 //   track through x, in either direction, may change to another track at any station both
 //   cover but never turns back, and stops at the end of a track. Print, ascending, every

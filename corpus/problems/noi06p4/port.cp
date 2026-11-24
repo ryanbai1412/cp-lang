@@ -1,4 +1,5 @@
 // Source: NOI 2006 P4 (Maximum Profit), https://dmoj.ca/problem/noi06p4
+// limits: 1000 ms, 256 MB
 // Problem: N <= 5000 candidate stations with build costs P_i and M <= 50000 user groups;
 //   group i pays C_i if both stations A_i and B_i are built. Print the maximum of the total
 //   payments minus the total build cost.

@@ -1,4 +1,5 @@
 // Source: CSP-S 2019 Day 2 P1 (Emiya's meal), https://dmoj.ca/problem/noip19p4
+// limits: 1000 ms, 250 MB
 // Problem: a[i][j] < 998244353 distinct dishes use method i (n <= 100) and ingredient j
 //   (m <= 2000). Count non-empty sets of dishes with pairwise different methods in which every
 //   ingredient is used by at most half of the dishes, modulo 998244353.

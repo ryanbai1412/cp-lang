@@ -1,5 +1,6 @@
 // Source: CSP-S 2019 Day 2 T3 (Centroid of Tree, DMOJ noip19p6; the DMOJ page is not public),
 //   https://www.luogu.com.cn/problem/P5666
+// limits: 4000 ms, 250 MB
 // Problem: T <= 5 trees of n <= 299995 vertices. A centroid leaves no part above floor(size / 2)
 //   when removed. For each tree print the sum, over every edge, of the labels of all centroids
 //   (one or two) of both halves left by cutting that edge.

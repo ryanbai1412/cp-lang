@@ -1,4 +1,5 @@
 // Source: NOI 2005 P1 (Gorgeous Waltz), https://dmoj.ca/problem/noi05p1
+// limits: 400 ms, 256 MB
 // Problem: an N x M grid (N, M <= 200) with furniture 'x' and a piano at (x, y). Times 1..=T
 //   (T <= 40000) form K <= 200 intervals, each tilting the ship N, S, W or E; each second the
 //   piano slides one cell that way or is held, never into furniture or off the grid. Print
