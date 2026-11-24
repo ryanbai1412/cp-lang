@@ -1,56 +1,34 @@
 // Source: Yet Another Contest 1 P2 (A Boring Problem), https://dmoj.ca/problem/yac1p2
 // Problem: a tree of 3 <= n <= 2e5 nodes, each black (B) or white (W). Count the simple paths
-//   (unordered) that contain at least three nodes of the same colour.
-// Solution: count the complement: a path with at most two nodes of each colour. vals[u, a, b]
-//   counts downward paths from u with a blacks and b whites (both < 3); before merging child v
-//   into u, pair its paths with u's so far whose counts still sum below 3. The answer is all
-//   n + n(n-1)/2 paths minus those. O(81 n) after a BFS order.
+//   (unordered, single nodes included) that contain at least three nodes of the same colour.
+// Solution: count the complement, paths with at most two nodes of each colour, and subtract
+//   it from all n + n(n-1)/2 paths. down[u, b, w] counts the paths from u down into its
+//   subtree with b black and w white nodes (both below 3). Children up: before merging child
+//   c into u, pair c's paths with u's so far whose counts still sum below 3. O(81 n).
 // original: corpus/submissions/4376253.cpp
 
-let n: 1..=200_000 = read()
-let s: [0..n]Char = read()
-var adj: [0..n]List<Int> = []
-for i in 0..n - 1:
-    let u: 1..=200_000 = read()
-    let v: 1..=200_000 = read()
-    adj[u - 1].push(v - 1)
-    adj[v - 1].push(u - 1)
+let n: 3..=200_000 = read()
+domain V = 1..=n
+domain Few = 0..3
+let colour: [V]Char = read()
+let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V(1))
 
-var par: [0..n]Int = -1
-var order: List<Int> = []
-order.push(0)
-var head = 0
-while head < order.len:
-    let u = order[head]
-    head += 1
-    for j in 0..adj[u].len:
-        let v = adj[u][j]
-        if v != par[u]:
-            par[v] = u
-            order.push(v)
+var down: [V, Few, Few]Int = 0
+var calm = 0
+for u in t.order.rev:
+    let mb = if colour[u] == 'B': 1 else: 0
+    let mw = 1 - mb
+    down[u, Few(mb), Few(mw)] = 1
+    calm += 1
+    for c in t.children(u):
+        for b in Few:
+            for w in Few:
+                for b2 in Few:
+                    for w2 in Few:
+                        if Int(b) + Int(b2) < 3 and Int(w) + Int(w2) < 3: calm += down[u, b, w] * down[c, b2, w2]
+        for b in Few:
+            for w in Few:
+                if let Some(b1) = Few.at(b + mb):
+                    if let Some(w1) = Few.at(w + mw): down[u, b1, w1] += down[c, b, w]
 
-// vals[u, a, b]: downward paths from u with a 'B' and b other nodes, both below 3
-var vals: [0..n, 0..3, 0..3]Int = 0
-var good = 0
-for t in 0..n:
-    let u = order[n - 1 - t]
-    var ax = 0
-    var bx = 1
-    if s[u] == 'B':
-        ax = 1
-        bx = 0
-    good += 1
-    vals[u, ax, bx] = 1
-    for j in 0..adj[u].len:
-        let v = adj[u][j]
-        if v != par[u]:
-            for a in 0..3:
-                for b in 0..3:
-                    for c in 0..3 - a:
-                        for d in 0..3 - b:
-                            good += vals[u, a, b] * vals[v, c, d]
-            for a in 0..3 - ax:
-                for b in 0..3 - bx:
-                    vals[u, a + ax, b + bx] += vals[v, a, b]
-
-print(n + n * (n - 1) / 2 - good)
+print(n + choose2(n) - calm)

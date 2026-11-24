@@ -2,104 +2,70 @@
 // Problem: f(x, y) = a if a <= x, else b if b <= y, else 0. Given n <= 150000 pairs with
 //   0 <= y_i <= x_i <= 1e9, choose constants a, b to maximise sum f(x_i, y_i); print the maximum.
 // Solution: some x_i is an optimal a (or a is above every x); then the sum is
-//   a * #(x >= a) + b * #(x < a, y >= b), and b is best at one of the y values. Sweep a over the
-//   sorted x; pairs with x < a join one by one, each adding 1 to the count of every y value <= y.
-//   Over compressed y, sqrt blocks of B = 400 keep the lines v * (count + lazy) as an upper hull,
-//   queried at the block's lazy add with a forward-only pointer: O(n sqrt n).
+//   a * #(x >= a) + b * #(x < a, y >= b), and b is best at one of the y values. Sweep a over
+//   the sorted x; pairs with x < a join run by run, each adding 1 to joined[v] for every
+//   y value v <= its y, and we need max v * joined[v]. Over compressed y, sqrt blocks of
+//   B = 400 keep the lines v * (joined[v] + t) as an upper hull (slopes v rise) queried at
+//   the block's pending add t, which only grows until the block is rebuilt: O(n sqrt n).
+//   Line i of the hull wins from t = from[i], the ceil of its crossing with line i - 1;
+//   std's MonotoneHull cross-multiplies and overflows on these sizes (friction).
 // original: corpus/submissions/6415690.cpp
+
 const B = 400
 
-fn ceil_div(a: Int, b: Int) -> Int = (a + b - 1) / b
+let n: 1..=150_000 = read()
+let pts = read<[n](0..=1_000_000_000, 0..=1_000_000_000)>().sorted()
+let (domain Y, ys) = compress([p.1 for p in pts])
+domain Blk = 0..(Y.count + B - 1) / B
 
-let n: 1..=200_000 = read()
-domain I = 0..n
-var xs: [I]Int = 0
-var ys_in: [I]Int = 0
-for i in I:
-    let x: 0..=1_000_000_000 = read()
-    let y: 0..=1_000_000_000 = read()
-    xs[i] = x
-    ys_in[i] = y
+struct Upper:
+    lines: List<Line> = []
+    from: List<Int> = []
+    at: Int = 0
 
-var order: List<(Int, Int)> = []
-for i in I: order.push((xs[i], ys_in[i]))
-order.sort()
+    fn clear(mut self):
+        lines.clear()
+        from.clear()
+        at = 0
 
-let (domain Y, yvals) = compress(ys_in)
-let m = Y.len
-let nb = (m + B - 1) / B
-domain Bk = 0..nb
+    fn add(mut self, l: Line):
+        while not lines.is_empty and l.at(from.last!) >= lines.last!.at(from.last!):
+            let _ = lines.pop()
+            let _ = from.pop()
+        if let Some(top) = lines.last: from.push((top.m - l.m).ceil_div(l.k - top.k))
+        else: from.push(0)
+        lines.push(l)
 
-var b_add: [Bk]Int = 0
-var b_ptr: [Bk]Int = 0
-var b_v: [0..m]Int = 0
-var h_at: [Bk]List<Int> = []
-var h_m: [Bk]List<Int> = []
-var h_b: [Bk]List<Int> = []
+    fn at_next(mut self, t: Int) -> Int:
+        while at + 1 < lines.len and t >= from[at + 1]: at += 1
+        lines[at].at(t)
 
-fn rebuild(bi: Bk):
-    h_at[bi].clear()
-    h_m[bi].clear()
-    h_b[bi].clear()
-    b_ptr[bi] = 0
-    let ql = bi.ord * B
-    var qr = ql + B
-    qr min= m
-    for idx in ql..qr:
-        let sl = yvals[Y.nth(idx)]
-        let ic = sl * b_v[idx]
-        while h_at[bi].len > 0:
-            let last = h_at[bi].len - 1
-            let tx = h_at[bi][last]
-            if sl * tx + ic > h_m[bi][last] * tx + h_b[bi][last]:
-                h_at[bi].pop()
-                h_m[bi].pop()
-                h_b[bi].pop()
-            else:
-                break
-        if h_at[bi].len == 0:
-            h_at[bi].push(0)
-        else:
-            let last = h_at[bi].len - 1
-            h_at[bi].push(ceil_div(h_b[bi][last] - ic, sl - h_m[bi][last]))
-        h_m[bi].push(sl)
-        h_b[bi].push(ic)
+var joined: [Y]Int = 0
+var pending: [Blk]Int = 0
+var hull: [Blk]Upper = Upper()
 
-for bi in Bk: rebuild(bi)
+fn cells(b: Blk) -> Range<Int> = b.ord * B..min((b.ord + 1) * B, Y.count)
 
-fn query_all() -> Int:
-    var best = 0
-    for bi in Bk:
-        let x = b_add[bi]
-        while b_ptr[bi] + 1 < h_at[bi].len and x >= h_at[bi][b_ptr[bi] + 1]:
-            b_ptr[bi] += 1
-        let p = b_ptr[bi]
-        let cur = h_m[bi][p] * x + h_b[bi][p]
-        best max= cur
-    best
+fn rebuild(b: Blk):
+    hull[b].clear()
+    for o in cells(b):
+        let v = Y.nth(o)
+        hull[b].add(Line(ys[v], ys[v] * joined[v]))
 
-fn add_y(y: Int):
-    let lo = (0..m).first_true(mid => yvals[Y.nth(mid)] > y) ?? m
-    let pos = lo
-    let bind = pos / B
-    for i in 0..bind: b_add[Bk.nth(i)] += 1
-    let rem = pos % B
-    if rem > 0:
-        let base = bind * B
-        for i in base..(base + rem): b_v[i] += 1
-        rebuild(Bk.nth(bind))
+fn gain() -> Int = max(hull[b].at_next(pending[b]) for b in Blk)!
 
-var rem = n
-var ans = 0
-var i = 0
-while i < n:
-    let cur_x = order[i].0
-    let cand = rem * cur_x + query_all()
-    ans max= cand
-    while i < n and order[i].0 == cur_x:
-        add_y(order[i].1)
-        i += 1
-        rem -= 1
-let tail = query_all()
-ans max= tail
-print(ans)
+fn join(y: Int):
+    let last = ys.index_of(y)
+    let b = Blk.nth(last.ord / B)
+    for full in Blk.nth(0)..b: pending[full] += 1
+    for o in b.ord * B..=last.ord: joined[Y.nth(o)] += 1
+    rebuild(b)
+
+for b in Blk: rebuild(b)
+var best = 0
+var left = n
+for run in pts.runs(by: p => p.0):
+    best max= left * run.first!.0 + gain()
+    for p in run: join(p.1)
+    left -= run.len
+print(max(best, gain()))
