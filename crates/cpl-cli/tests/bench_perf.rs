@@ -74,6 +74,40 @@ int main() {
 }
 
 #[test]
+fn zero_cost_fails_a_pair_over_the_bar_only_under_check() {
+    let root = tmp_dir("zc-check");
+    let pair = root.join("same");
+    std::fs::create_dir_all(&pair).unwrap();
+    let src = "let n: Int = read()\nprint(n * 2)\n";
+    std::fs::write(pair.join("abstract.cp"), src).unwrap();
+    std::fs::write(pair.join("direct.cp"), src).unwrap();
+    std::fs::write(pair.join("input.txt"), "21\n").unwrap();
+
+    let run = |check: bool| {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl"));
+        cmd.args([
+            "bench",
+            "--zero-cost",
+            root.to_str().unwrap(),
+            "--reps",
+            "3",
+        ]);
+        cmd.args(["--max-ratio", "0.01"]);
+        if check {
+            cmd.arg("--check");
+        }
+        cmd.output().unwrap()
+    };
+    let gated = run(true);
+    let stdout = String::from_utf8_lossy(&gated.stdout);
+    assert_eq!(gated.status.code(), Some(1), "stdout={stdout}");
+    assert!(stdout.contains("FAIL"), "stdout={stdout}");
+    assert!(run(false).status.success());
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn corpus_bench_uses_perf_cp_checks_tests_and_writes_schema() {
     let root = tmp_dir("corpus");
     let prob = root.join("demo_p1");
