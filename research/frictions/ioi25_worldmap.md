@@ -51,6 +51,8 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   type (`Set`, `Bitset`, `DynBitset`).
 - **Owner:** Consumers/Tools.
 - **Severity:** low.
+- **Status:** fixed by 59bed056c: `s.insert(v)` on a `Bitset` now offers `add`, which returns
+  whether the bit was new.
 
 ## No way to orient a non-tree edge toward its ancestor
 - **Where:** `dream.cp`,
@@ -129,6 +131,19 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
 - **Severity:** medium.
 - **Status:** fixed by 57c83b9a8: a found `grader.cpp` is linked only into a program that
   declares a `@grader fn`, so `grader.cpp` and `worldmap.h` now sit at the package root.
+
+## The port and the dream build the map differently
+- **Where:** `port.cp:23-33` against `dream.cp:14-26`.
+- **What:** the dream tours the deepest root path last and expands each vertex at its first
+  visit, then pads with `while diags.len < 4 * n - 1: diags.push(diags.last!)`. The port gives
+  each back edge to the end whose roomiest visit is nearer the tour's middle and expands every
+  vertex once, at that visit; its 2n - 1 visits plus n two-diagonal expansions make exactly
+  4n - 1 diagonals, so it needs neither the padding nor the `expanded` set. The port came second
+  and is the better rule; the dream keeps the deep-path order because it is the editorial's
+  argument and both score in full on the package cases.
+- **Cost:** none at runtime (n <= 40); two arguments to check for one problem.
+- **General fix (idioms):** move the dream to the port's rule when the dream is next rewritten.
+- **Severity:** low.
 
 ## Measurements
 

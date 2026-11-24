@@ -1,13 +1,71 @@
 # Friction report: ioi25_migrations
 
-Written after the port landed without one (67a6c650c). The findings come from its review (research/reviews/ioi25_migrations.md), its diff against `dream.cp`, and
-repros on today's `cpl`.
+## Dream
+
+```cp
+struct Sender:
+    n: Int
+    plan: List<Phase>
+    var tree: JumpTree<Site> = JumpTree<Site>()
+    ...
+    fn arrive(mut self, at: Site, parent: Site) -> 0..=4:
+
+var sender = Sender(0, [])  // the one value the first run carries from call to call
+
+@grader(two_phase)
+fn send_message(n: Int, at: 1..10_000, parent: 0..10_000) -> 0..=4:
+    if at == 1: sender = Sender(n, phase_plan(n))
+    sender.arrive(Site(at), Site(parent))
+```
+
+Both programs keep two candidate lists for a diameter's ends, shrink them over five phases
+whose block pair is spelled by one nonzero symbol, and finish with the editorial's three case
+tables. The dream is the judge's two `@grader(two_phase)` fns; the port reads the sample
+grader's stdin and runs both phases itself, the second seeing only S. The first run's state
+is one `Sender` (it was eleven top-level `var`s reset by hand at site 1), every candidate and
+end is a `Site`, the endgame lists are `?Site` padded with `None` (it was site 0, a real
+site), and each endgame step stores the lists its symbol leaves instead of a `say` that set
+a global and returned it.
+
+## A struct field whose type is inferred from its default is emitted as `void`
+- **Where:** `dream.cp`/`port.cp`, `Sender`'s `tree`, `u` and `v`.
+- **What:** `cpl check` accepts the program, and `cpl build` writes C++ that g++ rejects:
+  ```cp
+  domain Site = 0..10
+  struct S:
+      var u = Site(3)
+      var t = JumpTree<Site>()
+  var s = S()
+  print(s.u.ord)
+  ```
+  gives `error: variable or field 'u' declared void` (and the same for `t`); `cpl run`
+  prints `3`. `var n = 0` fields are fine. Both programs annotate the three fields.
+- **General fix (codegen):** emit a field's type from the checker's inferred type, as for a
+  `let`.
+- **Severity:** high (an accepted program that doesn't compile).
+
+## A `@grader` fn can't take a `Site`
+- **Where:** `send_message(n: Int, at: 1..10_000, parent: 0..10_000)`.
+- **What:** a domain can't cross to the grader (E0501), so the grader fns take plain ranges
+  and convert with `Site(at)`; `longest_path` returns `(a!.ord, b!.ord)`.
+- **General fix (codegen):** pass a domain whose range is a literal as its `Int` at the grader
+  boundary.
+- **Severity:** low.
+
+## A grader program carries state from call to call in a top-level `var`
+- **Where:** `var sender = Sender(0, [])`.
+- **What:** the judge calls `send_message` N - 1 times in one process, so the state must
+  outlive a call; the language has no per-run value for a grader, and the placeholder
+  `Sender(0, [])` is built only to be replaced at site 1.
+- **General fix (codegen, spec):** let `@grader(two_phase)` take a `struct` whose methods are
+  the grader fns and whose constructor runs once per phase.
+- **Severity:** medium.
 
 ## A two-phase task's stdin port can't keep its phases apart
-- **Where:** `port.cp:133-138`, the driver that runs `send_message` for every site and then
+- **Where:** `port.cp`'s driver, that runs `send_message` for every site and then
   `longest_path(s)` in the same process, after the `@grader(two_phase)` dream's
   `dream.tests/grader.cpp` (which forks, as the judge does) was kept out of the stdin port.
-- **Repro:** add `return (u, v)` as the first line of `longest_path` in `port.cp`, so the second
+- **Repro** (on the port as of eadf73e60): add `return (u, v)` as the first line of `longest_path` in `port.cp`, so the second
   phase reads the first phase's globals instead of decoding `s`. `cpl build` accepts it, and its
   `--max` output passes `checker.py` against `orig.cpp` (exit 0). The judge runs the phases in
   separate processes, so that program scores 0 there.
@@ -24,9 +82,12 @@ repros on today's `cpl`.
   is the corpus's first.
 - **Owner:** Consumers/Tools.
 - **Severity:** high (a wrong-on-the-judge program passes every local gate).
+- **Status:** fixed by ba1cf559f: with no `port.cp`, corpus.py's tests and `--max` gates run
+  the dream's `@grader(two_phase)` fns through `dream.tests/grader.cpp`, each phase in its own
+  process, so `port.cp` is deleted and the dream is the program the gates judge.
 
 ## L0507 asks for a comprehension over a stateful call
-- **Where:** `port.cp:135-136`, `var s: List<0..=4> = [0]` /
+- **Where:** the deleted `port.cp`'s driver, `var s: List<0..=4> = [0]` /
   `for i in 1..n: s.push(send_message(n, i, parents[i - 1]))`, left as a loop by the review.
 - **Repro:**
   ```cp
@@ -51,16 +112,26 @@ repros on today's `cpl`.
 - **Owner:** lint-fmt.
 - **Severity:** low.
 
-## Already reported elsewhere
-- `parents: [n - 1]0..n` and the message list `List<0..=4>` are stored as `ll` in the emitted
-  C++ (`Q0<ll> parents`): `read<T>() stores a narrow table wide` in ioi25_festival.md.
-- `dream.tests/grader.cpp` instead of a root `grader.cpp`: `A root grader.cpp is linked into
-  the stdin port` in ioi25_worldmap.md.
+## Earlier frictions (from the first port)
+- **Grader module:** `@grader(two_phase) mod migrations:` builds no function for the grader,
+  so the dream is two top-level `@grader(two_phase)` fns.
+- **Grader linking:** a `grader.cpp` beside the stdin port was linked into it too, so the
+  grader sat in `dream.tests/`. Fixed by 57c83b9a8 (a found `grader.cpp` is linked only into a
+  program with a `@grader fn`), and ba1cf559f removed the stdin port itself.
+- **Missing names:** `Graph` has no `add_edge`, so the ends are tracked on a `JumpTree`; no
+  `cbrt` (`iroot(·, 3)`) or `min_by` (`argmin`).
+- **Storage:** `List<0..=4>` and `[n - 1]0..n` are emitted as `vector<ll>` while `cpl explain`
+  states the narrow size; owned by Core (memory child), see ioi25_festival.md.
 
 ## Measurements
 
-Contestant-written tokens (scripts/ports-page.py tokenizers): port 2329, dream 2243, original
-3933 (3872 after `strip_cpp_library`; it includes the two-process grader `main`). On the
-`gen.py --max` input (N = 10 000), best of 3 under g++ 14 `-O2`: the port 0.00-0.02 s and
-3.2 MB peak RSS, `orig.cpp` 0.00 s and 2.9 MB (1.09x). Both outputs pass `checker.py`.
-Emitted C++: 25084 bytes (`cpl build`, judge `generic`).
+Contestant-written tokens (scripts/ports-page.py tokenizers, as of eadf73e60): dream 2243,
+original 3933 (3872 after `strip_cpp_library`; it includes the two-process grader `main`). The
+package has no port since ba1cf559f: the gates judge the dream through `dream.tests/grader.cpp`.
+On the `gen.py --max` input (a path, the ends moving every step), 7 runs each under g++ 14
+`-O2`: the dream under `cpl test` with the grader takes 10-20 ms and 3.17-4.09 MB peak RSS (the
+larger of its two phase processes), `orig.cpp` run alone 0.00-0.02 s and 3.97-4.22 MB.
+Migrations sorts nothing, so 333c96870 doesn't change it. Before the port was deleted (on
+eadf73e60) it took 4.61-4.74 MB against orig.cpp's 3.97-4.10 MB, 1.16x, from the storage
+widening above. The dream's S differs from the earlier port's on cases 03 and 14, where padding
+with site 0 matched a table entry that `None` now doesn't; both pass `checker.py`.

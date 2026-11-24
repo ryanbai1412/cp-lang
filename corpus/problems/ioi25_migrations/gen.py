@@ -1,7 +1,7 @@
 import sys, random
 # IOI 2025 Migrations, sample-grader stdin: N = 10000, then P[1..N-1] with 0 <= P[i] < i.
 # `gen.py SEED SIZE`: SIZE sets how local the attachments are and how often the diameter's ends
-# move; `--sample` is the statement's example and `--max` a path, whose ends move every step.
+# move; `--max` is a path, whose ends move every step.
 N = 10000
 
 
@@ -87,9 +87,6 @@ def tail(r, p, k):
         p[i] = r.choice([u, v, u, v, p[u], p[v], r.randrange(i), i - 1])
 
 
-if sys.argv[1] == "--sample":
-    emit([0, 0, 1, 2, 2] + [1] * (N - 5))
-    sys.exit()
 if sys.argv[1] == "--max":
     emit(list(range(-1, N - 1)))
     sys.exit()
