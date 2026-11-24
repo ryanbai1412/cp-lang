@@ -244,7 +244,9 @@ fn ntt_over_the_first_ntt_prime_leaves_primitive_root_out() {
         "print([c.v for c in convolve(a, b)])\n",
     ));
     assert!(out.contains("ntt"), "{out}");
-    assert!(!out.contains("primitive_root"), "{out}");
+    for gone in ["primitive_root", "factor", "rho"] {
+        assert!(!out.contains(gone), "{gone}: {out}");
+    }
 }
 
 #[test]
