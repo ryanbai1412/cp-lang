@@ -10,6 +10,8 @@ In prelude (no `use` needed): `Palindromes`, `RollingHash`, `SuffixArray`, `bord
 
 \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert)\).
 
+Fields: `alpha: Count`, `goto: List<Count>`, `pi: List<Count>`.
+
 - `fn new<S: Seq>(pat: S) -> KmpAutomaton<A>` — \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert)\); The KMP automaton of `pat` over the alphabet domain `A`: one state per matched prefix length `0..=pat.len`, with a full transition table.; traps: when an element of `pat` is not in `A`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of states, `pat.len + 1`; the states are `0..=pat.len` and `pat.len` means a full match.
 - `fn step(self, state: Int, a: A) -> Int` — \(O(1)\); The matched prefix length after reading `a` in `state`.; traps: when `state` is outside `0..self.len`
@@ -131,7 +133,7 @@ Fields: `bases: (Int, Int)`, `tok1: List<Int>`, `tok2: List<Int>`, `fwd1: List<I
 
 \(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push.
 
-Fields: `prefix: List<Bool>`, `letters: List<?A>`.
+Fields: `alpha: Count`, `next: List<Slot>`, `links: List<Slot>`, `max_len: List<Count>`, `first_end: List<Slot>`, `prefix: List<Bool>`, `letters: List<?A>`.
 
 - `fn new() -> SuffixAutomaton<A>` — \(O(\lvert A \rvert)\); An empty suffix automaton over the alphabet domain `A`: only the root state `0`.
 - `fn of<S: Seq>(s: S) -> SuffixAutomaton<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time; The suffix automaton of `s`: `SuffixAutomaton<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
@@ -159,7 +161,7 @@ Fields: `prefix: List<Bool>`, `letters: List<?A>`.
 
 \(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push.
 
-Fields: `chars: List<A>`, `front: List<A>`, `barrier: Int`.
+Fields: `alpha: Count`, `next: List<Slot>`, `slink: List<Count>`, `plen: List<Slot>`, `diff_val: List<Count>`, `ser_link: List<Count>`, `cnt: List<Count>`, `chars: List<A>`, `last: Count`, `front: List<A>`, `first: Count`, `undo: List<Count>`, `made: List<Count>`, `firsts: List<Count>`, `barrier: Int`.
 
 - `fn new() -> PalindromicTree<A>` — \(O(\lvert A \rvert)\); An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the even root `1`.
 - `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
@@ -183,6 +185,8 @@ Fields: `chars: List<A>`, `front: List<A>`, `barrier: Int`.
 
 Dynamic trie over alphabet domain `A`.
 
+Fields: `alpha: Count`, `next: List<Slot>`, `ends: List<Count>`, `pass: List<Count>`.
+
 - `fn new() -> Trie<A>` — \(O(\lvert A \rvert)\); An empty trie over the alphabet domain `A`: one root node `0`, no words.
 - `@get fn root(self) -> Int` — \(O(1)\); The root node, for the empty word: always `0`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of nodes, the root included.
@@ -204,6 +208,8 @@ Dynamic trie over alphabet domain `A`.
 
 \(O(\mathit{total} \cdot \lvert A \rvert)\) build, \(O(1)\) step.
 
+Fields: `alpha: Count`, `goto: List<Slot>`, `fail: List<Count>`, `ends: List<List<Count>>`, `exit: List<Slot>`, `order: List<Count>`, `lens: List<Count>`, `pat_state: List<Count>`.
+
 - `fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>` — \(O(\mathit{sum} \lvert p \rvert \cdot \lvert A \rvert)\); The Aho-Corasick automaton of `patterns`; call it as `AhoCorasick<A>(patterns)`.; traps: when an element of a pattern is not in `A`
 - `@get fn root(self) -> Int` — \(O(1)\); The root state, before any letter is read: always `0`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of states, the root included.
@@ -221,7 +227,7 @@ Dynamic trie over alphabet domain `A`.
 
 \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert \cdot \log n)\) amortized insert/delete, \(O(\lvert \mathit{text} \rvert \cdot \log n)\) query.
 
-Fields: `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<A>`.
+Fields: `alpha: Count`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<A>`.
 
 - `fn new() -> DynamicAhoCorasick<A>` — \(O(1)\); An empty online pattern set over the alphabet domain `A`; call it as `DynamicAhoCorasick<A>()`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of patterns stored, copies counted.
