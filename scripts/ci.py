@@ -530,17 +530,29 @@ class Tail:
         return True
 
     def wasm_data(self, pkgs: list[str]) -> None:
-        """The data segment of a names build of cpl.wasm (std's outlines and every
-        crate's strings) and each touched crate within its budget, so a change that
-        grows one fails at commit and land time, not later in the site job."""
-        self.step("cpl.wasm data segment and touched crates within their budgets (scripts/build-wasm.sh --names)")
+        """A names build of cpl.wasm held to the shrink-only ratchet land.sh and CI apply:
+        every crate and the data segment (std's outlines and every crate's strings) stays
+        within its budget, and one already over it may not grow past main's size. Main's
+        sizes are the ones scripts/wasm-warm.sh recorded; without them a crate over its
+        budget is held to this build, with a warning, and CI's site job compares it."""
+        self.step("cpl.wasm crates and data segment held to the shrink-only ratchet (scripts/build-wasm.sh --names)")
         out = target_dir() / "wasm-data-gate"
+        wasm = out / "cpl.wasm"
         if self.call(["scripts/build-wasm.sh", "--names", str(out)]):
             raise Failed(f"scripts/build-wasm.sh --names failed; rerun: scripts/build-wasm.sh --names {out}")
-        touched = ",".join(p.replace("-", "_") for p in pkgs)
-        if self.call(["node", "web/scripts/wasm-crates.mjs", "--data", str(out / "cpl.wasm"), "--touched", touched]):
-            raise Failed("cpl.wasm's data segment or a touched crate is over its budget (named above); rerun:"
-                         f" node web/scripts/wasm-crates.mjs --data {out / 'cpl.wasm'} --touched {touched}")
+        base = self.run(["git", "merge-base", "HEAD", "origin/main"], cwd=ROOT, capture_output=True, text=True)
+        found = self.run(["scripts/wasm-warm.sh", "--parent", base.stdout.strip() or "origin/main", *pkgs],
+                         cwd=ROOT, capture_output=True, text=True)
+        parent = found.stdout.strip() if found.returncode == 0 else ""
+        if not parent:
+            parent = str(out / "sizes.json")
+            print("WARNING: no wasm sizes of main's tip (scripts/wasm-warm.sh records them); a crate over its"
+                  " budget is held to this build's size, and CI's site job compares it with main", file=sys.stderr)
+            if self.call(["node", "web/scripts/wasm-crates.mjs", "--sizes", str(wasm), parent]):
+                raise Failed(f"can't read the crate sizes of {wasm}")
+        if self.call(["node", "web/scripts/wasm-crates.mjs", "--data", str(wasm), "--parent", parent]):
+            raise Failed("a cpl.wasm crate or the data segment grew past main while over its budget, or crossed it"
+                         f" (named above); rerun: node web/scripts/wasm-crates.mjs --data {wasm} --parent {parent}")
 
     def _build(self) -> None:
         self.step("cargo fmt --all --check")

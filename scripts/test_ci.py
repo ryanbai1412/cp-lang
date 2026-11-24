@@ -515,17 +515,30 @@ class CommitTest(unittest.TestCase):
         code, ev, _, _, _, _ = self._commit(sel, outs={self.TREE: "cpl-wasm v0.1.0\n"})
         self.assertFalse([e for e in ev if e.startswith("rustc")])
 
-    def test_a_touched_wasm_crate_holds_the_data_segment_to_its_budget(self) -> None:
+    def test_a_touched_wasm_crate_holds_every_crate_to_mains_sizes(self) -> None:
+        # b9817347's -7 B gz retell refused: cpl_check was over its budget and this step
+        # held it to the budget, not to main's size.
         sel = {"packages": "cpl-check", "filter": "rdeps(cpl-check)"}
-        outs = {self.TREE: "cpl-check v0.1.0\n", "rustc --print target-libdir": f"{ci.ROOT}\n"}
+        outs = {self.TREE: "cpl-check v0.1.0\n", "rustc --print target-libdir": f"{ci.ROOT}\n",
+                "git merge-base HEAD origin/main": "abc\n", "scripts/wasm-warm.sh --parent abc cpl-check": "/w/main.json\n"}
         code, ev, _, _, _, _ = self._commit(sel, outs=outs)
         self.assertEqual(code, 0)
         gate = [e for e in ev if e.startswith(("cargo check -q -p cpl-wasm", "scripts/build-wasm.sh", "node web/scripts/wasm-crates.mjs"))]
         self.assertEqual([g.split()[0] for g in gate], ["cargo", "scripts/build-wasm.sh", "node"])
-        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm --touched cpl_check"))
+        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm --parent /w/main.json"))
         code, _, _, err, _, _ = self._commit(sel, outs=outs, codes={"node": 1})
         self.assertEqual(code, 1)
-        self.assertIn("cpl.wasm's data segment or a touched crate is over its budget", err)
+        self.assertIn("grew past main while over its budget, or crossed it", err)
+
+    def test_without_mains_sizes_a_crate_over_budget_is_held_to_this_build_with_a_warning(self) -> None:
+        sel = {"packages": "cpl-check", "filter": "rdeps(cpl-check)"}
+        outs = {self.TREE: "cpl-check v0.1.0\n", "rustc --print target-libdir": f"{ci.ROOT}\n"}
+        code, ev, _, err, _, _ = self._commit(sel, outs=outs, codes={"scripts/wasm-warm.sh": 1})
+        self.assertEqual(code, 0)
+        node = [e for e in ev if e.startswith("node web/scripts/wasm-crates.mjs")]
+        self.assertRegex(node[0], r"--sizes \S*wasm-data-gate/cpl.wasm \S*wasm-data-gate/sizes.json$")
+        self.assertRegex(node[1], r"--data \S*wasm-data-gate/cpl.wasm --parent \S*wasm-data-gate/sizes.json$")
+        self.assertIn("WARNING: no wasm sizes of main's tip", err)
 
     def test_a_failed_check_names_its_rerun_and_stops_the_tier(self) -> None:
         sel = {"packages": "cpl-fmt", "filter": "x", "site": "1"}
