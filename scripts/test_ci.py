@@ -641,7 +641,7 @@ class GateTest(unittest.TestCase):
         made: list = []
 
         def __init__(self, mode, part="", cpl="", cache_dir="", manifest="", packages="", filter="", site="", run=None,
-                     sel_slices="", sel_slice_filter="", progress=""):
+                     sel_slices="", sel_slice_filter="", progress="", only=None):
             self.mode, self.sel, self.slices = mode, (packages, filter, site), (sel_slices, sel_slice_filter)
             self.times = [(7, "the tests"), (0, "instant")]
             GateTest.FakeTier.made.append(self)
@@ -658,7 +658,7 @@ class GateTest(unittest.TestCase):
             return 0
 
     def _gate(self, mode, part="", affected="all=0\nreason=\npackages=cpl-fmt\nfilter=rdeps(cpl-fmt)\nsite=0\n",
-              codes=None, base="abc", elapsed=12, env=None):
+              codes=None, base="abc", elapsed=12, env=None, only=None):
         events, codes = [], codes or {}
         GateTest.FakeTier.made = []
 
@@ -675,7 +675,8 @@ class GateTest(unittest.TestCase):
         ci.os.environ.pop("CPL_COMMIT_PROGRESS", None)
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = ci.run_gate(mode, part, since=100.0, run=run, tail_cls=GateTest.FakeTier, clock=lambda: 100.0 + elapsed)
+            code = ci.run_gate(mode, part, since=100.0, run=run, tail_cls=GateTest.FakeTier, clock=lambda: 100.0 + elapsed,
+                               only=only)
         return code, events, out.getvalue(), err.getvalue(), tmp
 
     def test_land_runs_the_train_selection_and_records_the_fast_time(self) -> None:
@@ -698,6 +699,15 @@ class GateTest(unittest.TestCase):
         _, ev, _, _, _ = self._gate("land", env={"CHECK_BASE": "feed"})
         self.assertIn("scripts/affected.py --base feed", ev)
         self.assertFalse([e for e in ev if e.startswith("git rev-parse")])
+
+    def test_a_cut_hooks_rerun_runs_the_mapped_paths_steps_past_an_unmapped_one(self) -> None:
+        # 277f37f42 (cpl-check + spec/core .md): returning here left rdeps(cpl-check) unrun.
+        code, _, out, _, _ = self._gate("commit", affected="all=1\nreason=spec/core/a.md\npackages=cpl-check\n"
+                                        "filter=rdeps(cpl-check)\n", only=frozenset({"nextest"}))
+        self.assertEqual(code, 0)
+        self.assertIn("spec/core/a.md is not mapped by scripts/affected.py; CI runs --fast on the tip", out)
+        [tier] = GateTest.FakeTier.made
+        self.assertEqual((tier.mode, tier.committed["filter"]), ("commit", "rdeps(cpl-check)"))
 
     def test_an_unmapped_path_or_no_base_runs_fast(self) -> None:
         code, _, out, _, _ = self._gate("land", affected="all=1\nreason=web/new.txt\npackages=x\n")

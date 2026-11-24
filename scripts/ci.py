@@ -1188,10 +1188,11 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
                 times.append((int(clock() - t0), AUDIT_FIRST))
             if sel.get("all", "1") == "1":
                 if only is not None:
-                    print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; CI runs --fast on the tip")
-                    return 0
-                print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; running --fast")
-                mode, sel = "fast", {}
+                    print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; CI runs --fast on "
+                          "the tip, and the skipped steps run here for the paths it maps")
+                else:
+                    print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; running --fast")
+                    mode, sel = "fast", {}
     except (Failed, ValueError) as e:
         print(f"check: {e}", file=sys.stderr)
         return 1

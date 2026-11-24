@@ -357,9 +357,10 @@ def select(paths, dirs):
             tests.add("scripts/test_check_handbook.py")
         elif path.startswith(".githooks/"):
             tests.add("scripts/test_check_cache.py")
-        else:
+        elif not sel["all"]:
+            # Not `break`: the paths it does map still select their crates, so a land
+            # whose hook was cut runs them (277f37f42's spec/core .md hid cpl-check's rdeps).
             sel.update(all=True, reason=path)
-            break
     sel["slices"] = [sharded(name, globs, tests, paths) for name, _, globs, tests in SLICES
                      if any(matches(p, slice_globs(globs, tests)) for p in paths)]
     sel["packages"] = sorted(packages)

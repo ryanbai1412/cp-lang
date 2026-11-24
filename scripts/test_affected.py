@@ -48,6 +48,12 @@ class AffectedTest(unittest.TestCase):
             s = self.sel("crates/cpl-fmt/src/lib.rs", path)
             self.assertEqual((s["all"], s["reason"]), (True, path))
 
+    def test_an_unknown_path_keeps_the_crates_the_other_paths_select(self):
+        # 277f37f42: cpl-check plus spec/core/08-traits-generics.md; land's cut rerun
+        # ran nothing, so rdeps(cpl-check)'s cpl-lsp red reached main.
+        s = self.sel("spec/core/08-traits-generics.md", "crates/cpl-check/src/check/call.rs", "new-dir/x")
+        self.assertEqual((s["all"], s["reason"], s["packages"]), (True, "spec/core/08-traits-generics.md", ["cpl-check"]))
+
     def test_scripts_select_their_unit_tests(self):
         s = self.sel("scripts/land.sh", "scripts/affected.py", ".githooks/pre-commit")
         self.assertEqual(s["script_tests"], ["scripts/test_affected.py", "scripts/test_check_cache.py"])
