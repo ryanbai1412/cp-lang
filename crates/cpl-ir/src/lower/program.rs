@@ -127,6 +127,11 @@ impl Lowerer<'_> {
         if !lw.diags.is_empty() {
             return Err(lw.diags);
         }
+        // An error value with no error to say why would reach both engines
+        // as no value at all, so the program would run and print wrong.
+        if let Some(at) = lw.unreported_error() {
+            return Err(vec![msgs::ir::INTERNAL_LOWERED_TO_NOTHING.error(at, &[])]);
+        }
         // Ensure any unlowered non-generic fns from imported modules (unused) don't panic:
         // keep only lowered fns or fill unused bodies with empty blocks, and deduplicate names.
         let said: Vec<String> = (0..lw.domains.len()).map(|d| lw.domain_said(d)).collect();
@@ -520,5 +525,24 @@ impl<'a> Lowerer<'a> {
         self.record_narrow_locals(ScopeId::Main, &cx.locals, &cx.local_ranges);
         self.main_body = Block { stmts: out };
         self.main_locals = cx.locals;
+    }
+
+    /// Where an error value is left in the lowered program, which only a
+    /// reported error may leave.
+    fn unreported_error(&self) -> Option<Span> {
+        let mut at = None;
+        let mut seen = |e: &Expr| {
+            if matches!(e.kind, ExprKind::Error) {
+                at.get_or_insert(e.span);
+            }
+        };
+        let blocks = [&self.main_body, &self.setup_body]
+            .into_iter()
+            .chain(self.bodies.iter().flatten().map(|f| &f.body))
+            .chain(self.closures.iter().map(|c| &c.body));
+        for block in blocks {
+            crate::walk::deep_exprs(block, &mut seen);
+        }
+        at
     }
 }

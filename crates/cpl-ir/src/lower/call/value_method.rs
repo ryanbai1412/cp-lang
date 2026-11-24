@@ -779,7 +779,16 @@ impl<'a> Lowerer<'a> {
                         Ty::Pos(d) | Ty::Bound(d) => Dim::Pos(d),
                         _ => Dim::Int,
                     },
-                    _ => return self.err_expr(span),
+                    Ty::Error => return self.err_expr(span),
+                    other => {
+                        let shown = self.show(other);
+                        self.report(
+                            exprs[0].span,
+                            msgs::ir::TYPE_MISMATCH_REKEY_TAKES_A_RANGE,
+                            &[&shown],
+                        );
+                        return self.err_expr(span);
+                    }
                 };
                 // A view must not outlive its cells, so a temporary gets a slot.
                 let value = if matches!(value.kind, ExprKind::Local(_)) {

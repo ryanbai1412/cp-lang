@@ -1,6 +1,8 @@
 //! Messages lowering to IR emits.
 
 super::msgs! {
+    INTERNAL_LOWERED_TO_NOTHING = INTERNAL, "internal error in cpl: this lowered to no value, and no error says why";
+    TYPE_MISMATCH_REKEY_TAKES_A_RANGE = TYPE_MISMATCH, "`rekey` takes a range of keys, one per element, not a `{}`";
     BAD_OPERANDS_A_HAS_NO_ORDER = BAD_OPERANDS, "a `{}` has no order to count by";
     UNKNOWN_FIELD_MODULE_HAS_NO_MEMBER = UNKNOWN_FIELD, "module has no member `{}`";
     WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES = WRONG_ARG_COUNT, "the variant `{}` holds values: write `{}(...)`";
