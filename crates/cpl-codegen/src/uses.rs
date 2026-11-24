@@ -276,6 +276,9 @@ pub(crate) const IN_CLOSURE: &str = "a `let` inside a closure owns its value";
 pub(crate) const NAME_MOVED: &str = "the name is moved later, so it owns its value";
 /// Why a `.clone()` of a place copies: it asks for a second value.
 pub(crate) const CLONED: &str = "written `.clone()`, so it is a second value";
+/// Why `.sorted()` of a place copies: it sorts a copy, where `.sort()`
+/// sorts in place.
+pub(crate) const SORTED: &str = "`.sorted()` sorts a copy; `.sort()` sorts in place";
 pub(crate) const WHOLE: &str = "a `let` of a whole variable is a second value, not a second name";
 
 impl crate::emit::Emitter<'_> {

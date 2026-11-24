@@ -99,9 +99,11 @@ fn a_value_that_owns_no_heap_memory_is_never_listed_as_a_copy() {
 }
 
 #[test]
-fn a_clone_of_a_place_is_listed_as_a_copy() {
+fn a_clone_or_sorted_of_a_place_is_listed_as_a_copy() {
     let source = "var a = [3, 1, 2]\nvar b = a.clone()\nb.push(4)\nprint(a, b)\n";
     assert_eq!(copy_reasons(source), [crate::uses::CLONED]);
+    let twin = "var a = [3, 1, 2]\nlet c = a.sorted()\nlet d = [2, 1].sorted()\nprint(a, c, d)\n";
+    assert_eq!(copy_reasons(twin), [crate::uses::SORTED]);
 }
 
 #[test]

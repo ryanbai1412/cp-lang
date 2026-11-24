@@ -953,6 +953,25 @@ impl Emitter<'_> {
 
     /// Records the copy a `let slot = init` emitted as `T name = text;`
     /// makes, when `init` names a place holding a heap value.
+    /// A copy the contestant wrote as a method on a heap place,
+    /// `a.clone()` or `a.sorted()`, not one a generated constructor makes
+    /// of its parameter at the call's span.
+    pub(crate) fn note_written_copy(&mut self, e: &Expr, args: &[Expr], why: &'static str) {
+        let [arg, ..] = args else { return };
+        let place = matches!(
+            arg.kind,
+            ExprKind::Local(_)
+                | ExprKind::Global(_)
+                | ExprKind::Field(..)
+                | ExprKind::Payload(..)
+                | ExprKind::Index(..)
+        );
+        let written = arg.span.start >= e.span.start && arg.span.end < e.span.end;
+        if place && written && holds_heap(self.program, &arg.ty) {
+            self.copies.push(Copied::Let(e.span, why));
+        }
+    }
+
     pub(crate) fn note_let_copy(
         &mut self,
         slot: usize,
