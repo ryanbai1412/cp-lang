@@ -92,6 +92,22 @@ neovim-stress-loop tmp="target/tmp":
 vim-stress-loop cpl="target/debug/cpl":
     editors/neovim/test/stress_loop_vim.sh "$(realpath {{cpl}})"
 
+# The JetBrains plugin (CI: jetbrains.yml, release.yml). The fetch is the one retried
+# step, network only; the build and tests then run once, offline.
+jetbrains-fetch *flags:
+    cd editors/jetbrains && . ../../scripts/retry.sh && retry ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle prefetch {{flags}}
+
+jetbrains-gradle *tasks:
+    cd editors/jetbrains && ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle --offline {{tasks}}
+
+# Verify the built plugin against IntelliJ IDEA Community and Ultimate (downloads both).
+jetbrains-verify:
+    cd editors/jetbrains && ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle verifyPlugin
+
+# The LSP handshake the JetBrains plugin starts, against debug cpl.
+jetbrains-handshake cpl="target/debug/cpl":
+    uv run --quiet python editors/lsp-smoke.py jetbrains {{cpl}} lsp
+
 # The acceptance regression suite, e.g. `just acceptance target/ci/cpl --shard 1/3`.
 acceptance *args:
     uv run --quiet python research/acceptance/regress.py {{args}}

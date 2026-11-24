@@ -1793,6 +1793,7 @@ RETRY_FETCHES = {
     "micromamba": r"\"?\S*/micromamba\"? create ",
     "git push race": r"(sh -c 'git pull -q --rebase origin main && git push |push( |$)|push_reservation,)",
     "chat completion": r"post_chat,",
+    "gradle fetch": r"\./gradlew --no-daemon --init-script \S+ prefetch\b",
 }
 _RETRIED = re.compile(r"(?:^|[\s$(=])retry[ (](.*)")
 
@@ -1830,7 +1831,7 @@ CI_ONLY_JOBS = {
     "ci.yml:regen": "commits regenerated files to main",
     "ci.yml:tests-build": "archives the test binaries the `tests` shards run",
 }
-CI_CHECK = re.compile(r"(^|[\s;&|(])(\./)?(scripts|editors|research|bench|crates)/\S|cargo (test|nextest|run)\b"
+CI_CHECK = re.compile(r"(^|[\s;&|(])(\./)?(scripts|editors|research|bench|crates)/\S+\.(sh|py|lua|el|mjs|js)\b|cargo (test|nextest|run)\b"
                       r"|pnpm .*\b(test|build|smoke|typecheck)\b|npm (test|run|ci)\b|nvim --headless")
 
 
@@ -1878,7 +1879,7 @@ def poll_sleeps(root: Path) -> list[str]:
             if "thread::sleep" in line and rel not in SLEEP_OWNERS]
 
 
-RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
+RETRY_RE = r"--retr(y|ies)\b|\bfor \w+ in [0-9]+( [0-9]+)+; do|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
 
 
 def hardcoded_codes(root: Path) -> list[str]:
@@ -2585,7 +2586,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 HARD_ZERO = frozenset({
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers",
-    "corpus_walkers", "poll_sleeps", "retry_calls", "site_spec_snippets",
+    "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",

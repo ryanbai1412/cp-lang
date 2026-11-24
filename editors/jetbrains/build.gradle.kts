@@ -73,6 +73,12 @@ intellijPlatform {
 val repo: File = rootDir.parentFile.parentFile
 
 tasks {
+    // `./gradlew prefetch`: download every dependency, so CI retries only this and
+    // then builds and tests once with `--offline`.
+    register("prefetch") {
+        val resolvable = configurations.filter { it.isCanBeResolved }
+        doLast { resolvable.forEach { it.resolve() } }
+    }
     processResources {
         from(repo.resolve("editors/words.json")) { into("cp") }
     }
