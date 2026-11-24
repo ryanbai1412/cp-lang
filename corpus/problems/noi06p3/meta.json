@@ -20,6 +20,9 @@
   "dream": [
    "corpus/problems/noi06p3/dream.cp"
   ],
+  "original": [
+   "corpus/problems/noi06p3/orig.cpp"
+  ],
   "port": [
    "corpus/problems/noi06p3/port.cp"
   ],
