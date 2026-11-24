@@ -1066,8 +1066,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 (Some(part), _) if !part.steps.is_empty() => {
                                     CaptureVal::PartRef(part)
                                 }
-                                (Some(part), _) if part.global => CaptureVal::GlobalRef(part.at),
-                                (Some(part), _) => CaptureVal::StackRef(part.at),
+                                // The frame holds the lent value; a call shows it
+                                // back to its place, behind the slot's alias.
+                                (Some(_), _) => CaptureVal::StackRef(at),
                                 (None, Some(Value::Alias(true, id))) => CaptureVal::GlobalRef(*id),
                                 (None, Some(Value::Alias(false, at))) => CaptureVal::StackRef(*at),
                                 (None, Some(Value::Part(part))) => {
