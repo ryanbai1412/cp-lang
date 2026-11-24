@@ -201,6 +201,21 @@ impl<'a> Lowerer<'a> {
         None
     }
 
+    /// `impl<T> Op<T> for E3` at an `E3` the enclosing fn bound as `M: Op<E>`: the impl's env
+    /// with the `T` that bound solved, which names only the trait argument.
+    pub(super) fn opened_impl_env(&self, idx: usize, sid: StructId) -> Option<GenEnv> {
+        let mut env = self.struct_impl_env(idx, sid)?;
+        let open = self.open_impl_params(idx, &env);
+        if open.is_empty() {
+            return None;
+        }
+        for n in open {
+            let arg = self.gen_env.get(&format!("impl{idx}.{n}"))?.clone();
+            env.insert(n, arg);
+        }
+        Some(env)
+    }
+
     /// `act.tag0()` on a `Plus` the enclosing fn bound as `A: Acts<T, F>`:
     /// the method of `impl<T> Acts<T, T> for Plus` at the `T` that bound solved.
     pub(super) fn open_impl_method(&mut self, sid: StructId, method: &str) -> Option<FnId> {

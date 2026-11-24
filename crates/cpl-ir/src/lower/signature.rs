@@ -109,11 +109,16 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].body,
             );
             let blanket = self.domain_blanket_param(idx);
+            let opened = match t {
+                Ty::Struct(sid) => self.opened_impl_env(idx, *sid),
+                _ => None,
+            };
             let head_env = match (t, &target.kind) {
                 (Ty::Pos(d), _) if let Some(blanket) = &blanket => {
                     Some(GenEnv::from([(blanket.clone(), GenArg::Domain(*d))]))
                 }
                 _ if blanket.is_some() => continue,
+                _ if opened.is_some() => opened,
                 (Ty::Struct(sid), ast::TypeKind::Named { args, .. }) if !args.is_empty() => {
                     match self.struct_impl_env(idx, *sid) {
                         Some(env) => Some(env),
