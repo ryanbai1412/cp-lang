@@ -678,7 +678,12 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
     by_place(&mut out);
     out.dedup();
     let all = out.clone();
-    out.retain(|d| !all.iter().any(|wider| supersedes(file.src, wider, d)));
+    out.retain(|d| {
+        !all.iter().any(|wider| {
+            supersedes(file.src, wider, d)
+                && !library::refires(file.src, wider, d.code, &all, declared)
+        })
+    });
     out
 }
 

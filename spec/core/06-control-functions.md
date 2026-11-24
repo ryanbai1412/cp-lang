@@ -246,6 +246,8 @@ library or by this spec:
   and a named argument's label (`from:`) is never a hole; where a comment
   falls inside the match it
   has no fix, since `to` would drop the comment.
+  A finding inside a wider one is shown with it when `from` still
+  matches the wider fix's text, which keeps the code it is about.
   It applies in every file that uses the module, and in the module outside
   the fn; std's apply in every program, as std's names need no `use`. A
   struct's or enum's method may declare one like a top-level fn. E0505

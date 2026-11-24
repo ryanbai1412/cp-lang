@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 /// One `@lint` declaration a file can see.
+#[derive(Clone)]
 pub(crate) struct Declared {
     pub lint: &'static Lint,
     decl: LibraryLint,
@@ -317,6 +318,53 @@ impl Visitor for Spans {
     }
 }
 
+/// Whether a library lint `code` is shown in `wider`'s rewrite as often as
+/// in the code it replaces: the rewrite keeps the code the lint is about (a
+/// hand pop loop that becomes `sum(-(h.pop()!) for ..)`), so both findings
+/// teach. Each edit's text is matched as written, dedented to its column.
+pub(crate) fn refires(
+    src: &str,
+    wider: &cpl_diag::Diagnostic,
+    code: Code,
+    shown: &[cpl_diag::Diagnostic],
+    declared: &[Declared],
+) -> bool {
+    let mine: Vec<Declared> = (declared.iter())
+        .filter(|d| d.lint.code == code)
+        .cloned()
+        .collect();
+    let Some(fix) = wider.fixes.first().filter(|_| !mine.is_empty()) else {
+        return false;
+    };
+    let replaced = (shown.iter())
+        .filter(|d| d.code == code && fix.edits.iter().any(|(at, _)| at.contains(d.span)))
+        .count();
+    let kept: usize = (fix.edits.iter())
+        .map(|(at, to)| {
+            let line = src[..at.start as usize].rfind('\n').map_or(0, |i| i + 1);
+            let col = at.start as usize - line;
+            let text: Vec<&str> = (to.split('\n').enumerate())
+                .map(|(i, l)| {
+                    let indent = l.len() - l.trim_start_matches(' ').len();
+                    &l[if i == 0 { 0 } else { indent.min(col) }..]
+                })
+                .collect();
+            let text = text.join("\n");
+            let parsed = cpl_syntax::parse_file(&text);
+            let items: Vec<(u32, &cpl_syntax::ParsedItem)> =
+                parsed.items.iter().map(|(at, item)| (*at, item)).collect();
+            let file = File {
+                src: &text,
+                items: &items,
+                facts: None,
+                proven: &Default::default(),
+            };
+            find(&file, &mine).len()
+        })
+        .sum();
+    replaced > 0 && kept >= replaced
+}
+
 pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     if declared.is_empty() {
         return Vec::new();
@@ -340,9 +388,16 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     let mut spans = Spans::default();
     file.walk(&mut spans, |s, base| s.base = base);
     (spans.blocks).push(file.top_level().map(|(b, s)| s.span.shift(b)).collect());
+    // A statement's span can run past its last token (a block's newline).
+    let before = |at: u32| toks.partition_point(|t| t.span.start < at);
     let mut ends: HashMap<u32, Vec<u32>> = HashMap::new();
     for e in (spans.exprs.iter()).chain(&spans.types).chain(&spans.pats) {
         ends.entry(e.start).or_default().push(e.end);
+    }
+    for s in &spans.stmts {
+        if let Some(last) = before(s.end).checked_sub(1) {
+            ends.entry(s.start).or_default().push(toks[last].span.end);
+        }
     }
     let mut candidates: Vec<(usize, usize, Span)> = spans
         .exprs
@@ -355,8 +410,6 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         (c.0 as u64) << 32 | (u32::MAX as usize - c.1) as u64
     });
     candidates.dedup_by_key(|c| (c.0, c.1));
-    // A statement's span can run past its last token (a block's newline).
-    let before = |at: u32| toks.partition_point(|t| t.span.start < at);
     let tok_range = |s: &Span| {
         let (start, stop) = (before(s.start), before(s.end));
         (start < stop).then_some((start, stop))
@@ -881,7 +934,9 @@ fn fill(
         } else if let Some(m) = got.get(word).filter(|_| is_name(t.kind, word)) {
             let before = i.checked_sub(1).map(|i| toks[i].kind);
             let after = toks.get(i + 1).map(|t| t.kind);
-            let delimited = (matches!(before, Some(K::LParen | K::LBracket | K::Comma) | None)
+            let labelled = before == Some(K::Colon) && i >= 2 && labels[i - 2];
+            let delimited = ((labelled
+                || matches!(before, Some(K::LParen | K::LBracket | K::Comma) | None))
                 && matches!(after, Some(K::RParen | K::RBracket | K::Comma) | None))
                 || (before == Some(K::Eq) && after.is_none());
             let inner = m

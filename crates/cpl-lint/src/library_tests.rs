@@ -611,3 +611,39 @@ fn std_advice_applies_without_its_module() {
         .collect();
     assert_eq!(found, ["write `var memo: [0..=9]?Int = None`"]);
 }
+
+/// A named argument's label in `from` and `to` is spelled as written, even
+/// when it is also a parameter's name: `by:` before the hole `by`.
+/// Rule: R06.4.9.
+#[test]
+fn a_label_in_from_is_spelled_as_written_not_a_hole() {
+    let decl = "@lint(top_by, from: \"self.sorted(by: by).reversed()\", to: \"top(self, by: by)\")\npub fn top(self: List<Int>, by: Int -> Int) -> List<Int> = self\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "top_by")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let src = "let a: List<Int> = read()\nprint(a.sorted(by: x => x % 7).reversed())\n";
+    assert_eq!(found(src), ["top(a, by: x => x % 7)"]);
+}
+
+/// A wider finding whose fix keeps the code a library lint is about (a
+/// hand pop loop becomes `sum(b.pop()! for ..)`, still popping by hand)
+/// shows both.
+/// Rule: R06.4.9.
+#[test]
+fn a_library_lint_the_wider_fix_keeps_is_shown_with_it() {
+    let decl = "pub struct Bag:\n    pub v: List<Int>\n\n    @lint(bag_drain, from: \"for _ in 0..k:\\n    s += self.pop()!\", to: \"s += self.drain().take(k).sum()\", holes: \"k, s\")\n    @lint(bag_drain, from: \"sum(self.pop()! for _ in 0..k)\", to: \"self.drain().take(k).sum()\", holes: \"k\")\n    pub fn drain(mut self) -> yields Int:\n        while let x = self.pop(): yield x\n\n    pub fn pop(mut self) -> ?Int = self.v.pop()\n\n";
+    let src = format!(
+        "{decl}var b = Bag(v: [1, 2])\nvar t = 0\nfor _ in 0..2:\n    t += b.pop()!\nprint(t)\n"
+    );
+    let codes: Vec<&str> = (crate::lint(&src, &crate::Config::default()).iter())
+        .map(|d| d.code.0)
+        .collect();
+    assert!(
+        codes.contains(&"L0504") && codes.contains(&"bag_drain"),
+        "{codes:?}"
+    );
+}
