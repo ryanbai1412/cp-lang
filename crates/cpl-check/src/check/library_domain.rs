@@ -28,7 +28,10 @@ impl Checker<'_> {
         match self.library_domain_walk(iter) {
             Some(ty) => ty,
             None => match iter_ty {
-                Ty::Param(p) => self.bound_walk_elem(p).unwrap_or(Ty::Unknown),
+                Ty::Param(p) => match self.bound_walk_elem(p) {
+                    Some(elem) => elem,
+                    None => self.element_ty(iter_ty),
+                },
                 _ => self.element_ty(iter_ty),
             },
         }

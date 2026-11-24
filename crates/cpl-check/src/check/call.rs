@@ -1140,7 +1140,7 @@ impl<'a> Checker<'a> {
                 "sorted" => {
                     return Some(Ty::list(elem));
                 }
-                "argmax" | "argmin" if !base_ty.is_keyed() => {
+                "argmax" | "argmin" if !self.implements_trait(&base_ty, "Keyed") => {
                     self.report(
                         name.span,
                         msgs::check::MISSING_IMPL_REQUIRES_KEYED_BUT_HAS,
@@ -1150,7 +1150,9 @@ impl<'a> Checker<'a> {
                 }
                 "sort" | "reverse" if !matches!(base_ty, Ty::Domain(_)) => {
                     // A read-only view (`xs.rev`) is reported once, as not writable.
-                    if !base_ty.is_indexed_mut() && !self.is_readonly_view(base) {
+                    if !self.implements_trait(&base_ty, "IndexedMut")
+                        && !self.is_readonly_view(base)
+                    {
                         self.report(
                             name.span,
                             msgs::check::MISSING_IMPL_REQUIRES_INDEXEDMUT_BUT_HAS,

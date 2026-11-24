@@ -92,12 +92,7 @@ impl Checker<'_> {
     pub(crate) fn bound_bindings(&mut self, param: &str, trait_name: &str) -> crate::ty::Bindings {
         let mut on = crate::ty::Bindings::default();
         on.insert("Self".into(), Ty::Param(param.into()));
-        let args = self
-            .param_bound_args
-            .iter()
-            .rev()
-            .find(|(p, t, _)| p == param && t == trait_name)
-            .map(|(_, _, args)| args.clone());
+        let args = self.bound_trait_args(param, trait_name);
         if let (Some(args), Some(Def::Trait { generics, .. })) =
             (args, self.type_def(trait_name).as_deref())
         {
@@ -438,14 +433,53 @@ impl Checker<'_> {
         }
     }
 
-    /// The arguments `ty` gives trait `trait_name`: a bound's in a generic
-    /// body, an `impl`'s as written, or a built-in sequence's key and
-    /// element.
-    pub(crate) fn trait_args_of(&mut self, ty: &Ty, trait_name: &str, n: usize) -> Option<Vec<Ty>> {
+    /// The arguments `param`'s bounds give trait `want`, directly or through a
+    /// supertrait: `S: Indexed<K, E>` gives `Seq` the argument `E`.
+    pub(crate) fn bound_trait_args(&mut self, param: &str, want: &str) -> Option<Vec<Ty>> {
+        let mut stack: Vec<(String, Vec<Ty>)> = (self.param_bound_args.iter())
+            .filter(|(p, _, _)| p == param)
+            .map(|(_, t, args)| (t.clone(), args.clone()))
+            .collect();
+        let mut seen = Vec::new();
+        while let Some((trait_name, args)) = stack.pop() {
+            if trait_name == want {
+                return Some(args);
+            }
+            if seen.contains(&trait_name) {
+                continue;
+            }
+            if let Some(Def::Trait {
+                generics,
+                supers,
+                super_args,
+                ..
+            }) = self.type_def(&trait_name).as_deref()
+            {
+                let on: crate::ty::Bindings =
+                    generics.iter().cloned().zip(args.iter().cloned()).collect();
+                let supers = supers.iter().zip(super_args);
+                stack.extend(
+                    supers.map(|(s, a)| (s.clone(), a.iter().map(|t| t.subst(&on)).collect())),
+                );
+            }
+            seen.push(trait_name);
+        }
+        None
+    }
+
+    /// The arguments a written impl, or a parameter's bound, gives
+    /// `trait_name` for `ty`; never asks whether `ty` implements it, so the
+    /// `Seq` walk check can use it without recursing.
+    pub(crate) fn impl_trait_args(
+        &mut self,
+        ty: &Ty,
+        trait_name: &str,
+        n: usize,
+    ) -> Option<Vec<Ty>> {
         if let Ty::Param(p) = ty {
-            return (self.param_bound_args.iter().rev())
-                .find(|(q, t, args)| q == p && t == trait_name && args.len() == n)
-                .map(|(_, _, args)| args.clone());
+            return self
+                .bound_trait_args(p, trait_name)
+                .filter(|args| args.len() == n);
         }
         if let Ty::Named { name, .. } = ty {
             let written = self.global(&crate::def::impl_name(Some(trait_name), name));
@@ -483,6 +517,19 @@ impl Checker<'_> {
                     }
                 }
             }
+        }
+        None
+    }
+
+    /// The arguments `ty` gives trait `trait_name`: a bound's in a generic
+    /// body, an `impl`'s as written, or a built-in sequence's key and
+    /// element.
+    pub(crate) fn trait_args_of(&mut self, ty: &Ty, trait_name: &str, n: usize) -> Option<Vec<Ty>> {
+        if let Some(args) = self.impl_trait_args(ty, trait_name, n) {
+            return Some(args);
+        }
+        if let Ty::Param(_) = ty {
+            return None;
         }
         if n == 0
             || !self.trait_implies(trait_name, "Seq")

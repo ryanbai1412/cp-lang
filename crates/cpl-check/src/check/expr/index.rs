@@ -63,11 +63,21 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                ty.seq_elem().unwrap_or(Ty::Unknown)
+                match ty.seq_elem() {
+                    Some(elem) => elem,
+                    None => self.walked_elem(ty).unwrap_or(Ty::Unknown),
+                }
             }
+            Ty::Param(_) => self.walked_elem(ty).unwrap_or(Ty::Unknown),
             Ty::Error => Ty::Error,
             _ => Ty::Unknown,
         }
+    }
+
+    /// What a struct view's or a bounded parameter's `Seq` impl walks (R04b.5.3).
+    pub(crate) fn walked_elem(&mut self, ty: &Ty) -> Option<Ty> {
+        let [elem] = <[Ty; 1]>::try_from(self.impl_trait_args(ty, "Seq", 1)?).ok()?;
+        Some(self.settle(&elem))
     }
 
     pub(crate) fn array_inverse_ret(&mut self, index: &[Ty], elem: &Ty) -> Option<Ty> {

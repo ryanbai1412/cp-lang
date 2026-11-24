@@ -1528,10 +1528,12 @@ impl<'a> Checker<'a> {
         self_ty: &Ty,
         bounds: &[ast::Bound],
     ) {
-        let outer = self.param_bounds.len();
+        let outer = (self.param_bounds.len(), self.param_bound_args.len());
         self.param_bounds.extend(extract_bounds(bounds));
+        let bound_args = self.quietly(|c| c.bound_args(bounds));
+        self.param_bound_args.extend(bound_args);
         self.methods(methods, self_ty);
-        self.param_bounds.truncate(outer);
+        self.leave_bounds(outer);
     }
 
     /// True when trait `sub` is `want` or transitively inherits from `want`.
