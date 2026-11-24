@@ -1303,7 +1303,7 @@ pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
             let mut found = Vec::new();
             for inner in &program.fns[f].body.stmts {
                 if let Stmt::Let(_, Some(init)) = inner {
-                    if matches!(in_place(init).kind, ExprKind::Global(_)) {
+                    if matches!(moved_source(init).kind, ExprKind::Global(_)) {
                         found.push(inner);
                     }
                 }
@@ -1313,8 +1313,8 @@ pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
                 let Stmt::Let(_, Some(init)) = inner else {
                     continue;
                 };
-                let src =
-                    walk::path_root(in_place(init)).filter(|_| walk::is_simple(in_place(init)));
+                let from = moved_source(init);
+                let src = walk::path_root(from).filter(|_| walk::is_simple(from));
                 if crate::lend::holds_heap(program, &init.ty)
                     && !matches!(init.ty, Ty::Fn(..))
                     && src.is_some_and(|src| src.0 && dies_in(program, block, k, src, Some(f)))

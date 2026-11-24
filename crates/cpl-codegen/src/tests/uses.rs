@@ -207,38 +207,54 @@ fn explain_reads_closures_copies_and_dropped_fields_off_one_write() {
 
 #[test]
 fn a_fn_run_once_moves_a_global_nothing_reads_after_it() {
-    let out = super::cpp(concat!(
+    let src = concat!(
         "let n: 1..=10 = read()\n",
         "let base = [i for i in 0..n]\n",
         "fn build() -> List<Int>:\n",
-        "    var xs = base\n",
+        "    var xs = base.clone()\n",
         "    xs.push(1)\n",
         "    xs\n",
         "let built = build()\n",
         "print(built)\n",
-    ));
+    );
+    let out = super::cpp(src);
     assert!(
         out.contains("= std::move(base)"),
         "`base` is not read after `build` takes it, so it moves:\n{out}"
+    );
+    let lowered = crate::explain_lowered(&lower(src));
+    assert!(lowered.copies.is_empty(), "{:?}", lowered.copies);
+    assert_eq!(
+        lowered
+            .moved
+            .iter()
+            .map(|s| &src[s.start as usize..s.end as usize])
+            .collect::<Vec<_>>(),
+        ["base.clone()"],
+        "`cpl explain` shows the written copy it moves"
     );
 }
 
 #[test]
 fn a_global_read_after_the_fn_that_takes_it_is_copied() {
-    let out = super::cpp(concat!(
+    let src = concat!(
         "let n: 1..=10 = read()\n",
         "let base = [i for i in 0..n]\n",
         "fn build() -> List<Int>:\n",
-        "    var xs = base\n",
+        "    var xs = base.clone()\n",
         "    xs.push(1)\n",
         "    xs\n",
         "let built = build()\n",
         "print(built, base)\n",
-    ));
+    );
+    let out = super::cpp(src);
     assert!(
         !out.contains("std::move(base)"),
         "`base` is printed after `build`, so `build` copies it:\n{out}"
     );
+    let lowered = crate::explain_lowered(&lower(src));
+    assert!(lowered.moved.is_empty(), "{:?}", lowered.moved);
+    assert_eq!(copy_reasons(src), [crate::uses::CLONED]);
 }
 
 #[test]

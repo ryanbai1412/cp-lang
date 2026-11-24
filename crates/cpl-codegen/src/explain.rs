@@ -15,6 +15,8 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
 
 /// [`report`] opening with `storage`, the types and memory section the
 /// checker's representation query fills (`cpl explain` and the playground
+/// Why a copy the source spells is a move in the C++.
+pub const MOVED: &str = "nothing reads its source after, so the copy takes it instead";
 /// Why a `mut` argument is passed as a copy.
 pub const WRITTEN_BACK: &str =
     "a `Bool` element is a bit with no address: passed as a copy, put back after the call";
@@ -31,6 +33,7 @@ pub fn report_with(
     let crate::Lowered {
         closures: entries,
         copies,
+        moved,
         dropped,
         specializations,
         checks,
@@ -55,6 +58,16 @@ pub fn report_with(
                 false => what.clone(),
             };
             let _ = writeln!(stdout, "  [copy] {line}:{col}  {shown} -> {why}");
+        }
+    }
+    if !moved.is_empty() {
+        let _ = writeln!(stdout, "Copies moved instead for {path}:");
+        for span in &moved {
+            let (line, col) = line_col(text, *span);
+            let shown = text
+                .get(span.start as usize..span.end as usize)
+                .unwrap_or("");
+            let _ = writeln!(stdout, "  [moved] {line}:{col}  {shown} -> {MOVED}");
         }
     }
     if !program.written_back.is_empty() {

@@ -291,6 +291,9 @@ pub fn explain_closures(program: &cpl_ir::Program) -> Vec<ClosureLowering> {
 pub struct Lowered {
     pub closures: Vec<ClosureLowering>,
     pub copies: Vec<(cpl_diag::Span, String, &'static str)>,
+    /// Each copy the source spells that the C++ moves instead, because
+    /// nothing reads its source after ([`explain::MOVED`]).
+    pub moved: Vec<cpl_diag::Span>,
     pub dropped: Vec<String>,
     /// Each choice the C++ makes from a bound, as [`width::explained`] words it.
     pub specializations: Vec<String>,
@@ -307,7 +310,7 @@ pub struct Lowered {
 pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
     let target = judge_target();
     let prepared = prepared(program, &target);
-    let (cpp, copies, called, written) = emit::Emitter::new(&prepared, &target).lowered();
+    let (cpp, copies, moved, called, written) = emit::Emitter::new(&prepared, &target).lowered();
     let mut closures = devirt::explain_closures(&prepared, &written, &cpp);
     for lowering in &mut closures {
         if let ClosureMode::StaticDirect { closure } = lowering.mode {
@@ -329,6 +332,7 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
     Lowered {
         closures,
         copies,
+        moved,
         dropped: devirt::dropped_fields(program, &cpp),
         specializations: width::explained(&prepared),
         checks,

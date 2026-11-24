@@ -14,13 +14,17 @@ impl Emitter<'_> {
     ) -> (
         String,
         Vec<(cpl_diag::Span, String, &'static str)>,
+        Vec<cpl_diag::Span>,
         BTreeSet<usize>,
         Written,
     ) {
         let cpp = self.write("", None);
         let copies = crate::lend::copy_sites(self.program, &self.copies);
+        let mut moved = std::mem::take(&mut self.moved_copies);
+        moved.sort_by_key(|s| (s.start, s.end));
+        moved.dedup();
         let direct = std::mem::take(&mut self.direct);
-        (cpp, copies, direct, self.take_written())
+        (cpp, copies, moved, direct, self.take_written())
     }
 
     /// Each index the written file has and whether its C++ checks it, and

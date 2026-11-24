@@ -1030,7 +1030,10 @@ impl<'p> Emitter<'p> {
                 let hold = if hoisted { Hold::Static } else { Hold::Block };
                 let pinned = self.pinned_view(init, hold, out);
                 let text = match crate::uses::copied(init) {
-                    Some(src) if self.moves_last && pinned.is_none() => self.expr(src).text,
+                    Some(src) if self.moves_last && pinned.is_none() => {
+                        self.moved_copies.push(init.span);
+                        self.expr(src).text
+                    }
                     _ => match &init.kind {
                         _ if pinned.is_some() => pinned.unwrap_or_default(),
                         ExprKind::Field(base, index) => match &base.kind {

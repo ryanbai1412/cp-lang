@@ -119,6 +119,8 @@ pub(crate) struct Emitter<'p> {
     pub capture_owns: std::collections::BTreeMap<(usize, usize), &'static str>,
     /// Each non-scalar value the C++ copies, for `cpl explain`.
     pub copies: Vec<crate::lend::Copied>,
+    /// Each copy the C++ leaves out because nothing reads its source after.
+    pub moved_copies: Vec<cpl_diag::Span>,
     /// Each index the file writes and whether its C++ checks it, for `cpl explain`.
     pub index_checks: Vec<(cpl_diag::Span, crate::explain::Index)>,
     /// Each check the order facts prove never fails, by span, with what it checks.
@@ -376,6 +378,7 @@ impl<'p> Emitter<'p> {
             call_scoped: BTreeSet::new(),
             capture_owns: Default::default(),
             copies: Vec::new(),
+            moved_copies: Vec::new(),
             index_checks: Vec::new(),
             proven_checks: Vec::new(),
             arith_checks: Vec::new(),
