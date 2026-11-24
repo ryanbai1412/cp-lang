@@ -8779,6 +8779,10 @@ from `just next-decision`.
 - **Why.** Everything monomorphizes (R08.2.3): `wrap<Int>` needs `wrap<List<Int>>`, which needs `wrap<List<List<Int>>>`, without end, so `cpl check`, `run` and `build` all hung. Lowering stops once a fn's instance chain reaches 24 copies of itself, each at a new type, and names the first two. A contest program never needs this; boxing at runtime (`dyn`) would add the hidden cost R08.2.3 rules out.
 - **Reverse.** Give generic fns a boxed fallback (one shared copy behind a vtable) for a growing instantiation, and drop E0319.
 
-## 518. (reserved, content)
+## 518. `std_shadowed` counts every std item the compiler answers itself (stdlib, 2026-11-24)
+
+- **Call.** `scripts/debt-ratchet.py` `std_shadowed` is a raw count with no reasons. It counts (1) a pub std fn whose name the lowering string-matches and whose receiver a built-in arm can catch: a free fn, or a `self` that is a type parameter, list, string, map, set, range or array. It also counts (2) a pub std type that the checker, IR, interpreter or emitter names in a string literal. Only the decision-266 intrinsic floor is left out. The count rose from 55 to 78 because the old name-only match counted methods of other types (`Heap.pop`, `Dsu.find`) whose bodies do run, and it missed the types the compiler knows by name (`Subset`, `Rooted`, `Graph`, `Rev`). It becomes `HARD_ZERO` at 0.
+- **Why.** "Small core, no privileged stdlib": a std body the compiler bypasses is a second implementation that nobody tests, and a matcher by name alone can't tell it from an unrelated method.
+- **Reverse.** Go back to the name intersection of 3e552fa13.
 
 ## 519. (reserved, content)

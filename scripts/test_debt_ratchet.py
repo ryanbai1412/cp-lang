@@ -747,6 +747,27 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(dr.cpp_deep_copies(root)), 3)
             self.assertEqual(len(dr.cpp_std_functions(root)), 2)
 
+    def test_std_shadowed_counts_receivers_a_builtin_arm_catches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "crates/cpl-ir/src/lower/call.rs",
+                        '            "runs" | "take" | "pop" | "len" => {}\n')
+            self._write(root, "crates/cpl-check/src/prelude.rs",
+                        'fn ty(n: &str) { match n { "Subset" => {}, _ => {} } }\n'
+                        '#[cfg(test)]\nmod tests { const X: &str = "Heap"; }\n')
+            self._write(root, "plan/domains/tech-debt/architecture/builtin-floor.md",
+                        "| Storage | intrinsic | `len` |\n")
+            self._write(root, "std/seq.cp",
+                        "pub fn runs<T>(self: List<T>) -> Int = 0\n"
+                        "pub fn take<S>(self: S, k: Int) -> S = self\n"
+                        "@get pub fn len<T>(self: List<T>) -> Int = 0\n"
+                        "pub struct Subset<B>(bits: U64):\n"
+                        "    pub fn take(self, k: Int) -> Int = k\n")
+            self._write(root, "std/heap.cp",
+                        "pub struct Heap<T>():\n    pub fn pop(mut self) -> ?T = None\n"
+                        "pub fn pop(self: Heap<Int>) -> Int = 0\n")
+            self.assertEqual(dr.std_shadowed(root), ["Subset", "runs", "take"])
+
     def test_ir_builtin_names_reads_tuple_arms(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

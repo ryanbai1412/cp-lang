@@ -1339,19 +1339,68 @@ def mono_unguarded(root: Path) -> list[str]:
     return [] if used else ["crates/cpl-check, crates/cpl-ir: no GROWING_INSTANTIATION use"]
 
 
-def std_shadowed(root: Path) -> list[str]:
-    """Names lowering string-matches that std also defines and the builtin floor
-    (decision 266) doesn't keep: a std body the compiler bypasses."""
-    public: set[str] = set()
-    for p in sorted((root / "std").glob("*.cp")):
-        public.update(re.findall(r"^\s*pub\s+(?:fn|struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
+STD_ITEM_RE = re.compile(r"^(\s*)(?:@\w+\s+)*pub\s+(fn|struct|enum|trait|type)\s+(\w+)\s*(<[^>(]*>)?\s*(?:\(([^)]*))?")
+# Receivers a built-in arm on lists, strings, maps, sets, arrays or a type
+# parameter can catch: a std fn over one of these never runs its body.
+BUILTIN_SELF_RE = re.compile(r"^self:\s*(?:\[|List<|Str\b|Map<|Set<|HashMap<|HashSet<|Range<)")
+COMPILER_SRC = ("crates/cpl-check/src", "crates/cpl-ir/src", "crates/cpl-interp/src", "crates/cpl-codegen/src")
+
+
+def _builtin_floor(root: Path) -> set[str]:
+    """The decision-266 intrinsic names the compiler keeps."""
     floor: set[str] = set()
     table = root / "plan/domains/tech-debt/architecture/builtin-floor.md"
     for line in _lines(table) if table.is_file() else []:
         cells = line.split("|")
         if len(cells) > 3 and cells[2].strip() == "intrinsic":
             floor.update(re.findall(r"`(\w+)`", cells[3]))
-    return sorted((set(ir_builtin_names(root)) & public) - floor)
+    return floor
+
+
+def _compiler_strings(root: Path) -> set[str]:
+    """Every identifier-like string literal in the checker, IR, interpreter and emitter, tests aside."""
+    found: set[str] = set()
+    for base in COMPILER_SRC:
+        for f in sorted((root / base).rglob("*.rs")):
+            if "tests" in f.parts or f.name in ("tests.rs", "test.rs"):
+                continue
+            text = f.read_text(encoding="utf-8")
+            text = text.split("#[cfg(test)]")[0]
+            found.update(re.findall(r'"([A-Za-z_]\w*)"', text))
+    return found
+
+
+def std_shadowed(root: Path) -> list[str]:
+    """Public std items whose calls the compiler answers itself instead of running the body,
+    off the decision-266 floor: (1) a fn the lowering string-matches by name whose receiver a
+    built-in arm can catch (a free fn, or a `self` that is a type parameter, list, string, map,
+    set, range or array); (2) a type the checker, IR, interpreter or emitter names in a string
+    literal, whose methods it may answer too."""
+    floor = _builtin_floor(root)
+    arms = set(ir_builtin_names(root))
+    named = _compiler_strings(root)
+    out: set[str] = set()
+    for p in sorted((root / "std").glob("*.cp")):
+        for line in _lines(p):
+            m = STD_ITEM_RE.match(line)
+            if not m:
+                continue
+            indent, kind, name, generics, params = m.groups()
+            if kind != "fn":
+                if not indent and name in named and name not in floor:
+                    out.add(name)
+                continue
+            if name not in arms or name in floor:
+                continue
+            if indent:
+                continue
+            first = (params or "").split(",")[0].strip()
+            params_of = re.findall(r"\b([A-Z]\w*)\b", generics or "")
+            self_ty = first.split(":", 1)[1].strip() if first.startswith("self:") else ""
+            if not first.startswith("self") or BUILTIN_SELF_RE.match(first) \
+                    or re.split(r"[<\s]", self_ty)[0] in params_of:
+                out.add(name)
+    return sorted(out)
 
 
 WALK_RE = re.compile(r"\b(?:glob|rglob|iglob|listdir|iterdir|scandir|walk|read_dir|readdir\w*|ls)\b|\*")
