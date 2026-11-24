@@ -1,4 +1,5 @@
 // Source: CCC 2020 S4 (Swapping Seats), https://dmoj.ca/problem/ccc20s4
+// limits: 1000 ms, 512 MB
 // Problem: N <= 1e6 people of groups A, B, C sit around a round table (a string). Print the
 //   fewest swaps of two people after which each group sits in one contiguous block.
 // Solution: fix where the A block starts and which group follows it: block lengths are the group

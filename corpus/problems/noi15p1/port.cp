@@ -1,4 +1,5 @@
 // Source: NOI 2015 P1 (Automated Program Analyzer), https://dmoj.ca/problem/noi15p1
+// limits: 2000 ms, 512 MB
 // Problem: t independent instances, each n <= 1e5 constraints x_i = x_j or x_i != x_j with
 //   indices up to 1e9. For each, print YES if all its constraints can hold at once, else NO.
 // Solution: compress the indices, unite the two sides of every equality in a Dsu, then check
