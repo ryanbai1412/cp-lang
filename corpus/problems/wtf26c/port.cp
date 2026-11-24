@@ -1,5 +1,6 @@
 // Source: AtCoder World Tour Finals 2026 C (Count by Descents),
 //   https://atcoder.jp/contests/awtf2026algo/tasks/awtf2026algo_c
+// limits: 10000 ms, 2048 MB
 // Problem: given strictly increasing A_1 < ... < A_N (N <= 80, A_i < 998244353), for each
 //   d = 0..N-1 sum prod (i + x_i) over the rearrangements x of A with exactly d descents,
 //   mod 998244353.

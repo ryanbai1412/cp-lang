@@ -1,5 +1,6 @@
 // Source: Codeforces 2268C (KiaKio and Energy Intervals),
 //   https://codeforces.com/contest/2268/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: an array of n >= 2 values a_i < 2^18. Over segments l < r with maximum m, print the
 //   largest xor of (a_i & m). Multitest, sum of n <= 2e5.
 // Solution: build the answer v from bit 17 down, keeping a bit when some segment has a maximum

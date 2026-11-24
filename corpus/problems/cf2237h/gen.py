@@ -1,4 +1,13 @@
 import sys, random
+if sys.argv[1] == "--max":
+    # one case with n = q = 1e5 (both sums): a path on shuffled labels (deepest HLD walks), the
+    # slime the m = n/2 vertices at one end, queries spread over the whole path.
+    r = random.Random(0); n = q = 10**5; m = n // 2
+    lab = list(range(1, n + 1)); r.shuffle(lab)
+    out = ["1", f"{n} {m} {q}"] + [f"{lab[i]} {lab[i + 1]}" for i in range(n - 1)]
+    slime = lab[:m]; r.shuffle(slime)
+    out += [" ".join(map(str, slime)), " ".join(str(r.randint(1, n)) for _ in range(q))]
+    print("\n".join(out)); sys.exit()
 
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])

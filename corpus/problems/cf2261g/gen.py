@@ -1,4 +1,7 @@
 import sys, random
+if sys.argv[1] == "--max":  # one case n = 4e5 (sum n): all 25 bits set but one, mixed with all-ones
+    r = random.Random(0); n = 400000; F = 2**25 - 1
+    print(1); print(n); print(*[F ^ (1 << r.randrange(25)) if r.random() < 0.9 else F for _ in range(n)]); sys.exit()
 # usage: gen.py seed size; sum n <= min(4e5, 4 * size), a_i < 2^25
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 budget = min(400000, 4 * S)

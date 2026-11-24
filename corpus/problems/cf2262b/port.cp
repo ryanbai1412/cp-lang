@@ -1,4 +1,5 @@
 // Source: Codeforces 2262B (Culling Game), https://codeforces.com/contest/2262/problem/B
+// limits: 2000 ms, 256 MB
 // Problem: n <= 2e5 sorcerers (multitest, sum n <= 2e5), skills a_i <= 1e9. The leftmost is
 //   champion and meets the rest left to right: if his skill s < x he forfeits and x takes
 //   over, else he wins and s += x. For each i = 0..n-1, after removing sorcerers p_1..p_i

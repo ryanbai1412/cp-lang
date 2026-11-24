@@ -1,5 +1,6 @@
 // Source: Codeforces 2237E (Permutation Commutation),
 //   https://codeforces.com/contest/2237/problem/E
+// limits: 2000 ms, 256 MB
 // Problem: a permutation a of 1..n and b with some entries -1 (the given values distinct).
 //   Complete b to the lexicographically smallest permutation with a[b[i]] = b[a[i]] for all
 //   i: print YES and it, or NO. n <= 2e5 (sum), multitest.

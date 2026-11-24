@@ -1,4 +1,5 @@
 // Source: NOI 2014 Day 2 P2 (Random Number Generator), https://dmoj.ca/problem/noi14p5
+// limits: 2000 ms, 256 MB
 // Problem: x[i] = (a x[i-1]^2 + b x[i-1] + c) mod d drives NM swaps (the i-th exchanges T[i]
 //   and T[x[i] mod i + 1]) of 1..NM, then Q given swaps; T fills an N x M grid row by row.
 //   Print the lexicographically smallest sorted list of values on a right/down path from the
@@ -18,9 +19,11 @@ let n: 1..=5000 = read()
 let m: 1..=5000 = read()
 let q: 0..=50_000 = read()
 let cells = n * m
+// a cell index, stored in 32 bits: two NM-cell boards at 8 bytes each would not fit 256 MB
+type Cell = 0..25_000_000
 
 // the board in row-major order holds a shuffle of 0..cells
-var board: [0..cells]Int = 0
+var board: [0..cells]Cell = 0
 var x = x0
 for i in 0..cells:
     x = (a * x * x + b * x + c) % d
@@ -31,7 +34,7 @@ for _ in 0..q:
     let u: 1..=cells = read()
     let v: 1..=cells = read()
     board.swap(u - 1, v - 1)
-var at: [0..cells]Int = 0
+var at: [0..cells]Cell = 0
 for i in 0..cells: at[board[i]] = i
 
 // A set of cells lies on one right/down path when no two of them are

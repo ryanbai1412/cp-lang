@@ -1,4 +1,5 @@
 // Source: Codeforces 2237H (Slime and Queries), https://codeforces.com/contest/2237/problem/H
+// limits: 5000 ms, 1024 MB
 // Problem: a tree with n <= 1e5 vertices and a slime on m connected vertices; a Move frees one
 //   occupied vertex and occupies a new one, staying connected. Food appears at c_1..c_q in order
 //   (forced online: c_i is decoded with ans_{i-1}); for each i print the fewest Moves to eat

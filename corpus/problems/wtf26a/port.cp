@@ -1,5 +1,6 @@
 // Source: AtCoder World Tour Finals 2026 A (Min Cut of Graph of Min Weight),
 //   https://atcoder.jp/contests/awtf2026algo/tasks/awtf2026algo_a
+// limits: 2000 ms, 2048 MB
 // Problem: a tree of N <= 2.5e5 vertices, weights C <= 1e12. G is the complete graph whose edge
 //   (i, j) has capacity min weight on the tree path i-j; print the sum over i < j of the min cut
 //   f(i, j) in G, mod 998244353. Multitest, S <= 1.25e5 cases, sum N <= 2.5e5.

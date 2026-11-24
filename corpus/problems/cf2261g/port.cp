@@ -1,5 +1,6 @@
 // Source: Codeforces 2261G (1 2 3 and XOR, Where Did Everybody Go?),
 //   https://codeforces.com/contest/2261/problem/G
+// limits: 7000 ms, 1024 MB
 // Problem: f(b) is the least b_1 xor ... xor b_k after adding any non-negative number to
 //   one element of b. Given a_1..a_n (a_i < 2^25), print the sum of f over all subarrays.
 //   1 <= n <= 4e5, t <= 1e4 tests, sum n <= 4e5.
