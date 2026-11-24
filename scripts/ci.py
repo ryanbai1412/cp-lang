@@ -209,11 +209,30 @@ STEPS = {
 }
 
 
-def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, healed: bool | None = None) -> int:
-    """Runs the tier's steps in order and stops at the first that fails."""
+# The tiers a touched checking script's own step comes from; the full tier's are too slow.
+TOUCHED_TIERS = ("commit", "checks")
+
+
+def touched_steps(scripts) -> list[Step]:
+    """The commit and checks tier steps that run one of `scripts`, each once, in tier order."""
+    out = []
+    for tier in TOUCHED_TIERS:
+        out += [s for s in STEPS[tier] if s.argv[0] in scripts and s not in out]
+    return out
+
+
+def step_scripts() -> set[str]:
+    """Every script a commit or checks tier step runs."""
+    return {s.argv[0] for tier in TOUCHED_TIERS for s in STEPS[tier]}
+
+
+def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, healed: bool | None = None,
+              only=None) -> int:
+    """Runs the tier's steps, or with `only` the touched steps running those scripts, in order,
+    and stops at the first that fails."""
     if healed is None:
         healed = os.environ.get("CPL_DERIVED_HEALED") == "1"
-    for step in STEPS[tier]:
+    for step in touched_steps(only) if only else STEPS[tier]:
         print(f"\n==> {step.title}", flush=True)
         script, *args = (a.replace("{cpl}", cpl) for a in step.argv)
         cmd = [sys.executable, str(ROOT / script), *args]
@@ -245,11 +264,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--mode", choices=MODES, required=True)
     p.add_argument("--gate-part", default="")
     g = sub.add_parser("steps", help="run a tier's checking scripts, spec gates among them")
-    g.add_argument("tier", choices=sorted(STEPS))
+    g.add_argument("tier", choices=sorted(STEPS) + ["touched"])
     g.add_argument("--cpl", default="target/debug/cpl")
+    g.add_argument("scripts", nargs="*", help="with tier `touched`: the changed scripts whose steps run")
     args = ap.parse_args(argv)
     if args.cmd == "steps":
-        return run_steps(args.tier, args.cpl)
+        if (args.tier == "touched") != bool(args.scripts):
+            ap.error("name the changed scripts with `touched`, and only with it")
+        return run_steps(args.tier, args.cpl, only=set(args.scripts) or None)
     try:
         sys.stdout.write(plan(args.mode, args.gate_part))
     except ValueError as e:

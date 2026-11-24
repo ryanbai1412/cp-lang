@@ -8,7 +8,8 @@ Rule: handbook/guidelines/ci-checklist.md#cir3.
 
 A path under a crate selects that crate and, through nextest's `rdeps()`,
 every crate that depends on it. Prose selects nothing. Any path this file
-does not know selects the whole fast gate, so a new kind of input can only
+does not know selects the whole fast gate, a checking script that
+scripts/ci.py runs selects its own step, so a new kind of input can only
 make the commit tier slower, never let it miss a test. The land tier
 (`scripts/check.sh --land`) selects the same way over a train's diff; CI's
 `--fast` on every main tip always runs everything.
@@ -20,6 +21,9 @@ import os
 import re
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -145,8 +149,9 @@ def run_slices(names):
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
            "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
-           "check_files": [], "audit": False, "idioms_catalog": False, "slices": []}
-    packages, tests, data = set(), set(), []
+           "check_files": [], "audit": False, "idioms_catalog": False, "slices": [], "steps": []}
+    packages, tests, data, steps = set(), set(), [], set()
+    step_scripts = ci.step_scripts()
     for path in paths:
         if path.startswith("corpus/problems/"):
             sel["audit"] = True
@@ -174,6 +179,10 @@ def select(paths, dirs):
             packages.update(dirs.values())
         elif matches(path, SITE):
             sel["site"] = True
+        elif path in step_scripts:
+            steps.add(path)
+            if t := script_test(path):
+                tests.add(t)
         elif path.startswith("scripts/") and (t := script_test(path)):
             tests.add(t)
         elif path.startswith("scripts/") and ci_only(path):
@@ -188,6 +197,7 @@ def select(paths, dirs):
     sel["slices"] = [name for name, _, globs, _ in SLICES if any(matches(p, globs) for p in paths)]
     sel["packages"] = sorted(packages)
     sel["script_tests"] = sorted(tests)
+    sel["steps"] = sorted(steps)
     sel["data_filter"] = " | ".join(f"({e})" for e in data)
     return sel
 
@@ -231,6 +241,7 @@ def main(argv):
     print(f"audit={int(sel['audit'])}")
     print(f"idioms_catalog={int(sel['idioms_catalog'])}")
     print("slices=" + " ".join(sel["slices"]))
+    print("steps=" + " ".join(sel["steps"]))
     print("slice_filter=" + slice_filter(sel["slices"]))
     return 0
 

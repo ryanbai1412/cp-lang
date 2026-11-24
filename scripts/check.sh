@@ -407,6 +407,11 @@ if [ "$mode" = commit ]; then
         uv run --quiet python scripts/idioms-catalog.py --check \
             || fail "a spec/idioms/lints.md row names an API std doesn't define; the finding above names the lint and the name"
     fi
+    if [ -n "${sel_steps:-}" ]; then
+        step "touched checking scripts (scripts/ci.py steps touched $sel_steps)"
+        read -ra touched <<<"$sel_steps"
+        uv run --quiet python scripts/ci.py steps touched --cpl "$cpl" "${touched[@]}" || exit 1
+    fi
     if [ -n "$sel_script_tests" ]; then
         step "script unit tests: $sel_script_tests"
         read -ra tests <<<"$sel_script_tests"

@@ -120,6 +120,17 @@ class StepsTest(unittest.TestCase):
         self.assertNotIn("warning", out.getvalue())
         self.assertIn("ok bench/sizes.py", out.getvalue())
 
+    def test_touched_runs_only_the_named_scripts_steps_once(self) -> None:
+        seen = []
+        status = ci.run_steps("touched", only={"scripts/debt-ratchet.py", "bench/sizes.py"},
+                              run=lambda cmd, **kw: seen.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", ""))
+        self.assertEqual(status, 0)
+        ran = [str(Path(c[1]).relative_to(ci.ROOT)) for c in seen]
+        self.assertEqual(sorted(set(ran)), ["bench/sizes.py", "scripts/debt-ratchet.py"])
+        self.assertEqual(len(ran), len(ci.touched_steps({"scripts/debt-ratchet.py", "bench/sizes.py"})))
+        self.assertFalse(any(s in ci.STEPS["full"] and s not in ci.STEPS["checks"]
+                             for s in ci.touched_steps(ci.step_scripts())))
+
     def test_check_sh_runs_no_step_itself(self) -> None:
         check = (Path(__file__).parent / "check.sh").read_text(encoding="utf-8")
         self.assertNotIn("spec-gate.py ", check)
