@@ -131,6 +131,23 @@ pub(crate) fn safe_place(place: &cpl_ir::Place) -> bool {
     }
 }
 
+/// A variable, its fields and cells of its domain-indexed arrays at
+/// positions held in variables: reading it twice runs nothing and cannot trap.
+pub(crate) fn plain_place(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Local(_) | ExprKind::Global(_) => true,
+        ExprKind::Field(base, _) => plain_place(base),
+        ExprKind::Index(base, idxs) => {
+            in_domain(&base.ty, idxs)
+                && idxs
+                    .iter()
+                    .all(|i| matches!(i.kind, ExprKind::Local(_) | ExprKind::Global(_)))
+                && plain_place(base)
+        }
+        _ => false,
+    }
+}
+
 /// Whether a closure of fn `id` can write its local `root`: the only way
 /// code reached through a fn value changes a caller's local.
 pub(crate) fn closure_writes(program: &cpl_ir::Program, id: Option<usize>, root: usize) -> bool {

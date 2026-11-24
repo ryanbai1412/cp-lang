@@ -155,6 +155,128 @@ fn neighbour(e: &Expr) -> Option<(&Expr, char, i64)> {
     }
 }
 
+/// `if let x = o: a else: b` as a value, lowered as `{ let t = o; if t.is_some: { let x = t!;
+/// a } else: b }`, as the plain `if` it is when naming `o` runs nothing and cannot trap:
+/// `o.is_some ? a[x := o!] : b`, a C++ `?:` instead of a lambda called on the spot.
+fn if_let_as_if(e: &Expr) -> Option<Expr> {
+    let ExprKind::Do(block) = &e.kind else {
+        return None;
+    };
+    let [Stmt::Let(t, Some(o)), Stmt::If(cond, then_b, else_b)] = block.stmts.as_slice() else {
+        return None;
+    };
+    let is_t = |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == *t);
+    let ExprKind::IsSome(tested) = &cond.kind else {
+        return None;
+    };
+    let (bound, a) = match then_b.stmts.as_slice() {
+        [Stmt::Give(a)] => (None, a),
+        [Stmt::Let(x, Some(read)), Stmt::Give(a)] if matches!(&read.kind, ExprKind::Unwrap(v, false) if is_t(v)) => {
+            (Some((*x, read.ty.clone())), a)
+        }
+        _ => return None,
+    };
+    let [Stmt::Give(b)] = else_b.stmts.as_slice() else {
+        return None;
+    };
+    if !is_t(tested)
+        || matches!(e.ty, Ty::Fn(..))
+        || !crate::uses::effects::plain_place(o)
+        || !only_values(a)
+        || !only_values(b)
+        || [a, b].iter().any(|v| {
+            calls(v)
+                && reads(v, &|s| {
+                    s == *t || bound.as_ref().is_some_and(|(x, _)| s == *x)
+                })
+        })
+    {
+        return None;
+    }
+    let mut a = a.clone();
+    let read = |ty: Ty| Expr {
+        kind: ExprKind::Unwrap(Box::new(o.clone()), false),
+        ty,
+        span: o.span,
+    };
+    replace_locals(&mut a, &mut |s| match &bound {
+        Some((x, ty)) if s == *x => Some(read(ty.clone())),
+        _ if s == *t => Some(o.clone()),
+        _ => None,
+    });
+    let mut b = b.clone();
+    replace_locals(&mut b, &mut |s| (s == *t).then(|| o.clone()));
+    let has = Expr {
+        kind: ExprKind::IsSome(Box::new(o.clone())),
+        ty: cond.ty.clone(),
+        span: cond.span,
+    };
+    Some(Expr {
+        kind: ExprKind::If(Box::new(has), Box::new(a), Box::new(b)),
+        ty: e.ty.clone(),
+        span: e.span,
+    })
+}
+
+/// Whether every part of `e` is a value whose locals are all `Local`
+/// expressions: no statements, closures, places or `mut` arguments.
+fn only_values(e: &Expr) -> bool {
+    let here = match &e.kind {
+        ExprKind::Unit
+        | ExprKind::Int(_)
+        | ExprKind::Float(_)
+        | ExprKind::Bool(_)
+        | ExprKind::Char(_)
+        | ExprKind::Str(_)
+        | ExprKind::None
+        | ExprKind::Some(_)
+        | ExprKind::Local(_)
+        | ExprKind::Global(_)
+        | ExprKind::Unary(..)
+        | ExprKind::Binary(..)
+        | ExprKind::Cmp(..)
+        | ExprKind::Cast(..)
+        | ExprKind::Index(..)
+        | ExprKind::Field(..)
+        | ExprKind::Tuple(_)
+        | ExprKind::Variant(..)
+        | ExprKind::IsVariant(..)
+        | ExprKind::Payload(..)
+        | ExprKind::IsSome(_)
+        | ExprKind::Unwrap(..)
+        | ExprKind::If(..)
+        | ExprKind::Builtin(..) => true,
+        ExprKind::Call(_, args) => args.iter().all(|a| matches!(a, Arg::Value(_))),
+        _ => false,
+    };
+    let mut kids = true;
+    cpl_ir::walk::children(e, &mut |c| kids &= only_values(c));
+    here && kids
+}
+
+/// Whether `e` calls a function, which may write the place the optional was read from.
+fn calls(e: &Expr) -> bool {
+    let mut found = matches!(e.kind, ExprKind::Call(..));
+    cpl_ir::walk::children(e, &mut |c| found |= calls(c));
+    found
+}
+
+fn reads(e: &Expr, local: &dyn Fn(usize) -> bool) -> bool {
+    let mut found = matches!(e.kind, ExprKind::Local(s) if local(s));
+    cpl_ir::walk::children(e, &mut |c| found |= reads(c, local));
+    found
+}
+
+fn replace_locals(e: &mut Expr, with: &mut dyn FnMut(usize) -> Option<Expr>) {
+    if let ExprKind::Local(s) = e.kind {
+        if let Some(new) = with(s) {
+            *e = new;
+        }
+        return;
+    }
+    cpl_ir::walk::children_mut(e, &mut |c| replace_locals(c, with));
+}
+
 impl<'p> Emitter<'p> {
     /// A lambda called on the spot: `[&]() -> ret { body }()`.
     pub fn lambda(&mut self, ret: &str, body: impl FnOnce(&mut Self, &mut String)) -> Code {
@@ -1000,6 +1122,9 @@ impl<'p> Emitter<'p> {
                 }
                 if let Some(place) = gives_its_place(block, &e.ty) {
                     return self.expr(place);
+                }
+                if let Some(choice) = if_let_as_if(e) {
+                    return self.expr(&choice);
                 }
                 if let Some(join) = self.devirt.join_leaves(e) {
                     let index = self.join_index(&join.pick, &join.leaves);

@@ -224,7 +224,7 @@ fn opt_max_is_one_compare_and_min_tests_a_built_some_once() {
     // `none` sorts first, so `max=` is the order's max, and `Some(e)` needs no test.
     assert!(body.contains("std::max<cpl::OptInt>("), "{body}");
     assert!(
-        body.contains("static constexpr bool none_first = NONE < S(0);"),
+        body.contains("if constexpr (NONE < S(0)) return a.raw < b.raw;"),
         "{body}"
     );
     let solve = &body[body.find("void solve()").unwrap()..];
@@ -367,4 +367,37 @@ fn a_cell_fn_tested_by_its_caller_builds_no_opt_tuple() {
         p.contains("cpl::OptTuple<std::tuple<int, int>, 0> kept("),
         "{p}"
     );
+}
+
+#[test]
+fn an_if_let_value_over_a_plain_place_is_a_conditional() {
+    let out = cpp(concat!(
+        "let n: 1..=9 = read()\n",
+        "domain V = 0..n\n",
+        "var dist: [V]?Int = None\n",
+        "let s: V = read()\n",
+        "let d0: Int = read()\n",
+        "dist[s] = Some(d0 + 1)\n",
+        "let better = if let cur = dist[s]: d0 < cur else: true\n",
+        "print(if better: 1 else: 0)\n",
+    ));
+    assert!(!out.contains("[&]() -> bool"), "{out}");
+    assert!(out.contains(".has_value() ? "), "{out}");
+}
+
+#[test]
+fn an_if_let_value_that_calls_a_fn_keeps_its_copy() {
+    let out = cpp(concat!(
+        "let n: 1..=9 = read()\n",
+        "domain V = 0..n\n",
+        "var dist: [V]?Int = None\n",
+        "fn bump(s: V) -> Int:\n",
+        "    dist[s] = Some(0)\n",
+        "    1\n",
+        "let s: V = read()\n",
+        "dist[s] = Some(read())\n",
+        "let got = if let cur = dist[s]: bump(s) + cur else: 0\n",
+        "print(got)\n",
+    ));
+    assert!(!out.contains(".has_value() ? "), "{out}");
 }
