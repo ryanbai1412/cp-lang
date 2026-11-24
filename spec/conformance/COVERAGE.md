@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3559 (3525 passing). Rules: 617.
+Cases: 3571 (3525 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1091,18 +1091,18 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 - **algebra** (58/69 named by a case)
   - uncovered: `Monoid.commutative`, `Comm`, `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
-- **bag** (158/165 named by a case)
+- **bag** (159/166 named by a case)
   - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (25/25 named by a case)
-- **bitset** (99/102 named by a case)
+- **bitset** (101/104 named by a case)
   - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
 - **deque** (42/42 named by a case)
 - **derive** (5/6 named by a case)
   - uncovered: `read_fields`
-- **dp** (39/39 named by a case)
+- **dp** (45/45 named by a case)
 - **dsu** (64/64 named by a case)
 - **fenwick** (42/42 named by a case)
-- **flow** (57/65 named by a case)
+- **flow** (59/67 named by a case)
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (159/164 named by a case)
   - uncovered: `ByAngle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
@@ -1149,7 +1149,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (23/24 named by a case)
   - uncovered: `Undo`
 
-2336 of 2444 std items are named by a case.
+2347 of 2455 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

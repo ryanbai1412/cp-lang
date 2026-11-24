@@ -197,6 +197,7 @@ Fields: `lo: Int`, `hi: Int`, `bs: Int`, `total: Int`, `cnt: List<Int>`, `blk: L
 - `fn kth(self, k: Int) -> Int` — \(O(\sqrt{N})\); traps: when `k` is not in `0..len`
 - `@get fn len(self) -> Int` — \(O(1)\); The total count of everything added, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
+- `fn each(self) -> yields Int` — \(O(\sqrt{N})\) per block holding a copy, plus \(O(\sqrt{N} + \mathit{len})\); Visit every stored copy, skipping empty blocks.
 - `fn clear(mut self)` — \(O(r.\mathit{len})\)
 
 ## `struct SortedRange<K>`

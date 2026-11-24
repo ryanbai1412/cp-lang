@@ -31,6 +31,8 @@ Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
 - `fn next(mut self) -> (val: K, prev: Int)` — \(O(1)\) amortized calls of `cost`; Reach the next node: return the optimum at node `len` and the index of the node before it, then grow `len` by one.; traps: when every node has been reached (`len == nodes.len`)
 - `fn val(self, i: Int) -> K` — \(O(1)\); The optimum at node `i`, which must already be reached; `val(0)` is 0.; traps: when `i < 0` or `i >= len`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of nodes reached so far, `nodes.first` included, so a fresh `MongePath` has `len == 1`.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Never: the first node is reached before any `next()`.
+- `@get fn items(self) -> yields (Int, K)` — \(O(\mathit{len})\)
 
 ## `struct MonotoneHull<P>(pick: (Int, Int) -> Int = min)`
 
@@ -41,6 +43,8 @@ Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
 - `fn at(self, x: Int) -> ?Int` — \(O(\log n)\); The best value at any `x`, by binary search on the hull; `None` when empty.
 - `fn at_next(mut self, x: Int) -> ?Int` — \(O(1)\) amortized; `at(x)` for an `x` that never decreases between calls; `None` when empty.; traps: when `x` is less than the previous `best_next` or `at_next` argument
 - `@get fn len(self) -> Int` — \(O(1)\); The number of lines kept on the hull (dominated lines are not counted).
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the hull has no line.
+- `@get fn items(self) -> yields (Line, P)` — \(O(\mathit{len})\)
 - `fn clear(mut self)` — \(O(1)\); Remove every line and reset the `at_next` pointer, keeping `pick`.
 
 ## `struct LineContainer(pick: (Int, Int) -> Int = min)`
@@ -51,6 +55,8 @@ Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
 - `fn at(self, x: Int) -> ?Int` — \(O(\log n)\); The best value at `x`, or `None` when empty.
 - `fn line_at(self, x: Int) -> ?Line` — \(O(\log n)\); The line attaining `at(x)`, or `None` when empty.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of lines kept (dominated lines are not counted).
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no line is kept.
+- `fn each(self) -> yields Line` — \(O(\mathit{len})\)
 
 ## `struct Step<S>(pub state: S, pub depth: Int, pruned: Bool = false)`
 

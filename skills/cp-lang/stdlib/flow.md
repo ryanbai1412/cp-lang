@@ -69,6 +69,8 @@ Fields: `adj: [L]List<R>`.
 - `fn mate(self, l: L) -> ?R` — \(O(1)\); `l`'s partner, `None` when unmatched.
 - `fn back(self, r: R) -> ?L` — \(O(1)\); `r`'s partner, `None` when unmatched.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of matched pairs.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no pair is matched.
+- `@get fn items(self) -> yields (L, R)` — \(O(\lvert L \rvert)\)
 - `fn cover(self) -> (left: [L]Bool, right: [R]Bool)` — \(O(V + E)\); The König vertex cover of the current matching, built as in [`min_vertex_cover`](min_vertex_cover); a minimum cover when the matching is maximum.
 
 ## `trait Matroid<E>`

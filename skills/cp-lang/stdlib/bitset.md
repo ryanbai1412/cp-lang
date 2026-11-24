@@ -101,6 +101,7 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 - `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0`
 - `@get fn len(self) -> Int` — \(O(1)\); The total number of stored integers, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the trie holds no integers.
+- `fn each(self) -> yields Int` — \(O(\mathit{bits})\) per element
 - `fn add(mut self, x: Int)` — \(O(\mathit{bits})\) time, up to `bits` new nodes; Insert one copy of `x`.; traps: when `x` is not in `0..2^bits`
 - `fn remove(mut self, x: Int) -> Bool` — \(O(\mathit{bits})\); Remove one copy of `x`; returns `false` if absent, leaving the trie unchanged.
 - `fn contains(self, x: Int) -> Bool` — \(O(\mathit{bits})\); Whether `x` is present at least once.
@@ -121,6 +122,7 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 - `fn of(x: Int) -> BitTrie<W>` — \(O(W)\); The trie holding `x` once: one path of `W + 1` nodes.; traps: when `x` is not in `0..2^W`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of stored integers, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the trie holds no integers.
+- `fn each(self) -> yields Int` — \(O(\mathit{nodes} + \mathit{len})\)
 - `fn add(mut self, x: Int)` — \(O(W)\) time, up to `W` new nodes; Insert one copy of `x`.; traps: when `x` is not in `0..2^W`
 - `fn count(self, x: Int) -> Int` — \(O(W)\); The multiplicity of `x`; zero when absent or out of range.
 - `fn walk(self, x: Int) -> yields (bit: Int, count: Int)` — \(O(W)\) for the whole walk, \(O(1)\) per step; The path of `x` from the top bit down: for each bit `b` from `W - 1` to 0, while some stored `y` agrees with `x` on bits `b` and above, yields `b` and how many do.; traps: when `x` is not in `0..2^W`
