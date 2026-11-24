@@ -20,6 +20,14 @@ struct Unit {
 ",
     },
     Piece {
+        name: "opt_is",
+        needs: &[],
+        code: "\
+// `o == (c ? Some(v) : None)` without copying `v` in: `v` is null for `None`.
+template <class O, class T> bool opt_is(const O& o, const T* v) { return v ? o.has_value() && *o == *v : !o.has_value(); }
+",
+    },
+    Piece {
         name: "niche",
         needs: &[],
         code: "\

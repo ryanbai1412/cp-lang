@@ -713,6 +713,24 @@ fn a_param_passed_on_to_a_sink_in_a_return_is_sunk_too() {
 }
 
 #[test]
+fn a_list_compared_with_an_optional_is_not_copied_into_one() {
+    let out = cpp(concat!(
+        "fn first(xs: List<Int>) -> ?List<Int> = if xs.len > 0: Some([xs[0]]) else: None\n",
+        "fn same(a: List<Int>, b: List<Int>) -> Bool:\n",
+        "    let o = first(b)\n",
+        "    o == Some(a) or first(b) != (if a.len > 1: Some(a) else: None) or o != (if a.len > 2: None else: Some(a))\n",
+        "let a = [read<Int>(), read<Int>()]\n",
+        "let b = [read<Int>()]\n",
+        "print(if same(a, b): 1 else: 0)\n",
+    ));
+    assert!(!out.contains("std::optional<std::vector<ll>>(a_2)"), "{out}");
+    assert!(out.contains("o == a_2"), "{out}");
+    assert!(out.contains("? &a_2 : nullptr)"), "{out}");
+    assert!(out.contains("? o.has_value() : o != a_2"), "{out}");
+    assert_eq!(crate::cpp_counts::optional_copies(&out), 0, "{out}");
+}
+
+#[test]
 fn a_let_of_a_lent_node_is_a_reference_unless_its_slot_is_written_while_it_lives() {
     let cpp = cpp(concat!(
         "use std.marks.{Arena, Id}\n",

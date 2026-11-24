@@ -515,6 +515,11 @@ impl<'p> Emitter<'p> {
                     Code::new(format!("!{has}"), UNARY)
                 }
             }
+            ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), l, r)
+                if let Some(code) = self.opt_cmp_in_place(*op, l, r) =>
+            {
+                code
+            }
             ExprKind::Cmp(op, l, r) => self.sequence(&[l, r], &Ty::Bool, |_, codes| {
                 // `()` has one value: equal to itself, so never less or greater.
                 if l.ty == Ty::Unit {
@@ -1653,6 +1658,83 @@ pub(crate) fn whole_swap_do(e: &Expr) -> Option<(&Place, &Place)> {
 }
 
 impl Emitter<'_> {
+    /// `o == Some(v)` and `o != Some(v)` compare `o` with `v` itself, and a
+    /// comparison with an `if` that picks `Some(v)` or `None` compares in
+    /// each branch, so `v` is never copied into an optional just to compare.
+    fn opt_cmp_in_place(&mut self, op: CmpOp, l: &Expr, r: &Expr) -> Option<Code> {
+        for (x, other) in [(l, r), (r, l)] {
+            let Ty::Opt(inner) = &x.ty else {
+                continue;
+            };
+            if inner.is_scalar()
+                || matches!(**inner, Ty::Fn(..))
+                || !self.ty(&x.ty).starts_with("std::optional<")
+            {
+                continue;
+            }
+            match &other.kind {
+                ExprKind::Some(v) => {
+                    let sym = if op == CmpOp::Eq { "==" } else { "!=" };
+                    return Some(self.sequence(&[x, v], &Ty::Bool, |_, codes| {
+                        Code::new(
+                            format!("{} {sym} {}", codes[0].at(EQ + 1), codes[1].at(EQ + 1)),
+                            EQ,
+                        )
+                    }));
+                }
+                ExprKind::If(cond, a, b)
+                    if matches!(x.kind, ExprKind::Local(_) | ExprKind::Global(_))
+                        && [a, b]
+                            .iter()
+                            .all(|e| matches!(e.kind, ExprKind::Some(_) | ExprKind::None))
+                        && !mentions_part(cond, x) =>
+                {
+                    let c = self.expr(cond);
+                    let mut arm = |e: &Expr| {
+                        let cmp = ExprKind::Cmp(op, Box::new(x.clone()), Box::new(e.clone()));
+                        self.expr(&Expr {
+                            kind: cmp,
+                            ty: Ty::Bool,
+                            span: other.span,
+                        })
+                    };
+                    let (a, b) = (arm(a), arm(b));
+                    return Some(Code::new(
+                        format!("{} ? {} : {}", c.at(COND + 1), a.at(COND + 1), b.at(COND)),
+                        COND,
+                    ));
+                }
+                ExprKind::If(cond, a, b) => {
+                    let named = |e: &Expr| match &e.kind {
+                        ExprKind::Some(v) => {
+                            matches!(v.kind, ExprKind::Local(_) | ExprKind::Global(_))
+                        }
+                        ExprKind::None => true,
+                        _ => false,
+                    };
+                    if !named(a) || !named(b) {
+                        continue;
+                    }
+                    self.need("opt_is");
+                    let pointer = |me: &mut Self, e: &Expr| match &e.kind {
+                        ExprKind::Some(v) => format!("&{}", me.expr(v).at(UNARY)),
+                        _ => "nullptr".to_string(),
+                    };
+                    let o = self.expr(x).text;
+                    let c = self.expr(cond).at(COND + 1);
+                    let (pa, pb) = (pointer(self, a), pointer(self, b));
+                    let call = format!("cpl::opt_is({o}, {c} ? {pa} : {pb})");
+                    return Some(if op == CmpOp::Eq {
+                        Code::primary(call)
+                    } else {
+                        Code::new(format!("!{call}"), UNARY)
+                    });
+                }
+                _ => {}
+            }
+        }
+        None
+    }
     /// The position a `next` (`PosNext`) or `prev` (`PosPrev`) in `value` steps
     /// from, when the facts prove the step lands on a position.
     fn proven_step<'e>(&self, value: &'e Expr, step: Builtin) -> Option<&'e Expr> {
@@ -1732,4 +1814,10 @@ fn gives_one_closure(block: &cpl_ir::Block) -> bool {
         gives.push(matches!(value.kind, ExprKind::Closure(_)));
     });
     gives == [true]
+}
+
+fn mentions_part(e: &Expr, part: &Expr) -> bool {
+    let mut found = false;
+    crate::uses::places::each_part(e, &mut |p| found |= p == part);
+    found
 }
