@@ -9169,3 +9169,5 @@ already did. Next, a known missing `rev` becomes a compile error through a gener
 mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 603. (reserved, unknown)
+
+## 604. (reserved, perf)
