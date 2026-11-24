@@ -1,16 +1,15 @@
 //! Data-structure algorithms written out by hand: merging the smaller set
-//! into the larger (`small_to_large_by_hand`) and an interval DP stepped by
-//! length (`interval_dp_by_length`).
+//! into the larger (`small_to_large_by_hand`).
 
 use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::Calls;
-use crate::{File, Finding, INTERVAL_DP_BY_LENGTH, SMALL_TO_LARGE_BY_HAND};
+use crate::{File, Finding, SMALL_TO_LARGE_BY_HAND};
 use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, name, single, squash};
+use super::shapes::{compare, name, single};
 use super::Warn;
 use cpl_diag::msgs::lint_rules;
 
@@ -49,13 +48,6 @@ fn call_stmt<'e>(stmt: &'e Stmt, methods: &[&str], calls: Calls) -> Option<(&'e 
         return None;
     };
     methods.iter().find_map(|m| call(e, m, calls))
-}
-
-fn loop_var(pat: &Pattern) -> Option<&str> {
-    match &pat.kind {
-        PatternKind::Name(n) => Some(n.as_str()),
-        _ => None,
-    }
 }
 
 impl super::Warn for HandDs<'_> {
@@ -153,58 +145,9 @@ impl HandDs<'_> {
             );
         }
     }
-
-    /// `for len in ..: for l in ..: let r = l + len - 1`.
-    fn interval_by_length(&mut self, stmt: &Stmt) {
-        let StmtKind::For { pat, body, .. } = &stmt.kind else {
-            return;
-        };
-        let Some(len) = loop_var(pat) else {
-            return;
-        };
-        let hit = body.stmts.iter().any(|s| {
-            let StmtKind::For { pat, body, .. } = &s.kind else {
-                return false;
-            };
-            let Some(l) = loop_var(pat) else {
-                return false;
-            };
-            let Some(Stmt {
-                kind:
-                    StmtKind::Let {
-                        pat,
-                        init: Some(init),
-                        ..
-                    },
-                ..
-            }) = body.stmts.first()
-            else {
-                return false;
-            };
-            let Some(r) = loop_var(pat) else {
-                return false;
-            };
-            let table = squash(self.text(body.span));
-            squash(self.text(init.span)) == format!("{l}+{len}-1")
-                && (table.contains(&format!("[{l},{r}]")) || table.contains(&format!("[{l}][{r}]")))
-        });
-        if !hit {
-            return;
-        }
-        self.warn_at(
-            &INTERVAL_DP_BY_LENGTH,
-            stmt.span,
-&lint_rules::INTERVAL_DP_BY_LENGTH, &[&len],
-            "`var dp: [I.ranges]T` keys the table by range, and `for r in I.ranges` visits shorter ranges first; `r.first!`, `r.last!`, `r.drop(1)` and `r.drop_last(1)` name the ends and the smaller ranges".to_string(),
-        );
-    }
 }
 
 impl Visitor for HandDs<'_> {
-    fn stmt(&mut self, stmt: &Stmt) {
-        self.interval_by_length(stmt);
-    }
-
     fn stmts(&mut self, stmts: &[Stmt]) {
         self.small_to_large(stmts);
     }

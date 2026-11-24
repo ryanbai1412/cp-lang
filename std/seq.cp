@@ -1688,6 +1688,8 @@ pub struct Slice<S>(
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop(1).collect() == [2, 3]`
+@lint(interval_dp_by_length, from: "for len in 2..=n:\n    for l in 0..n - len + 1:\n        let r = l + len - 1\n        dp[l, r] = step", to: "for rg in I.ranges:\n    let (right, left) = (dp[rg.drop(1)], dp[rg.drop_last(1)])\n    dp[rg] = step", holes: "n, dp, step")
+@lint(interval_dp_by_length, from: "for len in 2..=n:\n    for l in 0..n - len + 1:\n        let r = l + len - 1\n        dp[l][r] = step", to: "for rg in I.ranges:\n    let (right, left) = (dp[rg.drop(1)], dp[rg.drop_last(1)])\n    dp[rg] = step", holes: "n, dp, step")
 pub fn drop<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S> = piece(
     self,
     clamp_count(k, self.len),

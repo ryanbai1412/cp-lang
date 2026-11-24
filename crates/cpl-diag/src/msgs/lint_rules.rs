@@ -39,7 +39,6 @@ super::msgs! {
     HAND_ROLLED_STRING_ALGO_2 = "L0516", "hand-rolled Z-function loop";
     HAND_ROLLED_STRING_ALGO_3 = "L0516", "hand-rolled polynomial rolling hash";
     HAND_ROLLED_STRING_ALGO_4 = "L0516", "hand-rolled trie loop";
-    INTERVAL_DP_BY_LENGTH = "L0570", "an interval DP stepped by length `{}` with its end computed by hand";
     INT_DIV_POSSIBLE_ZERO = "L0599", "`{}` can be 0 here (its bounds give `{}..={}`), and `{}` by 0 traps";
     INT_OVERFLOW_AT_BOUNDS = "L0306", "`{}` can leave `Int` (64 bits) at the declared bounds: with `{}` it does, and that traps";
     INT_SHIFT_OVERFLOW_AT_BOUNDS = "L0302", "this shift leaves `Int` when `{}` is above {}, and its bounds allow {}";
