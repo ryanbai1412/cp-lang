@@ -616,6 +616,17 @@ class CommitTest(unittest.TestCase):
         _, ev, _, _, _, _ = self._commit({"dreams": "0"})
         self.assertFalse([e for e in ev if e.startswith("scripts/corpus.py verify --dreams")])
 
+    def test_an_interpreter_change_times_the_tip_against_the_base(self) -> None:
+        gate = "scripts/interp_speed.py --base HEAD"
+        code, ev, _, _, _, _ = self._commit({"interp_speed": "1"})
+        self.assertEqual(code, 0)
+        self.assertIn(gate, ev)
+        code, _, _, err, _, _ = self._commit({"interp_speed": "1"}, codes={gate: 1})
+        self.assertEqual(code, 1)
+        self.assertIn("runs slower in the interpreter than at the base", err)
+        _, ev, _, _, _, _ = self._commit({"interp_speed": "0"})
+        self.assertNotIn(gate, ev)
+
     def test_a_failed_check_names_its_rerun_and_stops_the_tier(self) -> None:
         sel = {"packages": "cpl-fmt", "filter": "x", "site": "1"}
         code, ev, _, err, _, _ = self._commit(sel, codes={"cargo fmt --check -p cpl-fmt": 1})

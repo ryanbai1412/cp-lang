@@ -29,6 +29,13 @@ class AffectedTest(unittest.TestCase):
         for path in ("crates/cpl-fmt/src/lib.rs", "corpus/problems/p1/dream.cp", "web/x.ts"):
             self.assertFalse(self.sel(path)["dreams"], path)
 
+    def test_the_interpreters_crates_select_the_interp_speed_gate(self):
+        for path in ("crates/cpl-interp/src/vm.rs", "crates/cpl-ir/src/lib.rs", "crates/cpl-rt/src/lib.rs",
+                     "crates/cpl-check/src/lib.rs"):
+            self.assertTrue(self.sel(path)["interp_speed"], path)
+        for path in ("crates/cpl-codegen/src/emit.rs", "std/vec.cp", "scripts/ci.py"):
+            self.assertFalse(self.sel(path)["interp_speed"], path)
+
     def test_a_crate_file_selects_its_package_by_name_not_directory(self):
         s = self.sel("crates/cpl-prover/src/lib.rs")
         self.assertEqual((s["all"], s["packages"]), (False, ["cpl-prover"]))

@@ -736,6 +736,11 @@ class Tail:
                 if self.call([sys.executable, "scripts/corpus.py", "verify", "--dreams", "--only", mode, "--cpl", self.cpl]):
                     raise Failed(f"a dream fails {mode} after this std/ or checker change; migrate it in this commit"
                                  " (cpl migrate <dream.cp>, then cpl fmt), rerun: scripts/corpus.py verify --dreams --only check,lint")
+        if sel.get("interp_speed") == "1" and self.wants("interp_speed"):
+            self.step("the interpreter no slower than the base past its noise (scripts/interp_speed.py)")
+            if self.call([sys.executable, "scripts/interp_speed.py", "--base", "HEAD"]):
+                raise Failed("a case runs slower in the interpreter than at the base, past the base's own spread"
+                             " (the row above); rerun: uv run scripts/interp_speed.py")
         if (steps := sel.get("steps", "").split()) and self.wants("touched_steps"):
             self.step(f"touched checking scripts (scripts/ci.py steps touched {' '.join(steps)})")
             if run_steps("touched", self.cpl, run=self.run, only=set(steps)):
@@ -1171,7 +1176,7 @@ AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only h
 # the base too is main's, reported with its owner (scripts/new_reds.py).
 NEW_REDS = [sys.executable, str(ROOT / "scripts" / "new_reds.py"), "--"]
 COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits", "dreams",
-                "touched_steps", "script_tests", "site")
+                "interp_speed", "touched_steps", "script_tests", "site")
 
 
 def selection(mode: str, run=subprocess.run) -> dict[str, str]:

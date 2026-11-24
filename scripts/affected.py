@@ -299,10 +299,13 @@ def run_slices(names, reds_base=None):
     return run.returncode
 
 
+INTERP_SPEED_CRATES = ("crates/cpl-interp/", "crates/cpl-ir/", "crates/cpl-rt/", "crates/cpl-check/")
+
+
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
            "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
-           "check_files": [], "audit": False, "idioms_catalog": False, "spec_traits": False, "dreams": False, "slices": [], "steps": []}
+           "check_files": [], "audit": False, "idioms_catalog": False, "spec_traits": False, "dreams": False, "interp_speed": False, "slices": [], "steps": []}
     packages, tests, data, steps = set(), set(), [], set()
     step_scripts = ci.step_scripts()
     for path in paths:
@@ -315,6 +318,10 @@ def select(paths, dirs):
         # An E05xx rename or a std change lands with every dream's migration.
         if path.startswith(("std/", "crates/cpl-check/")):
             sel["dreams"] = True
+        # The interpreter and what it runs: scripts/interp_speed.py times the tip against
+        # the base (9a5881edd slowed it 57% and nothing refused it).
+        if path.startswith(INTERP_SPEED_CRATES):
+            sel["interp_speed"] = True
         crate = next((n for d, n in dirs.items() if path.startswith(d)), None)
         if path.endswith(".rs"):
             sel["rust_files"].append(path)
@@ -516,6 +523,7 @@ def main(argv):
     print(f"idioms_catalog={int(sel['idioms_catalog'])}")
     print(f"spec_traits={int(sel['spec_traits'])}")
     print(f"dreams={int(sel['dreams'])}")
+    print(f"interp_speed={int(sel['interp_speed'])}")
     print("slices=" + " ".join(sel["slices"]))
     print("steps=" + " ".join(sel["steps"]))
     print("slice_filter=" + slice_filter(sel["slices"]))
