@@ -118,3 +118,13 @@ pub(crate) fn stmt_sites(block: &Block) -> Vec<*const Stmt> {
     walk::deep_stmts(block, &mut |s| sites.push(s as *const Stmt));
     sites
 }
+
+/// Whether `block` has a `break` or a `return` at any depth: a way out of the
+/// loop it is the body of (a `continue` stays in it).
+pub(crate) fn breaks_or_returns(block: &Block) -> bool {
+    let mut found = false;
+    walk::deep_stmts(block, &mut |stmt| {
+        found |= matches!(stmt, Stmt::Break(_) | Stmt::Return(_));
+    });
+    found
+}

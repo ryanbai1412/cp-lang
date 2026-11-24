@@ -8,6 +8,9 @@
 //! uses that can't see the order keeps the tree.
 
 use crate::uses::effects::Touch;
+use crate::uses::loops::{breaks_or_returns, each_loop, Loop};
+use crate::uses::places::{each_put, Put};
+use crate::uses::split::each_value;
 use crate::walk;
 use cpl_ir::{
     Block, Builtin, Expr, ExprKind, Iter, Mutation, PlaceKind, Program, SortBy, Stmt, Ty, UnOp,
@@ -129,9 +132,9 @@ impl Found {
     }
 
     fn block(&mut self, program: &Program, block: &Block) {
-        walk::deep_exprs(block, &mut |e| self.expr(program, e));
-        walk::deep_stmts(block, &mut |stmt| {
-            if let Stmt::For(_, _, iter, _) = stmt {
+        each_value(block, &mut |e| self.expr(program, e));
+        each_loop(block, &mut |_, l| {
+            if let Loop::For(_, iter) = l {
                 match iter {
                     Iter::Seq(seq, _) if self.blind_scans.contains(&(seq as *const Expr)) => {}
                     Iter::Seq(seq, _)
@@ -149,7 +152,7 @@ impl Found {
 /// comes out the same in any order of `m`, so its loop cannot show it, as
 /// long as the loop does nothing but push onto that list.
 fn sorted_scans(block: &Block, out: &mut Vec<*const Expr>) {
-    walk::deep_exprs(block, &mut |e| {
+    each_value(block, &mut |e| {
         let ExprKind::Do(b) = &e.kind else { return };
         // a sort may bind its arguments first: plain scalar
         // lets, which run nothing and can't see the list's order.
@@ -224,16 +227,15 @@ fn simple_scalar_let(s: &Stmt) -> bool {
 fn pushes_only_onto(body: &Block, acc: usize) -> bool {
     let t = Touch::of_block(body);
     let mut ok = !t.code() && !t.io;
-    walk::deep_exprs(body, &mut |e| match &e.kind {
+    each_value(body, &mut |e| match &e.kind {
         ExprKind::Mutate(Mutation::Push, place, _) => {
             ok &= matches!(place.kind, PlaceKind::Local(s) if s == acc);
         }
         ExprKind::Mutate(..) => ok = false,
         _ => {}
     });
-    walk::deep_stmts(body, &mut |stmt| {
-        ok &= !matches!(stmt, Stmt::Break(_) | Stmt::Return(_) | Stmt::Assign(..));
-    });
+    ok &= !breaks_or_returns(body);
+    each_put(body, &mut |put, _| ok &= !matches!(put, Put::Store(..)));
     ok
 }
 

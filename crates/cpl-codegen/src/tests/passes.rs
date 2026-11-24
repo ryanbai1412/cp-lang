@@ -657,3 +657,24 @@ fn defines_domain_and_notes_an_assert_see_their_statements() {
     assert!(noted, "f holds its assert");
     assert!(notes_an_assert(&with.fns[0].body));
 }
+
+#[test]
+fn breaks_or_returns_lets_a_continue_through() {
+    use crate::uses::loops::breaks_or_returns;
+    let program = lower(concat!(
+        "fn f(n: Int):\n",
+        "    for i in 0..n:\n",
+        "        if i > 2:\n",
+        "            continue\n",
+        "        print(i)\n",
+        "fn g(n: Int):\n",
+        "    for i in 0..n:\n",
+        "        if i > 2:\n",
+        "            break\n",
+        "        print(i)\n",
+        "f(3)\n",
+        "g(3)\n",
+    ));
+    assert!(!breaks_or_returns(&program.fns[0].body), "f only continues");
+    assert!(breaks_or_returns(&program.fns[1].body), "g breaks out");
+}

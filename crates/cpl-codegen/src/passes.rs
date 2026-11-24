@@ -453,7 +453,13 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "hash-tables",
         "unordered.rs",
-        Uses(&["Touch::of_block"]),
+        Uses(&[
+            "Touch::of_block",
+            "each_value",
+            "each_loop",
+            "each_put",
+            "breaks_or_returns",
+        ]),
         "a_map_whose_order_never_shows_is_a_hash_table",
     ),
     pass(
