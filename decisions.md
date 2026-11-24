@@ -8711,3 +8711,5 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Call.** `MaxSub.of` names a fn value like any `fn` item, so `a.map(MaxSub.of).fold(+)` folds a summary type (R02.1.3). A type name in value position, `a.fold(MaxSub)`, is E0302. The lib tables spell every summary fold this way (`MaxSub`, `MaxSubAt`, `MaxCount`).
 - **Why.** `a.fold(MaxSub)` in sequence-patterns never ran: `fold` takes an operation, and making a type denote its `of` and `join` would be a new value-position rule (a `Summary` trait that `fold` special-cases). The map-then-`+` spelling uses only two existing mechanisms, fn values and `+` as the join, and says the cost (one `of` per element) out loud.
 - **Reverse.** Add a `Summary<T>` trait with `fn of(x: T) -> Self` and let `fold` take a type that implements it; the tables go back to `a.fold(MaxSub)`.
+
+## 505. (reserved, content)
