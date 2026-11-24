@@ -354,6 +354,9 @@ pub struct StructDecl {
     /// Everything in the body that is not a field: fns, laws, owned
     /// domains, constants.
     pub methods: Vec<Stmt>,
+    /// `struct HashMap<K: Hash, V> = @intrinsic("hash_map")`: a type whose
+    /// storage is a row of the intrinsics table, named by its id (R12.14.6).
+    pub intrinsic: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

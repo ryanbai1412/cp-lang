@@ -9356,3 +9356,9 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.
 
 ## 640. (reserved, unknown)
+## 637. std declares `HashMap<K: Hash, V>` and `HashSet<K: Hash>` as `struct T = @intrinsic("id")` type rows (compiler, 2026-11-24)
+
+- **Call.** `struct T<params> = @intrinsic("id")` declares a type whose storage is the intrinsics table's type entry `id` (`cpl_rt::Store`, ids `hash_map`, `hash_set`); an id the table lacks is E0210, as for a fn body (R12.14.6). std/derive.cp declares `pub struct HashMap<K: Hash, V>` and `pub struct HashSet<K: Hash>` this way, beside `trait Hash`. The bound on the key is the declaration's own fact: the compiler reads which trait keys a hashed store off it, never the trait's name.
+- **Why.** Core's ruling for the Eq/Hash hooks: declarations in std, storage in cpl-rt, so a struct's own `impl Hash` is found through what std declares (no `"Hash"` literal, `std_shadowed` stays at 17). The table owner and L1 use this one shape; L1 adds `Set<T: Ord>`/`Map<K: Ord, V>` on it.
+- **Floor.** `HashMap` and `HashSet` stay on the builtin floor for now: their members, constructors and typing are still the checker's `Receiver::HashMap`/`HashSet` arms. They leave the floor when those members become `Kind::Host` rows declared in std.
+- **Reverse.** Delete the two std declarations, `Store` and the parser's `= @intrinsic` arm in `struct_decl`; the types are the floor's again.

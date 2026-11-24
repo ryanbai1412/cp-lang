@@ -74,6 +74,12 @@ pub fn gen_fields<T>() -> T = T(gen() for _ in fields(T))
 pub trait Hash:
     fn hash(self) -> U64
 
+/// A hash table keyed by `K`'s own or derived `Hash` (C++ `unordered_map`).
+pub struct HashMap<K: Hash, V> = @intrinsic("hash_map")
+
+/// A hash set keyed by `K`'s `Hash` (C++ `unordered_set`).
+pub struct HashSet<K: Hash> = @intrinsic("hash_set")
+
 /// splitmix64's finalizer: every input bit moves about half the output bits.
 fn mix64(z0: U64) -> U64:
     let top = U64(1) << 63

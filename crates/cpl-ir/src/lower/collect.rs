@@ -6,6 +6,7 @@ impl<'a> Lowerer<'a> {
     /// Registers what `stmt`, a statement of module `m` at `offset`, declares.
     pub(super) fn collect_item(&mut self, m: ModId, offset: u32, stmt: &'a ast::Stmt) {
         match &stmt.kind {
+            ast::StmtKind::Struct(decl) if decl.intrinsic.is_some() => {}
             ast::StmtKind::Struct(decl) => {
                 if !decl.generics.is_empty() {
                     let gid = self.gen_structs.len();

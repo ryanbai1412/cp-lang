@@ -345,6 +345,12 @@ implementation and C++ snippet. Like `@cpp`, any library may write it.
    behaves and emits C++ exactly as the original. (R12.14.4)
 5. The table grows only by a decision entry; `cpl explain` lists each
    intrinsic a program uses. (R12.14.5)
+6. `struct T<params> = @intrinsic("id")` declares a type whose storage is
+   the table's type entry `id` (std's `HashMap<K: Hash, V>` and
+   `HashSet<K: Hash>`); an id the table lacks is E0210. The declaration
+   binds no struct of its own: the name is still the table's type. The
+   trait it bounds the key by is the one whose impl keys it, read off the
+   declaration, not the trait's name. (R12.14.6)
 
 ## W15. Precomputation (P15)
 
