@@ -141,17 +141,9 @@ fn producer_body(c: &ClosureDef) -> Option<Block> {
         _ => return None,
     };
     let count = stmt_count(&block);
-    let seq = Expr {
-        kind: ExprKind::Do(block),
-        ty: c.ret.clone(),
-        span: Default::default(),
-    };
-    if count > MAX_STMTS || crate::fuse::producer(&seq).is_none() {
+    if count > MAX_STMTS || crate::fuse::block_producer(&block).is_none() {
         return None;
     }
-    let ExprKind::Do(block) = seq.kind else {
-        unreachable!()
-    };
     Some(block)
 }
 

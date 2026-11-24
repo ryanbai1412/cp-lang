@@ -184,6 +184,11 @@ pub(crate) fn producer(seq: &Expr) -> Option<Producer<'_>> {
     let ExprKind::Do(do_block) = &seq.kind else {
         return None;
     };
+    block_producer(do_block)
+}
+
+/// [`producer`] for the block of a `do`.
+pub(crate) fn block_producer(do_block: &Block) -> Option<Producer<'_>> {
     let [Stmt::Let(vec, Some(init)), Stmt::For(id, slot, iter, body), Stmt::Give(given)] =
         do_block.stmts.as_slice()
     else {
