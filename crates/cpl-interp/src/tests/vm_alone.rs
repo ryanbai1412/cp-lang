@@ -456,3 +456,29 @@ fn vm_traps_a_call_to_a_cpp_fn_itself() {
     let source = "fn pc(a: Int) -> Int = @cpp(\"return __builtin_popcountll(a);\")\nprint(1)\nprint(pc(7))\n";
     assert_eq!(vm_runs_alone(source, ""), "1\n");
 }
+
+#[test]
+fn vm_field_of_a_temporary_frees_it_in_the_same_op() {
+    // `FieldI` and `FieldV` drop a temporary they read, with no `ClearV`.
+    let source = "\
+struct Pair(a: Int, b: List<Int>)
+fn mk(i: Int) -> ?Pair = Some(Pair(i, [i, i + 1]))
+fn g(i: Int) -> Int:
+    let l = mk(i)!.b
+    mk(i)!.a + l.len + l[1]
+print([g(i) for i in 0..3])
+";
+    assert_eq!(vm_runs_alone(source, ""), "3 5 7\n");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let id = (0..program.fns.len()).find(|&id| program.fns[id].name.ends_with("g"));
+    let chunk = compiled.fns[id.expect("g")].as_ref().expect("on the VM");
+    let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
+    let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
+    assert_eq!((count("FieldI"), count("FieldV")), (1, 1), "{ops:?}");
+    assert_eq!(count("ClearV"), 0, "{ops:?}");
+}

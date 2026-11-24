@@ -179,9 +179,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                if obj_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: obj_v }, span);
-                }
                 dst
             }
             ExprKind::RangeCheck {
