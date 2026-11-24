@@ -796,12 +796,8 @@ inline std::optional<u8> pop(std::string& s) { if (s.empty()) return std::nullop
         needs: &["fail"],
         code: "\
 #ifdef LOCAL
-template <class T> [[noreturn]] void overflow(T a, char op, T b) {
-    char why[128];
-    if constexpr (sizeof(T) == 8) snprintf(why, sizeof why, \"integer overflow: `%lld %c %lld` does not fit in an `Int` (64 bits)\", (ll)a, op, (ll)b);
-    else snprintf(why, sizeof why, \"integer overflow: the result of `%c` does not fit in an `I128` (128 bits)\", op);
-    fail(why);
-}
+[[noreturn]] inline void overflow(ll a, char op, ll b) { char why[128]; snprintf(why, sizeof why, \"integer overflow: `%lld %c %lld` does not fit in an `Int` (64 bits)\", a, op, b); fail(why); }
+[[noreturn]] inline void overflow(__int128, char op, __int128) { char why[128]; snprintf(why, sizeof why, \"integer overflow: the result of `%c` does not fit in an `I128` (128 bits)\", op); fail(why); }
 inline ll iadd(ll a, ll b) { ll r; if (__builtin_add_overflow(a, b, &r) || r == std::numeric_limits<ll>::min()) overflow(a, '+', b); return r; }
 inline ll isub(ll a, ll b) { ll r; if (__builtin_sub_overflow(a, b, &r) || r == std::numeric_limits<ll>::min()) overflow(a, '-', b); return r; }
 inline ll imul(ll a, ll b) { ll r; if (__builtin_mul_overflow(a, b, &r) || r == std::numeric_limits<ll>::min()) overflow(a, '*', b); return r; }
