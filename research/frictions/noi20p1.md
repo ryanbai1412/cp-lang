@@ -10,16 +10,13 @@ C++, and --max gives the same output.
 
 ## Remaining gap: speed
 
-On --max the port took 0.47-0.53 s, and the AC (3890258, avx2/Ofast pragmas) 0.135-0.15 s.
-`?Int max=` now lowers to one `std::max<OptInt>` on the niche's raw value (no `has_value` test
-on the Some it just built, no branch), which brings the port to 0.33-0.36 s at the same 19.8 MB.
-The rest of the gap is the AC's `#pragma GCC target("avx2")` and `optimize("Ofast")`. Built at
-plain -O2 without those two lines, the AC takes 0.33 s, the same as the port. With -mavx2 alone it
-takes 0.18 s. A hand-made branch-free copy of the port's loops (a select on the niche, a local
-bound, no overflow check) still doesn't vectorise and runs in 0.30 s. So no lowering reaches 1.1x
-at the judge profile's `isa = "x86-64"`; that needs the profile's planned `isa = "avx2"` target
-pragmas (spec/tools/judge-profiles.md) or a pragma-free reference. The port stays out of v03 until
-one of those is decided.
+On --max the AC (3890258, avx2 and Ofast pragmas) takes 0.12-0.13 s and 21.1 MB. The port, on
+the `noi` judge of its cp.toml (`isa = "avx2"`: the AC's pragma was accepted there), takes
+0.28 s and 18.4 MB. `?Int max=` is one branch-free max, and the max-plus row loop is one
+vectorised pass (`cpl::keep_max_plus`) whose adds fold their overflow into one flag. Without
+that flag the same pass runs in 0.16-0.18 s. So even with no overflow checks at all, the `none`
+select and the nested rows leave about 1.4x. The port stays out of v03 until a lowering closes
+that gap without dropping the checks.
 
 ## Dream
 

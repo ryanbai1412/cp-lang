@@ -1,0 +1,7 @@
+# The AC (3890258) asks for `#pragma GCC target("avx2")` and was accepted: the judge has AVX2.
+[judge]
+judge = "noi"
+
+[judge.noi]
+extends = "generic"
+isa = "avx2"
