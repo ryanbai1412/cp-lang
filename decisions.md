@@ -8833,6 +8833,7 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** Restore the old names and drop R1 from the lint.
 
 
+
 ## 526. One Mat elimination for every field; F64 states its `eps:` at the call (stdlib, 2026-11-24)
 
 - **Call.** `det_real`, `rank_real`, `solve_real` and `inverse_real` are gone. `Mat<T>.det`, `rank`, `solve`, `solve_space` and `inverse` take `eps: ?T = None`. When `T: Ord` (`F64`) the pivot is the largest `abs` entry of its column and `|x| <= eps` counts as zero; otherwise (`Mod<P>`) the pivot is the first entry `!= T.zero`. `eps` defaults to exact zero, so a float caller writes `m.rank(eps: 1e-9)`.
@@ -8866,3 +8867,4 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
 ## 528. (reserved, infra)
 
+- **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
