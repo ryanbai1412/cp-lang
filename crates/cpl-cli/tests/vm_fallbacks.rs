@@ -101,3 +101,17 @@ fn a_small_tuple_from_a_field_array_runs_on_the_vm() {
         assert_eq!(walked(&program, traced), 0, "traced: {traced}");
     }
 }
+
+#[test]
+fn sort_print_and_debug_as_values_run_on_the_vm() {
+    let debug = "../../../spec/conformance/tools-trace/debug-as-a-value-prints-with-its-line.cp";
+    for program in ["programs/vm_unit_effects_as_values.cp", debug] {
+        for traced in [false, true] {
+            assert_eq!(
+                walked(&tests_dir().join(program), traced),
+                0,
+                "{program} traced: {traced}"
+            );
+        }
+    }
+}

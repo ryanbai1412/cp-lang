@@ -45,7 +45,6 @@ pub(crate) struct Chunk<'p> {
     /// The `CallTraced` ops, by pc, that run a fed loop.
     pub traced_feeds: Vec<(u32, TracedFeed<'p>)>,
     pub consts_v: Vec<Value>,
-    pub prints: Vec<PrintSpec<'p>>,
     pub formats: Vec<FormatSpec<'p>>,
     pub applies: Vec<ApplySpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,

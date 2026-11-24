@@ -1,5 +1,4 @@
 use super::seq_load::SeqKind;
-use super::sort::sort_key_of;
 use super::{Compiler, GiveTarget, LoopExits, LoopJump, LoopTargets};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -429,11 +428,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
             // the tree-walker for one that captures a local by reference.
             ExprKind::Closure(_) => true,
             // Reported as each runs: a write by `reporting_write`, a sort
-            // by `trace_sorted`, a print by `print_values`.
+            // by `trace_sorted`, a print or debug as it runs.
             ExprKind::Mutate(_, place, _) => {
                 quiet_place(place, cpl_ir::walk::root(place)) && !self.yields_into(place)
             }
-            ExprKind::Print(..) => true,
+            ExprKind::Print(..) | ExprKind::Debug(..) => true,
             // A view writes nothing until written through.
             ExprKind::MutSlice(..) | ExprKind::MutLine(..) => true,
             ExprKind::Sort(place, ..) => {
@@ -810,8 +809,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 if ScalarKind::of_ty(&expr.ty, self.program).is_some() {
                     let _ = self.compile_expr_i(expr);
-                } else if let ExprKind::Print(args, end) = &expr.kind {
-                    self.compile_print(args, end.as_deref(), expr.span);
                 } else if let ExprKind::Mutate(op, place, args) = &expr.kind {
                     if !super::apply::through_view(place)
                         && self.try_compile_mutate_stmt(*op, place, args, expr.span)
@@ -822,21 +819,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Sort(place, by, desc) = &expr.kind {
-                    let desc = desc.as_deref();
-                    let fast = !super::apply::through_view(place)
-                        && match sort_key_of(&expr.kind) {
-                            Some((_, key, _)) => {
-                                self.try_compile_sort_key_stmt(expr, place, key, desc)
-                            }
-                            None => {
-                                matches!(by, cpl_ir::SortBy::Natural)
-                                    && self.try_compile_sort_stmt(place, desc, expr.span)
-                            }
-                        };
-                    if !fast {
-                        let reg = self.compile_sort_at(place, by, desc, expr);
-                        self.emit(Op::ClearV { reg }, expr.span);
-                    }
+                    self.compile_sort(place, by, desc.as_deref(), expr);
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
                     if self
                         .try_compile_call_mix(*fn_id, args, CallRet::Unit, expr.span)

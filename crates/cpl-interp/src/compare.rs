@@ -219,6 +219,83 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         Ok(Value::Str(Rc::new(text)))
     }
 
+    /// `debug(..)` of `values`: its line on the debug output, and a
+    /// checkpoint of the trace.
+    pub(crate) fn debug_values(
+        &mut self,
+        line: u32,
+        args: &'p [cpl_ir::DebugArg],
+        values: &[Value],
+        span: Span,
+    ) {
+        self.fill_shown();
+        let view = self.view();
+        // A string literal names the checkpoint; without one the
+        // arguments as written do, and each value is shown by name.
+        let label: Vec<&str> = args
+            .iter()
+            .zip(values)
+            .filter(|(arg, _)| arg.label)
+            .filter_map(|(_, value)| match value {
+                Value::Str(bytes) => std::str::from_utf8(bytes).ok(),
+                _ => None,
+            })
+            .collect();
+        let shown: Vec<(&cpl_ir::DebugArg, &Value)> = args
+            .iter()
+            .zip(values)
+            .filter(|(arg, _)| !arg.label)
+            .collect();
+        let name = if label.is_empty() {
+            shown
+                .iter()
+                .map(|(arg, _)| arg.text.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        } else {
+            label.join(" ")
+        };
+        let text = shown
+            .iter()
+            .map(|(arg, value)| {
+                let value = trace::text_of(value, &arg.value.ty, &view);
+                if label.is_empty() {
+                    format!("{} = {value}", arg.text)
+                } else {
+                    value
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let json = match shown.as_slice() {
+            [(arg, value)] => trace::json_of(value, &arg.value.ty, &view),
+            many => {
+                let parts: Vec<String> = many
+                    .iter()
+                    .map(|(arg, value)| trace::json_of(value, &arg.value.ty, &view))
+                    .collect();
+                format!("[{}]", parts.join(","))
+            }
+        };
+        let prefix = if label.is_empty() {
+            String::new()
+        } else {
+            format!("{name}: ")
+        };
+        self.debug_out
+            .extend_from_slice(format!("[line {line}] {prefix}{text}\n").as_bytes());
+        let name = name.clone();
+        self.traced(|tracer, view| {
+            tracer.on(crate::observe::Event::Debugged {
+                view,
+                at: span,
+                name: &name,
+                text,
+                json,
+            });
+        });
+    }
+
     pub(super) fn print_values(
         &mut self,
         args: &'p [FmtArg],

@@ -4,7 +4,7 @@ use crate::vm::ir::*;
 use cpl_diag::Span;
 use cpl_ir::Prim;
 use cpl_ir::{
-    BinOp, Builtin, Cast, Expr, ExprKind, FmtArg, FmtPiece, Mutation, Place, PlaceKind, Stmt, Ty,
+    BinOp, Builtin, Cast, Expr, ExprKind, FmtPiece, Mutation, Place, PlaceKind, Stmt, Ty,
 };
 use std::rc::Rc;
 
@@ -808,6 +808,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 dst
             }
+            ExprKind::Sort(place, by, desc) => {
+                self.compile_sort(place, by, desc.as_deref(), expr);
+                let dst = self.alloc_v();
+                self.emit(Op::ConstUnit { dst }, span);
+                dst
+            }
             ExprKind::Unit => {
                 let dst = self.alloc_v();
                 self.emit(Op::ConstUnit { dst }, span);
@@ -1205,23 +1211,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 _ => false,
             },
-        }
-    }
-
-    pub(super) fn compile_print(&mut self, args: &'p [FmtArg], end: Option<&'p Expr>, span: Span) {
-        let regs: Vec<u16> = args.iter().map(|a| self.compile_expr_v(&a.value)).collect();
-        let end = end.map(|e| self.compile_expr_v(e));
-        let idx = self.prints.len() as u32;
-        self.prints.push(PrintSpec {
-            args,
-            regs: regs.clone(),
-            end,
-        });
-        self.emit(Op::Print { idx }, span);
-        for reg in regs.into_iter().chain(end) {
-            if reg >= self.num_local_v {
-                self.emit(Op::ClearV { reg }, span);
-            }
         }
     }
 

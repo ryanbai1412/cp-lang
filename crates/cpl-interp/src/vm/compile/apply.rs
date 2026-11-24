@@ -173,6 +173,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Builtin(..) | ExprKind::Binary(..) => {
                 !operands(expr).iter().all(|a| plain(&a.ty))
             }
+            // The tracer's view of them reads the locals off the stack.
+            ExprKind::Print(..) | ExprKind::Debug(..) => self.traced,
             _ => false,
         };
         Some(self.emit_apply(expr, regs, None, sync))

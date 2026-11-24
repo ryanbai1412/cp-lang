@@ -735,8 +735,8 @@ print(cuts, rcuts, yes(b != None), yes(n == None), yes(b == None), max(xs[0], xs
         .map(|op| format!("{op:?}"))
         .collect();
     let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
-    // Only `xs.rev` (making the view) is left to the tree-walker.
-    assert_eq!(count("ApplyV"), 1, "{ops:?}");
+    // `xs.rev` (making the view) and the print apply to their values.
+    assert_eq!(count("ApplyV"), 2, "{ops:?}");
     assert_eq!(count("CutI"), 2, "{ops:?}");
     assert_eq!(count("IsVariantI"), 3, "{ops:?}");
     assert!(

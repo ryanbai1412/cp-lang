@@ -22,7 +22,7 @@ enum KeyBy<'p> {
 }
 
 /// The parts of a keyed sort statement.
-pub(super) fn sort_key_of(kind: &ExprKind) -> Option<(&Place, SortKey<'_>, Option<&Expr>)> {
+fn sort_key_of(kind: &ExprKind) -> Option<(&Place, SortKey<'_>, Option<&Expr>)> {
     match kind {
         ExprKind::Sort(place, SortBy::Key(slot, key), desc) => {
             Some((place, SortKey::Slot(*slot, key), desc.as_deref()))
@@ -40,9 +40,32 @@ pub(super) fn sort_key_of(kind: &ExprKind) -> Option<(&Place, SortKey<'_>, Optio
 }
 
 impl<'p, 'f> Compiler<'p, 'f> {
+    /// `xs.sort(..)` for its effect: a dedicated sort op where one fits,
+    /// else the shared apply, which runs a user `<` or comparator.
+    pub(super) fn compile_sort(
+        &mut self,
+        place: &'p Place,
+        by: &'p SortBy,
+        desc: Option<&'p Expr>,
+        expr: &'p Expr,
+    ) {
+        let fast = !super::apply::through_view(place)
+            && match sort_key_of(&expr.kind) {
+                Some((_, key, _)) => self.try_compile_sort_key_stmt(expr, place, key, desc),
+                None => {
+                    matches!(by, SortBy::Natural)
+                        && self.try_compile_sort_stmt(place, desc, expr.span)
+                }
+            };
+        if !fast {
+            let reg = self.compile_sort_at(place, by, desc, expr);
+            self.emit(Op::ClearV { reg }, expr.span);
+        }
+    }
+
     /// `xs.sort(by: ..)`: takes `xs`, reads each element's key, then puts the elements back in a stable order
     /// of their keys, as the tree-walker does.
-    pub(super) fn try_compile_sort_key_stmt(
+    fn try_compile_sort_key_stmt(
         &mut self,
         expr: &'p Expr,
         place: &'p Place,

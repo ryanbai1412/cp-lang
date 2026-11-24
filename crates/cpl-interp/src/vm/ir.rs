@@ -1,6 +1,6 @@
 use crate::value::SmallFieldKind;
 use cpl_diag::Span;
-use cpl_ir::{AssignOp, BinOp, CmpOp, Expr, FmtArg, FmtPiece, FnId, LoopId, Mutation, Place, Slot};
+use cpl_ir::{AssignOp, BinOp, CmpOp, Expr, FmtPiece, FnId, LoopId, Mutation, Place, Slot};
 
 pub(crate) use super::program::*;
 pub(super) use super::scalar::small_tuple_shape;
@@ -1527,9 +1527,6 @@ pub(crate) enum Op {
         dst: u16,
         idx: u32,
     },
-    Print {
-        idx: u32,
-    },
     Format {
         idx: u32,
         dst: u16,
@@ -1667,12 +1664,6 @@ pub(crate) enum FeedBack {
     Place(u16),
     PlaceI(u16, ScalarKind),
     PlaceOptI(u16, ScalarKind),
-}
-
-pub(crate) struct PrintSpec<'p> {
-    pub args: &'p [FmtArg],
-    pub regs: Vec<u16>,
-    pub end: Option<u16>,
 }
 
 pub(crate) struct FormatSpec<'p> {

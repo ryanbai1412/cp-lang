@@ -105,7 +105,6 @@ pub(super) struct Compiler<'p, 'f> {
     feed_calls: Vec<FeedCallSpec>,
     fed_bodies: Vec<(LoopId, u32)>,
     consts_v: Vec<Value>,
-    prints: Vec<PrintSpec<'p>>,
     formats: Vec<FormatSpec<'p>>,
     applies: Vec<ApplySpec<'p>>,
     applies_sync: bool,
@@ -235,7 +234,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             feed_calls: Vec::new(),
             fed_bodies: Vec::new(),
             consts_v: Vec::new(),
-            prints: Vec::new(),
             formats: Vec::new(),
             applies: Vec::new(),
             applies_sync: false,
@@ -297,10 +295,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     Op::MakeClosure { .. }
                         | Op::MutatePlace { .. }
                         | Op::SortByKeysPlaceCmp { .. }
-                        | Op::Print { .. }
                         | Op::Format { .. }
                 )
-            });
+            })
+            && !(self.applies.iter())
+                .any(|a| matches!(a.expr.kind, ExprKind::Print(..) | ExprKind::Debug(..)));
         Chunk {
             ops: self.ops,
             spans: self.spans,
@@ -312,7 +311,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             fed_bodies: self.fed_bodies,
             traced_feeds: self.traced_feeds,
             consts_v: self.consts_v,
-            prints: self.prints,
             formats: self.formats,
             applies: self.applies,
             fallback_stmts: self.fallback_stmts,

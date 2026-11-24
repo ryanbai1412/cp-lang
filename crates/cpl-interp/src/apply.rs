@@ -29,6 +29,12 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
                 .collect()
         }
         ExprKind::Index(base, indices) => std::iter::once(&**base).chain(indices).collect(),
+        ExprKind::Print(args, end) => args
+            .iter()
+            .map(|a| &a.value)
+            .chain(end.as_deref())
+            .collect(),
+        ExprKind::Debug(_, args) => args.iter().map(|a| &a.value).collect(),
         _ => Vec::new(),
     }
 }
@@ -84,6 +90,8 @@ pub(crate) fn applies(e: &Expr) -> bool {
             | ExprKind::Cast(..)
             | ExprKind::Tuple(_)
             | ExprKind::Variant(..)
+            | ExprKind::Print(..)
+            | ExprKind::Debug(..)
     )
 }
 
@@ -280,6 +288,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let mut indices = vals;
                 let arg_vals = indices.split_off(place::index_count(place));
                 return self.mutated(*op, place, args, indices, arg_vals, span);
+            }
+            ExprKind::Print(args, end) => {
+                let end = end.is_some().then(|| &vals[args.len()]);
+                self.print_values(args, &vals[..args.len()], end, span)?;
+                Value::Unit
+            }
+            ExprKind::Debug(line, args) => {
+                self.debug_values(*line, args, &vals, span);
+                Value::Unit
             }
             _ => return bug(span, "no shared evaluation for this expression"),
         })
