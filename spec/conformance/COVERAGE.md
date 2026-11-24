@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3683 (3597 passing). Rules: 617.
+Cases: 3687 (3597 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3683 (3597 passing). Rules: 617.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 97 rules, 258 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 261 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 122 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -486,7 +486,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.3.7 [1+ 0-]: | `Positional<T>` | `Seq` + `Sized` + `s.nth(k)`, the element `k` steps into the walk, in ...
 - R07.3.6 [1+ 0-]: | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment |...
 - R07.4.1 [3+ 0-]: **Keys in, keys out.** Library functions answer in the keys they were given: `s[l..].searc...
-- R07.4.2 [1+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
+- R07.4.2 [3+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
 - R07.4.3 [1+ 0-]: **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys equal-length cell...
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.14 [2+ 1-]: **Cuts in walk order.** On any keyed view with cuts (`[D]T`, `List`, `Str`, slices, `.rev`...
@@ -531,7 +531,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.2 [8+ 1-]: | `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bo...
 - R07.9.3 [5+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty...
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
-- R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
+- R07.9.5 [4+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [5+ 4-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.4.16 [4+ 3-]: **One spelling for suffix and all-but-one folds.** A suffix fold is `a.rev.scan(op)` and t...
 - R07.11.1 [5+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
@@ -1101,8 +1101,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **fenwick** (42/42 named by a case)
 - **flow** (59/67 named by a case)
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
-- **geometry** (161/166 named by a case)
-  - uncovered: `ByAngle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
+- **geometry** (165/166 named by a case)
+  - uncovered: `ByAngle`
 - **graph** (117/127 named by a case)
   - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `Lit.neg`, `TwoSat.add_or`
 - **grid** (39/39 named by a case)
@@ -1140,7 +1140,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2412 of 2461 std items are named by a case.
+2416 of 2461 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
