@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "4801865", "language": "CPP17", "result": "TLE", "time": 1.565103479, "memory_kb": 9816.0, "file": "corpus/submissions/4801865.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/cco18p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ was collected (one TLE, with arrays sized for subtask values), so orig.cpp is crackersamdjam's accepted DMOJ solution (github.com/crackersamdjam/DMOJ-Solutions, CCO/cco18p3.cpp, MIT License). Checked on the three statement samples and on 496 random cases with N <= 2 and values <= 3 against an independent brute force that tries every distribution and searches every reachable one-friend move; --max runs in under 0.1 s."
 }
