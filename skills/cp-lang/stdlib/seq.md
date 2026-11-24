@@ -49,17 +49,17 @@ A `Seq` that can also walk from its end, which is what `.rev` needs.
 
 A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
 
-## `struct Filtered<S>()`
+## `struct Filtered<S, T>(`
 
 \(O(1)\) to make.
 
-- `@get fn src(self) -> S` — \(O(1)\)
+Fields: `p: T -> Bool,`.
 
-## `struct Mapped<S, U>()`
+## `struct Mapped<S, T, U>(`
 
 \(O(1)\) to make.
 
-- `@get fn src(self) -> S` — \(O(1)\)
+Fields: `f: T -> U,`.
 
 ## `struct Rev<S>()`
 
@@ -72,11 +72,9 @@ A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give
 - `fn take_last(self, k: Int) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
 - `fn drop_last(self, k: Int = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
 
-## `struct Items<S>()`
+## `struct Items<S>(`
 
 \(O(1)\) to make.
-
-- `@get fn src(self) -> S` — \(O(1)\)
 
 ## `struct Slice<S>()`
 
@@ -187,10 +185,10 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first match; Whether some element satisfies `p`; stops at the first.
 - `fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first failure; Whether every element satisfies `p`; stops at the first that doesn't.
 - `fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool` — \(O(n)\); Whether `self` is non-decreasing (optionally under key `by:`).
-- `fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S>` — \(O(1)\) to make; \(O(n)\) calls of `p` per walk; A view of the elements satisfying `p`, in order.; traps: never (beyond what `p` traps on)
-- `fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U>` — \(O(1)\) to make; one call of `f` per element read; \(O(1)\) to make.; traps: never (beyond what `f` traps on)
+- `fn filter<S: Seq<T>, T>(self: S, p: T -> Bool) -> Filtered<S, T>` — \(O(1)\) to make; \(O(n)\) calls of `p` per walk; A view of the elements satisfying `p`, in order.; traps: never (beyond what `p` traps on)
+- `fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U>` — \(O(1)\) to make; one call of `f` per element read; \(O(1)\) to make.; traps: never (beyond what `f` traps on)
 - `@get fn rev<S: Bidir>(self: S) -> Rev<S>` — \(O(1)\)
-- `@get fn items<S: Keyed, K, T>(self: S) -> Items<S>` — \(O(1)\)
+- `@get fn items<S: Keyed<K, T>, K, T>(self: S) -> Items<S>` — \(O(1)\)
 - `@get fn first<S: Seq, T>(self: S) -> ?T` — \(O(1)\)
 - `@get fn last<S: Bidir, T>(self: S) -> ?T` — \(O(1)\)
 - `fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T` — \(O(n)\) calls of `p` at most; The last element satisfying `p`, `None` if None does; walks backwards and stops there.; traps: never (beyond what `p` traps on)
