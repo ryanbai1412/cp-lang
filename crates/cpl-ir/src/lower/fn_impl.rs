@@ -79,7 +79,7 @@ impl<'a> Lowerer<'a> {
         inferred: &GenEnv,
     ) -> Option<Ty> {
         let is_fn = |t: &ast::Type| matches!(t.kind, ast::TypeKind::Fn { .. });
-        let ty = self.bound_impl_shape(bounds, param, tpl, inferred, is_fn)?;
+        let ty = self.bound_impl_shape(bounds, param, tpl, inferred, &is_fn)?;
         matches!(ty, Ty::Fn(..)).then_some(ty)
     }
 
@@ -96,7 +96,7 @@ impl<'a> Lowerer<'a> {
     ) -> Option<Ty> {
         let lifts = self.op_lift_structs();
         let is_monoid = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::Named { name, .. } if lifts.contains(&name.text));
-        let ty = self.bound_impl_shape(bounds, param, tpl, inferred, is_monoid)?;
+        let ty = self.bound_impl_shape(bounds, param, tpl, inferred, &is_monoid)?;
         self.monoid_struct(&ty).map(|_| ty)
     }
 
@@ -156,7 +156,7 @@ impl<'a> Lowerer<'a> {
         param: &str,
         tpl: (ModId, u32),
         inferred: &GenEnv,
-        fits: impl Fn(&ast::Type) -> bool,
+        fits: &dyn Fn(&ast::Type) -> bool,
     ) -> Option<Ty> {
         let traits = bounds.iter().filter(|b| b.name.text == param);
         for tr in traits.flat_map(|b| &b.traits) {
@@ -383,7 +383,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let fits = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::ItemOf(of) if of.fn_item_ident().as_deref() == Some(ident.as_str()));
-        self.bound_has_impl(bounds, param, fits)
+        self.bound_has_impl(bounds, param, &fits)
             .then(|| GenArg::Ty(Ty::Struct(self.item_type(&ident))))
     }
 
@@ -391,7 +391,7 @@ impl<'a> Lowerer<'a> {
     /// `impl<T> Op<T> for (T, T) -> T`: a closure passed for it stays a fn
     /// value, so the impl's methods and associated types apply to it.
     fn bound_has_fn_impl(&self, bounds: &[ast::Bound], param: &str) -> bool {
-        self.bound_has_impl(bounds, param, |t| {
+        self.bound_has_impl(bounds, param, &|t| {
             matches!(t.kind, ast::TypeKind::Fn { .. })
         })
     }
@@ -403,7 +403,7 @@ impl<'a> Lowerer<'a> {
         self.bound_has_impl(
             bounds,
             param,
-            |t| matches!(&t.kind, ast::TypeKind::Named { name, .. } if lifts.contains(&name.text)),
+            &|t| matches!(&t.kind, ast::TypeKind::Named { name, .. } if lifts.contains(&name.text)),
         )
     }
 
@@ -411,7 +411,7 @@ impl<'a> Lowerer<'a> {
         &self,
         bounds: &[ast::Bound],
         param: &str,
-        fits: impl Fn(&ast::Type) -> bool,
+        fits: &dyn Fn(&ast::Type) -> bool,
     ) -> bool {
         bounds
             .iter()
