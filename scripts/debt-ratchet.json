@@ -223,7 +223,7 @@
   "std_model_gaps": 0,
   "cpp_optional_copies": 6,
   "std_trait_matrix": 0,
-  "corpus_no_tests": 63,
+  "corpus_no_tests": 60,
   "silent_unknowns": 42341,
   "corpus_no_statement": 64
 }

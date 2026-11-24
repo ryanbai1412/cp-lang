@@ -20,5 +20,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "4832632 matches an exhaustive brute (every sequence over the V values and V + 1) on 300 random cases with n, m <= 6."
 }
