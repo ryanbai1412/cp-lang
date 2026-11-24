@@ -660,7 +660,7 @@ impl<'a> Lowerer<'a> {
                         self.collect_iter_to_list(src, span)
                     }
                     ref ty @ (Ty::Int | Ty::Bool | Ty::Char | Ty::Float) => {
-                        self.not_contents("List", src, ty, span)
+                        self.not_contents(false, src, ty, span)
                     }
                     _ => val,
                 }

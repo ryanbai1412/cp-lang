@@ -19,6 +19,7 @@ mod prelude;
 mod range_room;
 mod rev;
 mod seq;
+mod shape;
 mod user;
 mod value_method;
 
