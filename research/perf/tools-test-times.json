@@ -18,7 +18,6 @@
     "cpl-lsp::latency lsp_requests_are_under_100_ms": 48.6,
     "cpl-cli::rename_replay renaming_every_name_keeps_each_port_checking_clean_and_printing_the_same": 42.9,
     "cpl-cli::cli build_refuses_cpp_over_64_kb": 38.6,
-    "cpl-cli::fix_behavior fixes_keep_behaviour_8": 37.4,
     "cpl-cli::command_parity check_run_and_build_report_the_same_errors": 35.0,
     "cpl-cli::std_checks std_errors_never_grow": 32.9,
     "cpl-cli::judges every_port_is_written_for_every_judge_within_its_limit_atcoder": 31.1,
