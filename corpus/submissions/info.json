@@ -18809,28 +18809,6 @@
         "status": "D",
         "time": 1.28954054
     },
-    "4718853": {
-        "case_points": 71.8,
-        "case_total": 100.0,
-        "date": "2022-07-24T17:48:21+00:00",
-        "language": "TEXT",
-        "memory": 1824.0,
-        "problem": "ioi12p1old",
-        "result": "WA",
-        "status": "D",
-        "time": 0.270148453
-    },
-    "4718872": {
-        "case_points": 93.7,
-        "case_total": 100.0,
-        "date": "2022-07-24T18:00:17+00:00",
-        "language": "TEXT",
-        "memory": 1824.0,
-        "problem": "ioi12p1old",
-        "result": "AC",
-        "status": "D",
-        "time": 0.29370305
-    },
     "4722391": {
         "case_points": 76.0,
         "case_total": 100.0,
