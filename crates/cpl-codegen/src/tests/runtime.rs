@@ -258,3 +258,12 @@ fn a_string_entry_grown_from_its_old_value_is_moved_out_of_the_map() {
     ));
     assert!(cpp.contains("cpl::map_move_or(h, v, "), "{cpp}");
 }
+
+#[test]
+fn a_tuple_with_a_closure_bound_part_by_part_is_never_built() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\nlet (f, k) = ((x: Int) => x + n, 5)\n",
+        "print(f(k))\n",
+    ));
+    assert!(!cpp.contains("std::get<0>("), "{cpp}");
+}

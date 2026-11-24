@@ -37,17 +37,20 @@ fn home(body: &mut Block, locals: &[Local], captured: &dyn Fn(usize) -> bool) {
     walk::blocks_mut(body, &mut |block| {
         let mut k = 0;
         while k < block.stmts.len() {
-            if let Some(n) = parts(&block.stmts, k, locals, &reads, captured) {
-                let Stmt::Let(
+            let n = parts(&block.stmts, k, locals, &reads, captured);
+            if let (
+                Some(n),
+                Stmt::Let(
                     _,
                     Some(Expr {
                         kind: ExprKind::Tuple(items),
                         ..
                     }),
-                ) = block.stmts.remove(k)
-                else {
-                    unreachable!("parts checked the shape");
-                };
+                ),
+            ) = (n, &mut block.stmts[k])
+            {
+                let items = std::mem::take(items);
+                block.stmts.remove(k);
                 for (i, item) in items.into_iter().enumerate() {
                     if let Stmt::Let(_, init) = &mut block.stmts[k + i] {
                         *init = Some(item);
