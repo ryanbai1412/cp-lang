@@ -842,7 +842,7 @@ impl<'a> Checker<'a> {
         // the catalog's to check; a library fn's container result is modelled.
         // A held `xs.windows(k)` is indexed by lowering's pieces (R07.7.9),
         // more than the stream its fn yields.
-        let pieces = self.pieces_source(call).is_some();
+        let pieces = self.slices_of_self(&base_ty, &name.text);
         if plain_value(&ty)
             || self.declared_value(&ty)
             || (!own_member && !pieces && self.modelled(&ty))

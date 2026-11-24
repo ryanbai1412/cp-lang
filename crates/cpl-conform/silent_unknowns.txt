@@ -1182,7 +1182,7 @@
 8 spec/conformance/core-07/run-nth-is-positional.cp
 9 spec/conformance/core-07/runs-linked-keep-keys.cp
 12 spec/conformance/core-07/runs-of-slice-keep-keys.cp
-2 spec/conformance/core-07/runs-pair-pattern-suggests-map.cp
+2 spec/conformance/core-07/runs-pair-pattern-is-a-slice.cp
 6 spec/conformance/core-07/runs.cp
 1 spec/conformance/core-07/sized.cp
 1 spec/conformance/core-07/slice-read-through-first-and-items.cp

@@ -145,28 +145,17 @@ impl Checker<'_> {
     }
 
     /// Advice on a `for` header: a counter over a slice, and a pair pattern
-    /// over `runs`, whose runs are slices (not `(value, count)` pairs).
+    /// over a call yielding slices (`runs`'s are not `(value, count)` pairs).
     pub(super) fn loop_advice(&mut self, pat: &cpl_syntax::ast::Pattern, iter: &Expr, span: Span) {
         self.counter_over_slice(iter, span);
         let cpl_syntax::ast::PatternKind::Tuple(names) = &pat.kind else {
             return;
         };
-        let ExprKind::Call { callee, args } = &iter.kind else {
-            return;
-        };
-        let runs = match &callee.kind {
-            ExprKind::Name(n) => n == "runs" && args.len() == 1,
-            ExprKind::Field { name, .. } => name.text == "runs" && args.is_empty(),
-            _ => false,
-        };
-        if !runs || names.len() != 2 || args.iter().any(|a| a.name.is_some()) {
+        if names.len() != 2 || self.pieces_source(iter).is_none() {
             return;
         }
-        if let Some(diag) = self.report(pat.span, msgs::check::TYPE_MISMATCH_EACH_RUN_IS_A, &[]) {
-            let pair = ".map(r => (r.first!, r.len))";
-            diag.help = Some(habits::LOOP_ADVICE.say(&[&pair]));
-            let end = Span::new(iter.span.end, iter.span.end);
-            diag.fix(habits::WRITE.say(&[&pair]), end, pair);
+        if let Some(diag) = self.report(pat.span, msgs::check::TYPE_MISMATCH_EACH_PIECE_IS_A, &[]) {
+            diag.help = Some(habits::LOOP_ADVICE.say(&[]));
         }
     }
 

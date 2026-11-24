@@ -192,8 +192,8 @@ impl Checker<'_> {
         self.keyed_view(e)
     }
 
-    /// The receiver of `xs.runs()`, `xs.windows(k)` or `xs.chunks(k)` on a
-    /// `List` or `Str`: each piece keeps its keys.
+    /// The receiver of a call yielding slices of it, `xs.runs()` or
+    /// `xs.windows(k)` on a `List` or `Str`: each piece keeps its keys.
     pub(crate) fn pieces_source(&mut self, e: &Expr) -> Option<String> {
         let ExprKind::Call { callee, args } = &unparen(e).kind else {
             return None;
@@ -204,12 +204,33 @@ impl Checker<'_> {
             (ExprKind::Name(name), Some(first)) => (&first.value, name.as_str()),
             _ => return None,
         };
-        if !matches!(name, "runs" | "windows" | "chunks") {
-            return None;
+        let base_ty = self.infer_quietly(base);
+        self.slices_of_self(&base_ty, name).then(|| show(base))
+    }
+
+    /// Whether `name` on a `List` or `Str` is a fn `(self: S, ..) -> yields
+    /// Slice<S>` whose other params never mention `S`: by parametricity each
+    /// piece is a slice of `self`, keeping its keys (R07.4.5).
+    pub(crate) fn slices_of_self(&mut self, base_ty: &Ty, name: &str) -> bool {
+        if !keeps_keys(base_ty) {
+            return false;
         }
-        let ty = self.infer_quietly(base);
-        let seq = ty == Ty::Str || matches!(&ty, Ty::Named { name, .. } if name == "List");
-        seq.then(|| show(base))
+        let Some(def) = self.method_def(base_ty, name) else {
+            return false;
+        };
+        let Def::Fn { ty: Ty::Fn { params, ret }, .. } = &*def else {
+            return false;
+        };
+        let Some((first, rest)) = params.split_first() else {
+            return false;
+        };
+        let Ty::Param(s) = &first.ty else {
+            return false;
+        };
+        let slice_of_s = |t: &Ty| t.view_source() == Some(&first.ty) && t.rev_source().is_none();
+        matches!(&**ret, Ty::Named { name, args } if name == "Gen"
+            && args.first().is_some_and(slice_of_s))
+            && rest.iter().all(|p| !p.ty.mentions_param_where(&|q| q == s))
     }
 
     /// A key of `V.ranges` is non-empty by its type (lib/search-dp.md): the
@@ -662,4 +683,9 @@ impl Checker<'_> {
         }
         caps
     }
+}
+
+/// A `List` or `Str`, whose slices keep its keys (R07.4.5).
+pub(crate) fn keeps_keys(ty: &Ty) -> bool {
+    *ty == Ty::Str || matches!(ty, Ty::Named { name, .. } if name == "List")
 }

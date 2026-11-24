@@ -55,7 +55,7 @@ super::msgs! {
     SIZE_OVER_TARGET = SIZE_NEAR_LIMIT, "the C++ for `{}` is {} bytes, over the {}-byte target and {}% of the {}-byte limit of judge `{}`; `--size` says where the bytes go";
     SIZE_NEAR_TARGET = SIZE_NEAR_LIMIT, "the C++ for `{}` is {} bytes, over {} bytes, near the {}-byte target and {}% of the {}-byte limit of judge `{}`; `--size` says where the bytes go";
     SIZE_AS_WRITTEN = SIZE_NEAR_LIMIT, "as written, the C++ for `{}` would be {} bytes, over the {} of judge `{}`; {}";
-    TYPE_MISMATCH_EACH_RUN_IS_A = TYPE_MISMATCH, "each run is a slice, so it can't be taken apart into 2 names";
+    TYPE_MISMATCH_EACH_PIECE_IS_A = TYPE_MISMATCH, "each piece is a slice, so it can't be taken apart into 2 names";
     UNKNOWN_FIELD_HAS_NO_FIELD_OR = UNKNOWN_FIELD, "{} has no field or method `{}`";
     REMOVED_SYNTAX_IS_SPELLED_SINCE_0 = REMOVED_SYNTAX, "`{}` is spelled `{}` since 0.3";
     MISSING_IMPL_IN_REQUIRES_CONTAINS_WHICH = MISSING_IMPL, "`in` requires `Contains`, which `{}` does not implement";

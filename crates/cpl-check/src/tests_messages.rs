@@ -428,17 +428,16 @@ fn an_uppercase_value_is_renamed_with_every_use() {
 }
 
 #[test]
-fn a_pair_over_runs_gets_each_value_and_its_count() {
+fn a_pair_over_yielded_slices_is_not_taken_apart() {
     for src in [
         "let xs = [1, 1, 2]\nfor (x, n) in runs(xs): print(x, n)\n",
         "let xs = [1, 1, 2]\nfor (x, n) in xs.runs(): print(x, n)\n",
+        "let xs = [1, 2, 3]\nfor (a, b) in xs.windows(2): print(a, b)\n",
     ] {
         let d = check(src);
         assert_eq!(d.len(), 1, "{d:?}");
-        let (span, text) = &d[0].fixes[0].edits[0];
-        let mut fixed = src.to_string();
-        fixed.replace_range(span.start as usize..span.end as usize, text);
-        assert!(check(&fixed).is_empty(), "{fixed}: {:?}", check(&fixed));
+        assert!(d[0].message.contains("each piece is a slice"), "{d:?}");
+        assert!(d[0].fixes.is_empty(), "{d:?}");
     }
 }
 

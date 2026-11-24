@@ -487,8 +487,8 @@ pub static LIST_PATTERN: Habit = shape(
 pub static LOOP_ADVICE: Habit = shape(
     "loop_advice",
     codes::TYPE_MISMATCH,
-    "for each value and its count, walk `runs(..){}`",
-    "",
+    "bind one name, `for r in ..`, and read the piece's parts: `r.first!`, `r.len`, `r[k]`",
+    "which parts a pair means is the writer's: a run's `(r.first!, r.len)`, a window's `(r[0], r[1])`",
 );
 pub static MEMBER_ADVICE: Habit = shape("member_advice", codes::REMOVED_SYNTAX, "a domain reads `D.count`, `x.ord` and `D.nth(k)`, which traps outside `0..D.count`; `D.try_at(k)` gives an optional (R04.2.26)", "");
 pub static MEMBER_ADVICE_3: Habit = shape(
