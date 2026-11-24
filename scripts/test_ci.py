@@ -522,7 +522,12 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(code, 0)
         gate = [e for e in ev if e.startswith(("cargo check -q -p cpl-wasm", "scripts/build-wasm.sh", "node web/scripts/wasm-crates.mjs"))]
         self.assertEqual([g.split()[0] for g in gate], ["cargo", "scripts/build-wasm.sh", "node"])
-        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm --touched cpl_check"))
+        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm"), gate[2])
+        # c07bfb98a: cpl_interp over its budget on main refused every cut of it.
+        code, ev, out, _, _, _ = self._commit(sel, outs={**outs, "scripts/wasm-warm.sh --parent": "/w/sizes/t.json\n"})
+        self.assertEqual(code, 0)
+        node = [e for e in ev if e.startswith("node web/scripts/wasm-crates.mjs")]
+        self.assertTrue(node[0].endswith("cpl.wasm --parent /w/sizes/t.json --touched cpl_check"), node)
         code, _, _, err, _, _ = self._commit(sel, outs=outs, codes={"node": 1})
         self.assertEqual(code, 1)
         self.assertIn("cpl.wasm's data segment or a touched crate is over its budget", err)
