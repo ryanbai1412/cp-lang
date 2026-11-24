@@ -668,6 +668,66 @@ fn a_message_without_a_content_length_ends_the_session_with_exit_1() {
 /// `stepBack`, `continue` and `reverseContinue` must stop at the step the
 /// protocol names, with that step's stack and values.
 #[test]
+fn threads_scopes_and_next_over_a_call_answer_as_the_protocol_says() {
+    let path = write_temp(
+        "next_over",
+        "fn sq(x: Int) -> Int:\n    let y = x * x\n    y\nvar t = 3\nvar a = sq(t)\nvar b = a + 1\nprint(b)\n",
+    );
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send(
+        "launch",
+        Some(&format!("{{\"program\":\"{p}\",\"stopOnEntry\":true}}")),
+    );
+    let _ = dap.recv_until("\"command\":\"launch\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let body = |dap: &mut DapClient, command: &str, args: Option<&str>| {
+        dap.send(command, args);
+        let reply = dap.recv_until(&format!("\"command\":\"{command}\""));
+        cpl_json::parse(&reply).unwrap().at(&["body"]).clone()
+    };
+    let threads = body(&mut dap, "threads", None);
+    assert_eq!(
+        threads.to_string(),
+        r#"{"threads":[{"id":1,"name":"main"}]}"#
+    );
+    let scopes = body(&mut dap, "scopes", Some("{\"frameId\":1}"));
+    let scopes: Vec<(String, i64)> = scopes
+        .at(&["scopes"])
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| {
+            (
+                s.at(&["name"]).as_str().unwrap().to_string(),
+                s.at(&["variablesReference"]).as_i64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        scopes,
+        [("Locals".to_string(), 1), ("Globals".to_string(), 2)]
+    );
+    let line = |dap: &mut DapClient| {
+        let stack = body(dap, "stackTrace", Some("{\"threadId\":1}"));
+        let frames = stack.at(&["stackFrames"]).as_array().unwrap();
+        (frames.len(), frames[0].at(&["line"]).as_i64().unwrap())
+    };
+    let mut stops = vec![line(&mut dap)];
+    // `next` from the top level runs each call whole: no stop lands inside `sq`.
+    while stops.len() < 4 {
+        dap.send("next", Some("{\"threadId\":1}"));
+        let _ = dap.recv_until("\"event\":\"stopped\"");
+        stops.push(line(&mut dap));
+    }
+    assert_eq!(stops, [(1, 4), (1, 5), (1, 6), (1, 7)]);
+    dap.finish();
+}
+
+#[test]
 fn random_dap_requests_stop_where_a_straight_run_says() {
     let path = write_temp(
         "random_dap",
