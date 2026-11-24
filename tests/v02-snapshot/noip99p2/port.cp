@@ -21,7 +21,7 @@ fn mirror_sum(a: List<Int>) -> List<Int>:
     if carry > 0: out.push(carry)
     out
 fn steps() -> ?Int:
-    var d = digits
+    var d = digits.clone()
     for k in 0..=30:
         if all(d[i] == d[d.len - 1 - i] for i in 0..d.len): return k
         d = mirror_sum(d)

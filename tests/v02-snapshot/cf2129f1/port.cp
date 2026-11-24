@@ -25,7 +25,7 @@ fn next_triple(avail: List<Query>, chosen: Set<Int>) -> ?Int:
 // Masks stay as `Int` bit codes until `Bitset<Query>` is hashable in `Set`/`Map`
 // (`cpl::CpHash` rejects `cpl::Row<u64, 1>` in g++; see friction).
 fn build_masks() -> [MaxVal]Int:
-    var room = room_of
+    var room = room_of.clone()
     var chosen = Set<Int>()
     var out: List<Int> = []
     fn take(m: Int):
