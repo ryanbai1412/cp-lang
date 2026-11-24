@@ -3196,7 +3196,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.EulerTourTree.connected",
-   "measured": 1.05,
+   "measured": 0.97,
    "n": 2048,
    "ok": true
   },
@@ -3204,7 +3204,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.EulerTourTree.cut",
-   "measured": 0.98,
+   "measured": 1.2,
    "n": 2048,
    "ok": true
   },
@@ -3212,7 +3212,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.EulerTourTree.fold_sub",
-   "measured": 0.9,
+   "measured": 1.03,
    "n": 2048,
    "ok": true
   },
@@ -3228,7 +3228,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.EulerTourTree.get",
-   "measured": 0.89,
+   "measured": 1.02,
    "n": 2048,
    "ok": true
   },
@@ -3244,7 +3244,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.EulerTourTree.link",
-   "measured": 1.2,
+   "measured": 0.97,
    "n": 2048,
    "ok": true
   },
@@ -3252,7 +3252,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.EulerTourTree.new",
-   "measured": 4.37,
+   "measured": 4.48,
    "n": 2048,
    "ok": true
   },
@@ -3260,83 +3260,83 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.EulerTourTree.set",
-   "measured": 1.11,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.apply_sub": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyEulerTourTree.apply_sub",
-   "measured": 0.99,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.apply_tree": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyEulerTourTree.apply_tree",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.connected": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyEulerTourTree.connected",
-   "measured": 1.24,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.cut": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyEulerTourTree.cut",
-   "measured": 1.18,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.fold_sub": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyEulerTourTree.fold_sub",
-   "measured": 0.98,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.fold_tree": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyEulerTourTree.fold_tree",
-   "measured": 0.99,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.get": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyEulerTourTree.get",
    "measured": 1.0,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.len": {
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.apply_sub": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.apply_sub",
+   "measured": 1.08,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.apply_tree": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.apply_tree",
+   "measured": 1.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.connected": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.connected",
+   "measured": 1.25,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.cut": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.cut",
+   "measured": 1.21,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.fold_sub": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.fold_sub",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.fold_tree": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.fold_tree",
+   "measured": 1.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.get": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.get",
+   "measured": 1.05,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.len": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LazyEulerTourTree.len",
-   "measured": 0.98,
+   "measured": 0.93,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.link": {
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.link": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LazyEulerTourTree.link",
-   "measured": 1.15,
+   "measured": 1.22,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.new": {
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.new": {
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.LazyEulerTourTree.new",
@@ -3344,19 +3344,19 @@
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.set": {
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.set": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LazyEulerTourTree.set",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.to_array": {
+  "bench/scaling/euler_tour_lazy.cp::tree.LazyEulerTourTree.to_array": {
    "cost": "\\lvert V \\rvert + \\text{links}",
    "documented": 4.0,
    "fn": "tree.LazyEulerTourTree.to_array",
-   "measured": 5.21,
+   "measured": 5.16,
    "n": 2048,
    "ok": true
   },
@@ -6624,78 +6624,6 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/heap.cp::heap.ErasableHeap.clear": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.ErasableHeap.clear",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.ErasableHeap.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.ErasableHeap.is_empty",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.ErasableHeap.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.ErasableHeap.len",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.ErasableHeap.new": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.ErasableHeap.new",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.ErasableHeap.peek": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.ErasableHeap.peek",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.ErasableHeap.pop": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.ErasableHeap.pop",
-   "measured": 1.11,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.ErasableHeap.push": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.ErasableHeap.push",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.ErasableHeap.remove": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.ErasableHeap.remove",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.ErasableHeap.take": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.ErasableHeap.take",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
   "bench/scaling/heap.cp::heap.Heap.clear": {
    "cost": "1",
    "documented": 1.0,
@@ -6708,7 +6636,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.Heap.drain",
-   "measured": 1.12,
+   "measured": 1.14,
    "n": 2048,
    "ok": true
   },
@@ -6716,7 +6644,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.is_empty",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -6724,7 +6652,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.len",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -6740,7 +6668,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "heap.Heap.of",
-   "measured": 3.76,
+   "measured": 3.81,
    "n": 2048,
    "ok": true
   },
@@ -6748,7 +6676,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.peek",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -6756,7 +6684,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.Heap.pop",
-   "measured": 1.16,
+   "measured": 1.14,
    "n": 2048,
    "ok": true
   },
@@ -6764,7 +6692,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.Heap.push",
-   "measured": 1.02,
+   "measured": 1.03,
    "n": 2048,
    "ok": true
   },
@@ -6772,7 +6700,7 @@
    "cost": "k \\log n",
    "documented": 4.73,
    "fn": "heap.Heap.push_all",
-   "measured": 4.38,
+   "measured": 4.73,
    "n": 2048,
    "ok": true
   },
@@ -6780,7 +6708,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.Heap.push_pop",
-   "measured": 1.13,
+   "measured": 1.16,
    "n": 2048,
    "ok": true
   },
@@ -6788,7 +6716,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.Heap.replace_top",
-   "measured": 1.16,
+   "measured": 1.17,
    "n": 2048,
    "ok": true
   },
@@ -6796,103 +6724,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.take",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.clear": {
-   "cost": "\\mathit{len}",
-   "documented": 4.0,
-   "fn": "heap.IndexedHeap.clear",
-   "measured": 5.5,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.contains": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.IndexedHeap.contains",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.decrease": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.IndexedHeap.decrease",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.get": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.IndexedHeap.get",
    "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.increase": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.IndexedHeap.increase",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.IndexedHeap.is_empty",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.IndexedHeap.len",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.new": {
-   "cost": "\\lvert D \\rvert",
-   "documented": 4.0,
-   "fn": "heap.IndexedHeap.new",
-   "measured": 4.69,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.peek": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.IndexedHeap.peek",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.pop": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.IndexedHeap.pop",
-   "measured": 1.51,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.remove": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.IndexedHeap.remove",
-   "measured": 1.28,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.IndexedHeap.set": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.IndexedHeap.set",
-   "measured": 1.03,
    "n": 2048,
    "ok": true
   },
@@ -6900,7 +6732,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.clear",
-   "measured": 1.03,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -6908,7 +6740,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.MaxHeap.drain",
-   "measured": 1.13,
+   "measured": 1.12,
    "n": 2048,
    "ok": true
   },
@@ -6916,7 +6748,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.is_empty",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
@@ -6932,7 +6764,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.new",
-   "measured": 1.02,
+   "measured": 0.99,
    "n": 2048,
    "ok": true
   },
@@ -6940,7 +6772,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "heap.MaxHeap.of",
-   "measured": 4.14,
+   "measured": 4.09,
    "n": 2048,
    "ok": true
   },
@@ -6956,7 +6788,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.MaxHeap.pop",
-   "measured": 1.16,
+   "measured": 1.15,
    "n": 2048,
    "ok": true
   },
@@ -6964,7 +6796,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.MaxHeap.push",
-   "measured": 0.98,
+   "measured": 0.99,
    "n": 2048,
    "ok": true
   },
@@ -6972,7 +6804,7 @@
    "cost": "n + k \\log(n + k)",
    "documented": 4.62,
    "fn": "heap.MaxHeap.push_all",
-   "measured": 3.69,
+   "measured": 3.78,
    "n": 2048,
    "ok": true
   },
@@ -6980,7 +6812,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.MaxHeap.push_pop",
-   "measured": 1.16,
+   "measured": 1.18,
    "n": 2048,
    "ok": true
   },
@@ -6988,7 +6820,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "heap.MaxHeap.replace_top",
-   "measured": 1.15,
+   "measured": 1.17,
    "n": 2048,
    "ok": true
   },
@@ -6996,319 +6828,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.take",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.Meld.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.Meld.is_empty",
-   "measured": 1.03,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.Meld.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.Meld.len",
    "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.add_all": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeap.add_all",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.clear": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeap.clear",
-   "measured": 0.99,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.drain": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "heap.MeldHeap.drain",
-   "measured": 5.29,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeap.is_empty",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeap.len",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.new": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeap.new",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.of": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "heap.MeldHeap.of",
-   "measured": 3.9,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.peek": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeap.peek",
-   "measured": 0.98,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.pop": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.MeldHeap.pop",
-   "measured": 1.26,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.push": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.MeldHeap.push",
-   "measured": 1.14,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.push_all": {
-   "cost": "k \\log n",
-   "documented": 4.73,
-   "fn": "heap.MeldHeap.push_all",
-   "measured": 4.78,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.take": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeap.take",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeap.top": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeap.top",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.add_all": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeaps.add_all",
-   "measured": 1.04,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.drain": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "heap.MeldHeaps.drain",
-   "measured": 5.1,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.meld": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.MeldHeaps.meld",
-   "measured": 1.18,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.new": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeaps.new",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.of": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "heap.MeldHeaps.of",
-   "measured": 3.92,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.pop": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.MeldHeaps.pop",
-   "measured": 1.22,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.push": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.MeldHeaps.push",
-   "measured": 1.17,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.push_all": {
-   "cost": "k \\log n",
-   "documented": 4.73,
-   "fn": "heap.MeldHeaps.push_all",
-   "measured": 5.03,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.top": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MeldHeaps.top",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.clear": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MinMaxHeap.clear",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.first": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MinMaxHeap.first",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MinMaxHeap.is_empty",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.last": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MinMaxHeap.last",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MinMaxHeap.len",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.new": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MinMaxHeap.new",
-   "measured": 0.99,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.of": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "heap.MinMaxHeap.of",
-   "measured": 4.07,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.pop_first": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.MinMaxHeap.pop_first",
-   "measured": 1.13,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.pop_last": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.MinMaxHeap.pop_last",
-   "measured": 1.18,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.push": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.MinMaxHeap.push",
-   "measured": 0.98,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.take": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.MinMaxHeap.take",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.Settle.get": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.Settle.get",
-   "measured": 1.11,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.Settle.offer": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.Settle.offer",
-   "measured": 0.97,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.Settle.pop": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "heap.Settle.pop",
-   "measured": 1.09,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.Settle.settled": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "heap.Settle.settled",
-   "measured": 1.09,
    "n": 2048,
    "ok": true
   },
@@ -7358,6 +6878,486 @@
    "fn": "heap.MinMaxHeap.each",
    "measured": 5.71,
    "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.clear": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "heap.IndexedHeap.clear",
+   "measured": 6.29,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.IndexedHeap.contains",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.decrease": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.IndexedHeap.decrease",
+   "measured": 1.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.IndexedHeap.get",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.increase": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.IndexedHeap.increase",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.IndexedHeap.is_empty",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.IndexedHeap.len",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "heap.IndexedHeap.new",
+   "measured": 5.23,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.peek": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.IndexedHeap.peek",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.pop": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.IndexedHeap.pop",
+   "measured": 1.45,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.remove": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.IndexedHeap.remove",
+   "measured": 1.24,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.IndexedHeap.set": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.IndexedHeap.set",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.Settle.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.Settle.get",
+   "measured": 1.09,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.Settle.offer": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.Settle.offer",
+   "measured": 0.96,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.Settle.pop": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.Settle.pop",
+   "measured": 1.1,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_indexed.cp::heap.Settle.settled": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.Settle.settled",
+   "measured": 1.06,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.Meld.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.Meld.is_empty",
+   "measured": 1.05,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.Meld.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.Meld.len",
+   "measured": 1.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.add_all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeap.add_all",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeap.clear",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.drain": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "heap.MeldHeap.drain",
+   "measured": 5.53,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeap.is_empty",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeap.len",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeap.new",
+   "measured": 1.04,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.of": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "heap.MeldHeap.of",
+   "measured": 3.88,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.peek": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeap.peek",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.pop": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.MeldHeap.pop",
+   "measured": 1.28,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.push": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.MeldHeap.push",
+   "measured": 1.16,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.push_all": {
+   "cost": "k \\log n",
+   "documented": 4.73,
+   "fn": "heap.MeldHeap.push_all",
+   "measured": 4.73,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.take": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeap.take",
+   "measured": 1.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeap.top": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeap.top",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.add_all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeaps.add_all",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.drain": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "heap.MeldHeaps.drain",
+   "measured": 5.17,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.meld": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.MeldHeaps.meld",
+   "measured": 1.2,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeaps.new",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.of": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "heap.MeldHeaps.of",
+   "measured": 3.92,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.pop": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.MeldHeaps.pop",
+   "measured": 1.23,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.push": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.MeldHeaps.push",
+   "measured": 1.15,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.push_all": {
+   "cost": "k \\log n",
+   "documented": 4.73,
+   "fn": "heap.MeldHeaps.push_all",
+   "measured": 5.14,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_meld.cp::heap.MeldHeaps.top": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MeldHeaps.top",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.ErasableHeap.clear",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.ErasableHeap.is_empty",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.ErasableHeap.len",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.ErasableHeap.new",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.peek": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.ErasableHeap.peek",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.pop": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.ErasableHeap.pop",
+   "measured": 1.13,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.push": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.ErasableHeap.push",
+   "measured": 1.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.remove": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.ErasableHeap.remove",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.ErasableHeap.take": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.ErasableHeap.take",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MinMaxHeap.clear",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.first": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MinMaxHeap.first",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MinMaxHeap.is_empty",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MinMaxHeap.last",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MinMaxHeap.len",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MinMaxHeap.new",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.of": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "heap.MinMaxHeap.of",
+   "measured": 4.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.pop_first": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.MinMaxHeap.pop_first",
+   "measured": 1.16,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.pop_last": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.MinMaxHeap.pop_last",
+   "measured": 1.17,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.push": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "heap.MinMaxHeap.push",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/heap_minmax.cp::heap.MinMaxHeap.take": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "heap.MinMaxHeap.take",
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap_reserve.cp::heap.Heap.reserve": {
@@ -8240,123 +8240,11 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.access": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.access",
-   "measured": 1.21,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.apply_path": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.apply_path",
-   "measured": 0.99,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.connected": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.connected",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.cut": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.cut",
-   "measured": 1.2,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.dist": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.dist",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.fold_path": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.fold_path",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.get": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.get",
-   "measured": 0.99,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.jump": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.jump",
-   "measured": 1.07,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.lca": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.lca",
-   "measured": 1.0,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.link": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.link",
-   "measured": 1.17,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.make_root": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.make_root",
-   "measured": 1.2,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.new": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.LazyLinkCut.new",
-   "measured": 4.81,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.root_of": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.root_of",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LazyLinkCut.set": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.LazyLinkCut.set",
-   "measured": 0.99,
-   "n": 2048,
-   "ok": true
-  },
   "bench/scaling/link_cut.cp::tree.LinkCut.access": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.access",
-   "measured": 1.19,
+   "measured": 1.22,
    "n": 2048,
    "ok": true
   },
@@ -8364,7 +8252,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.connected",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 2048,
    "ok": true
   },
@@ -8372,7 +8260,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.cut",
-   "measured": 1.18,
+   "measured": 1.22,
    "n": 2048,
    "ok": true
   },
@@ -8380,7 +8268,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.dist",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 2048,
    "ok": true
   },
@@ -8388,7 +8276,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.fold_path",
-   "measured": 0.98,
+   "measured": 1.05,
    "n": 2048,
    "ok": true
   },
@@ -8404,7 +8292,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.jump",
-   "measured": 1.06,
+   "measured": 1.1,
    "n": 2048,
    "ok": true
   },
@@ -8412,7 +8300,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.lca",
-   "measured": 0.98,
+   "measured": 1.06,
    "n": 2048,
    "ok": true
   },
@@ -8420,7 +8308,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.link",
-   "measured": 1.16,
+   "measured": 1.23,
    "n": 2048,
    "ok": true
   },
@@ -8428,15 +8316,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.make_root",
-   "measured": 1.21,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/link_cut.cp::tree.LinkCut.new": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.LinkCut.new",
-   "measured": 5.01,
+   "measured": 1.22,
    "n": 2048,
    "ok": true
   },
@@ -8444,7 +8324,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.root_of",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 2048,
    "ok": true
   },
@@ -8452,23 +8332,143 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.LinkCut.set",
-   "measured": 0.98,
+   "measured": 1.07,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/link_cut.cp::tree.PreferredPaths.access": {
+  "bench/scaling/link_cut_lazy.cp::tree.LazyLinkCut.access": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.access",
+   "measured": 1.4,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy.cp::tree.LazyLinkCut.connected": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.connected",
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy.cp::tree.LazyLinkCut.cut": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.cut",
+   "measured": 1.41,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy.cp::tree.LazyLinkCut.lca": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.lca",
+   "measured": 1.23,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy.cp::tree.LazyLinkCut.link": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.link",
+   "measured": 1.34,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy.cp::tree.LazyLinkCut.make_root": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.make_root",
+   "measured": 1.51,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy.cp::tree.LazyLinkCut.root_of": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.root_of",
+   "measured": 1.13,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy_path.cp::tree.LazyLinkCut.apply_path": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.apply_path",
+   "measured": 1.27,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy_path.cp::tree.LazyLinkCut.dist": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.dist",
+   "measured": 1.04,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy_path.cp::tree.LazyLinkCut.fold_path": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.fold_path",
+   "measured": 1.05,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy_path.cp::tree.LazyLinkCut.get": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.get",
+   "measured": 1.27,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy_path.cp::tree.LazyLinkCut.jump": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.jump",
+   "measured": 1.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_lazy_path.cp::tree.LazyLinkCut.set": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.set",
+   "measured": 1.04,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_new.cp::tree.LazyLinkCut.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.LazyLinkCut.new",
+   "measured": 5.31,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_new.cp::tree.LinkCut.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.LinkCut.new",
+   "measured": 4.83,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut_paths.cp::tree.PreferredPaths.access": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.PreferredPaths.access",
-   "measured": 1.2,
+   "measured": 1.12,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/link_cut.cp::tree.PreferredPaths.new": {
+  "bench/scaling/link_cut_paths.cp::tree.PreferredPaths.new": {
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.PreferredPaths.new",
-   "measured": 3.93,
+   "measured": 4.84,
    "n": 2048,
    "ok": true
   },
@@ -8824,43 +8824,11 @@
    "n": 512,
    "ok": true
   },
-  "bench/scaling/mat.cp::matrix.Mat.adjugate": {
-   "cost": "n^3",
-   "documented": 64.0,
-   "fn": "matrix.Mat.adjugate",
-   "measured": 57.12,
-   "n": 32,
-   "ok": true
-  },
   "bench/scaling/mat.cp::matrix.Mat.at": {
    "cost": "1",
    "documented": 1.0,
    "fn": "matrix.Mat.at",
-   "measured": 1.01,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.char_poly": {
-   "cost": "n^3",
-   "documented": 64.0,
-   "fn": "matrix.Mat.char_poly",
-   "measured": 65.43,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.det": {
-   "cost": "n^3",
-   "documented": 64.0,
-   "fn": "matrix.Mat.det",
-   "measured": 49.68,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.det_mod": {
-   "cost": "n^3 \\log m",
-   "documented": 64.0,
-   "fn": "matrix.Mat.det_mod",
-   "measured": 48.58,
+   "measured": 0.95,
    "n": 32,
    "ok": true
   },
@@ -8868,7 +8836,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.filled",
-   "measured": 13.97,
+   "measured": 13.45,
    "n": 32,
    "ok": true
   },
@@ -8876,7 +8844,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.from_flat",
-   "measured": 13.64,
+   "measured": 16.84,
    "n": 32,
    "ok": true
   },
@@ -8884,7 +8852,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.from_rows",
-   "measured": 15.84,
+   "measured": 21.03,
    "n": 32,
    "ok": true
   },
@@ -8892,7 +8860,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "matrix.Mat.get",
-   "measured": 1.01,
+   "measured": 1.45,
    "n": 32,
    "ok": true
   },
@@ -8900,15 +8868,7 @@
    "cost": "n^2",
    "documented": 16.0,
    "fn": "matrix.Mat.identity",
-   "measured": 13.13,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.inverse": {
-   "cost": "n^3",
-   "documented": 64.0,
-   "fn": "matrix.Mat.inverse",
-   "measured": 61.44,
+   "measured": 29.29,
    "n": 32,
    "ok": true
   },
@@ -8916,7 +8876,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.mul_vec",
-   "measured": 14.7,
+   "measured": 15.12,
    "n": 32,
    "ok": true
   },
@@ -8924,7 +8884,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.new",
-   "measured": 14.5,
+   "measured": 15.2,
    "n": 32,
    "ok": true
   },
@@ -8932,15 +8892,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.of",
-   "measured": 17.2,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.pfaffian": {
-   "cost": "n^3",
-   "documented": 64.0,
-   "fn": "matrix.Mat.pfaffian",
-   "measured": 70.01,
+   "measured": 20.57,
    "n": 32,
    "ok": true
   },
@@ -8948,23 +8900,7 @@
    "cost": "n^2",
    "documented": 16.0,
    "fn": "matrix.Mat.product",
-   "measured": 12.73,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.rank": {
-   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols})",
-   "documented": 64.0,
-   "fn": "matrix.Mat.rank",
-   "measured": 48.31,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.rref": {
-   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols})",
-   "documented": 64.0,
-   "fn": "matrix.Mat.rref",
-   "measured": 51.17,
+   "measured": 14.57,
    "n": 32,
    "ok": true
   },
@@ -8972,23 +8908,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "matrix.Mat.set",
-   "measured": 1.03,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.solve": {
-   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols})",
-   "documented": 64.0,
-   "fn": "matrix.Mat.solve",
-   "measured": 50.76,
-   "n": 32,
-   "ok": true
-  },
-  "bench/scaling/mat.cp::matrix.Mat.solve_space": {
-   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols})",
-   "documented": 64.0,
-   "fn": "matrix.Mat.solve_space",
-   "measured": 51.24,
+   "measured": 1.04,
    "n": 32,
    "ok": true
   },
@@ -8996,7 +8916,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.transpose",
-   "measured": 14.18,
+   "measured": 18.76,
    "n": 32,
    "ok": true
   },
@@ -9004,31 +8924,111 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.zeros",
-   "measured": 13.72,
+   "measured": 16.45,
    "n": 32,
    "ok": true
   },
-  "bench/scaling/mat.cp::matrix.MatPow.apply_pow": {
+  "bench/scaling/mat_pow.cp::matrix.MatPow.apply_pow": {
    "cost": "n^2 \\log e",
    "documented": 16.0,
    "fn": "matrix.MatPow.apply_pow",
-   "measured": 15.32,
+   "measured": 16.46,
    "n": 32,
    "ok": true
   },
-  "bench/scaling/mat.cp::matrix.MatPow.new": {
+  "bench/scaling/mat_pow.cp::matrix.MatPow.new": {
    "cost": "n^3 \\log \\mathit{max\\_exp}",
    "documented": 64.0,
    "fn": "matrix.MatPow.new",
-   "measured": 61.79,
+   "measured": 57.7,
    "n": 32,
    "ok": true
   },
-  "bench/scaling/mat.cp::matrix.simplex": {
+  "bench/scaling/mat_pow.cp::matrix.simplex": {
    "cost": "\\mathit{pivots} \\cdot \\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 64.0,
    "fn": "matrix.simplex",
-   "measured": 17.15,
+   "measured": 17.45,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.adjugate": {
+   "cost": "n^3",
+   "documented": 64.0,
+   "fn": "matrix.Mat.adjugate",
+   "measured": 55.15,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.char_poly": {
+   "cost": "n^3",
+   "documented": 64.0,
+   "fn": "matrix.Mat.char_poly",
+   "measured": 66.9,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.det": {
+   "cost": "n^3",
+   "documented": 64.0,
+   "fn": "matrix.Mat.det",
+   "measured": 53.44,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.det_mod": {
+   "cost": "n^3 \\log m",
+   "documented": 64.0,
+   "fn": "matrix.Mat.det_mod",
+   "measured": 47.47,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.inverse": {
+   "cost": "n^3",
+   "documented": 64.0,
+   "fn": "matrix.Mat.inverse",
+   "measured": 62.23,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.pfaffian": {
+   "cost": "n^3",
+   "documented": 64.0,
+   "fn": "matrix.Mat.pfaffian",
+   "measured": 72.1,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.rank": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols})",
+   "documented": 64.0,
+   "fn": "matrix.Mat.rank",
+   "measured": 51.95,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.rref": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols})",
+   "documented": 64.0,
+   "fn": "matrix.Mat.rref",
+   "measured": 51.28,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.solve": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols})",
+   "documented": 64.0,
+   "fn": "matrix.Mat.solve",
+   "measured": 53.28,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat_solve.cp::matrix.Mat.solve_space": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols})",
+   "documented": 64.0,
+   "fn": "matrix.Mat.solve_space",
+   "measured": 54.64,
    "n": 32,
    "ok": true
   },
@@ -10576,59 +10576,11 @@
    "n": 4096,
    "ok": true
   },
-  "bench/scaling/poly.cp::poly.bell_table": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "poly.bell_table",
-   "measured": 4.41,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.bernoulli_table": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "poly.bernoulli_table",
-   "measured": 4.25,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.binomial_transform": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "poly.binomial_transform",
-   "measured": 4.41,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.chirp_z": {
-   "cost": "(n + m) \\log(n + m)",
-   "documented": 4.67,
-   "fn": "poly.chirp_z",
-   "measured": 4.39,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.compose": {
-   "cost": "n \\log^2 n",
-   "documented": 5.59,
-   "fn": "poly.compose",
-   "measured": 5.23,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.compose_inv": {
-   "cost": "n \\log^2 n",
-   "documented": 5.59,
-   "fn": "poly.compose_inv",
-   "measured": 5.22,
-   "n": 2048,
-   "ok": true
-  },
   "bench/scaling/poly.cp::poly.deriv": {
    "cost": "a.\\mathit{len}",
    "documented": 4.0,
    "fn": "poly.deriv",
-   "measured": 3.79,
+   "measured": 4.0,
    "n": 2048,
    "ok": true
   },
@@ -10636,7 +10588,7 @@
    "cost": "a.\\mathit{len} \\log a.\\mathit{len}",
    "documented": 4.73,
    "fn": "poly.div_mod",
-   "measured": 4.42,
+   "measured": 4.76,
    "n": 2048,
    "ok": true
   },
@@ -10644,15 +10596,7 @@
    "cost": "\\mathit{self}.\\mathit{len}",
    "documented": 4.0,
    "fn": "poly.eval",
-   "measured": 4.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.eval_all": {
-   "cost": "(a.\\mathit{len} + \\mathit{xs}.\\mathit{len}) \\log^2 \\mathit{xs}.\\mathit{len}",
-   "documented": 5.59,
-   "fn": "poly.eval_all",
-   "measured": 5.15,
+   "measured": 5.78,
    "n": 2048,
    "ok": true
   },
@@ -10660,15 +10604,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.exp",
-   "measured": 4.14,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.gcd_poly": {
-   "cost": "n \\log^2 n",
-   "documented": 5.59,
-   "fn": "poly.gcd_poly",
-   "measured": 4.07,
+   "measured": 4.18,
    "n": 2048,
    "ok": true
   },
@@ -10676,15 +10612,7 @@
    "cost": "a.\\mathit{len}",
    "documented": 4.0,
    "fn": "poly.integral",
-   "measured": 4.2,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.interpolate": {
-   "cost": "n \\log^2 n",
-   "documented": 5.59,
-   "fn": "poly.interpolate",
-   "measured": 4.99,
+   "measured": 4.07,
    "n": 2048,
    "ok": true
   },
@@ -10692,7 +10620,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.inv",
-   "measured": 4.14,
+   "measured": 4.24,
    "n": 2048,
    "ok": true
   },
@@ -10700,7 +10628,7 @@
    "cost": "\\mathit{ys}.\\mathit{len}",
    "documented": 4.0,
    "fn": "poly.lagrange_at",
-   "measured": 4.0,
+   "measured": 4.74,
    "n": 2048,
    "ok": true
   },
@@ -10708,15 +10636,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.log",
-   "measured": 4.21,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.partition_table": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "poly.partition_table",
-   "measured": 4.31,
+   "measured": 4.44,
    "n": 2048,
    "ok": true
   },
@@ -10724,39 +10644,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.pow",
-   "measured": 4.34,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.pow_mod_poly": {
-   "cost": "d \\log d \\log k",
-   "documented": 4.73,
-   "fn": "poly.pow_mod_poly",
-   "measured": 4.42,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.power_sums": {
-   "cost": "(n + \\deg) \\log^2 n",
-   "documented": 5.59,
-   "fn": "poly.power_sums",
-   "measured": 4.98,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.prod_linear": {
-   "cost": "n \\log^2 n",
-   "documented": 5.59,
-   "fn": "poly.prod_linear",
-   "measured": 5.26,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/poly.cp::poly.sample_points_shift": {
-   "cost": "(n + m) \\log(n + m)",
-   "documented": 4.67,
-   "fn": "poly.sample_points_shift",
-   "measured": 4.35,
+   "measured": 4.55,
    "n": 2048,
    "ok": true
   },
@@ -10764,55 +10652,167 @@
    "cost": "n \\log n + \\log^2 P",
    "documented": 4.73,
    "fn": "poly.sqrt",
-   "measured": 4.06,
+   "measured": 4.33,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/poly.cp::poly.stirling1_col": {
-   "cost": "n \\log n",
+  "bench/scaling/poly_compose.cp::poly.compose": {
+   "cost": "n \\log^2 n",
+   "documented": 5.59,
+   "fn": "poly.compose",
+   "measured": 5.18,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_compose.cp::poly.compose_inv": {
+   "cost": "n \\log^2 n",
+   "documented": 5.59,
+   "fn": "poly.compose_inv",
+   "measured": 5.29,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_compose.cp::poly.gcd_poly": {
+   "cost": "n \\log^2 n",
+   "documented": 5.59,
+   "fn": "poly.gcd_poly",
+   "measured": 3.7,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_compose.cp::poly.pow_mod_poly": {
+   "cost": "d \\log d \\log k",
    "documented": 4.73,
-   "fn": "poly.stirling1_col",
+   "fn": "poly.pow_mod_poly",
+   "measured": 4.37,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_points.cp::poly.chirp_z": {
+   "cost": "(n + m) \\log(n + m)",
+   "documented": 4.67,
+   "fn": "poly.chirp_z",
+   "measured": 4.21,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_points.cp::poly.eval_all": {
+   "cost": "(a.\\mathit{len} + \\mathit{xs}.\\mathit{len}) \\log^2 \\mathit{xs}.\\mathit{len}",
+   "documented": 5.59,
+   "fn": "poly.eval_all",
    "measured": 4.27,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/poly.cp::poly.stirling1_row": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "poly.stirling1_row",
-   "measured": 5.1,
+  "bench/scaling/poly_points.cp::poly.interpolate": {
+   "cost": "n \\log^2 n",
+   "documented": 5.59,
+   "fn": "poly.interpolate",
+   "measured": 4.97,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/poly.cp::poly.stirling2_col": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "poly.stirling2_col",
-   "measured": 4.27,
+  "bench/scaling/poly_points.cp::poly.power_sums": {
+   "cost": "(n + \\deg) \\log^2 n",
+   "documented": 5.59,
+   "fn": "poly.power_sums",
+   "measured": 4.95,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/poly.cp::poly.stirling2_row": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "poly.stirling2_row",
-   "measured": 4.53,
+  "bench/scaling/poly_points.cp::poly.prod_linear": {
+   "cost": "n \\log^2 n",
+   "documented": 5.59,
+   "fn": "poly.prod_linear",
+   "measured": 4.09,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/poly.cp::poly.taylor_shift": {
+  "bench/scaling/poly_points.cp::poly.sample_points_shift": {
+   "cost": "(n + m) \\log(n + m)",
+   "documented": 4.67,
+   "fn": "poly.sample_points_shift",
+   "measured": 4.35,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_shift.cp::poly.binomial_transform": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "poly.binomial_transform",
+   "measured": 4.56,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_shift.cp::poly.taylor_shift": {
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.taylor_shift",
-   "measured": 4.41,
+   "measured": 4.48,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/poly.cp::poly.transposed_mul": {
+  "bench/scaling/poly_shift.cp::poly.transposed_mul": {
    "cost": "(n + m) \\log(n + m)",
    "documented": 4.67,
    "fn": "poly.transposed_mul",
-   "measured": 4.51,
+   "measured": 4.62,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_tables.cp::poly.bell_table": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "poly.bell_table",
+   "measured": 4.65,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_tables.cp::poly.bernoulli_table": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "poly.bernoulli_table",
+   "measured": 4.25,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_tables.cp::poly.partition_table": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "poly.partition_table",
+   "measured": 5.53,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_tables.cp::poly.stirling1_col": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "poly.stirling1_col",
+   "measured": 4.82,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_tables.cp::poly.stirling1_row": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "poly.stirling1_row",
+   "measured": 6.45,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_tables.cp::poly.stirling2_col": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "poly.stirling2_col",
+   "measured": 5.77,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_tables.cp::poly.stirling2_row": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "poly.stirling2_row",
+   "measured": 4.92,
    "n": 2048,
    "ok": true
   },
@@ -11560,331 +11560,243 @@
    "n": 4096,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.above": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.Rooted.above",
-   "measured": 4.54,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.ancestors": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.Rooted.ancestors",
-   "measured": 1.0,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.centroid": {
-   "cost": "\\mathit{depth}",
-   "documented": 4.0,
-   "fn": "tree.Rooted.centroid",
-   "measured": 4.24,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.centroids": {
-   "cost": "\\mathit{depth}",
-   "documented": 4.0,
-   "fn": "tree.Rooted.centroids",
-   "measured": 4.16,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.child_arcs": {
+  "bench/scaling/rooted_arcs.cp::tree.Rooted.child_arcs": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.child_arcs",
-   "measured": 1.01,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.children": {
+  "bench/scaling/rooted_arcs.cp::tree.Rooted.children": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.children",
-   "measured": 1.01,
+   "measured": 0.42,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.diameter": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.Rooted.diameter",
-   "measured": 5.31,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.down": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.Rooted.down",
-   "measured": 4.29,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.euler_tour": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.Rooted.euler_tour",
-   "measured": 1.17,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.events": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.Rooted.events",
-   "measured": 4.76,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.excl_fold": {
+  "bench/scaling/rooted_arcs.cp::tree.Rooted.excl_fold": {
    "cost": "k",
    "documented": 4.0,
    "fn": "tree.Rooted.excl_fold",
-   "measured": 4.31,
+   "measured": 3.4,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.forest": {
-   "cost": "n + m",
-   "documented": 4.0,
-   "fn": "tree.Rooted.forest",
-   "measured": 4.85,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.from_parents": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.Rooted.from_parents",
-   "measured": 5.17,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.layers": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.Rooted.layers",
-   "measured": 4.87,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.light": {
+  "bench/scaling/rooted_arcs.cp::tree.Rooted.light": {
    "cost": "\\mathit{children}",
    "documented": 4.0,
    "fn": "tree.Rooted.light",
-   "measured": 4.25,
+   "measured": 3.41,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.long_paths": {
+  "bench/scaling/rooted_build.cp::tree.Rooted.forest": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "tree.Rooted.forest",
+   "measured": 5.19,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_build.cp::tree.Rooted.from_parents": {
    "cost": "n",
    "documented": 4.0,
-   "fn": "tree.Rooted.long_paths",
-   "measured": 4.86,
+   "fn": "tree.Rooted.from_parents",
+   "measured": 5.21,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.new": {
+  "bench/scaling/rooted_build.cp::tree.Rooted.new": {
    "cost": "n + m",
    "documented": 4.0,
    "fn": "tree.Rooted.new",
-   "measured": 4.84,
+   "measured": 4.94,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.order": {
-   "cost": "n",
-   "documented": 4.0,
+  "bench/scaling/rooted_build.cp::tree.Rooted.order": {
+   "cost": "1",
+   "documented": 1.0,
    "fn": "tree.Rooted.order",
-   "measured": 3.74,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.path": {
-   "cost": "\\log n + \\lvert \\mathit{path} \\rvert",
-   "documented": 4.0,
-   "fn": "tree.Rooted.path",
-   "measured": 4.33,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.preorder": {
-   "cost": "\\mathit{size}(v)",
-   "documented": 4.0,
-   "fn": "tree.Rooted.preorder",
-   "measured": 4.45,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.reorder": {
+  "bench/scaling/rooted_build.cp::tree.Rooted.reorder": {
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.Rooted.reorder",
-   "measured": 4.62,
+   "measured": 5.54,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.reroot": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.Rooted.reroot",
-   "measured": 4.65,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.roots": {
+  "bench/scaling/rooted_build.cp::tree.Rooted.roots": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.roots",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.shapes": {
-   "cost": "n \\log n",
-   "documented": 4.57,
-   "fn": "tree.Rooted.shapes",
-   "measured": 4.36,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.subtree": {
-   "cost": "\\mathit{size}(v)",
-   "documented": 4.0,
-   "fn": "tree.Rooted.subtree",
-   "measured": 4.26,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.subtree_sizes": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.Rooted.subtree_sizes",
-   "measured": 4.44,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/rooted.cp::tree.Rooted.tour": {
+  "bench/scaling/rooted_build.cp::tree.Rooted.subtree_sizes": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "tree.Rooted.tour",
-   "measured": 1.08,
+   "fn": "tree.Rooted.subtree_sizes",
+   "measured": 1.11,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.try_from_parents": {
+  "bench/scaling/rooted_build.cp::tree.Rooted.try_from_parents": {
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.Rooted.try_from_parents",
-   "measured": 5.17,
+   "measured": 5.29,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.up": {
+  "bench/scaling/rooted_fold.cp::tree.Rooted.above": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.Rooted.above",
+   "measured": 4.55,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_fold.cp::tree.Rooted.diameter": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.Rooted.diameter",
+   "measured": 5.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_fold.cp::tree.Rooted.down": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.Rooted.down",
+   "measured": 4.35,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_fold.cp::tree.Rooted.layers": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.Rooted.layers",
+   "measured": 4.72,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_fold.cp::tree.Rooted.reroot": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.Rooted.reroot",
+   "measured": 4.47,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_fold.cp::tree.Rooted.up": {
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.Rooted.up",
-   "measured": 4.37,
+   "measured": 4.39,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted.cp::tree.Rooted.virtual": {
-   "cost": "k \\log k + k \\log n",
-   "documented": 4.57,
-   "fn": "tree.Rooted.virtual",
-   "measured": 4.68,
-   "n": 16384,
+  "bench/scaling/rooted_hld.cp::tree.Rooted.apply_path": {
+   "cost": "\\log^2 n",
+   "documented": 1.4,
+   "fn": "tree.Rooted.apply_path",
+   "measured": 1.34,
+   "n": 2048,
    "ok": true
   },
-  "bench/scaling/rooted_query.cp::tree.Events.enter": {
+  "bench/scaling/rooted_hld.cp::tree.Rooted.chain": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "tree.Events.enter",
+   "fn": "tree.Rooted.chain",
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_hld.cp::tree.Rooted.chains": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Rooted.chains",
+   "measured": 1.27,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_hld.cp::tree.Rooted.fold_path": {
+   "cost": "\\log^2 n",
+   "documented": 1.4,
+   "fn": "tree.Rooted.fold_path",
+   "measured": 1.25,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_hld.cp::tree.Rooted.sub_at": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Rooted.sub_at",
+   "measured": 1.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_hld.cp::tree.Rooted.top": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Rooted.top",
    "measured": 1.02,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/rooted_query.cp::tree.Events.exit": {
+  "bench/scaling/rooted_hld.cp::tree.Rooted.w": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "tree.Events.exit",
-   "measured": 0.99,
+   "fn": "tree.Rooted.w",
+   "measured": 1.18,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/rooted_query.cp::tree.Events.path": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.Events.path",
-   "measured": 1.06,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.Events.sub": {
+  "bench/scaling/rooted_path.cp::tree.Rooted.ancestors": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "tree.Events.sub",
-   "measured": 0.91,
-   "n": 2048,
+   "fn": "tree.Rooted.ancestors",
+   "measured": 0.98,
+   "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted_query.cp::tree.Layers.below": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.Layers.below",
-   "measured": 1.16,
-   "n": 2048,
+  "bench/scaling/rooted_path.cp::tree.Rooted.centroid": {
+   "cost": "\\mathit{depth}",
+   "documented": 4.0,
+   "fn": "tree.Rooted.centroid",
+   "measured": 3.98,
+   "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted_query.cp::tree.Layers.level": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.Layers.level",
-   "measured": 1.01,
-   "n": 2048,
+  "bench/scaling/rooted_path.cp::tree.Rooted.centroids": {
+   "cost": "\\mathit{depth}",
+   "documented": 4.0,
+   "fn": "tree.Rooted.centroids",
+   "measured": 4.26,
+   "n": 16384,
    "ok": true
   },
-  "bench/scaling/rooted_query.cp::tree.Layers.pos": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.Layers.pos",
-   "measured": 0.97,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.LongPaths.slot": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.LongPaths.slot",
-   "measured": 0.97,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.LongPaths.slots": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.LongPaths.slots",
-   "measured": 1.0,
-   "n": 2048,
+  "bench/scaling/rooted_path.cp::tree.Rooted.path": {
+   "cost": "\\log n + \\lvert \\mathit{path} \\rvert",
+   "documented": 4.0,
+   "fn": "tree.Rooted.path",
+   "measured": 4.14,
+   "n": 16384,
    "ok": true
   },
   "bench/scaling/rooted_query.cp::tree.Rooted.ancestor": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.ancestor",
-   "measured": 1.05,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.Rooted.apply_path": {
-   "cost": "\\log^2 n",
-   "documented": 1.4,
-   "fn": "tree.Rooted.apply_path",
-   "measured": 1.27,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -11896,27 +11808,11 @@
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/rooted_query.cp::tree.Rooted.chain": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.Rooted.chain",
-   "measured": 1.02,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.Rooted.chains": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.Rooted.chains",
-   "measured": 1.13,
-   "n": 2048,
-   "ok": true
-  },
   "bench/scaling/rooted_query.cp::tree.Rooted.depth": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.depth",
-   "measured": 0.98,
+   "measured": 0.95,
    "n": 2048,
    "ok": true
   },
@@ -11924,23 +11820,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.dist",
-   "measured": 1.08,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.Rooted.farthest": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.Rooted.farthest",
-   "measured": 1.14,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.Rooted.fold_path": {
-   "cost": "\\log^2 n",
-   "documented": 1.4,
-   "fn": "tree.Rooted.fold_path",
-   "measured": 1.15,
+   "measured": 1.23,
    "n": 2048,
    "ok": true
   },
@@ -11964,7 +11844,7 @@
    "cost": "\\log^2 n",
    "documented": 1.4,
    "fn": "tree.Rooted.jump_while",
-   "measured": 0.98,
+   "measured": 0.99,
    "n": 2048,
    "ok": true
   },
@@ -11972,7 +11852,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.lca",
-   "measured": 1.18,
+   "measured": 1.2,
    "n": 2048,
    "ok": true
   },
@@ -11980,7 +11860,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.lower",
-   "measured": 1.0,
+   "measured": 1.05,
    "n": 2048,
    "ok": true
   },
@@ -11988,7 +11868,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.meet",
-   "measured": 1.17,
+   "measured": 1.26,
    "n": 2048,
    "ok": true
   },
@@ -12004,7 +11884,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.parent",
-   "measured": 0.96,
+   "measured": 1.45,
    "n": 2048,
    "ok": true
   },
@@ -12012,7 +11892,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.pos",
-   "measured": 0.93,
+   "measured": 0.95,
    "n": 2048,
    "ok": true
   },
@@ -12020,7 +11900,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.root_of",
-   "measured": 1.08,
+   "measured": 1.35,
    "n": 2048,
    "ok": true
   },
@@ -12028,7 +11908,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.size",
-   "measured": 0.97,
+   "measured": 0.94,
    "n": 2048,
    "ok": true
   },
@@ -12036,23 +11916,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.sub",
-   "measured": 0.97,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.Rooted.sub_at": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "tree.Rooted.sub_at",
-   "measured": 1.06,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/rooted_query.cp::tree.Rooted.top": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.Rooted.top",
-   "measured": 0.97,
+   "measured": 0.95,
    "n": 2048,
    "ok": true
   },
@@ -12060,16 +11924,152 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.up_arc",
-   "measured": 0.97,
+   "measured": 0.99,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/rooted_query.cp::tree.Rooted.w": {
+  "bench/scaling/rooted_shapes.cp::tree.Rooted.events": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.Rooted.events",
+   "measured": 4.71,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_shapes.cp::tree.Rooted.long_paths": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.Rooted.long_paths",
+   "measured": 4.49,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_shapes.cp::tree.Rooted.shapes": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "tree.Rooted.shapes",
+   "measured": 3.87,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.Events.enter": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "tree.Rooted.w",
-   "measured": 1.05,
+   "fn": "tree.Events.enter",
+   "measured": 1.03,
    "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.Events.exit": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Events.exit",
+   "measured": 1.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.Events.path": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Events.path",
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.Events.sub": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Events.sub",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.Layers.below": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Layers.below",
+   "measured": 1.21,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.Layers.level": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Layers.level",
+   "measured": 1.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.Layers.pos": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Layers.pos",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.LongPaths.slot": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.LongPaths.slot",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.LongPaths.slots": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.LongPaths.slots",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_views.cp::tree.Rooted.farthest": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Rooted.farthest",
+   "measured": 1.15,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_walk.cp::tree.Rooted.euler_tour": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Rooted.euler_tour",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_walk.cp::tree.Rooted.preorder": {
+   "cost": "\\mathit{size}(v)",
+   "documented": 4.0,
+   "fn": "tree.Rooted.preorder",
+   "measured": 4.19,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_walk.cp::tree.Rooted.subtree": {
+   "cost": "\\mathit{size}(v)",
+   "documented": 4.0,
+   "fn": "tree.Rooted.subtree",
+   "measured": 3.85,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_walk.cp::tree.Rooted.tour": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Rooted.tour",
+   "measured": 1.14,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rooted_walk.cp::tree.Rooted.virtual": {
+   "cost": "k \\log k + k \\log n",
+   "documented": 4.57,
+   "fn": "tree.Rooted.virtual",
+   "measured": 4.54,
+   "n": 16384,
    "ok": true
   },
   "bench/scaling/search.cp::search.bsearch": {
@@ -14208,27 +14208,11 @@
    "n": 4096,
    "ok": true
   },
-  "bench/scaling/seq_win.cp::seq.Ring.maximal": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.Ring.maximal",
-   "measured": 3.91,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_win.cp::seq.Ring.minimal": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.Ring.minimal",
-   "measured": 3.95,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/seq_win.cp::seq.buckets": {
    "cost": "\\lvert D \\rvert + \\lvert K \\rvert",
    "documented": 4.0,
    "fn": "seq.buckets",
-   "measured": 2.99,
+   "measured": 3.11,
    "n": 16384,
    "ok": true
   },
@@ -14236,7 +14220,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.cartesian_tree",
-   "measured": 4.69,
+   "measured": 4.59,
    "n": 16384,
    "ok": true
   },
@@ -14244,7 +14228,7 @@
    "cost": "\\log k",
    "documented": 1.14,
    "fn": "seq.covering",
-   "measured": 1.03,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -14252,7 +14236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "seq.first",
-   "measured": 0.99,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -14264,27 +14248,11 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/seq_win.cp::seq.maximal": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.maximal",
-   "measured": 3.91,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_win.cp::seq.minimal": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.minimal",
-   "measured": 3.97,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/seq_win.cp::seq.pieces": {
    "cost": "k \\log k",
    "documented": 4.57,
    "fn": "seq.pieces",
-   "measured": 4.21,
+   "measured": 4.29,
    "n": 16384,
    "ok": true
   },
@@ -14292,7 +14260,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.rekey",
-   "measured": 4.15,
+   "measured": 4.01,
    "n": 16384,
    "ok": true
   },
@@ -14300,7 +14268,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.split",
-   "measured": 5.21,
+   "measured": 4.07,
    "n": 16384,
    "ok": true
   },
@@ -14308,7 +14276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "seq.swap",
-   "measured": 0.99,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -14316,7 +14284,39 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "seq.with_domain",
-   "measured": 0.99,
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_window.cp::seq.Ring.maximal": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.Ring.maximal",
+   "measured": 4.82,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_window.cp::seq.maximal": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.maximal",
+   "measured": 4.5,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_window_sum.cp::seq.Ring.minimal": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.Ring.minimal",
+   "measured": 3.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_window_sum.cp::seq.minimal": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.minimal",
+   "measured": 3.89,
    "n": 16384,
    "ok": true
   },
@@ -15840,19 +15840,11 @@
    "n": 512,
    "ok": true
   },
-  "bench/scaling/str_free.cp::strings.borders": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "strings.borders",
-   "measured": 3.88,
-   "n": 512,
-   "ok": true
-  },
   "bench/scaling/str_free.cp::strings.common_prefix_len": {
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
    "fn": "strings.common_prefix_len",
-   "measured": 3.87,
+   "measured": 3.69,
    "n": 512,
    "ok": true
   },
@@ -15860,7 +15852,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
    "fn": "strings.common_suffix_len",
-   "measured": 3.53,
+   "measured": 3.24,
    "n": 512,
    "ok": true
   },
@@ -15868,7 +15860,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.digit",
-   "measured": 0.92,
+   "measured": 1.04,
    "n": 512,
    "ok": true
   },
@@ -15876,23 +15868,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{pat} \\rvert)",
    "documented": 4.0,
    "fn": "strings.ends_with",
-   "measured": 3.32,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.find_all": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.find_all",
-   "measured": 3.8,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.find_all_wildcard": {
-   "cost": "\\lvert \\mathit{self} \\rvert \\cdot \\lvert \\mathit{pat} \\rvert",
-   "documented": 16.0,
-   "fn": "strings.find_all_wildcard",
-   "measured": 11.86,
+   "measured": 3.46,
    "n": 512,
    "ok": true
   },
@@ -15900,7 +15876,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_alnum",
-   "measured": 0.97,
+   "measured": 1.03,
    "n": 512,
    "ok": true
   },
@@ -15908,7 +15884,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_alpha",
-   "measured": 0.98,
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -15916,7 +15892,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_digit",
-   "measured": 0.97,
+   "measured": 1.03,
    "n": 512,
    "ok": true
   },
@@ -15924,7 +15900,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_lower",
-   "measured": 0.96,
+   "measured": 1.03,
    "n": 512,
    "ok": true
   },
@@ -15932,7 +15908,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.is_palindrome",
-   "measured": 2.92,
+   "measured": 3.02,
    "n": 512,
    "ok": true
   },
@@ -15940,7 +15916,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_space",
-   "measured": 0.97,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -15948,23 +15924,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_upper",
-   "measured": 0.98,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.join": {
-   "cost": "\\lvert \\mathit{output} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.join",
-   "measured": 3.7,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.lcs_all": {
-   "cost": "\\sum_w \\lvert w \\rvert \\cdot \\log n",
-   "documented": 4.89,
-   "fn": "strings.lcs_all",
-   "measured": 3.17,
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -15972,7 +15932,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.lower",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -15980,23 +15940,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.lyndon_factorization",
-   "measured": 3.64,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.lyndon_runs": {
-   "cost": "n \\log n",
-   "documented": 4.89,
-   "fn": "strings.lyndon_runs",
-   "measured": 4.14,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.manacher": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "strings.manacher",
-   "measured": 3.57,
+   "measured": 3.66,
    "n": 512,
    "ok": true
   },
@@ -16004,7 +15948,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.max_rotation",
-   "measured": 3.75,
+   "measured": 3.91,
    "n": 512,
    "ok": true
   },
@@ -16012,15 +15956,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.min_rotation",
-   "measured": 4.02,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.overlap": {
-   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "strings.overlap",
-   "measured": 3.88,
+   "measured": 3.79,
    "n": 512,
    "ok": true
   },
@@ -16028,7 +15964,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.parse",
-   "measured": 3.69,
+   "measured": 1.64,
    "n": 512,
    "ok": true
   },
@@ -16036,63 +15972,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.parse_int",
-   "measured": 3.73,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.period": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "strings.period",
-   "measured": 3.76,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.prefix_function": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "strings.prefix_function",
-   "measured": 3.75,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.prefix_matches": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.prefix_matches",
-   "measured": 3.69,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.repeat": {
-   "cost": "\\lvert \\mathit{self} \\rvert \\cdot n",
-   "documented": 4.0,
-   "fn": "strings.repeat",
-   "measured": 3.74,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.replace": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{output} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.replace",
-   "measured": 3.58,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.rsearch": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
-   "documented": 4.0,
-   "fn": "strings.rsearch",
-   "measured": 3.8,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.search": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
-   "documented": 4.0,
-   "fn": "strings.search",
-   "measured": 3.81,
+   "measured": 3.91,
    "n": 512,
    "ok": true
   },
@@ -16100,15 +15980,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.split_once",
-   "measured": 3.14,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.split_whitespace": {
-   "cost": "\\lvert \\mathit{self} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.split_whitespace",
-   "measured": 3.51,
+   "measured": 3.72,
    "n": 512,
    "ok": true
   },
@@ -16116,63 +15988,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert - \\mathit{at}, \\lvert \\mathit{pat} \\rvert)",
    "documented": 4.01,
    "fn": "strings.starts_with",
-   "measured": 3.3,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.suffix_array": {
-   "cost": "n \\log n",
-   "documented": 4.89,
-   "fn": "strings.suffix_array",
-   "measured": 3.94,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.suffix_tree_edges": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "strings.suffix_tree_edges",
-   "measured": 4.07,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.to_lower": {
-   "cost": "\\lvert \\mathit{self} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.to_lower",
-   "measured": 3.78,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.to_upper": {
-   "cost": "\\lvert \\mathit{self} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.to_upper",
-   "measured": 3.79,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.trim": {
-   "cost": "\\lvert \\mathit{self} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.trim",
-   "measured": 3.32,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.trim_end": {
-   "cost": "\\lvert \\mathit{self} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.trim_end",
-   "measured": 3.55,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.trim_start": {
-   "cost": "\\lvert \\mathit{self} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.trim_start",
-   "measured": 3.37,
+   "measured": 3.35,
    "n": 512,
    "ok": true
   },
@@ -16180,15 +15996,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.upper",
-   "measured": 0.97,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.z_function": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "strings.z_function",
-   "measured": 3.62,
+   "measured": 1.03,
    "n": 512,
    "ok": true
   },
@@ -16462,6 +16270,198 @@
    "fn": "strings.RollingHash61.push",
    "measured": 0.98,
    "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_runs.cp::strings.lcs_all": {
+   "cost": "\\sum_w \\lvert w \\rvert \\cdot \\log n",
+   "documented": 4.89,
+   "fn": "strings.lcs_all",
+   "measured": 2.96,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_runs.cp::strings.lyndon_runs": {
+   "cost": "n \\log n",
+   "documented": 4.89,
+   "fn": "strings.lyndon_runs",
+   "measured": 3.84,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.borders": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.borders",
+   "measured": 4.22,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.find_all": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.find_all",
+   "measured": 4.25,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.find_all_wildcard": {
+   "cost": "\\lvert \\mathit{self} \\rvert \\cdot \\lvert \\mathit{pat} \\rvert",
+   "documented": 16.0,
+   "fn": "strings.find_all_wildcard",
+   "measured": 14.52,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.manacher": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.manacher",
+   "measured": 4.12,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.overlap": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "strings.overlap",
+   "measured": 4.68,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.period": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.period",
+   "measured": 4.18,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.prefix_function": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.prefix_function",
+   "measured": 4.16,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.prefix_matches": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.prefix_matches",
+   "measured": 4.15,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_scan.cp::strings.z_function": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.z_function",
+   "measured": 4.24,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_suffix.cp::strings.suffix_array": {
+   "cost": "n \\log n",
+   "documented": 4.89,
+   "fn": "strings.suffix_array",
+   "measured": 4.22,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_suffix.cp::strings.suffix_tree_edges": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.suffix_tree_edges",
+   "measured": 4.4,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.join": {
+   "cost": "\\lvert \\mathit{output} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.join",
+   "measured": 3.9,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.repeat": {
+   "cost": "\\lvert \\mathit{self} \\rvert \\cdot n",
+   "documented": 4.0,
+   "fn": "strings.repeat",
+   "measured": 3.91,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.replace": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{output} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.replace",
+   "measured": 3.86,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.rsearch": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
+   "documented": 4.0,
+   "fn": "strings.rsearch",
+   "measured": 4.86,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.search": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
+   "documented": 4.0,
+   "fn": "strings.search",
+   "measured": 3.97,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.split_whitespace": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.split_whitespace",
+   "measured": 3.69,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.to_lower": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.to_lower",
+   "measured": 5.47,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.to_upper": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.to_upper",
+   "measured": 5.22,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.trim": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.trim",
+   "measured": 3.58,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.trim_end": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.trim_end",
+   "measured": 3.66,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_text.cp::strings.trim_start": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.trim_start",
+   "measured": 3.57,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/subproduct_tree.cp::poly.SubproductTree.eval": {
@@ -16816,15 +16816,55 @@
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.Centroids.ancestors": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.Centroids.ancestors",
-   "measured": 1.16,
+  "bench/scaling/tree_build.cp::tree.dfs_tree": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "tree.dfs_tree",
+   "measured": 4.33,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.Centroids.depth": {
+  "bench/scaling/tree_build.cp::tree.from_prufer": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.from_prufer",
+   "measured": 3.94,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_build.cp::tree.prufer": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.prufer",
+   "measured": 4.45,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_build.cp::tree.spanning_tree": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "tree.spanning_tree",
+   "measured": 4.55,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_cartesian.cp::tree.cartesian_tree": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.cartesian_tree",
+   "measured": 4.14,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/tree_centroids.cp::tree.Centroids.ancestors": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Centroids.ancestors",
+   "measured": 1.35,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_centroids.cp::tree.Centroids.depth": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Centroids.depth",
@@ -16832,39 +16872,63 @@
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.Centroids.new": {
+  "bench/scaling/tree_centroids.cp::tree.Centroids.new": {
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "tree.Centroids.new",
-   "measured": 4.72,
+   "measured": 5.79,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.Centroids.parent": {
+  "bench/scaling/tree_centroids.cp::tree.Centroids.parent": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Centroids.parent",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.Centroids.piece": {
+  "bench/scaling/tree_centroids.cp::tree.Centroids.piece": {
    "cost": "\\mathit{size}(c)",
    "documented": 4.0,
    "fn": "tree.Centroids.piece",
-   "measured": 4.35,
+   "measured": 4.37,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.KruskalTree.bottleneck": {
+  "bench/scaling/tree_centroids.cp::tree.LcaTable.dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.LcaTable.dist",
+   "measured": 1.33,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_centroids.cp::tree.LcaTable.lca": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.LcaTable.lca",
+   "measured": 1.15,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_centroids.cp::tree.LcaTable.new": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "tree.LcaTable.new",
+   "measured": 3.49,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_kruskal.cp::tree.KruskalTree.bottleneck": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.KruskalTree.bottleneck",
-   "measured": 1.54,
+   "measured": 0.98,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.KruskalTree.reach": {
+  "bench/scaling/tree_kruskal.cp::tree.KruskalTree.reach": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.KruskalTree.reach",
@@ -16872,79 +16936,63 @@
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.KruskalTree.top": {
+  "bench/scaling/tree_kruskal.cp::tree.KruskalTree.top": {
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.KruskalTree.top",
-   "measured": 1.29,
+   "measured": 1.13,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.KruskalTree.tree": {
+  "bench/scaling/tree_kruskal.cp::tree.KruskalTree.tree": {
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.KruskalTree.tree",
-   "measured": 4.48,
+   "measured": 4.56,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.KruskalTree.up": {
+  "bench/scaling/tree_kruskal.cp::tree.KruskalTree.up": {
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.KruskalTree.up",
-   "measured": 4.02,
+   "measured": 4.06,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.LcaTable.dist": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.LcaTable.dist",
-   "measured": 1.08,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/tree_misc.cp::tree.LcaTable.lca": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "tree.LcaTable.lca",
-   "measured": 1.34,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/tree_misc.cp::tree.LcaTable.new": {
-   "cost": "n \\log n",
+  "bench/scaling/tree_kruskal.cp::tree.kruskal_tree": {
+   "cost": "m \\log m",
    "documented": 4.73,
-   "fn": "tree.LcaTable.new",
-   "measured": 4.49,
+   "fn": "tree.kruskal_tree",
+   "measured": 4.45,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.PermTree.leaf": {
+  "bench/scaling/tree_perm.cp::tree.PermTree.leaf": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.PermTree.leaf",
-   "measured": 1.04,
+   "measured": 1.02,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.PermTree.left": {
+  "bench/scaling/tree_perm.cp::tree.PermTree.left": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.PermTree.left",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.PermTree.new": {
+  "bench/scaling/tree_perm.cp::tree.PermTree.new": {
    "cost": "n",
    "documented": 4.0,
    "fn": "tree.PermTree.new",
-   "measured": 4.32,
+   "measured": 4.21,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.PermTree.node": {
+  "bench/scaling/tree_perm.cp::tree.PermTree.node": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.PermTree.node",
@@ -16952,75 +17000,27 @@
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.PermTree.right": {
+  "bench/scaling/tree_perm.cp::tree.PermTree.right": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.PermTree.right",
-   "measured": 0.99,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.PermTree.span": {
+  "bench/scaling/tree_perm.cp::tree.PermTree.span": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.PermTree.span",
-   "measured": 1.04,
+   "measured": 1.08,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/tree_misc.cp::tree.PermTree.vals": {
+  "bench/scaling/tree_perm.cp::tree.PermTree.vals": {
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.PermTree.vals",
-   "measured": 1.12,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/tree_misc.cp::tree.cartesian_tree": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.cartesian_tree",
-   "measured": 2.75,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/tree_misc.cp::tree.dfs_tree": {
-   "cost": "n + m",
-   "documented": 4.0,
-   "fn": "tree.dfs_tree",
-   "measured": 4.27,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/tree_misc.cp::tree.from_prufer": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.from_prufer",
-   "measured": 6.27,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/tree_misc.cp::tree.kruskal_tree": {
-   "cost": "m \\log m",
-   "documented": 4.73,
-   "fn": "tree.kruskal_tree",
-   "measured": 4.6,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/tree_misc.cp::tree.prufer": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "tree.prufer",
-   "measured": 4.08,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/tree_misc.cp::tree.spanning_tree": {
-   "cost": "n + m",
-   "documented": 4.0,
-   "fn": "tree.spanning_tree",
-   "measured": 4.17,
+   "measured": 1.02,
    "n": 2048,
    "ok": true
   },
