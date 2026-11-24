@@ -276,7 +276,7 @@ let z = zip(xs[0..3], xs[3..6])
 let (C, c) = compress(xs[1..5])
 let inv = inversions(xs[1..5])
 let r = xs[1..4].resized(5, 0)
-print(m.len, z.len, C.count, inv, r.len)
+print(m.count(), z.len, C.count, inv, r.len)
 ",
     );
     let solve = out.split("void solve()").nth(1).expect("solve() emitted");
