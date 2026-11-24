@@ -260,6 +260,8 @@ library or by this spec:
   and a named argument's label (`from:`) is never a hole; where a comment
   falls inside the match it
   has no fix, since `to` would drop the comment.
+  A hole `to` uses in the initializer of a name it declares (`let p =
+  Prefix([e for i in 0..n])`) does not match code that reads that name.
   `reads: "p[k] -> p.cut(k)"` makes the fix rewrite, too, every later
   use of a name `from` declares, in the rest of its block: each must
   match the read (`k` a hole), else the finding has no fix (a write

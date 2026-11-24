@@ -43,6 +43,8 @@ pub(crate) struct Declared {
     /// `reads:`: the read `from`'s name has later, and what the fix writes
     /// for each.
     reads: Option<(Vec<(K, String)>, String)>,
+    /// Per name `to` declares, the holes its initializer uses.
+    inits: Vec<(String, Vec<String>)>,
     /// The module's public names `to` uses, each as the linted file spells
     /// it (`sq` -> `geo.sq` under `use mylib.geo`).
     spell: Vec<(String, String)>,
@@ -122,6 +124,20 @@ fn declare(
         .collect();
     let reads = (decl.reads.split_once("->"))
         .and_then(|(r, w)| Some((library_lint::code(r.trim())?, w.trim().to_string())));
+    let (to_run, to_ends) = library_lint::run(&decl.to).unwrap_or_default();
+    let mut inits = Vec::new();
+    let mut start = 0;
+    for end in to_ends {
+        let stmt = &to_run[std::mem::replace(&mut start, end)..end];
+        if let ([(K::Let | K::Var, _), (K::Ident, n), ..], Some(eq)) =
+            (stmt, stmt.iter().position(|t| t.0 == K::Eq))
+        {
+            let hs = (stmt[eq + 1..].iter())
+                .filter(|t| decl.holes.contains(&t.1))
+                .map(|t| t.1.clone());
+            inits.push((n.clone(), hs.collect()));
+        }
+    }
     let mut also = Vec::new();
     for line in decl.also.lines().filter(|l| !l.trim().is_empty()) {
         also.push(library_lint::code(line)?);
@@ -136,6 +152,7 @@ fn declare(
         receiver,
         rebinds,
         reads,
+        inits,
         decl,
         module: module.to_string(),
         from,
@@ -603,6 +620,25 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             let commented = (first..stop - 1).any(|i| {
                 file.src[toks[i].span.end as usize..toks[i + 1].span.start as usize].contains("//")
             });
+            // `to`'s `let p = ..` can't use code that reads `p`: that `p`
+            // is not declared yet.
+            let named = |n: &str| {
+                let hole = d.decl.holes.iter().position(|h| h == n);
+                match hole.and_then(|h| holes[h]) {
+                    Some((a, b)) => Some(text[a..b].concat()),
+                    None => names.iter().find(|u| u.0 == n).map(|u| u.1.clone()),
+                }
+            };
+            let reads_own = d.inits.iter().any(|(n, hs)| {
+                named(n).is_some_and(|user| {
+                    (hs.iter()
+                        .filter_map(|h| holes[d.decl.holes.iter().position(|x| x == h)?]))
+                    .any(|(a, b)| (a..b).any(|j| kinds[j] == K::Ident && text[j] == user))
+                })
+            });
+            if reads_own {
+                continue;
+            }
             let got_of = |holes: &[Option<(usize, usize)>]| -> HashMap<&str, &str> {
                 (d.decl.holes.iter().zip(holes))
                     .filter_map(|(h, run)| {

@@ -192,6 +192,22 @@ fn reads_rewrites_the_later_reads_of_a_name_from_declares() {
     }
 }
 
+/// A hole `to` puts in the initializer of a name it declares (`let p =
+/// table(..)`) does not match code that reads that name.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_declared_name_s_initializer_does_not_read_the_name() {
+    let decl = "@lint(table_by_hand, from: \"for i in 0..n:\\n    p[i + 1] = p[i] + e\", advice: \"let p = table([e for i in 0..n])\", holes: \"n, p, e\")\npub fn table(xs: List<Int>) -> List<Int> = xs\n";
+    let found = |step: &str| {
+        let src = format!("{decl}let a = [1, 2]\nvar q = List.filled(3, 0)\nfor i in 0..2:\n    q[i + 1] = q[i] + {step}\nprint(q)\n");
+        (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "table_by_hand")
+            .count()
+    };
+    assert_eq!(found("a[i]"), 1);
+    assert_eq!(found("q[i] * 2"), 0);
+}
+
 /// `holes:` names more holes than the fn's parameters; `to` may drop one
 /// when it matched code that calls nothing, `to` may use the fn as a getter
 /// (`xs.walk`), and a lint named like a `spec/lints` record reports as it.
