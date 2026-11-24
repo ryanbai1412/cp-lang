@@ -5,6 +5,7 @@ description = "CP Lang site generator, scoreboard, conformance, and corpus scrip
 requires-python = ">=3.10"
 dependencies = [
     "mistune>=3.1,<4",
+    "ziglang>=0.15,<0.16",
 ]
 
 [dependency-groups]

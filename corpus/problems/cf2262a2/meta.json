@@ -20,8 +20,8 @@
  "spec": "none",
  "notes": "",
  "dream_stress": {
-  "ok": false,
-  "cases": 0,
-  "sha": "a614609d03e4f2b35171f3409d5b559acdfec611"
+  "ok": true,
+  "cases": 8,
+  "sha": "173e00c39f8f19c7d2a44525aa50093901e7d383"
  }
 }

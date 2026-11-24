@@ -118,15 +118,21 @@ def blob_sha(path):
     return subprocess.run(["git", "hash-object", str(path)], capture_output=True, text=True, check=True).stdout.strip()
 
 
+# Accepted submissions use C++23 (deducing `this`, <ranges>), so they build with
+# the clang the ziglang wheel ships on every platform, with a bits/stdc++.h shim.
+ACCEPTED_CXX = [sys.executable, "-m", "ziglang", "c++", "-std=c++23", "-O2", "-w",
+                "-I", os.path.join(ROOT, "bench", "cxx23-shim")]
+
+
 def binary(src):
-    """`src` built with g++ -O2, cached by content under target/corpus-cxx/."""
+    """`src` built with ACCEPTED_CXX, cached by content under target/corpus-cxx/."""
     os.makedirs(CXX_CACHE, exist_ok=True)
     key = hashlib.sha1(Path(src).read_bytes()).hexdigest()[:16]
     exe = os.path.join(CXX_CACHE, key)
     if not os.path.exists(exe):
-        r = subprocess.run(["g++", "-std=c++17", "-O2", "-o", exe, str(src)], capture_output=True, text=True)
+        r = subprocess.run([*ACCEPTED_CXX, "-o", exe, str(src)], capture_output=True, text=True)
         if r.returncode:
-            raise RuntimeError("g++: " + r.stderr[:200])
+            raise RuntimeError("c++: " + r.stderr[:200])
     return exe
 
 

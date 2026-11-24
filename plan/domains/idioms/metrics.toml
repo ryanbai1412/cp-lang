@@ -32,7 +32,7 @@ target = "305/305 v0.3 re-ports (as spec.cp or migrated port.cp)"
 [[metric]]
 name = "dreams_agree_v03"
 command = "uv run python scripts/corpus.py verify $(cat corpus/sets/ecnerwala.txt)  # cpl check + cpl test against the accepted C++"
-today = "210/305 agree; 76 cannot run (no tests/gen.py, no accepted C++, or the dream does not build), 19 disagree (2026-11-24, on cf58648bf)"
+today = "256/305 agree; 28 cannot run (no inputs, no accepted C++, or the dream does not build), 21 disagree (2026-11-24, on 947762703)"
 target = "305/305: every dream checks and agrees with the accepted C++ (gate per staged dream; dream_unverified ratchet to 0)"
 
 [[metric]]
