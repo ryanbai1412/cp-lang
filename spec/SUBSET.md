@@ -85,7 +85,7 @@ documented.
 | R07.12 | More vocabulary | supported |  |
 | R08.1 | Folds | supported | 1 known gap |
 | R08.2 | 8.1 Traits and impls | supported |  |
-| R08.3 | 8.3 Laws | supported | 1 known gap |
+| R08.3 | 8.3 Laws | supported |  |
 | R08.4 | 8.4 Record row types (trial) | supported |  |
 | R08.5 | 1.4 Literals | supported |  |
 | R09.1 | 9.1 Contexts | supported |  |
@@ -177,6 +177,5 @@ documented.
 
 - core-04/zip-keyed-by-first.cp: fail
 - core-05/exercise-04-var-from-lent-param.cp: fail
-- core-08/law-calls-trait-method.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
