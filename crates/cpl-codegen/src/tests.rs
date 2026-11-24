@@ -169,9 +169,9 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     assert!(cpp.contains("struct CpHash"), "{cpp}");
     assert!(cpp.contains("splitmix64"), "{cpp}");
     assert!(cpp.contains("steady_clock"), "{cpp}");
-    // Fingerprinted slots at a load of at most 7/8, sized exactly, freeing the old table as a rehash walks it.
+    // Fingerprinted slots at a load of at most 3/4, sized exactly, freeing the old table as a rehash walks it.
     assert!(
-        cpp.contains("n + (n + 6) / 7") && cpp.contains("release_pages"),
+        cpp.contains("n + (n + 2) / 3") && cpp.contains("release_pages"),
         "{cpp}"
     );
     // Whatever the entry, so a Map<Str, _> doesn't hold both tables whole.
@@ -181,6 +181,15 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     );
     assert!(!cpp.contains("2 * (n + 1)"), "{cpp}");
     assert!(cpp.len() < 65536, "{} bytes", cpp.len());
+}
+
+#[test]
+fn a_one_field_struct_key_hashes_as_its_field() {
+    let cpp = cpp("struct H(v: Int)\nvar hm = HashMap<H, Int>()\nhm[H(4)] = 7\nprint(hm[H(4)])\n");
+    assert!(
+        cpp.contains("if constexpr (I == 0 && std::tuple_size<T>::value == 1) return (uint64_t)(*this)(std::get<0>(t));"),
+        "{cpp}"
+    );
 }
 
 #[test]

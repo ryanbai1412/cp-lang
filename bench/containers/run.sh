@@ -8,7 +8,7 @@ trap 'rm -rf "$tmp"' EXIT
 
 benches=("$@")
 if [ "${#benches[@]}" -eq 0 ]; then
-    benches=(hash_insert hash_lookup hash_antihash hash_str_grow bitset interval_map dsu monodeque flatmap sorted_range sorted_set ordered_map_set min_heap deque)
+    benches=(hash_insert hash_lookup hash_antihash hash_str_grow hash_counter bitset interval_map dsu monodeque flatmap sorted_range sorted_set ordered_map_set min_heap deque)
 fi
 
 ratios_file="$tmp/ratios.txt"
