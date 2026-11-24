@@ -158,7 +158,15 @@ pub fn find_interactor(source: &Path) -> Option<PathBuf> {
 
 /// The judge's grader, `grader.cpp`, for a program of `@grader` fns: it
 /// has the `main` and calls them. Found where `find_checker` looks.
-pub fn find_grader(source: &Path) -> Option<PathBuf> {
+/// The judge's `grader.cpp` to link `source` (its text `src`) with: one
+/// found where its cases are, and only when it declares a `@grader` fn, so
+/// a stdin port beside the package's grader runs alone.
+pub fn find_grader(source: &Path, src: &str) -> Option<PathBuf> {
+    let parsed = cpl_syntax::parse_file(src);
+    let mut stmts = parsed.items.iter().flat_map(|(_, item)| &item.stmts);
+    if !stmts.any(|stmt| stmt.decorators.iter().any(|d| d.name.text == "grader")) {
+        return None;
+    }
     find_judge(source, "grader.cpp")
 }
 

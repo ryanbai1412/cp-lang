@@ -1113,13 +1113,12 @@ fn graded(args: &RunArgs, stderr: &mut String) -> Result<Option<std::path::PathB
     if args.brute || args.trace || args.format.is_some() {
         return Ok(None);
     }
-    // Only a file that says `@grader` can have a fn the grader calls.
     let text = std::fs::read_to_string(path).unwrap_or_default();
+    if let Some(grader) = cpl_contest::problem::find_grader(path, &text) {
+        return Ok(Some(grader));
+    }
     if !text.contains("@grader") {
         return Ok(None);
-    }
-    if let Some(grader) = cpl_contest::problem::find_grader(path) {
-        return Ok(Some(grader));
     }
     let compiled = compile(args.file, stderr)?;
     let program = &compiled.program;

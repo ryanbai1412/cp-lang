@@ -215,6 +215,40 @@ fn a_grader_package_is_tested_and_run_through_its_grader() {
     assert_eq!(String::from_utf8_lossy(&ran.stdout), "35\n");
 }
 
+/// A stdin port beside the package's `grader.cpp` declares no `@grader`
+/// fn, so `cpl test` and `cpl run` run it alone, a comment naming
+/// `@grader` notwithstanding.
+#[test]
+fn a_stdin_port_beside_a_grader_runs_without_it() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/grader_package");
+    let port = here.join("port.cp");
+    let tested = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("test")
+        .arg(&port)
+        .output()
+        .expect("cpl runs");
+    let stdout = String::from_utf8_lossy(&tested.stdout);
+    assert!(
+        tested.status.success(),
+        "{stdout}{}",
+        String::from_utf8_lossy(&tested.stderr)
+    );
+    assert!(stdout.contains("2/2 passed"), "{stdout}");
+
+    let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(&port)
+        .arg(here.join("tests/2.in"))
+        .output()
+        .expect("cpl runs");
+    assert!(
+        ran.status.success(),
+        "{}",
+        String::from_utf8_lossy(&ran.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "35\n");
+}
+
 /// A file of `@grader` fns with no grader to call them is an error that
 /// names `--grader`, not a run that prints nothing and passes.
 #[test]

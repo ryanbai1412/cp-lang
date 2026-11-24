@@ -406,7 +406,7 @@ pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, Stri
     }
     let grader = match path("--grader") {
         Some(grader) => Some(grader.to_path_buf()),
-        None if path("--fast").is_none() => find_grader(source),
+        None if path("--fast").is_none() => find_grader(source, src),
         None => None,
     };
     let solution = match grader {
