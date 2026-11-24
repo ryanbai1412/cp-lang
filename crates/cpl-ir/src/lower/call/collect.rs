@@ -16,7 +16,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         let fn_ty = Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Bool));
-        let pred = self.expect(pred_ast, &fn_ty);
+        let pred = self.expr_as(pred_ast, &fn_ty);
         let opt_ty = Ty::opt(elem_ty.clone());
         self.do_expr(Some(&opt_ty), span, |lw, out| {
             let pred_val = lw.hold(pred, out);
@@ -154,7 +154,7 @@ impl<'a> Lowerer<'a> {
             let (edge, filter_cond) = if let Some((pat, cond_ast)) = filter_lambda {
                 lw.cx.scopes.push(HashMap::new());
                 let slot = lw.loop_var(pat, elem_ty.clone(), &mut loop_pre);
-                let cond = lw.expect(cond_ast, &Ty::Bool);
+                let cond = lw.expr_as(cond_ast, &Ty::Bool);
                 lw.cx.scopes.pop();
                 (slot, Some(cond))
             } else {

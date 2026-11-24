@@ -201,7 +201,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Vec<Stmt> {
         if idx == pools.len() {
-            let cond = self.expect(law.body, &Ty::Bool);
+            let cond = self.expr_as(law.body, &Ty::Bool);
             return vec![Stmt::Assert {
                 cond,
                 message: None,

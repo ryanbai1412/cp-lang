@@ -194,7 +194,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         match hint {
-            Some(h) => self.expect(item, h),
+            Some(h) => self.expr_as(item, h),
             None => self.expr(item, None),
         }
     }

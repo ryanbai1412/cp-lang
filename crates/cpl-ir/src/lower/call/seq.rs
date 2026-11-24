@@ -344,7 +344,7 @@ impl<'a> Lowerer<'a> {
         };
         let shape: Vec<Dim> = dims.iter().map(DimSpec::dim).collect();
         let value = match hint {
-            Some(Ty::Array { dims: want, elem }) if *want == shape => self.expect(exprs[0], elem),
+            Some(Ty::Array { dims: want, elem }) if *want == shape => self.expr_as(exprs[0], elem),
             _ => self.expr(exprs[0], None),
         };
         let ty = Ty::Array {
@@ -606,7 +606,7 @@ impl<'a> Lowerer<'a> {
                 let res = if is_map {
                     self.expr(body, None)
                 } else {
-                    self.expect(body, &Ty::Bool)
+                    self.expr_as(body, &Ty::Bool)
                 };
                 self.cx.scopes.pop();
                 res
@@ -1074,9 +1074,9 @@ impl<'a> Lowerer<'a> {
             }
         };
         let fn_hint = Ty::Fn(vec![elem_ty.clone(), elem_ty], Box::new(Ty::Bool));
-        let pred = self.expect(pred_ast, &fn_hint);
+        let pred = self.expr_as(pred_ast, &fn_hint);
         let cyclic = match cyclic_ast {
-            Some(c) => self.expect(c, &Ty::Bool),
+            Some(c) => self.expr_as(c, &Ty::Bool),
             None => self.mk(ExprKind::Bool(false), Ty::Bool, span),
         };
         self.mk_builtin(
@@ -1345,7 +1345,7 @@ impl<'a> Lowerer<'a> {
                     lw.cx.scopes.push(HashMap::new());
                     let mut bind_stmts = Vec::new();
                     let item = lw.loop_var(&param, elem_ty.clone(), &mut bind_stmts);
-                    let keep = lw.expect(body, &Ty::Bool);
+                    let keep = lw.expr_as(body, &Ty::Bool);
                     lw.cx.scopes.pop();
                     let lid = lw.fresh_loop();
                     let item_expr = lw.local(item, span);
@@ -1362,7 +1362,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let fn_ty = Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Bool));
-        let pred = self.expect(test, &fn_ty);
+        let pred = self.expr_as(test, &fn_ty);
         self.collected(elem_ty.clone(), span, |lw, out, push| {
             let pred_val = lw.hold(pred, out);
             let item = lw.temp(elem_ty.clone());
@@ -1399,7 +1399,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         let fn_ty = Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Bool));
-        let pred = self.expect(pred_ast, &fn_ty);
+        let pred = self.expr_as(pred_ast, &fn_ty);
         let list_ty = Ty::list(elem_ty.clone());
         let pair_ty = Ty::Tuple(vec![list_ty.clone(), list_ty.clone()]);
         self.do_expr(Some(&pair_ty), span, |lw, out| {

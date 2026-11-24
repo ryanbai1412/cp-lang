@@ -200,7 +200,7 @@ impl<'a> Lowerer<'a> {
             }
             // `a[l..r] max= x`: the one value against every cell.
             None if self.one_cell(value) => {
-                let one = self.expect(value, &elem);
+                let one = self.expr_as(value, &elem);
                 (self.hold(one, out), None)
             }
             None => {
@@ -420,7 +420,7 @@ impl<'a> Lowerer<'a> {
             Block::default(),
         ));
         let with = with.map(|(bin, scalar, first)| {
-            let value = self.expect(scalar, &elem);
+            let value = self.expr_as(scalar, &elem);
             (bin, self.hold(value, out), first)
         });
         let k = self.temp(Ty::Int);
@@ -524,7 +524,7 @@ impl<'a> Lowerer<'a> {
             ty: elem.clone(),
             span: self.span(span),
         };
-        let value = self.expect(value, &elem);
+        let value = self.expr_as(value, &elem);
         let value = self.hold(value, out);
         let iter = Iter::Range {
             lo,

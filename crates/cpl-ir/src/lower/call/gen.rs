@@ -196,8 +196,8 @@ impl<'a> Lowerer<'a> {
     }
 
     fn gen_range(&mut self, lo: &ast::Expr, hi: &ast::Expr, inclusive: bool, span: Span) -> Expr {
-        let lo = self.expect(lo, &Ty::Int);
-        let mut hi = self.expect(hi, &Ty::Int);
+        let lo = self.expr_as(lo, &Ty::Int);
+        let mut hi = self.expr_as(hi, &Ty::Int);
         if !inclusive {
             hi = self.int_add(hi, -1);
         }

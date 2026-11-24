@@ -508,7 +508,7 @@ impl<'a> Lowerer<'a> {
             return Some(self.err_expr(span));
         };
         let (key_ty, elem_ty) = (parts[0].clone(), parts[1].clone());
-        let pred = self.expect(test, &Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Bool)));
+        let pred = self.expr_as(test, &Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Bool)));
         let out_ty = if keys {
             key_ty.clone()
         } else {

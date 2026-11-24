@@ -236,7 +236,7 @@ impl<'a> Lowerer<'a> {
                 let saved = std::mem::replace(&mut self.offset, offset);
                 let ty = p.ty.as_ref().map(|t| self.resolve_ty(t)).unwrap_or(Ty::Int);
                 self.offset = saved;
-                let v = self.expect(&arg.value, &ty);
+                let v = self.expr_as(&arg.value, &ty);
                 let slot = self.new_slot(&p.name.text, ty);
                 out.push_let(slot, v);
                 bound.push((p.name.text.clone(), slot));

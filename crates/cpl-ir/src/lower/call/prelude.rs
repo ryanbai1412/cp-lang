@@ -18,7 +18,7 @@ impl<'a> Lowerer<'a> {
         let values: Vec<Expr> = exprs
             .into_iter()
             .zip(&fields)
-            .map(|(e, ty)| self.expect(e, ty))
+            .map(|(e, ty)| self.expr_as(e, ty))
             .collect();
         if let Some(&d) = self.enum_to_sum_domain.get(&id) {
             return self.encode_sum_variant(d, tag, values, span);
@@ -59,13 +59,13 @@ impl<'a> Lowerer<'a> {
                     match &arg.name {
                         // `end: " "` is written in place of the newline.
                         Some(arg_name) if arg_name.text == "end" => {
-                            end = Some(Box::new(self.expect(&arg.value, &Ty::Str)));
+                            end = Some(Box::new(self.expr_as(&arg.value, &Ty::Str)));
                         }
                         // `sep: "\n"` goes between the arguments and between
                         // the items of a list; `none: "-1"` is what a `none`
                         // is written as.
                         Some(arg_name) if arg_name.text == "sep" => {
-                            sep = Some(self.expect(&arg.value, &Ty::Str));
+                            sep = Some(self.expr_as(&arg.value, &Ty::Str));
                         }
                         Some(arg_name) if arg_name.text == "none" => {
                             let value = self.expr(&arg.value, None);
@@ -104,7 +104,7 @@ impl<'a> Lowerer<'a> {
                 }
                 if sep.is_none() {
                     if let Some(value) = self.context("io", "sep") {
-                        sep = Some(self.expect(&value, &Ty::Str));
+                        sep = Some(self.expr_as(&value, &Ty::Str));
                     }
                 }
                 // Every argument is worked out before anything is written:
@@ -254,7 +254,7 @@ impl<'a> Lowerer<'a> {
                         // `limit: K`: the judge allows `K` queries, and
                         // one more fails here as it would there.
                         Some(name) if name.text == "limit" => {
-                            limit = Some(self.expect(&arg.value, &Ty::Int));
+                            limit = Some(self.expr_as(&arg.value, &Ty::Int));
                         }
                         Some(name) => {
                             self.report(
@@ -315,8 +315,8 @@ impl<'a> Lowerer<'a> {
                         step: None,
                     } = &value.kind
                     {
-                        let lo = self.expect(lo, &Ty::Int);
-                        let mut hi = self.expect(hi, &Ty::Int);
+                        let lo = self.expr_as(lo, &Ty::Int);
+                        let mut hi = self.expr_as(hi, &Ty::Int);
                         if !inclusive {
                             hi = self.int_add(hi, -1);
                         }
@@ -450,8 +450,8 @@ impl<'a> Lowerer<'a> {
             "gen" => self.gen_call(None, args, span),
             "rand" => match self.positional_any(name, args, 2, span) {
                 Some(exprs) => {
-                    let lo = self.expect(exprs[0], &Ty::Int);
-                    let hi = self.expect(exprs[1], &Ty::Int);
+                    let lo = self.expr_as(exprs[0], &Ty::Int);
+                    let hi = self.expr_as(exprs[1], &Ty::Int);
                     self.mk_builtin(Builtin::Rand, [lo, hi], Ty::Int, span)
                 }
                 None => self.err_expr(span),
@@ -1343,7 +1343,7 @@ impl<'a> Lowerer<'a> {
             .iter()
             .position(|a| a.name.as_ref().is_some_and(|n| n.text == "from"))
         {
-            let text = self.expect(&args[at].value, &Ty::Str);
+            let text = self.expr_as(&args[at].value, &Ty::Str);
             let rest: Vec<ast::Arg> = (args.iter().enumerate())
                 .filter(|&(i, _)| i != at)
                 .map(|(_, a)| a.clone())
@@ -1355,7 +1355,7 @@ impl<'a> Lowerer<'a> {
         if let Some(absent) = args
             .iter()
             .find(|a| a.name.as_ref().is_some_and(|n| n.text == "none"))
-            .map(|a| self.expect(&a.value, &Ty::Int))
+            .map(|a| self.expr_as(&a.value, &Ty::Int))
         {
             let want = spec.ty();
             if !reads_none_as(&mut spec, &absent) {

@@ -31,7 +31,7 @@ impl<'a> Lowerer<'a> {
                 None => {}
             },
             ast::Cond::Expr(cond) => {
-                let cond = self.expect(cond, &Ty::Bool);
+                let cond = self.expr_as(cond, &Ty::Bool);
                 if matches!(cond.kind, ExprKind::Bool(true)) {
                     out.extend(self.block(body, tail).stmts);
                     return;
@@ -240,7 +240,7 @@ impl<'a> Lowerer<'a> {
         };
         match cond {
             ast::Cond::Expr(test) => {
-                let test = self.expect(test, &Ty::Bool);
+                let test = self.expr_as(test, &Ty::Bool);
                 let mark = self.cx.present.len();
                 let mutators = self.mutators.clone();
                 let held = narrow::in_branch(cond, body, &mut |f, x| mutators.writes(f, x));
@@ -250,7 +250,7 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::If(test, then, els()));
             }
             ast::Cond::Guard { test, and } => {
-                let test = self.expect(test, &Ty::Bool);
+                let test = self.expr_as(test, &Ty::Bool);
                 let mut then = Vec::new();
                 self.clause_chain(and, body, tail, els().stmts.as_slice(), &mut then);
                 out.push(Stmt::If(test, Block { stmts: then }, els()));
@@ -338,7 +338,7 @@ impl<'a> Lowerer<'a> {
             self.cx.scopes.push(HashMap::new());
             let mut body = Vec::new();
             let test = self.pattern(&arm.pat, &value, &mut body);
-            let guard = arm.guard.as_ref().map(|g| self.expect(g, &Ty::Bool));
+            let guard = arm.guard.as_ref().map(|g| self.expr_as(g, &Ty::Bool));
             let mut run = vec![Stmt::Assign(
                 Place {
                     kind: PlaceKind::Local(done),
@@ -417,7 +417,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     });
                 }
-                let lit = self.expect(lit, &value.ty);
+                let lit = self.expr_as(lit, &value.ty);
                 Some(Expr {
                     kind: ExprKind::Cmp(CmpOp::Eq, Box::new(value.clone()), Box::new(lit)),
                     ty: Ty::Bool,

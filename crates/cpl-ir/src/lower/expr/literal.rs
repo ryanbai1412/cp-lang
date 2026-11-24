@@ -20,7 +20,7 @@ impl<'a> Lowerer<'a> {
         let mut vt = vh;
         for (k, v) in entries {
             let ke = match &kt {
-                Some(t) => self.expect(k, t),
+                Some(t) => self.expr_as(k, t),
                 None => {
                     let e = self.expr(k, None);
                     kt = Some(e.ty.clone());
@@ -28,7 +28,7 @@ impl<'a> Lowerer<'a> {
                 }
             };
             let ve = match &vt {
-                Some(t) => self.expect(v, t),
+                Some(t) => self.expr_as(v, t),
                 None => {
                     let e = self.expr(v, None);
                     vt = Some(e.ty.clone());
@@ -197,7 +197,7 @@ impl<'a> Lowerer<'a> {
         }
         match hint {
             Some(ty @ (Ty::List(elem) | Ty::Set(elem) | Ty::HashSet(elem))) => {
-                let values = items.iter().map(|item| self.expect(item, elem)).collect();
+                let values = items.iter().map(|item| self.expr_as(item, elem)).collect();
                 self.mk(ExprKind::Tuple(values), ty.clone(), span)
             }
             // `let primes: [Small]Int = [2, 3, 5]`: one value per position,
@@ -262,7 +262,7 @@ impl<'a> Lowerer<'a> {
                     Dim::Enum(e) => Ty::Enum(e),
                     Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                 };
-                let values: Vec<Expr> = items.iter().map(|item| self.expect(item, elem)).collect();
+                let values: Vec<Expr> = items.iter().map(|item| self.expr_as(item, elem)).collect();
                 let ty = ty.clone();
                 let elem = (**elem).clone();
                 self.do_expr(Some(&ty), span, |lw, out| {
@@ -319,7 +319,7 @@ impl<'a> Lowerer<'a> {
                             Ty::Opt(_) => sample_e.ty.clone(),
                             other => Ty::opt(other.clone()),
                         };
-                        let values = items.iter().map(|item| self.expect(item, &elem)).collect();
+                        let values = items.iter().map(|item| self.expr_as(item, &elem)).collect();
                         return self.mk(ExprKind::Tuple(values), Ty::list(elem), span);
                     }
                 }
@@ -327,7 +327,7 @@ impl<'a> Lowerer<'a> {
                 let elem = first.ty.clone();
                 let mut values = vec![first];
                 for item in rest {
-                    values.push(self.expect(item, &elem));
+                    values.push(self.expr_as(item, &elem));
                 }
                 self.mk(ExprKind::Tuple(values), Ty::list(elem), span)
             }

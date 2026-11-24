@@ -175,7 +175,7 @@ impl<'a> Lowerer<'a> {
         let mut arg_slots = Vec::new();
         let mut arg_globals = Vec::new();
         for ((pname, pty), arg) in param_tys.iter().zip(call_args) {
-            let v = self.expect(&arg.value, pty);
+            let v = self.expr_as(&arg.value, pty);
             // A read-only variable is lent, not copied: the checker holds it
             // while the result lives.
             if !arg.mutable && v.ty == *pty {

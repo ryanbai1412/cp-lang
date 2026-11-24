@@ -163,7 +163,7 @@ impl<'a> Lowerer<'a> {
                     Some(exprs) => {
                         let at = self.expr(exprs[0], Some(&Ty::Int));
                         let at = self.coerce(at, &Ty::Int, exprs[0].span);
-                        let val = self.expect(exprs[1], &elem);
+                        let val = self.expr_as(exprs[1], &elem);
                         let val_span = exprs[1].span;
                         self.do_expr(Some(&Ty::Unit), span, |lw, out| {
                             let place = lw.place(base);
@@ -190,8 +190,8 @@ impl<'a> Lowerer<'a> {
             (ty, "swap_idx") if ty.is_indexed_mut() => {
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {
-                        let a = self.expect(exprs[0], &Ty::Int);
-                        let b = self.expect(exprs[1], &Ty::Int);
+                        let a = self.expr_as(exprs[0], &Ty::Int);
+                        let b = self.expr_as(exprs[1], &Ty::Int);
                         mutate(self, Mutation::Swap, vec![a, b], Ty::Unit)
                     }
                     None => self.err_expr(span),
@@ -350,8 +350,8 @@ impl<'a> Lowerer<'a> {
                             },
                             _ => Ty::Int,
                         };
-                        let a = self.expect(exprs[0], &idx_ty);
-                        let b = self.expect(exprs[1], &idx_ty);
+                        let a = self.expr_as(exprs[0], &idx_ty);
+                        let b = self.expr_as(exprs[1], &idx_ty);
                         let a = if matches!(a.ty, Ty::Pos(_) | Ty::Bound(_)) {
                             self.cast(Cast::Ord, a, Ty::Int)
                         } else {
@@ -369,8 +369,8 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::List(_) | Ty::Str, "resize") => match self.positional_any(method, args, 2, span) {
                 Some(exprs) => {
-                    let n = self.expect(exprs[0], &Ty::Int);
-                    let v = self.expect(exprs[1], &elem);
+                    let n = self.expr_as(exprs[0], &Ty::Int);
+                    let v = self.expr_as(exprs[1], &elem);
                     let place = self.mut_receiver(base, method);
                     let v = match self
                         .place_range(&place)
@@ -396,7 +396,7 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::List(_), "extend") => match self.positional_any(method, args, 1, span) {
                 Some(exprs) => {
-                    let other = self.expect(exprs[0], &ty);
+                    let other = self.expr_as(exprs[0], &ty);
                     mutate(self, Mutation::Extend, vec![other], Ty::Unit)
                 }
                 None => self.err_expr(span),
@@ -506,8 +506,8 @@ impl<'a> Lowerer<'a> {
                 }
                 match (ok, key_ast, on_ast) {
                     (true, Some(k_ast), Some(b_ast)) => {
-                        let k_val = self.expect(k_ast, &elem);
-                        let b_val = self.expect(b_ast, &Ty::Bool);
+                        let k_val = self.expr_as(k_ast, &elem);
+                        let b_val = self.expr_as(b_ast, &Ty::Bool);
                         self.do_expr(Some(&Ty::Unit), span, |lw, out| {
                             let place = lw.place(base);
                             let place = lw.settle_indexes(place, out);
@@ -563,10 +563,10 @@ impl<'a> Lowerer<'a> {
                     return self.err_expr(span);
                 };
                 let opt_elem = Ty::opt(elem.clone());
-                let after_val = after_ast.map(|a| self.expect(a, &opt_elem));
-                let before_val = before_ast.map(|b| self.expect(b, &opt_elem));
+                let after_val = after_ast.map(|a| self.expr_as(a, &opt_elem));
+                let before_val = before_ast.map(|b| self.expr_as(b, &opt_elem));
                 let pred_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
-                let pred_val = self.expect(while_ast, &pred_ty);
+                let pred_val = self.expr_as(while_ast, &pred_ty);
                 let out_ty = Ty::list(elem.clone());
                 self.do_expr(Some(&out_ty), span, |lw, out| {
                     let place = lw.place(base);
@@ -1244,7 +1244,7 @@ impl<'a> Lowerer<'a> {
                     },
                     _ => None,
                 };
-                let back = self.expect(&args[0].value, &Ty::Int);
+                let back = self.expr_as(&args[0].value, &Ty::Int);
                 self.do_expr(Some(&Ty::opt(elem.clone())), span, |lw, out| {
                     // A list that is named is read where it is; one that is
                     // computed is kept for the two reads.

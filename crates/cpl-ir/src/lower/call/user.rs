@@ -102,7 +102,7 @@ impl<'a> Lowerer<'a> {
                             })
                             .unwrap_or(i);
                         let want = self.product_factor_ty(&factors[idx].1);
-                        slots[idx] = Some(self.expect(&arg.value, &want));
+                        slots[idx] = Some(self.expr_as(&arg.value, &want));
                     }
                     if slots.iter().all(|s| s.is_some()) {
                         for s in slots {
@@ -113,7 +113,7 @@ impl<'a> Lowerer<'a> {
                 } else {
                     for ((_, f), arg) in factors.iter().zip(args) {
                         let want = self.product_factor_ty(f);
-                        parts.push(self.expect(&arg.value, &want));
+                        parts.push(self.expr_as(&arg.value, &want));
                     }
                     return self.encode_product(id, parts, span);
                 }
@@ -296,7 +296,7 @@ impl<'a> Lowerer<'a> {
                     self.help("drop the `mut`, or declare the parameter `mut`");
                     Arg::Value(self.err_expr(arg.value.span))
                 }
-                (Some(want), false) => Arg::Value(self.expect(&arg.value, want)),
+                (Some(want), false) => Arg::Value(self.expr_as(&arg.value, want)),
                 (None, _) => Arg::Value(self.expr(&arg.value, None)),
             };
             vals.push(v);
@@ -1149,7 +1149,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Option<Expr> {
         let exprs = self.positional_any(what, args, 1, span)?;
-        Some(self.expect(exprs[0], want))
+        Some(self.expr_as(exprs[0], want))
     }
 
     /// Calls the user's fn `id`. Arguments are matched by position, then
@@ -1407,7 +1407,7 @@ impl<'a> Lowerer<'a> {
                         let se = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
                         let value = match self.op_value_for(&param.ty, default) {
                             Some(op) => op,
-                            None => self.expect(default, &param.ty),
+                            None => self.expr_as(default, &param.ty),
                         };
                         self.cur_mod = sm;
                         self.offset = saved;
@@ -1546,7 +1546,7 @@ impl<'a> Lowerer<'a> {
                 };
                 self.bind(&clause.pat, value, &mut stmts);
             }
-            let v = self.expect(body, fty);
+            let v = self.expr_as(body, fty);
             let range = match &own {
                 Ty::Struct(id) => self
                     .struct_field_range(*id, i)
@@ -1608,7 +1608,7 @@ impl<'a> Lowerer<'a> {
                 let mut values = Vec::new();
                 for ((field, ty), arg) in fields.iter().zip(given) {
                     if let Some(arg) = arg {
-                        values.push(self.expect(&arg.value, ty));
+                        values.push(self.expr_as(&arg.value, ty));
                     } else {
                         self.report(
                             span,
@@ -1672,7 +1672,7 @@ impl<'a> Lowerer<'a> {
                         self.let_value(Some(&decl.fields[i].ty), Some(default), default.span)
                             .unwrap_or_else(|| self.err_expr(default.span))
                     } else {
-                        self.expect(default, ty)
+                        self.expr_as(default, ty)
                     };
                     let v = match self
                         .struct_field_range(id, i)
@@ -1745,7 +1745,7 @@ impl<'a> Lowerer<'a> {
                 Some(value) => self.coerce(value, want, e.span),
                 None => self.err_expr(e.span),
             },
-            None => self.expect(e, want),
+            None => self.expr_as(e, want),
         }
     }
 }

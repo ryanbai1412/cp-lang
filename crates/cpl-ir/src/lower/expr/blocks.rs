@@ -203,7 +203,7 @@ impl<'a> Lowerer<'a> {
         }
         // In a branch its test holds; past it, the test has failed.
         for (at, (cond, value)) in arms.into_iter().enumerate() {
-            let cond = self.expect(cond, &Ty::Bool);
+            let cond = self.expr_as(cond, &Ty::Bool);
             let (test, body) = &branches[at];
             let past = self.cx.present.len();
             let mutators = self.mutators.clone();

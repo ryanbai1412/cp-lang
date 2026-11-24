@@ -60,7 +60,7 @@ impl<'a> Lowerer<'a> {
                 lw.report_said(span, message);
                 return vec![lw.err_expr(span)];
             }
-            vec![lw.expect(&indices[0], want)]
+            vec![lw.expr_as(&indices[0], want)]
         };
         match base {
             Ty::Array { dims, elem } => {
@@ -73,7 +73,7 @@ impl<'a> Lowerer<'a> {
                                     .zip(indices)
                                     .map(|((_, f), idx)| {
                                         let want = self.product_factor_ty(f);
-                                        self.expect(idx, &want)
+                                        self.expr_as(idx, &want)
                                     })
                                     .collect();
                                 let pos = self.encode_product(*d, parts, span);
@@ -85,8 +85,8 @@ impl<'a> Lowerer<'a> {
                 if let [Dim::Sym(d)] = dims.as_slice() {
                     let (u, v) = if indices.len() == 2 {
                         (
-                            self.expect(&indices[0], &Ty::Pos(*d)),
-                            self.expect(&indices[1], &Ty::Pos(*d)),
+                            self.expr_as(&indices[0], &Ty::Pos(*d)),
+                            self.expr_as(&indices[1], &Ty::Pos(*d)),
                         )
                     } else if indices.len() == 1 {
                         let pair = self.expr(&indices[0], None);

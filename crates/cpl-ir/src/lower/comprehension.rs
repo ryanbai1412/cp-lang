@@ -100,7 +100,7 @@ impl Lowerer<'_> {
     ) {
         match cond {
             ast::Cond::Expr(c) => {
-                let test = self.expect(c, &Ty::Bool);
+                let test = self.expr_as(c, &Ty::Bool);
                 guards.push((std::mem::take(&mut self.cx.pending), test, Vec::new()));
             }
             ast::Cond::Let { pat, value, and } => {
@@ -117,7 +117,7 @@ impl Lowerer<'_> {
                 }
             }
             ast::Cond::Guard { test, and } => {
-                let test = self.expect(test, &Ty::Bool);
+                let test = self.expr_as(test, &Ty::Bool);
                 guards.push((std::mem::take(&mut self.cx.pending), test, Vec::new()));
                 self.guard(and, guards);
             }
@@ -204,7 +204,7 @@ impl Lowerer<'_> {
             _ => (None, false),
         };
         let value = match &elem_hint {
-            Some(elem) => self.expect(body, elem),
+            Some(elem) => self.expr_as(body, elem),
             None => self.expr(body, None),
         };
         self.empty_item_help(body);
@@ -282,12 +282,12 @@ impl Lowerer<'_> {
         if matches!(hint, Some(Ty::Set(_))) || !fresh_constant(body) {
             return None;
         }
-        let lo = self.expect(lo, &Ty::Int);
-        let hi = self.expect(hi, &Ty::Int);
+        let lo = self.expr_as(lo, &Ty::Int);
+        let hi = self.expr_as(hi, &Ty::Int);
         let value = match hint {
             Some(Ty::List(elem)) if !matches!(**elem, Ty::Error) => {
                 let elem = (**elem).clone();
-                self.expect(body, &elem)
+                self.expr_as(body, &elem)
             }
             _ => self.expr(body, None),
         };
@@ -643,7 +643,7 @@ impl Lowerer<'_> {
         // What the body hoists runs in the loops, where its positions are.
         let outside = std::mem::take(&mut self.cx.pending);
         let value = match elem {
-            Some(elem) => self.expect(body, elem),
+            Some(elem) => self.expr_as(body, elem),
             None => self.expr(body, None),
         };
         let value = match elem_range {

@@ -12,8 +12,8 @@ impl Lowerer<'_> {
             let Some(exprs) = self.positional_any(name, args, 2, span) else {
                 return self.err_expr(span);
             };
-            let a = self.expect(exprs[0], &Ty::Float);
-            let b = self.expect(exprs[1], &Ty::Float);
+            let a = self.expr_as(exprs[0], &Ty::Float);
+            let b = self.expr_as(exprs[1], &Ty::Float);
             return self.mk_builtin(op, [a, b], Ty::Float, span);
         }
         let op = match name {

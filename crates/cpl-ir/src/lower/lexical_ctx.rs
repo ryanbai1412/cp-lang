@@ -96,9 +96,9 @@ impl<'a> Lowerer<'a> {
         let mut values = Vec::new();
         for (i, (field, fty)) in fields.iter().enumerate() {
             let value = match self.context(name, field) {
-                Some(e) => self.expect(&e, fty),
+                Some(e) => self.expr_as(&e, fty),
                 None => match defaults.get(i).cloned().flatten() {
-                    Some(DefaultOf::Ast(d)) => self.expect(&d, fty),
+                    Some(DefaultOf::Ast(d)) => self.expr_as(&d, fty),
                     Some(DefaultOf::Ir(e)) => e,
                     None => self.mk(ExprKind::Int(0), fty.clone(), span),
                 },

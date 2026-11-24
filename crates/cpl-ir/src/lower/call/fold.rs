@@ -912,7 +912,7 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Comprehension { body, clauses } => {
                 let frames = self.open_loops(clauses);
                 let value = match kind {
-                    Reduce::Count | Reduce::All | Reduce::Any => self.expect(body, &Ty::Bool),
+                    Reduce::Count | Reduce::All | Reduce::Any => self.expr_as(body, &Ty::Bool),
                     _ => self.expr(body, None),
                 };
                 (frames, value)

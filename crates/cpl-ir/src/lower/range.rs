@@ -577,7 +577,7 @@ impl<'a> Lowerer<'a> {
         if let Some(v) = self.eval_const_int(e) {
             return self.int_lit(v, e.span);
         }
-        self.expect(e, &Ty::Int)
+        self.expr_as(e, &Ty::Int)
     }
 
     /// Resolves static/gen-env range metadata for every field of struct `id`.
@@ -1521,7 +1521,7 @@ impl<'a> Lowerer<'a> {
                     else {
                         return None;
                     };
-                    let step = self.expect(&k.value, &Ty::Int);
+                    let step = self.expr_as(&k.value, &Ty::Int);
                     return Some((
                         Iter::Range {
                             lo,

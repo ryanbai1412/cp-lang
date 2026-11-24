@@ -35,7 +35,7 @@ fn is_bare_read(e: &ast::Expr) -> bool {
 
 impl<'a> Lowerer<'a> {
     /// Lowers `e` where a `want` is needed.
-    pub(super) fn expect(&mut self, e: &ast::Expr, want: &Ty) -> Expr {
+    pub(super) fn expr_as(&mut self, e: &ast::Expr, want: &Ty) -> Expr {
         let value = self.expr(e, Some(want));
         self.coerce(value, want, e.span)
     }
@@ -240,7 +240,7 @@ impl<'a> Lowerer<'a> {
                         }
                         let map_ty = self.structs[sid].def.fields[0].1.clone();
                         let map_expr = self.mk_field(base_expr, 0, map_ty, span);
-                        let key = self.expect(&indices[0], &key_ty);
+                        let key = self.expr_as(&indices[0], &key_ty);
                         let found = self.mk_builtin(
                             Builtin::MapGet,
                             [map_expr, key],
@@ -708,7 +708,7 @@ impl<'a> Lowerer<'a> {
                     if let Some((_, val_expr)) =
                         updates.iter().rev().find(|(n, _)| &n.text == fname)
                     {
-                        values.push(lw.expect(val_expr, fty));
+                        values.push(lw.expr_as(val_expr, fty));
                     } else {
                         let base_ref = lw.local(tmp.expect("needs_tmp"), span);
                         values.push(lw.mk_field(base_ref, idx, fty.clone(), span));

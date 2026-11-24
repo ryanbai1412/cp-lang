@@ -473,7 +473,7 @@ impl<'a> Lowerer<'a> {
                             let generic = self.structs[sid].origin_gen.is_some();
                             if let (true, Some(dom_id)) = (generic, self.structs[sid].index_domain)
                             {
-                                let len = self.expect(init, &Ty::Int);
+                                let len = self.expr_as(init, &Ty::Int);
                                 self.size_library_domain(dom_id, len);
                             }
                         }

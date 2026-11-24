@@ -92,7 +92,7 @@ impl<'a> Lowerer<'a> {
             Some(same) if same == *param => same,
             _ => list,
         };
-        self.expect(arg, &want)
+        self.expr_as(arg, &want)
     }
 
     /// The first key of a view: where it starts in its source (R04b.1.1).
