@@ -93,13 +93,14 @@ impl<'a> Lowerer<'a> {
             return;
         }
         if let Some(parts) = self.domain_sum_parts(def) {
-            let mut lens = parts
+            let lens: Vec<Expr> = parts
                 .into_iter()
-                .map(|d| self.mk(ExprKind::DomainLen(d), Ty::Int, def.span));
-            let first = lens.next().unwrap();
-            let len = lens.fold(first, |acc, l| {
-                self.mk_binary(BinOp::Add, acc, l, Ty::Int, def.span)
-            });
+                .map(|d| self.mk(ExprKind::DomainLen(d), Ty::Int, def.span))
+                .collect();
+            let len = lens
+                .into_iter()
+                .reduce(|acc, l| self.mk_binary(BinOp::Add, acc, l, Ty::Int, def.span))
+                .unwrap_or_else(|| self.int_lit(0, def.span));
             let lo = self.int_lit(0, def.span);
             out.push(Stmt::DefDomain { id, lo, len });
             return;
