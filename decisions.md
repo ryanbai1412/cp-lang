@@ -8754,7 +8754,11 @@ from `just next-decision`.
 
 ## 512. (reserved, content)
 
-## 513. (reserved, content)
+## 513. Completion offers only what the checker accepts (spec, 2026-11-24)
+
+- **Call.** Every completion item comes from the checker's resolution at the cursor: a method is offered when the receiver meets its `self` type and bounds, a name when it is in scope or importable with the `use` edit, so accepting an item never adds an error (Rlsp.2). The LSP keeps no hand-maintained completion table; the tables in `cpl-lsp` are deleted. Ryan's call (debt cleanup, call 8). Core exposes the query; Consumers rebuilds completion on it.
+- **Why.** A hand table is a second copy of the library's surface: it drifts, and a suggestion that doesn't compile costs the contestant a round trip in exactly the moment completion is meant to save one.
+- **Reverse.** Allow a curated table beside the checker's items, each entry with a test that it checks.
 
 ## 514. Meldable heaps are skew heaps in one pool; `MeldHeap` wraps a pool (stdlib, 2026-11-24)
 

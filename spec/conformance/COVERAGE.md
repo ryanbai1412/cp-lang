@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3331 (1093 passing). Rules: 612.
+Cases: 3332 (1093 passing). Rules: 612.
 
 ## Summary per chapter
 
@@ -31,7 +31,7 @@ Cases: 3331 (1093 passing). Rules: 612.
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rjudge (judge-profiles.md): 8 rules, 11 cases; 0 uncovered, 4 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rlsp (lsp.md): 9 rules, 9 cases; 1 uncovered, 0 happy-path only, 0 negative only
+- Rlsp (lsp.md): 9 rules, 10 cases; 1 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 2 rules, 2 cases; 1 uncovered, 0 happy-path only, 0 negative only
 - Rtrace (trace-debug.md): 6 rules, 5 cases; 2 uncovered, 2 happy-path only, 0 negative only
 
@@ -66,10 +66,10 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
 | Rjudge | 8 | 8 (100%) | 5 | 1 (20%) | 4 (50%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
-| Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
+| Rlsp | 9 | 8 (88%) | 2 | 2 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 612 | 608 (99%) | 252 | 244 (96%) | 602 (98%) |
+| all | 612 | 608 (99%) | 253 | 245 (96%) | 602 (98%) |
 
 ## Rules
 
@@ -736,7 +736,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rlsp.6 [1+ 1-]: **Hover**: the type, where `None` lives, storage width and peak bytes, proven ranges, the ...
 - Rlsp.7 [1+ 1-]: **Storage sizes** (decision 149): hover on a type or variable gives its size, field storag...
 - Rlsp.8 [1+ 0-]: **Inlay hints**: inferred types, parameter names past two positional arguments, opt-in liv...
-- Rlsp.2 [1+ 0-]: **Completion** ranked by type (positions of `V` inside `a[` for `a: [V]T`, operation value...
+- Rlsp.2 [2+ 1-]: **Completion** ranked by type (positions of `V` inside `a[` for `a: [V]T`, operation value...
 - Rlsp.3 [1+ 0-]: **Navigation and refactoring**: definition, references, rename, extract nested fn, inline,...
 - Rlsp.9 [0+ 0-] **uncovered**: **Editors**: a VS Code extension (highlighting, run/test/stress buttons, debugger, trace p...
 - Rlsp.4 [1+ 1-]: **Formatting**: `textDocument/formatting` returns exactly what `cpl fmt` writes, so an edi...

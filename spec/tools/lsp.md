@@ -22,7 +22,12 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
 - **Completion** ranked by type (positions of `V` inside `a[` for
   `a: [V]T`, operation values where an `Op<T>` is expected, unimported
   stdlib names with the `use` edit); signature help with bound
-  explanations. (Rlsp.2)
+  explanations. Completion offers only what the checker accepts at the
+  cursor: each item comes from the checker's own resolution of the
+  receiver and scope (a method whose `self` type and bounds the receiver
+  meets, a name in scope or importable), so accepting one never adds an
+  error. There is no hand-kept completion table; `.rev` on a generator is
+  not offered because the checker rejects it (decision 513). (Rlsp.2)
 - **Navigation and refactoring**: definition, references, rename,
   extract nested fn, inline, add dimension to a DP table, convert array
   to map. Go to definition reaches stdlib sources too. (Rlsp.3)

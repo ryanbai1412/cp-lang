@@ -247,6 +247,7 @@ alternatives that lost. Numbers refer to entries in `decisions.md`.
 | Ownership (128, 141, 144) | Owned or lent, five rules, `lends` only on signatures | Implicit deep copies (hidden \(O(n)\) work); Rust-style lifetimes and borrow modes in types (a vocabulary that costs minutes in a contest) |
 | Iteration (126, 142) | Push-only generators and six capabilities | Pull iterators (`next()`): `break` and `return` through a library loop need machinery; one iterator trait hides \(O(n)\) reads behind `s[k]` |
 | Overloading (127) | None: a function is its name plus its labels | Overloads make errors and completion ambiguous |
+| Completion (513) | Offers only what the checker accepts at the cursor | A hand-kept table: it drifts from the checker and offers code that does not compile |
 | Algebra (3) | Operation values: `SegTree(+)`, `SparseTable(min)` | A zoo of wrapper types (`Sum`, `Max`, `Semiring`) to learn and import |
 | Checks (100, 148) | Trap in checked builds, no checks in release by default | Checks on in release: they cost judge time and turn a wrong answer into another wrong answer |
 | Library (`AGENTS.md`, chapter 12) | No privileged stdlib | Compiler special cases: user code could never feel as built in, and every special case is a rule to learn |
