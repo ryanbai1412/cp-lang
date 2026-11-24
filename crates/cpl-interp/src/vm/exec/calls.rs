@@ -988,6 +988,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     sync_reachable_to_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
                     self.show_lent()?;
                 }
+                let shown = self.show_held_captures(&caps)?;
                 // The `mut` params' values, for their arg slots once the frame is synced.
                 let mut lent_back: Vec<Value> = Vec::new();
                 // A variable the closure holds by reference is lent to its frame
@@ -1182,6 +1183,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     res?
                 };
+                self.hide_held_captures(shown)?;
                 if lends {
                     self.hide_lent()?;
                     let (lent, base) = (&self.lent, self.base);

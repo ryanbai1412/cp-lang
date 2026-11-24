@@ -5,6 +5,7 @@ use crate::value::Value;
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Interp;
+use crate::Part;
 use cpl_ir::{Place, PlaceKind};
 use std::rc::Rc;
 
@@ -129,6 +130,42 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             let place = self.lender(&part)?;
             self.stack[held] = std::mem::replace(place, Value::Moved);
+        }
+        Ok(())
+    }
+
+    /// A closure holding by reference a place an outer frame holds lent
+    /// reads it in the place: the holder puts it back for the call.
+    pub(super) fn show_held_captures(
+        &mut self,
+        caps: &[crate::CaptureVal],
+    ) -> crate::Res<Vec<(usize, Rc<Part>)>> {
+        let mut shown = Vec::new();
+        for cap in caps {
+            let (global, at) = match *cap {
+                crate::CaptureVal::StackRef(at) => (false, at),
+                crate::CaptureVal::GlobalRef(id) => (true, id),
+                _ => continue,
+            };
+            let held = (self.lent.iter().rev())
+                .find(|(_, p)| p.steps.is_empty() && p.global == global && p.at == at)
+                .map(|(held, p)| (*held, Rc::clone(p)));
+            let Some((held, part)) = held else { continue };
+            if !matches!(self.lender(&part)?, Value::Moved)
+                || matches!(self.stack[held], Value::Alias(..) | Value::Part(_))
+            {
+                continue;
+            }
+            let value = std::mem::replace(&mut self.stack[held], Value::Alias(global, at));
+            *self.lender(&part)? = value;
+            shown.push((held, part));
+        }
+        Ok(shown)
+    }
+
+    pub(super) fn hide_held_captures(&mut self, shown: Vec<(usize, Rc<Part>)>) -> crate::Res<()> {
+        for (held, part) in shown.into_iter().rev() {
+            self.stack[held] = std::mem::replace(self.lender(&part)?, Value::Moved);
         }
         Ok(())
     }
