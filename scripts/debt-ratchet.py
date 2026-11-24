@@ -1655,10 +1655,11 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
 def silent_unknowns(root: Path) -> list[str]:
     """Expressions in std, the corpus and spec/conformance the checker typed `Unknown`
     with no diagnostic there, per file in crates/cpl-conform/silent_unknowns.txt
-    (`<count> <file>`), which tests/silent_unknowns.rs keeps equal to the checker's facts."""
+    (`<count> <file>`), which tests/silent_unknowns.rs keeps equal to the checker's facts.
+    Its `cause:` rows count the same spans again by cause, so they are left out."""
     p = root / "crates/cpl-conform/silent_unknowns.txt"
     rows = [line.split(" ", 1) for line in _lines(p)] if p.is_file() else []
-    return [file for n, file in rows for _ in range(int(n))]
+    return [file for n, file in rows if not file.startswith("cause:") for _ in range(int(n))]
 
 
 def corpus_known(root: Path) -> list[str]:
