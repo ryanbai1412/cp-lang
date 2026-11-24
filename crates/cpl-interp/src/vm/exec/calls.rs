@@ -596,14 +596,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 arg_buf[..n].copy_from_slice(&regs_i[ab..ab + n]);
                 let needs_stack = callee.needs_stack;
                 if chunk.has_by_ref_closure {
-                    sync_to_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
+                    sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 }
                 let saved_base = self.base;
                 if needs_stack {
@@ -636,14 +629,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.call_frames.pop();
                 regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 if chunk.has_by_ref_closure {
-                    sync_from_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
+                    sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 }
                 regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 self.keep_result(chunk, cur_pc, regs_i, regs_v);
@@ -748,14 +734,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 let needs_stack = callee.needs_stack;
                 if chunk.has_by_ref_closure {
-                    sync_to_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
+                    sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 }
                 let saved_base = self.base;
                 if needs_stack {
@@ -795,14 +774,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.call_frames.pop();
                 regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 if chunk.has_by_ref_closure {
-                    sync_from_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
+                    sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 }
                 if f.params.iter().any(|p| p.mutable) {
                     regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);

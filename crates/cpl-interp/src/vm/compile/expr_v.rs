@@ -676,6 +676,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 caps.push(CapSrc::GlobalVal(cap.outer as u16));
                             }
                         } else if cap.by_ref {
+                            self.ref_slots.push(cap.outer as u16);
                             let v = match self.slot_loc(cap.outer) {
                                 SlotLoc::V(r) => r,
                                 _ => u16::MAX,
@@ -1192,6 +1193,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn emit_fallback_stmt(&mut self, stmt: &'p Stmt) {
+        self.ref_all |= Self::stmt_mentions_slot(stmt, usize::MAX);
         let idx = self.fallback_stmts.len() as u32;
         self.fallback_stmts.push(stmt);
         let in_loop = !self.loops.is_empty();
@@ -1213,6 +1215,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn emit_fallback_expr_i(&mut self, expr: &'p Expr) -> u16 {
+        self.ref_all |= Self::expr_mentions_slot(expr, usize::MAX);
         if let Some(dst) = self.try_compile_apply_i(expr) {
             return dst;
         }
@@ -1394,6 +1397,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn emit_fallback_expr_v(&mut self, expr: &'p Expr) -> u16 {
+        self.ref_all |= Self::expr_mentions_slot(expr, usize::MAX);
         if let Some(dst) = self.try_compile_apply_v(expr) {
             return dst;
         }

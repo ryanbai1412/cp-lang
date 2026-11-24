@@ -1,5 +1,4 @@
 use super::compile::Compiler;
-use super::helpers::block_has_by_ref_closure;
 use crate::value::{SmallFieldKind, Value};
 use cpl_diag::Span;
 use cpl_ir::{
@@ -1657,6 +1656,8 @@ pub(crate) struct Chunk<'p> {
     pub guarded_domains: Vec<cpl_ir::DomainId>,
     pub needs_stack: bool,
     pub has_by_ref_closure: bool,
+    /// The slots `has_by_ref_closure` syncs around a call; `None` is all.
+    pub ref_slots: Option<Vec<u16>>,
     pub back_edges: Vec<BackEdge>,
     pub call_sites: Vec<CallSite<'p>>,
     /// The call ops, by pc in order, whose result a call site's `before`
@@ -1795,7 +1796,6 @@ impl<'p> CompiledProgram<'p> {
                     fchunk.param_count = f.params.len();
                     fchunk.ret_kind = None;
                     fchunk.guarded_domains = guarded_domains;
-                    fchunk.has_by_ref_closure = block_has_by_ref_closure(&f.body, program);
                     if fchunk.has_by_ref_closure {
                         fchunk.needs_stack = true;
                     }
@@ -1823,7 +1823,6 @@ impl<'p> CompiledProgram<'p> {
                 chunk.param_count = f.params.len();
                 chunk.ret_kind = ret_kind;
                 chunk.guarded_domains = guarded_domains;
-                chunk.has_by_ref_closure = block_has_by_ref_closure(&f.body, program);
                 if chunk.has_by_ref_closure {
                     chunk.needs_stack = true;
                 }
@@ -1851,7 +1850,6 @@ impl<'p> CompiledProgram<'p> {
                 chunk.param_count = def.params.len();
                 chunk.ret_kind = ret_kind;
                 chunk.guarded_domains = guarded_domains;
-                chunk.has_by_ref_closure = block_has_by_ref_closure(&def.body, program);
                 if chunk.has_by_ref_closure {
                     chunk.needs_stack = true;
                 }
@@ -1863,7 +1861,6 @@ impl<'p> CompiledProgram<'p> {
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let mut main = main_c.finish();
-        main.has_by_ref_closure = block_has_by_ref_closure(&program.main, program);
         if main.has_by_ref_closure {
             main.needs_stack = true;
         }
@@ -1875,7 +1872,6 @@ impl<'p> CompiledProgram<'p> {
             c.emit_const_i(done, 1, Span::default());
             c.emit(Op::RetI { src: done }, Span::default());
             let mut setup = c.finish();
-            setup.has_by_ref_closure = block_has_by_ref_closure(&program.setup, program);
             if setup.has_by_ref_closure {
                 setup.needs_stack = true;
             }

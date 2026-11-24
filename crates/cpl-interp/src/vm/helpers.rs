@@ -1,9 +1,8 @@
-use super::compile::Compiler;
 use super::ir::*;
 use crate::value::{Array, ArrayData, TupleVal, Value};
 use crate::{trap, Res, LENT};
 use cpl_diag::Span;
-use cpl_ir::{AssignOp, BinOp, Block, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
+use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
 
 /// The index expressions of `place`, outermost first, in the order the
@@ -17,10 +16,6 @@ pub(crate) fn place_indices<'p>(place: &'p Place, out: &mut Vec<&'p Expr>) {
             out.extend(indices);
         }
     }
-}
-
-pub(super) fn block_has_by_ref_closure(block: &Block, _program: &Program) -> bool {
-    Compiler::stmts_have_closure(&block.stmts)
 }
 
 pub(super) fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
@@ -87,18 +82,72 @@ pub(super) fn sync_to_stack(
     traced: bool,
 ) {
     for (slot, loc) in slot_map.iter().enumerate() {
-        if undeclared(traced, loc, &stack[base + slot]) {
-            continue;
+        slot_to_stack(slot, loc, regs_i, regs_v, stack, base, traced);
+    }
+}
+
+#[inline(always)]
+fn slot_to_stack(
+    slot: usize,
+    loc: &SlotLoc,
+    regs_i: &[i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+    traced: bool,
+) {
+    if undeclared(traced, loc, &stack[base + slot]) {
+        return;
+    }
+    // The tree-walker, which a fallback hands the value to, may have
+    // stopped with a trap before handing it back.
+    if traced && matches!(*loc, SlotLoc::V(r) if matches!(regs_v[r as usize], Value::Unit)) {
+        return;
+    }
+    stack[base + slot] = match *loc {
+        SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
+        _ => read_slot(loc, regs_i, regs_v),
+    };
+}
+
+/// Puts on the stack the locals a closure of `chunk` captures by reference,
+/// which a call may read or write there.
+pub(super) fn sync_refs_to_stack(
+    chunk: &Chunk,
+    regs_i: &[i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+) {
+    match &chunk.ref_slots {
+        None => sync_to_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced),
+        Some(slots) => {
+            for &slot in slots {
+                let slot = slot as usize;
+                let loc = &chunk.slot_map[slot];
+                slot_to_stack(slot, loc, regs_i, regs_v, stack, base, chunk.traced);
+            }
         }
-        // The tree-walker, which a fallback hands the value to, may have
-        // stopped with a trap before handing it back.
-        if traced && matches!(*loc, SlotLoc::V(r) if matches!(regs_v[r as usize], Value::Unit)) {
-            continue;
+    }
+}
+
+/// Takes back what `sync_refs_to_stack` put on the stack.
+pub(super) fn sync_refs_from_stack(
+    chunk: &Chunk,
+    regs_i: &mut [i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+) {
+    match &chunk.ref_slots {
+        None => sync_from_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced),
+        Some(slots) => {
+            for &slot in slots {
+                let slot = slot as usize;
+                let loc = &chunk.slot_map[slot];
+                slot_from_stack(slot, loc, regs_i, regs_v, stack, base, chunk.traced);
+            }
         }
-        stack[base + slot] = match *loc {
-            SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
-            _ => read_slot(loc, regs_i, regs_v),
-        };
     }
 }
 
@@ -126,26 +175,39 @@ pub(super) fn sync_from_stack(
     traced: bool,
 ) {
     for (slot, loc) in slot_map.iter().enumerate() {
-        if undeclared(traced, loc, &stack[base + slot]) {
-            continue;
+        slot_from_stack(slot, loc, regs_i, regs_v, stack, base, traced);
+    }
+}
+
+#[inline(always)]
+fn slot_from_stack(
+    slot: usize,
+    loc: &SlotLoc,
+    regs_i: &mut [i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+    traced: bool,
+) {
+    if undeclared(traced, loc, &stack[base + slot]) {
+        return;
+    }
+    match *loc {
+        SlotLoc::I(r, _) => regs_i[r as usize] = ScalarKind::unbox_val(&stack[base + slot]),
+        SlotLoc::OptI { val, some, .. } => {
+            let (v, s) = ScalarKind::unbox_opt(&stack[base + slot]);
+            regs_i[val as usize] = v;
+            regs_i[some as usize] = s;
         }
-        match *loc {
-            SlotLoc::I(r, _) => regs_i[r as usize] = ScalarKind::unbox_val(&stack[base + slot]),
-            SlotLoc::OptI { val, some, .. } => {
-                let (v, s) = ScalarKind::unbox_opt(&stack[base + slot]);
-                regs_i[val as usize] = v;
-                regs_i[some as usize] = s;
-            }
-            SlotLoc::SmallTuple { base: b, len, .. } => {
-                if let Value::Tuple(TupleVal::Boxed(fs)) = &stack[base + slot] {
-                    for (k, f) in fs.iter().take(len as usize).enumerate() {
-                        regs_i[b as usize + k] = ScalarKind::unbox_val(f);
-                    }
+        SlotLoc::SmallTuple { base: b, len, .. } => {
+            if let Value::Tuple(TupleVal::Boxed(fs)) = &stack[base + slot] {
+                for (k, f) in fs.iter().take(len as usize).enumerate() {
+                    regs_i[b as usize + k] = ScalarKind::unbox_val(f);
                 }
             }
-            SlotLoc::V(r) => {
-                regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
-            }
+        }
+        SlotLoc::V(r) => {
+            regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
         }
     }
 }

@@ -78,6 +78,10 @@ pub(super) struct Compiler<'p, 'f> {
     range_texts: Vec<&'p str>,
     places: Vec<PlacePath>,
     closure_specs: Vec<ClosureMakeSpec>,
+    /// The slots a closure made here captures by reference; `ref_all` when a
+    /// closure the tree-walker makes may capture any of them.
+    ref_slots: Vec<u16>,
+    ref_all: bool,
     feed_calls: Vec<FeedCallSpec>,
     fed_bodies: Vec<(LoopId, u32)>,
     consts_v: Vec<Value>,
@@ -169,6 +173,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             range_texts: Vec::new(),
             places: Vec::new(),
             closure_specs: Vec::new(),
+            ref_slots: Vec::new(),
+            ref_all: false,
             feed_calls: Vec::new(),
             fed_bodies: Vec::new(),
             consts_v: Vec::new(),
@@ -241,7 +247,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ret_kind: None,
             guarded_domains: Vec::new(),
             needs_stack,
-            has_by_ref_closure: false,
+            has_by_ref_closure: self.ref_all || !self.ref_slots.is_empty(),
+            ref_slots: (!self.ref_all).then(|| {
+                let mut slots = self.ref_slots;
+                slots.sort_unstable();
+                slots.dedup();
+                slots
+            }),
             back_edges: self.back_edges,
             call_sites: self.call_sites,
             keeps: {

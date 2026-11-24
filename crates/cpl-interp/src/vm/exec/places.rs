@@ -1107,6 +1107,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         unreachable!("scalar yield into SmallTuple");
                     }
                 }
+                // The body may run a yielded closure that writes this frame's locals.
+                if chunk.has_by_ref_closure {
+                    let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                }
                 let saved_base = self.base;
                 self.feeding();
                 self.base = ctx.caller_base;
@@ -1120,6 +1125,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     None,
                 );
                 self.base = saved_base;
+                if chunk.has_by_ref_closure {
+                    let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                }
                 match body_res? {
                     ExecExit::FeedNext if back != 0 => {
                         let val = read_slot(
@@ -1144,6 +1153,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
                 let ctx = fed.as_deref_mut().expect("FeedYieldV outside fed call");
                 store_fed_val(ctx, vm_regs_i, val);
+                // The body may run a yielded closure that writes this frame's locals.
+                if chunk.has_by_ref_closure {
+                    let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                }
                 let saved_base = self.base;
                 self.feeding();
                 self.base = ctx.caller_base;
@@ -1157,6 +1171,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     None,
                 );
                 self.base = saved_base;
+                if chunk.has_by_ref_closure {
+                    let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                }
                 match body_res? {
                     ExecExit::FeedNext if back != 0 => {
                         let val = read_slot(
@@ -1189,6 +1207,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
                 for item in items {
                     store_fed_val(ctx, vm_regs_i, item);
+                    // The body may run a yielded closure that writes this frame's locals.
+                    if chunk.has_by_ref_closure {
+                        let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                        sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                    }
                     let saved_base = self.base;
                     self.feeding();
                     self.base = ctx.caller_base;
@@ -1202,6 +1225,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         None,
                     );
                     self.base = saved_base;
+                    if chunk.has_by_ref_closure {
+                        let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                        sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                    }
                     match body_res? {
                         ExecExit::FeedNext => {}
                         ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
