@@ -1,0 +1,33 @@
+# Cases for scripts/corpus.py make (problem-packages/R9).
+
+[[case]]
+input = "2\nNKP\n3 3 5 1\nNKP\n2 6 5 3\n"
+
+[[case]]
+input = "2\nB\n2 8 3 6\nB\n2 8 5 5\n"
+
+[[case]]
+input = "2\nQ\n3 3 4 5\nQR\n4 1 1 4\n"
+
+[[case]]
+seed = 1
+size = 1
+
+[[case]]
+seed = 2
+size = 10
+
+[[case]]
+seed = 3
+size = 1000
+
+[[case]]
+seed = 4
+size = 100000000
+
+[[case]]
+seed = 5
+size = 100000000
+
+[[case]]
+args = ["--max"]

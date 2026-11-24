@@ -12,11 +12,15 @@
   {"id": "5202017", "language": "CPP17", "result": "WA", "time": 0.054284141, "memory_kb": 3436.0, "file": "corpus/submissions/5202017.cpp"},
   {"id": "5203818", "language": "CPP17", "result": "WA", "time": 0.05741056, "memory_kb": 3428.0, "file": "corpus/submissions/5203818.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/egoi22p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus (every submission is RTE or WA). orig.cpp is written from the statement: slider cases are at most 3 moves, the step-only sets use the knight closed form plus a bounded king or pawn search. It matches a windowed BFS over all 63 piece sets on small gen.py cases, and an exact BFS for every offset with |dr|, |dc| <= 120 for each step-only set."
 }
