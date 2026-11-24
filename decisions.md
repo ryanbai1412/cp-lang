@@ -8576,7 +8576,10 @@ Tool gaps `lint expr Cpp` and `trace expr Cpp` are intended debt: a lint has not
 - **Reverse.** Take `text: Indexed<K, T>` and yield `K`, giving up streamed text.
 
 
-## 459. A printed `HashMap` or `HashSet` shows its entries in key order (compiler, 2026-11-23)
+## 463. A printed `HashMap` or `HashSet` shows its entries in key order (compiler, 2026-11-23; superseded by 460)
+
+Superseded by 460: spec ruled hash containers are not `Show`, so this entry is history; the key-order print goes when E0606 lands.
+
 
 Walking a hash table has no defined order (containers §2.8), but printing one is output, and the interpreter and the C++ must agree on every program (goal 5). The interpreter's tables are ordered, while the C++ table walks in salted slot order, which changes from run to run. So `print(h)` differed between engines and between C++ runs; the variant probes in `cf2053f`, `cf2066c` and `ucup4s25c` hit exactly this. Now the C++ sorts pointers to the entries by key before printing, an \(O(n \log n)\) cost on output that is already \(O(n)\). A `for` walk over a hash table keeps no defined order.
 Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash table then shows slot order again.
