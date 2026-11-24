@@ -8966,3 +8966,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `impl Show for Counter<K: Ord, V>` prints `k=v` sorted by key, \(O(n \log n)\), the same on both engines. A `Counter` whose keys aren't `Ord` is not `Show`, like a `HashMap` (decision 460).
 - **Why.** The impl walked `items`, which are in hash order, so the interpreter and the C++ printed one `Counter` differently. A tally is printed often, and its keys are usually ordered, so key order serves better than taking `Show` away.
 - **Reverse.** Drop `Show` from `Counter` as 460 did for `HashMap`, and name `c.items.sorted()` in the E0606 help.
+
+## 561. (reserved, stress)
