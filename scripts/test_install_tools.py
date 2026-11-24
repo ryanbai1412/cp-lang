@@ -81,6 +81,8 @@ class InstallToolsTest(unittest.TestCase):
         self.assertIn("actions/cache/save@v4", action)
         self.assertNotRegex(action, r"uses: actions/cache@")
         self.assertIn("scripts/install-tools.sh", action)
+        # A changed recipe misses, so the next run proves it on every runner.
+        self.assertIn("hashFiles('scripts/install-tools.sh')", action)
 
 
 if __name__ == "__main__":

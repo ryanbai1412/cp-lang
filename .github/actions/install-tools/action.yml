@@ -1,7 +1,7 @@
 name: install-tools
 description: >
   The one way CI installs a tool: each pinned `name@version` is restored from
-  actions/cache, keyed on the OS, arch and versions, so a hit makes no network
+  actions/cache, keyed on the OS, arch, versions and the release recipes, so a hit makes no network
   call. Only a miss downloads each tool's prebuilt release through
   scripts/install-tools.sh (retry.sh), and saves it at once, so a job that
   fails later still leaves the cache for the next run. debt-ratchet's
@@ -17,7 +17,7 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ~/.cpl-tools
-        key: cpl-tools-${{ runner.os }}-${{ runner.arch }}-${{ inputs.tools }}
+        key: cpl-tools-${{ runner.os }}-${{ runner.arch }}-${{ inputs.tools }}-${{ hashFiles('scripts/install-tools.sh') }}
     - name: Install ${{ inputs.tools }} (cache miss)
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
