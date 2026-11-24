@@ -380,11 +380,13 @@ impl<'a> Lowerer<'a> {
         };
         let saved_cx = self.cx.clone();
         let saved_outer = self.outer_cxs.clone();
+        let saved_closures = self.closures.len();
         let probed = self.expr(e, hint.as_ref());
         self.call_hint.1 = None;
         self.cx = saved_cx;
         self.outer_cxs = saved_outer;
         self.diags.truncate(diag_len);
+        self.drop_closures_from(saved_closures);
         (probed.ty != Ty::Error).then_some(probed.ty)
     }
 }

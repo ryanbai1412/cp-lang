@@ -136,3 +136,35 @@ fn laws_hold_lowers_its_named_samples_in_the_order_written() {
         );
     }
 }
+
+/// How many `Error` expressions survive lowering `source`, which checks clean.
+fn recovered(source: &str) -> usize {
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").unwrap()).unwrap();
+    let mut errors = 0;
+    let bodies = program.fns.iter().map(|f| &f.body);
+    for body in bodies.chain(program.closures.iter().map(|c| &c.body)) {
+        cpl_ir::walk::deep_exprs(body, &mut |e| {
+            errors += matches!(e.kind, cpl_ir::ExprKind::Error) as usize;
+        });
+    }
+    errors
+}
+
+#[test]
+fn a_lambda_lowered_only_to_learn_its_type_leaves_no_closure() {
+    let source = "struct Tw<W>(pub a: Int)\n\
+        impl Index for Tw<W>:\n    let count = W.count\n    @get fn ord(self) -> Int = a\n    fn nth(k: Int) -> Tw<W> = Tw(k)\n\
+        domain V = 0..3\n\
+        print(Tw<V>.filter(x => x.a > 0).count())\n";
+    assert_eq!(recovered(source), 0);
+    assert_eq!(runs(source, ""), "2\n");
+}
+
+#[test]
+fn a_generator_probed_before_its_yield_type_is_known_makes_no_struct() {
+    let source = "print([3, 1, 4].window_fold(2, max).collect())\n";
+    assert_eq!(recovered(source), 0);
+    assert_eq!(runs(source, ""), "3 4\n");
+}

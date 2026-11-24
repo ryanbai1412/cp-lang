@@ -512,6 +512,9 @@ impl<'a> Lowerer<'a> {
                         return call;
                     }
                     let gargs = self.resolve_gen_args_for_struct(gid, gtypes);
+                    if gargs.contains(&GenArg::Ty(Ty::Error)) {
+                        return self.err_expr(span);
+                    }
                     let decl = self.gen_structs[gid].decl;
                     if gargs.len() < decl.generics.len() {
                         let seed = decl
