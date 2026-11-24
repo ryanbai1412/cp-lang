@@ -314,14 +314,7 @@ class GatesTest(unittest.TestCase):
 
         class Out:
             def __init__(self, out):
-                self.stdout, self.stderr = out, ""
-
-        def sh(cmd, **_):
-            if cmd[1:] == ["--help"]:
-                return Out("Usage\n  run   runs it\n")
-            if cmd[1:] == ["explain", "--json"]:
-                return Out(json.dumps([{"code": "E0001", "title": "a node id", "summary": "`borrow`"}]))
-            return Out("this panics")
+                self.stdout, self.stderr, self.returncode = out, "", 0
 
         class Lsp:
             def __init__(self, cpl):
@@ -330,9 +323,42 @@ class GatesTest(unittest.TestCase):
             def hovers(self, path, src):
                 yield "an inout param"
 
-        with Tree({"spec/conformance/a.cp": "print(1)\n"}), mock.patch.object(tv, "sh", sh), mock.patch.object(tv, "Lsp", Lsp):
+        glossary = ("| Term | Meaning | Never |\n|---|---|---|\n"
+                    "| piece | p | segment (except in segment trees), interval (except the `interval` module) |\n"
+                    "| position | p | index (as a type name), node id |\n"
+                    "| `None` | v | `none`, `nil` |\n"
+                    "| trap | t | panic |\n"
+                    "| `mut` | m | `inout` |\n")
+        rules = tv.banned(glossary, spec=tv.prose("none of the cases; an index"))
+        self.assertEqual([s for _, s, _, _ in rules], ["segment", "interval", "node id", "`nil`", "panic", "`inout`"])
+        hits = lambda text: [s for p, s, _, _ in rules if p.search(tv.prose(text))]
+        self.assertEqual(hits("a segment tree, a `segment`, it panicked, Node IDs, none, nil"), ["node id", "`nil`", "panic"])
+        self.assertEqual(hits("two segments"), ["segment"])
+        self.assertEqual([m for *_, m in rules if m], [{"interval"}])
+
+        problem = "/".join(("corpus/problems", "p1"))
+        port = f"{problem}/port.cp"
+        files = {port: "print(2)\n", f"{problem}/notes.md": "a segment\n", "std/interval.cp": "/// merged intervals\nfn f() {}\n", "std/window.cp": "// an interval\n/// a movable interval\n", "spec/conformance/a.cp": "print(1)\n", "spec/conformance/b.cp": "// expect: E0302\nlet x: Int = 1.5\n",
+                 "spec/GLOSSARY.md": glossary,
+                 "crates/cpl-diag/src/msgs/check.rs": 'super::msgs! {\n    A = TYPE_MISMATCH, "a `{}` panics";\n    B = "L0001", "an inout `{}`";\n}\n'}
+
+        def sh(cmd, **_):
+            if cmd[1:] == ["--help"]:
+                return Out("Usage\n  run   runs it\n")
+            if cmd[1:] == ["explain", "--json"]:
+                return Out(json.dumps([{"code": "E0001", "title": "a node id", "summary": "`inout`"}]))
+            if cmd[1:3] == ["check", "--json"]:
+                if cmd[3].endswith("port.cp"):
+                    return Out("")
+                d = {"code": "E0302", "start": {"line": 2}, "message": "a nil here", "fixes": [{"text": "nil"}]}
+                return Out(json.dumps({"files": [{"diagnostics": [d]}]}))
+            return Out("this panics")
+
+        with Tree(files), mock.patch.object(tv, "sh", sh), mock.patch.object(tv, "Lsp", Lsp):
             got = sorted(p.where for p in run("tool-vocab"))
-        self.assertEqual(got, ["cpl explain E0001 (title)", "cpl run --help", "hover in spec/conformance/a.cp"])
+        self.assertEqual(got, [f"cpl check {port}", "cpl check spec/conformance/b.cp:2 E0302",
+                               "cpl explain E0001 (title)", "cpl run --help", "crates/cpl-diag/src/msgs/check.rs:2 A",
+                               "crates/cpl-diag/src/msgs/check.rs:3 B", "hover in spec/conformance/a.cp", "std/window.cp:2"])
 
     def test_coverage(self):
         import importlib

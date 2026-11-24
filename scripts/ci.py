@@ -230,7 +230,7 @@ STEPS = {
         gate("speed", fail="the conformance and spec-block suites went over their CPU budget; see above"),
         gate("explain-copies", "--max", "0",
              fail="cpl explain claims a copy the C++ doesn't make; see above"),
-        gate("tool-vocab", fail="help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"),
+        gate("tool-vocab", fail="help, explain, an error, a std doc or a hover uses a spelling spec/GLOSSARY.md bans; see above"),
         gate("flakes", "--runs", "2", fail="a conformance case changed verdict between runs; see above"),
         gate("case-bugs", fail="a known-gap case fails because of the case itself (conformance/R3); fix the case"
              " named above, then rerun: uv run scripts/spec-gate.py case-bugs"),
