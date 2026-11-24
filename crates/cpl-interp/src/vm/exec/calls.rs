@@ -600,7 +600,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.tick(spans[cur_pc])?;
                 self.stack_left(spans[cur_pc], Some(&f.name))?;
                 let Some(callee) = compiled.fns[fn_id as usize].as_ref() else {
-                    return Err(interp_failed(spans[cur_pc]));
+                    return self.no_body(fn_id as usize, spans[cur_pc]);
                 };
                 let ab = arg_base as usize;
                 let mut arg_buf = [0i64; 8];
@@ -752,7 +752,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.tick(spans[cur_pc])?;
                 self.stack_left(spans[cur_pc], Some(&f.name))?;
                 let Some(callee) = compiled.fns[fn_id as usize].as_ref() else {
-                    return Err(interp_failed(spans[cur_pc]));
+                    return self.no_body(fn_id as usize, spans[cur_pc]);
                 };
                 let mut ni = 0usize;
                 let mut nv = 0usize;

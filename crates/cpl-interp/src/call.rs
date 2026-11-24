@@ -71,6 +71,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     /// Calls a fn; with `fed`, each value it yields runs that loop's body.
+    /// The trap for a call to a judge's or `@cpp` fn: only the judge or
+    /// the C++ build has its body.
+    pub(crate) fn no_body<T>(&self, id: FnId, span: Span) -> Res<T> {
+        let cpp = self.program.cpp_bodies.iter().any(|(c, _)| *c == id);
+        let said = if cpp {
+            &cpl_diag::msgs::interp::CPP_ONLY
+        } else {
+            &cpl_diag::msgs::interp::NO_GRADER
+        };
+        trap(span, said.at(&[]))
+    }
+
     pub(super) fn call_feeding(
         &mut self,
         id: FnId,
@@ -155,13 +167,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     ) -> Res<Value> {
         let f = &self.program.fns[id];
         if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
-            let cpp = self.program.cpp_bodies.iter().any(|(c, _)| *c == id);
-            let said = if cpp {
-                &cpl_diag::msgs::interp::CPP_ONLY
-            } else {
-                &cpl_diag::msgs::interp::NO_GRADER
-            };
-            return trap(span, said.at(&[]));
+            return self.no_body(id, span);
         }
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
