@@ -17,10 +17,7 @@ impl<'a> Lowerer<'a> {
                 return Some(Ty::Pos(d));
             }
         }
-        if !self.checked_names_known(checked) {
-            return None;
-        }
-        let written = written(checked, e.span)?;
+        let written = self.written(checked, e.span)?;
         let diags = self.diags.len();
         let ty = self.resolve_ty(&written);
         self.diags.truncate(diags);
@@ -38,35 +35,6 @@ impl<'a> Lowerer<'a> {
 }
 
 impl Lowerer<'_> {
-    /// False when writing `ty` out would not name what the checker meant:
-    /// a param outside the instance's env, or a generic struct, whose
-    /// written form would instantiate a new struct, not name this value's.
-    fn checked_names_known(&self, ty: &Checked) -> bool {
-        match ty {
-            Checked::Param(n) => self.gen_env.contains_key(n.as_str()),
-            Checked::Named { name, args } => {
-                let generic = !args.is_empty()
-                    && (self.view_struct(name).is_some()
-                        || matches!(
-                            self.mod_syms[self.cur_mod].get(name.as_str()),
-                            Some(Sym::GenStruct(_))
-                        ));
-                !generic && args.iter().all(|t| self.checked_names_known(t))
-            }
-            Checked::Array { index, elem } => {
-                index.iter().all(|t| self.checked_names_known(t)) && self.checked_names_known(elem)
-            }
-            Checked::Optional(t) => self.checked_names_known(t),
-            Checked::Tuple(ts) => ts.iter().all(|t| self.checked_names_known(t)),
-            Checked::Record(fs) => fs.iter().all(|(_, t)| self.checked_names_known(t)),
-            Checked::Fn { params, ret } => {
-                params.iter().all(|p| self.checked_names_known(&p.ty))
-                    && self.checked_names_known(ret)
-            }
-            _ => true,
-        }
-    }
-
     /// The checker's facts around `at` in the module being lowered: an
     /// imported body's from the caller's source, else the module's own.
     fn checked_facts(&mut self, at: Span) -> std::sync::Arc<cpl_check::Facts> {
@@ -129,47 +97,67 @@ fn product_name(ty: &Checked) -> Option<String> {
     }
 }
 
-/// `ty` as the type a program would write for it, if it has a spelling.
-fn written(ty: &Checked, at: Span) -> Option<ast::Type> {
-    let name = |text: &str| ast::Name {
-        text: text.to_string(),
-        span: at,
-    };
-    let named = |text: &str, args| ast::TypeKind::Named {
-        name: name(text),
-        args,
-    };
-    let all = |tys: &[Checked]| {
-        let mut out = Vec::with_capacity(tys.len());
-        for t in tys {
-            out.push(written(t, at)?);
-        }
-        Some(out)
-    };
-    let kind = match ty {
-        Checked::Int | Checked::Range { .. } => named("Int", Vec::new()),
-        Checked::I128 => named("I128", Vec::new()),
-        Checked::U64 => named("U64", Vec::new()),
-        Checked::Float => named("F64", Vec::new()),
-        Checked::Bool => named("Bool", Vec::new()),
-        Checked::Char => named("Char", Vec::new()),
-        Checked::Str => named("Str", Vec::new()),
-        Checked::Pos(n) | Checked::Param(n) => named(n, Vec::new()),
-        Checked::Named { name, args } => named(cpl_check::written_name(name), all(args)?),
-        Checked::Array { index, elem } => ast::TypeKind::Array {
-            index: all(index)?,
-            elem: Box::new(written(elem, at)?),
-        },
-        Checked::Optional(t) => ast::TypeKind::Optional(Box::new(written(t, at)?)),
-        Checked::Tuple(items) => ast::TypeKind::Tuple(all(items)?),
-        Checked::Record(fields) => {
-            let mut out = Vec::with_capacity(fields.len());
-            for (n, t) in fields {
-                out.push((name(n), written(t, at)?));
+impl Lowerer<'_> {
+    /// `ty` as the type a program would write for it, if it has a spelling
+    /// that names what the checker meant: not a param outside the instance's
+    /// env, nor a generic struct, whose written form would make a new one.
+    fn written(&self, ty: &Checked, at: Span) -> Option<ast::Type> {
+        let name = |text: &str| ast::Name {
+            text: text.to_string(),
+            span: at,
+        };
+        let named = |text: &str, args| ast::TypeKind::Named {
+            name: name(text),
+            args,
+        };
+        let all = |tys: &[Checked]| {
+            let mut out = Vec::with_capacity(tys.len());
+            for t in tys {
+                out.push(self.written(t, at)?);
             }
-            ast::TypeKind::Record(out)
-        }
-        _ => return None,
-    };
-    Some(ast::Type { kind, span: at })
+            Some(out)
+        };
+        let plain = match ty {
+            Checked::Int | Checked::Range { .. } => Some("Int"),
+            Checked::I128 => Some("I128"),
+            Checked::U64 => Some("U64"),
+            Checked::Float => Some("F64"),
+            Checked::Bool => Some("Bool"),
+            Checked::Char => Some("Char"),
+            Checked::Str => Some("Str"),
+            Checked::Param(n) if !self.gen_env.contains_key(n.as_str()) => return None,
+            Checked::Pos(n) | Checked::Param(n) => Some(n.as_str()),
+            _ => None,
+        };
+        let kind = match ty {
+            _ if plain.is_some() => named(plain.unwrap_or_default(), Vec::new()),
+            Checked::Named { name, args } => {
+                let generic = !args.is_empty()
+                    && (self.view_struct(name).is_some()
+                        || matches!(
+                            self.mod_syms[self.cur_mod].get(name.as_str()),
+                            Some(Sym::GenStruct(_))
+                        ));
+                if generic {
+                    return None;
+                }
+                named(cpl_check::written_name(name), all(args)?)
+            }
+            Checked::Array { index, elem } => ast::TypeKind::Array {
+                index: all(index)?,
+                elem: Box::new(self.written(elem, at)?),
+            },
+            Checked::Optional(t) => ast::TypeKind::Optional(Box::new(self.written(t, at)?)),
+            Checked::Tuple(items) => ast::TypeKind::Tuple(all(items)?),
+            Checked::Record(fields) => {
+                let mut out = Vec::with_capacity(fields.len());
+                for (n, t) in fields {
+                    out.push((name(n), self.written(t, at)?));
+                }
+                ast::TypeKind::Record(out)
+            }
+            _ => return None,
+        };
+        Some(ast::Type { kind, span: at })
+    }
 }
