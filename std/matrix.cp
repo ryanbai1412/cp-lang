@@ -9,8 +9,8 @@ use std.algebra.{Monoid, Semiring}
 use std.math.{mul_mod, bit, ceil_div}
 use std.mod.{Mod}
 use std.rand.{Rng}
-use std.spec.{berlekamp_massey}
 use std.seq.{collect}
+use std.spec.{berlekamp_massey}
 
 const SEED = 998_244_353
 const RAND_HI = 2_000_000_000
@@ -337,7 +337,8 @@ pub struct Mat<T>:
                 if i == r: continue
                 let f = aug[i * stride + col]
                 if Mat<T>.negligible(f, e): continue
-                for c in col..=k: aug[i * stride + c] = aug[i * stride + c] - f * aug[r * stride + c]
+                for c in col..=k: aug[i * stride + c] = aug[i * stride + c] -
+                    f * aug[r * stride + c]
             pivot_row[col] = r
             r += 1
         for i in r..rows:
@@ -403,7 +404,8 @@ pub struct Mat<T>:
                 if i == col: continue
                 let f = aug[i * stride + col]
                 if Mat<T>.negligible(f, e): continue
-                for c in col..stride: aug[i * stride + c] = aug[i * stride + c] - f * aug[col * stride + c]
+                for c in col..stride: aug[i * stride + c] = aug[i * stride + c] -
+                    f * aug[col * stride + c]
         var out = List.filled(n * n, T.zero)
         for i in 0..n:
             for j in 0..n: out[i * n + j] = aug[i * stride + n + j]
@@ -627,12 +629,17 @@ impl Mul for Mat<T>:
                                 for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
                     return Mat(r, c, out)
         let g = a.ring!
+        if let flat = g.flat:
+            if let d = flat(a.data, b.data, r, m, c): return Mat(r, c, d, a.ring)
         var acc = List.filled(r * c, g.zero)
         for i in 0..r:
             for k in 0..m:
                 let f = a.data[i * m + k]
                 if f == g.zero: continue
-                for j in 0..c: acc[i * c + j] = g.plus(acc[i * c + j], g.times(f, b.data[k * c + j]))
+                for j in 0..c: acc[i * c + j] = g.plus(
+                    acc[i * c + j],
+                    g.times(f, b.data[k * c + j]),
+                )
         Mat(r, c, acc, a.ring)
 
 impl Pow for Mat<T>:
@@ -649,7 +656,13 @@ impl Pow for Mat<T>:
 
 /// The `(zero, one, add, mul)` a non-default `Mat(over:)` multiplies under. On `?W` entries the
 /// semiring over `W` is lifted so `None` is the zero, absorbing under `mul`.
-struct Ring<T>(zero: T, one: T, plus: (T, T) -> T, times: (T, T) -> T)
+struct Ring<T>:
+    zero: T
+    one: T
+    plus: (T, T) -> T
+    times: (T, T) -> T
+    /// The whole product at once, row by row, or `None` to run the loop: a [`TropicalProduct`]'s.
+    flat: ?((List<T>, List<T>, Int, Int, Int) -> ?List<T>) = None
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
@@ -665,12 +678,78 @@ fn ring_of<T, S>(over: S) -> ?Ring<T>:
 fn lift_ring<W, S>(over: S) -> Ring<?W>:
     let add = Monoid<W>.of(over.add)
     let mul = Monoid<W>.of(over.mul)
-    Ring(
+    var g = Ring(
         None,
         Some(mul.id),
         (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(add.op(x, y)) else: a) else: b,
         (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(mul.op(x, y)) else: None) else: None,
     )
+    if W: TropicalProduct:
+        if same(over.mul, +):
+            if same(over.add, max):
+                g.flat = Some(
+                    (
+                        a: List<?W>,
+                        b: List<?W>,
+                        r: Int,
+                        m: Int,
+                        c: Int,
+                    ) => W.tropical(a, b, r, m, c, true)
+                )
+            elif same(over.add, min):
+                g.flat = Some(
+                    (
+                        a: List<?W>,
+                        b: List<?W>,
+                        r: Int,
+                        m: Int,
+                        c: Int,
+                    ) => W.tropical(a, b, r, m, c, false)
+                )
+    g
+
+/// A number type whose `Mat` products under `Semiring(max, +)` and `Semiring(min, +)` (entries
+/// `?Self`, `None` the zero) run as one flat pass; `Int` has one. A user number type joins by
+/// implementing it the same way.
+pub trait TropicalProduct:
+    /// The `r x c` product of the `r x m` matrix `a` and the `m x c` matrix `b`, both row by row,
+    /// under `max` (`most`) or `min`, and `+`; or `None` when this type has no fast product for these
+    /// entries (then `Mat` runs its loop, which traps on an overflow).
+    fn tropical(a: List<?Self>, b: List<?Self>, r: Int, m: Int, c: Int, most: Bool) -> ?List<?Self>
+
+impl TropicalProduct for Int:
+    /// While every entry is within 2^60 of 0. `None` is held as -2^62 (2^62 under `min`), so no
+    /// add can overflow, the pass has no branch, and a sum with `None` stays past every sum of two
+    /// entries; past the bound it is `None`, and the loop traps on an overflow as written.
+    fn tropical(a: List<?Int>, b: List<?Int>, r: Int, m: Int, c: Int, most: Bool) -> ?List<?Int>:
+        let bound = 1 << 60
+        let far = if most: -(1 << 62) else: 1 << 62
+        var (lo, hi) = (0, 0)
+        var fa = List.filled(r * m, far)
+        var fb = List.filled(m * c, far)
+        for i in 0..r * m:
+            if let x = a[i]:
+                (lo, hi) = (min(lo, x), max(hi, x))
+                fa[i] = x
+        for i in 0..m * c:
+            if let x = b[i]:
+                (lo, hi) = (min(lo, x), max(hi, x))
+                fb[i] = x
+        if lo < -bound or hi > bound: return None
+        var out = List.filled(r * c, far)
+        unchecked:
+            for i in 0..r:
+                let oi = i * c
+                for k in 0..m:
+                    let f = fa[i * m + k]
+                    if f == far: continue
+                    let bk = k * c
+                    if most:
+                        for j in 0..c: out[oi + j] = max(out[oi + j], f + fb[bk + j])
+                    else:
+                        for j in 0..c: out[oi + j] = min(out[oi + j], f + fb[bk + j])
+        let edge = far / 2
+        Some([if (v >= edge) == most: Some(v) else: None for v in out])
 
 /// Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
 /// Every operation is \(O(W)\) where W <= 63 (`merge` is \(O(W \cdot \mathit{rank})\)).
@@ -1196,11 +1275,10 @@ pub struct PrefixXorBasis:
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1)), (0, 1, Mod(1))]; sparse_det(2, e) == Mod<998244353>(0)`
 pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
     assert n >= 0, "sparse_det requires n >= 0"
-    for (
-        r,
-        c,
-        _,
-    ) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_det entry outside 0..n"
+    for (r, c, _) in entries: assert 0 <= r and
+        r < n and
+        0 <= c and
+        c < n, "sparse_det entry outside 0..n"
     if n == 0: return Mod<P>(1)
     var rng = Rng(SEED)
     for _ in 0..WIEDEMANN_TRIES:
@@ -1228,11 +1306,10 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
 pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>:
     assert n >= 0, "sparse_solve requires n >= 0"
     assert b.len == n, "sparse_solve requires b.len == n"
-    for (
-        r,
-        c,
-        _,
-    ) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_solve entry outside 0..n"
+    for (r, c, _) in entries: assert 0 <= r and
+        r < n and
+        0 <= c and
+        c < n, "sparse_solve entry outside 0..n"
     if n == 0: return Some([])
     var rng = Rng(SEED)
     for _ in 0..WIEDEMANN_TRIES:
@@ -1438,7 +1515,11 @@ fn xor_basis_span_kth_and_merge():
     assert xb.rank == 2
     // Span of {3, 5} is {0, 3, 5, 6}
     assert xb.max_xor() == 6 and xb.max_xor(1) == 7 and xb.min_xor(7) == 1
-    assert xb.kth(0) == 0 and xb.kth(1) == 3 and xb.kth(2) == 5 and xb.kth(3) == 6 and xb.kth(4) == None
+    assert xb.kth(0) == 0 and
+        xb.kth(1) == 3 and
+        xb.kth(2) == 5 and
+        xb.kth(3) == 6 and
+        xb.kth(4) == None
     var other = XorBasis.new()
     assert other.add(8)
     xb.merge(other)
