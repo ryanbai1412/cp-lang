@@ -70,7 +70,7 @@ helix-smoke cpl="target/debug/cpl":
 zed-smoke cpl="target/debug/cpl":
     editors/zed/smoke.sh "$(realpath {{cpl}})"
 
-tree-sitter-smoke:
+# Parse the tree-sitter grammar's smoke corpustree-sitter-smoke:
     editors/tree-sitter-cp/smoke.sh
 
 # The VS Code extension's unit, grammar and host tests (CI: ci.yml `vscode`).
@@ -112,7 +112,7 @@ workflow-lint:
 jetbrains-fetch *flags:
     cd editors/jetbrains && . ../../scripts/retry.sh && retry ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle prefetch {{flags}}
 
-jetbrains-gradle *tasks:
+# Run Gradle tasks in the JetBrains plugin, offline against the prefetched mirrorjetbrains-gradle *tasks:
     cd editors/jetbrains && ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle --offline {{tasks}}
 
 # Verify the built plugin against IntelliJ IDEA Community and Ultimate (downloads both).
@@ -159,7 +159,7 @@ web-build:
 web-typecheck:
     pnpm --dir web typecheck
 
-web-test:
+# Run the web workspace's testsweb-test:
     pnpm --dir web test
 
 # cpl, the browser build and its named copy for wasm-size, in parallel (CI: ci.yml `site`).
