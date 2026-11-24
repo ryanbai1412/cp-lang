@@ -4431,6 +4431,10 @@ entries were renumbered to 169–178. 133 itself is now §169.
     calls instead of `main`, as in IOI. Functions the judge provides are
     declared, not defined: `extern fn transaction(m: Int) -> (List<T>, Int)`.
     The judge profile supplies the harness; local runs use a generated stub.
+    Amended: the local harness is the judge's own grader, linked into the
+    C++ build by `cpl test`/`cpl run` (`--grader grader.cpp`, or a
+    `grader.cpp` beside the tests); an entry fn with no grader is an error
+    naming `--grader`, never an empty run.
   - Types (`struct`, `enum`, `domain`, `type`) declared inside a fn body are
     scoped to that block and may use its runtime domains.
   - A lambda body may be an indented block after a line-ending `=>`; its
