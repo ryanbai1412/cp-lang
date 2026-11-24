@@ -550,6 +550,21 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.codemods_outside_fix(root), ["scripts/mod.py p"])
             self.assertEqual(dr.module_loaders(root), ["crates/a/src/lib.rs:6"])
 
+    def test_ci_jobs_without_recipe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, ".github/workflows/ci.yml", "\n".join([
+                "on: push", "jobs:", "  good:", "    steps:", "      - run: just check", "      - run: cargo build -p cpl-cli",
+                "  raw:", "    name: scripts/x.sh in a name is fine", "    steps:", "      - name: a", "        run: |",
+                "          echo hi", "          scripts/check.sh --fast", "      - run: cargo test -p a",
+                "  block:", "    steps:", "      - run: |", "          # scripts/commented.sh", "          just site",
+                "      - uses: x", "        with:", "          path: scripts/y",
+            ]) + "\n")
+            self._write(root, ".github/workflows/release.yml", "jobs:\n  b:\n    steps:\n      - run: scripts/release/build.sh\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.ci_jobs_without_recipe(root), [".github/workflows/ci.yml:13 (raw)"])
+
     def test_surface_counters_find_a_second_mechanism(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

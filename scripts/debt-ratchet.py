@@ -1815,6 +1815,52 @@ def retry_calls(root: Path) -> list[str]:
     return out
 
 
+# Workflows that operate CI or ship, and check no code, so a contestant has nothing to rerun.
+CI_ONLY_WORKFLOWS = {
+    "commit-status.yml": "marks main's status from other runs",
+    "culprit.yml": "bisects failed runs",
+    "unstick.yml": "re-queues stuck runs",
+    "watchdog.yml": "cancels hung runs",
+    "release.yml": "builds and publishes a release",
+    "site.yml": "deploys the built site",
+    "writable-from-docs.yml": "a model writes programs from the docs",
+}
+CI_CHECK = re.compile(r"(^|[\s;&|(])(\./)?(scripts|editors|research|bench|crates)/\S|cargo (test|nextest|run)\b"
+                      r"|pnpm .*\b(test|build|smoke|typecheck)\b|npm (test|run|ci)\b|nvim --headless")
+
+
+def ci_jobs_without_recipe(root: Path) -> list[str]:
+    """Checking CI jobs that run a check other than through `just <recipe>`: a red job
+    should be one command to rerun locally, the same one CI ran."""
+    out = []
+    for rel in _git(root, "ls-files", ".github/workflows/*.yml"):
+        if Path(rel).name in CI_ONLY_WORKFLOWS:
+            continue
+        job, in_jobs, block, flagged = None, False, None, set()
+        for i, line in enumerate((root / rel).read_text().splitlines(), 1):
+            if re.match(r"^jobs:\s*$", line):
+                in_jobs = True
+                continue
+            if in_jobs and (m := re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)):
+                job, block = m.group(1), None
+                continue
+            if job is None or job in flagged:
+                continue
+            indent = len(line) - len(line.lstrip())
+            if block is not None and (not line.strip() or indent > block):
+                cmd = line.strip()
+            elif m := re.match(r"^(\s*)(?:- )?run:\s*(\|?)(.*)$", line):
+                block = indent if m.group(2) else None
+                cmd = m.group(3).strip()
+            else:
+                block = None
+                continue
+            if cmd and not cmd.startswith("#") and not cmd.startswith("just ") and CI_CHECK.search(cmd):
+                flagged.add(job)
+                out.append(f"{rel}:{i} ({job})")
+    return out
+
+
 # The two sleeps a blocking wait can't replace without a crate: the file-change
 # poll and the judge's rate limit. Every other caller reuses one of them.
 SLEEP_OWNERS = ("crates/cpl-wait/src/files.rs", "crates/cpl-wait/src/pace.rs")
@@ -2669,6 +2715,7 @@ COUNTERS = {
     "edit_engines": ("text edits applied outside cpl-diag/cpl-fmt", edit_engines, True),
     "codemods_outside_fix": ("scripts rewriting .cp files instead of cpl fix", codemods_outside_fix, True),
     "module_loaders": ("Database::new outside cpl-check", module_loaders, True),
+    "ci_jobs_without_recipe": ("checking CI jobs not run through a just recipe (Infra)", ci_jobs_without_recipe, True),
     "web_hand_copied": ("web/ string arrays copying std names, keywords or codes (Factory)", web_hand_copied, True),
     "diag_text_outside_registry": ("diagnostics with inline text outside cpl-diag's registry (Consumers, Core)",
                                    diag_text_outside_registry, True),
