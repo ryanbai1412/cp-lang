@@ -145,7 +145,7 @@
   "written_twice": 6,
   "lint_type_syntax": 27,
   "idioms_evidenced_unlinted": 13,
-  "bench_lists": 6,
+  "bench_lists": 5,
   "unwrap_input": 718,
   "unsupported_sites": 43,
   "lsp_string_types": 11,
