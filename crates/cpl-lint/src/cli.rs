@@ -68,12 +68,16 @@ pub use crate::Errors;
 pub type Save = dyn Fn(&std::path::Path, &str, &[Diagnostic]) -> Vec<String>;
 
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
-    run_with(args, stdout, stderr, None, None, None)
+    let mut db = cpl_check::Session::new();
+    run_with(&mut db, args, stdout, stderr, None, None, None)
 }
 
 /// `run`, taking `--json` when `json` can print it: `cpl-lint` cannot see
-/// the CLI's serializer, so `cpl-cli` hands it in.
+/// the CLI's serializer, so `cpl-cli` hands it in. Every file is checked
+/// in `db`, as the editor keeps one database: std and shared modules are
+/// checked once, and every step reads the same analysis.
 pub fn run_with(
+    db: &mut cpl_check::Session,
     args: &[String],
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
@@ -83,9 +87,6 @@ pub fn run_with(
 ) -> u8 {
     let checker_only = |analysis: &cpl_check::Analysis| analysis.diagnostics.clone();
     let reported_of: &Errors = check.unwrap_or(&checker_only);
-    // One database for the run, as the editor keeps one: std and shared
-    // modules are checked once, and every step below reads the same analysis.
-    let mut db = cpl_check::Session::new();
     let mut as_json = false;
     let mut fix = false;
     let mut taste = false;
@@ -180,7 +181,7 @@ pub fn run_with(
                     failed += 1;
                 }
             }
-            let (text, applied) = fix_checked_removed_syntax_in(&mut db, &key, &src);
+            let (text, applied) = fix_checked_removed_syntax_in(db, &key, &src);
             if applied > 0 {
                 fixed += applied;
                 src = text;
@@ -220,7 +221,7 @@ pub fn run_with(
         diagnostics.retain(keep);
         if fix {
             let (text, applied) =
-                apply_lint_fixes_where(&mut db, &key, src, &config, reported_of, &keep);
+                apply_lint_fixes_where(db, &key, src, &config, reported_of, &keep);
             fixed += applied;
             src = text;
             analysis = db.analyze_text(&key, src.as_str());

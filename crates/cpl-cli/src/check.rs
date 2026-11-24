@@ -9,10 +9,18 @@ pub(crate) use cpl_ir::fix::errors_in;
 /// Checks each file through the shared front end and renders what it
 /// finds.
 pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    crate::with_db(|db| check_in(db, args, stdout, stderr))
+}
+
+fn check_in(
+    db: &mut cpl_check::Session,
+    args: &[&str],
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
     let json = args.contains(&"--json");
     let files = args.iter().filter(|arg| **arg != "--json");
     let mut reports = Vec::new();
-    let mut db = cpl_check::Session::new();
     let mut code = 0;
     for path in files {
         let text = match std::fs::read_to_string(path) {
@@ -63,10 +71,18 @@ pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
 }
 
 pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    crate::with_db(|db| fix_in(db, args, stdout, stderr))
+}
+
+fn fix_in(
+    db: &mut cpl_check::Session,
+    args: &[&str],
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
     let json = args.contains(&"--json");
     let files = args.iter().filter(|arg| **arg != "--json");
     let mut reports = Vec::new();
-    let mut db = cpl_check::Session::new();
     let mut code = 0;
     for path in files {
         let text = match std::fs::read_to_string(path) {
@@ -78,7 +94,7 @@ pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
             }
         };
         let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
-        let (fixed, applied, left) = cpl_lsp::fix::document(&mut db, path, &text, &config);
+        let (fixed, applied, left) = cpl_lsp::fix::document(db, path, &text, &config);
         if applied > 0 {
             if let Err(error) = std::fs::write(path, &fixed) {
                 *stderr += &format!("cpl: can't write `{path}`: {error}\n");

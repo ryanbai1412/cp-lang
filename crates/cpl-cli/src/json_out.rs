@@ -15,14 +15,17 @@ pub(crate) fn lint(
     stdout: &mut dyn std::io::Write,
     stderr: &mut dyn std::io::Write,
 ) -> u8 {
-    cpl_lint::cli::run_with(
-        args,
-        stdout,
-        stderr,
-        Some(&lint_files),
-        Some(&|analysis: &cpl_check::Analysis| cpl_ir::reported(analysis)),
-        Some(&save_witnesses),
-    )
+    crate::with_db(|db| {
+        cpl_lint::cli::run_with(
+            db,
+            args,
+            stdout,
+            stderr,
+            Some(&lint_files),
+            Some(&|analysis: &cpl_check::Analysis| cpl_ir::reported(analysis)),
+            Some(&save_witnesses),
+        )
+    })
 }
 
 /// `cpl lint --save`: each witness pinned into the program's reads, the
