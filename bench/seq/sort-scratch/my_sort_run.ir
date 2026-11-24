@@ -1,0 +1,3241 @@
+Function {
+    name: "my_sort_run_Lst_Rec3_cost_Int_v_Int_p_Int_Int_Rec3_cost_Int_v_Int_p_Int_S14_149",
+    params: [
+        ParamDef {
+            mutable: true,
+            range: None,
+            fills_cache: false,
+        },
+        ParamDef {
+            mutable: false,
+            range: None,
+            fills_cache: false,
+        },
+        ParamDef {
+            mutable: false,
+            range: None,
+            fills_cache: false,
+        },
+        ParamDef {
+            mutable: false,
+            range: None,
+            fills_cache: false,
+        },
+        ParamDef {
+            mutable: true,
+            range: None,
+            fills_cache: false,
+        },
+        ParamDef {
+            mutable: false,
+            range: None,
+            fills_cache: false,
+        },
+    ],
+    ret: Unit,
+    locals: [
+        Local {
+            name: "a",
+            ty: List(
+                Record(
+                    [
+                        (
+                            "cost",
+                            Int,
+                        ),
+                        (
+                            "v",
+                            Int,
+                        ),
+                        (
+                            "p",
+                            Int,
+                        ),
+                    ],
+                ),
+            ),
+            binds: None,
+        },
+        Local {
+            name: "ks",
+            ty: Range(
+                Int,
+            ),
+            binds: None,
+        },
+        Local {
+            name: "lo",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "hi",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "buf",
+            ty: List(
+                Record(
+                    [
+                        (
+                            "cost",
+                            Int,
+                        ),
+                        (
+                            "v",
+                            Int,
+                        ),
+                        (
+                            "p",
+                            Int,
+                        ),
+                    ],
+                ),
+            ),
+            binds: None,
+        },
+        Local {
+            name: "by",
+            ty: Fn(
+                [
+                    Record(
+                        [
+                            (
+                                "cost",
+                                Int,
+                            ),
+                            (
+                                "v",
+                                Int,
+                            ),
+                            (
+                                "p",
+                                Int,
+                            ),
+                        ],
+                    ),
+                ],
+                Struct(
+                    14,
+                ),
+            ),
+            binds: None,
+        },
+        Local {
+            name: "i",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "x",
+            ty: Record(
+                [
+                    (
+                        "cost",
+                        Int,
+                    ),
+                    (
+                        "v",
+                        Int,
+                    ),
+                    (
+                        "p",
+                        Int,
+                    ),
+                ],
+            ),
+            binds: None,
+        },
+        Local {
+            name: "kx",
+            ty: Struct(
+                14,
+            ),
+            binds: None,
+        },
+        Local {
+            name: "j",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "mid",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "m",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "t",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "i",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "j",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "k",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "",
+            ty: Int,
+            binds: None,
+        },
+        Local {
+            name: "",
+            ty: Int,
+            binds: None,
+        },
+    ],
+    body: Block {
+        stmts: [
+            If(
+                Expr {
+                    kind: Cmp(
+                        Le,
+                        Expr {
+                            kind: Binary(
+                                Sub,
+                                Expr {
+                                    kind: Local(
+                                        3,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 348,
+                                        end: 350,
+                                    },
+                                },
+                                Expr {
+                                    kind: Local(
+                                        2,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 353,
+                                        end: 355,
+                                    },
+                                },
+                            ),
+                            ty: Int,
+                            span: Span {
+                                start: 348,
+                                end: 355,
+                            },
+                        },
+                        Expr {
+                            kind: Int(
+                                8,
+                            ),
+                            ty: Int,
+                            span: Span {
+                                start: 359,
+                                end: 360,
+                            },
+                        },
+                    ),
+                    ty: Bool,
+                    span: Span {
+                        start: 348,
+                        end: 360,
+                    },
+                },
+                Block {
+                    stmts: [
+                        For(
+                            3,
+                            6,
+                            Range {
+                                lo: Expr {
+                                    kind: Binary(
+                                        Add,
+                                        Expr {
+                                            kind: Local(
+                                                2,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 379,
+                                                end: 381,
+                                            },
+                                        },
+                                        Expr {
+                                            kind: Int(
+                                                1,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 384,
+                                                end: 385,
+                                            },
+                                        },
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 379,
+                                        end: 385,
+                                    },
+                                },
+                                hi: Expr {
+                                    kind: Local(
+                                        3,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 387,
+                                        end: 389,
+                                    },
+                                },
+                                step: None,
+                                rev: false,
+                                closed: false,
+                            },
+                            Block {
+                                stmts: [
+                                    Let(
+                                        7,
+                                        Some(
+                                            Expr {
+                                                kind: Index(
+                                                    Expr {
+                                                        kind: Local(
+                                                            0,
+                                                        ),
+                                                        ty: List(
+                                                            Record(
+                                                                [
+                                                                    (
+                                                                        "cost",
+                                                                        Int,
+                                                                    ),
+                                                                    (
+                                                                        "v",
+                                                                        Int,
+                                                                    ),
+                                                                    (
+                                                                        "p",
+                                                                        Int,
+                                                                    ),
+                                                                ],
+                                                            ),
+                                                        ),
+                                                        span: Span {
+                                                            start: 411,
+                                                            end: 412,
+                                                        },
+                                                    },
+                                                    [
+                                                        Expr {
+                                                            kind: Binary(
+                                                                Add,
+                                                                Expr {
+                                                                    kind: Builtin(
+                                                                        RangeLo,
+                                                                        [
+                                                                            Expr {
+                                                                                kind: Local(
+                                                                                    1,
+                                                                                ),
+                                                                                ty: Range(
+                                                                                    Int,
+                                                                                ),
+                                                                                span: Span {
+                                                                                    start: 413,
+                                                                                    end: 415,
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    ),
+                                                                    ty: Int,
+                                                                    span: Span {
+                                                                        start: 413,
+                                                                        end: 422,
+                                                                    },
+                                                                },
+                                                                Expr {
+                                                                    kind: Local(
+                                                                        6,
+                                                                    ),
+                                                                    ty: Int,
+                                                                    span: Span {
+                                                                        start: 420,
+                                                                        end: 421,
+                                                                    },
+                                                                },
+                                                            ),
+                                                            ty: Int,
+                                                            span: Span {
+                                                                start: 413,
+                                                                end: 422,
+                                                            },
+                                                        },
+                                                    ],
+                                                ),
+                                                ty: Record(
+                                                    [
+                                                        (
+                                                            "cost",
+                                                            Int,
+                                                        ),
+                                                        (
+                                                            "v",
+                                                            Int,
+                                                        ),
+                                                        (
+                                                            "p",
+                                                            Int,
+                                                        ),
+                                                    ],
+                                                ),
+                                                span: Span {
+                                                    start: 411,
+                                                    end: 423,
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                    Let(
+                                        8,
+                                        Some(
+                                            Expr {
+                                                kind: CallExpr(
+                                                    Expr {
+                                                        kind: Local(
+                                                            5,
+                                                        ),
+                                                        ty: Fn(
+                                                            [
+                                                                Record(
+                                                                    [
+                                                                        (
+                                                                            "cost",
+                                                                            Int,
+                                                                        ),
+                                                                        (
+                                                                            "v",
+                                                                            Int,
+                                                                        ),
+                                                                        (
+                                                                            "p",
+                                                                            Int,
+                                                                        ),
+                                                                    ],
+                                                                ),
+                                                            ],
+                                                            Struct(
+                                                                14,
+                                                            ),
+                                                        ),
+                                                        span: Span {
+                                                            start: 445,
+                                                            end: 447,
+                                                        },
+                                                    },
+                                                    [
+                                                        Value(
+                                                            Expr {
+                                                                kind: Local(
+                                                                    7,
+                                                                ),
+                                                                ty: Record(
+                                                                    [
+                                                                        (
+                                                                            "cost",
+                                                                            Int,
+                                                                        ),
+                                                                        (
+                                                                            "v",
+                                                                            Int,
+                                                                        ),
+                                                                        (
+                                                                            "p",
+                                                                            Int,
+                                                                        ),
+                                                                    ],
+                                                                ),
+                                                                span: Span {
+                                                                    start: 448,
+                                                                    end: 449,
+                                                                },
+                                                            },
+                                                        ),
+                                                    ],
+                                                ),
+                                                ty: Struct(
+                                                    14,
+                                                ),
+                                                span: Span {
+                                                    start: 445,
+                                                    end: 450,
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                    Let(
+                                        9,
+                                        Some(
+                                            Expr {
+                                                kind: Local(
+                                                    6,
+                                                ),
+                                                ty: Int,
+                                                span: Span {
+                                                    start: 471,
+                                                    end: 472,
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                    While(
+                                        4,
+                                        Expr {
+                                            kind: Binary(
+                                                And,
+                                                Expr {
+                                                    kind: Cmp(
+                                                        Gt,
+                                                        Expr {
+                                                            kind: Local(
+                                                                9,
+                                                            ),
+                                                            ty: Int,
+                                                            span: Span {
+                                                                start: 491,
+                                                                end: 492,
+                                                            },
+                                                        },
+                                                        Expr {
+                                                            kind: Local(
+                                                                2,
+                                                            ),
+                                                            ty: Int,
+                                                            span: Span {
+                                                                start: 495,
+                                                                end: 497,
+                                                            },
+                                                        },
+                                                    ),
+                                                    ty: Bool,
+                                                    span: Span {
+                                                        start: 491,
+                                                        end: 497,
+                                                    },
+                                                },
+                                                Expr {
+                                                    kind: Cmp(
+                                                        Lt,
+                                                        Expr {
+                                                            kind: Local(
+                                                                8,
+                                                            ),
+                                                            ty: Struct(
+                                                                14,
+                                                            ),
+                                                            span: Span {
+                                                                start: 502,
+                                                                end: 504,
+                                                            },
+                                                        },
+                                                        Expr {
+                                                            kind: CallExpr(
+                                                                Expr {
+                                                                    kind: Local(
+                                                                        5,
+                                                                    ),
+                                                                    ty: Fn(
+                                                                        [
+                                                                            Record(
+                                                                                [
+                                                                                    (
+                                                                                        "cost",
+                                                                                        Int,
+                                                                                    ),
+                                                                                    (
+                                                                                        "v",
+                                                                                        Int,
+                                                                                    ),
+                                                                                    (
+                                                                                        "p",
+                                                                                        Int,
+                                                                                    ),
+                                                                                ],
+                                                                            ),
+                                                                        ],
+                                                                        Struct(
+                                                                            14,
+                                                                        ),
+                                                                    ),
+                                                                    span: Span {
+                                                                        start: 507,
+                                                                        end: 509,
+                                                                    },
+                                                                },
+                                                                [
+                                                                    Value(
+                                                                        Expr {
+                                                                            kind: Index(
+                                                                                Expr {
+                                                                                    kind: Local(
+                                                                                        0,
+                                                                                    ),
+                                                                                    ty: List(
+                                                                                        Record(
+                                                                                            [
+                                                                                                (
+                                                                                                    "cost",
+                                                                                                    Int,
+                                                                                                ),
+                                                                                                (
+                                                                                                    "v",
+                                                                                                    Int,
+                                                                                                ),
+                                                                                                (
+                                                                                                    "p",
+                                                                                                    Int,
+                                                                                                ),
+                                                                                            ],
+                                                                                        ),
+                                                                                    ),
+                                                                                    span: Span {
+                                                                                        start: 510,
+                                                                                        end: 511,
+                                                                                    },
+                                                                                },
+                                                                                [
+                                                                                    Expr {
+                                                                                        kind: Binary(
+                                                                                            Add,
+                                                                                            Expr {
+                                                                                                kind: Builtin(
+                                                                                                    RangeLo,
+                                                                                                    [
+                                                                                                        Expr {
+                                                                                                            kind: Local(
+                                                                                                                1,
+                                                                                                            ),
+                                                                                                            ty: Range(
+                                                                                                                Int,
+                                                                                                            ),
+                                                                                                            span: Span {
+                                                                                                                start: 512,
+                                                                                                                end: 514,
+                                                                                                            },
+                                                                                                        },
+                                                                                                    ],
+                                                                                                ),
+                                                                                                ty: Int,
+                                                                                                span: Span {
+                                                                                                    start: 512,
+                                                                                                    end: 525,
+                                                                                                },
+                                                                                            },
+                                                                                            Expr {
+                                                                                                kind: Binary(
+                                                                                                    Sub,
+                                                                                                    Expr {
+                                                                                                        kind: Local(
+                                                                                                            9,
+                                                                                                        ),
+                                                                                                        ty: Int,
+                                                                                                        span: Span {
+                                                                                                            start: 519,
+                                                                                                            end: 520,
+                                                                                                        },
+                                                                                                    },
+                                                                                                    Expr {
+                                                                                                        kind: Int(
+                                                                                                            1,
+                                                                                                        ),
+                                                                                                        ty: Int,
+                                                                                                        span: Span {
+                                                                                                            start: 523,
+                                                                                                            end: 524,
+                                                                                                        },
+                                                                                                    },
+                                                                                                ),
+                                                                                                ty: Int,
+                                                                                                span: Span {
+                                                                                                    start: 519,
+                                                                                                    end: 524,
+                                                                                                },
+                                                                                            },
+                                                                                        ),
+                                                                                        ty: Int,
+                                                                                        span: Span {
+                                                                                            start: 512,
+                                                                                            end: 525,
+                                                                                        },
+                                                                                    },
+                                                                                ],
+                                                                            ),
+                                                                            ty: Record(
+                                                                                [
+                                                                                    (
+                                                                                        "cost",
+                                                                                        Int,
+                                                                                    ),
+                                                                                    (
+                                                                                        "v",
+                                                                                        Int,
+                                                                                    ),
+                                                                                    (
+                                                                                        "p",
+                                                                                        Int,
+                                                                                    ),
+                                                                                ],
+                                                                            ),
+                                                                            span: Span {
+                                                                                start: 510,
+                                                                                end: 526,
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                ],
+                                                            ),
+                                                            ty: Struct(
+                                                                14,
+                                                            ),
+                                                            span: Span {
+                                                                start: 507,
+                                                                end: 527,
+                                                            },
+                                                        },
+                                                    ),
+                                                    ty: Bool,
+                                                    span: Span {
+                                                        start: 502,
+                                                        end: 527,
+                                                    },
+                                                },
+                                            ),
+                                            ty: Bool,
+                                            span: Span {
+                                                start: 491,
+                                                end: 527,
+                                            },
+                                        },
+                                        Block {
+                                            stmts: [
+                                                Let(
+                                                    10,
+                                                    Some(
+                                                        Expr {
+                                                            kind: Binary(
+                                                                Add,
+                                                                Expr {
+                                                                    kind: Builtin(
+                                                                        RangeLo,
+                                                                        [
+                                                                            Expr {
+                                                                                kind: Local(
+                                                                                    1,
+                                                                                ),
+                                                                                ty: Range(
+                                                                                    Int,
+                                                                                ),
+                                                                                span: Span {
+                                                                                    start: 547,
+                                                                                    end: 549,
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    ),
+                                                                    ty: Int,
+                                                                    span: Span {
+                                                                        start: 547,
+                                                                        end: 556,
+                                                                    },
+                                                                },
+                                                                Expr {
+                                                                    kind: Local(
+                                                                        9,
+                                                                    ),
+                                                                    ty: Int,
+                                                                    span: Span {
+                                                                        start: 554,
+                                                                        end: 555,
+                                                                    },
+                                                                },
+                                                            ),
+                                                            ty: Int,
+                                                            span: Span {
+                                                                start: 547,
+                                                                end: 556,
+                                                            },
+                                                        },
+                                                    ),
+                                                ),
+                                                Assign(
+                                                    Place {
+                                                        kind: Index(
+                                                            Place {
+                                                                kind: Local(
+                                                                    0,
+                                                                ),
+                                                                ty: List(
+                                                                    Record(
+                                                                        [
+                                                                            (
+                                                                                "cost",
+                                                                                Int,
+                                                                            ),
+                                                                            (
+                                                                                "v",
+                                                                                Int,
+                                                                            ),
+                                                                            (
+                                                                                "p",
+                                                                                Int,
+                                                                            ),
+                                                                        ],
+                                                                    ),
+                                                                ),
+                                                                span: Span {
+                                                                    start: 545,
+                                                                    end: 546,
+                                                                },
+                                                            },
+                                                            [
+                                                                Expr {
+                                                                    kind: Local(
+                                                                        10,
+                                                                    ),
+                                                                    ty: Int,
+                                                                    span: Span {
+                                                                        start: 547,
+                                                                        end: 556,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        ),
+                                                        ty: Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                        span: Span {
+                                                            start: 545,
+                                                            end: 557,
+                                                        },
+                                                    },
+                                                    Set,
+                                                    Expr {
+                                                        kind: Index(
+                                                            Expr {
+                                                                kind: Local(
+                                                                    0,
+                                                                ),
+                                                                ty: List(
+                                                                    Record(
+                                                                        [
+                                                                            (
+                                                                                "cost",
+                                                                                Int,
+                                                                            ),
+                                                                            (
+                                                                                "v",
+                                                                                Int,
+                                                                            ),
+                                                                            (
+                                                                                "p",
+                                                                                Int,
+                                                                            ),
+                                                                        ],
+                                                                    ),
+                                                                ),
+                                                                span: Span {
+                                                                    start: 560,
+                                                                    end: 561,
+                                                                },
+                                                            },
+                                                            [
+                                                                Expr {
+                                                                    kind: Binary(
+                                                                        Add,
+                                                                        Expr {
+                                                                            kind: Builtin(
+                                                                                RangeLo,
+                                                                                [
+                                                                                    Expr {
+                                                                                        kind: Local(
+                                                                                            1,
+                                                                                        ),
+                                                                                        ty: Range(
+                                                                                            Int,
+                                                                                        ),
+                                                                                        span: Span {
+                                                                                            start: 562,
+                                                                                            end: 564,
+                                                                                        },
+                                                                                    },
+                                                                                ],
+                                                                            ),
+                                                                            ty: Int,
+                                                                            span: Span {
+                                                                                start: 562,
+                                                                                end: 575,
+                                                                            },
+                                                                        },
+                                                                        Expr {
+                                                                            kind: Binary(
+                                                                                Sub,
+                                                                                Expr {
+                                                                                    kind: Local(
+                                                                                        9,
+                                                                                    ),
+                                                                                    ty: Int,
+                                                                                    span: Span {
+                                                                                        start: 569,
+                                                                                        end: 570,
+                                                                                    },
+                                                                                },
+                                                                                Expr {
+                                                                                    kind: Int(
+                                                                                        1,
+                                                                                    ),
+                                                                                    ty: Int,
+                                                                                    span: Span {
+                                                                                        start: 573,
+                                                                                        end: 574,
+                                                                                    },
+                                                                                },
+                                                                            ),
+                                                                            ty: Int,
+                                                                            span: Span {
+                                                                                start: 569,
+                                                                                end: 574,
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                    ty: Int,
+                                                                    span: Span {
+                                                                        start: 562,
+                                                                        end: 575,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        ),
+                                                        ty: Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                        span: Span {
+                                                            start: 560,
+                                                            end: 576,
+                                                        },
+                                                    },
+                                                ),
+                                                Assign(
+                                                    Place {
+                                                        kind: Local(
+                                                            9,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 593,
+                                                            end: 594,
+                                                        },
+                                                    },
+                                                    Binary(
+                                                        Sub,
+                                                    ),
+                                                    Expr {
+                                                        kind: Int(
+                                                            1,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 598,
+                                                            end: 599,
+                                                        },
+                                                    },
+                                                ),
+                                            ],
+                                        },
+                                    ),
+                                    Let(
+                                        11,
+                                        Some(
+                                            Expr {
+                                                kind: Binary(
+                                                    Add,
+                                                    Expr {
+                                                        kind: Builtin(
+                                                            RangeLo,
+                                                            [
+                                                                Expr {
+                                                                    kind: Local(
+                                                                        1,
+                                                                    ),
+                                                                    ty: Range(
+                                                                        Int,
+                                                                    ),
+                                                                    span: Span {
+                                                                        start: 614,
+                                                                        end: 616,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 614,
+                                                            end: 623,
+                                                        },
+                                                    },
+                                                    Expr {
+                                                        kind: Local(
+                                                            9,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 621,
+                                                            end: 622,
+                                                        },
+                                                    },
+                                                ),
+                                                ty: Int,
+                                                span: Span {
+                                                    start: 614,
+                                                    end: 623,
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                    Assign(
+                                        Place {
+                                            kind: Index(
+                                                Place {
+                                                    kind: Local(
+                                                        0,
+                                                    ),
+                                                    ty: List(
+                                                        Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    ),
+                                                    span: Span {
+                                                        start: 612,
+                                                        end: 613,
+                                                    },
+                                                },
+                                                [
+                                                    Expr {
+                                                        kind: Local(
+                                                            11,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 614,
+                                                            end: 623,
+                                                        },
+                                                    },
+                                                ],
+                                            ),
+                                            ty: Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                            span: Span {
+                                                start: 612,
+                                                end: 624,
+                                            },
+                                        },
+                                        Set,
+                                        Expr {
+                                            kind: Local(
+                                                7,
+                                            ),
+                                            ty: Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                            span: Span {
+                                                start: 627,
+                                                end: 628,
+                                            },
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                        Return(
+                            None,
+                        ),
+                    ],
+                },
+                Block {
+                    stmts: [],
+                },
+            ),
+            Let(
+                12,
+                Some(
+                    Expr {
+                        kind: Binary(
+                            Add,
+                            Expr {
+                                kind: Local(
+                                    2,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 658,
+                                    end: 660,
+                                },
+                            },
+                            Expr {
+                                kind: Binary(
+                                    Div,
+                                    Expr {
+                                        kind: Binary(
+                                            Sub,
+                                            Expr {
+                                                kind: Local(
+                                                    3,
+                                                ),
+                                                ty: Int,
+                                                span: Span {
+                                                    start: 664,
+                                                    end: 666,
+                                                },
+                                            },
+                                            Expr {
+                                                kind: Local(
+                                                    2,
+                                                ),
+                                                ty: Int,
+                                                span: Span {
+                                                    start: 669,
+                                                    end: 671,
+                                                },
+                                            },
+                                        ),
+                                        ty: Int,
+                                        span: Span {
+                                            start: 664,
+                                            end: 671,
+                                        },
+                                    },
+                                    Expr {
+                                        kind: Int(
+                                            2,
+                                        ),
+                                        ty: Int,
+                                        span: Span {
+                                            start: 675,
+                                            end: 676,
+                                        },
+                                    },
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 663,
+                                    end: 676,
+                                },
+                            },
+                        ),
+                        ty: Int,
+                        span: Span {
+                            start: 658,
+                            end: 676,
+                        },
+                    },
+                ),
+            ),
+            Expr(
+                Expr {
+                    kind: Call(
+                        149,
+                        [
+                            Mut(
+                                Place {
+                                    kind: Local(
+                                        0,
+                                    ),
+                                    ty: List(
+                                        Record(
+                                            [
+                                                (
+                                                    "cost",
+                                                    Int,
+                                                ),
+                                                (
+                                                    "v",
+                                                    Int,
+                                                ),
+                                                (
+                                                    "p",
+                                                    Int,
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                    span: Span {
+                                        start: 697,
+                                        end: 698,
+                                    },
+                                },
+                            ),
+                            Value(
+                                Expr {
+                                    kind: Local(
+                                        1,
+                                    ),
+                                    ty: Range(
+                                        Int,
+                                    ),
+                                    span: Span {
+                                        start: 700,
+                                        end: 702,
+                                    },
+                                },
+                            ),
+                            Value(
+                                Expr {
+                                    kind: Local(
+                                        2,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 704,
+                                        end: 706,
+                                    },
+                                },
+                            ),
+                            Value(
+                                Expr {
+                                    kind: Local(
+                                        12,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 708,
+                                        end: 711,
+                                    },
+                                },
+                            ),
+                            Mut(
+                                Place {
+                                    kind: Local(
+                                        4,
+                                    ),
+                                    ty: List(
+                                        Record(
+                                            [
+                                                (
+                                                    "cost",
+                                                    Int,
+                                                ),
+                                                (
+                                                    "v",
+                                                    Int,
+                                                ),
+                                                (
+                                                    "p",
+                                                    Int,
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                    span: Span {
+                                        start: 717,
+                                        end: 720,
+                                    },
+                                },
+                            ),
+                            Value(
+                                Expr {
+                                    kind: Local(
+                                        5,
+                                    ),
+                                    ty: Fn(
+                                        [
+                                            Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                        ],
+                                        Struct(
+                                            14,
+                                        ),
+                                    ),
+                                    span: Span {
+                                        start: 722,
+                                        end: 724,
+                                    },
+                                },
+                            ),
+                        ],
+                    ),
+                    ty: Unit,
+                    span: Span {
+                        start: 681,
+                        end: 725,
+                    },
+                },
+            ),
+            Expr(
+                Expr {
+                    kind: Call(
+                        149,
+                        [
+                            Mut(
+                                Place {
+                                    kind: Local(
+                                        0,
+                                    ),
+                                    ty: List(
+                                        Record(
+                                            [
+                                                (
+                                                    "cost",
+                                                    Int,
+                                                ),
+                                                (
+                                                    "v",
+                                                    Int,
+                                                ),
+                                                (
+                                                    "p",
+                                                    Int,
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                    span: Span {
+                                        start: 746,
+                                        end: 747,
+                                    },
+                                },
+                            ),
+                            Value(
+                                Expr {
+                                    kind: Local(
+                                        1,
+                                    ),
+                                    ty: Range(
+                                        Int,
+                                    ),
+                                    span: Span {
+                                        start: 749,
+                                        end: 751,
+                                    },
+                                },
+                            ),
+                            Value(
+                                Expr {
+                                    kind: Local(
+                                        12,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 753,
+                                        end: 756,
+                                    },
+                                },
+                            ),
+                            Value(
+                                Expr {
+                                    kind: Local(
+                                        3,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 758,
+                                        end: 760,
+                                    },
+                                },
+                            ),
+                            Mut(
+                                Place {
+                                    kind: Local(
+                                        4,
+                                    ),
+                                    ty: List(
+                                        Record(
+                                            [
+                                                (
+                                                    "cost",
+                                                    Int,
+                                                ),
+                                                (
+                                                    "v",
+                                                    Int,
+                                                ),
+                                                (
+                                                    "p",
+                                                    Int,
+                                                ),
+                                            ],
+                                        ),
+                                    ),
+                                    span: Span {
+                                        start: 766,
+                                        end: 769,
+                                    },
+                                },
+                            ),
+                            Value(
+                                Expr {
+                                    kind: Local(
+                                        5,
+                                    ),
+                                    ty: Fn(
+                                        [
+                                            Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                        ],
+                                        Struct(
+                                            14,
+                                        ),
+                                    ),
+                                    span: Span {
+                                        start: 771,
+                                        end: 773,
+                                    },
+                                },
+                            ),
+                        ],
+                    ),
+                    ty: Unit,
+                    span: Span {
+                        start: 730,
+                        end: 774,
+                    },
+                },
+            ),
+            If(
+                Expr {
+                    kind: Unary(
+                        Not,
+                        Expr {
+                            kind: Cmp(
+                                Lt,
+                                Expr {
+                                    kind: CallExpr(
+                                        Expr {
+                                            kind: Local(
+                                                5,
+                                            ),
+                                            ty: Fn(
+                                                [
+                                                    Record(
+                                                        [
+                                                            (
+                                                                "cost",
+                                                                Int,
+                                                            ),
+                                                            (
+                                                                "v",
+                                                                Int,
+                                                            ),
+                                                            (
+                                                                "p",
+                                                                Int,
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
+                                                Struct(
+                                                    14,
+                                                ),
+                                            ),
+                                            span: Span {
+                                                start: 787,
+                                                end: 789,
+                                            },
+                                        },
+                                        [
+                                            Value(
+                                                Expr {
+                                                    kind: Index(
+                                                        Expr {
+                                                            kind: Local(
+                                                                0,
+                                                            ),
+                                                            ty: List(
+                                                                Record(
+                                                                    [
+                                                                        (
+                                                                            "cost",
+                                                                            Int,
+                                                                        ),
+                                                                        (
+                                                                            "v",
+                                                                            Int,
+                                                                        ),
+                                                                        (
+                                                                            "p",
+                                                                            Int,
+                                                                        ),
+                                                                    ],
+                                                                ),
+                                                            ),
+                                                            span: Span {
+                                                                start: 790,
+                                                                end: 791,
+                                                            },
+                                                        },
+                                                        [
+                                                            Expr {
+                                                                kind: Binary(
+                                                                    Add,
+                                                                    Expr {
+                                                                        kind: Builtin(
+                                                                            RangeLo,
+                                                                            [
+                                                                                Expr {
+                                                                                    kind: Local(
+                                                                                        1,
+                                                                                    ),
+                                                                                    ty: Range(
+                                                                                        Int,
+                                                                                    ),
+                                                                                    span: Span {
+                                                                                        start: 792,
+                                                                                        end: 794,
+                                                                                    },
+                                                                                },
+                                                                            ],
+                                                                        ),
+                                                                        ty: Int,
+                                                                        span: Span {
+                                                                            start: 792,
+                                                                            end: 803,
+                                                                        },
+                                                                    },
+                                                                    Expr {
+                                                                        kind: Local(
+                                                                            12,
+                                                                        ),
+                                                                        ty: Int,
+                                                                        span: Span {
+                                                                            start: 799,
+                                                                            end: 802,
+                                                                        },
+                                                                    },
+                                                                ),
+                                                                ty: Int,
+                                                                span: Span {
+                                                                    start: 792,
+                                                                    end: 803,
+                                                                },
+                                                            },
+                                                        ],
+                                                    ),
+                                                    ty: Record(
+                                                        [
+                                                            (
+                                                                "cost",
+                                                                Int,
+                                                            ),
+                                                            (
+                                                                "v",
+                                                                Int,
+                                                            ),
+                                                            (
+                                                                "p",
+                                                                Int,
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    span: Span {
+                                                        start: 790,
+                                                        end: 804,
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    ),
+                                    ty: Struct(
+                                        14,
+                                    ),
+                                    span: Span {
+                                        start: 787,
+                                        end: 805,
+                                    },
+                                },
+                                Expr {
+                                    kind: CallExpr(
+                                        Expr {
+                                            kind: Local(
+                                                5,
+                                            ),
+                                            ty: Fn(
+                                                [
+                                                    Record(
+                                                        [
+                                                            (
+                                                                "cost",
+                                                                Int,
+                                                            ),
+                                                            (
+                                                                "v",
+                                                                Int,
+                                                            ),
+                                                            (
+                                                                "p",
+                                                                Int,
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
+                                                Struct(
+                                                    14,
+                                                ),
+                                            ),
+                                            span: Span {
+                                                start: 808,
+                                                end: 810,
+                                            },
+                                        },
+                                        [
+                                            Value(
+                                                Expr {
+                                                    kind: Index(
+                                                        Expr {
+                                                            kind: Local(
+                                                                0,
+                                                            ),
+                                                            ty: List(
+                                                                Record(
+                                                                    [
+                                                                        (
+                                                                            "cost",
+                                                                            Int,
+                                                                        ),
+                                                                        (
+                                                                            "v",
+                                                                            Int,
+                                                                        ),
+                                                                        (
+                                                                            "p",
+                                                                            Int,
+                                                                        ),
+                                                                    ],
+                                                                ),
+                                                            ),
+                                                            span: Span {
+                                                                start: 811,
+                                                                end: 812,
+                                                            },
+                                                        },
+                                                        [
+                                                            Expr {
+                                                                kind: Binary(
+                                                                    Add,
+                                                                    Expr {
+                                                                        kind: Builtin(
+                                                                            RangeLo,
+                                                                            [
+                                                                                Expr {
+                                                                                    kind: Local(
+                                                                                        1,
+                                                                                    ),
+                                                                                    ty: Range(
+                                                                                        Int,
+                                                                                    ),
+                                                                                    span: Span {
+                                                                                        start: 813,
+                                                                                        end: 815,
+                                                                                    },
+                                                                                },
+                                                                            ],
+                                                                        ),
+                                                                        ty: Int,
+                                                                        span: Span {
+                                                                            start: 813,
+                                                                            end: 828,
+                                                                        },
+                                                                    },
+                                                                    Expr {
+                                                                        kind: Binary(
+                                                                            Sub,
+                                                                            Expr {
+                                                                                kind: Local(
+                                                                                    12,
+                                                                                ),
+                                                                                ty: Int,
+                                                                                span: Span {
+                                                                                    start: 820,
+                                                                                    end: 823,
+                                                                                },
+                                                                            },
+                                                                            Expr {
+                                                                                kind: Int(
+                                                                                    1,
+                                                                                ),
+                                                                                ty: Int,
+                                                                                span: Span {
+                                                                                    start: 826,
+                                                                                    end: 827,
+                                                                                },
+                                                                            },
+                                                                        ),
+                                                                        ty: Int,
+                                                                        span: Span {
+                                                                            start: 820,
+                                                                            end: 827,
+                                                                        },
+                                                                    },
+                                                                ),
+                                                                ty: Int,
+                                                                span: Span {
+                                                                    start: 813,
+                                                                    end: 828,
+                                                                },
+                                                            },
+                                                        ],
+                                                    ),
+                                                    ty: Record(
+                                                        [
+                                                            (
+                                                                "cost",
+                                                                Int,
+                                                            ),
+                                                            (
+                                                                "v",
+                                                                Int,
+                                                            ),
+                                                            (
+                                                                "p",
+                                                                Int,
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    span: Span {
+                                                        start: 811,
+                                                        end: 829,
+                                                    },
+                                                },
+                                            ),
+                                        ],
+                                    ),
+                                    ty: Struct(
+                                        14,
+                                    ),
+                                    span: Span {
+                                        start: 808,
+                                        end: 830,
+                                    },
+                                },
+                            ),
+                            ty: Bool,
+                            span: Span {
+                                start: 787,
+                                end: 830,
+                            },
+                        },
+                    ),
+                    ty: Bool,
+                    span: Span {
+                        start: 782,
+                        end: 831,
+                    },
+                },
+                Block {
+                    stmts: [
+                        Return(
+                            None,
+                        ),
+                    ],
+                },
+                Block {
+                    stmts: [],
+                },
+            ),
+            Let(
+                13,
+                Some(
+                    Expr {
+                        kind: Binary(
+                            Sub,
+                            Expr {
+                                kind: Local(
+                                    12,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 852,
+                                    end: 855,
+                                },
+                            },
+                            Expr {
+                                kind: Local(
+                                    2,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 858,
+                                    end: 860,
+                                },
+                            },
+                        ),
+                        ty: Int,
+                        span: Span {
+                            start: 852,
+                            end: 860,
+                        },
+                    },
+                ),
+            ),
+            For(
+                5,
+                14,
+                Range {
+                    lo: Expr {
+                        kind: Int(
+                            0,
+                        ),
+                        ty: Int,
+                        span: Span {
+                            start: 874,
+                            end: 875,
+                        },
+                    },
+                    hi: Expr {
+                        kind: Local(
+                            13,
+                        ),
+                        ty: Int,
+                        span: Span {
+                            start: 877,
+                            end: 878,
+                        },
+                    },
+                    step: None,
+                    rev: false,
+                    closed: false,
+                },
+                Block {
+                    stmts: [
+                        Assign(
+                            Place {
+                                kind: Index(
+                                    Place {
+                                        kind: Local(
+                                            4,
+                                        ),
+                                        ty: List(
+                                            Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                        span: Span {
+                                            start: 880,
+                                            end: 883,
+                                        },
+                                    },
+                                    [
+                                        Expr {
+                                            kind: Local(
+                                                14,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 884,
+                                                end: 885,
+                                            },
+                                        },
+                                    ],
+                                ),
+                                ty: Record(
+                                    [
+                                        (
+                                            "cost",
+                                            Int,
+                                        ),
+                                        (
+                                            "v",
+                                            Int,
+                                        ),
+                                        (
+                                            "p",
+                                            Int,
+                                        ),
+                                    ],
+                                ),
+                                span: Span {
+                                    start: 880,
+                                    end: 886,
+                                },
+                            },
+                            Set,
+                            Expr {
+                                kind: Index(
+                                    Expr {
+                                        kind: Local(
+                                            0,
+                                        ),
+                                        ty: List(
+                                            Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                        span: Span {
+                                            start: 889,
+                                            end: 890,
+                                        },
+                                    },
+                                    [
+                                        Expr {
+                                            kind: Binary(
+                                                Add,
+                                                Expr {
+                                                    kind: Builtin(
+                                                        RangeLo,
+                                                        [
+                                                            Expr {
+                                                                kind: Local(
+                                                                    1,
+                                                                ),
+                                                                ty: Range(
+                                                                    Int,
+                                                                ),
+                                                                span: Span {
+                                                                    start: 891,
+                                                                    end: 893,
+                                                                },
+                                                            },
+                                                        ],
+                                                    ),
+                                                    ty: Int,
+                                                    span: Span {
+                                                        start: 891,
+                                                        end: 905,
+                                                    },
+                                                },
+                                                Expr {
+                                                    kind: Binary(
+                                                        Add,
+                                                        Expr {
+                                                            kind: Local(
+                                                                2,
+                                                            ),
+                                                            ty: Int,
+                                                            span: Span {
+                                                                start: 898,
+                                                                end: 900,
+                                                            },
+                                                        },
+                                                        Expr {
+                                                            kind: Local(
+                                                                14,
+                                                            ),
+                                                            ty: Int,
+                                                            span: Span {
+                                                                start: 903,
+                                                                end: 904,
+                                                            },
+                                                        },
+                                                    ),
+                                                    ty: Int,
+                                                    span: Span {
+                                                        start: 898,
+                                                        end: 904,
+                                                    },
+                                                },
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 891,
+                                                end: 905,
+                                            },
+                                        },
+                                    ],
+                                ),
+                                ty: Record(
+                                    [
+                                        (
+                                            "cost",
+                                            Int,
+                                        ),
+                                        (
+                                            "v",
+                                            Int,
+                                        ),
+                                        (
+                                            "p",
+                                            Int,
+                                        ),
+                                    ],
+                                ),
+                                span: Span {
+                                    start: 889,
+                                    end: 906,
+                                },
+                            },
+                        ),
+                    ],
+                },
+            ),
+            Let(
+                15,
+                Some(
+                    Expr {
+                        kind: Int(
+                            0,
+                        ),
+                        ty: Int,
+                        span: Span {
+                            start: 928,
+                            end: 929,
+                        },
+                    },
+                ),
+            ),
+            Let(
+                16,
+                Some(
+                    Expr {
+                        kind: Local(
+                            12,
+                        ),
+                        ty: Int,
+                        span: Span {
+                            start: 931,
+                            end: 934,
+                        },
+                    },
+                ),
+            ),
+            Let(
+                17,
+                Some(
+                    Expr {
+                        kind: Local(
+                            2,
+                        ),
+                        ty: Int,
+                        span: Span {
+                            start: 936,
+                            end: 938,
+                        },
+                    },
+                ),
+            ),
+            While(
+                6,
+                Expr {
+                    kind: Binary(
+                        And,
+                        Expr {
+                            kind: Cmp(
+                                Lt,
+                                Expr {
+                                    kind: Local(
+                                        15,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 950,
+                                        end: 951,
+                                    },
+                                },
+                                Expr {
+                                    kind: Local(
+                                        13,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 954,
+                                        end: 955,
+                                    },
+                                },
+                            ),
+                            ty: Bool,
+                            span: Span {
+                                start: 950,
+                                end: 955,
+                            },
+                        },
+                        Expr {
+                            kind: Cmp(
+                                Lt,
+                                Expr {
+                                    kind: Local(
+                                        16,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 960,
+                                        end: 961,
+                                    },
+                                },
+                                Expr {
+                                    kind: Local(
+                                        3,
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 964,
+                                        end: 966,
+                                    },
+                                },
+                            ),
+                            ty: Bool,
+                            span: Span {
+                                start: 960,
+                                end: 966,
+                            },
+                        },
+                    ),
+                    ty: Bool,
+                    span: Span {
+                        start: 950,
+                        end: 966,
+                    },
+                },
+                Block {
+                    stmts: [
+                        If(
+                            Expr {
+                                kind: Cmp(
+                                    Lt,
+                                    Expr {
+                                        kind: CallExpr(
+                                            Expr {
+                                                kind: Local(
+                                                    5,
+                                                ),
+                                                ty: Fn(
+                                                    [
+                                                        Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    ],
+                                                    Struct(
+                                                        14,
+                                                    ),
+                                                ),
+                                                span: Span {
+                                                    start: 979,
+                                                    end: 981,
+                                                },
+                                            },
+                                            [
+                                                Value(
+                                                    Expr {
+                                                        kind: Index(
+                                                            Expr {
+                                                                kind: Local(
+                                                                    0,
+                                                                ),
+                                                                ty: List(
+                                                                    Record(
+                                                                        [
+                                                                            (
+                                                                                "cost",
+                                                                                Int,
+                                                                            ),
+                                                                            (
+                                                                                "v",
+                                                                                Int,
+                                                                            ),
+                                                                            (
+                                                                                "p",
+                                                                                Int,
+                                                                            ),
+                                                                        ],
+                                                                    ),
+                                                                ),
+                                                                span: Span {
+                                                                    start: 982,
+                                                                    end: 983,
+                                                                },
+                                                            },
+                                                            [
+                                                                Expr {
+                                                                    kind: Binary(
+                                                                        Add,
+                                                                        Expr {
+                                                                            kind: Builtin(
+                                                                                RangeLo,
+                                                                                [
+                                                                                    Expr {
+                                                                                        kind: Local(
+                                                                                            1,
+                                                                                        ),
+                                                                                        ty: Range(
+                                                                                            Int,
+                                                                                        ),
+                                                                                        span: Span {
+                                                                                            start: 984,
+                                                                                            end: 986,
+                                                                                        },
+                                                                                    },
+                                                                                ],
+                                                                            ),
+                                                                            ty: Int,
+                                                                            span: Span {
+                                                                                start: 984,
+                                                                                end: 993,
+                                                                            },
+                                                                        },
+                                                                        Expr {
+                                                                            kind: Local(
+                                                                                16,
+                                                                            ),
+                                                                            ty: Int,
+                                                                            span: Span {
+                                                                                start: 991,
+                                                                                end: 992,
+                                                                            },
+                                                                        },
+                                                                    ),
+                                                                    ty: Int,
+                                                                    span: Span {
+                                                                        start: 984,
+                                                                        end: 993,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        ),
+                                                        ty: Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                        span: Span {
+                                                            start: 982,
+                                                            end: 994,
+                                                        },
+                                                    },
+                                                ),
+                                            ],
+                                        ),
+                                        ty: Struct(
+                                            14,
+                                        ),
+                                        span: Span {
+                                            start: 979,
+                                            end: 995,
+                                        },
+                                    },
+                                    Expr {
+                                        kind: CallExpr(
+                                            Expr {
+                                                kind: Local(
+                                                    5,
+                                                ),
+                                                ty: Fn(
+                                                    [
+                                                        Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    ],
+                                                    Struct(
+                                                        14,
+                                                    ),
+                                                ),
+                                                span: Span {
+                                                    start: 998,
+                                                    end: 1000,
+                                                },
+                                            },
+                                            [
+                                                Value(
+                                                    Expr {
+                                                        kind: Index(
+                                                            Expr {
+                                                                kind: Local(
+                                                                    4,
+                                                                ),
+                                                                ty: List(
+                                                                    Record(
+                                                                        [
+                                                                            (
+                                                                                "cost",
+                                                                                Int,
+                                                                            ),
+                                                                            (
+                                                                                "v",
+                                                                                Int,
+                                                                            ),
+                                                                            (
+                                                                                "p",
+                                                                                Int,
+                                                                            ),
+                                                                        ],
+                                                                    ),
+                                                                ),
+                                                                span: Span {
+                                                                    start: 1001,
+                                                                    end: 1004,
+                                                                },
+                                                            },
+                                                            [
+                                                                Expr {
+                                                                    kind: Local(
+                                                                        15,
+                                                                    ),
+                                                                    ty: Int,
+                                                                    span: Span {
+                                                                        start: 1005,
+                                                                        end: 1006,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        ),
+                                                        ty: Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                        span: Span {
+                                                            start: 1001,
+                                                            end: 1007,
+                                                        },
+                                                    },
+                                                ),
+                                            ],
+                                        ),
+                                        ty: Struct(
+                                            14,
+                                        ),
+                                        span: Span {
+                                            start: 998,
+                                            end: 1008,
+                                        },
+                                    },
+                                ),
+                                ty: Bool,
+                                span: Span {
+                                    start: 979,
+                                    end: 1008,
+                                },
+                            },
+                            Block {
+                                stmts: [
+                                    Let(
+                                        18,
+                                        Some(
+                                            Expr {
+                                                kind: Binary(
+                                                    Add,
+                                                    Expr {
+                                                        kind: Builtin(
+                                                            RangeLo,
+                                                            [
+                                                                Expr {
+                                                                    kind: Local(
+                                                                        1,
+                                                                    ),
+                                                                    ty: Range(
+                                                                        Int,
+                                                                    ),
+                                                                    span: Span {
+                                                                        start: 1024,
+                                                                        end: 1026,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 1024,
+                                                            end: 1033,
+                                                        },
+                                                    },
+                                                    Expr {
+                                                        kind: Local(
+                                                            17,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 1031,
+                                                            end: 1032,
+                                                        },
+                                                    },
+                                                ),
+                                                ty: Int,
+                                                span: Span {
+                                                    start: 1024,
+                                                    end: 1033,
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                    Assign(
+                                        Place {
+                                            kind: Index(
+                                                Place {
+                                                    kind: Local(
+                                                        0,
+                                                    ),
+                                                    ty: List(
+                                                        Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    ),
+                                                    span: Span {
+                                                        start: 1022,
+                                                        end: 1023,
+                                                    },
+                                                },
+                                                [
+                                                    Expr {
+                                                        kind: Local(
+                                                            18,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 1024,
+                                                            end: 1033,
+                                                        },
+                                                    },
+                                                ],
+                                            ),
+                                            ty: Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                            span: Span {
+                                                start: 1022,
+                                                end: 1034,
+                                            },
+                                        },
+                                        Set,
+                                        Expr {
+                                            kind: Index(
+                                                Expr {
+                                                    kind: Local(
+                                                        0,
+                                                    ),
+                                                    ty: List(
+                                                        Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    ),
+                                                    span: Span {
+                                                        start: 1037,
+                                                        end: 1038,
+                                                    },
+                                                },
+                                                [
+                                                    Expr {
+                                                        kind: Binary(
+                                                            Add,
+                                                            Expr {
+                                                                kind: Builtin(
+                                                                    RangeLo,
+                                                                    [
+                                                                        Expr {
+                                                                            kind: Local(
+                                                                                1,
+                                                                            ),
+                                                                            ty: Range(
+                                                                                Int,
+                                                                            ),
+                                                                            span: Span {
+                                                                                start: 1039,
+                                                                                end: 1041,
+                                                                            },
+                                                                        },
+                                                                    ],
+                                                                ),
+                                                                ty: Int,
+                                                                span: Span {
+                                                                    start: 1039,
+                                                                    end: 1048,
+                                                                },
+                                                            },
+                                                            Expr {
+                                                                kind: Local(
+                                                                    16,
+                                                                ),
+                                                                ty: Int,
+                                                                span: Span {
+                                                                    start: 1046,
+                                                                    end: 1047,
+                                                                },
+                                                            },
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 1039,
+                                                            end: 1048,
+                                                        },
+                                                    },
+                                                ],
+                                            ),
+                                            ty: Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                            span: Span {
+                                                start: 1037,
+                                                end: 1049,
+                                            },
+                                        },
+                                    ),
+                                    Assign(
+                                        Place {
+                                            kind: Local(
+                                                16,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 1062,
+                                                end: 1063,
+                                            },
+                                        },
+                                        Binary(
+                                            Add,
+                                        ),
+                                        Expr {
+                                            kind: Int(
+                                                1,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 1067,
+                                                end: 1068,
+                                            },
+                                        },
+                                    ),
+                                ],
+                            },
+                            Block {
+                                stmts: [
+                                    Let(
+                                        19,
+                                        Some(
+                                            Expr {
+                                                kind: Binary(
+                                                    Add,
+                                                    Expr {
+                                                        kind: Builtin(
+                                                            RangeLo,
+                                                            [
+                                                                Expr {
+                                                                    kind: Local(
+                                                                        1,
+                                                                    ),
+                                                                    ty: Range(
+                                                                        Int,
+                                                                    ),
+                                                                    span: Span {
+                                                                        start: 1097,
+                                                                        end: 1099,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 1097,
+                                                            end: 1106,
+                                                        },
+                                                    },
+                                                    Expr {
+                                                        kind: Local(
+                                                            17,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 1104,
+                                                            end: 1105,
+                                                        },
+                                                    },
+                                                ),
+                                                ty: Int,
+                                                span: Span {
+                                                    start: 1097,
+                                                    end: 1106,
+                                                },
+                                            },
+                                        ),
+                                    ),
+                                    Assign(
+                                        Place {
+                                            kind: Index(
+                                                Place {
+                                                    kind: Local(
+                                                        0,
+                                                    ),
+                                                    ty: List(
+                                                        Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    ),
+                                                    span: Span {
+                                                        start: 1095,
+                                                        end: 1096,
+                                                    },
+                                                },
+                                                [
+                                                    Expr {
+                                                        kind: Local(
+                                                            19,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 1097,
+                                                            end: 1106,
+                                                        },
+                                                    },
+                                                ],
+                                            ),
+                                            ty: Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                            span: Span {
+                                                start: 1095,
+                                                end: 1107,
+                                            },
+                                        },
+                                        Set,
+                                        Expr {
+                                            kind: Index(
+                                                Expr {
+                                                    kind: Local(
+                                                        4,
+                                                    ),
+                                                    ty: List(
+                                                        Record(
+                                                            [
+                                                                (
+                                                                    "cost",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "v",
+                                                                    Int,
+                                                                ),
+                                                                (
+                                                                    "p",
+                                                                    Int,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                    ),
+                                                    span: Span {
+                                                        start: 1110,
+                                                        end: 1113,
+                                                    },
+                                                },
+                                                [
+                                                    Expr {
+                                                        kind: Local(
+                                                            15,
+                                                        ),
+                                                        ty: Int,
+                                                        span: Span {
+                                                            start: 1114,
+                                                            end: 1115,
+                                                        },
+                                                    },
+                                                ],
+                                            ),
+                                            ty: Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                            span: Span {
+                                                start: 1110,
+                                                end: 1116,
+                                            },
+                                        },
+                                    ),
+                                    Assign(
+                                        Place {
+                                            kind: Local(
+                                                15,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 1129,
+                                                end: 1130,
+                                            },
+                                        },
+                                        Binary(
+                                            Add,
+                                        ),
+                                        Expr {
+                                            kind: Int(
+                                                1,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 1134,
+                                                end: 1135,
+                                            },
+                                        },
+                                    ),
+                                ],
+                            },
+                        ),
+                        Assign(
+                            Place {
+                                kind: Local(
+                                    17,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 1144,
+                                    end: 1145,
+                                },
+                            },
+                            Binary(
+                                Add,
+                            ),
+                            Expr {
+                                kind: Int(
+                                    1,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 1149,
+                                    end: 1150,
+                                },
+                            },
+                        ),
+                    ],
+                },
+            ),
+            While(
+                7,
+                Expr {
+                    kind: Cmp(
+                        Lt,
+                        Expr {
+                            kind: Local(
+                                15,
+                            ),
+                            ty: Int,
+                            span: Span {
+                                start: 1161,
+                                end: 1162,
+                            },
+                        },
+                        Expr {
+                            kind: Local(
+                                13,
+                            ),
+                            ty: Int,
+                            span: Span {
+                                start: 1165,
+                                end: 1166,
+                            },
+                        },
+                    ),
+                    ty: Bool,
+                    span: Span {
+                        start: 1161,
+                        end: 1166,
+                    },
+                },
+                Block {
+                    stmts: [
+                        Let(
+                            20,
+                            Some(
+                                Expr {
+                                    kind: Binary(
+                                        Add,
+                                        Expr {
+                                            kind: Builtin(
+                                                RangeLo,
+                                                [
+                                                    Expr {
+                                                        kind: Local(
+                                                            1,
+                                                        ),
+                                                        ty: Range(
+                                                            Int,
+                                                        ),
+                                                        span: Span {
+                                                            start: 1178,
+                                                            end: 1180,
+                                                        },
+                                                    },
+                                                ],
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 1178,
+                                                end: 1187,
+                                            },
+                                        },
+                                        Expr {
+                                            kind: Local(
+                                                17,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 1185,
+                                                end: 1186,
+                                            },
+                                        },
+                                    ),
+                                    ty: Int,
+                                    span: Span {
+                                        start: 1178,
+                                        end: 1187,
+                                    },
+                                },
+                            ),
+                        ),
+                        Assign(
+                            Place {
+                                kind: Index(
+                                    Place {
+                                        kind: Local(
+                                            0,
+                                        ),
+                                        ty: List(
+                                            Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                        span: Span {
+                                            start: 1176,
+                                            end: 1177,
+                                        },
+                                    },
+                                    [
+                                        Expr {
+                                            kind: Local(
+                                                20,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 1178,
+                                                end: 1187,
+                                            },
+                                        },
+                                    ],
+                                ),
+                                ty: Record(
+                                    [
+                                        (
+                                            "cost",
+                                            Int,
+                                        ),
+                                        (
+                                            "v",
+                                            Int,
+                                        ),
+                                        (
+                                            "p",
+                                            Int,
+                                        ),
+                                    ],
+                                ),
+                                span: Span {
+                                    start: 1176,
+                                    end: 1188,
+                                },
+                            },
+                            Set,
+                            Expr {
+                                kind: Index(
+                                    Expr {
+                                        kind: Local(
+                                            4,
+                                        ),
+                                        ty: List(
+                                            Record(
+                                                [
+                                                    (
+                                                        "cost",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "v",
+                                                        Int,
+                                                    ),
+                                                    (
+                                                        "p",
+                                                        Int,
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                        span: Span {
+                                            start: 1191,
+                                            end: 1194,
+                                        },
+                                    },
+                                    [
+                                        Expr {
+                                            kind: Local(
+                                                15,
+                                            ),
+                                            ty: Int,
+                                            span: Span {
+                                                start: 1195,
+                                                end: 1196,
+                                            },
+                                        },
+                                    ],
+                                ),
+                                ty: Record(
+                                    [
+                                        (
+                                            "cost",
+                                            Int,
+                                        ),
+                                        (
+                                            "v",
+                                            Int,
+                                        ),
+                                        (
+                                            "p",
+                                            Int,
+                                        ),
+                                    ],
+                                ),
+                                span: Span {
+                                    start: 1191,
+                                    end: 1197,
+                                },
+                            },
+                        ),
+                        Assign(
+                            Place {
+                                kind: Local(
+                                    15,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 1206,
+                                    end: 1207,
+                                },
+                            },
+                            Binary(
+                                Add,
+                            ),
+                            Expr {
+                                kind: Int(
+                                    1,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 1211,
+                                    end: 1212,
+                                },
+                            },
+                        ),
+                        Assign(
+                            Place {
+                                kind: Local(
+                                    17,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 1221,
+                                    end: 1222,
+                                },
+                            },
+                            Binary(
+                                Add,
+                            ),
+                            Expr {
+                                kind: Int(
+                                    1,
+                                ),
+                                ty: Int,
+                                span: Span {
+                                    start: 1226,
+                                    end: 1227,
+                                },
+                            },
+                        ),
+                    ],
+                },
+            ),
+        ],
+    },
+}

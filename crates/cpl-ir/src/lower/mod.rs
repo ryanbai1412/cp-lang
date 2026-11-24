@@ -111,7 +111,14 @@ pub fn list_tests(analysis: &Analysis) -> Vec<String> {
 
 /// Lowers a file that the front end reported no errors for.
 pub fn lower(analysis: &Analysis) -> Result<Program, Vec<Diagnostic>> {
-    lower_impl(analysis, None)
+    let program = lower_impl(analysis, None)?;
+    // Scratch only: `CPL_DUMP_IR=<substring>` prints the IR of every fn whose name has it.
+    if let Ok(want) = std::env::var("CPL_DUMP_IR") {
+        for f in program.fns.iter().filter(|f| f.name.contains(&want)) {
+            eprintln!("{f:#?}");
+        }
+    }
+    Ok(program)
 }
 
 /// Lowers a file in `@cache` cold mode: read-`self` methods on structs with

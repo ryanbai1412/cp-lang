@@ -271,40 +271,40 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
 pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x):
     let n = self.len
     let ks = self.keys
-    var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
-    var b = a.clone()
-    var in_a = true
-    var w = 1
-    while w < n:
-        if in_a: merge_runs(a, mut b, w)
-        else: merge_runs(b, mut a, w)
-        in_a = not in_a
-        w *= 2
-    var t = 0
-    for k in ks:
-        self[k] = if in_a: a[t].1 else: b[t].1
-        t += 1
+    var buf: List<T> = [self[ks.nth(i)] for i in 0..n / 2]
+    sort_run(mut self, ks, 0, n, mut buf, by)
 
-/// One bottom-up pass of `sort`: merges each pair of adjacent sorted runs of length `w` in
-/// `src` into `dst`, stably.
-fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int):
-    let n = src.len
-    var lo = 0
-    while lo < n:
-        let mid = if lo + w < n: lo + w else: n
-        let hi = if lo + 2 * w < n: lo + 2 * w else: n
-        var (i, j) = (lo, mid)
-        for k in lo..hi:
-            let right = j < hi and (
-                i >= mid or src[j].0 < src[i].0
-            )
-            if right:
-                dst[k] = src[j]
-                j += 1
-            else:
-                dst[k] = src[i]
-                i += 1
-        lo = hi
+fn sort_run<S: IndexedMut, D, T, K: Ord>(mut a: S, ks: Range<D>, lo: Int, hi: Int, mut buf: List<T>, by: T -> K):
+    if hi - lo <= 8:
+        for i in lo + 1..hi:
+            let x = a[ks.nth(i)]
+            let kx = by(x)
+            var j = i
+            while j > lo and kx < by(a[ks.nth(j - 1)]):
+                a[ks.nth(j)] = a[ks.nth(j - 1)]
+                j -= 1
+            a[ks.nth(j)] = x
+        return
+    let mid = lo + (hi - lo) / 2
+    sort_run(mut a, ks, lo, mid, mut buf, by)
+    sort_run(mut a, ks, mid, hi, mut buf, by)
+    if not (by(a[ks.nth(mid)]) < by(a[ks.nth(mid - 1)])): return
+    let m = mid - lo
+    for t in 0..m: buf[t] = a[ks.nth(lo + t)]
+    var (i, j, k) = (0, mid, lo)
+    while i < m and j < hi:
+        if by(a[ks.nth(j)]) < by(buf[i]):
+            a[ks.nth(k)] = a[ks.nth(j)]
+            j += 1
+        else:
+            a[ks.nth(k)] = buf[i]
+            i += 1
+        k += 1
+    while i < m:
+        a[ks.nth(k)] = buf[i]
+        i += 1
+        k += 1
+
 
 /// The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed from 0;
 /// to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
