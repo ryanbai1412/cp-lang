@@ -12,6 +12,7 @@ mod calls;
 mod containers;
 mod entry;
 mod places;
+mod resume;
 mod trace;
 mod traced_feed;
 
@@ -35,7 +36,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         for &d in &chunk.guarded_domains {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
+        let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v, 0);
         self.restore_domains(dom_mark);
         self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
@@ -82,7 +83,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         for &d in &chunk.guarded_domains {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
+        let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v, 0);
         self.restore_domains(dom_mark);
         if res.is_ok() && params.iter().any(|p| p.mutable) {
             let mut ii = 0usize;
@@ -125,8 +126,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         base_i: usize,
         vm_regs_i: &mut Vec<i64>,
         regs_v: &mut [Value],
+        start_pc: usize,
     ) -> Res<Value> {
-        let exit = self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, regs_v, 0, None);
+        let exit = self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, regs_v, start_pc, None);
         if chunk.traced {
             // The end of the run and a trap show the locals as they were left.
             let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];

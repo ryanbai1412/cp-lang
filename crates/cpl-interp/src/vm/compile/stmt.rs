@@ -1532,7 +1532,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
             }
         }
-        let own = LoopReg::Seq { id, r_idx, held };
+        let own = LoopReg::Seq {
+            id,
+            r_idx,
+            r_len,
+            held,
+        };
         let saved_pinned = self.pinned_v;
         if let Some(lv) = local_v {
             self.pinned_v = self.pinned_v.max(lv + 1);

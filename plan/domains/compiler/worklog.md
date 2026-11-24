@@ -1148,3 +1148,13 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - VM-stmt: spec-blocks E0608 on ownership exercise 4. 340a9d116 made the checker reject `var ys = xs` from a lent parameter, as the exercise's answer says, but the block had no `rejects` mark; it now has `<!-- rejects: E0608 -->` like exercise 5.
 - VM-memory (B3): fns, closures, fed fns and inlined calls of any number of locals compile to the VM; the `locals.len() > 512` walker paths are gone. A frame now holds the registers of its widest statement: `release_temps` frees each statement's temporaries when it ends, so a 40,000-statement fn, which overflowed the `u16` register index and crashed (R0001) on main, runs. Regressions: `programs/wide_frame.cp` (520 locals, walked 1,042 statements before, 0 now) and `vm_frames_hold_their_widest_statement_not_every_temporary`. Fns and closures share one chunk builder, a by-ref closure marks `needs_stack` in `finish`, and `Values` cells rotate by swaps: cpl_interp 235,028 -> 234,753 B gz on a named build.
 - VM-memory (B5): a `yields` fn that feeds itself or another (`for x in walk(n - 1): yield x`, mutually recursive generators) compiles to the VM: every fed fn is first taken to compile and those that fail are dropped until none does, where before none was known so none compiled. A `give` inside a `do` in a fed body no longer counts as leaving the loop. Five conformance cases (core-05, core-06, core-13 x2, std-tree preferred-paths) walk 0 statements, was every fed body. Regression: `programs/fed_recursive_generators.cp`.
+- 2026-11-24: a run from a checkpoint goes on on the VM: each frame's
+  chunk is entered again through `run_chunk_lending` at the top of its
+  loop (`BackEdge`) or at the first op of the statement whose call it
+  waits on (`CallSite::start`), with its loop registers restored; VM,
+  closure, traced and fed call ops pick up the callee there.
+  `resume_block`, `resume_stmt`, `resume_call` and the tree-walker's
+  `range_from`/`seq_from` hand-off are deleted. Covered by the 16
+  checkpoint tests (calls, fed loops, setup, cases, traced windows).
+  A fn or closure body is entered through one `run_body_vm`, fresh or
+  resumed.

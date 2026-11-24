@@ -21,6 +21,8 @@ pub(crate) struct BackEdge {
 #[derive(Clone, Debug)]
 pub(crate) struct CallSite<'p> {
     pub pc: u32,
+    /// The first op of `stmt`, where a run from a checkpoint enters it.
+    pub start: u32,
     pub loops: Vec<LoopReg>,
     pub stmt: &'p Stmt,
     pub call: &'p Expr,

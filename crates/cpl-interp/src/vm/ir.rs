@@ -1713,6 +1713,7 @@ pub(crate) enum LoopReg {
     Seq {
         id: cpl_ir::LoopId,
         r_idx: u16,
+        r_len: u16,
         held: SeqHeld,
     },
 }

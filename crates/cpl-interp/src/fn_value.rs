@@ -14,11 +14,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         args: &'p [Arg],
         span: Span,
     ) -> Res<Value> {
-        if self.ckpt.waits() {
-            if let Some(value) = self.resume_pending(e)? {
-                return Ok(value);
-            }
-        }
         let fv = self.eval(callee)?;
         if !self.observed()
             && !self.times_steps()

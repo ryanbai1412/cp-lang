@@ -57,10 +57,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 rev,
                 closed,
             } => {
-                let (lo_i64, hi_i64) = match self.ckpt.range_from.take() {
-                    Some(from) => from,
-                    None => (self.eval(lo)?.int(), self.eval(hi)?.int()),
-                };
+                let (lo_i64, hi_i64) = (self.eval(lo)?.int(), self.eval(hi)?.int());
                 if step.is_none() {
                     if *closed {
                         if lo_i64 <= hi_i64 {
@@ -262,51 +259,49 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     body,
                     left: None,
                 };
-                if !(self.ckpt.waits() && self.resume_fed(seq, &fed)?) {
-                    self.call_feeding(*callee, args, seq.span, Some(fed))?;
-                }
+                self.call_feeding(*callee, args, seq.span, Some(fed))?;
                 if let Some(flow) = self.fed_left.take() {
                     return Ok(flow);
                 }
             }
             Iter::Seq(seq, rev) => {
                 // The loop walks the value as it was when the loop began.
-                let (held, from) = self.seq_held(seq)?;
+                let held = self.eval(seq)?;
                 match &held {
                     Value::List(items) => {
                         let n = items.len();
-                        for k in checkpoint::rounds(n, *rev, from) {
+                        for k in rounds(n, *rev) {
                             round!(items.get_unchecked_val(k));
                         }
                     }
                     Value::ListView(view) => {
                         let n = view.len;
-                        for k in checkpoint::rounds(n, *rev, from) {
+                        for k in rounds(n, *rev) {
                             round!(view.base.get_unchecked_val(view.pos(k)));
                         }
                     }
                     Value::MutView(mv) => {
                         let items = self.mut_view_to_vec(mv, span)?;
                         let n = items.len();
-                        for k in checkpoint::rounds(n, *rev, from) {
+                        for k in rounds(n, *rev) {
                             round!(items[k].clone());
                         }
                     }
                     Value::Array(array) => {
                         let n = array.len();
-                        for k in checkpoint::rounds(n, *rev, from) {
+                        for k in rounds(n, *rev) {
                             round!(array.get_unchecked_val(k));
                         }
                     }
                     Value::Str(bytes) => {
                         let n = bytes.len();
-                        for k in checkpoint::rounds(n, *rev, from) {
+                        for k in rounds(n, *rev) {
                             round!(Value::Char(bytes[k]));
                         }
                     }
                     Value::StrView(view) => {
                         let n = view.len;
-                        for k in checkpoint::rounds(n, *rev, from) {
+                        for k in rounds(n, *rev) {
                             round!(Value::Char(view.base[view.pos(k)]));
                         }
                     }
@@ -338,4 +333,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         Ok(Flow::Next)
     }
+}
+
+/// The indices a `for` over `n` items walks, backward when `rev`.
+fn rounds(n: usize, rev: bool) -> impl Iterator<Item = usize> {
+    (0..n).map(move |i| if rev { n - 1 - i } else { i })
 }

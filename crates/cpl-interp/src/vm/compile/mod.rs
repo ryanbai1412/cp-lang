@@ -344,6 +344,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// returned, and goes on with what the callee returns. When `stmt` runs
     /// on the tree-walker, every call in it waits at its fallback op.
     pub(super) fn note_call_site(&mut self, start: usize, stmt: &'p Stmt) {
+        for site in &mut self.call_sites {
+            if std::ptr::eq(site.stmt, stmt) && site.start == u32::MAX {
+                site.start = start as u32;
+            }
+        }
         let head = match stmt {
             Stmt::Let(_, Some(e)) | Stmt::Expr(e) | Stmt::Return(Some(e)) => e,
             Stmt::If(e, ..) | Stmt::While(_, e, _) => e,
@@ -402,6 +407,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 .retain(|c| !(c.pc == pc && std::ptr::eq(c.call, call)));
             self.call_sites.push(CallSite {
                 pc,
+                start: start as u32,
                 loops: loops.clone(),
                 stmt,
                 call,
@@ -453,6 +459,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         };
         self.call_sites.push(CallSite {
             pc: pc as u32,
+            start: u32::MAX,
             loops,
             stmt,
             call,
@@ -486,15 +493,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst,
                 ScalarKind::of_ty(ret(fn_id), self.program)?,
             )),
-            Op::CallTraced {
-                fn_id: u16::MAX, ..
-            } => return None,
-            Op::CallTraced {
-                fn_id,
-                dst_i,
-                dst_v,
-                ..
-            } => match ret(fn_id) {
+            Op::CallTraced { dst_i, dst_v, .. } => match &call.ty {
                 Ty::Unit => None,
                 ty if dst_i != u16::MAX => {
                     Some(SlotLoc::I(dst_i, ScalarKind::of_ty(ty, self.program)?))

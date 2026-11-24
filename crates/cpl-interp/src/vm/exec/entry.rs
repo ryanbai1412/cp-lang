@@ -2,6 +2,7 @@
 //! stack, or a fed loop body, and the pooled register files they run on.
 
 use super::*;
+use crate::checkpoint::{chunk_of, Body, FrameAt};
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     pub(super) fn take_regs_v(&mut self, n: usize) -> Vec<Value> {
@@ -107,17 +108,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         compiled: &CompiledProgram<'p>,
         cid: cpl_ir::ClosureId,
     ) -> Res<Value> {
-        let Some(chunk) = compiled.closures[cid].as_ref() else {
-            return trap(
-                cpl_diag::Span::default(),
-                cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-            );
-        };
-        let def = &self.program.closures[cid];
-        let by_ref = (def.captures.iter())
-            .filter(|cap| cap.by_ref)
-            .map(|cap| cap.inner);
-        self.run_chunk_lending(compiled, chunk, by_ref)
+        self.run_body_vm(compiled, Body::Closure(cid), None)
     }
 
     pub(crate) fn run_fn_vm_from_stack(
@@ -125,24 +116,53 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         compiled: &CompiledProgram<'p>,
         fn_id: FnId,
     ) -> Res<Value> {
-        let Some(chunk) = compiled.fns[fn_id].as_ref() else {
+        self.run_body_vm(compiled, Body::Fn(fn_id), None)
+    }
+
+    /// `body` on the VM in the frame at `self.base`, lending its `mut`
+    /// params or by-reference captures; from frame `k` of `frames` when
+    /// `resume` names one.
+    pub(super) fn run_body_vm(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        body: Body,
+        resume: Option<(&[FrameAt], usize)>,
+    ) -> Res<Value> {
+        let Some(chunk) = chunk_of(compiled, body) else {
             return trap(
                 cpl_diag::Span::default(),
                 cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
             );
         };
-        self.run_chunk_lending(compiled, chunk, 0..chunk.param_count)
+        let mut params = 0..0;
+        let mut by_ref;
+        let lent: &mut dyn Iterator<Item = usize> = match body {
+            Body::Main | Body::Setup => &mut params,
+            Body::Fn(_) | Body::Fed(_) => {
+                params = 0..chunk.param_count;
+                &mut params
+            }
+            Body::Closure(cid) => {
+                by_ref = (self.program.closures[cid].captures.iter())
+                    .filter(|cap| cap.by_ref)
+                    .map(|cap| cap.inner);
+                &mut by_ref
+            }
+        };
+        self.run_chunk_lending(compiled, chunk, lent, resume)
     }
 
     /// Runs `chunk` on the frame at `self.base`. A slot in `lent` that
     /// names a caller's place (a `mut` param lent on, a part of a value, or
     /// a variable a closure captured by reference) holds the value while
-    /// the chunk runs.
+    /// the chunk runs. Run from a checkpoint, it goes on from where frame
+    /// `k` of `frames` was, and leaves its locals on the stack.
     fn run_chunk_lending(
         &mut self,
         compiled: &CompiledProgram<'p>,
         chunk: &Chunk<'p>,
-        lent: impl Iterator<Item = usize>,
+        lent: &mut dyn Iterator<Item = usize>,
+        resume: Option<(&[FrameAt], usize)>,
     ) -> Res<Value> {
         let mut aliases: Vec<(usize, Rc<Part>)> = Vec::new();
         for k in lent {
@@ -183,7 +203,30 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             self.base,
             chunk.traced,
         );
-        let res = self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v);
+        let start = match resume {
+            Some((frames, k)) => {
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                self.resume_at(chunk, frames, k, regs_i, &mut regs_v)
+            }
+            None => Ok(0),
+        };
+        let res = match start {
+            Ok(pc) => {
+                self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v, pc)
+            }
+            Err(e) => Err(e),
+        };
+        if resume.is_some() && !chunk.traced {
+            let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+            sync_to_stack(
+                &chunk.slot_map,
+                regs_i,
+                &mut regs_v,
+                &mut self.stack,
+                self.base,
+                true,
+            );
+        }
         self.lent.truncate(lent);
         for (k, part) in aliases {
             // A traced chunk leaves its locals on the stack.

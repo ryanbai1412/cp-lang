@@ -784,9 +784,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.stack.clear();
         self.stack.resize(program.main_locals.len(), Value::Unit);
         self.base = 0;
-        if let Some(from) = self.ckpt.resume.take() {
-            return self.resume(from);
-        }
         {
             let mut has_mut_view = program
                 .main_locals
@@ -825,6 +822,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     profiled,
                 )));
             }
+        }
+        if let Some(from) = self.ckpt.resume.take() {
+            return self.resume(from);
         }
         if !program.multitest {
             if let Some(compiled) = self.vm.clone() {

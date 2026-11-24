@@ -1,3 +1,4 @@
+use super::resume::put_ret;
 use crate::checkpoint::Body;
 use crate::observe::Observer;
 use crate::value::{Array, Cells, OptVal, TupleVal, Value};
@@ -22,6 +23,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     ) -> Res<Option<ExecExit>> {
         let spans = chunk.spans.as_slice();
         let mut regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+        if self.ckpt.waits() && self.resume_op(op, cur_pc, compiled, chunk, regs_i, regs_v)? {
+            return Ok(None);
+        }
         match op {
             Op::FieldOptI {
                 dst_val,
@@ -678,30 +682,42 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
                 self.show_lent()?;
                 // Lent once the globals and lent values are back in place.
-                let returned = match (callee, lent) {
-                    (Some(fv), Some(lent)) => {
-                        self.call_moving_lent(fv, args, lent, regs_v, index_regs, span)
+                let resumed = match self.ckpt.waits() {
+                    true => {
+                        let lends = lent.filter(|_| callee.is_none());
+                        let at = (&mut args[..], lends, &mut regs_v[..], index_regs);
+                        self.resume_traced(chunk, cur_pc, at)
                     }
-                    (callee, _) => match self.lend_args(lent, &mut args, regs_v, index_regs) {
-                        Ok(()) => match callee {
-                            Some(fv) => self.call_lending(fv, args, &[], span).map(|(v, _)| v),
-                            None => {
-                                let base = self.stack.len();
-                                self.stack.extend(args);
-                                let locals = self.program.fns[id].locals.len();
-                                self.stack.resize(base + locals, Value::Unit);
-                                let feed = (chunk.traced_feeds.iter())
-                                    .find(|f| f.0 == cur_pc as u32)
-                                    .map(|f| f.1);
-                                match feed {
-                                    Some(feed) => {
-                                        self.call_traced_feed(chunk, feed, id, base, span)
+                    false => Ok(None),
+                };
+                let returned = match resumed {
+                    Ok(Some(value)) => Ok(value),
+                    Err(e) => Err(e),
+                    Ok(None) => match (callee, lent) {
+                        (Some(fv), Some(lent)) => {
+                            self.call_moving_lent(fv, args, lent, regs_v, index_regs, span)
+                        }
+                        (callee, _) => match self.lend_args(lent, &mut args, regs_v, index_regs) {
+                            Ok(()) => match callee {
+                                Some(fv) => self.call_lending(fv, args, &[], span).map(|(v, _)| v),
+                                None => {
+                                    let base = self.stack.len();
+                                    self.stack.extend(args);
+                                    let locals = self.program.fns[id].locals.len();
+                                    self.stack.resize(base + locals, Value::Unit);
+                                    let feed = (chunk.traced_feeds.iter())
+                                        .find(|f| f.0 == cur_pc as u32)
+                                        .map(|f| f.1);
+                                    match feed {
+                                        Some(feed) => {
+                                            self.call_traced_feed(chunk, feed, id, base, span)
+                                        }
+                                        None => self.call_at(id, base, span, None),
                                     }
-                                    None => self.call_at(id, base, span, None),
                                 }
-                            }
+                            },
+                            Err(e) => Err(e),
                         },
-                        Err(e) => Err(e),
                     },
                 };
                 self.hide_lent()?;
@@ -804,16 +820,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 if f.params.iter().any(|p| p.mutable) {
                     regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);
                 }
-                match ret_mode {
-                    CallRet::Unit => {}
-                    CallRet::I => regs_i[dst_i as usize] = ScalarKind::unbox_val(&val),
-                    CallRet::OptI => {
-                        let (v, s) = ScalarKind::unbox_opt(&val);
-                        regs_i[dst_i as usize] = v;
-                        regs_i[dst_some as usize] = s;
-                    }
-                    CallRet::V => regs_v[dst_v as usize] = val,
-                }
+                put_ret(ret_mode, regs_i, regs_v, (dst_i, dst_some, dst_v), val);
                 self.keep_result(chunk, cur_pc, regs_i, regs_v);
             }
             Op::CallClosure {
@@ -1057,8 +1064,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     for &d in &callee.guarded_domains {
                         self.saved_domains.push((d, self.domains[d]));
                     }
-                    let res =
-                        self.exec_chunk_inner(compiled, callee, c_base_i, vm_regs_i, &mut c_regs_v);
+                    let res = self.exec_chunk_inner(
+                        compiled,
+                        callee,
+                        c_base_i,
+                        vm_regs_i,
+                        &mut c_regs_v,
+                        0,
+                    );
                     if res.is_ok() && muts != 0 {
                         for (k, &pslot) in def.params.iter().enumerate() {
                             if muts & 1 << k == 0 {
@@ -1171,16 +1184,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     }
                 }
-                match ret_mode {
-                    CallRet::Unit => {}
-                    CallRet::I => regs_i[dst_i as usize] = ScalarKind::unbox_val(&val),
-                    CallRet::OptI => {
-                        let (v, s) = ScalarKind::unbox_opt(&val);
-                        regs_i[dst_i as usize] = v;
-                        regs_i[dst_some as usize] = s;
-                    }
-                    CallRet::V => regs_v[dst_v as usize] = val,
-                }
+                put_ret(ret_mode, regs_i, regs_v, (dst_i, dst_some, dst_v), val);
                 self.keep_result(chunk, cur_pc, regs_i, regs_v);
             }
             Op::RetI { src } => {
@@ -1287,7 +1291,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// The `mut` arguments of a `CallTraced`, lent as the tree-walker lends
     /// them, their places' indices in `regs_v` from `first` on.
-    fn lend_args(
+    pub(super) fn lend_args(
         &mut self,
         lent: Option<&'p [cpl_ir::Arg]>,
         args: &mut [Value],

@@ -195,7 +195,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
         let fed_ok = !feeding || self.vm.as_ref().is_some_and(|c| c.main.traced);
-        let mut flow = if fed_ok {
+        let flow = if fed_ok {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
                     self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
@@ -213,23 +213,47 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         };
         self.restore_domains(dom_mark);
         self.in_closure = in_closure;
-        if let Some(tracer) = &mut self.tracer {
-            tracer.on(crate::observe::Event::LeaveFn);
-        }
-        if self.observed() {
-            self.traced(|tracer, view| {
-                let returned = match &flow {
-                    Ok(Flow::Return(value)) if tracer.keeps_call() && f.ret != Ty::Unit => {
-                        Some(trace::json_of(value, &f.ret, view))
-                    }
-                    _ => None,
-                };
-                tracer.on(crate::observe::Event::LeaveCall(returned));
-            });
-            flow = flow.and_then(|flow| self.unstopped(span).map(|()| flow));
-        }
-        if flow.is_err() {
-            self.keep_trap_frame();
+        let flow = self.leave_frame(Some(f), span, saved, feeding, flow);
+        let flow = flow?;
+        self.call_frames.pop();
+        self.stack.truncate(base);
+        self.after_call(id, span);
+        Ok(match flow {
+            Flow::Return(value) => value,
+            _ => Value::Unit,
+        })
+    }
+
+    /// The end of a call to `f`, or to a closure when `f` is `None`, that
+    /// `flow` ended: what the tracer sees of it, the frame a trap keeps,
+    /// the caller's frame back at `saved`, and where a fed loop's body left.
+    pub(crate) fn leave_frame(
+        &mut self,
+        f: Option<&'p cpl_ir::Function>,
+        span: Span,
+        saved: usize,
+        feeding: bool,
+        mut flow: Res<Flow>,
+    ) -> Res<Flow> {
+        if let Some(f) = f {
+            if let Some(tracer) = &mut self.tracer {
+                tracer.on(crate::observe::Event::LeaveFn);
+            }
+            if self.observed() {
+                self.traced(|tracer, view| {
+                    let returned = match &flow {
+                        Ok(Flow::Return(value)) if tracer.keeps_call() && f.ret != Ty::Unit => {
+                            Some(trace::json_of(value, &f.ret, view))
+                        }
+                        _ => None,
+                    };
+                    tracer.on(crate::observe::Event::LeaveCall(returned));
+                });
+                flow = flow.and_then(|flow| self.unstopped(span).map(|()| flow));
+            }
+            if flow.is_err() {
+                self.keep_trap_frame();
+            }
         }
         self.frame_locals.pop();
         self.base = saved;
@@ -240,13 +264,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 flow = Ok(Flow::Next);
             }
         }
-        let flow = flow?;
-        self.call_frames.pop();
-        self.stack.truncate(base);
-        self.after_call(id, span);
-        Ok(match flow {
-            Flow::Return(value) => value,
-            _ => Value::Unit,
-        })
+        flow
     }
 }

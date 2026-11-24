@@ -1142,7 +1142,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let callee_base_i = vm_regs_i.len();
                 vm_regs_i.resize(callee_base_i + fed_chunk.num_i, 0);
                 let mut callee_regs_v = self.take_regs_v(fed_chunk.num_v);
-                {
+                let resumed = match self.ckpt.waits() {
+                    true => self.resumed_feed(chunk, cur_pc),
+                    false => None,
+                };
+                if resumed.is_none() {
                     let mut ii = 0usize;
                     let mut iv = 0usize;
                     for loc in fed_chunk.slot_map.iter().take(fed_chunk.param_count) {
@@ -1182,9 +1186,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Body::Fed(fc.fn_id),
                     self.base,
                 );
-                let dom_mark = self.saved_domains.len();
-                for &d in &fed_chunk.guarded_domains {
-                    self.saved_domains.push((d, self.domains[d]));
+                let dom_mark = match &resumed {
+                    Some(frames) => frames[0].doms,
+                    None => self.saved_domains.len(),
+                };
+                if resumed.is_none() {
+                    for &d in &fed_chunk.guarded_domains {
+                        self.saved_domains.push((d, self.domains[d]));
+                    }
                 }
                 let caller_base = self.base;
                 let pushed_stack = fed_chunk.needs_stack;
@@ -1194,6 +1203,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         .resize(new_base + fed_chunk.slot_map.len(), Value::Unit);
                     self.base = new_base;
                 }
+                let start_pc = match &resumed {
+                    Some(frames) => self.resume_regs(
+                        fed_chunk,
+                        frames,
+                        callee_base_i,
+                        vm_regs_i,
+                        &mut callee_regs_v,
+                    )?,
+                    None => 0,
+                };
                 let mut ctx = FedCtx {
                     caller_chunk: chunk,
                     caller_base_i: base_i,
@@ -1209,7 +1228,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     callee_base_i,
                     vm_regs_i,
                     &mut callee_regs_v,
-                    0,
+                    start_pc,
                     Some(&mut ctx),
                 );
                 if pushed_stack {

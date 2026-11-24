@@ -55,17 +55,17 @@ impl LoopAt {
 
 /// One call under way at a checkpoint.
 #[derive(Clone)]
-struct FrameAt {
-    body: Body,
-    locals: Vec<Value>,
+pub(crate) struct FrameAt {
+    pub(crate) body: Body,
+    pub(crate) locals: Vec<Value>,
     loops: Vec<LoopAt>,
     /// The statement, then the call in it, the frame waits on, by address;
     /// `None` for the innermost frame.
     site: Option<(usize, usize)>,
     /// Where the frame was called from.
-    span: Span,
+    pub(crate) span: Span,
     /// How many saved domains there were before the call.
-    doms: usize,
+    pub(crate) doms: usize,
     /// What the calls before `site` in its statement returned, by address.
     before: Vec<(usize, Value)>,
     /// The sequences its `for` loops walk.
@@ -209,6 +209,9 @@ pub(crate) struct Clock {
     /// In a run from a checkpoint, what the calls before the one waited on
     /// returned, by address.
     returned: Vec<(usize, Value)>,
+    /// In a run from a checkpoint, the `mut` parameters of the fn the call
+    /// waited on left, for its caller to take back.
+    pub(crate) lent_back: Vec<Value>,
     /// While checkpoints are on, per call depth, what the last call at each
     /// kept call (by caller chunk and call address) returned.
     kept: Vec<Vec<Kept>>,
@@ -216,10 +219,6 @@ pub(crate) struct Clock {
     fallback: Option<Fallback>,
     pub(crate) printed: u64,
     pub(crate) resume: Option<Checkpoint>,
-    pub(crate) range_from: Option<(i64, i64)>,
-    /// In a run from a checkpoint, the sequence the next `for` over one
-    /// walks, and the round it starts from.
-    seq_from: Option<(Value, i64)>,
     /// How many more looks at the clock may come one tick apart while a
     /// checkpoint is due.
     soon: u32,
@@ -271,12 +270,11 @@ impl Default for Clock {
             cases_left: None,
             pending: None,
             returned: Vec::new(),
+            lent_back: Vec::new(),
             kept: Vec::new(),
             fallback: None,
             printed: 0,
             resume: None,
-            range_from: None,
-            seq_from: None,
             soon: SOON,
             before_input: false,
         }
@@ -955,7 +953,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     v: regs_i[r_var as usize],
                     hi: regs_i[r_hi as usize],
                 },
-                LoopReg::Seq { id, r_idx, held: h } => {
+                LoopReg::Seq {
+                    id, r_idx, held: h, ..
+                } => {
                     let seq = match h {
                         SeqHeld::Local(v) => regs_v.get(v as usize)?,
                         SeqHeld::Global(g) => self.globals.get(g as usize)?,
@@ -1037,10 +1037,112 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         Ok(())
     }
 
-    /// Frame `k` of `frames`, from where it was to its end.
-    fn resume_frame(&mut self, frames: &[FrameAt], k: usize) -> Res<Flow> {
-        let body = self.body_of(frames[k].body).1;
-        self.resume_block(body, &frames[k].loops, frames, k)
+    /// Sets `chunk`'s registers for frame `k` of `frames`: its loops as they
+    /// were, and the call it waits on as the one pending. Where it starts.
+    pub(crate) fn resume_at(
+        &mut self,
+        chunk: &Chunk<'p>,
+        frames: &[FrameAt],
+        k: usize,
+        regs_i: &mut [i64],
+        regs_v: &mut [Value],
+    ) -> Res<usize> {
+        let frame = &frames[k];
+        let found = match frame.site {
+            None => (chunk.back_edges.iter())
+                .find(|e| same_loops(&e.loops, &frame.loops))
+                .and_then(|e| Some((&e.loops, loop_top(&chunk.ops[e.pc as usize])?))),
+            Some((stmt, call)) => (chunk.call_sites.iter())
+                .find(|c| {
+                    c.start != u32::MAX
+                        && c.stmt as *const Stmt as usize == stmt
+                        && c.call as *const cpl_ir::Expr as usize == call
+                        && same_loops(&c.loops, &frame.loops)
+                })
+                .map(|c| (&c.loops, c.start as usize)),
+        };
+        let Some((loops, start)) = found else {
+            return trap(
+                frame.span,
+                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
+            );
+        };
+        for (reg, at) in loops.iter().zip(&frame.loops) {
+            match (*reg, *at) {
+                (LoopReg::Range { r_var, r_hi, .. }, LoopAt::Range { v, hi, .. }) => {
+                    regs_i[r_var as usize] = v;
+                    regs_i[r_hi as usize] = hi;
+                }
+                (
+                    LoopReg::Seq {
+                        r_idx, r_len, held, ..
+                    },
+                    LoopAt::Seq { k, held: h, .. },
+                ) => {
+                    let seq = &frame.held[h];
+                    regs_i[r_idx as usize] = k;
+                    regs_i[r_len as usize] = seq_len(seq);
+                    if let SeqHeld::Local(v) = held {
+                        regs_v[v as usize] = seq.clone();
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some((_, call)) = frame.site {
+            self.ckpt.pending = Some((call, frames[k + 1..].to_vec()));
+            self.ckpt.returned = frame.before.clone();
+        }
+        Ok(start)
+    }
+
+    /// At call op `pc` of `chunk` in a run from a checkpoint: what the call
+    /// returned when the statement waiting there made it before, or, when
+    /// it is the call waited on, what that call returns run from where it
+    /// was.
+    #[cold]
+    pub(crate) fn resumed_call(&mut self, chunk: &Chunk<'p>, pc: usize) -> Res<Option<Value>> {
+        if let Some(value) = self.returned_at(chunk, pc) {
+            return Ok(Some(value));
+        }
+        match self.resumed_feed(chunk, pc) {
+            Some(frames) => self.resume_callee(&frames, 0, None).map(Some),
+            None => Ok(None),
+        }
+    }
+
+    /// What the call at op `pc` of `chunk` returned, when a run from a
+    /// checkpoint makes again a statement that made it before the call it
+    /// waits on.
+    pub(crate) fn returned_at(&mut self, chunk: &Chunk<'p>, pc: usize) -> Option<Value> {
+        for site in chunk.call_sites.iter().filter(|c| c.pc as usize == pc) {
+            let at = site.call as *const cpl_ir::Expr as usize;
+            if let Some(i) = self.ckpt.returned.iter().position(|d| d.0 == at) {
+                return Some(self.ckpt.returned.swap_remove(i).1);
+            }
+        }
+        None
+    }
+
+    /// When the fed call at op `pc` of `chunk` is the one a run from a
+    /// checkpoint waits on, the frames from its callee in.
+    #[cold]
+    pub(crate) fn resumed_feed(&mut self, chunk: &Chunk<'p>, pc: usize) -> Option<Vec<FrameAt>> {
+        let waited = self.ckpt.pending.as_ref()?.0;
+        let waits = (chunk.call_sites.iter())
+            .any(|c| c.pc as usize == pc && c.call as *const cpl_ir::Expr as usize == waited);
+        if !waits {
+            return None;
+        }
+        self.ckpt.returned.clear();
+        self.ckpt.pending.take().map(|p| p.1)
+    }
+
+    /// Whether a run from a checkpoint still waits on a call; it no longer
+    /// does.
+    pub(crate) fn unwait(&mut self) -> bool {
+        self.ckpt.returned.clear();
+        self.ckpt.pending.take().is_some()
     }
 
     /// How many locals `body` has, and its block.
@@ -1057,47 +1159,21 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
-    /// The closure call frame `k` of `frames` makes, from where it was, as
-    /// `call_lending` makes it; what it returns.
-    fn resume_closure(
-        &mut self,
-        frames: &[FrameAt],
-        k: usize,
-        cid: cpl_ir::ClosureId,
-    ) -> Res<Value> {
-        let frame = &frames[k];
-        let program = self.program;
-        let base = self.stack.len();
-        self.stack.extend(frame.locals.iter().cloned());
-        let saved = std::mem::replace(&mut self.base, base);
-        self.frame_locals.push(&program.closures[cid].locals);
-        self.call_frames.push(("<closure>", frame.span));
-        let in_closure = std::mem::replace(&mut self.in_closure, true);
-        let flow = self.resume_frame(frames, k);
-        self.restore_domains(frame.doms);
-        self.in_closure = in_closure;
-        self.frame_locals.pop();
-        self.base = saved;
-        let flow = flow?;
-        self.call_frames.pop();
-        self.stack.truncate(base);
-        Ok(match flow {
-            Flow::Return(value) | Flow::Give(value) => value,
-            _ => Value::Unit,
-        })
-    }
-
     /// The call frame `k` of `frames` makes, from where it was; what it returns.
-    fn resume_callee(
+    pub(crate) fn resume_callee(
         &mut self,
         frames: &[FrameAt],
         k: usize,
         fed: Option<crate::Fed<'p>>,
     ) -> Res<Value> {
         let frame = &frames[k];
-        let id = match frame.body {
-            Body::Fn(id) | Body::Fed(id) => id,
-            Body::Closure(cid) => return self.resume_closure(frames, k, cid),
+        let program = self.program;
+        let (locals, name, f) = match frame.body {
+            Body::Fn(id) | Body::Fed(id) => {
+                let f = &program.fns[id];
+                (&f.locals, f.name.as_str(), Some((id, f)))
+            }
+            Body::Closure(cid) => (&program.closures[cid].locals, "<closure>", None),
             Body::Main | Body::Setup => {
                 return trap(
                     frame.span,
@@ -1105,15 +1181,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 )
             }
         };
-        let f = &self.program.fns[id];
         let span = frame.span;
         let base = self.stack.len();
         self.stack.extend(frame.locals.iter().cloned());
         let saved = std::mem::replace(&mut self.base, base);
-        self.frame_locals.push(&f.locals);
-        self.call_frames.push((f.name.as_str(), span));
-        if let Some(tracer) = self.tracer.as_mut() {
-            tracer.on(crate::observe::Event::EnterFn(&f.name));
+        self.frame_locals.push(locals);
+        self.call_frames.push((name, span));
+        if let (Some(tracer), Some(_)) = (self.tracer.as_mut(), f) {
+            tracer.on(crate::observe::Event::EnterFn(name));
         }
         let feeding = fed.is_some();
         if let Some(fed) = fed {
@@ -1122,195 +1197,25 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 ..fed
             });
         }
-        let in_closure = std::mem::replace(&mut self.in_closure, false);
-        let mut flow = self.resume_frame(frames, k);
+        let in_closure = std::mem::replace(&mut self.in_closure, f.is_none());
+        let flow = self.resume_frame(frames, k);
         self.restore_domains(frame.doms);
         self.in_closure = in_closure;
-        if let Some(tracer) = &mut self.tracer {
-            tracer.on(crate::observe::Event::LeaveFn);
-        }
-        if self.observed() {
-            self.traced(|tracer, view| {
-                let returned = match &flow {
-                    Ok(Flow::Return(value)) if tracer.keeps_call() && f.ret != cpl_ir::Ty::Unit => {
-                        Some(trace::json_of(value, &f.ret, view))
-                    }
-                    _ => None,
-                };
-                tracer.on(crate::observe::Event::LeaveCall(returned));
-            });
-            flow = flow.and_then(|flow| self.unstopped(span).map(|()| flow));
-        }
-        if flow.is_err() {
-            self.keep_trap_frame();
-        }
-        self.frame_locals.pop();
-        self.base = saved;
-        if feeding {
-            if let Some(left) = self.fed_loops.pop().and_then(|fed| fed.left) {
-                self.fed_left = Some(left).filter(|left| !matches!(left, Flow::Next));
-                flow = Ok(Flow::Next);
-            }
-        }
+        let flow = self.leave_frame(f.map(|(_, f)| f), span, saved, feeding, flow);
         let flow = flow?;
         self.call_frames.pop();
         self.stack.truncate(base);
-        self.after_call(id, span);
+        if let Some((id, _)) = f {
+            self.after_call(id, span);
+        }
         Ok(match flow {
             Flow::Return(value) => value,
+            Flow::Give(value) if f.is_none() => value,
             _ => Value::Unit,
         })
     }
 
-    fn resume_block(
-        &mut self,
-        block: &'p Block,
-        at: &[LoopAt],
-        frames: &[FrameAt],
-        k: usize,
-    ) -> Res<Flow> {
-        let Some(mark) = mark(at, frames[k].site.map(|s| s.0)) else {
-            return trap(
-                Span::default(),
-                cpl_diag::msgs::interp::CHECKPOINT_AT_NO_LOOP_AND.at(&[]),
-            );
-        };
-        let Some(i) = block.stmts.iter().position(|s| holds(s, mark)) else {
-            return trap(
-                Span::default(),
-                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
-            );
-        };
-        let stmt = &block.stmts[i];
-        let mut flow = match mark {
-            Mark::Site(site) if stmt as *const Stmt as usize == site => {
-                self.resume_call(stmt, frames, k)?
-            }
-            _ => self.resume_stmt(stmt, at, frames, k)?,
-        };
-        for stmt in &block.stmts[i + 1..] {
-            if !matches!(flow, Flow::Next) {
-                break;
-            }
-            flow = self.stmt(stmt)?;
-        }
-        Ok(flow)
-    }
-
-    fn resume_stmt(
-        &mut self,
-        stmt: &'p Stmt,
-        at: &[LoopAt],
-        frames: &[FrameAt],
-        k: usize,
-    ) -> Res<Flow> {
-        let inside = at.len() > 1 || frames[k].site.is_some();
-        let rest = at.get(1..).unwrap_or(&[]);
-        match (stmt, at.first()) {
-            (Stmt::If(_, then, otherwise), _) => {
-                let Some(mark) = mark(at, frames[k].site.map(|s| s.0)) else {
-                    return trap(
-                        Span::default(),
-                        cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
-                    );
-                };
-                let branch = if block_holds(then, mark) {
-                    then
-                } else {
-                    otherwise
-                };
-                self.resume_block(branch, at, frames, k)
-            }
-            (Stmt::While(id, _, body), Some(LoopAt::While(_))) => {
-                if inside {
-                    if let Some(left) = left_loop(self.resume_block(body, rest, frames, k)?, *id) {
-                        return Ok(left);
-                    }
-                }
-                self.stmt(stmt)
-            }
-            (Stmt::For(id, _, iter, body), Some(&LoopAt::Range { v, hi, .. })) => {
-                let mut from = v;
-                if inside {
-                    if let Some(left) = left_loop(self.resume_block(body, rest, frames, k)?, *id) {
-                        return Ok(left);
-                    }
-                    if matches!(iter, Iter::Range { closed: true, .. }) && v == hi {
-                        return Ok(Flow::Next);
-                    }
-                    from = v + 1;
-                }
-                self.ckpt.range_from = Some((from, hi));
-                self.stmt(stmt)
-            }
-            (
-                Stmt::For(id, _, Iter::Seq(_, rev), body),
-                Some(&LoopAt::Seq { k: at_k, held, .. }),
-            ) => {
-                let mut from = at_k;
-                if inside {
-                    if let Some(left) = left_loop(self.resume_block(body, rest, frames, k)?, *id) {
-                        return Ok(left);
-                    }
-                    from = if *rev { at_k - 1 } else { at_k + 1 };
-                }
-                self.ckpt.seq_from = Some((frames[k].held[held].clone(), from));
-                self.stmt(stmt)
-            }
-            _ => trap(
-                Span::default(),
-                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
-            ),
-        }
-    }
-
-    /// `stmt`, whose call frame `k + 1` is: `stmt` again, untraced up to
-    /// that call, which goes on from where it was.
-    fn resume_call(&mut self, stmt: &'p Stmt, frames: &[FrameAt], k: usize) -> Res<Flow> {
-        let Some((_, call)) = frames[k].site else {
-            return trap(
-                Span::default(),
-                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
-            );
-        };
-        self.ckpt.pending = Some((call, frames[k + 1..].to_vec()));
-        self.ckpt.returned = frames[k].before.clone();
-        let flow = self.stmt(stmt);
-        self.ckpt.returned.clear();
-        if self.ckpt.pending.take().is_some() {
-            return trap(
-                Span::default(),
-                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
-            );
-        }
-        flow
-    }
-
-    /// At the loop `seq` feeds: when the `yields` fn is the call a run from
-    /// a checkpoint waits on, that call from where it was, feeding `fed`.
-    pub(crate) fn resume_fed(&mut self, seq: &'p cpl_ir::Expr, fed: &crate::Fed<'p>) -> Res<bool> {
-        let at = seq as *const cpl_ir::Expr as usize;
-        let Some((_, frames)) = self.ckpt.pending.take_if(|(call, _)| *call == at) else {
-            return Ok(false);
-        };
-        self.ckpt.returned.clear();
-        let fed = crate::Fed { left: None, ..*fed };
-        self.resume_callee(&frames, 0, Some(fed))?;
-        Ok(true)
-    }
-
-    /// What a `for` over `seq` walks, and the round it starts from when a
-    /// run from a checkpoint goes on in it: the sequence as it was when the
-    /// loop began.
-    pub(crate) fn seq_held(&mut self, seq: &'p cpl_ir::Expr) -> Res<(Value, Option<i64>)> {
-        if let Some((held, from)) = self.ckpt.seq_from.take() {
-            return Ok((held, Some(from)));
-        }
-        Ok((self.eval(seq)?, None))
-    }
-
-    /// The call `e` to `id`, or the rest of it when a run from a checkpoint
-    /// waits on it.
+    /// The call `e` to `id`, kept for a checkpoint the statement takes.
     #[inline]
     pub(crate) fn call_or_resume(
         &mut self,
@@ -1319,42 +1224,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         args: &'p [cpl_ir::Arg],
         span: Span,
     ) -> Res<Value> {
-        if self.ckpt.waits() {
-            if let Some(value) = self.resume_pending(e)? {
-                return Ok(value);
-            }
-        }
         let value = self.call(id, args, span)?;
         self.keep_called(e, &value);
         Ok(value)
-    }
-
-    /// At the call `e`: when it is the call a run from a checkpoint waits
-    /// on, that call from where it was, and what it returns.
-    #[cold]
-    pub(crate) fn resume_pending(&mut self, e: &'p cpl_ir::Expr) -> Res<Option<Value>> {
-        let at = e as *const cpl_ir::Expr as usize;
-        if let Some(i) = self.ckpt.returned.iter().position(|d| d.0 == at) {
-            return Ok(Some(self.ckpt.returned.swap_remove(i).1));
-        }
-        let Some((_, mut frames)) = self.ckpt.pending.take_if(|(call, _)| *call == at) else {
-            return Ok(None);
-        };
-        self.ckpt.returned.clear();
-        // The VM's callee holds a `mut` argument's value itself; the
-        // tree-walker's borrows the caller's, so the value goes back there.
-        if let cpl_ir::ExprKind::Call(_, args) = &e.kind {
-            for (i, arg) in args.iter().enumerate() {
-                if let cpl_ir::Arg::Mut(place) = arg {
-                    let mut indices = Vec::new();
-                    self.indices(place, &mut indices)?;
-                    let now = std::mem::replace(&mut frames[0].locals[i], Value::Unit);
-                    *self.resolve(place, &mut indices.iter())? = now;
-                    frames[0].locals[i] = self.lend_at(place, indices)?;
-                }
-            }
-        }
-        self.resume_callee(&frames, 0, None).map(Some)
     }
 }
 
@@ -1370,12 +1242,16 @@ fn top_of<'c, 'p>(compiled: &'c CompiledProgram<'p>, chunk: *const ()) -> (&'c C
 }
 
 /// The chunk the VM runs `body` on, if it does.
-fn chunk_of<'c, 'p>(compiled: &'c CompiledProgram<'p>, body: Body) -> Option<&'c Chunk<'p>> {
+pub(crate) fn chunk_of<'c, 'p>(
+    compiled: &'c CompiledProgram<'p>,
+    body: Body,
+) -> Option<&'c Chunk<'p>> {
     match body {
         Body::Main => Some(&compiled.main),
         Body::Setup => compiled.setup.as_ref(),
         Body::Fn(id) => compiled.fns[id].as_ref(),
-        Body::Fed(id) => compiled.fed_fns[id].as_ref(),
+        // A traced program feeds a loop from the fn's own chunk.
+        Body::Fed(id) => compiled.fed_fns[id].as_ref().or(compiled.fns[id].as_ref()),
         Body::Closure(cid) => compiled.closures[cid].as_ref(),
     }
 }
@@ -1392,17 +1268,6 @@ fn mark(at: &[LoopAt], site: Option<usize>) -> Option<Mark> {
     match at.first() {
         Some(first) => Some(Mark::Loop(first.id())),
         None => site.map(Mark::Site),
-    }
-}
-
-/// How a round's `flow` leaves loop `id`, if it does.
-fn left_loop(flow: Flow, id: LoopId) -> Option<Flow> {
-    match flow {
-        Flow::Next | Flow::Continue(None) => None,
-        Flow::Continue(Some(target)) if target == id => None,
-        Flow::Break(None) => Some(Flow::Next),
-        Flow::Break(Some(target)) if target == id => Some(Flow::Next),
-        other => Some(other),
     }
 }
 
@@ -1528,15 +1393,44 @@ fn locates_inside(body: &Block, rest: &[LoopAt], site: Option<usize>) -> bool {
     (rest.is_empty() && site.is_none()) || locates(body, rest, site)
 }
 
-/// The positions a `for` over `n` items walks, backwards when `rev`, from
-/// `from` on (by default the first).
-pub(crate) fn rounds(n: usize, rev: bool, from: Option<i64>) -> impl Iterator<Item = usize> {
-    let last = n as i64 - 1;
-    let (first, count) = match (rev, from) {
-        (false, None) => (0, n as i64),
-        (true, None) => (last, n as i64),
-        (false, Some(f)) => (f, n as i64 - f),
-        (true, Some(f)) => (f.min(last), f.min(last) + 1),
-    };
-    (0..count.max(0)).map(move |i| (if rev { first - i } else { first + i }) as usize)
+/// Whether `regs` are the loops `at` was in.
+fn same_loops(regs: &[LoopReg], at: &[LoopAt]) -> bool {
+    regs.len() == at.len()
+        && regs
+            .iter()
+            .zip(at)
+            .all(|(r, a)| r.id() == a.id() && same_kind(r, a))
+}
+
+fn same_kind(reg: &LoopReg, at: &LoopAt) -> bool {
+    matches!(
+        (reg, at),
+        (LoopReg::While(_), LoopAt::While(_))
+            | (LoopReg::Range { .. }, LoopAt::Range { .. })
+            | (LoopReg::Seq { .. }, LoopAt::Seq { .. })
+    )
+}
+
+/// Where the back edge `op` jumps: the top of its loop.
+fn loop_top(op: &crate::vm::Op) -> Option<usize> {
+    use crate::vm::Op;
+    match *op {
+        Op::Jmp { target }
+        | Op::ForInc { target, .. }
+        | Op::ForIncClosed { target, .. }
+        | Op::ForDec { target, .. } => Some(target as usize),
+        _ => None,
+    }
+}
+
+/// How many rounds a `for` over `seq` walks.
+fn seq_len(seq: &Value) -> i64 {
+    match seq {
+        Value::List(items) => items.len() as i64,
+        Value::ListView(view) => view.len as i64,
+        Value::Array(arr) => arr.len() as i64,
+        Value::Str(bytes) => bytes.len() as i64,
+        Value::StrView(view) => view.len as i64,
+        _ => 0,
+    }
 }
