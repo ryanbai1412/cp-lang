@@ -337,8 +337,14 @@ noip01p4
 noip04p1
 noip04p2
 noip04p3
+noip06p1
+noip07p1
+noip09p2
 noip09p4
 noip10p1
+noip10p3
+noip14p5
+noip18p2
 noip20p3
 noip21p3
 oly20practice139

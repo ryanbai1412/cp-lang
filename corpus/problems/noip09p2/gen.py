@@ -1,4 +1,6 @@
 import sys, random
+if sys.argv[1] == "--max":
+    print(2000); print("\n".join(["1837836000 1 1 1837836000"] * 2000)); sys.exit()
 from math import gcd
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 t = r.randint(1, 5); print(t); M = r.choice([30, 1000, 40000])

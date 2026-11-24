@@ -5,6 +5,7 @@
 // Solution: BFS from t over reversed edges marks the vertices that reach t; a vertex is safe when
 //   all its out-neighbours are marked. If s is safe, BFS from s over the edges between safe
 //   vertices gives the answer. O(n + m).
+// original: corpus/submissions/5205459.cpp
 
 let n: 1..=10000 = read()
 let m: 0..=200000 = read()
