@@ -200,7 +200,15 @@ impl<'p> CompiledProgram<'p> {
             }
             let &acc_slot = feeds.pushers.get(&id)?;
             let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
-            let mut fc = Compiler::new(program, feeds, fed_ok, &f.locals, Some(id), f.params.len());
+            let mut fc = Compiler::new(
+                program,
+                feeds,
+                fed_ok,
+                &f.locals,
+                Some(id),
+                f.params.len(),
+                None,
+            );
             fc.feed_acc = Some(acc_slot);
             fc.compile_block(&f.body, None, false);
             fc.emit(Op::FeedEnd, Span::default());
@@ -252,8 +260,15 @@ impl<'p> CompiledProgram<'p> {
             if f.locals.len() > 512 || program.judge_fns.contains(&id) {
                 fns.push(None);
             } else {
-                let mut c =
-                    Compiler::new(program, feeds, &fed_ok, &f.locals, Some(id), f.params.len());
+                let mut c = Compiler::new(
+                    program,
+                    feeds,
+                    &fed_ok,
+                    &f.locals,
+                    Some(id),
+                    f.params.len(),
+                    Some(f),
+                );
                 c.traced = traced;
                 c.profiled = profiled;
                 let ret_kind = ScalarKind::of_ty(&f.ret, program);
@@ -280,8 +295,15 @@ impl<'p> CompiledProgram<'p> {
                 closures.push(None);
             } else {
                 let guarded_domains = program.fn_guarded_domains(&def.ret, &def.body);
-                let mut c =
-                    Compiler::new(program, feeds, &fed_ok, &def.locals, None, def.params.len());
+                let mut c = Compiler::new(
+                    program,
+                    feeds,
+                    &fed_ok,
+                    &def.locals,
+                    None,
+                    def.params.len(),
+                    None,
+                );
                 c.traced = traced;
                 c.profiled = profiled;
                 let ret_kind = ScalarKind::of_ty(&def.ret, program);
@@ -300,7 +322,8 @@ impl<'p> CompiledProgram<'p> {
                 closures.push(lendable.then_some(chunk));
             }
         }
-        let mut main_c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0);
+        let mut main_c =
+            Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0, None);
         main_c.traced = traced;
         main_c.profiled = profiled;
         main_c.compile_block(&program.main, None, false);
@@ -310,7 +333,7 @@ impl<'p> CompiledProgram<'p> {
             main.needs_stack = true;
         }
         let setup = program.multitest.then(|| {
-            let mut c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0);
+            let mut c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0, None);
             c.traced = traced;
             c.profiled = profiled;
             c.compile_block(&program.setup, None, false);

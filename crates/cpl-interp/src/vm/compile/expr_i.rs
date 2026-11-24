@@ -7,6 +7,11 @@ use cpl_ir::{
 };
 
 impl<'p, 'f> Compiler<'p, 'f> {
+    fn is_small_tuple_local(&self, e: &Expr) -> bool {
+        matches!(&e.kind, ExprKind::Local(slot)
+            if matches!(self.slot_loc(*slot), SlotLoc::SmallTuple { .. }))
+    }
+
     pub(super) fn compile_expr_i(&mut self, expr: &'p Expr) -> u16 {
         if let Some(place) = self.reported_write(expr) {
             return self.reporting_write(expr, place, |c| c.compile_expr_i(expr));
@@ -395,6 +400,31 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
+                dst
+            }
+            ExprKind::Cmp(op, lhs, rhs)
+                if matches!(
+                    op,
+                    CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
+                ) && lhs.ty == rhs.ty
+                    && ty_uses_structural_cmp(&lhs.ty, self.program)
+                    && crate::vm::scalar::small_tuple_shape(&lhs.ty, self.program).is_some()
+                    && (self.is_small_tuple_local(lhs)
+                        || self.is_small_tuple_local(rhs)
+                        || self.small_tuple_is_cheap(lhs) && self.small_tuple_is_cheap(rhs)) =>
+            {
+                let (len, _) = crate::vm::scalar::small_tuple_shape(&lhs.ty, self.program).unwrap();
+                let a_base = self.small_tuple_operand(lhs, len);
+                let b_base = self.small_tuple_operand(rhs, len);
+                let dst = self.alloc_i();
+                let cmp = Op::CmpSmallTuple {
+                    dst,
+                    a_base,
+                    b_base,
+                    len,
+                    op: *op,
+                };
+                self.emit(cmp, span);
                 dst
             }
             ExprKind::Cmp(op, lhs, rhs)
@@ -1154,7 +1184,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         let f = &self.program.fns[*fn_id];
                         args.iter().enumerate().all(|(i, a)| {
                         let Arg::Value(ae) = a else { return false; };
-                        if ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some() {
+                        if ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some()
+                            || (small_tuple_shape(&f.locals[i].ty, self.program).is_some()
+                                && self.small_tuple_is_cheap(ae))
+                        {
                             true
                         } else if let ExprKind::Local(slot) = &ae.kind {
                             matches!(self.slot_loc(*slot), SlotLoc::V(r) if r < self.num_local_v)
@@ -1190,6 +1223,32 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 self.emit(Op::MoveI { dst: reg, src }, span);
                                 map.push(SlotLoc::I(reg, kind));
                             }
+                        } else if let Some((len, kinds)) =
+                            small_tuple_shape(&f.locals[i].ty, self.program)
+                                .filter(|_| self.small_tuple_is_cheap(ae))
+                        {
+                            let fresh = self.next_i;
+                            let src = self.small_tuple_operand(ae, len);
+                            if src >= fresh || i + 1 == args.len() {
+                                map.push(SlotLoc::SmallTuple {
+                                    base: src,
+                                    len,
+                                    kinds,
+                                });
+                            } else {
+                                let base = self.next_i;
+                                for k in 0..u16::from(len) {
+                                    let reg = self.alloc_i();
+                                    self.emit(
+                                        Op::MoveI {
+                                            dst: reg,
+                                            src: src + k,
+                                        },
+                                        span,
+                                    );
+                                }
+                                map.push(SlotLoc::SmallTuple { base, len, kinds });
+                            }
                         } else if let ExprKind::Local(slot) = &ae.kind {
                             let SlotLoc::V(r) = self.slot_loc(*slot) else {
                                 unreachable!()
@@ -1199,11 +1258,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             unreachable!()
                         }
                     }
+                    let mut boxed = Vec::new();
                     for l in f.locals.iter().skip(args.len()) {
-                        let kind = ScalarKind::of_ty(&l.ty, self.program).unwrap();
-                        let reg = self.alloc_i();
-                        self.emit(Op::ConstImmI { dst: reg, val: 0 }, span);
-                        map.push(SlotLoc::I(reg, kind));
+                        if let Some(kind) = ScalarKind::of_ty(&l.ty, self.program) {
+                            let reg = self.alloc_i();
+                            self.emit(Op::ConstImmI { dst: reg, val: 0 }, span);
+                            map.push(SlotLoc::I(reg, kind));
+                        } else {
+                            let reg = self.inline_v + boxed.len() as u16;
+                            boxed.push(reg);
+                            map.push(SlotLoc::V(reg));
+                        }
                     }
                     let dst = self.alloc_i();
                     let prev_slots = self.inline_slots.replace(map);
@@ -1234,6 +1299,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.inline_slots = prev_slots;
                     for j in jumps {
                         self.patch(j, end_pc);
+                    }
+                    for reg in boxed {
+                        self.emit(Op::ClearV { reg }, span);
                     }
                     if (self.fallback_stmts.len(), self.fallback_exprs.len()) == (mark.1, mark.2) {
                         Some(dst)

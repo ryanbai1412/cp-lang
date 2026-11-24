@@ -34,7 +34,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let tys: Vec<&'p Ty> = (f.locals.iter().take(f.params.len()))
             .map(|l| &l.ty)
             .collect();
-        let mix = self.compile_mix_args(&tys, args, span)?;
+        let mix = self.compile_mix_args(&tys, args, Some(f), span)?;
         let (arg_base_i, arg_base_v) = (mix.arg_base_i, mix.arg_base_v);
         let (dst_i, dst_v, dst_some) = match ret_mode {
             CallRet::Unit => (0, 0, 0),
@@ -87,6 +87,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         &self,
         tys: &[&'p Ty],
         args: &'p [Arg],
+        callee: Option<&'p cpl_ir::Function>,
     ) -> Option<(Vec<bool>, usize, usize)> {
         // Several `mut` args must be places that never overlap: each is
         // taken in turn and written back after the call.
@@ -131,8 +132,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let mut ni = 0usize;
         let mut nv = 0usize;
-        for &ty in tys {
-            if ScalarKind::of_ty(ty, self.program).is_some() {
+        for (k, &ty) in tys.iter().enumerate() {
+            if let Some(len) = callee.and_then(|f| tuple_param_len(self.program, f, k)) {
+                ni += len as usize;
+            } else if ScalarKind::of_ty(ty, self.program).is_some() {
                 ni += 1;
             } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
                 ni += 2;
@@ -153,9 +156,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
         &mut self,
         tys: &[&'p Ty],
         args: &'p [Arg],
+        callee: Option<&'p cpl_ir::Function>,
         span: Span,
     ) -> Option<MixArgs> {
-        let (via_path, ni, nv) = self.mix_arg_plan(tys, args)?;
+        let (via_path, ni, nv) = self.mix_arg_plan(tys, args, callee)?;
+        let program = self.program;
+        let tuple_len = |k: usize| callee.and_then(|f| tuple_param_len(program, f, k));
         let mut i_args: Vec<u16> = vec![0; ni];
         let mut v_args: Vec<(u16, bool)> = vec![(0, false); nv];
         let mut writebacks: Vec<WriteBack> = Vec::new();
@@ -164,8 +170,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let mut param_offs: Vec<usize> = Vec::with_capacity(args.len());
         let mut cur_i = 0usize;
         let mut cur_v = 0usize;
-        for &ty in tys {
-            if ScalarKind::of_ty(ty, self.program).is_some() {
+        for (k, &ty) in tys.iter().enumerate() {
+            if let Some(len) = tuple_len(k) {
+                param_offs.push(cur_i);
+                cur_i += len as usize;
+            } else if ScalarKind::of_ty(ty, self.program).is_some() {
                 param_offs.push(cur_i);
                 cur_i += 1;
             } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
@@ -182,7 +191,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             if let Arg::Value(ae) = a {
                 let ty = tys[i];
                 let off = param_offs[i];
-                if ScalarKind::of_ty(ty, self.program).is_some() {
+                if let Some(len) = tuple_len(i) {
+                    let base = self.small_tuple_operand(ae, len);
+                    for k in 0..len as usize {
+                        i_args[off + k] = base + k as u16;
+                    }
+                } else if ScalarKind::of_ty(ty, self.program).is_some() {
                     i_args[off] = self.compile_expr_i(ae);
                 } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
                     let (v, s) = self.compile_expr_opt_i(ae);

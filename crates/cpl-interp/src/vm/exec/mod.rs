@@ -71,7 +71,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[r as usize] = std::mem::replace(&mut args_v[iv], Value::Unit);
                     iv += 1;
                 }
-                SlotLoc::SmallTuple { .. } => unreachable!("params are never SmallTuple"),
+                SlotLoc::SmallTuple { base, len, .. } => {
+                    let (b, n) = (base_i + base as usize, len as usize);
+                    vm_regs_i[b..b + n].copy_from_slice(&args_i[ii..ii + n]);
+                    ii += n;
+                }
             }
         }
         let dom_mark = self.saved_domains.len();
@@ -105,7 +109,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         iv += 1;
                     }
-                    SlotLoc::SmallTuple { .. } => unreachable!("params are never SmallTuple"),
+                    SlotLoc::SmallTuple { len, .. } => ii += len as usize,
                 }
             }
         }
@@ -1508,15 +1512,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_STRUCT.at(&[]));
                     }
                 }
-                Op::FieldListLen { dst, obj_v, field } => {
-                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
-                        Value::Tuple(TupleVal::Boxed(fs)) => match &fs[field as usize] {
-                            Value::List(list) => list.len() as i64,
-                            _ => 0,
-                        },
-                        _ => 0,
-                    };
-                }
                 Op::PopcountI { dst, src } => {
                     regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).count_ones());
                 }
@@ -1866,9 +1861,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::StoreLFieldOptI { .. }
             | Op::StoreLFieldIdx1I { .. }
             | Op::StoreLFieldIdx1V { .. }
+            | Op::LoadFieldList1SmallTuple { .. }
+            | Op::FieldListLen { .. }
+            | Op::StoreLFieldIdx1SmallTuple { .. }
             | Op::StoreLFieldIdx1OptI { .. }
             | Op::ListPushFieldLI { .. }
             | Op::ListPushFieldLV { .. }
+            | Op::ListPushFieldSmallTuple { .. }
             | Op::ListPopDiscardFieldL { .. }
             | Op::StoreGList1V { .. }
             | Op::StoreLList1V { .. }
@@ -1880,6 +1879,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::ListPopFieldLV { .. }
             | Op::MakeRange { .. }
             | Op::CmpOptI { .. }
+            | Op::CmpSmallTuple { .. }
             | Op::LoadGIdxFieldI { .. }
             | Op::StoreGIdxFieldI { .. }
             | Op::LoadLIdxFieldI { .. }

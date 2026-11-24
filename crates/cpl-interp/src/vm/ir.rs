@@ -695,6 +695,14 @@ pub(crate) enum Op {
         field: u16,
         r_i: u16,
     },
+    /// `obj.field[i]` for a list of small tuples, into `len` Int registers.
+    LoadFieldList1SmallTuple {
+        dst_base: u16,
+        len: u8,
+        obj_v: u16,
+        field: u16,
+        r_i: u16,
+    },
     FieldListLen {
         dst: u16,
         obj_v: u16,
@@ -962,6 +970,16 @@ pub(crate) enum Op {
         r_i: u16,
         r_val: u16,
     },
+    /// `obj.field[i] = t` for a list of small tuples, `t` in `len` Int
+    /// registers from `src_base`.
+    StoreLFieldIdx1SmallTuple {
+        obj_v: u16,
+        field: u16,
+        r_i: u16,
+        src_base: u16,
+        len: u8,
+        kinds: [SmallFieldKind; 4],
+    },
     StoreLFieldIdx1OptI {
         obj_v: u16,
         field: u16,
@@ -975,6 +993,14 @@ pub(crate) enum Op {
         field: u16,
         val_i: u16,
         kind: ScalarKind,
+    },
+    /// `obj.field.push(t)` for a small tuple `t` in `len` Int registers.
+    ListPushFieldSmallTuple {
+        obj_v: u16,
+        field: u16,
+        src_base: u16,
+        len: u8,
+        kinds: [SmallFieldKind; 4],
     },
     ListPushFieldLV {
         obj_v: u16,
@@ -1045,6 +1071,15 @@ pub(crate) enum Op {
         dst: u16,
         a_v: u16,
         b_v: u16,
+        op: CmpOp,
+    },
+    /// Compares the small tuples in `len` Int registers from `a_base` and
+    /// `b_base` field by field.
+    CmpSmallTuple {
+        dst: u16,
+        a_base: u16,
+        b_base: u16,
+        len: u8,
         op: CmpOp,
     },
     MakeList {

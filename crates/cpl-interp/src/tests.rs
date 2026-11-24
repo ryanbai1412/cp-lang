@@ -553,6 +553,73 @@ print(heap_order([5, 3, 8, 1, 9, 2]), calls)
 }
 
 #[test]
+fn vm_keeps_a_heap_of_int_pairs_in_int_registers() {
+    // dijkstra's `MinHeap<(W, V)>`: entries move between the list and
+    // registers, and `less` is inlined into `push` and `sift_down`, so only
+    // a `by:` heap's comparator closure takes boxed entries.
+    let source = "
+fn order(xs: List<(Int, Int)>) -> Int:
+    var h = MinHeap<(Int, Int)>()
+    for x in xs: h.push(x)
+    var acc = 0
+    while let (d, v) = h.pop():
+        acc = acc * 10 + v + d - d
+    acc
+fn by_second(xs: List<(Int, Int)>) -> Int:
+    var h = Heap<(Int, Int)>.new(by: p => -p.1)
+    for x in xs: h.push(x)
+    var acc = 0
+    while let (d, v) = h.pop():
+        acc = acc * 10 + d
+    acc
+let xs = [(3, 1), (1, 2), (2, 3), (1, 0), (5, 4), (2, 5)]
+print(order(xs))
+print(by_second(xs))
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let mut seen = 0;
+    for (id, f) in program.fns.iter().enumerate() {
+        if !f.name.starts_with("Heap_")
+            || ![".push", ".sift_down"].iter().any(|h| f.name.ends_with(h))
+        {
+            continue;
+        }
+        seen += 1;
+        let chunk = compiled.fns[id].as_ref().expect("heap fns run on the VM");
+        let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
+        let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
+        assert_eq!(count("CallVmMix"), 0, "{} calls `less`: {ops:?}", f.name);
+        assert_eq!(
+            count("UnboxSmallTuple"),
+            0,
+            "{} unboxes an entry: {ops:?}",
+            f.name
+        );
+        assert!(count("CmpSmallTuple") > 0, "{ops:?}");
+        assert_eq!(
+            count("BoxSmallTuple"),
+            2 * count("CallClosure"),
+            "{} boxes an entry outside the comparator call: {ops:?}",
+            f.name
+        );
+    }
+    assert!(seen >= 2, "{seen}");
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "23514\n252131\n");
+}
+
+#[test]
 fn vm_alias_free_mut_closure_runs_without_fallback() {
     let source = "
 fn count_and_bump(mut xs: List<Int>, pred: Int -> Bool) -> Int:

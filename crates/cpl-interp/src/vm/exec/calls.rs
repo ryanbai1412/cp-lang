@@ -785,19 +785,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         SlotLoc::I(..) => ni += 1,
                         SlotLoc::OptI { .. } => ni += 2,
                         SlotLoc::V(_) => nv += 1,
-                        SlotLoc::SmallTuple { .. } => {
-                            unreachable!("params are never SmallTuple")
-                        }
+                        SlotLoc::SmallTuple { len, .. } => ni += *len as usize,
                     }
                 }
                 let mut arg_buf_i = [0i64; 8];
                 let abi = arg_base_i as usize;
                 arg_buf_i[..ni].copy_from_slice(&regs_i[abi..abi + ni]);
-                let mut arg_buf_v: [Value; 8] = std::array::from_fn(|_| Value::Unit);
                 let abv = arg_base_v as usize;
-                for k in 0..nv {
-                    arg_buf_v[k] = std::mem::replace(&mut regs_v[abv + k], Value::Unit);
-                }
                 let needs_stack = callee.needs_stack;
                 if chunk.has_by_ref_closure {
                     sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
@@ -825,7 +819,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     compiled,
                     callee,
                     &mut arg_buf_i[..ni],
-                    &mut arg_buf_v[..nv],
+                    &mut regs_v[abv..abv + nv],
                     &f.params,
                     vm_regs_i,
                 );
@@ -844,9 +838,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 if f.params.iter().any(|p| p.mutable) {
                     regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);
-                    for k in 0..nv {
-                        regs_v[abv + k] = std::mem::replace(&mut arg_buf_v[k], Value::Unit);
-                    }
                 }
                 match ret_mode {
                     CallRet::Unit => {}

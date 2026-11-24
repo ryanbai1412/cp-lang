@@ -1059,6 +1059,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         },
                         span,
                     );
+                } else if let Some((len, kinds)) = small_tuple_shape(&args[0].ty, self.program)
+                    .filter(|_| self.small_tuple_is_cheap(&args[0]))
+                {
+                    let src_base = self.small_tuple_operand(&args[0], len);
+                    let push = Op::ListPushFieldSmallTuple {
+                        obj_v,
+                        field: *field as u16,
+                        src_base,
+                        len,
+                        kinds,
+                    };
+                    self.emit(push, span);
                 } else {
                     let val_v = self.compile_expr_v(&args[0]);
                     self.emit(
@@ -1258,6 +1270,37 @@ impl<'p, 'f> Compiler<'p, 'f> {
         dst
     }
 
+    /// Whether `expr` reaches Int registers without boxing: a small tuple
+    /// local, a tuple of its fields, or an element of a list.
+    pub(super) fn small_tuple_is_cheap(&self, expr: &Expr) -> bool {
+        match &expr.kind {
+            ExprKind::Local(slot) => matches!(self.slot_loc(*slot), SlotLoc::SmallTuple { .. }),
+            ExprKind::Tuple(_) => true,
+            ExprKind::Index(base, indices) => {
+                matches!(base.ty, Ty::List(_)) && indices.len() == 1 && indices[0].ty == Ty::Int
+            }
+            _ => false,
+        }
+    }
+
+    /// The first of `len` Int registers holding the small tuple `expr`: its
+    /// local's own when it is one, else fresh ones it is loaded into.
+    pub(super) fn small_tuple_operand(&mut self, expr: &'p Expr, len: u8) -> u16 {
+        if let ExprKind::Local(slot) = &expr.kind {
+            if let SlotLoc::SmallTuple { base, len: l, .. } = self.slot_loc(*slot) {
+                if l == len {
+                    return base;
+                }
+            }
+        }
+        let base = self.next_i;
+        for _ in 0..len {
+            self.alloc_i();
+        }
+        self.compile_expr_small_tuple(expr, base, len);
+        base
+    }
+
     pub(super) fn compile_expr_small_tuple(&mut self, expr: &'p Expr, dst_base: u16, len: u8) {
         if let Some((fn_id, args)) = self.traced_call(expr) {
             let src_v = self.emit_traced_call(expr.span, fn_id, args, false);
@@ -1331,6 +1374,41 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     );
                 }
             },
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::List(_))
+                    && indices.len() == 1
+                    && indices[0].ty == Ty::Int =>
+            {
+                if let ExprKind::Field(obj, fidx) = &base.kind {
+                    let obj_v = self.compile_expr_v(obj);
+                    let r_i = self.compile_expr_i(&indices[0]);
+                    let load = Op::LoadFieldList1SmallTuple {
+                        dst_base,
+                        len,
+                        obj_v,
+                        field: *fidx as u16,
+                        r_i,
+                    };
+                    self.emit(load, span);
+                    if obj_v >= self.num_local_v {
+                        self.emit(Op::ClearV { reg: obj_v }, span);
+                    }
+                    return;
+                }
+                let root = self.compile_expr_v(base);
+                let r_i = self.compile_expr_i(&indices[0]);
+                let load = Op::LoadList1SmallTuple {
+                    dst_base,
+                    len,
+                    root,
+                    is_global: false,
+                    r_i,
+                };
+                self.emit(load, span);
+                if root >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: root }, span);
+                }
+            }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2) =>

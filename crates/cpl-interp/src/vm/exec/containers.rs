@@ -643,6 +643,76 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     );
                 }
             }
+            Op::FieldListLen { dst, obj_v, field } => {
+                regs_i[dst as usize] = match &regs_v[obj_v as usize] {
+                    Value::Tuple(TupleVal::Boxed(fs)) => match &fs[field as usize] {
+                        Value::List(list) => list.len() as i64,
+                        _ => 0,
+                    },
+                    _ => 0,
+                };
+            }
+            Op::LoadFieldList1SmallTuple {
+                dst_base,
+                len,
+                obj_v,
+                field,
+                r_i,
+            } => {
+                let idx = regs_i[r_i as usize];
+                let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[obj_v as usize] else {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRUCT.at(&[]),
+                    );
+                };
+                let Value::List(list) = &fs[field as usize] else {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_FIELD.at(&[]),
+                    );
+                };
+                if idx < 0 || (idx as usize) >= list.len() {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &list.len()]),
+                    );
+                }
+                let (b, n) = (dst_base as usize, len as usize);
+                list.get_small_tuple(idx as usize, n, &mut regs_i[b..b + n]);
+            }
+            Op::StoreLFieldIdx1SmallTuple {
+                obj_v,
+                field,
+                r_i,
+                src_base,
+                len,
+                kinds,
+            } => {
+                let idx = regs_i[r_i as usize];
+                let (b, n) = (src_base as usize, len as usize);
+                let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] else {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                    );
+                };
+                let Value::List(list) = &mut crate::value::Shared::make_mut(fs)[field as usize]
+                else {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                    );
+                };
+                let n_len = list.len() as i64;
+                if idx < 0 || idx >= n_len {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &n_len]),
+                    );
+                }
+                Rc::make_mut(list).set_small_tuple(idx as usize, n, &regs_i[b..b + n], &kinds);
+            }
             Op::StoreLFieldIdx1V {
                 obj_v,
                 field,
@@ -766,6 +836,29 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
                     );
                 }
+            }
+            Op::ListPushFieldSmallTuple {
+                obj_v,
+                field,
+                src_base,
+                len,
+                kinds,
+            } => {
+                let (b, n) = (src_base as usize, len as usize);
+                let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] else {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
+                };
+                let Value::List(items) = &mut crate::value::Shared::make_mut(fs)[field as usize]
+                else {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
+                    );
+                };
+                Rc::make_mut(items).push_small_tuple(n, &regs_i[b..b + n], &kinds);
             }
             Op::ListPushFieldLV {
                 obj_v,
@@ -1058,6 +1151,26 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     CmpOp::Le => a <= b,
                     CmpOp::Gt => a > b,
                     CmpOp::Ge => a >= b,
+                    _ => false,
+                };
+                regs_i[dst as usize] = i64::from(res);
+            }
+            Op::CmpSmallTuple {
+                dst,
+                a_base,
+                b_base,
+                len,
+                op,
+            } => {
+                let (a, b, n) = (a_base as usize, b_base as usize, len as usize);
+                let ord = regs_i[a..a + n].cmp(&regs_i[b..b + n]);
+                let res = match op {
+                    CmpOp::Eq => ord.is_eq(),
+                    CmpOp::Ne => ord.is_ne(),
+                    CmpOp::Lt => ord.is_lt(),
+                    CmpOp::Le => ord.is_le(),
+                    CmpOp::Gt => ord.is_gt(),
+                    CmpOp::Ge => ord.is_ge(),
                     _ => false,
                 };
                 regs_i[dst as usize] = i64::from(res);

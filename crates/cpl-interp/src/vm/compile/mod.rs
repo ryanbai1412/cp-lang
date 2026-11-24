@@ -116,6 +116,9 @@ pub(super) struct Compiler<'p, 'f> {
     pub(in crate::vm) allow_fed_loops: bool,
     inline_slots: Option<Vec<SlotLoc>>,
     inline_ret: Option<(u16, Vec<usize>)>,
+    /// The first of the `INLINE_V_REGS` local registers an inlined body's
+    /// boxed locals use.
+    inline_v: u16,
     /// Registers known to hold a position of a domain, so a `FromOrd` of
     /// one needs no check: the register, the domain, and the local it holds
     /// if any. Cleared wherever a domain could be resized (a call, a
@@ -141,6 +144,23 @@ pub(super) struct Compiler<'p, 'f> {
     keeps: Vec<(u32, Option<SlotLoc>, usize)>,
 }
 
+/// How many Int registers the param `k` of `f` takes as a small tuple, if it
+/// is one: a value param of a tuple or struct of 2 to 4 Int-like fields.
+/// Local registers each chunk keeps for the boxed locals of a body it
+/// inlines (`Heap.less`'s `if let f = self.lt` takes two).
+const INLINE_V_REGS: u16 = 2;
+
+pub(in crate::vm) fn tuple_param_len(
+    program: &Program,
+    f: &cpl_ir::Function,
+    k: usize,
+) -> Option<u8> {
+    if f.params[k].mutable {
+        return None;
+    }
+    small_tuple_shape(&f.locals[k].ty, program).map(|(len, _)| len)
+}
+
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn new(
         program: &'p Program,
@@ -149,6 +169,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         locals: &'p [Local],
         cur_fn: Option<FnId>,
         param_count: usize,
+        tuple_params: Option<&'p cpl_ir::Function>,
     ) -> Self {
         let mut slot_map = Vec::with_capacity(locals.len());
         let mut next_i: u16 = 0;
@@ -162,7 +183,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let some = next_i + 1;
                 next_i += 2;
                 slot_map.push(SlotLoc::OptI { val, some, kind });
-            } else if idx >= param_count {
+            } else if idx >= param_count
+                || tuple_params.is_some_and(|f| tuple_param_len(program, f, idx).is_some())
+            {
                 if let Some((len, kinds)) = small_tuple_shape(&local.ty, program) {
                     let base = next_i;
                     next_i += len as u16;
@@ -176,6 +199,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 next_v += 1;
             }
         }
+        let inline_v = next_v;
+        next_v += INLINE_V_REGS;
         Self {
             program,
             feeds,
@@ -213,6 +238,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             allow_fed_loops: true,
             inline_slots: None,
             inline_ret: None,
+            inline_v,
             in_dom: Vec::new(),
             dom_clears: 0,
             assigned_locals: Vec::new(),
@@ -569,12 +595,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
         {
             return None;
         }
-        self.mix_arg_plan(&tys, args)?;
+        self.mix_arg_plan(&tys, args, None)?;
         let muts = (args.iter().enumerate())
             .filter(|(_, a)| matches!(a, Arg::Mut(_)))
             .fold(0u16, |m, (k, _)| m | 1 << k);
         let callee_v = self.compile_expr_v(callee);
-        let mix = self.compile_mix_args(&tys, args, span)?;
+        let mix = self.compile_mix_args(&tys, args, None, span)?;
         let (arg_base_i, arg_base_v) = (mix.arg_base_i, mix.arg_base_v);
         let (dst_i, dst_v, dst_some) = match ret_mode {
             CallRet::Unit => (0, 0, 0),
@@ -819,11 +845,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if ScalarKind::of_ty(&f.ret, self.program).is_none() {
             return false;
         }
-        if !f
-            .locals
-            .iter()
-            .skip(f.params.len())
-            .all(|l| ScalarKind::of_ty(&l.ty, self.program).is_some())
+        // A boxed local takes one of the caller's `INLINE_V_REGS`.
+        let boxed = |l: &&Local| ScalarKind::of_ty(&l.ty, self.program).is_none();
+        let mut boxed_locals = f.locals.iter().skip(f.params.len()).filter(boxed);
+        if boxed_locals.clone().count() > INLINE_V_REGS as usize
+            || boxed_locals.any(|l| {
+                ScalarKind::of_opt_ty(&l.ty, self.program).is_some()
+                    || small_tuple_shape(&l.ty, self.program).is_some()
+            })
         {
             return false;
         }
@@ -833,8 +862,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
         fn simple_stmt(s: &Stmt, f: &cpl_ir::Function, program: &Program) -> bool {
             match s {
                 Stmt::Let(slot, e) => {
-                    ScalarKind::of_ty(&f.locals[*slot].ty, program).is_some()
-                        && e.as_ref().is_none_or(|e| simple_expr(e, f, program))
+                    if ScalarKind::of_ty(&f.locals[*slot].ty, program).is_some() {
+                        e.as_ref().is_none_or(|e| simple_expr(e, f, program))
+                    } else {
+                        e.as_ref().is_some_and(|e| simple_v_expr(e, f))
+                    }
                 }
                 Stmt::Assign(p, _, e) => {
                     matches!(p.kind, PlaceKind::Local(slot) if ScalarKind::of_ty(&f.locals[slot].ty, program).is_some())
@@ -865,6 +897,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 _ => false,
             }
         }
+        // A boxed value an inlined body moves into a local: a param, a
+        // param's field, or a local unwrapped.
+        fn simple_v_expr(e: &Expr, f: &cpl_ir::Function) -> bool {
+            match &e.kind {
+                ExprKind::Local(_) => true,
+                ExprKind::Field(inner, _) => simple_v_base(inner, f),
+                ExprKind::Unwrap(inner, _) => matches!(inner.kind, ExprKind::Local(_)),
+                _ => false,
+            }
+        }
+        fn small_tuple_local(e: &Expr, program: &Program) -> bool {
+            matches!(e.kind, ExprKind::Local(_)) && small_tuple_shape(&e.ty, program).is_some()
+        }
         fn simple_expr(e: &Expr, f: &cpl_ir::Function, program: &Program) -> bool {
             if ScalarKind::of_ty(&e.ty, program).is_none() {
                 return false;
@@ -892,7 +937,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     };
                     safe_op && simple_expr(a, f, program) && simple_expr(b, f, program)
                 }
-                ExprKind::Cmp(_, a, b) => simple_expr(a, f, program) && simple_expr(b, f, program),
+                ExprKind::Cmp(_, a, b) => {
+                    (simple_expr(a, f, program) && simple_expr(b, f, program))
+                        || (small_tuple_local(a, program) && small_tuple_local(b, program))
+                }
+                ExprKind::IsSome(a) => matches!(a.kind, ExprKind::Local(_)),
+                // A closure the body holds, as `if let f = self.lt: f(a, b)`.
+                ExprKind::CallExpr(callee, args) => {
+                    matches!(callee.kind, ExprKind::Local(_))
+                        && args.iter().all(|a| {
+                            matches!(a, Arg::Value(e)
+                                if simple_expr(e, f, program) || small_tuple_local(e, program))
+                        })
+                }
                 ExprKind::Intrinsic(Prim::Popcount | Prim::Ctz | Prim::Clz, args) => {
                     args.len() == 1 && simple_expr(&args[0], f, program)
                 }

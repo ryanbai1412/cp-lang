@@ -936,6 +936,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             return false;
                         };
                         let r_i = self.compile_expr_i(&indices[0]);
+                        if let Some((len, kinds)) =
+                            crate::vm::scalar::small_tuple_shape(&value.ty, self.program)
+                                .filter(|_| self.small_tuple_is_cheap(value))
+                        {
+                            let src_base = self.small_tuple_operand(value, len);
+                            let store = Op::StoreLFieldIdx1SmallTuple {
+                                obj_v,
+                                field: *field as u16,
+                                r_i,
+                                src_base,
+                                len,
+                                kinds,
+                            };
+                            self.emit(store, place.span);
+                            return true;
+                        }
                         let r_val = self.compile_expr_v(value);
                         self.emit(
                             Op::StoreLFieldIdx1V {

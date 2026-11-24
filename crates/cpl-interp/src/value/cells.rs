@@ -253,6 +253,24 @@ impl Cells {
         }
     }
 
+    /// Pushes the small tuple in `vals`, boxing only when the cells hold
+    /// something else.
+    pub fn push_small_tuple(&mut self, len: usize, vals: &[i64], kinds: &[SmallFieldKind; 4]) {
+        let flat = shape::flat(kinds, len);
+        if let Cells::Rows {
+            stride,
+            shape,
+            data,
+        } = &mut *self
+        {
+            if *shape == flat && *stride as usize == len {
+                data.extend_from_slice(&vals[..len]);
+                return;
+            }
+        }
+        self.push(shape::unpack(flat, &vals[..len]));
+    }
+
     #[inline]
     pub fn set_small_tuple(
         &mut self,
