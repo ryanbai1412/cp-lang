@@ -296,6 +296,19 @@ class MakeTest(Corpus):
         self.assertEqual(corpus.make(args), 0)
         self.assertEqual([(out / pid / "01.in").read_text() for pid in ("p1", "p2", "p3")], ["p1\n", "p2\n", "p3\n"])
 
+    def test_a_failed_make_keeps_the_last_cases_whole(self):
+        d = self.package("p", port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "a"\n')
+        out = self.root / "out"
+        corpus.make_cases(next(corpus.problems()), str(out))
+        (d / "tests.toml").write_text('[[case]]\ninput = "b"\n\n[[case]]\ninput = "c"\n')
+        pkg = next(corpus.problems())
+        with mock.patch.object(corpus.Package, "case_input", side_effect=["b\n", RuntimeError("gen.py fails")]):
+            with self.assertRaises(RuntimeError):
+                corpus.make_cases(pkg, str(out))
+        self.assertEqual(sorted(f.name for f in out.iterdir()), ["p"])
+        self.assertEqual(sorted(f.name for f in (out / "p").iterdir()), [".stamp", "01.in"])
+        self.assertEqual((out / "p" / "01.in").read_text(), "a\n")
+
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
         d = self.package("p", port_cp="", interactor_py="")

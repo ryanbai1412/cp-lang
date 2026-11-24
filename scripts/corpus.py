@@ -1052,17 +1052,23 @@ def make_cases(pkg, out=OUT):
     if os.path.exists(key) and open(key).read() == stamp(pkg, ref):
         return
     exe = binary(ref) if ref else None
-    shutil.rmtree(tests, ignore_errors=True)
-    os.makedirs(tests)
-    for i, case in enumerate(pkg.cases(), 1):
-        text = pkg.case_input(case)
-        Path(tests, f"{i:02}.in").write_text(text)
-        if exe:
-            r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=TIMEOUT, preexec_fn=judge_stack)
-            if r.returncode:
-                raise ReferenceFails(f"{i:02}", r.returncode)
-            Path(tests, f"{i:02}.ans").write_text(r.stdout)
-    Path(key).write_text(stamp(pkg, ref))
+    os.makedirs(out, exist_ok=True)
+    # Made aside and renamed in, so a test reading the cases never sees half of them.
+    aside = tempfile.mkdtemp(prefix=f".{pkg.id}.", dir=out)
+    try:
+        for i, case in enumerate(pkg.cases(), 1):
+            text = pkg.case_input(case)
+            Path(aside, f"{i:02}.in").write_text(text)
+            if exe:
+                r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=TIMEOUT, preexec_fn=judge_stack)
+                if r.returncode:
+                    raise ReferenceFails(f"{i:02}", r.returncode)
+                Path(aside, f"{i:02}.ans").write_text(r.stdout)
+        Path(aside, ".stamp").write_text(stamp(pkg, ref))
+        shutil.rmtree(tests, ignore_errors=True)
+        os.rename(aside, tests)
+    finally:
+        shutil.rmtree(aside, ignore_errors=True)
 
 
 def make_one(job):
