@@ -223,8 +223,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             });
         }
         let in_closure = std::mem::replace(&mut self.in_closure, false);
-        let dom_mark =
-            crate::save_domains(&mut self.saved_domains, &self.domains, &self.fn_guarded[id]);
+        let dom_mark = self.saved_domains.len();
+        for &d in &self.fn_guarded[id] {
+            self.saved_domains.push((d, self.domains[d]));
+        }
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
         let compiled = Rc::clone(&self.vm);
         let flow = if !feeding || compiled.main.traced {

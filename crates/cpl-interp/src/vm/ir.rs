@@ -736,6 +736,7 @@ pub(crate) enum Op {
     CallVmI {
         fn_id: u16,
         arg_base: u16,
+        argc: u8,
         dst: u16,
     },
     CallVmMix {

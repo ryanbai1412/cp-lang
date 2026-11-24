@@ -1,25 +1,25 @@
-use super::frames::{Escaped, Stop};
 use crate::observe::Observer;
 use crate::value::Value;
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{Interp, Res};
+use cpl_ir::LoopId;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     #[allow(clippy::too_many_arguments)]
     #[inline]
-    pub(super) fn exec_ext_op<'c>(
+    pub(super) fn exec_ext_op(
         &mut self,
         op: Op,
         cur_pc: usize,
-        compiled: &'c CompiledProgram<'p>,
+        compiled: &CompiledProgram<'p>,
         chunk: &Chunk<'p>,
         base_i: usize,
         vm_regs_i: &mut Vec<i64>,
         regs_v: &mut [Value],
-        escaped: &mut Escaped,
+        escaped: &mut Option<(bool, Option<LoopId>)>,
         fed: &mut Option<&mut FedCtx<'_, 'p>>,
-    ) -> Res<Option<Stop<'c, 'p>>> {
+    ) -> Res<Option<ExecExit>> {
         match op {
             Op::FieldOptI { .. }
             | Op::FieldV { .. }
@@ -119,11 +119,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.exec_seq_and_list(op, cur_pc, chunk, regs_i, regs_v)?;
                 Ok(None)
             }
-            _ => self
-                .exec_places_and_fallback(
-                    op, cur_pc, compiled, chunk, base_i, vm_regs_i, regs_v, escaped, fed,
-                )
-                .map(|exit| exit.map(Stop::Exit)),
+            _ => self.exec_places_and_fallback(
+                op, cur_pc, compiled, chunk, base_i, vm_regs_i, regs_v, escaped, fed,
+            ),
         }
     }
 }

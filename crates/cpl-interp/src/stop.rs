@@ -25,11 +25,6 @@ pub const CANCELLED: cpl_diag::msgs::Msg = cpl_diag::msgs::interp::CANCELLED;
 /// Loop rounds and calls between two looks at the [`Stop`].
 pub(crate) const EVERY: u32 = 4096;
 
-/// The least heap the VM's call frames may take, whatever the Rust stack:
-/// 256 MB holds over a million frames, so a browser's few-megabyte stack
-/// recurses as deep as a judge's.
-pub(crate) const MIN_FRAME_BYTES: usize = 256 << 20;
-
 /// What ends a run before it finishes. Clones share the cancel, so the
 /// caller keeps one and hands the run the other.
 #[derive(Clone, Debug, Default)]
@@ -142,14 +137,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         Ok(self.ckpt.due())
     }
 
-    /// Whether the call at `span` has stack left: the Rust stack the
-    /// tree-walker recurses on, and the heap frames VM calls push, which
-    /// get at least [`MIN_FRAME_BYTES`] where the Rust stack is small.
     pub(crate) fn stack_left(&self, span: Span, callee: Option<&str>) -> Res<()> {
         let here = 0u8;
         let used = self.stack_top.abs_diff(std::ptr::addr_of!(here) as usize);
-        let frames = self.stack_budget.max(MIN_FRAME_BYTES);
-        if used > self.stack_budget || self.frame_bytes > frames {
+        if used > self.stack_budget {
             let callee = callee.map_or("a closure".into(), |name| format!("`{name}`"));
             return trap(
                 span,

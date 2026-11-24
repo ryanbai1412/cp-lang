@@ -189,47 +189,6 @@ print(dfs(V.first!))
 }
 
 #[test]
-fn recursion_on_a_browser_sized_stack_runs_300000_calls_deep() {
-    // A browser gives the interpreter a few megabytes of stack: each kind of
-    // VM call nests on heap frames, so none of them fills it.
-    let sources = [
-        "fn depth(n: Int) -> Int = if n == 0: 0 else: 1 + depth(n - 1)\nprint(depth(300000))\n",
-        "fn walk(n: Int, f: Int -> Int) -> Int:\n    if n == 0: return 0\n    f(n) + walk(n - 1, f)\nprint(walk(300000, x => x % 2))\n",
-        "fn fill(n: Int, mut xs: List<Int>):\n    if n > 0:\n        xs.push(n)\n        fill(n - 1, mut xs)\nvar xs: List<Int> = []\nfill(300000, mut xs)\nprint(xs.len)\n",
-    ];
-    let expected = ["300000", "150000", "300000"];
-    for (source, want) in sources.into_iter().zip(expected) {
-        let mut db = cpl_check::Session::new();
-        db.set_file("t.cp", source);
-        let analysis = db.analyze("t.cp").expect("set");
-        assert!(
-            analysis.diagnostics.is_empty(),
-            "{source}: {:?}",
-            analysis.diagnostics
-        );
-        let program = cpl_ir::lower(&analysis).expect("lowers");
-        let limits = Limits {
-            stack_bytes: 3 << 20,
-        };
-        let (out, res) = std::thread::Builder::new()
-            .stack_size(4 << 20)
-            .spawn(move || {
-                let mut out = Vec::new();
-                let res = run_on_this_thread(&program, b"", &mut out, limits);
-                (out, res.map_err(crate::Trap::into_message))
-            })
-            .expect("a 4 MB thread starts")
-            .join()
-            .expect("the run does not crash");
-        assert_eq!(
-            (String::from_utf8_lossy(&out).trim(), res),
-            (want, Ok(())),
-            "{source}"
-        );
-    }
-}
-
-#[test]
 fn vm_frames_hold_their_widest_statement_not_every_temporary() {
     // 600 locals and 42,000 statements: more temporaries than a register
     // index addresses, unless each statement's are freed when it ends.
