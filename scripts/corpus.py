@@ -490,21 +490,28 @@ def generated(pkg):
     return sorted(d.glob("*.in")) if d.is_dir() else []
 
 
+def cpl_cases(cpl, program, *args):
+    """`cpl test <program> <args>`'s cases, or the finding kind when it gives none."""
+    try:
+        r = subprocess.run([cpl, "test", str(program), *args, "--format", "json"], cwd=ROOT, capture_output=True,
+                           text=True, timeout=10 * TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return "cpl-test-timeout"
+    if "has no cases" in r.stderr:
+        return "cpl-test-no-cases"
+    try:
+        return json.loads(r.stdout)["cases"]
+    except (ValueError, KeyError):
+        return "cpl-test-error"
+
+
 def check_tests(pkg, ctx):
     """`cpl test port.cp` reads the package's cases and passes every one (problem-packages/R8)."""
     if not pkg.port or not ctx.runs(pkg):
         return []
-    try:
-        r = subprocess.run([ctx.cpl, "test", str(pkg.port), "--format", "json"], cwd=ROOT, capture_output=True,
-                           text=True, timeout=10 * TIMEOUT)
-    except subprocess.TimeoutExpired:
-        return [f"cpl-test-timeout {pkg.id} -"]
-    if "has no cases" in r.stderr:
-        return [f"cpl-test-no-cases {pkg.id} -"]
-    try:
-        cases = json.loads(r.stdout)["cases"]
-    except (ValueError, KeyError):
-        return [f"cpl-test-error {pkg.id} -"]
+    cases = cpl_cases(ctx.cpl, pkg.port)
+    if isinstance(cases, str):
+        return [f"{cases} {pkg.id} -"]
     found = [f"cpl-test-fails {pkg.id} {c['name']}" for c in cases if c["verdict"] not in (None, "ok")]
     if any(c["verdict"] is None for c in cases):
         found.append(f"cpl-test-unjudged {pkg.id} -")
@@ -584,8 +591,10 @@ def check_stress(pkg, ctx):
     """The interpreter and the port's C++ agree byte for byte on every case
     (goal 5), and on gen.py's inputs the port accepts them and agrees with the
     accepted C++ (problem-packages/R5)."""
-    if not pkg.port or not ctx.runs(pkg) or pkg.interactor:
+    if not pkg.port or not ctx.runs(pkg):
         return []
+    if pkg.interactor:
+        return interacted(pkg, ctx)
     exe, _ = native(pkg, ctx)
     if not exe:
         return [f"no-build {pkg.id} -"]
@@ -739,6 +748,35 @@ def at_max(pkg, cpl, exe, orig, data):
                 found.append(f"slow {pid} --max")
     return found
 
+
+
+def interacted(pkg, ctx):
+    """The interactor rules the same on the interpreter and on the port's C++ for
+    every case. An interactive case is no stdin to feed both sides: interactor.py
+    talks to each, once per case, through `cpl test --interactor`."""
+    cases = generated(pkg)
+    if not cases:
+        return []
+    judge = ("--tests", str(cases[0].parent), "--interactor", str(pkg.interactor))
+    ours = cpl_cases(ctx.cpl, pkg.port, *judge)
+    if isinstance(ours, str):
+        return [f"{ours} {pkg.id} -"]
+    with tempfile.TemporaryDirectory() as tmp:
+        cpp = os.path.join(tmp, f"{pkg.id}.cpp")
+        if subprocess.run([ctx.cpl, "build", "--judge", "codeforces", str(pkg.port), "-o", cpp],
+                          capture_output=True).returncode:
+            return [f"no-build {pkg.id} -"]
+        theirs = cpl_cases(ctx.cpl, cpp, *judge)
+    if isinstance(theirs, str):
+        return [f"differ {pkg.id} -: c++ {theirs}"]
+    a, b = ({c["name"]: c for c in side} for side in (ours, theirs))
+    found = []
+    for inp in cases:
+        x, y = a.get(inp.stem, {}), b.get(inp.stem, {})
+        if x.get("verdict") != y.get("verdict"):
+            found.append(f"differ {pkg.id} {inp.name}: interp {x.get('verdict')} ({x.get('why')}), "
+                         f"c++ {y.get('verdict')} ({y.get('why')})")
+    return found
 
 
 def check_max(pkg, ctx):

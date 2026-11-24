@@ -202,6 +202,41 @@ class CompareTest(unittest.TestCase):
         self.assertIn("interp exit 3, c++ exit 0, interp stderr b'error[R0001]: internal: lost frame | at 4:2'", why)
 
 
+class InteractedTest(Corpus):
+    """An interactive package: both sides judged by interactor.py, never fed the case."""
+
+    def judge(self, port, cxx):
+        d = self.package("p", port_cp="print(1)\n", interactor_py="")
+        cases = self.root / "corpus-tests"
+        cases.mkdir()
+        for name in ("01", "02"):
+            (cases / f"{name}.in").write_text("")
+        calls = []
+
+        def cpl_cases(cpl, program, *args):
+            calls.append((str(program), args))
+            ruled = cxx if str(program).endswith(".cpp") else port
+            return [{"name": n, "verdict": v, "why": None} for n, v in zip(("01", "02"), ruled)]
+        build = mock.Mock(return_value=mock.Mock(returncode=0))
+        ctx = mock.Mock(cpl="cpl")
+        with mock.patch.object(corpus, "generated", lambda pkg: sorted(cases.glob("*.in"))), \
+                mock.patch.object(corpus, "cpl_cases", cpl_cases), mock.patch.object(corpus.subprocess, "run", build):
+            found = corpus.interacted(corpus.Package.at(d), ctx)
+        return found, calls, d, cases
+
+    def test_both_sides_are_judged_once_by_the_interactor(self):
+        found, calls, d, cases = self.judge(["ok", "ok"], ["ok", "ok"])
+        self.assertEqual(found, [])
+        (port, a), (cxx, b) = calls
+        self.assertTrue(port.endswith("port.cp") and cxx.endswith("p.cpp"))
+        self.assertEqual(a, b)
+        self.assertEqual(a, ("--tests", str(cases), "--interactor", str(d / "interactor.py")))
+
+    def test_verdicts_that_disagree_are_a_differ(self):
+        found, *_ = self.judge(["ok", "ok"], ["ok", "WA"])
+        self.assertEqual(found, ["differ p 02.in: interp ok (None), c++ WA (None)"])
+
+
 class StaticModesTest(Corpus):
     def ctx(self, stderr):
         cpl = self.root / "cpl"
