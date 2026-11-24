@@ -1509,8 +1509,8 @@ impl<'a> Lowerer<'a> {
                     };
                     if !is_own {
                         let message =
-                            format!("`fields({n})` here names the type it builds, `{own_name}`");
-                        self.error(codes::TYPE_MISMATCH, a.value.span, message);
+                            cpl_diag::msgs::check::FIELDS_HERE_NAMES_TYPE.at(&[&n, &own_name]);
+                        self.report(a.value.span, message);
                         return Some(self.err_expr(span));
                     }
                     continue;
