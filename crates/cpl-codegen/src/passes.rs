@@ -296,7 +296,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "split-structs",
         "split.rs",
-        Unasked,
+        Uses(&["each_value", "gives", "each_sink", "each_written"]),
         "a_struct_built_with_several_closures_splits_per_closure",
     ),
     pass(

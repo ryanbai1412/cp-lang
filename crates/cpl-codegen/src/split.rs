@@ -8,6 +8,8 @@
 //! one variable, or live in a list, optional or closure, stays whole.
 
 use crate::devirt::ty_structs;
+use crate::uses::places::each_written;
+use crate::uses::split::{each_sink, each_value, gives, Sink};
 use crate::walk;
 use cpl_ir::{
     Arg, Block, ClosureId, ElemLoc, Expr, ExprKind, FnId, GlobalId, Place, PlaceKind, Program,
@@ -143,15 +145,8 @@ fn candidates(program: &Program) -> BTreeSet<StructId> {
         .iter()
         .for_each(|l| nested(&l.ty, &mut bad));
     for (_, block) in bodies(program) {
-        walk::deep_exprs(block, &mut |e| {
-            nested(&e.ty, &mut bad);
-            places_in(e, &mut |p| nested(&p.ty, &mut bad));
-        });
-        walk::deep_stmts(block, &mut |s| match s {
-            Stmt::Assign(p, ..) => nested(&p.ty, &mut bad),
-            Stmt::For(..) => {}
-            _ => {}
-        });
+        each_value(block, &mut |e| nested(&e.ty, &mut bad));
+        each_written(block, &mut |p| nested(&p.ty, &mut bad));
     }
     out.retain(|s| !bad.contains(s));
     settle(program, out)
@@ -234,20 +229,6 @@ fn bodies(program: &Program) -> Vec<(Ctx, &Block)> {
     out
 }
 
-fn places_in<'a>(e: &'a Expr, f: &mut dyn FnMut(&'a Place)) {
-    match &e.kind {
-        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-            for arg in args {
-                if let Arg::Mut(p) = arg {
-                    f(p);
-                }
-            }
-        }
-        ExprKind::MutSlice(p, ..) | ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, ..) => f(p),
-        _ => {}
-    }
-}
-
 struct Flow<'p> {
     program: &'p Program,
     tracked: &'p BTreeSet<StructId>,
@@ -270,7 +251,7 @@ impl<'p> Flow<'p> {
         for (id, f) in program.fns.iter().enumerate() {
             let involved = is_struct(&f.ret) || f.locals.iter().any(|l| is_struct(&l.ty));
             let mut builds = false;
-            walk::deep_exprs(&f.body, &mut |e| builds |= is_struct(&e.ty));
+            each_value(&f.body, &mut |e| builds |= is_struct(&e.ty));
             let row: Vec<bool> = (0..f.params.len())
                 .map(|s| {
                     involved && (is_struct(&f.locals[s].ty) || (builds && is_fn(&f.locals[s].ty)))
@@ -445,10 +426,8 @@ impl<'p> Flow<'p> {
                 Some(Self::join(Some(&a), b))
             }
             ExprKind::Do(block) => {
-                let mut gives = Vec::new();
-                gives_in(block, &mut gives);
                 let mut out: Option<Key> = None;
-                for g in gives {
+                for g in gives(block) {
                     let k = self.eval(ctx, g)?;
                     out = Some(Self::join(out.as_ref(), k));
                 }
@@ -491,7 +470,7 @@ impl<'p> Flow<'p> {
         }
         for block in self.body(ctx) {
             let mut calls = Vec::new();
-            walk::deep_exprs(block, &mut |e| {
+            each_value(block, &mut |e| {
                 if let ExprKind::Call(f, args) = &e.kind {
                     calls.push((*f, args));
                 }
@@ -506,29 +485,29 @@ impl<'p> Flow<'p> {
                     }
                 }
             }
-            let mut stmts = Vec::new();
-            walk::deep_stmts(block, &mut |s| stmts.push(s));
-            for stmt in stmts {
-                self.stmt(ctx, stmt);
+            let mut sinks = Vec::new();
+            each_sink(block, &mut |s| sinks.push(s));
+            for sink in sinks {
+                self.sink(ctx, sink);
             }
         }
     }
 
-    fn stmt(&mut self, ctx: &Ctx, stmt: &Stmt) {
-        match stmt {
-            Stmt::Let(slot, init) if self.is_tracked(self.local_ty(ctx, *slot)) => {
+    fn sink(&mut self, ctx: &Ctx, sink: Sink) {
+        match sink {
+            Sink::Let(slot, init) if self.is_tracked(self.local_ty(ctx, slot)) => {
                 let key = match init {
                     Some(e) => self.eval(ctx, e),
                     None => Some(Key::Top),
                 };
                 if let Some(k) = key {
-                    self.set_local(ctx, *slot, k);
+                    self.set_local(ctx, slot, k);
                 }
             }
-            Stmt::For(_, slot, ..) if self.is_tracked(self.local_ty(ctx, *slot)) => {
-                self.set_local(ctx, *slot, Key::Top);
+            Sink::For(slot) if self.is_tracked(self.local_ty(ctx, slot)) => {
+                self.set_local(ctx, slot, Key::Top);
             }
-            Stmt::Return(Some(e)) => {
+            Sink::Return(e) => {
                 if let Ctx::Fn(f, _) = ctx {
                     if self.is_struct(&self.program.fns[*f].ret) {
                         if let Some(k) = self.eval(ctx, e) {
@@ -541,7 +520,7 @@ impl<'p> Flow<'p> {
                     }
                 }
             }
-            Stmt::Assign(place, _, value) if self.is_tracked(&place.ty) => {
+            Sink::Store(place, value) if self.is_tracked(&place.ty) => {
                 let Some(new) = self.eval(ctx, value) else {
                     return;
                 };
@@ -581,7 +560,7 @@ impl<'p> Flow<'p> {
         let mut work: Vec<Ctx> = live.iter().cloned().collect();
         while let Some(ctx) = work.pop() {
             for block in self.body(&ctx) {
-                walk::deep_exprs(block, &mut |e| {
+                each_value(block, &mut |e| {
                     if let ExprKind::Call(f, args) = &e.kind {
                         if let Some(keys) = self.call_keys(&ctx, *f, args) {
                             let callee = Ctx::Fn(*f, keys);
@@ -623,7 +602,7 @@ impl<'p> Flow<'p> {
                 check(&self.program.fns[*f].ret, self.rets.get(&ctx), &mut out);
             }
             for block in self.body(&ctx) {
-                walk::deep_exprs(block, &mut |e| {
+                each_value(block, &mut |e| {
                     if self.is_struct(&e.ty) {
                         let key = self.eval(&ctx, e);
                         check(&e.ty, key.as_ref(), &mut out);
@@ -685,7 +664,7 @@ impl<'p> Flow<'p> {
             }
             for block in self.body(ctx) {
                 let mut steps = Vec::new();
-                exprs_ref(block, &mut |e| {
+                each_value(block, &mut |e| {
                     let ty = self.is_struct(&e.ty).then(|| self.eval(ctx, e)).flatten();
                     let callee = match &e.kind {
                         ExprKind::Call(f, args) => self
@@ -731,7 +710,7 @@ enum Target {
 struct CtxPlan {
     locals: BTreeMap<Slot, Key>,
     ret: Option<Key>,
-    /// Per block, per expression in [`exprs_ref`] order: its key and the
+    /// Per block, per expression in [`each_value`] order: its key and the
     /// clone its call goes to.
     blocks: Vec<Vec<(Option<Key>, Option<FnId>)>>,
 }
@@ -773,31 +752,7 @@ fn with_path(key: Key, path: &[usize], new: Key) -> Key {
     }
 }
 
-/// The `Give`s of `block` itself, not of a `Do` nested inside it.
-fn gives_in<'a>(block: &'a Block, out: &mut Vec<&'a Expr>) {
-    for stmt in &block.stmts {
-        if let Stmt::Give(e) = stmt {
-            out.push(e);
-        }
-        walk::stmt_blocks(stmt, &mut |inner| gives_in(inner, out));
-    }
-}
-
-fn exprs_ref<'a>(block: &'a Block, f: &mut dyn FnMut(&'a Expr)) {
-    for stmt in &block.stmts {
-        walk::stmt_exprs(stmt, &mut |e| expr_ref(e, f));
-        walk::stmt_blocks(stmt, &mut |inner| exprs_ref(inner, f));
-    }
-}
-
-fn expr_ref<'a>(e: &'a Expr, f: &mut dyn FnMut(&'a Expr)) {
-    if let ExprKind::Do(block) = &e.kind {
-        exprs_ref(block, f);
-    }
-    walk::children(e, &mut |child| expr_ref(child, f));
-    f(e);
-}
-
+/// [`each_value`]'s walk, to rewrite what it planned.
 fn exprs_mut(block: &mut Block, f: &mut dyn FnMut(&mut Expr)) {
     for stmt in &mut block.stmts {
         walk::stmt_exprs_mut(stmt, &mut |e| expr_mut(e, f));

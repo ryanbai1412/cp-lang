@@ -1,6 +1,6 @@
 //! Fn values the C++ calls directly instead of through `std::function`.
 
-use super::cpp;
+use super::{cpp, lower};
 
 #[test]
 fn a_fn_field_read_into_a_local_calls_its_only_closure() {
@@ -526,4 +526,43 @@ fn an_unread_flat_key_is_not_computed() {
         assert!(!line.starts_with("(int)((ll)"), "{line}");
     }
     assert!(!out.contains("C_len + (ll)"), "{out}");
+}
+
+#[test]
+fn each_sink_reports_every_let_loop_binding_store_and_return() {
+    use crate::uses::split::{each_sink, Sink};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var s = 0\n",
+        "    for i in 0..n: s += i\n",
+        "    return s\n",
+        "print(f(read::<Int>()))\n",
+    ));
+    let f = program.fns.iter().find(|f| f.name == "f").expect("f");
+    let mut kinds = Vec::new();
+    each_sink(&f.body, &mut |s| {
+        kinds.push(match s {
+            Sink::Let(..) => "let",
+            Sink::For(_) => "for",
+            Sink::Store(..) => "store",
+            Sink::Return(_) => "return",
+        })
+    });
+    assert_eq!(kinds, ["let", "for", "store", "return"]);
+}
+
+#[test]
+fn each_value_reports_an_expression_after_the_ones_inside_it() {
+    let program = lower("let k = read::<Int>()\nprint(k * (k + 1), [k, 2 * k].len)\n");
+    let mut order: Vec<*const cpl_ir::Expr> = Vec::new();
+    crate::uses::split::each_value(&program.main, &mut |e| order.push(e));
+    let at = |e: &cpl_ir::Expr| order.iter().position(|&p| std::ptr::eq(p, e));
+    let mut checked = 0;
+    crate::uses::split::each_value(&program.main, &mut |e| {
+        crate::walk::children(e, &mut |child| {
+            assert!(at(child) < at(e), "a child after its parent");
+            checked += 1;
+        });
+    });
+    assert!(checked > 4, "{checked} children");
 }

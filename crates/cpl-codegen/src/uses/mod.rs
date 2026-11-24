@@ -10,6 +10,7 @@
 pub(crate) mod effects;
 pub(crate) mod loops;
 pub(crate) mod places;
+pub(crate) mod split;
 
 use crate::lend::{copied_at_test, Tail};
 use crate::walk;
