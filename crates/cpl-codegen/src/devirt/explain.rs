@@ -199,7 +199,11 @@ pub fn explain_closures(
                     let site = format!("closure {cid} local {}", c.locals[*slot].name);
                     let auto = match init.as_ref() {
                         Some(init) => match &init.kind {
-                            ExprKind::Closure(i) => devirt.let_auto(Some(cid), *slot, *i, 0),
+                            ExprKind::Closure(i) => {
+                                devirt.let_auto(Some(cid), *slot, *i, 0)
+                                    || !hoisted.contains(slot)
+                                        && devirt.let_rec(Some(cid), *slot, *i, 0)
+                            }
                             ExprKind::Call(f, _) => {
                                 !hoisted.contains(slot)
                                     && devirt.let_auto_call(Some(cid), *slot, *f, 0)

@@ -478,6 +478,11 @@ impl<'p> Devirt<'p> {
         self.bound_once(home, slot, n) && self.local_auto(slot, cid)
     }
 
+    /// Whether `let name = <closure cid>` in `home` that names itself binds `auto` through `cpl::rec`.
+    pub fn let_rec(&self, home: Option<ClosureId>, slot: usize, cid: ClosureId, n: u32) -> bool {
+        self.bound_once(home, slot, n) && self.local_rec(slot, cid)
+    }
+
     /// Whether `let name = f(..)` binds `auto`: `f` returns a lambda's own
     /// type (see [`Devirt::returns_lambda`]) and nothing stores to `name` again.
     pub fn let_auto_call(&self, home: Option<ClosureId>, slot: usize, f: FnId, n: u32) -> bool {

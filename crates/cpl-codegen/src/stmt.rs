@@ -33,18 +33,17 @@ fn flat(e: &Expr) -> Option<(&[Stmt], &Expr)> {
 }
 
 impl<'p> Emitter<'p> {
-    /// The closure a `let` of a fn binds once, outside any closure, and that
-    /// calls itself: it is emitted through `cpl::rec`.
+    /// The closure a `let` of a fn binds once and that calls itself: it is
+    /// emitted through `cpl::rec`.
     fn rec_closure(&self, slot: usize, init: &Expr) -> Option<cpl_ir::ClosureId> {
         let ExprKind::Closure(cid) = init.kind else {
             return None;
         };
+        let n = self.facts.stores(self.facts_local(slot));
         (matches!(self.locals()[slot].ty, Ty::Fn(..))
-            && self.closure_id.is_none()
             && !self.hoisted.contains(&slot)
-            && self.devirt.local_rec(slot, cid)
-            && self.facts.stores(self.facts_local(slot)) <= 1)
-            .then_some(cid)
+            && self.devirt.let_rec(self.closure_id, slot, cid, n))
+        .then_some(cid)
     }
 
     /// A plain domain's position is an `int`: a checked build traps on one

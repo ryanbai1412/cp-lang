@@ -189,6 +189,37 @@ fn recursive_local_closure_takes_itself_instead_of_std_function() {
 }
 
 #[test]
+fn a_recursive_local_fn_inside_a_local_fn_is_passed_itself() {
+    let src = concat!(
+        "fn count(n: Int) -> Int:\n",
+        "    fn below(k: Int) -> Int:\n",
+        "        var seen = 0\n",
+        "        fn go(u: Int):\n",
+        "            if u >= k: return\n",
+        "            seen += n\n",
+        "            go(u * 2 + 1)\n",
+        "            go(u * 2 + 2)\n",
+        "        go(0)\n",
+        "        seen\n",
+        "    below(n)\n",
+        "print(count(10))\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("auto go = cpl::rec(["), "{out}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained
+            .iter()
+            .all(|e| e.mode == crate::ClosureMode::StaticLocalAuto),
+        "{explained:?}"
+    );
+}
+
+#[test]
 fn local_closure_lowers_to_auto_and_a_field_of_like_closures_is_a_bound_fn() {
     let src = concat!(
         "struct Box(op: Int -> Int)\n",
