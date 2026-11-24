@@ -183,7 +183,7 @@ library or by this spec:
   `@lint` declarations in `std/`, and the linter keeps only lints a pattern
   can't state (one that reads types or proven facts, or spans more than one
   block). The `rust_idiom_lints` counter in `scripts/debt-ratchet.py`
-  counts the rest and is held at 0 (decision 512). (R06.4.10, permits)
+  counts the rest and is held at 0 (decision 512). (R06.4.10)
 
 User libraries declare their own decorators as ordinary generic
 functions over function types, and their own tool roles with `marker`

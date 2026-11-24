@@ -78,7 +78,7 @@ documented.
 | R07.4 | Slices: which keys survive | supported | 2 known gaps |
 | R07.5 | The rules | supported |  |
 | R07.6 | Generators | supported |  |
-| R07.7 | Adapters (each makes a view: \(O(1)\), lazy) | supported | 1 known gap |
+| R07.7 | Adapters (each makes a view: \(O(1)\), lazy) | supported |  |
 | R07.8 | Making containers | supported |  |
 | R07.9 | Folds | supported |  |
 | R07.11 | Ordering and grouping | supported |  |
@@ -190,7 +190,6 @@ documented.
 - core-05/map-entry-index-key-lends.cp: compiler 2026-11-24T05Z
 - core-06/gen-graph-simple-connected.cp: stdlib 2026-11-24T05Z
 - core-06/returned-closure-copies-a-local-closure.cp: compiler 2026-11-24T05Z
-- core-07/chain-takes-any-number.cp: stdlib 2026-11-24T05Z
 - core-07/prefix-scan-cuts.cp: compiler 2026-11-24T05Z
 - core-07/suffix-fold-is-gone.cp: stdlib 2026-11-24T05Z
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler 2026-11-24T05Z
