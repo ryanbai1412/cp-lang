@@ -930,10 +930,16 @@ class DebtRatchetTest(unittest.TestCase):
                               "crates/cpl-lsp/src/server.rs:1", "crates/cpl-lsp/tests/a.rs:1"])
             errors, _, _ = dr.evaluate({"own_databases": 1}, {"own_databases": 5})
             self.assertTrue(any(re.search(r"must (stay at|be) 0", e) for e in errors), errors)
+            case = root / "spec/conformance/core-05/a.cp"
+            case.parent.mkdir(parents=True)
+            case.write_text("// expect: ok\n// copies: 2\n// std_functions: 1\nprint(1)\n// copies: 9\n")
+            port = root / "corpus/problems/cf1/port.cp"
+            port.parent.mkdir(parents=True)
+            port.write_text("// copies: 1\nprint(1)\n")
+            (root / "corpus/problems/cf1/notes.md").write_text("// copies: 5\n")
             tests = root / "crates/cpl-cli/tests"
             tests.mkdir(parents=True)
-            (tests / "read_only_copies.rs").write_text(
-                '    ("deep_copies", deep_copies, 3),\n    ("std_functions", std_functions, 2),\n')
+            (tests / "read_only_copies.rs").write_text('    [("std_functions", std_functions, 2)];\n')
             self.assertEqual(len(dr.cpp_deep_copies(root)), 3)
             self.assertEqual(len(dr.cpp_std_functions(root)), 2)
 

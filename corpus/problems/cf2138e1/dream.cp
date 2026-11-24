@@ -5,6 +5,7 @@
 // backwards, so x is reached from the pair (z, x - z) exactly when gcd(x, z) = 1,
 // and z near x / phi keeps the walk short. The statement allows side length at
 // most MAX_N = 80; after prepending the leading [1], the walk has MAX_N - 1 room.
+// copies: 1
 
 const MAX_N = 80
 

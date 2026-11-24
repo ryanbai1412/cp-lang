@@ -8,6 +8,7 @@
 // The task is a grader function; this reads the sample grader's input (the
 // subtask and T, then per case N and the N x N distances), answers each
 // getDistance from it, traps past the subtask's query limit, and prints R or -R.
+// copies: 1
 let (sub, cases) = read<(1..=6, 1..=40)>()
 for _ in 0..cases:
     let n = read<6..=110>()

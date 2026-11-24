@@ -8,6 +8,7 @@
 //   right to left, each value keeps a Li Chao tree over its occurrence ranks of the curves
 //   score(m - x) + dp[j + 1] (score is convex, so two cross once). O(n log n).
 // original: corpus/submissions/3617807.cpp
+// copies: 1
 let k: Int = read()
 let n: Int = read()
 

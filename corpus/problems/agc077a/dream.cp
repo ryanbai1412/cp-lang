@@ -15,6 +15,7 @@
 // A…B in one string and B…A in the other, so one reversal on its legal side
 // makes both ends agree; recurse into it, then into the rest. Each reversal
 // fixes two positions, so at most n / 2 of them.
+// copies: 2
 
 @!multitest
 let n: 2..=500_000 = read()

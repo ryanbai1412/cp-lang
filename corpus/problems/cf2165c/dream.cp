@@ -12,6 +12,7 @@
 // Because at most `BITS` elements are ever incremented and larger elements
 // dominate on high bits, only the `MAX_USED = min(n, BITS)` largest elements
 // of `a` can ever participate.
+// copies: 1
 
 use std.seq.{argmax}
 

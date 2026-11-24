@@ -6,6 +6,7 @@
 // and z near x / phi keeps the walk short. Trying z outward from x / phi finds a
 // walk within MAX_N = 50 for every x <= 1e7 (checked); after prepending [1],
 // the walk has MAX_N - 1 room.
+// copies: 1
 
 const MAX_N = 50
 

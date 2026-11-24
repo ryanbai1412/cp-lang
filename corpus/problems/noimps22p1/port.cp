@@ -8,6 +8,7 @@
 //   each maximal identifier and, if it is a macro not in the active Set, appends its body
 //   expanded with the name added to active; otherwise copies it. The bounds are tiny.
 // Original C++: corpus/submissions/4533698.cpp (116 LOC raw, ~76 LOC stripped)
+// copies: 1
 
 // WISH B19-9: `read_line()` reads verbatim up to '\n' (preserving leading/trailing spaces and
 // empty lines) and plays cleanly with header integers via `read_line().parse_int()!` or `read_ln()`.

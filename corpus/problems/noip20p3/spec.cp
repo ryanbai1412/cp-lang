@@ -4,6 +4,7 @@
 // each tube into a low and a high block (majority at the bottom), merge
 // mixed tubes with the same bottom kind until at most one pair is left, fix
 // that pair, then recurse on the tubes by bottom kind. O(n m log n) moves.
+// copies: 1
 let (n, m) = read<(2..=50, 2..=400)>()
 domain Tube = 1..=n + 1
 let start = read<[n][m]1..=n>()

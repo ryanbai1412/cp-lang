@@ -49,6 +49,14 @@ echoes the source can't match them. Each `// file: <path> "..."` line (tool case
 writes one more file, escaped like `// input:`, at that path below the
 scratch directory before the run: a `cp.toml` and a library module, say.
 
+A `// copies: N` header line states how many deep copies the case's
+judge C++ makes (none without the line; `N` above 0, at most one line).
+`crates/cpl-cli/tests/read_only_copies.rs` builds every case and every
+corpus program and fails, naming the file, on any whose C++ makes a
+different number; `scripts/debt-ratchet.py` sums the lines as the
+shrink-only `cpp_deep_copies` counter, so a copy is only added by writing
+it down where it happens.
+
 A word holding `{case}` or `{dir}` takes the copy's path or the scratch
 directory there, and the copy is not passed first:
 `// tool: setup neovim --dir {dir}/nvim`. `// tool: lsp <feature>` opens the

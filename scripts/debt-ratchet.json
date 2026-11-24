@@ -116,7 +116,7 @@
   "plan_delta_lines": 0,
   "vm_fallbacks": 24,
   "own_databases": 0,
-  "cpp_deep_copies": 34,
+  "cpp_deep_copies": 32,
   "cpp_std_functions": 79,
   "codegen_effect_guesses": 0,
   "near_dup_fns": 12,

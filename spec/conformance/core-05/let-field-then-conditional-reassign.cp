@@ -1,6 +1,7 @@
 // expect: ok, output "1 2 7 7\n7 7 7 7"
 // rule: 05.3.5
 // `let old = s.ks` must not be moved out when only one branch sets `s.ks` again before the read.
+// copies: 1
 struct S:
     var ks: List<Int>
 fn grow(mut s: S, c: Bool):

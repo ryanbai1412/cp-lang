@@ -855,15 +855,33 @@ def helper_env_vars(root: Path) -> list[str]:
 
 
 def _copy_baseline(root: Path, name: str) -> list[str]:
-    """The `read_only_copies` test's shrink-only count `name` over the corpus C++, one item per unit."""
+    """The `read_only_copies` test's shrink-only corpus total `name`, one item per unit."""
     path = root / "crates/cpl-cli/tests/read_only_copies.rs"
     text = path.read_text() if path.is_file() else ""
     m = re.search(rf'\("{name}",\s*\w+,\s*(\d+)\)', text)
     return [f"{name} {i}" for i in range(int(m.group(1)))] if m else []
 
 
+def _header_counts(root: Path, key: str) -> list[str]:
+    """The `// <key>: N` header lines of the programs `read_only_copies` builds (the
+    `.cp` files one directory down from corpus/problems and spec/conformance), one
+    item per unit: the test holds each program's C++ to its own header, this sums them."""
+    out = []
+    for base in ("corpus/problems", "spec/conformance"):
+        for path in sorted((root / base).glob("*/*.cp")):
+            for line in path.read_text().splitlines():
+                rest = line.strip()
+                if not rest.startswith("//"):
+                    break
+                m = re.fullmatch(rf"//\s*{key}:\s*(\d+)\s*", rest)
+                if m:
+                    rel = path.relative_to(root)
+                    out += [f"{rel} {i}" for i in range(int(m.group(1)))]
+    return out
+
+
 def cpp_deep_copies(root: Path) -> list[str]:
-    return _copy_baseline(root, "deep_copies")
+    return _header_counts(root, "copies")
 
 
 def cpp_std_functions(root: Path) -> list[str]:
@@ -1992,7 +2010,7 @@ COUNTERS = {
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
-    "cpp_deep_copies": ("deep copies in the corpus C++ (read_only_copies)", cpp_deep_copies, True),
+    "cpp_deep_copies": ("`// copies:` header sum over the corpus (read_only_copies)", cpp_deep_copies, True),
     "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),

@@ -1,6 +1,7 @@
 // expect: ok, output "1 2 1 2 1 2\n5 5 6"
 // rule: 05.3.1
 // A clone in one fn and a `let` of a `var` in another stay separate values, and so does a `var` copy of a map entry, however codegen reuses slots across fns.
+// copies: 1
 fn first(xs: List<Int>) -> List<Int>:
     let a = xs
     var w = a.clone()

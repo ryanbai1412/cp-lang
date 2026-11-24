@@ -10,6 +10,7 @@
 //   reached values plus offsets, recurse, and restore the subtree's values on return.
 //   O((2^n + m) n log 2^n).
 // original: corpus/submissions/5723063.cpp
+// copies: 1
 
 const MODV = 998244353
 const INF = 1_000_000_000_000_000_000
