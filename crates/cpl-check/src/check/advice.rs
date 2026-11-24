@@ -468,12 +468,13 @@ impl Checker<'_> {
                 .drop_where(|d| d.code == codes::UNRESOLVED_NAME && d.span == at);
         }
         if let ExprKind::Field { base, name: f } = &callee.kind {
-            // Python's `heapq.heappush(h, x)`: a heap is std's `Heap`, and a
-            // list pushed to is no heap, so the fix needs `h` to be one.
+            // Python's `heapq.heappush(h, x)`: a list pushed to is no heap, so
+            // the fix needs `h` to be a type with heapq's `heappushpop`, `push_pop`.
             if matches!(&base.kind, ExprKind::Name(m) if m == "heapq") {
                 let heap = |c: &mut Self, a: &Arg| {
                     let ty = c.quietly(|c| c.infer(&a.value));
-                    matches!(&ty, Ty::Named { name, .. } if name == "Heap")
+                    matches!(&ty, Ty::Named { name, .. }
+                        if c.struct_method(name, "push_pop").is_some())
                 };
                 let ours = match (f.text.as_str(), args) {
                     ("heappush", [h, x]) if heap(self, h) => Some(format!(
