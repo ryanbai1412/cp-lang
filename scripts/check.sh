@@ -329,7 +329,7 @@ case "$gate_part" in
         step "cargo nextest run --workspace --partition $part (without the --full tests)"
         # One retry, so a flaky test can't turn main red; flaky.py names it (ci/R35).
         nextest_log="$(mktemp)"
-        cargo nextest run --workspace --no-fail-fast --retries 1 --partition "$part" -E "not ($slow_filter)" \
+        cargo nextest run --workspace --profile gate --no-fail-fast --retries 1 --partition "$part" -E "not ($slow_filter)" \
             2>&1 | tee "$nextest_log" || tests_status=$?
         uv run --quiet python scripts/flaky.py "$nextest_log"
         [ "${tests_status:-0}" = 0 ] || fail "a test failed twice; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'"

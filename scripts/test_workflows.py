@@ -128,6 +128,19 @@ class WorkflowTest(unittest.TestCase):
                 self.assertEqual(uncapped_jobs(f.read()), [],
                                  f"{os.path.relpath(path, ROOT)}: add timeout-minutes to these jobs")
 
+    def test_a_hung_gate_test_fails_by_name_before_the_job_cap(self):
+        with open(os.path.join(ROOT, ".config", "nextest.toml"), encoding="utf-8") as f:
+            gate = re.search(r"^\[profile\.gate\]\n(?:[^\[].*\n?)*", f.read(), re.M)
+        self.assertIsNotNone(gate, "nextest.toml needs a [profile.gate]")
+        m = re.search(r'slow-timeout = \{ period = "(\d+)s", terminate-after = (\d+) \}', gate.group(0))
+        self.assertIsNotNone(m, "[profile.gate] needs a slow-timeout with terminate-after")
+        with open(os.path.join(ROOT, "scripts", "check.sh"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"nextest run [^\n]*--profile gate [^\n]*--retries 1 --partition")
+        with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
+            cap = int(re.search(r"^    timeout-minutes: (\d+)", job_block(f.read(), "gate"), re.M).group(1))
+        # Both tries of a hung test end with minutes left for the build.
+        self.assertLess(2 * int(m.group(1)) * int(m.group(2)), (cap - 5) * 60)
+
     def test_finds_an_uncapped_job(self):
         text = "on: push\njobs:\n  a:\n    timeout-minutes: 5\n    steps: []\n  b:\n    runs-on: x\n    steps:\n      - timeout-minutes: 3\n"
         self.assertEqual(uncapped_jobs(text), ["b"])

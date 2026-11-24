@@ -30,3 +30,10 @@ threads-required = 'num-cpus'
 # take most of the fast gate's time. The land tier (--fast) runs them all.
 [profile.commit]
 default-filter = 'not (kind(test) & (package(cpl-cli) | package(cpl-lsp) | package(cpl-conform))) | binary_id(cpl-cli::trace_goldens)'
+
+# The fast gate's partitions (scripts/check.sh). A hung test fails by name
+# after 5 min (the slowest hosted fast-gate test took 147 s, CI run
+# 45316077004) instead of holding its shard to the job's 20-min timeout, and
+# with it every newer main commit queued behind the run.
+[profile.gate]
+slow-timeout = { period = "60s", terminate-after = 5 }
