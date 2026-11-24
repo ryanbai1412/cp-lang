@@ -424,19 +424,6 @@ impl<'a> Lowerer<'a> {
         // unify from lambda arguments whose parameter types are now known.
         for _ in 0..4 {
             let before = inferred.len();
-            // If an unbound generic (e.g. `T` in `fold_path<S, T>(..., ds: S)`) is present in a bound
-            // struct argument's generic environment (e.g. `SegTree<Pre, Word>` has `T -> Word`), inherit it.
-            for g in &gen_names {
-                if !inferred.contains_key(g) {
-                    let from_struct = inferred.values().find_map(|ga| match ga {
-                        GenArg::Ty(Ty::Struct(sid)) => self.structs[*sid].env.get(g).cloned(),
-                        _ => None,
-                    });
-                    if let Some(ga) = from_struct {
-                        inferred.insert(g.clone(), ga);
-                    }
-                }
-            }
             for (param, arg) in ast_params.iter().zip(&matched) {
                 let Some(pty) = param.ty.as_ref().map(lambda_infer::unwrap_optional) else {
                     continue;
@@ -569,6 +556,20 @@ impl<'a> Lowerer<'a> {
             }
             self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
             if inferred.len() == before {
+                // Last of all, once the call's own arguments and lambdas are done: a generic still
+                // unbound takes a struct argument's parameter of that name (`fold_path<S, T>` given
+                // a `SegTree<Pre, Word>`), so it never shadows what the call fixes (R08.2.2).
+                for g in &gen_names {
+                    if !inferred.contains_key(g) {
+                        let from_struct = inferred.values().find_map(|ga| match ga {
+                            GenArg::Ty(Ty::Struct(sid)) => self.structs[*sid].env.get(g).cloned(),
+                            _ => None,
+                        });
+                        if let Some(ga) = from_struct {
+                            inferred.insert(g.clone(), ga);
+                        }
+                    }
+                }
                 // Only after ready lambdas have had a chance to infer `T` (e.g. `init: V -> T`),
                 // fall back to deducing an unbound `T`/`E`/`X` from a bound container generic `S`.
                 // A generic a lambda argument is passed as is that lambda's fn, never an element.
