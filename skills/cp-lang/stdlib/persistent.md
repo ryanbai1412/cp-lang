@@ -43,7 +43,7 @@ Fields: `val: List<T>`.
 
 Static range k-th smallest and range rank queries over `[D]T`.
 
-Fields: `vals: List<T>`.
+Fields: `vals: List<T>`, `nodes: List<KthNode>`.
 
 - `fn new(a: [D]T) -> RangeKth<D, T>` — \(O(n \log n)\) time and memory for n = `a.len`; Build the static structure over `a`: one persistent count tree over the sorted distinct values per prefix of `a`.
 - `fn kth(self, r: Range<D>, k: Int) -> T` — \(O(\log n)\); The `k`-th smallest element (0-based) of `a` over `r`, counting repeats.; traps: when `k < 0` or `k >= r.len`, or `r` reaches outside `D`

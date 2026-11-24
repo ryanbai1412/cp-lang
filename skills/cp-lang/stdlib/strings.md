@@ -33,11 +33,11 @@ Fields: `alpha: Count`, `goto: List<Count>`, `pi: List<Count>`.
 
 ## `struct SuffixArray<T: Ord>`
 
-\(O(n)\) SA-IS + Kasai LCP (\(O(n \log n)\) with RMQ).
+\(O(n)\) SA-IS + Kasai LCP + block RMQ.
 
-Fields: `rank: List<Int>`, `rmq: List<Int>`, `bits: Int`, `dcum: List<Int>`, `src: List<T>`.
+Fields: `rank: List<Int>`, `mask: List<U64>`, `top: List<Int>`, `dcum: List<Int>`, `src: List<T>`.
 
-- `fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>` — \(O(n \log n)\) time and memory (the LCP sparse table; the suffix sort itself is \(O(n)\) for `Str` and small integer alphabets); The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
+- `fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>` — \(O(n)\) time and memory for `Str` and small integer alphabets (SA-IS, Kasai, a block RMQ); other element types add an \(O(n \log n)\) sort to rank them; The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
 - `@get fn len(self) -> Int` — \(O(1)\); The length `n` of the sequence the suffix array was built over.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the suffix array was built over an empty sequence.
 - `fn each(self) -> yields Int` — \(O(n)\)

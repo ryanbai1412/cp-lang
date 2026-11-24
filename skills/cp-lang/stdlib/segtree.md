@@ -62,7 +62,7 @@ Fields: `t: List<T>`.
 
 \(O(\lvert D \rvert \log V)\) build and memory.
 
-Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `cnt: List<Int>`, `zsum: List<Int>`.
+Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `words: List<U64>`, `before: List<Int>`, `zsum: List<Int>`.
 
 - `fn new(a: [D]Int) -> WaveletMatrix<D>` — \(O(\lvert D \rvert \log V)\) time and memory; A wavelet matrix over the non-negative values of `a`, with one bit level per bit of the largest value (`V` below is that value plus one).; traps: when some value is negative
 - `fn kth(self, r: Range<D>, k: Int) -> ?Int` — \(O(\log V)\); The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
