@@ -18,7 +18,7 @@ domain Pos = 0..n
 let a: [Pos]0..=2_000_000 = read()
 
 let pm = a.scan(min)
-let pref_min = [Pos] i => pm.prefix(i.ord + 1)
+let pref_min = [Pos] i => pm.cut(i.ord + 1)
 let os = suffix_fold(+, pref_min)
 let orig_suff = [Pos] p => os[p.l]
 let base_ans = orig_suff[Pos.first!]
@@ -41,7 +41,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
     let tail_loss = next_min.map(j => orig_suff[j]) ?? 0
     domain Blk = 0..blk_len
     let lm = ([Blk] t => if t == Blk.first: cap else: a[i.offset(t.ord)!]).scan(min)
-    let lifted = [Blk] t => lm.prefix(t.ord + 1)
+    let lifted = [Blk] t => lm.cut(t.ord + 1)
     let ls = suffix_fold(+, lifted)
     let lifted_suff = [Blk] t => ls[t.l]
 

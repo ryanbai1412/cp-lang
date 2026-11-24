@@ -35,4 +35,4 @@ for i in I:
     for j in open_at[i]: two.set(a[j], j)
 
 let best_so_far = best.scan(max)
-print([l.ord + 1 for k in I if let l = best_so_far.prefix(k.ord + 1)].sum())
+print([l.ord + 1 for k in I if let l = best_so_far.cut(k.ord + 1)].sum())
