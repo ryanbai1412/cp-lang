@@ -6,10 +6,9 @@
 //   the two lap lengths (at most about 5e7, both are even and at most 1e4) both are back at
 //   their starts together, so simulate that many minutes, keep the least squared distance and
 //   print its root: O(lcm).
-@tags("X", "Y")
 enum Axis:
-    X
-    Y
+    @tag("X") X
+    @tag("Y") Y
 type Pt = (x: Int, y: Int)
 
 fn read_moves() -> List<Pt>:  // one lap as unit steps
