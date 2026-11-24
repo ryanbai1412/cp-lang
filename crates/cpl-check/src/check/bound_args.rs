@@ -177,14 +177,11 @@ impl Checker<'_> {
     /// concrete one; a closure keeps its fn type (R08.1.9, decision 456).
     pub(crate) fn bare_ops_take_monoid(
         &mut self,
-        def: &Def,
+        bound_args: &[(String, String, Vec<Ty>)],
         params: &[crate::ty::Param],
         args: &[ast::Arg],
         bindings: &mut crate::ty::Bindings,
     ) {
-        let Def::Fn { bound_args, .. } = def else {
-            return;
-        };
         let positional: Vec<&crate::ty::Param> = params.iter().filter(|p| !p.named_only).collect();
         let mut next = 0;
         for arg in args {

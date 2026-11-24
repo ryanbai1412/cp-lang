@@ -1355,7 +1355,9 @@ impl<'a> Checker<'a> {
                 }
                 if let Some(def) = callee_def.as_deref() {
                     self.fn_items_take_their_type(def, &params, args, &mut bindings);
-                    self.bare_ops_take_monoid(def, &params, args, &mut bindings);
+                    if let Def::Fn { bound_args, .. } = def {
+                        self.bare_ops_take_monoid(bound_args, &params, args, &mut bindings);
+                    }
                 }
                 if let Some(fn_name) = callee_name {
                     if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {

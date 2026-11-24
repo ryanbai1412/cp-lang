@@ -130,6 +130,7 @@ impl Checker<'_> {
                     methods,
                     receivers,
                     method_rows,
+                    generic_bounds,
                     ..
                 } => {
                     // Outside the struct's body `S(..)` calls its `new`;
@@ -163,7 +164,20 @@ impl Checker<'_> {
                         .map(|(_, _, through)| through.clone());
                     let outer = std::mem::replace(&mut self.call_bound_args, through);
                     self.args(callee_text, verb, params, args, call, &mut bindings);
-                    self.call_bound_args = outer;
+                    let through = std::mem::replace(&mut self.call_bound_args, outer);
+                    // `W<T, M: Op<T>>(op: M, xs: List<T>)`: a bare op for `M` is the
+                    // monoid, as at a generic fn's bound.
+                    let bound_args = through.unwrap_or_else(|| {
+                        (generic_bounds.iter())
+                            .filter_map(|(p, tr, targs)| {
+                                let targs = (targs.iter())
+                                    .map(|a| a.map(|j| Ty::Param(generics[j].clone())))
+                                    .collect::<Option<Vec<_>>>()?;
+                                Some((generics[*p].clone(), tr.clone(), targs))
+                            })
+                            .collect()
+                    });
+                    self.bare_ops_take_monoid(&bound_args, params, args, &mut bindings);
                     if !is_generated_ctor && self.sink.len() > before {
                         self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
                     }

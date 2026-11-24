@@ -944,6 +944,8 @@ impl<'a> Lowerer<'a> {
             }
         }
         // Otherwise infer generic params from `fn new(...)` (if present) or constructor fields (`Lit(Road(a), true)`).
+        let tpl_offset = self.gen_structs[gid].offset;
+        let mut ops: Vec<(&ast::Type, &ast::Expr)> = Vec::new();
         let mut inferred: GenEnv = HashMap::new();
         for (n, a) in gen_names.iter().zip(&explicit) {
             inferred.insert(n.clone(), a.clone());
@@ -969,7 +971,9 @@ impl<'a> Lowerer<'a> {
                 };
                 if let Some(p) = param {
                     if let Some(pat_ty) = &p.ty {
-                        self.bind_bare_op(pat_ty, &arg.value, &gen_names, &mut inferred);
+                        if self.defer_bare_op(pat_ty, &arg.value, &gen_names, &inferred) {
+                            ops.push((pat_ty, &arg.value));
+                        }
                         self.unify_lambda_params(
                             pat_ty,
                             &arg.value,
@@ -997,6 +1001,9 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            let bounds: Vec<ast::Bound> =
+                new_fn.bounds.iter().chain(&decl.bounds).cloned().collect();
+            self.bind_bare_ops(&ops, &bounds, (tpl_mod, tpl_offset), &mut inferred);
             self.bind_impl_bounds(&new_fn.bounds, tpl_mod, &mut inferred);
             for g in &gen_names {
                 if !inferred.contains_key(g) {
@@ -1040,7 +1047,9 @@ impl<'a> Lowerer<'a> {
             }
         } else {
             for (f, arg) in decl.fields.iter().zip(args) {
-                self.bind_bare_op(&f.ty, &arg.value, &gen_names, &mut inferred);
+                if self.defer_bare_op(&f.ty, &arg.value, &gen_names, &inferred) {
+                    ops.push((&f.ty, &arg.value));
+                }
                 self.unify_lambda_params(&f.ty, &arg.value, tpl_mod, &gen_names, &mut inferred);
                 self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span, None);
                 if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
@@ -1052,6 +1061,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        self.bind_bare_ops(&ops, &decl.bounds, (tpl_mod, tpl_offset), &mut inferred);
         // `Within<S: Versioned<D, T>, D, T>(store: S)`: `D` and `T` come from `S`'s impl.
         self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut inferred);
         let mut final_args = Vec::with_capacity(gen_names.len());
@@ -1077,21 +1087,38 @@ impl<'a> Lowerer<'a> {
         self.construct_or_new(sid, args, span)
     }
 
-    pub(in crate::lower) fn bind_bare_op(
+    /// Whether `arg` is a bare op passed for a still-open type param `pat`,
+    /// which binds once the other args have bound what its bounds need.
+    fn defer_bare_op(
         &self,
         pat: &ast::Type,
         arg: &ast::Expr,
         gen_names: &[String],
+        inferred: &GenEnv,
+    ) -> bool {
+        matches!(&pat.kind, ast::TypeKind::Named { name, args }
+            if args.is_empty() && gen_names.contains(&name.text) && !inferred.contains_key(&name.text))
+            && self.detect_bare_op(arg).is_some()
+    }
+
+    /// Binds each deferred bare op's param as a generic call does: `W(max, xs)`
+    /// with `M: Op<T>` takes `max`'s `Monoid<T>` impl, and a closure stays a fn.
+    fn bind_bare_ops(
+        &mut self,
+        ops: &[(&ast::Type, &ast::Expr)],
+        bounds: &[ast::Bound],
+        (m, offset): (ModId, u32),
         inferred: &mut GenEnv,
     ) {
-        if let ast::TypeKind::Named { name, args } = &pat.kind {
-            if args.is_empty()
-                && gen_names.contains(&name.text)
-                && !inferred.contains_key(&name.text)
-            {
-                if let Some(op) = self.detect_bare_op(arg) {
-                    inferred.insert(name.text.clone(), GenArg::Op(op));
-                }
+        for (pat, arg) in ops {
+            let ast::TypeKind::Named { name, .. } = &pat.kind else {
+                continue;
+            };
+            if inferred.contains_key(&name.text) {
+                continue;
+            }
+            if let Some(g) = self.bare_op_for(bounds, &name.text, arg, (m, offset, inferred)) {
+                inferred.insert(name.text.clone(), g);
             }
         }
     }
@@ -1654,9 +1681,12 @@ impl<'a> Lowerer<'a> {
         for (i, ((field, ty), arg)) in fields.iter().zip(given).enumerate() {
             match (arg, &decl.fields[i].default) {
                 (Some(arg), _) => {
-                    let v = match self.op_value_for(ty, &arg.value) {
-                        Some(op) => op,
-                        None => self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty)),
+                    let v = match self.monoid_of_bare_op(ty, arg) {
+                        Some(monoid) => monoid,
+                        None => match self.op_value_for(ty, &arg.value) {
+                            Some(op) => op,
+                            None => self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty)),
+                        },
                     };
                     let v = self.field_keys(id, &decl.fields[i].ty, v, &arg.value);
                     let v = match self.struct_field_range(id, i) {
