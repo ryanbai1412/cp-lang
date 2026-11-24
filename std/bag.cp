@@ -781,7 +781,7 @@ pub struct SortedBag<K>:
 
     /// Preallocate treap node pool for at least `cap` distinct keys.
     ///
-    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
+    /// cost: \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: never
     /// example: `var b = SortedBag.of([1]); b.reserve(100); b.to_list() == [1]`
     pub fn reserve(mut self, cap: Int):
@@ -1277,7 +1277,7 @@ pub struct SortedSet<K>:
 
     /// Preallocate treap node pool for at least `cap` keys.
     ///
-    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
+    /// cost: \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: never
     /// example: `var s = SortedSet.of([1]); s.reserve(100); s.to_list() == [1]`
     pub fn reserve(mut self, cap: Int) = bag.reserve(cap)
@@ -1772,7 +1772,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Preallocate treap node pool for at least `cap` elements.
     ///
-    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
+    /// cost: \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.reserve(100); b.len == 0`
     pub fn reserve(mut self, cap: Int):
@@ -2000,7 +2000,7 @@ pub struct AugSortedSet<K, T>:
 
     /// Preallocate treap node pool for at least `cap` keys.
     ///
-    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
+    /// cost: \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.reserve(100); s.len == 0`
     pub fn reserve(mut self, cap: Int) = bag.reserve(cap)
@@ -2259,7 +2259,7 @@ pub struct BucketCount:
 
     /// Visit every stored copy, skipping empty blocks.
     ///
-    /// cost: \(O(\sqrt{N})\) per block holding a copy, plus \(O(\sqrt{N} + \mathit{len})\)
+    /// cost: \(O(\sqrt{N} + \sqrt{N} \cdot b + \mathit{len})\) for `b` blocks holding a copy
     /// empty: `BucketCount(0..10).each().collect() == []`
     /// order: ascending value, each value repeated by its count
     /// traps: never
