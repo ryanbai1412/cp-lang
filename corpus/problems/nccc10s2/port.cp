@@ -1,5 +1,6 @@
 // Source: Mock CCC '22 2 S2 (Kaguya Wants to Grow the Student Council),
 //   https://dmoj.ca/problem/nccc10s2
+// limits: 250 ms, 1024 MB
 // Problem: N <= 1e4 ballots, each a permutation of the first K <= 26 uppercase letters. Pick
 //   the largest ranked council such that for any two members every ballot ranks them in the
 //   council's order; print its size.

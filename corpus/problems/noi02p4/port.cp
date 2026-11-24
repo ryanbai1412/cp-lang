@@ -1,4 +1,5 @@
 // Source: NOI 2002 P4 (Island of Cavemen), https://dmoj.ca/problem/noi02p4
+// limits: 1000 ms, 16 MB
 // Problem: 1 <= n <= 15 cavemen on a ring of m caves; caveman i starts in cave 1 <= c_i <= 100,
 //   moves 1 <= p_i <= 100 caves a year and lives 0 <= l_i <= 1e6 years. Print the smallest m for
 //   which no two ever share a cave while both live; it is at most 1e6.

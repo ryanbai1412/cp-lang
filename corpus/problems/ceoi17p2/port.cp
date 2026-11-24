@@ -1,4 +1,5 @@
 // Source: CEOI 2017 P2 (Sure Bet), https://dmoj.ca/problem/ceoi17p2
+// limits: 1000 ms, 128 MB
 // Problem: n <= 1e5 bookmakers offer odds a_i on outcome 1 and b_i on outcome 2 (real,
 //   1..1000). Each bet costs 1 and pays its odds if it wins; bet on any subset of the 2n
 //   offers. Print the largest profit guaranteed whatever happens, to 4 decimals.

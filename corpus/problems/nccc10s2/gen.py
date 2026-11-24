@@ -1,4 +1,8 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # N = 1e4 ballots on all K = 26 letters, near one order so long councils survive
+    sys.argv[1:] = ["1", "10000"]
+
 # `seed size`: n <= size ballots (size >= 1e4 gives n = 1e4, k = 26), each a permutation of the
 # first k letters, made by a few random swaps of one base order so long councils exist.
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])

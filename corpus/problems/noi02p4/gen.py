@@ -1,6 +1,7 @@
 import sys, random
 from math import gcd
 
+
 # The statement promises an answer <= 1e6: draw cavemen until m = 1e6 itself is peaceful.
 LIMIT = 10**6
 
@@ -19,6 +20,12 @@ def meets(a, b, m):
 def peaceful(men, m):
     return not any(meets(men[i], men[j], m) for i in range(len(men)) for j in range(i))
 
+
+if sys.argv[1:] == ["--max"]:
+    # n = 15, starts and steps up to 100, lifespans up to 1e6 (all at 1e6 is never peaceful at
+    # m = 1e6), from the seed with the largest answer (340625) of the first 40: every m below
+    # it is tried against all 105 pairs
+    sys.argv[1:] = ["26", "100"]
 
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)

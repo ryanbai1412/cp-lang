@@ -1,4 +1,5 @@
 // Source: Mock CCC '22 Contest 1 S1 (Big Mattress Tournament), https://dmoj.ca/problem/nccc9s1
+// limits: 250 ms, 1024 MB
 // Problem: a 1x1, b 1x2 and c L tiles (a 2x2 square minus its top-right cell), a, b, c <= 1e8,
 //   a + b + c > 0. Print YES if all of them, unrotated, tile a 2 x m rectangle for some m.
 //   T <= 1e4 tests.

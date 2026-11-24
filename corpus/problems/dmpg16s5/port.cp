@@ -1,4 +1,5 @@
 // Source: DMPG '16 S5 (Pizza Bag), https://dmoj.ca/problem/dmpg16s5
+// limits: 1400 ms, 256 MB
 // Problem: n slices around a circular pizza (n <= 1e5) with tastes in [-1e8, 1e8], at
 //   least one positive. Print the largest total of at most k consecutive slices (k <= n).
 // Solution: unroll the circle twice; a run ending at slice p is the prefix sum after p

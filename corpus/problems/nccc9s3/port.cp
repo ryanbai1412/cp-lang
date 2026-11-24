@@ -1,4 +1,5 @@
 // Source: Mock CCC '22 Contest 1 S3 (IU), https://dmoj.ca/problem/nccc9s3
+// limits: 250 ms, 1024 MB
 // Problem: a string of n I's and n U's, n <= 1e5. One operation picks up a letter and puts it
 //   anywhere. Print the fewest operations that turn it into IU repeated n times (-1 if
 //   impossible, which never happens).

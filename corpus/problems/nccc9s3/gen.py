@@ -1,4 +1,8 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # n = 1e5, the letters shuffled
+    sys.argv[1:] = ["3", "100000"]
+
 # gen.py seed size: n I's and n U's in some order, 1 <= n <= 1e5.
 # No arguments, or size >= 1e5, gives n = 1e5; the seed picks the arrangement.
 seed = int(sys.argv[1]) if len(sys.argv) > 1 else 0

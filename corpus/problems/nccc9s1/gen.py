@@ -1,4 +1,8 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # T = 1e4 tests over the full 0..=1e8 range
+    sys.argv[1:] = ["0", "100000000"]
+
 # gen.py seed size: T tests of a, b, c with 0 <= a, b, c <= 1e8 and a + b + c > 0.
 # No arguments, or size >= 1e8, gives T = 1e4 tests at the full value range.
 seed = int(sys.argv[1]) if len(sys.argv) > 1 else 0
