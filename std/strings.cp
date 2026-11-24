@@ -1437,19 +1437,33 @@ const RH_M2 = 1_000_000_009
 
 /// \(O(1)\) space and comparison. A 64-bit double-mod polynomial hash value (`Copy + Eq + Ord + Hash`).
 /// Can itself be fed into another `RollingHash` (e.g. hashing rows into a column hash for 2D grids).
-pub struct HashVal(pub h1: Int, pub h2: Int):
+pub struct HashVal(pub h1: Int, pub h2: Int)
+
+/// \(O(1)\) per element. Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
+/// implementing `hash_token`.
+pub trait Hashable:
+    @get fn hash_token(self) -> Int = Int(self)
+
+impl Hashable for Int:
+    @get fn hash_token(self) -> Int = self
+
+impl Hashable for Char:
+    @get fn hash_token(self) -> Int = Int(self)
+
+impl Hashable for Bool:
+    @get fn hash_token(self) -> Int = if self: 1 else: 0
+
+impl<D: Domain> Hashable for D:
+    @get fn hash_token(self) -> Int = self.ord
+
+impl Hashable for HashVal:
     /// One integer that identifies the pair, `(h1 << 31) | h2`, so a `RollingHash` can hash a
     /// sequence of `HashVal` (rows of a grid, say).
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `HashVal(1, 2).hash_token == 2147483650`
-    @get pub fn hash_token(self) -> Int = (h1 << 31) | h2
-
-/// \(O(1)\) per element. Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
-/// implementing `hash_token`.
-pub trait Hashable:
-    @get fn hash_token(self) -> Int = Int(self)
+    @get fn hash_token(self) -> Int = (self.h1 << 31) | self.h2
 
 @get fn ord(self: Int) -> Int = self
 
