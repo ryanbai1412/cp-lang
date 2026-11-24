@@ -82,21 +82,20 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             continue;
         };
         let holes: Vec<String> = f.params.iter().map(|p| p.name.text.clone()).collect();
-        let (Some(from_run), Some(to_toks)) = (run(&from), code(&to)) else {
+        let (Some((from_toks, _)), Some(to_toks)) = (run(&from), code(&to)) else {
             let which = if run(&from).is_none() { "from" } else { "to" };
             let what = if which == "from" {
-                "one expression or statement, or a run of statements"
+                ", or a run of statements"
             } else {
-                "one expression or statement"
+                ""
             };
             error(
-                format!("`{which}` of `@lint({name})` is not {what}"),
+                format!("`{which}` of `@lint({name})` is not one expression or statement{what}"),
                 "write CP Lang code that parses on its own, such as `x * x`",
                 &mut label,
             );
             continue;
         };
-        let from_toks: Vec<(TokenKind, String)> = from_run.concat();
         let names = |toks: &[(TokenKind, String)]| -> Vec<String> {
             toks.iter()
                 .filter(|(k, t)| is_name(*k, t))
@@ -188,58 +187,37 @@ pub fn is_name(kind: TokenKind, text: &str) -> bool {
     kind == TokenKind::Ident || (kind == TokenKind::SelfKw && text == "self")
 }
 
-/// The tokens of each statement of `src`, in order, if it parses as one
-/// expression or a run of statements: a `from` may span consecutive
-/// statements of one block.
-pub fn run(src: &str) -> Option<Vec<Vec<(TokenKind, String)>>> {
+/// A pattern's tokens with their text.
+pub type Tokens = Vec<(TokenKind, String)>;
+
+/// The tokens of `src` if it parses as one expression or a run of
+/// statements (a `from` may span consecutive statements of one block), and
+/// the index in them where each statement ends.
+pub fn run(src: &str) -> Option<(Tokens, Vec<usize>)> {
     let parsed = crate::parse_file(src);
     if !parsed.diagnostics.is_empty() {
         return None;
     }
-    let spans: Vec<Span> = (parsed.items.iter())
-        .flat_map(|(offset, item)| item.stmts.iter().map(move |s| s.span.shift(*offset)))
-        .collect();
-    if spans.is_empty() {
-        return None;
+    let all = tokens(src);
+    let (mut toks, mut ends) = (Vec::new(), Vec::new());
+    for (offset, item) in &parsed.items {
+        for s in &item.stmts {
+            let span = s.span.shift(*offset);
+            for t in all.iter().filter(|t| span.contains(t.span)) {
+                let text = &src[t.span.start as usize..t.span.end as usize];
+                toks.push((t.kind, text.to_string()));
+            }
+            ends.push(toks.len());
+        }
     }
-    let toks = tokens(src);
-    Some(
-        spans
-            .iter()
-            .map(|span| {
-                (toks.iter())
-                    .filter(|t| span.contains(t.span))
-                    .map(|t| {
-                        (
-                            t.kind,
-                            src[t.span.start as usize..t.span.end as usize].to_string(),
-                        )
-                    })
-                    .collect()
-            })
-            .collect(),
-    )
+    (!ends.is_empty()).then_some((toks, ends))
 }
 
 /// The tokens of `src` if it is one expression or statement, without the
 /// line and block tokens.
 pub fn code(src: &str) -> Option<Vec<(TokenKind, String)>> {
-    let parsed = crate::parse_file(src);
-    let stmts: usize = parsed.items.iter().map(|(_, item)| item.stmts.len()).sum();
-    if !parsed.diagnostics.is_empty() || stmts != 1 {
-        return None;
-    }
-    Some(
-        tokens(src)
-            .into_iter()
-            .map(|t| {
-                (
-                    t.kind,
-                    src[t.span.start as usize..t.span.end as usize].to_string(),
-                )
-            })
-            .collect(),
-    )
+    let (toks, ends) = run(src)?;
+    (ends.len() == 1).then_some(toks)
 }
 
 /// The tokens of `src` a pattern compares: no line, block or end tokens.

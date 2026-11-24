@@ -19,8 +19,10 @@ pub(crate) struct Declared {
     decl: LibraryLint,
     /// `std.seq`; empty for the file itself.
     module: String,
-    /// The tokens of each statement `from` spans; one for an expression.
-    from: Vec<Vec<(K, String)>>,
+    /// The tokens of `from`, and where each statement it spans ends; one
+    /// statement for an expression.
+    from: Vec<(K, String)>,
+    ends: Vec<usize>,
     /// Names `from` binds itself (lambda parameters, loop and `let`/`var`
     /// variables).
     bound: Vec<String>,
@@ -33,15 +35,16 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
         for item in &a.items {
             for stmt in &item.syntax.parsed.stmts {
                 for decl in library_lint::declared(stmt, item.offset).0 {
-                    let Some(from) = library_lint::run(&decl.from) else {
+                    let Some((from, ends)) = library_lint::run(&decl.from) else {
                         continue;
                     };
                     out.push(Declared {
                         lint: intern(&decl.name),
-                        bound: bound_names(&from.concat()),
+                        bound: bound_names(&from),
                         decl,
                         module: module.to_string(),
                         from,
+                        ends,
                     });
                 }
             }
@@ -187,14 +190,14 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     });
     candidates.dedup_by_key(|c| (c.0, c.1));
     // A statement's span can run past its last token (a block's newline).
+    let before = |at: u32| toks.partition_point(|t| t.span.start < at);
     let tok_range = |s: &Span| {
-        let start = toks.partition_point(|t| t.span.start < s.start);
-        let stop = toks.partition_point(|t| t.span.end <= s.end);
+        let (start, stop) = (before(s.start), before(s.end));
         (start < stop).then_some((start, stop))
     };
     let mut out = Vec::new();
     for d in declared {
-        let all = d.from.concat();
+        let all = &d.from;
         let repeated: Vec<bool> = (d.decl.holes.iter())
             .map(|h| all.iter().filter(|(_, t)| t == h).count() > 1)
             .collect();
@@ -209,9 +212,12 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             by_end: &by_end,
             repeated: repeated.clone(),
         };
-        let parts: Vec<Matcher> = d.from.iter().map(|p| matcher(p.as_slice())).collect();
+        let mut start = 0;
+        let parts: Vec<Matcher> = (d.ends.iter())
+            .map(|&end| matcher(&d.from[std::mem::replace(&mut start, end)..end]))
+            .collect();
         // A run of statements matches statement by statement, in one block.
-        let sites: Vec<Vec<Span>> = match d.from.len() {
+        let sites: Vec<Vec<Span>> = match d.ends.len() {
             1 => candidates.iter().map(|c| vec![c.2]).collect(),
             k => {
                 let mut runs: Vec<Vec<Span>> = (spans.blocks.iter())
