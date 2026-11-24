@@ -6,7 +6,7 @@
 //! `Concave` keeps `f` on `lo..=hi` as `f(lo)` plus the multiset of slopes
 //! `f(c + 1) - f(c)`, largest first, in a lazy treap; `Convex` is its mirror.
 use std.lazy.{LazyTreap}
-use std.range.{first_true}
+use std.range.{Len, first_true}
 
 struct Slide(base: Int, step: Int)
 
@@ -48,9 +48,9 @@ pub struct Concave(start: Int, base: Int):
     /// no value.
     ///
     /// cost: \(O(n)\)
-    /// traps: when `n < 0`
+    /// traps: when `n < 0` or `n >= 2^31`
     /// example: `var f = Concave.flat(0..=3); f.reserve(100); f.at(2) == 0`
-    pub fn reserve(mut self, n: 0..) = slopes.reserve(n)
+    pub fn reserve(mut self, n: Len) = slopes.reserve(n)
 
     /// The first point of the domain.
     ///

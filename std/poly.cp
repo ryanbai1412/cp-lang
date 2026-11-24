@@ -10,6 +10,7 @@ use std.algebra as algebra
 use std.math.{mod_sqrt, pow_mod, bit_ceil, ctz}
 use std.mod.{Mod}
 use std.ntt.{convolve, ntt}
+use std.range.{Len}
 
 /// The formal derivative `a'(x)`: coefficient `k` is `(k + 1) * a[k + 1]`. Length
 /// `max(0, a.len - 1)`, trailing zeros kept.
@@ -71,12 +72,11 @@ fn ntt_of<P>(a: List<Mod<P>>, size: Int) -> List<Mod<P>>:
 /// cost: \(O(n \log n)\)
 /// empty: `type Z = Mod<998244353>; let a: List<Z> = [0]; inv(a, 0) == []`
 /// order: lowest degree first
-/// traps: when `n < 0`; when `n > 0` and `a` is empty or `a[0] == 0`; when a transform length
+/// traps: when `n < 0` or `n >= 2^31`; when `n > 0` and `a` is empty or `a[0] == 0`; when a transform length
 /// exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, -1]; inv(a, 4) == [Z(1), Z(1), Z(1), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [2]; inv(a, 2) == [Z(1) / Z(2), Z(0)]`
-pub fn inv<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
-    assert n >= 0, "poly.inv() requires n >= 0"
+pub fn inv<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>:
     if n == 0: return []
     assert a.len > 0 and a[0].v != 0, "poly.inv() requires a[0] != 0"
     var g: List<Mod<P>> = [a[0].inv()]
@@ -111,11 +111,10 @@ pub fn inv<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
 /// cost: \(O(n \log n)\)
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; log(e, 0) == []`
 /// order: lowest degree first
-/// traps: when `n < 0`; when `n > 0` and `a` is empty or `a[0] != 1`; when `n > P` (the
+/// traps: when `n < 0` or `n >= 2^31`; when `n > 0` and `a` is empty or `a[0] != 1`; when `n > P` (the
 /// integral needs inverses of `1..n`); when a transform length exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 2, 1]; log(a, 3) == [Z(0), Z(2), Z(-1)]`
-pub fn log<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
-    assert n >= 0, "poly.log requires n >= 0"
+pub fn log<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>:
     if n == 0: return []
     assert a.len > 0 and a[0].v == 1, "poly.log requires a[0] == 1"
     if n == 1: return [Mod<P>(0)]
@@ -135,11 +134,10 @@ pub fn log<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
 /// cost: \(O(n \log n)\)
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; exp(e, 0) == [] and exp(e, 3) == [Z(1), Z(0), Z(0)]`
 /// order: lowest degree first
-/// traps: when `n < 0`; when `n > 0` and `a[0] != 0`; when `n > P`; when a transform length
+/// traps: when `n < 0` or `n >= 2^31`; when `n > 0` and `a[0] != 0`; when `n > P`; when a transform length
 /// exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 2]; exp(a, 3) == [Z(1), Z(2), Z(2)]`
-pub fn exp<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
-    assert n >= 0, "poly.exp requires n >= 0"
+pub fn exp<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>:
     if n == 0: return []
     assert a.is_empty or a[0].v == 0, "poly.exp requires a[0] == 0"
     assert n <= P, "poly.exp requires n <= P"
@@ -208,13 +206,12 @@ pub fn exp<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
 /// cost: \(O(n \log n)\)
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; pow(e, 2, 0) == []`
 /// order: lowest degree first
-/// traps: when `n < 0`; when `k < 0` and `a` is empty or `a[0] == 0`; when a transform length
+/// traps: when `n < 0` or `n >= 2^31`; when `k < 0` and `a` is empty or `a[0] == 0`; when a transform length
 /// exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; pow(a, 2, 4) == [Z(1), Z(2), Z(1), Z(0)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; pow(a, -1, 3) == [Z(1), Z(-1), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; pow(a, 2, 3) == [Z(0), Z(0), Z(1)]`
-pub fn pow<P>(a: List<Mod<P>>, k: Int, n: 0..) -> List<Mod<P>>:
-    assert n >= 0, "poly.pow requires n >= 0"
+pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Len) -> List<Mod<P>>:
     if n == 0: return []
     if k == 0:
         var out = List.filled(n, Mod<P>(0))
@@ -257,13 +254,12 @@ pub fn pow<P>(a: List<Mod<P>>, k: Int, n: 0..) -> List<Mod<P>>:
 /// cost: \(O(n \log n + \log^2 P)\)
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; sqrt(e, 0) == Some([])`
 /// order: lowest degree first
-/// traps: when `n < 0`; when a transform length exceeds what `P` supports
+/// traps: when `n < 0` or `n >= 2^31`; when a transform length exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 2, 1]; sqrt(a, 3) == Some([Z(1), Z(1), Z(0)])`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 0, 4]; sqrt(a, 3) == Some([Z(0), Z(2), Z(0)])`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; sqrt(a, 2) == None`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [3]; sqrt(a, 1) == None`
-pub fn sqrt<P>(a: List<Mod<P>>, n: 0..) -> ?List<Mod<P>>:
-    assert n >= 0, "poly.sqrt requires n >= 0"
+pub fn sqrt<P>(a: List<Mod<P>>, n: Len) -> ?List<Mod<P>>:
     if n == 0: return Some([])
     var d = 0
     let cap = min(a.len, n)
@@ -622,10 +618,9 @@ fn biv_advance<P>(mut c: List<Mod<P>>, l_big: Int, l_step: Int) -> List<Mod<P>>:
 /// cost: \(O(n \log^2 n)\)
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; let f: List<Z> = [1, 1]; let g: List<Z> = [0, 1]; compose(f, g, 0) == [] and compose(e, g, 2) == [Z(0), Z(0)]`
 /// order: lowest degree first
-/// traps: when `n < 0`; when a transform length exceeds what `P` supports
+/// traps: when `n < 0` or `n >= 2^31`; when a transform length exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let f: List<Z> = [0, 0, 1]; let g: List<Z> = [1, 1]; compose(f, g, 3) == [Z(1), Z(2), Z(1)]`
-pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
-    assert n >= 0, "poly.compose requires n >= 0"
+pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Len) -> List<Mod<P>>:
     if n == 0: return []
     if f.is_empty: return List.filled(n, Mod<P>(0))
     if g.len > 0 and g[0].v != 0:
@@ -917,10 +912,10 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// Truncate or zero-pad to exactly `n` coefficients (mod `x^n`).
     ///
     /// cost: \(O(n)\)
-    /// traps: when `n < 0`
+    /// traps: when `n < 0` or `n >= 2^31`
     /// example: `Poly<Int>([1, 2, 3]).truncated(2).len == 2`
     /// example: `Poly<Int>([1]).truncated(3).at(2) == 0`
-    pub fn truncated(self, n: 0..) -> Poly<T>:
+    pub fn truncated(self, n: Len) -> Poly<T>:
         Poly([self.at(i) for i in 0..n])
 
     /// The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.
@@ -978,10 +973,9 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// The formal square root mod `x^n`, or `None`, as the free `sqrt`.
     ///
     /// cost: Newton doubling over `*` and `inv`: \(O(n \log n)\) for a `FastProduct` `T`, else \(O(n^2 \log n)\), plus one `T.sqrt()`
-    /// traps: when `n < 0`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
+    /// traps: when `n < 0` or `n >= 2^31`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
-    pub fn sqrt(self, n: 0..) -> ?Poly<T>:
-        assert n >= 0, "Poly.sqrt requires n >= 0"
+    pub fn sqrt(self, n: Len) -> ?Poly<T>:
         if n == 0: return Some(Poly([]))
         var d = 0
         while d < n and self.at(d) == T.zero: d += 1
@@ -1197,10 +1191,9 @@ pub fn transposed_mul<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
 /// cost: \(O(n \log^2 n)\)
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; compose_inv(e, 0) == []`
 /// order: lowest degree first
-/// traps: when `n < 0`; when `n > 0` and `f.len < 2`, `f[0] != 0` or `f[1] == 0`
+/// traps: when `n < 0` or `n >= 2^31`; when `n > 0` and `f.len < 2`, `f[0] != 0` or `f[1] == 0`
 /// example: `type Z = Mod<998244353>; let f: List<Z> = [0, 1, 1]; compose_inv(f, 4) == [Z(0), Z(1), Z(-1), Z(2)]`
-pub fn compose_inv<P>(f: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
-    assert n >= 0, "compose_inv requires n >= 0"
+pub fn compose_inv<P>(f: List<Mod<P>>, n: Len) -> List<Mod<P>>:
     if n == 0: return []
     assert f.len >= 2 and f[0].v == 0 and f[1].v != 0, "compose_inv requires f[0] == 0 and f[1] != 0"
     if n == 1: return [Mod<P>(0)]
@@ -1273,10 +1266,9 @@ pub fn gcd_poly<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
 /// cost: \(O((n + m) \log(n + m))\)
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; let a: List<Z> = [1, 1]; chirp_z(a, Z(2), 0) == [] and chirp_z(e, Z(2), 2) == [Z(0), Z(0)]`
 /// order: by power of `r`, increasing
-/// traps: when `m < 0`
+/// traps: when `m < 0` or `m >= 2^31`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; chirp_z(a, Z(2), 3) == [Z(2), Z(3), Z(5)]`
-pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: 0..) -> List<Mod<P>>:
-    assert m >= 0, "chirp_z requires m >= 0"
+pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Len) -> List<Mod<P>>:
     if m == 0: return []
     let n = a.len
     if n == 0: return List.filled(m, Mod<P>(0))
@@ -1304,10 +1296,9 @@ pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: 0..) -> List<Mod<P>>:
 /// cost: \(O((n + m) \log(n + m))\)
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; let ys: List<Z> = [0, 1]; sample_points_shift(ys, Z(3), 0) == [] and sample_points_shift(e, Z(3), 2) == [Z(0), Z(0)]`
 /// order: by point, increasing
-/// traps: when `m < 0`, or `n + m > P` (the sample points collide mod `P`)
+/// traps: when `m < 0` or `m >= 2^31`, or `n + m > P` (the sample points collide mod `P`)
 /// example: `type Z = Mod<998244353>; let ys: List<Z> = [0, 1, 4]; sample_points_shift(ys, Z(3), 2) == [Z(9), Z(16)]`
-pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: 0..) -> List<Mod<P>>:
-    assert m >= 0, "sample_points_shift requires m >= 0"
+pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Len) -> List<Mod<P>>:
     if m == 0: return []
     let n = ys.len
     if n == 0: return List.filled(m, Mod<P>(0))

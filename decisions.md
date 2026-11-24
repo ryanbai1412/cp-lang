@@ -9188,7 +9188,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Core.** OK under the decision-456 hold (compiler, 2026-11-24) on four conditions: `replaces` is an ordinary std member the compiler knows nothing of (prune drops `fold_set` through its general known-`None`-field rule); its law is in `Action`'s laws and `laws_hold` catches a wrongly declared one (`replaces-true-on-id-breaks-the-law.cp`); both engines fold equal to brute force with and without `replaces` (`replacing-and-plain-actions-match-brute.cp`); the prune case stays at 27,943 B.
 - **Reverse.** Drop the field and `fold_set`; every action folds bottom-up again.
 
-## 608. (reserved, stdlib)
+## 608. std's sizes are `Len = 0..2^31`, the bound of every `.len` (stdlib, 2026-11-24)
+
+- **Call.** `std.range` defines `pub type Len = 0..2_147_483_648`, in the prelude. Every std count, length and capacity param (`cap`, `n` of `reserve`, `rows`/`cols`, `take(k)`, a truncation length) and every size field has type `Len`, and no other std code spells `2^31` as a size. A call checks its argument at the boundary: a constant out of range is E0902, any other value traps with R0201 at the user's call, and each such fn's `traps:` line says `k >= 2^31`.
+- **Why.** The range proof takes every `.len` as at most `2^31`, so a size above it can't come from a container; with only `0..` std's `cap + 63` or `2 * n` could not be proven to stay an `Int` (handbook/domains/stdlib.md, "No overflow inside std"). One name keeps the bound in one place: `LazyTreap` and `std.flow` spelled it themselves before.
+- **Reverse.** Widen `Len` in `std/range.cp`; each size op then needs its own proof again.
 
 ## 611. The JetBrains lexer is generated at build time, not committed (tools, 2026-11-24)
 

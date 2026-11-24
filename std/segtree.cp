@@ -5,7 +5,7 @@
 use std.algebra.{Action, Acts, Monoid}
 use std.bag.{SortedBag}
 use std.math.{gcd, bit, popcount, bit_ceil, bit_width, ctz}
-use std.range.{ends, first_true}
+use std.range.{Len, ends, first_true}
 
 type Pos = 0..=2_000_000_000
 
@@ -1622,9 +1622,9 @@ pub struct MergeTrees<D, Z: Add + Mul>:
     /// none. Changes no tree.
     ///
     /// cost: \(O(\mathit{sets} \log \lvert D \rvert)\)
-    /// traps: when `sets < 0`
+    /// traps: when `sets < 0` or `sets >= 2^31`
     /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); p.reserve(sets: 2); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.get(t, D(3)) == 5`
-    pub fn reserve(mut self, sets: 0..):
+    pub fn reserve(mut self, sets: Len):
         assert sets >= 0, "reserve requires sets >= 0"
         var depth = 1
         while 1 << (depth - 1) < D.count: depth += 1

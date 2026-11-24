@@ -11,6 +11,7 @@
 //! among equals, put the tie-breaker in the entry: `(d, v)`, or `(d, desc(v))`.
 use std.algebra.{Desc, desc}
 use std.math.{bit_width}
+use std.range.{Len}
 use std.seq.{Seq}
 
 /// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
@@ -1021,9 +1022,9 @@ pub struct MeldHeaps<T>:
     /// and no handle.
     ///
     /// cost: \(O(\mathit{nodes})\)
-    /// traps: when `nodes < 0`
+    /// traps: when `nodes < 0` or `nodes >= 2^31`
     /// example: `var p = MeldHeaps<Int>(); p.reserve(100); let h = p.of([3, 1]); p.top(h) == Some(1)`
-    pub fn reserve(mut self, nodes: 0..):
+    pub fn reserve(mut self, nodes: Len):
         assert nodes >= 0, "reserve requires nodes >= 0"
         _nodes.reserve(nodes)
         if _adds.len > 0: _adds.reserve(nodes)

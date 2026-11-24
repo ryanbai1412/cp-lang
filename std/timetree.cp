@@ -8,6 +8,7 @@
 //! apply/undo steps.
 use std.dsu.{Dsu, Mark}
 use std.math.{bit_ceil}
+use std.range.{Len}
 
 /// One step in a `TimeTree` DFS traversal:
 /// - `Apply(id)`: apply event `tt.event(id)` on entry to a segment-tree node.
@@ -30,9 +31,9 @@ pub struct TimeTree<E>:
     /// An empty timeline of `q` time slots `0..q`, with no events scheduled yet.
     ///
     /// cost: \(O(q)\) time and memory
-    /// traps: when `q < 0`
+    /// traps: when `q < 0` or `q >= 2^31`
     /// example: `TimeTree<Int>(2).steps().len == 2`
-    pub fn new(q: 0..) -> TimeTree<E>:
+    pub fn new(q: Len) -> TimeTree<E>:
         assert q >= 0, "TimeTree needs q >= 0"
         let size = bit_ceil(max(1, q))
         TimeTree(q, size, List.filled(2 * size, -1), [], [])

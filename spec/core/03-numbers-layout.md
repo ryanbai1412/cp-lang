@@ -68,6 +68,11 @@ bytes, never slower), and `cpl explain` prints every layout.
   32 bits (`a[i] + b[i]` with both `0..=1e9` is at most `2e9`, a u32), the
   C++ computes it in 32 bits. Same answer, never slower, and twice the
   lanes when the loop vectorizes, so it majorizes; `cpl explain` marks it. (R03.1.6, permits)
+- **Sizes are `Len`.** A container's `.len` is below `2^31`, and std's
+  `Len = 0..2^31` (in the prelude) names that bound: every std count,
+  length and capacity param has type `Len`, so a constant past it is
+  E0902 and any other value traps with R0201 at the call (decision 608).
+  A size then stays an `Int` through `n + 63` or `2 * n`. (R03.1.10)
 
 Why this split: in registers, 64-bit `+ - * < &` cost the same as 32-bit
 on every judge CPU; only division by a runtime value is slower on older

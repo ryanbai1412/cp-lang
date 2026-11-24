@@ -4,6 +4,7 @@
 //! example: `domain D = 0..10; var b = Bitset<D>(); b.add(3); b.add(7); b.len == 2 and b.contains(7)`
 use std.seq.{Seq, take_all}
 use std.math.{bit, popcount, bit_width, ctz}
+use std.range.{Len}
 
 /// One bit per position of `D`, in `ceil(K / 64)` words.
 /// `Bitset<D>` is an explicit type you ask for; `[D]Bool` stays one byte
@@ -641,18 +642,18 @@ pub struct DynBitset:
     /// Create an all-zero `DynBitset` of width `cap`: bits `0..cap`.
     ///
     /// cost: \(O(\mathit{cap} / 64)\) time and space
-    /// traps: when `cap < 0`
+    /// traps: when `cap < 0` or `cap >= 2^31`
     /// example: `DynBitset(10).len == 0`
-    pub fn new(cap: 0..) -> DynBitset:
+    pub fn new(cap: Len) -> DynBitset:
         assert cap >= 0
         DynBitset(List.filled((cap + 63) / 64, U64(0)), cap, 0)
 
     /// Create an all-one `DynBitset` of width `cap`; bits at or above `cap` stay clear.
     ///
     /// cost: \(O(\mathit{cap} / 64)\) time and space
-    /// traps: when `cap < 0`
+    /// traps: when `cap < 0` or `cap >= 2^31`
     /// example: `DynBitset.full(10).len == 10`
-    pub fn full(cap: 0..) -> DynBitset:
+    pub fn full(cap: Len) -> DynBitset:
         assert cap >= 0
         var d = DynBitset(List.filled((cap + 63) / 64, ~U64(0)), cap, cap)
         d.trim()
@@ -740,10 +741,10 @@ pub struct DynBitset:
     /// `new_cap` (and `len` drops with them).
     ///
     /// cost: \(O(\mathit{new\_cap} / 64)\) time and space
-    /// traps: when `new_cap < 0`
+    /// traps: when `new_cap < 0` or `new_cap >= 2^31`
     /// example: `var d = DynBitset(10); d.add(1); d.add(8); d.resize(4); d.len == 1 and d.cap == 4`
     /// example: `var d = DynBitset.full(2); d.resize(5); d.each().collect() == [0, 1]`
-    pub fn resize(mut self, new_cap: 0..):
+    pub fn resize(mut self, new_cap: Len):
         assert new_cap >= 0
         let words = (new_cap + 63) / 64
         while _w.len > words: _w.pop()
@@ -991,9 +992,9 @@ pub struct DynBitset:
     ///
     /// cost: \(O(\mathit{cap} \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(\mathit{cap} / 64)\) space
     /// empty: `DynBitset.subset_sums(5, []).each().collect() == [0] and DynBitset.subset_sums(0, []).each().collect() == []`
-    /// traps: when `cap < 0` or a weight is negative
+    /// traps: when `cap < 0` or `cap >= 2^31` or a weight is negative
     /// example: `DynBitset.subset_sums(11, [3, 5, 5]).each().collect() == [0, 3, 5, 8, 10]`
-    pub fn subset_sums(cap: 0.., weights: List<Int>) -> DynBitset:
+    pub fn subset_sums(cap: Len, weights: List<Int>) -> DynBitset:
         var reach = DynBitset.new(cap)
         if cap == 0: return reach
         reach.add(0)
@@ -1062,9 +1063,9 @@ pub struct XorTrie:
     /// contents are unchanged.
     ///
     /// cost: \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise
-    /// traps: when `nodes < 0`
+    /// traps: when `nodes < 0` or `nodes >= 2^31`
     /// example: `var t = XorTrie(3); t.reserve(100); t.len == 0`
-    pub fn reserve(mut self, nodes: 0..):
+    pub fn reserve(mut self, nodes: Len):
         assert nodes >= 0
         _c0.reserve(nodes)
         _c1.reserve(nodes)
@@ -1286,9 +1287,9 @@ pub struct BitTrieArena<W>:
     /// not filled: `add` touches each node's memory as it uses it.
     ///
     /// cost: \(O(1)\)
-    /// traps: when `cap < 0`
+    /// traps: when `cap < 0` or `cap >= 2^31`
     /// example: `BitTrieArena<3>.new(cap: 8).node_count == 0`
-    pub fn new(cap: 0.. = 0) -> BitTrieArena<W>:
+    pub fn new(cap: Len = 0) -> BitTrieArena<W>:
         var nodes: List<BitTrieNode> = []
         nodes.reserve(cap)
         BitTrieArena(nodes)

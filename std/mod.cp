@@ -12,6 +12,7 @@
 use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
 use std.math.{crt_all, factor, gcd, inv_mod, isqrt, mod_log, mod_sqrt, mul_mod, pow_mod}
+use std.range.{Len}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
 /// `+ - *` are \(O(1)\); `/` and `inv` are \(O(\log P)\) and need `gcd(x, P) == 1`.
@@ -200,9 +201,9 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// `P`), so `Comb<Z>()` with no limit is valid and simply grows on first use.
     ///
     /// cost: \(O(\min(\mathit{limit}, P))\)
-    /// traps: when `limit < 0`, or `P` is not prime
+    /// traps: when `limit < 0` or `limit >= 2^31`, or `P` is not prime
     /// example: `type Z = Mod<7>; let c = Comb<Z>(3); c.fact(3) == Z(6)`
-    pub fn new(limit: 0.. = 0) -> Comb<M>:
+    pub fn new(limit: Len = 0) -> Comb<M>:
         assert limit >= 0, "`Comb(limit)` needs `limit >= 0`"
         let p = M.MOD
         for q in 2..=p.isqrt:

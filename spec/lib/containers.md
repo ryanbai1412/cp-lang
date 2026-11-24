@@ -272,7 +272,7 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
 <!-- signatures: std/bitset.cp -->
 ```cp
 struct BitTrieArena<W>  // the nodes of every BitTrie<W> built in it
-    fn new(cap: 0.. = 0) -> BitTrieArena<W>               // O(cap), reserves cap nodes
+    fn new(cap: Len = 0) -> BitTrieArena<W>               // O(cap), reserves cap nodes
     @get fn node_count(self) -> Int                       // O(1), nodes held
 struct BitTrie<W>  // multiset of 0..2^W: a root handle into an arena
     fn new() -> BitTrie<W>                                // O(1), no node
@@ -608,12 +608,12 @@ version's values in key order (decision 555).
 <!-- signatures: std/persistent.cp std/dsu.cp -->
 ```cp
 struct PArena<T>                       // append-only node pool
-    fn new(cap: 0.. = 0) -> PArena<T>  // O(cap)
+    fn new(cap: Len = 0) -> PArena<T>  // O(cap)
     @get fn len(self) -> Int           // O(1)
     @get fn is_empty(self) -> Bool     // O(1)
     fn alloc(mut self, x: T) -> Id<T>  // O(1) amortized; ids 0, 1, ...
     fn get(self, id: Id<T>) -> T       // O(1); traps past len
-    fn reserve(mut self, cap: 0..)     // O(cap)
+    fn reserve(mut self, cap: Len)     // O(cap)
 
 struct PMultiset<D>                                                    // hashed persistent multiset
     fn empty() -> PMultiset<D>                                         // O(1), no node

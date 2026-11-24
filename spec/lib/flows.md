@@ -72,7 +72,7 @@ functions for everything whose input is a table or an edge list.
 
 <!-- signatures: std/flow.cp -->
 ```cp
-struct Arc(id: 0..2_147_483_648)
+struct Arc(id: Len)
     @get fn rev(self) -> Arc  // O(1)
 
 struct FlowGraph<V>                                     // Dinic

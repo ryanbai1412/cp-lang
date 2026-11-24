@@ -7,7 +7,7 @@
 use std.math.{pow_mod, inv_mod}
 use std.seq.{collect, nth, find, Seq}
 use std.sparse.{LinearRmq}
-use std.range.{first_true, last_true}
+use std.range.{Len, first_true, last_true}
 
 const CAP = 2_000_000_000
 type Count = 0..=CAP
@@ -17,11 +17,10 @@ type Slot = -1..=CAP
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert \cdot n)\)
 /// empty: `("".repeat(3), "ab".repeat(0)) == ("", "")`
-/// traps: when `n < 0`
+/// traps: when `n < 0` or `n >= 2^31`
 /// example: `"ab".repeat(3) == "ababab"`
 /// example: `"x".repeat(0) == ""`
-pub fn repeat(self: Str, n: 0..) -> Str:
-    assert n >= 0, "`repeat` needs a count of 0 or more"
+pub fn repeat(self: Str, n: Len) -> Str:
     Str(self[i % self.len] for i in 0..n * self.len)
 
 /// True when `pat` occurs in `self` starting at position `at` (default 0, so a prefix test): the
@@ -1588,10 +1587,9 @@ pub struct RollingHash:
     /// `a * base^b_len + b` per modulus.
     ///
     /// cost: \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\)
-    /// traps: when `b_len < 0`
+    /// traps: when `b_len < 0` or `b_len >= 2^31`
     /// example: `let h = RollingHash("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
-    pub fn combine(self, a: HashVal, b: HashVal, b_len: 0..) -> HashVal:
-        assert b_len >= 0, "RollingHash.combine: negative length"
+    pub fn combine(self, a: HashVal, b: HashVal, b_len: Len) -> HashVal:
         let fits = b_len < pow1.len
         let q1 = if fits: pow1[b_len] else: pow_mod(bases.0, b_len, RH_M1)
         let q2 = if fits: pow2[b_len] else: pow_mod(bases.1, b_len, RH_M2)
@@ -1821,10 +1819,9 @@ pub struct RollingHash61:
     /// `a * base^b_len + b` modulo `2^61 - 1`.
     ///
     /// cost: \(O(1)\) amortized (the power table grows past `len` on demand)
-    /// traps: when `b_len < 0`
+    /// traps: when `b_len < 0` or `b_len >= 2^31`
     /// example: `let h = RollingHash61("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
-    pub fn combine(self, a: Hash61, b: Hash61, b_len: 0..) -> Hash61:
-        assert b_len >= 0, "RollingHash61.combine: negative length"
+    pub fn combine(self, a: Hash61, b: Hash61, b_len: Len) -> Hash61:
         var p = if b_len < pow.len: pow[b_len] else: U64(1)
         if b_len >= pow.len:
             var e = b_len

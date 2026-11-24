@@ -4,6 +4,11 @@
 //! start: `first_true`, `last_true`, `bsearch`, `ends`, `RingRange`
 //! example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
 
+/// A size: a count, length or capacity. Every `.len` is below `2^31`, so a size is too.
+///
+/// example: `let n: Len = 5; n == 5`
+pub type Len = 0..2_147_483_648
+
 /// Left cut of a range (valid even when empty).
 ///
 /// cost: \(O(1)\)

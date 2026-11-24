@@ -15,7 +15,7 @@
 use std.algebra.{Monoid}
 use std.math.{bit}
 use std.seq.{collect}
-use std.range.{first_true}
+use std.range.{Len, first_true}
 
 /// \(O(1)\) per evaluation.
 /// The line `k * x + m`, the usual entry of a `LiChao`.
@@ -194,10 +194,9 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
 /// empty: `monotone_minima(0, 3, (i, j) => Some(j)) == [] and monotone_minima(2, 0, (i, j) => Some(j)) == [None, None]`
 /// ties: `monotone_minima(1, 3, (i, j) => Some(0)) == [Some((val: 0, at: 0))]`
 /// order: one entry per row, row order
-/// traps: when `rows < 0` or `cols < 0`
+/// traps: when `rows < 0` or `rows >= 2^31` or `cols < 0` or `cols >= 2^31`
 /// example: `monotone_minima(2, 3, (i, j) => Some((j - i) * (j - i))) == [Some((val: 0, at: 0)), Some((val: 0, at: 1))]`
-pub fn monotone_minima(rows: 0.., cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>:
-    assert rows >= 0 and cols >= 0, "monotone_minima requires rows >= 0 and cols >= 0"
+pub fn monotone_minima(rows: Len, cols: Len, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>:
     var out: List<?(val: Int, at: Int)> = List.filled(rows, None)
     var todo = [(0, rows, 0, cols)]
     while let t = todo.pop():
@@ -250,7 +249,7 @@ pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
             todo.push((mid + 1, hi, at, to))
     next
 
-const TWO_31 = 2_147_483_648
+const LCG_MOD = 2_147_483_648
 
 /// The interval DP over cuts `0..=n`: `dp[i][i + 1] = 0` and `dp[i][j] = cost(i, j) + min over
 /// i < k < j of dp[i][k] + dp[k][j]`, returned as the full `(n + 1) x (n + 1)` table. Entries with
@@ -264,14 +263,13 @@ const TWO_31 = 2_147_483_648
 /// empty: `knuth(0, (i, j) => j - i) == [[0]]`
 /// ties: `knuth(3, (i, j) => 1)[0][3] == 2`
 /// order: `dp[i][j]` is row `i`, column `j`
-/// traps: when `n < 0`
+/// traps: when `n < 0` or `n >= 2^31`
 /// example: `knuth(2, (i, j) => j - i)[0][2] == 2`
 /// example: `knuth(3, (i, j) => j - i)[0][3] == 5`
 /// example: `knuth(1, (i, j) => j - i) == [[0, 0], [0, 0]]`
-pub fn knuth(n: 0.., cost: (Int, Int) -> Int) -> List<List<Int>>:
-    assert n >= 0, "knuth requires n >= 0"
+pub fn knuth(n: Len, cost: (Int, Int) -> Int) -> List<List<Int>>:
     var dp: List<List<Int>> = []
-    var opt: List<List<0..TWO_31>> = []
+    var opt: List<List<Len>> = []
     for _ in 0..=n:
         dp.push(List.filled(n + 1, 0))
         opt.push(List.filled(n + 1, 0))
@@ -811,7 +809,7 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.at(0) == Some(4) and c.at(3) == Some(3)`
     pub fn add(mut self, line: Line):
         let sg = self.sign()
-        seed = (seed * 1103515245 + 12345) % TWO_31
+        seed = (seed * 1103515245 + 12345) % LCG_MOD
         ks.push(sg * line.k)
         ms.push(sg * line.m)
         ps.push(Int.MAX)

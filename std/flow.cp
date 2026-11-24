@@ -12,9 +12,10 @@ use std.graph.{Next}
 use std.heap.{MinHeap}
 use std.seq.{collect, next_permutation}
 use std.math.{bit}
+use std.range.{Len}
 
 /// A handle to one arc of a `FlowGraph`. Handles from `add` stay valid as arcs are added.
-pub struct Arc(pub id: 0..2_147_483_648):
+pub struct Arc(pub id: Len):
     /// The paired arc in the opposite direction, what `e ^ 1` means in C++. Every `add` makes an
     /// arc and its reverse together, so `a.rev.rev == a`.
     ///
@@ -753,7 +754,7 @@ pub fn min_vertex_cover<L, R>(adj: [L]List<R>) -> (left: [L]Bool, right: [R]Bool
 
 /// Breadth-first layers of the left side by alternating paths: free vertices are layer 0,
 /// and a matched vertex is one deeper than a left vertex adjacent to its partner.
-type Layer = 0..2_147_483_648
+type Layer = Len
 
 fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?Layer:
     var level: [L]?Layer = None

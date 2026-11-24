@@ -8,7 +8,7 @@
 use std.algebra.{Action, Monoid}
 use std.marks.{Id}
 use std.math.{splitmix64, bit_width}
-use std.range.{ends}
+use std.range.{Len, ends}
 use std.seq.{deduped}
 
 /// An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte
@@ -25,9 +25,9 @@ pub struct PArena<T>:
     /// An empty arena with room for `cap` nodes before it reallocates.
     ///
     /// cost: \(O(1)\); the room is not touched until it is used
-    /// traps: when `cap < 0`
+    /// traps: when `cap < 0` or `cap >= 2^31`
     /// example: `PArena<Int>(cap: 8).is_empty`
-    pub fn new(cap: 0.. = 0) -> PArena<T>:
+    pub fn new(cap: Len = 0) -> PArena<T>:
         var xs: List<T> = []
         xs.reserve(cap)
         PArena(xs)
@@ -68,9 +68,9 @@ pub struct PArena<T>:
     /// Allocate room for at least `cap` nodes in total; changes no handle or node.
     ///
     /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise
-    /// traps: when `cap < 0`
+    /// traps: when `cap < 0` or `cap >= 2^31`
     /// example: `var a = PArena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
-    pub fn reserve(mut self, cap: 0..):
+    pub fn reserve(mut self, cap: Len):
         _xs.reserve(cap)
 
 /// Opaque version handle for `PersistentSegTree`.
@@ -282,9 +282,9 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// Changes no version.
     ///
     /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes it holds), \(O(1)\) otherwise
-    /// traps: when `nodes < 0`
+    /// traps: when `nodes < 0` or `nodes >= 2^31`
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.reserve(100); t.all(t.base) == 6`
-    pub fn reserve(mut self, nodes: 0..):
+    pub fn reserve(mut self, nodes: Len):
         assert nodes >= 0, "reserve requires nodes >= 0"
         left.reserve(nodes)
         right.reserve(nodes)

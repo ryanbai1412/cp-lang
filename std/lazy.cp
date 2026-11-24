@@ -5,10 +5,10 @@
 use std.algebra.{Action, MaxCount, MinCount, Monoid, add, affine, assign}
 use std.rand.Rng
 use std.segtree.{SegTree}
-use std.range.{ends}
+use std.range.{Len, ends}
 use std.seq.{Seq}
 
-const TWO_31 = 2_147_483_648
+const LCG_MOD = 2_147_483_648
 
 /// Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTree(op, a, act: flip)`).
 /// Build the toggle action with `flip_action(m)` (tag `Bool`: `true` swaps `now` and `flipped`).
@@ -400,8 +400,8 @@ fn dual_segtree_non_commutative_tags_match_brute():
 struct TreapNode<T, F>:
     var l: ?Int
     var r: ?Int
-    pri: 0..2_147_483_648
-    var sz: 0..2_147_483_648
+    pri: 0..LCG_MOD
+    var sz: Len
     var val: T
     var tag: ?F
     var rev: Bool
@@ -475,10 +475,9 @@ pub struct LazyTreap<T, F>(
     /// A smaller `n` than the current capacity changes nothing.
     ///
     /// cost: \(O(n)\) when it grows, else \(O(1)\)
-    /// traps: when `n < 0` or `n >= 2^31` (the size bound)
+    /// traps: when `n < 0` or `n >= 2^31` or `n >= 2^31` (the size bound)
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.reserve(10); t.len == 0`
-    pub fn reserve(mut self, n: 0..):
-        assert 0 <= n < TWO_31, "`reserve` needs `0 <= n < 2^31`"
+    pub fn reserve(mut self, n: Len):
         nodes.reserve(n)
 
     /// Whether the treap holds no elements.
@@ -756,7 +755,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when the total reaches `2^31` elements
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.splice_back(mut u); t.to_list() == [1, 5] and u.is_empty`
     pub fn splice_back(mut self, mut other: LazyTreap<T, F>):
-        assert self.len + other.len < TWO_31, "a LazyTreap holds fewer than `2^31` elements"
+        let _: Len = self.len + other.len
         if other.len <= self.len:
             let moved = self.copy_from(other, other.root)
             root = self.merge(root, moved)
@@ -825,10 +824,10 @@ pub struct LazyTreap<T, F>(
     /// cost: \(O(k + \log n)\)
     /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); let e = t.take(2); t.push(1); e == [] and t.take(0) == []`
     /// order: sequence order
-    /// traps: when `k < 0`
+    /// traps: when `k < 0` or `k >= 2^31`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.take(2) == [1, 2]`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.take(5) == [1]`
-    pub fn take(self, k: 0..) -> List<T>:
+    pub fn take(self, k: Len) -> List<T>:
         var out: List<T> = []
         if k > 0: self.walk(root, None, false, k, mut out)
         out
@@ -1093,7 +1092,7 @@ pub struct Rope<D, T>:
         for i in D:
             let t = r.val.len
             let x: T = if let s = a: s[i] else: fill!
-            r.seed = (r.seed * 1103515245 + 12345) % TWO_31
+            r.seed = (r.seed * 1103515245 + 12345) % LCG_MOD
             r.val.push(x)
             r.tg.push(x)
             r.has.push(false)

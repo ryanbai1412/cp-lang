@@ -14,6 +14,7 @@ use std.mod.{Mod, Residue}
 use std.rand.{Rng}
 use std.seq.{collect}
 use std.spec.{berlekamp_massey}
+use std.range.{Len}
 
 const SEED = 998_244_353
 const RAND_HI = 2_000_000_000
@@ -76,28 +77,28 @@ pub struct Mat<T>:
     /// `Semiring(+, *)`).
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
-    /// traps: when `rows < 0` or `cols < 0`
+    /// traps: when `rows < 0` or `rows >= 2^31` or `cols < 0` or `cols >= 2^31`
     /// example: `Mat<Int>.filled(2, 3, 7).get(1, 2) == 7`
     /// example: `Mat<?Int>.filled(2, 2, None, over: Semiring(min, +)).get(0, 1) == None`
-    pub fn filled<S>(rows: 0.., cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>:
+    pub fn filled<S>(rows: Len, cols: Len, fill: T, over: S = Semiring(+, *)) -> Mat<T>:
         assert rows >= 0 and cols >= 0, "Mat.filled requires rows >= 0 and cols >= 0"
         Mat(rows, cols, List.filled(rows * cols, fill), ring_of(over))
 
     /// A `rows x cols` matrix of `T.zero`.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
-    /// traps: when `rows < 0` or `cols < 0`
+    /// traps: when `rows < 0` or `rows >= 2^31` or `cols < 0` or `cols >= 2^31`
     /// example: `Mat<Int>.zeros(2, 3).get(1, 2) == 0`
-    pub fn zeros(rows: 0.., cols: Int) -> Mat<T>:
+    pub fn zeros(rows: Len, cols: Len) -> Mat<T>:
         assert rows >= 0 and cols >= 0
         Mat(rows, cols, List.filled(rows * cols, T.zero))
 
     /// The `n x n` identity matrix: `T.one` on the diagonal, `T.zero` elsewhere.
     ///
     /// cost: \(O(n^2)\) time and space
-    /// traps: when `n < 0`
+    /// traps: when `n < 0` or `n >= 2^31`
     /// example: `let m = Mat<Int>.identity(3); m.get(1, 1) == 1 and m.get(1, 2) == 0`
-    pub fn identity(n: 0..) -> Mat<T>:
+    pub fn identity(n: Len) -> Mat<T>:
         assert n >= 0
         var d = List.filled(n * n, T.zero)
         for i in 0..n: d[i * n + i] = T.one
@@ -108,9 +109,9 @@ pub struct Mat<T>:
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
     /// empty: `let m = Mat<Int>.from_flat(0, 3, []); m.rows == 0 and m.cols == 3`
-    /// traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
+    /// traps: when `rows < 0` or `rows >= 2^31`, `cols < 0` or `cols >= 2^31` or `data.len != rows * cols`
     /// example: `Mat<Int>.from_flat(2, 3, [1, 2, 3, 4, 5, 6]).get(1, 0) == 4`
-    pub fn from_flat(rows: 0.., cols: Int, data: List<T>) -> Mat<T>:
+    pub fn from_flat(rows: Len, cols: Len, data: List<T>) -> Mat<T>:
         assert rows >= 0 and cols >= 0 and data.len == rows * cols
         Mat(rows, cols, data.clone())
 
@@ -1134,18 +1135,18 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// A zero GF(2) matrix of `rows x cols`, one bit per entry.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} / 64)\) time and space
-    /// traps: when `rows < 0` or `cols < 0`
+    /// traps: when `rows < 0` or `rows >= 2^31` or `cols < 0` or `cols >= 2^31`
     /// example: `BitMat(2, 3).rank() == 0`
-    pub fn new(rows: 0.., cols: Int) -> BitMat:
+    pub fn new(rows: Len, cols: Len) -> BitMat:
         assert rows >= 0 and cols >= 0
         BitMat(rows, cols, List.filled(rows * bit_words(cols), 0))
 
     /// The `n x n` GF(2) identity matrix.
     ///
     /// cost: \(O(n^2 / 64)\) time and space
-    /// traps: when `n < 0`
+    /// traps: when `n < 0` or `n >= 2^31`
     /// example: `BitMat.identity(3).get(1, 1) and not BitMat.identity(3).get(1, 2)`
-    pub fn identity(n: 0..) -> BitMat:
+    pub fn identity(n: Len) -> BitMat:
         var m = BitMat.new(n, n)
         for i in 0..n: m.set(i, i, true)
         m

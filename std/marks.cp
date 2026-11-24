@@ -9,6 +9,7 @@
 //! only if the counter reaches its 32-bit ceiling.
 
 use std.interval.{IntervalMap}
+use std.range.{Len}
 
 const MAX_GEN = 2_000_000_000
 
@@ -281,9 +282,9 @@ pub struct Interner<K>:
     /// reallocate. Changes no ids.
     ///
     /// cost: \(O(\mathit{len})\) when it grows (it moves the keys), \(O(1)\) otherwise
-    /// traps: when `cap < 0`
+    /// traps: when `cap < 0` or `cap >= 2^31`
     /// example: `var t = Interner<Int>(); t.reserve(100); t.id(5); t.len == 1`
-    pub fn reserve(mut self, cap: 0..):
+    pub fn reserve(mut self, cap: Len):
         assert cap >= 0
         keys.reserve(cap)
 
@@ -392,9 +393,9 @@ pub struct Arena<T>:
     /// An empty arena with room for `cap` nodes before it reallocates.
     ///
     /// cost: \(O(1)\) time: the room is allocated, not filled
-    /// traps: when `cap < 0`
+    /// traps: when `cap < 0` or `cap >= 2^31`
     /// example: `Arena<Int>(cap: 8).is_empty`
-    pub fn new(cap: 0.. = 0) -> Arena<T>:
+    pub fn new(cap: Len = 0) -> Arena<T>:
         var xs: List<T> = []
         xs.reserve(cap)
         Arena(_xs: xs)
@@ -484,9 +485,9 @@ pub struct Arena<T>:
     /// Allocate room for at least `cap` slots in total; changes no handle or node.
     ///
     /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise
-    /// traps: when `cap < 0`
+    /// traps: when `cap < 0` or `cap >= 2^31`
     /// example: `var a = Arena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
-    pub fn reserve(mut self, cap: 0..):
+    pub fn reserve(mut self, cap: Len):
         _xs.reserve(cap)
 
     /// Drop every node, so the next `alloc` returns handle `0` again. Every handle issued before is

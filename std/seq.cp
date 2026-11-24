@@ -16,7 +16,7 @@
 use std.algebra.{Monoid}
 use std.math.{abs}
 use std.prefix.{Prefix}
-use std.range.{RingRange, ends, first_true, last_true}
+use std.range.{Len, RingRange, ends, first_true, last_true}
 use std.rand.{shuffle}
 
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
@@ -1316,9 +1316,9 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
 /// cost: \(O(n)\)
 /// empty: `let a: List<Int> = []; a.resized(2, 7) == [7, 7]`
 /// order: a new `List`, keyed from 0
-/// traps: when `n < 0`
+/// traps: when `n < 0` or `n >= 2^31`
 /// example: `[1, 2, 3].resized(5, 0) == [1, 2, 3, 0, 0]`
-pub fn resized<S: Indexed, T>(self: S, n: 0.., fill: T) -> List<T> = [
+pub fn resized<S: Indexed, T>(self: S, n: Len, fill: T) -> List<T> = [
     if i < self.len: self.nth(i) else: fill for i in 0..n
 ]
 
@@ -1592,9 +1592,9 @@ pub struct Rev<S>(base: S):
     /// cost: \(O(1)\)
     /// empty: `let a: List<Int> = []; List(a.rev.take(2)) == []`
     /// order: walk order of `self`; keeps the source's keys
-    /// traps: when `k < 0`
+    /// traps: when `k < 0` or `k >= 2^31`
     /// example: `List([1, 2, 3].rev.take(2)) == [3, 2]`
-    pub fn take(self, k: 0..) -> Rev<Slice<S>> = self.src.take_last(k).rev
+    pub fn take(self, k: Len) -> Rev<Slice<S>> = self.src.take_last(k).rev
 
     /// \(O(1)\). All but the first `min(k, len)` elements in walk order, as a reversed view:
     /// the source without its last `k`, walked backwards.
@@ -1602,9 +1602,9 @@ pub struct Rev<S>(base: S):
     /// cost: \(O(1)\)
     /// empty: `let a: List<Int> = []; List(a.rev.drop(1)) == []`
     /// order: walk order of `self`; keeps the source's keys
-    /// traps: when `k < 0`
+    /// traps: when `k < 0` or `k >= 2^31`
     /// example: `List([1, 2, 3].rev.drop(1)) == [2, 1]`
-    pub fn drop(self, k: 0.. = 1) -> Rev<Slice<S>> = self.src.drop_last(k).rev
+    pub fn drop(self, k: Len = 1) -> Rev<Slice<S>> = self.src.drop_last(k).rev
 
     /// \(O(1)\). The last `min(k, len)` elements in walk order, as a reversed view:
     /// the source's first `k`, walked backwards.
@@ -1612,9 +1612,9 @@ pub struct Rev<S>(base: S):
     /// cost: \(O(1)\)
     /// empty: `let a: List<Int> = []; List(a.rev.take_last(2)) == []`
     /// order: walk order of `self`; keeps the source's keys
-    /// traps: when `k < 0`
+    /// traps: when `k < 0` or `k >= 2^31`
     /// example: `List([1, 2, 3].rev.take_last(2)) == [2, 1]`
-    pub fn take_last(self, k: 0..) -> Rev<Slice<S>> = self.src.take(k).rev
+    pub fn take_last(self, k: Len) -> Rev<Slice<S>> = self.src.take(k).rev
 
     /// \(O(1)\). All but the last `min(k, len)` elements in walk order, as a reversed view:
     /// the source without its first `k`, walked backwards.
@@ -1622,9 +1622,9 @@ pub struct Rev<S>(base: S):
     /// cost: \(O(1)\)
     /// empty: `let a: List<Int> = []; List(a.rev.drop_last(1)) == []`
     /// order: walk order of `self`; keeps the source's keys
-    /// traps: when `k < 0`
+    /// traps: when `k < 0` or `k >= 2^31`
     /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
-    pub fn drop_last(self, k: 0.. = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
+    pub fn drop_last(self, k: Len = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
 
 impl Positional<T> for Rev<S: Indexed<D, T>>:
     fn nth(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
@@ -1723,52 +1723,52 @@ pub struct Slice<S>(
     @get pub fn items<K, T>(self) -> yields (K, T):
         for k in self.keys: yield (k, self.at(k))
 
-/// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0`). Consuming a view
+/// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0` or `k >= 2^31`). Consuming a view
 /// from the front is `w = w.drop(1)`.
 ///
 /// cost: \(O(1)\)
 /// empty: `let a: List<Int> = []; a.drop(1).collect() == []`
 /// order: keeps the keys of `self`
-/// traps: when `k < 0`
+/// traps: when `k < 0` or `k >= 2^31`
 /// example: `[1, 2, 3].drop(1).collect() == [2, 3]`
 @lint(interval_dp_by_length, from: "for len in 2..=n:\n    for l in 0..n - len + 1:\n        let r = l + len - 1\n        dp[l, r] = step", to: "for rg in I.ranges:\n    let (right, left) = (dp[rg.drop(1)], dp[rg.drop_last(1)])\n    dp[rg] = step", holes: "n, dp, step")
 @lint(interval_dp_by_length, from: "for len in 2..=n:\n    for l in 0..n - len + 1:\n        let r = l + len - 1\n        dp[l][r] = step", to: "for rg in I.ranges:\n    let (right, left) = (dp[rg.drop(1)], dp[rg.drop_last(1)])\n    dp[rg] = step", holes: "n, dp, step")
-pub fn drop<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S> = piece(
+pub fn drop<S: Indexed>(self: S, k: Len = 1) -> Slice<S> = piece(
     self,
     clamp_count(k, self.len),
     self.len,
 )
 
-/// \(O(1)\). The view without its last `k` elements, clamped (traps if `k < 0`).
+/// \(O(1)\). The view without its last `k` elements, clamped (traps if `k < 0` or `k >= 2^31`).
 ///
 /// cost: \(O(1)\)
 /// empty: `let a: List<Int> = []; a.drop_last(1).collect() == []`
 /// order: keeps the keys of `self`
-/// traps: when `k < 0`
+/// traps: when `k < 0` or `k >= 2^31`
 /// example: `[1, 2, 3].drop_last(2).collect() == [1]`
-pub fn drop_last<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S> = piece(
+pub fn drop_last<S: Indexed>(self: S, k: Len = 1) -> Slice<S> = piece(
     self,
     0,
     self.len - clamp_count(k, self.len),
 )
 
-/// \(O(1)\). The first `min(k, len)` elements, as a view (traps if `k < 0`).
+/// \(O(1)\). The first `min(k, len)` elements, as a view (traps if `k < 0` or `k >= 2^31`).
 ///
 /// cost: \(O(1)\)
 /// empty: `let a: List<Int> = []; a.take(2).collect() == []`
 /// order: keeps the keys of `self`
-/// traps: when `k < 0`
+/// traps: when `k < 0` or `k >= 2^31`
 /// example: `[1, 2, 3].take(5).collect() == [1, 2, 3]`
-pub fn take<S: Indexed>(self: S, k: 0..) -> Slice<S> = piece(self, 0, clamp_count(k, self.len))
+pub fn take<S: Indexed>(self: S, k: Len) -> Slice<S> = piece(self, 0, clamp_count(k, self.len))
 
-/// \(O(1)\). The last `min(k, len)` elements, as a view (traps if `k < 0`).
+/// \(O(1)\). The last `min(k, len)` elements, as a view (traps if `k < 0` or `k >= 2^31`).
 ///
 /// cost: \(O(1)\)
 /// empty: `let a: List<Int> = []; a.take_last(2).collect() == []`
 /// order: keeps the keys of `self`
-/// traps: when `k < 0`
+/// traps: when `k < 0` or `k >= 2^31`
 /// example: `[1, 2, 3].take_last(2).collect() == [2, 3]`
-pub fn take_last<S: Indexed>(self: S, k: 0..) -> Slice<S> = piece(
+pub fn take_last<S: Indexed>(self: S, k: Len) -> Slice<S> = piece(
     self,
     self.len - clamp_count(k, self.len),
     self.len,
@@ -2330,10 +2330,9 @@ pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Ma
 /// empty: `let a: List<Int> = []; a.min_k(2) == []`
 /// ties: `[(1, 'a'), (1, 'b'), (1, 'c')].min_k(2, by: .0).sorted() == [(1, 'a'), (1, 'b')]`
 /// order: unspecified; sort it when order matters
-/// traps: when `k < 0`; `k > n` gives every element
+/// traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
-pub fn min_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>:
-    assert k >= 0, "min_k requires k >= 0"
+pub fn min_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
     keep_k(self, k, by, (p, q) => p.0 < q.0 or (p.0 == q.0 and p.1 < q.1))
 
 /// \(O(n)\) expected, \(O(k)\) memory. `k` largest elements under `by:` (unordered; ties to earlier index).
@@ -2342,10 +2341,9 @@ pub fn min_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>:
 /// empty: `let a: List<Int> = []; a.max_k(2) == []`
 /// ties: `[(1, 'a'), (1, 'b'), (1, 'c')].max_k(2, by: .0).sorted() == [(1, 'a'), (1, 'b')]`
 /// order: unspecified; sort it when order matters
-/// traps: when `k < 0`; `k > n` gives every element
+/// traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
-pub fn max_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>:
-    assert k >= 0, "max_k requires k >= 0"
+pub fn max_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
     keep_k(self, k, by, (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1))
 
 // the `k` first under `first` of `(key, index, element)`, in a buffer that never passes `2k`
@@ -2781,10 +2779,9 @@ pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
 /// cost: \(O(k)\) per combination
 /// empty: `let e: List<Int> = []; e.combinations(0).collect() == [[]] and e.combinations(1).count() == 0`
 /// order: lexicographic by position
-/// traps: when `k < 0`
+/// traps: when `k < 0` or `k >= 2^31`
 /// example: `[1, 2, 3].combinations(2).collect() == [[1, 2], [1, 3], [2, 3]]`
-pub fn combinations<S: Indexed, T>(self: S, k: 0..) -> yields List<T>:
-    assert k >= 0
+pub fn combinations<S: Indexed, T>(self: S, k: Len) -> yields List<T>:
     let n = self.len
     if k > n: return
     var idx = (0..k).collect()

@@ -8,7 +8,7 @@
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) /
 //! \(O(r \cdot c)\) `finish()`.
 use std.algebra.{Monoid}
-use std.range.{ends, RingRange, first_true}
+use std.range.{Len, RingRange, ends, first_true}
 
 /// The n + 1 exclusive prefix folds, indexed by `D`'s cuts: `pre[c]` folds everything left of cut
 /// `c` (`from`, or `f`'s identity, at the first cut), and `pre[v]` for a position folds through
@@ -507,9 +507,9 @@ pub struct Prefix<T: Sub>:
     /// in `order`.
     ///
     /// cost: \(O(n)\) time and space
-    /// traps: when `n < 0`
+    /// traps: when `n < 0` or `n >= 2^31`
     /// example: `var f = Prefix<Int>.filling(2); f.set(0, 9); f.fold(0..1) == 9`
-    pub fn filling(n: 0.., order: FillOrder = FillOrder.Forward) -> FillPrefix<T>:
+    pub fn filling(n: Len, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>:
         assert n >= 0
         let rev = order == FillOrder.Reverse
         FillPrefix<T>(List.filled(n + 1, T.zero), rev, if rev: n - 1 else: 0)

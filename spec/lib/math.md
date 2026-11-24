@@ -205,7 +205,7 @@ struct Mod<P>(v: 0..P):
     // impls: Add, Sub, Neg, Mul, Div, Pow, Show
 
 struct Comb<M: Add + Sub + Mul>:
-    fn new(limit: 0.. = 0) -> Comb<M>          // O(limit) time and memory; exact size
+    fn new(limit: Len = 0) -> Comb<M>          // O(limit) time and memory; exact size
     fn fact(self, n: 0..) -> M                 // O(1) amortized; 0 for n >= M.MOD
     fn inv_fact(self, n: Int) -> M             // O(1) amortized; 0 <= n < M.MOD
     fn inv(self, i: Int) -> M                  // O(1) amortized; 1 <= i < M.MOD
@@ -287,8 +287,8 @@ argument that can go out of sync with `a.len`.
 <!-- signatures: std/matrix.cp -->
 ```cp
 struct Mat<T>
-    fn zeros(rows: 0.., cols: Int) -> Mat<T>    // O(n m)
-    fn identity(n: 0..) -> Mat<T>               // O(n^2)
+    fn zeros(rows: Len, cols: Len) -> Mat<T>    // O(n m)
+    fn identity(n: Len) -> Mat<T>               // O(n^2)
     fn of(rows: List<List<T>>) -> Mat<T>        // O(n m)
     fn get(self, r: Int, c: Int) -> T           // O(1)
     fn at(self, r: Int, c: Int) -> lends mut T  // O(1); writable cell: m.at(i, j) += x
@@ -351,27 +351,27 @@ fn poly.integral<P>(a: List<Mod<P>>) -> List<Mod<P>>
 // O(a.len) time and memory; antiderivative with constant term 0, length a.len + 1
 // (or [] if a is empty); uses linear-time modular inverses 1..=a.len, no O(log P) div
 
-fn poly.inv<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>
+fn poly.inv<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>
 // O(n log n) time (~10n log n via half-size Newton doubling: 5 NTTs of size 2m per
 // doubling step m -> 2m), O(n) memory; returns a(x)^(-1) mod x^n.
 // Precondition: n >= 0; if n > 0, a.len > 0 and a[0] != 0.
 
-fn poly.log<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>
+fn poly.log<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>
 // O(n log n) time (1 inv + 1 convolve + deriv + integral, ~13n log n), O(n) memory;
 // returns ln(a(x)) mod x^n = integral(a'(x) * a(x)^(-1)) mod x^n.
 // Precondition: n >= 0; if n > 0, a.len > 0 and a[0] == 1.
 
-fn poly.exp<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>
+fn poly.exp<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>
 // O(n log n) time (Newton doubling g <- g * (1 - ln(g) + a) mod x^(2m), ~28n log n),
 // O(n) memory; returns exp(a(x)) mod x^n.
 // Precondition: n >= 0; if n > 0, a.len == 0 or a[0] == 0.
 
-fn poly.pow<P>(a: List<Mod<P>>, k: Int, n: 0..) -> List<Mod<P>>
+fn poly.pow<P>(a: List<Mod<P>>, k: Int, n: Len) -> List<Mod<P>>
 // O(n log n) time (1 log + 1 exp when nonzero, O(n) when k == 0 or shifted past n),
 // O(n) memory; returns a(x)^k mod x^n for k >= 0, handling leading zeros a(x) = c x^d (...).
 // Precondition: n >= 0, k >= 0.
 
-fn poly.sqrt<P>(a: List<Mod<P>>, n: 0..) -> ?List<Mod<P>>
+fn poly.sqrt<P>(a: List<Mod<P>>, n: Len) -> ?List<Mod<P>>
 // O(n log n + log^2 P) time (Tonelli-Shanks mod_sqrt for leading term + Newton doubling
 // g <- (g + a * g^(-1)) / 2 mod x^(2m), ~20n log n), O(n) memory.
 // Returns Some(g) with g(x)^2 == a(x) (mod x^n), or None if no square root exists mod P

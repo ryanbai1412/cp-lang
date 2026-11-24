@@ -8,6 +8,7 @@
 //! built-in `HashMap<Int, V>` overhead matters.
 use std.math.{splitmix64}
 use std.algebra.{desc}
+use std.range.{Len}
 use std.seq.{Seq, Track}
 
 // Slot states: 0 = empty, 1 = occupied; `remove` uses backward-shift deletion (no tombstones).
@@ -448,10 +449,10 @@ pub struct Counter<K, V: Add = Int>:
     /// empty: `var c: Counter<Char, Int> = Counter(); c.most_common(3) == []`
     /// ties: `Counter.of(['c', 'a', 'b', 'a']).most_common(3) == [('a', 2), ('b', 1), ('c', 1)]`
     /// order: descending value; a new `List`, keyed from 0
-    /// traps: when `k < 0`
+    /// traps: when `k < 0` or `k >= 2^31`
     /// example: `Counter.of([3, 1, 3, 2, 1, 3]).most_common(2) == [(3, 3), (1, 2)]`
     /// example: `Counter.of(['b', 'a']).most_common(5) == [('a', 1), ('b', 1)]`
-    pub fn most_common(self, k: 0..) -> List<(K, V)>:
+    pub fn most_common(self, k: Len) -> List<(K, V)>:
         var es: List<(K, V)> = [(k, v) for (k, v) in m.items]
         es = es.sorted(by: e => e.0)
         es = es.sorted(by: e => desc(e.1))

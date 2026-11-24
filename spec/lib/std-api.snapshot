@@ -231,7 +231,7 @@ std/bitset.cp: BitTrie.len(self, ar: BitTrieArena<W>) -> Int
 std/bitset.cp: BitTrie.new() -> BitTrie<W>
 std/bitset.cp: BitTrie.of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>
 std/bitset.cp: BitTrie.walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int)
-std/bitset.cp: BitTrieArena.new(cap: 0.. = 0) -> BitTrieArena<W>
+std/bitset.cp: BitTrieArena.new(cap: Len = 0) -> BitTrieArena<W>
 std/bitset.cp: BitTrieArena.node_count(self) -> Int
 std/bitset.cp: Bitset.add(mut self, i: D) -> Bool
 std/bitset.cp: Bitset.any(self, pred: D -> Bool) -> Bool
@@ -288,23 +288,23 @@ std/bitset.cp: DynBitset.count_range(self, r: Range<Int>) -> Int
 std/bitset.cp: DynBitset.each(self) -> yields Int
 std/bitset.cp: DynBitset.each_rev(self) -> yields Int
 std/bitset.cp: DynBitset.first(self) -> ?Int
-std/bitset.cp: DynBitset.full(cap: 0..) -> DynBitset
+std/bitset.cp: DynBitset.full(cap: Len) -> DynBitset
 std/bitset.cp: DynBitset.intersect(mut self, other: DynBitset)
 std/bitset.cp: DynBitset.is_empty(self) -> Bool
 std/bitset.cp: DynBitset.last(self) -> ?Int
 std/bitset.cp: DynBitset.len(self) -> Int
 std/bitset.cp: DynBitset.meets(self, other: DynBitset) -> Bool
-std/bitset.cp: DynBitset.new(cap: 0..) -> DynBitset
+std/bitset.cp: DynBitset.new(cap: Len) -> DynBitset
 std/bitset.cp: DynBitset.next(self, i: Int) -> ?Int
 std/bitset.cp: DynBitset.nth(self, k: 0..) -> ?Int
 std/bitset.cp: DynBitset.prev(self, i: Int) -> ?Int
 std/bitset.cp: DynBitset.remove(mut self, i: Int) -> Bool
-std/bitset.cp: DynBitset.resize(mut self, new_cap: 0..)
+std/bitset.cp: DynBitset.resize(mut self, new_cap: Len)
 std/bitset.cp: DynBitset.set(mut self, i: Int, on: Bool = true)
 std/bitset.cp: DynBitset.shift_down(mut self, k: 0..)
 std/bitset.cp: DynBitset.shift_or(mut self, k: 0..)
 std/bitset.cp: DynBitset.shift_up(mut self, k: 0..)
-std/bitset.cp: DynBitset.subset_sums(cap: 0.., weights: List<Int>) -> DynBitset
+std/bitset.cp: DynBitset.subset_sums(cap: Len, weights: List<Int>) -> DynBitset
 std/bitset.cp: DynBitset.subtract(mut self, other: DynBitset)
 std/bitset.cp: DynBitset.symmetric(mut self, other: DynBitset)
 std/bitset.cp: DynBitset.toggle(mut self, i: Int)
@@ -323,7 +323,7 @@ std/bitset.cp: XorTrie.mex_xor(self, x: Int = 0) -> Int
 std/bitset.cp: XorTrie.min_xor(self, x: Int) -> ?Int
 std/bitset.cp: XorTrie.new(bits: Int = 60) -> XorTrie
 std/bitset.cp: XorTrie.remove(mut self, x: Int) -> Bool
-std/bitset.cp: XorTrie.reserve(mut self, nodes: 0..)
+std/bitset.cp: XorTrie.reserve(mut self, nodes: Len)
 std/bitset.cp: XorTrie.xor_all(mut self, mask: Int)
 std/deque.cp: Deque.clear(mut self)
 std/deque.cp: Deque.each(self) -> yields T
@@ -399,12 +399,12 @@ std/dp.cp: Step.prune(mut self)
 std/dp.cp: aliens<L: Add + Sub + Mul>(k: 0.., solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L
 std/dp.cp: backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>
 std/dp.cp: dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>
-std/dp.cp: knuth(n: 0.., cost: (Int, Int) -> Int) -> List<List<Int>>
+std/dp.cp: knuth(n: Len, cost: (Int, Int) -> Int) -> List<List<Int>>
 std/dp.cp: lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int
 std/dp.cp: masks_of_size(bits: 0.., k: Int) -> yields Int
 std/dp.cp: monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: Int)
 std/dp.cp: monge_paths<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: List<K>, prev: List<Int>)
-std/dp.cp: monotone_minima(rows: 0.., cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>
+std/dp.cp: monotone_minima(rows: Len, cols: Len, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>
 std/dp.cp: smawk(rows: 0.., cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)>
 std/dp.cp: subset_folds<T, M>(xs: List<T>, op: M) -> List<T>
 std/dp.cp: subset_sums(xs: List<Int>) -> List<Int>
@@ -858,7 +858,7 @@ std/hashmap.cp: Counter.is_empty(self) -> Bool
 std/hashmap.cp: Counter.items(self) -> yields (K, V)
 std/hashmap.cp: Counter.keys(self) -> yields K
 std/hashmap.cp: Counter.len(self) -> Int
-std/hashmap.cp: Counter.most_common(self, k: 0..) -> List<(K, V)>
+std/hashmap.cp: Counter.most_common(self, k: Len) -> List<(K, V)>
 std/hashmap.cp: Counter.new(xs: Seq<K> = []; init: V = V(0)) -> Counter<K, V>
 std/hashmap.cp: Counter.of(xs: List<K>) -> Counter<K, Int>
 std/hashmap.cp: Counter.remove(mut self, k: K) -> ?V
@@ -963,7 +963,7 @@ std/heap.cp: MeldHeaps.of(mut self, xs: List<T>) -> Meld<T>
 std/heap.cp: MeldHeaps.pop(mut self, mut h: Meld<T>) -> ?T
 std/heap.cp: MeldHeaps.push(mut self, mut h: Meld<T>, x: T)
 std/heap.cp: MeldHeaps.push_all(mut self, mut h: Meld<T>, items: Seq<T>)
-std/heap.cp: MeldHeaps.reserve(mut self, nodes: 0..)
+std/heap.cp: MeldHeaps.reserve(mut self, nodes: Len)
 std/heap.cp: MeldHeaps.top(self, h: Meld<T>) -> ?T
 std/heap.cp: MinMaxHeap.clear(mut self)
 std/heap.cp: MinMaxHeap.each(self) -> yields T
@@ -1050,11 +1050,11 @@ std/lazy.cp: LazyTreap.is_empty(self) -> Bool
 std/lazy.cp: LazyTreap.len(self) -> Int
 std/lazy.cp: LazyTreap.new(apply: (T, Int, F) -> T, compose: (F, F) -> F, split: (F, Int) -> (F, F) = (f, _) => (f, f), before: (T, T) -> Bool = (_, _) => false, mirror: (F, Int) -> F = (f, _) => f) -> LazyTreap<T, F>
 std/lazy.cp: LazyTreap.push(mut self, x: T)
-std/lazy.cp: LazyTreap.reserve(mut self, n: 0..)
+std/lazy.cp: LazyTreap.reserve(mut self, n: Len)
 std/lazy.cp: LazyTreap.reverse(mut self, r: Range<Int>)
 std/lazy.cp: LazyTreap.splice_back(mut self, mut other: LazyTreap<T, F>)
 std/lazy.cp: LazyTreap.split_at(mut self, k: 0..) -> LazyTreap<T, F>
-std/lazy.cp: LazyTreap.take(self, k: 0..) -> List<T>
+std/lazy.cp: LazyTreap.take(self, k: Len) -> List<T>
 std/lazy.cp: LazyTreap.to_list(self) -> List<T>
 std/lazy.cp: Rope.apply(mut self, r: Range<D>, tag: T)
 std/lazy.cp: Rope.get(mut self, i: D) -> T
@@ -1087,8 +1087,8 @@ std/marks.cp: Arena.get(self, id: Id<T>) -> T
 std/marks.cp: Arena.is_empty(self) -> Bool
 std/marks.cp: Arena.items(self) -> yields (Id<T>, T)
 std/marks.cp: Arena.len(self) -> Int
-std/marks.cp: Arena.new(cap: 0.. = 0) -> Arena<T>
-std/marks.cp: Arena.reserve(mut self, cap: 0..)
+std/marks.cp: Arena.new(cap: Len = 0) -> Arena<T>
+std/marks.cp: Arena.reserve(mut self, cap: Len)
 std/marks.cp: Arena.set(mut self, id: Id<T>, x: T)
 std/marks.cp: Interner.clear(mut self)
 std/marks.cp: Interner.contains(self, k: K) -> Bool
@@ -1099,7 +1099,7 @@ std/marks.cp: Interner.is_empty(self) -> Bool
 std/marks.cp: Interner.key(self, i: Int) -> K
 std/marks.cp: Interner.len(self) -> Int
 std/marks.cp: Interner.new() -> Interner<K>
-std/marks.cp: Interner.reserve(mut self, cap: 0..)
+std/marks.cp: Interner.reserve(mut self, cap: Len)
 std/marks.cp: MarkMap.clear(mut self)
 std/marks.cp: MarkMap.contains(self, v: D) -> Bool
 std/marks.cp: MarkMap.get(self, v: D) -> ?T
@@ -1219,10 +1219,10 @@ std/math.cp: to_str(self: Int, base: Int = 10) -> Str
 std/math.cp: trunc(self: F64) -> Int
 std/matrix.cp: BitMat.det(self) -> Bool
 std/matrix.cp: BitMat.get(self, r: Int, c: Int) -> Bool
-std/matrix.cp: BitMat.identity(n: 0..) -> BitMat
+std/matrix.cp: BitMat.identity(n: Len) -> BitMat
 std/matrix.cp: BitMat.inverse(self) -> ?BitMat
 std/matrix.cp: BitMat.mul(self, o: BitMat) -> BitMat
-std/matrix.cp: BitMat.new(rows: 0.., cols: Int) -> BitMat
+std/matrix.cp: BitMat.new(rows: Len, cols: Len) -> BitMat
 std/matrix.cp: BitMat.rank(self) -> Int
 std/matrix.cp: BitMat.set(mut self, r: Int, c: Int, v: Bool)
 std/matrix.cp: BitMat.solve(self, b: List<Bool>) -> ?List<Bool>
@@ -1233,11 +1233,11 @@ std/matrix.cp: Mat.char_poly(self) -> List<T>
 std/matrix.cp: Mat.data(self) -> List<T>
 std/matrix.cp: Mat.det(self, eps: ?T = None) -> T
 std/matrix.cp: Mat.det_mod(self, m: Int) -> Int
-std/matrix.cp: Mat.filled<S>(rows: 0.., cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>
-std/matrix.cp: Mat.from_flat(rows: 0.., cols: Int, data: List<T>) -> Mat<T>
+std/matrix.cp: Mat.filled<S>(rows: Len, cols: Len, fill: T, over: S = Semiring(+, *)) -> Mat<T>
+std/matrix.cp: Mat.from_flat(rows: Len, cols: Len, data: List<T>) -> Mat<T>
 std/matrix.cp: Mat.from_rows(grid: List<List<T>>) -> Mat<T>
 std/matrix.cp: Mat.get(self, r: Int, c: Int) -> T
-std/matrix.cp: Mat.identity(n: 0..) -> Mat<T>
+std/matrix.cp: Mat.identity(n: Len) -> Mat<T>
 std/matrix.cp: Mat.inverse(self, eps: ?T = None) -> ?Mat<T>
 std/matrix.cp: Mat.mul_vec(self, v: List<T>) -> List<T>
 std/matrix.cp: Mat.new<R, C, S>(a: [R, C]T, over: S = Semiring(+, *)) -> Mat<T>
@@ -1251,7 +1251,7 @@ std/matrix.cp: Mat.solve(self, b: List<T>, eps: ?T = None) -> ?List<T>
 std/matrix.cp: Mat.solve_space(self, b: List<T>, eps: ?T = None) -> ?(List<T>, List<List<T>>)
 std/matrix.cp: Mat.sum(self) -> T
 std/matrix.cp: Mat.transpose(self) -> Mat<T>
-std/matrix.cp: Mat.zeros(rows: 0.., cols: Int) -> Mat<T>
+std/matrix.cp: Mat.zeros(rows: Len, cols: Len) -> Mat<T>
 std/matrix.cp: MatPow.apply_pow(self, e: Int, v: List<T>) -> List<T>
 std/matrix.cp: MatPow.new(a: Mat<T>, max_exp: Int) -> MatPow<T>
 std/matrix.cp: PrefixXorBasis.contains(self, r: Range<Int>, x: Int) -> Bool
@@ -1292,7 +1292,7 @@ std/mod.cp: Comb.inv(self, i: Int) -> M
 std/mod.cp: Comb.inv_fact(self, n: Int) -> M
 std/mod.cp: Comb.multichoose(self, n: Int, k: Int) -> M
 std/mod.cp: Comb.multinomial(self, ks: List<Int>) -> M
-std/mod.cp: Comb.new(limit: 0.. = 0) -> Comb<M>
+std/mod.cp: Comb.new(limit: Len = 0) -> Comb<M>
 std/mod.cp: Mod.from_int(x: Int) -> Mod<P>
 std/mod.cp: Mod.inv(self) -> Mod<P>
 std/mod.cp: Mod.inv_all(xs: List<Mod<P>>) -> List<Mod<P>>
@@ -1327,8 +1327,8 @@ std/persistent.cp: PArena.alloc(mut self, x: T) -> Id<T>
 std/persistent.cp: PArena.get(self, id: Id<T>) -> T
 std/persistent.cp: PArena.is_empty(self) -> Bool
 std/persistent.cp: PArena.len(self) -> Int
-std/persistent.cp: PArena.new(cap: 0.. = 0) -> PArena<T>
-std/persistent.cp: PArena.reserve(mut self, cap: 0..)
+std/persistent.cp: PArena.new(cap: Len = 0) -> PArena<T>
+std/persistent.cp: PArena.reserve(mut self, cap: Len)
 std/persistent.cp: PMultiset.cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int
 std/persistent.cp: PMultiset.count(self, ar: PArena<PMultiset<D>>, x: D) -> Int
 std/persistent.cp: PMultiset.empty() -> PMultiset<D>
@@ -1358,7 +1358,7 @@ std/persistent.cp: PersistentSegTree.fold(self, v: Version<PersistentSegTree<D, 
 std/persistent.cp: PersistentSegTree.get(self, v: Version<PersistentSegTree<D, T>>, i: D) -> T
 std/persistent.cp: PersistentSegTree.left_while(self, v: Version<PersistentSegTree<D, T>>, to: Cut<D>, ok: T -> Bool) -> Cut<D>
 std/persistent.cp: PersistentSegTree.new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>
-std/persistent.cp: PersistentSegTree.reserve(mut self, nodes: 0..)
+std/persistent.cp: PersistentSegTree.reserve(mut self, nodes: Len)
 std/persistent.cp: PersistentSegTree.right_while(self, v: Version<PersistentSegTree<D, T>>, from: Cut<D>, ok: T -> Bool) -> Cut<D>
 std/persistent.cp: PersistentSegTree.set(mut self, v: Version<PersistentSegTree<D, T>>, i: D, x: T) -> Version<PersistentSegTree<D, T>>
 std/persistent.cp: PersistentSegTree.update(mut self, v: Version<PersistentSegTree<D, T>>, i: D, f: T -> T) -> Version<PersistentSegTree<D, T>>
@@ -1390,9 +1390,9 @@ std/poly.cp: Poly.one() -> Poly<T>
 std/poly.cp: Poly.pow(self, k: Int, n: Int) -> Poly<T>
 std/poly.cp: Poly.set(mut self, i: 0.., v: T)
 std/poly.cp: Poly.shift(self, c: T) -> Poly<T>
-std/poly.cp: Poly.sqrt(self, n: 0..) -> ?Poly<T>
+std/poly.cp: Poly.sqrt(self, n: Len) -> ?Poly<T>
 std/poly.cp: Poly.transposed_mul(self, b: Poly<T>) -> Poly<T>
-std/poly.cp: Poly.truncated(self, n: 0..) -> Poly<T>
+std/poly.cp: Poly.truncated(self, n: Len) -> Poly<T>
 std/poly.cp: Poly.x() -> Poly<T>
 std/poly.cp: Poly.zero() -> Poly<T>
 std/poly.cp: SubproductTree.eval(self, f: List<Mod<P>>) -> List<Mod<P>>
@@ -1403,27 +1403,27 @@ std/poly.cp: bell_table<P>(n: 0..) -> List<Mod<P>>
 std/poly.cp: bernoulli_table<P>(n: 0..) -> List<Mod<P>>
 std/poly.cp: binomial_transform<P>(a: List<Mod<P>>, inverse: Bool = false) -> List<Mod<P>>
 std/poly.cp: bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: 0..) -> Mod<P>
-std/poly.cp: chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: 0..) -> List<Mod<P>>
-std/poly.cp: compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: 0..) -> List<Mod<P>>
-std/poly.cp: compose_inv<P>(f: List<Mod<P>>, n: 0..) -> List<Mod<P>>
+std/poly.cp: chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Len) -> List<Mod<P>>
+std/poly.cp: compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Len) -> List<Mod<P>>
+std/poly.cp: compose_inv<P>(f: List<Mod<P>>, n: Len) -> List<Mod<P>>
 std/poly.cp: deriv<P>(a: List<Mod<P>>) -> List<Mod<P>>
 std/poly.cp: div_mod<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> (q: List<Mod<P>>, r: List<Mod<P>>)
 std/poly.cp: eval<S: Indexed, T>(self: S, x: T) -> T
 std/poly.cp: eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>
-std/poly.cp: exp<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>
+std/poly.cp: exp<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>
 std/poly.cp: gcd_poly<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>
 std/poly.cp: integral<P>(a: List<Mod<P>>) -> List<Mod<P>>
 std/poly.cp: interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>
-std/poly.cp: inv<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>
+std/poly.cp: inv<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>
 std/poly.cp: lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P>
-std/poly.cp: log<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>
+std/poly.cp: log<P>(a: List<Mod<P>>, n: Len) -> List<Mod<P>>
 std/poly.cp: partition_table<P>(n: 0..) -> List<Mod<P>>
-std/poly.cp: pow<P>(a: List<Mod<P>>, k: Int, n: 0..) -> List<Mod<P>>
+std/poly.cp: pow<P>(a: List<Mod<P>>, k: Int, n: Len) -> List<Mod<P>>
 std/poly.cp: pow_mod_poly<P>(a: List<Mod<P>>, k: 0.., mod_p: List<Mod<P>>) -> List<Mod<P>>
 std/poly.cp: power_sums<P>(xs: List<Mod<P>>, deg: 0..) -> List<Mod<P>>
 std/poly.cp: prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>>
-std/poly.cp: sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: 0..) -> List<Mod<P>>
-std/poly.cp: sqrt<P>(a: List<Mod<P>>, n: 0..) -> ?List<Mod<P>>
+std/poly.cp: sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Len) -> List<Mod<P>>
+std/poly.cp: sqrt<P>(a: List<Mod<P>>, n: Len) -> ?List<Mod<P>>
 std/poly.cp: stirling1_col<P>(k: Int, n: 0..) -> List<Mod<P>>
 std/poly.cp: stirling1_row<P>(n: 0..) -> List<Mod<P>>
 std/poly.cp: stirling2_col<P>(k: Int, n: 0..) -> List<Mod<P>>
@@ -1454,7 +1454,7 @@ std/prefix.cp: Prefix.all(self) -> T
 std/prefix.cp: Prefix.at(self, c: Cut<D>) -> T
 std/prefix.cp: Prefix.cut(self, k: Int) -> T
 std/prefix.cp: Prefix.cyclic_sum(self, r: RingRange<D>) -> T
-std/prefix.cp: Prefix.filling(n: 0.., order: FillOrder = FillOrder.Forward) -> FillPrefix<T>
+std/prefix.cp: Prefix.filling(n: Len, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>
 std/prefix.cp: Prefix.filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>
 std/prefix.cp: Prefix.filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>
 std/prefix.cp: Prefix.first_ge(self, target: T) -> ?Cut<D>
@@ -1535,7 +1535,7 @@ std/segtree.cp: MergeSortTree.new(a: [D]T) -> MergeSortTree<D, T>
 std/segtree.cp: MergeTrees.get(self, t: MergeTree<D>, x: D) -> Z
 std/segtree.cp: MergeTrees.merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D>
 std/segtree.cp: MergeTrees.new() -> MergeTrees<D, Z>
-std/segtree.cp: MergeTrees.reserve(mut self, sets: 0..)
+std/segtree.cp: MergeTrees.reserve(mut self, sets: Len)
 std/segtree.cp: MergeTrees.scale(mut self, t: MergeTree<D>, k: Z)
 std/segtree.cp: MergeTrees.set(mut self, mut t: MergeTree<D>, x: D, v: Z)
 std/segtree.cp: MergeTrees.sum(self, t: MergeTree<D>, r: Range<D>) -> Z
@@ -1599,13 +1599,13 @@ std/seq.cp: OnlineLis.mark(self) -> Int
 std/seq.cp: OnlineLis.push(mut self, x: T) -> Int
 std/seq.cp: OnlineLis.reconstruct(self) -> List<Int>
 std/seq.cp: OnlineLis.undo_to(mut self, m: Int)
-std/seq.cp: Rev.drop(self, k: 0.. = 1) -> Rev<Slice<S>>
-std/seq.cp: Rev.drop_last(self, k: 0.. = 1) -> Rev<Slice<S>>
+std/seq.cp: Rev.drop(self, k: Len = 1) -> Rev<Slice<S>>
+std/seq.cp: Rev.drop_last(self, k: Len = 1) -> Rev<Slice<S>>
 std/seq.cp: Rev.nth<T>(self, k: Int) -> T
 std/seq.cp: Rev.scan<M>(self, f: M, from: ?T = None) -> Prefix<D, T>
 std/seq.cp: Rev.src(self) -> S
-std/seq.cp: Rev.take(self, k: 0..) -> Rev<Slice<S>>
-std/seq.cp: Rev.take_last(self, k: 0..) -> Rev<Slice<S>>
+std/seq.cp: Rev.take(self, k: Len) -> Rev<Slice<S>>
+std/seq.cp: Rev.take_last(self, k: Len) -> Rev<Slice<S>>
 std/seq.cp: Ring.from(self, i: D) -> yields D
 std/seq.cp: Ring.maximal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>
 std/seq.cp: Ring.minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>
@@ -1649,7 +1649,7 @@ std/seq.cp: chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>
 std/seq.cp: chunks_padded<S: Indexed, T>(self: S, k: 1.., pad: T) -> yields List<T>
 std/seq.cp: clone<T>(self: T) -> T
 std/seq.cp: collect<S: Seq<T>, T>(self: S) -> List<T>
-std/seq.cp: combinations<S: Indexed, T>(self: S, k: 0..) -> yields List<T>
+std/seq.cp: combinations<S: Indexed, T>(self: S, k: Len) -> yields List<T>
 std/seq.cp: compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C
 std/seq.cp: compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>)
 std/seq.cp: contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool
@@ -1662,8 +1662,8 @@ std/seq.cp: cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T)
 std/seq.cp: dedup<T>(mut self: List<T>)
 std/seq.cp: deduped<S: Seq<T>, T>(self: S) -> List<T>
 std/seq.cp: distinct<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> List<T>
-std/seq.cp: drop<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S>
-std/seq.cp: drop_last<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S>
+std/seq.cp: drop<S: Indexed>(self: S, k: Len = 1) -> Slice<S>
+std/seq.cp: drop_last<S: Indexed>(self: S, k: Len = 1) -> Slice<S>
 std/seq.cp: drop_while<S: Seq<T>, T>(self: S, drop: T -> Bool) -> yields T
 std/seq.cp: equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>
 std/seq.cp: even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>
@@ -1699,13 +1699,13 @@ std/seq.cp: majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == 
 std/seq.cp: map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U>
 std/seq.cp: max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
 std/seq.cp: max_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
-std/seq.cp: max_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>
+std/seq.cp: max_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>
 std/seq.cp: maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>
 std/seq.cp: mean<S: Seq<T>, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64
 std/seq.cp: merge_sorted<A: Positional<T>, B: Positional<T>, T, K>(self: A, b: B, by: T -> K = x => x) -> yields T
 std/seq.cp: min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
 std/seq.cp: min_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
-std/seq.cp: min_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>
+std/seq.cp: min_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>
 std/seq.cp: minimal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>
 std/seq.cp: minmax<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(T, T)
 std/seq.cp: next_permutation<S: IndexedMut>(mut self: S) -> Bool
@@ -1739,7 +1739,7 @@ std/seq.cp: rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S>
 std/seq.cp: record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D
 std/seq.cp: reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T
 std/seq.cp: rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T
-std/seq.cp: resized<S: Indexed, T>(self: S, n: 0.., fill: T) -> List<T>
+std/seq.cp: resized<S: Indexed, T>(self: S, n: Len, fill: T) -> List<T>
 std/seq.cp: rev<S: Bidir>(self: S) -> Rev<S>
 std/seq.cp: reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None)
 std/seq.cp: reversed<S: Bidir, T>(self: S) -> List<T>
@@ -1766,9 +1766,9 @@ std/seq.cp: subtract<T>(mut self: Set<T>, o: Set<T>)
 std/seq.cp: sum<S: Seq<T>, T, U>(self: S, of: T -> U = x => x) -> U
 std/seq.cp: swap<A>(self: (A, A)) -> (A, A)
 std/seq.cp: swap_at<D, T>(mut self: [D]T, i: D, j: D)
-std/seq.cp: take<S: Indexed>(self: S, k: 0..) -> Slice<S>
+std/seq.cp: take<S: Indexed>(self: S, k: Len) -> Slice<S>
 std/seq.cp: take_all<T>(mut self: List<T>) -> List<T>
-std/seq.cp: take_last<S: Indexed>(self: S, k: 0..) -> Slice<S>
+std/seq.cp: take_last<S: Indexed>(self: S, k: Len) -> Slice<S>
 std/seq.cp: take_while<S: Seq<T>, T>(self: S, keep: T -> Bool) -> yields T
 std/seq.cp: tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>
 std/seq.cp: to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T>
@@ -1797,7 +1797,7 @@ std/slope.cp: Concave.max(mut self) -> Int
 std/slope.cp: Concave.max_convolve(mut self, g: Concave)
 std/slope.cp: Concave.point(d: Int) -> Concave
 std/slope.cp: Concave.prefix_max(mut self)
-std/slope.cp: Concave.reserve(mut self, n: 0..)
+std/slope.cp: Concave.reserve(mut self, n: Len)
 std/slope.cp: Concave.shift(mut self, d: Int)
 std/slope.cp: Concave.slide_max(mut self, a: Int, b: Int)
 std/slope.cp: Concave.suffix_max(mut self)
@@ -1913,7 +1913,7 @@ std/strings.cp: PalindromicTree.push_front(mut self, a: A) -> Int
 std/strings.cp: PalindromicTree.series_link(self, state: Int) -> Int
 std/strings.cp: PalindromicTree.step(self, state: Int, a: A) -> ?Int
 std/strings.cp: RollingHash.all(self) -> HashVal
-std/strings.cp: RollingHash.combine(self, a: HashVal, b: HashVal, b_len: 0..) -> HashVal
+std/strings.cp: RollingHash.combine(self, a: HashVal, b: HashVal, b_len: Len) -> HashVal
 std/strings.cp: RollingHash.concat(self, parts: List<(hash: HashVal, len: Int)>) -> HashVal
 std/strings.cp: RollingHash.get<R>(self, r: R) -> HashVal
 std/strings.cp: RollingHash.hash_of<S: Seq>(self, seq: S) -> HashVal
@@ -1926,7 +1926,7 @@ std/strings.cp: RollingHash.pop(mut self)
 std/strings.cp: RollingHash.push<T: Hashable>(mut self, x: T)
 std/strings.cp: RollingHash.slice(self, l: Int, r: Int) -> HashVal
 std/strings.cp: RollingHash61.all(self) -> Hash61
-std/strings.cp: RollingHash61.combine(self, a: Hash61, b: Hash61, b_len: 0..) -> Hash61
+std/strings.cp: RollingHash61.combine(self, a: Hash61, b: Hash61, b_len: Len) -> Hash61
 std/strings.cp: RollingHash61.get<R>(self, r: R) -> Hash61
 std/strings.cp: RollingHash61.is_empty(self) -> Bool
 std/strings.cp: RollingHash61.lcp(self, a: Int, b: Int, of: ?RollingHash61 = None) -> Int
@@ -2018,7 +2018,7 @@ std/strings.cp: parse_int(self: Str, base: Int = 10) -> ?Int
 std/strings.cp: period<S: Indexed>(s: S) -> Int
 std/strings.cp: prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int
 std/strings.cp: prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int
-std/strings.cp: repeat(self: Str, n: 0..) -> Str
+std/strings.cp: repeat(self: Str, n: Len) -> Str
 std/strings.cp: replace(self: Str, from: Str, to: Str) -> Str
 std/strings.cp: rsearch<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K
 std/strings.cp: search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K
@@ -2055,7 +2055,7 @@ std/subset.cp: Subset.without(self, b: B) -> Subset<B>
 std/timetree.cp: TimeTree.add_interval(mut self, lo: 0.., hi: Int, ev: E)
 std/timetree.cp: TimeTree.add_range(mut self, r: Range<Int>, ev: E)
 std/timetree.cp: TimeTree.event(self, id: Int) -> E
-std/timetree.cp: TimeTree.new(q: 0..) -> TimeTree<E>
+std/timetree.cp: TimeTree.new(q: Len) -> TimeTree<E>
 std/timetree.cp: TimeTree.run<M, R>(self, mark: () -> M, apply: E -> (), answer: Int -> R, undo: M -> ()) -> List<R>
 std/timetree.cp: TimeTree.steps(self) -> List<TimeStep>
 std/timetree.cp: TimeTree.walk(self) -> yields TimeStep
