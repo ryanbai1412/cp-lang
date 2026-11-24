@@ -77,8 +77,12 @@ class WorkflowTest(unittest.TestCase):
             stamps = [l for l in f if "> target/.ci-sha" in l]
         self.assertTrue(stamps)
         for line in stamps:
-            self.assertIn('"${{ job.status }}" != success ] ||', line,
-                          "a red job's target/ may miss rebuilt crates; keep the restored .ci-sha")
+            self.assertTrue(line.lstrip().startswith('[ "${{ job.status }}" != success ] '), line)
+            self.assertRegex(line, r'success \] (&& \[ [^|]+ \] )?\|\| git rev-parse HEAD > target/\.ci-sha$',
+                             "a red job's target/ may miss rebuilt crates; keep the restored .ci-sha")
+        # A red site or checks job whose cargo builds passed still stamps, or the
+        # release and clippy caches, saved mostly by red jobs, never get a base.
+        self.assertEqual(sum("steps.binaries.outcome" in l or "target/.ci-built" in l for l in stamps), 2)
 
     def test_every_release_is_signed(self):
         with open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8") as f:

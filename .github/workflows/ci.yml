@@ -162,10 +162,12 @@ jobs:
         # Cargo 1.100 keeps no target/<profile>/deps, so look for build/.
         run: |
           compgen -G 'target/*/build' >/dev/null || { echo "target/ has no build; not saving"; exit 0; }
-          # Only a green job built every crate the commit changed; a red one keeps the
-          # restored base, so the next run re-stamps (and rebuilds) those files (ci/R32).
-          [ "${{ job.status }}" != success ] || git rev-parse HEAD > target/.ci-sha
-          rm -rf target/check-cache target/tmp target/judge-probes
+          # Only a job whose cargo steps all passed built every crate the commit changed;
+          # a red one keeps the restored base, so the next run re-stamps (and rebuilds)
+          # those files (ci/R32). The checks part is red far more often than clippy,
+          # so clippy passing (target/.ci-built, scripts/ci.py) is enough.
+          [ "${{ job.status }}" != success ] && [ ! -f target/.ci-built ] || git rev-parse HEAD > target/.ci-sha
+          rm -rf target/check-cache target/tmp target/judge-probes target/.ci-built
           echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
         # Without !cancelled() a red test skips the save, and the cache goes hours stale.
@@ -725,6 +727,7 @@ jobs:
       # The browser build uses its own profile dir, so it overlaps cpl's
       # instead of waiting for the site's prebuild.
       - name: Build cpl and the browser build
+        id: binaries
         run: just site-binaries "$RUNNER_TEMP"
       # The last main run's cpl.wasm size, so wasm-size prints the change since.
       - name: Restore cpl.wasm size history
@@ -779,9 +782,10 @@ jobs:
         # Cargo 1.100 keeps no target/<profile>/deps, so look for build/.
         run: |
           compgen -G 'target/*/build' >/dev/null || { echo "target/ has no build; not saving"; exit 0; }
-          # Only a green job built every crate the commit changed; a red one keeps the
-          # restored base, so the next run re-stamps (and rebuilds) those files (ci/R32).
-          [ "${{ job.status }}" != success ] || git rev-parse HEAD > target/.ci-sha
+          # Only a build that passed built every crate the commit changed; a red one keeps
+          # the restored base, so the next run re-stamps (and rebuilds) those files (ci/R32).
+          # The site's cargo builds are all in `binaries`; later web steps run no cargo.
+          [ "${{ job.status }}" != success ] && [ "${{ steps.binaries.outcome }}" != success ] || git rev-parse HEAD > target/.ci-sha
           rm -rf target/check-cache target/tmp target/judge-probes
           echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4

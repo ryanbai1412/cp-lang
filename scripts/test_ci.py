@@ -271,6 +271,15 @@ class TailTest(unittest.TestCase):
         self.assertIn("known_traps:", out)
         self.assertIn("cpl fmt is idempotent and keeps meaning on every .cp file", [t for _, t in tail.times])
 
+    def test_clippy_passing_marks_target_built_and_failing_clears_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"CARGO_TARGET_DIR": tmp}):
+            built = Path(tmp, ".ci-built")
+            self._tail()
+            self.assertTrue(built.exists())
+            code, *_ = self._tail(codes={self.CLIPPY: 1})
+            self.assertNotEqual(code, 0)
+            self.assertFalse(built.exists())
+
     def test_a_cached_stage_runs_nothing(self) -> None:
         stages = ("clippy", "fmt_corpus", "scoreboard_fast", "nextest_doc", "recovery", "site_gate")
         code, ev, out, _, _, _ = self._tail(cached=stages)

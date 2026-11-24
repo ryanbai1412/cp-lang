@@ -558,12 +558,17 @@ class Tail:
         if self.call(["cargo", "fmt", "--all", "--check"]):
             raise Failed("Rust files are not formatted; run: cargo fmt --all")
         self.step("cargo clippy --workspace --all-targets -- -D warnings")
+        built = target_dir() / ".ci-built"
+        built.unlink(missing_ok=True)
         if self.hit("clippy"):
             print(CACHED)
         elif self.call(["cargo", "clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]):
             raise Failed("clippy found warnings; rerun: cargo clippy --workspace --all-targets -- -D warnings")
         else:
             self.save("clippy")
+            # Every crate compiles at this tip: CI stamps the clippy target/ it saves (ci/R32).
+            built.parent.mkdir(parents=True, exist_ok=True)
+            built.touch()
         self.wasm()
         self.step("cargo build -p cpl-cli -p cpl-conform (the binaries the checks below run)")
         if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
