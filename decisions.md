@@ -8904,3 +8904,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `stress_engines` stops at 2: `case.rs` `judge_case`, the one place a case gets its verdict, and `engine.rs` `stress_source`, the in-process front end `cpl-wasm` runs. Everything after the build is shared by `cpl stress` and the browser: the `stress_with` loop, `judge_case`, `traced::retrace` for `--explain`, `judge::explaining`, and `Verdict::trapped` for the reported trap. Verdicts are built and matched only in `judge.rs`.
 - **Why.** The CLI's front end builds the file to C++ and runs `--brute`, `--checker`, `--interactor`, `--gen` and `--fast` programs (`.cpp`, `.py`, executables) as processes, at native speed over 1000 cases. The browser can't spawn processes, so it lowers the file to IR and interprets it. Merging the two would mean either interpreting in the CLI or spawning in wasm. Splitting `stress_source` only to rename it would drop the count without removing anything.
 - **Reverse.** Once the CLI's in-file path runs the IR at C++ speed, build the CLI on `stress_source`'s front end and take the counter to 1.
+
+## 546. (reserved, unknown)
