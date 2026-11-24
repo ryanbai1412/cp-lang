@@ -15,7 +15,7 @@ const MOD = 676_767_677
 type Z = Mod<MOD>
 
 @!multitest
-let (x_in, y_in): (0..=100_000, 0..=100_000) = read()
+let (x_in, y_in): (0..=200_000, 0..=200_000) = read()
 let (x, y) = (min(x_in, y_in), max(x_in, y_in))
 let vx = if x_in > y_in: -1 else: 1
 
