@@ -154,32 +154,6 @@ pub(crate) fn safe_place(place: &cpl_ir::Place) -> bool {
     }
 }
 
-/// Adds what running closure `c` can change to `effects`, with its
-/// by-reference captures as the caller's variables. False when that is not
-/// known: it calls a fn value, makes a closure, or takes `mut` parameters.
-pub(crate) fn closure_effects(
-    c: &cpl_ir::ClosureDef,
-    effects: &mut Stores,
-    calls: &mut bool,
-) -> bool {
-    let known = c.muts.is_empty() && !Runs::of_block(&c.body).opaque();
-    let inner = Stores::of_block(&c.body);
-    for cap in c
-        .captures
-        .iter()
-        .filter(|cap| inner.locals.contains(&cap.inner))
-    {
-        match cap.is_global {
-            true => effects.globals.insert(cap.outer),
-            false => effects.locals.insert(cap.outer),
-        };
-    }
-    *calls |= !inner.calls.is_empty();
-    effects.globals.extend(inner.globals);
-    effects.calls.extend(inner.calls);
-    known
-}
-
 /// Whether a closure of fn `id` can write its local `root`: the only way
 /// code reached through a fn value changes a caller's local.
 pub(crate) fn closure_writes(program: &cpl_ir::Program, id: Option<usize>, root: usize) -> bool {
@@ -222,50 +196,21 @@ pub(crate) fn may_touch(e: &Expr, root: (bool, usize)) -> bool {
     hit || Runs::of_expr(e).code()
 }
 
-impl Tail {
-    pub(crate) fn of(program: &cpl_ir::Program, stmts: &[Stmt]) -> Tail {
+impl crate::emit::Emitter<'_> {
+    /// What `stmts` may do while a `let` before them lives.
+    pub(crate) fn tail(&self, stmts: &[Stmt]) -> Tail {
         let block = Block {
             stmts: stmts.to_vec(),
         };
-        let (mut calls, mut opaque, mut closures) = (false, false, Vec::new());
         let mut whole = whole_reads(&block);
-        let mut effects = Stores::of_block(&block);
-        // A local the block binds to a closure and never sets again calls
-        // that closure, whose effects are counted below.
-        let mut bound = std::collections::BTreeSet::new();
-        walk::deep_stmts(&block, &mut |stmt| {
-            if let Stmt::Let(
-                s,
-                Some(Expr {
-                    kind: ExprKind::Closure(_),
-                    ..
-                }),
-            ) = stmt
-            {
-                bound.insert(*s);
+        walk::deep_exprs(&block, &mut |e| {
+            if let ExprKind::Closure(id) = e.kind {
+                let caps = self.program.closures[id].captures.iter();
+                whole.extend(caps.filter(|c| !c.is_global).map(|c| c.outer));
             }
         });
-        bound.retain(|s| !effects.locals.contains(s));
-        walk::deep_exprs(&block, &mut |e| match &e.kind {
-            ExprKind::Call(..) => calls = true,
-            ExprKind::CallExpr(callee, _) => {
-                calls = true;
-                opaque |= !matches!(callee.kind, ExprKind::Local(s) if bound.contains(&s));
-            }
-            ExprKind::Closure(id) => closures.push(*id),
-            _ => {}
-        });
-        for &id in &closures {
-            let caps = program.closures[id].captures.iter();
-            whole.extend(caps.filter(|c| !c.is_global).map(|c| c.outer));
-        }
-        for id in closures {
-            opaque |= !closure_effects(&program.closures[id], &mut effects, &mut calls);
-        }
         Tail {
-            effects,
-            calls,
-            opaque,
+            touch: self.block_touch(&block),
             tested: false,
             lendable: false,
             whole,
@@ -273,18 +218,13 @@ impl Tail {
     }
 }
 
-impl super::Uses {
+impl crate::emit::Emitter<'_> {
     /// Whether running `e` leaves the variable `root` as it was: it runs
     /// no fn value or closure, stores nothing into `root`, and calls no fn
     /// that writes it.
     pub(crate) fn leaves(&self, e: &Expr, root: (bool, usize)) -> bool {
-        let stores = Stores::of_expr(e);
-        let writes = |f: &usize| root.0 && self.effects(*f).writes.contains(&root.1);
-        let stored = match root.0 {
-            true => &stores.globals,
-            false => &stores.locals,
-        };
-        !Runs::of_expr(e).opaque() && !stores.calls.iter().any(writes) && !stored.contains(&root.1)
+        let t = self.uses.table.access(self.program, None, &|_, _| None, e);
+        !t.opaque && !t.writes.contains(&root)
     }
 }
 
@@ -313,7 +253,11 @@ impl crate::emit::Emitter<'_> {
 
     /// The closure a fn value is, when it is one and calling it can be
     /// seen through.
-    fn skippable_target(&self, home: Option<cpl_ir::FnId>, callee: &Expr) -> Option<usize> {
+    pub(crate) fn skippable_target(
+        &self,
+        home: Option<cpl_ir::FnId>,
+        callee: &Expr,
+    ) -> Option<usize> {
         crate::devirt::skippable(callee)
             .then(|| self.devirt.target(home, callee))
             .flatten()

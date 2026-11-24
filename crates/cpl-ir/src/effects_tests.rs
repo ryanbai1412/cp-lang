@@ -90,3 +90,24 @@ fn a_block_touches_what_its_calls_touch_and_an_unseen_fn_value_is_opaque() {
     assert!(apply.opaque && apply.conflicts(&twice), "{apply:?}");
     assert!(!body("double").conflicts(&twice));
 }
+
+#[test]
+fn a_closure_made_counts_as_run_and_its_captures_as_the_outer_variables() {
+    let source = concat!(
+        "fn apply(f: Int -> Int, x: Int) -> Int = f(x)\n",
+        "fn shift(k: Int) -> Int = apply(y => y + k, 1)\n",
+        "print(shift(2))\n",
+    );
+    let (program, table) = table(source, true);
+    let f = program
+        .fns
+        .iter()
+        .position(|f| f.name == "shift")
+        .expect("shift");
+    let t = table.block_access(&program, Some(f), &|_, _| None, &program.fns[f].body);
+    assert!(
+        t.reads.contains(&(false, 0)),
+        "the closure reads `k`: {t:?}"
+    );
+    assert!(!t.opaque && t.calls.len() == 1, "{t:?}");
+}

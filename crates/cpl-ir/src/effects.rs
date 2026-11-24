@@ -345,6 +345,10 @@ pub struct Access {
     /// Calls a fn value it can't see into, which may read or write
     /// anything it captured.
     pub opaque: bool,
+    /// Calls a fn value, seen into or not.
+    pub values: bool,
+    /// The fns of the program it calls by name.
+    pub calls: BTreeSet<FnId>,
     pub reads: BTreeSet<(bool, usize)>,
     pub writes: BTreeSet<(bool, usize)>,
     pub reads_domain: BTreeSet<usize>,
@@ -374,10 +378,23 @@ impl Access {
                 .any(|d| self.reads_domain.contains(d))
     }
 
+    /// Adds what running code touches, or that it is not seen when None.
+    fn run(&mut self, code: Option<Access>) {
+        match code {
+            Some(t) => self.merge(t),
+            None => {
+                self.io = true;
+                self.opaque = true;
+            }
+        }
+    }
+
     /// Adds what `other` touches.
     pub fn merge(&mut self, other: Access) {
         self.io |= other.io;
         self.opaque |= other.opaque;
+        self.values |= other.values;
+        self.calls.extend(other.calls);
         self.reads.extend(other.reads);
         self.writes.extend(other.writes);
         self.reads_domain.extend(other.reads_domain);
@@ -386,10 +403,10 @@ impl Access {
 }
 
 impl Table {
-    /// What evaluating `e` in `home` touches. A fn value `target` names
-    /// as one closure that captures nothing, takes nothing `mut` and calls
-    /// no fn value counts as the globals that closure touches; any other
-    /// is opaque.
+    /// What evaluating `e` in `home` touches. A closure it makes counts as
+    /// run, since whatever it is given to may call it. A fn value `target`
+    /// names as one closure counts as [`Table::closure_access`] of it; any
+    /// other is opaque.
     pub fn access(
         &self,
         program: &Program,
@@ -424,16 +441,13 @@ impl Table {
                 touch.reads_domain.insert(*d);
             }
             ExprKind::CallExpr(callee, args) => {
-                match self.closure_access(program, target(home, callee)) {
-                    Some(t) => touch.merge(t),
-                    None => {
-                        touch.io = true;
-                        touch.opaque = true;
-                    }
-                }
+                touch.values = true;
+                touch.run(target(home, callee).and_then(|c| self.closure_access(program, c)));
                 mut_args(args, &mut touch);
             }
+            ExprKind::Closure(c) => touch.run(self.closure_access(program, *c)),
             ExprKind::Call(id, args) => {
+                touch.calls.insert(*id);
                 let summary = &self.summaries[*id];
                 touch.io |= summary.io;
                 touch.reads.extend(summary.reads.iter().map(|g| (true, *g)));
@@ -497,20 +511,28 @@ impl Table {
         t
     }
 
-    /// The globals closure `cid` touches when called, when it captures
-    /// nothing, takes nothing `mut` and calls no fn value.
-    fn closure_access(&self, program: &Program, cid: Option<ClosureId>) -> Option<Access> {
-        let c = &program.closures[cid?];
-        let mut values = false;
-        walk::deep_exprs(&c.body, &mut |e| {
-            values |= matches!(e.kind, ExprKind::CallExpr(..))
-        });
-        if values || !c.captures.is_empty() || !c.muts.is_empty() {
+    /// What calling closure `cid` touches, in the code that made it: a
+    /// capture counts as the variable it captures, and a `mut` parameter
+    /// as the place the call passes. None when it calls a fn value: what
+    /// that touches is not seen.
+    pub fn closure_access(&self, program: &Program, cid: ClosureId) -> Option<Access> {
+        let c = &program.closures[cid];
+        let inner = self.block_access(program, None, &|_, _| None, &c.body);
+        if inner.opaque {
             return None;
         }
-        let mut t = self.block_access(program, None, &|_, _| None, &c.body);
-        t.reads.retain(|&(global, _)| global);
-        t.writes.retain(|&(global, _)| global);
-        Some(t)
+        let outer = |&(global, slot): &(bool, usize)| match global {
+            true => Some((true, slot)),
+            false => c
+                .captures
+                .iter()
+                .find(|cap| cap.inner == slot)
+                .map(|cap| (cap.is_global, cap.outer)),
+        };
+        Some(Access {
+            reads: inner.reads.iter().filter_map(outer).collect(),
+            writes: inner.writes.iter().filter_map(outer).collect(),
+            ..inner
+        })
     }
 }

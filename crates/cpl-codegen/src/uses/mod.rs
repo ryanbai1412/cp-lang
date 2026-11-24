@@ -425,45 +425,39 @@ impl crate::emit::Emitter<'_> {
                 false => own.stores((Some(id), false, root)),
             };
             return changed(stored != 0, SOURCE_SET).or(changed(
-                Tail::of(self.program, &body.stmts).calls,
+                {
+                    let t = self.tail(&body.stmts).touch;
+                    !t.calls.is_empty() || t.values
+                },
                 SOURCE_CALLED,
             ));
         };
-        if tail.opaque && !(named_local && !effects::closure_writes(self.program, self.fn_id, root))
+        if tail.touch.opaque
+            && !(named_local && !effects::closure_writes(self.program, self.fn_id, root))
         {
             return Some(SOURCE_CALLED);
         }
-        let effects = &tail.effects;
+        let t = &tail.touch;
+        let calls_writing =
+            |f: &dyn Fn(&Effects) -> bool| t.calls.iter().any(|&id| f(self.uses.effects(id)));
+        let sets_param = t.writes.iter().any(|&(g, l)| !g && l < params);
         match global {
             // A parameter may be another name for the global.
-            true => changed(
-                effects.globals.contains(&root) || effects.locals.iter().any(|l| *l < params),
-                SOURCE_SET,
-            )
-            .or(changed(
-                effects
-                    .calls
-                    .iter()
-                    .any(|f| self.uses.effects(*f).writes.contains(&root)),
-                SOURCE_CALLED,
-            )),
+            true => changed(calls_writing(&|e| e.writes.contains(&root)), SOURCE_CALLED).or(
+                changed(t.writes.contains(&(true, root)) || sets_param, SOURCE_SET),
+            ),
             // No fn sees a local it isn't passed `mut`, and that is a store.
             // Nor may it read the local whole: that read could move it.
-            false if named_local => changed(effects.locals.contains(&root), SOURCE_SET)
+            false if named_local => changed(t.writes.contains(&(false, root)), SOURCE_SET)
                 .or(changed(tail.whole.contains(&root), SOURCE_READ_WHOLE)),
             // A parameter may be another name for a global a call writes,
             // or for another parameter a store sets.
-            false => changed(
-                effects.locals.iter().any(|l| *l == root || *l < params),
-                SOURCE_SET,
-            )
-            .or(changed(
-                effects.calls.iter().any(|f| {
-                    let e = self.uses.effects(*f);
-                    !e.writes.is_empty() || e.unknown_call
-                }),
-                SOURCE_CALLED,
-            )),
+            false => {
+                changed(t.writes.contains(&(false, root)) || sets_param, SOURCE_SET).or(changed(
+                    calls_writing(&|e| !e.writes.is_empty() || e.unknown_call),
+                    SOURCE_CALLED,
+                ))
+            }
         }
     }
 
@@ -481,7 +475,7 @@ impl crate::emit::Emitter<'_> {
         Some(Tail {
             tested: copied_at_test(*slot, rest),
             lendable: self.lendable_reads(*slot, rest),
-            ..Tail::of(self.program, live)
+            ..self.tail(live)
         })
     }
 }

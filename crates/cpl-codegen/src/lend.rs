@@ -25,12 +25,8 @@ pub(crate) fn lending_if(init: &Expr) -> Option<[&Expr; 2]> {
 /// What the statements after a `let` in its block can do, for
 /// [`Emitter::lends`].
 pub(crate) struct Tail {
-    pub(crate) effects: Stores,
-    /// A call of a fn of the program.
-    pub(crate) calls: bool,
-    /// A call through a fn value, or a closure: code whose stores are not
-    /// in `effects`.
-    pub(crate) opaque: bool,
+    /// What the statements touch, a closure they make counting as run.
+    pub(crate) touch: crate::emit::Touch,
     /// The `let` is the optional an `if let` tests, read only by that test
     /// and by the copies at the top of its branch (see [`copied_at_test`]).
     pub(crate) tested: bool,
@@ -326,7 +322,7 @@ impl<'p> Emitter<'p> {
                 || got.ty == value.ty
                 || muts.contains(&root)
                 || callee_writes
-                || !operands.iter().all(|e| self.uses.leaves(e, root))
+                || !operands.iter().all(|e| self.leaves(e, root))
             {
                 continue;
             }
@@ -743,7 +739,7 @@ impl Emitter<'_> {
                 .fn_id
                 .and_then(|id| self.program.fns[id].params.get(root.1))
                 .is_some_and(|p| p.mutable);
-        if mentions == 1 && !stored && (exclusive || self.uses.leaves(value, root)) {
+        if mentions == 1 && !stored && (exclusive || self.leaves(value, root)) {
             self.moved_entry.insert(at);
         }
     }
