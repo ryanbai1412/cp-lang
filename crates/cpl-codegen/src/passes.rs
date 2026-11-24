@@ -1,9 +1,9 @@
 //! Every optimization pass codegen runs, in one table: its name, the module
 //! that decides it, the evidence it decides from, and a test that shows it
 //! fires. `scripts/debt-ratchet.py --list opt_without_uses` reads this file:
-//! a module that walks IR bodies without a row here, or a row that decides
-//! what code does without asking the Uses table ([`Evidence::Unasked`]),
-//! is counted, and the count only shrinks.
+//! a module that walks IR bodies without a row here is counted, and the count
+//! stays 0. A pass that decides what code reads, writes or captures asks the
+//! Uses table ([`Evidence::Uses`]); there is no evidence for walking bodies itself.
 
 /// What a pass decides from.
 pub(crate) enum Evidence {
@@ -15,9 +15,6 @@ pub(crate) enum Evidence {
     Reach,
     /// Text for `cpl explain` or a trap's message: it rewrites nothing.
     Report,
-    /// Walks IR bodies itself to decide what code reads, writes or captures: debt,
-    /// until the question moves into the Uses table.
-    Unasked,
 }
 
 pub(crate) struct Pass {
