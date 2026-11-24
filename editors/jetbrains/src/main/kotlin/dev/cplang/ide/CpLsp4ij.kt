@@ -95,7 +95,7 @@ class CplImportProblemAction : AnAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.getRequiredData(CommonDataKeys.PROJECT)
-        val path = e.getData(CommonDataKeys.VIRTUAL_FILE)?.path ?: project.basePath
+        val path = e.getData(CommonDataKeys.VIRTUAL_FILE)?.path
         LanguageServerManager.getInstance(project).getLanguageServer("cpl").thenAccept {
             it?.server?.workspaceService?.executeCommand(ExecuteCommandParams("cpl.import", listOf(path)))
         }
