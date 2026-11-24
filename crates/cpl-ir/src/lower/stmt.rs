@@ -2085,7 +2085,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         if let Some(factors) = self.resolve_product_factors(def) {
-            self.product_domains.insert(id, factors.clone());
+            self.def_product_factors(id, def, &factors, out);
             let mut len = self.product_factor_len(&factors[0].1, def.span);
             for (_, f) in &factors[1..] {
                 let flen = self.product_factor_len(f, def.span);
