@@ -643,3 +643,19 @@ fn a_top_level_list_sorted_at_its_last_read_moves_after_a_comprehension() {
     ));
     assert!(!viewed.contains("std::move(cords)"), "{viewed}");
 }
+
+#[test]
+fn a_closure_handed_to_a_fn_that_recurses_with_it_borrows_its_captures() {
+    let out = cpp(concat!(
+        "fn walk(n: Int, f: Int -> Int) -> Int:\n",
+        "    if n == 0: return f(0)\n",
+        "    f(n) + walk(n - 1, f)\n",
+        "let n: 1..=9 = read()\n",
+        "for k in 0..n:\n",
+        "    let b = [i * k for i in 0..n]\n",
+        "    let f = (i: Int) => b[i % n]\n",
+        "    print(walk(n, f), f(1))\n",
+    ));
+    assert!(out.contains("&b_2 = b"), "{out}");
+    assert!(!out.contains("[b_2 = b]"), "{out}");
+}

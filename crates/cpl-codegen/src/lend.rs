@@ -822,6 +822,18 @@ fn moved_while_live(body: &Block, slot: usize, capture: usize) -> bool {
 }
 
 pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
+    only_called_in(program, body, slot, depth, None)
+}
+
+/// [`only_called`] for the body of fn `this.0`, whose param `this.1` is
+/// `slot`: handing it to the fn's own call as that param is a call too.
+fn only_called_in(
+    program: &cpl_ir::Program,
+    body: &Block,
+    slot: usize,
+    depth: u8,
+    this: Option<(usize, usize)>,
+) -> bool {
     let (mut uses, mut calls, mut escapes) = (0usize, 0usize, false);
     let mut passed_on = std::collections::BTreeSet::new();
     walk::deep_stmts(body, &mut |stmt| {
@@ -846,7 +858,9 @@ pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, 
                 let onward = || depth > 0 && fn_param_only_called_at(program, *f, j, depth - 1);
                 match value.kind {
                     ExprKind::Closure(cid) if onward() => _ = passed_on.insert(cid),
-                    ExprKind::Local(s) if s == slot && onward() => calls += 1,
+                    ExprKind::Local(s) if s == slot && (this == Some((*f, j)) || onward()) => {
+                        calls += 1
+                    }
                     _ => {}
                 }
             }
@@ -891,7 +905,9 @@ fn fn_param_only_called_at(
     depth: u8,
 ) -> bool {
     let f = &program.fns[fn_id];
-    slot < f.params.len() && !f.params[slot].mutable && only_called(program, &f.body, slot, depth)
+    slot < f.params.len()
+        && !f.params[slot].mutable
+        && only_called_in(program, &f.body, slot, depth, Some((fn_id, slot)))
 }
 
 /// The C++ naming map entry `e` (`it.` or `it->`) as loop variable `var`:
