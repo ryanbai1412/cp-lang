@@ -169,3 +169,26 @@ fn the_jetbrains_lexer_is_generated() {
     table.sort_unstable();
     assert_eq!(words, table);
 }
+
+#[test]
+fn the_jetbrains_kotlin_lexer_has_every_rule_in_order() {
+    let kotlin = crate::grammar::jetbrains_kotlin("CpLexer.kt").unwrap_or_default();
+    let mut at = 0;
+    for (token, regex) in crate::grammar::lexer_rules() {
+        let quoted = format!(
+            "\"{}\"",
+            regex
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('$', "\\$")
+        );
+        let call = format!("rule(\"{token}\", ");
+        let found = kotlin[at..].find(&call).map(|i| at + i);
+        let line = found
+            .and_then(|i| kotlin[i..].lines().next())
+            .unwrap_or_default();
+        assert!(line.ends_with(&format!("{quoted}),")), "{token}: {line}");
+        at = found.unwrap_or(at) + call.len();
+    }
+    assert!(crate::grammar::jetbrains_kotlin("Other.kt").is_none());
+}

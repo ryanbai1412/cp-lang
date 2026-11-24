@@ -9184,7 +9184,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 608. (reserved, stdlib)
 
-## 611. (reserved, tools)
+## 611. The JetBrains lexer is generated at build time, not committed (tools, 2026-11-24)
+
+- **Call.** `CpLexer.kt` (the token types, the rules with their colors and regexes, and the lexer) is written by `cpl_syntax::grammar::jetbrains_kotlin` from the lexer's rules, through `cargo run -p cpl-syntax --example jetbrains`, which the plugin's `generateLexer` Gradle task runs into `build/generated/cp`. Nothing of it is committed, as with VS Code's tables (decision 572); `editors/lexer.tsv` stays for `highlight_agrees`.
+- **Why.** The rules live in cpl-syntax; a hand-kept Kotlin copy of how to read them was editor logic that could drift from them.
+- **Reverse.** Commit the generated file again if the plugin must build without cargo.
 
 ## 609. `Prefix(a)` takes its shape from `new`'s signature (stdlib, 2026-11-24)
 

@@ -72,6 +72,17 @@ intellijPlatform {
 
 val repo: File = rootDir.parentFile.parentFile
 
+// CpLexer.kt, written from cpl-syntax's lexer rules (decision 611); not committed.
+val generated = layout.buildDirectory.dir("generated/cp")
+val generateLexer = tasks.register<Exec>("generateLexer") {
+    workingDir = repo
+    inputs.dir(repo.resolve("crates/cpl-syntax/src"))
+    inputs.file(repo.resolve("crates/cpl-syntax/examples/jetbrains.rs"))
+    outputs.dir(generated)
+    commandLine("cargo", "run", "-q", "-p", "cpl-syntax", "--example", "jetbrains", "--", generated.get().asFile.absolutePath)
+}
+kotlin.sourceSets.main { kotlin.srcDir(generateLexer) }
+
 tasks {
     // `./gradlew prefetch`: download every dependency, so CI retries only this and
     // then builds and tests once with `--offline`.

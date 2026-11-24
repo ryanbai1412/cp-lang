@@ -47,7 +47,7 @@ jobs:
             *) base= ;;
           esac
           if [ -n "$base" ] && files=$(git diff --name-only "$base" "$GITHUB_SHA") \
-            && ! printf '%s\n' "$files" | grep -qE '^(editors/jetbrains/|crates/cpl-lsp/|scripts/gradle-mirror|\.github/workflows/jetbrains\.yml)'; then
+            && ! printf '%s\n' "$files" | grep -qE '^(editors/jetbrains/|crates/cpl-lsp/|crates/cpl-syntax/|scripts/gradle-mirror|\.github/workflows/jetbrains\.yml)'; then
             build=false
           fi
           echo "plugin build since ${base:-(none)}: $build"
