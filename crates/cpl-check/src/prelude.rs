@@ -722,7 +722,7 @@ pub fn ty(name: &str) -> Option<Ty> {
         "I128" => Ty::I128,
         "U64" => Ty::U64,
         "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Seq" | "Indexed" | "Opt"
-        | "Range" | "Cut" | "SortedRange" | "Sym" => Ty::Named {
+        | "Range" | "Cut" | "Sym" => Ty::Named {
             name: name.into(),
             args: Vec::new(),
         },

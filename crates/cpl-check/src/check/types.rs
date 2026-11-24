@@ -317,7 +317,7 @@ impl<'a> Checker<'a> {
         self.resolve_type(arg)
     }
 
-    fn named_type(&mut self, name: &str, span: Span, args: Vec<Ty>) -> Ty {
+    pub(super) fn named_type(&mut self, name: &str, span: Span, args: Vec<Ty>) -> Ty {
         if name == "Self" {
             return self.self_ty.clone().unwrap_or(Ty::Unknown);
         }
@@ -482,9 +482,7 @@ impl<'a> Checker<'a> {
         }
         if let Some(ty) = prelude::ty(name) {
             let expected_arity = match name {
-                "List" | "Set" | "HashSet" | "Range" | "SortedRange" | "Iter" | "Gen" | "Seq" => {
-                    Some(1)
-                }
+                "List" | "Set" | "HashSet" | "Range" | "Iter" | "Gen" | "Seq" => Some(1),
                 "Map" | "HashMap" | "Indexed" => Some(2),
                 _ => None,
             };

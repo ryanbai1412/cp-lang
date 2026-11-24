@@ -32,7 +32,7 @@ use std.algebra.{
     minmax,
     pow,
 }
-use std.bag.{SortedBag, SortedMap, SortedSet}
+use std.bag.{SortedBag, SortedMap, SortedRange, SortedSet}
 use std.beats.{BeatsSegTree}
 use std.bitset.{Bitset}
 use std.deque.{Deque}

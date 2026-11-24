@@ -7,6 +7,7 @@ use cpl_diag::msgs;
 use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, Type};
 
 mod construct;
+mod declared_ret;
 
 impl<'a> Checker<'a> {
     /// Whether `e` writes or reads in O(1): a number, a character, a tuple of
@@ -445,7 +446,7 @@ impl<'a> Checker<'a> {
     }
 
     /// `s.range(r)` on `SortedBag<K>`, `SortedSet<K>`, `Set<K>`, or `Map<K, V>`:
-    /// returns an O(1) `SortedRange<E>` view over entries matching `r`
+    /// checks `r`'s bounds against the key; the call returns what `range` is declared to return
     /// (`a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..`, or a `Range<K>` value).
     fn sorted_range_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
@@ -462,14 +463,13 @@ impl<'a> Checker<'a> {
         else {
             return None;
         };
-        let (k_ty, elem_ty) = match (cname.as_str(), targs.as_slice()) {
-            ("Set", [k]) => (k.clone(), k.clone()),
-            ("Map", [k, v]) => (k.clone(), Ty::Tuple(vec![k.clone(), v.clone()])),
-            _ => {
-                let k = self.sorted_view_key(cname, targs)?;
-                (k.clone(), k)
-            }
+        let k_ty = match (cname.as_str(), targs.as_slice()) {
+            ("Set", [k]) | ("Map", [k, _]) => k.clone(),
+            _ => self.sorted_view_key(cname, targs)?.clone(),
         };
+        let ret = self
+            .declared_ret(base, &base_ty, "range", call.span)
+            .unwrap_or(Ty::Unknown);
         self.note_projection(call, cname, "range");
         if args.len() != 1 || args[0].name.is_some() {
             for a in args {
@@ -480,10 +480,7 @@ impl<'a> Checker<'a> {
                 msgs::check::WRONG_ARG_COUNT_RANGE_TAKES_1_RANGE,
                 &[&cname, &args.len()],
             );
-            return Some(Ty::Named {
-                name: "SortedRange".into(),
-                args: vec![elem_ty],
-            });
+            return Some(ret);
         }
         let arg = &args[0].value;
         match &arg.kind {
@@ -542,10 +539,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        Some(Ty::Named {
-            name: "SortedRange".into(),
-            args: vec![elem_ty],
-        })
+        Some(ret)
     }
 
     /// Migration codemod (`cpl fix`) for removed `SortedBag`/`SortedSet`
@@ -683,9 +677,6 @@ impl<'a> Checker<'a> {
                     name,
                     "len" | "is_empty" | "first" | "last" | "rev" | "start" | "end"
                 )
-            }
-            Ty::Named { name: n, .. } if n == "SortedRange" => {
-                matches!(name, "len" | "is_empty" | "first" | "last" | "rev")
             }
             Ty::Domain(_) => {
                 matches!(name, "len" | "first" | "last" | "rev" | "bounds" | "cuts")

@@ -643,6 +643,14 @@ impl Database {
                 }
                 note_idents(&text, tokens, &mut ident_tokens, &mut dot_ident_tokens);
             }
+            // A built-in method's declared return type is used where the method is:
+            // `st.range(r)` brings in the `SortedRange` its catalog row returns.
+            for member in crate::builtins::BUILTIN_MEMBERS {
+                if dot_ident_tokens.contains(member.name) {
+                    let words = member.ret.split(|c: char| !c.is_alphanumeric() && c != '_');
+                    ident_tokens.extend(words.filter(|w| w.starts_with(char::is_uppercase)));
+                }
+            }
             let uses = |name: &str| ident_tokens.contains(name);
             // A method the library adds to a type is used as `.name`.
             let calls = |name: &str| dot_ident_tokens.contains(name);

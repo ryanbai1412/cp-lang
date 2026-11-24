@@ -41,10 +41,8 @@ impl<'a> Checker<'a> {
             Ty::Array { elem, .. } => (**elem).clone(),
             Ty::Str => Ty::Char,
             Ty::Named { name, args }
-                if matches!(
-                    name.as_str(),
-                    "List" | "Set" | "HashSet" | "Range" | "SortedRange" | "Gen"
-                ) && args.len() == 1 =>
+                if matches!(name.as_str(), "List" | "Set" | "HashSet" | "Range" | "Gen")
+                    && args.len() == 1 =>
             {
                 args[0].clone()
             }

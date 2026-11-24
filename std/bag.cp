@@ -4,7 +4,7 @@
 //! example: `var s: SortedSet<Int> = SortedSet(); s.add(5); s.add(2); s.add(9); s.nth(1) == 5 and s.rank(9) == 2`
 
 use std.math.{ceil_sqrt}
-use std.seq.Track
+use std.seq.{Seq, Track}
 
 /// Read-only handle to one key's slot in a `SortedBag<K>`, valid until the bag's next `add`,
 /// `remove` or `clear`, because a B+tree change may move keys between leaves (decision 579).
@@ -2892,6 +2892,10 @@ impl Show for BucketCount:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Seq<K> for SortedRange<K>:
+    fn iter(self) -> yields K:
+        for x in self.each(): yield x
 
 impl Show for SortedRange<K>:
     fn show(v):

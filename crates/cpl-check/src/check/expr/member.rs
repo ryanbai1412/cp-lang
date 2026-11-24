@@ -688,30 +688,20 @@ impl<'a> Checker<'a> {
                 };
             }
         }
-        if let Ty::Named { name: sr, args } = &base_ty {
-            if sr == "SortedRange" && args.len() == 1 {
-                if name.text == "len" {
-                    if let ExprKind::Field { base: recv, .. } = &expr.kind {
-                        if let Some(owner) = self.uncounted_sorted_range_owner(recv) {
-                            if let Some(diag) = self.report(
-                                name.span,
-                                msgs::check::TYPE_MISMATCH_RANGE_LEN_IS_NOT,
-                                &[&owner],
-                            ) {
-                                diag.help = Some(format!(
-                                    "use `SortedSet` or `SortedBag` for O(log n) `range(r).len`, or count by iterating `{owner}.range(...)`"
-                                ));
-                            }
-                        }
+        if name.text == "len" {
+            if let ExprKind::Field { base: recv, .. } = &expr.kind {
+                if let Some(owner) = self.uncounted_sorted_range_owner(recv) {
+                    if let Some(diag) = self.report(
+                        name.span,
+                        msgs::check::TYPE_MISMATCH_RANGE_LEN_IS_NOT,
+                        &[&owner],
+                    ) {
+                        diag.help = Some(format!(
+                            "use `SortedSet` or `SortedBag` for O(log n) `range(r).len`, or count by iterating `{owner}.range(...)`"
+                        ));
                     }
+                    return Ty::Int;
                 }
-                return match name.text.as_str() {
-                    "first" | "last" => Ty::Optional(Box::new(args[0].clone())),
-                    "len" => Ty::Int,
-                    "is_empty" => Ty::Bool,
-                    "rev" => base_ty.clone(),
-                    _ => Ty::Unknown,
-                };
             }
         }
         if name.text == "inverse" {
