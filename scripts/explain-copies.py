@@ -23,9 +23,9 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-COPY = re.compile(r"(?:std::vector<[^;()]*?>|cpl::Grid<[^;()]*?>|std::string)\(\w+(?:\.\w+)*\)|cpl::to_list\(|cpl::sorted\(\w+(?:\.\w+)*\)")
+COPY = re.compile(r"(?:std::vector<[^;()]*?>|cpl::Grid<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|\w+(?:\[[^\[\]]+\])*(?:\.\w+)*)\)|cpl::to_list\(|cpl::sorted\(\w+(?:\.\w+)*\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
-NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.[A-Za-z_]\w*)*")
 PARAM = re.compile(r"(?:std::vector<|std::map<|std::set<|std::unordered_map<|std::deque<|std::string)[^();{}=]*?[&\s](\w+)\s*[,)]")
 CAPTURES = re.compile(r"\[([^\[\]]*)\]\(")
 STRUCT = re.compile(r"^struct (\w+)\s*\{")
@@ -144,7 +144,7 @@ def deep_copies(cpp):
                     end = i
                     break
             head = decl[:end].rstrip()
-            name = re.split(r"[ &]", head)[-1]
+            name = re.split(r"[ &>]", head)[-1]
             if name and len(name) < len(head):
                 held.add(name)
                 by_value = not head[: len(head) - len(name)].rstrip().endswith("&")
@@ -161,8 +161,9 @@ def deep_copies(cpp):
             count += 1
     for line in cpp.splitlines():
         for caps in CAPTURES.findall(line):
-            for cap in caps.split(", "):
-                if not cap.startswith("&") and " = " in cap and cap.split(" = ", 1)[1].strip() in held:
+            for cap in re.split(r"\s*,\s*", caps):
+                name, eq, src = cap.partition("=")
+                if eq and not name.startswith("&") and src.strip() in held:
                     count += 1
     return count
 
