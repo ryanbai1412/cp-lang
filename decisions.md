@@ -3886,7 +3886,7 @@ six `[V]` arrays, and `bench/trees/root_bench` went from 178 MB to 139 MB RSS
 with identical output. A parameter used anywhere else in the return, a global,
 or a `mut` argument is never moved from. Test:
 `a_param_returned_in_a_struct_is_taken_by_value_and_moved_in` and the
-`sunk_params.cp` differential program. Reverse: drop `scope::sunk_params` and
+`sunk_params.cp` differential program (both `-> lends Pack` since decision 442). Reverse: drop `scope::sunk_params` and
 the `last_use_call` flag; parameters go back to `const&` plus a copy.
 
 ## 92. Unify `factor_big` into `factor` in `std.math` (2026-11-21)
@@ -8466,3 +8466,9 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Call.** `cpl stress <file>` runs every `<file>.tests/stress-<seed>.in` first, by seed, through the same brute, checker or interactor. One that still fails is reported as `FAIL on the saved case <path>`, without shrinking (it was shrunk when saved) and without saving it again. A clean report starts `the saved case passes;`, and JSON gains `saved_passed` and a counterexample's `rerun`.
 - **Why.** After a fix the contestant had to run `cpl test` and then `cpl stress` (use case stress/U15), and a stress run on a new seed could miss the case it had already found.
 - **Reverse.** Drop the `options.saved` loop at the top of `stress_with` in `crates/cpl-stress/src/run.rs` and `saved_cases` in `cli.rs`.
+
+## 442. A fn returning a struct or tuple built from a lent parameter needs `lends` or a copy (compiler, 2026-11-23)
+
+- **Call.** `fn of(xs: List<Int>) -> Box = Box(xs)` is E0603: a struct or tuple built from a lent heap parameter is lent (R05.4.4), so returning it needs `-> lends Box` or `Box(xs.clone())` (R05.5.1, R05.5.2). A static fn (no `self`) declared `lends` is an ordinary `lends` fn, not a projection: its block body ends with its value and `Type(args)` still calls it as the constructor.
+- **Why.** The checker accepted the escape silently. Decision 91's by-value move is kept: it now applies to `lends` fns (`sunk_params.cp` and its codegen test declare `-> lends Pack`, same C++). In std, the O(1)-documented `GraphicMatroid.new`/`ColorMatroid.new` became `lends`; `Functional.new`, `Mat.from_flat`, `Poly.new`, `SemiRelaxedConvolve.new` and `Prefix.of_cuts`, whose documented cost already covers a copy, clone.
+- **Reverse.** Drop `check/built_from_param.rs` and its call in `lends.rs`, restore the std constructors and decision 91's tests; the static-`lends` handling (`is_projection` in lowering, the parser's tail-`lend` rewrite, `projection_shape`) can stay.

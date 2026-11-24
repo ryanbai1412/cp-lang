@@ -692,7 +692,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// empty: `Poly.new([])` is the zero polynomial
     /// traps: never
     /// example: `Poly<Int>([1, 2, 0]).len == 3`
-    pub fn new(c: List<T>) -> Poly<T> = Poly(c)
+    pub fn new(c: List<T>) -> Poly<T> = Poly(c.clone())
 
     /// The constant polynomial `v`, with one coefficient `T.from_int(v)`.
     ///

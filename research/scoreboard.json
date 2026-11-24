@@ -409,7 +409,7 @@
         "core-05/same-place-lint.cp": "pass",
         "core-05/sequential-lends.cp": "pass",
         "core-05/slices-proved-apart.cp": "pass",
-        "core-05/static-constructor-keeping-param-rejects.cp": "fail",
+        "core-05/static-constructor-keeping-param-rejects.cp": "pass",
         "core-05/static-constructor-result-is-owned.cp": "pass",
         "core-05/store-clone-in-top-level-var.cp": "pass",
         "core-05/store-clone-into-mut-param.cp": "pass",

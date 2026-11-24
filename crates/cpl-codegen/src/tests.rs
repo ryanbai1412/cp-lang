@@ -1314,9 +1314,9 @@ fn trie_row_field_niches_opt_int_and_avoids_temp_vector() {
 #[test]
 fn a_param_returned_in_a_struct_is_taken_by_value_and_moved_in() {
     let cpp = cpp("struct Pack(xs: List<Int>, ys: List<Int>)
-fn pack(xs: List<Int>, ys: List<Int>) -> Pack:
+fn pack(xs: List<Int>, ys: List<Int>) -> lends Pack:
     Pack(xs, ys)
-fn twice(xs: List<Int>) -> Pack = Pack(xs, xs)
+fn twice(xs: List<Int>) -> lends Pack = Pack(xs, xs)
 fn make(n: Int) -> Pack:
     let a = [i for i in 0..n]
     let b = [i * i for i in 0..n]

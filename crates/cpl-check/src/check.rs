@@ -7,6 +7,7 @@
 
 pub(crate) mod advice;
 mod bounded_str;
+mod built_from_param;
 pub(crate) use advice::rename_values;
 mod call;
 mod decls;

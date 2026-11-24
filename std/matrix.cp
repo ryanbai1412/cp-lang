@@ -90,7 +90,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// example: `Mat<Int>.from_flat(2, 3, [1, 2, 3, 4, 5, 6]).get(1, 0) == 4`
     pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>:
         assert rows >= 0 and cols >= 0 and data.len == rows * cols
-        Mat(rows, cols, data)
+        Mat(rows, cols, data.clone())
 
     /// Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.
     ///

@@ -260,9 +260,11 @@ impl<'a> Parser<'a> {
                 FnBody::None
             }
         };
-        // A `lends` body ends with the place it hands out.
+        // A projection's `lends` body ends with the place it hands out; a
+        // static `lends` fn's body ends with its value, like any fn's.
         let mut body = body;
-        if let (Some(_), FnBody::Block(block)) = (&lends, &mut body) {
+        let projection = params.first().is_some_and(|p| p.name.text == "self");
+        if let (Some(_), FnBody::Block(block), true) = (&lends, &mut body, projection) {
             let explicit = block
                 .stmts
                 .iter()

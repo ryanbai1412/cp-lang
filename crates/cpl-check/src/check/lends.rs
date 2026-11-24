@@ -1671,18 +1671,7 @@ impl<'a> Checker<'a> {
                     return out;
                 }
                 // Struct constructor given a lent parameter (`Holder(xs)`).
-                let is_struct = match &unparen(callee).kind {
-                    ExprKind::Name(n) => {
-                        matches!(self.type_def(n).as_deref(), Some(Def::Struct { .. }))
-                    }
-                    ExprKind::Generic { base, .. } => match &unparen(base).kind {
-                        ExprKind::Name(n) => {
-                            matches!(self.type_def(n).as_deref(), Some(Def::Struct { .. }))
-                        }
-                        _ => false,
-                    },
-                    _ => false,
-                };
+                let is_struct = self.constructs_struct(callee);
                 if is_struct {
                     let mut out = Vec::new();
                     for arg in args {
@@ -2435,7 +2424,7 @@ impl<'a> Checker<'a> {
                     self.error(codes::LENT_ESCAPES, e.span, message);
                 }
             }
-            _ => {}
+            _ => self.escape_built_from_param(e, what),
         }
     }
 
@@ -2681,14 +2670,12 @@ impl<'a> Checker<'a> {
         let Some(lends) = &f.lends else {
             return;
         };
-        let name = &f.name.text;
+        // A static fn that lends is a `lends` fn like a free one (R05.5.2).
         let receiver = f.params.first().filter(|p| p.name.text == "self");
         if receiver.is_none() {
-            let message = format!(
-                "a projection lends part of its receiver, so `{name}` needs `self` as its first parameter"
-            );
-            self.error(codes::BAD_PROJECTION, f.name.span, message);
+            return;
         }
+        let name = &f.name.text;
         let stmts: &[Stmt] = match &f.body {
             ast::FnBody::Block(block) => &block.stmts,
             _ => &[],

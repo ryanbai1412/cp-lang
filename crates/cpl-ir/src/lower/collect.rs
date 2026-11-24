@@ -58,7 +58,7 @@ impl<'a> Lowerer<'a> {
                                 if is_get {
                                     self.structs[id].getters.insert(f.name.text.clone());
                                 }
-                                if f.lends.is_some() {
+                                if is_projection(f) {
                                     self.structs[id].projections.insert(
                                         f.name.text.clone(),
                                         ProjectionInfo {
@@ -448,4 +448,10 @@ impl<'a> Lowerer<'a> {
         };
         self.mod_syms[m].extend(found);
     }
+}
+
+/// A `lends` fn that takes `self` lends part of its receiver; a static
+/// one is an ordinary fn whose result is lent (R05.5.2).
+pub(super) fn is_projection(f: &ast::FnDecl) -> bool {
+    f.lends.is_some() && f.params.first().is_some_and(|p| p.name.text == "self")
 }

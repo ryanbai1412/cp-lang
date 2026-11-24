@@ -1,9 +1,9 @@
 struct Pack(xs: List<Int>, ys: List<Int>)
 
-fn pack(xs: List<Int>, ys: List<Int>) -> Pack:
+fn pack(xs: List<Int>, ys: List<Int>) -> lends Pack:
     Pack(xs, ys)
 
-fn twice(xs: List<Int>) -> Pack = Pack(xs, xs)
+fn twice(xs: List<Int>) -> lends Pack = Pack(xs, xs)
 
 fn make(n: Int) -> Pack:
     let a = [i for i in 0..n]

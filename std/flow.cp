@@ -2349,7 +2349,7 @@ pub struct GraphicMatroid<V, E>:
     /// m.rebuild([true, true, false])
     /// not m.can_add(2) and m.can_swap(0, 2)
     /// ```
-    pub fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E> =
+    pub fn new(edges: [E](u: V, v: V)) -> lends GraphicMatroid<V, E> =
         GraphicMatroid(
             edges,
             [E] _ => false,
@@ -2421,7 +2421,7 @@ pub struct ColorMatroid<E, C>:
     /// m.rebuild([true, false, false])
     /// not m.can_add(1) and m.can_add(2)
     /// ```
-    pub fn new(color: [E]C, limit: [C]Int) -> ColorMatroid<E, C>:
+    pub fn new(color: [E]C, limit: [C]Int) -> lends ColorMatroid<E, C>:
         for c in C: assert limit[c] >= 0, "`ColorMatroid` needs every `limit[c] >= 0`"
         ColorMatroid(color, limit, [E] _ => false, [C] _ => 0)
 

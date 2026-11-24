@@ -1054,7 +1054,7 @@ impl<'a> Lowerer<'a> {
                     if is_get {
                         self.structs[id].getters.insert(f.name.text.clone());
                     }
-                    if f.lends.is_some() {
+                    if collect::is_projection(f) {
                         self.structs[id].projections.insert(
                             f.name.text.clone(),
                             ProjectionInfo {
@@ -1295,7 +1295,7 @@ impl<'a> Lowerer<'a> {
                         if is_get {
                             self.structs[sid].getters.insert(f.name.text.clone());
                         }
-                        if f.lends.is_some() {
+                        if collect::is_projection(f) {
                             self.structs[sid].projections.insert(
                                 f.name.text.clone(),
                                 ProjectionInfo {

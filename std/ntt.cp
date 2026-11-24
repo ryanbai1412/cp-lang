@@ -583,7 +583,7 @@ pub struct SemiRelaxedConvolve<P>:
     /// traps: never
     /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>([Z(1), Z(2)]); sc.push(Z(1)) == Z(1)`
     /// example: `type Z = Mod<17>; let e: List<Z> = []; var sc = SemiRelaxedConvolve<17>(e); sc.push(Z(5)) == Z(0)`
-    pub fn new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P> = SemiRelaxedConvolve(b, [], [])
+    pub fn new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P> = SemiRelaxedConvolve(b.clone(), [], [])
 
     /// Append `a[k] = ai` at the next index `k` and return `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.
     ///

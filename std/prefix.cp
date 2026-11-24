@@ -149,7 +149,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
     pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
 
-    fn of_cuts(p: [D.cuts]T, sums: Bool, rises: Bool) -> Prefix<D, T> = Prefix(p, sums, rises)
+    fn of_cuts(p: [D.cuts]T, sums: Bool, rises: Bool) -> Prefix<D, T> = Prefix(p.clone(), sums, rises)
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///

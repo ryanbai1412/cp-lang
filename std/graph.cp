@@ -3475,7 +3475,7 @@ pub struct Functional<V>:
         while (1 << up.len) <= n:
             let prev = up[up.len - 1].clone()
             up.push([prev[prev[i]] for i in 0..n])
-        Functional(next, nx, root, depth, cyc, pos, cycles, up)
+        Functional(next.clone(), nx, root, depth, cyc, pos, cycles, up)
 
     /// Does `v` lie on a cycle?
     ///
