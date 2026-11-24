@@ -53,13 +53,7 @@ impl<'a> Lowerer<'a> {
         }
         // `struct Box<T, M: Op<T>>` at `M = Z`: its methods' `op.lift(x)` needs the `T`
         // solving the bound gave `impl<T> Op<T> for Z`, as a generic fn's body does.
-        let mut solved = env.clone();
-        self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut solved);
-        env.extend(
-            solved
-                .into_iter()
-                .filter(|(k, _)| k.starts_with("impl") && k.contains('.')),
-        );
+        self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut env);
 
         self.structs.push(StructInfo {
             def: StructDef {
