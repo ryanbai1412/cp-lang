@@ -93,6 +93,7 @@ cco22p3
 cco22p4
 cco22p5
 cco23p1
+cco23p2
 cco23p5
 cco24p1
 ceoi17p2

@@ -1,4 +1,5 @@
 // Source: CCO 2023 Day 1 P1 (Binaria), https://dmoj.ca/problem/cco23p1
+// limits: 1000 ms, 1024 MB
 // Problem: given the sums of all n - k + 1 windows of k consecutive bits of a binary string of
 //   length n <= 1e6 (1 <= k <= n, at least one string fits), count the strings that fit,
 //   modulo 1e6 + 3.
