@@ -3,7 +3,7 @@
 //   segment; people walk east or west along rows and only south between them. Handle <= 500
 //   changes of one segment and <= 2e5 escape(V1, V2) queries: the fewest wombats on a route from
 //   (0, V1) to (R - 1, V2).
-// Solution: cut the rows into blocks of 20 and keep each block's C x C matrix of least costs
+// Solution: cut the rows into blocks of 40 and keep each block's C x C matrix of least costs
 //   from its top row to the row below it, built by C left/right relaxations per row in
 //   O(10 C^2). A SegTree over blocks multiplies them in the (min, +) semiring, with `?Cost`
 //   (None = no route) as its zero. Routes from neighbouring tops never need to cross, so the
@@ -12,7 +12,7 @@
 // limits: 9000 ms, 256 MB
 // Bounds: r: 1..=5000; c: 1..=200; east, south, w: 0..=1000; events: 1..=2e5 + 500; kind: 1..=3; row: 0..r; gap: 0..c - 1; drop: 0..r - 1; col, v1, v2: 0..c
 // original: corpus/submissions/4722412.cpp (orig.cpp enables its sample grader)
-const BLOCK = 20
+const BLOCK = 40
 type Wombats = 0..=1000
 type Cost = 0..=1e7  // the cheapest route never exceeds R * 1000 + C * 1000
 
