@@ -129,11 +129,6 @@ fn std_fns(manifest: &std::path::Path) {
     for name in names.keys() {
         writeln!(out, "pub const {}: &str = {name:?};", name.to_uppercase()).unwrap();
     }
-    out.push_str("\n/// Each name and the std modules that declare it, by name.\npub const DECLARED_IN: &[(&str, &[&str])] = &[\n");
-    for (name, modules) in &names {
-        writeln!(out, "    ({name:?}, &{modules:?}),").unwrap();
-    }
-    out.push_str("];\n");
     let dest = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo")).join("std_fn.rs");
     std::fs::write(dest, out).expect("a writable OUT_DIR");
 }

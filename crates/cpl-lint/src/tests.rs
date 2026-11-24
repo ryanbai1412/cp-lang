@@ -1804,15 +1804,20 @@ fn every_lint_is_on_types_std_or_the_compiler_declares() {
 }
 
 #[test]
-fn std_fn_names_what_std_declares_and_where() {
+fn a_call_is_std_by_the_module_the_checker_resolved_it_to() {
     assert_eq!(crate::std_fn::FIRST_GE, "first_ge");
-    assert!(crate::std_fn::declared_in(crate::std_fn::FIRST_GE).contains(&"std.seq"));
-    assert!(crate::std_fn::declared_in("no_such_std_fn").is_empty());
-    let names: Vec<&str> = crate::std_fn::DECLARED_IN.iter().map(|(n, _)| *n).collect();
-    assert!(
-        names.windows(2).all(|w| w[0] < w[1]),
-        "DECLARED_IN is sorted for its binary search"
-    );
+    let src = "fn sum(a: Int, b: Int) -> Int: a + b\nprint(sum(1, 2), [1, 2].sum())\n";
+    let analysis = crate::analyze_alone(src).expect("checks");
+    let facts = Some(&**analysis.facts());
+    let at = |call: &str| {
+        let start = src.find(call).unwrap() as u32;
+        cpl_diag::Span {
+            start,
+            end: start + call.len() as u32,
+        }
+    };
+    assert!(!crate::is_std(facts, at("sum(1, 2)"), std_fn::SUM));
+    assert!(crate::is_std(facts, at("[1, 2].sum()"), std_fn::SUM));
 }
 
 #[test]
