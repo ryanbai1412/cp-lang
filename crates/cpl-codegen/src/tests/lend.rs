@@ -1506,3 +1506,29 @@ fn only_move_of_spells_a_move() {
         "a move goes through `Emitter::move_of`: {spelled:#?}"
     );
 }
+
+#[test]
+fn a_view_over_a_temporary_keyed_list_pins_the_keyed_list() {
+    // R07.5.10: `rekey_own` keeps the cells in the `Keyed` it returns, so the
+    // windows over it point into that temporary, which the `for` must keep.
+    let out = body(concat!(
+        "let xs = [3, 1, 4]\n",
+        "for q in List(xs).rekey(xs.keys).windows(2): print(List(q))\n",
+    ));
+    let keyed = out
+        .lines()
+        .find(|l| l.trim_start().starts_with("cpl::Keyed<ll> t"))
+        .unwrap_or_else(|| panic!("the keyed temporary is named: {out}"));
+    let name = keyed.trim_start()["cpl::Keyed<ll> ".len()..]
+        .split(' ')
+        .next()
+        .unwrap_or_default();
+    assert!(
+        out.contains(&format!("({name}, 2)")),
+        "the windows read it: {out}"
+    );
+    assert!(
+        !out.contains("([&]() -> cpl::Keyed<ll>"),
+        "the keyed list is not an argument temporary: {out}"
+    );
+}
