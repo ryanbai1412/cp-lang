@@ -172,9 +172,12 @@ pub fn find_grader(source: &Path, src: &str) -> Option<PathBuf> {
 
 fn find_judge(source: &Path, file: &str) -> Option<PathBuf> {
     let cases = find_tests_dir(source);
+    let package = source
+        .parent()
+        .is_some_and(|p| p.join("tests.toml").is_file());
     let beside = match cases.file_name() {
         Some(name) if name == "tests" => cases.parent().map(|p| p.join(file)),
-        _ if cases != tests_dir(source) => source.parent().map(|p| p.join(file)),
+        _ if package || cases != tests_dir(source) => source.parent().map(|p| p.join(file)),
         _ => None,
     };
     [Some(cases.join(file)), beside]
@@ -319,6 +322,26 @@ mod generated_cases_tests {
             Some(package.join("interactor.py"))
         );
         assert_eq!(cases_in(&find_tests_dir(&source)).len(), 1);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_package_finds_its_root_grader_before_its_cases_are_made() {
+        let root = std::env::temp_dir().join(format!("cpl-unmade-{}", std::process::id()));
+        let package = root.join("corpus/problems").join("p2");
+        std::fs::create_dir_all(&package).unwrap();
+        std::fs::write(package.join("tests.toml"), "[[case]]\ninput = \"1\\n\"\n").unwrap();
+        std::fs::write(package.join("grader.cpp"), "").unwrap();
+        let dream = package.join("dream.cp");
+        let graded = "@grader\nfn f(x: Int) -> Int = x\n";
+        assert_eq!(
+            find_grader(&dream, graded),
+            Some(package.join("grader.cpp"))
+        );
+        assert_eq!(
+            find_grader(&package.join("port.cp"), "print(read())\n"),
+            None
+        );
         std::fs::remove_dir_all(&root).unwrap();
     }
 }
