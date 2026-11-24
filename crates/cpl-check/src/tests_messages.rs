@@ -731,3 +731,16 @@ fn a_tuple_is_not_a_struct_and_the_fix_builds_one() {
         check(fixed)
     );
 }
+
+#[test]
+fn a_bitsets_insert_is_its_add() {
+    let src = "use std.bitset.{DynBitset}\nvar b = DynBitset(70)\nb.insert(3)\n";
+    let d = one(src);
+    assert_eq!(d.code, cpl_diag::codes::UNKNOWN_FIELD, "{}", d.message);
+    assert!(
+        d.help.as_deref().is_some_and(|h| h.contains("`add`")),
+        "{:?}",
+        d.help
+    );
+    assert_eq!(fixed(src), src.replace("insert", "add"));
+}
