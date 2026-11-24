@@ -370,6 +370,23 @@ class LandTest(unittest.TestCase):
         self.assertIn("taking over a land lock", r.stderr)
         self.assertEqual(self.lock_on_remote(), "")
 
+    def test_a_remote_that_refuses_the_lock_refuses_the_land(self):
+        repo = self.clone("lane")
+        hook = self.tmp / "remote.git" / "hooks" / "pre-receive"
+        hook.write_text("#!/bin/sh\nwhile read old new ref; do\n"
+                        '  [ "$ref" != refs/land/lock ] || { echo "HTTP 500" >&2; exit 1; }\n'
+                        "done\n")
+        hook.chmod(0o755)
+        main = git(repo, "rev-parse", "origin/main").strip()
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo)
+        self.assertNotEqual(r.returncode, 0, r.stderr)
+        self.assertIn("refuses refs/land/lock", r.stderr)
+        self.assertIn("land again", r.stderr)
+        self.assertNotIn("without the land lock", r.stderr)
+        self.assertEqual(git(repo, "ls-remote", "origin", "refs/heads/main").split()[0], main)
+
     def test_a_lock_taken_after_a_wait_is_stamped_when_it_is_taken(self):
         repo, other = self.clone("lane"), self.clone("other")
         self.lock(repo)

@@ -411,8 +411,10 @@ take_lock() {
             # A lost compare-and-swap is a lane that took the lock and dropped it
             # before this look, not a refusal: counted as one, churn pushed unlocked.
             case "$err" in *"stale info"*) continue ;; esac
+            # Fails closed: Idioms' land pushed unlocked after two HTTP 500s.
             refused=$((${refused:-0} + 1))
-            [ "$refused" -lt 5 ] || { echo "land: WARNING: $remote refuses $lock_ref; pushing without the land lock" >&2; return 0; }
+            [ "$refused" -lt 5 ] || { echo "land: $remote refuses $lock_ref (${err##*$'\n'}); land again" >&2; dequeue; return 1; }
+            sleep "$refused"
             continue
         fi
         git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null || :
