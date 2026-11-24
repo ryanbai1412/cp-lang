@@ -11968,6 +11968,30 @@
    "n": 2048,
    "ok": true
   },
+  "bench/scaling/popcount.cp::math.Int.word": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.Int.word",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/popcount.cp::math.U64.word": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.U64.word",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/popcount.cp::math.popcount": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.popcount",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/prefix.cp::prefix.ArithDiff.add": {
    "cost": "1",
    "documented": 1.0,
@@ -18284,7 +18308,7 @@
    "cost": "\\lvert \\mathit{dl} \\rvert + \\lvert \\mathit{dr} \\rvert",
    "documented": 4.0,
    "fn": "window.Sweep.move",
-   "measured": 2.37,
+   "measured": 4.79,
    "n": 16384,
    "ok": true
   },
@@ -18292,7 +18316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Sweep.new",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -18300,7 +18324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Sweep.range",
-   "measured": 1.0,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -18308,7 +18332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.pop",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -18316,7 +18340,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.push",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -18324,7 +18348,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.state",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -18332,7 +18356,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "window.Undoing.pop",
-   "measured": 1.14,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
@@ -18340,7 +18364,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Undoing.push",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -18348,7 +18372,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Undoing.state",
-   "measured": 1.07,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -18356,7 +18380,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.all",
-   "measured": 0.98,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/window.cp::window.Window.expire": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "window.Window.expire",
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -18364,7 +18396,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.is_empty",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -18372,7 +18404,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.items",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -18380,7 +18412,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.len",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -18388,7 +18420,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.new",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -18396,7 +18428,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.pop",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -18404,7 +18436,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.push",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -18412,7 +18444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.track",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -18420,7 +18452,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.undoing",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -18428,7 +18460,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "window.window_fold",
-   "measured": 3.97,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -18725,10 +18757,6 @@
   "builtin.HashSet.range",
   "builtin.HashSet.remove",
   "builtin.HashSet.set",
-  "math.Int.word",
-  "math.U64.word",
-  "math.popcount",
-  "strings.Palindromes.items",
-  "window.Window.expire"
+  "strings.Palindromes.items"
  ]
 }
