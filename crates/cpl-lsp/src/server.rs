@@ -268,48 +268,7 @@ impl Server {
                         ),
                     ])));
                 }
-                let checked = self.db.hover(&uri, offset);
-                // `j.jump(a, b, k)` beside a field `jump`: the call names the fn.
-                let called_field = checked.as_ref().is_some_and(|h| {
-                    !matches!(h.ty, None | Some(cpl_check::Ty::Fn { .. }))
-                        && (self.db.analyze(&uri)).is_some_and(|a| {
-                            let name = &a.text[h.span.start as usize..h.span.end as usize];
-                            a.text[..h.span.start as usize].ends_with('.')
-                                && a.text[h.span.end as usize..].starts_with('(')
-                                && h.text.starts_with(&format!("{name}: "))
-                        })
-                });
-                // `s.runs` names a library `fn runs(self: S, ..)`: the checker's
-                // fact is the free form, so show the declaration as written,
-                // as completion and signature help do.
-                let hover = if called_field || checked.as_ref().is_none_or(|h| h.signature) {
-                    let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
-                    let cursor = Cursor {
-                        uri: &uri,
-                        analysis: &analysis,
-                        offset,
-                    };
-                    let member = complete::member_hover(&cursor, &mut self.std);
-                    match checked {
-                        Some(_) if called_field && member.is_some() => member,
-                        // The checker's cost lines stay when the doc writes none.
-                        Some(checked) => Some(match member {
-                            Some(mut member) if member.cost.is_none() => {
-                                for line in checked.text.lines().skip(1) {
-                                    member.text.push('\n');
-                                    member.text.push_str(line);
-                                }
-                                member.cost = checked.cost;
-                                member
-                            }
-                            Some(member) => member,
-                            None => checked,
-                        }),
-                        None => crate::syntax_hover::hover(&analysis, offset).or(member),
-                    }
-                } else {
-                    checked
-                };
+                let hover = self.named_hover(&uri, offset);
                 let Some(mut hover) = hover else {
                     return Ok(Reply::default());
                 };
@@ -459,10 +418,15 @@ impl Server {
                     analysis: &analysis,
                     offset,
                 };
-                Ok(match complete::signature_help(&cursor, &mut self.std) {
-                    Some(help) => Reply::result(help),
-                    None => Reply::default(),
-                })
+                let doc = complete::callee_start(&cursor)
+                    .and_then(|at| self.named_hover(&uri, at))
+                    .and_then(|h| h.doc);
+                Ok(
+                    match complete::signature_help(&cursor, &mut self.std, doc) {
+                        Some(help) => Reply::result(help),
+                        None => Reply::default(),
+                    },
+                )
             }
             "textDocument/references" => {
                 let (uri, offset) = self.position(params)?;
@@ -920,6 +884,53 @@ impl Server {
         let facts = Arc::new(Proven::new(analysis));
         self.proven.insert(uri.to_string(), facts.clone());
         Some(facts)
+    }
+
+    /// What hover shows for the name at `offset`, before the facts proven about
+    /// it; signature help takes its doc from here too.
+    fn named_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
+        let checked = self.db.hover(uri, offset);
+        // `j.jump(a, b, k)` beside a field `jump`: the call names the fn.
+        let called_field = checked.as_ref().is_some_and(|h| {
+            !matches!(h.ty, None | Some(cpl_check::Ty::Fn { .. }))
+                && (self.db.analyze(uri)).is_some_and(|a| {
+                    let name = &a.text[h.span.start as usize..h.span.end as usize];
+                    a.text[..h.span.start as usize].ends_with('.')
+                        && a.text[h.span.end as usize..].starts_with('(')
+                        && h.text.starts_with(&format!("{name}: "))
+                })
+        });
+        // `s.runs` names a library `fn runs(self: S, ..)`: the checker's
+        // fact is the free form, so show the declaration as written,
+        // as completion and signature help do.
+        if called_field || checked.as_ref().is_none_or(|h| h.signature) {
+            let analysis = self.db.analyze(uri).expect("hover implies an analysis");
+            let cursor = Cursor {
+                uri,
+                analysis: &analysis,
+                offset,
+            };
+            let member = complete::member_hover(&cursor, &mut self.std);
+            match checked {
+                Some(_) if called_field && member.is_some() => member,
+                // The checker's cost lines stay when the doc writes none.
+                Some(checked) => Some(match member {
+                    Some(mut member) if member.cost.is_none() => {
+                        for line in checked.text.lines().skip(1) {
+                            member.text.push('\n');
+                            member.text.push_str(line);
+                        }
+                        member.cost = checked.cost;
+                        member
+                    }
+                    Some(member) => member,
+                    None => checked,
+                }),
+                None => crate::syntax_hover::hover(&analysis, offset).or(member),
+            }
+        } else {
+            checked
+        }
     }
 
     /// On the head of a `for` whose count the declared bounds prove: how

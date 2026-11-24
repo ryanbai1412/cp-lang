@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 mod signature;
 use signature::{active_param, named_args, open_call, signature_of};
-pub use signature::{parameter_hints, signature_help};
+pub use signature::{callee_start, parameter_hints, signature_help};
 
 /// Every `std/` module but the prelude.
 const STD_MODULES: &[&str] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
@@ -1435,8 +1435,10 @@ fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry
         .map(|(param, named_only)| {
             let (name, ty) = param.split_once(':').unwrap_or((param, ""));
             let (ty, default) = ty.split_once(" = ").unwrap_or((ty, ""));
+            let mut words = name.split_whitespace();
             Param {
-                name: name.split_whitespace().next().unwrap_or("").to_string(),
+                name: words.next().unwrap_or("").to_string(),
+                binding: words.next().unwrap_or("").to_string(),
                 ty: substitute(ty.trim(), bindings),
                 default: default.trim().to_string(),
                 named_only,
@@ -1474,7 +1476,12 @@ fn type_members(
         // where only what it offers its users is shown.
         let foreign = index > 0;
         let offered = |m: &Entry| !foreign || outline.offers(name, m);
-        let Some(def) = outline.find(name) else {
+        // `Prefix<Int>` is the one of the types named `Prefix` taking one argument.
+        let def = (outline.entries.iter())
+            .filter(|e| e.name == name)
+            .find(|e| generics_of(&e.detail).len() == args.len())
+            .or_else(|| outline.find(name));
+        let Some(def) = def else {
             if outline.impls.iter().all(|(target, _)| target != name) {
                 continue;
             }
@@ -1498,11 +1505,11 @@ fn type_members(
             Vec::new()
         };
         // `pub jump: [V]V` beside `pub fn jump(self, ..)`: the call is what's offered.
-        let methods: HashSet<&str> = (outline.members_of(name))
+        let methods: HashSet<&str> = (outline.members_of_entry(Some(def), name))
             .filter(|m| m.instance && m.kind != Kind::Field)
             .map(|m| m.name.as_str())
             .collect();
-        for member in outline.members_of(name) {
+        for member in outline.members_of_entry(Some(def), name) {
             if member.kind == Kind::Field && methods.contains(member.name.as_str()) {
                 continue;
             }

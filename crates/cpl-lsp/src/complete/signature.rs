@@ -54,6 +54,8 @@ pub(super) struct SigParam {
     pub(super) variadic: bool,
     pub(super) default: String,
     pub(super) named_only: bool,
+    /// `ok` in `while ok: (T) -> Bool`, shown as the declaration writes it.
+    pub(super) binding: String,
 }
 
 /// One signature to show: its parameters' names and types as text.
@@ -64,7 +66,18 @@ pub(super) struct Signature {
     pub(super) doc: String,
 }
 
-pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
+/// Where the name of the call the cursor is in starts.
+pub fn callee_start(cursor: &Cursor) -> Option<u32> {
+    let text = &*cursor.analysis.text;
+    let offset = (cursor.offset as usize).min(text.len());
+    let item = item_at(cursor.analysis, cursor.offset)?;
+    let (paren, _, _) = open_call(text, item.offset as usize, offset)?;
+    let callee_end = text[..paren].trim_end().len();
+    Some((callee_end - ident_before(text, callee_end).len()) as u32)
+}
+
+/// `doc` is what hover shows for the callee, so the two agree.
+pub fn signature_help(cursor: &Cursor, std: &mut StdLib, doc: Option<String>) -> Option<Value> {
     let text = &*cursor.analysis.text;
     let offset = (cursor.offset as usize).min(text.len());
     let item = item_at(cursor.analysis, cursor.offset)?;
@@ -74,7 +87,10 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
     if name.is_empty() {
         return None;
     }
-    let sig = signature_of(cursor, std, item, callee_end, name)?;
+    let mut sig = signature_of(cursor, std, item, callee_end, name)?;
+    if let Some(doc) = doc {
+        sig.doc = doc;
+    }
     // `f(a, by: k`: the argument named, else the one by position.
     let given = named_args(&text[paren + 1..arg_start]);
     let active = active_param(&sig, &given, text[arg_start..offset].trim_start(), commas);
@@ -91,6 +107,10 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
         let start = utf16_len(&label);
         label.push_str(if param.variadic { "..." } else { "" });
         label.push_str(&param.name);
+        if !param.binding.is_empty() {
+            label.push(' ');
+            label.push_str(&param.binding);
+        }
         if !param.ty.is_empty() {
             label.push_str(": ");
             label.push_str(&param.ty);
@@ -256,6 +276,7 @@ pub(super) fn signature_of(
                             variadic: p.variadic,
                             default,
                             named_only: p.named_only,
+                            binding: written.map_or(String::new(), |w| w.binding.clone()),
                         }
                     })
                     .collect(),
@@ -282,6 +303,7 @@ pub(super) fn signature_of(
                             variadic: false,
                             default: String::new(),
                             named_only: false,
+                            binding: String::new(),
                         })
                         .collect(),
                     entry.name.clone(),
@@ -306,6 +328,7 @@ fn written_param(p: &Param) -> SigParam {
         variadic: false,
         default: p.default.clone(),
         named_only: p.named_only,
+        binding: p.binding.clone(),
     }
 }
 
