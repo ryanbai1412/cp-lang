@@ -713,11 +713,22 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(items) => {
                         Value::ListView(crate::value::Shared::new(ListViewVal::whole(items, false)))
                     }
+                    // Copy only the keys asked for: `runs` and friends slice a table
+                    // once per piece, and a whole copy each time is quadratic.
                     Value::Array(a) if a.dims.len() == 1 => {
-                        Value::ListView(crate::value::Shared::new(ListViewVal::whole(
-                            Rc::new(crate::value::Cells::from(a.to_values())),
-                            false,
-                        )))
+                        let n = a.data.len() as i64;
+                        let (l, h) = if 0 <= lo && lo <= hi && hi <= n {
+                            (lo, hi)
+                        } else {
+                            (0, n)
+                        };
+                        let cells: Vec<Value> = (l as usize..h as usize)
+                            .map(|i| a.data.get_unchecked_val(i))
+                            .collect();
+                        let mut view =
+                            ListViewVal::whole(Rc::new(crate::value::Cells::from(cells)), false);
+                        view.shift = l;
+                        Value::ListView(crate::value::Shared::new(view))
                     }
                     Value::MutView(mv) => {
                         let items = self.mut_view_to_vec(&mv, span)?;
