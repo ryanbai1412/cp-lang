@@ -23,7 +23,7 @@ for r in routes:
     adj[r.u].push(r.v)
     adj[r.v].push(r.u)
 // one queue for every source; dist[from, v] < 0 marks v unreached
-var dist: [Station, Station]Int = -1
+var dist: [Station, Station]-1..=3000 = -1
 var queue: List<Station> = []
 for from in Station:
     queue.clear()
