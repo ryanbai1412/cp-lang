@@ -455,6 +455,34 @@ export function grown(fns, parent) {
   return out;
 }
 
+/** The buckets of `fns` whose normalized sum dropped against `parent`'s: bucket -> B dropped. */
+export function shrunk(fns, parent) {
+  const sum = (m) => Object.values(m ?? {}).reduce((s, n) => s + n, 0);
+  return Object.fromEntries(Object.keys(parent).map((c) => [c, sum(parent[c]) - sum(fns[c])]).filter(([, d]) => d > 0));
+}
+
+/**
+ * A budget transfer (decisions.md 634): against the parent's `was` budgets, a land may
+ * raise a bucket's budget only by what it lowers others (the total never rises), and
+ * only by what the lowered buckets' normalized code dropped (`drops`, from shrunk), so
+ * a budget follows moved code and can't hide new growth. No drops measured: no raise.
+ */
+export function budgetTransfer(budgets, was, drops = {}) {
+  const b = (n) => n.toLocaleString('en-US');
+  const raised = Object.entries(budgets).map(([c, n]) => [c, n - (was[c] ?? 0)]).filter(([, d]) => d > 0);
+  if (!raised.length) return [];
+  const cuts = Object.entries(was).map(([c, n]) => [c, n - (budgets[c] ?? 0)]).filter(([, d]) => d > 0);
+  const total = (xs) => xs.reduce((s, [, d]) => s + d, 0);
+  const up = total(raised);
+  const what = `wasm-crate-budgets.json raises ${raised.map(([c, d]) => `${c} +${b(d)}`).join(', ')} (${b(up)} B)`;
+  const errors = [];
+  if (up > total(cuts)) errors.push(`${what} but lowers others by only ${b(total(cuts))} B: a budget moves with its code and the total never rises`);
+  const moved = cuts.reduce((s, [c, d]) => s + Math.min(d, drops[c] ?? 0), 0);
+  const from = cuts.map(([c, d]) => `${c} -${b(d)} budget, -${b(drops[c] ?? 0)} B code`).join('; ') || 'nothing lowered';
+  if (up > moved) errors.push(`${what} but the lowered buckets' normalized code dropped only ${b(moved)} B of it (${from}): a transfer follows code that moved`);
+  return errors;
+}
+
 /**
  * The land gate's ratchet against the exact same-tree parent, for every crate and the
  * data segment alike (touched is only a label): one over its budget (gz) after the change
@@ -518,13 +546,21 @@ export function dataOverBudget(rows, budgets) {
 // crates over theirs only warn. With `--parent`, a parent build's sizes (and normalized
 // sizes, `fns`), every crate and the data segment are held to the ratchet, and the sort copies only grow if they
 // grew. `--normalized DIR/cpl.wasm OUT.json` writes normalizedFunctions as
-// {crate: {fn: hex}}. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
+// {crate: {fn: hex}}. `--parent-budgets FILE` (the parent's wasm-crate-budgets.json)
+// checks a budget transfer against the code that moved, and `--budgets FILE` alone
+// refuses any raise (budgetTransfer). `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
 // `--data` takes such a file in place of a build. `--lower-budgets` lowers each budget
 // with slack after a pass (lowered).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--normalized') {
   const crates = normalizedFunctions(readFileSync(process.argv[3]));
   const json = Object.fromEntries([...crates].map(([c, fns]) => [c, Object.fromEntries([...fns].map(([f, b]) => [f, b.toString('hex')]))]));
   writeFileSync(process.argv[4], `${JSON.stringify(json)}\n`);
+} else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--budgets') {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const budgets = JSON.parse(readFileSync(join(here, 'wasm-crate-budgets.json'), 'utf8'));
+  const errors = budgetTransfer(budgets, JSON.parse(readFileSync(process.argv[3], 'utf8')));
+  for (const e of errors) console.error(`wasm-crates: ${e} (no wasm build measured the moved code; build one: scripts/wasm-warm.sh --wait)`);
+  process.exit(errors.length ? 1 : 0);
 } else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--sizes') {
   const wasm = readFileSync(process.argv[3]);
   // A sizes file standing in for a build (scripts/test_land.py's builds) is its own sizes.
@@ -555,6 +591,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
   const { errors, warnings, held = [], grew = [] } = parent
     ? ratchet(rows, budgets, map, grown(sized ? sized.fns ?? {} : normalizedSizes(wasm, rows), parent.fns))
     : touchedOverBudget(rows, budgets, map, touched);
+  const parentBudgets = flag('--parent-budgets') && JSON.parse(readFileSync(flag('--parent-budgets'), 'utf8'));
+  if (parentBudgets) errors.push(...budgetTransfer(budgets, parentBudgets, shrunk(sized ? sized.fns ?? {} : normalizedSizes(wasm, rows), parent?.fns ?? {})));
   let next;
   const copies = sized ? Array(sized.sorts ?? 0).fill('') : sortCopies(functionNames(wasm));
   const sorts = checkSortCopies(copies, JSON.parse(readFileSync(join(here, '../..', sortCopiesFile), 'utf8')).max);

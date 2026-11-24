@@ -9319,8 +9319,6 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Why.** No privileged stdlib: a std name the compiler spells is one a user library cannot match; `@aka` is the sibling of `@was` (older std names) and any library may write it. Diagnostics are unchanged.
 - **Reverse.** Restore the table in `builtins/foreign.rs` and drop the decorator.
 
-## 634. (reserved, site)
-
 ## 635. (reserved, compiler)
 
 ## 636. (reserved, compiler)
@@ -9336,3 +9334,23 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Reverse.** Drop the bare-`gen()` arm (`Lowerer::gen_wanted`) and `gen_fields`; callers write `gen<T>()` per field.
 
 ## 639. (reserved, compiler)
+
+## 634. A wasm budget moves with its code, never up in total (site, 2026-11-24)
+
+- **Call.** A land may raise a bucket's budget in `web/scripts/wasm-crate-budgets.json`
+  only by what it lowers others (the total never rises), and only by what the lowered
+  buckets' normalized code dropped against the exact parent (`budgetTransfer` in
+  `web/scripts/wasm-crates.mjs`, run by `scripts/wasm-warm.sh --check`). A raise no
+  wasm build measured refuses at land. The receiving bucket still meets the per-bucket
+  rule: over budget after the change, its normalized code may not grow.
+- **Why.** Budgets are per crate, and a std generic is charged to the crate its type
+  lives in. So moving a type (VM-memory's `IntWidth`, from cpl_ir to cpl_rt, for
+  cpl-check) moves its instantiations' bytes, and the receiving crate reads as grown
+  with no new code. Netting growth across crates would let real growth hide behind a
+  cut; a transfer bounded by the moved code can't.
+- **Measure.** Normalized code is raw bytes and budgets are gzip, so the bound is loose
+  (raw exceeds gz); it still caps a transfer at code that left the source crate.
+- **Reverse.** Delete `budgetTransfer`'s two call sites; budgets go back to only
+  lowering. Charging a generic to the crate that instantiates it
+  (`plan/QUESTIONS.md`) would make most transfers unnecessary.
+- **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.

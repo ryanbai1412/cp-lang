@@ -269,7 +269,15 @@ if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
     else
         scripts/wasm-warm.sh --check "$wasm" "$main_base" $wasm_touched >&2 ||
             { echo "land: a cpl.wasm crate grew past main while over its budget, or crossed its budget (above), touched here or not; cut it at its source and land again" >&2; exit 1; }
+        transfer_checked=1
     fi
+fi
+# A raised wasm budget no build measured against moved code (decisions.md 634) refuses.
+if [ -z "${transfer_checked:-}" ] && printf '%s\n' "$changed" | grep -qx web/scripts/wasm-crate-budgets.json; then
+    was="$(git rev-parse --git-dir)/cpl-parent-budgets.json"
+    git show FETCH_HEAD:web/scripts/wasm-crate-budgets.json >"$was" 2>/dev/null || echo '{}' >"$was"
+    node web/scripts/wasm-crates.mjs --budgets "$was" >&2 ||
+        { echo "land: a wasm budget rose with no measured transfer (above); land it with the code that moved and a current wasm build" >&2; exit 1; }
 fi
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then

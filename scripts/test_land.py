@@ -16,10 +16,10 @@ GEN = "spec/conformance/widths/int.cp"
 RATCHET = "scripts/debt-ratchet.json"
 
 
-def sized(gz):
-    """A --sizes record standing in for a wasm build: crate -> B gz, with each crate's
-    normalized code the same number of bytes in one fn, so growth there is growth here."""
-    return json.dumps({"crates": gz, "sorts": 0, "fns": {c: {"f": n} for c, n in gz.items()}})
+def sized(gz, fns=None):
+    """A --sizes record standing in for a wasm build: crate -> B gz, and `fns` (crate ->
+    fn -> normalized B), by default each crate's code the same B in one fn."""
+    return json.dumps({"crates": gz, "sorts": 0, "fns": {c: {"f": n} for c, n in gz.items()} | (fns or {})})
 INDEX = "corpus/index.json"
 
 
@@ -1312,9 +1312,10 @@ exec {shutil.which("git")} "$@"
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("--parent", (self.tmp / "node.log").read_text())
 
-    def _ratchet(self, ours_gz, parent_gz, budgets):
+    def _ratchet(self, ours_gz, parent_gz, budgets, ours_budgets=None, ours_fns=None, parent_fns=None):
         """A land of a cpl-x change through the real wasm-crates.mjs: a warm build measuring
-        `ours_gz` and main's tip `parent_gz` (crate -> B gz), under `budgets`."""
+        `ours_gz` and main's tip `parent_gz` (crate -> B gz, normalized code `*_fns`), under
+        main's `budgets`, which the change sets to `ours_budgets`."""
         data = "data (std source, strings)"
         budgets, ours_gz, parent_gz = {data: 100, **budgets}, {data: 90, **ours_gz}, {data: 90, **parent_gz}
         theirs, ours = self.clone("theirs"), self.clone("ours")
@@ -1328,10 +1329,13 @@ exec {shutil.which("git")} "$@"
         git(theirs, "push", "-q", "origin", "HEAD:main")
         (ours / "crates" / "cpl-x").mkdir(parents=True)
         (ours / "crates" / "cpl-x" / "lib.rs").write_text("ours\n")
+        if ours_budgets is not None:
+            git(ours, "pull", "-q", "--rebase", "origin", "main")
+            (ours / "web" / "scripts" / "wasm-crate-budgets.json").write_text(json.dumps({data: 100, **ours_budgets}))
         self.commit(ours, "ours")
         out = self._built(ours)
-        (out / "cpl.wasm").write_text(sized(ours_gz))
-        (next((out / "sizes").iterdir())).write_text(sized(parent_gz))
+        (out / "cpl.wasm").write_text(sized(ours_gz, ours_fns))
+        (next((out / "sizes").iterdir())).write_text(sized(parent_gz, parent_fns))
         env = self._wasm(ours, 0)
         (self.tmp / "bin" / "node").unlink()
         return self.land(ours, **env)
@@ -1364,6 +1368,51 @@ exec {shutil.which("git")} "$@"
         r = self._ratchet({"cpl_x": 50, "cpl_y": 101}, {"cpl_x": 50, "cpl_y": 90}, {"cpl_x": 100, "cpl_y": 100})
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("cpl_y is 101 B gzipped, over its budget of 100", r.stderr)
+        self.assertNotIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
+
+    def _transfer(self, ours_budgets):
+        # VM-memory's narrow storage moved IntWidth's 60 B of code from cpl_x to cpl_y,
+        # which is over its budget (decisions.md 634).
+        return self._ratchet({"cpl_x": 40, "cpl_y": 140}, {"cpl_x": 90, "cpl_y": 120}, {"cpl_x": 100, "cpl_y": 100},
+                             ours_budgets=ours_budgets, ours_fns={"cpl_x": {"f": 30}, "cpl_y": {"f": 120, "w": 60}},
+                             parent_fns={"cpl_x": {"f": 30, "w": 60}, "cpl_y": {"f": 120}})
+
+    def test_a_budget_transferred_with_the_code_that_moved_lands(self):
+        r = self._transfer({"cpl_x": 50, "cpl_y": 150})
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_without_its_budget_transfer_a_move_into_an_over_budget_crate_refuses(self):
+        r = self._transfer({"cpl_x": 100, "cpl_y": 100})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("cpl_y is 140 B gzipped, over its budget of 100", r.stderr)
+        self.assertIn("grew most: w +60", r.stderr)
+
+    def test_a_budget_raise_with_no_matching_cut_refuses(self):
+        r = self._transfer({"cpl_x": 100, "cpl_y": 150})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("raises cpl_y +50 (50 B) but lowers others by only 0 B", r.stderr)
+
+    def test_a_budget_transfer_bigger_than_the_code_that_moved_refuses(self):
+        r = self._transfer({"cpl_x": 20, "cpl_y": 180})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("normalized code dropped only 60 B of it (cpl_x -80 budget, -60 B code)", r.stderr)
+
+    def test_a_budget_raise_no_wasm_build_measured_refuses(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        web = theirs / "web" / "scripts"
+        web.mkdir(parents=True)
+        shutil.copy(HERE.parent / "web" / "scripts" / "wasm-crates.mjs", web)
+        (web / "wasm-crate-budgets.json").write_text('{"cpl_x": 100, "cpl_y": 100}')
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "--rebase", "origin", "main")
+        (ours / "web" / "scripts" / "wasm-crate-budgets.json").write_text('{"cpl_x": 50, "cpl_y": 150}')
+        self.commit(ours, "ours")
+        env = self._wasm(ours, 0)
+        (self.tmp / "bin" / "node").unlink()
+        r = self.land(ours, **env)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("no wasm build measured the moved code", r.stderr)
         self.assertNotIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
 
     def _check(self, ours_gz, budgets, parent_gz=None, built_gz=None):

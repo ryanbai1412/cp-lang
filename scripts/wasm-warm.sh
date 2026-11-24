@@ -88,7 +88,9 @@ case "${1:-}" in
             fi
             exec 9>&-
         fi
-        exec node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$sizes" --touched "$touched" ;;
+        budgets=$(mktemp)
+        git show "$base:web/scripts/wasm-crate-budgets.json" >"$budgets" 2>/dev/null || echo '{}' >"$budgets"
+        exec node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$sizes" --parent-budgets "$budgets" --touched "$touched" ;;
     --wait)
         mkdir -p "$out"
         exec 9>"$out.lock"

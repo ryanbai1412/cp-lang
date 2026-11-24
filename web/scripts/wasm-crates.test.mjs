@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, checkSortCopies, crateOf, gateCrateOf, grown, normalizedFunctions, normalizedSizes, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
+import { budgetFor, budgetTransfer, checkBudgets, checkSortCopies, crateOf, gateCrateOf, grown, normalizedFunctions, normalizedSizes, shrunk, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -91,6 +91,29 @@ describe('wasm crate budgets', () => {
     const big = { ...was, cpl_lsp: { c: 700 } };
     expect(ratchet([['cpl_lsp', 700, 90]], budgets, map, grown(big, was)).grew).toEqual(['cpl_lsp grew 200 B of normalized code against its parent\'s 500 B']);
     expect(ratchet([['cpl_lsp', 699, 90]], budgets, map, grown({ ...was, cpl_lsp: { c: 699 } }, was)).grew).toEqual([]);
+  });
+
+  test('a budget moves with code that moved, and the total never rises', () => {
+    // VM-memory's narrow storage: IntWidth's code moves cpl_ir -> cpl_rt.
+    const was = { cpl_ir: 445800, cpl_rt: 500 };
+    const parentFns = { cpl_ir: { a: 9000, w: 5550 }, cpl_rt: { r: 811 } };
+    const fns = { cpl_ir: { a: 9000 }, cpl_rt: { r: 811, w: 5550 } };
+    const drops = shrunk(fns, parentFns);
+    expect(drops).toEqual({ cpl_ir: 5550 });
+    expect(budgetTransfer({ cpl_ir: 443300, cpl_rt: 3000 }, was, drops)).toEqual([]);
+    const map = owners(charters);
+    expect(ratchet([['cpl_rt', 6361, 2900]], { cpl_ir: 443300, cpl_rt: 3000 }, map, grown(fns, parentFns)).errors).toEqual([]);
+    // A raise with no matching cut: the total rises.
+    expect(budgetTransfer({ cpl_ir: 445800, cpl_rt: 3000 }, was, drops))
+      .toEqual([expect.stringMatching(/raises cpl_rt \+2,500 \(2,500 B\) but lowers others by only 0 B/), expect.stringMatching(/dropped only 0 B/)]);
+    // A transfer bigger than the code that moved.
+    expect(budgetTransfer({ cpl_ir: 439800, cpl_rt: 6500 }, was, drops))
+      .toEqual([expect.stringMatching(/^wasm-crate-budgets.json raises cpl_rt \+6,000 \(6,000 B\) but the lowered buckets' normalized code dropped only 5,550 B of it \(cpl_ir -6,000 budget, -5,550 B code\)/)]);
+    // A cut from a bucket whose code didn't drop funds nothing.
+    expect(budgetTransfer({ cpl_ir: 445800, cpl_check: 100, cpl_rt: 600 }, { ...was, cpl_check: 200 }, drops)).toHaveLength(1);
+    // Lowering alone, and no measurement, are fine; a raise with nothing measured refuses.
+    expect(budgetTransfer({ cpl_ir: 440000, cpl_rt: 500 }, was)).toEqual([]);
+    expect(budgetTransfer({ cpl_ir: 440000, cpl_rt: 600 }, was)).toHaveLength(1);
   });
 
   test('an over-budget crate that grows through a dependency it calls is refused', () => {
