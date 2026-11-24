@@ -159,35 +159,35 @@ Evidence: integration `editors/vscode/smoke.sh`
 ### complete/U27: a browser example with a hidden setup prefix
 Need: completion in a doc or Learn block that hides its setup lines.
 Design: the prefix's names are offered and the cursor maps past the prefix.
-Milestone: M1-critical. Status: gap
-Evidence: none yet; site plans a browser parity test over the shared cases
+Milestone: M1-critical. Status: supported
+Evidence: integration `web/tests/completion-surfaces.mjs` (a std reference example offers the names of its hidden `use` setup, and Enter inserts at the cursor)
 
 ### complete/U28: the practice judge editor and std reference examples
 Need: the same completion wherever the site lets you edit code.
 Design: every editable block runs the same wasm server.
-Milestone: M1-differentiating. Status: gap
-Evidence: none yet
+Milestone: M1-differentiating. Status: supported
+Evidence: integration `web/tests/completion-surfaces.mjs` (the practice editor and a std reference example offer completion)
 
 ### complete/U29: read-only examples offer nothing
 Need: a static example never pops up a menu while you select text in it.
 Design: completion only in editable blocks.
-Milestone: M1-differentiating. Status: gap
-Evidence: none yet
+Milestone: M1-differentiating. Status: supported
+Evidence: integration `web/tests/completion-surfaces.mjs` (a read-only reference solution opens no menu on Ctrl+Space)
 
 ### complete/U30: before the compiler loads, or after it fails
 Need: know completion isn't ready yet rather than think it is broken.
 Design: until cpl.wasm loads, or after it fails, the editor says so and completion recovers when it loads.
-Milestone: M1-critical. Status: gap
-Evidence: none yet
+Milestone: M1-critical. Status: supported
+Evidence: integration `web/tests/completion-surfaces.mjs` (with cpl.wasm delayed the menu says it is loading, then shows the items; with it blocked it says so, and Ctrl+Space recovers)
 
 ### complete/U31: the keyboard in the browser editor
 Need: the keys you use in any editor.
 Design: Ctrl+Space opens the menu, Enter and Tab accept, Esc closes.
-Milestone: M1-differentiating. Status: gap
-Evidence: none yet
+Milestone: M1-differentiating. Status: supported
+Evidence: integration `web/tests/completion-surfaces.mjs` (Ctrl+Space opens, Enter and Tab accept, Esc closes)
 
 ### complete/U32: the menu on a phone
 Need: read and pick a completion on a narrow screen.
 Design: the menu and its detail fit the viewport width.
-Milestone: later. Status: gap
-Evidence: none yet
+Milestone: later. Status: supported
+Evidence: integration `web/tests/completion-surfaces.mjs` (at 375 px the menu and its detail stay on screen)

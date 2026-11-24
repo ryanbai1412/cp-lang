@@ -41,9 +41,6 @@ answer today (`crates/cpl-lsp/tests/completion_contexts.rs`), and over
 the corpus, recall is a ratchet below 100%
 (`crates/cpl-lsp/tests/completion_replay.rs`). The gaps, each a use case:
 
-- The browser editor is checked on every shared context
-  (`web/tests/completion-parity.mjs`), but its loading and keyboard
-  states, hidden setup prefixes and other editable blocks are unchecked.
 - `with lint(` doesn't offer a library's own `@lint`s.
 
 **Against the usual setup.** A C++ contestant has clangd, which completes
