@@ -97,6 +97,7 @@ fn release() -> bool {
 /// The release build needs a `cpl` binary; without `CPL_CONFORM_CLI` it is
 /// the one built next to this runner.
 fn cli_override() -> Option<PathBuf> {
+    let snapshot = SNAPSHOT.lock().unwrap().clone();
     std::env::var_os("CPL_CONFORM_CLI")
         .map(PathBuf::from)
         .or_else(|| {
@@ -108,6 +109,44 @@ fn cli_override() -> Option<PathBuf> {
                 })
                 .flatten()
         })
+        .map(|cpl| snapshot.unwrap_or(cpl))
+}
+
+/// The run's own link to the `cpl` its cases exec, taken once by `run`: a
+/// `cargo build` that relinks `target/*/cpl` mid-run (check.sh runs one
+/// beside the suite) would otherwise fail every tool case in flight.
+static SNAPSHOT: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+
+/// The `cpl` a case execs: `CPL_CONFORM_CLI`, else the one beside cpl-conform.
+fn cli_binary() -> Result<PathBuf, String> {
+    if let Some(held) = SNAPSHOT.lock().unwrap().clone() {
+        return Ok(held);
+    }
+    let cpl = match cli_override() {
+        Some(cpl) => cpl,
+        None => std::env::current_exe()
+            .map_err(|e| format!("cannot find cpl-conform: {e}"))?
+            .with_file_name(if cfg!(windows) { "cpl.exe" } else { "cpl" }),
+    };
+    if !cpl.exists() {
+        return Err(format!("no `cpl` next to cpl-conform ({})", cpl.display()));
+    }
+    Ok(cpl)
+}
+
+/// Links `bin` (or copies it, where links fail) into `dir`, keeping its file
+/// name, so the run keeps the binary it started with whatever replaces `bin`.
+pub fn snapshot(bin: &Path, dir: &Path) -> Result<PathBuf, String> {
+    let name = bin
+        .file_name()
+        .ok_or_else(|| format!("{} names no file", bin.display()))?;
+    std::fs::create_dir_all(dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
+    let to = dir.join(name);
+    let _ = std::fs::remove_file(&to);
+    if std::fs::hard_link(bin, &to).is_err() {
+        std::fs::copy(bin, &to).map_err(|e| format!("cannot copy {}: {e}", bin.display()))?;
+    }
+    Ok(to)
 }
 
 /// Runs `cpl`, killed after `CPL_CONFORM_CASE_TIMEOUT` seconds (default
@@ -255,15 +294,7 @@ pub(crate) struct ToolRun {
 /// (`build`) can't match them.
 fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, String> {
     use std::process::Command;
-    let cpl = match cli_override() {
-        Some(cpl) => cpl,
-        None => std::env::current_exe()
-            .map_err(|e| format!("cannot find cpl-conform: {e}"))?
-            .with_file_name(if cfg!(windows) { "cpl.exe" } else { "cpl" }),
-    };
-    if !cpl.exists() {
-        return Err(format!("no `cpl` next to cpl-conform ({})", cpl.display()));
-    }
+    let cpl = cli_binary()?;
     let dir = std::env::temp_dir().join(format!(
         "cpl-conform-tool-{}-{}",
         std::process::id(),
@@ -797,6 +828,13 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
 
 pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
     let cases = discover(root, filter);
+    let held = cli_binary().ok().and_then(|bin| {
+        let dir = bin
+            .parent()?
+            .join(format!(".cpl-conform-{}", std::process::id()));
+        *SNAPSHOT.lock().unwrap() = Some(snapshot(&bin, &dir).ok()?);
+        Some(dir)
+    });
     let outcomes = runner::parallel_with_db(&cases, |db, case| {
         let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_one(db, case)))
             .unwrap_or_else(|_| CaseOutcome {
@@ -805,6 +843,10 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
             });
         (case.id.clone(), outcome)
     });
+    *SNAPSHOT.lock().unwrap() = None;
+    if let Some(dir) = held {
+        let _ = std::fs::remove_dir_all(dir);
+    }
     SuiteReport::from_outcomes(outcomes)
 }
 

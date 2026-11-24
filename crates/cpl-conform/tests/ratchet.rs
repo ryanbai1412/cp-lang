@@ -477,3 +477,18 @@ fn docs_examples_run_or_stop_as_tagged() {
     assert_eq!(status(&mut db, ex(Some("1 == 1"), Some("R0402"))), "bad");
     assert_eq!(status(&mut db, ex(None, None)), "prose");
 }
+
+#[test]
+fn snapshot_outlives_a_relinked_binary() {
+    let root = std::env::temp_dir().join(format!("cpl-conform-snapshot-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    let bin = root.join("cpl");
+    std::fs::write(&bin, "old").unwrap();
+    let held = cpl_conform::conformance::snapshot(&bin, &root.join("held")).unwrap();
+    std::fs::remove_file(&bin).unwrap();
+    std::fs::write(&bin, "new").unwrap();
+    assert_eq!(held.file_name().unwrap(), "cpl");
+    assert_eq!(std::fs::read_to_string(&held).unwrap(), "old");
+    std::fs::remove_dir_all(&root).unwrap();
+}
