@@ -835,25 +835,26 @@ pub fn ty(name: &str) -> Option<Ty> {
 /// The declaration in `core_traits.cp` of a core trait std has no source
 /// for: its type parameters and its body (R08.1.5).
 pub fn core_trait_decl(name: &str) -> Option<(&'static [ast::Name], &'static [ast::Stmt])> {
-    static DECLS: OnceLock<Vec<ast::Stmt>> = OnceLock::new();
-    let decls = lazy(&DECLS, || {
-        let mut out = Vec::new();
-        for (_, item) in cpl_syntax::parse_file(include_str!("core_traits.cp")).items {
-            for stmt in item.stmts {
-                out.push(stmt);
+    static FILE: OnceLock<cpl_syntax::ParsedFile> = OnceLock::new();
+    let file = lazy(&FILE, || {
+        cpl_syntax::parse_file(include_str!("core_traits.cp"))
+    });
+    for (_, item) in &file.items {
+        for stmt in &item.stmts {
+            if let ast::StmtKind::Trait {
+                name: n,
+                generics,
+                body,
+                ..
+            } = &stmt.kind
+            {
+                if n.text == name {
+                    return Some((generics.as_slice(), body.stmts.as_slice()));
+                }
             }
         }
-        out
-    });
-    decls.iter().find_map(|stmt| match &stmt.kind {
-        ast::StmtKind::Trait {
-            name: n,
-            generics,
-            body,
-            ..
-        } if n.text == name => Some((generics.as_slice(), body.stmts.as_slice())),
-        _ => None,
-    })
+    }
+    None
 }
 
 /// `cell`'s value, built by `init` the first time. `init` is a fn, not a
