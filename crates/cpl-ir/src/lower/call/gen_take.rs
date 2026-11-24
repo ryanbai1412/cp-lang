@@ -1,4 +1,4 @@
-//! `g(a).take(k)` or `x.g(a).take(k)` on a generator: a loop `g` feeds that stops after `k`
+//! `g(a).take(k)`, `x.g(a).take(k)` or a getter's `x.g.take(k)` on a generator: a loop `g` feeds that stops after `k`
 //! values, so only `k` are pulled and an infinite generator gives its first
 //! `k` (R07.1.3).
 
@@ -15,19 +15,22 @@ impl<'a> Lowerer<'a> {
         let ([k], "take") = (args, name.text.as_str()) else {
             return None;
         };
-        let ast::ExprKind::Call { callee, .. } = &base.kind else {
-            return None;
-        };
         if k.name.is_some() {
             return None;
         }
-        let generator = match self.sym(callee) {
+        let callee = match &base.kind {
+            ast::ExprKind::Call { callee, .. } => Some(callee),
+            // `x.g` on a `@get` generator.
+            ast::ExprKind::Field { .. } => None,
+            _ => return None,
+        };
+        let generator = match callee.and_then(|c| self.sym(c)) {
             Some(Sym::Fn(id)) => self.sigs[id].is_generator,
             Some(Sym::GenFn(id)) => matches!(
                 self.gen_fns[id].decl.ret.as_ref().map(|t| &t.kind),
                 Some(ast::TypeKind::Yields(_))
             ),
-            // `x.g(a)`: which `g` only lowering the receiver tells.
+            // `x.g(a)` or `x.g`: which `g` only lowering the receiver tells.
             _ => matches!(
                 self.probe_expr(base, None).kind,
                 ExprKind::Call(id, _) if self.sigs.get(id).is_some_and(|s| s.is_generator)

@@ -246,6 +246,19 @@ fn a_yields_fn_no_loop_walks_has_no_callback_form() {
 }
 
 #[test]
+fn a_getter_generator_take_stops_after_k_like_a_call() {
+    let cpp = cpp(
+        "struct W:\n    xs: List<Int>\n    @get pub fn evens(self) -> yields Int:\n        for x in xs:\n            if x % 2 == 0: yield x\n\
+         let n: Int = read()\nlet w = W([i for i in 0..n])\nprint(w.evens.take(8).count())\n",
+    );
+    assert!(cpp.contains("cpl_each_W_evens"), "{cpp}");
+    assert!(
+        !cpp.contains("std::vector<ll> W_evens("),
+        "the whole getter is built: {cpp}"
+    );
+}
+
+#[test]
 fn a_yields_loop_whose_body_calls_a_fn_value_runs_as_the_fn_yields() {
     let src = |closure: &str| {
         format!(
