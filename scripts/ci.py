@@ -616,7 +616,7 @@ class Tail:
         # First: the hook's 25 s cut allows a commit past any other step, so a slice
         # after them went unrun whenever they were slow (e843b83dc's unparsable std).
         if self.only is None:
-            self._slices(sel.get("slices", "").split())
+            self._slices(sel.get("slices", "").split(), reds_base="HEAD")
         if self.wants("scripts"):
             self.step("checking scripts (scripts/ci.py steps commit)")
             if run_steps("commit", self.cpl, run=self.run):
@@ -945,8 +945,9 @@ class Tail:
                          f" uv run scripts/mutation-score.py --std --since {base} --min 1.0")
         return "std mutants part"
 
-    def _slices(self, slices: list[str]) -> None:
-        """The touched paths' owner-named tests, ahead of the rest; one over 20 s fails."""
+    def _slices(self, slices: list[str], reds_base: str | None = None) -> None:
+        """The touched paths' owner-named tests, ahead of the rest; one over 20 s fails.
+        With `reds_base`, a slice test red there too is main's, not refused (as land.sh's)."""
         if not slices:
             return
         # A separate step, so the hook's 25 s cut during a cold build allows the commit:
@@ -955,7 +956,8 @@ class Tail:
         if self.call([sys.executable, "scripts/affected.py", "--build-slices", *slices]):
             raise Failed(f"the slices' tests do not build; rerun: uv run scripts/affected.py --build-slices {' '.join(slices)}")
         self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
-        if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
+        base = ["--base", reds_base] if reds_base else []
+        if self.call([sys.executable, "scripts/affected.py", "--run-slices", *base, *slices]):
             raise Failed("a touched-path slice failed or took over 20 s; the lines above name it, rerun:"
                          f" uv run scripts/affected.py --run-slices {' '.join(slices)}")
 

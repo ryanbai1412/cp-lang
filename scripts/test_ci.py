@@ -614,7 +614,7 @@ class CommitTest(unittest.TestCase):
         code, ev, _, _, _, _ = self._commit(sel, outs={"git diff --cached": dream})
         self.assertEqual(code, 0)
         self.assertEqual(self.tiers, [("commit", None), ("touched", {"scripts/x.py"})])
-        firsts = ["scripts/affected.py --run-slices a b", "scripts/new_reds.py -- cargo nextest run --workspace --no-fail-fast -E (test(=d))",
+        firsts = ["scripts/affected.py --run-slices --base HEAD a b", "scripts/new_reds.py -- cargo nextest run --workspace --no-fail-fast -E (test(=d))",
                   "target/debug/cpl check scripts/ci.py", "scripts/corpus.py make --changed staged",
                   "scripts/corpus.py verify --only dream --cpl target/debug/cpl p1", "scripts/idioms-catalog.py --check",
                   "scripts/spec-gate.py traits",
