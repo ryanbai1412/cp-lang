@@ -1004,11 +1004,12 @@ impl<'a> Checker<'a> {
                     _ => None,
                 });
                 let mut ctor_defaults = Vec::new();
-                for m in &s.methods {
-                    let ast::StmtKind::Fn(f) = &m.kind else {
-                        continue;
-                    };
-                    for p in f.params.iter().filter(|_| f.name.text == "new") {
+                let new = s.methods.iter().find_map(|m| match &m.kind {
+                    ast::StmtKind::Fn(f) if f.name.text == "new" => Some(f),
+                    _ => None,
+                });
+                if let Some(f) = new {
+                    for p in &f.params {
                         if let (Some(d), Some(ast::TypeKind::Named { name, .. })) =
                             (&p.default, p.ty.as_ref().map(|t| &t.kind))
                         {

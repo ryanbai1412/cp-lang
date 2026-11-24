@@ -127,9 +127,7 @@ impl Checker<'_> {
         // `SegTree<D, P, Int>(..)`: the args left out follow `new`, not the struct's defaults.
         if let ExprKind::Call { callee, .. } = &call.kind {
             if let ExprKind::Generic { args: written, .. } = &callee.kind {
-                if let Some(w) = type_args.get(..written.len()) {
-                    type_args = w.to_vec();
-                }
+                type_args.truncate(written.len());
             }
         }
         if let Some(def) = self.type_def(name) {
@@ -204,9 +202,7 @@ impl Checker<'_> {
                             bindings.insert(g.clone(), d.clone());
                         }
                     }
-                    let outer = self.call_bound_args.replace(bound_args);
-                    self.bind_bound_args(&mut bindings);
-                    self.call_bound_args = outer;
+                    self.bind_written_bound_args(&bound_args, &mut bindings);
                     if !is_generated_ctor && self.sink.len() > before {
                         self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
                     }
