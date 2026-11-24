@@ -48,14 +48,21 @@ fn serve(args: &[&std::ffi::OsStr]) -> (std::process::Child, String, String) {
     }
 }
 
+/// `/live` once it shows `wanted`: each request waits for the next save.
 fn until(base: &str, wanted: &str) -> String {
     let start = Instant::now();
+    let mut changes = 0;
     loop {
-        let live = get(base, "/live");
+        let live = get(base, &format!("/live?after={changes}"));
         if live.contains(wanted) || start.elapsed() > Duration::from_secs(10) {
             return live;
         }
-        std::thread::sleep(Duration::from_millis(50));
+        changes = live
+            .split("\"changes\":")
+            .nth(1)
+            .and_then(|rest| rest.split(|c: char| !c.is_ascii_digit()).next())
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(changes);
     }
 }
 
@@ -70,7 +77,10 @@ fn live_trace_records_each_save_on_the_pinned_input() {
     let (mut server, base, input) = serve(&[file.as_os_str()]);
     assert!(input.contains("stress-1.in"), "{input}");
 
-    assert_eq!(get(&base, "/live"), r#"{"version":1,"error":null}"#);
+    assert_eq!(
+        get(&base, "/live"),
+        r#"{"version":1,"changes":0,"error":null}"#
+    );
     let page = get(&base, "/");
     assert!(page.contains(r#"<meta name="cpl-live" content="1">"#));
     assert!(get(&base, "/trace.json").contains("total += i"));
@@ -80,14 +90,14 @@ fn live_trace_records_each_save_on_the_pinned_input() {
     std::fs::write(&file, SOURCE.replace("total += i", "total += 2 * i")).unwrap();
     assert_eq!(
         until(&base, r#""version":2"#),
-        r#"{"version":2,"error":null}"#
+        r#"{"version":2,"changes":1,"error":null}"#
     );
     assert!(get(&base, "/trace.json").contains("total += 2 * i"));
 
     std::fs::write(&file, format!("{SOURCE}fn (\n")).unwrap();
     let broken = until(&base, "E0101");
     assert!(
-        broken.starts_with(r#"{"version":2,"error":"error[E0101]"#),
+        broken.starts_with(r#"{"version":2,"changes":2,"error":"error[E0101]"#),
         "{broken}"
     );
     assert!(get(&base, "/trace.json").contains("total += 2 * i"));
@@ -111,7 +121,7 @@ fn a_save_right_after_the_serving_line_records_again() {
     let trace = get(&base, "/trace.json");
     server.kill().unwrap();
     server.wait().unwrap();
-    assert_eq!(live, r#"{"version":2,"error":null}"#);
+    assert_eq!(live, r#"{"version":2,"changes":1,"error":null}"#);
     assert!(trace.contains("total += 2 * i"));
 }
 

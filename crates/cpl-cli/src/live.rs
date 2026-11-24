@@ -8,12 +8,20 @@
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
+
+/// The shown run, and a signal each time a save is recorded or fails.
+struct Live {
+    shown: Mutex<Shown>,
+    changed: Condvar,
+}
 
 #[derive(Default)]
 struct Shown {
     version: u64,
+    /// Saves recorded or failed so far: `GET /live?after=N` answers once it isn't N.
+    changes: u64,
     document: String,
     /// Why the latest save did not record: the last good document stays.
     error: Option<String>,
@@ -41,11 +49,14 @@ pub fn serve(path: &str, input: &[u8], input_note: &str, record: Record) -> u8 {
             return crate::EXIT_FAILED;
         }
     };
-    let shown = Arc::new(Mutex::new(Shown {
-        version: 1,
-        document: first,
-        error: None,
-    }));
+    let shown = Arc::new(Live {
+        shown: Mutex::new(Shown {
+            version: 1,
+            document: first,
+            ..Shown::default()
+        }),
+        changed: Condvar::new(),
+    });
     let listener = match TcpListener::bind(("127.0.0.1", 7357))
         .or_else(|_| TcpListener::bind(("127.0.0.1", 0)))
     {
@@ -85,7 +96,7 @@ fn say(text: std::fmt::Arguments) {
     let _ = std::io::stderr().write_fmt(text);
 }
 
-fn watch(path: &str, recorded: Option<Vec<u8>>, shown: &Mutex<Shown>, record: Record) -> ! {
+fn watch(path: &str, recorded: Option<Vec<u8>>, live: &Live, record: Record) -> ! {
     let mut last = recorded;
     loop {
         std::thread::sleep(Duration::from_millis(200));
@@ -95,7 +106,8 @@ fn watch(path: &str, recorded: Option<Vec<u8>>, shown: &Mutex<Shown>, record: Re
         }
         last = now;
         let result = record(None);
-        let mut shown = shown.lock().unwrap();
+        let mut shown = live.shown.lock().unwrap();
+        shown.changes += 1;
         match result {
             Ok(document) => {
                 shown.version += 1;
@@ -111,10 +123,12 @@ fn watch(path: &str, recorded: Option<Vec<u8>>, shown: &Mutex<Shown>, record: Re
                 shown.error = Some(error.trim().to_string());
             }
         }
+        drop(shown);
+        live.changed.notify_all();
     }
 }
 
-fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run, record: Record) {
+fn answer(stream: TcpStream, live: &Live, run: &Run, record: Record) {
     let mut reader = BufReader::new(&stream);
     let mut request = String::new();
     if reader.read_line(&mut request).is_err() {
@@ -135,6 +149,10 @@ fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run, record: Record) {
         .split('&')
         .find_map(|pair| pair.strip_prefix("from="))
         .and_then(|n| n.parse().ok());
+    let after = query
+        .split('&')
+        .find_map(|pair| pair.strip_prefix("after="))
+        .and_then(|n| n.parse::<u64>().ok());
     let posted = request.starts_with("POST ");
     let (kind, body) = if let (Some(from), "/trace.json") = (from, target) {
         let document = record(Some(from)).unwrap_or_else(|error| {
@@ -152,7 +170,13 @@ fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run, record: Record) {
             .unwrap_or_default();
         ("application/json", replay(run, &body))
     } else {
-        let shown = shown.lock().unwrap();
+        let mut shown = live.shown.lock().unwrap();
+        if let (Some(after), "/live") = (after, target) {
+            shown = live
+                .changed
+                .wait_timeout_while(shown, Duration::from_secs(10), |s| s.changes == after)
+                .map_or_else(|poisoned| poisoned.into_inner().0, |(shown, _)| shown);
+        }
         match target {
             "/" | "/index.html" => {
                 let page = crate::trace::html(&shown.document);
@@ -173,7 +197,10 @@ fn answer(stream: TcpStream, shown: &Mutex<Shown>, run: &Run, record: Record) {
                     .map_or("null".to_string(), cpl_json::escape_script_safe_string);
                 (
                     "application/json",
-                    format!("{{\"version\":{},\"error\":{error}}}", shown.version),
+                    format!(
+                        "{{\"version\":{},\"changes\":{},\"error\":{error}}}",
+                        shown.version, shown.changes
+                    ),
                 )
             }
             _ => ("text/plain", String::new()),
