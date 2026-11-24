@@ -333,12 +333,15 @@ fn swap(kind: K, with: &'static str) -> Sites {
     })
 }
 
+/// A worker's runs, the mistakes it planted, its misses and its files.
+type WorkerResult = (usize, Vec<usize>, Vec<(String, String)>, usize);
+
 /// The end of the expression starting at token `i`: the last token before a
 /// depth-0 `stop` token, a line end, or a closer of an enclosing bracket.
 fn expr_end(toks: &[Token], i: usize, stop: &[K]) -> Option<usize> {
     let mut depth = 0i32;
-    for j in i..toks.len() {
-        match toks[j].kind {
+    for (j, tok) in toks.iter().enumerate().skip(i) {
+        match tok.kind {
             K::LParen | K::LBracket | K::LBrace => depth += 1,
             K::RParen | K::RBracket | K::RBrace if depth == 0 => return j.checked_sub(1),
             K::RParen | K::RBracket | K::RBrace => depth -= 1,
@@ -604,9 +607,8 @@ fn a_planted_mistake_gives_one_error() {
             .filter(|d| d.severity == cpl_diag::Severity::Error)
             .collect::<Vec<_>>()
     };
-    let results: Vec<(usize, Vec<usize>, Vec<(String, String)>, usize)> = std::thread::scope(
-        |scope| {
-            let workers: Vec<_> = (0..threads)
+    let results: Vec<WorkerResult> = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
             .map(|t| {
                 let (paths, mistakes, errors) = (&paths, &mistakes, &errors);
                 scope.spawn(move || {
@@ -631,7 +633,7 @@ fn a_planted_mistake_gives_one_error() {
                             }
                             covered.push(m);
                             for round in 0..sites_per.min(sites.len()) {
-                                let seed = 0x0E77_02u64 << 40 ^ (k as u64) << 24 ^ (m as u64) << 8 ^ round as u64;
+                                let seed = 0x0E_77_02u64 << 40 ^ (k as u64) << 24 ^ (m as u64) << 8 ^ round as u64;
                                 let e = &sites[Rng(seed | 1).below(sites.len())];
                                 let copy = format!("{}{}{}", &src[..e.start], e.with, &src[e.end..]);
                                 let (a, b) = (e.start as u32, (e.start + e.with.len()) as u32);
@@ -661,9 +663,8 @@ fn a_planted_mistake_gives_one_error() {
                 })
             })
             .collect();
-            workers.into_iter().map(|w| w.join().unwrap()).collect()
-        },
-    );
+        workers.into_iter().map(|w| w.join().unwrap()).collect()
+    });
     let runs: usize = results.iter().map(|r| r.0).sum();
     let covered: std::collections::BTreeSet<usize> =
         results.iter().flat_map(|r| r.1.iter().copied()).collect();
