@@ -1050,6 +1050,7 @@ fn keep_map_fields(
             && matches!(e.ty, Ty::Map(..) | Ty::HashMap(..))
     };
     let mut wide = BTreeSet::new();
+    let mut copies: Vec<((usize, usize), (usize, usize))> = Vec::new();
     let bodies = [&program.setup, &program.main]
         .into_iter()
         .chain(program.fns.iter().map(|f| &f.body))
@@ -1059,10 +1060,16 @@ fn keep_map_fields(
             Stmt::Let(_, Some(v)) | Stmt::Return(Some(v)) | Stmt::Give(v) => {
                 wide.extend(field_of(v))
             }
-            Stmt::Assign(place, _, v) => {
-                wide.extend(field_of(v));
-                wide.extend(place_field(place));
-            }
+            Stmt::Assign(place, op, v) => match (place_field(place), op) {
+                (Some(_), cpl_ir::AssignOp::Set) if empty(v) => {}
+                (Some(dst), cpl_ir::AssignOp::Set) if field_of(v).is_some() => {
+                    copies.extend(field_of(v).map(|src| (dst, src)));
+                }
+                (dst, _) => {
+                    wide.extend(field_of(v));
+                    wide.extend(dst);
+                }
+            },
             _ => {}
         });
         crate::walk::deep_exprs(body, &mut |e| {
@@ -1093,6 +1100,25 @@ fn keep_map_fields(
                 first = false;
             });
         });
+    }
+    // `a.m = b.m` keeps both narrow only when they hold the same layout.
+    let layout = |n: &BTreeMap<ElemLoc, NarrowLayout>, (s, f): (usize, usize)| {
+        n.get(&ElemLoc::Field(s, f)).cloned()
+    };
+    loop {
+        let before = wide.len();
+        for &(dst, src) in &copies {
+            if wide.contains(&dst)
+                || wide.contains(&src)
+                || layout(narrow, dst) != layout(narrow, src)
+            {
+                wide.insert(dst);
+                wide.insert(src);
+            }
+        }
+        if wide.len() == before {
+            break;
+        }
     }
     narrow.retain(|loc, l| match (loc, l) {
         (ElemLoc::Field(s, f), NarrowLayout::Map(..)) => !wide.contains(&(*s, *f)),

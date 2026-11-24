@@ -257,7 +257,13 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("{p} = std::move({tmp});"));
             }
             AssignOp::Set => {
-                let v = self.as_stored(value, v.text);
+                let text = match self.place_elem_layout(place).cloned() {
+                    Some(l @ cpl_ir::NarrowLayout::Map(..)) => {
+                        self.expr_with_elem_layout(value, Some(&l)).text
+                    }
+                    _ => v.text,
+                };
+                let v = self.as_stored(value, text);
                 self.line(out, &format!("{p} = {v};"))
             }
             AssignOp::Max => twice(self, out, &|p, v| {

@@ -255,6 +255,29 @@ fn a_map_of_ranged_keys_and_values_stores_them_narrow() {
 }
 
 #[test]
+fn a_narrow_map_field_stays_narrow_when_given_an_empty_or_narrow_map() {
+    let src = |o: &str| {
+        format!(
+            "struct Hold:\n    var m: HashMap<0..=9, 0..=9>\n    var o: {o}\nvar h = Hold([], [])\nh.m[1] = 2\nh.o = h.m\nh.m = []\nprint(h.m.len, h.o.len)\n"
+        )
+    };
+    let same = cpp(&src("HashMap<0..=9, 0..=9>"));
+    assert_eq!(
+        same.matches("cpl::HashMap<uint8_t, uint8_t, cpl::CpHash> ")
+            .count(),
+        2,
+        "{same}"
+    );
+    assert!(
+        same.contains("h.m = cpl::HashMap<uint8_t, uint8_t, cpl::CpHash>()"),
+        "{same}"
+    );
+    // Copied into a map of another layout, both keep their full width.
+    let other = cpp(&src("HashMap<0..=9, 0..=999>"));
+    assert!(!other.contains("uint8_t, uint8_t"), "{other}");
+}
+
+#[test]
 fn hash_map_uses_salted_splitmix64_cphash() {
     let cpp = cpp("var hm: HashMap<Int, Int> = []\nhm[42] = 7\nprint(hm.get(42) ?? 0)\n");
     assert!(cpp.contains("struct CpHash"), "{cpp}");
