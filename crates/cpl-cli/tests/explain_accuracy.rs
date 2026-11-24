@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
-use cpp_counts::{deep_copies, is_place, optional_copies, std_functions, CONTAINERS};
+use cpp_counts::{deep_copies, is_container, is_place, optional_copies, std_functions, CONTAINERS};
 
 /// The `.cp` files one directory down from the corpus problems and the
 /// conformance cases.
@@ -214,8 +214,14 @@ fn is_part(text: &str) -> bool {
     true
 }
 
+fn is_part_or_name(text: &str) -> bool {
+    is_part(text) || is_indexed_place(text)
+}
+
 /// A part of a value given out by value: `return self.agg[t];` in a fn
-/// returning a heap type, and `Mat v = c ? f(..) : self.t[p];`. Mirrors
+/// returning a heap type (a container's is [`deep_copies`]'s), `Mat v = c ?
+/// f(..) : self.t[p];` and a tuple's field `std::vector<u8> w =
+/// std::get<1>(top);`. Mirrors
 /// `returned_parts` in scripts/specgate/explain_copies.py.
 fn returned_part_copies(cpp: &str) -> usize {
     let holders = container_structs(cpp);
@@ -259,7 +265,8 @@ fn returned_part_copies(cpp: &str) -> usize {
             .strip_prefix("return ")
             .and_then(|r| r.strip_suffix(';'))
             .is_some_and(|e| {
-                ret.is_some_and(|r| heap(r) && !r.ends_with(['&', '*'])) && is_part(e)
+                ret.is_some_and(|r| heap(r) && !is_container(r) && !r.ends_with(['&', '*']))
+                    && is_part(e)
             });
         let decl = line.strip_prefix("const ").unwrap_or(line);
         let branch = decl.split_once(' ').is_some_and(|(ty, rest)| {
@@ -272,7 +279,16 @@ fn returned_part_copies(cpp: &str) -> usize {
                     .and_then(|r| r.rsplit_once(" : "))
                     .is_some_and(|(_, part)| is_part(part))
         });
-        count += usize::from(returned) + usize::from(branch);
+        let field = decl.split_once(" = std::get<").is_some_and(|(head, rest)| {
+            CONSTRUCTED.iter().any(|c| head.starts_with(c))
+                && rest
+                    .split_once(">(")
+                    .and_then(|(n, r)| Some((n, r.strip_suffix(");")?)))
+                    .is_some_and(|(n, place)| {
+                        n.chars().all(|c| c.is_ascii_digit()) && is_part_or_name(place)
+                    })
+        });
+        count += usize::from(returned) + usize::from(branch) + usize::from(field);
     }
     count
 }
@@ -551,7 +567,8 @@ fn listed_and_made(src: &Path, out: &Path) -> (usize, usize) {
     let listed = rows.iter().filter(|(k, _)| k == "copy").count();
     (
         listed,
-        cpp_copies(&cpp)
+        deep_copies(&cpp)
+            + optional_copies(&cpp)
             + constructed_copies(&cpp)
             + optional_place_copies(&cpp)
             + array_capture_copies(&cpp)
@@ -596,6 +613,10 @@ const CASES: &[&str] = &[
     "std-flow/circulation-zero-lower-bounds.cp",
     "std-flow/matroid-intersection-and-min-cost-circulation-match-brute.cp",
     "std-matrix/min-plus-gaps-fold-in-a-segtree.cp",
+    "traits/Show/Trie--show.cp",
+    "core-01/if-is-branch-view-meets-owned-else.cp",
+    "core-04/spec-block-split-by-search.cp",
+    "core-05/file-body-var-holds-lent.cp",
 ];
 
 #[test]
@@ -636,9 +657,10 @@ fn an_optional_of_a_heap_value_from_a_place_is_a_copy() {
 fn a_part_given_out_by_value_is_a_copy() {
     let cpp = "struct H {\n  std::vector<ll> pre;\n};\n";
     let copies = [
-        "inline std::string all(const B& self) {\n  return self.agg[self.bag.root];\n}",
+        "inline H all(const B& self) {\n  return self.agg[self.bag.root];\n}",
         "inline H blank(const T& self) {\n  return self.m.id;\n}",
         "  H v = p == 0 ? f(self) : self.t[p];",
+        "  std::vector<cpl::u8> w = std::get<1>(top);",
     ];
     for line in copies {
         assert_eq!(returned_part_copies(&format!("{cpp}{line}\n")), 1, "{line}");
