@@ -678,8 +678,8 @@ impl Database {
                 } else {
                     uses(&name.text)
                         || (!is_std_path(path)
-                            && crate::prelude::built_on()
-                                .iter()
+                            && (crate::prelude::built_on().iter())
+                                .chain(crate::prelude::std_type_bounds())
                                 .any(|(word, on)| *on == name.text && uses(word)))
                 };
                 // `count(..)` the language has itself is not the library's

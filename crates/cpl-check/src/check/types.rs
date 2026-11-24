@@ -499,6 +499,12 @@ impl<'a> Checker<'a> {
                     return Ty::Error;
                 }
             }
+            if let Some(s) = (prelude::std_intrinsic_types().iter()).find(|s| s.name.text == name) {
+                let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
+                let bounds = struct_generic_bounds(&generics, &s.bounds);
+                let getters = vec![None; bounds.len()];
+                self.struct_args_meet_bounds(name, span, &generics, &bounds, &getters, &args);
+            }
             return match ty {
                 Ty::Named { name, .. } => Ty::Named { name, args },
                 other => other,
