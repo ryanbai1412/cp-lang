@@ -752,6 +752,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0319"),
+        title: "Generic fn recursion at a growing type",
+        summary: "A generic fn calls itself with a type argument that grows on every call.",
+        explanation: "A generic fn is compiled once for each type it is called with. A call of `wrap<T>` from inside `wrap` at `List<T>` needs `wrap<List<T>>`, which needs `wrap<List<List<T>>>`, and so on without end. Recurse at the same type, or keep the growing part in a value of one fixed type.",
+        trigger: "fn wrap<T>(x: T, n: Int) -> Int:\n    if n == 0:\n        return 0\n    return wrap([x], n - 1)\nprint(wrap(1, 3))\n",
+        fix: "fn wrap<T>(x: T, n: Int) -> Int:\n    if n == 0:\n        return 0\n    return wrap(x, n - 1)\nprint(wrap(1, 3))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

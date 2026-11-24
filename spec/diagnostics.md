@@ -57,6 +57,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0316 | field_bound_from_input | `x: 0..=n` in `struct P`: a field's bounds are fixed before input is read, but `n` is read; bound it by a constant or keep the value outside the struct (R03.1.3) |
 | E0317 | getter_needs_defaults | `@get fn f(self, k: Int)`: a getter is read like a field, so every parameter but `self` needs a default; give `k` one or drop `@get` (R02.6.6) |
 | E0318 | unreachable_arm | unreachable arm: `less` above already matches everything; a lowercase name in a pattern binds, did you mean `Less`? (R01.7.3) |
+| E0319 | growing_instantiation | `wrap` calls itself with `T` nested one level deeper each time (`T`, `List<T>`, ...), so it has no end; generic fns are compiled once per type, so pass the depth as a value or wrap the recursion in a fixed type |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | `a` is a `let`, so it can't be passed as `mut` |

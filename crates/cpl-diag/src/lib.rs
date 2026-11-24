@@ -162,6 +162,8 @@ pub mod codes {
     pub const GETTER_NEEDS_DEFAULTS: Code = Code("E0317");
     /// A `match` arm after one that matches everything (R01.7.3).
     pub const UNREACHABLE_ARM: Code = Code("E0318");
+    /// A generic fn that calls itself at a type that grows each time (`f([x])` in `f<T>`).
+    pub const GROWING_INSTANTIATION: Code = Code("E0319");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");
