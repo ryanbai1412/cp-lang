@@ -5,13 +5,14 @@
 //   print any possible treasure position.
 // Solution: an operation toggles two bulbs in each of columns x, x + 1 and two on each of the
 //   diagonals x + y, x + y + 1, so the XOR of x and the XOR of x + y over lit bulbs never
-//   change: they give the treasure's x and x + y. O(n).
-// Bounds: n: 1..=200_000
+//   change: they give the treasure's x and x + y. Fold them as the bulbs are read. O(n).
+// Bounds: n: 1..=200_000; px, py: -1e9..=1e9
 
 @!multitest
 let n: 1..=200_000 = read()
-let pts: [0..n](x: -10 ** 9..=10 ** 9, y: -10 ** 9..=10 ** 9) = read()
-let x = fold(^, p.x for p in pts)
-let diag = fold(^, p.x + p.y for p in pts)
-let y = diag - x
-print(x, y)
+var (x, diag) = (0, 0)
+repeat n:
+    let (px, py): (-1e9..=1e9, -1e9..=1e9) = read()
+    x ^= px
+    diag ^= px + py
+print(x, diag - x)
