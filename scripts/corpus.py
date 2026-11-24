@@ -1,21 +1,36 @@
 #!/usr/bin/env python3
-"""Organize the corpus: one corpus/problems/<problem>/meta.json per problem.
+"""The corpus package: one corpus/problems/<id>/ layout, one walker.
 
-  scripts/corpus.py build   regenerate the generated fields of every meta.json
-                            and corpus/index.json, keeping hand-written fields
-  scripts/corpus.py check   fail when a meta.json is stale or names a missing file
+  scripts/corpus.py build          regenerate the generated fields of every
+                                   meta.json and corpus/index.json, keeping
+                                   hand-written fields
+  scripts/corpus.py check          fail when a meta.json is stale or names a
+                                   missing file
+  scripts/corpus.py verify <id>... [--cpl PATH]
+                                   verify packages; records `dream_stress` in
+                                   each meta.json
+
+Every tool that walks the corpus calls `problems()` and reads a `Package`;
+nothing else lists corpus/problems (handbook/guidelines/
+problem-packages-checklist.md#r8).
 
 Generated fields: problem, source, submissions, artifacts. Hand-written fields
-(tags, difficulty, dream, spec, notes) survive a rebuild; the 100-problem
-hill-climb fills them in.
+(tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
+survive a rebuild.
 """
-import json, os, re, sys
+import argparse, hashlib, json, os, re, subprocess, sys, tempfile, tomllib
 from collections import Counter, defaultdict
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterator, Optional
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUBS = os.path.join(ROOT, "corpus", "submissions")
 PROBLEMS = os.path.join(ROOT, "corpus", "problems")
+SETS = os.path.join(ROOT, "corpus", "sets")
+CXX_CACHE = os.path.join(ROOT, "target", "corpus-cxx")
 HAND = {"tags": [], "difficulty": None, "dream": "none", "spec": "none", "notes": ""}
+RECORDED = ("dream_stress",)
 STATUSES = {"none", "draft", "reviewed", "gold"}
 EXT = {"CPP": ".cpp", "CPP03": ".cpp", "CPP11": ".cpp", "CPP14": ".cpp", "CPP17": ".cpp",
        "CPP20": ".cpp", "JAVA": ".java", "PY3": ".py", "PYPY3": ".py", "PY2": ".py", "C": ".c"}
@@ -23,6 +38,168 @@ EXT = {"CPP": ".cpp", "CPP03": ".cpp", "CPP11": ".cpp", "CPP14": ".cpp", "CPP17"
 
 def rel(p):
     return os.path.relpath(p, ROOT)
+
+
+@dataclass(frozen=True)
+class Package:
+    """One problem package. Each file is its Path, or None when absent."""
+    id: str
+    dir: Path
+    meta: Optional[Path]
+    port: Optional[Path]
+    spec: Optional[Path]
+    dream: Optional[Path]
+    orig: Optional[Path]
+    gen: Optional[Path]
+    checker: Optional[Path]
+    interactor: Optional[Path]
+    tests: Optional[Path]
+
+    @classmethod
+    def at(cls, d):
+        d = Path(d)
+        f = lambda name: d / name if (d / name).is_file() else None
+        return cls(id=d.name, dir=d, meta=f("meta.json"), port=f("port.cp"), spec=f("spec.cp"),
+                   dream=f("dream.cp"), orig=f("orig.cpp"), gen=f("gen.py"), checker=f("checker.py"),
+                   interactor=f("interactor.py"), tests=f("tests.toml"))
+
+    def read_meta(self):
+        return json.loads(self.meta.read_text()) if self.meta else {}
+
+    def reference(self):
+        """The accepted C++: orig.cpp, else meta.json's first AC .cpp submission."""
+        if self.orig:
+            return self.orig
+        for s in self.read_meta().get("submissions", []):
+            f = s.get("file") or ""
+            if s.get("result") == "AC" and f.endswith(".cpp") and os.path.exists(os.path.join(ROOT, f)):
+                return Path(ROOT, f)
+        return None
+
+    def cases(self):
+        """tests.toml's `[[case]]` tables: `input` (a statement sample), `seed` and `size`, or `args`."""
+        return tomllib.loads(self.tests.read_text()).get("case", []) if self.tests else []
+
+    def case_input(self, case, timeout=60):
+        if "input" in case:
+            text = case["input"]
+        else:
+            argv = [str(a) for a in case["args"]] if "args" in case else [str(case["seed"]), str(case["size"])]
+            text = subprocess.run([sys.executable, str(self.gen), *argv], capture_output=True, text=True,
+                                  timeout=timeout, check=True).stdout
+        return text if text.endswith("\n") else text + "\n"
+
+
+def set_ids(name):
+    """The ids listed in corpus/sets/<name>.txt."""
+    with open(os.path.join(SETS, name + ".txt")) as f:
+        return {l.split("#")[0].strip() for l in f} - {""}
+
+
+def problems(sets=None, ids=None) -> Iterator[Package]:
+    """Every package under corpus/problems, sorted by id; only those in any of
+    `sets` (corpus/sets/<name>.txt) and in `ids` when given."""
+    keep = set(ids) if ids else None
+    if sets:
+        members = set().union(*(set_ids(s) for s in sets))
+        keep = members if keep is None else keep & members
+    if not os.path.isdir(PROBLEMS):
+        return
+    for name in sorted(os.listdir(PROBLEMS)):
+        d = os.path.join(PROBLEMS, name)
+        if os.path.isdir(d) and (keep is None or name in keep):
+            yield Package.at(d)
+
+
+def blob_sha(path):
+    return subprocess.run(["git", "hash-object", str(path)], capture_output=True, text=True, check=True).stdout.strip()
+
+
+def binary(src):
+    """`src` built with g++ -O2, cached by content under target/corpus-cxx/."""
+    os.makedirs(CXX_CACHE, exist_ok=True)
+    key = hashlib.sha1(Path(src).read_bytes()).hexdigest()[:16]
+    exe = os.path.join(CXX_CACHE, key)
+    if not os.path.exists(exe):
+        r = subprocess.run(["g++", "-std=c++17", "-O2", "-o", exe, str(src)], capture_output=True, text=True)
+        if r.returncode:
+            raise RuntimeError("g++: " + r.stderr[:200])
+    return exe
+
+
+def judge_stack():
+    """The judges' stack, so a deep recursion in the accepted C++ runs as it did there."""
+    import resource
+    resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+
+
+STRESS_SIZES = (4, 8, 16, 32)
+
+
+def stress_inputs(pkg):
+    """tests.toml's cases, else gen.py at small sizes: what a solution must agree on."""
+    if pkg.tests:
+        return [pkg.case_input(c) for c in pkg.cases()]
+    if pkg.gen:
+        return [pkg.case_input({"seed": i, "size": s}) for i, s in enumerate(STRESS_SIZES * 2, 1)]
+    return []
+
+
+def judged(pkg, source, inputs, cpl):
+    """Run `source` with `cpl test` on `inputs`, answers from the accepted C++
+    (none for an interactive package): (all passed, cases run)."""
+    ref = None if pkg.interactor else pkg.reference()
+    if not inputs or (ref is None and not pkg.interactor):
+        return False, 0
+    with tempfile.TemporaryDirectory() as cases:
+        exe = binary(ref) if ref else None
+        for i, text in enumerate(inputs, 1):
+            Path(cases, f"{i:02}.in").write_text(text)
+            if exe:
+                r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=60, preexec_fn=judge_stack)
+                if r.returncode:
+                    raise RuntimeError(f"{pkg.id}: accepted C++ exits {r.returncode} on case {i}")
+                Path(cases, f"{i:02}.ans").write_text(r.stdout)
+        judge = ["--interactor", str(pkg.interactor)] if pkg.interactor else \
+                ["--checker", str(pkg.checker)] if pkg.checker else []
+        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge],
+                           cwd=ROOT, capture_output=True, text=True)
+        try:
+            results = json.loads(r.stdout)["cases"]
+        except (ValueError, KeyError):
+            return False, 0
+        return bool(results) and all(c["verdict"] == "ok" for c in results), len(results)
+
+
+def dream_stress(pkg, cpl):
+    """Does dream.cp agree with the accepted C++ on the package's inputs?"""
+    try:
+        ok, n = judged(pkg, pkg.dream, stress_inputs(pkg), cpl)
+    except (RuntimeError, subprocess.SubprocessError, OSError):
+        ok, n = False, 0
+    return {"ok": ok, "cases": n, "sha": blob_sha(pkg.dream)}
+
+
+def record(pkg, field, value):
+    meta = pkg.read_meta()
+    meta[field] = value
+    pkg.meta.write_text(dump(meta))
+
+
+def verify(args):
+    cpl = args.cpl or os.path.join(ROOT, "target", "release", "cpl")
+    wanted = list(problems(ids=args.ids))
+    missing = set(args.ids) - {p.id for p in wanted}
+    if missing:
+        sys.exit(f"corpus: no package {', '.join(sorted(missing))}")
+    failed = 0
+    for pkg in wanted:
+        if pkg.dream and pkg.meta:
+            got = dream_stress(pkg, cpl)
+            record(pkg, "dream_stress", got)
+            print(f"{pkg.id}: dream-stress {'ok' if got['ok'] else 'FAILS'} on {got['cases']} case(s)")
+            failed += not got["ok"]
+    return 1 if failed else 0
 
 
 def canonical_id(problem):
@@ -47,14 +224,10 @@ def artifacts():
                 m = re.match(r"([a-z0-9_]+?)\.(cp)$", f)
                 if m:
                     found[m.group(1)]["dream"].append(rel(os.path.join(d, f)))
-    for q in os.listdir(PROBLEMS) if os.path.isdir(PROBLEMS) else []:
-        pdir = os.path.join(PROBLEMS, q)
-        if not os.path.isdir(pdir):
-            continue
-        for kind, fname in (("dream", "dream.cp"), ("spec", "spec.cp"), ("port", "port.cp"), ("original", "orig.cpp")):
-            f = os.path.join(pdir, fname)
-            if os.path.exists(f):
-                found[q][kind].insert(0, rel(f))
+    for pkg in problems():
+        for kind, f in (("dream", pkg.dream), ("spec", pkg.spec), ("port", pkg.port), ("original", pkg.orig)):
+            if f:
+                found[pkg.id][kind].insert(0, rel(f))
     return found
 
 
@@ -94,6 +267,9 @@ def merged(gen, path):
     meta = dict(gen)
     for k, v in HAND.items():
         meta[k] = old.get(k, v)
+    for k in RECORDED:
+        if k in old:
+            meta[k] = old[k]
     return meta
 
 
@@ -129,10 +305,9 @@ def main(mode):
             open(path, "w").write(dump(meta))
         elif not os.path.exists(path) or open(path).read() != dump(meta):
             errors.append(f"{rel(path)}: stale; run scripts/corpus.py build")
-    if os.path.isdir(PROBLEMS):
-        for d in os.listdir(PROBLEMS):
-            if os.path.isdir(os.path.join(PROBLEMS, d)) and d not in gen:
-                errors.append(f"corpus/problems/{d}: no submissions or artifacts")
+    for pkg in problems():
+        if pkg.id not in gen:
+            errors.append(f"corpus/problems/{pkg.id}: no submissions or artifacts")
     ipath = os.path.join(ROOT, "corpus", "index.json")
     if mode == "build":
         open(ipath, "w").write(dump(index(metas)))
@@ -144,7 +319,17 @@ def main(mode):
     return 1 if errors else 0
 
 
+def cli(argv):
+    ap = argparse.ArgumentParser(usage=__doc__)
+    sub = ap.add_subparsers(dest="mode", required=True)
+    sub.add_parser("build")
+    sub.add_parser("check")
+    v = sub.add_parser("verify")
+    v.add_argument("ids", nargs="+")
+    v.add_argument("--cpl")
+    args = ap.parse_args(argv)
+    return verify(args) if args.mode == "verify" else main(args.mode)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 2 or sys.argv[1] not in ("build", "check"):
-        sys.exit(__doc__)
-    sys.exit(main(sys.argv[1]))
+    sys.exit(cli(sys.argv[1:]))
