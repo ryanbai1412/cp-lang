@@ -37,14 +37,6 @@ fn check(path: &Path) -> cpl_cli::Outcome {
     cpl_cli::run(&["check", path.to_str().unwrap()])
 }
 
-/// Files the checker takes and lowering does not: until `cpl check` ran
-/// lowering too, it called these clean while `cpl run` and `cpl build`
-/// rejected them (`research/archive/audits/anti-slop-audit-1.md`, finding 1). Each is a
-/// gap in `cpl-ir` or the standard library, listed so that it is seen. A
-/// file leaves this list when it builds, and the test below says so;
-/// nothing is to be added to it.
-const NOT_BUILT: &[&str] = &[];
-
 #[test]
 fn the_libraries_ports_and_passing_tests_check_clean() {
     let mut failures = Vec::new();
@@ -139,13 +131,7 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         for path in sources(dir, nested) {
             checked += 1;
             let out = check(&path);
-            let pending = NOT_BUILT.iter().any(|file| path.ends_with(file));
-            if pending && out.code == 0 {
-                failures.push(format!(
-                    "{} checks clean now: take it off `NOT_BUILT`",
-                    path.display()
-                ));
-            } else if !pending && out.code != 0 {
+            if out.code != 0 {
                 failures.push(out.stderr);
             }
         }
