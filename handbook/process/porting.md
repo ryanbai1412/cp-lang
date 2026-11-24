@@ -72,9 +72,12 @@ and `research/design-history/sketches/` show more of the style.
    its severity. A gap that says the language lacks something needs a run:
    try the dream line with `cpl run` on a freshly built `cpl` and quote the
    error. Route each gap to the domain that owns it.
-5. **Self-review against the taste checklist**, then commit the port,
-   dream, friction report and `research/reviews/<id>.md` holding
-   `Score: pending` together, as `port(<id>): <what the program does>`.
+5. **Cold-review against the taste checklist** in
+   `research/reviews/<id>.md`, with a `Score:` and `Dream:` line
+   (`research/reviews/README.md`), then commit the port, dream, friction
+   report and review together, as `port(<id>): <what the program does>`.
+   The debt counter `reviews_pending` only shrinks, so a review cannot land
+   at `Score: pending`.
 
 Ports never edit `std/`, `crates/` or `spec/`. A missing library function or
 a compiler bug is a friction for its owner, with a repro, not a change made

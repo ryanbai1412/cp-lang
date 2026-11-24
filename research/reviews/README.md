@@ -8,8 +8,9 @@ port and for the dream. `scripts/review-check.py` reads the first `Score:`
 line (the port) and `Dream:` line (the dream) and fails `scripts/check.sh --fast` when a
 port newer than `baseline.json` has no dream or no review.
 
-A port author commits `Score: pending` with the port; the reviewer replaces
-it with a score.
+A port lands with its review scored. `Score: pending` is counted by the
+shrink-only debt counter `reviews_pending` (`scripts/debt-ratchet.py`), so a
+new one fails the ratchet.
 
 ## Scores
 
@@ -61,9 +62,8 @@ caps the dream at 3:
   is canonical. Flag only `if x is p:` and `while x is p:` headers.
 
 A dream under 4 goes back to its port's lane (the polish lane if that lane
-has moved on) to rewrite before the port is judged: a new review of such a
-port stays `Score: pending`, and an existing port score is marked
-provisional.
+has moved on) to rewrite before the port is judged: the port's score is
+marked provisional until the dream is rewritten.
 
 ## Sections
 

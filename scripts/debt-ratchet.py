@@ -721,6 +721,12 @@ def ports_unreported(root: Path) -> list[str]:
             if not {f"research/frictions/{p.split('/')[2]}.md", f"research/reviews/{p.split('/')[2]}.md"} <= have]
 
 
+def reviews_pending(root: Path) -> list[str]:
+    """Taste reviews whose port score is still `Score: pending` (research/reviews/README.md):
+    a port lands with its cold review scored, so an unscored review is debt, not a state."""
+    return [f for f in _git(root, "ls-files", "research/reviews/*.md")
+            if any(l.strip() == "Score: pending" for l in _lines(root / f))]
+
 def spec_std_refs(root: Path) -> list[str]:
     """`spec/std` mentions outside history (the stdlib moved to `std/`; decision 307)."""
     return _git(root, "grep", "-n", "spec/std", "--", ".", ":!research", ":!decisions.md",
@@ -2775,6 +2781,7 @@ COUNTERS = {
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
     "ports_unreported": ("corpus ports without a friction report or review (idioms)", ports_unreported, True),
+    "reviews_pending": ("taste reviews still at Score: pending (idioms)", reviews_pending, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),

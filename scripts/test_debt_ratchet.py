@@ -166,6 +166,19 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "-C", str(root), "add", "."], check=True)
             self.assertEqual(dr.ports_unreported(root), [f"{PKGS}/b/port.cp", f"{PKGS}/c/port.cp"])
 
+    def test_reviews_pending_counts_only_an_unscored_port_line(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            files = {"research/reviews/a.md": "# a\n\nScore: pending\nDream: 4/5\n",
+                     "research/reviews/b.md": "# b\n\nScore: 4/5\nDream: pending\n",
+                     "research/reviews/c.md": "# c\n\nScore: 3/5\n\nWas `Score: pending` once.\n"}
+            for f, text in files.items():
+                (root / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / f).write_text(text)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            self.assertEqual(dr.reviews_pending(root), ["research/reviews/a.md"])
+
     def test_dead_code_allows_and_external_crates(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
