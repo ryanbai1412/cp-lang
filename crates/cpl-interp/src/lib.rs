@@ -114,6 +114,7 @@ impl Trap {
             codes::DOMAIN_CAST
         } else if ((m.starts_with("index ") || m.starts_with("swap(")) && m.contains("outside"))
             || (m.starts_with("key ") && m.contains("is not one of the view's keys"))
+            || (m.starts_with("slice ") && m.contains(" is outside "))
         {
             codes::INDEX_OUT_OF_RANGE
         } else {
