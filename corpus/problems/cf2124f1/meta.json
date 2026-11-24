@@ -18,5 +18,10 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "6b0a502292e6d29793a59d6230b3a5ce3950e061"
+ }
 }

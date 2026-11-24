@@ -1,9 +1,12 @@
+import argparse
 import importlib.util
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 _SPEC = importlib.util.spec_from_file_location("corpus", Path(__file__).resolve().parent / "corpus.py")
@@ -85,6 +88,25 @@ class DreamStressTest(Corpus):
     def test_a_disagreeing_dream_is_not(self):
         got = self.run_dream("let _t = read<Int>()\nlet x = read<Int>()\nprint(x + 1)\n")
         self.assertFalse(got["ok"])
+
+    def check(self, dream, meta_json="{}"):
+        d = self.package("p1", dream_cp=dream, orig_cpp=ECHO_CPP, gen_py=GEN, meta_json=meta_json)
+        cpl = os.path.join(corpus.ROOT, "target", "release", "cpl")
+        args = argparse.Namespace(ids=["p1"], cpl=cpl, check=True)
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])):
+            return corpus.verify(args), json.loads((d / "meta.json").read_text())
+
+    def test_check_fails_a_disagreeing_dream_and_writes_nothing(self):
+        self.assertEqual(self.check("let _t = read<Int>()\nlet x = read<Int>()\nprint(x + 1)\n"), (1, {}))
+
+    def test_check_fails_an_agreeing_dream_its_meta_does_not_record(self):
+        self.assertEqual(self.check("let _t = read<Int>()\nlet x = read<Int>()\nprint(x)\n")[0], 1)
+
+    def test_check_passes_an_agreeing_dream_its_meta_records(self):
+        dream = "let _t = read<Int>()\nlet x = read<Int>()\nprint(x)\n"
+        sha = subprocess.run(["git", "hash-object", "--stdin"], input=dream, capture_output=True, text=True).stdout.strip()
+        meta = json.dumps({"dream_stress": {"ok": True, "cases": 8, "sha": sha}})
+        self.assertEqual(self.check(dream, meta)[0], 0)
 
 
 if __name__ == "__main__":

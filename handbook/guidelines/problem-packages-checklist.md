@@ -74,3 +74,10 @@ with a stable id that audits and tests cite. The ideas behind them are in
 **Why:** committed inputs can't be regenerated or resized and bloat the repository forever; a seed list is reviewable and a size change is a one-line edit.
 **Example:** `[[case]] seed = 7 size = 200000` in `tests.toml`; `scripts/corpus-tests.py make` writes inputs and answers to `target/corpus-tests/<id>/`.
 **Enforced by:** `scripts/corpus-tests.py make` writes only under `target/`; `scripts/debt-ratchet.py` (`corpus_test_files`, shrink-only) and `scripts/check.sh --commit`, which refuses a newly added test file. `corpus/audit.py` (`stale-tests-path`) fails when a tracked file outside `corpus/` still names a seeded problem's deleted `tests/`.
+
+### problem-packages/R10
+
+**Rule:** a package's `dream.cp` checks and agrees with the accepted C++ on the package's tests (or its `gen.py` seeds), and `meta.json` records that for the current `dream.cp`.
+**Why:** a dream that checks but answers wrong teaches a wrong idiom (a reversed `partition_point`, a bare-`Int` prefix index) and hides the language gap it was written to find.
+**Example:** `"dream_stress": {"ok": true, "cases": 8, "sha": ...}` in `corpus/problems/cf2147f/meta.json`, written by `scripts/corpus.py verify cf2147f`.
+**Enforced by:** `scripts/corpus.py verify --check` on every staged `dream.cp` (`scripts/check.sh` commit tier); `scripts/debt-ratchet.py` (`dream_unverified`, shrink-only, target 0).

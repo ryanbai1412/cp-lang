@@ -6,9 +6,12 @@
                                    hand-written fields
   scripts/corpus.py check          fail when a meta.json is stale or names a
                                    missing file
-  scripts/corpus.py verify <id>... [--cpl PATH]
+  scripts/corpus.py verify <id>... [--cpl PATH] [--check]
                                    verify packages; records `dream_stress` in
-                                   each meta.json
+                                   each meta.json (--check writes nothing and
+                                   fails unless the dream agrees and meta.json
+                                   already records that for this dream.cp;
+                                   problem-packages/R10)
 
 Every tool that walks the corpus calls `problems()` and reads a `Package`;
 nothing else lists corpus/problems (handbook/guidelines/
@@ -196,9 +199,14 @@ def verify(args):
     for pkg in wanted:
         if pkg.dream and pkg.meta:
             got = dream_stress(pkg, cpl)
-            record(pkg, "dream_stress", got)
             print(f"{pkg.id}: dream-stress {'ok' if got['ok'] else 'FAILS'} on {got['cases']} case(s)")
             failed += not got["ok"]
+            if not args.check:
+                record(pkg, "dream_stress", got)
+            elif got["ok"] and (pkg.read_meta().get("dream_stress") or {}).get("sha") != got["sha"]:
+                print(f"{pkg.id}: meta.json does not record this dream.cp's agreement; "
+                      f"run scripts/corpus.py verify {pkg.id} and stage meta.json", file=sys.stderr)
+                failed += 1
     return 1 if failed else 0
 
 
@@ -327,6 +335,7 @@ def cli(argv):
     v = sub.add_parser("verify")
     v.add_argument("ids", nargs="+")
     v.add_argument("--cpl")
+    v.add_argument("--check", action="store_true")
     args = ap.parse_args(argv)
     return verify(args) if args.mode == "verify" else main(args.mode)
 

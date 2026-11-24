@@ -444,6 +444,13 @@ if [ "$mode" = commit ]; then
             || fail "a staged port's generator or answer disagrees with its accepted C++; the finding above names the port and test"
         uv run --quiet python corpus/differential.py --check --changed staged --cpl "$cpl" \
             || fail "a staged port's cpl run disagrees with its C++; the finding above names the port and test"
+        mapfile -t dreams < <(git diff --cached --name-only --diff-filter=AMR -- 'corpus/problems/*/dream.cp' \
+            | sed 's|^corpus/problems/||; s|/dream\.cp$||')
+        if [ "${#dreams[@]}" -gt 0 ]; then
+            step "staged dreams agree with the accepted C++ (scripts/corpus.py verify --check)"
+            uv run --quiet python scripts/corpus.py verify --check --cpl "$cpl" "${dreams[@]}" \
+                || fail "a staged dream.cp disagrees with its accepted C++ or meta.json lacks its record; run scripts/corpus.py verify <id> and stage meta.json"
+        fi
     fi
     if [ "${sel_idioms_catalog:-0}" = 1 ]; then
         step "lint catalog names only real APIs (scripts/idioms-catalog.py --check)"
