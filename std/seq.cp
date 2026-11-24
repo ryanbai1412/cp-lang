@@ -1103,8 +1103,8 @@ pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>
 /// cost: \(O(\log k)\)
 /// empty: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..3).len == 0`
 /// traps: when an end of `r` is not one of the cuts
-/// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..10).len == 2`
 /// order: pieces left to right, keyed by `P`
+/// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..10).len == 2`
 /// trap: `let e: List<Int> = []; let (domain P, piece) = (0..0).pieces(cuts: e); piece.covering(0..1)`
 pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
     if P.count == 0:
