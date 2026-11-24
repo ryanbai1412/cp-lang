@@ -11,10 +11,10 @@
 @!multitest
 let m: 1..=26 = read()
 let s: Str = read()
+domain Letter = 0..m
+domain Pos = 0..s.len
 
 fn solve() -> Bool:
-    domain Letter = 0..m
-    domain Pos = 0..s.len
     // before[c][x]: the last x in s before cut c.
     var before: [Pos.cuts][Letter]?Pos = None
     for p in Pos:
