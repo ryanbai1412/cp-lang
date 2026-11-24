@@ -718,14 +718,7 @@ fn ring_of<T, S>(over: S) -> ?Ring<T>:
         Some(lift_ring(over))
 
 fn lift_ring<W, S>(over: S) -> Ring<?W>:
-    let add = Monoid<W>.of(over.add)
-    let mul = Monoid<W>.of(over.mul)
-    var g = Ring(
-        None,
-        Some(mul.id),
-        (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(add.op(x, y)) else: a) else: b,
-        (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(mul.op(x, y)) else: None) else: None,
-    )
+    var g = lifted(Monoid<W>.of(over.add), Monoid<W>.of(over.mul))
     if W: TropicalProduct:
         if same(over.mul, +):
             g.most = same(over.add, max)
@@ -744,6 +737,16 @@ fn lift_ring<W, S>(over: S) -> Ring<?W>:
                 )
                 g.peek = Some((v: Int) => W.peek(v))
     g
+
+/// The semiring over `W` lifted to `?W`, `None` the zero. Kept apart from `lift_ring` so each `W`
+/// has one closure per field, whatever semiring built it: a fn pointer, not a `std::function`.
+fn lifted<W>(add: Monoid<W>, mul: Monoid<W>) -> Ring<?W>:
+    Ring(
+        None,
+        Some(mul.id),
+        (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(add.op(x, y)) else: a) else: b,
+        (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(mul.op(x, y)) else: None) else: None,
+    )
 
 /// A number type whose `Mat` products under `Semiring(max, +)` and `Semiring(min, +)` (entries
 /// `?Self`, `None` the zero) run as one flat pass; `Int` has one. A user number type joins by
