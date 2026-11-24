@@ -8,25 +8,32 @@
 use std.bitset.{BitTrie}
 
 const L = 25
-type Word = 0..(1 << L)
+const FULL = (1 << L) - 1
+type Word = 0..=FULL
 struct Group(mask: Word, ends: BitTrie<L>)
 
 fn shrink_groups(groups: List<Group>, x: Word) -> List<Group>:
-    let narrowed = groups.map(g => Group(g.mask & x, g.ends))
-    narrowed.merge_runs(by: g => g.mask, (a, b) => Group(a.mask, a.ends.absorb(b.ends)))
+    var out = List<Group>()
+    for run in groups.runs(by: g => g.mask & x):
+        var ends = BitTrie<L>.new()
+        for g in run:
+            var e = g.ends
+            ends.absorb(mut e)
+        out.push(Group(run.first!.mask & x, ends))
+    out
 
 fn group_contrib(g: Group, pref: Word) -> Int =
-    g.ends.walk(pref ^ g.mask).sum((b, below) => if g.mask.bit(b): below.count << b else: 0)
+    sum(count << bit for (bit, count) in g.ends.walk(pref ^ g.mask) if g.mask.bit(bit))
 
 @!multitest
-let n: 1..=2e5 = read()
+let n: 1..=4e5 = read()
 let a: [0..n]Word = read()
-let pref = a.scan(xor, init: 0)
+let pref = a.scan(^)
 
 var groups = List<Group>()
-print(sum(
-    for (r, x) in a.items:
-        groups.push(Group(Word.last, BitTrie<L>.of(pref[r])))
-        groups = shrink_groups(groups, x)
-        sum(group_contrib(g, pref[r + 1]) for g in groups)
-))
+var total = 0
+for (r, x) in a.items:
+    groups.push(Group(FULL, BitTrie<L>.of(pref[r])))
+    groups = shrink_groups(groups, x)
+    total += sum(group_contrib(g, pref[r + 1]) for g in groups)
+print(total)
