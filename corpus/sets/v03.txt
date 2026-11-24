@@ -504,6 +504,9 @@ mccc3j4
 mccc3j5
 mccc4j3
 mccc4j4
+mccc4j5
+mccc5j3
+mccc5j4
 nccc10s4
 nccc8s3
 noi02p1

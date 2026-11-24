@@ -5,28 +5,22 @@
 // Solution: with r left to spend on w asterisks it is possible iff w <= r <= 26w. Fill the
 //   asterisks left to right, each with the smallest letter that leaves the rest feasible:
 //   max(1, r - 26(w - 1)). O(|S|).
-// Note: runnable on proto/cp.py lib-run today.
 // original: corpus/submissions/5333145.cpp
+let goal: 1..=1_000_000_000 = read()
+var s: [domain P]Char = read()
+assert 1 <= P.count <= 100_000
+fn value(c: Char) -> 1..=26 = c - 'a' + 1
 
-let k: Int = read()
-var s: Str = read()
-
-var rem = k
-var wild = 0
-for i in 0..s.len:
-    let ch = s[i]
-    if ch == '*':
-        wild += 1
-    else:
-        rem -= ch - 'a' + 1
-
-if rem < wild or rem > 26 * wild:
+// r left to spend on w asterisks is feasible iff w <= r <= 26w
+var wild = s.count(c => c == '*')
+var left = goal - sum(value(c) for c in s if c != '*')
+if not (wild <= left <= 26 * wild):
     print("Impossible")
 else:
-    for i in 0..s.len:
-        if s[i] == '*':
+    for p in P:
+        if s[p] == '*':
             wild -= 1
-            let d = max(1, rem - 26 * wild)
-            s[i] = 'a' + (d - 1)
-            rem -= d
-    print(s)
+            let d = max(1, left - 26 * wild)
+            s[p] = 'a' + (d - 1)
+            left -= d
+    print(Str(s))
