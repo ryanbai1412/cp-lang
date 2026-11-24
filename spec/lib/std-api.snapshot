@@ -1506,8 +1506,8 @@ std/seq.cp: Rev.src(self) -> S
 std/seq.cp: Rev.take(self, k: Int) -> Rev<Slice<S>>
 std/seq.cp: Rev.take_last(self, k: Int) -> Rev<Slice<S>>
 std/seq.cp: Ring.from(self, i: D) -> yields D
-std/seq.cp: Ring.maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>
-std/seq.cp: Ring.minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>
+std/seq.cp: Ring.maximal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>
+std/seq.cp: Ring.minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>
 std/seq.cp: Ring.next(self, i: D) -> D
 std/seq.cp: Ring.prev(self, i: D) -> D
 std/seq.cp: Ring.span(self, start: D, len: Int) -> RingRange<D>
@@ -1593,13 +1593,13 @@ std/seq.cp: map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U>
 std/seq.cp: max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
 std/seq.cp: max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
 std/seq.cp: max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>
-std/seq.cp: maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>
+std/seq.cp: maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>
 std/seq.cp: mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64
 std/seq.cp: merge_sorted<A: Indexed, B: Indexed, T, K>(self: A, b: B, by: T -> K = x => x) -> List<T>
 std/seq.cp: min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
 std/seq.cp: min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
 std/seq.cp: min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>
-std/seq.cp: minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>
+std/seq.cp: minimal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>
 std/seq.cp: minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T)
 std/seq.cp: next_permutation<S: IndexedMut>(mut self: S) -> Bool
 std/seq.cp: next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D
