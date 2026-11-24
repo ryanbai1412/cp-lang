@@ -306,6 +306,11 @@ where
                         let t0 = Instant::now();
                         let (key, val) = work(&mut db, &items[idx]);
                         let secs = t0.elapsed().as_secs_f64();
+                        // Named as it finishes, so a job cut off by its timeout still
+                        // says where its time went.
+                        if secs > 30.0 {
+                            eprintln!("cpl-conform: {key} took {secs:.0} s");
+                        }
                         CASE_SECONDS.lock().unwrap().push((key.clone(), secs));
                         results.lock().unwrap().insert(key, val);
                     }

@@ -1472,6 +1472,11 @@ def seed(args):
 
 
 
+# A package past this is named as it finishes, so a CI job cut off by its
+# timeout still says where its time went.
+SLOW_PACKAGE = 30
+
+
 def verify(args):
     import concurrent.futures
     cpl = args.cpl or default_cpl()
@@ -1494,9 +1499,15 @@ def verify(args):
     if not opt("no_run") and set(modes) - {"header"}:
         require_cpl(cpl)
     ctx = Context(cpl, run=not opt("no_run"), named=() if opt("changed") else ids)
+    def timed(pkg):
+        t0 = time.monotonic()
+        fs = findings(pkg, modes, ctx)
+        if (secs := time.monotonic() - t0) > SLOW_PACKAGE:
+            print(f"corpus: {pkg.id} took {secs:.0f} s", file=sys.stderr, flush=True)
+        return fs
     try:
         with concurrent.futures.ThreadPoolExecutor(opt("j", os.cpu_count() or 4)) as pool:
-            found = sorted(f for fs in pool.map(lambda p: findings(p, modes, ctx), wanted) for f in fs)
+            found = sorted(f for fs in pool.map(timed, wanted) for f in fs)
     except InfraError as e:
         print(f"corpus: no verdict, the toolchain failed: {e}", file=sys.stderr)
         return 2
