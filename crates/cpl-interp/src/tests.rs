@@ -641,10 +641,11 @@ print(by_second(xs))
             f.name
         );
         assert!(count("CmpSmallTuple") > 0, "{ops:?}");
+        // The comparator closure takes its entries in Int registers too.
         assert_eq!(
             count("BoxSmallTuple"),
-            2 * count("CallClosure"),
-            "{} boxes an entry outside the comparator call: {ops:?}",
+            0,
+            "{} boxes an entry: {ops:?}",
             f.name
         );
     }

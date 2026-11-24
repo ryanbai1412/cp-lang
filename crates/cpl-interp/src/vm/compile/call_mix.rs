@@ -55,7 +55,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst_v,
                 dst_some,
                 ret_mode,
-                tuples_boxed: false,
             },
             span,
         );
@@ -145,7 +144,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let mut ni = 0usize;
         let mut nv = 0usize;
         for (k, &ty) in tys.iter().enumerate() {
-            if let Some(len) = callee.and_then(|f| tuple_param_len(self.program, f, k)) {
+            if let Some(len) = arg_tuple_len(self.program, callee, ty, &args[k], k) {
                 ni += len as usize;
             } else if ScalarKind::of_ty(ty, self.program).is_some() {
                 ni += 1;
@@ -155,7 +154,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 nv += 1;
             }
         }
-        if ni > 8 || nv > 8 {
+        if ni > 16 || nv > 8 {
             return None;
         }
         Some((takes, ni, nv))
@@ -173,7 +172,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     ) -> Option<MixArgs> {
         let (takes, ni, nv) = self.mix_arg_plan(tys, args, callee)?;
         let program = self.program;
-        let tuple_len = |k: usize| callee.and_then(|f| tuple_param_len(program, f, k));
+        let tuple_len = |k: usize| arg_tuple_len(program, callee, tys[k], &args[k], k);
         let mut i_args: Vec<u16> = vec![0; ni];
         let mut v_args: Vec<(u16, bool)> = vec![(0, false); nv];
         let mut writebacks: Vec<WriteBack> = Vec::new();
@@ -765,5 +764,21 @@ impl Compiler<'_, '_> {
             _ => return false,
         };
         small_tuple_shape(ret, self.program).is_some_and(|(l, _)| l == len)
+    }
+}
+
+/// The Int registers a small tuple arg takes: as the fn's param holds it, or
+/// for a closure (whose params all hold them so) any arg that isn't `mut`.
+fn arg_tuple_len(
+    program: &cpl_ir::Program,
+    callee: Option<&cpl_ir::Function>,
+    ty: &cpl_ir::Ty,
+    arg: &Arg,
+    k: usize,
+) -> Option<u8> {
+    match callee {
+        Some(f) => tuple_param_len(program, f, k),
+        None if matches!(arg, Arg::Value(_)) => small_tuple_shape(ty, program).map(|(l, _)| l),
+        None => None,
     }
 }

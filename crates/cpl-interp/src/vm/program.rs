@@ -166,7 +166,7 @@ pub(super) fn recognize_fast_closure(
 }
 
 /// The fn `def`'s body calls with its params in order, when that is all it
-/// does. Its small tuple args come boxed, as the closure's caller lays them out.
+/// does and the fn takes them as the closure's caller lays them out.
 fn forward_of(def: &cpl_ir::ClosureDef, fns: &[Option<Chunk<'_>>]) -> Option<u16> {
     if !def.captures.is_empty() || !def.muts.is_empty() || def.body.stmts.len() != 1 {
         return None;

@@ -43,7 +43,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         res
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn exec_chunk_mix(
         &mut self,
         compiled: &CompiledProgram<'p>,
@@ -52,7 +51,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         args_v: &mut [Value],
         params: &[cpl_ir::ParamDef],
         vm_regs_i: &mut Vec<i64>,
-        tuples_boxed: bool,
     ) -> Res<ExecExit> {
         let base_i = vm_regs_i.len();
         vm_regs_i.resize(base_i + chunk.num_i, 0);
@@ -72,15 +70,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 SlotLoc::V(r) => {
                     regs_v[r as usize] = std::mem::replace(&mut args_v[iv], Value::Unit);
-                    iv += 1;
-                }
-                SlotLoc::SmallTuple { base, len, .. } if tuples_boxed => {
-                    let b = base_i + base as usize;
-                    if let Value::Tuple(TupleVal::Boxed(fs)) = &args_v[iv] {
-                        for (k, f) in fs.iter().take(len as usize).enumerate() {
-                            vm_regs_i[b + k] = ScalarKind::unbox_val(f);
-                        }
-                    }
                     iv += 1;
                 }
                 SlotLoc::SmallTuple { base, len, .. } => {

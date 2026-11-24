@@ -192,6 +192,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 slot_map.push(SlotLoc::OptI { val, some, kind });
             } else if idx >= param_count
                 || tuple_params.is_some_and(|f| tuple_param_len(program, f, idx).is_some())
+                || cur_fn.is_none()
             {
                 if let Some((len, kinds)) = small_tuple_shape(&local.ty, program) {
                     let base = next_i;

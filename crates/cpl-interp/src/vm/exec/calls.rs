@@ -749,7 +749,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 dst_v,
                 dst_some,
                 ret_mode,
-                tuples_boxed,
             } => {
                 let f = &self.program.fns[fn_id as usize];
                 self.tick(spans[cur_pc])?;
@@ -767,7 +766,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         SlotLoc::I(..) => ni += 1,
                         SlotLoc::OptI { .. } => ni += 2,
                         SlotLoc::V(_) => nv += 1,
-                        SlotLoc::SmallTuple { .. } if tuples_boxed => nv += 1,
                         SlotLoc::SmallTuple { len, .. } => ni += *len as usize,
                     }
                 }
@@ -805,7 +803,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     &mut regs_v[abv..abv + nv],
                     &f.params,
                     vm_regs_i,
-                    tuples_boxed,
                 );
                 self.unsuspend();
                 self.frameless_base = frameless;
@@ -862,7 +859,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         dst_v,
                         dst_some,
                         ret_mode,
-                        tuples_boxed: true,
                     };
                     let (bi, rv) = (base_i, regs_v);
                     return self
@@ -1043,11 +1039,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     std::mem::replace(&mut regs_v[iv], Value::Unit);
                                 iv += 1;
                             }
-                            SlotLoc::SmallTuple { .. } => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                )
+                            SlotLoc::SmallTuple { base, len, .. } => {
+                                let n = len as usize;
+                                vm_regs_i.copy_within(ii..ii + n, c_base_i + base as usize);
+                                ii += n;
                             }
                         }
                     }
@@ -1130,9 +1125,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let mut boxed = Vec::with_capacity(def.params.len());
                     let mut ii = arg_base_i as usize;
                     let mut iv = arg_base_v as usize;
-                    for &pslot in &def.params {
+                    for (k, &pslot) in def.params.iter().enumerate() {
                         let ty = &def.locals[pslot].ty;
-                        if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
+                        let tuple = (muts & 1 << k == 0)
+                            .then(|| crate::vm::scalar::small_tuple_shape(ty, self.program))
+                            .flatten();
+                        if let Some((len, kinds)) = tuple {
+                            let fs = crate::value::Shared::collect(len as usize, |f| {
+                                kinds[f].box_val(regs_i[ii + f])
+                            });
+                            boxed.push(Value::Tuple(TupleVal::Boxed(fs)));
+                            ii += len as usize;
+                        } else if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
                             boxed.push(kind.box_val(regs_i[ii]));
                             ii += 1;
                         } else if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
