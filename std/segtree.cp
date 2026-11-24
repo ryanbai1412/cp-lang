@@ -716,7 +716,7 @@ fn at_is_a_writable_leaf():
             a[i] += x
             st.at(i) += x
         else:
-            a[i] = max(a[i], x)
+            a[i] max= x
             st.at(i) max= x
         let l = V.nth(rand(0, 8))
         let r = V.nth(rand(l.ord, 8))
