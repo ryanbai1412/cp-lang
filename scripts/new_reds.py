@@ -152,25 +152,52 @@ def at_base(cmd, tests, base, common):
         return rerun_at_base(cmd, tests, base, common, wt, target)
 
 
+STALE_CPL = "this dev `cpl` reads std from"
+
+
+def still_at(wt, base):
+    """Whether the worktree `wt` is still exactly `base`: its HEAD, and no tracked file changed.
+    A land.sh from before per-land slots (or any base_checkout outside base_slot) can still
+    check out another tree under a run, and that run measured neither base (Tools' and L2's
+    silent_unknowns rows: cause:call +8 "there", +18 at a clean base)."""
+    return (git("rev-parse", "HEAD", cwd=wt, check=False) == git("rev-parse", f"{base}^{{commit}}", cwd=wt, check=False)
+            and git("diff", "--quiet", "HEAD", "--", cwd=wt, check=False, code=True) == 0)
+
+
+def unjudgeable(code, out, wt, base):
+    """Why the base run at `wt` can't stand for `base`, if it can't."""
+    if code not in (0, 4, 100):
+        return "didn't build"
+    if STALE_CPL in out:
+        # Tools' trace_goldens at 82ccb3f98: a cpl built for another checkout's std
+        # failed the base's tests, and the red passed as main's.
+        return "ran a cpl built for another checkout"
+    if not still_at(wt, base):
+        return "moved to another tree during the run"
+    return None
+
+
 def rerun_at_base(cmd, tests, base, common, wt, target):
     env = {**base_env(), "CARGO_TARGET_DIR": str(target)}
     print(f"new-reds: rerunning {len(tests)} failing test(s) at the base {base[:9]}", file=sys.stderr)
     code, out = tee(only(cmd, tests), cwd=wt, env=env)
-    if code not in (0, 4, 100):
+    why = unjudgeable(code, out, wt, base)
+    if why:
         # perf's ord and bw: the base "didn't build" (a test file missing from the
         # worktree, a generated msgs constant not found), and its reds counted as new.
-        print(f"new-reds: the base {base[:9]} didn't build; rebuilding its worktree and target and trying once more",
+        print(f"new-reds: the base {base[:9]} {why}; rebuilding its worktree and target and trying once more",
               file=sys.stderr)
         wt = base_checkout(common, base, fresh=True, wt=wt)
         # A stale build there (d2fc481a's cpl-interp against an old cpl-rt) fails the
         # same way in a fresh worktree; the slot is ours, so its target starts clean too.
         shutil.rmtree(target, ignore_errors=True)
         code, out = tee(only(cmd, tests), cwd=wt, env=env)
+        why = unjudgeable(code, out, wt, base)
     failed = set(failing_tests(out))
-    if code not in (0, 4, 100):
-        print(f"new-reds: the base {base[:9]} doesn't build in {wt}, so its tests can't be compared; "
+    if why:
+        print(f"new-reds: the base {base[:9]} {why} in {wt}, so its tests can't be compared; "
               "the reds below count as this change's", file=sys.stderr)
-        return {t: "fail" if t in failed else "unbuilt" for t in tests}, findings(out)
+        return {t: "unbuilt" for t in tests}, {}
     return {t: "fail" if t in failed else "pass" for t in tests}, findings(out)
 
 

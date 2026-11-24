@@ -158,6 +158,25 @@ class FullSuite(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("NEW red", said)
 
+class BaseVerdicts(unittest.TestCase):
+    def test_a_base_worktree_that_left_the_base_during_the_run_is_not_cached(self):
+        # Tools' and L2's rows read a swapped tree's numbers as the base's.
+        import contextlib
+        import tempfile
+        import new_reds
+        wt = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        (wt / conform_staged.PREFIX / "a").mkdir(parents=True)
+        (wt / conform_staged.PREFIX / "a" / "wrong.cp").write_text("")
+        slot = contextlib.contextmanager(lambda common, base: iter([(wt, wt / "target")]))
+        done = subprocess.CompletedProcess([], 0, OUT, "")
+        with mock.patch.object(new_reds, "base_slot", slot), \
+                mock.patch.object(new_reds, "still_at", lambda wt, base: False), \
+                mock.patch.object(new_reds, "save_cache") as save, \
+                mock.patch("sys.stderr"):
+            got = conform_staged.base_verdicts(["a/wrong.cp"], "HEAD", run=lambda *a, **k: done)
+        self.assertEqual(got, {"a/wrong.cp": "unbuilt"})
+        save.assert_not_called()
+
 
 class Check(unittest.TestCase):
     """`--check`: a corpus program failing `cpl check` refuses only if it checks at the base."""

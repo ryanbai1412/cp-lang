@@ -313,6 +313,59 @@ class LandTest(unittest.TestCase):
         self.assertIn("pre-existing red", r.stderr)
         self.assertNotIn("NEW", r.stderr)
 
+    def base_red(self, fake, files=None):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            fake + "echo '        FAIL [   0.010s] cpl-cli::trace_goldens red_on_main'\nexit 100\n")
+        for name, text in (files or {}).items():
+            (theirs / name).write_text(text)
+        self.commit(theirs, "main is red")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "origin", "main")
+        return ours
+
+    def run_new_reds(self, ours, **env):
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        env = {**{k: v for k, v in os.environ.items() if k != "CPL_BASE_TARGET"}, **env}
+        return subprocess.run(cmd, cwd=ours, env=env, capture_output=True, text=True)
+
+    def test_a_base_run_of_a_cpl_built_for_another_checkout_is_rebuilt_then_judged(self):
+        # Tools at 82ccb3f98: trace_goldens failed at the base on a stale dev cpl from the
+        # shared base worktree, and the red passed as main's.
+        stale = "echo 'cpl: this dev `cpl` reads std from /gone/std, but runs from the checkout at /x'\n"
+        ours = self.base_red(f'#!/bin/sh\n[ ! -f "$CARGO_TARGET_DIR/stale" ] || {stale}')
+        common = Path(git(ours, "rev-parse", "--path-format=absolute", "--git-common-dir").strip())
+        (common / "cpl-base-target").mkdir()
+        (common / "cpl-base-target" / "stale").write_text("built in another checkout\n")
+        r = self.run_new_reds(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("ran a cpl built for another checkout; rebuilding its worktree and target", r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+
+    def test_a_base_run_whose_cpl_stays_stale_refuses_and_is_never_main_red(self):
+        stale = "echo 'cpl: this dev `cpl` reads std from /gone/std, but runs from the checkout at /x'\n"
+        ours = self.base_red(f'#!/bin/sh\n[ -z "$CARGO_TARGET_DIR" ] || {stale}')
+        r = self.run_new_reds(ours)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("ran a cpl built for another checkout in", r.stderr)
+        self.assertIn("can't be compared", r.stderr)
+        self.assertNotIn("pre-existing red", r.stderr)
+
+    def test_a_base_tree_that_moves_during_its_run_is_rerun_before_it_is_cached(self):
+        # Tools' and L2's silent_unknowns rows read cause:call +8 "there" where a clean run
+        # at the same base gives +18: the shared worktree had another tree under the run.
+        mark = self.tmp / "moved-once"
+        ours = self.base_red('#!/bin/sh\n[ -z "$CARGO_TARGET_DIR" ] || [ -f "$MARK" ] || '
+                             '{ touch "$MARK"; echo another > tree.txt; }\n', {"tree.txt": "base\n"})
+        r = self.run_new_reds(ours, MARK=str(mark))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("moved to another tree during the run; rebuilding", r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+        common = Path(git(ours, "rev-parse", "--path-format=absolute", "--git-common-dir").strip())
+        tree = git(ours, "rev-parse", "origin/main^{tree}").strip()
+        cache = json.loads((common / "cpl-base-tests" / f"{tree}.json").read_text())
+        self.assertEqual(cache["cpl-cli::trace_goldens red_on_main"], "fail")
+
     def test_a_base_that_doesnt_build_is_rebuilt_before_its_reds_count_as_new(self):
         # perf's ord: the base worktree lacked a test file ("couldn't find file"), the
         # base run failed to build, and two reds main had too refused the land.
