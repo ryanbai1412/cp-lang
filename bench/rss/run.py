@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Peak RSS of I/O-bound, zero-filled and sorting programs: each bench/rss/X.cp, built by `cpl build`,
+"""Peak RSS of I/O-bound, zero-filled, sorting and buffer-reusing programs: each bench/rss/X.cp, built by `cpl build`,
 against the matched X_hand.cpp (scanf/printf) on the same generated input,
 both with g++ -std=c++17 -O2, measured by scripts/corpus.py's launcher.
 
@@ -69,6 +69,7 @@ CASES = {
     "sort_boxes": lambda: "20\n",  # sort() 2^20 (l: Int, r: Int) records, btoi08p6's boxes
     "cf2124c": lambda: gen("cf2124c"),  # b.adjacent over 6e5 [0..n]1..=1e9: 4 B cells, not 8
     "aho_corasick": lambda: aho_words(50_000, 1000),  # 56k states over 3 used letters of 26
+    "row_lists": lambda: "50000 200\n",  # [Row]List<Int> made anew 200 times, as dmpg16g2 does
 }
 
 

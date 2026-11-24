@@ -33,6 +33,28 @@ fn a_local_list_that_stays_in_its_fn_is_one_buffer() {
 }
 
 #[test]
+fn a_reused_row_of_lists_is_cleared_before_it_is_filled_but_a_flat_row_is_not() {
+    let cpp = cpp(concat!(
+        "let n: 1..=100 = read()\n",
+        "domain Row = 0..n\n",
+        "var total = 0\n",
+        "for r in 0..n:\n",
+        "    var rows: [Row]List<Int> = []\n",
+        "    rows[Row(r)].push(r)\n",
+        "    var seen: [Row]Int = 0\n",
+        "    seen[Row(r)] = r\n",
+        "    for row in rows: total += row.len\n",
+        "    for x in seen: total += x\n",
+        "print(total)\n",
+    ));
+    assert!(cpp.contains("    seen.assign(Row_len, 0);"), "{cpp}");
+    assert!(
+        cpp.contains("static std::vector<std::vector<ll>> rows;\n    rows.clear(); rows.assign(Row_len, std::vector<ll>());"),
+        "{cpp}"
+    );
+}
+
+#[test]
 fn a_list_a_comprehension_built_moves_into_the_variable() {
     let cpp = cpp("let n: Int = read()
 var zs: List<Int> = []

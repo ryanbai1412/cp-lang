@@ -747,11 +747,18 @@ impl<'p> Emitter<'p> {
                         let args =
                             self.fill_args_with_layout(dims, value.as_deref(), elem_l.as_ref());
                         if reused {
-                            // One buffer, filled again each time round.
+                            // One buffer, filled again each time round: it keeps its room,
+                            // but cells that own storage are made anew (`clear` first), so no
+                            // cell keeps more than a fresh one would.
+                            let nested = matches!(&ty, Ty::List(elem) | Ty::Array { elem, .. }
+                                if crate::lend::holds_heap(self.program, elem));
                             self.line(out, &format!("static {cpp} {name};"));
                             self.line(
                                 out,
                                 &match value {
+                                    Some(_) if nested => {
+                                        format!("{name}.clear(); {name}.assign({args});")
+                                    }
                                     Some(_) => format!("{name}.assign({args});"),
                                     None => format!("{name}.clear(); {name}.resize({args});"),
                                 },
