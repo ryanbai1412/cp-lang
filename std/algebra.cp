@@ -170,6 +170,30 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
         acc = k.op(acc, x)
     acc
 
+/// `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`, with `op` anything
+/// `Monoid.of` accepts (`*` when left out). `k = 0` gives the identity of `op`. Powers of one
+/// value commute, so any associative `op` works: a number, `Mod<P>`, an `Affine` map
+/// (`op: Affine.monoid()`), a permutation (`op: Monoid(id, compose)`).
+///
+/// cost: \(O(\log k)\) calls of `op`
+/// empty: `k == 0` gives the identity of `op`
+/// traps: when `k < 0`
+/// example: `pow(3, 4) == 81`
+/// example: `pow(3, 0) == 1`
+/// example: `pow(3, 5, op: +) == 15`
+/// example: `pow(Affine(2, 1), 3, op: Affine.monoid()).eval(0) == 7`
+pub fn pow<T, M>(x: T, k: Int, op: M = (*)) -> T:
+    assert k >= 0, "pow: a negative exponent"
+    let m = Monoid<T>.of(op)
+    var acc = m.id
+    var base = x
+    var e = k
+    while e > 0:
+        if e % 2 == 1: acc = m.op(acc, base)
+        e /= 2
+        if e > 0: base = m.op(base, base)
+    acc
+
 /// Maximum non-empty subarray summary (Kadane monoid).
 /// Concatenation (`+` or `MaxSub.join`) is associative with identity `MaxSub.zero` in \(O(1)\);
 /// `s.scale(k)` scales every element by non-negative `k` in \(O(1)\).
@@ -723,3 +747,16 @@ pub const flip: FlipAction = FlipAction()
 /// example: `let f = (a: Int, b: Int) => a * 10 + b; fold(f.opt(), [Some(1), None, Some(2)]) == Some(12)`
 pub fn opt<T>(self: (T, T) -> T) -> Monoid<?T> =
     Monoid(None, (a: ?T, b: ?T) => if let x = a: (if let y = b: Some(self(x, y)) else: a) else: b)
+
+@test
+fn pow_matches_repeated_op():
+    for k in 0..20:
+        var mul = 1
+        var total = 0
+        var aff = Affine<Int>.id()
+        for _ in 0..k:
+            mul *= 3
+            total += 3
+            aff = Affine.then(aff, Affine(2, 1))
+        assert pow(3, k) == mul and pow(3, k, op: +) == total
+        assert pow(Affine(2, 1), k, op: Affine.monoid()).eval(5) == aff.eval(5)

@@ -936,6 +936,15 @@ fn dijkstra_matches_brute_relaxation():
                         if d[v] == None or du + w < d[v]!: d[v] = Some(du + w)
             let p = dijkstra(g, from: [(s, 0)])
             for t in V: assert p[t] == d[t]
+            var b: [V]?Int = None
+            b[s] = Some(0)
+            for _ in V:
+                for e in E:
+                    let (u, v, w) = (es[e].u, es[e].v, es[e].w)
+                    if let bu = b[u]:
+                        if b[v] == None or max(bu, w) < b[v]!: b[v] = Some(max(bu, w))
+            let q = dijkstra(g, from: [(s, 0)], step: max)
+            for t in V: assert q[t] == b[t]
 
 @test
 fn topo_orders_a_dag_and_rejects_a_cycle():
@@ -1296,19 +1305,22 @@ pub fn bfs01<V, G: WeightedNext<V, Int>>(
                 else: dq.push(v)
     Paths(dist:, back:, order:)
 
-/// Shortest distances for non-negative weights, from `(vertex, starting distance)` pairs (a
-/// vertex given twice keeps the smaller start). A binary heap with lazy deletion; `until:
-/// t` stops once `t` is settled.
+/// Shortest distances from `(vertex, starting distance)` pairs (a vertex given twice keeps the
+/// smaller start). `step` is how a path's cost grows by one arc, anything `Monoid.of` accepts:
+/// `+` (the sum of weights) by default, `max` for the bottleneck path. A binary heap with lazy
+/// deletion; `until: t` stops once `t` is settled.
 ///
 /// cost: \(O((n + m) \log m)\)
 /// empty: an empty `from` reaches nothing
 /// ties: a vertex's back pointer is the first arc to give it its final distance (only strict improvements replace it)
-/// traps: on a negative weight, when it is read
+/// traps: when an arc makes a path cheaper (a negative weight under `+`), when it is read
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; let p = dijkstra(Graph.directed(es), from: [(V(0), 0)]); p[1] == Some(3) and p.path(1) == Some([0, 2, 1])`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; dijkstra(Graph.directed(es), from: [(V(0), 10)])[1] == Some(14)`
-pub fn dijkstra<V, W, G: WeightedNext<V, W>>(
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; dijkstra(Graph.directed(es), from: [(V(0), 0)], step: max)[1] == Some(2)`
+pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
     g: G,
     from: Seq<(V, W)>,
+    step: M = (+),
     until: ?V = None,
     hashed: Bool = false,
 ) -> Paths<V, W, G.Arc>:
@@ -1317,6 +1329,7 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>>(
     var done: [V]Bool = false
     var order = List<V>()
     var h = MinHeap<(W, V)>()
+    let grow = Monoid<W>.of(step)
     for (s, d0) in from:
         let better = if let cur = dist[s]: d0 < cur else: true
         if better:
@@ -1328,10 +1341,9 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>>(
         order.push(u)
         if until == Some(u): break
         for a in g.out(u):
-            let w = a.w
-            assert w >= W.zero, "dijkstra: negative edge weight"
             let v = a.to
-            let nd = du + w
+            let nd = grow.op(du, a.w)
+            assert not (nd < du), "dijkstra: an arc made a path cheaper"
             let better = if let dv = dist[v]: nd < dv else: true
             if better:
                 dist[v] = Some(nd)

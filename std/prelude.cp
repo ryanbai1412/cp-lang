@@ -30,6 +30,7 @@ use std.algebra.{
     flip,
     fold,
     minmax,
+    pow,
 }
 use std.bag.{SortedBag, SortedMap, SortedSet}
 use std.beats.{BeatsSegTree}
