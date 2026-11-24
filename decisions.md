@@ -3631,6 +3631,7 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   `L0511` `domain_spelling`) rewrites `D.sorted(by:)`, `xs.first(where: p)`, and `xs.group_by(k)`.
   Reason: aligns domain sequence ops with the one-spelling rules (§53, §60) and `Seq`/`Indexed` traits.
   Reverse: remove `Ty::Domain` from `Ty::seq_elem()`, the sequence-op arms in `cpl-check`/`cpl-ir`, and `L0511`.
+  Update (decision 627): a domain sorts with `D.sorted(by:)`, which allocates; `D.sort(by:)` is E0606 and L0512 rewrites it.
 - **66.4 Typed `Item`/`Cut` pairs with `minmax` and `choose2`.**
   `minmax(a, b)` preserves the operand's domain/position type (`(Cut, Cut)` for `Cut` inputs), so `let (lo, hi) = minmax(p[i], s[i]); low.apply(lo..hi, d)`
   passes a typed `Range<Cut>` directly to `LazySegTree<Cut, _>.apply` without converting through `Int` or conflating
@@ -9284,5 +9285,12 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 ## 626. (reserved, stdlib)
 
 ## 627. (reserved, content)
+## 627. Sorting a domain allocates and says so: `D.sorted(by:)`; `sort` only sorts in place (content, 2026-11-24)
+
+- **Decision.** `sort` always sorts an `IndexedMut` place in place and gives `()`; `sorted` (on any `Seq`, a domain or `Range` included) gives a new `List`. `D.sort(by: ...)` returning `List<D>` (66.3) is gone: on a receiver that isn't `IndexedMut` it is E0606, whose help names `.sorted(by:)`, and L0512 (`domain_spelling`) rewrites it to `D.sorted(by: ...)`. The 22 corpus files that wrote `D.sort(by:)` were migrated with `cpl lint --fix`. This reverses the domain half of 66.3 and the domain spelling decision 182 grouped with it.
+- **Why.** Allocating and in-place spellings must differ, so costs are visible (principles: costs are visible; one name and label set, one signature, R06.1.6). With `sort` a std fn over `IndexedMut` (no compiler arm), one name meaning "mutate here" on a list and "allocate a list" on a domain would need receiver-disjoint overloads, which label-set overloading (624) doesn't provide.
+- **Reverse.** Restore a domain overload of `sort` returning `List<D>` once overloads may differ by receiver, and flip L0512 back.
+## 620. (reserved, perf)
+## 608. `todo("message")` is the trap a library writes, and a missing `rev` is one (stdlib, 2026-11-24)
 
 ## 628. (reserved, stdlib)
