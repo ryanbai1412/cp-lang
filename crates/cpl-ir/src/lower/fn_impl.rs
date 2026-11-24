@@ -183,8 +183,16 @@ impl<'a> Lowerer<'a> {
                     let trait_args = imp.trait_args.clone();
                     let params = self.impl_params(m, target);
                     let mut env = GenEnv::default();
-                    for (a, t) in trait_args.iter().zip(&bound_args) {
-                        self.unify_ast_ty(a, t, m, &params, &mut env);
+                    for ((a, t), given) in trait_args.iter().zip(&bound_args).zip(args) {
+                        // `Op<E>` with `E = -10..=10` keeps the range, so `Monoid<E>.of(max)`
+                        // starts at its low end.
+                        let kept = bare_name(given).and_then(|g| inferred.get(g));
+                        match (bare_name(a), kept) {
+                            (Some(p), Some(g)) if params.iter().any(|q| q == p) => {
+                                env.insert(p.to_string(), g.clone());
+                            }
+                            _ => self.unify_ast_ty(a, t, m, &params, &mut env),
+                        }
                     }
                     // A fn value its bound leaves open takes `Int`, as a literal does (R08.2.11).
                     if open_takes_int && matches!(target.kind, ast::TypeKind::Fn { .. }) {
@@ -298,6 +306,64 @@ impl<'a> Lowerer<'a> {
             .then(|| self.detect_bare_op(e))
             .flatten()
             .map(GenArg::Op)
+    }
+
+    /// `Tree(+, [1, 2], act: Pairs())` through `fn new<M: Op<E>, E, A: Tags<T, F>>(..)
+    /// -> Tree<M.Fold, F>`: the struct's `T` is `M.Fold` once `M` and `E` bind, so `A`'s
+    /// impl can then give `F`.
+    pub(super) fn bind_struct_from_new_ret(
+        &mut self,
+        new_fn: &ast::FnDecl,
+        args: &[ast::Arg],
+        sdecl: &ast::StructDecl,
+        tpl: (ModId, u32),
+        inferred: &mut GenEnv,
+    ) {
+        let Some(ast::TypeKind::Named {
+            name,
+            args: ret_args,
+        }) = new_fn.ret.as_ref().map(|t| &t.kind)
+        else {
+            return;
+        };
+        if name.text != sdecl.name.text && name.text != "Self" {
+            return;
+        }
+        let mut pos = 0usize;
+        for arg in args {
+            let param = match &arg.name {
+                Some(n) => new_fn.params.iter().find(|p| p.label_text() == n.text),
+                None => {
+                    pos += 1;
+                    new_fn.params.get(pos - 1)
+                }
+            };
+            let Some(p) = param.and_then(|p| p.ty.as_ref()).and_then(bare_name) else {
+                continue;
+            };
+            if !new_fn.generics.iter().any(|g| g.text == p)
+                || inferred.contains_key(p)
+                || self.monoid_bare_op(&arg.value).is_none()
+            {
+                continue;
+            }
+            if let Some(g) =
+                self.bare_op_for(&new_fn.bounds, p, &arg.value, (tpl.0, tpl.1, inferred))
+            {
+                inferred.insert(p.to_string(), g);
+            }
+        }
+        for (ra, g) in ret_args.iter().zip(&sdecl.generics) {
+            let names_own =
+                bare_name(ra).is_some_and(|n| sdecl.generics.iter().any(|s| s.text == n));
+            if names_own || inferred.contains_key(&g.text) {
+                continue;
+            }
+            let found = self.quietly_in(tpl.0, tpl.1, inferred.clone(), |l| l.resolve_gen_arg(ra));
+            if !matches!(&found, GenArg::Ty(t) if t.mentions_error()) {
+                inferred.insert(g.text.clone(), found);
+            }
+        }
     }
 
     /// `Tree<Int>(+)` through `fn new<M: Op<E>, E>(..) -> Tree<M.Fold>`: the owner's

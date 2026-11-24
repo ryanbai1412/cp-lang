@@ -1082,6 +1082,7 @@ impl<'a> Lowerer<'a> {
             let bounds: Vec<ast::Bound> =
                 new_fn.bounds.iter().chain(&decl.bounds).cloned().collect();
             self.bind_bare_ops(&ops, &bounds, (tpl_mod, tpl_offset), &mut inferred);
+            self.bind_struct_from_new_ret(new_fn, args, decl, (tpl_mod, tpl_offset), &mut inferred);
             self.bind_impl_bounds(&new_fn.bounds, tpl_mod, &mut inferred);
             for g in &gen_names {
                 if !inferred.contains_key(g) {
