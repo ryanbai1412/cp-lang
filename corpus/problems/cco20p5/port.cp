@@ -28,31 +28,31 @@ struct Gaps(end_l: ?Int, start_r: ?Int, span: ?Int):
         let across = if let (Some(l), Some(r)) = (a.end_l, b.start_r): Some(r - l) else: None
         Gaps(max(a.end_l, b.end_l), least(a.start_r, b.start_r), least(least(a.span, b.span), across))
 
-var ends = SortedBag<(r: Int, l: Int)>()
-var starts = SortedBag<(l: Int, r: Int)>()
+// ends: least r first, greatest l on ties; starts: greatest l first, least r on ties
+var ends = SortedBag<(r: Int, l: Desc<Int>)>()
+var starts = SortedBag<(l: Desc<Int>, r: Int)>()
 var lens = SortedBag<Int>()
 var gaps = SegTree<X, Gaps>(Monoid(Gaps.none, Gaps.join))
 
-fn at(x: X) -> Gaps:
-    let end_l = ends.last_true(e => e.r <= Int(x)).filter(e => e.r == Int(x)).map(e => e.l)
-    let start_r = starts.first_true(s => s.l >= Int(x)).filter(s => s.l == Int(x)).map(s => s.r)
-    Gaps.join(Gaps(end_l, None, None), Gaps(None, start_r, None))
+fn leaf(end_l: ?Int, start_r: ?Int) -> Gaps = Gaps.join(Gaps(end_l, None, None), Gaps(None, start_r, None))
 
 for e in events:
     let (l, r) = (Int(e.l), Int(e.r))
     if e.op == 'A':
-        ends.add((r:, l:))
-        starts.add((l:, r:))
+        ends.add((r:, l: desc(l)))
+        starts.add((l: desc(l), r:))
         lens.add(r - l)
     else:
-        ends.remove((r:, l:))
-        starts.remove((l:, r:))
+        ends.remove((r:, l: desc(l)))
+        starts.remove((l: desc(l), r:))
         lens.remove(r - l)
-    gaps.set(e.l, at(e.l))
-    gaps.set(e.r, at(e.r))
-    let a = ends.last_true(x => x.r <= ends.first!.r)!  // least r, greatest l
-    let b = starts.first_true(x => x.l >= starts.last!.l)!  // greatest l, least r
+    // only the greatest l ending at r and the least r starting at l moved
+    let end_l = ends.first_true(x => x.r >= r).filter(x => x.r == r).map(x => x.l.x)
+    let start_r = starts.first_true(x => x.l.x <= l).filter(x => x.l.x == l).map(x => x.r)
+    gaps.set(e.r, leaf(end_l, gaps.get(e.r).start_r))
+    gaps.set(e.l, leaf(gaps.get(e.l).end_l, start_r))
+    let (a, b) = (ends.first!, starts.first!)
     var best = (overlap: lens.first!, span: lens.first!)
-    if a.r >= b.l: best min= (overlap: a.r - b.l, span: b.r - a.l)
+    if a.r >= b.l.x: best min= (overlap: a.r - b.l.x, span: b.r - a.l.x)
     if let span = gaps.all.span: best min= (overlap: 0, span:)
     print(best.span)
