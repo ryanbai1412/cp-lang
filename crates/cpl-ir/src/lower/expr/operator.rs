@@ -133,6 +133,16 @@ impl<'a> Lowerer<'a> {
                             msgs::ir::BAD_OPERANDS_GIVES_A_DEFAULT_FOR,
                             &[&self.show(&l.ty)],
                         );
+                        // A fold's `.all` that was `?T` keeps its default only
+                        // when that is the op's identity: the Window migration's call.
+                        let fold_all = matches!(
+                            &lhs.kind,
+                            ast::ExprKind::Field { name, .. } if name.text == "all"
+                        );
+                        if !fold_all {
+                            let title = format!("drop `?? {}`", self.source(rhs.span));
+                            self.drop_fix(&title, Span::new(lhs.span.end, span.end));
+                        }
                         self.expr(rhs, None);
                     }
                     return self.err_expr(span);

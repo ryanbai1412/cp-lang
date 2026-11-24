@@ -230,6 +230,7 @@ impl<'a> Lowerer<'a> {
                             msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT,
                             &[&self.show(&other)],
                         );
+                        self.drop_fix("drop `!`", Span::new(inner.span.end, e.span.end));
                         error
                     }
                 }

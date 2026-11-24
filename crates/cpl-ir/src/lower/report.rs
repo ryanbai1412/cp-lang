@@ -75,6 +75,18 @@ impl<'a> Lowerer<'a> {
         self.report_said(span, msg.at(args));
     }
 
+    /// Deletes `cut` (an AST span) from the user's code as the last error's
+    /// fix: the `!` or `?? d` on a value that is never `None`.
+    pub(super) fn drop_fix(&mut self, title: &str, cut: Span) {
+        if self.cur_mod != 0 {
+            return;
+        }
+        let cut = self.span(cut);
+        if let Some(diag) = self.diags.last_mut() {
+            diag.fix(title, cut, "");
+        }
+    }
+
     pub(super) fn report_said(&mut self, span: Span, mut said: cpl_diag::msgs::Said) {
         let at = span.shift(self.offset);
         let span = self.span(span);
