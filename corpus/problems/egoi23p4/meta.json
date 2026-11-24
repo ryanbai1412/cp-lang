@@ -25,5 +25,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "floyd_warshall(over: Semiring(max, min)); [Pair]T indexing (checker gap)"
+ "notes": "floyd_warshall(over: Semiring(max, min)); [Pair]T indexing (checker gap)",
+ "dream_stress": {
+  "ok": true,
+  "cases": 16,
+  "sha": "442835d87fba8ba92feaf126cb6754ed17b2cf42"
+ }
 }

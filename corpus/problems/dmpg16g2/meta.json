@@ -25,5 +25,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "[Letter.subsets]FreeSpans; Letter.at (both checker gaps)"
+ "notes": "[Letter.subsets]FreeSpans; Letter.at (both checker gaps)",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "9a9193069d76ceecd415ab0d10070e4ec6a83d9d"
+ }
 }

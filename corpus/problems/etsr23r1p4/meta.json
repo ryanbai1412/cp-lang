@@ -25,5 +25,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "BeatsSegTree with add/chdiv/min_val/sum; explicit 1..=n domain for 1-based ranges."
+ "notes": "BeatsSegTree with add/chdiv/min_val/sum; explicit 1..=n domain for 1-based ranges.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "fdf747b785b247eb318b2d0d35f5508a067576f6"
+ }
 }

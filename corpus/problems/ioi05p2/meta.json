@@ -29,5 +29,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "Tagged enum command stream; custom Monoid/Action over (rise, peak, len); right_while walk. Variant @tag not parsed yet (parser-gaps)."
+ "notes": "Tagged enum command stream; custom Monoid/Action over (rise, peak, len); right_while walk. Variant @tag not parsed yet (parser-gaps).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 17,
+  "sha": "715e58cf7fc1eaaacb4a554ee249d8989fae688b"
+ }
 }
