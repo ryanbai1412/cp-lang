@@ -149,14 +149,16 @@ impl Types<'_> {
     }
 }
 
-/// `e` of `Int(e)`.
-fn int_arg(e: &Expr) -> Option<&Expr> {
-    match &unparen(e).kind {
-        ExprKind::Call { callee, args }
-            if args.len() == 1 && matches!(&callee.kind, ExprKind::Name(n) if n == "Int") =>
-        {
-            Some(&args[0].value)
-        }
+/// `e` of `Int(e)`, the checker's conversion to `Int`.
+fn int_arg<'e>(e: &'e Expr, facts: Option<&crate::Facts>, base: u32) -> Option<&'e Expr> {
+    let (e, facts) = (unparen(e), facts?);
+    let at = e.span.shift(base);
+    let to_int = facts
+        .callee(at)
+        .is_some_and(|c| c.kind == cpl_check::CalleeKind::Ctor)
+        && facts.type_of(at) == Some(&Ty::Int);
+    match &e.kind {
+        ExprKind::Call { args, .. } if to_int && args.len() == 1 => Some(&args[0].value),
         _ => None,
     }
 }
@@ -168,7 +170,12 @@ fn is_value_read(e: &Expr) -> bool {
 
 /// `Int(e) + first` or `first + Int(e)`, `e` computed and `first` the
 /// domain's first label: the `Int(e)` is a 0-based count.
-fn count_from(expr: &Expr, first: Option<i128>) -> Option<&Expr> {
+fn count_from<'e>(
+    expr: &'e Expr,
+    first: Option<i128>,
+    facts: Option<&crate::Facts>,
+    base: u32,
+) -> Option<&'e Expr> {
     let first = first.filter(|&f| f != 0)?;
     let ExprKind::Binary {
         op: BinOp::Add,
@@ -179,7 +186,7 @@ fn count_from(expr: &Expr, first: Option<i128>) -> Option<&Expr> {
     else {
         return None;
     };
-    let count = |side: &Expr| int_arg(side).is_some_and(|a| !is_value_read(a));
+    let count = |side: &Expr| int_arg(side, facts, base).is_some_and(|a| !is_value_read(a));
     let is_first = |side: &Expr| matches!(unparen(side).kind, ExprKind::Int(c) if c == first);
     if count(lhs) && is_first(rhs) {
         Some(lhs)
@@ -192,7 +199,12 @@ fn count_from(expr: &Expr, first: Option<i128>) -> Option<&Expr> {
 
 /// `v.ord + 1` or `1 + v.ord`: the value whose position is taken, and the
 /// signed offset as written (`1`, `-2`, `-k`).
-fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr, String)> {
+fn position_offset<'a>(
+    expr: &'a Expr,
+    src: &str,
+    facts: Option<&crate::Facts>,
+    base: u32,
+) -> Option<(&'a Expr, String)> {
     let ExprKind::Binary { op, lhs, rhs, .. } = &unparen(expr).kind else {
         return None;
     };
@@ -201,7 +213,7 @@ fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr
             Some(&**base)
         }
         // `Int(v)` of a value read, not of a computed number.
-        _ => int_arg(side).filter(|a| is_value_read(a)),
+        _ => int_arg(side, facts, base).filter(|a| is_value_read(a)),
     };
     let text = |side: &Expr| side.span.shift(base).text(src).to_string();
     match op {
@@ -473,7 +485,7 @@ impl Visitor for Types<'_> {
                     return;
                 }
                 let first = self.firsts.get(domain).copied();
-                if let Some(count) = count_from(&arg.value, first) {
+                if let Some(count) = count_from(&arg.value, first, self.facts, self.base) {
                     let count = count.span.shift(self.base).text(self.src);
                     let written = expr.span.shift(self.base).text(self.src);
                     let diag = lint_rules::POSITION_ARITHMETIC.warning(expr.span.shift(self.base), &[&written, &domain])
@@ -489,7 +501,9 @@ impl Visitor for Types<'_> {
                 if first == Some(0) {
                     return;
                 }
-                let Some((value, offset)) = position_offset(&arg.value, self.src, self.base) else {
+                let Some((value, offset)) =
+                    position_offset(&arg.value, self.src, self.facts, self.base)
+                else {
                     return;
                 };
                 let value = value.span.shift(self.base).text(self.src);
