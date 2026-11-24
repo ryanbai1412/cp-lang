@@ -183,24 +183,27 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
 }
 
 /// The errors for the `@lint`s of one module, given as its items and their
-/// offsets: those [`declared`] reports, and a name declared twice.
+/// offsets: those [`declared`] reports, and a name declared on two fns (one
+/// fn may declare a name more than once: each `from` is a spelling of it).
 pub fn module_errors<'a>(
     items: impl IntoIterator<Item = (u32, &'a ParsedItem)>,
 ) -> Vec<Diagnostic> {
-    let (mut first, mut errors): (Vec<(String, Span)>, Vec<Diagnostic>) = (Vec::new(), Vec::new());
+    let (mut first, mut errors): (Vec<(String, Span, Span)>, Vec<Diagnostic>) =
+        (Vec::new(), Vec::new());
     for (offset, item) in items {
         for stmt in &item.stmts {
             let (lints, found) = declared(stmt, offset);
             errors.extend(found);
             for lint in lints {
-                match first.iter().find(|(name, _)| *name == lint.name) {
-                    Some((_, at)) => errors.push(
+                match first.iter().find(|(name, _, _)| *name == lint.name) {
+                    Some((_, _, item)) if *item == lint.item => {}
+                    Some((_, at, _)) => errors.push(
                         msgs::syntax::LINT_TWICE
                             .error(lint.decorator, &[&lint.name])
                             .with_help("give each lint its own name")
                             .with_label(*at, "first declared here"),
                     ),
-                    None => first.push((lint.name, lint.decorator)),
+                    None => first.push((lint.name, lint.decorator, lint.item)),
                 }
             }
         }
@@ -268,6 +271,22 @@ mod tests {
             .flat_map(|(off, item)| item.stmts.iter().map(|s| super::declared(s, *off)))
             .flat_map(|(_, errs)| errs.into_iter().map(|e| e.message))
             .collect()
+    }
+
+    #[test]
+    fn one_fn_may_declare_a_lint_twice_but_two_fns_may_not() {
+        let errors = |src: &str| {
+            let parsed = crate::parse_file(src);
+            let items = parsed.items.iter().map(|(off, item)| (*off, item));
+            super::module_errors(items)
+                .into_iter()
+                .map(|e| e.message)
+                .collect::<Vec<_>>()
+        };
+        let one = "@lint(by_hand, from: \"x * x\", to: \"sq(x)\")\n@lint(by_hand, from: \"x ** 2\", to: \"sq(x)\")\npub fn sq(x: Int) -> Int = x * x\n";
+        assert!(errors(one).is_empty(), "{:?}", errors(one));
+        let two = "@lint(by_hand, from: \"x * x\", to: \"sq(x)\")\npub fn sq(x: Int) -> Int = x * x\n@lint(by_hand, from: \"x * x * x\", to: \"cube(x)\")\npub fn cube(x: Int) -> Int = x * x * x\n";
+        assert_eq!(errors(two).len(), 1);
     }
 
     #[test]

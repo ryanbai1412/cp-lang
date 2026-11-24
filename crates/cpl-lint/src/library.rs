@@ -7,7 +7,7 @@ use crate::walk::Visitor;
 use crate::{File, Finding, Group, Level, Lint};
 use cpl_check::Analysis;
 use cpl_diag::{Code, Span};
-use cpl_syntax::ast::{Expr, Stmt};
+use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::library_lint::{self, is_name, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
 use std::collections::HashMap;
@@ -167,6 +167,9 @@ struct Spans {
     exprs: Vec<Span>,
     stmts: Vec<Span>,
     blocks: Vec<Vec<Span>>,
+    /// Where each assigned place starts: `from` cannot match a place, nor
+    /// the base it indexes, since `to` is a call.
+    places: Vec<u32>,
 }
 
 impl Visitor for Spans {
@@ -177,9 +180,15 @@ impl Visitor for Spans {
     }
     fn expr(&mut self, expr: &Expr) {
         self.exprs.push(expr.span.shift(self.base));
+        if let ExprKind::Keep { target, .. } = &expr.kind {
+            self.places.push(target.span.shift(self.base).start);
+        }
     }
     fn stmt(&mut self, stmt: &Stmt) {
         self.stmts.push(stmt.span.shift(self.base));
+        if let StmtKind::Assign { target, .. } = &stmt.kind {
+            self.places.push(target.span.shift(self.base).start);
+        }
     }
 }
 
@@ -213,6 +222,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     let mut candidates: Vec<(usize, usize, Span)> = spans
         .exprs
         .iter()
+        .filter(|e| !spans.places.contains(&e.start))
         .chain(&spans.stmts)
         .filter_map(|s| Some((*by_start.get(&s.start)?, *by_end.get(&s.end)?, *s)))
         .collect();

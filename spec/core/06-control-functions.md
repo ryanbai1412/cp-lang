@@ -187,13 +187,15 @@ library or by this spec:
   bound the call no longer needs); `to` may drop one of those only when it
   matched an expression that calls nothing. `to` calls the fn by name or
   as a method or getter (`xs.f`). A lint named like a `spec/lints` record
-  reports as that record: its code, level and explanation.
+  reports as that record: its code, level and explanation. `from` does not
+  match an assigned place (`xs[i] = v`) or the base it indexes.
   It applies in every file that uses the module, and in the module outside
   the fn. E0505 (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:`, when `from` or `to` is not one expression or
   statement, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name `from` does not use, when `to` does not
-  call the fn, or when one module declares a name twice. (R06.4.9)
+  call the fn, or when one module declares a name on two fns (one fn may
+  declare a name more than once, one `from` per spelling). (R06.4.9)
 - An idiom whose fix is one library call is declared this way beside the
   fn it teaches, not as a lint in the linter: std's own idiom lints are
   `@lint` declarations in `std/`, and the linter keeps only lints a pattern

@@ -144,3 +144,20 @@ fn declared_holes_match_free_names_and_a_record_name_keeps_its_code() {
     let calls = "let a = [3, 1]\nfn m() -> Int = 2\nfor j in 0..m():\n    print(a[j])\n";
     assert!(found(calls).is_empty());
 }
+
+/// One fn declares a lint twice, one `from` per spelling, and `from` does
+/// not match an assigned place. Rule: R06.4.9.
+#[test]
+fn a_lint_has_spellings_and_skips_assigned_places() {
+    let decl = "@lint(at_end, from: \"xs[xs.len - 1]\", to: \"end(xs)\")\n@lint(at_end, from: \"xs[-1 + xs.len]\", to: \"end(xs)\")\npub fn end(xs: List<Int>) -> Int = xs[0]\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "at_end")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let read = "var a = [3, 1]\nprint(a[a.len - 1] + a[-1 + a.len])\n";
+    assert_eq!(found(read), ["end(a)", "end(a)"]);
+    assert!(found("var a = [3, 1]\na[a.len - 1] = 0\nprint(a)\n").is_empty());
+}

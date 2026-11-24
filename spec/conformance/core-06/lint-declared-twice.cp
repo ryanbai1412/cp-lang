@@ -1,7 +1,7 @@
 // expect: E0505
 // rule: 06.4.9
 // tool: check
-// has: "declared twice"
+// has: "declared on two fns"
 @lint(by_hand, from: "x * x", to: "sq(x)")
 pub fn sq(x: Int) -> Int:
     x * x
