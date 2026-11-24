@@ -16,7 +16,7 @@
 import glob, json, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-STD = os.path.join(ROOT, "spec", "std")
+STD = os.path.join(ROOT, "std")
 TODO = re.compile(r"(?:=\s*todo|^\s*todo)(?:\s*(?://.*)?$)")  # as scripts/debt-ratchet.py
 
 
