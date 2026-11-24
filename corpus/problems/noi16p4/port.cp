@@ -16,17 +16,16 @@ fn length(s: (l: Int, r: Int)) -> Int = s.r - s.l
 let spans = given.sorted(by: length)
 
 let (X, coord) = compress([e for s in spans for e in [s.l, s.r]])
+let cells = [coord.index_of(s.l)..=coord.index_of(s.r) for s in spans]
 var depth = SegTree<X, Int, Int>(max, fill: 0, act: add)
-fn cover(s: (l: Int, r: Int), times: Int):
-    depth.apply(coord.first_ge(s.l)!..=coord.first_ge(s.r)!, times)
 
 var best: ?Int = None
 var taken = 0  // the window is spans[i..taken]
 for i in 0..n:
-    while taken < n and depth.fold(X.all) < m:
-        cover(spans[taken], 1)
+    while taken < n and depth.all < m:
+        depth.apply(cells[taken], 1)
         taken += 1
-    if depth.fold(X.all) >= m:
+    if depth.all >= m:
         best min= length(spans[taken - 1]) - length(spans[i])
-    cover(spans[i], -1)
+    depth.apply(cells[i], -1)
 print(best ?? -1)
