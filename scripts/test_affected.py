@@ -165,11 +165,11 @@ class AffectedTest(unittest.TestCase):
 
 
     def test_std_and_vm_paths_select_their_owners_slices(self):
-        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings", "ports-check", "browser-std", "copies"])
+        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings", "ports-check", "browser-std", "silent-unknowns", "copies"])
         noip = affected.shard_of("corpus/problems/noip18p4/port.cp", 16)
-        self.assertEqual(self.sel("corpus/problems/noip18p4/port.cp")["slices"], [f"copies@{noip}"])
+        self.assertEqual(self.sel("corpus/problems/noip18p4/port.cp")["slices"], ["silent-unknowns", f"copies@{noip}"])
         bag = affected.shard_of("spec/conformance/std-bag/x.cp", 16)
-        self.assertEqual(self.sel("spec/conformance/std-bag/x.cp")["slices"], [f"copies@{bag}", "readable-inputs"])
+        self.assertEqual(self.sel("spec/conformance/std-bag/x.cp")["slices"], ["silent-unknowns", f"copies@{bag}", "readable-inputs"])
         self.assertEqual(self.sel("crates/cpl-codegen/src/emit.rs")["slices"], ["copies"])
         self.assertEqual(self.sel("crates/cpl-interp/src/vm/run.rs")["slices"], ["vm-trace", "readable-inputs"])
         self.assertEqual(self.sel("crates/cpl-fmt/src/lib.rs")["slices"], [])
@@ -220,8 +220,8 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual(affected.shard_of("spec/conformance/std-models/heaps.cp", 16), 8)
         self.assertEqual(affected.shard_of("corpus/problems/cf2165c/port.cp", 16), 4)
         both = ["spec/conformance/std-models/heaps.cp", "corpus/problems/cf2165c/port.cp"]
-        self.assertEqual(self.sel(*both)["slices"], ["copies@4,8", "readable-inputs"])
-        self.assertEqual(self.sel(both[0], "crates/cpl-codegen/src/emit.rs")["slices"], ["copies", "readable-inputs"])
+        self.assertEqual(self.sel(*both)["slices"], ["silent-unknowns", "copies@4,8", "readable-inputs"])
+        self.assertEqual(self.sel(both[0], "crates/cpl-codegen/src/emit.rs")["slices"], ["silent-unknowns", "copies", "readable-inputs"])
         self.assertEqual(affected.slice_filter(["copies@8", "copies@4"]),
                          "(binary_id(cpl-cli::read_only_copies) & (not test(/^shard_/) | test(=shard_04) | test(=shard_08)))")
         self.assertEqual(affected.slice_filter(["copies@8", "copies"]), "binary_id(cpl-cli::read_only_copies)")
