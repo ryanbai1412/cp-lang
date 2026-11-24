@@ -1,11 +1,11 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
-seed = 1
+seed = 17
 size = 3
 
 [[case]]
-seed = 2
+seed = 12
 size = 5
 
 [[case]]
