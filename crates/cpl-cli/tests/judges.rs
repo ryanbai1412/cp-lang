@@ -6,6 +6,9 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[path = "support/corpus_cases.rs"]
+mod corpus_cases;
+
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -741,6 +744,7 @@ fn a_port_over_the_target_as_written_is_shrunk_under_it_and_agrees_with_the_inte
         false,
     )
     .unwrap();
+    corpus_cases::make(&root(), &["cf2089e"]);
     let mut samples = 0;
     for case in std::fs::read_dir(cpl_contest::problem::find_tests_dir(&port)).unwrap() {
         let case = case.unwrap().path();
