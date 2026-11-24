@@ -227,9 +227,8 @@ struct Case {
     params: Vec<String>,
     cost: Option<String>,
     /// The parameters as the docs show them, each with whether it is a
-    /// named option, and the doc comment.
+    /// named option.
     shape: Vec<(String, bool)>,
-    doc: String,
 }
 
 fn is_word(c: u8) -> bool {
@@ -326,11 +325,6 @@ fn lib_cases(dir: &Path, lib: &str) -> Vec<Case> {
             };
             let program = format!("{head}{}", program_of(&example));
             let at = use_of(&program[head.len()..], &name, member).unwrap() + head.len();
-            // Called by its struct's name, it shows the struct's doc.
-            let docs = match owner_item.filter(|o| o.name == name) {
-                Some(o) => o.doc.clone(),
-                None => item.doc.clone(),
-            };
             let who = match owner {
                 Some(o) => format!("{lib}.{module}.{o}.{}", item.name),
                 None => format!("{lib}.{module}.{}", item.name),
@@ -344,8 +338,6 @@ fn lib_cases(dir: &Path, lib: &str) -> Vec<Case> {
                 params: param_names(&item.signature, &item.name),
                 cost: documented_cost(&item.doc).or_else(|| item.cost.clone()),
                 shape: params_of(&item.signature, &item.name),
-                // Called by its struct's name, it shows the struct's doc.
-                doc: docs,
             });
         }
     }
@@ -369,7 +361,6 @@ fn builtin_cases() -> Vec<Case> {
                 params,
                 cost: documented_cost(m.doc),
                 shape: params_of(&declared, m.name),
-                doc: m.doc.to_string(),
             })
         })
         .collect()
@@ -711,7 +702,7 @@ fn report(name: &str, tally: &Tally, ceilings: &[(&str, usize)]) {
 #[test]
 fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut cases = lib_cases(&root.join("std"), "std");
+    let cases = lib_cases(&root.join("std"), "std");
     let tally = run_all(&cases, STD_URI);
     report(
         "std",
