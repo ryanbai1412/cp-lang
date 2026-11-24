@@ -12105,11 +12105,17 @@
       },
       "causes": [
         {
-          "cause": "E0303: `\u003cid>` needs the argument `\u003cid>`",
-          "count": 2,
+          "cause": "E0203: a `\u003cid>` has no method `\u003cid>`",
+          "count": 1,
           "examples": [
-            "lib/ops-ranges.md#16:2",
-            "lib/ops-ranges.md#4:2"
+            "core/04b-keys.md#contest-code:9"
+          ]
+        },
+        {
+          "cause": "E0203: an `\u003cid>` has no member `\u003cid>`",
+          "count": 1,
+          "examples": [
+            "lib/ops-ranges.md#16:2"
           ]
         },
         {
@@ -12139,27 +12145,6 @@
           "examples": [
             "lib/ops-ranges.md#orders-make-min-and-max-monoids:1"
           ]
-        },
-        {
-          "cause": "E0305: a `\u003cid>` can't be indexed",
-          "count": 1,
-          "examples": [
-            "core/04b-keys.md#contest-code:9"
-          ]
-        },
-        {
-          "cause": "E0606: `\u003cid>` (`\u003cid>`) does not work on the types it was given here: a `\u003cid>` has no `\u003cid>`",
-          "count": 1,
-          "examples": [
-            "lib/sequence-patterns.md#folding-pieces-the-sliding-fold:1"
-          ]
-        },
-        {
-          "cause": "wanted E0303; got no diagnostic",
-          "count": 1,
-          "examples": [
-            "lib/geometry.md#powers:3"
-          ]
         }
       ],
       "counts": {
@@ -12167,7 +12152,7 @@
         "pass": 320
       },
       "passed": 320,
-      "strict_passed": 317,
+      "strict_passed": 320,
       "total": 326
     }
   }
