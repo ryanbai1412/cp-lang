@@ -27,6 +27,15 @@ impl<'a> Lowerer<'a> {
             return self.sorted_view_field(base, &name.text, span);
         }
         if let ast::ExprKind::Field { name: bounds, .. } = &base.kind {
+            // `V.cuts` is a domain, and a domain's `range` is all of it.
+            if matches!(bounds.text.as_str(), "bounds" | "cuts")
+                && matches!(name.text.as_str(), "range" | "all")
+            {
+                let cuts = self.expr(base, None);
+                if matches!(cuts.kind, ExprKind::Range { .. }) {
+                    return cuts;
+                }
+            }
             if matches!(bounds.text.as_str(), "bounds" | "cuts")
                 && matches!(name.text.as_str(), "count" | "len" | "size")
             {
