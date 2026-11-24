@@ -5,31 +5,26 @@
 // Solution: flipping a + to - negates the term after it, so every term but the first product
 //   run cancels: the sum is sum over i of (a_1 * ... * a_i) * (sign choices where the first
 //   run ends at i), which is 2 * 3^(n-1-i) for i < n and 1 for i = n. Each position is the
-//   affine map x => a_i * x + a_i * that count, and a SegTree of their compositions keeps
-//   the whole sum: O(log n) per update.
+//   std Affine map x => a_i * x + a_i * that count, and a SegTree of their compositions keeps
+//   the whole sum: O(log n) per update. The run counts are one table, computed once.
 // original: corpus/submissions/5445695.cpp
-// Bounds: n: 1..=1e5; q: 0..=1e5; i: 1..=n
-const MOD = 1000000007
-type Z = Mod<MOD>
-let n: 1..=1e5 = read()
-let q: 0..=1e5 = read()
-domain I = 0..n
-var a: [I]Int = read()
+// Bounds: n, q: 1..=1e5; a, v: 0..=1e4; t: 1..=n
+use std.algebra.{Affine}
 
-struct Affine(mul: Z, add: Z)
+type Z = Mod<1_000_000_007>
 
-// position i ends a product run in 2 * 3^(n-2-i) of the sign choices after it
-fn leaf(i: I) -> Affine:
-    let at = i.ord
-    let closes = if at == n - 1: Z(1) else: 2 * Z(3) ** (n - 2 - at)
-    Affine(Z(a[i]), Z(a[i]) * closes)
+let (n, q): (1..=1e5, 1..=1e5) = read()
+domain Pos = 1..=n
+var a: [Pos]0..=1e4 = read()
 
-let compose = Monoid<Affine>(Affine(Z(1), Z(0)), (f, g) => Affine(f.mul * g.mul, f.mul * g.add + f.add))
-var chain = SegTree(compose, [I] i => leaf(i))
+// a product run ending at i < n is closed by + or - and followed by any of 3^(n-1-i) choices
+let closes = [Pos] i => if i.label == n: Z(1) else: 2 * Z(3) ** (n - 1 - i.label)
+fn leaf(i: Pos) -> Affine<Z> = Affine(Z(a[i]), Z(a[i]) * closes[i])
+
+// the fold nests each position's map inside the one before it
+var chain = SegTree(Monoid(Affine<Z>.id(), (f, g) => Affine.then(g, f)), [Pos] i => leaf(i))
 for _ in 0..q:
-    let i: 1..=n = read()
-    let x: Int = read()
-    let at = I.nth(i - 1)
-    a[at] = x
-    chain.set(at, leaf(at))
-    print(chain.all.add)
+    let (t, v): (Pos, 0..=1e4) = read()
+    a[t] = v
+    chain.set(t, leaf(t))
+    print(chain.all.b)

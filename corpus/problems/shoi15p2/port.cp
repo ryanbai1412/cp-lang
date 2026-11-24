@@ -1,91 +1,47 @@
 // Source: SHOI 2015 Brain Hole Therapy Device, https://dmoj.ca/problem/shoi15p2
-// Problem: n <= 2e5 cells, all tissue at first, and m <= 2e5 operations: "0 l r" digs out
+// Problem: n <= 2e5 cells (1-based), all tissue at first, and m <= 2e5 operations: "0 l r" digs out
 //   l..=r; "1 l0 r0 l1 r1" digs out l0..=r0 and fills the holes of l1..=r1 left to right with the
 //   tissue taken (the rest is thrown away); "2 l r" prints the longest run of holes in l..=r.
-// Solution: a lazy assign segment tree whose nodes keep holes, tissue, and the best, prefix and
-//   suffix hole runs. A transplant counts the tissue in l0..=r0, digs it out, binary-searches the
-//   least end in l1..=r1 whose prefix has that many holes and assigns tissue up to it (all of
-//   l1..=r1 if there are too few). O(m log^2 n).
+// Solution: a lazy SegTree of hole runs (holes, tissue, best, prefix and suffix runs) under an
+//   assign-hole-or-tissue action. A transplant counts the tissue in l0..=r0 and digs it out;
+//   right_while finds the cell where the holes from l1 on reach that count, and tissue is
+//   assigned up to it, or to r1 if it is past r1. O(m log n).
 // original: corpus/submissions/5450923.cpp
-// The lazy tree is written out by hand: the prototype has no LazySegTree
-// with a custom Action and no max_right.
-// Bounds: n: 1..=2e5; q: 0..=2e5; kind: 0..=2
-let n: 1..=2e5 = read()
-let q: 0..=2e5 = read()
+// Bounds: n, m: 1..=2e5; l, r, l0, r0, l1, r1: 1..=n
+let (n, m): (1..=2e5, 1..=2e5) = read()
+domain Cell = 1..=n
 
-struct Run:
-    holes: Int
-    cells: Int
-    best: Int
-    pre: Int
-    suf: Int
+struct Run(holes: Int, cells: Int, best: Int, pre: Int, suf: Int)
 
-fn join(a: Run, b: Run) -> Run:
-    Run(
-        a.holes + b.holes,
-        a.cells + b.cells,
-        max(max(a.best, b.best), a.suf + b.pre),
-        if a.cells == 0: a.holes + b.pre else: a.pre,
-        if b.cells == 0: b.holes + a.suf else: b.suf,
-    )
+fn solid(hole: Bool, len: Int) -> Run = if hole: Run(len, 0, len, len, len) else: Run(0, len, 0, 0, 0)
 
-fn solid(hole: Bool, len: Int) -> Run:
-    if hole: Run(len, 0, len, len, len) else: Run(0, len, 0, 0, 0)
+fn join(a: Run, b: Run) -> Run = Run(
+    a.holes + b.holes,
+    a.cells + b.cells,
+    max(a.best, b.best, a.suf + b.pre),
+    if a.cells == 0: a.holes + b.pre else: a.pre,
+    if b.cells == 0: b.holes + a.suf else: b.suf,
+)
 
-var node: List<Run> = []
-var tag: List<Int> = []
-for _ in 0..4 * n:
-    node.push(solid(false, 1))
-    tag.push(-1)
+// a tag paints its span all holes (true) or all tissue (false)
+let paint = Action<Run, ?Bool>(
+    None,
+    (new, old) => if new == None: old else: new,
+    (f, v, len) => if let hole = f: solid(hole, len) else: v,
+    over: Monoid<Run>(solid(true, 0), join),
+)
+var brain = SegTree(paint.over, [Cell] _ => solid(false, 1), act: paint)
 
-fn build(o: Int, l: Int, r: Int):
-    node[o] = solid(false, r - l + 1)
-    if l < r:
-        let mid = (l + r) / 2
-        build(2 * o, l, mid)
-        build(2 * o + 1, mid + 1, r)
-
-fn paint(o: Int, l: Int, r: Int, hole: Int):
-    node[o] = solid(hole == 1, r - l + 1)
-    tag[o] = hole
-
-fn assign(o: Int, l: Int, r: Int, ql: Int, qr: Int, hole: Int):
-    if ql <= l and r <= qr:
-        paint(o, l, r, hole)
-        return
-    let mid = (l + r) / 2
-    let pending = tag[o]
-    if pending != -1:
-        paint(2 * o, l, mid, pending)
-        paint(2 * o + 1, mid + 1, r, pending)
-        tag[o] = -1
-    if ql <= mid: assign(2 * o, l, mid, ql, qr, hole)
-    if qr > mid: assign(2 * o + 1, mid + 1, r, ql, qr, hole)
-    node[o] = join(node[2 * o], node[2 * o + 1])
-
-fn fold(o: Int, l: Int, r: Int, ql: Int, qr: Int) -> Run:
-    if ql <= l and r <= qr: return node[o]
-    if tag[o] != -1: return solid(tag[o] == 1, min(r, qr) - max(l, ql) + 1)
-    let mid = (l + r) / 2
-    if qr <= mid: return fold(2 * o, l, mid, ql, qr)
-    if ql > mid: return fold(2 * o + 1, mid + 1, r, ql, qr)
-    join(fold(2 * o, l, mid, ql, qr), fold(2 * o + 1, mid + 1, r, ql, qr))
-
-build(1, 1, n)
-for _ in 0..q:
-    let kind: 0..=2 = read()
-    let l: Int = read()
-    let r: Int = read()
+for _ in 0..m:
+    let (kind, l, r): (0..=2, Cell, Cell) = read()
     if kind == 0:
-        assign(1, 1, n, l, r, 1)
+        brain.apply(l..=r, Some(true))
     elif kind == 2:
-        print(fold(1, 1, n, l, r).best)
+        print(brain.fold(l..=r).best)
     else:
-        let to_l: Int = read()
-        let to_r: Int = read()
-        let moved = fold(1, 1, n, l, r).cells
-        if moved > 0:
-            assign(1, 1, n, l, r, 1)
-            // fill holes of to_l..=to_r left to right until the tissue runs out
-            let lo = (to_l..to_r).first_true(mid => fold(1, 1, n, to_l, mid).holes >= moved) ?? to_r
-            assign(1, 1, n, to_l, lo, 0)
+        let (to_l, to_r): (Cell, Cell) = read()
+        let moved = brain.fold(l..=r).cells
+        if moved == 0: continue
+        brain.apply(l..=r, Some(true))
+        let short = brain.right_while(to_l.l, s => s.holes < moved)
+        brain.apply(to_l..=Cell.nth(min(short.ord, to_r.ord)), Some(false))

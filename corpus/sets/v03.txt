@@ -639,7 +639,11 @@ sdoi17r1p4
 sdoi17r1p6
 sdoi17r2p1
 sdoi17r2p4
+shoi15p2
 shoi16p1
+shoi16p3
+shoi16p4
+shoi16p5
 tle17c5p1
 tle17c5p6
 tle18p5
