@@ -716,7 +716,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     true,
                 );
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
-                self.show_lent();
+                self.show_lent()?;
                 // Lent once the globals and lent values are back in place.
                 let returned = match (callee, lent) {
                     (Some(fv), Some(lent)) => {
@@ -744,7 +744,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         Err(e) => Err(e),
                     },
                 };
-                self.hide_lent();
+                self.hide_lent()?;
                 self.leave_fallback(outer);
                 sync_from_stack(
                     &chunk.slot_map,
@@ -992,7 +992,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 if lends {
                     let (lent, base) = (&self.lent, self.base);
                     sync_reachable_to_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
-                    self.show_lent();
+                    self.show_lent()?;
                 }
                 // The `mut` params' values, for their arg slots once the frame is synced.
                 let mut lent_back: Vec<Value> = Vec::new();
@@ -1180,7 +1180,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     res?
                 };
                 if lends {
-                    self.hide_lent();
+                    self.hide_lent()?;
                     let (lent, base) = (&self.lent, self.base);
                     sync_reachable_from_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
                 }

@@ -352,22 +352,19 @@ pub(super) fn int_item(value: &Value, ty: &Ty, index: usize) -> Option<i64> {
 /// Item `index` of a one-dimensional array or list, as JSON, as it is in
 /// the JSON of the whole.
 pub(super) fn item_json(value: &Value, ty: &Ty, index: usize, view: &View) -> Option<String> {
-    let (item, elem) = match (value, ty) {
+    let (item, elem, len) = match (value, ty) {
         (Value::Array(array), Ty::Array { dims, elem }) if dims.len() == 1 => {
-            (array.get(index)?, &**elem)
+            (array.get(index)?, &**elem, array.len())
         }
-        (Value::List(items), Ty::List(elem)) => (items.get(index)?.clone(), &**elem),
+        (Value::List(items), Ty::List(elem)) => {
+            (items.get(index)?.clone(), &**elem, items.len() + 1)
+        }
         _ => return None,
     };
     let scalar = matches!(
         elem,
         Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Pos(_) | Ty::Bound(_)
     );
-    let len = match value {
-        Value::Array(array) => array.len(),
-        Value::List(items) => items.len() + 1,
-        _ => unreachable!("matched above"),
-    };
     if (if scalar { len } else { cells(value) }) > MAX_CELLS {
         return None;
     }

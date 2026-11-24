@@ -279,9 +279,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.base,
                     chunk.traced,
                 );
-                self.show_lent();
+                self.show_lent()?;
                 let sorted = self.merge_sort_ty(items, elem, desc, span);
-                self.hide_lent();
+                self.hide_lent()?;
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 sync_from_stack(
                     &chunk.slot_map,
@@ -339,9 +339,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.base,
                     chunk.traced,
                 );
-                self.show_lent();
+                self.show_lent()?;
                 let sorted = self.merge_sort_keyed(keyed, key_ty, desc, span);
-                self.hide_lent();
+                self.hide_lent()?;
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 sync_from_stack(
                     &chunk.slot_map,
@@ -1505,11 +1505,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let shown = chunk.traced && self.observed();
                 if shown {
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, base, true);
-                    self.show_lent();
+                    self.show_lent()?;
                 }
                 let printed = self.print_values(spec.args, &vals, end.as_ref(), spans[cur_pc]);
                 if shown {
-                    self.hide_lent();
+                    self.hide_lent()?;
                     take_back_values(&chunk.slot_map, regs_v, &mut self.stack, base);
                 }
                 printed?;
@@ -1548,9 +1548,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         self.base,
                         chunk.traced,
                     );
-                    self.show_lent();
+                    self.show_lent()?;
                     let val = self.apply(spec.expr, vals);
-                    self.hide_lent();
+                    self.hide_lent()?;
                     let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                     sync_from_stack(
                         &chunk.slot_map,
@@ -1620,9 +1620,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.fed_hosts
                         .push((self.base, chunk as *const Chunk<'p> as *const ()));
                 }
-                self.show_lent();
+                self.show_lent()?;
                 let flow = self.stmt(stmt);
-                self.hide_lent();
+                self.hide_lent()?;
                 if hosts {
                     self.fed_hosts.pop();
                 }
@@ -1658,9 +1658,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     chunk.traced,
                 );
                 let expr = chunk.fallback_exprs[idx as usize];
-                self.show_lent();
+                self.show_lent()?;
                 let val = self.eval(expr);
-                self.hide_lent();
+                self.hide_lent()?;
                 sync_from_stack(
                     &chunk.slot_map,
                     regs_i,
@@ -1687,9 +1687,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     chunk.traced,
                 );
                 let expr = chunk.fallback_exprs[idx as usize];
-                self.show_lent();
+                self.show_lent()?;
                 let val = self.eval(expr);
-                self.hide_lent();
+                self.hide_lent()?;
                 sync_from_stack(
                     &chunk.slot_map,
                     regs_i,

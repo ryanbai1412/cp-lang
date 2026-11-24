@@ -1074,10 +1074,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.call_frames.push(("<closure>", frame.span));
         let in_closure = std::mem::replace(&mut self.in_closure, true);
         let flow = self.resume_frame(frames, k);
-        while self.saved_domains.len() > frame.doms {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(frame.doms);
         self.in_closure = in_closure;
         self.frame_locals.pop();
         self.base = saved;
@@ -1088,6 +1085,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Flow::Return(value) | Flow::Give(value) => value,
             _ => Value::Unit,
         })
+    }
+
+    /// The domains as they were before the newest `saved_domains` past
+    /// the first `to` were defined.
+    fn restore_domains(&mut self, to: usize) {
+        let to = to.min(self.saved_domains.len());
+        for (id, prev) in self.saved_domains.drain(to..).rev() {
+            self.domains[id] = prev;
+        }
     }
 
     /// The call frame `k` of `frames` makes, from where it was; what it returns.
@@ -1101,7 +1107,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let id = match frame.body {
             Body::Fn(id) | Body::Fed(id) => id,
             Body::Closure(cid) => return self.resume_closure(frames, k, cid),
-            Body::Main | Body::Setup => unreachable!("a callee frame is a fn's or a closure's"),
+            Body::Main | Body::Setup => {
+                return trap(
+                    frame.span,
+                    cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
+                )
+            }
         };
         let f = &self.program.fns[id];
         let span = frame.span;
@@ -1120,10 +1131,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         let in_closure = std::mem::replace(&mut self.in_closure, false);
         let mut flow = self.resume_frame(frames, k);
-        while self.saved_domains.len() > frame.doms {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(frame.doms);
         self.in_closure = in_closure;
         if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
             tracer.leave_fn(entered);
@@ -1207,7 +1215,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let rest = at.get(1..).unwrap_or(&[]);
         match (stmt, at.first()) {
             (Stmt::If(_, then, otherwise), _) => {
-                let mark = mark(at, frames[k].site.map(|s| s.0)).expect("resume_block found one");
+                let Some(mark) = mark(at, frames[k].site.map(|s| s.0)) else {
+                    return trap(
+                        Span::default(),
+                        cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
+                    );
+                };
                 let branch = if block_holds(then, mark) {
                     then
                 } else {
@@ -1261,7 +1274,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// `stmt`, whose call frame `k + 1` is: `stmt` again, untraced up to
     /// that call, which goes on from where it was.
     fn resume_call(&mut self, stmt: &'p Stmt, frames: &[FrameAt], k: usize) -> Res<Flow> {
-        let (_, call) = frames[k].site.expect("a caller frame waits on a call");
+        let Some((_, call)) = frames[k].site else {
+            return trap(
+                Span::default(),
+                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
+            );
+        };
         self.ckpt.pending = Some((call, frames[k + 1..].to_vec()));
         self.ckpt.returned = frames[k].before.clone();
         let flow = self.stmt(stmt);
@@ -1279,10 +1297,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// a checkpoint waits on, that call from where it was, feeding `fed`.
     pub(crate) fn resume_fed(&mut self, seq: &'p cpl_ir::Expr, fed: &crate::Fed<'p>) -> Res<bool> {
         let at = seq as *const cpl_ir::Expr as usize;
-        if !matches!(&self.ckpt.pending, Some((call, _)) if *call == at) {
+        let Some((_, frames)) = self.ckpt.pending.take_if(|(call, _)| *call == at) else {
             return Ok(false);
-        }
-        let (_, frames) = self.ckpt.pending.take().unwrap();
+        };
         self.ckpt.returned.clear();
         let fed = crate::Fed { left: None, ..*fed };
         self.resume_callee(&frames, 0, Some(fed))?;
@@ -1327,10 +1344,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(i) = self.ckpt.returned.iter().position(|d| d.0 == at) {
             return Ok(Some(self.ckpt.returned.swap_remove(i).1));
         }
-        if !matches!(&self.ckpt.pending, Some((call, _)) if *call == at) {
+        let Some((_, mut frames)) = self.ckpt.pending.take_if(|(call, _)| *call == at) else {
             return Ok(None);
-        }
-        let (_, mut frames) = self.ckpt.pending.take().unwrap();
+        };
         self.ckpt.returned.clear();
         // The VM's callee holds a `mut` argument's value itself; the
         // tree-walker's borrows the caller's, so the value goes back there.

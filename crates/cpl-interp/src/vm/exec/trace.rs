@@ -18,7 +18,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         idx: u32,
         regs_i: &mut [i64],
         regs_v: &mut [Value],
-    ) {
+    ) -> crate::Res<()> {
         match chunk.trace_points[idx as usize] {
             TracePoint::LoopEnd(slot) => {
                 let held = &self.stack[self.base + slot];
@@ -65,7 +65,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         // Declared: later syncs and checkpoints read its register.
                         self.stack[self.base + slot] = Value::Moved;
                     }
-                    return;
+                    return Ok(());
                 }
                 let mut quiet = false;
                 if let TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) = *point {
@@ -90,19 +90,20 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         self.base,
                         chunk.traced,
                     );
-                    self.show_lent();
+                    self.show_lent()?;
                     self.trace_point(point);
-                    self.hide_lent();
+                    self.hide_lent()?;
                     take_back_values(&chunk.slot_map, regs_v, &mut self.stack, self.base);
                 }
             }
         }
+        Ok(())
     }
 
     /// Before the tracer or the tree-walker sees a traced call's frame:
     /// each `mut` param holds an alias to the caller's place, which holds
     /// the value, as when the tree-walker runs the call.
-    pub(super) fn show_lent(&mut self) {
+    pub(super) fn show_lent(&mut self) -> crate::Res<()> {
         for k in (0..self.lent.len()).rev() {
             let (held, part) = (self.lent[k].0, Rc::clone(&self.lent[k].1));
             if held < self.base {
@@ -113,20 +114,22 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 false => Value::Part(Rc::clone(&part)),
             };
             let value = std::mem::replace(&mut self.stack[held], lent);
-            *self.lender(&part).expect("a lent place is still there") = value;
+            *self.lender(&part)? = value;
         }
+        Ok(())
     }
 
     /// After: the value is back in the param, the caller's place lent.
-    pub(super) fn hide_lent(&mut self) {
+    pub(super) fn hide_lent(&mut self) -> crate::Res<()> {
         for k in (0..self.lent.len()).rev() {
             let (held, part) = (self.lent[k].0, Rc::clone(&self.lent[k].1));
             if held < self.base {
                 break;
             }
-            let place = self.lender(&part).expect("a lent place is still there");
+            let place = self.lender(&part)?;
             self.stack[held] = std::mem::replace(place, Value::Moved);
         }
+        Ok(())
     }
 
     pub(super) fn lends(&self) -> bool {
@@ -279,7 +282,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             self.fill_shown();
         }
         let raw = std::mem::take(&mut self.trace_raw);
-        let mut tracer = self.tracer.take().expect("traced");
+        let Some(mut tracer) = self.tracer.take() else {
+            self.trace_path = path;
+            self.trace_raw = raw;
+            return false;
+        };
         let view = crate::trace::View {
             program: self.program,
             globals: &self.globals,
@@ -294,8 +301,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         match &place.kind {
             PlaceKind::Global(id) => tracer.declared(*id, &view, place.span),
             _ => {
-                let global = place.root_global().expect("a global's cell");
-                tracer.changed(global, &view, place.span, &path);
+                if let Some(global) = place.root_global() {
+                    tracer.changed(global, &view, place.span, &path);
+                }
             }
         }
         self.tracer = Some(tracer);

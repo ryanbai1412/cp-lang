@@ -1764,7 +1764,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                 }
                 Op::Trace { idx } => {
-                    self.exec_trace(chunk, idx, regs_i, regs_v);
+                    self.exec_trace(chunk, idx, regs_i, regs_v)?;
                 }
                 other => {
                     if let Some(exit) = self.exec_ext_op(

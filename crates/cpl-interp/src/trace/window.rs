@@ -229,11 +229,14 @@ pub fn sent(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> Vec<u
         let mut output = output
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let io = io
+        let taken = io
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take()
-            .expect("only the thread that starts takes the input");
+            .take();
+        // Only the thread that starts takes the input.
+        let Some(io) = taken else {
+            return Observed::default();
+        };
         let want = Checkpoints::taking(u64::MAX, 1);
         let run = checkpointed(program, io, &mut **output, limits, None, want);
         *sent.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = run.sent;
@@ -259,11 +262,14 @@ pub fn interactive(
         let mut output = output
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let io = io
+        let taken = io
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take()
-            .expect("only the thread that starts takes the input");
+            .take();
+        // Only the thread that starts takes the input.
+        let Some(io) = taken else {
+            return Observed::default();
+        };
         let tail = config.last_steps.filter(|_| config.from_step.is_none());
         let (every, keep) = match tail {
             Some(_) => (CHECKPOINT_EVERY, CHECKPOINTS_KEPT),
