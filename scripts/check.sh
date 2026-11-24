@@ -94,51 +94,11 @@ if { [ "$mode" = fast ] || [ "$mode" = land ]; } && [ "${CHECK_NO_CXX_CACHE:-0}"
     [ ! -d "$CPL_CXX_CACHE_DIR" ] || find "$CPL_CXX_CACHE_DIR" -type f -mtime +7 -delete
 fi
 
-# Each step's wall time, so a slow gate shows where its time goes.
-step_name="setup"
-step_t0=$gate_t0
-step_times=()
-step_end() {
-    step_times+=("$(( $(date +%s) - step_t0 ))"$'\t'"$step_name")
-}
-# Script tests run with an empty HOME and no system git config, like a CI
-# runner: no git identity, no user config. The toolchains keep
-# their real homes.
-bare_home() {
-    local home status=0
-    home=$(mktemp -d)
-    # A commit hook exports GIT_DIR and GIT_INDEX_FILE; a test inheriting them
-    # writes its scratch repo into the real index.
-    env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_WORK_TREE -u GIT_OBJECT_DIRECTORY -u GIT_PREFIX \
-        HOME="$home" XDG_CONFIG_HOME="$home/.config" GIT_CONFIG_NOSYSTEM=1 \
-        CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}" RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}" \
-        MISE_DATA_DIR="${MISE_DATA_DIR:-$HOME/.local/share/mise}" \
-        MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$HOME/.config/mise}" \
-        UV_CACHE_DIR="${UV_CACHE_DIR:-$HOME/.cache/uv}" "$@" || status=$?
-    rm -rf "$home"
-    return $status
-}
-step() {
-    step_end
-    step_name="$*"
-    step_t0=$(date +%s)
-    printf '\n==> %s\n' "$*"
-}
 fail() { echo "check: $*" >&2; exit 1; }
-# Runs `scripts/ci.py <tier> ...`, keeps its step times and exits if it fails.
-ci_tier() {
-    step_end
-    local times status=0
-    times="$(mktemp)"
-    uv run --quiet python scripts/ci.py "$@" --times "$times" || status=$?
-    mapfile -t -O "${#step_times[@]}" step_times <"$times"
-    rm -f "$times" "$manifest" "$manifest.reads"
-    [ "$status" -eq 0 ] || exit 1
-    step_name="" step_t0=$(date +%s)
-}
 # Each cached stage's key hashes the whole tree minus that stage's excludes
 # (scripts/check_cache.py), so a file nobody thought to list still reruns it.
 manifest="$cache_dir/manifest.$$"
+trap 'rm -f "$manifest" "$manifest.reads"' EXIT
 if [ "$use_cache" -eq 1 ]; then
     mkdir -p "$cache_dir"
     uv run --quiet python scripts/check_cache.py manifest "$manifest" || use_cache=0
@@ -149,91 +109,9 @@ fi
 uv run --quiet python scripts/ci.py guard --mode "$mode" || exit 1
 need() { command -v "$1" >/dev/null || fail "\`$1\` is not installed; $2"; }
 need cargo "see https://rustup.rs"
-cpl="$target/debug/cpl"
-
-# The tiers' test filters (slow_filter, wall_filter) and CPL_GATE_PART's parse
-# (gate_kind, conform_suites, conform_shard, part) live in scripts/ci.py, tested.
-gate_part="${CPL_GATE_PART:-}"
-ci_plan="$(uv run --quiet python scripts/ci.py plan --mode "$mode" --gate-part "$gate_part")" || exit 1
-eval "$ci_plan"
-# Tests that mix a timing budget into a correctness check skip the budget.
-[ "$mode" = full ] || [ "$mode" = timing ] || export CPL_NO_WALL_CLOCK=1
-if [ "$mode" = timing ]; then
-    step "wall-clock budgets (reported, never blocking)"
-    cargo nextest run --workspace --no-fail-fast \
-        -E "$wall_filter or test(=every_corpus_program_and_conformance_case_is_served) or test(=every_port_compiles_with_every_judges_flags)"
-    exit
-fi
-
-# CPL_GATE_PART's parts other than checks run in scripts/ci.py part.
 stage_manifest=""
 [ "$use_cache" -eq 0 ] || stage_manifest="$manifest"
-if [ "$gate_kind" != checks ]; then
-    step_end
-    part_status=0
-    uv run --quiet python scripts/ci.py part --mode "$mode" --gate-part "$gate_part" --cpl "$cpl" \
-        --cache-dir "$cache_dir" --manifest "$stage_manifest" --since "$gate_t0" || part_status=$?
-    rm -f "$manifest" "$manifest.reads"
-    exit "$part_status"
-fi
-
-# --land diffs the train against origin/main, --commit the staged files.
-if [ "$mode" = land ] || [ "$mode" = commit ]; then
-    sel_all=1
-    sel_reason="no base to diff the train against"
-    affected=(scripts/affected.py)
-    if [ "$mode" = land ]; then
-        land_base="${CHECK_BASE:-$(git rev-parse -q --verify origin/main || [ $? = 1 ])}"
-        [ -z "$land_base" ] || affected+=(--base "$land_base")
-    fi
-    if [ "$mode" = commit ] || [ -n "$land_base" ]; then
-        sel_out="$(uv run --quiet python "${affected[@]}")"
-        while IFS='=' read -r key value; do
-            printf -v "sel_$key" '%s' "$value"
-        done <<<"$sel_out"
-    fi
-    if [ "$mode" = commit ] && [ "${sel_audit:-0}" = 1 ]; then
-        # Before anything that builds, --fast included, so the hook's time
-        # limit never skips these: they need no binary.
-        step "staged corpus packages: header and package (scripts/corpus.py verify --only header,package)"
-        uv run --quiet python scripts/corpus.py verify --changed staged --only header,package \
-            || fail "a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
-    fi
-    if [ "$sel_all" = 1 ]; then
-        printf '\ncheck: %s is not mapped by scripts/affected.py; running --fast\n' "$sel_reason"
-        mode=fast
-    fi
-fi
-if [ "$mode" = commit ]; then
-    # The commit tier's checks, each from the selection above (scripts/ci.py commit).
-    ci_tier commit --cpl "$cpl" --sel "${sel_out:-}"
-    step_end
-    printf '\nstep times (s):\n'
-    printf '%s\n' "${step_times[@]}" | sort -rn | awk -F'\t' '$1 > 0 { printf "%5d  %s\n", $1, $2 }'
-    printf '\ncheck: commit-tier checks passed in %ss; CI runs --fast on every main tip\n' \
-        "$(( $(date +%s) - gate_t0 ))"
-    exit 0
-fi
-
-# The build, the workspace tests, the cached stages that overlap them and the
-# checking scripts, in order (scripts/ci.py tail, tested in scripts/test_ci.py).
-ci_tier tail --mode "$mode" --gate-part "$gate_part" --cpl "$cpl" \
-    --cache-dir "$cache_dir" --manifest "$stage_manifest" --sel-packages "${sel_packages:-}" \
-    --sel-filter "${sel_filter:-}" --sel-site "${sel_site:-}"
-
-step_end
-printf '\nstep times (s):\n'
-printf '%s\n' "${step_times[@]}" | sort -rn | awk -F'\t' '$1 > 0 { printf "%5d  %s\n", $1, $2 }'
-gate_elapsed=$(( $(date +%s) - gate_t0 ))
-if [ "$mode" = fast ] || [ "$mode" = land ]; then
-    gate_time_file="$target/gate-fast-time.json"
-    mkdir -p "$(dirname "$gate_time_file")"
-    printf '{"mode":"%s","elapsed_s":%d,"budget_s":180}\n' "$mode" "$gate_elapsed" >"$gate_time_file"
-    printf '\ncheck: all %s checks passed in %ss (budget <= 180s)\n' "$mode" "$gate_elapsed"
-    # Wall time depends on the machine and on how warm the build is, so an
-    # overrun warns and stays recorded in the scoreboard instead of failing.
-    [ "$gate_elapsed" -le 180 ] ||
-        printf 'check: WARNING: fast gate took %ss, over the 180s (3 min) budget\n' "$gate_elapsed"
-else
-    printf '\ncheck: all %s checks passed in %ss\n' "$mode" "$gate_elapsed"
-fi
+# Every tier from here: the touched-path selection, the CPL_GATE_PART parts, the
+# build, the tests and the checking scripts, and the step times (scripts/ci.py gate).
+uv run --quiet python scripts/ci.py gate --mode "$mode" --gate-part "${CPL_GATE_PART:-}" \
+    --cpl "$target/debug/cpl" --cache-dir "$cache_dir" --manifest "$stage_manifest" --since "$gate_t0"

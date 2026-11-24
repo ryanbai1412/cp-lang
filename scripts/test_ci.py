@@ -1,6 +1,7 @@
 import subprocess
 import contextlib
 import io
+import json
 import sys
 import tempfile
 import unittest
@@ -48,19 +49,6 @@ class FilterTest(unittest.TestCase):
         for name in ci.SLOW_TESTS:
             self.assertIn(f"test(/(^|::){name}$/)", slow)
         self.assertTrue(slow.startswith("binary(budget)"))
-
-    def test_plan_round_trips_through_the_shell(self) -> None:
-        out = subprocess.run(
-            ["bash", "-c", 'eval "$(python3 scripts/ci.py plan --mode fast --gate-part conform:a+b@1/2)"; '
-             'printf "%s|%s|%s\\n" "$gate_kind" "$conform_suites" "$conform_shard"; printf "%s" "$slow_filter"'],
-            cwd=Path(__file__).parent.parent, capture_output=True, text=True, check=True).stdout
-        first, slow = out.split("\n", 1)
-        self.assertEqual(first, "conform|a b|--shard 1/2")
-        self.assertEqual(slow, ci.slow_filter())
-
-    def test_plan_rejects_a_bad_part(self) -> None:
-        self.assertEqual(ci.main(["plan", "--mode", "fast", "--gate-part", "bogus"]), 1)
-
 
 
 class StepsTest(unittest.TestCase):
@@ -187,11 +175,9 @@ class StepsTest(unittest.TestCase):
                 elif step.argv:
                     self.assertNotIn(" ".join(step.argv), check)
         self.assertNotIn("npm test\n", check)
-        # The commit tier runs in `ci.py commit`; the build, checks and full tiers in
-        # `ci.py tail`, as do its stages.
-        self.assertIn("ci_tier commit ", check)
-        self.assertIn("ci_tier tail ", check)
-        self.assertNotIn("cargo ", check.split("ci_tier commit ")[1])
+        # Every tier after the guards runs in `ci.py gate`; check.sh runs no cargo itself.
+        self.assertIn("scripts/ci.py gate --mode", check)
+        self.assertNotRegex(check, r"(?m)^\s*cargo ")
         for owned in ("cpl-conform\" all", "--test recovery", "known_traps.cp"):
             self.assertNotIn(owned, check)
 
@@ -454,6 +440,119 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(ev.count("cargo build -q -p cpl-cli"), 2)
         # check.sh ran the header and package modes before anything built.
         self.assertIn("scripts/corpus.py verify --changed staged --skip dream,header,package --cpl target/debug/cpl", ev)
+
+
+class GateTest(unittest.TestCase):
+    """`ci.py gate`: the selection, the fallback to --fast, the parts and the closing lines."""
+
+    class FakeTier:
+        made: list = []
+
+        def __init__(self, mode, part="", cpl="", cache_dir="", manifest="", packages="", filter="", site="", run=None):
+            self.mode, self.sel = mode, (packages, filter, site)
+            self.times = [(7, "the tests"), (0, "instant")]
+            GateTest.FakeTier.made.append(self)
+
+        def __call__(self):
+            return 0
+
+        def commit(self, sel):
+            self.committed = sel
+            return 0
+
+        def part(self, since):
+            self.parted = since
+            return 0
+
+    def _gate(self, mode, part="", affected="all=0\nreason=\npackages=cpl-fmt\nfilter=rdeps(cpl-fmt)\nsite=0\n",
+              codes=None, base="abc", elapsed=12, env=None):
+        events, codes = [], codes or {}
+        GateTest.FakeTier.made = []
+
+        def run(argv, **_):
+            name = " ".join(str(a) for a in (argv[1:] if argv[0] == sys.executable else argv))
+            events.append(name)
+            out = base if name.startswith("git rev-parse") else affected if name.startswith("scripts/affected.py") else ""
+            return subprocess.CompletedProcess(argv, codes.get(name.split()[0], 0), out, "boom")
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.enterContext(mock.patch.object(ci, "target_dir", lambda: tmp))
+        self.enterContext(mock.patch.dict(ci.os.environ, env or {}))
+        ci.os.environ.pop("CHECK_BASE", None) if not (env or {}).get("CHECK_BASE") else None
+        ci.os.environ.pop("CPL_NO_WALL_CLOCK", None)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = ci.run_gate(mode, part, since=100.0, run=run, tail_cls=GateTest.FakeTier, clock=lambda: 100.0 + elapsed)
+        return code, events, out.getvalue(), err.getvalue(), tmp
+
+    def test_land_runs_the_train_selection_and_records_the_fast_time(self) -> None:
+        code, ev, out, _, tmp = self._gate("land")
+        self.assertEqual(code, 0)
+        self.assertIn("scripts/affected.py --base abc", ev)
+        [tier] = GateTest.FakeTier.made
+        self.assertEqual((tier.mode, tier.sel), ("land", ("cpl-fmt", "rdeps(cpl-fmt)", "0")))
+        self.assertIn("    7  the tests\n", out)
+        self.assertNotIn("instant", out)
+        self.assertIn("check: all land checks passed in 12s (budget <= 180s)", out)
+        self.assertEqual(json.loads((tmp / "gate-fast-time.json").read_text()),
+                         {"mode": "land", "elapsed_s": 12, "budget_s": 180})
+        self.assertEqual(ci.os.environ.get("CPL_NO_WALL_CLOCK"), "1")
+
+    def test_check_base_overrides_origin_main(self) -> None:
+        _, ev, _, _, _ = self._gate("land", env={"CHECK_BASE": "feed"})
+        self.assertIn("scripts/affected.py --base feed", ev)
+        self.assertFalse([e for e in ev if e.startswith("git rev-parse")])
+
+    def test_an_unmapped_path_or_no_base_runs_fast(self) -> None:
+        code, _, out, _, _ = self._gate("land", affected="all=1\nreason=web/new.txt\npackages=x\n")
+        self.assertEqual(code, 0)
+        self.assertIn("check: web/new.txt is not mapped by scripts/affected.py; running --fast", out)
+        self.assertEqual([(t.mode, t.sel) for t in GateTest.FakeTier.made], [("fast", ("", "", ""))])
+        _, ev, out, _, _ = self._gate("land", base="")
+        self.assertIn("no base to diff the train against", out)
+        self.assertFalse([e for e in ev if e.startswith("scripts/affected.py")])
+
+    def test_a_failing_selection_fails_the_gate(self) -> None:
+        code, _, _, err, _ = self._gate("commit", codes={"scripts/affected.py": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("scripts/affected.py failed; rerun: uv run scripts/affected.py\nboom", err)
+        self.assertEqual(GateTest.FakeTier.made, [])
+
+    def test_commit_audits_packages_before_anything_builds(self) -> None:
+        sel = "all=0\naudit=1\npackages=\n"
+        code, ev, out, _, tmp = self._gate("commit", affected=sel)
+        self.assertEqual(code, 0)
+        self.assertEqual(ev[-1], "scripts/corpus.py verify --changed staged --only header,package")
+        self.assertEqual(GateTest.FakeTier.made[0].committed, {"all": "0", "audit": "1", "packages": ""})
+        self.assertIn("commit-tier checks passed in 12s", out)
+        self.assertFalse((tmp / "gate-fast-time.json").exists())
+        code, _, _, err, _ = self._gate("commit", affected=sel, codes={"scripts/corpus.py": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("a staged corpus package fails", err)
+        self.assertEqual(GateTest.FakeTier.made, [])
+
+    def test_a_ci_part_other_than_checks_runs_alone(self) -> None:
+        code, ev, _, _, _ = self._gate("fast", part="fmt")
+        self.assertEqual(code, 0)
+        self.assertEqual(ev, [])
+        self.assertEqual(GateTest.FakeTier.made[0].parted, 100.0)
+        self.assertEqual(self._gate("fast", part="bogus")[0], 1)
+
+    def test_a_slow_fast_gate_warns_and_full_skips_the_budget(self) -> None:
+        _, _, out, _, _ = self._gate("fast", elapsed=200)
+        self.assertIn("WARNING: fast gate took 200s, over the 180s (3 min) budget", out)
+        self.assertEqual(ci.os.environ.get("CPL_NO_WALL_CLOCK"), "1")
+        _, _, out, _, tmp = self._gate("full")
+        self.assertIn("check: all full checks passed in 12s\n", out)
+        self.assertNotIn("CPL_NO_WALL_CLOCK", ci.os.environ)
+        self.assertFalse((tmp / "gate-fast-time.json").exists())
+
+    def test_timing_runs_only_the_wall_clock_tests(self) -> None:
+        code, ev, _, _, _ = self._gate("timing")
+        self.assertEqual(code, 0)
+        self.assertEqual(ev, ["cargo nextest run --workspace --no-fail-fast -E " + ci.wall_filter()
+                              + " or test(=every_corpus_program_and_conformance_case_is_served)"
+                              " or test(=every_port_compiles_with_every_judges_flags)"])
+        self.assertEqual(GateTest.FakeTier.made, [])
 
 
 class GuardTest(unittest.TestCase):

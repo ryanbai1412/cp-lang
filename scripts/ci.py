@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The CI driver's decisions, tested (scripts/test_ci.py): which tests each tier
 leaves out, what a CPL_GATE_PART runs, and which checking scripts and spec gates
-each tier runs, and the --fast tier from its build on. scripts/check.sh evals
-`ci.py plan`, runs `ci.py steps <tier>` and hands the rest to `ci.py tail`.
+each tier runs, and every tier after the guards. scripts/check.sh sets up the
+environment and the stage cache, runs `ci.py guard`, then hands the rest to `ci.py gate`.
 
 CI splits --fast across parallel jobs (.github/workflows/ci.yml):
   checks            everything but the workspace tests, the conformance ratchet and fmt
@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import shlex
 import shutil
 import signal
 import subprocess
@@ -93,22 +92,6 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     else:
         raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, conform or tests:<partition>)")
     return out
-
-
-def plan(mode: str, part: str) -> str:
-    """Shell assignments check.sh evals."""
-    g = gate_part(part, mode)
-    values = {
-        "slow_filter": slow_filter(),
-        "wall_filter": wall_filter(),
-        "gate_kind": g["kind"],
-        "conform_suites": g["suites"],
-        "conform_shard": g["shard"],
-        "part": g["partition"],
-    }
-    arrays = {"slow_tests": SLOW_TESTS}
-    return ("".join(f"{k}={shlex.quote(v)}\n" for k, v in values.items())
-            + "".join(f"{k}=({' '.join(map(shlex.quote, v))})\n" for k, v in arrays.items()))
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -914,68 +897,119 @@ def _guard(mode: str, root: Path) -> None:
         raise Failed("\n".join(private) + f"\na lockfile resolves packages from a private mirror; rewrite its URLs to {NPM}")
 
 
+
+TIMING_EXTRA = ("every_corpus_program_and_conformance_case_is_served", "every_port_compiles_with_every_judges_flags")
+FAST_BUDGET_S = 180
+AUDIT_FIRST = "staged corpus packages: header and package (scripts/corpus.py verify --only header,package)"
+
+
+def selection(mode: str, run=subprocess.run) -> dict[str, str]:
+    """scripts/affected.py's touched-path selection: --land diffs the train against
+    CHECK_BASE (default origin/main), --commit the staged files."""
+    argv = [sys.executable, "scripts/affected.py"]
+    if mode == "land":
+        base = os.environ.get("CHECK_BASE") or run(["git", "rev-parse", "-q", "--verify", "origin/main"], cwd=ROOT,
+                                                   capture_output=True, text=True).stdout.strip()
+        if not base:
+            return {"all": "1", "reason": "no base to diff the train against"}
+        argv += ["--base", base]
+    done = run(argv, cwd=ROOT, capture_output=True, text=True)
+    if done.returncode:
+        raise Failed(f"scripts/affected.py failed; rerun: uv run {' '.join(argv[1:])}\n{done.stderr}")
+    return dict(line.split("=", 1) for line in done.stdout.splitlines() if "=" in line)
+
+
+def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir: str = "", manifest: str = "",
+             since: float | None = None, run=subprocess.run, tail_cls=None, clock=time.time) -> int:
+    """Every tier after check.sh's guards; `since` is when the gate started."""
+    tail_cls = tail_cls or Tail
+    since = clock() if since is None else since
+    times = [(int(clock() - since), "setup")]
+    # Tests that mix a timing budget into a correctness check skip the budget.
+    if mode not in ("full", "timing"):
+        os.environ["CPL_NO_WALL_CLOCK"] = "1"
+    try:
+        g = gate_part(part, mode)
+        if mode == "timing":
+            print("\n==> wall-clock budgets (reported, never blocking)", flush=True)
+            expr = " or ".join([wall_filter(), *(f"test(={t})" for t in TIMING_EXTRA)])
+            return run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr], cwd=ROOT).returncode
+        if g["kind"] != "checks":
+            return tail_cls(mode, part, cpl, cache_dir, manifest).part(since)
+        sel: dict[str, str] = {}
+        if mode in ("land", "commit"):
+            sel = selection(mode, run)
+            if mode == "commit" and sel.get("audit") == "1":
+                # Before anything that builds, --fast included, so the hook's time limit
+                # never skips these: they need no binary.
+                print(f"\n==> {AUDIT_FIRST}", flush=True)
+                t0 = clock()
+                if run([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--only", "header,package"],
+                       cwd=ROOT).returncode:
+                    raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode"
+                                 " and the package")
+                times.append((int(clock() - t0), AUDIT_FIRST))
+            if sel.get("all", "1") == "1":
+                print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; running --fast")
+                mode, sel = "fast", {}
+    except (Failed, ValueError) as e:
+        print(f"check: {e}", file=sys.stderr)
+        return 1
+    if mode == "commit":
+        tail = tail_cls("commit", cpl=cpl, run=run)
+        code = tail.commit(sel)
+    else:
+        tail = tail_cls(mode, part, cpl, cache_dir, manifest, sel.get("packages", ""), sel.get("filter", ""),
+                        sel.get("site", ""))
+        code = tail()
+    if code:
+        return 1
+    print("\nstep times (s):")
+    for secs, title in sorted(times + tail.times, key=lambda t: -t[0]):
+        if secs > 0:
+            print(f"{secs:5d}  {title}")
+    elapsed = int(clock() - since)
+    if mode == "commit":
+        print(f"\ncheck: commit-tier checks passed in {elapsed}s; CI runs --fast on every main tip")
+    elif mode in ("fast", "land"):
+        record = target_dir() / "gate-fast-time.json"
+        record.parent.mkdir(parents=True, exist_ok=True)
+        record.write_text(f'{{"mode":"{mode}","elapsed_s":{elapsed},"budget_s":{FAST_BUDGET_S}}}\n')
+        print(f"\ncheck: all {mode} checks passed in {elapsed}s (budget <= {FAST_BUDGET_S}s)")
+        # Wall time depends on the machine and on how warm the build is, so an overrun
+        # warns and stays recorded in the scoreboard instead of failing.
+        if elapsed > FAST_BUDGET_S:
+            print(f"check: WARNING: fast gate took {elapsed}s, over the {FAST_BUDGET_S}s (3 min) budget")
+    else:
+        print(f"\ncheck: all {mode} checks passed in {elapsed}s")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("plan", help="print the tier's filters and gate part as shell assignments")
-    p.add_argument("--mode", choices=MODES, required=True)
-    p.add_argument("--gate-part", default="")
     g = sub.add_parser("steps", help="run a tier's checking scripts, spec gates among them")
     g.add_argument("tier", choices=sorted(STEPS) + ["touched"])
     g.add_argument("--cpl", default="target/debug/cpl")
     g.add_argument("scripts", nargs="*", help="with tier `touched`: the changed scripts whose steps run")
-    t = sub.add_parser("tail", help="run the --fast tier from its build on: the tests and what overlaps them")
-    t.add_argument("--mode", choices=MODES, required=True)
-    t.add_argument("--gate-part", default="")
-    t.add_argument("--cpl", default="target/debug/cpl")
-    t.add_argument("--cache-dir", default="")
-    t.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
-    t.add_argument("--sel-packages", default="")
-    t.add_argument("--sel-filter", default="")
-    t.add_argument("--sel-site", default="")
-    t.add_argument("--times", help="append each step's `seconds<TAB>title` here")
-    pt = sub.add_parser("part", help="run a CI gate part other than checks (CPL_GATE_PART)")
-    pt.add_argument("--mode", choices=MODES, required=True)
-    pt.add_argument("--gate-part", required=True)
-    pt.add_argument("--cpl", default="target/debug/cpl")
-    pt.add_argument("--cache-dir", default="")
-    pt.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
-    pt.add_argument("--since", type=float, default=time.time(), help="when the gate started (epoch seconds)")
-    c = sub.add_parser("commit", help="run the commit tier: the checks the staged paths reach")
-    c.add_argument("--cpl", default="target/debug/cpl")
-    c.add_argument("--sel", default="", help="scripts/affected.py's `key=value` lines")
-    c.add_argument("--times", help="append each step's `seconds<TAB>title` here")
+    gt = sub.add_parser("gate", help="run a tier after check.sh's guards")
+    gt.add_argument("--mode", choices=MODES, required=True)
+    gt.add_argument("--gate-part", default="")
+    gt.add_argument("--cpl", default="target/debug/cpl")
+    gt.add_argument("--cache-dir", default="")
+    gt.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
+    gt.add_argument("--since", type=float, default=None, help="when the gate started (epoch seconds)")
     gd = sub.add_parser("guard", help="the guards before the build: conflict markers, traces, secrets, lockfiles")
     gd.add_argument("--mode", choices=MODES, required=True)
     args = ap.parse_args(argv)
     if args.cmd == "guard":
         return guard(args.mode)
-    if args.cmd == "part":
-        return Tail(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest).part(args.since)
-    if args.cmd in ("tail", "commit"):
-        if args.cmd == "commit":
-            tail = Tail("commit", cpl=args.cpl)
-            sel = dict(line.split("=", 1) for line in args.sel.splitlines() if "=" in line)
-            code = tail.commit(sel)
-        else:
-            tail = Tail(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest,
-                        args.sel_packages, args.sel_filter, args.sel_site)
-            code = tail()
-        if args.times:
-            with open(args.times, "a", encoding="utf-8") as f:
-                f.writelines(f"{secs}\t{title}\n" for secs, title in tail.times)
-        return code
+    if args.cmd == "gate":
+        return run_gate(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest, args.since)
     if args.cmd == "steps":
         if (args.tier == "touched") != bool(args.scripts):
             ap.error("name the changed scripts with `touched`, and only with it")
         return run_steps(args.tier, args.cpl, only=set(args.scripts) or None)
-    try:
-        sys.stdout.write(plan(args.mode, args.gate_part))
-    except ValueError as e:
-        print(f"check: {e}", file=sys.stderr)
-        return 1
-    return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
