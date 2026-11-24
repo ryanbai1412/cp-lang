@@ -27,7 +27,8 @@ growth is over SLACK times the documented one (the fn is slower than its
 docs) or under it by SLACK squared (the docs overstate it).
 
 --write records every case and the std fns with a `cost:` and no case in
-research/perf/scaling.json, which scripts/debt-ratchet.py reads
+research/perf/scaling.json, which scripts/debt-ratchet.py reads; with CASEs
+it reruns only those and keeps the other cases' recorded results
 (`scaling_mismatches` is a hard zero; `std_fns_unscaled` only shrinks).
 --check fails on a mismatch and when that file is stale. Enforces the
 stdlib register's "The obvious code is the fast code" and "The documented
@@ -286,6 +287,15 @@ def run_case(cpl, case, costs, tmp):
     return out
 
 
+def merge(old, results, cases, costs):
+    """The board with `cases` rerun as `results` and every other existing case kept as `old` records it."""
+    rerun = {os.path.relpath(os.path.abspath(c), ROOT) for c in cases}
+    kept = {k: r for k, r in old.get("cases", {}).items()
+            if k.split("::")[0] not in rerun and os.path.exists(os.path.join(ROOT, k.split("::")[0]))}
+    merged = {**kept, **results}
+    return {"cases": merged, "unscaled": sorted(set(costs) - {r["fn"] for r in merged.values()})}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--cpl", default=os.path.join(ROOT, "target", "debug", "cpl"))
@@ -318,7 +328,13 @@ def main():
             print(f"scaling: {rel}: {r['fn']} {why}", file=sys.stderr)
     print(f"scaling: {len(results) - bad} of {len(results)} cases agree with the docs; "
           f"{len(board['unscaled'])} std fns with a cost have no case")
-    if args.write and not args.cases:
+    if args.write:
+        if args.cases:
+            try:
+                old = json.load(open(BOARD))
+            except (OSError, ValueError):
+                old = {}
+            board = merge(old, results, cases, costs)
         with open(BOARD, "w") as f:
             json.dump(board, f, indent=1, sort_keys=True)
             f.write("\n")

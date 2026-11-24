@@ -112,6 +112,22 @@ class Runs(unittest.TestCase):
             self.assertEqual(list(short), ["f"])
 
 
+class Merge(unittest.TestCase):
+    def test_a_rerun_replaces_its_cases_and_keeps_the_others(self):
+        case = lambda fn, ok=True: {"fn": fn, "ok": ok}
+        old = {"cases": {"bench/scaling/dsu.cp::dsu.Dsu.find": case("dsu.Dsu.find"),
+                         "bench/scaling/rooted.cp::tree.Rooted.lca": case("tree.Rooted.lca", ok=False),
+                         "bench/scaling/rooted.cp::tree.Rooted.gone": case("tree.Rooted.gone"),
+                         "bench/scaling/no_such_case.cp::x.y": case("x.y")}}
+        results = {"bench/scaling/rooted.cp::tree.Rooted.lca": case("tree.Rooted.lca")}
+        board = scaling.merge(old, results, [os.path.join(scaling.ROOT, "bench/scaling/rooted.cp")],
+                              ["dsu.Dsu.find", "tree.Rooted.lca", "tree.Rooted.gone", "x.y"])
+        self.assertEqual(sorted(board["cases"]), ["bench/scaling/dsu.cp::dsu.Dsu.find",
+                                                  "bench/scaling/rooted.cp::tree.Rooted.lca"])
+        self.assertTrue(board["cases"]["bench/scaling/rooted.cp::tree.Rooted.lca"]["ok"])
+        self.assertEqual(board["unscaled"], ["tree.Rooted.gone", "x.y"])
+
+
 class Alias(unittest.TestCase):
     def test_a_cost_as_another_fn_reads_its_cost(self):
         costs = {"m.T.f": r"\(O(\log n)\)", "m.T.g": "as `f`", "m.U.h": "as [`T.g`](T.g), plus one call",
