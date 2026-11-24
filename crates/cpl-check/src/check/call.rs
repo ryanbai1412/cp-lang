@@ -365,9 +365,6 @@ impl<'a> Checker<'a> {
         })
     }
 
-    /// `s.range(r)` on `SortedBag<K>`, `SortedSet<K>`, `Set<K>`, or `Map<K, V>`:
-    /// returns an O(1) `SortedRange<E>` view over entries matching `r`
-    /// (`a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..`, or a `Range<K>` value).
     /// Records `call` as a call of `type_name`'s projection `name`, if it has one.
     fn note_projection(&mut self, call: &Expr, type_name: &str, name: &str) -> Option<()> {
         let members = self.members_of(type_name)?;
@@ -385,6 +382,9 @@ impl<'a> Checker<'a> {
         Some(())
     }
 
+    /// `s.range(r)` on `SortedBag<K>`, `SortedSet<K>`, `Set<K>`, or `Map<K, V>`:
+    /// returns an O(1) `SortedRange<E>` view over entries matching `r`
+    /// (`a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..`, or a `Range<K>` value).
     fn sorted_range_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;

@@ -2639,6 +2639,10 @@ impl<'a> Checker<'a> {
         }
         // `xs.push(x)` changes `xs` as an assignment to it would.
         self.check_access(base, true);
+        // A type's own `mut self` method says why its receiver can't change.
+        if own && !mutating_call(&name.text, args) {
+            return;
+        }
         let viewed = self.view_kind(base).is_some();
         if let Some(kind) = self.view_kind(base) {
             if self.is_readonly_view(base) {
