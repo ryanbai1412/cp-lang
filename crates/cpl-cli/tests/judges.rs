@@ -266,6 +266,45 @@ fn deep_recursion_runs_on_the_stack_each_judge_gives() {
     }
 }
 
+/// An AVX2 judge's target pragma names popcnt, so g++ turns `popcount`
+/// into the instruction, not a call to libgcc's `__popcountdi2`.
+#[test]
+fn popcount_on_an_avx2_judge_is_one_popcnt() {
+    if !has("g++") {
+        eprintln!("skipped: no g++");
+        return;
+    }
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-popcnt");
+    std::fs::create_dir_all(&scratch).unwrap();
+    std::fs::write(
+        scratch.join("cp.toml"),
+        "[judge.fast]\nextends = \"generic\"\nisa = \"avx2\"\n",
+    )
+    .unwrap();
+    let file = scratch.join("ones.cp");
+    std::fs::write(&file, "let n: Int = read()\nprint(popcount(n))\n").unwrap();
+    let cpp = scratch.join("ones.cpp");
+    std::fs::write(&cpp, build(&file, "fast").unwrap()).unwrap();
+    let asm = scratch.join("ones.s");
+    let out = Command::new("g++")
+        .args(["-std=c++17", "-O2", "-S", "-o"])
+        .arg(&asm)
+        .arg(&cpp)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let asm = std::fs::read_to_string(&asm).unwrap();
+    assert!(asm.contains("popcnt"), "no popcnt in the assembly");
+    assert!(
+        !asm.contains("__popcountdi2"),
+        "popcount still calls libgcc"
+    );
+}
+
 /// Every port's C++ for every judge, compiled with that judge's flags.
 /// About a minute on eight cores: a slow test (scripts/ci.py SLOW_TESTS)
 /// that `scripts/check.sh --full` and `--timing` (ci-slow.yml) run.

@@ -112,7 +112,7 @@ fn run_native(file: &str, compiled: &Compiled, input: &[u8]) -> Result<Run, Stri
         stamp: Some(judge.stamp()),
         thread_stack: judge.thread_stack,
         windows: judge.os == cpl_judge::Os::Windows,
-        avx2: judge.avx2,
+        cpu: judge.cpu.clone(),
         ..cpl_codegen::Target::default()
     };
     let dir = std::env::temp_dir().join(format!("cpl-profile-{}", std::process::id()));

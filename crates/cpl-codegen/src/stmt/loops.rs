@@ -186,7 +186,7 @@ impl<'p> Emitter<'p> {
             return None;
         };
         // Without AVX2 and O3 g++ won't vectorise it, and the branchy loop is faster.
-        if !self.target.avx2 || self.hoisted.contains(&slot) {
+        if !self.target.has("avx2") || self.hoisted.contains(&slot) {
             return None;
         }
         let [Stmt::Let(held, Some(read)), Stmt::If(test, then, other)] = body.stmts.as_slice()

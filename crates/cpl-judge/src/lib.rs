@@ -61,9 +61,9 @@ pub struct Profile {
     pub source_limit: usize,
     /// Whether the compiler has `__int128`.
     pub int128: bool,
-    /// Whether the judge's CPUs have AVX2, so the C++ may ask for it and
-    /// for loop vectorisation with target pragmas (`isa = "avx2"`).
-    pub avx2: bool,
+    /// The CPU features the judge's CPUs promise (its `isa`'s row of
+    /// `ISAS`), which the C++ asks for with a target pragma.
+    pub cpu: Vec<String>,
     /// The judge's usual limits, for a problem that names none.
     pub time_ms: u64,
     pub memory_mb: u64,
@@ -403,7 +403,7 @@ fn profile(
         thread_stack: Some(THREAD_STACK),
         source_limit,
         int128: true,
-        avx2: false,
+        cpu: Vec::new(),
         time_ms: 2000,
         memory_mb: 256,
         evidence: evidence.into(),
@@ -699,6 +699,14 @@ impl Config {
     }
 }
 
+/// Each `isa` a profile may name and the CPU features it promises:
+/// `avx2` is x86-64-v3's AVX2 with the bit instructions every such CPU
+/// has, so `popcount`, `clz` and `ctz` are one instruction there.
+pub const ISAS: &[(&str, &[&str])] = &[
+    ("x86-64", &[]),
+    ("avx2", &["avx2", "bmi", "bmi2", "lzcnt", "popcnt"]),
+];
+
 const KEYS: &[(&str, &str)] = &[
     ("extends", "a profile's name in quotes"),
     ("title", "text in quotes"),
@@ -738,7 +746,7 @@ fn check_key(key: &str, value: &Value) -> Result<(), String> {
     ) || matches!((key, value), ("stack_mb", Value::Str(s)) if s == "unlimited");
     let fits = fits
         && !matches!((key, value), ("os", Value::Str(s)) if s != "linux" && s != "windows")
-        && !matches!((key, value), ("isa", Value::Str(s)) if s != "x86-64" && s != "avx2");
+        && !matches!((key, value), ("isa", Value::Str(s)) if !ISAS.iter().any(|(isa, _)| isa == s));
     match fits {
         true => Ok(()),
         false => Err(format!("`{key}` is {wants}")),
@@ -762,7 +770,10 @@ fn apply(profile: &mut Profile, key: &str, value: &Value) {
         ("thread_stack_mb", Value::Int(mb)) => profile.thread_stack = (*mb > 0).then(|| mb << 20),
         ("source_kb", Value::Int(kb)) => profile.source_limit = (*kb as usize) * 1024,
         ("int128", Value::Bool(b)) => profile.int128 = *b,
-        ("isa", Value::Str(s)) => profile.avx2 = s == "avx2",
+        ("isa", Value::Str(s)) => {
+            let (_, cpu) = ISAS.iter().find(|(isa, _)| isa == s).unwrap_or(&ISAS[0]);
+            profile.cpu = cpu.iter().map(|f| f.to_string()).collect();
+        }
         ("time_ms", Value::Int(ms)) => profile.time_ms = *ms,
         ("memory_mb", Value::Int(mb)) => profile.memory_mb = *mb,
         _ => {}

@@ -48,5 +48,7 @@ answers = ["YES", "NO"]
 - `isa = "avx2"` says the judge's CPUs have AVX2. The C++'s first pragma
   then asks for `optimize("O3,unroll-loops")` as well as no FMA, since -O2
   alone never vectorises a loop whose length is known only at run time,
-  and `#pragma GCC target("avx2")` follows the includes. `x86-64`, the
-  default, emits neither. (Rjudge.9)
+  and `#pragma GCC target("avx2,bmi,bmi2,lzcnt,popcnt")` follows the
+  includes: x86-64-v3's features, so `popcount`, `clz` and `ctz` are one
+  instruction each. `x86-64`, the default, emits neither. Each `isa` and
+  its features are one row of cpl-judge's `ISAS`. (Rjudge.9)

@@ -362,8 +362,8 @@ fn a_project_says_its_judge_has_avx2() {
     let toml = "[judge]\njudge = \"fast\"\n[judge.fast]\nextends = \"generic\"\nisa = \"avx2\"\n";
     let dir = dir("avx2", Some(toml));
     let fast = resolve(&dir.join("a.cp"), "", None).unwrap();
-    assert!(fast.avx2);
-    assert!(builtins().iter().all(|p| !p.avx2));
+    assert_eq!(fast.cpu, ["avx2", "bmi", "bmi2", "lzcnt", "popcnt"]);
+    assert!(builtins().iter().all(|p| p.cpu.is_empty()));
 }
 
 #[test]

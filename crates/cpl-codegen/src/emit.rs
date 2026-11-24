@@ -1321,7 +1321,7 @@ impl<'p> Emitter<'p> {
         // The pragma first: every float op rounds as the interpreter's does, never an FMA.
         // On an AVX2 judge the same pragma asks for O3 too: one optimize set for the library and
         // the program, or g++ won't inline one into the other.
-        let optimize = match self.target.avx2 {
+        let optimize = match self.target.has("avx2") {
             true => "O3,unroll-loops,fp-contract=off",
             false => "fp-contract=off",
         };
@@ -1331,8 +1331,11 @@ impl<'p> Emitter<'p> {
              #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <utility>\n#include <vector>\n#include <unistd.h>\n#ifdef _WIN32\n#include <fcntl.h>\n#include <io.h>\n#endif\n",
         ));
         // After the includes, so the library's always-inline helpers keep the default target.
-        if self.target.avx2 {
-            out.push_str("#if defined(__GNUC__) && !defined(__clang__)\n#pragma GCC target(\"avx2\")\n#endif\n");
+        if !self.target.cpu.is_empty() {
+            out.push_str(&format!(
+                "#if defined(__GNUC__) && !defined(__clang__)\n#pragma GCC target(\"{}\")\n#endif\n",
+                self.target.cpu.join(",")
+            ));
         }
         if types.contains("std::function")
             || vars.contains("std::function")

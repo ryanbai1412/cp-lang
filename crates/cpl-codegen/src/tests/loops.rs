@@ -146,7 +146,7 @@ fn a_max_plus_row_is_one_branch_free_pass_on_an_avx2_judge_only() {
         "print(keep(row, row, 3)[S.first!] ?? -1)\n",
     ));
     let avx2 = crate::Target {
-        avx2: true,
+        cpu: vec!["avx2".into()],
         ..crate::Target::default()
     };
     let fast = crate::emit_for(&program, "t.cp", None, &avx2);
