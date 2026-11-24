@@ -52,11 +52,11 @@ Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
 - `fn line_at(self, x: Int) -> ?Line` — \(O(\log n)\); The line attaining `at(x)`, or `None` when empty.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of lines kept (dominated lines are not counted).
 
-## `struct Step<S>(pub state: S, pub depth: Int)`
+## `struct Step<S>(pub state: S, pub depth: Int, pruned: Bool = false)`
 
 One state reached by `backtrack`.
 
-- `fn prune(self)` — \(O(1)\); Skip every state below this one: `backtrack` does not call `next` on it.
+- `fn prune(mut self)` — \(O(1)\); Skip every state below this one: `backtrack` does not call `next` on it.
 
 ## Functions
 
