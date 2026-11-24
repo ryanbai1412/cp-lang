@@ -324,3 +324,37 @@ fn a_saved_case_runs_first_and_fails_until_it_is_fixed() {
         "{clean}"
     );
 }
+
+/// When the line that should set a value never runs, `--explain` names the
+/// loop that ran 0 times as well as the start value it left (`stress/U12`).
+#[test]
+fn explain_names_the_loop_that_never_ran() {
+    let path = scratch("unrun-loop");
+    std::fs::write(
+        &path,
+        concat!(
+            "let n: 1..=8 = read()\n",
+            "let a: [n]0..=9 = read()\n",
+            "var best = 0\n",
+            "for i in 1..n:\n",
+            "    best max= a[i]\n",
+            "print(best)\n",
+            "\n",
+            "@alt(program)\n",
+            "fn brute():\n",
+            "    let n: 1..=8 = read()\n",
+            "    let a: [n]0..=9 = read()\n",
+            "    print(a.max()!)\n",
+        ),
+    )
+    .unwrap();
+    let (code, out) = cpl(&["stress".as_ref(), path.as_os_str(), "--explain".as_ref()]);
+    assert_eq!(code, Some(1), "{out}");
+    assert!(out.contains("that is: n = 1"), "{out}");
+    assert!(
+        out.contains(
+            "look at line 4: `best` is set on line 5 only in this loop, which runs 0 times"
+        ),
+        "{out}"
+    );
+}

@@ -69,8 +69,8 @@ Evidence: `crates/cpl-stress/src/tests.rs` (`a_case_renders_one_row_per_line_and
 ### stress/U12: which line is wrong
 Need: go from a failing case to the line to fix.
 Design: the report names the first value the solution and the brute give differently and the lines that made it; a runtime error shows its line and the locals.
-Milestone: M1-differentiating. Status: partial (`--explain` is a flag, not part of every failure; when a loop never runs, it names the `var` the loop left unchanged, not the loop's bound)
-Evidence: `crates/cpl-cli/tests/seeded_bugs.rs` (`explain_names_the_line_each_bug_was_planted_on`, 29 of 29)
+Milestone: M1-differentiating. Status: partial (`--explain` is a flag, not part of every failure)
+Evidence: `crates/cpl-cli/tests/seeded_bugs.rs` (`explain_names_the_line_each_bug_was_planted_on`, 29 of 29); `crates/cpl-cli/tests/wrong_answer.rs` (`explain_names_the_loop_that_never_ran`)
 
 ### stress/U13: step through the failing case
 Need: see what the program did on the case stress found.

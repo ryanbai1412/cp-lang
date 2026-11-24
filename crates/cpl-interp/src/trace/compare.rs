@@ -298,6 +298,7 @@ fn output_trail(
                 ),
             ));
         }
+        blame.extend(unrun_sets(lines, fast, print, name));
     }
     blame.sort();
     blame.truncate(3);
@@ -316,6 +317,52 @@ fn output_trail(
         .collect();
     blame.extend(loops);
     blame.dedup_by_key(|(line, _)| *line);
+    blame
+}
+
+/// The loops and `if`s that kept a line setting `name` from running at
+/// all: `for i in 1..n` running 0 times leaves `best` at its start.
+fn unrun_sets(lines: &[&str], fast: &Recording, print: u32, name: &str) -> Vec<(u32, String)> {
+    if fast.assigned.len() >= super::MAX_ASSIGNED {
+        return Vec::new();
+    }
+    let indent = |text: &str| text.len() - text.trim_start().len();
+    let head = |line: usize| {
+        let own = indent(lines[line]);
+        (0..line)
+            .rev()
+            .find(|&l| !lines[l].trim().is_empty() && indent(lines[l]) < own)
+    };
+    let mut blame = Vec::new();
+    for (at, text) in lines.iter().enumerate() {
+        let line = at as u32 + 1;
+        let ran = || (fast.assigned.iter()).any(|a| a.line == line && a.name == name);
+        if line == print || assigned_name(text) != Some(name) || ran() {
+            continue;
+        }
+        let Some(guard) = head(at) else { continue };
+        let mut outer = Some(guard);
+        let in_fn = std::iter::from_fn(|| {
+            let l = outer?;
+            outer = head(l);
+            Some(lines[l].trim_start())
+        })
+        .any(|text| text.starts_with("fn ") || text.starts_with('@'));
+        let guard_text = lines[guard].trim_start();
+        let why = if guard_text.starts_with("for ") || guard_text.starts_with("while ") {
+            "in this loop, which runs 0 times"
+        } else if guard_text.starts_with("if ") {
+            "under this `if`, which is false every time"
+        } else {
+            continue;
+        };
+        if !in_fn {
+            blame.push((
+                guard as u32 + 1,
+                format!("`{name}` is set on line {line} only {why}"),
+            ));
+        }
+    }
     blame
 }
 
