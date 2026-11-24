@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The CI driver's decisions, tested (scripts/test_ci.py): which tests each tier
 leaves out, what a CPL_GATE_PART runs, and which checking scripts and spec gates
-each tier runs. scripts/check.sh evals `ci.py plan` and runs `ci.py steps <tier>`.
+each tier runs, and the --fast tier from its build on. scripts/check.sh evals
+`ci.py plan`, runs `ci.py steps <tier>` and hands the rest to `ci.py tail`.
 
 CI splits --fast across parallel jobs (.github/workflows/ci.yml):
   checks            everything but the workspace tests, the conformance ratchet and fmt
@@ -16,11 +17,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -334,6 +338,275 @@ def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, heal
     return 0
 
 
+# The --fast tier after its build: the workspace tests and what overlaps them. Each
+# backgrounded job writes a log that is shown when its step comes round.
+CHECK_CACHE = ROOT / "scripts/check_cache.py"
+SCRIPT_TESTS = ("scripts/test_*.py", "bench/test_*.py", "tools/*/test_*.py")
+TRACE_TESTS = ("tools/trace/trace.test.cjs", "tools/trace/state.test.cjs")
+# Besides SLOW_TESTS, what the fallback `cargo test` (no nextest) leaves out.
+UNTIMED_TESTS = ("run_answers_within_200_ms", "build_takes_under_a_second_and_fits_64_kb")
+CACHED = "cached (tree unchanged outside its excludes)"
+GIT_SCOPE = ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE", "GIT_OBJECT_DIRECTORY", "GIT_PREFIX")
+
+
+def bare_home(home: str, env=None) -> dict[str, str]:
+    """A CI runner's environment for the script tests: an empty HOME, no system git config
+    and no git identity, while the toolchains keep their real homes. A commit hook's
+    GIT_DIR and GIT_INDEX_FILE are dropped, or a test writes its scratch repo into the
+    real index."""
+    env = dict(os.environ if env is None else env)
+    real = env.get("HOME", "")
+    keep = {"CARGO_HOME": f"{real}/.cargo", "RUSTUP_HOME": f"{real}/.rustup",
+            "MISE_DATA_DIR": f"{real}/.local/share/mise", "MISE_CONFIG_DIR": f"{real}/.config/mise",
+            "UV_CACHE_DIR": f"{real}/.cache/uv"}
+    out = {k: v for k, v in env.items() if k not in GIT_SCOPE}
+    out.update({k: env.get(k, v) for k, v in keep.items()})
+    out.update(HOME=home, XDG_CONFIG_HOME=f"{home}/.config", GIT_CONFIG_NOSYSTEM="1")
+    return out
+
+
+def prelude_names(text: str) -> int:
+    """The names std/prelude.cp's `{...}` groups export."""
+    flat = "".join(line.split("//")[0] for line in text.splitlines())
+    groups = re.findall(r"\{[^}]*\}", flat)
+    return sum(1 for g in groups for name in g.split(",") if re.search(r"[A-Za-z_]", name))
+
+
+def open_traps(text: str) -> int:
+    """The Trap Parity Gate's open register in crates/cpl-cli/tests/known_traps.cp."""
+    return sum(1 for line in text.splitlines() if line.startswith("if which == "))
+
+
+@dataclass
+class Tail:
+    """check.sh's --fast tier from its build on (`ci.py tail`). `manifest` empty turns the
+    stage cache off; `sel_*` are the land train's touched-path selection."""
+    mode: str
+    gate_part: str = ""
+    cpl: str = "target/debug/cpl"
+    cache_dir: str = ""
+    manifest: str = ""
+    sel_packages: str = ""
+    sel_filter: str = ""
+    sel_site: str = ""
+    run: Callable = subprocess.run
+    popen: Callable = subprocess.Popen
+    which: Callable = shutil.which
+    clock: Callable = time.monotonic
+    times: list[tuple[int, str]] = field(default_factory=list)
+    _jobs: dict = field(default_factory=dict)
+    _step: tuple[str, float] | None = None
+
+    def step(self, title: str) -> None:
+        self.end_step()
+        self._step = (title, self.clock())
+        print(f"\n==> {title}", flush=True)
+
+    def end_step(self) -> None:
+        if self._step:
+            self.times.append((int(self.clock() - self._step[1]), self._step[0]))
+            self._step = None
+
+    def _cache(self, verb: str, stage: str) -> bool:
+        if not self.manifest:
+            return verb == "save"
+        done = self.run([sys.executable, str(CHECK_CACHE), verb, self.cache_dir, stage, self.manifest], cwd=ROOT)
+        return done.returncode == 0
+
+    def hit(self, stage: str) -> bool:
+        return self._cache("check", stage)
+
+    def save(self, stage: str) -> None:
+        self._cache("save", stage)
+
+    def need(self, cmd: str, why: str) -> None:
+        if not self.which(cmd):
+            raise Failed(f"`{cmd}` is not installed; {why}")
+
+    def call(self, argv: list[str], **kw) -> int:
+        return self.run(argv, cwd=ROOT, **kw).returncode
+
+    def spawn(self, name: str, argv: list[str], logs: str, env=None) -> None:
+        log = open(Path(logs, f"{name}.log"), "w+")
+        self._jobs[name] = (self.popen(argv, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, env=env), log)
+
+    def started(self, name: str) -> bool:
+        return name in self._jobs
+
+    def join(self, name: str) -> int:
+        """Waits for a backgrounded job, shows its log and returns its exit code."""
+        proc, log = self._jobs.pop(name)
+        code = proc.wait()
+        log.seek(0)
+        sys.stdout.write(log.read())
+        sys.stdout.flush()
+        log.close()
+        return code
+
+    def stop_all(self) -> None:
+        for proc, log in self._jobs.values():
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            log.close()
+        self._jobs.clear()
+
+    def __call__(self) -> int:
+        # A killed tier stops its backgrounded jobs too: SIGTERM unwinds like Ctrl-C.
+        signal.signal(signal.SIGTERM, _interrupt)
+        with tempfile.TemporaryDirectory(prefix="cpl-tail-") as logs:
+            try:
+                self._tier(logs)
+            except Failed as e:
+                print(f"check: {e}", file=sys.stderr)
+                return 1
+            finally:
+                self.stop_all()
+                self.end_step()
+        return 0
+
+    def _tier(self, logs: str) -> None:
+        checks = self.gate_part == "checks"
+        cpl_env = {**os.environ, "CPL": self.cpl}
+        gate_rerun = f"site snippet gate failed; rerun: CPL={self.cpl} node web/scripts/gate.mjs"
+        # CI's checks part runs no tests, so the snippet gate overlaps fmt_check instead.
+        if checks and not self.hit("site_gate"):
+            self.need("node", "the site's snippet gate runs on it")
+            self.spawn("site_gate", ["node", "web/scripts/gate.mjs"], logs, env=cpl_env)
+        fmt = "skip" if checks else "cached" if self.hit("fmt_corpus") else "run"
+        if fmt == "run":
+            self.spawn("fmt_corpus", [sys.executable, "scripts/fmt_check.py", "--cpl", self.cpl], logs)
+        board = "skip" if checks else "cached" if self.hit("scoreboard_fast") else "run"
+        home = tempfile.mkdtemp(prefix="cpl-home-", dir=logs)
+        if board == "run":
+            tests = self.run(["git", "ls-files", *SCRIPT_TESTS], cwd=ROOT, capture_output=True,
+                             text=True).stdout.split()
+            self.spawn("script_tests", [sys.executable, "-m", "unittest", *tests], logs, env=bare_home(home))
+            self.spawn("scoreboard", [str(Path(self.cpl).parent / "cpl-conform"), "all", "--check"], logs)
+        self._tests()
+        # The recovery scoreboard checks thousands of broken ports on every core, so it
+        # starts after the tests and overlaps the checks below.
+        recovery = "skip" if checks else "cached" if self.hit("recovery") else "run"
+        if recovery == "run":
+            self.spawn("recovery", ["cargo", "test", "-q", "-p", "cpl-cli", "--test", "recovery"], logs)
+
+        self.step("every corpus package passes the static modes (scripts/corpus.py verify --no-run)")
+        if self.call([sys.executable, "scripts/corpus.py", "verify", "--no-run", "--only",
+                      "header,check,package,lint", "--cpl", self.cpl]):
+            raise Failed("a corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
+        self.step("std/prelude.cp: name count")
+        print(f"prelude: {prelude_names((ROOT / 'std/prelude.cp').read_text(encoding='utf-8'))} names")
+
+        self.step("cpl fmt is idempotent and keeps meaning on every .cp file")
+        if fmt == "skip":
+            print("skipped: the CI fmt part runs it (CPL_GATE_PART=checks)")
+        elif fmt == "cached":
+            print(CACHED)
+        else:
+            if self.join("fmt_corpus"):
+                raise Failed("cpl fmt is unstable or changes meaning; rerun: scripts/fmt_check.py")
+            self.save("fmt_corpus")
+
+        self.step("checking scripts (scripts/ci.py steps checks)")
+        if run_steps("checks", self.cpl, run=self.run):
+            raise Failed("a checking script failed; the step above names it")
+
+        self.step("site snippet gate (node web/scripts/gate.mjs)")
+        if self.started("site_gate"):
+            if self.join("site_gate"):
+                raise Failed(gate_rerun)
+            self.save("site_gate")
+        elif self.hit("site_gate"):
+            print(CACHED)
+        elif self.mode == "land" and self.sel_site != "1" and not self.sel_packages:
+            print("skipped: the train touches no site, docs or crate path")
+        else:
+            self.need("node", "the site's snippet gate runs on it")
+            if self.call(["node", "web/scripts/gate.mjs"], env=cpl_env):
+                raise Failed(gate_rerun)
+            self.save("site_gate")
+
+        self.step("trace viewer tests (node tools/trace/*.test.cjs)")
+        self.need("node", "the trace viewer's tests run on it")
+        for t in TRACE_TESTS:
+            if self.call(["node", "--test-reporter=dot", t]):
+                raise Failed(f"trace viewer tests failed; rerun: node {t}")
+
+        self.step("cpl-conform ratchet (all --check against research/scoreboard.json)")
+        if board == "skip":
+            print("skipped: the CI conform part runs it and the script tests (CPL_GATE_PART=checks)")
+        elif board == "cached":
+            print(CACHED)
+        else:
+            scripts, ratchet = self.join("script_tests"), self.join("scoreboard")
+            if scripts:
+                raise Failed("script unit test failure; rerun: uv run python -m unittest scripts/test_*.py")
+            if ratchet:
+                raise Failed("cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- all --check")
+            self.save("scoreboard_fast")
+
+        self.step("cargo test: the recovery scoreboard" + (" (backgrounded)" if recovery == "run" else ""))
+        if recovery == "skip":
+            print("skipped: the CI test partitions run it (CPL_GATE_PART=checks)")
+        elif recovery == "cached":
+            print(CACHED)
+        else:
+            if self.join("recovery"):
+                raise Failed("recovery scoreboard failed; rerun: cargo test -p cpl-cli --test recovery")
+            self.save("recovery")
+
+        if self.mode == "full":
+            self.step("the --full suites (scripts/ci.py steps full)")
+            if run_steps("full", self.cpl, run=self.run):
+                raise Failed("a --full suite failed; the step above names it")
+        self.end_step()
+        traps = open_traps((ROOT / "crates/cpl-cli/tests/known_traps.cp").read_text(encoding="utf-8"))
+        print(f"\nknown_traps: {traps} open (crates/cpl-cli/tests/known_traps.cp)")
+
+    def _tests(self) -> None:
+        """The workspace tests. --full runs SLOW_TESTS (why: beside the list)."""
+        slow = slow_filter()
+        if self.gate_part == "checks":
+            self.step("cargo nextest + doctests")
+            print("skipped: the CI test partitions run them (CPL_GATE_PART=checks)")
+        elif self.hit("nextest_doc"):
+            self.step("cargo nextest + doctests")
+            print(CACHED)
+        elif self.mode == "land":
+            # Not cached: a partial run must not vouch for the whole tree.
+            self.step(f"cargo nextest of the crates the train reaches: {self.sel_packages or 'none'}")
+            if self.sel_packages:
+                if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast",
+                              "-E", f"({self.sel_filter}) & not ({slow})"]):
+                    raise Failed("a test of a crate the train reaches failed; the lines above name it")
+                self.step("cargo test --doc of the touched crates")
+                pkgs = [a for p in self.sel_packages.split() for a in ("-p", p)]
+                if self.call(["cargo", "test", "-q", *pkgs, "--doc"]):
+                    raise Failed("a doctest of a touched crate failed; the lines above name it")
+        else:
+            if self.call(["cargo", "nextest", "--version"], capture_output=True) == 0:
+                self.step("cargo nextest run --workspace (without the --full tests)")
+                if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", f"not ({slow})"]):
+                    raise Failed("a workspace test failed; rerun: cargo nextest run --workspace")
+                self.step("cargo test --workspace --doc")
+                if self.call(["cargo", "test", "-q", "--workspace", "--doc"]):
+                    raise Failed("a doctest failed; rerun: cargo test --workspace --doc")
+            else:
+                self.step("cargo test --workspace (without the --full tests)")
+                skips = [a for t in (*SLOW_TESTS, *UNTIMED_TESTS) for a in ("--skip", t)]
+                if self.call(["cargo", "test", "--workspace", "--", *skips]):
+                    raise Failed("a workspace test failed; rerun: cargo test --workspace")
+            self.save("nextest_doc")
+
+
+def _interrupt(signum, frame):
+    raise KeyboardInterrupt
+
+
+class Failed(Exception):
+    """A tail step failed; the message says how to rerun it."""
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -344,7 +617,25 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("tier", choices=sorted(STEPS) + ["touched"])
     g.add_argument("--cpl", default="target/debug/cpl")
     g.add_argument("scripts", nargs="*", help="with tier `touched`: the changed scripts whose steps run")
+    t = sub.add_parser("tail", help="run the --fast tier from its build on: the tests and what overlaps them")
+    t.add_argument("--mode", choices=MODES, required=True)
+    t.add_argument("--gate-part", default="")
+    t.add_argument("--cpl", default="target/debug/cpl")
+    t.add_argument("--cache-dir", default="")
+    t.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
+    t.add_argument("--sel-packages", default="")
+    t.add_argument("--sel-filter", default="")
+    t.add_argument("--sel-site", default="")
+    t.add_argument("--times", help="append each step's `seconds<TAB>title` here")
     args = ap.parse_args(argv)
+    if args.cmd == "tail":
+        tail = Tail(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest,
+                    args.sel_packages, args.sel_filter, args.sel_site)
+        code = tail()
+        if args.times:
+            with open(args.times, "a", encoding="utf-8") as f:
+                f.writelines(f"{secs}\t{title}\n" for secs, title in tail.times)
+        return code
     if args.cmd == "steps":
         if (args.tier == "touched") != bool(args.scripts):
             ap.error("name the changed scripts with `touched`, and only with it")

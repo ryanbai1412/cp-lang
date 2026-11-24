@@ -825,6 +825,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "scripts/check.sh", "python3 scripts/a.py\npython3 scripts/b.py scripts/test_x.py\n")
             self._write(root, "scripts/a.py", '"""Gate. Rule: handbook/guidelines/lints.md#the-rules."""\n')
             self._write(root, "scripts/b.py", '"""Gate."""\n')
+            # The runners name gates and are not one.
+            self._write(root, "scripts/ci.py", '"""Runner."""\nSTEP = "scripts/ci.py steps checks"\n')
             self.assertEqual(dr.uncited_rules(root), ["lint bad", "lint noid", "lint none", "gate scripts/b.py"])
 
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:

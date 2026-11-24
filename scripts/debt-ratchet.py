@@ -1327,7 +1327,7 @@ def uncited_rules(root: Path) -> list[str]:
                     for g in re.findall(r"scripts/[\w-]+\.(?:py|sh|mjs)", f.read_text(encoding="utf-8"))})
     for g in gates:
         name = Path(g).name
-        if name.startswith("test_") or name in ("check.sh", "gate-env.sh") or not (root / g).is_file():
+        if name.startswith("test_") or name in ("check.sh", "ci.py", "gate-env.sh") or not (root / g).is_file():
             continue
         if not _cites_guideline(root, "\n".join(_lines(root / g)[:40])):
             found.append(f"gate {g}")

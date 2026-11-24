@@ -186,8 +186,144 @@ class StepsTest(unittest.TestCase):
                 elif step.argv:
                     self.assertNotIn(" ".join(step.argv), check)
         self.assertNotIn("npm test\n", check)
-        for tier in ci.STEPS:
+        for tier in ("commit", "touched"):
             self.assertIn(f"scripts/ci.py steps {tier}", check)
+        # The checks and full tiers run inside `ci.py tail`, as do its stages.
+        self.assertIn("scripts/ci.py tail ", check)
+        for owned in ("cpl-conform\" all", "--test recovery", "known_traps.cp"):
+            self.assertNotIn(owned, check)
+
+
+class FakeProc:
+    def __init__(self, code: int, running: bool = False):
+        self.code, self.running, self.killed = code, running, False
+
+    def wait(self):
+        return self.code
+
+    def poll(self):
+        return None if self.running and not self.killed else self.code
+
+    def kill(self):
+        self.killed = True
+
+
+class TailTest(unittest.TestCase):
+    def _tail(self, mode="fast", part="", cached=(), codes=None, procs=None, manifest="m", **kw):
+        events, codes, procs = [], codes or {}, procs or {}
+
+        def label(argv):
+            argv = [str(a) for a in argv]
+            if argv[0] == sys.executable:
+                argv = argv[1:]
+            return " ".join(a.replace(str(ci.ROOT) + "/", "") for a in argv)
+
+        def run(argv, **_):
+            name = label(argv)
+            if name.startswith("scripts/check_cache.py"):
+                verb, stage = name.split()[1], name.split()[3]
+                events.append(f"{verb} {stage}")
+                return subprocess.CompletedProcess(argv, 0 if verb == "save" or stage in cached else 1, "", "")
+            events.append(name)
+            out = "scripts/test_ci.py\n" if name.startswith("git ls-files") else ""
+            return subprocess.CompletedProcess(argv, codes.get(name.split()[0], 0), out, "")
+
+        def popen(argv, stdout=None, **_):
+            name = label(argv)
+            key = next((k for k in ("fmt_check", "unittest", "cpl-conform", "recovery", "gate.mjs") if k in name), name)
+            events.append(f"spawn {key}")
+            stdout.write(f"{key} log\n")
+            proc = procs.get(key, FakeProc(0))
+            spawned.append(proc)
+            return proc
+        spawned: list = []
+        tail = ci.Tail(mode, part, cache_dir="d", manifest=manifest, run=run, popen=popen, which=lambda c: f"/bin/{c}", **kw)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = tail()
+        return code, events, out.getvalue(), err.getvalue(), tail, spawned
+
+    def test_fast_overlaps_the_tests_and_saves_each_stage_after_it_passes(self) -> None:
+        code, ev, out, _, tail, _ = self._tail()
+        self.assertEqual(code, 0)
+        spawns = [e for e in ev if e.startswith("spawn")]
+        self.assertEqual(spawns, ["spawn fmt_check", "spawn unittest", "spawn cpl-conform", "spawn recovery"])
+        nextest = ev.index("cargo nextest run --workspace --no-fail-fast -E " + f"not ({ci.slow_filter()})")
+        self.assertLess(ev.index("spawn cpl-conform"), nextest)
+        self.assertLess(nextest, ev.index("spawn recovery"))
+        saves = [e.split()[1] for e in ev if e.startswith("save")]
+        self.assertEqual(saves, ["nextest_doc", "fmt_corpus", "site_gate", "scoreboard_fast", "recovery"])
+        self.assertIn("fmt_check log", out)
+        self.assertIn("known_traps:", out)
+        self.assertIn("cpl fmt is idempotent and keeps meaning on every .cp file", [t for _, t in tail.times])
+
+    def test_a_cached_stage_runs_nothing(self) -> None:
+        stages = ("fmt_corpus", "scoreboard_fast", "nextest_doc", "recovery", "site_gate")
+        code, ev, out, _, _, _ = self._tail(cached=stages)
+        self.assertEqual(code, 0)
+        self.assertFalse([e for e in ev if e.startswith(("spawn", "save", "cargo"))])
+        self.assertEqual(out.count(ci.CACHED), 5)
+
+    def test_no_manifest_runs_every_stage(self) -> None:
+        code, ev, _, _, _, _ = self._tail(manifest="", cached=("fmt_corpus",))
+        self.assertEqual(code, 0)
+        self.assertFalse([e for e in ev if e.startswith(("check ", "save "))])
+        self.assertIn("spawn fmt_check", ev)
+
+    def test_the_checks_part_runs_no_tests_and_overlaps_the_site_gate(self) -> None:
+        code, ev, out, _, _, _ = self._tail(part="checks")
+        self.assertEqual(code, 0)
+        self.assertEqual([e for e in ev if e.startswith("spawn")], ["spawn gate.mjs"])
+        self.assertFalse([e for e in ev if e.startswith("cargo")])
+        self.assertEqual(out.count("CPL_GATE_PART=checks"), 4)
+
+    def test_a_failed_job_names_its_rerun_and_stops_the_rest(self) -> None:
+        board = FakeProc(0, running=True)
+        code, ev, _, err, _, spawned = self._tail(procs={"fmt_check": FakeProc(1), "cpl-conform": board})
+        self.assertEqual(code, 1)
+        self.assertIn("rerun: scripts/fmt_check.py", err)
+        self.assertTrue(board.killed)
+        self.assertNotIn("save fmt_corpus", ev)
+
+    def test_a_failed_foreground_step_stops_the_tier(self) -> None:
+        code, ev, _, err, _, _ = self._tail(codes={"scripts/corpus.py": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("scripts/corpus.py verify", err)
+        self.assertFalse([e for e in ev if e.startswith("scripts/spec-gate.py")])
+
+    def test_a_land_train_runs_only_what_it_reaches(self) -> None:
+        code, ev, out, _, _, _ = self._tail(mode="land")
+        self.assertEqual(code, 0)
+        self.assertFalse([e for e in ev if e.startswith("cargo nextest") or e == "spawn gate.mjs"])
+        self.assertIn("skipped: the train touches no site, docs or crate path", out)
+        code, ev, _, _, _, _ = self._tail(mode="land", sel_packages="cpl-a cpl-b", sel_filter="rdeps(cpl-a)")
+        self.assertIn(f"cargo nextest run --workspace --no-fail-fast -E (rdeps(cpl-a)) & not ({ci.slow_filter()})", ev)
+        self.assertIn("cargo test -q -p cpl-a -p cpl-b --doc", ev)
+        self.assertNotIn("save nextest_doc", ev)
+
+    def test_full_runs_the_full_steps_after_the_rest(self) -> None:
+        code, ev, out, _, _, _ = self._tail(mode="full", manifest="")
+        self.assertEqual(code, 0)
+        self.assertIn("the --full suites (scripts/ci.py steps full)", out)
+
+    def test_an_interrupt_stops_the_backgrounded_jobs(self) -> None:
+        board = FakeProc(0, running=True)
+
+        def interrupted(*a, **kw):
+            raise KeyboardInterrupt
+        with mock.patch.object(ci, "run_steps", interrupted), self.assertRaises(KeyboardInterrupt):
+            self._tail(procs={"cpl-conform": board})
+        self.assertTrue(board.killed)
+        self.assertIs(ci.signal.getsignal(ci.signal.SIGTERM), ci._interrupt)
+        ci.signal.signal(ci.signal.SIGTERM, ci.signal.SIG_DFL)
+
+    def test_counts_and_the_bare_home(self) -> None:
+        self.assertEqual(ci.prelude_names("use a.{x, y} // {z}\nuse b.{\n  w,\n}\n"), 3)
+        self.assertEqual(ci.open_traps("if which == 1:\n  if which == 2:\nif which == 3:\n"), 2)
+        env = ci.bare_home("/h", {"HOME": "/real", "GIT_DIR": "/r/.git", "CARGO_HOME": "/c", "PATH": "/bin"})
+        self.assertEqual((env["HOME"], env["CARGO_HOME"], env["RUSTUP_HOME"], env["PATH"]), ("/h", "/c", "/real/.rustup", "/bin"))
+        self.assertNotIn("GIT_DIR", env)
+        self.assertEqual(env["GIT_CONFIG_NOSYSTEM"], "1")
 
 
 if __name__ == "__main__":
