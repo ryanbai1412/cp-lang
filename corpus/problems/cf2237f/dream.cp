@@ -22,7 +22,8 @@
 // after a kept prefix ending before `n - m` (`at_boundary[n - m]`).
 
 @!multitest
-let (n, m): (1..=200_000, 1..=200_000) = read()
+let n: 1..=500_000 = read()
+let m: 1..=n = read()
 let a: [0..n]1..=m = read()
 var at_boundary: [0..=n]Int = 0
 var after_block: [0..=n]?Int = None
