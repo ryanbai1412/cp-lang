@@ -9,7 +9,7 @@ const compiler = ['crates', 'std', 'spec', 'Cargo.toml', 'Cargo.lock'];
 
 export const stages = [
   { name: 'wasm', inputs: [...compiler, 'scripts/build-wasm.sh', 'rust-toolchain.toml'], outputs: ['dist/wasm', 'web/public/wasm'] },
-  { name: 'wasm-size', always: true, inputs: ['dist/wasm', '.wasm-size', 'scripts/build-wasm.sh'], outputs: [], env: ['WASM_SIZE_HISTORY', 'GITHUB_ACTIONS'] },
+  { name: 'wasm-size', always: true, inputs: ['dist/wasm', '.wasm-size', 'scripts/build-wasm.sh', 'web/scripts/wasm-crate-budgets.json', 'handbook/domains'], outputs: [], env: ['WASM_SIZE_HISTORY', 'WASM_NAMES', 'GITHUB_ACTIONS', 'GITHUB_STEP_SUMMARY'] },
   { name: 'lint-inputs', inputs: [...compiler, 'web/public/wasm'], outputs: ['web/content/generated/lint-inputs.json'] },
   { name: 'practice-mutants', inputs: [...compiler, 'web/content/practice', 'web/scripts/practice-mutants-equivalent.txt'], outputs: ['web/.gate/mutants.json'] },
   { name: 'stress-parity', inputs: [...compiler, 'dist/wasm', 'web/public/wasm', '**/*.cp'], outputs: [] },
