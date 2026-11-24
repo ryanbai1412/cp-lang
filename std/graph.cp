@@ -158,21 +158,21 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es, keep: a => (to: a.to)).out(0).collect() == [(to: 2), (to: 1)]`
-    pub fn directed<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(
+    pub fn directed<E, R: (u: V, v: V, ..), B: Target<V>>(
         edges: [E]R,
         keep: EdgeArc<V,
         E,
         R> -> B = a => a,
     ) -> Graph<V, B>:
         var start: [V.cuts]Int = 0
-        for e in E: start[edges[e].u.ord] += 1
+        for e in edges.keys: start[edges[e].u.ord] += 1
         // counts become each vertex's end; placing arcs back to front lowers it to its start
         for i in 1..start.len: start[i] += start[i - 1]
         var arcs = List<B>()
-        if let e0 = E.first:
+        if let e0 = edges.keys.first:
             let f0 = edges[e0]
             arcs = List.filled(start[V.count], keep((to: f0.v, e: e0, ..f0 without (u, v))))
-            for e in E.rev:
+            for e in edges.keys.rev:
                 let r = edges[e]
                 start[r.u.ord] -= 1
                 arcs[start[r.u.ord]] = keep((to: r.v, e: e, ..r without (u, v)))
@@ -189,23 +189,23 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; Graph.undirected(es).out(1).collect() == [(to: 0, e: 0), (to: 2, e: 1)]`
     /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
-    pub fn undirected<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(
+    pub fn undirected<E, R: (u: V, v: V, ..), B: Target<V>>(
         edges: [E]R,
         keep: EdgeArc<V,
         E,
         R> -> B = a => a,
     ) -> Graph<V, B>:
         var start: [V.cuts]Int = 0
-        for e in E:
+        for e in edges.keys:
             start[edges[e].u.ord] += 1
             start[edges[e].v.ord] += 1
         // counts become each vertex's end; placing arcs back to front lowers it to its start
         for i in 1..start.len: start[i] += start[i - 1]
         var arcs = List<B>()
-        if let e0 = E.first:
+        if let e0 = edges.keys.first:
             let f0 = edges[e0]
             arcs = List.filled(start[V.count], keep((to: f0.v, e: e0, ..f0 without (u, v))))
-            for e in E.rev:
+            for e in edges.keys.rev:
                 let r = edges[e]
                 start[r.v.ord] -= 1
                 arcs[start[r.v.ord]] = keep((to: r.u, e: e, ..r without (u, v)))

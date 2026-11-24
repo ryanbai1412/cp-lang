@@ -33,7 +33,7 @@ g.deg(u)                              // O(1)
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `Graph.directed(edges)`, `Graph.undirected(edges)` | build from any `[E]` of records with `u: V, v: V` | \(O(n + m)\) |
+| `Graph.directed(edges)`, `Graph.undirected(edges)` | build from any `[E]` of records with `u: V, v: V`, a `List` too (its keys are the edge ids) | \(O(n + m)\) |
 | `keep: a => (to: a.to, w: a.w)` | choose what each arc stores; run once per arc | \(O(n + m)\) |
 | `g[u]` | `Indexed` view of `u`'s arcs, in input order | \(O(1)\) |
 | `g.deg(u)` | arcs out of `u` | \(O(1)\) |
