@@ -561,3 +561,30 @@ fn a_catalog_closure_takes_the_element_past_named_only_and_optional_params() {
         );
     }
 }
+
+#[test]
+fn a_bare_indexed_bound_gives_t_the_element_and_runs_takes_it() {
+    let src = "let xs = [1, 2, 2, 5]\nlet n = runs(xs, by: x => x % 2).count() + xs.nth(1) + 1\nfor r in xs.runs(by: y => y > 1):\n    print(r.first!)\nlet s = \"aab\"\nprint(n, s.runs(by: c => c.ord).count(), (\"ab\".nth(0)).ord)\nlet a = [0..4] i => i / 2\nprint(a.runs(by: v => v * 3).count())\n";
+    let mut db = Database::new();
+    db.set_file("main.cp", src);
+    for (name, ty, at) in [
+        ("x", "Int", "x % 2"),
+        ("y", "Int", "y > 1"),
+        ("c", "Char", "c.ord"),
+        ("v", "Int", "v * 3"),
+    ] {
+        let at = src.find(at).unwrap() as u32;
+        let hover = db.hover("main.cp", at).map(|h| h.text);
+        assert!(
+            hover
+                .as_deref()
+                .is_some_and(|h| h.contains(&format!("{name}: {ty}"))),
+            "{name}: {hover:?}"
+        );
+    }
+    let (rows, _) = silent_unknowns_of(src);
+    assert!(
+        rows.iter().all(|r| !r.contains("% 2") && !r.contains("nth") && !r.contains("* 3")),
+        "{rows:?}"
+    );
+}

@@ -92,11 +92,31 @@ impl Checker<'_> {
                     if !args.is_empty() {
                         let args = args.iter().map(|a| self.resolve_type(a)).collect();
                         out.push((b.name.text.clone(), name.text.clone(), args));
+                    } else if let Some(args) = self.bare_bound_args(&name.text) {
+                        out.push((b.name.text.clone(), name.text.clone(), args));
                     }
                 }
             }
         }
         out
+    }
+
+    /// A bare `S: Indexed` in `fn runs<S: Indexed, T>` gives the trait's `T` the fn's own `T`
+    /// (decision 3405: `T` is deduced from `S`); a trait parameter the fn doesn't name is open.
+    fn bare_bound_args(&mut self, trait_name: &str) -> Option<Vec<Ty>> {
+        let Some(Def::Trait { generics, .. }) = self.type_def(trait_name).as_deref().cloned()
+        else {
+            return None;
+        };
+        let args: Vec<Ty> = (generics.iter())
+            .map(|g| match self.generics.contains(g) {
+                true => Ty::Param(g.clone()),
+                false => Ty::Unknown,
+            })
+            .collect();
+        args.iter()
+            .any(|a| matches!(a, Ty::Param(_)))
+            .then_some(args)
     }
 
     /// An `impl`'s trait arguments and its generics' bound arguments, as written.

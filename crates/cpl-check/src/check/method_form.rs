@@ -903,6 +903,22 @@ impl<'a> Checker<'a> {
             });
             return Some(ty);
         }
+        // A held piece stream is lowering's to index, but its arguments are
+        // the fn's: `xs.runs(by: x => ..)` gives `x` the element.
+        if pieces && !free_failed {
+            let (hovers, calls) = (self.hovers.len(), self.exprs.calls.len());
+            self.infer(&free);
+            let mut at = 0;
+            self.exprs.calls.retain(|c| {
+                at += 1;
+                at <= calls || c.call != call.span
+            });
+            let mut at = 0;
+            self.hovers.retain(|h| {
+                at += 1;
+                at <= hovers || h.span != name.span
+            });
+        }
         self.exprs.types.push((call.span, ty));
         None
     }
