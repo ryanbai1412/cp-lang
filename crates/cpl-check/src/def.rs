@@ -179,6 +179,12 @@ pub fn impl_name(trait_name: Option<&str>, target: &str) -> String {
     }
 }
 
+/// The name a written type or trait heads with: `Seq` for `Seq<T>`.
+#[inline(never)]
+pub fn ref_head(t: &str) -> &str {
+    t.split('<').next().unwrap_or(t)
+}
+
 /// The type an impl name is for, and its trait if it has one.
 pub fn impl_parts(name: &str) -> Option<(Option<&str>, &str)> {
     let rest = name.strip_prefix("impl ")?;

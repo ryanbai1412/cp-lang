@@ -112,7 +112,7 @@ impl Checker<'_> {
                 (m.clone(), t)
             }));
             // What the impl leaves to its trait's defaults (`f.lift(x)`, `(+).laws`).
-            let tr = trait_name.as_deref().and_then(|t| t.split('<').next());
+            let tr = trait_name.as_deref().map(crate::def::ref_head);
             let found = tr.and_then(|tr| self.type_def(tr));
             let Some(Def::Trait {
                 methods, generics, ..

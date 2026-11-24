@@ -28,7 +28,7 @@ impl<'a> Checker<'a> {
     ) -> Vec<(Option<Ty>, Option<Ty>, Option<Ty>)> {
         (self.env.impls(owner).iter())
             .filter(|(implemented, _)| {
-                implemented.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name)
+                implemented.as_deref().map(crate::def::ref_head) == Some(trait_name)
             })
             .map(|(_, def)| match &**def {
                 Def::Impl {

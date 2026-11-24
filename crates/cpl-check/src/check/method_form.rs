@@ -939,7 +939,7 @@ impl Checker<'_> {
                 }
                 continue;
             };
-            let trait_def = self.type_def(t.split('<').next().unwrap_or(&t));
+            let trait_def = self.type_def(crate::def::ref_head(&t));
             let in_trait = matches!(trait_def.as_deref(), Some(Def::Trait { methods, .. })
                 if methods.iter().any(|m| m.name == name));
             if (in_impl || in_trait) && !traits.contains(&t) {
@@ -1116,7 +1116,7 @@ impl Checker<'_> {
         let shown = self.quote(base.span);
         let method = &name.text;
         let ty = base_ty.to_string();
-        let member = format!("{}.{method}", ty.split('<').next().unwrap_or(&ty));
+        let member = format!("{}.{method}", crate::def::ref_head(&ty));
         if let Some(diag) = self.report(
             name.span,
             msgs::check::AMBIGUOUS_METHOD_NEVER_CALLS_THE_FN,

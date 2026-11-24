@@ -274,7 +274,7 @@ impl Checker<'_> {
     ) -> impl Iterator<Item = std::sync::Arc<Def>> + 't {
         let written = self.global(&crate::def::impl_name(Some(trait_name), name));
         let listed = (self.env.impls(name).into_iter())
-            .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
+            .filter(|(t, _)| t.as_deref().map(crate::def::ref_head) == Some(trait_name))
             .map(|(_, d)| d);
         written.into_iter().chain(listed)
     }

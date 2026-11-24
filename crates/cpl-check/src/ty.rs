@@ -317,7 +317,7 @@ impl Ty {
     /// `Seq`. Any other bound is false.
     /// The bound's own arguments (`Seq<T>`) don't change which types meet it.
     pub fn meets_seq_bound(&self, bound: &str, walks: bool) -> bool {
-        match bound.split('<').next().unwrap_or(bound).trim() {
+        match crate::def::ref_head(bound).trim() {
             "Seq" => self.is_seq() || walks,
             "Bidir" => self.is_bidir(),
             "Keyed" => self.is_keyed(),

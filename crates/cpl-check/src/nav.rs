@@ -76,7 +76,7 @@ fn declared(analysis: &Analysis, path: &str, name: &str) -> Option<Definition> {
 }
 
 fn impls_of(analysis: &Analysis, path: &str, name: &str) -> Vec<Definition> {
-    let head = |s: &str| s.split('<').next().unwrap_or(s).trim().to_string();
+    let head = |s: &str| crate::def::ref_head(s).trim().to_string();
     let mut out = Vec::new();
     for item in &analysis.items {
         for decl in &item.syntax.decls {

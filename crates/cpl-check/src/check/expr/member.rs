@@ -75,7 +75,7 @@ impl<'a> Checker<'a> {
                 methods, generics, ..
             }) = trait_name
                 .as_deref()
-                .and_then(|t| t.split('<').next())
+                .map(crate::def::ref_head)
                 .and_then(|t| self.type_def(t))
                 .as_deref()
             {

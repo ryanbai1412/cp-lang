@@ -1786,7 +1786,7 @@ impl<'a> Checker<'a> {
                 .impls(name)
                 .into_iter()
                 .filter_map(|(t, _)| t)
-                .any(|t| t.split('<').next().unwrap_or(&t) == trait_name)
+                .any(|t| crate::def::ref_head(&t) == trait_name)
     }
 
     /// True when `ty` can be passed to `print(...)`: a written `impl Show`

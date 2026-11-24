@@ -346,7 +346,7 @@ impl Checker<'_> {
             };
             let has_impl = self.env.impls(&item).iter().any(|(t, _)| {
                 t.as_deref()
-                    .and_then(|t| t.split('<').next())
+                    .map(crate::def::ref_head)
                     .is_some_and(|t| traits.iter().any(|w| w == t))
             });
             if has_impl {
@@ -374,7 +374,7 @@ impl Checker<'_> {
             }
         }
         for (t, def) in impls {
-            if t.as_deref().and_then(|t| t.split('<').next()) != Some(trait_name) {
+            if t.as_deref().map(crate::def::ref_head) != Some(trait_name) {
                 continue;
             }
             let Def::Impl {

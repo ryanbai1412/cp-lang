@@ -90,7 +90,7 @@ impl Checker<'_> {
                 continue;
             }
             let typed = Ty::Param(param.clone());
-            let written = param == trait_name || param.starts_with(&format!("{trait_name}<"));
+            let written = crate::def::ref_head(param) == trait_name;
             let slot = params.iter().find(|p| written && p.ty == typed);
             let mut positional = params.iter().filter(|p| !p.named_only);
             let arg = slot.and_then(|slot| {
