@@ -17,9 +17,9 @@ impl Server {
             analysis.lines.offset_utf16(end, &analysis.text),
         );
         let mut actions = Vec::new();
-        let lints = lints(uri, &facts);
+        let reported = reported(uri, &facts);
         let mut rechecked = false;
-        for diag in analysis.diagnostics.iter().chain(&lints) {
+        for diag in &reported {
             if diag.span.end < wanted.start || diag.span.start > wanted.end {
                 continue;
             }

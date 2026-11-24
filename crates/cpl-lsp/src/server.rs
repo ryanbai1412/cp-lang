@@ -14,7 +14,7 @@ use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{obj, Value};
 #[cfg(not(target_arch = "wasm32"))]
 use diagnostics::lint_config;
-use diagnostics::lints;
+use diagnostics::reported;
 use std::collections::{BTreeMap, HashMap};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Arc;

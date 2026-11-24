@@ -57,20 +57,27 @@ impl Server {
             return publish(uri, Vec::new());
         };
         let analysis = self.db.analyze(uri).expect("proven implies an analysis");
-        // The same answer as `cpl check`: the checker's diagnostics, then
-        // what lowering rejects; then, as `cpl lint` reports them, the lints.
-        let lints = lints(uri, &facts);
+        let reported = reported(uri, &facts);
         // A lint on the same span (L0306) already says it, with a fix.
         let mut notes = overflows(&facts);
-        notes.retain(|n| !lints.iter().any(|l| l.span == n.span));
-        let items = at_levels(uri, &analysis, cpl_ir::reported(&analysis))
+        notes.retain(|n| !reported.iter().any(|l| l.span == n.span));
+        let items = reported
             .iter()
-            .chain(&lints)
             .chain(&notes)
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();
         publish(uri, items)
     }
+}
+
+/// The same answer as `cpl check`: the checker's diagnostics, then what
+/// lowering rejects; then, as `cpl lint` reports them, the lints. What the
+/// editor publishes and offers each diagnostic's fixes on.
+pub(super) fn reported(uri: &str, facts: &Proven) -> Vec<Diagnostic> {
+    let analysis = facts.analysis();
+    let mut out = at_levels(uri, analysis, cpl_ir::reported(analysis));
+    out.extend(lints(uri, facts));
+    out
 }
 
 /// A soft note on each operation the prover shows leaves `Int` for inputs
