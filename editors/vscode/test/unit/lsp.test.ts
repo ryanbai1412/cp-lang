@@ -4,12 +4,13 @@
 
 import * as assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { test } from 'node:test';
 import * as rpc from 'vscode-jsonrpc/node';
-import { resolveServer } from '../../src/cpl';
 import { REPO_ROOT } from './grammar';
 
-const binary = process.env.CPL ?? resolveServer('cpl', { pathEnv: '', workspaceFolders: [REPO_ROOT] });
+const binary = process.env.CPL ?? [path.join(REPO_ROOT, 'target', 'debug', 'cpl')].find(fs.existsSync);
 const URI = 'file:///work/d.cp';
 
 // One unclosed `(` on line 4 (0-based 3), with a fix; `dist` on line 3 is hoverable.

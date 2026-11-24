@@ -1,10 +1,8 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { CpClient, serverBinary } from './client';
-import { missingCpl } from './cpl';
+import { CpClient, missingCpl, serverBinary } from './client';
 import { Overlays } from './overlays';
 import { Runner } from './runner';
-import { TraceView } from './traceView';
 
 /** What the extension gives other extensions and its tests. */
 export interface CpApi {
@@ -15,8 +13,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
     const output = vscode.window.createOutputChannel('CP Lang');
     const client = new CpClient(output);
     const overlays = new Overlays();
-    const traces = new TraceView();
-    const runner = new Runner(output, overlays, traces);
+    const runner = new Runner(output, overlays);
     const command = (id: string, run: (...args: never[]) => unknown) =>
         vscode.commands.registerCommand(id, run as (...args: unknown[]) => unknown);
 
@@ -24,7 +21,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
         output,
         client,
         overlays,
-        traces,
         vscode.debug.onDidStartDebugSession(() => client.refreshLenses()),
         vscode.debug.onDidTerminateDebugSession(() => client.refreshLenses()),
         command('cp.runSample', (uri?: vscode.Uri, name?: string) => runner.runSample(uri, name)),

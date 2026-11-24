@@ -1,9 +1,11 @@
-import * as os from 'node:os';
 // The language client: starts `cpl lsp` and hands the editor's requests to
 // it. Diagnostics, hover, go-to-definition, references, rename, the outline,
 // quick fixes, completion, signature help and inlay hints all come from the
 // server's capabilities.
 
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
     LanguageClient,
@@ -12,25 +14,57 @@ import {
     ServerOptions,
     State,
 } from 'vscode-languageclient/node';
-import { installHint, RESTRICTED, resolveServer } from './cpl';
 
 export const SELECTOR = [
     { language: 'cp', scheme: 'file' },
     { language: 'cp', scheme: 'untitled' },
 ];
 
-/** The `cpl` binary the settings point at, or undefined when it can't be found. */
+const INSTALL =
+    process.platform === 'win32'
+        ? 'Install it with `irm https://cp-lang.org/install.ps1 | iex` in PowerShell, or point `cp.server.path` at the binary.'
+        : 'Install it with `curl -fsSL https://cp-lang.org/install.sh | sh`, or point `cp.server.path` at the binary.';
+
+/** Why CP Lang doesn't run `cpl` in a folder VS Code hasn't been told to trust. */
+const RESTRICTED =
+    'This folder is in Restricted Mode, so CP Lang highlights .cp files but does not run `cpl`: no diagnostics, completion or runs. Trust the folder to turn them on.';
+
+/** What to tell the contestant when there is no `cpl` to run. */
+export function missingCpl(trusted: boolean): string {
+    return trusted ? `Couldn't find \`cpl\`. ${INSTALL}` : RESTRICTED;
+}
+
+/**
+ * The `cpl` binary the settings point at, or undefined when it can't be found.
+ * A path is taken as written, relative to each workspace folder. A bare name is
+ * looked up on `PATH`, where the installer and cargo put it (an editor started
+ * from the dock doesn't see the shell's `PATH`), then in each folder's newer
+ * `target/` build, so the extension works inside the cp-lang repository.
+ */
 export function serverBinary(): string | undefined {
-    if (!vscode.workspace.isTrusted) {
+    const configured = vscode.workspace.getConfiguration('cp').get<string>('server.path', 'cpl');
+    if (!vscode.workspace.isTrusted || configured.trim() === '') {
         return undefined;
     }
-    const configured = vscode.workspace.getConfiguration('cp').get<string>('server.path', 'cpl');
-    return resolveServer(configured, {
-        pathEnv: process.env.PATH ?? '',
-        workspaceFolders: (vscode.workspace.workspaceFolders ?? []).map(folder => folder.uri.fsPath),
-        home: os.homedir(),
-        cplHome: process.env.CPL_HOME,
-    });
+    const folders = (vscode.workspace.workspaceFolders ?? []).map(folder => folder.uri.fsPath);
+    const names = process.platform === 'win32' && !/\.exe$/i.test(configured) ? [configured, `${configured}.exe`] : [configured];
+    const at = (dir: string) => names.map(name => path.resolve(dir, name)).find(file => fs.statSync(file, { throwIfNoEntry: false })?.isFile());
+    if (path.isAbsolute(configured) || /[\\/]/.test(configured)) {
+        return path.isAbsolute(configured) ? at('/') : folders.map(at).find(Boolean);
+    }
+    const home = os.homedir();
+    const built = (folder: string) =>
+        ['release', 'debug']
+            .map(profile => path.join(folder, 'target', profile))
+            .sort((a, b) => (fs.statSync(path.join(b, names[0]), { throwIfNoEntry: false })?.mtimeMs ?? 0) - (fs.statSync(path.join(a, names[0]), { throwIfNoEntry: false })?.mtimeMs ?? 0));
+    const dirs = [
+        ...(process.env.PATH ?? '').split(path.delimiter).filter(Boolean),
+        ...(process.env.CPL_HOME ? [path.join(process.env.CPL_HOME, 'bin')] : []),
+        path.join(home, '.cpl', 'bin'),
+        path.join(home, '.cargo', 'bin'),
+        ...folders.flatMap(built),
+    ];
+    return dirs.map(at).find(Boolean);
 }
 
 export class CpClient implements vscode.Disposable {
@@ -191,7 +225,7 @@ export class CpClient implements vscode.Disposable {
         void vscode.window
             .showWarningMessage(
                 `Couldn't find \`${configured}\`, so live diagnostics, hover and quick fixes are off. ` +
-                    installHint(),
+                    INSTALL,
                 choose,
             )
             .then(choice => {

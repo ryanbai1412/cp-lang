@@ -3,25 +3,45 @@
 // `cpl`, writes what happened to the output panel and updates the inline
 // overlays.
 
+import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { promisify } from 'node:util';
 import * as vscode from 'vscode';
-import { serverBinary } from './client';
-import { CplResult, EXIT_FAILED, EXIT_NOT_BUILT, missingCpl, runCpl } from './cpl';
+import { missingCpl, serverBinary } from './client';
 import { Overlays } from './overlays';
 import { viewOf } from './results';
-import { TraceView } from './traceView';
+
+interface CplResult {
+    /** The exit status, or null when the process was killed or never started. */
+    code: number | null;
+    stdout: string;
+    stderr: string;
+    error?: NodeJS.ErrnoException & { killed?: boolean };
+}
+
+/** Runs `cpl` to completion and collects what it printed. Never rejects. */
+function runCpl(binary: string, args: string[], options: { cwd: string; stdin?: string; timeoutMs?: number; signal?: AbortSignal }): Promise<CplResult> {
+    const { cwd, timeoutMs: timeout, signal } = options;
+    const running = promisify(execFile)(binary, args, { cwd, timeout, signal, encoding: 'utf8', maxBuffer: 1 << 30 });
+    running.child.stdin?.on('error', () => undefined).end(options.stdin ?? '');
+    return running.then(
+        ({ stdout, stderr }) => ({ code: 0, stdout, stderr }),
+        error => ({ code: typeof error.code === 'number' ? error.code : null, stdout: error.stdout ?? '', stderr: error.stderr ?? '', error }),
+    );
+}
 
 export class Runner {
     /** Only one background live-value run at a time per document. */
     private readonly liveRuns = new Map<string, number>();
     private liveRunId = 0;
+    /** The trace panel, reused by the next trace. */
+    private tracePanel: vscode.WebviewPanel | undefined;
 
     constructor(
         private readonly output: vscode.OutputChannel,
         private readonly overlays: Overlays,
-        private readonly traces: TraceView,
     ) {}
 
     /** Runs one sample by name, or all of them; cpl judges them and lays out the view. */
@@ -161,7 +181,15 @@ export class Runner {
         const args = document && ['run', document.uri.fsPath, ...rest, '--format', 'html'];
         const result = document && args && (await this.cpl(document, args, 'cpl run --trace'));
         if (document && result && /^\s*<(!doctype|html)/i.test(result.stdout)) {
-            this.traces.show(document, result.stdout);
+            const title = `Trace: ${path.basename(document.uri.fsPath)}`;
+            if (!this.tracePanel) {
+                const column = { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true };
+                this.tracePanel = vscode.window.createWebviewPanel('cp.trace', title, column, { enableScripts: true });
+                this.tracePanel.onDidDispose(() => (this.tracePanel = undefined));
+            }
+            this.tracePanel.title = title;
+            this.tracePanel.reveal(vscode.ViewColumn.Beside, true);
+            this.tracePanel.webview.html = result.stdout;
         } else if (result) {
             this.output.show(true);
             this.printRaw(result);
@@ -220,25 +248,25 @@ export class Runner {
             timeoutMs: vscode.workspace.getConfiguration('cp').get<number>('run.timeoutMs', 10000),
             signal: options?.signal,
         });
-        if (result.cancelled) {
+        if (result.error?.name === 'AbortError') {
             this.output.appendLine(`${what}: cancelled`);
             return undefined;
         }
-        if (result.spawnError) {
-            this.output.appendLine(`${what}: could not start ${binary}: ${result.spawnError}`);
+        if (typeof result.error?.code === 'string') {
+            this.output.appendLine(`${what}: could not start ${binary}: ${result.error.message}`);
             return undefined;
         }
-        if (result.timedOut) {
-            this.output.appendLine(`${what}: stopped after ${result.timeMs} ms (\`cp.run.timeoutMs\`)`);
+        if (result.error?.killed) {
+            this.output.appendLine(`${what}: stopped by \`cp.run.timeoutMs\``);
             return undefined;
         }
-        if (result.code === EXIT_NOT_BUILT && /not built yet/i.test(result.stderr)) {
+        if (result.code === 3 && /not built yet/i.test(result.stderr)) {
             // The file checked clean; this command's back end is not in this `cpl` yet.
             this.output.appendLine(result.stderr.trim());
             return undefined;
         }
-        // `cpl run` exits with EXIT_FAILED (3) on runtime traps (failed assert, OOB, overflow, interactor).
-        if (options?.allowRuntimeError && result.code === EXIT_FAILED) {
+        // `cpl run` exits with 3 on runtime traps (failed assert, OOB, overflow, interactor).
+        if (options?.allowRuntimeError && result.code === 3) {
             return result;
         }
         // `cpl` prints diagnostics on stderr and nothing on stdout when the source has errors.

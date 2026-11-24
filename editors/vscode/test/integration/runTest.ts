@@ -7,12 +7,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { runTests } from '@vscode/test-electron';
-import { resolveServer } from '../../src/cpl';
 
 async function main(): Promise<void> {
     const extensionRoot = path.resolve(__dirname, '..', '..', '..');
     const repoRoot = path.resolve(extensionRoot, '..', '..');
-    const cpl = process.env.CPL ?? resolveServer('cpl', { pathEnv: '', workspaceFolders: [repoRoot] });
+    const cpl = process.env.CPL ?? [path.join(repoRoot, 'target', 'debug', 'cpl')].find(fs.existsSync);
     if (!cpl) {
         throw new Error('no cpl binary: run `cargo build -p cpl-cli` or set CPL');
     }
