@@ -83,7 +83,7 @@ An independence oracle for `matroid_intersection`.
 
 Fields: `edges: [E](u: V, v: V)`, `comp: [V]Int`, `tin: [V]Int`, `tout: [V]Int`, `below: [E]?V`.
 
-- `fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E>` — \(O(1)\); each `rebuild` is \(O(V + E)\), a DFS of the chosen forest; The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
+- `fn new(edges: [E](u: V, v: V)) -> lends GraphicMatroid<V, E>` — \(O(1)\); each `rebuild` is \(O(V + E)\), a DFS of the chosen forest; The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
 
 ## `struct ColorMatroid<E, C>`
 
@@ -91,7 +91,7 @@ Fields: `edges: [E](u: V, v: V)`, `comp: [V]Int`, `tin: [V]Int`, `tout: [V]Int`,
 
 Fields: `color: [E]C`, `limit: [C]Int`, `used: [C]Int`.
 
-- `fn new(color: [E]C, limit: [C]Int) -> ColorMatroid<E, C>` — \(O(1)\); each `rebuild` is \(O(E)\); The partition matroid of `color`: a set is independent when it holds at most `limit[c]` elements of each colour `c`.; traps: when some `limit[c]` is negative
+- `fn new(color: [E]C, limit: [C]Int) -> lends ColorMatroid<E, C>` — \(O(1)\); each `rebuild` is \(O(E)\); The partition matroid of `color`: a set is independent when it holds at most `limit[c]` elements of each colour `c`.; traps: when some `limit[c]` is negative
 
 ## Functions
 
