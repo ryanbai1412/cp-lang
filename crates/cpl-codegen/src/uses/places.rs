@@ -43,12 +43,15 @@ pub(crate) enum Write<'a> {
 /// Every place `block` writes, at any depth, and how: each target a write
 /// could change.
 pub(crate) fn each_write(block: &Block, f: &mut dyn FnMut(Write, &Place)) {
-    each_put(block, &mut |put, _| {
-        if let Put::Store(target, _) = put {
-            f(Write::Store, target);
-        }
-    });
-    walk::deep_exprs(block, &mut |e| match &e.kind {
+    for stmt in &block.stmts {
+        each_write_in(stmt, f);
+    }
+}
+
+/// [`each_write`] for one statement and everything under it.
+pub(crate) fn each_write_in(stmt: &Stmt, f: &mut dyn FnMut(Write, &Place)) {
+    stores_in(stmt, &mut |target| f(Write::Store, target));
+    stmt_deep_exprs(stmt, &mut |e| match &e.kind {
         ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
             for arg in args {
                 if let Arg::Mut(target) = arg {
@@ -60,6 +63,36 @@ pub(crate) fn each_write(block: &Block, f: &mut dyn FnMut(Write, &Place)) {
         ExprKind::Sort(target, _, _) => f(Write::Sort, target),
         ExprKind::MutSlice(target, ..) | ExprKind::MutLine(target, ..) => f(Write::InPlace, target),
         _ => {}
+    });
+}
+
+fn stores_in(stmt: &Stmt, f: &mut dyn FnMut(&Place)) {
+    if let Stmt::Assign(target, ..) = stmt {
+        f(target);
+    }
+    walk::stmt_exprs(stmt, &mut |e| {
+        walk::deep_expr(e, &mut |inner| {
+            if let ExprKind::Do(block) = &inner.kind {
+                block.stmts.iter().for_each(|s| stores_in(s, f));
+            }
+        })
+    });
+    walk::stmt_blocks(stmt, &mut |inner| {
+        inner.stmts.iter().for_each(|s| stores_in(s, f));
+    });
+}
+
+fn stmt_deep_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
+    walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, f));
+    walk::stmt_blocks(stmt, &mut |inner| walk::deep_exprs(inner, f));
+}
+
+/// Every tuple or struct literal in `stmt`, at any depth: its items.
+pub(crate) fn each_tuple_in<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p [Expr])) {
+    stmt_deep_exprs(stmt, &mut |e| {
+        if let ExprKind::Tuple(items) = &e.kind {
+            f(items);
+        }
     });
 }
 

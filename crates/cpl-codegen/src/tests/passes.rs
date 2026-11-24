@@ -377,3 +377,28 @@ fn each_opened_reports_an_optional_an_if_let_tests_and_reads() {
         "the if let tests its copy of a, then reads through it: {opened:?}"
     );
 }
+
+#[test]
+fn each_write_in_and_each_tuple_in_stay_inside_one_statement() {
+    use crate::uses::places::{each_tuple_in, each_write_in};
+    let program = lower(concat!(
+        "fn f(n: Int) -> (Int, Int):\n",
+        "    var t: List<Int> = []\n",
+        "    if n > 0:\n",
+        "        t.push(n)\n",
+        "    (n, t.len)\n",
+        "print(f(3))\n",
+    ));
+    let stmts = &program.fns[0].body.stmts;
+    let (mut writes, mut tuples) = (Vec::new(), Vec::new());
+    for stmt in stmts {
+        let mut w = 0;
+        each_write_in(stmt, &mut |_, _| w += 1);
+        writes.push(w);
+        let mut k = 0;
+        each_tuple_in(stmt, &mut |items| k += items.len());
+        tuples.push(k);
+    }
+    assert_eq!(writes.iter().sum::<usize>(), 1, "only the push: {writes:?}");
+    assert_eq!(tuples.iter().sum::<usize>(), 2, "the pair: {tuples:?}");
+}

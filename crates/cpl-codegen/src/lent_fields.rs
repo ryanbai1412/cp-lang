@@ -8,6 +8,7 @@
 //! passes a variable, not a temporary, for those. Any other field owns its
 //! value, as before.
 
+use crate::uses::places::{each_closure, each_put, each_tuple_in, each_write_in, Put, Write};
 use crate::walk;
 use cpl_ir::{
     Arg, Block, Expr, ExprKind, FnId, Function, Place, PlaceKind, Program, ScopeId, Stmt, StructId,
@@ -81,11 +82,9 @@ fn frozen_items(program: &Program) -> BTreeSet<*const Expr> {
     let mut out = BTreeSet::new();
     let mut shared = BTreeSet::new();
     for (scope, body) in bodies(program) {
-        walk::deep_exprs(body, &mut |e| {
-            if let ExprKind::Closure(id) = e.kind {
-                let caps = &program.closures[id].captures;
-                shared.extend(caps.iter().filter(|c| c.is_global).map(|c| c.outer));
-            }
+        each_closure(body, &mut |id| {
+            let caps = &program.closures[id].captures;
+            shared.extend(caps.iter().filter(|c| c.is_global).map(|c| c.outer));
         });
         if !matches!(scope, ScopeId::Main) {
             for stmt in &body.stmts {
@@ -96,26 +95,22 @@ fn frozen_items(program: &Program) -> BTreeSet<*const Expr> {
     }
     let writes: Vec<_> = program.main.stmts.iter().map(written_roots).collect();
     for (j, stmt) in program.main.stmts.iter().enumerate() {
-        stmt_deep_exprs(stmt, &mut |e| {
-            if let ExprKind::Tuple(items) = &e.kind {
-                for item in items {
-                    let Some((true, g)) = var_root(item) else {
-                        continue;
-                    };
-                    if !shared.contains(&g) && writes[j..].iter().all(|w| !w.contains(&(true, g))) {
-                        out.insert(item as *const Expr);
-                    }
+        each_tuple_in(stmt, &mut |items| {
+            for item in items {
+                let Some((true, g)) = var_root(item) else {
+                    continue;
+                };
+                if !shared.contains(&g) && writes[j..].iter().all(|w| !w.contains(&(true, g))) {
+                    out.insert(item as *const Expr);
                 }
             }
         });
     }
     for (_, body) in bodies(program) {
         let mut captured = BTreeSet::new();
-        walk::deep_exprs(body, &mut |e| {
-            if let ExprKind::Closure(id) = e.kind {
-                let caps = &program.closures[id].captures;
-                captured.extend(caps.iter().filter(|c| !c.is_global).map(|c| c.outer));
-            }
+        each_closure(body, &mut |id| {
+            let caps = &program.closures[id].captures;
+            captured.extend(caps.iter().filter(|c| !c.is_global).map(|c| c.outer));
         });
         plain_blocks(body, &mut |block| frozen_in(block, &captured, &mut out));
     }
@@ -141,11 +136,9 @@ fn frozen_in(block: &Block, captured: &BTreeSet<usize>, out: &mut BTreeSet<*cons
         let last = writes.iter().rposition(|w| w.contains(&(false, *v)));
         let from = last.map_or(d + 1, |l| (l + 1).max(d + 1));
         for stmt in block.stmts.iter().skip(from) {
-            stmt_deep_exprs(stmt, &mut |e| {
-                if let ExprKind::Tuple(items) = &e.kind {
-                    let mine = items.iter().filter(|i| param_root(i) == Some(*v));
-                    out.extend(mine.map(|i| i as *const Expr));
-                }
+            each_tuple_in(stmt, &mut |items| {
+                let mine = items.iter().filter(|i| param_root(i) == Some(*v));
+                out.extend(mine.map(|i| i as *const Expr));
             });
         }
     }
@@ -155,38 +148,12 @@ fn frozen_in(block: &Block, captured: &BTreeSet<usize>, out: &mut BTreeSet<*cons
 /// as `(is_global, index)`.
 fn written_roots(stmt: &Stmt) -> BTreeSet<(bool, usize)> {
     let mut out = BTreeSet::new();
-    let mut local = |place: &Place| {
-        out.insert(walk::root(place));
-    };
-    stmt_deep_exprs(stmt, &mut |e| match &e.kind {
-        ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => local(place),
-        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-            for a in args {
-                if let Arg::Mut(place) = a {
-                    local(place);
-                }
-            }
+    each_write_in(stmt, &mut |how, place| {
+        if !matches!(how, Write::InPlace) {
+            out.insert(walk::root(place));
         }
-        ExprKind::Do(block) => walk::deep_stmts(block, &mut |s| {
-            if let Stmt::Assign(place, ..) = s {
-                local(place);
-            }
-        }),
-        _ => {}
     });
-    let mut assigned = |s: &Stmt| {
-        if let Stmt::Assign(place, ..) = s {
-            local(place);
-        }
-    };
-    assigned(stmt);
-    walk::stmt_blocks(stmt, &mut |inner| walk::deep_stmts(inner, &mut assigned));
     out
-}
-
-fn stmt_deep_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
-    walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, f));
-    walk::stmt_blocks(stmt, &mut |inner| walk::deep_exprs(inner, f));
 }
 
 /// The variable `e` names, directly or through fields: `(is_global, index)`.
@@ -323,9 +290,9 @@ impl Scan<'_> {
             ExprKind::Local(slot) if depth < 8 => {
                 let mut out = BTreeSet::new();
                 let mut bad = false;
-                walk::deep_stmts(&f.body, &mut |stmt| {
-                    if let Stmt::Let(l, Some(init)) = stmt {
-                        if l == slot {
+                each_put(&f.body, &mut |put, init| {
+                    if let Put::Let(l) = put {
+                        if l == *slot {
                             match self.points_into(f, init, depth + 1) {
                                 Some(set) => out.extend(set),
                                 None => bad = true,

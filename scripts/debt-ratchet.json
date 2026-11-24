@@ -139,7 +139,7 @@
   "cpp_std_functions": 12,
   "cpp_sunk_copies": 4,
   "codegen_effect_guesses": 0,
-  "opt_without_uses": 3,
+  "opt_without_uses": 2,
   "near_dup_fns": 0,
   "consumer_rederived": 9,
   "rs_near_cap": [],
