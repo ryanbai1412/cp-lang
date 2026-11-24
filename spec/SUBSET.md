@@ -196,6 +196,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-09/release-list-index-unchecked.cp: perf
 - core-10/test-position-stored-above-multitest.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
+- std-prefix/rev-scan-is-suffix-fold.cp: compiler (`.rev` on a List is typed `List<T>`, so `scan` keys the table by walk order, not the source's cuts)
 - std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - std-seq/keyed-by-answers-with-the-key.cp: compiler (a `Keys` view's `.items` doesn't walk; the `keys` + `at` walk rule)
 - std-segtree/closure-op-picks-index.cp: stdlib `all` of an identity-less op is `?T`; needs identity-less fold typing (plan/QUESTIONS.md)
