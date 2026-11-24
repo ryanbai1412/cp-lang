@@ -18,7 +18,7 @@ if gomory_hu(edges).map(e => e.w).fold(gcd) != 1: return answer([Bitset<V>.full(
 
 var odd = Bitset<V>.undirected(edges.filter(e => e.w % 2 == 1))
 
-fn complement_within(s: Bitset<V>):          // toggle every edge inside s
+fn complement_within(s: Bitset<V>):  // toggle every edge inside s
     for u in s: odd[u] ^= s.without(u)
 
 // Gallai's induction: an odd-degree v is removed after complementing its

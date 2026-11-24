@@ -16,10 +16,7 @@ domain Pos = 1..=n
 domain Query = 1..=q_cnt
 var alive: [Query]Bool = false
 var segs = MergeSegs<Query>()
-var rope = Rope<Pos, MergeSeg<Query>>(
-    fill: MergeSeg<Query>(),
-    merge: (a, b) => segs.merge(a, b),
-)
+var rope = Rope<Pos, MergeSeg<Query>>(fill: MergeSeg<Query>(), merge: (a, b) => segs.merge(a, b))
 
 enum Op:
     @tag(1) Insert(r: Pos)

@@ -55,7 +55,10 @@ for centre in Node:
     // vertex exists (layers past it red or blank), and their sum of its depth.
     var (inside, blue_inside, blue_depths): (Z, Z, Z) = (1, 0, 0)
     for (d, c) in total.items:
-        ans += inside * layer(red_and_blue, d) * (2 * d) + (blue_depths + blue_inside * d) * layer(some_red, d) * 2
+        ans += inside * layer(
+            red_and_blue,
+            d,
+        ) * (2 * d) + (blue_depths + blue_inside * d) * layer(some_red, d) * 2
         let outermost_blue = inside * (pow3[c] - pow2[c])
         (blue_inside, blue_depths) = (
             blue_inside * pow2[c] + outermost_blue,

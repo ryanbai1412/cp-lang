@@ -19,8 +19,9 @@ let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first!)
 let by_depth = V.group(by: t.depth)
 
 let ans = [
-    layer.len + Int(d > 0 and layer.all(u => t.parent(u) == t.parent(layer[0])))
-    for (d, layer) in by_depth.items
+    layer.len + Int(
+        d > 0 and layer.all(u => t.parent(u) == t.parent(layer[0]))
+    ) for (d, layer) in by_depth.items
 ].max()!
 
 domain Slot = 0..ans

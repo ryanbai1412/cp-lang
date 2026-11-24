@@ -68,7 +68,11 @@ for c in a:
         let s = walk.push('1')
         match phase:
             Seeking => first_hits_from(s)
-            Phase.Split(base) => ans += completions(s, x - base.zeros - s.zeros, y - base.ones - s.ones)
+            Phase.Split(base) => ans += completions(
+                s,
+                x - base.zeros - s.zeros,
+                y - base.ones - s.ones,
+            )
     walk = walk.push(c)
     if let Seeking = phase, walk.lnds >= k:
         phase = Phase.Split(walk)

@@ -32,5 +32,6 @@ for k in 0..n:
     best.max_convolve(match at[k + 1].map(side):
         Some(Odd) => Concave.point(0)
         Some(Even) => Concave.point(1)
-        None => Concave.flat(0..=1))
+        None => Concave.flat(0..=1)
+    )
 print((best.at(half) + n * (n + 1) ** 2 / 2) / 2)

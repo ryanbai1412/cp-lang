@@ -25,7 +25,11 @@ fn stops<domain I, domain J>() -> [I, J]Z:
         var side: Ways = (0, 0, 0, 0)
         for j in J:
             let w = ways[j]
-            let (open, walled, shut) = (w.open + side.open, w.walled + side.walled, w.shut + side.shut)
+            let (open, walled, shut) = (
+                w.open + side.open,
+                w.walled + side.walled,
+                w.shut + side.shut,
+            )
             out[i, j] = (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.ord + j.ord]
             let falls = open + walled
             ways[j] = state(falls, falls, floor: 3, wall: 2)
@@ -38,4 +42,6 @@ let inside = Prefix(stops<I, J>())
 
 @!multitest
 let (n, m): (1..=I.len, 1..=1e15) = read()
-print(guess_at([Z(4) ** ((n + 1) * (Int(k) + 1)) * inside.prefix(I.cuts(n), k) for k in J.cuts], m)!)
+print(
+    guess_at([Z(4) ** ((n + 1) * (Int(k) + 1)) * inside.prefix(I.cuts(n), k) for k in J.cuts], m)!
+)

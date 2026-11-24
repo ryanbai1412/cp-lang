@@ -7,10 +7,15 @@
 let n = read<2..=3000>()
 enum Stage = start | low | one_end | two_ends | done
 let roles = (a: Int, b: Int) => [
-    (start, low, 2 * b), (start, one_end, b),
-    (low, low, a + b), (low, one_end, a),
-    (one_end, one_end, a + b), (one_end, two_ends, b), (one_end, done, a),
-    (two_ends, two_ends, a + b), (two_ends, done, 2 * a),
+    (start, low, 2 * b),
+    (start, one_end, b),
+    (low, low, a + b),
+    (low, one_end, a),
+    (one_end, one_end, a + b),
+    (one_end, two_ends, b),
+    (one_end, done, a),
+    (two_ends, two_ends, a + b),
+    (two_ends, done, 2 * a),
 ]
 var cost: [0..=n, Stage]?Int = None
 cost[0, start] = 0

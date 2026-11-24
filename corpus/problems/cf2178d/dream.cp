@@ -19,7 +19,10 @@ fn plan() -> ?List<(Elf, Elf)>:
     if 2 * m > n: return None
     if m >= 1:
         let k = n - 2 * m
-        return ord[..=k].adjacent.collect() + zip(ord[n - m..].rev.collect(), ord[k..n - m].rev.collect())
+        return ord[..=k].adjacent.collect() + zip(
+            ord[n - m..].rev.collect(),
+            ord[k..n - m].rev.collect(),
+        )
     let top = ord.last!
     let pref = prefix(ord.map(e => attack[e]))
     let s = (0..n - 1).last_true(k => pref.fold(k..n - 1) >= attack[top]) ?? return None

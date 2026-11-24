@@ -19,4 +19,5 @@ for v in V:
 for v in V:
     print(product(V.all, V.all).filter(((s, t)) => s != t and s != v and t != v).sum(of: ((s, t)) =>
         let (sv, vt, st) = (best[s, v]!, best[v, t]!, best[s, t]!)
-        if sv.d + vt.d == st.d: F64(sv.ways * vt.ways) / F64(st.ways) else: 0.0), digits: 3)
+        if sv.d + vt.d == st.d: F64(sv.ways * vt.ways) / F64(st.ways) else: 0.0
+    ), digits: 3)

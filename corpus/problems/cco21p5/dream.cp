@@ -16,8 +16,17 @@ var later: [V.cuts]?V = None
 for v in V.rev: later[v.l] = min(later[v.r], earliest[v])
 
 // best[c]: fewest new edges for the vertices from cut c on, when a block starts at c.
-let add_min = Action<?Int, Int>(0, (f, g) => f + g, (f, x, _) => x.map(y => y + f), over: Monoid<?Int>(None, min))
-var best = SegTree(add_min.over, [V.cuts] c => if c == V.cuts.last!: Some(0) else: None, act: add_min)
+let add_min = Action<?Int, Int>(
+    0,
+    (f, g) => f + g,
+    (f, x, _) => x.map(y => y + f),
+    over: Monoid<?Int>(None, min),
+)
+var best = SegTree(
+    add_min.over,
+    [V.cuts] c => if c == V.cuts.last!: Some(0) else: None,
+    act: add_min,
+)
 let end = V.cuts.last!
 for i in V.drop(1).rev:
     for v in found_by[i]: best.apply(v.r..=end, 1)

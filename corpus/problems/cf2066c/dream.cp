@@ -1,4 +1,4 @@
-type Z = Mod<1e9+7>
+type Z = Mod<1e9 + 7>
 
 @!multitest
 domain N = read(1..=2e5)

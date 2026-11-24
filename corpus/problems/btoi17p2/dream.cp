@@ -7,7 +7,9 @@ type Hops = [Slot, Slot]?Int
 let roads: [m](a: Int, b: Int, t: Int) = read()
 
 fn chain(x: Hops, y: Hops) -> Hops =
-    [Slot, Slot] (i, j) => Slot.filter_map(s => x[i, s].and_then(p => y[s, j].map(q => p + q))).min()
+    [Slot, Slot] (i, j) => Slot.filter_map(
+        s => x[i, s].and_then(p => y[s, j].map(q => p + q))
+    ).min()
 
 var hop: [Gap]Hops = None
 for r in roads:

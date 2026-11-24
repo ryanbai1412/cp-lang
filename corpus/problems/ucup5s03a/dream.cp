@@ -16,7 +16,9 @@ let comb = Comb<Z>()
 fn ways(a: Int, b: Int) -> Z =
     if a > k: 0 else: comb.fact(k + b + 1) * comb.inv_fact(a + b + 1) * comb.inv_fact(k - a)
 
-fn transformed(ds: Int, dw: Int) -> List<Z> = binomial_transform([ways(j + ds, j + dw) for j in 0..=n / 2])
+fn transformed(ds: Int, dw: Int) -> List<Z> = binomial_transform(
+    [ways(j + ds, j + dw) for j in 0..=n / 2]
+)
 
 // s += c * x^shift * t(x^2), modulo x^(n + 1)
 fn add_spread(mut s: List<Z>, t: List<Z>, shift: Int, c: Z):

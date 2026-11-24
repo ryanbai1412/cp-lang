@@ -11,9 +11,9 @@ if blocks.len == 1: return print(M(n - 1))
 // At height h the newest step at least h tall is visible. Every step grows by one
 // each round (`lift`), so tops are stored minus the lift and never rewritten.
 struct Staircase:
-    var steps: List<(top: Int, v: M)> = []   // tops strictly decreasing
+    var steps: List<(top: Int, v: M)> = []  // tops strictly decreasing
     var lift = 0
-    var hidden: M = 0                        // Σ v·(top − next top), all but the newest step
+    var hidden: M = 0  // Σ v·(top − next top), all but the newest step
 
     fn push(mut self, height: Int, v: M):
         let top = height - lift
@@ -22,7 +22,7 @@ struct Staircase:
         if let b = steps.last: hidden += M(b.top - top) * b.v
         steps.push((top, v))
 
-    fn visible(self) -> M =                  // Σ over heights h ≥ 1 of the visible v
+    fn visible(self) -> M =  // Σ over heights h ≥ 1 of the visible v
         hidden + (steps.last.map(s => M(s.top + lift) * s.v) ?? 0)
 
 var stairs: [0..2]Staircase = Staircase()

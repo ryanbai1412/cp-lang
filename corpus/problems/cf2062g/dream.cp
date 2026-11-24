@@ -12,7 +12,6 @@
 // therefore reduces sum |x - perm[x]| by exactly 2 * (r - l) — twice the swap
 // cost — matching the Manhattan lower bound without re-sorting cycles.
 
-
 fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
     var ops: List<(D, D)> = []
     while let r = D.first(x => perm[x] < x):

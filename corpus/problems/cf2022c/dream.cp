@@ -27,14 +27,20 @@ fn best(c: Col.cuts, f: Front) -> Int = match f:
     Flush if c == Col.cuts.last => 0
     Flush =>
         let col = c.right!
-        let stacked = bar(Row.Top, col) + bar(Row.Bottom, col) + best(Col.cuts(c.ord + 3), Front.Flush)
+        let stacked = bar(Row.Top, col) + bar(Row.Bottom, col) + best(
+            Col.cuts(c.ord + 3),
+            Front.Flush,
+        )
         let by_ell = max(open_ell(z, col) + best(Col.cuts(c.ord + 1), Front.Behind(z)) for z in Row)
         max(stacked, by_ell)
     Behind(z) =>
         let col = c.right!
         let close = close_ell(z, col) + best(Col.cuts(c.ord + 2), Front.Flush)
         if c.ord + 4 <= n:
-            let stagger = bar(z, col) + bar(other(z), Col(col + 1)) + best(Col.cuts(c.ord + 3), Front.Behind(z))
+            let stagger = bar(z, col) + bar(other(z), Col(col + 1)) + best(
+                Col.cuts(c.ord + 3),
+                Front.Behind(z),
+            )
             max(close, stagger)
         else:
             close

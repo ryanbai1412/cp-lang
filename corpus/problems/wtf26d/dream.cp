@@ -110,7 +110,9 @@ fn solve():
             if can_place(i, q[i], next_cap, had_inv):
                 had_inv = commit_place(i, q[i], next_cap, had_inv)
             else:
-                let v = Val.rev.first(u => u < q[i] and not used[u] and can_place(i, u, None, had_inv))!
+                let v = Val.rev.first(
+                    u => u < q[i] and not used[u] and can_place(i, u, None, had_inv)
+                )!
                 had_inv = commit_place(i, v, None, had_inv)
                 return i.next
         None
@@ -126,7 +128,9 @@ fn solve():
                 conds.items.pop()
             let min_p = pick_witness(p_thresh, min(max_p.prev!, hi_bound), cond.max_v)
             conds.pop_after(min_p)
-            let vals = [p[pos] for pos in min_p..=hi_bound if not used[p[pos]] and p[pos] >= p[min_p]]
+            let vals = [
+                p[pos] for pos in min_p..=hi_bound if not used[p[pos]] and p[pos] >= p[min_p]
+            ]
             for v in vals.sorted().rev:
                 used[v] = true
                 suffix.push(v)

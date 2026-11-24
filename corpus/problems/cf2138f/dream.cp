@@ -43,12 +43,13 @@ else:
     let (t1, t0) = (t - d * F64(k - 1), t - d * F64(k))
     let fallback_start = Vec(0.5, 0.75) + Vec(0.75, 0.5) * sqrt(3.0 / 13.0)
     let start = if fits(t0, p2): t0 else: fallback_start
-    let s = [Vec(F64(x), F64(y)) / 64.0 for x in -64..=64 for y in -64..=64]
-        .first(c => [p1, p2, t0, t1, start].all(e => fits(c, e)))!
+    let s = [
+        Vec(F64(x), F64(y)) / 64.0 for x in -64..=64 for y in -64..=64
+    ].first(c => [p1, p2, t0, t1, start].all(e => fits(c, e)))!
     let opening = [Step(p1, p2, s), Step(p2, s, start), Step(s, start, t1)]
     opening + ladder(s, t1, [(s + d * F64(i - 1), t0 + d * F64(i)) for i in 2..=k])
 
-var id: Map<Vec, Int> = [ p1: 1, p2: 2 ]
+var id: Map<Vec, Int> = [p1: 1, p2: 2]
 print(m)
 for st in steps:
     print("{id[st.u]} {id[st.v]} {st.at.x:.20f} {st.at.y:.20f}")

@@ -30,12 +30,12 @@ fn run_around(c: Col, limit: Int) -> Range<Col>:
     let hi = (c..=Col.last!).last_true(r => wettest.fold(c..=r) < limit)!
     lo..=hi
 
-var layer: [Col]?Layer = None                    // a layer is named by the column that opened it
+var layer: [Col]?Layer = None  // a layer is named by the column that opened it
 var up: [Col]?(Col, Drop) = None
-var open = SortedMap<Col, Col>()                 // layers not yet inside a later run, by first column
-var waiting = Deque.of(Col.all.sorted(by: c => h[c]))   // columns not yet free, driest first
-var home: [Col]?Col = None                       // row-0 layer of each free column
-for r in t.record_highs():                       // rows with a new maximum temperature
+var open = SortedMap<Col, Col>()                       // layers not yet inside a later run, by first column
+var waiting = Deque.of(Col.all.sorted(by: c => h[c]))  // columns not yet free, driest first
+var home: [Col]?Col = None                             // row-0 layer of each free column
+for r in t.record_highs():                             // rows with a new maximum temperature
     let opened = waiting.pop_front_while(c => h[c] < t[r])
     for (id, run) in [(c, run_around(c, t[r])) for c in opened].distinct(by: p => p.1.first!):
         layer[id] = Some(Layer(r, run))

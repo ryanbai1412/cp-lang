@@ -14,12 +14,15 @@ for i in City:
         red[j, i] = red[i, j]
 
 fn route(s: City) -> List<City>:
-    var x = false  // the colour of the `tail` run's roads: red when true
-    var tail: List<City> = []  // in route order, ending at the junction
+    var x = false               // the colour of the `tail` run's roads: red when true
+    var tail: List<City> = []   // in route order, ending at the junction
     var head: List<City> = [s]  // reversed: s first, the junction last
     for u in City:
         if u == s: continue
-        if tail.len > 0 and head.len == 1 and red[u, tail.last!] != x and red[u, s] == x and red[tail.last!, s] == x:
+        if tail.len > 0 and head.len == 1 and red[u, tail.last!] != x and red[u, s] == x and red[
+            tail.last!,
+            s,
+        ] == x:
             while let c = tail.pop(): head.push(c)
             x = not x
         if tail.is_empty:

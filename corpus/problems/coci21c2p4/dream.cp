@@ -18,10 +18,16 @@ for r in radius.sorted():
         for k in Cells:
             let w = ways[j, k]
             if w == 0: continue
-            if let a = Blocks.at(j.ord + 1), let b = Cells.at(k.ord + 1): next[a, b] += w * Z(j.ord + 1)
+            if let a = Blocks.at(j.ord + 1), let b = Cells.at(k.ord + 1): next[
+                a,
+                b,
+            ] += w * Z(j.ord + 1)
             if let b = Cells.at(k.ord + r): next[j, b] += w * Z(2 * j.ord)
             if j.ord >= 2:
-                if let a = Blocks.at(j.ord - 1), let b = Cells.at(k.ord + 2 * r - 1): next[a, b] += w * Z(j.ord - 1)
+                if let a = Blocks.at(j.ord - 1), let b = Cells.at(k.ord + 2 * r - 1): next[
+                    a,
+                    b,
+                ] += w * Z(j.ord - 1)
     ways = next
 
 let comb = Comb<Z>(l + n)

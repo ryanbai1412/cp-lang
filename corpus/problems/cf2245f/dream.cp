@@ -31,14 +31,20 @@ fn next(s: Int) -> ?Int:
     if s - first(owner[s]) < c: Some(s + 1) else: None
 
 print(
-    if Pos.any(i => ends.fold(..=i) - (i.ord + 1) > i.ord): 0
-    else: dp(Pos.first!, last(Pos.last!)) * comb.fact(n)
+    if Pos.any(
+        i => ends.fold(..=i) - (i.ord + 1) > i.ord
+    ): 0 else: dp(Pos.first!, last(Pos.last!)) * comb.fact(n)
 )
 
 @memo
 fn dp(i: Pos, s: Int) -> Z:
     if s == first(i): return 1
     sum(
-        dp(i, last(j)) * dp(j.next!, k) * comb.inv(owner[k].ord - i.ord)
-        for k in [s - 1, s] for j in i..owner[k] if next(k) == Some(s)
+        dp(i, last(j)) * dp(
+            j.next!,
+            k,
+        ) * comb.inv(owner[k].ord - i.ord) for k in [
+            s - 1,
+            s,
+        ] for j in i..owner[k] if next(k) == Some(s)
     )

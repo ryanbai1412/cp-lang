@@ -19,8 +19,13 @@ fn tower(s: Int, x: Int, depth: Int) -> Exp =
 
 type Z = Mod<p>
 let sums = Monoid<[Step]Z>(id: [Step] _ => Z(0), op: (x, y) => [Step] s => x[s] + y[s])
-let shift = Action<[Step]Z, Int>(id: 0, compose: (+), over: sums, commutes: true,
-                                 apply: (k, x, _) => [Step] s => x[s.shift_saturating(k)])
+let shift = Action<[Step]Z, Int>(
+    id: 0,
+    compose: (+),
+    over: sums,
+    commutes: true,
+    apply: (k, x, _) => [Step] s => x[s.shift_saturating(k)],
+)
 var st = SegTree(sums, [I] i => [Step] s => Z(tower(Int(s), a[i], 0).v), act: shift)
 for (kind, l, r) in read<[q](0..=1, I, I)>():
     if kind == 0: st.apply(l..=r, 1) else: print(st.fold(l..=r)[Step.first!])

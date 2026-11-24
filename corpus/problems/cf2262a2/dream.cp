@@ -17,7 +17,6 @@
 // the next chosen element must lie in `i + 1..need[i]`, whose running sum is
 // maintained in `tot` by shrinking `hi` down to `need[i]`.
 
-
 const MOD = 1e9 + 7
 type Z = Mod<MOD>
 

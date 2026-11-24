@@ -31,7 +31,7 @@ fn tally(ls: Range<Pos>, rs: Range<Pos>, w: Int):
             covering[blank(l, r)] += w
 
 tally(Pos, Pos, 1)
-var (lo, hi) = (Pos.last!, Pos.first!)                   // no value placed yet: every segment covers
+var (lo, hi) = (Pos.last!, Pos.first!)  // no value placed yet: every segment covers
 var need = 0
 var answer: Z = 0
 for v in 0..Pos.count:

@@ -13,8 +13,8 @@ let n: 1..=1e6 = read()
 domain Pos = 1..=n
 let p: [Pos]1..=n = read()
 
-var tails: List<Int> = []                       // smallest tail value per length
-var level: List<List<Pos>> = []                 // positions per level, left to right
+var tails: List<Int> = []        // smallest tail value per length
+var level: List<List<Pos>> = []  // positions per level, left to right
 for i in Pos:
     let at = tails.first_ge(p[i]) ?? tails.len
     if at == tails.len:
@@ -24,7 +24,7 @@ for i in Pos:
     level[at].push(i)
 
 let len = level.len
-var next: [0..len]Int = 0                       // first unused index in each level
+var next: [0..len]Int = 0  // first unused index in each level
 var chains: List<List<Pos>> = []
 var chain: List<Pos> = []
 while true:

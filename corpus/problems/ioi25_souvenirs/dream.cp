@@ -39,7 +39,10 @@ fn buy_souvenirs(p0: Int):
         let (types, change) = transaction(m)
         for x in types: bought[x] += 1
         let (known, unknown) = types.partition(x => price[x] != None)
-        eq[unknown.min()!] = Eq(types: Bitset.of(unknown), sum: m - change - known.sum(of: x => price[x]!))
+        eq[unknown.min()!] = Eq(
+            types: Bitset.of(unknown),
+            sum: m - change - known.sum(of: x => price[x]!),
+        )
 
     fn learn(i: T, v: Int):
         price[i] = v

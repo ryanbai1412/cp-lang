@@ -33,7 +33,11 @@ fn stops<domain I, domain J>() -> [I, J]Z:
         var side: Ways = (0, 0, 0, 0)
         for j in J:
             let w = ways[j]
-            let (open, walled, shut) = (w.open + side.open, w.walled + side.walled, w.shut + side.shut)
+            let (open, walled, shut) = (
+                w.open + side.open,
+                w.walled + side.walled,
+                w.shut + side.shut,
+            )
             out[i, j] = (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.ord + j.ord]
             let falls = open + walled
             ways[j] = state(falls, falls, floor: 3, wall: 2)

@@ -2,7 +2,13 @@
 // generator and swaps, then print the lexicographically smallest sorted value list of a
 // right/down path from the top-left. Take values smallest first; a value is usable when its cell
 // keeps every row's allowed column interval non-empty, and taking it narrows rows above and below.
-let (x0, a, b, c, d) = read<(0..=100_000_000, 0..=300, 0..=100_000_000, 0..=100_000_000, 1..=100_000_000)>()
+let (x0, a, b, c, d) = read<(
+    0..=100_000_000,
+    0..=300,
+    0..=100_000_000,
+    0..=100_000_000,
+    1..=100_000_000,
+)>()
 let (n, m, q) = read<(1..=5000, 1..=5000, 0..=50_000)>()
 domain R = 0..n
 domain Col = 0..m

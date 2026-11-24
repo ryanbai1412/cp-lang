@@ -8,7 +8,6 @@
 // Taking suffix minima of `bad[l]` over `I` gives `min_bad[l]`, the earliest
 // forbidden right endpoint for any subarray starting at `l`.
 
-
 @!multitest
 let (n, q): (1..=500_000, 1..=500_000) = read()
 domain I = 1..=n

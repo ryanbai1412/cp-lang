@@ -31,7 +31,10 @@ repeat m:
     bads[diag_of(c, val - 1)].push(c)
 for d in Diag: bads[d].sort()
 
-fn next_bad(d: Diag, from: Cut) -> Cut = if let k = bads[d].first_ge(from): bads[d][k] else: Cut.last!
+fn next_bad(
+    d: Diag,
+    from: Cut,
+) -> Cut = if let k = bads[d].first_ge(from): bads[d][k] else: Cut.last!
 fn wrap_limit(c: Cut) -> Cut = if c < Cut.last!: next_bad(diag_of(c, 0), from: c) else: Cut.last!
 
 var dp: [Cut]Z = 0

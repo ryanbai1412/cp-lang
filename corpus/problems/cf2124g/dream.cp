@@ -29,7 +29,6 @@
 //   over all prefix minima telescopes to `a[0] - pref_min[n - 1] <= 2n`, so
 //   the inner loop runs O(n) times total (`O(n log n)` with binary search).
 
-
 @!multitest
 let n: 1..=1_000_000 = read()
 domain Pos = 0..n

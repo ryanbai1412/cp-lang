@@ -51,14 +51,13 @@ fn span() -> Int:
     if ar >= -nbl: best = min(best, (overlap: ar + nbl, span: br + nal))
     if s.disjoint < inf: best = min(best, (overlap: 0, span: s.disjoint))
     best.span
-let spans = offline_over(q, live, by: iv => (iv.lo, iv.hi),
-    mark: () => (len: log.len, s:),
-    apply: add,
-    answer: _ => span(),
-    undo: m =>
-        while log.len > m.len:
-            let e = log.pop()!
-            if e.ends: ending.set(e.at, e.was) else: starting.set(e.at, e.was)
-        s = m.s,
+let spans = offline_over(q, live, by: iv => (iv.lo, iv.hi), mark: () => (
+    len: log.len,
+    s:,
+), apply: add, answer: _ => span(), undo: m =>
+    while log.len > m.len:
+        let e = log.pop()!
+        if e.ends: ending.set(e.at, e.was) else: starting.set(e.at, e.was)
+    s = m.s,
 )
 for x in spans: print(x)

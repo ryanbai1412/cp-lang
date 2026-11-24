@@ -16,14 +16,17 @@ var boxes: [Row.cuts][Row.cuts][Subset<Col>]Z = 0
 for hi in Row.cuts:
     ways[hi][hi].fill(1)
     for mid in (Row.cuts.first!..hi).rev:
-        for cols in Subset<Col>:                     // the last row holds no box
+        for cols in Subset<Col>:  // the last row holds no box
             ways[hi][mid][cols] += ways[hi.prev!][mid][cols]
             boxes[hi][mid][cols] += boxes[hi.prev!][mid][cols]
-        for left in Col.rev:                         // narrower bands first
+        for left in Col.rev:  // narrower bands first
             var band = Subset<Col>.empty
             for right in left..=Col.last!:
                 band = band.with(right)
-                let one = Z(2) ** stars.fold(rows: mid..hi, cols: left..=right) - ways[hi][mid][band]
+                let one = Z(2) ** stars.fold(
+                    rows: mid..hi,
+                    cols: left..=right,
+                ) - ways[hi][mid][band]
                 for lo in Row.cuts.first!..=mid, rest in (Subset<Col>.full - band).subsets:
                     let (w, b) = (ways[mid][lo][rest], boxes[mid][lo][rest])
                     ways[hi][lo][rest | band] += w * one

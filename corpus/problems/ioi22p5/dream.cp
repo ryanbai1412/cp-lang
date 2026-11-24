@@ -14,8 +14,8 @@ fn call(op: 0..3):
     assert calls[op] <= 40000, "too many machine calls"
 
 var in_machine: [Insect]Bool = false
-var held: Counter<Int, Int> = Counter()          // insects inside, per type
-var with_count: [0..=n]Int = 0                   // types inside, per group size
+var held: Counter<Int, Int> = Counter()  // insects inside, per type
+var with_count: [0..=n]Int = 0           // types inside, per group size
 with_count[0] = n
 var top = 0
 
@@ -56,7 +56,7 @@ fn min_cardinality(n: Int) -> Int:
     let kinds = fill(1).len
     fn holds(cap: Int) -> Bool:
         let added = fill(cap)
-        if inside.count(x => x) >= kinds * cap:          // kept fills stay valid below cap
+        if inside.count(x => x) >= kinds * cap:  // kept fills stay valid below cap
             return true
         for i in added:
             move_outside(Int(i))

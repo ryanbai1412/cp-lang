@@ -14,4 +14,5 @@ print([0..n] i =>
     else:
         cost += size - x - 1
         spare.push(i)
-    cost)
+    cost
+)

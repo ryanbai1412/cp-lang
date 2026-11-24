@@ -15,16 +15,19 @@ domain U = 1..=n
 let edges = read<[0..n - 1](u: U, v: U, w: 1..=1e12)>().sorted(by: e => desc(e.w))
 let max_w = edges[0].w * (n - 1)
 
-let (domain Node, kt) = kruskal_tree(edges, w: e => e)   // `edges` is heaviest first
+let (domain Node, kt) = kruskal_tree(edges, w: e => e)  // `edges` is heaviest first
 let tree = kt.tree
 let leaves = kt.up(+, leaf: _ => 1)
-fn cut(v: Node) -> Int:                        // the edge above v times the other side's size
+fn cut(v: Node) -> Int:  // the edge above v times the other side's size
     guard let p = tree.parent(v) else: return 0
     edges[kt.w[p]!].w * (leaves[p] - leaves[v])
 let total = tree.down(0, (above, v) => above + cut(v))
 let joins = [
-    (cost: if total[v] > max_w / leaves[v]: max_w else: total[v] * leaves[v], v:, p:)
-    for v in Node if let p = tree.parent(v)
+    (
+        cost: if total[v] > max_w / leaves[v]: max_w else: total[v] * leaves[v],
+        v:,
+        p:,
+    ) for v in Node if let p = tree.parent(v)
 ].sorted(by: j => desc(j.cost))
 
 var sets = DsuOf<Node, Int>(v => if v.ord < n: 1 else: 0, (a, b) => a + b)

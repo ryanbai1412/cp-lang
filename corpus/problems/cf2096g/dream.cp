@@ -61,7 +61,11 @@ if n % 2 == 1:
 
 print(q)
 for r in Round:
-    print(rounds[r, Side.Left].len + rounds[r, Side.Right].len, rounds[r, Side.Left], rounds[r, Side.Right])
+    print(
+        rounds[r, Side.Left].len + rounds[r, Side.Right].len,
+        rounds[r, Side.Left],
+        rounds[r, Side.Right],
+    )
 
 let response: Str = read()
 var hits: [Coin]Int = 0

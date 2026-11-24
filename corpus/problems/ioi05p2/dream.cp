@@ -13,16 +13,24 @@ while true:
             let (a, b, d): (Rail, Rail, -1e9..=1e9) = read()
             cmds.push(Cmd.Set(a, b, d))
         _: cmds.push(Cmd.Ask(read()))
-let (domain Piece, piece) = Rail.range.pieces(cuts: [x for c in cmds if let Cmd.Set(a, b, _) = c for x in [a.l, b.r]])
+let (domain Piece, piece) = Rail.range.pieces(
+    cuts: [x for c in cmds if let Cmd.Set(a, b, _) = c for x in [a.l, b.r]]
+)
 
 struct Rise:
     total: Int
     peak: Int
     len: Int
-let then = Monoid<Rise>(id: Rise(0, 0, 0),
-                        op: (x, y) => Rise(x.total + y.total, max(x.peak, x.total + y.peak), x.len + y.len))
-let slope = Action<Rise, ?Int>(id: None, compose: (new, old) => new ?? old, over: then,
-                               apply: (d, x, _) => if let s = d: Rise(s * x.len, max(0, s * x.len), x.len) else: x)
+let then = Monoid<Rise>(
+    id: Rise(0, 0, 0),
+    op: (x, y) => Rise(x.total + y.total, max(x.peak, x.total + y.peak), x.len + y.len),
+)
+let slope = Action<Rise, ?Int>(
+    id: None,
+    compose: (new, old) => new ?? old,
+    over: then,
+    apply: (d, x, _) => if let s = d: Rise(s * x.len, max(0, s * x.len), x.len) else: x,
+)
 var track = SegTree(then, [Piece] p => Rise(0, 0, piece[p].len), act: slope)
 
 for c in cmds:
@@ -30,7 +38,7 @@ for c in cmds:
         Set(a, b, d): track.apply(piece.covering(a..=b), d)
         Ask(h):
             let stop = track.right_while(Piece.cuts.first!, x => x.peak <= h)
-            if let p = stop.r:   // the piece where the car stops
+            if let p = stop.r:  // the piece where the car stops
                 let at = track.get(p)
                 print(Int(piece[p].l) + (h - track.fold(..stop).total) / (at.total / at.len))
             else:

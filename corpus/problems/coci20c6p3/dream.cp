@@ -8,6 +8,7 @@ let words: [n]Str = read()
 let comb = Comb<M>(n)
 var ways: [0..=k]M = [0..=k] j => M(if j == 0: 1 else: 0)
 for s in words.tally(by: w => w.sorted()).values:
-    ways = [0..=k] j => (0..=s).take_while(c => choose2(c) <= j)
-        .map(c => comb.choose(s, c) * ways[j - choose2(c)]).sum()
+    ways = [0..=k] j => (0..=s).take_while(c => choose2(c) <= j).map(
+        c => comb.choose(s, c) * ways[j - choose2(c)]
+    ).sum()
 print(ways[k])
