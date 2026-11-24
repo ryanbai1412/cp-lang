@@ -544,7 +544,7 @@ park_old_lock() {
 }
 
 take_lock() {
-    local me holder held_by at waited=0 lined="" blind="" nap nap_said="" stuck_head="" stuck_since=0 poll="" seen_holder="" beat_said=""
+    local me holder held_by at waited=0 lined="" blind="" nap nap_said="" stuck_head="" stuck_since=0 poll="" seen_holder="" beat_said="" last_holder="" last_change=0 age why head main_now
     # On unless CPL_LAND_QUEUE= : without it the lock went to whoever polled first, and
     # Tools' passed land waited 20+ min while 8 later lands pushed.
     [ -z "${CPL_LAND_QUEUE-1}" ] || enqueue || :
@@ -624,8 +624,23 @@ take_lock() {
         '' | *[!0-9]*) at=$(date +%s) beat_said="no readable stamp" ;;
         *) beat_said="beat $(($(date +%s) - at))s ago" ;;
         esac
-        if [ $(( $(date +%s) - ${at:-0} )) -gt "$lock_stale" ]; then
-            echo "land: taking over a land lock held over ${lock_stale}s ($(git log -1 --format=%s "$holder" 2>/dev/null))" >&2
+        # Stale by its own stamp and also unchanged here for two beats: a waiter
+        # whose clock runs ahead of the holder's never takes a lock still beating.
+        [ "$holder" = "$last_holder" ] || { last_holder=$holder; last_change=$(date +%s); }
+        # A holder whose head is on main has pushed and only failed to delete its lock
+        # (killed, or the delete failed): it is taken once a beat is missed.
+        age=$(( $(date +%s) - ${at:-0} )) why=""
+        head=$(echo "$held_by" | cut -d' ' -f6) head=${head##*@}
+        if [ "$age" -gt "$lock_beat" ] && [ -n "$head" ] &&
+            main_now=$(git ls-remote "$remote" refs/heads/main | cut -f1) && [ -n "$main_now" ] &&
+            git fetch -q --no-write-fetch-head "$remote" main 2>/dev/null &&
+            git merge-base --is-ancestor "$head" "$main_now" 2>/dev/null; then
+            why="$head is on main"
+        elif [ "$age" -gt "$lock_stale" ] && [ $(( $(date +%s) - last_change )) -ge $((2 * lock_beat)) ]; then
+            why="no beat for over ${lock_stale}s"
+        fi
+        if [ -n "$why" ]; then
+            echo "land: taking over a land lock last beat ${age}s ago (holder $(echo "$held_by" | cut -d' ' -f2,3), $why)" >&2
             git push -q --no-verify --force-with-lease="$lock_ref:$holder" "$remote" "$me:$lock_ref" 2>/dev/null &&
                 { lock_held=$me; start_beat; dequeue; return 0; }
             continue
@@ -648,8 +663,12 @@ take_lock() {
 }
 drop_lock() {
     [ -n "$lock_held" ] || return 0
+    # Deleted first, while the beat still runs: a holder killed after its push (a
+    # tool's timeout) left its lock to go stale, and every waiter paid 120 s. The
+    # beat's lease can't bring a deleted lock back.
+    [ -e "$lock_file.lost" ] || RETRY_TRIES=5 RETRY_WAIT=1 retry delete_lock ||
+        echo "land: could not delete the land lock after 5 tries; a waiter takes it once its beat is ${lock_beat}s old and $(git rev-parse --short HEAD) is on main" >&2
     stop_beat
-    [ -e "$lock_file.lost" ] || RETRY_TRIES=3 RETRY_WAIT=1 retry delete_lock || :
     rm -f "$lock_file.lost"
     lock_held=""
 }
@@ -699,7 +718,7 @@ push() {
     # the lock; only main moving under it lets the lock and the turn go.
     lock_step pushing
     moved=""
-    RETRY_TRIES=3 RETRY_WAIT=1 retry push_held && [ -z "$moved" ] && return 0
+    RETRY_TRIES=3 RETRY_WAIT=1 retry push_held && [ -z "$moved" ] && { drop_lock; return 0; }
     drop_lock
     return 1
 }

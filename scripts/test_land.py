@@ -534,6 +534,11 @@ class LandTest(unittest.TestCase):
         git(repo, "push", "-q", "origin", f"{sha}:refs/land/lock-v2")
         return sha
 
+    def note_on_remote(self, repo):
+        sha = self.lock_on_remote().split()[0]
+        git(repo, "fetch", "-q", "origin", "refs/land/lock-v2")
+        return git(repo, "log", "-1", "--format=%s", sha)
+
     def lock_on_remote(self):
         return git(self.tmp, "ls-remote", str(self.tmp / "remote.git"), "refs/land/lock-v2").strip()
 
@@ -588,7 +593,7 @@ class LandTest(unittest.TestCase):
         self.lock(repo, age=1000)
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
-        r = self.land(repo)
+        r = self.land(repo, CPL_LAND_LOCK_BEAT="1")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("taking over a land lock", r.stderr)
         self.assertEqual(self.lock_on_remote(), "")
@@ -751,9 +756,118 @@ class LandTest(unittest.TestCase):
         self.lock(repo, age=150)
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
-        r = self.land(repo)
+        r = self.land(repo, CPL_LAND_LOCK_BEAT="1")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("taking over a land lock held over 120s", r.stderr)
+        self.assertRegex(r.stderr, r"taking over a land lock last beat 1[5-9]\ds ago \(holder other 1, no beat for over 120s\)")
+
+    def beat_as_rival(self, repo, age):
+        """Restamp refs/land/lock-v2 every 0.3 s as live holder `rival 7`, `age` s behind this clock; stop() ends it."""
+        empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
+        stop = threading.Event()
+
+        def beat():
+            n = 0
+            while not stop.is_set():
+                n += 1
+                note = f"land-lock rival 7 {int(time.time()) - age} infra feat@abc1234 pushing {n}"
+                git(repo, "push", "-q", "-f", "origin", git(repo, "commit-tree", empty, "-m", note).strip() + ":refs/land/lock-v2")
+                stop.wait(0.3)
+
+        git(repo, "push", "-q", "origin", git(repo, "commit-tree", empty, "-m", f"land-lock rival 7 {int(time.time()) - 115} infra").strip() + ":refs/land/lock-v2")
+        t = threading.Thread(target=beat)
+        t.start()
+        return lambda: (stop.set(), t.join())
+
+    def test_a_holder_beating_while_a_waiter_waits_past_120s_is_never_taken_over(self):
+        # Perf C took lint-fmt's live lock: a holder first seen 115 s old, beating since.
+        repo = self.clone("lane")
+        stop = self.beat_as_rival(self.clone("rival"), age=0)
+        try:
+            (repo / "pkg.txt").write_text("x\n")
+            self.commit(repo, "ours")
+            r = self.land(repo, CPL_LAND_LOCK_WAIT="8", CPL_LAND_LOCK_BEAT="1")
+        finally:
+            stop()
+        self.assertNotEqual(r.returncode, 0)
+        self.assertNotIn("taking over", r.stderr)
+        self.assertIn("no land lock after", r.stderr)
+
+    def test_a_holder_beating_on_a_clock_behind_the_waiters_is_never_taken_over(self):
+        repo = self.clone("lane")
+        stop = self.beat_as_rival(self.clone("rival"), age=150)
+        try:
+            (repo / "pkg.txt").write_text("x\n")
+            self.commit(repo, "ours")
+            r = self.land(repo, CPL_LAND_LOCK_WAIT="8", CPL_LAND_LOCK_BEAT="1")
+        finally:
+            stop()
+        self.assertNotEqual(r.returncode, 0)
+        self.assertNotIn("taking over", r.stderr)
+        self.assertIn("rival 7", git(repo, "ls-remote", "origin", "refs/land/lock-v2") and self.note_on_remote(repo))
+
+    def held_note(self, repo, age, head):
+        empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
+        note = f"land-lock rival 7 {int(time.time()) - age} infra feat@{head} pushing"
+        git(repo, "push", "-q", "-f", "origin", git(repo, "commit-tree", empty, "-m", note).strip() + ":refs/land/lock-v2")
+
+    def test_a_lock_whose_holders_head_is_on_main_is_taken_once_a_beat_is_missed(self):
+        # lint-fmt and compiler pushed, then died before deleting: each waiter paid 120 s.
+        repo = self.clone("lane")
+        self.held_note(repo, 30, git(repo, "rev-parse", "--short", "origin/main").strip())
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_LOCK_WAIT="5")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertRegex(r.stderr, r"taking over a land lock last beat 3\ds ago \(holder rival 7, [0-9a-f]+ is on main\)")
+
+    def test_a_lock_whose_holders_head_is_not_on_main_waits_out_its_beat(self):
+        repo = self.clone("lane")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        self.held_note(repo, 30, git(repo, "rev-parse", "--short", "HEAD").strip())
+        r = self.land(repo, CPL_LAND_LOCK_WAIT="3")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertNotIn("taking over", r.stderr)
+
+    def slow_beats_and_timed_refs(self, fail_delete=False):
+        """A git that takes 3 s over each lock beat (and fails lock deletes with `fail_delete`),
+        and a remote that logs `<time> <ref> <new>` per update; returns (PATH, log)."""
+        log = self.tmp / "refs.log"
+        hook = self.tmp / "remote.git" / "hooks" / "post-receive"
+        hook.write_text(f'#!/bin/sh\nwhile read old new ref; do echo "$(date +%s.%N) $ref $new" >>"{log}"; done\n')
+        hook.chmod(0o755)
+        shim = self.tmp / "bin"
+        shim.mkdir()
+        real = shutil.which("git")
+        fail = 'case "$*" in *" :refs/land/lock-v2"*) exit 1 ;; esac\n' if fail_delete else ""
+        (shim / "git").write_text(
+            "#!/bin/sh\n" + fail +
+            'case "$*" in *"--force-with-lease=refs/land/lock-v2:"[0-9a-f]*" "[0-9a-f]*":refs/land/lock-v2"*) sleep 3 ;; esac\n'
+            f'exec "{real}" "$@"\n')
+        (shim / "git").chmod(0o755)
+        return f"{shim}:{os.environ['PATH']}", log
+
+    def test_a_holder_deletes_its_lock_right_after_its_push_not_after_its_beat(self):
+        repo = self.clone("lane")
+        path, log = self.slow_beats_and_timed_refs()
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=path, CPL_LAND_LOCK_BEAT="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rows = [line.split() for line in log.read_text().splitlines()]
+        pushed = next(float(t) for t, ref, _ in rows if ref == "refs/heads/main")
+        deleted = next(float(t) for t, ref, new in rows if ref == "refs/land/lock-v2" and set(new) == {"0"})
+        self.assertLess(deleted - pushed, 2.5, rows)
+        self.assertEqual(self.lock_on_remote(), "")
+
+    def test_a_lock_delete_that_keeps_failing_is_logged(self):
+        repo = self.clone("lane")
+        path, _ = self.slow_beats_and_timed_refs(fail_delete=True)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=path)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("could not delete the land lock after 5 tries; a waiter takes it once its beat is 20s old", r.stderr)
 
     def test_a_stale_threshold_under_120s_is_raised_to_120(self):
         # CPL_LAND_LOCK_STALE=30, read as minutes, let consumers' land take 4 live lands' locks.
@@ -1120,7 +1234,7 @@ exec {shutil.which("git")} "$@"
         (shim / "git").chmod(0o755)
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
-        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}", CPL_LAND_LOCK_WAIT="2")
+        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}", CPL_LAND_LOCK_WAIT="2", CPL_LAND_LOCK_BEAT="1")
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("taking over a land lock", r.stderr)
         self.assertIn("waiting for the land lock (land-lock rival", r.stderr)
