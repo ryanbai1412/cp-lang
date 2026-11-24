@@ -207,7 +207,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | Crate | Job |
 |---|---|
 | `cpl-syntax` | operator table, lexer, error-tolerant parser, lossless tree |
-| `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries |
+| `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries. Reads the judge's memory limit from `cpl-judge` for E0904 |
 | `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout |
 | `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place |
 | `cpl-interp` | the one interpreter: register VM, event stream, traces, replay, profiler; WASM build |

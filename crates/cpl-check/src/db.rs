@@ -1184,7 +1184,7 @@ impl Database {
 
         let has_syntax_errors =
             !lexed.diagnostics.is_empty() || items.iter().any(|i| !i.parsed.diagnostics.is_empty());
-        let analysis = Arc::new(crate::labels::labelled(Analysis {
+        let mut analysis = crate::labels::labelled(Analysis {
             text: text.clone(),
             lines,
             has_syntax_errors,
@@ -1210,7 +1210,11 @@ impl Database {
             scope,
             facts: Default::default(),
             revision: crate::Revision(self.edits),
-        }));
+        });
+        if imports_ok && !imported_module {
+            self.memory_over_profile(path, &mut analysis);
+        }
+        let analysis = Arc::new(analysis);
         self.collect_garbage(items.len());
         // A cycle through a file that imports this one cut names out of it:
         // right for this import, wrong for anyone else's.

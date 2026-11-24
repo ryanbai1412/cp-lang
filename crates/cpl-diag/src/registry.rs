@@ -1122,6 +1122,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0904"),
+        title: "Memory over the judge's limit",
+        summary: "At the input bounds, the arrays take more memory than the judge allows.",
+        explanation: "Every array's size is known from the bounds of the domains it is indexed by, so the peak a program can reach is known before it runs. Above the memory limit of the judge the build is for, it is an error naming the largest arrays: narrow a bound, store a narrower element, or keep fewer cells.",
+        trigger: "let n: 1..=1e9 = read()\ndomain V = 0..n\nlet a: [V]Int = [V].filled(0)\nprint(a[V(0)])\n",
+        fix: "let n: 1..=1e5 = read()\ndomain V = 0..n\nlet a: [V]Int = [V].filled(0)\nprint(a[V(0)])\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E9999"),
         title: "Internal compiler error",
         summary: "The compiler hit an unexpected internal invariant failure.",

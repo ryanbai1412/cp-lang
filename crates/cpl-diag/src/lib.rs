@@ -263,6 +263,8 @@ pub mod codes {
     /// A fixed-width integer type name; widths come from ranges.
     pub const NO_NARROW_INT: Code = Code("E0901");
     pub const RANGE_STORE_CONST: Code = Code("E0902");
+    /// The peak at the input bounds is over the judge's memory limit. (R03.1.9)
+    pub const MEMORY_OVER_PROFILE: Code = Code("E0904");
 
     /// A captured variable moved while a closure or nested fn capturing it is still live.
     pub const MOVED_WHILE_CAPTURED: Code = Code("E0607");

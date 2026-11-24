@@ -56,27 +56,97 @@ impl Database {
     #[allow(clippy::type_complexity)]
     pub fn storage(&mut self, path: &str) -> Option<(u128, Vec<(String, Option<u64>)>)> {
         let analysis = self.analyze(path)?;
+        let (mut total, mut unbounded) = (0u128, Vec::new());
+        for (name, size) in self.value_sizes(path, &analysis) {
+            match size {
+                Ok(bytes) => total += bytes,
+                Err(per) => unbounded.push((name, per)),
+            }
+        }
+        Some((total, unbounded))
+    }
+
+    /// Each top-level value's most bytes at max input, or, for one with no
+    /// bound, the size of a list's element when it is fixed.
+    fn value_sizes(&mut self, path: &str, analysis: &crate::db::Analysis) -> Vec<(String, Sized)> {
         let mut names: Vec<String> = analysis.scope.names.keys().cloned().collect();
         names.sort();
-        let (mut total, mut unbounded) = (0u128, Vec::new());
+        let mut out = Vec::new();
         for name in names {
-            let Some(def) = self.lookup(path, &analysis, &name) else {
+            let Some(def) = self.lookup(path, analysis, &name) else {
                 continue;
             };
             let Def::Value { ty, .. } = &*def else {
                 continue;
             };
-            let mut lookup = |n: &str| self.lookup(path, &analysis, n);
-            match (value_bytes(ty, &mut lookup), ty) {
-                (Some(bytes), _) => total += bytes,
+            let mut lookup = |n: &str| self.lookup(path, analysis, n);
+            let size = match (value_bytes(ty, &mut lookup), ty) {
+                (Some(bytes), _) => Ok(bytes),
                 (None, Ty::Named { name: list, args }) if list == "List" && args.len() == 1 => {
-                    let per = size(&args[0], &mut lookup);
-                    unbounded.push((name, per));
+                    Err(size(&args[0], &mut lookup))
                 }
-                (None, _) => unbounded.push((name, None)),
-            }
+                (None, _) => Err(None),
+            };
+            out.push((name, size));
         }
-        Some((total, unbounded))
+        out
+    }
+
+    /// E0904: a peak at the input bounds over the memory limit of the judge
+    /// the build is for, naming the three largest values (R03.1.9).
+    pub(crate) fn memory_over_profile(&mut self, path: &str, analysis: &mut crate::db::Analysis) {
+        let mut sized: Vec<(String, u128)> = self
+            .value_sizes(path, analysis)
+            .into_iter()
+            .filter_map(|(name, size)| Some((name, size.ok()?)))
+            .collect();
+        let total: u128 = sized.iter().map(|(_, bytes)| bytes).sum();
+        if total < 1 << 20 {
+            return;
+        }
+        let Ok(judge) = cpl_judge::resolve(std::path::Path::new(path), &analysis.text, None) else {
+            return;
+        };
+        if total <= u128::from(judge.memory_mb) << 20 {
+            return;
+        }
+        sized.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        let arrays: Vec<String> = sized
+            .iter()
+            .filter(|(name, _)| {
+                let def = self.lookup(path, analysis, name);
+                matches!(
+                    def.as_deref(),
+                    Some(Def::Value {
+                        ty: Ty::Array { .. },
+                        ..
+                    })
+                )
+            })
+            .map(|(name, _)| name.clone())
+            .collect();
+        let Some(span) = arrays.first().and_then(|name| analysis.decl_span(name)) else {
+            return;
+        };
+        let largest: Vec<String> = sized
+            .iter()
+            .filter(|(name, _)| arrays.contains(name))
+            .take(3)
+            .map(|(name, bytes)| format!("`{name}` {}", crate::human_bytes(*bytes)))
+            .collect();
+        let message = format!(
+            "at the input bounds this takes {}, over the {} MB limit on {}: {}",
+            crate::human_bytes(total),
+            judge.memory_mb,
+            judge.name,
+            largest.join(", ")
+        );
+        let diag = cpl_diag::Diagnostic::error(cpl_diag::codes::MEMORY_OVER_PROFILE, span, message)
+            .with_help("narrow a bound the sizes come from, store a narrower element, or keep fewer cells; `cpl explain` lists each array's peak");
+        let at = analysis
+            .diagnostics
+            .partition_point(|d| d.span.start <= span.start);
+        analysis.diagnostics.insert(at, diag);
     }
 
     /// How the value hovered at `offset` is stored: widths, the niche of an
@@ -689,6 +759,9 @@ fn render_value(name: &str, ty: &Ty, lookup: &mut Lookup) -> String {
     };
     format!("{name}: {shown}{}", cost_lines(ty, lookup))
 }
+
+/// A value's most bytes, or `Err` with a list's element size when it has no bound.
+type Sized = Result<u128, Option<u64>>;
 
 /// The most bytes a value of `ty` takes, an array's at its indexes' most
 /// values.
