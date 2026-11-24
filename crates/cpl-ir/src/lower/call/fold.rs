@@ -4,9 +4,15 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
-    pub(in crate::lower) fn read(&mut self, spec: Spec, span: Span) -> Expr {
+    pub(in crate::lower) fn read(&mut self, spec: ReadSpec, span: Span) -> Expr {
+        let ty = spec.ty();
         let spec = self.readable(spec);
-        if let Some(ty) = super::read_spec::unreadable(&spec) {
+        self.read_readable(spec, ty, span)
+    }
+
+    /// `read()` of a spec [`Lowerer::readable`] gave, of type `ty`.
+    pub(in crate::lower) fn read_readable(&mut self, spec: Spec, ty: Ty, span: Span) -> Expr {
+        if let Some(ty) = super::read_spec::unreadable(&spec, &ty) {
             self.report(
                 span,
                 msgs::ir::UNSUPPORTED_READ_HAS_NO_INPUT,
@@ -19,10 +25,10 @@ impl<'a> Lowerer<'a> {
             }
             return self.err_expr(span);
         }
-        if let Spec::Array { dims, elem } = &spec {
+        if let Spec::Array { dims, .. } = &spec {
             if let [DimSpec::Pos(d)] = dims[..] {
                 if self.own_domains.contains(&d) {
-                    return self.read_own(d, elem, spec.ty(), span);
+                    return self.read_own(d, ty, span);
                 }
             }
         }
@@ -41,27 +47,23 @@ impl<'a> Lowerer<'a> {
             }
         }
         if names_domain(&spec, &self.own_domains) {
-            let shown = self.show(&spec.ty());
+            let shown = self.show(&ty);
             self.report(span, msgs::ir::UNSUPPORTED_READ_CAN_T_SIZE, &[&shown]);
             self.help(
                 "read it on its own: `let s: [domain S]Char = read()`, then the rest".to_string(),
             );
             return self.err_expr(span);
         }
-        let ty = spec.ty();
         self.mk_read(spec, ty, span)
     }
 
     /// `let s: [domain S]Char = read()`: the token read is the array,
     /// and its length is the size of `S`.
-    pub(in crate::lower) fn read_own(
-        &mut self,
-        d: DomainId,
-        elem: &Spec,
-        ty: Ty,
-        span: Span,
-    ) -> Expr {
-        let elem_ty = elem.ty();
+    pub(in crate::lower) fn read_own(&mut self, d: DomainId, ty: Ty, span: Span) -> Expr {
+        let elem_ty = match &ty {
+            Ty::Array { elem, .. } => (**elem).clone(),
+            _ => Ty::Error,
+        };
         let letters = matches!(elem_ty, Ty::Pos(e) if self.char_domains.contains(&e));
         if elem_ty != Ty::Char && !letters {
             let shown = self.show(&ty);

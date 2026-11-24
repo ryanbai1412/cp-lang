@@ -81,6 +81,7 @@ use mono::*;
 use nest::Nest;
 use outer_cx::OuterCxs;
 use range::*;
+use read_spec::{Counted, ReadSpec};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Out-of-line pushes of the two commonest statements: an inlined

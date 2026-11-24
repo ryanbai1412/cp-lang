@@ -365,3 +365,12 @@ fn a_loop_over_the_rows_of_a_grid_walks_them_by_pointer() {
         "a grid the loop replaces: {rebound}"
     );
 }
+
+#[test]
+fn a_counted_list_read_reaches_the_backend_as_its_loop() {
+    let out = cpp("let rows: List<List<Int>> = read()\nprint(rows.len)\n");
+    assert!(
+        out.contains("ll t2 = cpl::read_int();") && out.contains("while (t0 > 0) {"),
+        "{out}"
+    );
+}

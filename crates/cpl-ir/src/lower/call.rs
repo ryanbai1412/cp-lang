@@ -890,7 +890,7 @@ pub(super) fn is_place(e: &ast::Expr) -> bool {
 
 /// Makes every `?T` of `spec` read `absent` as `none`; false when it has no
 /// `?T`.
-pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
+pub(super) fn reads_none_as(spec: &mut ReadSpec, absent: &Expr) -> bool {
     match spec {
         Spec::Fields(_, fields) => {
             let mut any = false;
@@ -899,7 +899,7 @@ pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
             }
             any
         }
-        Spec::Array { elem, .. } | Spec::List(elem) => reads_none_as(elem, absent),
+        Spec::Array { elem, .. } | Spec::List(Counted(elem)) => reads_none_as(elem, absent),
         Spec::Opt(_, slot) => {
             *slot = Some(Box::new(absent.clone()));
             true

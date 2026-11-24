@@ -212,7 +212,7 @@ impl RangeInfo {
     }
 
     /// A scalar range as the [`Spec::Int`] the IR carries.
-    pub(super) fn spec(&self) -> Option<Spec> {
+    pub(super) fn spec<L>(&self) -> Option<Spec<L>> {
         let b = self.scalar()?;
         Some(Spec::Int {
             lo: b.lo.clone().map(Box::new),
@@ -305,7 +305,7 @@ impl RangeInfo {
         self.elem()?.narrow_value_layout(elem_ty)
     }
 
-    pub(super) fn from_spec(spec: &Spec) -> Option<Self> {
+    pub(super) fn from_spec(spec: &ReadSpec) -> Option<Self> {
         match spec {
             Spec::Int { lo, hi, text } => {
                 let lo_expr = lo.as_deref().cloned();

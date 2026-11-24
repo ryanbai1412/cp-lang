@@ -513,7 +513,7 @@ impl<'a> Lowerer<'a> {
 
     /// `var g: [0..n][0..4]Int = 0`: a literal fills every cell, and a
     /// cell that is itself an array is filled the same way.
-    pub(in crate::lower) fn fill_literal(&mut self, spec: &Spec, init: &ast::Expr) -> Expr {
+    pub(in crate::lower) fn fill_literal(&mut self, spec: &ReadSpec, init: &ast::Expr) -> Expr {
         let Spec::Array { dims, elem } = spec else {
             let v = self.expr_as(init, &spec.ty());
             if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(spec) {
@@ -567,7 +567,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The value a variable declared without one starts with.
-    pub(in crate::lower) fn zero(&mut self, spec: &Spec, span: Span) -> Expr {
+    pub(in crate::lower) fn zero(&mut self, spec: &ReadSpec, span: Span) -> Expr {
         let ty = spec.ty();
         let kind = match spec {
             Spec::Array { dims, .. } => ExprKind::Fill(dims.clone(), None),

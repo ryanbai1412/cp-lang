@@ -552,7 +552,7 @@ impl Ty {
 /// range of an integer and the length of a count-indexed dimension. This
 /// is what `read()` follows and what `var a: [n]Int = 0` allocates from.
 #[derive(Clone, PartialEq, Debug)]
-pub enum Spec {
+pub enum Spec<L = std::convert::Infallible> {
     /// Any type with nothing to add.
     Plain(Ty),
     Int {
@@ -570,21 +570,33 @@ pub enum Spec {
         text: String,
     },
     /// A tuple, a record, or a struct, field by field.
-    Fields(Ty, Vec<Spec>),
+    Fields(Ty, Vec<Spec<L>>),
     Array {
         dims: Vec<DimSpec>,
-        elem: Box<Spec>,
+        elem: Box<Spec<L>>,
     },
     /// `?T`, and the number that stands for `none` in the input, from
     /// `read(none: 0)`.
-    Opt(Box<Spec>, Option<Box<Expr>>),
+    Opt(Box<Spec<L>>, Option<Box<Expr>>),
     /// A type its own `impl Read` reads: the call to its `read()`.
     Call(Box<Expr>),
     /// `read_line()`: the rest of the current line (skipping a trailing `\r?\n` after a token).
     Line,
-    /// `List<T>`: a count, then that many `T`s (R10.2.3). Lowering spells it
-    /// out as a `Call` before a read reaches a backend.
-    List(Box<Spec>),
+    /// `List<T>`: a count, then that many `T`s (R10.2.3), as lowering
+    /// resolves a type. Lowering spells it out as a `Call` before it builds
+    /// a read, so in the IR `L` is uninhabited and no backend sees one.
+    List(L),
+}
+
+/// What a [`Spec::List`] holds: lowering's counted list, or nothing in the IR.
+pub trait SpecList {
+    fn ty(&self) -> Ty;
+}
+
+impl SpecList for std::convert::Infallible {
+    fn ty(&self) -> Ty {
+        match *self {}
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -612,7 +624,7 @@ impl DimSpec {
     }
 }
 
-impl Spec {
+impl<L: SpecList> Spec<L> {
     pub fn ty(&self) -> Ty {
         match self {
             Spec::Plain(ty) | Spec::Fields(ty, _) => ty.clone(),
@@ -624,7 +636,7 @@ impl Spec {
             Spec::Opt(inner, _) => Ty::opt(inner.ty()),
             Spec::Call(call) => call.ty.clone(),
             Spec::Line | Spec::Str { .. } => Ty::Str,
-            Spec::List(each) => Ty::list(each.ty()),
+            Spec::List(each) => each.ty(),
         }
     }
 }

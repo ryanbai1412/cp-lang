@@ -287,7 +287,7 @@ impl<'a> Lowerer<'a> {
 
     /// Splits `value` into coordinates of the flat table. `false` when
     /// some part of it has no bound.
-    fn memo_parts(&mut self, memo: &mut Memo, value: Expr, spec: &Spec) -> bool {
+    fn memo_parts(&mut self, memo: &mut Memo, value: Expr, spec: &ReadSpec) -> bool {
         let span = memo.span;
         match spec {
             Spec::Plain(Ty::Pos(d)) | Spec::Plain(Ty::Bound(d)) => {

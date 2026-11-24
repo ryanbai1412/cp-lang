@@ -94,7 +94,7 @@ pub(super) fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
     match spec {
         Spec::Plain(_) | Spec::Line => {}
         Spec::Call(call) => collect_expr_calls(call, out),
-        Spec::List(each) => collect_spec_calls(each, out),
+        Spec::List(never) => match *never {},
         Spec::Int { lo, hi, .. } | Spec::Str { lo, hi, .. } => {
             if let Some(e) = lo {
                 collect_expr_calls(e, out);
