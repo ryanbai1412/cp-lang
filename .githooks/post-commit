@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# After a commit that touches crates/ (not in CI or mid-rebase), a background
+# named wasm build of it (scripts/wasm-warm.sh), so scripts/land.sh can hold
+# the touched crates to their wasm budgets without waiting on a build.
+root="$(git rev-parse --show-toplevel)"
+[ -z "${CI:-}" ] && [ -x "$root/scripts/wasm-warm.sh" ] || exit 0
+git_dir="$(git rev-parse --git-dir)"
+[ ! -d "$git_dir/rebase-merge" ] && [ ! -d "$git_dir/rebase-apply" ] || exit 0
+git diff-tree --quiet --no-commit-id -r HEAD -- crates Cargo.lock 2>/dev/null && exit 0
+"$root/scripts/wasm-warm.sh" >/dev/null 2>&1 || true

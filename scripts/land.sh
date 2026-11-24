@@ -157,6 +157,18 @@ if [ -s "$pending" ]; then
     rm -f "$pending"
 fi
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
+# The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
+# started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook
+# was cut before its wasm check and grew cpl_lsp 544 B gz past its budget.
+wasm_touched=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*|\1|p' | sort -u)
+if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
+    if wasm=$(scripts/wasm-warm.sh --current $wasm_touched); then
+        node web/scripts/wasm-crates.mjs --data "$wasm" --touched "$(echo $wasm_touched | tr ' -' ',_')" >&2 ||
+            { echo "land: a crate this change touches is over its cpl.wasm budget (above); cut it at its source and land again" >&2; exit 1; }
+    else
+        echo "land: no current wasm build; CI checks it" >&2
+    fi
+fi
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
     product=$(git diff --stat "$(cat "$seen")" FETCH_HEAD -- AGENTS.md handbook plan/product)

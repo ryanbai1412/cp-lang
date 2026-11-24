@@ -27,7 +27,7 @@ class LandTest(unittest.TestCase):
         git(self.tmp, "init", "-q", "--bare", "-b", "main", str(remote))
         seed = self.clone("seed")
         (seed / "scripts").mkdir()
-        for name in ("land.sh", "retry.sh", "ratchet_merge.py", "ratchet_remeasure.py", "gen.py"):
+        for name in ("land.sh", "wasm-warm.sh", "retry.sh", "ratchet_merge.py", "ratchet_remeasure.py", "gen.py"):
             shutil.copy(HERE / name, seed / "scripts" / name)
         (seed / "gen.toml").write_text('[[gen]]\nname = "widths"\nfiles = ["spec/conformance/widths/*.cp"]\n')
         # A regen.sh that dirties a file the rebase never saw: land must not run it.
@@ -337,6 +337,88 @@ class LandTest(unittest.TestCase):
         raised = {"n": 9, "allow": {"f.rs": 2500, "g.rs": 2100}, "edges": ["a", "b"]}
         for merged in (merge(base, raised, base), merge(base, base, raised)):
             self.assertEqual(merged, base)
+
+    def _wasm(self, ours, node_exit):
+        """A fake node that logs its arguments, a cargo whose fmt passes, and a target dir."""
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        (bin_dir / "node").write_text(f'#!/bin/sh\necho "node $*" >> "{self.tmp}/node.log"\nexit {node_exit}\n')
+        (bin_dir / "node").chmod(0o755)
+        (bin_dir / "cargo").write_text('#!/bin/sh\n[ "$1" != metadata ] || echo \'{"packages": []}\'\n')
+        (bin_dir / "cargo").chmod(0o755)
+        return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "CARGO_TARGET_DIR": str(self.tmp / "tgt")}
+
+    def _built(self, ours):
+        """A warm wasm build of ours' tree as it is now."""
+        out = self.tmp / "tgt" / "wasm-warm"
+        out.mkdir(parents=True)
+        (out / "cpl.wasm").write_text("wasm")
+        (out / "tree").write_text(git(ours, "rev-parse", "HEAD^{tree}"))
+        return out
+
+    def _crate_change(self, theirs_crate):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "crates" / theirs_crate).mkdir(parents=True)
+        (theirs / "crates" / theirs_crate / "main.rs").write_text("theirs\n")
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "crates" / "cpl-x").mkdir(parents=True)
+        (ours / "crates" / "cpl-x" / "lib.rs").write_text("ours\n")
+        self.commit(ours, "ours")
+        return ours
+
+    def test_a_touched_crate_over_its_wasm_budget_in_the_warm_build_stops_the_land(self):
+        ours = self._crate_change("cpl-y")
+        out = self._built(ours)
+        r = self.land(ours, **self._wasm(ours, 1))
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("over its cpl.wasm budget", r.stderr)
+        self.assertIn(f"node web/scripts/wasm-crates.mjs --data {out}/cpl.wasm --touched cpl_x",
+                      (self.tmp / "node.log").read_text())
+        self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
+
+    def test_a_warm_build_within_budget_lands(self):
+        ours = self._crate_change("cpl-y")
+        self._built(ours)
+        r = self.land(ours, **self._wasm(ours, 0))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("--touched cpl_x", (self.tmp / "node.log").read_text())
+
+    def test_land_never_waits_on_a_wasm_build_it_lacks(self):
+        ours = self._crate_change("cpl-y")
+        r = self.land(ours, **self._wasm(ours, 1))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("land: no current wasm build; CI checks it", r.stderr)
+        self.assertFalse((self.tmp / "node.log").exists())
+
+    def test_a_warm_build_of_a_touched_crate_main_has_since_changed_is_not_current(self):
+        ours = self._crate_change("cpl-x")
+        self._built(ours)
+        r = self.land(ours, **self._wasm(ours, 1))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("land: no current wasm build; CI checks it", r.stderr)
+        self.assertFalse((self.tmp / "node.log").exists())
+
+    def test_wasm_warm_records_the_tree_it_built_and_only_a_committed_one(self):
+        ours = self.clone("ours")
+        (ours / "scripts" / "build-wasm.sh").write_text('#!/bin/sh\necho built >> "$2/cpl.wasm"\n')
+        (ours / "scripts" / "build-wasm.sh").chmod(0o755)
+        (ours / "crates" / "cpl-x").mkdir(parents=True)
+        (ours / "crates" / "cpl-x" / "lib.rs").write_text("ours\n")
+        self.commit(ours, "ours")
+        env = {**os.environ, "CARGO_TARGET_DIR": str(self.tmp / "tgt")}
+        warm = lambda *a: subprocess.run(["bash", "scripts/wasm-warm.sh", *a], cwd=ours, env=env,
+                                         capture_output=True, text=True)
+        (ours / "crates" / "cpl-x" / "lib.rs").write_text("edited\n")
+        self.assertEqual(warm("--wait").returncode, 0)
+        self.assertEqual(warm("--current", "cpl-x").returncode, 1)
+        git(ours, "checkout", "-q", "--", "crates")
+        self.assertEqual(warm("--wait").returncode, 0)
+        r = warm("--current", "cpl-x")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), str(self.tmp / "tgt" / "wasm-warm" / "cpl.wasm"))
+        self.assertIn("is current", warm("--wait").stdout)
+        self.assertEqual((self.tmp / "tgt" / "wasm-warm" / "cpl.wasm").read_text(), "built\n")
 
 
 if __name__ == "__main__":

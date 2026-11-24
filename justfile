@@ -182,6 +182,10 @@ site-binaries out="target/site-binaries":
     wait "$names" || { cat "{{out}}/wasm-names.log"; exit 1; }
     cat "{{out}}/wasm.log"
 
+# A named cpl.wasm of HEAD in the background, for land.sh's wasm budget check (scripts/wasm-warm.sh).
+wasm-warm:
+    scripts/wasm-warm.sh
+
 # Run the browser smoke suite against the built site (web/out), on a port of its own.
 web-smoke:
     pnpm --dir web smoke

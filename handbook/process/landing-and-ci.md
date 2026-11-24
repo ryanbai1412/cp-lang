@@ -24,6 +24,14 @@ scripts/land.sh
 - `land.sh` rebases onto `origin/main` and pushes, retrying when someone
   else pushed first. It runs no tests: CI checks every main tip, and infra
   keeps main green. It takes about 5-10 s.
+- A commit touching `crates/` starts a nice'd background named `cpl.wasm`
+  build (`.githooks/post-commit`, `scripts/wasm-warm.sh`; `just wasm-warm`
+  by hand). When that build is of the tree being pushed, or differs from it
+  only outside the touched crates, `land.sh` refuses a touched crate over its
+  wasm budget (`web/scripts/wasm-crates.mjs --data --touched`). It never
+  waits on a build: without one it prints `land: no current wasm build; CI
+  checks it` and lands. A commit hook cut at 25 s had skipped this check
+  when 849a0be7d grew `cpl_lsp` 544 B gz past its budget.
 - Work lands straight on main. There are no pull requests and no review
   gate.
 
