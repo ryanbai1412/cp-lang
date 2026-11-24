@@ -244,9 +244,17 @@ class GatesTest(unittest.TestCase):
                      "f(std::optional<std::vector<ll>>(xs));", "return std::optional<std::vector<char>>(std::get<0>(sp));",
                      "return std::optional<std::array<ll, 5>>(std::get<1>(r));", "f(std::optional<std::array<ll, 2>>(a));",
                      "auto s = cpl::to_str(cpl::str_slice(s, 0, q));",
+                     "inline std::string all(const B& self) {\n  return self.agg[self.bag.root];\n}",
+                     "inline H blank(const T& self) {\n  return self.m.id;\n}",
+                     "H v = p == 0 ? f(self) : self.t[p];",
                      "std::array<ll, 7> wt = std::move(t);\nauto f = [wt_2 = wt](int e) mutable -> ll { return wt_2[e]; };"):
             self.assertEqual(ec.deep_copies(holder + line + "\n"), 1, line)
         for line in ("std::optional<ll> t0 = best;", "return std::optional<ll>(std::get<0>(sp));",
+                     "inline ll at(const T& self) {\n  return self.t[0];\n}",
+                     "inline H make(const T& self) {\n  return acc;\n}",
+                     "inline std::string& at(T& self) {\n  return self.vals[0];\n}",
+                     "inline H make(const T& s) {\n  auto f = [&](ll i) -> ll {\n    return s.t[i];\n  };\n}",
+                     "std::add_pointer_t<std::vector<ll>(ll)> leaf;",
                      "std::array<ll, 7> wt = std::move(t);\nauto f = [&wt_2 = wt](int e) -> ll { return wt_2[e]; };",
                      "namespace cpl {\nstd::string to_str() const { return std::string(sv); }\n}  // namespace cpl"):
             self.assertEqual(ec.deep_copies(holder + line + "\n"), 0, line)

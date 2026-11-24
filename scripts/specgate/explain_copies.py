@@ -22,7 +22,7 @@ from specgate import Problem
 
 HELP = "every copy `cpl explain` lists is a deep copy in the judge C++ (--max false claims allowed, shrink-only)"
 
-COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.\w+)*)\)|cpl::to_list\(|cpl::to_str\(|cpl::sorted\([A-Za-z_]\w*(?:\.\w+)*\)")
+COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.\w+)*)\)(?!>)|cpl::to_list\(|cpl::to_str\(|cpl::sorted\([A-Za-z_]\w*(?:\.\w+)*\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.[A-Za-z_]\w*)*")
 PARAM = re.compile(r"(?:std::vector<|std::map<|std::set<|std::unordered_map<|std::deque<|std::string)[^();{}=]*?[&\s](\w+)\s*[,)]")
@@ -173,15 +173,47 @@ def optional_copies(cpp, holders):
     return count
 
 
+HEADER = re.compile(r"^(?:template <[^>]*> )?(?:inline |static )*(.+?) \w+\(.*\{$")
+PART = re.compile(r"[A-Za-z_]\w*(?:\.\w+|\[[^\[\]]+\])*")
+BRANCH = re.compile(r"(?:const )?(\S+) \w+ = .+ \? .+ : (.+);$")
+
+
+def returned_parts(cpp, holders):
+    """A part of a value given out by value: `return self.agg[t];` from a
+    fn returning a heap type, and `Mat v = c ? f(..) : self.t[p];`.
+    Mirrors returned_part_copies in crates/cpl-cli/tests/explain_accuracy.rs."""
+    heap = lambda ty: ty.startswith(CONTAINERS + ("std::array<",)) or ty in holders
+    part = lambda e: bool(PART.fullmatch(e)) and ("." in e or "[" in e)
+    count, depth, scopes = 0, 0, []
+    for line in cpp.splitlines():
+        s = line.strip()
+        lead = len(s) - len(s.lstrip("}"))
+        depth -= lead
+        while scopes and scopes[-1][0] >= depth:
+            scopes.pop()
+        if m := HEADER.match(line):
+            scopes.append((depth, m.group(1).removeprefix("const ")))
+        elif s.endswith("{") and "](" in s:
+            scopes.append((depth, s.rpartition(") -> ")[2][:-1].strip() if ") -> " in s else None))
+        depth += s.count("{") - s.count("}") + lead
+        ret = scopes[-1][1] if scopes else None
+        if ret and heap(ret) and not ret.endswith(("&", "*")) and s.startswith("return ") and s.endswith(";") and part(s[7:-1]):
+            count += 1
+        if (m := BRANCH.match(s)) and heap(m.group(1)) and part(m.group(2)):
+            count += 1
+    return count
+
+
 def deep_copies(cpp):
     """Mirrors deep_copies in crates/cpl-cli/tests/support/cpp_counts.rs, plus
     copies spelled as a constructor call or `cpl::to_list`, tuples holding a
     container copied from places, a container assigned from a place, and
-    optionals of heap values copied from places; the runtime's own lines
+    optionals of heap values copied from places, parts returned by value;
+    the runtime's own lines
     are skipped."""
     held, count = set(PARAM.findall(cpp)), len(COPY.findall(program(cpp)))
     holders = container_structs(cpp)
-    count += optional_copies(program(cpp), holders)
+    count += optional_copies(program(cpp), holders) + returned_parts(program(cpp), holders)
     for line in cpp.splitlines():
         line = line.strip()
         decl = line.removeprefix("const ")

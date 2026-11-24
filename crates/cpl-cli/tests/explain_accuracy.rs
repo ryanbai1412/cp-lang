@@ -177,6 +177,106 @@ fn optional_place_copies(cpp: &str) -> usize {
         .sum()
 }
 
+/// `self.agg[t]`, `self.m.id`: a part of a value, fields and indexes in
+/// any order.
+fn is_part(text: &str) -> bool {
+    let start = text
+        .find(['.', '['])
+        .filter(|&at| at > 0)
+        .unwrap_or(text.len());
+    let (base, mut rest) = text.split_at(start);
+    let word = |t: &str| {
+        t.starts_with(|c: char| c.is_alphabetic() || c == '_')
+            && t.chars().all(|c| c.is_alphanumeric() || c == '_')
+    };
+    if !word(base) || rest.is_empty() {
+        return false;
+    }
+    while !rest.is_empty() {
+        if let Some(r) = rest.strip_prefix('[') {
+            let Some((index, after)) = r.split_once(']') else {
+                return false;
+            };
+            if index.is_empty() || index.contains('[') {
+                return false;
+            }
+            rest = after;
+        } else if let Some(r) = rest.strip_prefix('.') {
+            let end = r.find(['.', '[']).unwrap_or(r.len());
+            if !word(&r[..end]) {
+                return false;
+            }
+            rest = &r[end..];
+        } else {
+            return false;
+        }
+    }
+    true
+}
+
+/// A part of a value given out by value: `return self.agg[t];` in a fn
+/// returning a heap type, and `Mat v = c ? f(..) : self.t[p];`. Mirrors
+/// `returned_parts` in scripts/specgate/explain_copies.py.
+fn returned_part_copies(cpp: &str) -> usize {
+    let holders = container_structs(cpp);
+    let heap = |ty: &str| {
+        CONTAINERS.iter().any(|c| ty.starts_with(c))
+            || ty.starts_with("std::array<")
+            || holders.contains(ty)
+    };
+    let (mut count, mut depth, mut scopes) = (0, 0i64, Vec::<(i64, Option<&str>)>::new());
+    for line in program_lines(cpp) {
+        let trimmed = line.trim();
+        let lead = (trimmed.len() - trimmed.trim_start_matches('}').len()) as i64;
+        depth -= lead;
+        while scopes.last().is_some_and(|&(d, _)| d >= depth) {
+            scopes.pop();
+        }
+        if !line.starts_with([' ', '}', '#', '/']) && line.ends_with('{') && line.contains('(') {
+            let head = line.split_once('(').map_or("", |(h, _)| h);
+            let head = match head.strip_prefix("template <") {
+                Some(t) => t.split_once("> ").map_or("", |(_, h)| h),
+                None => head,
+            };
+            let head = head
+                .trim_start_matches("inline ")
+                .trim_start_matches("static ");
+            let ret = head
+                .rsplit_once(' ')
+                .map(|(ty, _)| ty.strip_prefix("const ").unwrap_or(ty));
+            scopes.push((depth, ret));
+        } else if trimmed.ends_with('{') && trimmed.contains("](") {
+            let ret = trimmed
+                .rsplit_once(") -> ")
+                .map(|(_, r)| r.trim_end_matches('{').trim());
+            scopes.push((depth, ret));
+        }
+        depth +=
+            (trimmed.matches('{').count() as i64) - (trimmed.matches('}').count() as i64) + lead;
+        let ret = scopes.last().and_then(|&(_, r)| r);
+        let line = line.trim();
+        let returned = line
+            .strip_prefix("return ")
+            .and_then(|r| r.strip_suffix(';'))
+            .is_some_and(|e| {
+                ret.is_some_and(|r| heap(r) && !r.ends_with(['&', '*'])) && is_part(e)
+            });
+        let decl = line.strip_prefix("const ").unwrap_or(line);
+        let branch = decl.split_once(' ').is_some_and(|(ty, rest)| {
+            ty.matches('<').count() == ty.matches('>').count()
+                && heap(ty)
+                && rest.contains(" = ")
+                && rest.contains(" ? ")
+                && rest
+                    .strip_suffix(';')
+                    .and_then(|r| r.rsplit_once(" : "))
+                    .is_some_and(|(_, part)| is_part(part))
+        });
+        count += usize::from(returned) + usize::from(branch);
+    }
+    count
+}
+
 /// A fixed array captured by value under a new name, `[wt_2 = wt]`: the
 /// closure holds its own array. Mirrors `ARRAY` in
 /// scripts/specgate/explain_copies.py.
@@ -253,7 +353,7 @@ fn place_arg(rest: &str) -> bool {
             .is_some_and(|(inner, after)| !inner.contains('(') && after.starts_with(')'));
     }
     arg.split_once(')')
-        .is_some_and(|(a, _)| is_indexed_place(a))
+        .is_some_and(|(a, after)| is_indexed_place(a) && !after.starts_with('>'))
 }
 
 /// A second heap value spelled as a call: a container constructed from a
@@ -454,7 +554,8 @@ fn listed_and_made(src: &Path, out: &Path) -> (usize, usize) {
         cpp_copies(&cpp)
             + constructed_copies(&cpp)
             + optional_place_copies(&cpp)
-            + array_capture_copies(&cpp),
+            + array_capture_copies(&cpp)
+            + returned_part_copies(&cpp),
     )
 }
 
@@ -494,6 +595,7 @@ const CASES: &[&str] = &[
     "std-flow/circulation-infeasible-none.cp",
     "std-flow/circulation-zero-lower-bounds.cp",
     "std-flow/matroid-intersection-and-min-cost-circulation-match-brute.cp",
+    "std-matrix/min-plus-gaps-fold-in-a-segtree.cp",
 ];
 
 #[test]
@@ -528,6 +630,34 @@ fn an_optional_of_a_heap_value_from_a_place_is_a_copy() {
             "{line}"
         );
     }
+}
+
+#[test]
+fn a_part_given_out_by_value_is_a_copy() {
+    let cpp = "struct H {\n  std::vector<ll> pre;\n};\n";
+    let copies = [
+        "inline std::string all(const B& self) {\n  return self.agg[self.bag.root];\n}",
+        "inline H blank(const T& self) {\n  return self.m.id;\n}",
+        "  H v = p == 0 ? f(self) : self.t[p];",
+    ];
+    for line in copies {
+        assert_eq!(returned_part_copies(&format!("{cpp}{line}\n")), 1, "{line}");
+    }
+    let not_copies = [
+        "inline ll at(const T& self) {\n  return self.t[0];\n}",
+        "inline H make(const T& self) {\n  return acc;\n}",
+        "inline std::string& at(T& self) {\n  return self.vals[0];\n}",
+        "inline H make(const T& s) {\n  auto f = [&](ll i) -> ll {\n    return s.t[i];\n  };\n}",
+        "  ll v = p == 0 ? f(self) : self.t[p];",
+        "std::add_pointer_t<std::vector<ll>(ll)> leaf;",
+    ];
+    for line in not_copies {
+        assert_eq!(returned_part_copies(&format!("{cpp}{line}\n")), 0, "{line}");
+    }
+    assert_eq!(
+        constructed_copies("std::add_pointer_t<std::vector<ll>(ll)> leaf;\n"),
+        0
+    );
 }
 
 #[test]
