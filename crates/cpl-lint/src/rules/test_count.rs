@@ -7,7 +7,7 @@
 //! count (`let pre = Prefix(..)`, then `for _ in 0..q:` reading `(l, r)`)
 //! is a query loop, not test cases, and is left alone.
 
-use crate::rules::read_loop::is_read;
+use crate::rules::shapes::is_read;
 use crate::walk::{walk_stmt, Scope, Visitor};
 use crate::{File, Finding, TEST_COUNT_LOOP};
 use cpl_diag::msgs::lint_rules;

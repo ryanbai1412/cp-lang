@@ -63,7 +63,6 @@ super::msgs! {
     POSITION_ARITHMETIC = "L0101", "`{}` builds a `{}` from a 0-based count";
     POSITION_ARITHMETIC_2 = "L0101", "`{}` builds a `{}` from a position";
     QUERY_INDEX_SHIFT = "L0577", "`{}` is read as `{}` and shifted back with `{} - 1` to index";
-    READ_LOOP = "L0564", "`{}` is read one item per step of `for _ in {}`";
     REDUNDANT_ARG_NAME = "L0209", "`{}: {}` can be shortened to `{}:`";
     REDUNDANT_PRELUDE_IMPORT = "L0208", "{} is in the prelude: this `use` is not needed";
     REPEATED_LITERAL = "L0506", "`{}` is written {} {}; it is first on line {}";

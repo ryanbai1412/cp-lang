@@ -66,6 +66,15 @@ pub struct Wire():
 /// example: `read_all<Int>() == [3, 1, 2]` (stdin `3 1 2`)
 /// example: `read_all<Int>(until: x => x == 0) == [5, 7] and read<Int>() == 9` (stdin `5 7 0 9`)
 /// example: `read_all<Int>() == []` (stdin ``)
+///
+/// A count-given list is core `read`'s (`let xs: [0..m]T = read()`); the `read_loop` lint below
+/// teaches it in place of a loop that reads and pushes one item per step.
+@lint(read_loop, from: "var xs: L = []\nfor _ in a..b:\n    let v: T = read()\n    xs.push(v)", to: "let xs: [a..b]T = read()", holes: "a, b, L, v, T", builtin: "read")
+@lint(read_loop, from: "var xs: L = []\nfor _ in a..=b:\n    let v: T = read()\n    xs.push(v)", to: "let xs: [a..=b]T = read()", holes: "a, b, L, v, T", builtin: "read")
+@lint(read_loop, from: "var xs: List<T> = []\nfor _ in a..b:\n    xs.push(read())", to: "let xs: [a..b]T = read()", holes: "a, b, T", builtin: "read")
+@lint(read_loop, from: "var xs: List<T> = []\nfor _ in a..=b:\n    xs.push(read())", to: "let xs: [a..=b]T = read()", holes: "a, b, T", builtin: "read")
+@lint(read_loop, from: "var xs: List<T> = []\nfor _ in a..b:\n    let v = read()\n    xs.push(v)", to: "let xs: [a..b]T = read()", holes: "a, b, v, T", builtin: "read")
+@lint(read_loop, from: "var xs: List<T> = []\nfor _ in a..=b:\n    let v = read()\n    xs.push(v)", to: "let xs: [a..=b]T = read()", holes: "a, b, v, T", builtin: "read")
 pub fn read_all<T: Read>(until: ?(T -> Bool) = None) -> List<T>:
     var xs = List<T>()
     while let x = read<?T>():

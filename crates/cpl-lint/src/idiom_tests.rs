@@ -725,21 +725,17 @@ fn min_assign_is_suggested_on_scalars_not_tuples() {
     );
 }
 
-/// The item type comes from the list type the checker gives, so an alias
-/// of `List<Int>` reads the same as the written `List<Int>`.
+/// std.io's `read_loop` takes the item type from the written `List<T>`
+/// when the loop pushes `read()` itself, and keeps the loop's range.
 #[test]
-fn read_loop_reads_the_item_type_from_the_checker() {
-    let fill = |decl: &str| {
-        let src = format!(
-            "type Row = List<Int>\nlet n: 1..=9 = read()\n{decl}\nfor _ in 0..n:\n    xs.push(read())\nprint(xs.len)\n"
-        );
-        crate::lint(&src, &crate::Config::default())
-            .into_iter()
-            .find(|d| d.code == crate::READ_LOOP.code)
-            .and_then(|d| d.help)
-    };
-    let written = fill("var xs: List<Int> = []").expect("fires on List<Int>");
-    assert_eq!(fill("var xs: Row = []").as_deref(), Some(written.as_str()));
+fn read_loop_takes_the_item_type_from_the_written_list() {
+    let src = "let n: 1..=9 = read()\nvar xs: List<Int> = []\nfor _ in 1..=n:\n    xs.push(read())\nprint(xs.len)\n";
+    let fix: Vec<String> = crate::lint(src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "L0564")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(fix, ["let xs: [1..=n]Int = read()"]);
 }
 
 /// The grid's cell type is the checker's, so a row alias still reads as a

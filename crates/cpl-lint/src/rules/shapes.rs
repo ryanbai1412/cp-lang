@@ -3,6 +3,11 @@
 use crate::walk::unparen;
 use cpl_syntax::ast::*;
 
+/// `read()`, the core read with no arguments.
+pub(crate) fn is_read(e: &Expr) -> bool {
+    matches!(&unparen(e).kind, ExprKind::Call { callee, args } if args.is_empty() && name(callee) == Some("read"))
+}
+
 pub(crate) fn name(e: &Expr) -> Option<&str> {
     match &unparen(e).kind {
         ExprKind::Name(n) => Some(n),
