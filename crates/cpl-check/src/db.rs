@@ -1842,7 +1842,9 @@ impl FileCtx<'_> {
         let mut found = (None, 0);
         let mut stored: Vec<String> = Vec::new();
         for (def_name, def) in defs {
-            if stored.contains(&def_name) {
+            // A name being worked out further out was cut short here, and
+            // that computation stores its own whole def.
+            if stored.contains(&def_name) || self.in_progress.contains(&def_name) {
                 continue;
             }
             let fingerprint = def.fingerprint();

@@ -131,6 +131,50 @@ impl Checker<'_> {
         }
     }
 
+    /// The base of a field read is a value, not the callee, even of
+    /// `xs.ring.windows(2)`.
+    pub(super) fn infer_base(&mut self, base: &Expr) -> Ty {
+        let callee = std::mem::replace(&mut self.in_call_callee, false);
+        let ty = self.infer(base);
+        self.in_call_callee = callee;
+        ty
+    }
+
+    /// `base.name`'s type: a member, else a `@get fn` of that name.
+    pub(super) fn member_or_getter(&mut self, expr: &Expr, name: &ast::Name, base: Ty) -> Ty {
+        match self.member_ty(expr, name, base) {
+            Ty::Unknown if !self.in_call_callee => self.getter_fn_read(expr).unwrap_or(Ty::Unknown),
+            ty => ty,
+        }
+    }
+
+    /// `xs.ring`: a field read naming a `@get fn` is the call `ring(xs)`.
+    pub(super) fn getter_fn_read(&mut self, expr: &Expr) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &expr.kind else {
+            return None;
+        };
+        let base_ty = self.quietly(|c| c.infer(base));
+        let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
+            return None;
+        };
+        if !matches!(&*def, Def::Fn { getter: true, .. }) {
+            return None;
+        }
+        // A call giving a value of a struct leaves its type in `shapes`.
+        let read = |c: &mut Self| {
+            let ty = c.method_form_call(expr, expr, &[]);
+            ty.or_else(|| {
+                let shape = c.shapes.iter().rev().find(|(at, _)| *at == expr.span);
+                shape.map(|(_, ty)| ty.clone())
+            })
+        };
+        let settled = self.quietly(|c| {
+            read(c).filter(|t| c.sink.is_empty() && !t.has_vague() && !names_param(t))
+        });
+        settled.as_ref()?;
+        read(self)
+    }
+
     /// Whether `base` can be the `self` of the fn `def`: it fits the
     /// parameter's type, and a bare type parameter's bounds.
     fn self_fits(&mut self, base: &Ty, def: &Def) -> bool {
@@ -264,16 +308,27 @@ impl Checker<'_> {
         };
         let Def::Fn {
             ty: Ty::Fn { params, ret },
+            generics,
+            bounds,
             ..
         } = &*def
         else {
             return None;
         };
+        // `w.last` on a `Two`: `S` is `Two`, and `T` what its `Bidir` gives.
+        let mut bindings = crate::ty::Bindings::default();
+        // Beside a built-in member of the name, the built-in answers.
+        let builtin = super::call::catalog_owner(base)
+            .is_some_and(|owner| crate::builtins::builtin_member(owner, name).is_some());
+        if let Some(first) = params.first().filter(|_| !builtin) {
+            first.ty.unify(base, &mut bindings);
+        }
+        self.bind_bound_params(generics, bounds, &mut bindings);
         let ty = Ty::Fn {
             params: params[1..].to_vec(),
             ret: ret.clone(),
         };
-        Some((key, ty))
+        Some((key, ty.subst(&bindings)))
     }
 
     /// Records which candidate `base.name` calls, when its receiver says.
@@ -763,4 +818,14 @@ impl Members {
             .zip(args.iter().cloned())
             .collect()
     }
+}
+
+/// True when a type parameter (`D`) is left in `ty`: it was not worked out.
+fn names_param(ty: &Ty) -> bool {
+    let mut found = false;
+    ty.map(&mut |t| {
+        found |= matches!(t, Ty::Param(_));
+        found.then(|| t.clone())
+    });
+    found
 }

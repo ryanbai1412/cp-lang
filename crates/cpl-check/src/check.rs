@@ -1221,17 +1221,8 @@ impl<'a> Checker<'a> {
     /// L0610: a `mut` parameter the body never changes. Its callers must
     /// pass a place as `mut` for nothing.
     pub(crate) fn unchanged_mut_params(&mut self, f: &cpl_syntax::ast::FnDecl) {
-        // A body still ending in `todo` is unwritten: what it will change is
-        // not known yet.
-        let is_todo = |e: &cpl_syntax::ast::Expr| matches!(&e.kind, cpl_syntax::ast::ExprKind::Name(n) if n == "todo");
-        let unwritten = match &f.body {
-            cpl_syntax::ast::FnBody::Expr(e) => is_todo(e),
-            cpl_syntax::ast::FnBody::Block(b) => b.stmts.last().is_some_and(
-                |s| matches!(&s.kind, cpl_syntax::ast::StmtKind::Expr(e) if is_todo(e)),
-            ),
-            cpl_syntax::ast::FnBody::None => false,
-        };
-        if unwritten {
+        // What an unwritten body will change is not known yet.
+        if unwritten(f) {
             return;
         }
         let lends_mut = |name: &str| {
@@ -1805,6 +1796,19 @@ pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static s
         ("FillPrefix", 3) => Some("_FillPrefix2"),
         ("Diff", 3) => Some("_Diff2"),
         _ => None,
+    }
+}
+
+/// A body still ending in `todo` is unwritten.
+pub(crate) fn unwritten(f: &cpl_syntax::ast::FnDecl) -> bool {
+    let is_todo = |e: &cpl_syntax::ast::Expr| matches!(&e.kind, cpl_syntax::ast::ExprKind::Name(n) if n == "todo");
+    match &f.body {
+        cpl_syntax::ast::FnBody::Expr(e) => is_todo(e),
+        cpl_syntax::ast::FnBody::Block(b) => b
+            .stmts
+            .last()
+            .is_some_and(|s| matches!(&s.kind, cpl_syntax::ast::StmtKind::Expr(e) if is_todo(e))),
+        cpl_syntax::ast::FnBody::None => false,
     }
 }
 

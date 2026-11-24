@@ -1717,7 +1717,7 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.library_domain_member(expr, base, name) {
             return ty;
         }
-        let base_ty = self.infer(base);
+        let base_ty = self.infer_base(base);
         self.note_method(&base_ty, name);
         if self.member_advice(&base_ty, name) {
             return Ty::Error;
@@ -1725,7 +1725,7 @@ impl<'a> Checker<'a> {
         if self.private_member(&base_ty, name) {
             return Ty::Error;
         }
-        let ty = self.member_ty(expr, name, base_ty.clone());
+        let ty = self.member_or_getter(expr, name, base_ty.clone());
         let ty = self.through_value(base, &base_ty, ty);
         let base_ty = base_ty.rev_source().cloned().unwrap_or(base_ty);
         let built_in = matches!(

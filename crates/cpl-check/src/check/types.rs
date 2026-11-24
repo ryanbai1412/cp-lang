@@ -1018,6 +1018,9 @@ impl<'a> Checker<'a> {
                         row_bounds,
                         trait_bounds,
                         droppable: stmt.decorators.iter().any(|d| d.name.text == "droppable"),
+                        // An unwritten getter is still answered by lowering.
+                        getter: stmt.decorators.iter().any(|d| d.name.text == "get")
+                            && !crate::check::unwritten(f),
                     },
                 ));
                 out

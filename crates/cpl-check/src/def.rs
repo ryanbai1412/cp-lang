@@ -31,6 +31,8 @@ pub enum Def {
         trait_bounds: Vec<(String, String)>,
         /// `@droppable`: its result may be dropped without W0101.
         droppable: bool,
+        /// A written `@get`: `x.name` reads it as the call `name(x)` (R02.6.6).
+        getter: bool,
     },
     Struct {
         generics: Vec<String>,
@@ -286,6 +288,7 @@ impl Def {
                 row_bounds,
                 trait_bounds,
                 droppable,
+                getter,
                 ..
             } => Def::Fn {
                 ty: Ty::Error,
@@ -295,6 +298,7 @@ impl Def {
                 row_bounds,
                 trait_bounds,
                 droppable,
+                getter,
             },
             Def::Value {
                 mutable,

@@ -1188,7 +1188,7 @@ fn self_type(detail: &str) -> Option<&str> {
     let (_, rest) = detail
         .split_once("(self: ")
         .or_else(|| detail.split_once("(mut self: "))?;
-    let end = rest.find([',', ')']).unwrap_or(rest.len());
+    let end = rest.find([',', ';', ')']).unwrap_or(rest.len());
     Some(rest[..end].trim())
 }
 
