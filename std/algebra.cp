@@ -967,6 +967,18 @@ impl<T: Ord + Bounded> Op<T> for type_of(min):
     fn folds(self) -> Monoid<T> = Monoid(T.MAX, (a, b) => min(a, b), x => x)
     fn lift(self, x: T) -> T = x
 
+impl<T: Ord> Op<?T> for type_of(max):
+    type Fold = ?T
+    fn op(self, a: ?T, b: ?T) -> ?T = if let x = a: (if let y = b: Some(max(x, y)) else: a) else: b
+    fn folds(self) -> Monoid<?T> = Monoid(None, (a: ?T, b: ?T) => if let x = a: (if let y = b: Some(max(x, y)) else: a) else: b, x => x)
+    fn lift(self, x: ?T) -> ?T = x
+
+impl<T: Ord> Op<?T> for type_of(min):
+    type Fold = ?T
+    fn op(self, a: ?T, b: ?T) -> ?T = if let x = a: (if let y = b: Some(min(x, y)) else: a) else: b
+    fn folds(self) -> Monoid<?T> = Monoid(None, (a: ?T, b: ?T) => if let x = a: (if let y = b: Some(min(x, y)) else: a) else: b, x => x)
+    fn lift(self, x: ?T) -> ?T = x
+
 impl Op<Int> for type_of(gcd):
     type Fold = Int
     fn op(self, a: Int, b: Int) -> Int = gcd(a, b)
@@ -1023,6 +1035,11 @@ impl<T: Ord> Commutative<T> for type_of(max)
 impl<T: Ord + Bounded> HasId<T> for type_of(min):
     @get fn id(self) -> T = T.MAX
 impl<T: Ord> Commutative<T> for type_of(min)
+
+impl<T: Ord> HasId<?T> for type_of(max):
+    @get fn id(self) -> ?T = None
+impl<T: Ord> HasId<?T> for type_of(min):
+    @get fn id(self) -> ?T = None
 
 impl HasId<Int> for type_of(gcd):
     @get fn id(self) -> Int = 0
