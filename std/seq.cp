@@ -1574,9 +1574,37 @@ pub struct Stepped<S, T>(pub src: S, pub k: Int, pub from: Int = 0):
     /// traps: unless `i` is a key the stride visits (`first`, `first + k`, ...), naming them
     /// example: `[10, 20, 30, 40, 50].step(2).at(4) == 50`
     pub fn at<K>(self, i: K) -> T:
-        let o = i.ord - src.keys.first!.ord - from
-        assert 0 <= o < src.len - from and o % k == 0, "this step({k}) view keeps every {k}-th key of its source from position {from}; {i} is not one of them; use .nth(j) for its j-th element"
+        assert i in self.keys
         src.at(i)
+
+    /// \(O(1)\). The source keys the walk visits: `i in a.step(2).keys` tests the stride.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `4 in [10, 20, 30, 40, 50].step(2).keys and not (1 in [10, 20, 30, 40, 50].step(2).keys)`
+    @get pub fn keys(self) -> StepKeys:
+        StepKeys(if src.len == 0: 0 else: src.keys.first!.ord, src.len, k, from)
+
+/// The keys a `step(k)` view visits, made by its `keys`: of the `n` source keys from position
+/// `first`, every `k`-th one from `from` on.
+///
+/// not a container: a membership test for `in`; walk the step view itself for its keys and elements.
+pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
+    /// \(O(1)\). How many keys the walk visits.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `[3, 1, 2, 4, 5].step(2).keys.len == 3`
+    @get pub fn len(self) -> Int = if from >= n: 0 else: (n - from + k - 1) / k
+
+    /// \(O(1)\). Whether the walk visits `i`: `i in s.keys`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `[3, 1, 2, 4, 5].step(2).keys.contains(4)`
+    pub fn contains<K>(self, i: K) -> Bool:
+        let o = i.ord - first - from
+        0 <= o < n - from and o % k == 0
 
 /// \(O(1)\). The same cells keyed by `keys`, which must have the same length (traps otherwise):
 /// a table computed on offsets handed back in the caller's keys, `z.rekey(s.keys)`.
