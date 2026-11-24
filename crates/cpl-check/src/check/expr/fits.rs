@@ -391,9 +391,7 @@ impl<'a> Checker<'a> {
                 diag.help = Some(help);
                 diag.fixes.extend(fix);
             } else if defaulted_apart {
-                diag.help = Some(format!(
-                    "write `{got}` in full: a type param left out takes its default"
-                ));
+                diag.help = Some(cpl_diag::habits::LEFT_OUT_DEFAULT.say(&[got]));
             }
         }
         self.char_literal_fix(got, want, at)
