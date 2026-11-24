@@ -6,18 +6,21 @@
 //   the circle, min(t, 360 - t) with t the difference reduced into 0..360. The first point with
 //   the smallest gap wins. O(n).
 // original: corpus/submissions/4416076.cpp
-// Bounds: n: 1..=1e5; aim: 0..=359; points.x, points.y: -1e9..=1e9
+// Bounds: n: 1..=1e5; aim: 0..=359; x, y: -1e9..=1e9
 use real.float.{PI}
 
 let n: 1..=1e5 = read()
 let aim: 0..=359 = read()
 domain Point = 1..=n
-let points: [Point](x: -1e9..=1e9, y: -1e9..=1e9) = read()
-
 // the angle between direction `d` and the aim, in degrees, 0..=180
 fn gap(d: F64) -> F64:
     let turn = abs(d - aim)  // 0..540: atan2 gives -180..=180
     let within = if turn >= 360.0: turn - 360 else: turn
     min(within, 360 - within)
 
-print(points.argmin(by: p => gap(atan2(F64(p.y), F64(p.x)) * 180 / PI))!)
+var (best, at) = (F64(361), Point.first!)
+for p in Point:
+    let (x, y): (-1e9..=1e9, -1e9..=1e9) = read()
+    let g = gap(atan2(F64(y), F64(x)) * 180 / PI)
+    if g < best: (best, at) = (g, p)
+print(at)
