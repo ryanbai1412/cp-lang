@@ -237,7 +237,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 
 | Quality | Metric | Mechanism |
 |---|---|---|
-| Every doc example compiles and runs | failing `example:` lines | rule `std-docs/R6`; `cpl-conform docs`, ratcheted by the scoreboard; `web/scripts/gen-ref.mjs` fails the site build on a newly failing example (`site/R1`, shrink-only `web/scripts/doc-examples-failing.txt`) |
+| Every doc example compiles and runs | failing `example:` lines | rule `std-docs/R6`; `cpl-conform docs`, ratcheted by the scoreboard; `web/scripts/gen-ref.mjs` fails the site build on any example that doesn't run (`site/R1`) |
 | Every spec/lib example compiles and runs | failing code blocks in `spec/lib/*.md` | `crates/cpl-conform/src/spec_blocks.rs` in `cpl-conform all --check` |
 | Every public fn states cost, traps and edge cases | fns missing a required label | rule `std-docs/R1`; `scripts/spec-gate.py std-docs --audit` |
 | The documented cost is the real cost | fns slower than their `cost:` | rule `std-docs/R3`; `bench/scaling.py --check` (one `bench/scaling/*.cp` case per fn, time at n and 4n; `scaling_mismatches`, `std_fns_unscaled`) |

@@ -17,7 +17,7 @@ export const stages = [
   { name: 'releases', inputs: ['CHANGELOG.md'], outputs: ['web/content/docs/releases.mdx'] },
   { name: 'practice', inputs: ['web/content/practice', 'web/content/learn/practice', '!web/content/learn/practice/index.mdx', '!web/content/learn/practice/meta.json'], outputs: ['web/content/learn/practice/index.mdx', 'web/content/learn/practice/meta.json'] },
   { name: 'downloads', always: true, inputs: [], outputs: ['web/generated/downloads.json'] },
-  { name: 'gen-ref', inputs: [...compiler, 'spec', 'web/content/learn/language'], outputs: ['web/content/docs/ref', 'web/scripts/doc-examples-failing.txt'] },
+  { name: 'gen-ref', inputs: [...compiler, 'spec', 'web/content/learn/language'], outputs: ['web/content/docs/ref'] },
   { name: 'gen-tools', inputs: compiler, outputs: ['web/content/generated/cli.json'] },
   { name: 'gen-debug', inputs: [...compiler, 'web/content/landing/debug', 'tools/trace'], outputs: ['web/content/generated/stress.json', 'web/public/trace-demo.html', 'web/public/trace.html'] },
   { name: 'facts', inputs: ['Cargo.toml', 'CHANGELOG.md', 'spec', 'web/content', 'web/app', 'web/components', 'web/lib', '!web/lib/facts.json'], outputs: ['web/lib/facts.json'] },

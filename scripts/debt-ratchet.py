@@ -1938,7 +1938,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "spec/conformance/sig-gaps.txt": ("sig_gaps", "spec", "deleted: spec-gate.py sigs fails on any mismatch"),
     "spec/conformance/trait-gaps.txt": ("trait_gaps", "spec", "deleted: spec-gate.py traits fails on any missing case"),
     "spec/idioms/lints-known.txt": ("idiom_lint_gaps", "idioms", "deleted: idioms-catalog.py fails on any finding"),
-    "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "fix each example"),
+    "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "deleted: gen-ref.mjs fails on any std example that doesn't run"),
     "web/scripts/practice-mutants-equivalent.txt": ("known_lists", "site", "data: equivalent mutants"),
     "web/tests/a11y-known.txt": ("xfail_markers", "site", "deleted: a11y.mjs fails on any violation"),
     "web/tests/completion-known.txt": ("known_lists", "site", "deleted: completion-parity.mjs fails on any miss"),

@@ -248,11 +248,10 @@ drops the entry itself and says to commit the shorter list.
 *Why:* a fix in std made a listed doc example run, `gen-ref` failed the site
 build on it, and cp-lang.org went 4 h without a deploy; failing on a
 regression is the list's job, failing on an improvement only stalls
-shipping. *Example:* `seq.Rev.src` starts running; the site build passes,
-prints the line it dropped from `web/scripts/doc-examples-failing.txt`, and
-the next commit there carries the shorter file.
-*Enforced by:* `web/scripts/gen-ref.mjs`, `crates/cpl-conform` (newly
-passing cases print, never fail).
+shipping. *Example:* a conformance case listed as failing starts passing;
+the run passes, prints the case it dropped, and the next commit there
+carries the shorter list.
+*Enforced by:* `crates/cpl-conform` (newly passing cases print, never fail).
 
 ### ci/R31
 
