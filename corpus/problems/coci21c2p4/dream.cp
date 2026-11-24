@@ -1,20 +1,28 @@
-type Z = Mod<1e9 + 7>
-let (n, l) = read<(1..=50, 1..=1e4)>()
-let r = read<[n]1..=1e4>().sorted(by: desc)
+// COCI 2021/22 C2 P4 Magneti: count placements of n magnets in l slots with no attraction.
+// Insert magnets by increasing radius: ways[j, k] counts j ordered tight blocks using k cells.
+// A magnet of radius r opens a block (j + 1 places, 1 cell), joins a block's end (2j ways,
+// r cells) or glues two neighbours (j - 1 ways, 2r - 1 cells); the l - k spare cells of the
+// final block spread over n + 1 gaps.
+type Z = Mod<1_000_000_007>
+let (n, l): (Int, Int) = read()
+domain Magnet = 0..n
+let radius: [Magnet]Int = read()
+domain Blocks = 0..=n + 1
+domain Cells = 0..=l
+
+var ways: [Blocks, Cells]Z = Z(0)
+ways[Blocks(0), Cells(0)] = Z(1)
+for r in radius.sorted():
+    var next: [Blocks, Cells]Z = Z(0)
+    for j in Blocks:
+        for k in Cells:
+            let w = ways[j, k]
+            if w == 0: continue
+            if let a = Blocks.at(j.ord + 1), let b = Cells.at(k.ord + 1): next[a, b] += w * Z(j.ord + 1)
+            if let b = Cells.at(k.ord + r): next[j, b] += w * Z(2 * j.ord)
+            if j.ord >= 2:
+                if let a = Blocks.at(j.ord - 1), let b = Cells.at(k.ord + 2 * r - 1): next[a, b] += w * Z(j.ord - 1)
+    ways = next
+
 let comb = Comb<Z>(l + n)
-domain State = (comps: 0..=n, used: 0..l, ends: 0..=2)
-
-@memo(array)
-fn ways(i: 0..=n, st: State) -> Z:
-    let (c, u, e) = st
-    if i == n:
-        return Z(c == 1 and u == l - 1 and e == 0)
-    fn go(dc: Int, du: Int, de: Int) -> Z =
-        State.at((c + dc, u + du, e + de)).map(t => ways(i + 1, t)) ?? 0
-    let s = r[i]
-    var total = (c - 1 + e) * go(1, 2 * s, 0) + e * go(1, s, -1)
-    if c >= 1:
-        total += (2 * c - 2 + e) * go(0, s, 0) + e * go(0, 0, -1) + (c - 1) * go(-1, 0, 0)
-    total
-
-print(if n == 1: l else: (0..l).sum(u => ways(0, (0, u, 2)) * comb.choose(u + n, n)))
+print(Cells.map(k => ways[Blocks(1), k] * comb.choose(l - k.ord + n, n)).sum())
