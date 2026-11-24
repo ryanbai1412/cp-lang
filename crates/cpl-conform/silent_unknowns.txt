@@ -877,7 +877,6 @@
 13 corpus/problems/wtf26a/dream.cp
 2 corpus/problems/wtf26a/port.cp
 15 corpus/problems/wtf26b/dream.cp
-1 corpus/problems/wtf26b/perf.cp
 13 corpus/problems/wtf26d/dream.cp
 4 corpus/problems/wtf26d/port.cp
 9 corpus/problems/yac1p2/port.cp

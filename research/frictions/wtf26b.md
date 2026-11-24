@@ -22,3 +22,7 @@ There are no other dream/port gaps.
 - **Runtime and memory on gen.py --max:** port 0.25 s / 4 MB, accepted C++ 0.16 s / 4 MB, with the same output, on a loaded VM. In three back-to-back pairs the port ran 0.46, 0.40 and 0.66 s against the accepted C++'s 0.61, 0.86 and 1.88 s, so the order of those single runs is noise.
 - **Emitted C++:** 16733 bytes.
 - **Agreement:** `cpl stress` against the accepted C++ agrees on 30 gen.py cases at size 30.
+
+## Tuned twin retired (2026-11-24)
+
+The plain port is within 1.1x of the accepted C++ on `gen.py --max` on both counts (best of 9, CPU time and peak RSS, `scripts/corpus.py`'s judge builds): 0.025 s / 3.0 MB against 0.056 s / 3.1 MB (0.44x time, 0.96x memory), with the same output, so `perf.cp` is deleted (performance/R6 keeps a twin only over 1.1x).
