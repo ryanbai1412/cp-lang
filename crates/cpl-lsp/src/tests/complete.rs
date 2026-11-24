@@ -852,3 +852,14 @@ var h = Hop(2)
     let (label, _, params) = signature(&format!("{tree}print(j.jump(|))\n"));
     assert_eq!(params, ["a: V", "b: V", "k: Int"], "{label}");
 }
+
+#[test]
+fn a_tuple_receiver_is_offered_its_getters() {
+    let src = "use std.grid.{left, right}\ndomain R = 0..3\ndomain C = 0..3\nlet p = (R(1), C(2))\nprint(p.|)\n";
+    let items = completions(src);
+    let shown = labels(&items);
+    assert!(
+        shown.contains(&"left") && shown.contains(&"right"),
+        "{shown:?}"
+    );
+}

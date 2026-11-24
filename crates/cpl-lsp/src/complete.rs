@@ -1176,8 +1176,35 @@ fn self_type(detail: &str) -> Option<&str> {
     let (_, rest) = detail
         .split_once("(self: ")
         .or_else(|| detail.split_once("(mut self: "))?;
-    let end = rest.find([',', ';', ')']).unwrap_or(rest.len());
-    Some(rest[..end].trim())
+    Some(top_level(rest).next().unwrap_or(rest).trim())
+}
+
+/// `text` split at the `,`, `;` and closing `)` outside any brackets, up to that `)`.
+fn top_level(text: &str) -> impl Iterator<Item = &str> {
+    let mut depth = 0i32;
+    let mut start = 0;
+    let mut done = false;
+    let mut parts = Vec::new();
+    for (i, c) in text.char_indices() {
+        match c {
+            '(' | '[' | '<' => depth += 1,
+            ')' if depth == 0 => done = true,
+            ')' | ']' | '>' => depth -= 1,
+            ',' | ';' if depth == 0 => {}
+            _ => continue,
+        }
+        if depth == 0 && (done || matches!(c, ',' | ';')) {
+            parts.push(&text[start..i]);
+            start = i + 1;
+        }
+        if done {
+            break;
+        }
+    }
+    if !done {
+        parts.push(&text[start..]);
+    }
+    parts.into_iter()
 }
 
 /// Whether `ty` can be the `self` of the fn whose signature is `detail`:
@@ -1225,6 +1252,20 @@ fn receives(detail: &str, ty: &Ty, walks: bool) -> bool {
             }) =>
         {
             true
+        }
+        // `self: (R, C)`: a tuple whose items each are a generic or the type written.
+        None if self_ty.starts_with('(') => {
+            let Ty::Tuple(items) = ty else {
+                return false;
+            };
+            let parts: Vec<&str> = top_level(&self_ty[1..]).map(str::trim).collect();
+            parts.len() == items.len()
+                && parts.iter().zip(items).all(|(part, item)| {
+                    generics
+                        .split(',')
+                        .any(|g| g.split(':').next().unwrap_or("").trim() == *part)
+                        || item.to_string() == *part
+                })
         }
         // `self: [D]T`: any array or list whose element is `T`'s.
         None if self_ty.starts_with('[') => {
