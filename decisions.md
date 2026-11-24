@@ -9003,3 +9003,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** `p max= r` on a `?T` whose `T` has a built-in order lowers to one `AssignOp::Max` on the optional: `none` sorts below every value, so keeping the larger is exactly "skip a `none` on the right, take any value over a `none` on the left". `min=` keeps its two tests, but when `r` is `Some(e)` it binds `e` and tests only `p`. A `Niche` whose `none` is negative (Int, I32, positions, bytes) compares by its raw scalar (`none_first`), so the C++ `std::max` on it is one signed compare with no branch; `?Bool` (`none` = 2) keeps the tested order.
 - **Why.** noi20p1's max-plus product spent its inner loop on `has_value` tests of a `Some` it had just built (idioms 99962d3b). Both engines already order `?T` with `none` first, so no new semantics are introduced.
 - **Reverse.** Drop the `AssignOp::Max` arm and the `Some(e)` binding in the `?T` `max=`/`min=` lowering (`lower/stmt.rs`) and `none_first` in `runtime/opt.rs`.
+
+## 568. (reserved, compiler)
