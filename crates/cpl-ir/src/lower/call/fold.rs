@@ -60,7 +60,9 @@ impl<'a> Lowerer<'a> {
         ty: Ty,
         span: Span,
     ) -> Expr {
-        if elem.ty() != Ty::Char {
+        let elem_ty = elem.ty();
+        let letters = matches!(elem_ty, Ty::Pos(e) if self.char_domains.contains(&e));
+        if elem_ty != Ty::Char && !letters {
             let shown = self.show(&ty);
             self.report(span, msgs::ir::UNSUPPORTED_READ_CAN_T_TELL.at(&[&shown]));
             self.help(
@@ -101,15 +103,28 @@ impl<'a> Lowerer<'a> {
                     }),
                     vec![pos],
                 ),
-                ty: Ty::Char,
+                ty: elem_ty.clone(),
                 span: lw.span(span),
             };
-            let byte = lw.mk_index(
+            let mut byte = lw.mk_index(
                 lw.local(word, span),
                 vec![lw.local(at, span)],
                 Ty::Char,
                 span,
             );
+            // `[domain S]Letter`: each character is checked into `Letter`.
+            if let Ty::Pos(e) = elem_ty {
+                let code = lw.mk(
+                    ExprKind::Cast(Cast::CharToInt, Box::new(byte)),
+                    Ty::Int,
+                    span,
+                );
+                byte = lw.mk(
+                    ExprKind::Cast(Cast::FromLabel(e), Box::new(code)),
+                    elem_ty.clone(),
+                    span,
+                );
+            }
             let lid = lw.next_loop;
             lw.next_loop += 1;
             let iter = Iter::Range {

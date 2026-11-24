@@ -39,10 +39,7 @@ fn check(path: &Path) -> cpl_cli::Outcome {
 
 /// Files this checker does not take as they stand. A file leaves this
 /// list when it checks clean, and the test below says so.
-///
-/// `compound_div` reads a word into a `[domain S]Letter`, which `read()`
-/// can't size yet (sent to Core).
-const PENDING: &[&str] = &["crates/cpl-cli/tests/cases/ergo/compound_div.cp"];
+const PENDING: &[&str] = &[];
 
 /// Files the checker takes and lowering does not: until `cpl check` ran
 /// lowering too, it called these clean while `cpl run` and `cpl build`
@@ -51,8 +48,6 @@ const PENDING: &[&str] = &["crates/cpl-cli/tests/cases/ergo/compound_div.cp"];
 /// file leaves this list when it builds, and the test below says so;
 /// nothing is to be added to it.
 const NOT_BUILT: &[&str] = &[
-    "crates/cpl-cli/tests/cases/ergo/counter.cp",
-    "crates/cpl-cli/tests/cases/ergo/ranges.cp",
     "crates/cpl-cli/tests/cases/lend/grid_rows.cp",
     "crates/cpl-cli/tests/cases/lend/projection.cp",
 ];

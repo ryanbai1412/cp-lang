@@ -307,6 +307,7 @@ impl<'a> Lowerer<'a> {
                 step,
             } => {
                 let hi = self.expr(hi, None);
+                let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
                 match hi.ty {
                     Ty::Pos(d) | Ty::Bound(d) => {
                         let cuts = Self::walks_cuts(&hi.ty);
@@ -315,7 +316,6 @@ impl<'a> Lowerer<'a> {
                         if *inclusive {
                             hi_ord = self.int_add(hi_ord, 1);
                         }
-                        let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
                         (
                             Iter::Range {
                                 lo: lo_ord,
@@ -327,6 +327,21 @@ impl<'a> Lowerer<'a> {
                             if cuts { Ty::Bound(d) } else { Ty::Pos(d) },
                         )
                     }
+                    // `for k in ..3:` counts 0, 1, 2.
+                    Ty::Int => {
+                        let lo = self.int_lit(0, span);
+                        (
+                            Iter::Range {
+                                lo,
+                                hi,
+                                step,
+                                rev: false,
+                                closed: *inclusive,
+                            },
+                            Ty::Int,
+                        )
+                    }
+                    Ty::Error => error(self),
                     _ => {
                         self.unsupported(span, "a range without a start in a `for`");
                         error(self)

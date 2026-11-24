@@ -22,6 +22,6 @@ domain Letter = 'a'..='z'
 let s: [domain S]Letter = read()
 let t: [domain T]Char = read()
 let letters = counts(s)
-print(letters.distinct, letters[Letter('b')], s.len, t.len, s[S.first!], s[S.last!])
+print(letters.distinct, letters[Letter('b')], s.len, t.len, Char(s[S.first!]), Char(s[S.last!]))
 let hash = RollingHash(t)
 print(yes(hash.get(..=T.last!) == hash.get(T.first!..=T.last!)), yes(hash.get(T.last!.prev!..=T.last!) == hash.get(T.first!..=T.first!.next!)))
