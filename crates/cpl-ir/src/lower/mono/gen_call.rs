@@ -599,8 +599,25 @@ impl<'a> Lowerer<'a> {
             if inferred.len() == before {
                 // Only after ready lambdas have had a chance to infer `T` (e.g. `init: V -> T`),
                 // fall back to deducing an unbound `T`/`E`/`X` from a bound container generic `S`.
+                // A generic a lambda argument is passed as is that lambda's fn, never an element.
+                let fn_valued: Vec<&String> = (ast_params.iter().zip(&matched))
+                    .filter_map(
+                        |(p, a)| match (p.ty.as_ref().map(|t| &t.kind), a.as_ref()) {
+                            (Some(ast::TypeKind::Named { name, args }), Some(a))
+                                if args.is_empty()
+                                    && matches!(a.value.kind, ast::ExprKind::Lambda { .. }) =>
+                            {
+                                Some(&name.text)
+                            }
+                            _ => None,
+                        },
+                    )
+                    .collect();
                 for g in &gen_names {
-                    if !inferred.contains_key(g) && (g == "T" || g == "E" || g == "X") {
+                    if !inferred.contains_key(g)
+                        && !fn_valued.contains(&g)
+                        && (g == "T" || g == "E" || g == "X")
+                    {
                         let elem_ty = self.inferred_elem(&inferred, span);
                         if let Some(ety) = elem_ty {
                             inferred.insert(g.clone(), GenArg::Ty(ety));
