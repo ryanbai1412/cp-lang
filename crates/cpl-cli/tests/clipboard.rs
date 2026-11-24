@@ -76,6 +76,10 @@ fn each_os_clipboard_tool_gets_the_built_cpp() {
         let cpp = std::fs::read(dir.join("a.cpp")).expect("cpl b writes a.cpp");
         assert!(cpp.len() > 100, "{tool}: a.cpp is {} bytes", cpp.len());
         assert!(!cpp.is_ascii(), "{tool}: the C++ keeps the comment's UTF-8");
+        assert!(
+            !cpp.contains(&b'\r'),
+            "{tool}: cpl's copy ends its lines LF"
+        );
         assert_eq!(std::fs::read(dir.join("clip")).unwrap(), cpp, "{tool}");
         let got = std::fs::read_to_string(dir.join("args")).unwrap();
         assert_eq!(got.trim(), args, "{tool}");

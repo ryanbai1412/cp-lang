@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The real clipboard round trip (handbook/domains/tools.md, Submitting; ci/R29):
 # `cpl b -c` with each clipboard tool this OS's cpl uses, alone on PATH, then
-# the OS's paste tool must give back a.cpp byte for byte. The source has a
+# the OS's paste tool must give back a.cpp byte for byte (CRLF read as LF on
+# Windows). a.cpp itself must end its lines LF. The source has a
 # UTF-8 comment, which the C++ keeps. macOS: pbcopy. Windows: clip. Linux:
 # xclip and xsel on an Xvfb display, wl-copy on a headless sway (needs xvfb,
 # xclip, xsel, wl-clipboard, sway). WSL's clip.exe is only stubbed, in
@@ -16,19 +17,18 @@ printf '// naïve → ok\nlet n: Int = read()\nprint(n * 2)\n' >"$dir/a.cp"
 
 fail() { echo "clipboard-roundtrip: $*" >&2; exit 1; }
 
-# The clipboard's text: Windows' stores lines ending CRLF.
-want() { if [ -n "${crlf:-}" ]; then sed 's/$/\r/' "$dir/a.cpp"; else cat "$dir/a.cpp"; fi; }
-
 # roundtrip TOOL PATH PASTE...: copy with TOOL found on PATH, paste into $dir/pasted.
 roundtrip() {
     local tool=$1 path=$2; shift 2
     rm -f "$dir/a.cpp" "$dir/pasted"
     (cd "$dir" && env -u CPL_CLIPBOARD PATH="$path" "$cpl" b a.cp -c) 2>"$dir/err" || { cat "$dir/err" >&2; fail "$tool: cpl b -c failed"; }
     grep -q "with \`$tool" "$dir/err" || { cat "$dir/err" >&2; fail "$tool: cpl did not copy with $tool"; }
+    ! grep -q $'\r' "$dir/a.cpp" || fail "$tool: cpl wrote a CR into a.cpp; its lines must end LF"
     "$@" || fail "$tool: nothing to paste back"
-    want >"$dir/want"
-    cmp "$dir/want" "$dir/pasted" || {
-        od -c "$dir/want" | head -5 >&2; echo "pasted:" >&2; od -c "$dir/pasted" | head -5 >&2
+    # Windows' clipboard hands text back CRLF; the text is the same.
+    if [ -n "${crlf:-}" ]; then sed -i 's/\r$//' "$dir/pasted"; fi
+    cmp "$dir/a.cpp" "$dir/pasted" || {
+        od -c "$dir/a.cpp" | head -5 >&2; echo "pasted:" >&2; od -c "$dir/pasted" | head -5 >&2
         fail "$tool: the clipboard is not a.cpp"
     }
     echo "clipboard-roundtrip: $tool ok ($(wc -c <"$dir/a.cpp") bytes)"
