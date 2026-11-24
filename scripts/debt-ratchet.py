@@ -1747,6 +1747,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
+    "own_databases", "module_loaders",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
@@ -1858,9 +1859,6 @@ COUNTERS = {
     "unregistered_lists": ("list files with no LISTS row (counter, owner, plan)", unregistered_lists, True),
 }
 
-
-# Counters that are rules, not debt: any item fails, whatever a baseline says.
-HARD_ZERO = {"own_databases"}
 
 
 def register_rows_by_domain(root: Path) -> dict[str, int]:

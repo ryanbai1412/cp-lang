@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 import subprocess
+import re
 import tempfile
 import unittest
 from unittest import mock
@@ -521,6 +522,12 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertEqual(dr.inherited_baseline({name: 0}, {name: 3})[name], 0)
 
+    def test_hard_zero_is_assigned_once(self) -> None:
+        src = Path(dr.__file__).read_text(encoding="utf-8")
+        self.assertEqual(len(re.findall(r"^HARD_ZERO\s*[|:]?=", src, re.M)), 1,
+                         "add zero counters to the one HARD_ZERO frozenset, never rebind it")
+        self.assertIsInstance(dr.HARD_ZERO, frozenset)
+
     def test_every_zero_baseline_is_hard_zero(self) -> None:
         baseline = json.loads(dr.DEFAULT_RATCHET.read_text(encoding="utf-8"))
         gated = {n for n, (_, _, g) in dr.COUNTERS.items() if g}
@@ -869,7 +876,7 @@ class DebtRatchetTest(unittest.TestCase):
                              ["crates/cpl-ir/src/a.rs:1", "crates/cpl-lsp/src/fix_tests.rs:1",
                               "crates/cpl-lsp/src/server.rs:1", "crates/cpl-lsp/tests/a.rs:1"])
             errors, _, _ = dr.evaluate({"own_databases": 1}, {"own_databases": 5})
-            self.assertTrue(any("must be 0" in e for e in errors), errors)
+            self.assertTrue(any(re.search(r"must (stay at|be) 0", e) for e in errors), errors)
             tests = root / "crates/cpl-cli/tests"
             tests.mkdir(parents=True)
             (tests / "read_only_copies.rs").write_text(
