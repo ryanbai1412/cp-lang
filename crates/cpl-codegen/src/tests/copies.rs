@@ -914,6 +914,70 @@ print(merged(0).len, rows)
 }
 
 #[test]
+fn a_sorted_temporary_is_freed_right_after_its_last_read() {
+    let out = cpp(concat!(
+        "let n: 2..=1_000_000 = read()\n",
+        "let ups = [(gain: i * 7919 % 1_000_003, c: i) for i in 0..n]\n",
+        "let taken = ups.sorted(by: u => desc(u.gain)).take(n / 2).collect()\n",
+        "var cells: List<Int> = List.filled(4 * n, 0)\n",
+        "for i in 0..4 * n: cells[i] = taken[i % (n / 2)].gain + i\n",
+        "print(cells[4 * n - 1] + cells[0])\n",
+    ));
+    let take = out.find("_take_").expect("the take call");
+    let freed = out[take..]
+        .find("{ auto cpl_freed = std::move(t")
+        .expect("the free");
+    let filled = out[take..].find("cells = ").expect("the fill");
+    assert!(
+        freed < filled,
+        "the sorted list is freed before cells is built: {out}"
+    );
+}
+
+#[test]
+fn a_list_a_closure_reads_later_is_not_freed_before_that_read() {
+    let out = cpp(concat!(
+        "let n: 1..=100 = read()\n",
+        "let xs = [i * i for i in 0..n]\n",
+        "let total = xs.sum()\n",
+        "let at = (i: Int) => xs[i % n]\n",
+        "var acc = 0\n",
+        "for i in 0..n: acc += at(i)\n",
+        "print(total, acc)\n",
+    ));
+    assert!(!out.contains("std::move(xs); }"), "{out}");
+}
+
+#[test]
+fn a_fn_frees_its_own_list_after_its_last_read_and_keeps_a_lent_one() {
+    let out = cpp(concat!(
+        "fn spread(n: Int) -> Int:\n",
+        "    let xs: List<Int> = List.filled(n, 3)\n",
+        "    let s = xs.sum()\n",
+        "    var ys: List<Int> = List.filled(n, 0)\n",
+        "    for i in 0..n: ys[i] = s + i\n",
+        "    ys.sum()\n",
+        "fn view(n: Int) -> Int:\n",
+        "    let xs = [i * 3 for i in 0..n]\n",
+        "    let head = xs.take(2)\n",
+        "    var ys: List<Int> = List.filled(n, 0)\n",
+        "    for i in 0..n: ys[i] = head.len + i\n",
+        "    ys.sum()\n",
+        "let n: 2..=100 = read()\n",
+        "print(spread(n), view(n))\n",
+    ));
+    let spread = &out[out.find("spread(ll n").expect("spread")..];
+    let spread = &spread[..spread.find("\n}").expect("its end")];
+    assert!(
+        spread.contains("{ auto cpl_freed = std::move(xs); }"),
+        "{out}"
+    );
+    let view = &out[out.find("view(ll n").expect("view")..];
+    let view = &view[..view.find("\n}").expect("its end")];
+    assert!(!view.contains("cpl_freed"), "{out}");
+}
+
+#[test]
 fn a_top_level_list_walked_once_for_the_last_time_is_emptied_after_that_loop() {
     let out = cpp(concat!(
         "let n: 1..=100 = read()\n",

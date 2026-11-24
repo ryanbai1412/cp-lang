@@ -1,8 +1,9 @@
-//! Which lists of `main` a statement walks for the last time.
+//! Which lists of `main` a statement walks for the last time, and which
+//! variables any statement reads for the last time.
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{Arg, Block, Expr, ExprKind, Iter, Stmt};
+use cpl_ir::{Arg, Block, Expr, ExprKind, Iter, Program, Stmt};
 
 use crate::walk;
 
@@ -15,14 +16,7 @@ pub(crate) fn walked_last(block: &Block, k: usize) -> BTreeSet<usize> {
     let rest = Block {
         stmts: block.stmts[k + 1..].to_vec(),
     };
-    let mut works = false;
-    walk::deep_stmts(&rest, &mut |s| {
-        works |= matches!(s, Stmt::For(..) | Stmt::While(..))
-    });
-    walk::deep_exprs(&rest, &mut |e| {
-        works |= matches!(e.kind, ExprKind::Call(..))
-    });
-    if !works {
+    if !works(&rest) {
         return last;
     }
     let here = Block {
@@ -58,6 +52,48 @@ pub(crate) fn walked_last(block: &Block, k: usize) -> BTreeSet<usize> {
         }
     }
     last
+}
+
+/// Whether `rest` still loops or calls: memory freed before it can go to
+/// what it builds.
+fn works(rest: &Block) -> bool {
+    let mut works = false;
+    walk::deep_stmts(rest, &mut |s| {
+        works |= matches!(s, Stmt::For(..) | Stmt::While(..))
+    });
+    walk::deep_exprs(rest, &mut |e| works |= matches!(e.kind, ExprKind::Call(..)));
+    works
+}
+
+/// The variables, `(is_global, slot)`, statement `k` of `block` reads for
+/// the last time ([`super::dies_in`]: a local the block declared or a
+/// global `main` set, that nothing after it reads, no closure or other fn
+/// reaches, and no earlier `let` holds a part of), while the statements
+/// after it still loop or call.
+pub(crate) fn read_last(program: &Program, block: &Block, k: usize) -> Vec<(bool, usize)> {
+    if !matches!(
+        block.stmts[k],
+        Stmt::Let(..) | Stmt::Assign(..) | Stmt::Expr(_)
+    ) {
+        return Vec::new();
+    }
+    let rest = Block {
+        stmts: block.stmts[k + 1..].to_vec(),
+    };
+    if !works(&rest) {
+        return Vec::new();
+    }
+    let mut read = BTreeSet::new();
+    walk::stmt_exprs(&block.stmts[k], &mut |e| {
+        walk::deep_expr(e, &mut |e| match e.kind {
+            ExprKind::Local(s) => _ = read.insert((false, s)),
+            ExprKind::Global(g) => _ = read.insert((true, g)),
+            _ => {}
+        })
+    });
+    read.into_iter()
+        .filter(|&src| super::dies_in(program, block, k, src, None))
+        .collect()
 }
 
 /// Calls `f` on each statement of `block` that runs at most once each time

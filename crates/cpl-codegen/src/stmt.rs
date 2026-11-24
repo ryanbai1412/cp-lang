@@ -110,6 +110,7 @@ impl<'p> Emitter<'p> {
             self.released = self.released_at(block, k);
         }
         self.stmt_owning(block, k, out);
+        self.release_read(block, k, out);
         if top {
             self.released.clear();
         }
