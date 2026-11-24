@@ -5,7 +5,7 @@ use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{bug, interp_failed, trap, Flow, Interp, Res};
-use cpl_ir::{CmpOp, LoopId};
+use cpl_ir::{CmpOp, Expr, LoopId};
 use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
@@ -1313,7 +1313,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::ApplyV { idx, dst, sync } => {
                 let spec = &chunk.applies[idx as usize];
-                let vals: Vec<Value> = spec
+                let mut vals: Vec<Value> = spec
                     .regs
                     .iter()
                     .map(|&r| regs_v[r as usize].clone())
@@ -1337,6 +1337,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                     sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                     val
+                } else if !spec.read.is_empty() {
+                    let mut run = |vm: &mut Self, e: &'p Expr| {
+                        let Some(&(_, pc)) = spec.read.iter().find(|r| std::ptr::eq(r.0, e)) else {
+                            return bug(e.span, "an expression of a read with no entry");
+                        };
+                        match vm
+                            .exec_chunk_core(compiled, chunk, base_i, vm_regs_i, regs_v, pc, None)?
+                        {
+                            ExecExit::Return(value) => Ok(value),
+                            _ => bug(e.span, "an expression of a read left it"),
+                        }
+                    };
+                    self.read_v(spec.expr, vals.pop(), &mut run)
                 } else {
                     self.apply(spec.expr, vals)
                 };

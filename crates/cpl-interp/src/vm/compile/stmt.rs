@@ -566,6 +566,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             expr: e,
             regs: vec![src],
             view: None,
+            read: Vec::new(),
         });
         let dst = self.alloc_v();
         self.emit(Op::MutatePlace { idx, path, dst }, e.span);

@@ -1688,6 +1688,8 @@ pub(crate) struct ApplySpec<'p> {
     /// What it does through a mutable view instead, its first `.1`
     /// registers the operands and the rest the place's indices.
     pub view: Option<(ViewOp<'p>, usize)>,
+    /// The entry of each expression in the spec of the read `expr`.
+    pub read: Vec<(&'p Expr, usize)>,
 }
 
 /// One of main's loops, as a checkpoint finds it in the registers.

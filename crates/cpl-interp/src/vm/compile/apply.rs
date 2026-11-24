@@ -2,9 +2,10 @@
 //! computed in registers, rather than handing the whole expression to the
 //! tree-walker.
 
+use super::jump::JumpOp;
 use super::Compiler;
 use crate::apply::{applies, operands};
-use crate::vm::helpers::{place_indices, quiet};
+use crate::vm::helpers::place_indices;
 use crate::vm::ir::*;
 use cpl_ir::{Dim, Expr, ExprKind, Mutation, Place, PlaceKind, Program, Ty};
 
@@ -110,11 +111,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
         sync: bool,
     ) -> u16 {
         self.applies_sync |= sync;
+        let read = self.read_entries(expr);
         let idx = self.applies.len() as u32;
         self.applies.push(ApplySpec {
             expr,
             regs: regs.clone(),
             view,
+            read,
         });
         let dst = self.alloc_v();
         self.emit(Op::ApplyV { idx, dst, sync }, expr.span);
@@ -154,13 +157,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if !applies(expr) {
             return None;
         }
-        // A read evaluates its bounds once, before reading, so they must
-        // not depend on when they run.
-        if matches!(expr.kind, ExprKind::Read(_) | ExprKind::ReadFrom(..))
-            && !operands(expr).into_iter().all(quiet)
-        {
-            return None;
-        }
         let regs: Vec<u16> = operands(expr)
             .into_iter()
             .map(|x| self.compile_expr_v(x))
@@ -195,6 +191,29 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.emit_apply(expr, regs, None, true)
     }
 
+    /// The entry of each expression in the spec of `expr`, when it reads:
+    /// a bound, or a type's own `impl Read`, compiled aside for the read to
+    /// run on the VM when it reaches it.
+    fn read_entries(&mut self, expr: &'p Expr) -> Vec<(&'p Expr, usize)> {
+        let body = match &expr.kind {
+            ExprKind::ReadFrom(_, body) => body,
+            _ => expr,
+        };
+        let mut read = Vec::new();
+        if let ExprKind::Read(_) = body.kind {
+            cpl_ir::walk::children(body, &mut |e| {
+                let skip = self.emit_jump(JumpOp::Jmp, e.span);
+                read.push((e, self.ops.len()));
+                let (src, dst) = (self.compile_expr_v(e), self.alloc_v());
+                self.emit(Op::MoveV { dst, src }, e.span);
+                self.emit(Op::RetV { src: dst }, e.span);
+                self.patch(skip, self.ops.len() as u32);
+                self.in_dom.clear();
+            });
+        }
+        read
+    }
+
     /// The mutation `expr` into a fresh value register by
     /// `Op::MutatePlace`, when the VM can walk to its place.
     pub(super) fn try_compile_mutate_place(&mut self, expr: &'p Expr) -> Option<u16> {
@@ -221,6 +240,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             expr,
             regs: regs.clone(),
             view: None,
+            read: Vec::new(),
         });
         let dst = self.alloc_v();
         self.emit(Op::MutatePlace { idx, path, dst }, expr.span);

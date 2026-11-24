@@ -253,6 +253,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             expr,
             regs: vec![],
             view: None,
+            read: Vec::new(),
         });
         idx
     }

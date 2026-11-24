@@ -136,11 +136,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::List(Rc::new(crate::value::Cells::filled(n as usize, val)))
             }
             Builtin::Join => {
-                let text = |value: Value| match value {
-                    Value::Str(bytes) => bytes,
-                    Value::StrView(view) => Rc::new(view.to_vec()),
-                    _ => Rc::new(Vec::new()),
-                };
+                let text = |value: Value| Rc::new(value.into_bytes());
                 let sep = text(first);
                 let seq = values.next().unwrap_or_default();
                 let none_text = values.next().map(text);
@@ -487,8 +483,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let elems: Vec<Value> = match first {
                     _ if let Some(cells) = first.cells() => cells.to_values(),
                     Value::ListView(view) => view.to_vec(),
-                    Value::Str(bytes) => bytes.iter().copied().map(Value::Char).collect(),
-                    Value::StrView(view) => view.to_vec().into_iter().map(Value::Char).collect(),
+                    text @ (Value::Str(_) | Value::StrView(_)) => {
+                        text.into_bytes().into_iter().map(Value::Char).collect()
+                    }
                     _ => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                 };
                 let m = elems.len();
@@ -768,22 +765,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             },
             Builtin::StrConcat => {
                 let rhs = values.next().unwrap_or_default();
-                let mut out = match first {
-                    Value::Str(b) => (*b).clone(),
-                    Value::StrView(v) => v.to_vec(),
-                    _ => Vec::new(),
-                };
-                match rhs {
-                    Value::Str(b) => out.extend_from_slice(&b),
-                    Value::StrView(v) => {
-                        if !v.rev {
-                            out.extend_from_slice(&v.base[v.lo..v.lo + v.len]);
-                        } else {
-                            out.extend(v.iter());
-                        }
-                    }
-                    _ => {}
-                }
+                let mut out = first.into_bytes();
+                out.extend(rhs.into_bytes());
                 Value::Str(Rc::new(out))
             }
             Builtin::ListConcat => {

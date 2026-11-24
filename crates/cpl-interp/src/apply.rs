@@ -18,16 +18,6 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
         | ExprKind::Builtin(_, items)
         | ExprKind::Intrinsic(_, items) => items.iter().collect(),
         ExprKind::Binary(op, lhs, rhs) if !lazy(*op) => vec![lhs, rhs],
-        ExprKind::Read(spec) => spec_exprs(spec).unwrap_or_default(),
-        ExprKind::ReadFrom(text, body) => {
-            let spec = match &body.kind {
-                ExprKind::Read(spec) => spec_exprs(spec),
-                _ => None,
-            };
-            std::iter::once(&**text)
-                .chain(spec.unwrap_or_default())
-                .collect()
-        }
         ExprKind::Index(base, indices) => std::iter::once(&**base).chain(indices).collect(),
         ExprKind::Print(args, end) => args
             .iter()
@@ -35,49 +25,16 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
             .chain(end.as_deref())
             .collect(),
         ExprKind::Debug(_, args) => args.iter().map(|a| &a.value).collect(),
+        ExprKind::ReadFrom(text, _) => vec![text],
         _ => Vec::new(),
     }
-}
-
-/// The expressions in `spec`, each evaluated once before the read, or
-/// `None` when it reads through a call, whose reads cannot be hoisted.
-fn spec_exprs(spec: &Spec) -> Option<Vec<&Expr>> {
-    let mut out = Vec::new();
-    let mut todo = vec![spec];
-    while let Some(spec) = todo.pop() {
-        match spec {
-            Spec::Plain(_) | Spec::Line => {}
-            Spec::Int { lo, hi, .. } | Spec::Str { lo, hi, .. } => {
-                out.extend(lo.iter().chain(hi).map(|x| &**x))
-            }
-            Spec::Fields(_, fields) => todo.extend(fields.iter().rev()),
-            Spec::Array { dims, elem } => {
-                for dim in dims {
-                    if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {
-                        out.push(len);
-                    }
-                }
-                todo.push(elem);
-            }
-            Spec::Opt(inner, absent) => {
-                out.extend(absent.as_deref());
-                todo.push(inner);
-            }
-            Spec::Call(_) => return None,
-            Spec::List(never) => match *never {},
-        }
-    }
-    Some(out)
 }
 
 /// Whether `e` is applied to its [`operands`] by [`Interp::apply`].
 pub(crate) fn applies(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Binary(op, ..) => return !lazy(*op),
-        ExprKind::Read(spec) => return spec_exprs(spec).is_some(),
-        ExprKind::ReadFrom(_, body) => {
-            return matches!(&body.kind, ExprKind::Read(spec) if spec_exprs(spec).is_some())
-        }
+        ExprKind::ReadFrom(_, body) => return matches!(body.kind, ExprKind::Read(_)),
         _ => {}
     }
     matches!(
@@ -92,6 +49,7 @@ pub(crate) fn applies(e: &Expr) -> bool {
             | ExprKind::Variant(..)
             | ExprKind::Print(..)
             | ExprKind::Debug(..)
+            | ExprKind::Read(_)
     )
 }
 
@@ -102,7 +60,7 @@ fn lazy(op: BinOp) -> bool {
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// The value of `e` from `vals`, the values of its [`operands`].
-    pub(crate) fn apply(&mut self, e: &'p Expr, vals: Vec<Value>) -> Res<Value> {
+    pub(crate) fn apply(&mut self, e: &'p Expr, mut vals: Vec<Value>) -> Res<Value> {
         let span = e.span;
         Ok(match &e.kind {
             ExprKind::Cmp(op, lhs, _) => {
@@ -257,19 +215,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     (_, other) => other,
                 }
             }
-            ExprKind::Read(spec) => {
-                let given: Vec<_> = operands(e).into_iter().zip(vals).collect();
-                self.read(spec, span, &given)?
-            }
-            ExprKind::ReadFrom(_, body) => {
-                let mut vals = vals.into_iter();
-                let held = self.read_from(vals.next().unwrap_or(Value::Unit));
-                let given: Vec<_> = operands(e).into_iter().skip(1).zip(vals).collect();
-                let value = match &body.kind {
-                    ExprKind::Read(spec) => self.read(spec, span, &given),
-                    _ => self.eval(body),
-                };
-                self.read_from_done(held, value)
+            ExprKind::Read(_) | ExprKind::ReadFrom(..) => {
+                self.read_v(e, vals.pop(), &mut Self::eval)?
             }
             ExprKind::Builtin(op, args) => self.builtin_values(*op, args, e, vals)?,
             ExprKind::Intrinsic(p, _) => crate::intrinsic(*p, &vals, span)?,

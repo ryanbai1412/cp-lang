@@ -165,3 +165,11 @@ fn a_cpp_show_fn_in_a_tuple_stops_on_the_vm() {
         "the traced run no longer stops at the `@cpp` show; move the case to programs/:\n{trace}"
     );
 }
+
+#[test]
+fn a_read_through_impl_read_runs_on_the_vm() {
+    let program = tests_dir().join("programs/vm_read_call_spec.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}

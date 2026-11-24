@@ -1078,6 +1078,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             | ExprKind::Cast(..)
             | ExprKind::Tuple(_)
             | ExprKind::Variant(..)
+            | ExprKind::Read(_)
             | ExprKind::ReadFrom(..)
             | ExprKind::Print(..)
             | ExprKind::Debug(..) => {
@@ -1230,7 +1231,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.indices(place, &mut indices)?;
                 self.sort_place(place, sort_by, desc, indices, span)?
             }
-            ExprKind::Read(spec) => self.read(spec, span, &[])?,
             ExprKind::Format(pieces) => {
                 let mut vals = Vec::new();
                 for piece in pieces {
@@ -1261,7 +1261,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// The length of each dimension of an array being made.
     fn dims(&mut self, dims: &'p [DimSpec], span: Span) -> Res<Vec<i64>> {
-        self.read_dims(dims, span, &[])
+        self.read_dims(dims, span, &mut Self::eval)
     }
 
     fn index(&mut self, base: &'p Expr, indices: &'p [Expr], span: Span) -> Res<Value> {

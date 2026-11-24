@@ -1,2 +1,1 @@
 # (mode, tag) kinds of tree-walker fallback over tests/programs; shrink-only (tests/trace_goldens.rs)
-expr:Read

@@ -4,44 +4,40 @@ use crate::observe::Observer;
 use crate::value::*;
 use crate::*;
 
+/// Evaluates an expression in a spec for [`Interp::read`].
+pub(crate) type Run<'r, 'p, S> = dyn FnMut(&mut S, &'p Expr) -> Res<Value> + 'r;
+
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
-    /// The value of `e`: from `given` when the caller evaluated it.
-    pub(crate) fn given(&mut self, e: &'p Expr, given: &[(&'p Expr, Value)]) -> Res<Value> {
-        match given.iter().find(|(x, _)| std::ptr::eq(*x, e)) {
-            Some((_, v)) => Ok(v.clone()),
-            None => self.eval(e),
+    /// The read `e`, with `text` the string a `read<T>(from: s)` reads.
+    pub(crate) fn read_v(
+        &mut self,
+        e: &'p Expr,
+        text: Option<Value>,
+        run: &mut Run<'_, 'p, Self>,
+    ) -> Res<Value> {
+        match &e.kind {
+            // The string is the whole input, and the read gives `Some` only
+            // when it succeeds and reads all of it. (R10.2.4)
+            ExprKind::ReadFrom(_, body) => {
+                let text = text.unwrap_or(Value::Unit).into_bytes();
+                let held = std::mem::replace(&mut self.input, Input::owned(text));
+                let value = self.read_v(body, None, run).ok();
+                let value = value.filter(|_| self.input.at_eof());
+                self.input = held;
+                Ok(Value::Opt(OptVal::from_option(value)))
+            }
+            ExprKind::Read(spec) => self.read(spec, e.span, run),
+            _ => run(self, e),
         }
     }
 
-    /// `read<T>(from: s)`: makes the string `text` the whole input,
-    /// returning what was the input for [`Self::read_from_done`]. (R10.2.4)
-    pub(crate) fn read_from(&mut self, text: Value) -> Input<'p> {
-        let text = match text {
-            Value::Str(b) => (*b).clone(),
-            Value::StrView(v) => v.to_vec(),
-            _ => Vec::new(),
-        };
-        std::mem::replace(&mut self.input, Input::owned(text))
-    }
-
-    /// `Some` of what the read gave when it succeeded and left no token
-    /// over, else `None`; `held` is the input again.
-    pub(crate) fn read_from_done(&mut self, held: Input<'p>, value: Res<Value>) -> Value {
-        let whole = value.is_ok() && self.input.at_eof();
-        self.input = held;
-        match value {
-            Ok(value) if whole => Value::some(value),
-            _ => Value::Opt(OptVal::None),
-        }
-    }
-
-    /// A value of `spec` from the input, with `given` the values of the
-    /// expressions in it the caller already evaluated.
+    /// A value of `spec` from the input, with `run` evaluating each
+    /// expression in it as the read reaches it.
     pub(crate) fn read(
         &mut self,
         spec: &'p Spec,
         span: Span,
-        given: &[(&'p Expr, Value)],
+        run: &mut Run<'_, 'p, Self>,
     ) -> Res<Value> {
         // A read that waits shows what was printed first, as the C++
         // does: a judge answers only what it has seen.
@@ -130,23 +126,23 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 },
                 _ => Value::Unit,
             },
-            Spec::Int { .. } | Spec::Str { .. } => self.read_bounded(spec, fail, given)?,
-            Spec::Call(call) => self.given(call, given)?,
+            Spec::Int { .. } | Spec::Str { .. } => self.read_bounded(spec, fail, run)?,
+            Spec::Call(call) => run(self, call)?,
             Spec::Fields(_, fields) => {
                 let mut values = Vec::with_capacity(fields.len());
                 for field in fields {
-                    values.push(self.read(field, span, given)?);
+                    values.push(self.read(field, span, run)?);
                 }
                 Value::tuple(values)
             }
             Spec::Array { dims, elem } => {
-                let dims = self.read_dims(dims, span, given)?;
+                let dims = self.read_dims(dims, span, run)?;
                 let cells = dims.iter().product::<i64>() as usize;
                 // Each cell goes straight into the packed store, never into a
                 // boxed list first.
                 let mut data = Cells::default();
                 for i in 0..cells {
-                    data.push(self.read(elem, span, given)?);
+                    data.push(self.read(elem, span, run)?);
                     if i == 0 {
                         data.reserve(cells - 1);
                     }
@@ -157,32 +153,32 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }))
             }
             Spec::Opt(inner, Some(absent)) => {
-                let absent = self.given(absent, given)?.int();
+                let absent = run(self, absent)?.int();
                 let (value, start) = self.input.int().map_err(fail)?;
                 if value == absent {
                     return Ok(Value::Opt(OptVal::None));
                 }
                 // The number is already read; the inner type checks it.
                 self.input.rewind(start);
-                Value::some(self.read(inner, span, given)?)
+                Value::some(self.read(inner, span, run)?)
             }
             // `read<?T>()`: `None` once the input has ended. (R10.2.10)
             Spec::Opt(inner, None) => {
                 if self.input.at_eof() {
                     Value::Opt(OptVal::None)
                 } else {
-                    Value::some(self.read(inner, span, given)?)
+                    Value::some(self.read(inner, span, run)?)
                 }
             }
         })
     }
 
-    /// The lengths of `dims`, with `given` as in [`Interp::read`].
+    /// The lengths of `dims`, with `run` as in [`Interp::read`].
     pub(crate) fn read_dims(
         &mut self,
         dims: &'p [DimSpec],
         span: Span,
-        given: &[(&'p Expr, Value)],
+        run: &mut Run<'_, 'p, Self>,
     ) -> Res<Vec<i64>> {
         let mut out = Vec::with_capacity(dims.len());
         let mut cells: i64 = 1;
@@ -196,7 +192,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 DimSpec::Enum(e) => self.program.enums[*e].variants.len() as i64,
                 DimSpec::Int(len) | DimSpec::IntFrom(_, len) => {
-                    let len = self.given(len, given)?.int();
+                    let len = run(self, len)?.int();
                     if len < 0 {
                         return trap(
                             span,

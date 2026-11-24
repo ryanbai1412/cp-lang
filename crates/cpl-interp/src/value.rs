@@ -588,6 +588,15 @@ impl Value {
         actual == tag
     }
 
+    /// The bytes of a string.
+    pub fn into_bytes(self) -> Vec<u8> {
+        match self {
+            Value::Str(b) => (*b).clone(),
+            Value::StrView(v) => v.to_vec(),
+            _ => Vec::new(),
+        }
+    }
+
     pub fn int(&self) -> i64 {
         match self {
             Value::Int(v) => *v,
