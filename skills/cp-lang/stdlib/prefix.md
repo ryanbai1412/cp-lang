@@ -18,6 +18,7 @@ Fields: `p: [D.cuts]T`.
 
 - `fn set(mut self, i: D, x: T)` — \(O(1)\); Write the next cell in fill order (`D.first..=D.last` for `Forward`, reverse for `Reverse`).; traps: when `i` is not the next position in fill order (out of order, repeated, or after
 - `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of boundary `b`; zero at the first cut.; traps: when a position left of `b` is not yet written (with `Reverse`, every position left
+- `fn at(self, c: Cut<D>) -> T` — \(O(1)\); `f[c]`: the same as `prefix(c)`, as on a built `Prefix`; at a position `v`, `f[v]` is the sum through `v`, the same as `f[v.r]` (R07.1.6).; traps: when a position left of `c` is not yet written
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty.; traps: when `r` is non-empty and contains a position not yet written
 
 ## `struct Prefix<D, T: Add + Sub>`
