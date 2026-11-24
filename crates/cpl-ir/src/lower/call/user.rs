@@ -1162,6 +1162,8 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `Within<S: Versioned<D, T>, D, T>(store: S)`: `D` and `T` come from `S`'s impl.
+        self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut inferred);
         if gen_names.iter().any(|g| g == "F") && !inferred.contains_key("F") {
             if let Some(act_arg) = args
                 .iter()
