@@ -35,23 +35,31 @@ fn join(a: Int, b: Int, is_max: Bool) -> Int = gates.push_id(
 )
 
 fn solve(span: Range<Int>, is_max: Bool, known_m: ?Int = None) -> List<Int>:
-    if span.len <= 1: return span.to_list()
+    if span.len <= 1: return span.collect()
     let m = known_m ?? probe()
 
-    var left = with x[span.start..=m].rotated_left(1): solve(span.start..m, is_max)
-    var right = with x[m..span.end].reversed: solve(m + 1..span.end, not is_max)
+    x[span.start..=m].rotate_left(1)
+    var left = solve(span.start..m, is_max)
+    x[span.start..=m].rotate_right(1)
+    x[m..span.end].reverse()
+    var right = solve(m + 1..span.end, not is_max)
+    x[m..span.end].reverse()
     right.reverse()
 
     var core = m
-    while let a = left.last, let b = right.last:
-        let moved_left = with x[gates[a].span.start..gates[b].span.end].reversed:
-            probe() < gates[core].span.start
+    while let a = left.last and let b = right.last:
+        let outer = gates[a].span.start..gates[b].span.end
+        x[outer].reverse()
+        let moved_left = probe() < gates[core].span.start
+        x[outer].reverse()
         if moved_left: core = join(core, right.pop()!, not is_max)
         else: core = join(left.pop()!, core, is_max)
-    left + [right.rev.fold(core, (c, b) => join(c, b, not is_max))]
+    left + [right.rev.fold((c, b) => join(c, b, not is_max), core)]
 
 let win_up = probe()
-let win_down = with x.reversed: probe()
+x.reverse()
+let win_down = probe()
+x.reverse()
 let is_max = win_up >= win_down
 if not is_max: x.reverse()
 
@@ -59,7 +67,10 @@ let chain = solve(0..n, is_max, known_m: if is_max: win_up else: win_down)
 let root = chain.rev.reduce((b, a) => join(a, b, is_max))!
 print("!")
 
-for vals in read_until<[0..n]Int>(0):
+loop:
+    let first: Int = read()
+    if first == 0: break
+    let vals = [first] + [read<Int>() for _ in 1..n]
     fn eval(g: Int) -> Int:
         guard let op = gates[g].op else: return vals[g]
         let (a, b) = (eval(op.a), eval(op.b))
