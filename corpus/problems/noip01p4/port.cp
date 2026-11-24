@@ -4,33 +4,24 @@
 //   between airports of different cities costs `air` per unit. Print the cheapest trip from
 //   city `from` to city `to`, any airports at either end, to two decimals.
 // Solution: the fourth corner is q + r - p, where p is the given corner with the right angle.
-//   Then Floyd-Warshall over all 4n airports with Euclidean prices, O(n^3), and take the
-//   cheapest of the 16 corner pairs.
+//   Every airport pair is one hop at its price; the all-pairs closure (Floyd-Warshall over the
+//   4n airports, O(n^3)) gives the trip, the cheapest of the 16 corner pairs.
 // original: corpus/submissions/5086731.cpp
 let n: 1..=100 = read()
 let air: 1..=1000 = read()
 domain City = 1..=n
-let from: City = read()
-let to: City = read()
-let given: [City](a: Pt, b: Pt, c: Pt, rail: 1..=1000) = read()
+let (from, to): (City, City) = read()
+let city: [City](a: Pt, b: Pt, c: Pt, rail: 1..=1000) = read()
 
-// The corner opposite a right angle at p is q + r - p.
-fn fourth(a: Pt, b: Pt, c: Pt) -> Pt:
-    let (p, q, r) = [(a, b, c), (b, c, a), (c, a, b)].find(((p, q, r)) => (q - p).dot(r - p) == 0)!
-    q + r - p
-
-domain Corner = 1..=4
+domain Corner = 0..4
 type Airport = (City, Corner)
-let corners = [City] c => do:
-    let s = given[c]
-    [s.a, s.b, s.c, fourth(s.a, s.b, s.c)]
-fn at(u: Airport) -> Pt:
-    let (c, k) = u
-    corners[c][k.ord]
+// the corner opposite the right angle at p is q + r - p
+let corner = [Airport] ((c, k)) => do:
+    let (a, b, c3, _) = city[c]
+    let (p, q, r) = [(a, b, c3), (b, c3, a), (c3, a, b)].find(((p, q, r)) => (q - p).dot(r - p) == 0)!
+    [a, b, c3, q + r - p][k.ord]
 
-fn price(u: Airport, v: Airport) -> F64:
-    let ((cu, _), (cv, _)) = (u, v)
-    F64(if cu == cv: given[cu].rail else: air) * at(u).dist(at(v))
-var cost: [Airport, Airport]?F64 = [Airport, Airport] (u, v) => Some(price(u, v))
-assert floyd_warshall(mut cost)
-print([cost[(from, i), (to, j)]! for i in Corner for j in Corner].min()!, precision: 2)
+fn price(u: Airport, v: Airport) -> F64 =
+    F64(if u.0 == v.0: city[u.0].rail else: air) * corner[u].dist(corner[v])
+let trip = ([Airport, Airport] (u, v) => Some(price(u, v))).closure()!
+print(min(trip[(from, i), (to, j)]! for i in Corner for j in Corner)!, precision: 2)
