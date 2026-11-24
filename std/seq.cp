@@ -1102,10 +1102,12 @@ pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
 fn flip_at(n: Int, ok: Int -> Bool, wrong_way: Str) -> Int:
     var lo = 0
     var hi = n
-    while lo < hi:
-        let m = lo + (hi - lo) / 2
-        if ok(m): hi = m
-        else: lo = m + 1
+    // The one loop behind `first_true` and its kin; `0 <= lo <= m < hi <= n` keeps it in range.
+    unchecked:
+        while lo < hi:
+            let m = lo + (hi - lo) / 2
+            if ok(m): hi = m
+            else: lo = m + 1
     if n > 1 and lo == 0:
         let at_end = ok(n - 1)
         assert at_end, wrong_way
