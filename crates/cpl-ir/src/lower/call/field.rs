@@ -1309,7 +1309,7 @@ impl<'a> Lowerer<'a> {
             seq.ty,
             Ty::StrView | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)
         );
-        let seq = if (view || !is_place(base))
+        let seq = if (view || !is_place(base) || !reads_in_place(&seq))
             && !matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_))
         {
             let held = self.temp(seq.ty.clone());
@@ -1603,5 +1603,15 @@ impl Lowerer<'_> {
                 && f.params.len() == 1
                 && matches!(&f.body, ast::FnBody::Expr(e) if matches!(e.kind, ast::ExprKind::SelfValue))
         })
+    }
+}
+
+/// Whether `e` reads a value where it lives (`a`, `s.xs`, `g[i]`), as
+/// opposed to computing one, as `a.items` does even on a place.
+fn reads_in_place(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Local(_) | ExprKind::Global(_) => true,
+        ExprKind::Field(base, _) | ExprKind::Index(base, _) => reads_in_place(base),
+        _ => false,
     }
 }
