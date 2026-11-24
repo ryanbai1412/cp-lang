@@ -783,51 +783,6 @@ impl<'a> Lowerer<'a> {
                     self.sorted_by(value, args, span)
                 }
             }
-            (Ty::Str | Ty::StrView, "reversed") => match self.positional_any(method, args, 0, span)
-            {
-                Some(_) => {
-                    let rev = self.mk(
-                        ExprKind::Builtin(Builtin::Reversed, vec![value]),
-                        Ty::StrView,
-                        span,
-                    );
-                    self.mk(ExprKind::Builtin(Builtin::ToStr, vec![rev]), Ty::Str, span)
-                }
-                None => self.err_expr(span),
-            },
-            (
-                Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _),
-                "reversed",
-            ) => {
-                let out_ty = Ty::list((**e).clone());
-                let view_ty = Ty::ListView(e.clone(), Dim::Int);
-                match self.positional_any(method, args, 0, span) {
-                    Some(_) => {
-                        let rev = self.mk(
-                            ExprKind::Builtin(Builtin::Reversed, vec![value]),
-                            view_ty,
-                            span,
-                        );
-                        self.mk(ExprKind::Builtin(Builtin::ToList, vec![rev]), out_ty, span)
-                    }
-                    None => self.err_expr(span),
-                }
-            }
-            (Ty::Array { dims, elem: e }, "reversed") if dims.len() == 1 => {
-                let out_ty = Ty::list((**e).clone());
-                let view_ty = Ty::ListView(e.clone(), Dim::Int);
-                match self.positional_any(method, args, 0, span) {
-                    Some(_) => {
-                        let rev = self.mk(
-                            ExprKind::Builtin(Builtin::Reversed, vec![value]),
-                            view_ty,
-                            span,
-                        );
-                        self.mk(ExprKind::Builtin(Builtin::ToList, vec![rev]), out_ty, span)
-                    }
-                    None => self.err_expr(span),
-                }
-            }
             (
                 Ty::List(_)
                 | Ty::ListView(_, _)

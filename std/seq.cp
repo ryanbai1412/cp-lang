@@ -317,6 +317,15 @@ pub fn sorted<S: Seq, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>:
     sort(mut out, by:)
     out
 
+/// \(O(n)\). A new list of the elements in reverse order; `self.rev` walks them without copying.
+///
+/// cost: \(O(n)\)
+/// empty: `let e: List<Int> = []; e.reversed() == []`
+/// order: reverse source order, keyed from 0
+/// traps: never
+/// example: `[1, 2, 3].reversed() == [3, 2, 1]`
+pub fn reversed<S: Bidir, T>(self: S) -> List<T> = self.rev.collect()
+
 /// \(O(n)\). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).
 ///

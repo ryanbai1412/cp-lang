@@ -682,10 +682,6 @@ impl Checker<'_> {
                 format!("{}.items", operand(self, xs)),
                 "index-element pairs are a member",
             ),
-            ("reversed", [xs]) => (
-                format!("{}.rev", operand(self, xs)),
-                "the reversed view is a member",
-            ),
             ("range", [_] | [_, _]) => {
                 let bound = |c: &Self, a: &Arg| {
                     let t = c.text(a.value.span);

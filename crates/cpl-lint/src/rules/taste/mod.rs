@@ -563,13 +563,7 @@ impl<'a> Taste<'a> {
                 if let Some((target, range, lo)) =
                     extract_contiguous_slice(self.src, first_base, base)
                 {
-                    let in_place = match name.text.as_str() {
-                        std_fn::SORTED => Some(std_fn::SORT),
-                        "reversed" => Some(std_fn::REVERSE),
-                        std_fn::ROTATED_LEFT => Some(std_fn::ROTATE_LEFT),
-                        std_fn::ROTATED_RIGHT => Some(std_fn::ROTATE_RIGHT),
-                        _ => None,
-                    };
+                    let in_place = in_place_twin(&name.text);
                     if let Some(method) = in_place {
                         let args =
                             call_args_text(self.src, first_base, init.span, callee.span, args);
@@ -591,7 +585,7 @@ impl<'a> Taste<'a> {
                                 target,
                                 range,
                                 lo,
-                                method,
+                                method: method.to_string(),
                                 args,
                                 wb_idx: i + 2,
                             });
@@ -631,7 +625,7 @@ impl<'a> Taste<'a> {
                                             target,
                                             range,
                                             lo,
-                                            method,
+                                            method: method.to_string(),
                                             args,
                                             wb_idx: i + 2,
                                         });
@@ -675,7 +669,7 @@ impl<'a> Taste<'a> {
                 target: base.to_string(),
                 range: at(loop_base, iter.span).to_string(),
                 lo: lo.as_ref().map(|e| at(loop_base, e.span).to_string()),
-                method,
+                method: method.to_string(),
                 args,
                 wb_idx: i + 3,
             });
@@ -1640,4 +1634,19 @@ fn leaves(e: &Expr) -> bool {
     let mut v = Leaves(false);
     cpl_syntax::visit::walk_expr(e, &mut v);
     v.0
+}
+
+/// The in-place twin std declares for a value form: `sorted` is `sort`,
+/// `rotated_left` is `rotate_left`, read off std's `self` fns.
+fn in_place_twin(name: &str) -> Option<String> {
+    let heads = cpl_check::std_self_heads();
+    heads.get(name)?;
+    let (word, rest) = name
+        .split_once('_')
+        .map_or((name, None), |(w, r)| (w, Some(r)));
+    [word.strip_suffix('d'), word.strip_suffix("ed")]
+        .into_iter()
+        .flatten()
+        .map(|w| rest.map_or_else(|| w.to_string(), |r| format!("{w}_{r}")))
+        .find(|stem| heads.contains_key(stem))
 }

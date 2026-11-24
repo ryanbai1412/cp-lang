@@ -257,6 +257,7 @@ use std.seq.{
     reduce,
     remove,
     reverse,
+    reversed,
     rotate_left,
     rotate_right,
     rotated_left,

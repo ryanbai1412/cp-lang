@@ -11,7 +11,7 @@
 //!   up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
 use std.bag.{SortedSet}
-use std.seq.{collect}
+use std.seq.{collect, reversed}
 use std.hashmap.{Counter, push}
 use std.range.{first_true, last_true}
 use std.strings.{min_rotation}
