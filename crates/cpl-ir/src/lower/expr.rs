@@ -2805,23 +2805,24 @@ impl<'a> Lowerer<'a> {
             _ => {
                 let holder = self.expr(container, None);
                 if let Ty::Struct(sid) = holder.ty {
-                    let has_fn = self.structs[sid]
-                        .methods
+                    let s = &self.structs[sid];
+                    let plain = s.methods.get("has").or_else(|| s.methods.get("contains"));
+                    let generic = s
+                        .gen_methods
                         .get("has")
-                        .or_else(|| self.structs[sid].methods.get("contains"))
-                        .copied();
-                    if let Some(fn_id) = has_fn {
-                        let ast_arg = ast::Arg {
-                            name: None,
-                            mutable: false,
-                            value: item.clone(),
-                        };
-                        return self.method_call(
-                            fn_id,
-                            Some((container, holder)),
-                            &[ast_arg],
-                            span,
-                        );
+                        .or_else(|| s.gen_methods.get("contains"));
+                    let (plain, generic) = (plain.copied(), generic.copied());
+                    let arg = [ast::Arg {
+                        name: None,
+                        mutable: false,
+                        value: item.clone(),
+                    }];
+                    if let Some(fn_id) = plain {
+                        return self.method_call(fn_id, Some((container, holder)), &arg, span);
+                    }
+                    if let Some(gfid) = generic {
+                        let receiver = Some(Arg::Value(holder));
+                        return self.call_gen_fn(gfid, Vec::new(), receiver, &arg, span);
                     }
                 }
                 let elem = match &holder.ty {
