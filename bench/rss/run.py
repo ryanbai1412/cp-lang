@@ -96,6 +96,7 @@ CASES = {
     "sort_distinct": lambda: ints(1_000_000),  # sorted(I, by: i => a[i] % 1000): ties kept by position
     "heap_grow": lambda: "2000000\n",  # two lists pushed to 2e6 in a program that sorts (ioi08p1)
     "cf2268b": lambda: gen("cf2268b"),  # 2e5 point updates into a pushed answer list: within 512 KiB
+    "sort_comp": lambda: ints(2_000_000),  # sorted([(a[i], i) for i in 0..n]): 8 B pairs, reserved (cf2187a)
 }
 
 

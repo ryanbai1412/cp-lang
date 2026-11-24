@@ -309,7 +309,8 @@ pub(crate) fn narrow_elems(
                 | Builtin::Rekey
                 | Builtin::GridLine
                 | Builtin::ToList
-                | Builtin::Copy,
+                | Builtin::Copy
+                | Builtin::Sorted,
                 args,
             ) => args.first().and_then(|a| expr_loc(scope, a)),
             ExprKind::Do(blk) => match blk.stmts.last() {
@@ -434,7 +435,8 @@ pub(crate) fn narrow_elems(
                 | Builtin::Rekey
                 | Builtin::GridLine
                 | Builtin::ToList
-                | Builtin::Copy,
+                | Builtin::Copy
+                | Builtin::Sorted,
                 args,
             ) => args.first().and_then(|a| expr_root(scope, a)),
             ExprKind::MutSlice(place, _, _) | ExprKind::MutLine(place, _, _) => {
@@ -608,7 +610,8 @@ pub(crate) fn narrow_elems(
                 | Builtin::Rekey
                 | Builtin::GridLine
                 | Builtin::ToList
-                | Builtin::Copy,
+                | Builtin::Copy
+                | Builtin::Sorted,
                 args,
             ) => {
                 // When reached via check_val (not as a safe consumer), widen the base.
@@ -903,7 +906,8 @@ pub(crate) fn narrow_elems(
                 | Builtin::Rekey
                 | Builtin::GridLine
                 | Builtin::ToList
-                | Builtin::Copy,
+                | Builtin::Copy
+                | Builtin::Sorted,
                 args,
             ) => {
                 if let Some((first, rest)) = args.split_first() {

@@ -67,7 +67,16 @@ impl Lowerer<'_> {
             let slot = match (&items, &map_proj) {
                 (Some(items), _) => self.items_bind(&clause.pat, items, &mut pre),
                 (None, Some(proj)) => self.map_proj_bind(&clause.pat, proj, &mut pre),
-                (None, None) => self.loop_var(&clause.pat, elem, &mut pre),
+                (None, None) => {
+                    let int = elem == Ty::Int;
+                    let slot = self.loop_var(&clause.pat, elem, &mut pre);
+                    if let (ast::PatternKind::Name(_), true) = (&clause.pat.kind, int) {
+                        if let Some(r) = self.loop_var_range(&iter) {
+                            self.cx.local_ranges.insert(slot, r);
+                        }
+                    }
+                    slot
+                }
             };
             pre.append(&mut self.cx.pending);
             let mut guards = Vec::new();
@@ -214,6 +223,12 @@ impl Lowerer<'_> {
             Ty::list(value.ty.clone())
         };
         let acc = self.temp(ty.clone());
+        // Each element is a value of the body's range, so the list holds that range.
+        if let Some(r) = self.expr_range(&value).filter(|_| !is_set) {
+            self.cx
+                .local_ranges
+                .insert(acc, RangeInfo::Elem(Box::new(r)));
+        }
         let at = self.span(span);
         let place = Place {
             kind: PlaceKind::Local(acc),

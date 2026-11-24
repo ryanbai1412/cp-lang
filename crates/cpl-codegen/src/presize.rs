@@ -42,7 +42,6 @@ impl<'p> Emitter<'p> {
             || (self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, *slot))
             || self.reused.contains(slot)
             || (self.pushing == Some(*slot) && self.closure_id.is_none())
-            || self.elem_layout(loc).is_some()
             || !self.ty_for_loc(&init.ty, loc).starts_with("std::vector<")
         {
             return None;

@@ -835,6 +835,31 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The values an `Int` loop over `lo..hi` gives its variable.
+    pub(super) fn loop_var_range(&self, iter: &Iter) -> Option<RangeInfo> {
+        let Iter::Range { lo, hi, closed, .. } = iter else {
+            return None;
+        };
+        let (lo_min, _) = self.bound_limits(lo)?;
+        let (_, hi_max) = self.bound_limits(hi)?;
+        let hi_max = if *closed {
+            hi_max
+        } else {
+            hi_max.checked_sub(1)?
+        };
+        (lo_min <= hi_max).then(|| {
+            RangeInfo::Scalar(RangeBounds {
+                lo: None,
+                hi: None,
+                lo_const: None,
+                hi_const: None,
+                lo_min: Some(lo_min),
+                hi_max: Some(hi_max),
+                text: format!("{lo_min}..={hi_max}"),
+            })
+        })
+    }
+
     /// Looks up `RangeInfo` for a value expression (used to prove sub-range sources).
     pub(super) fn expr_range(&self, e: &Expr) -> Option<RangeInfo> {
         match &e.kind {
@@ -861,6 +886,17 @@ impl<'a> Lowerer<'a> {
                 | Builtin::ToList,
                 args,
             ) => args.first().and_then(|a| self.expr_range(a)),
+            ExprKind::Builtin(Builtin::Sorted, args) if matches!(e.ty, Ty::List(_)) => {
+                args.first().and_then(|a| self.expr_range(a))
+            }
+            ExprKind::Tuple(items) if matches!(e.ty, Ty::Tuple(_) | Ty::Record(_)) => {
+                let items: Vec<Option<RangeInfo>> =
+                    items.iter().map(|i| self.expr_range(i)).collect();
+                items
+                    .iter()
+                    .any(Option::is_some)
+                    .then_some(RangeInfo::Tuple(items))
+            }
             ExprKind::Do(blk) => match blk.stmts.last() {
                 Some(Stmt::Give(e)) => self.expr_range(e),
                 _ => None,

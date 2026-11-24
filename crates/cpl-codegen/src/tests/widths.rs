@@ -548,3 +548,30 @@ print(a.len)
         "{out}"
     );
 }
+
+#[test]
+fn a_comprehension_list_takes_its_elements_inferred_ranges() {
+    // A bounded cell and a loop variable over a bounded range each fit in
+    // 4 B, so the unannotated list is 8 B a pair, reserved and plainly sorted.
+    let src = |elem: &str, hi: &str| {
+        format!(
+            "let n: {hi} = read()\nlet a: [0..n]0..=1_000_000_000 = read()\n\
+             let s = sorted([{elem} for i in 0..n])\nprint(s[0].1, s[n - 1].1)\n"
+        )
+    };
+    let narrow = cpp(&src("(a[i], i)", "1..=2_000_000"));
+    assert!(
+        narrow.contains("std::vector<std::tuple<uint32_t, uint32_t>> s;"),
+        "{narrow}"
+    );
+    assert!(narrow.contains(".reserve("), "{narrow}");
+    assert!(narrow.contains("cpl::sorted<true>("), "{narrow}");
+    // An unbounded loop variable or a computed field keeps its full width.
+    let wide_i = cpp(&src("(a[i], i)", "Int"));
+    assert!(wide_i.contains("std::tuple<uint32_t, ll>> s;"), "{wide_i}");
+    let wide_sum = cpp(&src("(a[i] + 1, i)", "1..=2_000_000"));
+    assert!(
+        wide_sum.contains("std::tuple<ll, uint32_t>> s;"),
+        "{wide_sum}"
+    );
+}

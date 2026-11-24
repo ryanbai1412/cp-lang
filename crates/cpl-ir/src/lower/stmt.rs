@@ -1169,6 +1169,11 @@ impl<'a> Lowerer<'a> {
                         self.cx.local_ranges.insert(slot, *inner);
                     }
                 }
+                if let (ast::PatternKind::Name(_), true) = (&pat.kind, elem_is_int) {
+                    if let Some(r) = self.loop_var_range(&iter) {
+                        self.cx.local_ranges.insert(slot, r);
+                    }
+                }
                 if elem_is_int
                     && body
                         .stmts
