@@ -8,6 +8,7 @@ use crate::emit::{
 use crate::names::{
     bits_field, cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_plain_enum,
 };
+use crate::ranges::Sign;
 use crate::walk;
 use std::collections::BTreeMap;
 pub(crate) const FLOAT_DIGITS: &str = "10";
@@ -924,6 +925,11 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(value);
                 Code::new(format!("*{}", code.at(UNARY)), UNARY)
             }
+            ExprKind::RangeCheck { value, lo, hi, .. }
+                if self.range_proven(value, lo.as_deref(), hi.as_deref()) =>
+            {
+                self.expr(value)
+            }
             ExprKind::RangeCheck {
                 value,
                 lo,
@@ -1534,6 +1540,28 @@ pub(crate) fn whole_swap_do(e: &Expr) -> Option<(&Place, &Place)> {
 }
 
 impl Emitter<'_> {
+    /// True when the facts put `value` inside `lo..=hi`: a constant `lo`
+    /// at most its lower bound, and a constant `hi` (or one never
+    /// negative) at least its upper bound.
+    fn range_proven(&self, value: &Expr, lo: Option<&Expr>, hi: Option<&Expr>) -> bool {
+        let home = self.facts_home();
+        let sign = match self.facts.sign(home, value) {
+            Sign::Positive => Some(1),
+            Sign::NonNeg => Some(0),
+            Sign::Unknown => None,
+        };
+        let Some(floor) = sign.max(self.facts.lower_bound(home, value, 0)) else {
+            return false;
+        };
+        let top = || self.facts.upper_bound(home, value, 0);
+        let lo_ok = lo.is_none_or(|lo| matches!(lo.kind, ExprKind::Int(l) if l <= floor));
+        let hi_ok = hi.is_none_or(|hi| match hi.kind {
+            ExprKind::Int(h) => top().is_some_and(|t| t <= h),
+            _ => self.facts.sign(home, hi) != Sign::Unknown && top().is_some_and(|t| t <= 0),
+        });
+        lo_ok && hi_ok
+    }
+
     /// The position a `next` (`PosNext`) or `prev` (`PosPrev`) in `value` steps
     /// from, when the facts prove the step lands on a position.
     fn proven_step<'e>(&self, value: &'e Expr, step: Builtin) -> Option<&'e Expr> {

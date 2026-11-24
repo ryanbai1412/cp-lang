@@ -76,11 +76,27 @@ fn diverges(b: &Block) -> bool {
 }
 
 fn read_var(fn_id: Option<usize>, e: &Expr) -> Option<Var> {
-    match e.kind {
-        ExprKind::Local(slot) => Some((fn_id, false, slot)),
-        ExprKind::Global(id) => Some((None, true, id)),
+    match &e.kind {
+        ExprKind::Local(slot) => Some((fn_id, false, *slot)),
+        ExprKind::Global(id) => Some((None, true, *id)),
+        ExprKind::Field(base, idx) => match base.kind {
+            ExprKind::Local(slot) if slot < 1 << 15 && *idx < 1 << 16 => {
+                Some((fn_id, true, FIELD_KEY | slot << 16 | idx))
+            }
+            _ => None,
+        },
         _ => None,
     }
+}
+
+/// A guard's key for a field of a local, `s.f`: its own number past every
+/// global's, so a guard on it dies with any store to `s`. 31 bits, so it
+/// packs the same on wasm32's 32-bit `usize`.
+const FIELD_KEY: usize = 1 << 31;
+
+/// The local whose field the guard key `v` is.
+fn field_base(v: Var) -> Option<Var> {
+    (v.1 && v.2 & FIELD_KEY != 0).then_some((v.0, false, (v.2 & !FIELD_KEY) >> 16))
 }
 
 /// What `cond` being `holds` says about the locals it compares.
@@ -549,7 +565,26 @@ impl<'p> Facts<'p> {
                             }
                             self.expr(fn_id, e);
                         }
-                        Iter::Seq(e, _) => self.expr(fn_id, e),
+                        Iter::Seq(e, _) => {
+                            // A walk of a literal list of constants takes values between
+                            // its least and greatest.
+                            if let (Ty::List(_), ExprKind::Tuple(items)) = (&e.ty, &e.kind) {
+                                let int = |x: &&'p Expr| match x.kind {
+                                    ExprKind::Int(n) => Some(n),
+                                    _ => None,
+                                };
+                                if items.iter().all(|x| int(&x).is_some()) {
+                                    if let (Some(lo), Some(hi)) = (
+                                        items.iter().min_by_key(|x| int(x)),
+                                        items.iter().max_by_key(|x| int(x)),
+                                    ) {
+                                        self.loop_lo.insert(v, lo);
+                                        self.loop_hi.insert(v, (hi, true));
+                                    }
+                                }
+                            }
+                            self.expr(fn_id, e);
+                        }
                         Iter::TreeRange {
                             container, lo, hi, ..
                         } => {
@@ -614,7 +649,7 @@ impl<'p> Facts<'p> {
         let mut out = Vec::new();
         cond_facts(fn_id, cond, holds, &mut out);
         for (v, fact) in out {
-            if !self.store_log[since..].contains(&v) {
+            if !(self.store_log[since..].iter()).any(|&s| s == v || field_base(v) == Some(s)) {
                 self.made += 1;
                 self.active.push(Some((v, fact, self.made)));
             }
@@ -625,8 +660,11 @@ impl<'p> Facts<'p> {
     fn kill(&mut self, v: Var) {
         self.store_log.push(v);
         for g in &mut self.active {
-            if matches!(g, Some((gv, ..)) if *gv == v) {
-                *g = None;
+            if let Some((gv, ..)) = *g {
+                if gv == v || field_base(gv) == Some(v) {
+                    self.store_log.push(gv);
+                    *g = None;
+                }
             }
         }
     }
@@ -678,7 +716,7 @@ impl<'p> Facts<'p> {
         }
         shared.extend(self.tainted.iter().filter(|v| v.1));
         for (read, (v, fact, _)) in std::mem::take(&mut self.leaf_log) {
-            if !shared.contains(&v) {
+            if !shared.contains(&v) && !field_base(v).is_some_and(|b| shared.contains(&b)) {
                 self.guarded.entry(read).or_default().push((v, fact));
             }
         }
@@ -771,6 +809,15 @@ impl<'p> Facts<'p> {
                             }
                             self.place(fn_id, place);
                             self.kill_place(fn_id, place);
+                        }
+                    }
+                }
+                // A callee may reach a field through an alias of its base.
+                for g in &mut self.active {
+                    if let Some((gv, ..)) = *g {
+                        if field_base(gv).is_some() {
+                            self.store_log.push(gv);
+                            *g = None;
                         }
                     }
                 }
@@ -963,9 +1010,14 @@ impl<'p> Facts<'p> {
             // A count held in an `int` is below 2^31.
             ExprKind::DomainLen(d) => self.domain_len_hi(*d, depth + 1),
             ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) => Some(LEN_MAX),
-            ExprKind::Field(base, idx) if self.field_range(&base.ty, *idx).is_some() => {
-                self.field_range(&base.ty, *idx).map(|r| r.1)
-            }
+            ExprKind::Field(base, idx) => (self.field_range(&base.ty, *idx).map(|r| r.1))
+                .into_iter()
+                .chain(
+                    matches!(base.ty, Ty::Struct(sid) if self.u32_fields.contains(&(sid, *idx)))
+                        .then_some(i64::from(u32::MAX)),
+                )
+                .chain(self.guard_hi(e, depth))
+                .min(),
             ExprKind::Binary(BinOp::Mul, l, r)
                 if self.sign_at(fn_id, l, u32::from(depth) * 2) != Sign::Unknown
                     && self.sign_at(fn_id, r, u32::from(depth) * 2) != Sign::Unknown =>
@@ -1001,7 +1053,11 @@ impl<'p> Facts<'p> {
             ExprKind::Binary(BinOp::Div, l, r)
                 if self.sign_at(fn_id, r, u32::from(depth) * 2) == Sign::Positive =>
             {
-                Some(self.upper_bound(fn_id, l, depth + 1)?.max(0))
+                let hi = self.upper_bound(fn_id, l, depth + 1)?.max(0);
+                Some(match r.kind {
+                    ExprKind::Int(d) => hi / d,
+                    _ => hi,
+                })
             }
             // Euclidean: below the divisor, whatever the dividend.
             ExprKind::Binary(BinOp::Rem, _, r)
@@ -1015,10 +1071,14 @@ impl<'p> Facts<'p> {
                 .filter(|x| self.sign_at(fn_id, x, u32::from(depth) * 2) != Sign::Unknown)
                 .filter_map(|x| self.upper_bound(fn_id, x, depth + 1))
                 .min(),
-            ExprKind::Binary(BinOp::Shr, l, _)
+            ExprKind::Binary(BinOp::Shr, l, r)
                 if self.sign_at(fn_id, l, u32::from(depth) * 2) != Sign::Unknown =>
             {
-                self.upper_bound(fn_id, l, depth + 1)
+                let hi = self.upper_bound(fn_id, l, depth + 1)?;
+                Some(match r.kind {
+                    ExprKind::Int(k @ 0..=63) => hi >> k,
+                    _ => hi,
+                })
             }
             ExprKind::Builtin(Builtin::Max, args) if !args.is_empty() => {
                 let mut hi = i64::MIN;
@@ -1048,9 +1108,6 @@ impl<'p> Facts<'p> {
                     _ => None,
                 };
                 own.into_iter().chain(len).min()
-            }
-            ExprKind::Field(base, idx) if matches!(base.ty, Ty::Struct(sid) if self.u32_fields.contains(&(sid, *idx))) => {
-                Some(i64::from(u32::MAX))
             }
             ExprKind::Cast(_, inner) => self.upper_bound(fn_id, inner, depth + 1),
             // The power of two at or above the argument's bound.
@@ -1378,7 +1435,9 @@ impl<'p> Facts<'p> {
             return Sign::Unknown;
         }
         let guarded = match e.kind {
-            ExprKind::Local(_) | ExprKind::Global(_) => self.guard_lo(e, depth as u8 + 1),
+            ExprKind::Local(_) | ExprKind::Global(_) | ExprKind::Field(..) => {
+                self.guard_lo(e, depth as u8 + 1)
+            }
             _ => None,
         };
         match (guarded, self.sign_own(fn_id, e, depth)) {

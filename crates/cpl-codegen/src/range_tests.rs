@@ -43,8 +43,11 @@ fn a_let_and_a_branch_on_it_carry_bounds_into_a_range_store() {
     };
     let proven = store("let", "if r < 0: r + 10 else: r");
     assert!(!proven.contains("check_range"), "{proven}");
-    let mutable = store("var", "if r < 0: r + 10 else: r");
-    assert!(mutable.contains("check_range"), "{mutable}");
+    // A var stored only at its declaration keeps its bounds; one stored again loses them.
+    let unstored = store("var", "if r < 0: r + 10 else: r");
+    assert!(!unstored.contains("check_range"), "{unstored}");
+    let restored = cpp("struct M(v: 0..10)\nfn f(a: M, b: M) -> M:\n    var r = a.v + b.v - 10\n    if a.v > 3:\n        r = 20\n    M(if r < 0: r + 10 else: r)\nprint(f(M(read()), M(read())).v)\n");
+    assert!(restored.contains("cpl::check_range(r < 0"), "{restored}");
     let off_by_one = store("let", "if r <= 0: r + 10 else: r");
     assert!(off_by_one.contains("check_range"), "{off_by_one}");
     let wrong_side = store("let", "if r < 0: r else: r + 10");
@@ -110,4 +113,66 @@ fn a_range_return_type_checks_what_it_returns_unless_proven() {
         !body[..body.find("\n}").unwrap()].contains("check_range"),
         "{proven}"
     );
+}
+
+#[test]
+fn a_store_whose_value_the_facts_bound_skips_its_range_check() {
+    let out = cpp("type Len = 0..2_147_483_648
+fn take(n: Len) -> Int = n
+fn go(p: Len, k: 0..63) -> Int = take(p >> k)
+domain V = 0..read<1..=1000>()
+var dep: [V]0..=V.count = 0
+for v in V:
+    dep[v] = 0
+let xs: List<Int> = read()
+let m: Int = read()
+var meta: List<Len> = []
+meta.push(xs.len / 4)
+meta.push(xs.len >> 3)
+meta.push(m / 4)
+print(go(5, 1), take(xs.len / 2), meta[0])
+for v in V:
+    print(dep[v])
+");
+    // A non-negative value shifted right, a size divided or shifted by a
+    // constant, and a 0 under a hi that is never negative are all in range.
+    assert!(!out.contains("check_range(p >> k"), "{out}");
+    assert!(!out.contains("check_range((ll)xs.size()"), "{out}");
+    assert!(!out.contains("check_range(0,"), "{out}");
+    // An Int of either sign still is checked.
+    assert!(out.contains("cpl::check_range(m >> 2, 0,"), "{out}");
+}
+
+#[test]
+fn a_guard_on_a_field_bounds_its_reads_until_a_store_or_call() {
+    let out = cpp("type Spot = -1..2_147_483_648
+struct B:
+    var free: Spot
+    meta: List<Spot>
+fn take(u: Spot) -> Int = u
+fn go(b: B) -> Int:
+    var u = b.meta.len / 4
+    if b.free >= 0:
+        u = b.free
+    take(u)
+fn bump(mut b: B) -> Int:
+    var w = 0
+    if b.free >= 0:
+        b.free = -1
+        w = b.free
+    take(w)
+fn fill(mut b: B):
+    for v in [0, -1, 3]:
+        b.meta.push(v)
+let xs: List<Int> = read()
+var b = B(free: -1, meta: [])
+fill(mut b)
+print(go(b), bump(mut b))
+");
+    // `u` is a size over 4 or `b.free` where it is >= 0, and a literal's
+    // walk stays between its least and greatest cell.
+    assert!(!out.contains("check_range(u,"), "{out}");
+    assert!(!out.contains("check_range(v,"), "{out}");
+    // A store to the field ends its guard.
+    assert!(out.contains("check_range(w,"), "{out}");
 }

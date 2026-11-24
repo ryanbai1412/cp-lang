@@ -66,7 +66,10 @@ impl Facts<'_> {
             ExprKind::Call(id, _) => (self.returned(*id)?.iter())
                 .map(|r| self.lower_bound(Some(*id), r, depth + 2))
                 .try_fold(i64::MAX, |lo, r| Some(lo.min(r?))),
-            ExprKind::Field(base, idx) => self.field_range(&base.ty, *idx).map(|r| r.0),
+            ExprKind::Field(base, idx) => (self.field_range(&base.ty, *idx).map(|r| r.0))
+                .into_iter()
+                .chain(self.guard_lo(e, depth))
+                .max(),
             ExprKind::Cast(Cast::Label(d), p) => {
                 let ord = match &p.kind {
                     ExprKind::Cast(Cast::Trust, k) => match k.kind {
