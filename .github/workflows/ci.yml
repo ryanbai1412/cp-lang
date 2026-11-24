@@ -22,7 +22,7 @@ env:
 # queueing every commit; the infra sheriff bisects a red run's range. A newer
 # push to a pull request cancels the older run.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-queue-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
