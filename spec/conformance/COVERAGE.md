@@ -7,14 +7,14 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3851 (3744 passing). Rules: 618.
+Cases: 3864 (3744 passing). Rules: 618.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 191 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 165 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 203 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 166 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 25 rules, 122 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 207 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 84 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -138,7 +138,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R02: 02-values-types.md
 
 - R02.7.1 [6+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
-- R02.1.1 [2+ 0-]: a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a domain, `?T` of a plai...
+- R02.1.1 [3+ 0-]: a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a domain, `?T` of a plai...
 - R02.1.2 [2+ 3-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [4+ 1-]: a **function value**: `fn` items (a static fn named through its type, `MaxSub.of`, include...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
@@ -196,7 +196,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.1.1 [2+ 0-]: **Domain widths follow the static bound of the count.** `let n = read<1..=2e5>(); domain V...
 - R03.1.2 [1+ 1-]: **Locals never narrow.** `let x: 0..=1e9 = ...` is a contract checked at assignment, but i...
 - R03.1.3 [1+ 1-]: **Struct fields need static bounds** (unchanged): layout never depends on input. A field m...
-- R03.1.4 [3+ 6-]: **Loads widen, stores check.** Reading `a[i]` from a `[V]0..=1e9` is one zero-extending lo...
+- R03.1.4 [4+ 7-]: **Loads widen, stores check.** Reading `a[i]` from a `[V]0..=1e9` is one zero-extending lo...
 - R03.1.5 [2+ 2-]: **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is one byte per elemen...
 - R03.1.6 [3+ 0-]: **Narrow arithmetic when proven.** Semantically every operation is in `Int`. When the rang...
 - R03.1.7 [6+ 1-]: To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every node write is t...
@@ -223,7 +223,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R04.2.23 [1+ 0-]: A **domain** is a finite, ordered index type. Its members are **positions**, which are `Or...
 - R04.2.25 [1+ 0-]: An array's axes may also be plain ranges, one per dimension: `[0..=n, 0..=k]Int` is indexe...
-- R04.2.1 [4+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
+- R04.2.1 [5+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | \(O(1)\)
 - R04.2.20 [7+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
@@ -263,7 +263,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.11 [1+ 1-]: | `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]`
 - R04.4.22 [2+ 1-]: The language's implicit conversions are this closed list, none user-extensible. Each appli...
 - R04.4.23 [1+ 0-]: **`T` to `?T`.** `u != from` with `from: ?V` compares `Some(u)` with `from`. Free.
-- R04.4.24 [2+ 2-]: .
+- R04.4.24 [3+ 4-]: .
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [3+ 1-]: **Value to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wit...
@@ -988,7 +988,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0001 Runtime trap: 13 case(s)
 - R0101 Index out of range: 35 case(s)
 - R0102 Value outside a domain: 7 case(s)
-- R0201 Range store out of range: 11 case(s)
+- R0201 Range store out of range: 14 case(s)
 - R0202 Integer overflow: 48 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
@@ -1094,7 +1094,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (166/166 named by a case)
 - **beats** (26/26 named by a case)
-- **bitset** (106/107 named by a case)
+- **bitset** (107/108 named by a case)
   - uncovered: `BitTrieArena.node_count`
 - **deque** (42/42 named by a case)
 - **derive** (6/6 named by a case)
@@ -1142,7 +1142,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2446 of 2480 std items are named by a case.
+2447 of 2481 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

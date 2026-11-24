@@ -15,6 +15,7 @@ Fields: `w: List<U64>`, `n: Int`.
 - `fn new() -> Bitset<D>` — \(O(K / 64)\) time and space; The empty set, every word zero; the same set as `empty()`.
 - `fn empty() -> Bitset<D>` — \(O(K / 64)\) time and space; The empty set, matching `Subset<D>.empty` (a call here: it is \(O(K / 64)\)); the same as `new()`.
 - `fn full() -> Bitset<D>` — \(O(K / 64)\) time and space; The full set containing every position of `D`, matching `Subset<D>.full`.
+- `fn undirected<S: Seq<R>, R: (u: D, v: D, ..)>(edges: S) -> [D]Bitset<D>` — \(O(n K / 64 + m)\) time for \(n\) vertices and \(m\) edges; The neighbour sets of the undirected `edges`, matching `Graph.undirected`: `adj[u]` holds `v` and `adj[v]` holds `u` for each edge.
 - `fn single(i: D) -> Bitset<D>` — \(O(K / 64)\) time and space; The singleton set `{i}`, matching `Subset<D>.single(i)`.
 - `fn from(a: [D]Bool) -> Bitset<D>` — \(O(K)\) time, \(O(K / 64)\) space; The set of positions where `a` is true.
 - `fn of(xs: List<D>) -> Bitset<D>` — \(O(K / 64 + \mathit{xs}.\mathit{len})\) time, \(O(K / 64)\) space; Build a bitset from a list or generator of positions `D`.
