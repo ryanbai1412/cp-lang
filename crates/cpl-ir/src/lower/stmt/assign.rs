@@ -96,12 +96,21 @@ impl<'a> Lowerer<'a> {
         }
         if let (ast::ExprKind::Tuple(targets), ast::AssignOp::Set) = (&target.kind, op) {
             // `(a[d], b[d]) = read()`: the places say what is read.
-            let wanted: Option<Vec<Ty>> = targets
+            let tried: Vec<Option<Place>> = targets.iter().map(|t| self.try_place(t)).collect();
+            let wanted: Option<Vec<Ty>> = tried
                 .iter()
-                .map(|t| self.try_place(t).map(|place| place.ty))
+                .map(|p| p.as_ref().map(|p| p.ty.clone()))
                 .collect();
-            // `(a, b) = (b, a)` of lists: each right-hand item is held whole
-            // before any store, in a temp of its own, so each store moves it in.
+            // A store to a variable or field path runs no code, so a right-hand
+            // item that is one too, of a variable no earlier store sets, may be
+            // read at its own store, where codegen moves it if a later store
+            // sets it whole: `(x, y) = (y, f(x, y))` holds only `f(x, y)`.
+            let roots: Option<Vec<(bool, usize)>> = tried
+                .iter()
+                .map(|p| p.as_ref().and_then(path_place))
+                .collect();
+            // `(a, b) = (b, a)` of lists: every other right-hand item is held
+            // whole before any store, in a temp of its own, so each store moves it in.
             let owning = wanted
                 .as_ref()
                 .is_some_and(|w| w.iter().any(|t| !t.is_scalar()));
@@ -111,6 +120,13 @@ impl<'a> Lowerer<'a> {
                     for (k, item) in items.iter().enumerate() {
                         let want = wanted.as_ref().map(|w| &w[k]);
                         let item = self.expr(item, want);
+                        let unset = roots.as_ref().is_some_and(|roots| {
+                            path_expr(&item).is_some_and(|root| !roots[..k].contains(&root))
+                        });
+                        if unset {
+                            held.push(item);
+                            continue;
+                        }
                         let slot = self.temp(item.ty.clone());
                         held.push(Expr {
                             kind: ExprKind::Local(slot),
@@ -638,5 +654,26 @@ impl<'a> Lowerer<'a> {
             }
         };
         self.emit_assign(place, op, value, span, out);
+    }
+}
+
+/// The variable a place of variables and fields is part of; `None` for an
+/// element, whose index may run code.
+fn path_place(place: &Place) -> Option<(bool, usize)> {
+    match &place.kind {
+        PlaceKind::Local(slot) => Some((false, *slot)),
+        PlaceKind::Global(id) => Some((true, *id)),
+        PlaceKind::Field(base, _) => path_place(base),
+        PlaceKind::Index(..) | PlaceKind::Some(_) => None,
+    }
+}
+
+/// The variable an expression of variables and fields reads.
+fn path_expr(e: &Expr) -> Option<(bool, usize)> {
+    match &e.kind {
+        ExprKind::Local(slot) => Some((false, *slot)),
+        ExprKind::Global(id) => Some((true, *id)),
+        ExprKind::Field(base, _) => path_expr(base),
+        _ => None,
     }
 }
