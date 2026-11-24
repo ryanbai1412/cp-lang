@@ -261,10 +261,11 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     fn push(mut self, p: Int, l: Int, r: Int, wl: Int, wr: Int, leaf: Bool):
         unchecked:
             if not has_lz[p]: return
-            self.put(l, lz[p], wl, leaf)
-            self.put(r, lz[p], wr, leaf)
+            let f = lz[p]
             lz[p] = act!.id
             has_lz[p] = false
+            self.put(l, f, wl, leaf)
+            self.put(r, f, wr, leaf)
 
     // Push dense node `p`'s tag onto its children, each with `w` leaves.
     fn push_at(mut self, p: Int, w: Int):
@@ -764,6 +765,22 @@ fn keeps_the_order_for_non_commutative_monoids():
     for (i, w) in [(0, "a"), (1, "b"), (2, "c"), (3, "d"), (4, "e")]: st.set(P(i), w)
     assert st.fold(P(1)..=P(3)) == "bcd"
     assert st.all == "abcde"
+
+@test
+fn pushed_tags_keep_their_order():
+    let n = 13
+    var a = [rand(-5, 5) for _ in 0..n]
+    var st = SegTree(+, a, act: affine)
+    for _ in 0..300:
+        let l = rand(0, n - 1)
+        let r = rand(l + 1, n)
+        let f = (if rand(0, 1) == 0: -1 else: 1, rand(-3, 3))
+        st.apply(l..r, f)
+        for i in l..r: a[i] = f.0 * a[i] + f.1
+        let ql = rand(0, n - 1)
+        let qr = rand(ql + 1, n)
+        assert st.fold(ql..qr) == sum(a[i] for i in ql..qr)
+    assert st.all == a.sum()
 
 @test
 fn right_while_and_left_while_binary_search():
