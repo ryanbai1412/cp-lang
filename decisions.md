@@ -9173,3 +9173,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 ## 604. (reserved, perf)
 
 ## 605. (reserved, content)
+
+## 606. (reserved, factory)
