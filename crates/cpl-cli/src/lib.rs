@@ -8,7 +8,10 @@ use commands::{command_usage, unknown_option, usage as main_usage};
 
 mod dap;
 mod explain;
+mod front_end;
 use explain::explain_code;
+pub use front_end::one_command_per_process;
+use front_end::with_db;
 mod interact;
 mod json_out;
 mod kept_input;
@@ -762,18 +765,6 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
     compile_text(path, text, side, stderr)
 }
 
-/// The thread's database. One per thread, as the language server keeps one:
-/// a process that compiles many files (the test suites, `cpl watch`) checks
-/// the standard library once, and a command that asks more of a file it
-/// compiled (`explain`'s storage) doesn't check it again. The loader rereads
-/// imports on every analysis.
-pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_check::Session) -> R) -> R {
-    thread_local! {
-        static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
-    }
-    DB.with_borrow_mut(f)
-}
-
 /// Checks and lowers `text` as the file at `path`.
 fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
     let analysis = with_db(|db| db.analyze_text(path, text.as_str()));
@@ -1343,6 +1334,7 @@ fn run_file(
         Some(limit) => io.until(cpl_interp::Stop::after(limit)),
         None => io,
     };
+    front_end::release();
     let started = std::time::Instant::now();
     let observed = cpl_interp::run_observed(&compiled.program, io, stdout, None);
     *stderr += &String::from_utf8_lossy(&observed.debug);
