@@ -303,6 +303,58 @@ pub fn to_string(val: &Value) -> String {
     val.to_string()
 }
 
+/// Where an object's keys go when a published shape fixes their order: the
+/// object at each dotted `path` (`""` the top, `"a.b"` under `a` then `b`,
+/// an array's items at the array's path) writes the `keys` it has first, in
+/// that order, then the rest sorted.
+pub struct KeyOrder<'a>(pub &'a [(&'a str, &'a [&'a str])]);
+
+/// [`to_string`] with the object keys in `order`.
+pub fn to_string_ordered(val: &Value, order: &KeyOrder) -> String {
+    let mut out = String::new();
+    write_ordered(val, "", order, &mut out);
+    out
+}
+
+fn write_ordered(val: &Value, path: &str, order: &KeyOrder, out: &mut String) {
+    match val {
+        Value::Array(items) => {
+            out.push('[');
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                write_ordered(item, path, order, out);
+            }
+            out.push(']');
+        }
+        Value::Object(map) => {
+            let first = (order.0.iter())
+                .find(|(at, _)| *at == path)
+                .map_or(&[][..], |(_, keys)| *keys);
+            let listed = first.iter().filter_map(|k| map.get_key_value(*k));
+            let rest = map.iter().filter(|(k, _)| !first.contains(&k.as_str()));
+            out.push('{');
+            for (i, (k, v)) in listed.chain(rest).enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                let _ = write_string(out, k);
+                out.push(':');
+                let inner = match path {
+                    "" => k.clone(),
+                    _ => format!("{path}.{k}"),
+                };
+                write_ordered(v, &inner, order, out);
+            }
+            out.push('}');
+        }
+        other => {
+            let _ = write!(out, "{other}");
+        }
+    }
+}
+
 pub fn to_string_pretty(val: &Value) -> String {
     let mut out = String::new();
     write_pretty(val, 0, &mut out);
@@ -663,6 +715,17 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_key_order_puts_listed_keys_first_at_their_path_and_sorts_the_rest() {
+        let val = parse(r#"{"z":1,"b":{"y":[{"q":1,"p":2}],"x":2},"a":3}"#).unwrap();
+        let order = KeyOrder(&[("", &["z", "b"]), ("b", &["y"]), ("b.y", &["q"])]);
+        assert_eq!(
+            to_string_ordered(&val, &order),
+            r#"{"z":1,"b":{"y":[{"q":1,"p":2}],"x":2},"a":3}"#
+        );
+        assert_eq!(to_string_ordered(&val, &KeyOrder(&[])), to_string(&val));
+    }
+
     use super::*;
 
     #[test]

@@ -379,7 +379,7 @@ fn slow():
     assert_eq!(cli_ok.code, 0, "{}", cli_ok.stderr);
     let wasm_ok = playground.stress(clean_name, &clean, 20, 1, 6);
     let cli_ok_val = cli_as_browser(&String::from_utf8(cli_ok.stdout).unwrap());
-    assert_eq!(wasm_ok, format!("{}\n", cpl_json::to_string(&cli_ok_val)));
+    assert_eq!(wasm_ok, cpl_stress::report::render_json(&cli_ok_val));
 
     // 3. A solution that never finishes: the same shrunk case, and the
     //    loop it goes round in named alike.

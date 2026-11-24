@@ -98,9 +98,10 @@ impl StressResult {
         out.into()
     }
 
-    /// [`Self::to_json`] as one line, as the CLI and the browser print it.
+    /// [`Self::to_json`] as one line, as the CLI and the browser print it,
+    /// in the key order `spec/tools/cli.md` publishes.
     pub fn render(&self) -> String {
-        format!("{}\n", cpl_json::to_string(&self.to_json()))
+        render_json(&self.to_json())
     }
 }
 
@@ -125,6 +126,58 @@ fn interaction_json(transcript: &Transcript, ruling: &Ruling) -> Value {
     ])
 }
 
+/// The published key order of `cpl stress --format json`.
+const ORDER: cpl_json::KeyOrder = cpl_json::KeyOrder(&[
+    (
+        "",
+        &[
+            "status",
+            "build",
+            "case_count",
+            "saved_count",
+            "tried",
+            "counterexample",
+            "error",
+        ],
+    ),
+    (
+        "counterexample",
+        &[
+            "case",
+            "seed",
+            "input",
+            "raw_input",
+            "expected",
+            "got",
+            "verdict",
+            "error",
+            "toolchain_bug",
+            "interaction",
+            "stages",
+            "saved",
+            "rerun",
+            "trace",
+            "explain",
+        ],
+    ),
+    (
+        "counterexample.interaction",
+        &["transcript", "truncated", "interactor"],
+    ),
+    ("counterexample.interaction.transcript", &["from", "line"]),
+    (
+        "counterexample.interaction.interactor",
+        &["verdict", "message"],
+    ),
+    ("counterexample.stages", &["name", "line", "fast", "brute"]),
+    (
+        "counterexample.explain.divergence",
+        &[
+            "name", "nth", "call", "stuck", "fast", "brute", "inside", "blame",
+        ],
+    ),
+]);
+
 /// A run that stopped before a verdict, in the same schema.
 pub fn error_json(error: &StressError) -> Value {
     obj([
@@ -135,7 +188,12 @@ pub fn error_json(error: &StressError) -> Value {
 
 /// [`error_json`] as one line.
 pub fn render_error(error: &StressError) -> String {
-    format!("{}\n", cpl_json::to_string(&error_json(error)))
+    render_json(&error_json(error))
+}
+
+/// A stress result's JSON as one line in its published key order.
+pub fn render_json(value: &Value) -> String {
+    format!("{}\n", cpl_json::to_string_ordered(value, &ORDER))
 }
 
 fn optional(text: Option<&str>) -> Value {
