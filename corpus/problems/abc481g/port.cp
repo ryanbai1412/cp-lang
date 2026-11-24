@@ -31,8 +31,9 @@ fn times_x(f: Poly<Z>, k: Int) -> Poly<Z> = Poly(List.filled(k, Z(0)) + f.c)
 
 var events: List<Event> = []
 for i in I:
-    events.push(Event(cakes[i].a, End.Low))
-    events.push(Event(cakes[i].b, End.High))
+    let (a, b) = cakes[i]
+    events.push(Event(min(a, b), End.Low))
+    events.push(Event(max(a, b), End.High))
 events.sort(by: e => (e.val, e.end))
 
 var gaps: List<Gap> = []
