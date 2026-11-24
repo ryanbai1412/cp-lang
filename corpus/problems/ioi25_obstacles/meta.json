@@ -7,11 +7,26 @@
   "dream": [
    "corpus/gold/ioi25_obstacles.cp",
    "corpus/problems/ioi25_obstacles/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/ioi25_obstacles/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/ioi25_obstacles/port.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "trees",
+  "binary-lifting",
+  "sparse-table"
+ ],
+ "difficulty": "hard",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the official model solution (ioi/task-archive 2025/day2/obstacles) with the official sample grader main, secret checks dropped; it matches all 76 official tests. The dream reads sample-grader stdin: a stateful @grader mod with domains sized by initialize does not compile yet.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 14,
+  "sha": "fa656d816c22f98da6ac4c299c0ba4cfc507dd36"
+ }
 }
