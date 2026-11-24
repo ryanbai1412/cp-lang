@@ -7,11 +7,11 @@
 //   n - 2m weakest die in a chain, each attacking the next, then each of the m strongest kills
 //   the elf m below it. For m == 0 the weak tail attacks the strongest from the top down:
 //   take the largest start s whose attacks sum to at least its health. O(n log n).
-// Bounds: n: 2..=200_000; m: 0..=200_000
+// Bounds: n: 2..=200_000; m: 0..=200_000; attack: 1..=10 ** 9
 @!multitest
 let (n, m): (2..=200_000, 0..=200_000) = read()
 domain Elf = 1..=n
-let attack: [Elf]Int = read()
+let attack: [Elf]1..=10 ** 9 = read()
 let ord = Elf.sort(by: e => attack[e])
 
 fn plan() -> ?List<(Elf, Elf)>:
