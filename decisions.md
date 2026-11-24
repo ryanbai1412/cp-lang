@@ -9039,3 +9039,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** noi05p1's port paired `Window(max)` with a second `Deque<(Int, Int)>` only to learn which value leaves, because `pop(x)` needs it. On its max input: port 165 ms, accepted C++ 72 ms. A keyed two-stack window removes the second deque (129 ms), walking each line with grid `ray` instead of building `List<List<Cell>>` per tilt removes about 50 ms (127 ms, the port as landed), and a monotone deque reaches 77 ms (1.07x). Keeping the key inside the window is what lets the deque version drop the value protocol.
 - **Lost.** `push` grows an optional parameter, one branch per push. A separate `MaxQueue` would have landed the fast path today, at the cost of a second name for Window's job.
 - **Reverse.** Drop `at:` and `expire`, and give the port back its second deque.
+
+## 576. (reserved, content)
