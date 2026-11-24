@@ -295,6 +295,12 @@ impl<'p> Emitter<'p> {
                         continue;
                     }
                     self.need_ty(field_ty);
+                    if self.lent_fields.is_lent(*id, field_idx) {
+                        let cpp = self.ty(field_ty);
+                        out.push_str(&format!("    const {cpp}* {name} = nullptr;\n"));
+                        names.push(format!("*{name}"));
+                        continue;
+                    }
                     let mut cpp = self.ty(field_ty);
                     let cells = self.rows.get(&(*id, field_idx));
                     if let (Some(k), Some(cell)) = (

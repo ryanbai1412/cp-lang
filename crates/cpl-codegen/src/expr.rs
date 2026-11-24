@@ -629,7 +629,9 @@ impl<'p> Emitter<'p> {
                             b.at(PRIMARY),
                             ident(&program.structs[*id].fields[*index].0),
                         );
-                        if self.rows.contains_key(&(*id, *index)) {
+                        if self.lent_fields.is_lent(*id, *index) {
+                            Code::primary(format!("(*{access})"))
+                        } else if self.rows.contains_key(&(*id, *index)) {
                             Code::primary(format!("{access}.vec()"))
                         } else if self.narrow_ints.contains_key(&(*id, *index)) {
                             Code::primary(self.narrow_field_load(*id, *index, &access))
@@ -665,6 +667,9 @@ impl<'p> Emitter<'p> {
                                         && self.devirt.skippable_value(item)
                                 }) {
                                     return "false".to_string();
+                                }
+                                if let Some(lent) = self.lent_item(struct_id, idx, item) {
+                                    return lent;
                                 }
                                 if let Some(sid) = struct_id {
                                     if let Some(&k) = self.rows.get(&(sid, idx)) {

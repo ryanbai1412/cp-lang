@@ -15,6 +15,7 @@ mod fuse;
 mod globals;
 mod inline;
 mod lend;
+mod lent_fields;
 mod lentopt;
 mod main_lend;
 mod names;

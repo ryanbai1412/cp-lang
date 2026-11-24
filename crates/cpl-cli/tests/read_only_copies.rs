@@ -15,7 +15,7 @@ mod corpus_programs;
 
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
-use cpp_counts::{deep_copies, optional_copies, std_functions};
+use cpp_counts::{deep_copies, is_place, optional_copies, std_functions, CONTAINERS};
 
 /// `std::optional<std::vector<..>> t = cpl::map_get(m, k)`: the entry
 /// copied out of the map to be read.
@@ -56,6 +56,89 @@ fn block_copies(cpp: &str) -> usize {
 /// be changed.
 fn entry_copies(cpp: &str) -> usize {
     cpp.lines().filter(|l| l.contains(">(cpl::map_or(")).count()
+}
+
+/// The items of an argument or parameter list at depth 0.
+fn items(list: &str) -> Vec<&str> {
+    let (mut out, mut depth, mut start) = (Vec::new(), 0i32, 0);
+    for (i, c) in list.char_indices() {
+        match c {
+            '(' | '<' | '[' | '{' => depth += 1,
+            ')' | '>' | ']' | '}' => depth -= 1,
+            ',' if depth == 0 => {
+                out.push(list[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if !list[start..].trim().is_empty() {
+        out.push(list[start..].trim());
+    }
+    out
+}
+
+/// `inline H wrap(std::vector<ll> xs) { return H{std::move(xs)}; }` called
+/// as `wrap(a)`: a fn takes a heap parameter by value to move it into the
+/// struct it returns, and a call hands it a named place, which is copied.
+/// A lent field points to its value instead (R05.4.4, R13.4).
+fn sunk_copies(cpp: &str) -> usize {
+    let lines: Vec<&str> = cpp.lines().collect();
+    let head = |l: &str| -> Option<(String, String)> {
+        let l = l.strip_prefix("inline ").unwrap_or(l).strip_suffix(") {")?;
+        let (sig, params) = l.split_once('(')?;
+        let name = sig.rsplit(' ').next()?;
+        let named = sig.contains(' ') && name.chars().all(|c| c.is_alphanumeric() || c == '_');
+        named.then(|| (name.to_string(), params.to_string()))
+    };
+    let mut sunk = Vec::new();
+    for (i, line) in lines.iter().enumerate() {
+        let Some((name, params)) = head(line) else {
+            continue;
+        };
+        let body = lines[i + 1..].iter().take_while(|l| **l != "}");
+        let returns: Vec<&str> = body
+            .map(|l| l.trim())
+            .filter(|l| l.starts_with("return ") && l.contains('{'))
+            .collect();
+        for (k, param) in items(&params).into_iter().enumerate() {
+            let Some((ty, p)) = param.rsplit_once(' ') else {
+                continue;
+            };
+            let by_value = !ty.ends_with('&') && !ty.starts_with("[[") && !ty.starts_with('F');
+            let heap = CONTAINERS.iter().any(|c| ty.starts_with(c))
+                || ty.starts_with(|c: char| c.is_ascii_uppercase());
+            let moved = format!("std::move({p})");
+            if by_value && heap && returns.iter().any(|r| r.contains(&moved)) {
+                sunk.push((name.clone(), k));
+            }
+        }
+    }
+    let mut count = 0;
+    for line in lines.iter().filter(|l| head(l).is_none()) {
+        for (name, k) in &sunk {
+            let call = format!("{name}(");
+            for (at, _) in line.match_indices(&call) {
+                let before = line[..at].chars().next_back();
+                if before.is_some_and(|c| c.is_alphanumeric() || c == '_') {
+                    continue;
+                }
+                let rest = &line[at + call.len()..];
+                let mut depth = 1;
+                let end = rest.char_indices().find(|&(_, c)| {
+                    depth += match c {
+                        '(' => 1,
+                        ')' => -1,
+                        _ => 0,
+                    };
+                    depth == 0
+                });
+                let args = end.map_or(Vec::new(), |(e, _)| items(&rest[..e]));
+                count += usize::from(args.get(*k).is_some_and(|a| is_place(a)));
+            }
+        }
+    }
+    count
 }
 
 /// Counts one pattern in generated C++.
@@ -110,7 +193,10 @@ const DIRECTIVES: [(&str, Count); 2] = [
 ];
 
 /// The most `std::function`s the corpus may build to, summed over programs.
-const TOTALS: [(&str, Count, usize); 1] = [("std_functions", std_functions, 83)];
+const TOTALS: [(&str, Count, usize); 2] = [
+    ("std_functions", std_functions, 83),
+    ("sunk_copies", sunk_copies, 16),
+];
 
 /// The value of the header line `// <key>: N` (0 without one), or why the
 /// header is malformed. The header is the file's leading `//` lines.
@@ -268,6 +354,16 @@ fn every_program_makes_the_copies_its_header_says() {
         .collect();
     wrong.extend(headers.iter().map(|l| l.to_string()));
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[test]
+fn a_place_passed_to_a_fn_that_moves_it_into_a_struct_is_a_sunk_copy() {
+    let cpp = "inline H wrap(std::vector<ll> xs) {\n  return H{std::move(xs)};\n}\nvoid solve() {\n  s = (*wrap(a).xs).size() + wrap(f(a)).xs.size() + wrap(std::move(a)).xs.size();\n}\n";
+    assert_eq!(sunk_copies(cpp), 1);
+    assert_eq!(
+        sunk_copies(&cpp.replace("std::vector<ll> xs", "const std::vector<ll>& xs")),
+        0
+    );
 }
 
 #[test]

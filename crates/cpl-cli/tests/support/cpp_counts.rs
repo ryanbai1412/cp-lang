@@ -124,7 +124,9 @@ pub fn deep_copies(cpp: &str) -> usize {
             let name = head.rsplit([' ', '&']).next().unwrap_or("");
             if !name.is_empty() && name.len() < head.len() {
                 held.insert(name.to_string());
-                let by_value = !head[..head.len() - name.len()].trim_end().ends_with('&');
+                let by_value = !head[..head.len() - name.len()]
+                    .trim_end()
+                    .ends_with(['&', '*']);
                 let rhs = decl[end..]
                     .strip_prefix('=')
                     .and_then(|r| r.strip_suffix(';'));

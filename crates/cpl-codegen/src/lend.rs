@@ -1196,9 +1196,38 @@ impl Emitter<'_> {
             || self.takes_sunk_param(block, k)
             || self.dies_here(&block.stmts[k]);
         self.taken_items = self.taken_items(&block.stmts[k], &block.stmts[k + 1..]);
+        if self.reads_held(&block.stmts[k]) {
+            self.moves_last = false;
+            self.taken_items.clear();
+        }
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
         self.taken_items.clear();
+    }
+
+    /// Whether `stmt` reads a variable a lent struct field may point to,
+    /// which must then never be moved from.
+    fn reads_held(&self, stmt: &Stmt) -> bool {
+        let (held, globals) = (&self.lent_fields.held, &self.lent_fields.held_globals);
+        if held.is_empty() && globals.is_empty() {
+            return false;
+        }
+        let scope = match (self.closure_id, self.fn_id) {
+            (Some(c), _) => cpl_ir::ScopeId::Closure(c),
+            (None, Some(f)) => cpl_ir::ScopeId::Fn(f),
+            (None, None) => cpl_ir::ScopeId::Main,
+        };
+        let mut reads = false;
+        let mut read = |e: &Expr| {
+            reads |= match e.kind {
+                ExprKind::Local(s) => held.contains(&(scope, s)),
+                ExprKind::Global(g) => globals.contains(&g),
+                _ => false,
+            };
+        };
+        walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, &mut read));
+        walk::stmt_blocks(stmt, &mut |b| walk::deep_exprs(b, &mut read));
+        reads
     }
 
     /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets

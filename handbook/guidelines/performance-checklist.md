@@ -112,9 +112,12 @@ it is copied only when the program needs an owned value, and moved when the
 source is overwritten before it is read again.
 Reason: a hidden copy turns O(n) into O(n²) with no sign in the source.
 Example: `let row = rows[i]` reads through a reference;
-`var cols = m.get(r) ?? []` then `cols.push(x)` copies.
-Enforced by: `crates/cpl-cli/tests/read_only_copies.rs` (`deep_copies`),
-`crates/cpl-codegen/src/copy_tests.rs`.
+`var cols = m.get(r) ?? []` then `cols.push(x)` copies. A struct field
+built from a lent parameter (`H(xs)` in a `lends` fn, `g.only(..)`) is a
+pointer to it, not a copy (R05.4.4, R13.4).
+Enforced by: `crates/cpl-cli/tests/read_only_copies.rs` (`deep_copies`,
+`sunk_copies`), `crates/cpl-codegen/src/copy_tests.rs`,
+`crates/cpl-codegen/src/tests/lend.rs`.
 
 **performance/R13.** An operation value or lambda whose callee is known
 statically is called directly, never through `std::function`.

@@ -123,6 +123,7 @@
   "ir_reinfer": 12,
   "cpp_deep_copies": 17,
   "cpp_std_functions": 83,
+  "cpp_sunk_copies": 16,
   "codegen_effect_guesses": 0,
   "near_dup_fns": 9,
   "consumer_rederived": 39,

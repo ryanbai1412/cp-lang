@@ -920,6 +920,10 @@ def cpp_std_functions(root: Path) -> list[str]:
     return _copy_baseline(root, "std_functions")
 
 
+def cpp_sunk_copies(root: Path) -> list[str]:
+    return _copy_baseline(root, "sunk_copies")
+
+
 _RUNS_CODE = re.compile(r"ExprKind::(Call|CallExpr)\(\.\.\)|ExprKind::Closure\(_\)")
 _EFFECTS_DIRECT = re.compile(r"cpl_ir::effects|walk::Effects\b|walk::\{[^}]*\bEffects\b")
 _PURITY_FN = re.compile(r"\bfn ([a-z_]*_)?(pure|impure|trap_free|effects?|writes_(nothing|own)|may_touch|"
@@ -2105,6 +2109,7 @@ COUNTERS = {
     "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
                             cpp_optional_copies, True),
     "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
+    "cpp_sunk_copies": ("places copied into a by-value param a fn moves into its struct (read_only_copies)", cpp_sunk_copies, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, True),

@@ -20,7 +20,11 @@ impl<'p> Emitter<'p> {
                 let b = self.place_at(base, false);
                 match &base.ty {
                     Ty::Struct(id) => {
-                        format!("{b}.{}", ident(&self.program.structs[*id].fields[*index].0))
+                        let field = ident(&self.program.structs[*id].fields[*index].0);
+                        match self.lent_fields.is_lent(*id, *index) {
+                            true => format!("(*{b}.{field})"),
+                            false => format!("{b}.{field}"),
+                        }
                     }
                     _ => format!("std::get<{index}>({b})"),
                 }

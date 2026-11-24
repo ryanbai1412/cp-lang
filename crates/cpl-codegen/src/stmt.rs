@@ -700,6 +700,9 @@ impl<'p> Emitter<'p> {
                                         }) {
                                             return "false".to_string();
                                         }
+                                        if let Some(lent) = self.lent_item(struct_id, idx, item) {
+                                            return lent;
+                                        }
                                         if let Some(sid) = struct_id {
                                             if let Some(&k) = self.rows.get(&(sid, idx)) {
                                                 let cell = self

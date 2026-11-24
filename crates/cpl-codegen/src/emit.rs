@@ -157,6 +157,8 @@ pub(crate) struct Emitter<'p> {
     pub sunk: Vec<BTreeSet<usize>>,
     /// Per fn, the `?T` slots held as a `cpl::Lent`: see [`crate::lentopt::lent_opts`].
     pub lent_opts: Vec<BTreeSet<usize>>,
+    /// Struct fields that point to a lent value: see [`crate::lent_fields`].
+    pub lent_fields: crate::lent_fields::LentFields,
     /// Set while the call a `return` makes is written: its local arguments
     /// are at their last use.
     pub last_use_call: bool,
@@ -250,6 +252,13 @@ impl<'p> Emitter<'p> {
         let rows = crate::scope::rows(program, &facts);
         let narrow_elems = crate::scope::narrow_elems(program, &rows);
         let fixed_arrays = crate::scope::fixed_arrays(program, &narrow_elems);
+        let lent_fields = crate::lent_fields::lent_fields(program, &|s, i| {
+            rows.contains_key(&(s, i)) || narrow_elems.contains_key(&cpl_ir::ElemLoc::Field(s, i))
+        });
+        let mut sunk = crate::scope::sunk_params(program);
+        for &(f, p) in &lent_fields.by_ref {
+            sunk[f].remove(&p);
+        }
         let mut emitter = Emitter {
             program,
             facts,
@@ -293,8 +302,9 @@ impl<'p> Emitter<'p> {
             narrow_elems,
             fixed_arrays,
             rows,
-            sunk: crate::scope::sunk_params(program),
+            sunk,
             lent_opts: crate::lentopt::lent_opts(program),
+            lent_fields,
             last_use_call: false,
             give_ref: false,
             read_in_place: BTreeSet::new(),
@@ -607,6 +617,8 @@ impl<'p> Emitter<'p> {
                     format!("[[maybe_unused]] {by} {name}")
                 } else if param.mutable {
                     format!("{cpp}& {name}")
+                } else if self.lent_fields.by_ref.contains(&(id, slot)) {
+                    format!("const {cpp}& {name}")
                 } else if ty.is_scalar()
                     || self.facts.stores((Some(id), false, slot)) > 2
                     || self.sunk[id].contains(&slot)

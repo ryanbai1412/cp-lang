@@ -730,3 +730,36 @@ fn a_match_binding_of_a_read_string_lends_the_scrutinee() {
         "a name bound to a scrutinee it only reads must not copy it:\n{out}"
     );
 }
+
+#[test]
+fn a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it() {
+    // R05.4.4 / R13.4: `H(xs)` in a `lends` fn lends `xs` to the struct.
+    let lent = cpp(concat!(
+        "struct H: xs: List<Int>\n",
+        "fn wrap(xs: List<Int>) -> lends H = H(xs)\n",
+        "let a = [i for i in 0..read()]\n",
+        "var s = 0\n",
+        "for _ in 0..3: s += wrap(a).xs.len\n",
+        "print(s, a.len)\n",
+    ));
+    assert!(
+        lent.contains("const std::vector<ll>* xs = nullptr;"),
+        "the lent field is a pointer: {lent}"
+    );
+    assert!(
+        lent.contains("H wrap(const std::vector<ll>& xs) {") && lent.contains("return H{&xs};"),
+        "the param is taken by reference, not copied in: {lent}"
+    );
+    assert!(lent.contains("(*::prog::wrap(a).xs).size()"), "{lent}");
+    // A literal of a local owns it, and so does every value of that struct;
+    // so does one a temporary feeds, which the C++ would destroy first.
+    for owned in [
+        "fn own(n: Int) -> H = H([i for i in 0..n])\nlet w = wrap([1])\nprint(own(2).xs.len, w.xs.len)\n",
+        "let h = wrap([i for i in 0..read()])\nprint(h.xs.len)\n",
+        "var hs: List<H> = []\nlet a = [1, 2]\nhs.push(wrap(a))\nprint(hs[0].xs.len)\n",
+    ] {
+        let src = format!("struct H: xs: List<Int>\nfn wrap(xs: List<Int>) -> lends H = H(xs)\n{owned}");
+        let out = cpp(&src);
+        assert!(out.contains("  std::vector<ll> xs;"), "{src}\n{out}");
+    }
+}

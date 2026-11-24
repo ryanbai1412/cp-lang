@@ -166,7 +166,13 @@ impl<'p> Emitter<'p> {
                         .iter()
                         .enumerate()
                         .filter(|(i, _)| !def.cached_fields.contains(i))
-                        .map(|(_, (name, t))| (Code::primary(format!("v.{}", ident(name))), t))
+                        .map(|(i, (name, t))| {
+                            let field = match self.lent_fields.is_lent(*id, i) {
+                                true => format!("(*v.{})", ident(name)),
+                                false => format!("v.{}", ident(name)),
+                            };
+                            (Code::primary(field), t)
+                        })
                         .collect();
                     b.push_str(&fields(self, items, "    "));
                 }
