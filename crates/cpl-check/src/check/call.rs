@@ -967,6 +967,8 @@ impl<'a> Checker<'a> {
             },
             _ => None,
         });
+        // `a.reverse()` on a `LinkedList`: a type's own fn, not the built-in row of the name.
+        let seq_elem = seq_elem.filter(|_| !self.declares_member(&base_ty, &name.text));
         if let Some(elem) = seq_elem {
             match name.text.as_str() {
                 "map" => {
