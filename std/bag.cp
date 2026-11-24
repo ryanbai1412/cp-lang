@@ -911,81 +911,63 @@ pub struct SortedBag<K>:
             nodes.push(BagNode(x, c, c, p, -1, -1, -1))
             return nodes.len - 1
 
+    // The child of `u` on the right when `right`, else on the left: one body walks either side.
+    fn kid(self, u: Int, right: Bool) -> Int:
+        unchecked: return if right: nodes[u].right else: nodes[u].left
+
+    fn set_kid(mut self, u: Int, right: Bool, v: Int):
+        unchecked:
+            if right: nodes[u].right = v else: nodes[u].left = v
+
     fn insert_at(mut self, u: Int, x: K, c: Int, unique: Bool) -> (Int, Bool):
         if u < 0:
             return (self.make_node(x, c), true)
         unchecked:
-            if x < nodes[u].key:
-                let old_l = nodes[u].left
-                let (nl, added) = self.insert_at(old_l, x, c, unique)
-                if not added: return (u, false)
-                if nl != old_l:
-                    nodes[u].left = nl
-                    if nodes[nl].pri > nodes[u].pri:
-                        let lr = nodes[nl].right
-                        nodes[u].left = lr
-                        nodes[nl].right = u
-                        self.pull(u)
-                        self.pull(nl)
-                        return (nl, true)
-                    nodes[nl].par = u
-                nodes[u].sub += c
-                return (u, true)
-            elif nodes[u].key < x:
-                let old_r = nodes[u].right
-                let (nr, added) = self.insert_at(old_r, x, c, unique)
-                if not added: return (u, false)
-                if nr != old_r:
-                    nodes[u].right = nr
-                    if nodes[nr].pri > nodes[u].pri:
-                        let rl = nodes[nr].left
-                        nodes[u].right = rl
-                        nodes[nr].left = u
-                        self.pull(u)
-                        self.pull(nr)
-                        return (nr, true)
-                    nodes[nr].par = u
-                nodes[u].sub += c
-                return (u, true)
-            else:
+            let right = nodes[u].key < x
+            if not right and not (x < nodes[u].key):
                 if unique: return (u, false)
                 nodes[u].cnt += c
                 nodes[u].sub += c
                 return (u, true)
+            let old = self.kid(u, right)
+            let (v, added) = self.insert_at(old, x, c, unique)
+            if not added: return (u, false)
+            if v != old:
+                self.set_kid(u, right, v)
+                if nodes[v].pri > nodes[u].pri:
+                    self.set_kid(u, right, self.kid(v, not right))
+                    self.set_kid(v, not right, u)
+                    self.pull(u)
+                    self.pull(v)
+                    return (v, true)
+                nodes[v].par = u
+            nodes[u].sub += c
+            return (u, true)
 
     fn erase_at(mut self, u: Int, x: K, all: Bool) -> (Int, Int):
         if u < 0: return (-1, 0)
         unchecked:
-            if x < nodes[u].key:
-                let old_l = nodes[u].left
-                let (nl, rem) = self.erase_at(old_l, x, all)
+            let right = nodes[u].key < x
+            if right or x < nodes[u].key:
+                let old = self.kid(u, right)
+                let (v, rem) = self.erase_at(old, x, all)
                 if rem == 0: return (u, 0)
-                if nl != old_l:
-                    nodes[u].left = nl
-                    if nl >= 0: nodes[nl].par = u
+                if v != old:
+                    self.set_kid(u, right, v)
+                    if v >= 0: nodes[v].par = u
                 nodes[u].sub -= rem
                 return (u, rem)
-            elif nodes[u].key < x:
-                let old_r = nodes[u].right
-                let (nr, rem) = self.erase_at(old_r, x, all)
-                if rem == 0: return (u, 0)
-                if nr != old_r:
-                    nodes[u].right = nr
-                    if nr >= 0: nodes[nr].par = u
-                nodes[u].sub -= rem
-                return (u, rem)
-            else:
-                if not all and nodes[u].cnt > 1:
-                    nodes[u].cnt -= 1
-                    nodes[u].sub -= 1
-                    return (u, 1)
-                let rem = nodes[u].cnt
-                let l = nodes[u].left
-                let r = nodes[u].right
-                live -= 1
-                free.push(u)
-                let m = self.merge(l, r)
-                return (m, rem)
+            if not all and nodes[u].cnt > 1:
+                nodes[u].cnt -= 1
+                nodes[u].sub -= 1
+                return (u, 1)
+            let rem = nodes[u].cnt
+            let l = nodes[u].left
+            let r = nodes[u].right
+            live -= 1
+            free.push(u)
+            let m = self.merge(l, r)
+            return (m, rem)
 
     fn merge(mut self, a: Int, b: Int) -> Int:
         if a < 0: return b
