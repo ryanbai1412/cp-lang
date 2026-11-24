@@ -177,8 +177,8 @@ platform's own LSP client; IntelliJ IDEA Community and PyCharm Community lack
 it, so there the plugin runs it through the LSP4IJ plugin, which `cpl setup
 jetbrains` installs beside it. `cpl setup jetbrains --check`, after a restart,
 reads the IDE's log and fails unless CP Lang loaded. `./gradlew verifyPlugin`
-checks the plugin against IDEA Community and Ultimate. Set the path to
-`cpl` under Settings, Tools, CP Lang when it is not on the `PATH`. A `.cp`
+checks the plugin against IDEA Community and Ultimate. Set `path` (cpl
+executable) under Settings, Tools, CP Lang when `cpl` is not on the `PATH`. A `.cp`
 file gets the server's Run, Trace, Test and Stress lenses (LSP4IJ runs each
 in the Run window: `cpl test` fills the test tree, `cpl stress` marks the
 first wrong call on its line), and CP Lang: Show Trace
@@ -212,6 +212,7 @@ hx --grammar build
 tree-sitter grammar, and `cpl lsp` as its server. In Zed, run
 `zed: install dev extension` and pick `editors/zed` (it needs Rust with the
 `wasm32-wasip1` target). It starts `cpl` from the PATH; to use another, set
+`lsp.cpl.binary.path` (and `lsp.cpl.binary.arguments`) in Zed's settings:
 
 ```json
 { "lsp": { "cpl": { "binary": { "path": "/path/to/cpl", "arguments": ["lsp"] } } } }
