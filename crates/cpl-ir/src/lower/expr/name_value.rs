@@ -229,7 +229,9 @@ impl<'a> Lowerer<'a> {
             _ if name == "todo" => {
                 let at = self.span(span);
                 let stmts = vec![Stmt::Trap("`todo` reached".into(), at)];
-                return self.mk(ExprKind::Do(Block { stmts }), Ty::Error, span);
+                // It never gives a value, so it is whatever its place wants.
+                let ty = hint.cloned().unwrap_or(Ty::Error);
+                return self.mk(ExprKind::Do(Block { stmts }), ty, span);
             }
             _ => {
                 if let Some((id, tag)) = self.expected_variant(name, hint) {

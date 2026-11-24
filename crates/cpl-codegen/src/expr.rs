@@ -1110,6 +1110,15 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Do(block) => {
+                // `todo`: a call that never returns fits any type, no lambda.
+                if let [Stmt::Trap(message, _)] = block.stmts.as_slice() {
+                    self.need("fail");
+                    let why = string_literal(message.as_bytes());
+                    return Code::primary(match e.ty {
+                        Ty::Error | Ty::Unit => format!("cpl::fail({why})"),
+                        _ => format!("cpl::never<{}>({why})", self.ty(&e.ty)),
+                    });
+                }
                 if let Some(([], place, key_val)) = map_remove_do(e) {
                     self.need("map_take");
                     let p = self.place(place);
