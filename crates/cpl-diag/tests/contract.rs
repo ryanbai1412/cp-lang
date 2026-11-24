@@ -3,7 +3,7 @@
 //! page links, fix application, and the rendered gutter and summary.
 //! Rule: `errors/R12`, handbook/guidelines/errors-checklist.md#r12-every-tool-shows-the-same-diagnostic.
 
-use cpl_diag::{apply_fixes, json, registry::page, render_all, Code, Diagnostic, LineIndex, Span};
+use cpl_diag::{json, registry::page, render_all, splice_fixes, Code, Diagnostic, LineIndex, Span};
 
 fn field<'a>(v: &'a cpl_json::Value, key: &str) -> &'a cpl_json::Value {
     match v {
@@ -72,7 +72,7 @@ fn fixed(src: &str, fixes: &[(u32, u32, &str)]) -> (String, usize) {
             d
         })
         .collect();
-    apply_fixes(src, &diags)
+    splice_fixes(src, &diags)
 }
 
 #[test]

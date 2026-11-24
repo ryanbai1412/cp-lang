@@ -328,7 +328,7 @@ fn a_counting_loop_over_one_sequence_is_its_count_method() {
         d.help
     );
     assert!(d.labels.is_empty(), "{:?}", d.labels);
-    assert!(crate::apply_fixes(src, &[d])
+    assert!(cpl_diag::splice_fixes(src, &[d])
         .0
         .contains("big = a.count(x => x > 10)\nprint"));
 }
@@ -357,7 +357,7 @@ fn a_counting_loop_over_a_map_keeps_the_generator() {
         "{:?}",
         d.help
     );
-    assert!(crate::apply_fixes(src, &[d])
+    assert!(cpl_diag::splice_fixes(src, &[d])
         .0
         .contains("big = count(kv.0 > 10 for kv in m)\nprint"));
 }

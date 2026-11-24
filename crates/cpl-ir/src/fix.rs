@@ -46,7 +46,7 @@ fn choose<'d>(
             fixes: vec![fix.clone()],
             ..diag.clone()
         };
-        let (fixed, _) = cpl_diag::apply_fixes(text, std::slice::from_ref(&alone));
+        let (fixed, _) = cpl_diag::splice_fixes(text, std::slice::from_ref(&alone));
         let errors = errors_in(db, path, &fixed);
         if errors.is_empty() {
             return Some(fix);
@@ -131,7 +131,7 @@ pub fn apply_error_fixes_in(
                 error.fixes.clear();
             }
         }
-        let (mut next, mut n) = cpl_diag::apply_fixes(&text, &errors);
+        let (mut next, mut n) = cpl_diag::splice_fixes(&text, &errors);
         if n > 0 && !syntax_round && adds_a_kind(&errors, &errors_in(db, path, &next)) {
             // Some fix traded its error for another kind; keep the rest.
             for error in errors.iter_mut().filter(|e| !e.fixes.is_empty()) {
@@ -139,13 +139,13 @@ pub fn apply_error_fixes_in(
                     fixes: error.fixes[..1].to_vec(),
                     ..error.clone()
                 };
-                let (fixed, _) = cpl_diag::apply_fixes(&text, std::slice::from_ref(&alone));
+                let (fixed, _) = cpl_diag::splice_fixes(&text, std::slice::from_ref(&alone));
                 if budget == 0 || adds_a_kind(&[alone], &errors_in(db, path, &fixed)) {
                     error.fixes.clear();
                 }
                 budget = budget.saturating_sub(1);
             }
-            (next, n) = cpl_diag::apply_fixes(&text, &errors);
+            (next, n) = cpl_diag::splice_fixes(&text, &errors);
         }
         if n == 0 || next == text {
             return (text, applied, errors);

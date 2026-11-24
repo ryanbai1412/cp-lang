@@ -253,7 +253,7 @@ fn a_lazy_view_read_on_every_pass_warns_with_a_copy_fix() {
             panic!("{src}{lints:?}");
         };
         assert!(d.message.contains("each read reruns `"), "{d:?}");
-        let (fixed, n) = crate::apply_fixes(src, std::slice::from_ref(d));
+        let (fixed, n) = cpl_diag::splice_fixes(src, std::slice::from_ref(d));
         assert!(n == 1 && fixed.contains("= List("), "{fixed}");
         let after = checker_lints(None, &fixed, &Config::default());
         assert!(

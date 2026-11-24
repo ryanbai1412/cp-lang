@@ -2019,15 +2019,16 @@ def habit_matchers(root: Path) -> list[str]:
     return found
 
 
-FIX_GATE = ("crates/cpl-ir/src/fix.rs", "crates/cpl-lint/src/typed.rs")
+FIX_GATE = ("crates/cpl-ir/src/fix.rs", "crates/cpl-lint/src/fix.rs")
 
 
 def unchecked_fix_paths(root: Path) -> list[str]:
-    """Raw fix appliers called outside the one re-checking gate, and the ungated
-    `fn apply_` definitions in cpl-diag/src/fix.rs."""
+    """Fix appliers called outside the one re-checking gate (FIX_GATE: `cpl fix`'s
+    checked rounds), the raw `splice_fixes` included, and any `fn apply_`
+    definition in cpl-diag/src/fix.rs, where only the unchecked text step lives."""
     calls = [f"{rel}:{i}" for rel, i, line in _src_lines(root)
              if rel not in FIX_GATE and rel != "crates/cpl-diag/src/fix.rs"
-             and re.search(r"\b(apply_fixes|apply_error_fixes|apply_lint_fixes)\(", line)
+             and re.search(r"\b(apply_fixes|splice_fixes|apply_error_fixes|apply_lint_fixes)\(", line)
              and not re.search(r"\bfn\s", line)]
     defs = [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-diag/src")
             if rel == "crates/cpl-diag/src/fix.rs" and re.search(r"\bfn apply_", line)]
@@ -2707,7 +2708,7 @@ HARD_ZERO = frozenset({
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
-    "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
+    "pending_tests", "unchecked_fix_paths", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
     "measure_broken", "mono_unguarded", "ts_ignore",

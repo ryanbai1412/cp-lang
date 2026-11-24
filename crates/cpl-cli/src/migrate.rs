@@ -33,20 +33,24 @@ fn is_migration(d: &cpl_diag::Diagnostic) -> bool {
 /// left that have no fix.
 fn migrate_text(path: &str, text: &str) -> (String, usize, Vec<cpl_diag::Diagnostic>) {
     let mut db = cpl_check::Session::new();
-    let mut text = text.to_string();
-    let mut applied = 0;
-    for _ in 0..8 {
-        let mut found = errors_in(&mut db, path, &text);
-        found.retain(is_migration);
-        let (next, n) = cpl_lint::apply_fixes(&text, &found);
-        if n == 0 || next == text {
-            break;
-        }
-        applied += n;
-        text = next;
-    }
-    let mut left = errors_in(&mut db, path, &text);
-    left.retain(is_migration);
+    migrate_with(text, &mut |text| errors_in(&mut db, path, text))
+}
+
+/// [`migrate_text`] with `errors` as the check: `cpl fix`'s checked rounds,
+/// so a migration that adds an error or leaves its own is not applied.
+fn migrate_with(
+    text: &str,
+    errors: &mut dyn FnMut(&str) -> Vec<cpl_diag::Diagnostic>,
+) -> (String, usize, Vec<cpl_diag::Diagnostic>) {
+    let mut report = |text: &str| {
+        let all = errors(text);
+        (
+            all.iter().filter(|d| is_migration(d)).cloned().collect(),
+            all,
+        )
+    };
+    let (text, applied) = cpl_lint::fix_rounds(text, &mut report);
+    let (left, _) = report(&text);
     (text, applied, left)
 }
 
@@ -225,6 +229,26 @@ mod tests {
             ("for mut i in 0..3:\n    print(i)\n", 0)
         );
         assert_eq!(left.len(), 1);
+    }
+
+    #[test]
+    fn a_migration_that_adds_an_error_is_refused() {
+        let old = "if true:\n    print(1)\nelse if false:\n    print(2)\n";
+        let mut db = cpl_check::Session::new();
+        let mut errors = |text: &str| {
+            let mut found = errors_in(&mut db, "a.cp", text);
+            if text.contains("elif") {
+                let at = cpl_diag::Span::new(0, 2);
+                found.push(cpl_diag::Diagnostic::error(
+                    cpl_diag::Code("E0201"),
+                    at,
+                    "probe",
+                ));
+            }
+            found
+        };
+        let (same, applied, left) = migrate_with(old, &mut errors);
+        assert_eq!((same.as_str(), applied, left.len()), (old, 0, 1));
     }
 
     #[test]

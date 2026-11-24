@@ -18,7 +18,8 @@ fn a_fix_outside_the_source_is_skipped() {
     let past_the_end = replacing(4, 99, "x");
     let inside_a_char = replacing(5, 6, "x");
     let good = replacing(0, 3, "var");
-    let (out, applied) = apply_fixes(src, &[reversed, past_the_end, inside_a_char, good]);
+    let (out, applied) =
+        cpl_diag::splice_fixes(src, &[reversed, past_the_end, inside_a_char, good]);
     assert_eq!((out.as_str(), applied), ("var é = 1\n", 1));
 }
 
@@ -78,28 +79,48 @@ fn a_witness_names_only_a_plain_input() {
     }
 }
 
+/// `findings`' checked fixes on `text`, the checker's verdict from `check`;
+/// a finding fires until the text changes, unless `still_fires`.
+fn checked(
+    text: &str,
+    findings: &[Diagnostic],
+    check: &Errors,
+    still_fires: bool,
+) -> (String, usize) {
+    let mut db = cpl_check::Session::new();
+    let mut report = |t: &str| {
+        db.set_file("<t>.cp", t);
+        let errors = check(&db.analyze("<t>.cp").expect("the file was just set"));
+        let fires = still_fires || t == text;
+        (if fires { findings.to_vec() } else { Vec::new() }, errors)
+    };
+    let before = report(text);
+    checked_fixes(text, &before, &mut report)
+}
+
+fn finding(start: u32, end: u32, to: &str) -> Diagnostic {
+    let span = Span { start, end };
+    Diagnostic::warning(crate::LOOP_REDUCTION.code, span, "test").with_fix("fix", span, to)
+}
+
 #[test]
 fn a_fix_that_would_add_a_checker_error_is_not_applied() {
-    use cpl_diag::{Diagnostic, Span};
     let text = "let x = 1\nprint(x)\n";
-    let at = |start, end| Span { start, end };
-    let finding = |span, to: &str| {
-        Diagnostic::warning(crate::LOOP_REDUCTION.code, span, "test").with_fix("fix", span, to)
-    };
-    let good = finding(at(8, 9), "2");
-    let bad = finding(at(16, 17), "y");
-    let mut db = cpl_check::Session::new();
-    let (out, n) = crate::typed::safe_fixes(
-        &mut db,
-        "<t>.cp",
-        text,
-        &[bad.clone(), good.clone()],
-        &[],
-        &cpl_ir::check,
+    let (good, bad) = (finding(8, 9, "2"), finding(16, 17, "y"));
+    let both = [bad.clone(), good];
+    let out = checked(text, &both, &cpl_ir::check, false);
+    assert_eq!(out, ("let x = 2\nprint(x)\n".to_string(), 1));
+    assert_eq!(
+        checked(text, &[bad], &cpl_ir::check, false),
+        (text.to_string(), 0)
     );
-    assert_eq!((out.as_str(), n), ("let x = 2\nprint(x)\n", 1));
-    let (out, n) = crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad], &[], &cpl_ir::check);
-    assert_eq!((out.as_str(), n), (text, 0));
+}
+
+#[test]
+fn a_fix_after_which_its_finding_still_fires_is_not_applied() {
+    let text = "let x = 1\nprint(x)\n";
+    let out = checked(text, &[finding(8, 9, "2")], &cpl_ir::check, true);
+    assert_eq!(out, (text.to_string(), 0));
 }
 
 #[test]
@@ -108,8 +129,6 @@ fn a_fix_that_lowering_rejects_is_not_applied() {
     // rejected. The fix gate asks the complete check it is given.
     let text = "let x = 1\nprint(x)\n";
     let span = Span { start: 8, end: 9 };
-    let finding =
-        Diagnostic::warning(crate::LOOP_REDUCTION.code, span, "test").with_fix("fix", span, "2");
     let lowering_rejects_2 = move |a: &cpl_check::Analysis| {
         let mut out = a.diagnostics.clone();
         if a.text.contains("= 2") {
@@ -117,12 +136,11 @@ fn a_fix_that_lowering_rejects_is_not_applied() {
         }
         out
     };
-    let mut db = cpl_check::Session::new();
-    let findings = [finding];
-    let (out, n) =
-        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &findings, &[], &lowering_rejects_2);
-    assert_eq!((out.as_str(), n), (text, 0));
-    let (out, n) =
-        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &findings, &[], &cpl_ir::check);
-    assert_eq!((out.as_str(), n), ("let x = 2\nprint(x)\n", 1));
+    let findings = [finding(8, 9, "2")];
+    assert_eq!(
+        checked(text, &findings, &lowering_rejects_2, false),
+        (text.to_string(), 0)
+    );
+    let out = checked(text, &findings, &cpl_ir::check, false);
+    assert_eq!(out, ("let x = 2\nprint(x)\n".to_string(), 1));
 }

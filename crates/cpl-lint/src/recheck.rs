@@ -50,18 +50,8 @@ pub(crate) fn keep_if_unchanged(
         return;
     }
     let before = check(src);
-    let same = |check: &mut dyn FnMut(&str) -> Vec<(String, String)>, ds: &[Diagnostic]| {
-        check(&crate::apply_fixes(src, ds).0) == before
-    };
-    if same(&mut check, &found) {
-        return;
-    }
-    let wrong: Vec<_> = found
-        .iter()
-        .filter(|d| !same(&mut check, std::slice::from_ref(d)))
-        .map(|d| d.span)
-        .collect();
-    diags.retain(|d| !(rechecked(d) && wrong.contains(&d.span)));
+    let kept = crate::fix::accepted(src, &found, &mut |text, _| check(text) == before);
+    diags.retain(|d| !rechecked(d) || kept.iter().any(|k| k.span == d.span));
 }
 
 #[cfg(test)]
