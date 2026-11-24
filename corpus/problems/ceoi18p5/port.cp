@@ -1,4 +1,5 @@
 // Source: CEOI 2018 Toys, https://dmoj.ca/problem/ceoi18p5
+// limits: 2500 ms, 256 MB
 // Problem: a collection with c_i identical toys of each type i has n = prod (c_i + 1) different
 //   sub-collections (the empty one included). Given n <= 1e9, print how many totals sum c_i are
 //   possible, then all of them in increasing order.
@@ -10,34 +11,15 @@
 // original: corpus/submissions/5323876.cpp
 // Bounds: n: 1..=1e9
 let n: 1..=1e9 = read()
-
-// std.math.divisors, inlined: the prototype compiler cannot import it yet.
-fn divisors(x: Int) -> List<Int>:
-    var small: List<Int> = []
-    var large: List<Int> = []
-    var d = 1
-    while d * d <= x:
-        if x % d == 0:
-            small.push(d)
-            if d * d != x: large.push(x / d)
-        d += 1
-    for q in large.rev: small.push(q)
-    small
-
-fn scores(n: Int) -> List<Int>:
-    let divs = divisors(n)
-    var found = Set<Int>()
-    // `rest` is still to be split into factors >= divs[from]; `score` so far.
-    fn split(rest: Int, from: Int, score: Int):
-        found.insert(score + rest - 1)  // keep `rest` as the last factor
-        for k in from..divs.len:
-            let d = divs[k]
-            if d * d > rest: break
-            if rest % d == 0: split(rest / d, k, score + d - 1)
-    if n == 1: found.insert(0)
-    else: split(n, 1, 0)
-    [s for s in found]
-
-let all = scores(n)
-print(all.len)
-print(all)
+let divs = divisors(n)
+var found = Set<Int>()
+// `rest` is still to be split into factors >= divs[from]; `score` so far.
+fn split(rest: Int, from: Int, score: Int):
+    found.insert(score + rest - 1)
+    for k in from..divs.len:
+        let d = divs[k]
+        if d * d > rest: break
+        if rest % d == 0: split(rest / d, k, score + d - 1)
+split(n, 1, 0)
+print(found.len)
+print(found)
