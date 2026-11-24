@@ -26,6 +26,17 @@ ROOT = Path(__file__).resolve().parent.parent
 COPY = re.compile(r"=\s*(?:std::vector<[^;]*?>|std::string)\(\w+\);|cpl::to_list\(")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+SCALARS = ("int", "ll", "bool", "double", "char", "auto", "unsigned", "__int128", "cpl::OptPos")
+
+
+def scalar_decl(line):
+    """The name a scalar local declares (`int f = 0;`, `for (int f = lo; ..`),
+    which a lambda then captures as a scalar, not a container named `f` further out."""
+    ty, _, rest = line.removeprefix("for (").partition(" ")
+    if ty not in SCALARS:
+        return None
+    name = re.split(r"[ =;]", rest)[0]
+    return name if name and re.fullmatch(r"\w+", name) else None
 
 
 def is_place(text):
@@ -40,6 +51,8 @@ def deep_copies(cpp):
     for line in cpp.splitlines():
         line = line.strip()
         decl = line.removeprefix("const ")
+        if (scalar := scalar_decl(decl)) is not None:
+            held.discard(scalar)
         if decl.startswith(CONTAINERS):
             depth, end = 0, len(decl)
             for i, c in enumerate(decl):

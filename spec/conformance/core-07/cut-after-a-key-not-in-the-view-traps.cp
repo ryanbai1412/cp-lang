@@ -1,4 +1,4 @@
-// expect: R0101 at 10
+// expect: R0101 at 7
 // input: "4"
 // rule: 07.4.14
 // `w.cut_after(i)` needs `i` to be a key of `w`: a key of the parent outside the slice has no cut in `w`'s walk.
