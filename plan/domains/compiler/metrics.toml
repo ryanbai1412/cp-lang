@@ -4,21 +4,21 @@
 [[metric]]
 name = "conformance pass"
 command = "./target/release/cpl-conform conformance"
-today = "2604/2777 (fbdca4be1)"
+today = "3155/3202 (da2962ade)"
 target = "100% of the full suite"
 milestone = "M1"
 
 [[metric]]
 name = "interpreter == C++"
 command = "./target/release/cpl-conform diff"
-today = "2053/2192 pass, 138 skip, 1 error (fbdca4be1)"
+today = "2624/2657 pass, 29 skip, 3 error, 1 cxx_err, 0 mismatch (da2962ade)"
 target = "all pass, 0 skip, 0 fail"
 milestone = "M1"
 
 [[metric]]
 name = "distinct conformance failure causes"
 command = "./target/release/cpl-conform conformance --causes | grep 'causes ('"
-today = "97 (fbdca4be1)"
+today = "33 (da2962ade)"
 target = "0"
 milestone = "M1"
 
