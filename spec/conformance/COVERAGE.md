@@ -7,12 +7,12 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3409 (3312 passing). Rules: 615.
+Cases: 3410 (3312 passing). Rules: 615.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 184 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 159 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 195 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -152,7 +152,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.4.3 [1+ 0-]: When `T` has a spare value (a niche), `?T` takes no more bytes than `T` (chapter 3). Other...
 - R02.4.4 [1+ 2-]: **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`, `None` if either side i...
 - R02.4.5 [2+ 2-]: **Ordering does not lift**: `?T` is not `Ord`, so `dp[j] + c < best` with an optional left...
-- R02.4.6 [3+ 0-]: `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None` target takes the ri...
+- R02.4.6 [4+ 0-]: `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None` target takes the ri...
 - R02.4.7 [2+ 4-]: **Postfix `x?`** propagates where operators don't reach: `a[x?]`, `f(x?)`, `x?.len`, `(dp[...
 - R02.4.8 [2+ 1-]: . `.all_some()` is the non-trapping form.
 - R02.4.9 [1+ 1-]: , so an optional walked as zero or one element would print a value or nothing. To use one ...
