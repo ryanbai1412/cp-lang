@@ -8736,7 +8736,11 @@ from `just next-decision`.
 - **Why.** Decision 349 fixed `pre[k]` to mean the cut, but the reader of `pre[i]` still has to know that rule to tell "through `i`" from "before `i`", the exact coin flip 349 removed for domains. A named count costs five characters and reads the same on every key type.
 - **Reverse.** Accept an `Int` index into a cut table as the cut again (decision 349), keeping `cut(k)` as a method.
 
-## 508. (reserved, content)
+## 508. A negative literal key is E0321; the last element is `a.last!` (spec, 2026-11-24)
+
+- **Call.** `a[-1]`, any index whose key is a negative integer literal, is E0321 with the fix `a.last!`; `a[-k]` suggests `a[a.len - k]`. Keys never wrap: a computed negative key traps R0101 as today (R07.2.17). Ryan's call (debt cleanup, call 3).
+- **Why.** A Python habit typed into a contest program checks fine and traps at run time, or, before R0101 named the index, read out of bounds in the C++. The literal is visible to the checker, so the mistake costs nothing to catch where it is written, and `last!` already says "this list is not empty".
+- **Reverse.** Drop E0321; a negative literal key traps R0101 at run time like a computed one.
 
 ## 509. (reserved, content)
 

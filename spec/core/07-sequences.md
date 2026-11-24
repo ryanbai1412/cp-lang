@@ -68,6 +68,11 @@ How they relate:
 - **Lazy means a view or generator.** Its work happens at each walk or
   read, never up front. Materializing is the only step that does the work
   once and keeps the result. (R07.2.16)
+- **Keys never wrap.** An `Int` key counts from the first element, so
+  `a[-1]` with a negative literal key is E0321, whose fix is `a.last!`
+  (`a[a.len - k]` for the `k`-th from the end, `V.wrap(-1)` on a domain).
+  A computed negative key traps R0101 like any key out of range
+  (decision 508). (R07.2.17)
 
 <!-- spec-only: expression tour, one form per line -->
 ```python

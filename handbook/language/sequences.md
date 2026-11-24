@@ -117,6 +117,17 @@ a type error (`spec/core/04-indices.md`). Writing `w[3]` with a literal on
 a slice gets lint L0605, which says the key is the source's and names
 `w.nth(3)`.
 
+### Keys never wrap; the last element is `a.last!` (decision 508, R07.2.17)
+
+**Chosen.** An `Int` key counts from the first element and nothing else.
+`a[-1]` with a negative literal is error E0321, whose fix is `a.last!`;
+the `k`th from the end is `a[a.len - k]`. A computed negative key traps
+R0101 like any key out of range.
+
+**Lost.** Python's `a[-1]`. It is short and familiar, but in a language
+whose keys can be computed it turns an off-by-one below zero into a quiet
+read from the far end, and the C++ it compiles to has no such meaning.
+
 ### One indexing rule for every keyed view; `.rev` is walk-only (decision 496, decision 388)
 
 **Chosen.** Only a view that walks in key order is indexable, and
