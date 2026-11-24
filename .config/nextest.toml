@@ -34,6 +34,13 @@ threads-required = 'num-cpus'
 filter = 'binary_id(cpl-cli::fix_actions) | binary_id(cpl-cli::lsp_parity)'
 threads-required = 'num-cpus'
 
+# Each of these runs one LSP server or checker session per core over all of
+# std or the corpus; beside the rest of the suite a personal-library shard of
+# std_items took 41 s against 9 s alone. Give them the machine.
+[[profile.default.overrides]]
+filter = 'binary_id(cpl-lsp::std_items) | binary_id(cpl-lsp::completion_replay) | binary_id(cpl-cli::front_end_fuzz)'
+threads-required = 'num-cpus'
+
 # The commit tier (scripts/check.sh --commit) skips the end-to-end suites:
 # they drive whole programs through the CLI, LSP and conformance corpus, and
 # take most of the fast gate's time. The land tier (--fast) runs them all.

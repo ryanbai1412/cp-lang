@@ -15,6 +15,9 @@ use cpl_lsp::Server;
 use std::collections::BTreeMap;
 use std::path::Path;
 
+#[path = "../../cpl-cli/tests/support/shards.rs"]
+mod shards;
+
 fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     let mut members = vec![("jsonrpc".to_string(), Value::from("2.0"))];
     if let Some(id) = id {
@@ -900,33 +903,46 @@ fn a_copy_keeps_std_names_on_values_syntax_builds() {
     assert!(copy.contains("a.filter_mine(x => x > 0).collect_mine() == []"));
 }
 
-/// A personal library (`cp.toml`'s `[libs]`) holding a copy of every std
-/// module gets what std gets: each item hovers, signs, completes and goes to
-/// its definition as often as the same item imported from std.
-#[test]
-fn a_personal_library_gets_what_std_gets() {
+const SHARDS: usize = 4;
+
+/// The std item a personal-library item copies; the pair shares a shard.
+fn std_who(who: &str) -> String {
+    who.replacen("mine.", "std.", 1)
+        .replace("_mine", "")
+        .replace("Mine", "")
+}
+
+/// std copied into `dir/mine` with its names given their own suffixes, as a
+/// library `dir/cp.toml` names: its renamed items' cases and the file URI
+/// they open as.
+fn personal_library(dir: &Path) -> (Vec<Case>, String) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("personal-lib");
-    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_dir_all(dir);
     std::fs::create_dir_all(dir.join("mine")).unwrap();
     std::fs::write(dir.join("cp.toml"), "[libs]\nmine = \"mine\"\n").unwrap();
-    for entry in std::fs::read_dir(root.join("std")).unwrap() {
-        let path = entry.unwrap().path();
-        if path.extension().is_some_and(|e| e == "cp") {
-            let text = std::fs::read_to_string(&path).unwrap();
-            std::fs::write(
-                dir.join("mine").join(path.file_name().unwrap()),
-                own_names(&text, &path.file_stem().unwrap().to_string_lossy()),
-            )
-            .unwrap();
+    let modules: Vec<_> = std::fs::read_dir(root.join("std"))
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "cp"))
+        .collect();
+    // Each module's copy checks its own examples, so the copies go a core each.
+    std::thread::scope(|scope| {
+        for path in &modules {
+            scope.spawn(move || {
+                let text = std::fs::read_to_string(path).unwrap();
+                std::fs::write(
+                    dir.join("mine").join(path.file_name().unwrap()),
+                    own_names(&text, &path.file_stem().unwrap().to_string_lossy()),
+                )
+                .unwrap();
+            });
         }
-    }
+    });
     let shown = dir.display().to_string().replace('\\', "/");
     let uri = format!(
         "file://{}{shown}/a.cp",
         if shown.starts_with('/') { "" } else { "/" }
     );
-    let std = run_all(&lib_cases(&root.join("std"), "std"), STD_URI);
     // Only the renamed items: the rest meet std's through the prelude.
     let mut cases = lib_cases(&dir.join("mine"), "mine");
     cases.retain(|c| {
@@ -938,8 +954,38 @@ fn a_personal_library_gets_what_std_gets() {
     // An example that reaches the item through a std name (`xs.rev()`) tests std.
     let own = |t: &str| t.contains("Mine") || t.contains("_mine");
     cases.retain(|c| c.program.lines().skip(1).any(own));
+    (cases, uri)
+}
+
+fn library_dir(name: &str) -> std::path::PathBuf {
+    Path::new(env!("CARGO_TARGET_TMPDIR")).join(name)
+}
+
+fn library_keys() -> Vec<String> {
+    let (cases, _) = personal_library(&library_dir("personal-lib-keys"));
+    cases.iter().map(|c| std_who(&c.who)).collect()
+}
+
+#[test]
+fn a_personal_library_has_over_1900_cases() {
+    let (cases, _) = personal_library(&library_dir("personal-lib-count"));
     println!("mine cases: {}", cases.len());
     assert!(cases.len() >= 1900, "only {} library cases", cases.len());
+}
+
+/// A personal library (`cp.toml`'s `[libs]`) holding a copy of every std
+/// module gets what std gets: each item hovers, signs, completes and goes to
+/// its definition as often as the same item imported from std.
+/// Shard `k` holds the items whose std copy hashes to it.
+fn a_personal_library_gets_what_std_gets(k: usize) {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let (cases, uri) = personal_library(&library_dir(&format!("personal-lib-{k}")));
+    let cases = shards::mine(cases, |c| std_who(&c.who), k, SHARDS);
+    let std_cases = lib_cases(&root.join("std"), "std");
+    let std = run_all(
+        &shards::mine(std_cases, |c| c.who.clone(), k, SHARDS),
+        STD_URI,
+    );
     let mine = run_all(&cases, &uri);
     print("mine", &mine);
     let mut only = Vec::new();
@@ -948,13 +994,7 @@ fn a_personal_library_gets_what_std_gets() {
             f.iter().filter_map(|f| f.split(':').next()).collect()
         });
         for f in fails {
-            let who = f
-                .split(':')
-                .next()
-                .unwrap_or("")
-                .replacen("mine.", "std.", 1)
-                .replace("_mine", "")
-                .replace("Mine", "");
+            let who = std_who(f.split(':').next().unwrap_or(""));
             if !theirs.contains(&who.as_str()) {
                 only.push(format!("{what}: {f:.300}"));
             }
@@ -967,3 +1007,15 @@ fn a_personal_library_gets_what_std_gets() {
         only.join("\n")
     );
 }
+
+shards::shard_tests!(
+    a_personal_library_gets_what_std_gets,
+    library_keys(),
+    the_library_shards_cover_every_case,
+    [
+        a_personal_library_gets_what_std_gets_0 = 0,
+        a_personal_library_gets_what_std_gets_1 = 1,
+        a_personal_library_gets_what_std_gets_2 = 2,
+        a_personal_library_gets_what_std_gets_3 = 3,
+    ]
+);
