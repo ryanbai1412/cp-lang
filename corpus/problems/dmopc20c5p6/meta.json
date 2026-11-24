@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "3591472", "language": "CPP17", "result": "TLE", "time": 18.632962536, "memory_kb": 526904.0, "file": "corpus/submissions/3591472.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc20c5p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp follows the official editorial (SAM suffix link tree in a link/cut tree, arithmetic progression updates per run of equal last end positions); the rounds are online, so it stores suffix sums every 256 steps and adds the updates since. It matches a substring-set brute force on 1501 small gen.py cases and the generator's own offline answers (closed form minus repeated (start, length) pairs, Fenwick tree) on every seed and --max."
 }
