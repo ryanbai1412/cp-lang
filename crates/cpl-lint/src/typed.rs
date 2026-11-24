@@ -44,7 +44,7 @@ const TYPED: [cpl_diag::Code; 22] = [
 /// `diags` less the findings `analysis`'s facts rule out.
 pub fn refine_with_analysis(diags: &mut Vec<Diagnostic>, analysis: &Analysis) {
     if diags.iter().any(|d| TYPED.contains(&d.code)) {
-        refine_with_facts(diags, &Facts::from_analysis(analysis));
+        refine_with_facts(diags, analysis.facts());
     }
 }
 
@@ -55,8 +55,7 @@ pub fn lint_analysis(analysis: &Analysis, config: &crate::Config) -> Vec<Diagnos
     if analysis.has_syntax_errors {
         return Vec::new();
     }
-    let facts = Facts::from_analysis(analysis);
-    lints_of(analysis, &facts, &Default::default(), config)
+    lints_of(analysis, analysis.facts(), &Default::default(), config)
 }
 
 /// [`lint_analysis`] with `analysis`'s facts and the bounds proof, which a

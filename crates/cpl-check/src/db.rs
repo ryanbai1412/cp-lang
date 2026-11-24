@@ -151,9 +151,15 @@ pub struct Analysis {
     pub diagnostics: Vec<Diagnostic>,
     pub items: Vec<AnalyzedItem>,
     pub(crate) scope: Arc<Scope>,
+    pub(crate) facts: std::sync::OnceLock<crate::Facts>,
 }
 
 impl Analysis {
+    /// What checking found about each place in the file, in file positions.
+    pub fn facts(&self) -> &crate::Facts {
+        self.facts.get_or_init(|| crate::Facts::from_analysis(self))
+    }
+
     pub fn has_errors(&self) -> bool {
         self.diagnostics
             .iter()
@@ -1195,6 +1201,7 @@ impl Database {
                 })
                 .collect(),
             scope,
+            facts: Default::default(),
         }));
         self.collect_garbage(items.len());
         // A cycle through a file that imports this one cut names out of it:

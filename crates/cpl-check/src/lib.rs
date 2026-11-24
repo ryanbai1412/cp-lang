@@ -18,6 +18,7 @@ mod builtins;
 mod check;
 mod db;
 mod def;
+mod facts;
 mod fx;
 mod hover;
 mod labels;
@@ -37,6 +38,7 @@ pub use db::{
     Analysis, AnalyzedItem, Database, Decl, Import, ItemCheck, ItemSyntax, Module, Stats,
 };
 pub use def::{DeclKind, Def, DomainInfo};
+pub use facts::Facts;
 pub use hover::{Definition, Hover, Representation, Symbol};
 pub use modules::{
     bundled_std, carry_only_embedded_std, configured_libraries, dev_std_problem, file_path,

@@ -14,7 +14,6 @@ use crate::{
 
 pub struct Session {
     analysis: Arc<Analysis>,
-    facts: OnceLock<Facts>,
     proven: OnceLock<rules::Proven>,
     ranges: OnceLock<Vec<(u32, i128, i128)>>,
     sizes: OnceLock<Vec<ProvenSize>>,
@@ -29,7 +28,6 @@ impl Session {
     pub fn new(analysis: Arc<Analysis>) -> Session {
         Session {
             analysis,
-            facts: OnceLock::new(),
             proven: OnceLock::new(),
             ranges: OnceLock::new(),
             sizes: OnceLock::new(),
@@ -51,8 +49,7 @@ impl Session {
 
     /// What the checker knows about each place in the file.
     pub fn facts(&self) -> &Facts {
-        self.facts
-            .get_or_init(|| Facts::from_analysis(&self.analysis))
+        self.analysis.facts()
     }
 
     /// The lints at the levels `config` sets, as [`crate::lint_analysis`].
