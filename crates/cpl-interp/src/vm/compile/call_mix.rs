@@ -109,7 +109,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     SlotLoc::I(r, _) => MutTake::LocalI(r),
                     SlotLoc::OptI { val, some, .. } => MutTake::LocalOptI { val, some },
                     SlotLoc::V(r) => MutTake::LocalV(r),
-                    SlotLoc::SmallTuple { .. } => return None,
+                    SlotLoc::SmallTuple { base, len, kinds } => {
+                        MutTake::LocalTuple { base, len, kinds }
+                    }
                 },
                 PlaceKind::Global(gid) => MutTake::Global(*gid as u16),
                 PlaceKind::Index(base, indices)
@@ -287,6 +289,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         dst: r,
                         arg_off: off as u16,
                     });
+                }
+                MutTake::LocalTuple { base, len, kinds } => {
+                    let dst_v = self.alloc_v();
+                    let src_base = base;
+                    let op = Op::BoxSmallTuple {
+                        dst_v,
+                        src_base,
+                        len,
+                        kinds,
+                    };
+                    self.emit(op, place.span);
+                    v_args[off] = (dst_v, true);
+                    let arg_off = off as u16;
+                    writebacks.push(WriteBack::LocalTuple { base, len, arg_off });
                 }
                 MutTake::Global(gid) => {
                     if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
@@ -479,6 +495,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         self.emit(Op::MoveVConsume { dst, src }, span);
                     }
                 }
+                WriteBack::LocalTuple { base, len, arg_off } => {
+                    let src_v = arg_base_v + arg_off;
+                    let op = Op::UnboxSmallTuple {
+                        dst_base: base,
+                        len,
+                        src_v,
+                    };
+                    self.emit(op, span);
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                }
                 WriteBack::GlobalI { gid, kind, arg_off } => {
                     self.emit(
                         Op::StoreGlobalI {
@@ -608,6 +634,11 @@ enum WriteBack {
         dst: u16,
         arg_off: u16,
     },
+    LocalTuple {
+        base: u16,
+        len: u8,
+        arg_off: u16,
+    },
     GlobalI {
         gid: u16,
         kind: ScalarKind,
@@ -671,6 +702,12 @@ pub(super) enum MutTake<'p> {
         some: u16,
     },
     LocalV(u16),
+    /// A tuple of scalars held one field per int register.
+    LocalTuple {
+        base: u16,
+        len: u8,
+        kinds: [crate::value::SmallFieldKind; 5],
+    },
     Global(u16),
     /// One scalar-indexed element of a 1D array (`is_arr`) or list of values.
     Elem {

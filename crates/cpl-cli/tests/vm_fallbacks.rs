@@ -47,6 +47,14 @@ fn the_code_above_multitest_runs_on_the_vm() {
 }
 
 #[test]
+fn a_tuple_local_lent_as_a_mut_arg_runs_on_the_vm() {
+    let program = tests_dir().join("programs/mut_tuple_arg_write_back.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}
+
+#[test]
 fn a_query_over_a_library_domain_runs_on_the_vm() {
     for program in [
         "programs/generic_library_domain_seq_queries.cp",
