@@ -9,9 +9,10 @@ use std.tree.{PermKind, PermTree}
 let n: 2..=1e6 = read()
 domain V = 1..=n
 let (a, b) = read<(Perm<V>, Perm<V>)>()
-let t = PermTree(b.rev.map(a.inverse))
+let pos_a = a.inverse()
+let t = PermTree([V] i => pos_a[b[V.nth(n - 1 - i.ord)]])
 
-fn depth(v: t.Node) -> Int = match t.node(v):
+fn depth<Node>(v: Node) -> Int = match t.node(v):
     Leaf(_) => 1
     Inner(l, r, Decr) if t.kind[r] == PermKind.Leaf => depth(l) + 1
     Inner(l, r, _) => max(depth(l), depth(r))
