@@ -1,4 +1,5 @@
 // Source: BOI 2018 Day 1 (DNA), https://dmoj.ca/problem/btoi18p2
+// limits: 500 ms, 1024 MB
 // Problem: a string of N <= 2e5 symbols over an alphabet of K, and R <= K requirements "at least
 //   Q copies of symbol B". Print the length of the shortest substring meeting all of them, or
 //   "impossible".
