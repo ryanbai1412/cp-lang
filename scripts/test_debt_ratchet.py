@@ -414,6 +414,24 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.improved({"register_rows_by_domain": by}, {"register_rows_by_domain": {"a": 3}}),
                              ["register_rows_by_domain"])
 
+    def test_why_written_twice_counts_copied_reasoning_and_spec_rationale(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            why = "A lend lasts until its last use, so moving a print can break a write that the line after it makes legal again."
+            self._write(root, "handbook/language/a.md", f"# A\n\n{why}\n")
+            self._write(root, "spec/core/01-a.md", f"# A\n\n> {why}\n\n```\n{why}\n```\n")
+            self._write(root, "decisions.md", "# D\n\nShort reason.\n")
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            subprocess.run(["git", "add", "."], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.why_written_twice(root), [])
+            self._write(root, "spec/lib/b.md", f"{why}\n")
+            self._write(root, "spec/lib/rationale/c.md", "x\n")
+            subprocess.run(["git", "add", "."], cwd=root, check=True, env=dr._git_env())
+            found = dr.why_written_twice(root)
+            self.assertEqual(len(found), 2, found)
+            self.assertIn("handbook/language/a.md = spec/lib/b.md", found[0])
+            self.assertIn("why_written_twice", dr.HARD_ZERO)
+
     def test_uncited_rules_needs_an_existing_heading_anchor(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

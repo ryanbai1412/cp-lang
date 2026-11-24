@@ -520,6 +520,41 @@ def lint_dup_helpers(root: Path) -> list[str]:
     return [f"{n}: {', '.join(fs)}" for n, fs in sorted(where.items()) if len(fs) > 1 and n != "check"]
 
 
+WHY_HOMES = ("decisions.md", "handbook/language/*.md", "handbook/design/*.md",
+             "spec/*.md", "spec/core/*.md", "spec/lib/*.md", "spec/tools/*.md")
+
+
+def _sentences(text: str) -> list[str]:
+    """Normalized prose sentences of 15+ words, outside code, tables, headings and quotes."""
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+    prose = " ".join(l for l in text.split("\n") if not l.lstrip().startswith(("|", "#", ">")))
+    out = []
+    for s in re.split(r"(?<=[.!?])\s+", prose):
+        t = " ".join(re.sub(r"[*`]", "", s).lower().split())
+        if len(t.split()) >= 15:
+            out.append(t)
+    return out
+
+
+def why_written_twice(root: Path) -> list[str]:
+    """A sentence of reasoning written in two homes, or a rationale file under spec/.
+
+    Rule: handbook/design/sources-of-truth.md#never-written-twice. The why
+    lives in handbook/language/ (and handbook/design/), decisions.md keeps the
+    call and how to reverse it, spec/ states the rule: a sentence copied
+    between two of them goes stale in one.
+    """
+    seen: dict[str, list[str]] = {}
+    for f in _git(root, "ls-files", *WHY_HOMES):
+        if (root / f).is_file():
+            for s in set(_sentences((root / f).read_text(encoding="utf-8"))):
+                seen.setdefault(s, []).append(f)
+    found = [f"{' = '.join(sorted(fs))}: {s[:60]}" for s, fs in sorted(seen.items()) if len(fs) > 1]
+    found += [f"{f}: rationale under spec/" for f in _git(root, "ls-files", "spec")
+              if re.search(r"(^|/)rationale(/|\.md$)", f, re.I)]
+    return found
+
+
 def plan_delta_lines(root: Path) -> list[str]:
     """Lines of working notes under plan/domains/*/delta, to fold into spec/ or archive."""
     return [f"{f}:{i}" for f in _git(root, "ls-files", "plan/domains/*/delta/*")
@@ -1251,7 +1286,7 @@ def unregistered_lists(root: Path) -> list[str]:
 # main's own measurement can raise them above 0. Every gated counter whose
 # committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
 HARD_ZERO = frozenset({
-    "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers",
+    "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers",
 })
@@ -1285,6 +1320,7 @@ COUNTERS = {
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),
     "lint_dup_helpers": ("helper fns copied across lint rule files", lint_dup_helpers, True),
     "plan_delta_lines": ("lines of notes under plan/domains/*/delta", plan_delta_lines, True),
+    "why_written_twice": ("reasoning written in two homes, or rationale under spec/", why_written_twice, True),
     "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
     "own_databases": ("Database::new() outside tests and cpl-check", own_databases, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),

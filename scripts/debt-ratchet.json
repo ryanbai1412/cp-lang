@@ -110,6 +110,7 @@
   ],
   "decision_dup_numbers": 0,
   "lint_dup_helpers": 0,
+  "why_written_twice": 0,
   "plan_delta_lines": 1627,
   "vm_fallbacks": 31,
   "own_databases": 29,
