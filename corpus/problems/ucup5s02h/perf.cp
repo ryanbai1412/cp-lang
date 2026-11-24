@@ -1,5 +1,6 @@
 // Tuned: each round looks up every charge's component once, before both sweeps, instead
-// of a DSU find per charge per sweep.
+// of a DSU find per charge per sweep, and one climb both queries the siblings and adds the
+// charge to its own path (no node on the path is a sibling of another).
 //
 // Source: The 5th Universal Cup, Stage 2 (Grand Prix of EPS), problem H: Harmonizing Charges
 //   (QOJ contest 4207)
@@ -106,20 +107,18 @@ while not C.all(i => colour.same(node_of(i), node_of(C.first!))):
         for i in order:
             let x = sign * pts[i].x
             let cc = cc_of[i]
+            let here = Pt(x, pts[i].q, i.ord)
             var hit: ?Pt = None
             var node = cc + v
             while node > 1:
                 hit = weaker(hit, hulls[node ^ 1].query(x), x)
+                hulls[node].add(here)
                 node >>= 1
             if let h = hit:
                 let j = C.at(h.id)
                 let cand = gap(pts[j!], pts[i])
                 let wins = if let cur = best[cc]: weaker_gap(cand, cur.gap) else: true
                 if wins: best[cc] = Some((cand, i, j!))
-            node = cc + v
-            while node > 1:
-                hulls[node].add(Pt(x, pts[i].q, i.ord))
-                node >>= 1
     sweep(C.collect(), 1)
     sweep(C.rev.collect(), -1)
     for e in best if let edge = e: link(edge.i, edge.j)
