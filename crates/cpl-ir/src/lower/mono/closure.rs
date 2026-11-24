@@ -1,7 +1,6 @@
 //! Local fns, lambdas, and fns or bound methods as closure values.
 
 use super::*;
-use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -107,8 +106,7 @@ impl<'a> Lowerer<'a> {
         };
         fresh.in_body = true;
         fresh.ret = Some(ret_ty.clone());
-        let outer_cx = std::mem::replace(&mut self.cx, fresh);
-        self.outer_cxs.push(outer_cx);
+        let frame = self.enter_closure_cx(fresh);
 
         let mut param_slots = Vec::new();
         for (p, pty) in decl.params.iter().zip(param_tys.clone()) {
@@ -154,10 +152,7 @@ impl<'a> Lowerer<'a> {
             self.local_fn_block(decl, &ret_ty)
         };
 
-        let inner_cx = match self.outer_cxs.pop() {
-            Some(outer) => std::mem::replace(&mut self.cx, outer),
-            None => invariant::broken_invariant("a closure's outer cx is pushed before its body"),
-        };
+        let inner_cx = self.leave_closure_cx(frame);
         let cid = self.closures.len();
         self.record_narrow_locals(
             ScopeId::Closure(cid),
@@ -213,9 +208,8 @@ impl<'a> Lowerer<'a> {
         };
         fresh.in_body = true;
         fresh.ret = Some(ret_ty.clone());
-        let outer_cx = std::mem::replace(&mut self.cx, fresh);
-        let outer_level = self.outer_cxs.len();
-        self.outer_cxs.push(outer_cx);
+        let frame = self.enter_closure_cx(fresh);
+        let outer_level = frame.level();
         let mut slots = Vec::new();
         for (p, pty) in decl.params.iter().zip(&param_tys) {
             let slot = self.new_slot(&p.name.text, pty.clone());
@@ -240,10 +234,7 @@ impl<'a> Lowerer<'a> {
                 &mut lets,
             ),
         };
-        let inner_cx = match self.outer_cxs.pop() {
-            Some(outer) => std::mem::replace(&mut self.cx, outer),
-            None => invariant::broken_invariant("a closure's outer cx is pushed before its body"),
-        };
+        let inner_cx = self.leave_closure_cx(frame);
         out.extend(lets);
         let wrapper = self.closures.len();
         self.closures.push(ClosureDef {
@@ -476,8 +467,7 @@ impl<'a> Lowerer<'a> {
             param_slots.push(slot);
         }
 
-        let parent_cx = std::mem::replace(&mut self.cx, child_cx);
-        self.outer_cxs.push(parent_cx);
+        let frame = self.enter_closure_cx(child_cx);
 
         // Destructure any non-name parameter patterns (e.g. `((a, b)) => ...`).
         for (i, pat) in params.iter().enumerate() {
@@ -497,10 +487,7 @@ impl<'a> Lowerer<'a> {
             ));
         }
 
-        let finished = match self.outer_cxs.pop() {
-            Some(outer) => std::mem::replace(&mut self.cx, outer),
-            None => invariant::broken_invariant("a closure's outer cx is pushed before its body"),
-        };
+        let finished = self.leave_closure_cx(frame);
         let cid = self.closures.len();
         self.record_narrow_locals(
             ScopeId::Closure(cid),

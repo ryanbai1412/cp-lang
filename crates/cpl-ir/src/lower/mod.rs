@@ -48,6 +48,7 @@ mod nest;
 mod op_value;
 mod or_pattern;
 mod ord_space;
+mod outer_cx;
 mod prefix;
 mod product;
 mod program;
@@ -77,6 +78,7 @@ use cpl_diag::{codes, Diagnostic, Span};
 use cpl_syntax::{ast, narrow};
 use mono::*;
 use nest::Nest;
+use outer_cx::OuterCxs;
 use range::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -803,7 +805,7 @@ struct Lowerer<'a> {
     announce_tests: bool,
 
     cx: FnCx,
-    outer_cxs: Vec<FnCx>,
+    outer_cxs: OuterCxs,
     gen_env: GenEnv,
     /// The type wanted of the generic call being lowered, which fills a
     /// type parameter only its return type names: `let x: Int = gen(r)`.
@@ -946,7 +948,7 @@ impl<'a> Lowerer<'a> {
             written: Vec::new(),
             announce_tests: false,
             cx: FnCx::default(),
-            outer_cxs: Vec::new(),
+            outer_cxs: OuterCxs::default(),
             gen_env: HashMap::new(),
             call_hint: (None, None),
             owner_ranges: Vec::new(),

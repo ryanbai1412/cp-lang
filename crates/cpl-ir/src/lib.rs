@@ -15,7 +15,6 @@
 pub mod checks;
 pub mod effects;
 pub mod fix;
-mod invariant;
 mod lower;
 mod place;
 /// How many decimals a `Float` is written with when none are asked for:

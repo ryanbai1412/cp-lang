@@ -114,8 +114,7 @@ impl<'a> Lowerer<'a> {
         };
         fresh.in_body = true;
         fresh.ret = Some(ret_ty.clone());
-        let outer_cx = std::mem::replace(&mut self.cx, fresh);
-        self.outer_cxs.push(outer_cx);
+        let frame = self.enter_closure_cx(fresh);
         let mut params = Vec::new();
         for (p, pty) in decl.params.iter().zip(&param_tys) {
             let slot = self.new_slot(&p.name.text, pty.clone());
@@ -176,7 +175,7 @@ impl<'a> Lowerer<'a> {
         self.gen_body(&decl.body, &mut out);
         out.push(Stmt::Return(Some(self.local(acc, decl.name.span))));
 
-        let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap_or_default());
+        let inner_cx = self.leave_closure_cx(frame);
         self.record_narrow_locals(ScopeId::Fn(id), &inner_cx.locals, &inner_cx.local_ranges);
         self.sigs[id].state = State::Done;
         self.bodies[id] = Some(Function {

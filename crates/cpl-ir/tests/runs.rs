@@ -105,3 +105,14 @@ fn a_law_check_over_std_samples_sets_its_samples_first() {
         print(laws_hold(good, T: [1, 5, -3], F: [None, Some(2), Some(7)]))\n";
     assert_eq!(runs(source, ""), "YES\n");
 }
+
+#[test]
+fn nested_closures_each_return_to_the_cx_they_were_entered_from() {
+    let source = "fn f(n: Int) -> Int:\n    let k = 3\n\
+        \x20   fn g(i: Int) -> Int:\n        let h = (j: Int) => j * k + i\n        h(n)\n\
+        \x20   @memo(map)\n    fn m(i: Int) -> Int:\n        if i == 0:\n            return k\n        g(i) + m(i - 1)\n\
+        \x20   fn ys() -> yields Int:\n        for i in 0..n: yield i + k\n\
+        \x20   let s = [y for y in ys()].sum()\n    let after = k + n\n    m(2) + s + after\n\
+        print(f(2))\n";
+    assert_eq!(runs(source, ""), "30\n");
+}
