@@ -20,5 +20,10 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": "spec.cp follows the accepted C++ (O(m log m) checks); several valid answers, checker.py judges them"
+ "notes": "spec.cp follows the accepted C++ (O(m log m) checks); several valid answers, checker.py judges them",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "2a2f3f971a05b2df4388b7f0452331004fcee2ea"
+ }
 }
