@@ -24,8 +24,16 @@ fn grows_from(pattern: 1..=5) -> Bool:
     let edges: [E](u: V, v: V) = read()
     let g = Graph<V, E>.undirected(edges)
     let (domain B, block) = blocks(g)
-    let block_edges = block.buckets()
-    let members = [B] b => [x for e in block_edges[b] for x in [edges[e].u, edges[e].v]].distinct()
+    var length: [B]Int = 0
+    for e in E: length[block[e]] += 1
+    var size: [B]Int = 0  // vertices per block: each vertex counts once in each of its blocks
+    var counted: [B]?V = None
+    for v in V:
+        for a in g.out(v):
+            if counted[block[a.e]] != Some(v):
+                counted[block[a.e]] = Some(v)
+                size[block[a.e]] += 1
+    fn members(b: B) -> List<V>: [x for e in E if block[e] == b for x in [edges[e].u, edges[e].v]].distinct()
 
     // Two vertices of `cycle` leave it to two distinct vertices.
     fn has_two_exits(cycle: List<V>) -> Bool:
@@ -38,11 +46,11 @@ fn grows_from(pattern: 1..=5) -> Bool:
             (0..k).all(i => g.out(cycle[i]).any(a => a.to == cycle[(i + 1) % k])) and has_two_exits(cycle)))
 
     match pattern:
-        1 => B.any(b => block_edges[b].len > members[b].len)
-        2 => B.any(b => block_edges[b].len >= 3)
-        3 => B.any(b => members[b].len >= 4)
+        1 => B.any(b => length[b] > size[b])
+        2 => B.any(b => length[b] >= 3)
+        3 => B.any(b => size[b] >= 4)
         4 => V.any(v => g.deg(v) >= 3)
-        _ => B.any(b => has_fox(members[b]))
+        _ => B.any(b => has_fox(members(b)))
 
 repeat graphs:
     print(yes(grows_from(pattern)))
