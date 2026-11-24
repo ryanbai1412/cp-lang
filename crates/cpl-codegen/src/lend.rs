@@ -57,7 +57,7 @@ pub(crate) fn entry_read(e: &Expr) -> Option<(&Expr, &Expr)> {
 }
 
 /// Locals `block` reads whole, not only through an index, field, variant
-/// payload or tag, length or the elements a `for` walks.
+/// payload or tag, length, the elements a `for` walks or a print or format.
 pub(crate) fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
     whole_reads_by(block, &|_, _| false)
 }
@@ -84,6 +84,16 @@ fn whole_reads_by(
             }
         }
     });
+    let local = |e: &Expr| match e.kind {
+        ExprKind::Local(s) => Some(s),
+        _ => None,
+    };
+    crate::uses::places::each_shown(block, &mut |e| parts.extend(local(e)));
+    crate::uses::places::each_builtin(block, &mut |b, args| {
+        if reads_first(b) {
+            parts.extend(args.first().and_then(local));
+        }
+    });
     crate::uses::places::each_part_base(block, &mut |base| {
         if let ExprKind::Local(s) = base.kind {
             parts.push(s);
@@ -102,6 +112,26 @@ fn whole_reads_by(
         }
     }
     uses.into_iter().collect()
+}
+
+/// Builtins whose C++ takes their first argument, the container, by const
+/// reference or view: it is only read there, never moved.
+fn reads_first(b: &cpl_ir::Builtin) -> bool {
+    use cpl_ir::Builtin::*;
+    matches!(
+        b,
+        Contains
+            | First
+            | Last
+            | FirstVal
+            | LastVal
+            | SetMin
+            | SetMax
+            | FirstGe
+            | FirstGt
+            | LastLe
+            | LastLt
+    )
 }
 
 /// Whether the temporary `slot` an `if let` tests is read only by that test
