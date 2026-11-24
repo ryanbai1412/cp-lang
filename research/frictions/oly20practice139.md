@@ -1,13 +1,5 @@
 # oly20practice139 — Bob's Function
 
-## std `MonotoneHull` overflows, so the port keeps its own upper hull
-- **Where:** `port.cp`, `struct Upper` (hull lines with the first `t` each wins from).
-- **Dream:** a `MonotoneHull(max)` per sqrt block (or, better, one kinetic segment tree; the Dream below).
-- **What felt wrong:** `MonotoneHull.covered` cross-multiplies an intercept difference (up to 1.5e14 here) by a slope difference (up to 1e9), which traps R0202 under `cpl stress` at n = 2000. Repro: three lines `Line(1e6, 1e14)`, `Line(2e9, 0)`, `Line(3e9, -1e14)` under `max`. Reported to Core for the stdlib owner. A crossing by `ceil_div` (what `Upper.add` does) stays in range.
-- **Goal it hurts:** hard-to-get-wrong, reuse.
-- **General fix:** compare crossings in `I128` (or by the integer crossing point) inside `MonotoneHull`; then swap `Upper` for it.
-- **Severity:** medium.
-
 ## No kinetic segment tree for max of v * (count + prefix add)
 - **Where:** the sqrt blocks (`Blk`, `pending`, `rebuild`, `join`).
 - **Dream:** `KineticSegTree<Y>(max, lines: ...)` with `shift(..=y, by: 1)` and `max()`, O(log^2 n) amortized.

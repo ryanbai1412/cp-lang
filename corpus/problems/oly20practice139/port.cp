@@ -5,10 +5,9 @@
 //   a * #(x >= a) + b * #(x < a, y >= b), and b is best at one of the y values. Sweep a over
 //   the sorted x; pairs with x < a join run by run, each adding 1 to joined[v] for every
 //   y value v <= its y, and we need max v * joined[v]. Over compressed y, sqrt blocks of
-//   B = 400 keep the lines v * (joined[v] + t) as an upper hull (slopes v rise) queried at
-//   the block's pending add t, which only grows until the block is rebuilt: O(n sqrt n).
-//   Line i of the hull wins from t = from[i], the ceil of its crossing with line i - 1;
-//   std's MonotoneHull cross-multiplies and overflows on these sizes (friction).
+//   B = 400 keep the lines v * (joined[v] + t) in a std MonotoneHull (slopes v rise)
+//   queried with `at_next` at the block's pending add t, which only grows until the block
+//   is rebuilt: O(n sqrt n).
 // original: corpus/submissions/6415690.cpp
 // Bounds: n: 1..=150_000
 
@@ -19,31 +18,9 @@ let pts = read<[n](0..=1_000_000_000, 0..=1_000_000_000)>().sorted()
 let (domain Y, ys) = compress([p.1 for p in pts])
 domain Blk = 0..(Y.count + B - 1) / B
 
-struct Upper:
-    lines: List<Line> = []
-    from: List<Int> = []
-    at: Int = 0
-
-    fn clear(mut self):
-        lines.clear()
-        from.clear()
-        at = 0
-
-    fn add(mut self, l: Line):
-        while not lines.is_empty and l.at(from.last!) >= lines.last!.at(from.last!):
-            let _ = lines.pop()
-            let _ = from.pop()
-        if let Some(top) = lines.last: from.push((top.m - l.m).ceil_div(l.k - top.k))
-        else: from.push(0)
-        lines.push(l)
-
-    fn at_next(mut self, t: Int) -> Int:
-        while at + 1 < lines.len and t >= from[at + 1]: at += 1
-        lines[at].at(t)
-
 var joined: [Y]Int = 0
 var pending: [Blk]Int = 0
-var hull: [Blk]Upper = Upper()
+var hull: [Blk]MonotoneHull<()> = [Blk] _ => MonotoneHull<()>(max)
 
 fn cells(b: Blk) -> Range<Int> = b.ord * B..min((b.ord + 1) * B, Y.count)
 
@@ -53,7 +30,7 @@ fn rebuild(b: Blk):
         let v = Y.nth(o)
         hull[b].add(Line(ys[v], ys[v] * joined[v]))
 
-fn gain() -> Int = max(hull[b].at_next(pending[b]) for b in Blk)!
+fn gain() -> Int = max(hull[b].at_next(pending[b])! for b in Blk)!
 
 fn join(y: Int):
     let last = ys.index_of(y)
