@@ -273,7 +273,7 @@ test("the module asks for the std files it lacks and keeps those it is given", (
   assert.equal(before.ok, lacked.length === 0);
   // A check reads the outlines of what it lacks, so it names what they use too.
   if (lacked.length > 0) assert.deepEqual(before.needs, lacked);
-  if (lacked.length > 0) assert.deepEqual(lacked, ["hashmap", "math", "seq", "sparse"]);
+  if (lacked.length > 0) assert.deepEqual(lacked, ["math", "range", "sparse"]);
   provideStd(core, source);
   assert.deepEqual(core.stdNeeded(source), []);
   assert.equal(core.check(source).ok, true);
