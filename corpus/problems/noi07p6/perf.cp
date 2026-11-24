@@ -36,12 +36,13 @@ fn go_down(u: City, p: ?City):
             elif down[v] > b: b = down[v]
     down[u] = cover(a, b)
 fn go_up(u: City, p: ?City):
-    // the three largest branches of u, and whose the first two are (None: the parent's side)
+    // the three largest branches of u, and the neighbours the first two lie behind
     var (a, b, c) = (0, 0, 0)
     var (by_a, by_b): (?City, ?City) = (None, None)
-    for (x, by) in [(down[v], Some(v)) for v in g[u] if Some(v) != p] + [(up[u], None) for _ in 0..Int(p != None)]:
-        if x > a: (a, b, c, by_a, by_b) = (x, a, b, by, by_a)
-        elif x > b: (b, c, by_b) = (x, b, by)
+    for v in g[u]:
+        let x = if Some(v) == p: up[u] else: down[v]
+        if x > a: (a, b, c, by_a, by_b) = (x, a, b, Some(v), by_a)
+        elif x > b: (b, c, by_b) = (x, b, Some(v))
         elif x > c: c = x
     whole[u] = cover(a, b)
     for v in g[u]:
