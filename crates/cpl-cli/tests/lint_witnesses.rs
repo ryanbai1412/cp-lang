@@ -8,20 +8,18 @@
 use cpl_json::Value;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
+
+#[path = "support/parallel.rs"]
+mod parallel;
 
 /// The lints whose claim is "this input traps here".
 const TRAPPING: [&str; 5] = ["L0302", "L0304", "L0305", "L0306", "L0599"];
 
+/// `cpl args` run in process: its exit status and stdout then stderr.
 fn cpl(args: &[&str]) -> (Option<i32>, String) {
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(args)
-        .env("NO_COLOR", "1")
-        .output()
-        .unwrap();
-    let text =
-        String::from_utf8_lossy(&out.stdout).into_owned() + &String::from_utf8_lossy(&out.stderr);
-    (out.status.code(), text)
+    let out = cpl_cli::run(args);
+    let text = String::from_utf8_lossy(&out.stdout).into_owned() + &out.stderr;
+    (Some(i32::from(out.code)), text)
 }
 
 fn get<'a>(v: &'a Value, key: &str) -> &'a Value {
@@ -70,15 +68,17 @@ fn warnings(json: &str) -> Vec<Warning> {
 fn every_bound_lint_witness_traps_where_the_lint_says() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let scratch = std::env::temp_dir().join(format!("cpl-lint-witnesses-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&scratch);
     let mut programs: Vec<_> = fs::read_dir(root.join("spec/lints"))
         .unwrap()
         .map(|e| e.unwrap().path().join("before.cp"))
         .filter(|p| p.exists())
         .collect();
     programs.sort();
-    let (mut checked, mut wrong) = (0, Vec::new());
-    for path in &programs {
-        let _ = fs::remove_dir_all(&scratch);
+    let programs: Vec<_> = programs.iter().enumerate().collect();
+    let each = parallel::parallel(&programs, |&(n, path)| {
+        let (mut checked, mut wrong) = (0, Vec::new());
+        let scratch = scratch.join(n.to_string());
         fs::create_dir_all(&scratch).unwrap();
         let src = fs::read_to_string(path).unwrap();
         let file = scratch.join("main.cp");
@@ -96,7 +96,7 @@ fn every_bound_lint_witness_traps_where_the_lint_says() {
             .filter(|(code, ..)| TRAPPING.contains(&code.as_str()))
             .collect();
         if found.is_empty() {
-            continue;
+            return (checked, wrong);
         }
         let (_, saved) = cpl(&["lint", "--save", file]);
         for (code, line, witness) in found {
@@ -134,7 +134,10 @@ fn every_bound_lint_witness_traps_where_the_lint_says() {
                 }
             }
         }
-    }
+        (checked, wrong)
+    });
+    let checked: usize = each.iter().map(|(c, _)| c).sum();
+    let wrong: Vec<String> = each.into_iter().flat_map(|(_, w)| w).collect();
     let _ = fs::remove_dir_all(&scratch);
     assert!(
         checked >= TRAPPING.len(),
