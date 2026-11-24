@@ -1,5 +1,13 @@
 import sys, random
 
+if sys.argv[1] == "--max":
+    # one test at sum 2^n = 2^14: n = 14, every cell a star
+    print(1)
+    print(14)
+    for _ in range(14):
+        print("1" * 14)
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 if S >= 1000:

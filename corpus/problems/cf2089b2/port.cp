@@ -1,5 +1,6 @@
 // Source: Codeforces 2089B2 (Canteen, Hard Version),
 //   https://codeforces.com/contest/2089/problem/B2
+// limits: 2000 ms, 500 MB
 // Problem: a[0..n) and b[0..n), sum a <= sum b. First make exactly k decrements of positive a_i.
 //   Then each round both a_i and b_i drop by min(a_i, b_i) and a shifts right cyclically by one.
 //   Print the fewest rounds until a is all 0. n <= 2e5, k <= 2e14, sum of n <= 2e5; multitest.

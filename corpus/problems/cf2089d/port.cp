@@ -1,4 +1,5 @@
 // Source: Codeforces 2089 D, Conditional Operators, https://codeforces.com/contest/2089/problem/D
+// limits: 2000 ms, 250 MB
 // Problem: multitest (t <= 1e4, sum n <= 1.5e5): a binary string of length 2n+1. Insert n
 //   right-associative ?: operators (and any parentheses) between the characters, keeping
 //   their order, so the expression evaluates to 1: print Yes and such an expression of

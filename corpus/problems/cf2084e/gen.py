@@ -2,6 +2,17 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = 5000, about half the entries missing: the full O(n^2) sweep
+    rng = random.Random(1)
+    n = 5000
+    perm = list(range(n))
+    rng.shuffle(perm)
+    print(1)
+    print(n)
+    print(*[-1 if rng.random() < 0.5 else x for x in perm])
+    sys.exit()
+
 
 def main():
     seed = int(sys.argv[1])

@@ -1,4 +1,5 @@
 // Source: Codeforces 2069 F (Graph Inclusion), https://codeforces.com/contest/2069/problem/F
+// limits: 5000 ms, 500 MB
 // Problem: graphs A and B on n <= 4e5 vertices start empty; each of q <= 4e5 queries toggles an
 //   edge in A or B. After each query print the fewest edges to add to A so that every
 //   component of B lies inside a component of A.

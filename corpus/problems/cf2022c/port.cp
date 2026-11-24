@@ -1,4 +1,5 @@
 // Source: Codeforces 2022C (Gerrymandering), https://codeforces.com/contest/2022/problem/C
+// limits: 2000 ms, 250 MB
 // Problem: a 2 x n grid (3 | n, sum n <= 1e5) of A/J votes. Split it into connected districts
 //   of 3 cells; a district goes to A if at least 2 of its cells vote A. Print the max number of
 //   districts A wins. Multitest.

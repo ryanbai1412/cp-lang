@@ -1,4 +1,5 @@
 // Source: Codeforces 2084E (Blossom), https://codeforces.com/contest/2084/problem/E
+// limits: 4000 ms, 500 MB
 // Problem: a permutation of 0..n-1 with some entries -1 (missing); multitest, sum n <= 5000.
 //   Over every way to fill it in, sum the MEX of all non-empty subsegments, mod 1e9 + 7.
 // Solution: mex(segment) counts the v with all of 0..=v inside it, so sum over v and over

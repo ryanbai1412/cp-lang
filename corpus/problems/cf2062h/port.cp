@@ -1,4 +1,5 @@
 // Source: Codeforces 2062H (Galaxy Generator), https://codeforces.com/contest/2062/problem/H
+// limits: 4000 ms, 500 MB
 // Problem: an n x n 0/1 star matrix, n <= 14 (sum of 2^n <= 2^14, multitest). A set's value is the
 //   fewest galaxies (connected components, joined along shared rows or columns) left after
 //   repeatedly adding a star at a point that would connect to >= 3 stars. Sum the values of all

@@ -1,4 +1,5 @@
 // Source: Codeforces 2084H (Turtle and Nediam 2), https://codeforces.com/contest/2084/problem/H
+// limits: 2000 ms, 500 MB
 // Problem: a binary string s of length n. An operation picks three consecutive s_i..s_i+2,
 //   takes their median x and deletes the first s_j = x with j >= i. Count the distinct strings
 //   reachable with at most n - 2 operations, mod 1e9+7. n, sum n <= 2e6; multitest.

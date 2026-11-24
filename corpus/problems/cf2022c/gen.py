@@ -2,6 +2,16 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = 1e5 (n = 99999, the largest multiple of 3)
+    rng = random.Random(1)
+    n = 99999
+    print(1)
+    print(n)
+    for _ in range(2):
+        print("".join(rng.choice("AJ") for _ in range(n)))
+    sys.exit()
+
 
 def main():
     seed = int(sys.argv[1])
