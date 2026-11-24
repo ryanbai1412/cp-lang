@@ -481,7 +481,44 @@ fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
 /// The words of the language that are written with a library fn: a
 /// program that uses the word gets the fn, as if it had named it.
 /// `prefix(a)` dispatches by what `a` is (`[D]T`, `[R, C]T`, or `List<T>`).
-pub const BUILT_ON: &[(&str, &str)] = &[("prefix", "Prefix"), ("subsets", "Subset")];
+pub const BUILT_ON: &[(&str, &str)] = &[("subsets", "Subset")];
+
+/// `BUILT_ON` and the words std states on a type, `@word(prefix)` above
+/// `pub struct Prefix`: `prefix(a)` is that type's constructor, `Prefix(a)`.
+pub fn built_on() -> &'static [(&'static str, &'static str)] {
+    static ALL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
+    ALL.get_or_init(|| {
+        let mut all = BUILT_ON.to_vec();
+        let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
+        for (_, text) in crate::modules::std_index() {
+            if !text.contains("@word(") {
+                continue;
+            }
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in &item.stmts {
+                    let ast::StmtKind::Struct(d) = &stmt.kind else {
+                        continue;
+                    };
+                    let words = stmt.decorators.iter().filter(|d| d.name.text == "word");
+                    for arg in words.flat_map(|d| &d.args) {
+                        if let ast::ExprKind::Name(word) = &arg.value.kind {
+                            all.push((leak(word), leak(&d.name.text)));
+                        }
+                    }
+                }
+            }
+        }
+        all
+    })
+}
+
+/// The type whose constructor the word `name` is, if std built one on it.
+pub fn word_type(name: &str) -> Option<&'static str> {
+    built_on()
+        .iter()
+        .find(|(word, _)| *word == name)
+        .map(|(_, on)| *on)
+}
 
 /// The name a std item has now for one it was written with before, as
 /// `@was(Prefix1, PrefixN)` above `pub struct Prefix` states. A word built
@@ -523,7 +560,7 @@ pub fn renamed(name: &str) -> Option<&'static str> {
             out
         };
         let types: Vec<(String, &str)> = was.iter().map(|(o, n)| (o.clone(), *n)).collect();
-        for &(word, on) in BUILT_ON {
+        for &(word, on) in built_on() {
             for (old, _) in types.iter().filter(|(_, now)| *now == on) {
                 was.insert(snake(old), word);
             }

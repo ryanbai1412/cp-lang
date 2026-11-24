@@ -1,4 +1,4 @@
-//! `prefix(a)` and the `Prefix` shapes of `std.prefix`.
+//! The 2-D shapes of a family (`Prefix(a)` on `a: [R, C]T`) and arity keys.
 
 use super::*;
 use cpl_diag::msgs;
@@ -12,104 +12,6 @@ impl<'a> Lowerer<'a> {
             Some(_) => key,
             None => name.to_string(),
         }
-    }
-
-    /// `prefix(a)` dispatches on the shape of `a`: `List<T>` / `[0..n]T`,
-    /// `[D]T`, or `[R, C]T`, constructing the matching `Prefix` shape from
-    /// `std.prefix`.
-    pub(super) fn lower_prefix(&mut self, args: &[ast::Arg], span: Span) -> Expr {
-        let Some(exprs) = self.positional_any("prefix", args, 1, span) else {
-            return self.err_expr(span);
-        };
-        let src = self.expr(exprs[0], None);
-        if src.ty == Ty::Error {
-            return self.err_expr(span);
-        }
-        let elem_ty = match &src.ty {
-            Ty::Array { elem, .. }
-            | Ty::List(elem)
-            | Ty::ListView(elem, _)
-            | Ty::Keyed(elem, _)
-            | Ty::MutView(elem, _) => (**elem).clone(),
-            _ => Ty::Error,
-        };
-        let adds = match &elem_ty {
-            Ty::Int | Ty::Float | Ty::I128 | Ty::U64 => true,
-            Ty::Struct(sid) => ["add", "sub"]
-                .iter()
-                .all(|op| self.struct_op_fn(*sid, op).is_some()),
-            _ => false,
-        };
-        let doms: Option<Vec<DomainId>> = match &src.ty {
-            Ty::Array { dims, .. } if adds && matches!(dims.len(), 1 | 2) => dims
-                .iter()
-                .map(|d| match d {
-                    Dim::Pos(d) => Some(*d),
-                    _ => None,
-                })
-                .collect(),
-            _ => None,
-        };
-        // A list, or an array indexed by plain `Int`s from 0: `p.sum(l..r)`
-        // takes `Int`s.
-        let counted = match &src.ty {
-            Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..) => true,
-            Ty::Array { dims, .. } => matches!(dims[..], [Dim::Int]),
-            _ => false,
-        };
-        if counted && adds {
-            let Some(Sym::GenStruct(gid)) = self.get_sym(&cpl_check::arity_key("Prefix", 1)) else {
-                self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
-                return self.err_expr(span);
-            };
-            let list = Ty::list(elem_ty.clone());
-            let src = self.coerce(src, &list, span);
-            let sid = self.instantiate_struct(gid, vec![GenArg::Ty(elem_ty)]);
-            let Some(fn_id) = self.own_method(sid, "new") else {
-                self.unsupported(span, "`Prefix` has no `new` constructor");
-                return self.err_expr(span);
-            };
-            let ret = self.ret_of(fn_id, span);
-            return self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span);
-        }
-        if adds
-            && matches!(&src.ty, Ty::Array { dims, .. } if matches!(dims[..], [Dim::IntFrom(_)]))
-        {
-            let Some(Sym::GenStruct(gid)) = self.get_sym("Prefix") else {
-                self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
-                return self.err_expr(span);
-            };
-            return self.call_gen_struct(gid, Vec::new(), args, None, span);
-        }
-        let Some(doms) = doms else {
-            if src.ty.mentions_error() {
-                return self.err_expr(span);
-            }
-            self.report(
-                span,
-                msgs::ir::TYPE_MISMATCH_PREFIX_TAKES_A_D,
-                &[&self.show(&src.ty)],
-            );
-            return self.err_expr(span);
-        };
-        let struct_name = if doms.len() == 1 {
-            "Prefix".to_string()
-        } else {
-            cpl_check::arity_key("Prefix", 3)
-        };
-        let Some(Sym::GenStruct(gid)) = self.get_sym(&struct_name) else {
-            self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
-            return self.err_expr(span);
-        };
-        let mut gargs: Vec<GenArg> = doms.into_iter().map(GenArg::Domain).collect();
-        gargs.push(GenArg::Ty(elem_ty));
-        let sid = self.instantiate_struct(gid, gargs);
-        let Some(fn_id) = self.own_method(sid, "new") else {
-            self.unsupported(span, "`Prefix` has no `new` constructor");
-            return self.err_expr(span);
-        };
-        let ret = self.ret_of(fn_id, span);
-        self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span)
     }
 
     /// Whether the struct `shape` is built by a `new(a: List<T>)`.

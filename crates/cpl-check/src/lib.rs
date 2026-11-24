@@ -58,7 +58,8 @@ pub use overflow::Overflow;
 pub use prelude::{
     arity_key, import_edit, method_key, method_module, methods as std_methods, overload_key,
     overload_part, set_domain, std_family, std_module, std_names, std_self_heads,
-    ty as prelude_type, type_arity, written_name, SetDomain, VALUE_NAMES as PRELUDE_VALUES,
+    ty as prelude_type, type_arity, word_type, written_name, SetDomain,
+    VALUE_NAMES as PRELUDE_VALUES,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};

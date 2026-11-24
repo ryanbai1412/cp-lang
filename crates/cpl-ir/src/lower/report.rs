@@ -93,6 +93,10 @@ impl<'a> Lowerer<'a> {
         let mut notes = Vec::new();
         if self.cur_mod != 0 {
             if let Some((module, line, inside)) = self.library_place(self.cur_mod, at) {
+                let inside = match inside.split_once('.') {
+                    Some((ty, f)) => format!("{}.{f}", cpl_check::written_name(ty)),
+                    None => inside,
+                };
                 said = said.wrapped(msgs::ir::LIBRARY_GAP, &[&inside, &module]);
                 notes.push(format!(
                     "{}.cp:{line}: inside `{inside}`; the gap is in `{module}`, not in your code",

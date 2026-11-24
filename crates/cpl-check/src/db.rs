@@ -656,7 +656,7 @@ impl Database {
                 } else {
                     uses(&name.text)
                         || (!is_std_path(path)
-                            && crate::prelude::BUILT_ON
+                            && crate::prelude::built_on()
                                 .iter()
                                 .any(|(word, on)| *on == name.text && uses(word)))
                 };

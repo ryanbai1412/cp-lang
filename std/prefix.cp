@@ -119,6 +119,7 @@ pub struct FillPrefix<D, T: Add + Sub>:
 /// On `a: [R, C]T`, `Prefix(a)` is the 2-D `Prefix<R, C, T>`, folding rectangles with
 /// `fold(rows, cols)`; it is never a 1-D table over the cells.
 @was(Prefix1, Prefix2, PrefixN)
+@word(prefix)
 pub struct Prefix<D, T: Add + Sub>:
     p: [D.cuts]T
     sums: Bool

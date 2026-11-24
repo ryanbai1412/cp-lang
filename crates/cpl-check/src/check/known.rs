@@ -252,34 +252,21 @@ impl<'a> Checker<'a> {
                     None
                 }
             }
-            ("prefix", [arg]) => match arg {
-                Ty::Array { index, elem } if index.len() == 1 && matches!(index[0], Ty::Pos(_)) => {
-                    Some(Ty::Named {
-                        name: "Prefix".into(),
-                        args: vec![index[0].clone(), (**elem).clone()],
-                    })
-                }
-                Ty::Array { index, elem }
-                    if index.len() == 2
-                        && matches!((&index[0], &index[1]), (Ty::Pos(_), Ty::Pos(_))) =>
-                {
-                    Some(Ty::Named {
-                        name: crate::prelude::arity_key("Prefix", 3),
-                        args: vec![index[0].clone(), index[1].clone(), (**elem).clone()],
-                    })
-                }
-                Ty::Array { index, elem } if index.len() == 1 && index[0].is_int() => {
-                    Some(Ty::Named {
-                        name: crate::prelude::arity_key("Prefix", 1),
-                        args: vec![(**elem).clone()],
-                    })
-                }
-                Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(Ty::Named {
-                    name: crate::prelude::arity_key("Prefix", 1),
-                    args: vec![args[0].clone()],
-                }),
-                _ => None,
-            },
+            // `prefix(a)` is `Prefix(a)`: the word std's `@word(prefix)` built on the type.
+            (word, [_]) if let Some(on) = crate::prelude::word_type(word) => {
+                let ctor = Expr {
+                    kind: ExprKind::Name(on.to_string()),
+                    span: callee.span,
+                };
+                let kind = ExprKind::Call {
+                    callee: Box::new(ctor),
+                    args: args.to_vec(),
+                };
+                Some(self.infer(&Expr {
+                    kind,
+                    span: call.span,
+                }))
+            }
             _ => None,
         }
     }

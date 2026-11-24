@@ -522,7 +522,20 @@ impl<'a> Lowerer<'a> {
                 self.arg_extreme(name == "argmax", &args[0].value, span)
             }
             "counts" => self.lower_counts(args, span),
-            "prefix" => self.lower_prefix(args, span),
+            _ if let Some(on) = cpl_check::word_type(name) => {
+                let ctor = ast::Expr {
+                    kind: ast::ExprKind::Name(on.to_string()),
+                    span,
+                };
+                let call = ast::Expr {
+                    kind: ast::ExprKind::Call {
+                        callee: Box::new(ctor.clone()),
+                        args: args.to_vec(),
+                    },
+                    span,
+                };
+                self.call(&call, &ctor, args, hint)
+            }
             "List" => {
                 if args.is_empty() {
                     let ty = match hint {
