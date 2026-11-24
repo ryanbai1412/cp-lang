@@ -1430,6 +1430,22 @@ fn test_adds_a_custom_case_and_runs_it() {
         "42\n"
     );
 
+    std::fs::write(dir.join("bare.in"), "5").unwrap();
+    std::fs::write(dir.join("bare.out"), "10").unwrap();
+    let out = cpl(
+        &dir,
+        &["test", "a", "--add", "bare.in", "--expect", "bare.out"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("a.tests/3.in")).unwrap(),
+        "5\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("a.tests/3.out")).unwrap(),
+        "10\n"
+    );
+
     let out = cpl(&dir, &["test", "a", "--add", "nope.in"]);
     assert_eq!(out.status.code(), Some(EXIT_ERRORS as i32));
     assert!(
@@ -1437,7 +1453,7 @@ fn test_adds_a_custom_case_and_runs_it() {
         "{}",
         text(&out.stderr)
     );
-    assert!(!dir.join("a.tests/3.in").exists());
+    assert!(!dir.join("a.tests/4.in").exists());
 }
 
 /// `cpl setup neovim` writes the plugin, filetype, syntax and queries where
