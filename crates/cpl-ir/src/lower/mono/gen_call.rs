@@ -267,6 +267,7 @@ impl<'a> Lowerer<'a> {
         // Propagate bindings implied by row/trait bounds (e.g. `R: (u: V, v: V, ..)`,
         // `G: Next<V>`).
         self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
+        self.bind_bounds_open(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
         self.fn_graph_vertex_domains(&decl.bounds, tpl_mod, &mut inferred);
         let tpl = (tpl_mod, tpl_offset, explicit.is_empty());
         self.infer_yielded(decl, tpl, &gen_names, &mut inferred);

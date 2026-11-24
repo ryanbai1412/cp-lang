@@ -180,6 +180,7 @@ impl<'a> Lowerer<'a> {
             let imp = &self.impls[idx];
             if imp.trait_name.as_deref() != Some(trait_name)
                 || !matches!(&imp.target.kind, ast::TypeKind::Named { args, .. } if args.is_empty())
+                || self.row_param(idx).is_some()
             {
                 continue;
             }

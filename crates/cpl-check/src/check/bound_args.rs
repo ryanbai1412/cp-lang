@@ -214,12 +214,14 @@ impl Checker<'_> {
                 .find(|(q, t, args)| q == p && t == trait_name && args.len() == n)
                 .map(|(_, _, args)| args.clone());
         }
-        if let Ty::Named { name, .. } = ty {
+        let shaped = self.shape_impl(ty, trait_name);
+        use super::impl_head::shape_impl_key;
+        if let Some(name) = super::impl_head::ty_impl_name(ty).or(shape_impl_key(ty)) {
             let written = self.global(&crate::def::impl_name(Some(trait_name), name));
             let listed = (self.env.impls(name).into_iter())
                 .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
                 .map(|(_, d)| d);
-            for def in written.into_iter().chain(listed) {
+            for def in written.into_iter().chain(listed).chain(shaped) {
                 if let Def::Impl {
                     trait_args,
                     target,

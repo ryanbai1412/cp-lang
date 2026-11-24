@@ -296,7 +296,12 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(Ty::ListView(e, key))
                 }
                 Ty::Str | Ty::StrView => return Spec::Plain(Ty::StrView),
-                _ => {}
+                Ty::Array { elem, dims } if dims.len() == 1 => {
+                    return Spec::Plain(Ty::ListView(elem, dims[0]))
+                }
+                Ty::Array { elem, .. } => return Spec::Plain(Ty::List(elem)),
+                Ty::Struct(_) => {}
+                other => return Spec::Plain(other),
             }
         }
         let ty = match name.text.as_str() {
@@ -308,14 +313,6 @@ impl<'a> Lowerer<'a> {
             "Char" => Ty::Char,
             "Str" => Ty::Str,
             "List" | "Iter" | "Seq" => Ty::list(arg(self, 0)),
-            "Slice" | "Rev" => match arg(self, 0) {
-                Ty::List(e) => Ty::ListView(e, Dim::Int),
-                Ty::ListView(e, d) | Ty::MutView(e, d) => Ty::ListView(e, d),
-                Ty::Str | Ty::StrView => Ty::StrView,
-                Ty::Array { elem, dims } if dims.len() == 1 => Ty::ListView(elem, dims[0]),
-                Ty::Array { elem, .. } => Ty::List(elem),
-                other => other,
-            },
             "Opt" => Ty::opt(arg(self, 0)),
             "Set" => Ty::Set(Box::new(arg(self, 0))),
             "HashSet" => Ty::HashSet(Box::new(arg(self, 0))),

@@ -5,13 +5,14 @@
 use super::*;
 
 impl Lowerer<'_> {
-    /// The param a blanket `impl<D: Domain> Tr for D` is over.
+    /// The param a blanket `impl<D: Domain> Tr for D` is over; its bound makes
+    /// `D` the impl's own even where the module has a `D`.
     pub(super) fn domain_blanket_param(&self, idx: usize) -> Option<String> {
         let imp = &self.impls[idx];
         let ast::TypeKind::Named { name, args } = &imp.target.kind else {
             return None;
         };
-        if !args.is_empty() || self.mod_syms[imp.mod_id].contains_key(&name.text) {
+        if !args.is_empty() {
             return None;
         }
         let domain = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::Named { name: tn, .. } if tn.text == "Domain");
@@ -33,7 +34,7 @@ impl Lowerer<'_> {
             .find(|(t, m, _)| t == ty && m == method);
         prim.map(|p| p.2)
             .or_else(|| self.optional_impl_method(ty, method))
-            .or_else(|| self.fn_impl_method(ty, method))
+            .or_else(|| self.pattern_impl_method(ty, method))
     }
 
     /// `D.m(..)` with `D` a domain, or the cuts `V.cuts` of one: the method
@@ -107,12 +108,43 @@ impl Lowerer<'_> {
                 self.impls[idx].offset,
                 self.impls[idx].target,
             );
-            if matches!(&target.kind, ast::TypeKind::Named { args, .. } if !args.is_empty()) {
-                return true;
+            if let ast::TypeKind::Named { name: head, args } = &target.kind {
+                if !args.is_empty() {
+                    let Ty::Struct(sid) = ty else { return true };
+                    let covers = match self.mod_syms[m].get(&head.text).copied() {
+                        Some(Sym::GenStruct(gid)) => self.structs[*sid]
+                            .origin_gen
+                            .as_ref()
+                            .is_some_and(|(g, _)| *g == gid),
+                        Some(Sym::Struct(id)) => id == *sid,
+                        _ => true,
+                    };
+                    if covers {
+                        return true;
+                    }
+                    continue;
+                }
             }
             if self.domain_blanket_param(idx).is_some() {
                 if matches!(ty, Ty::Pos(_) | Ty::Bound(_)) {
                     return true;
+                }
+                continue;
+            }
+            if self.is_pattern_impl(idx) {
+                if let Some(env) = self.pattern_impl_env(idx, ty) {
+                    let saved = (
+                        std::mem::replace(&mut self.cur_mod, m),
+                        std::mem::replace(&mut self.offset, offset),
+                        std::mem::replace(&mut self.gen_env, env.unwrap_or_default()),
+                        self.diags.len(),
+                    );
+                    let got = self.resolve_ty(target);
+                    self.diags.truncate(saved.3);
+                    (self.cur_mod, self.offset, self.gen_env) = (saved.0, saved.1, saved.2);
+                    if got == *ty {
+                        return true;
+                    }
                 }
                 continue;
             }
