@@ -1970,7 +1970,9 @@ impl<'a> Checker<'a> {
                 | ExprKind::Field { .. }
                 | ExprKind::Call { .. }
                 | ExprKind::Index { .. }
-        );
+                | ExprKind::Unary { .. }
+        ) || matches!(&expr.kind, ExprKind::Binary { op, .. }
+            if !matches!(op, ast::BinOp::And | ast::BinOp::Or | ast::BinOp::Coalesce));
         if let Some(diag) = self.error(codes::CONDITION_NOT_BOOL, expr.span, message) {
             let Some(zero) = zero else {
                 diag.help = Some("write a comparison".to_string());

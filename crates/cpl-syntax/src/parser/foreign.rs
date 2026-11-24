@@ -1646,18 +1646,27 @@ impl<'a> Parser<'a> {
             && kind(Some(self.pos)) == Some(T::RParen)
     }
 
-    /// `while (n--)`, C's count-down loop, after the `while`: the header's
+    /// `while (n--)` or `while n--:`, C's count-down loop, after the `while`: the header's
     /// span, the counter, the `:` a one-line body needs, and where the body
     /// starts. `c_countdown_report` reports it once the body is read.
     pub(super) fn c_countdown(&mut self) -> Option<(Span, &'a str, &'static str, usize)> {
-        let kinds = [T::LParen, T::Ident, T::Minus, T::Minus, T::RParen];
-        let toks = self.tokens.get(self.pos..self.pos + 5)?;
-        if !toks.iter().zip(kinds).all(|(t, k)| t.kind == k) {
+        let parens = [T::LParen, T::Ident, T::Minus, T::Minus, T::RParen];
+        let bare = [T::Ident, T::Minus, T::Minus];
+        let is = |kinds: &[T]| {
+            let toks = self.tokens.get(self.pos..self.pos + kinds.len());
+            toks.is_some_and(|toks| toks.iter().zip(kinds).all(|(t, k)| t.kind == *k))
+        };
+        let len = if is(&parens) {
+            5
+        } else if is(&bare) && matches!(self.peek_n(3), T::Colon | T::LBrace) {
+            3
+        } else {
             return None;
-        }
-        let whole = Span::new(self.tokens[self.pos - 1].span.start, toks[4].span.end);
-        let name = toks[1].span.text(self.src);
-        self.pos += 5;
+        };
+        let toks = &self.tokens[self.pos..self.pos + len];
+        let whole = Span::new(self.tokens[self.pos - 1].span.start, toks[len - 1].span.end);
+        let name = toks[usize::from(len == 5)].span.text(self.src);
+        self.pos += len;
         let colon = match self.peek() {
             T::Colon | T::LBrace => "",
             _ => ":",
