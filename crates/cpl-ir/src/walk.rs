@@ -258,6 +258,23 @@ pub fn blocks_mut(block: &mut Block, f: &mut dyn FnMut(&mut Block)) {
     f(block);
 }
 
+/// Calls `f` on every block inside `block`, at any depth (the arms of a
+/// statement and the `Do` blocks of its expressions), then on `block`.
+pub fn blocks<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Block)) {
+    for stmt in &block.stmts {
+        stmt_exprs(stmt, &mut |e| expr_blocks(e, f));
+        stmt_blocks(stmt, &mut |inner| blocks(inner, f));
+    }
+    f(block);
+}
+
+fn expr_blocks<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Block)) {
+    if let ExprKind::Do(block) = &e.kind {
+        blocks(block, f);
+    }
+    children(e, &mut |child| expr_blocks(child, f));
+}
+
 fn expr_blocks_mut(e: &mut Expr, f: &mut dyn FnMut(&mut Block)) {
     if let ExprKind::Do(block) = &mut e.kind {
         blocks_mut(block, f);

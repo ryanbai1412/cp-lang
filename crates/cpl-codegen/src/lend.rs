@@ -981,15 +981,11 @@ impl Emitter<'_> {
     /// Statement `k` of `block`, moving each variable it reads for the
     /// last time instead of copying it.
     pub(crate) fn stmt_owning(&mut self, block: &Block, k: usize, out: &mut String) {
-        let outer = self.dying_lets.len();
-        self.dying_lets
-            .extend(crate::uses::dying_lets(self.program, block, k));
         self.moves_last = crate::uses::last_read(self.program, block, k)
             || self.takes_sunk_param(block, k)
             || self.dies_here(&block.stmts[k]);
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
-        self.dying_lets.truncate(outer);
     }
 
     /// A `let` an enclosing statement found reads its source for the last
@@ -999,7 +995,7 @@ impl Emitter<'_> {
             return false;
         };
         let at = stmt as *const Stmt;
-        (self.dying_lets.contains(&at) || self.uses.dying_globals.contains(&at))
+        self.uses.dying.contains(&at)
             && !matches!(crate::uses::in_place(init).kind,
                 ExprKind::Local(src) if self.ref_bound.contains(&src))
             && !self.lends(*slot, init, self.tail.as_ref())

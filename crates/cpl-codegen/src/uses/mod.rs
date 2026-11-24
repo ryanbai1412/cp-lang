@@ -52,9 +52,11 @@ pub(crate) const KEPT: &str = "a closure that may be kept captures it";
 pub(crate) struct Uses {
     bindings: BTreeMap<(Home, usize), Use>,
     effects: Vec<Effects>,
-    /// The `let`s of fns that read a global for the last time
-    /// ([`dying_global_lets`]).
-    pub(crate) dying_globals: BTreeSet<*const Stmt>,
+    /// The `let`s that read their source for the last time, so may move
+    /// it: those a statement runs once at its source's last read
+    /// ([`dying_lets`]), and those of fns that read a global for the last
+    /// time ([`dying_global_lets`]).
+    pub(crate) dying: BTreeSet<*const Stmt>,
 }
 
 impl Uses {
@@ -67,8 +69,19 @@ impl Uses {
         let mut uses = Uses {
             bindings: BTreeMap::new(),
             effects,
-            dying_globals: dying_global_lets(program),
+            dying: dying_global_lets(program),
         };
+        let bodies = [&program.setup, &program.main]
+            .into_iter()
+            .chain(program.fns.iter().map(|f| &f.body))
+            .chain(program.closures.iter().map(|c| &c.body));
+        for body in bodies {
+            walk::blocks(body, &mut |block| {
+                for k in 0..block.stmts.len() {
+                    uses.dying.extend(dying_lets(program, block, k));
+                }
+            });
+        }
         uses.add(
             program,
             Home::Top,
@@ -572,7 +585,7 @@ pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
 /// variable `block` sets: `for e in edges.sorted(by: ..)` with nothing
 /// reading `edges` after it sorts `edges` itself. Such a `let` may move
 /// `src`.
-pub(crate) fn dying_lets(program: &Program, block: &Block, k: usize) -> Vec<*const Stmt> {
+fn dying_lets(program: &Program, block: &Block, k: usize) -> Vec<*const Stmt> {
     let mut found = Vec::new();
     once_lets(&block.stmts[k], &mut found);
     found
