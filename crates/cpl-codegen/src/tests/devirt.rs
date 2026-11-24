@@ -403,6 +403,22 @@ fn a_dropped_field_at_a_product_position_drops_its_local_and_stores() {
 }
 
 #[test]
+fn a_closure_named_to_keep_argument_order_is_no_std_function() {
+    let out = cpp("use std.search.{parallel_bsearch}
+let n = read<Int>()
+let off = n - 1
+let w = [n for _ in 0..n]
+let need = [n for _ in 0..n]
+var cnt = 0
+print(yes(parallel_bsearch(need.len, off..off + n, reset: () => cnt = 0, apply: i => cnt += w[i - off], ok: q => cnt >= need[q]) == []))
+");
+    assert!(
+        !out.contains("std::function"),
+        "a closure argument named before the call keeps its lambda type:\n{out}"
+    );
+}
+
+#[test]
 fn an_op_value_field_is_left_out_of_declaration_literal_and_tie() {
     let out = cpp("use std.window.{Window}
 var w = Window(+)

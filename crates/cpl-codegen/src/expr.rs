@@ -174,10 +174,14 @@ impl<'p> Emitter<'p> {
                 } else {
                     this.note_operand_copy(e);
                     let name = this.temp();
+                    // A closure keeps its own lambda type: the callee takes it as written.
+                    let ty = match e.kind {
+                        ExprKind::Closure(_) => "auto".to_string(),
+                        _ => this.ty(&e.ty),
+                    };
                     out.push_str(&format!(
-                        "{}{} {name} = {};\n",
+                        "{}{ty} {name} = {};\n",
                         pad(this.indent),
-                        this.ty(&e.ty),
                         code.text
                     ));
                     codes.push(Code::primary(name));
