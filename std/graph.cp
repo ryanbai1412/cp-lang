@@ -160,8 +160,8 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es, keep: a => (to: a.to)).out(0).collect() == [(to: 2), (to: 1)]`
-    pub fn directed<E, R: (u: V, v: V, ..), B: Target<V>>(
-        edges: [E]R,
+    pub fn directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
+        edges: S,
         keep: EdgeArc<V,
         E,
         R> -> B = a => a,
@@ -191,8 +191,8 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; Graph.undirected(es).out(1).collect() == [(to: 0, e: 0), (to: 2, e: 1)]`
     /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
-    pub fn undirected<E, R: (u: V, v: V, ..), B: Target<V>>(
-        edges: [E]R,
+    pub fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
+        edges: S,
         keep: EdgeArc<V,
         E,
         R> -> B = a => a,
