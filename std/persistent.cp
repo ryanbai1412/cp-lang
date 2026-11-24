@@ -88,7 +88,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// keep it as `base`. Every later write returns a new `Version`; no version is ever changed.
     ///
     /// cost: \(O(n)\) time and memory with `a:` or `fill:`, \(O(1)\) otherwise, for n = `|D|`
-    /// empty: an empty `D` gives a tree whose every fold is the identity
+    /// empty: `var t = PersistentSegTree<0..0, Int>(min); t.all(t.base) == Int.MAX`
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.all(t.base) == 6`
     pub fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>:
@@ -206,7 +206,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// position order.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: the monoid identity
+    /// empty: `var t = PersistentSegTree(min, a: [1, 2]); t.fold(t.base, 1..1) == Int.MAX`
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.fold(t.base, 1..3) == 5`
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.fold(t.base, 2..2) == 0`
@@ -218,7 +218,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// The fold of every position in version `v`, read from its root.
     ///
     /// cost: \(O(1)\)
-    /// empty: the monoid identity when `D` is empty
+    /// empty: `var t = PersistentSegTree<0..0, Int>(+); t.all(t.base) == 0`
     /// traps: when `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 0, 0); t.all(v) == 5`
     pub fn all(self, v: Version<PersistentSegTree<D, T>>) -> T = val[v.root]
@@ -241,7 +241,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// Law: `ok` is monotone (once false, false for every longer range) and `ok(identity)` holds.
     ///
     /// cost: \(O(\log n)\) calls of `ok`
-    /// ties: the rightmost qualifying cut
+    /// ties: `var t = PersistentSegTree(+, a: [1, 0, 0, 5]); t.right_while(t.base, 0, s => s <= 1) == 3`
     /// traps: when `from` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.right_while(t.base, 0, s => s <= 3) == 2`
     pub fn right_while(
@@ -271,7 +271,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// Law: `ok` is monotone (once false, false for every longer range) and `ok(identity)` holds.
     ///
     /// cost: \(O(\log n)\) calls of `ok`
-    /// ties: the leftmost qualifying cut
+    /// ties: `var t = PersistentSegTree(+, a: [5, 0, 0, 1]); t.left_while(t.base, 4, s => s <= 1) == 1`
     /// traps: when `to` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.left_while(t.base, 3, s => s <= 5) == 1`
     pub fn left_while(
@@ -298,13 +298,14 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// For a tree of counts under `+`, the position of the `k`-th item (1-based) in the difference
     /// `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the
     /// difference holds at most `k` items.
+    /// Items at one position are interchangeable; the position is returned.
     ///
     /// A position with count `c` holds `c` items.
     ///
     /// Law: `hi` was derived from `lo` by adding counts, so no position of `hi - lo` is negative.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: items at one position are interchangeable; the position is returned
+    /// ties: `var t = PersistentSegTree(+, a: [0, 0]); let v = t.set(t.base, 1, 2); t.diff_kth(v, t.base, 0) == Some(1) and t.diff_kth(v, t.base, 1) == Some(1)`
     /// traps: when `k < 0`, or a version did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, t.base, 1) == Some(3) and t.diff_kth(v2, t.base, 3) == None`
     /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, v1, 0) == Some(3)`
@@ -344,7 +345,7 @@ pub struct RangeKth<D, T>:
     /// per prefix of `a`. `a` is copied; later changes to it are not seen.
     ///
     /// cost: \(O(n \log n)\) time and memory for n = `a.len`
-    /// empty: an empty `a` builds; every query range is then empty
+    /// empty: `RangeKth<0..0, Int>([]).count_le(0..0, 5) == 0`
     /// order: queries take ranges of `a`'s domain
     /// traps: never
     /// example: `RangeKth([5, 1, 4, 2]).kth(0..4, 0) == 1`
@@ -409,10 +410,11 @@ pub struct RangeKth<D, T>:
             return new_root
 
     /// The `k`-th smallest element (0-based) of `a` over `r`, counting repeats.
+    /// Equal values are indistinguishable; the value is returned.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: traps (no `k` is in range)
-    /// ties: equal values are indistinguishable; the value is returned
+    /// empty: `RangeKth([5, 1, 4]).kth(1..1, 0) == 0` (traps R0401)
+    /// ties: `let k = RangeKth([2, 1, 2]); k.kth(0..3, 1) == 2 and k.kth(0..3, 2) == 2`
     /// traps: when `k < 0` or `k >= r.len`, or `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).kth(1..4, 1) == 2`
     pub fn kth(self, r: Range<D>, k: Int) -> T:
@@ -445,7 +447,7 @@ pub struct RangeKth<D, T>:
     /// The number of elements of `a` over `r` that are at most `x`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: 0
+    /// empty: `RangeKth([5, 1, 4]).count_le(1..1, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_le(0..4, 4) == 3`
     pub fn count_le(self, r: Range<D>, x: T) -> Int:
@@ -457,7 +459,7 @@ pub struct RangeKth<D, T>:
     /// The number of elements of `a` over `r` that are less than `x`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: 0
+    /// empty: `RangeKth([5, 1, 4]).count_lt(1..1, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_lt(0..4, 4) == 2`
     pub fn count_lt(self, r: Range<D>, x: T) -> Int:
@@ -469,7 +471,7 @@ pub struct RangeKth<D, T>:
     /// `lo_v > hi_v`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: 0
+    /// empty: `RangeKth([5, 1, 4]).count_in(1..1, 0, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_in(0..4, 2, 5) == 3`
     /// example: `RangeKth([5, 1, 4, 2]).count_in(0..4, 5, 2) == 0`
@@ -537,7 +539,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// older version.
     ///
     /// cost: \(O(n)\) time and memory with `a:` or `fill:`, \(O(1)\) otherwise, for n = `|D|`
-    /// empty: an empty `D` gives a tree whose every fold is the identity
+    /// empty: `var t = PersistentLazySegTree<0..0, Int, Int>(Action<Int, Int>(apply: (d, x, span) => x + d * span)); t.all(t.base) == 0`
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.all(t.base) == 6`
     pub fn new(
@@ -564,7 +566,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// A new version equal to `v` with the tag `f` applied to every position of `r`.
     ///
     /// cost: \(O(\log n)\) time and memory
-    /// empty: an empty `r` returns a version equal to `v`
+    /// empty: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 1..1, 10); t.all(v) == 6 and t.fold(v, 0..3) == 6`
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..2, 10); t.all(v) == 26 and t.all(t.base) == 6`
     pub fn apply(
@@ -593,7 +595,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// The fold of `r` in version `v`, left to right, with every applied tag accounted for.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: the monoid identity
+    /// empty: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.fold(t.base, 1..1) == 0`
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 1..3, 1); t.fold(v, 1..3) == 7`
     pub fn fold(self, v: Version<PersistentLazySegTree<D, T, F>>, r: Range<D>) -> T:
@@ -612,7 +614,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// The fold of every position in version `v`, read from its root.
     ///
     /// cost: \(O(1)\)
-    /// empty: the monoid identity when `D` is empty
+    /// empty: `var t = PersistentLazySegTree<0..0, Int, Int>(Action<Int, Int>(apply: (d, x, span) => x + d * span)); t.all(t.base) == 0`
     /// traps: when `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..3, 2); t.all(v) == 12`
     pub fn all(self, v: Version<PersistentLazySegTree<D, T, F>>) -> T:
@@ -652,7 +654,7 @@ pub struct PersistentArray<D, T>:
     /// Build version 0 over `D` from `a:` or a uniform `fill:`, and keep it as `base`.
     ///
     /// cost: \(O(n)\) time and memory for n = `|D|`
-    /// empty: an empty `D` gives an array with no positions
+    /// empty: `domain E = 0..0; var p = PersistentArray<E, Int>(fill: 7); [p.get(p.base, i) for i in E] == []`
     /// traps: when both or neither of `a:` and `fill:` are given
     /// example: `var p = PersistentArray<0..3, Int>(fill: 7); p.get(p.base, 0) == 7`
     pub fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>:
@@ -781,11 +783,12 @@ pub struct PMultiset<D>:
 
     /// Compare the elements of `self` and `other` as sorted sequences, lexicographically: ascending,
     /// or largest first with `desc: true`. A proper prefix is smaller. Returns `-1`, `0` or `1`.
+    /// It returns `0` only for equal multisets.
     ///
     /// The walk goes down the side where the two first differ by hash, so it reads one path.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// ties: `0` only for equal multisets
+    /// ties: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 2).with(mut ar, 5); let b = e.with(mut ar, 5).with(mut ar, 2); a.cmp(ar, b) == 0`
     /// traps: never
     /// example: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 1).with(mut ar, 3); let b = e.with(mut ar, 2); a.cmp(ar, b) == -1`
     /// example: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 1).with(mut ar, 3); let b = e.with(mut ar, 2); a.cmp(ar, b, desc: true) == 1`
