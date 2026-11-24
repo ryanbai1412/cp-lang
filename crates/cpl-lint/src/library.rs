@@ -402,3 +402,13 @@ fn atomic(src: &str) -> bool {
             )
     })
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn brackets_balance_only_when_each_closes_one_opened_before_it() {
+        assert!(super::balanced("f(x) + a[i]"));
+        assert!(!super::balanced("a) + (b"));
+        assert!(!super::balanced("(a"));
+    }
+}

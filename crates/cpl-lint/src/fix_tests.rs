@@ -55,3 +55,25 @@ fn a_hand_rolled_search_becomes_a_search_the_checker_knows() {
     );
     assert_eq!(checker_errors(&out), Vec::<String>::new(), "{out}");
 }
+
+/// The parser's removed spellings and `++` are rewritten; nothing else the
+/// parser offers to fix is.
+#[test]
+fn fix_removed_syntax_applies_removed_spellings_and_concatenation_only() {
+    let (out, n) = fix_removed_syntax("let s = \"a\" ++ \"b\"\nprint(s)\n");
+    assert_eq!((out.as_str(), n), ("let s = \"a\" + \"b\"\nprint(s)\n", 1));
+    let (out, n) = fix_removed_syntax("let xs = [1, 2]\nfor x in xs where x > 1:\n    print(x)\n");
+    assert_eq!(
+        (out.as_str(), n),
+        ("let xs = [1, 2]\nfor x in xs if x > 1:\n    print(x)\n", 1)
+    );
+}
+
+/// A witness pins a plain name to its value; an expression has no input to pin.
+#[test]
+fn a_witness_names_only_a_plain_input() {
+    assert_eq!(rules::witness("n_2", 5), vec![("n_2".to_string(), 5)]);
+    for text in ["a[i]", "n + 1", "2n", ""] {
+        assert!(rules::witness(text, 5).is_empty(), "{text}");
+    }
+}
