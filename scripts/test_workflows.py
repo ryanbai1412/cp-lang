@@ -211,6 +211,21 @@ class WorkflowTest(unittest.TestCase):
                 self.assertEqual(key, "target-ci-v2",
                                  f"{name}: restores a target/ ci.yml never saves (ci/R38)")
 
+    def test_every_job_that_runs_uv_sets_it_up(self):
+        with open(os.path.join(ROOT, "justfile"), encoding="utf-8") as f:
+            recipes = re.findall(r"^([\w-]+)[^\n]*:\n((?:[ \t]+.*\n?)*)", f.read(), re.M)
+        via_uv = [n for n, body in recipes if re.search(r"\buv\b|scripts/check\.sh", body)]
+        uses_uv = re.compile(r"^\s*(-\s*)?run:.*(\buv\b|scripts/check\.sh|\bjust (%s)(?![\w-]))" % "|".join(via_uv), re.M)
+        for path in sorted(glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yml"))):
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+            jobs = re.findall(r"^  ([\w-]+):\s*(?:#.*)?$", text.split("\njobs:\n", 1)[-1], re.M)
+            for job in jobs:
+                block = job_block(text, job)
+                if uses_uv.search(block):
+                    self.assertIn("astral-sh/setup-uv", block,
+                                  f"{os.path.relpath(path, ROOT)} job {job}: runs uv, just or check.sh without setup-uv")
+
     def test_finds_an_uncapped_job(self):
         text = "on: push\njobs:\n  a:\n    timeout-minutes: 5\n    steps: []\n  b:\n    runs-on: x\n    steps:\n      - timeout-minutes: 3\n"
         self.assertEqual(uncapped_jobs(text), ["b"])
