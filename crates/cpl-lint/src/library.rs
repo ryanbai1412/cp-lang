@@ -441,8 +441,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         // R11: a compound `to` runs its right side before the place's indices.
         let compound = library_lint::code(&d.decl.to)
             .is_some_and(|to| library_lint::compound(&to, &d.decl.fn_name));
-        // A statement hole `to` drops is the rest of the block, which the fn
-        // does itself: with no fix to drop it, it need not be pure.
+        // With no fix nothing is dropped, so `to` may leave out any hole.
+        let fixes = d.lint.no_fix.is_none();
         let to_kinds: Vec<(K, String)> = (to.iter())
             .map(|t| {
                 (
@@ -455,10 +455,9 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             .map(|h| {
                 let at = |i: &usize| d.from[*i].1 == *h && !d.labels[*i];
                 let uses = (0..d.from.len()).filter(at).count();
-                let stmt = (0..d.from.len()).any(|i| at(&i) && d.stmt_holes[i]);
                 compound
                     || uses > 1
-                    || (!in_to(h) && !(stmt && d.lint.no_fix.is_some()))
+                    || (fixes && !in_to(h))
                     || (per_item(&d.from, h) && !per_item(&to_kinds, h))
             })
             .collect();
@@ -761,6 +760,12 @@ impl Matcher<'_> {
                 let runs = if self.stmt[p] {
                     let runs = self.stmt_runs.get(&j).into_iter().flatten();
                     runs.copied().filter(|&k| k <= stop).collect()
+                } else if p > 0 && self.pat[p - 1].0 == K::Dot {
+                    // After `.`, a hole is a field or method name.
+                    (self.kinds[j] == K::Ident)
+                        .then_some(j + 1)
+                        .into_iter()
+                        .collect()
                 } else {
                     self.runs(j, stop)
                 };

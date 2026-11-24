@@ -200,7 +200,8 @@ library or by this spec:
   written over the matched code up to its last token.
   `holes: "a, b"` names more holes than the fn's parameters (a domain or a
   bound the call no longer needs); `to` may drop one of those only when it
-  matched an expression that calls nothing. `when: "b >= 1"` keeps a
+  matched an expression that calls nothing, or when the lint has no fix.
+  A hole after `.` matches a field or method name (`t[v].kid[c]`). `when: "b >= 1"` keeps a
   finding only where each listed hole (compared with `>=`, `>`, `<=` or `<`
   and an integer, comma-separated) is proven in bounds: it matched an
   integer literal, a constant expression (`10**18`) whose value does, or
@@ -242,7 +243,7 @@ library or by this spec:
   tokens (with no fix, those before a statement hole: the statements it
   matched stay, so the findings in them stand) and labels what `to`'s first hole matched, or with none, the first
   hole `from` calls a method on (the receiver a record's `on` types name);
-  with no fix, `to` may drop a statement hole whatever its statements call,
+  with no fix, `to` may drop any hole whatever it matched,
   and a named argument's label (`from:`) is never a hole; where a comment
   falls inside the match it
   has no fix, since `to` would drop the comment.

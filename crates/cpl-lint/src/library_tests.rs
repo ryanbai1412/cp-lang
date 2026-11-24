@@ -56,6 +56,25 @@ fn a_library_lint_fires_and_fixes_in_a_program_using_the_library() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A hole after `.` is a field name, and a lint with no fix may
+/// leave out of `to` a hole that matched a call (nothing is rewritten).
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_hole_after_a_dot_names_a_field_and_an_unfixed_lint_drops_calls() {
+    let decl = "@lint(hand_rolled_string_algo, from: \"t[v].f[c] ??= w\\nv = t[v].f[c]!\", to: \"Tr.make()\", holes: \"t, v, f, c, w\")\npub fn make() -> Int = 0\n@lint(hand_rolled_string_algo, from: \"x * x\", to: \"sq(x)\")\npub fn sq(x: Int) -> Int = x * x\nstruct N:\n    kid: [0..2]?Int\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "L0516" && d.message.starts_with("write"))
+            .map(|d| d.message)
+            .collect()
+    };
+    let walk = "var ns: List<N> = [N([0..2] _ => None)]\nvar o = 0\nfor b in [1, 0]:\n    ns[o].kid[b] ??= ns.push_id(N([0..2] _ => None))\n    o = ns[o].kid[b]!\nlet y = 3\nprint(o, y * y)\n";
+    assert_eq!(found(walk), ["write `Tr.make()`", "write `sq(y)`"]);
+    let other = walk.replace("o = ns[o].kid[b]!", "o = ns[0].kid[b]!");
+    assert_eq!(found(&other), ["write `sq(y)`"]);
+}
+
 /// A hole matches a type as it does an expression: the domain of a
 /// `Fenwick<C, Int>()` the call no longer needs. Rule: R06.4.9.
 #[test]
@@ -148,24 +167,25 @@ fn a_library_lint_matches_a_run_of_statements() {
 /// Rule: R06.4.9, spec/core/06-control-functions.md.
 #[test]
 fn declared_holes_match_free_names_and_a_record_name_keeps_its_code() {
-    let decl = "@lint(binom_by_hand, from: \"for i in 0..n:\\n    print(xs[i])\", to: \"for x in xs.walk:\\n    print(x)\", holes: \"n\")\npub fn walk(xs: List<Int>) -> List<Int> = xs\n";
-    let found = |body: &str| -> Vec<(String, String)> {
+    let found = |name: &str, body: &str| -> Vec<(String, String)> {
+        let decl = format!("@lint({name}, from: \"for i in 0..n:\\n    print(xs[i])\", to: \"for x in xs.walk:\\n    print(x)\", holes: \"n\")\npub fn walk(xs: List<Int>) -> List<Int> = [x for x in xs]\n");
         crate::lint(&format!("{decl}{body}"), &crate::Config::default())
             .into_iter()
-            .filter(|d| d.code.0 == "L0557")
+            .filter(|d| d.code.0 == "L0557" || d.code.0 == name)
             .map(|d| (d.code.0.to_string(), d.message.clone()))
             .collect()
     };
     let hit = "let a = [3, 1]\nlet m = a.len\nfor j in 0..m:\n    print(a[j])\n";
     assert_eq!(
-        found(hit),
+        found("binom_by_hand", hit),
         [(
             "L0557".into(),
             "write `for x in a.walk:\n    print(x)`".into()
         )]
     );
+    assert_eq!(found("walk_by_hand", hit).len(), 1);
     let calls = "let a = [3, 1]\nfn m() -> Int = 2\nfor j in 0..m():\n    print(a[j])\n";
-    assert!(found(calls).is_empty());
+    assert!(found("walk_by_hand", calls).is_empty());
 }
 
 /// One fn declares a lint twice, one `from` per spelling, and `from` does
