@@ -736,8 +736,8 @@ fn a_read_that_waits_shows_what_was_printed_before_it() {
     assert_eq!(asked_live(Command::new(binary)), expected, "the C++");
 }
 
-/// `@!interactive`: every `print` is written out as it is said, with no
-/// `flush()` and no read after it, in the interpreter and in the C++.
+/// `@!interactive`: what was printed is written out before each read, with
+/// no `flush()`, in the interpreter and in the C++ (spec/core/10-io.md).
 /// It stands with `@!multitest` in either order, once, at the top level.
 #[test]
 fn interactive_writes_each_print_out_at_once() {
@@ -748,9 +748,9 @@ fn interactive_writes_each_print_out_at_once() {
         std::fs::write(&path, source).unwrap();
         path.to_string_lossy().into_owned()
     };
-    // The program never reads and never ends: the line is seen only if
-    // `print` itself wrote it out.
-    let busy = "print(\"! ready\")\nvar k = 0\nwhile k >= 0: k = (k + 1) % 7\n";
+    // The program then waits on a read that never gets an answer: the line
+    // is seen only if the read wrote it out first.
+    let busy = "print(\"! ready\")\nlet k: Int = read()\nprint(k)\n";
     let path = write("busy.cp", &format!("@!interactive\n{busy}"));
     let mut interpreted = Command::new(env!("CARGO_BIN_EXE_cpl"));
     interpreted.args(["run", &path]);
