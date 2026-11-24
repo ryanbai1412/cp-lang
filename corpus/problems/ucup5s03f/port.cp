@@ -19,15 +19,16 @@
 // - Stepping `k -> k + 1` multiplies `(1 - x)^k (1 + x)^{n - k}` by `(1 - x) / (1 + x)`:
 //   dividing by `(1 + x)` is the forward pass `kraw[i + 1] -= kraw[i]`, and
 //   multiplying by `(1 - x)` is the backward pass `kraw[i + 1] -= kraw[i]`.
-// Bounds: n: 1..=10_000; m: 0..=200_000; a: 0..=n
+// Bounds: n: 1..=10_000; m: 0..=200_000; x: 0..=n
 
 const MOD = 998_244_353
 type Z = Mod<MOD>
 
 let (n, m): (1..=10_000, 0..=200_000) = read()
-let a: [0..=m]0..=n = read()
-var freq: [0..=n]Int = 0
-for x in a: freq[x] += 1
+var freq: [0..=n]0..=200_001 = 0  // at most m + 1
+for _ in 0..=m:
+    let x: 0..=n = read()
+    freq[x] += 1
 
 let comb = Comb<Z>()
 var kraw = [comb.choose(n, i) for i in 0..=n]
