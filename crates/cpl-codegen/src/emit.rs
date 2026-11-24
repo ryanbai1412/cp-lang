@@ -99,6 +99,9 @@ pub(crate) struct Emitter<'p> {
     pub functors: BTreeSet<usize>,
     /// The structs and fns the written file defines.
     pub(crate) written: lowered::Written,
+    /// Some compared, sorted or keyed value holds a struct or enum: only
+    /// then do types get a `cpl_tie`.
+    pub(crate) ties: bool,
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
@@ -325,6 +328,7 @@ impl<'p> Emitter<'p> {
             direct: BTreeSet::new(),
             functors: BTreeSet::new(),
             written: Default::default(),
+            ties: true,
             borrow_closures: BTreeSet::new(),
             call_scoped: BTreeSet::new(),
             capture_owns: Default::default(),
@@ -1051,6 +1055,7 @@ impl<'p> Emitter<'p> {
 
         self.devirt.built_only_in(&reachable, &reachable_closures);
         // The program first, since writing it finds out what it needs.
+        self.ties = needs_tie;
         let mut types = String::new();
         let mut done = BTreeSet::new();
         for &id in &reachable_structs {

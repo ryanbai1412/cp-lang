@@ -876,6 +876,10 @@ fn struct_never_compared_emits_no_tie_operators() {
         !uncompared.contains("operator==("),
         "uncompared struct should not emit cpl_tie operators: {uncompared}"
     );
+    assert!(
+        !uncompared.contains("cpl_tie"),
+        "nothing reads an uncompared struct's tie: {uncompared}"
+    );
     let compared = cpp(concat!(
         "struct Pt(x: Int, y: Int)\n",
         "let a = Pt(1, 2)\n",

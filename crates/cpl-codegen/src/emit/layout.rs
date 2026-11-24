@@ -427,7 +427,7 @@ impl<'p> Emitter<'p> {
                         names.push(name);
                     }
                 }
-                if Ty::Struct(*id).is_comparable(program) {
+                if self.ties && Ty::Struct(*id).is_comparable(program) {
                     out.push_str(&format!(
                         "    auto cpl_tie() const {{ return std::tie({}); }}\n",
                         names.join(", ")
@@ -483,10 +483,13 @@ impl<'p> Emitter<'p> {
                     }
                 }
                 out.push_str(&makers);
-                out.push_str(&format!(
-                    "    auto cpl_tie() const {{ return std::tie({}); }}\n}};\n",
-                    tie.join(", ")
-                ));
+                if self.ties {
+                    out.push_str(&format!(
+                        "    auto cpl_tie() const {{ return std::tie({}); }}\n",
+                        tie.join(", ")
+                    ));
+                }
+                out.push_str("};\n");
             }
             _ => {}
         }
