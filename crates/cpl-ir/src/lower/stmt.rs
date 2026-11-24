@@ -202,6 +202,14 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `value` checked against the fn's range return type (R03.1.4), unless proven inside it.
+    fn checked_ret(&mut self, value: Expr, span: Span) -> Expr {
+        match self.cx.ret_bounds.clone() {
+            Some(bounds) => self.check_range(value, &bounds, span),
+            None => value,
+        }
+    }
+
     fn tail_value(&mut self, e: &ast::Expr, tail: Tail, out: &mut Vec<Stmt>) {
         match tail {
             Tail::Discard => {
@@ -216,6 +224,7 @@ impl<'a> Lowerer<'a> {
                     Some(Ty::Unit) => out.push(Stmt::Expr(value)),
                     Some(ty) => {
                         let value = self.coerce(value, &ty, e.span);
+                        let value = self.checked_ret(value, e.span);
                         out.push(Stmt::Return(Some(value)));
                     }
                     None => {
@@ -1224,7 +1233,10 @@ impl<'a> Lowerer<'a> {
                             return;
                         }
                         match hint {
-                            Some(ty) => value = self.coerce(value, &ty, e.span),
+                            Some(ty) => {
+                                value = self.coerce(value, &ty, e.span);
+                                value = self.checked_ret(value, e.span);
+                            }
                             None => self.cx.ret = Some(value.ty.clone()),
                         }
                         if matches!(value.ty, Ty::Unit) {

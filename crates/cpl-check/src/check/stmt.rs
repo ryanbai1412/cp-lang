@@ -1671,6 +1671,9 @@ impl<'a> Checker<'a> {
         let Some((name, mut ret, declared, fn_depth)) = self.fns.last().cloned() else {
             return;
         };
+        if declared {
+            self.range_store(value, &ret);
+        }
         // `print(..)` is checked loosely, as a call of unknown type: it
         // gives nothing.
         let prints = matches!(&value.kind, ExprKind::Call { callee, .. }

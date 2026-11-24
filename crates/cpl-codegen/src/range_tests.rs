@@ -96,3 +96,18 @@ print(x * 3, k * 3)
     assert!(!out.contains("cpl::imul(x, 3)"), "{out}");
     assert!(out.contains("cpl::imul(k, 3)"), "{out}");
 }
+
+#[test]
+fn a_range_return_type_checks_what_it_returns_unless_proven() {
+    let unproven = cpp("fn f(x: Int) -> 0..10 = x\nprint(f(read<Int>()))\n");
+    assert!(
+        unproven.contains("cpl::check_range(x, 0, 9, \"0..10` returned by `f\")"),
+        "{unproven}"
+    );
+    let proven = cpp("fn f(x: 0..5) -> 0..10:\n    if x > 2:\n        return x\n    x + 1\nprint(f(read<Int>()))\n");
+    let body = &proven[proven.find("f(ll x)").unwrap()..];
+    assert!(
+        !body[..body.find("\n}").unwrap()].contains("check_range"),
+        "{proven}"
+    );
+}

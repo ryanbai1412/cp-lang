@@ -495,6 +495,8 @@ struct FnCx {
     view_lo: HashMap<Slot, i64>,
     view_rev: HashSet<Slot>,
     ret: Option<Ty>,
+    /// A scalar range return type (`-> 0..10`): what each returned value is checked against.
+    ret_bounds: Option<range::RangeBounds>,
     new_domain_slots: Vec<DomainId>,
     /// `self`'s slot and struct inside a method.
     receiver: Option<(Slot, StructId)>,

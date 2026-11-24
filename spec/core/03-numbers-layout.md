@@ -52,7 +52,9 @@ bytes, never slower), and `cpl explain` prints every layout.
 - **Loads widen, stores check.** Reading `a[i]` from a `[V]0..=1e9` is
   one zero-extending load; arithmetic is in `Int`, so `a[i] * a[j]` can't
   overflow 32 bits. Storing into a range-typed slot checks the range
-  unless the checker proves it (`a[i] = a[i] % 7` needs no check). A range
+  unless the checker proves it (`a[i] = a[i] % 7` needs no check), and a
+  fn's range return type checks what it returns the same way, naming the
+  fn (`fn f(x: Int) -> 0..10 = x` traps on 10). A range
   type is a contract: `cpl run` and checked builds trap on a violation;
   release builds don't check (decision 100), the same deal as `Int`
   overflow, so valid programs pay nothing on the judge. A type parameter
