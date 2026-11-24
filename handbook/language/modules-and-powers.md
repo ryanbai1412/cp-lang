@@ -254,6 +254,13 @@ write their own with the same tools.
 
 ## Key decisions
 
+**An idiom lint lives beside the fn it teaches (decision 512, R06.4.10).**
+"Write `xs.scan(+)` for this loop" is a fact about `scan`, so std declares
+it as `@lint` on `scan`, as any library may for its own fns, and a renamed
+fn can't leave its lint behind. Lost: the same lints as Rust rules in the
+linter, a second copy of std's vocabulary. The linter keeps only lints a
+pattern can't state, such as one that reads which values index a table.
+
 **The prelude is the chapters' vocabulary, by rule (decision 150).**
 Lost: an 80-name budget with per-name review (decision 94). The budget
 grew about one name per three requests until it was fiction, and

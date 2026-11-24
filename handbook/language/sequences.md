@@ -231,7 +231,10 @@ left of cut `c`, and for a domain position `v`, `pre[v]` folds through
 `pre[k]` is an error (E0320, decision 507) and `pre.cut(k)` names the
 fold of the first `k`. A domain keeps the two
 apart, and a sum over `l..=r` is `pre[r.r] - pre[l.l]` with no `+ 1`
-to forget. `a.rev.scan(+)` is the suffix table, also indexed by cut.
+to forget. `a.rev.scan(+)` is the suffix table, also indexed by cut,
+and the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over the
+two; they are the only spellings (decision 511), and `cpl fix` rewrites
+the old `suffix_fold(op, a)` and `a.prefix_excl(op)`.
 
 **Lost.** `pre[k]` on a `List`, the shortest spelling of the commonest
 read, because the reader of `pre[i]` can't tell a position from a cut.
