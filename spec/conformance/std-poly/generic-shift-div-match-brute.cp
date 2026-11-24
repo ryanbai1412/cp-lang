@@ -11,7 +11,7 @@ fn horner_shift<T: Div>(f: Poly<T>, c: T) -> Poly<T>:
     for i in (0..f.len).rev: acc = acc * Poly([c, T.one]) + Poly([f.c[i]])
     acc.truncated(f.len)
 
-fn long_div<T: Div + Sub>(a: Poly<T>, b: Poly<T>) -> Poly<T>:
+fn long_div<T: Div + Sub + Mul>(a: Poly<T>, b: Poly<T>) -> Poly<T>:
     let db = b.deg()!
     let da = a.deg()!
     var r = a.c

@@ -191,6 +191,32 @@ impl<'a> Checker<'a> {
                 }
             }
             _ if left == Ty::Error || right == Ty::Error => Ty::Error,
+            // At a type parameter the bounds allow it, `a + b` is the parameter again.
+            BinOp::Add
+            | BinOp::Sub
+            | BinOp::Mul
+            | BinOp::Div
+            | BinOp::Rem
+            | BinOp::BitAnd
+            | BinOp::BitOr
+            | BinOp::BitXor
+            | BinOp::Pow
+            | BinOp::Shl
+            | BinOp::Shr
+                if matches!(left, Ty::Param(_))
+                    && (right == left
+                        || matches!(op, BinOp::Pow | BinOp::Shl | BinOp::Shr)
+                            && right.is_int()) =>
+            {
+                left
+            }
+            // `x % P` reads the value of a value parameter (`Mod<P>`).
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem
+                if left.is_int()
+                    && matches!((&right, &rhs.kind), (Ty::Param(p), ExprKind::Name(n)) if p == n) =>
+            {
+                Ty::Int
+            }
             _ if left.is_vague() || right.is_vague() => Ty::Unknown,
             // `none` absorbs arithmetic (`+ - * /`) on `?Int`/`?F64` and integer/bitwise ops (`% ** & | ^ << >>`) on `?Int`.
             BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div
