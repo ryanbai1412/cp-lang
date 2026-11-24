@@ -69,6 +69,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "on a trait: the message when a type lacks its impl",
     ),
     (
+        "aka",
+        "`@aka(name, ..)` on a fn: other languages' names for it, for their fix",
+    ),
+    (
         "was",
         "`@was(Old, ..)`: the names a declaration replaced, for their fix",
     ),

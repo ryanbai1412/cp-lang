@@ -181,7 +181,7 @@ library or by this spec:
 - `@word(name)` on a std struct: `name(args)` is a call of its
   constructor (std's `@word(prefix)` on `Prefix`).
 - Documented where they act: `@bits` on a field and `@law` (chapter 5),
-  `@on_unimplemented`, `@was(..)` and `@stress(kind)` (chapter 12). Any
+  `@on_unimplemented`, `@was(..)`, `@aka(..)` and `@stress(kind)` (chapter 12). Any
   other `@name` is E0107, naming the nearest decorator, so no later pass
   meets one. (R06.4.11)
 - `@lint(name, from: "<code>", to: "<code>")` on a `pub fn` or a struct's

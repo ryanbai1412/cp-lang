@@ -309,6 +309,12 @@ A std item states the names it replaced, `@was(Prefix1, PrefixN)` above
 naming the new one, with the fix (and a word built on the type, the
 snake-case forms: `prefix_n`). Status: checks
 (`std-prefix/was-diff1-names-diff.cp`).
+A fn states other languages' names for it, `@aka(upper, toUpperCase)` above
+`pub fn to_upper(self: Str)`; a program calling `s.upper()` on that
+receiver type gets E0203 naming the fn, with the fix. `@aka` is an
+ordinary decorator: the checker reads it from std's declarations, so no
+compiler table spells a std name (decision 633). Status: checks
+(`core-12/aka-upper-names-to-upper.cp`, `core-12/aka-on-a-user-fn-runs.cp`).
 `@stress(kind)` above a type alias says how `cpl stress` makes and shrinks
 its values: `perm`, `tree`, `simple`, `connected`, `dag` or `digraph`
 (decision 25.32). std writes it above `Perm`, `Tree` and the graph

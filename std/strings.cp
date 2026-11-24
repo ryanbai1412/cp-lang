@@ -186,6 +186,7 @@ pub fn rsearch<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K:
 /// empty: `"".to_lower() == ""`
 /// traps: never
 /// example: `"AbC1".to_lower() == "abc1"`
+@aka(lower, toLowerCase, lowercase)
 pub fn to_lower(self: Str) -> Str = Str([c.lower for c in self])
 
 /// A copy of `self` with every ASCII lowercase letter replaced by its capital (`Char.upper`).
@@ -194,6 +195,7 @@ pub fn to_lower(self: Str) -> Str = Str([c.lower for c in self])
 /// empty: `"".to_upper() == ""`
 /// traps: never
 /// example: `"AbC1".to_upper() == "ABC1"`
+@aka(upper, toUpperCase, uppercase)
 pub fn to_upper(self: Str) -> Str = Str([c.upper for c in self])
 
 /// A copy of `self` with leading and trailing whitespace (`Char.is_space`) removed; inner
@@ -204,6 +206,7 @@ pub fn to_upper(self: Str) -> Str = Str([c.upper for c in self])
 /// traps: never
 /// example: `"  a b \n".trim() == "a b"`
 /// example: `" \t ".trim() == ""`
+@aka(strip)
 pub fn trim(self: Str) -> Str = self.trim_start().trim_end()
 
 /// A copy of `self` with leading whitespace (`Char.is_space`) removed.
@@ -212,6 +215,7 @@ pub fn trim(self: Str) -> Str = self.trim_start().trim_end()
 /// empty: `("".trim_start(), " \t\n".trim_start()) == ("", "")`
 /// traps: never
 /// example: `"  a b \n".trim_start() == "a b \n"`
+@aka(lstrip, trimStart, trimLeft)
 pub fn trim_start(self: Str) -> Str:
     var i = 0
     while i < self.len and self[i].is_space: i += 1
@@ -223,6 +227,7 @@ pub fn trim_start(self: Str) -> Str:
 /// empty: `("".trim_end(), " \t\n".trim_end()) == ("", "")`
 /// traps: never
 /// example: `"  a b \n".trim_end() == "  a b"`
+@aka(rstrip, trimEnd, trimRight)
 pub fn trim_end(self: Str) -> Str:
     var n = self.len
     while n > 0 and self[n - 1].is_space: n -= 1

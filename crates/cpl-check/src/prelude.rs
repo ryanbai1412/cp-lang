@@ -572,6 +572,46 @@ pub fn domain_member(member: &str) -> Option<&'static str> {
         .map(|&(_, of)| of)
 }
 
+/// The std fn another language's `name` stands for on a receiver of type
+/// `on`, as `@aka(upper, toUpperCase)` above `pub fn to_upper(self: Str)`
+/// states.
+pub fn aka(on: &str, name: &str) -> Option<&'static str> {
+    type Aka = crate::names::NameMap<Vec<(&'static str, &'static str)>>;
+    static AKA: OnceLock<Aka> = OnceLock::new();
+    let aka = AKA.get_or_init(|| {
+        let mut aka = Aka::default();
+        let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
+        for (_, text) in crate::modules::std_index() {
+            if !text.contains("@aka(") {
+                continue;
+            }
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in &item.stmts {
+                    let ast::StmtKind::Fn(f) = &stmt.kind else {
+                        continue;
+                    };
+                    let recv = f.params.first().filter(|p| p.name.text == "self");
+                    let Some(ast::TypeKind::Named { name: ty, .. }) =
+                        recv.and_then(|p| p.ty.as_ref()).map(|t| &t.kind)
+                    else {
+                        continue;
+                    };
+                    let names = stmt.decorators.iter().filter(|d| d.name.text == "aka");
+                    for arg in names.flat_map(|d| &d.args) {
+                        if let ast::ExprKind::Name(other) = &arg.value.kind {
+                            let own = (leak(&ty.text), leak(&f.name.text));
+                            aka.entry(other.clone()).or_default().push(own);
+                        }
+                    }
+                }
+            }
+        }
+        aka
+    });
+    let fns = aka.get(name)?;
+    fns.iter().find(|(ty, _)| *ty == on).map(|&(_, own)| own)
+}
+
 /// The name a std item has now for one it was written with before, as
 /// `@was(Prefix1, PrefixN)` above `pub struct Prefix` states. A word built
 /// on that type was written in snake case: `prefix_n` for `PrefixN`.
