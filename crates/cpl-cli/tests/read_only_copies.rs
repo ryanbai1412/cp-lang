@@ -353,15 +353,29 @@ fn every_program_makes_the_copies_its_header_says() {
 
 #[test]
 fn explain_gives_one_reason_per_copy_a_library_call_makes() {
-    let src = repo().join("corpus/problems/cf2165c/port.cp");
-    let out = std::env::temp_dir().join(format!("cpl-explain-cf2165c-{}.cpp", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("cpl-explain-lib-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("bag.cp");
+    std::fs::write(
+        &src,
+        concat!(
+            "use std.bag.{AugSortedBag}\n",
+            "var s: AugSortedBag<Int, Str> = AugSortedBag((x, y) => x + y, \"\", k => Str(k))\n",
+            "s.add(3)\n",
+            "let lo: Int = read()\n",
+            "print(s.fold_between(lo, 9))\n",
+        ),
+    )
+    .unwrap();
+    let out = dir.join("bag.cpp");
     let built = cpl_cli::run(&["build", src.to_str().unwrap(), "-o", out.to_str().unwrap()]);
     assert_eq!(built.code, 0);
     let cpp = std::fs::read_to_string(&out).unwrap();
-    let _ = std::fs::remove_file(&out);
     let copies = deep_copies(&cpp) + optional_copies(&cpp);
+    let explained = explained_copies(&src);
+    let _ = std::fs::remove_dir_all(&dir);
     assert!(copies > 0);
-    assert_eq!(explained_copies(&src), copies);
+    assert_eq!(explained, copies);
 }
 
 #[test]

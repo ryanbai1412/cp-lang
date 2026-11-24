@@ -8,7 +8,6 @@
 //   largest low part to the next multiple of 2^b. At most 30 values are raised, always among
 //   the 30 largest, so keep only those: O(n + q 30^2).
 // Bounds: n: 1..=500_000; q: 1..=50_000; a: 0..=2 ** 30 - 1; c: 0..2 ** 30
-// copies: 1
 
 const BITS = 30
 
@@ -18,17 +17,17 @@ let a: [0..n]0..=2 ** 30 - 1 = read()
 let top = a.max_k(BITS)
 
 for _ in 0..q:
-    var buf = top
     let c: 0..=2 ** 30 - 1 = read()
+    var raised = 0  // bit i: top[i] went up to a multiple of 2^b, so no bit below b is left
     var ans = 0
     for b in (0..BITS).rev:
         let want = Int(c.bit(b))
-        let cnt = buf.count(x => x.bit(b))
+        let cnt = count(not raised.bit(i) and top[i].bit(b) for i in 0..top.len)
         if cnt > want: break
         if cnt < want:
             let mask = (1 << b) - 1
-            let best_i = buf.argmax(by: x => x & mask)!
-            let add = (1 << b) - (buf[best_i] & mask)
-            ans += add
-            buf[best_i] += add
+            let low = (i: Int) => if raised.bit(i): 0 else: top[i] & mask
+            let best_i = (0..top.len).argmax(by: low)!
+            ans += (1 << b) - low(best_i)
+            raised |= 1 << best_i
     print(ans)

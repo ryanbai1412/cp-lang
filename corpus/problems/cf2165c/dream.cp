@@ -12,7 +12,6 @@
 // Because at most `BITS` elements are ever incremented and larger elements
 // dominate on high bits, only the `MAX_USED = min(n, BITS)` largest elements
 // of `a` can ever participate.
-// copies: 1
 
 use std.seq.{argmax}
 
@@ -24,17 +23,17 @@ let a: [0..n]0..=2 ** 30 - 1 = read()
 let top = a.sorted(by: x => desc(x))[..min(n, BITS)].to_list()
 
 for _ in 0..q:
-    var buf = top
     let c: 0..=2 ** 30 - 1 = read()
+    var raised = 0  // bit i: top[i] went up to a multiple of 2^b, so no bit below b is left
     var ans = 0
     for b in (0..BITS).rev:
         let want = Int(c.bit(b))
-        let cnt = count(x.bit(b) for x in buf)
+        let cnt = count(not raised.bit(i) and top[i].bit(b) for i in 0..top.len)
         if cnt > want: break
         if cnt < want:
             let mask = (1 << b) - 1
-            let best_i = buf.argmax(by: x => x & mask)!
-            let add = (1 << b) - (buf[best_i] & mask)
-            ans += add
-            buf[best_i] += add
+            let low = (i: Int) => if raised.bit(i): 0 else: top[i] & mask
+            let best_i = (0..top.len).argmax(by: low)!
+            ans += (1 << b) - low(best_i)
+            raised |= 1 << best_i
     print(ans)
