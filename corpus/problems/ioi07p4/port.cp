@@ -1,10 +1,12 @@
 // Source: IOI 2007, Miners, https://dmoj.ca/problem/ioi07p4
+// limits: 750 ms, 16 MB
 // Problem: N <= 1e5 food shipments, each M, F or B, in order; each goes to one of two mines.
 //   A mine digs 1, 2 or 3 coal per shipment: the number of distinct foods among it and that mine's
 //   previous two. Print the most coal both mines can dig in total.
-// Solution: only each mine's last two foods matter, so most[a, b, c, d] (0 = none yet, else a
-//   food) is the best total so far. Each shipment goes to mine one or two, shifting that mine's
-//   pair and adding coal(older, old, new). O(4^4 N).
+// Solution: only each mine's last two foods matter, so going from the last shipment back,
+//   rest[x, y] (each mine's last two foods as one of 16 states) is the most the shipments from
+//   here on dig. Each shipment goes to mine one or two, adding coal[x, new] and moving that mine
+//   to after[x, new]. O(16^2 N).
 // original: corpus/submissions/5033986.cpp
 // Bounds: n: 1..=1e5
 let n: 1..=1e5 = read()
@@ -16,24 +18,16 @@ fn menu() -> [Ship]Char:
 
 let food: [Ship]Char = read(gen: menu)
 
-// A mine remembers its last two foods: 0 for "nothing yet", else 1..=3.
-fn coal(older: Int, old: Int, new: Int) -> Int:
-    sum(1 for f in 1..=3 if f == older or f == old or f == new)
+// A mine remembers its last two shipments as older * 4 + old, 0 standing for none.
+domain Mine = 0..16
+let after: [Mine, 1..=3]Mine = [Mine, 1..=3] (m, f) => Mine(m.ord % 4 * 4 + f)
+let coal: [Mine, 1..=3]Int = [Mine, 1..=3] (m, f) =>
+    sum(1 for g in 1..=3 if g == m.ord / 4 or g == m.ord % 4 or g == f)
 
-// most[a, b, c, d]: the most coal so far when mine one last got a then b and
-// mine two last got c then d.
-type Memory = [0..=3, 0..=3, 0..=3, 0..=3]?Int
-var most: Memory = None
-most[0, 0, 0, 0] = 0
-for s in Ship:
+// rest[x, y]: the most coal from the ships still to come, the mines remembering x and y
+var rest: [Mine, Mine]Int = 0
+for s in Ship.rev:
     let f = if food[s] == 'M': 1 elif food[s] == 'F': 2 else: 3
-    var next: Memory = None
-    for a in 0..=3:
-        for b in 0..=3:
-            for c in 0..=3:
-                for d in 0..=3:
-                    if let dug = most[a, b, c, d]:
-                        next[b, f, c, d] max= dug + coal(a, b, f)
-                        next[a, b, d, f] max= dug + coal(c, d, f)
-    most = next
-print(most.max())
+    rest = [Mine, Mine] (x, y) =>
+        max(coal[x, f] + rest[after[x, f], y], coal[y, f] + rest[x, after[y, f]])
+print(rest[Mine(0), Mine(0)])
