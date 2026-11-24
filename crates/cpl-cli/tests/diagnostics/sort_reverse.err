@@ -1,8 +1,8 @@
-error[E0303]: a sort takes `desc: true` for largest first, not `reverse:`
+error[E0303]: a sort puts the largest first with a descending key, not `reverse:`
   --> sort_reverse.cp:2:17
   |
 2 | print(xs.sorted(reverse: true))
   |                 ^^^^^^^
-  = help: write `desc`
+  = help: `desc(x)` orders largest first
 
 sort_reverse.cp: 1 error

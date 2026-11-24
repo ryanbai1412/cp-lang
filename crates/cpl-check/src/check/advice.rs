@@ -1420,7 +1420,7 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
         ("sort", Some(g))
             if g == "greater()" || g.starts_with("greater<") && g.ends_with(">()") =>
         {
-            (format!("{x}.sort(desc: true)"), 0)
+            (format!("{x}.sort(by: x => desc(x))"), 0)
         }
         ("max_element", None) => (format!("{x}.max()!"), 0),
         ("min_element", None) => (format!("{x}.min()!"), 0),

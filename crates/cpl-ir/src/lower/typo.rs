@@ -637,7 +637,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Python's `sorted(xs, reverse=True)`: CP Lang's sort says `desc: true`.
     /// `print(xs.sort())`: an in-place change gives nothing to print; its
     /// copying form does.
     pub(super) fn no_value_to_print(&mut self, span: Span) {
@@ -656,7 +655,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `xs.sort(x => -x)` or `reverse: true`: the key goes by name, and
-    /// largest first is `desc: true`.
+    /// largest first is a descending key, `by: x => desc(x)` (decision 290).
     pub(super) fn sort_reverse_arg(&mut self, args: &[ast::Arg]) -> bool {
         if let [arg] = args {
             if arg.name.is_none() && matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
@@ -670,17 +669,49 @@ impl<'a> Lowerer<'a> {
                 return true;
             }
         }
-        let Some(name) = args
-            .iter()
-            .find_map(|a| a.name.as_ref().filter(|n| n.text == "reverse"))
-        else {
+        let Some((name, value)) = args.iter().find_map(|a| {
+            (a.name.as_ref())
+                .filter(|n| n.text == "reverse")
+                .map(|n| (n, &a.value))
+        }) else {
             return false;
         };
-        let message = "a sort takes `desc: true` for largest first, not `reverse:`";
+        let message = "a sort puts the largest first with a descending key, not `reverse:`";
         self.error(codes::WRONG_ARG_COUNT, name.span, message);
-        let edit = self.span(name.span);
+        let by = (args.iter()).find(|a| {
+            a.name
+                .as_ref()
+                .is_some_and(|n| matches!(n.text.as_str(), "by" | "key"))
+        });
+        let keyed = by.is_some();
+        let edit = self.span(Span::new(name.span.start, value.span.end));
+        let truthy = self.source(value.span) == "true";
+        // `by: w => w.len, reverse: true` is `by: w => desc(w.len)`.
+        let wrapped = by.filter(|_| truthy).and_then(|by| {
+            let last = args.last().filter(|l| std::ptr::eq(&l.value, value))?;
+            let before = args.get(args.len().checked_sub(2)?)?;
+            let text = self.source(by.value.span).to_string();
+            let (head, body) = text.split_once("=>")?;
+            let key = format!("{}=> desc({})", head, body.trim());
+            let cut = Span::new(before.value.span.end, last.value.span.end);
+            Some(vec![
+                (self.span(by.value.span), key),
+                (self.span(cut), String::new()),
+            ])
+        });
         if let Some(last) = self.diags.last_mut() {
-            last.fix("write `desc`", edit, "desc");
+            if let Some(edits) = wrapped {
+                last.help = Some("`desc(key)` orders largest first".into());
+                last.fixes.push(cpl_diag::Fix {
+                    title: "wrap the key in `desc`".into(),
+                    edits,
+                });
+            } else if keyed {
+                last.help = Some("wrap the key in `desc`: `by: x => desc(key)`".into());
+            } else if truthy {
+                last.help = Some("`desc(x)` orders largest first".into());
+                last.fix("write `by: x => desc(x)`", edit, "by: x => desc(x)");
+            }
         }
         true
     }
@@ -693,7 +724,7 @@ impl<'a> Lowerer<'a> {
             return false;
         };
         let message = format!("`sort` has no parameter named `{}`", named.text);
-        self.unknown_arg_name(message, named, &["by", "desc"]);
+        self.unknown_arg_name(message, named, &["by"]);
         true
     }
 
