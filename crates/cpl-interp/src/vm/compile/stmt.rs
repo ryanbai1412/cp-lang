@@ -1038,9 +1038,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::Return(val) => {
-                if self.feed_acc.is_some() {
-                    self.emit(Op::FeedEnd, Span::default());
-                } else if let Some((ret_dst, _)) = self.inline_ret {
+                // An inlined fn's `return` leaves that fn, never the feed it's inlined into.
+                if let Some((ret_dst, _)) = self.inline_ret {
                     if let Some(e) = val {
                         let r = self.compile_expr_i(e);
                         if r != ret_dst {
@@ -1057,6 +1056,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     if let Some((_, jumps)) = &mut self.inline_ret {
                         jumps.push(pc);
                     }
+                } else if self.feed_acc.is_some() {
+                    self.emit(Op::FeedEnd, Span::default());
                 } else if let Some(e) = val {
                     if ScalarKind::of_ty(&e.ty, self.program).is_some() {
                         let r = self.compile_expr_i(e);
