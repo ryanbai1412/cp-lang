@@ -16,15 +16,15 @@ fn slow():
     for l in 0..n:
         var m = n + 1
         for r in l..n:
-            m = min(m, p[r])
+            m min= p[r]
             cnt[(r - l, m)] = (cnt.get((r - l, m)) ?? 0) + 1
     print(cnt.values.count(c => c == 1))
 
 @gen
 fn make_case(size: Int):
     let m = rand(1, size)
-    var q = [i for i in 1..=m]
-    shuffle(q)
+    var q = (1..=m).collect()
+    shuffle(mut q)
     print(1)
     print(m)
     print(q)
