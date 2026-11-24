@@ -649,6 +649,15 @@ class Tail:
             if self.call([sys.executable, "scripts/spec-gate.py", "traits"]):
                 raise Failed("a std impl's trait method has no spec/conformance/traits.toml case; write the case it names"
                              " (or regenerate: scripts/spec-gate.py traits --write)")
+        if sel.get("dreams") == "1" and self.wants("dreams"):
+            # A std/ or checker change (an E05xx rename) lands with every dream's migration;
+            # one step per mode keeps each under the 20 s slice budget.
+            self._cargo_build("cpl-cli")
+            for mode in ("check", "lint"):
+                self.step(f"every dream still passes {mode} (scripts/corpus.py verify --dreams --only {mode})")
+                if self.call([sys.executable, "scripts/corpus.py", "verify", "--dreams", "--only", mode, "--cpl", self.cpl]):
+                    raise Failed(f"a dream fails {mode} after this std/ or checker change; migrate it in this commit"
+                                 " (cpl migrate <dream.cp>, then cpl fmt), rerun: scripts/corpus.py verify --dreams --only check,lint")
         if (steps := sel.get("steps", "").split()) and self.wants("touched_steps"):
             self.step(f"touched checking scripts (scripts/ci.py steps touched {' '.join(steps)})")
             if run_steps("touched", self.cpl, run=self.run, only=set(steps)):
@@ -1054,7 +1063,7 @@ AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only h
 # The commit tier refuses only the reds a change brings: a test that fails at
 # the base too is main's, reported with its owner (scripts/new_reds.py).
 NEW_REDS = [sys.executable, str(ROOT / "scripts" / "new_reds.py"), "--"]
-COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits",
+COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits", "dreams",
                 "touched_steps", "script_tests", "site")
 
 

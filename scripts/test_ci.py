@@ -542,6 +542,17 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("cpl.wasm's data segment or a touched crate is over its budget", err)
 
+    def test_a_std_or_checker_change_checks_and_lints_every_dream(self) -> None:
+        code, ev, _, _, _, _ = self._commit({"dreams": "1"})
+        self.assertEqual(code, 0)
+        runs = [e for e in ev if e.startswith("scripts/corpus.py verify --dreams")]
+        self.assertEqual(runs, [f"scripts/corpus.py verify --dreams --only {m} --cpl target/debug/cpl" for m in ("check", "lint")])
+        code, _, _, err, _, _ = self._commit({"dreams": "1"}, codes={runs[1]: 1})
+        self.assertEqual(code, 1)
+        self.assertIn("a dream fails lint after this std/ or checker change", err)
+        _, ev, _, _, _, _ = self._commit({"dreams": "0"})
+        self.assertFalse([e for e in ev if e.startswith("scripts/corpus.py verify --dreams")])
+
     def test_a_failed_check_names_its_rerun_and_stops_the_tier(self) -> None:
         sel = {"packages": "cpl-fmt", "filter": "x", "site": "1"}
         code, ev, _, err, _, _ = self._commit(sel, codes={"cargo fmt --check -p cpl-fmt": 1})

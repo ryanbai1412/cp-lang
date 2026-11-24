@@ -52,7 +52,7 @@ fn answer(c: Pt) -> List<P>:
     if c.x <= pts[lower.first!].x or c.x >= pts[lower.last!].x: return []
     var cands = near(lower, c) + near(upper, c)
     if let s = off_diagonal: cands.push(s)
-    if let tri = cands.combinations(3).first(t => in_tri(pts[t[0]], pts[t[1]], pts[t[2]], c)):
+    if let tri = cands.combinations(3).find(t => in_tri(pts[t[0]], pts[t[1]], pts[t[2]], c)):
         return tri
     if hull.len == 4 and
             off_diagonal == None and

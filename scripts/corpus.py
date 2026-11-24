@@ -786,16 +786,19 @@ def check_header(pkg, ctx):
 
 
 def check_check(pkg, ctx):
-    """`cpl check port.cp` reports no error (a warning never fails)."""
-    if not pkg.port:
-        return []
-    r = subprocess.run([ctx.cpl, "check", str(pkg.port)], capture_output=True, text=True)
-    if not re.search(r"(?m)^error", r.stderr):
-        return []
-    # The log is the only evidence a CI runner keeps: show the port's errors.
-    print(f"corpus: {ctx.cpl} check {os.path.relpath(pkg.port, ROOT)}", file=sys.stderr)
-    print("\n".join(r.stderr.splitlines()[:40]), file=sys.stderr)
-    return [f"port-check {pkg.id} -"]
+    """`cpl check` reports no error in port.cp or dream.cp (a warning never fails)."""
+    found = []
+    for kind, f in (("port", pkg.port), ("dream", pkg.dream)):
+        if not f:
+            continue
+        r = subprocess.run([ctx.cpl, "check", str(f)], capture_output=True, text=True)
+        if not re.search(r"(?m)^error", r.stderr):
+            continue
+        # The log is the only evidence a CI runner keeps: show the file's errors.
+        print(f"corpus: {ctx.cpl} check {os.path.relpath(f, ROOT)}", file=sys.stderr)
+        print("\n".join(r.stderr.splitlines()[:40]), file=sys.stderr)
+        found.append(f"{kind}-check {pkg.id} -")
+    return found
 
 
 def tokens(data):
@@ -1618,7 +1621,7 @@ def verify(args):
         if not ids:
             print("corpus: no package changed")
             return 0
-    wanted = sharded(list(problems(sets=opt("set"), ids=ids or None)), opt("shard"))
+    wanted = sharded([p for p in problems(sets=opt("set"), ids=ids or None) if not opt("dreams") or p.dream], opt("shard"))
     missing = set(ids) - {p.id for p in wanted}
     if missing and not opt("changed"):
         sys.exit(f"corpus: no package {', '.join(sorted(missing))}")
@@ -1865,6 +1868,7 @@ def cli(argv):
     v.add_argument("ids", nargs="*", help="package ids (default: every package)")
     v.add_argument("--set", action="append", help="only the packages in corpus/sets/<SET>.txt")
     v.add_argument("--changed", metavar="BASE", help="only packages changed since BASE (a commit, or `staged`)")
+    v.add_argument("--dreams", action="store_true", help="only packages with a dream.cp")
     v.add_argument("--only", help="comma-separated modes: " + ",".join(MODES))
     v.add_argument("--skip", help="comma-separated modes to leave out")
     v.add_argument("--no-run", action="store_true", help="skip everything that compiles or runs")

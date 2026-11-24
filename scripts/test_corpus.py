@@ -754,6 +754,21 @@ class StaticModesTest(Corpus):
         pkg = corpus.Package.at(self.package("p1", port_cp=""))
         self.assertEqual(corpus.check_check(pkg, self.ctx("error[E0608]: `out` moves here\\n")), ["port-check p1 -"])
 
+    def test_a_dream_that_doesnt_check_fails_beside_its_port(self):
+        # ucup5s05e's dream kept `first`, removed in 0.3 (E0503), as no mode checked dreams.
+        pkg = corpus.Package.at(self.package("p1", dream_cp=""))
+        self.assertEqual(corpus.check_check(pkg, self.ctx("error[E0503]: `first` is spelled `find`\\n")), ["dream-check p1 -"])
+        pkg = corpus.Package.at(self.package("p2", port_cp="", dream_cp=""))
+        self.assertEqual(corpus.check_check(pkg, self.ctx("error[E0503]: x\\n")), ["port-check p2 -", "dream-check p2 -"])
+
+    def test_verify_dreams_takes_only_the_packages_with_a_dream(self):
+        pkgs = [corpus.Package.at(self.package("p1", dream_cp="print(1)\n")), corpus.Package.at(self.package("p2", port_cp=""))]
+        seen = []
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter(pkgs)), \
+                mock.patch.object(corpus, "sharded", side_effect=lambda ps, _shard: seen.extend(p.id for p in ps) or []):
+            corpus.verify(argparse.Namespace(ids=[], dreams=True, only="check", cpl=None))
+        self.assertEqual(seen, ["p1"])
+
     def test_a_failing_port_shows_its_errors(self):
         pkg = corpus.Package.at(self.package("p1", port_cp=""))
         with mock.patch("sys.stderr", new_callable=io.StringIO) as err:

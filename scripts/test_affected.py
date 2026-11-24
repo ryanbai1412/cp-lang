@@ -23,6 +23,12 @@ class AffectedTest(unittest.TestCase):
     def sel(self, *paths):
         return affected.select(list(paths), DIRS)
 
+    def test_std_and_the_checker_select_every_dream(self):
+        for path in ("std/vec.cp", "crates/cpl-check/src/lib.rs"):
+            self.assertTrue(self.sel(path)["dreams"], path)
+        for path in ("crates/cpl-fmt/src/lib.rs", "corpus/problems/p1/dream.cp", "web/x.ts"):
+            self.assertFalse(self.sel(path)["dreams"], path)
+
     def test_a_crate_file_selects_its_package_by_name_not_directory(self):
         s = self.sel("crates/cpl-prover/src/lib.rs")
         self.assertEqual((s["all"], s["packages"]), (False, ["cpl-prover"]))
