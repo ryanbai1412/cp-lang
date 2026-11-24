@@ -119,7 +119,9 @@ def python(formula):
     f = f.replace("\\_", "_").replace("³", "^3").replace("²", "^2")
     f = re.sub(r"\\mathit\{(\w+)\}", r"\1", f)
     f = re.sub(r"(\w+)\.(\w+)", r"\1_\2", f)
-    f = re.sub(r"\\deg\s*", "", f)
+    # `\deg f` is the symbol f; a bare `\deg` (`(n + \deg)`) is a symbol of its own
+    f = re.sub(r"\\deg\s*(?=[A-Za-z(\\])", "", f)
+    f = re.sub(r"\\deg\b", "deg", f)
     f = re.sub(r"\\(?:operatorname|mathrm)\{(\w+)\}", r"\1", f)
     f = re.sub(r"\\sqrt\{([^}]*)\}", r"sqrt(\1)", f)
     # a sum grows as its term times its upper bound, or as its term when it names none

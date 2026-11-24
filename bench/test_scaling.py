@@ -29,6 +29,12 @@ class Growth(unittest.TestCase):
                               (r"\lvert \mathit{from} \rvert", 4.0)]:
             self.assertAlmostEqual(scaling.growth(formula, fixed=("P",)), want, places=3, msg=formula)
 
+    def test_a_bare_deg_is_a_symbol(self):
+        self.assertAlmostEqual(scaling.growth(r"(n + \deg) \log^2 n", fixed=("deg",), n=16.0),
+                               (64 + 1) * 36 / ((16 + 1) * 16), places=6)
+        self.assertAlmostEqual(scaling.growth(r"(\deg f + m) \log m"),
+                               scaling.growth(r"(f + m) \log m"), places=6)
+
     def test_a_binomial_grows_as_its_value(self):
         self.assertAlmostEqual(scaling.growth("C(n, k)", let={"k": "2"}, n=15.0), 1770 / 105, places=3)
         self.assertAlmostEqual(scaling.growth("C(n, k)", fixed=("k",)), 4.0, places=3)

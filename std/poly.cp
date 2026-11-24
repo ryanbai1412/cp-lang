@@ -664,7 +664,7 @@ pub fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P>:
 /// \(O(n^2)\) for `n <= 64` (any prime `P`), \(O(n \log^2 n)\) via subproduct tree + NTT for `n >
 /// 64`.
 ///
-/// cost: \(O(n^2)\) for `n <= 64`, \(O(n \log^2 n)\) above
+/// cost: \(O(n \log^2 n)\), by the direct \(O(n^2)\) for `n <= 64`
 /// empty: `[]`
 /// order: lowest degree first
 /// traps: when `xs.len != ys.len`, or two `xs` are equal
@@ -885,7 +885,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
 
     /// The formal power `self(x)^k mod x^n`, as the free `pow`.
     ///
-    /// cost: \(O(\log k)\) truncated `*`: \(O(n \log n \log k)\) for a `FastProduct` `T`, else \(O(n^2 \log k)\); the free `pow` on `List<Mod<P>>` is \(O(n \log n)\) by `exp(k log)`
+    /// cost: \(O(n \log n \log k)\) for a `FastProduct` `T` (\(O(\log k)\) truncated `*`), else \(O(n^2 \log k)\); the free `pow` on `List<Mod<P>>` is \(O(n \log n)\) by `exp(k log)`
     /// traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 1]).pow(3, 4).at(2) == Z(3)`
     pub fn pow(self, k: Int, n: Int) -> Poly<T>:
