@@ -79,7 +79,7 @@ pub struct Mat<T>:
     /// traps: when `rows < 0` or `cols < 0`
     /// example: `Mat<Int>.filled(2, 3, 7).get(1, 2) == 7`
     /// example: `Mat<?Int>.filled(2, 2, None, over: Semiring(min, +)).get(0, 1) == None`
-    pub fn filled<S>(rows: Int, cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>:
+    pub fn filled<S>(rows: 0.., cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>:
         assert rows >= 0 and cols >= 0, "Mat.filled requires rows >= 0 and cols >= 0"
         Mat(rows, cols, List.filled(rows * cols, fill), ring_of(over))
 
@@ -88,7 +88,7 @@ pub struct Mat<T>:
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
     /// traps: when `rows < 0` or `cols < 0`
     /// example: `Mat<Int>.zeros(2, 3).get(1, 2) == 0`
-    pub fn zeros(rows: Int, cols: Int) -> Mat<T>:
+    pub fn zeros(rows: 0.., cols: Int) -> Mat<T>:
         assert rows >= 0 and cols >= 0
         Mat(rows, cols, List.filled(rows * cols, T.zero))
 
@@ -97,7 +97,7 @@ pub struct Mat<T>:
     /// cost: \(O(n^2)\) time and space
     /// traps: when `n < 0`
     /// example: `let m = Mat<Int>.identity(3); m.get(1, 1) == 1 and m.get(1, 2) == 0`
-    pub fn identity(n: Int) -> Mat<T>:
+    pub fn identity(n: 0..) -> Mat<T>:
         assert n >= 0
         var d = List.filled(n * n, T.zero)
         for i in 0..n: d[i * n + i] = T.one
@@ -110,7 +110,7 @@ pub struct Mat<T>:
     /// empty: `let m = Mat<Int>.from_flat(0, 3, []); m.rows == 0 and m.cols == 3`
     /// traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
     /// example: `Mat<Int>.from_flat(2, 3, [1, 2, 3, 4, 5, 6]).get(1, 0) == 4`
-    pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>:
+    pub fn from_flat(rows: 0.., cols: Int, data: List<T>) -> Mat<T>:
         assert rows >= 0 and cols >= 0 and data.len == rows * cols
         Mat(rows, cols, data.clone())
 
@@ -265,7 +265,7 @@ pub struct Mat<T>:
     /// traps: when `n < 0`
     /// example: `let m = Mat<Int>.product(2); m.op(m.id, Mat<Int>.from_rows([[1, 2], [3, 4]])).get(1, 1) == 4`
     /// example: `let m = Mat<?Int>.product(2, over: Semiring(min, +)); m.id.get(0, 0) == Some(0) and m.id.get(0, 1) == None`
-    pub fn product<S>(n: Int, over: S = Semiring(+, *)) -> Monoid<Mat<T>>:
+    pub fn product<S>(n: 0.., over: S = Semiring(+, *)) -> Monoid<Mat<T>>:
         assert n >= 0
         let r: ?Ring<T> = ring_of(over)
         Monoid(Mat<T>.unit(n, r), (x, y) => x * y)
@@ -911,7 +911,7 @@ pub struct XorBasis:
     /// traps: when `x < 0`
     /// example: `var b = XorBasis(); let p = b.add(6); let q = b.add(5); let r = b.add(3); p and q and not r`
     /// example: `var b = XorBasis(); not b.add(0)`
-    pub fn add(mut self, x: Int) -> Bool:
+    pub fn add(mut self, x: 0..) -> Bool:
         assert x >= 0
         var v = x
         var b = 62
@@ -931,7 +931,7 @@ pub struct XorBasis:
     /// cost: \(O(W)\)
     /// traps: when `x < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.reduce(4) == 1 and b.reduce(3) == 0`
-    pub fn reduce(self, x: Int) -> Int:
+    pub fn reduce(self, x: 0..) -> Int:
         assert x >= 0
         var v = x
         var b = 62
@@ -945,7 +945,7 @@ pub struct XorBasis:
     /// cost: \(O(W)\)
     /// traps: when `x < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.contains(3) and not b.contains(4)`
-    pub fn contains(self, x: Int) -> Bool = self.reduce(x) == 0
+    pub fn contains(self, x: 0..) -> Bool = self.reduce(x) == 0
 
     /// The maximum value of `init ^ s` over all `s` in the span.
     ///
@@ -955,7 +955,7 @@ pub struct XorBasis:
     /// ties: `var b = XorBasis(); b.add(3); b.add(5); b.add(6); b.max_xor() == 6`
     /// traps: when `init < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.max_xor() == 6 and b.max_xor(1) == 7`
-    pub fn max_xor(self, init: Int = 0) -> Int:
+    pub fn max_xor(self, init: 0.. = 0) -> Int:
         assert init >= 0
         var v = init
         var b = 62
@@ -973,7 +973,7 @@ pub struct XorBasis:
     /// ties: `var b = XorBasis(); b.add(3); b.add(5); b.add(6); b.min_xor(7) == 1`
     /// traps: when `init < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.min_xor(4) == 1 and b.min_xor() == 0`
-    pub fn min_xor(self, init: Int = 0) -> Int:
+    pub fn min_xor(self, init: 0.. = 0) -> Int:
         assert init >= 0
         var v = init
         var b = 62
@@ -1127,7 +1127,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} / 64)\) time and space
     /// traps: when `rows < 0` or `cols < 0`
     /// example: `BitMat(2, 3).rank() == 0`
-    pub fn new(rows: Int, cols: Int) -> BitMat:
+    pub fn new(rows: 0.., cols: Int) -> BitMat:
         assert rows >= 0 and cols >= 0
         BitMat(rows, cols, List.filled(rows * bit_words(cols), 0))
 
@@ -1136,7 +1136,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// cost: \(O(n^2 / 64)\) time and space
     /// traps: when `n < 0`
     /// example: `BitMat.identity(3).get(1, 1) and not BitMat.identity(3).get(1, 2)`
-    pub fn identity(n: Int) -> BitMat:
+    pub fn identity(n: 0..) -> BitMat:
         var m = BitMat.new(n, n)
         for i in 0..n: m.set(i, i, true)
         m
@@ -1322,7 +1322,7 @@ pub struct PrefixXorBasis:
     /// cost: \(O(62)\) time and space
     /// traps: when `x < 0` or `x >= 2^62`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.rank(0..2) == 2`
-    pub fn push(mut self, x: Int):
+    pub fn push(mut self, x: 0..):
         assert x >= 0, "`push` needs `x >= 0`"
         let base = len * 63
         for b in 0..63:
@@ -1406,7 +1406,7 @@ pub struct PrefixXorBasis:
 /// traps: when `n < 0` or a row or column is not in `0..n`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(2)), (1, 1, Mod(3))]; sparse_det(2, e) == Mod<998244353>(6)`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1)), (0, 1, Mod(1))]; sparse_det(2, e) == Mod<998244353>(0)`
-pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
+pub fn sparse_det<P>(n: 0.., entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
     assert n >= 0, "sparse_det requires n >= 0"
     for (r, c, _) in entries: assert 0 <= r and
         r < n and
@@ -1436,7 +1436,7 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
 /// traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(2)), (1, 1, Mod(3))]; sparse_solve(2, e, [Mod(4), Mod(9)]) == Some([Mod<998244353>(2), Mod<998244353>(3)])`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1))]; sparse_solve(2, e, [Mod(1), Mod(0)]) == None`
-pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>:
+pub fn sparse_solve<P>(n: 0.., entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>:
     assert n >= 0, "sparse_solve requires n >= 0"
     assert b.len == n, "sparse_solve requires b.len == n"
     for (r, c, _) in entries: assert 0 <= r and

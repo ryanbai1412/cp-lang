@@ -450,7 +450,7 @@ pub struct Counter<K, V: Add = Int>:
     /// traps: when `k < 0`
     /// example: `Counter.of([3, 1, 3, 2, 1, 3]).most_common(2) == [(3, 3), (1, 2)]`
     /// example: `Counter.of(['b', 'a']).most_common(5) == [('a', 1), ('b', 1)]`
-    pub fn most_common(self, k: Int) -> List<(K, V)>:
+    pub fn most_common(self, k: 0..) -> List<(K, V)>:
         var es: List<(K, V)> = [(k, v) for (k, v) in m.items]
         es = es.sorted(by: e => e.0)
         es = es.sorted(by: e => desc(e.1))

@@ -1,4 +1,4 @@
-// expect: R0401 (checked)
+// expect: E0902
 // rule: std.fenwick.Fenwick.kth
 domain D = 0..3
 var f = Fenwick<D, Int>()

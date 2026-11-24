@@ -150,7 +150,7 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 
 <!-- signatures: std/strings.cp -->
 ```cp
-fn repeat(self: Str, n: Int) -> Str                                           // O(n * self.len)
+fn repeat(self: Str, n: 0..) -> Str                                           // O(n * self.len)
 fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool  // O(p.len)
 fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool                 // O(p.len)
 fn search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K                 // O(self.len + p.len)
@@ -258,7 +258,7 @@ struct RollingHash:
     @get fn all(self) -> HashVal                                      // O(1)
     fn slice(self, l: Int, r: Int) -> HashVal                         // O(1)
     fn get<R>(self, r: R) -> HashVal                                  // O(1)
-    fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal   // O(1)
+    fn combine(self, a: HashVal, b: HashVal, b_len: 0..) -> HashVal   // O(1)
     fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int  // O(log n); `of:` puts `b` in another hash
     fn lcs(self, a: Int, b: Int) -> Int                               // O(log n)
 

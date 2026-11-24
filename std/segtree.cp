@@ -1251,7 +1251,7 @@ pub struct WaveletMatrix<D>:
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 0) == Some(1)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 2) == Some(3)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 5) == None`
-    pub fn kth(self, r: Range<D>, k: Int) -> ?Int:
+    pub fn kth(self, r: Range<D>, k: 0..) -> ?Int:
         assert k >= 0, "`kth` needs `k >= 0`"
         var (lo, hi) = r.ends
         if k >= hi - lo: return None
@@ -1448,7 +1448,7 @@ pub struct DynamicOrderTree<D, T>:
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 1) == Some(3)`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 3) == None`
-    pub fn kth(self, r: Range<D>, k: Int) -> ?T:
+    pub fn kth(self, r: Range<D>, k: 0..) -> ?T:
         assert k >= 0, "`kth` takes `k >= 0`"
         if k >= r.len: return None
         let lo = (0..bit[0].len - 1).first_true(mid => self.span_count(r, bit[0].nth(mid)!, true) > k) ?? (bit[0].len - 1)
@@ -1605,7 +1605,7 @@ pub struct MergeTrees<D, Z: Add + Mul>:
     /// cost: \(O(\mathit{sets} \log \lvert D \rvert)\)
     /// traps: when `sets < 0`
     /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); p.reserve(sets: 2); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.get(t, D(3)) == 5`
-    pub fn reserve(mut self, sets: Int):
+    pub fn reserve(mut self, sets: 0..):
         assert sets >= 0, "reserve requires sets >= 0"
         var depth = 1
         while 1 << (depth - 1) < D.count: depth += 1

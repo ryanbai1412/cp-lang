@@ -537,7 +537,7 @@ pub fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K>(self: A, b: B, by:
 /// order: left to right; each window keeps the keys of `self`
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].windows(2).map(w => w.sum()).collect() == [3, 5]`
-pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
+pub fn windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
     assert k >= 1, "a window holds at least one element"
     for i in 0..self.len - k + 1: yield piece(self, i, i + k)
 
@@ -548,7 +548,7 @@ pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 /// order: left to right; each chunk keeps the keys of `self`, the last may be shorter
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks(2).map(c => c.len).collect() == [2, 1]`
-pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
+pub fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
     assert k >= 1, "a chunk holds at least one element"
     var i = 0
     while i < self.len:
@@ -1187,7 +1187,7 @@ pub fn perm_cycles<V>(self: [V]V) -> List<List<V>>:
 /// order: keyed by `V`
 /// traps: when `k < 0` or `p` is not a permutation
 /// example: `perm_pow([1, 2, 0], 2) == [2, 0, 1]`
-pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
+pub fn perm_pow<V>(p: [V]V, k: 0..) -> [V]V:
     assert k >= 0, "perm_pow requires k >= 0"
     var out = [V] v => v
     for cyc in perm_cycles(p):
@@ -1252,7 +1252,7 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
 /// order: a new `List`, keyed from 0
 /// traps: when `n < 0`
 /// example: `[1, 2, 3].resized(5, 0) == [1, 2, 3, 0, 0]`
-pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [
+pub fn resized<S: Indexed, T>(self: S, n: 0.., fill: T) -> List<T> = [
     if i < self.len: self.nth(i) else: fill for i in 0..n
 ]
 
@@ -1481,7 +1481,7 @@ pub struct Rev<S>(base: S):
     /// order: walk order of `self`; keeps the source's keys
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.take(2)) == [3, 2]`
-    pub fn take(self, k: Int) -> Rev<Slice<S>> = self.src.take_last(k).rev
+    pub fn take(self, k: 0..) -> Rev<Slice<S>> = self.src.take_last(k).rev
 
     /// \(O(1)\). All but the first `min(k, len)` elements in walk order, as a reversed view:
     /// the source without its last `k`, walked backwards.
@@ -1491,7 +1491,7 @@ pub struct Rev<S>(base: S):
     /// order: walk order of `self`; keeps the source's keys
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.drop(1)) == [2, 1]`
-    pub fn drop(self, k: Int = 1) -> Rev<Slice<S>> = self.src.drop_last(k).rev
+    pub fn drop(self, k: 0.. = 1) -> Rev<Slice<S>> = self.src.drop_last(k).rev
 
     /// \(O(1)\). The last `min(k, len)` elements in walk order, as a reversed view:
     /// the source's first `k`, walked backwards.
@@ -1501,7 +1501,7 @@ pub struct Rev<S>(base: S):
     /// order: walk order of `self`; keeps the source's keys
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.take_last(2)) == [2, 1]`
-    pub fn take_last(self, k: Int) -> Rev<Slice<S>> = self.src.take(k).rev
+    pub fn take_last(self, k: 0..) -> Rev<Slice<S>> = self.src.take(k).rev
 
     /// \(O(1)\). All but the last `min(k, len)` elements in walk order, as a reversed view:
     /// the source without its first `k`, walked backwards.
@@ -1511,7 +1511,7 @@ pub struct Rev<S>(base: S):
     /// order: walk order of `self`; keeps the source's keys
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
-    pub fn drop_last(self, k: Int = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
+    pub fn drop_last(self, k: 0.. = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
 
 impl Positional<T> for Rev<S: Indexed<D, T>>:
     fn nth(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
@@ -1607,7 +1607,7 @@ pub struct Slice<S>(
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop(1).collect() == [2, 3]`
-pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(
+pub fn drop<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S> = piece(
     self,
     clamp_count(k, self.len),
     self.len,
@@ -1620,7 +1620,7 @@ pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop_last(2).collect() == [1]`
-pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(
+pub fn drop_last<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S> = piece(
     self,
     0,
     self.len - clamp_count(k, self.len),
@@ -1633,7 +1633,7 @@ pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].take(5).collect() == [1, 2, 3]`
-pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(self, 0, clamp_count(k, self.len))
+pub fn take<S: Indexed>(self: S, k: 0..) -> Slice<S> = piece(self, 0, clamp_count(k, self.len))
 
 /// \(O(1)\). The last `min(k, len)` elements, as a view (traps if `k < 0`).
 ///
@@ -1642,7 +1642,7 @@ pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(self, 0, clamp_coun
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].take_last(2).collect() == [2, 3]`
-pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(
+pub fn take_last<S: Indexed>(self: S, k: 0..) -> Slice<S> = piece(
     self,
     self.len - clamp_count(k, self.len),
     self.len,
@@ -1734,7 +1734,7 @@ impl<S: Indexed<K, T>, K, T> Indexed<Idx, T> for Rebased<S>:
 /// order: source order, every `k`-th; source keys
 /// traps: when `k < 1`
 /// example: `[3, 1, 2, 4, 5].step(2).nth(2) == 5`
-pub fn step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>:
+pub fn step<S: Indexed<K, T>, K, T>(self: S, k: 1..) -> Stepped<S, T>:
     assert k >= 1, "step(k) requires k >= 1"
     Stepped(self, k)
 
@@ -2043,7 +2043,7 @@ pub fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yie
 /// order: left to right
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks_padded(2, 0).collect() == [[1, 2], [3, 0]]`
-pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
+pub fn chunks_padded<S: Indexed, T>(self: S, k: 1.., pad: T) -> yields List<T>:
     assert k >= 1
     var i = 0
     while i < self.len:
@@ -2218,7 +2218,7 @@ pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Ma
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
-pub fn min_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
+pub fn min_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>:
     assert k >= 0, "min_k requires k >= 0"
     keep_k(self, k, by, (p, q) => p.0 < q.0 or (p.0 == q.0 and p.1 < q.1))
 
@@ -2230,7 +2230,7 @@ pub fn min_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
-pub fn max_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
+pub fn max_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>:
     assert k >= 0, "max_k requires k >= 0"
     keep_k(self, k, by, (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1))
 
@@ -2669,7 +2669,7 @@ pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
 /// order: lexicographic by position
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].combinations(2).collect() == [[1, 2], [1, 3], [2, 3]]`
-pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T>:
+pub fn combinations<S: Indexed, T>(self: S, k: 0..) -> yields List<T>:
     assert k >= 0
     let n = self.len
     if k > n: return

@@ -75,7 +75,7 @@ fn ntt_of<P>(a: List<Mod<P>>, size: Int) -> List<Mod<P>>:
 /// exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, -1]; inv(a, 4) == [Z(1), Z(1), Z(1), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [2]; inv(a, 2) == [Z(1) / Z(2), Z(0)]`
-pub fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+pub fn inv<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
     assert n >= 0, "poly.inv() requires n >= 0"
     if n == 0: return []
     assert a.len > 0 and a[0].v != 0, "poly.inv() requires a[0] != 0"
@@ -114,7 +114,7 @@ pub fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
 /// traps: when `n < 0`; when `n > 0` and `a` is empty or `a[0] != 1`; when `n > P` (the
 /// integral needs inverses of `1..n`); when a transform length exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 2, 1]; log(a, 3) == [Z(0), Z(2), Z(-1)]`
-pub fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+pub fn log<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
     assert n >= 0, "poly.log requires n >= 0"
     if n == 0: return []
     assert a.len > 0 and a[0].v == 1, "poly.log requires a[0] == 1"
@@ -138,7 +138,7 @@ pub fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
 /// traps: when `n < 0`; when `n > 0` and `a[0] != 0`; when `n > P`; when a transform length
 /// exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 2]; exp(a, 3) == [Z(1), Z(2), Z(2)]`
-pub fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+pub fn exp<P>(a: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
     assert n >= 0, "poly.exp requires n >= 0"
     if n == 0: return []
     assert a.is_empty or a[0].v == 0, "poly.exp requires a[0] == 0"
@@ -213,7 +213,7 @@ pub fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; pow(a, 2, 4) == [Z(1), Z(2), Z(1), Z(0)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; pow(a, -1, 3) == [Z(1), Z(-1), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; pow(a, 2, 3) == [Z(0), Z(0), Z(1)]`
-pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>:
+pub fn pow<P>(a: List<Mod<P>>, k: Int, n: 0..) -> List<Mod<P>>:
     assert n >= 0, "poly.pow requires n >= 0"
     if n == 0: return []
     if k == 0:
@@ -262,7 +262,7 @@ pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>:
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 0, 4]; sqrt(a, 3) == Some([Z(0), Z(2), Z(0)])`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; sqrt(a, 2) == None`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [3]; sqrt(a, 1) == None`
-pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>:
+pub fn sqrt<P>(a: List<Mod<P>>, n: 0..) -> ?List<Mod<P>>:
     assert n >= 0, "poly.sqrt requires n >= 0"
     if n == 0: return Some([])
     var d = 0
@@ -624,7 +624,7 @@ fn biv_advance<P>(mut c: List<Mod<P>>, l_big: Int, l_step: Int) -> List<Mod<P>>:
 /// order: lowest degree first
 /// traps: when `n < 0`; when a transform length exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let f: List<Z> = [0, 0, 1]; let g: List<Z> = [1, 1]; compose(f, g, 3) == [Z(1), Z(2), Z(1)]`
-pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
     assert n >= 0, "poly.compose requires n >= 0"
     if n == 0: return []
     if f.is_empty: return List.filled(n, Mod<P>(0))
@@ -867,14 +867,14 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: \(O(1)\)
     /// traps: when `i < 0`
     /// example: `Poly<Int>([1, 2]).at(1) == 2 and Poly<Int>([1, 2]).at(5) == 0`
-    pub fn at(self, i: Int) -> T = if 0 <= i < c.len: c[i] else: T.zero
+    pub fn at(self, i: 0..) -> T = if 0 <= i < c.len: c[i] else: T.zero
 
     /// Write coefficient `i`, growing with zeros if needed.
     ///
     /// cost: \(O(1)\), or \(O(i)\) when it grows
     /// traps: when `i < 0`
     /// example: `var p = Poly<Int>([1]); p.set(3, 7); p.len == 4 and p.at(2) == 0 and p.at(3) == 7`
-    pub fn set(mut self, i: Int, v: T):
+    pub fn set(mut self, i: 0.., v: T):
         assert i >= 0
         while c.len <= i: c.push(T.zero)
         c[i] = v
@@ -919,7 +919,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// traps: when `n < 0`
     /// example: `Poly<Int>([1, 2, 3]).truncated(2).len == 2`
     /// example: `Poly<Int>([1]).truncated(3).at(2) == 0`
-    pub fn truncated(self, n: Int) -> Poly<T>:
+    pub fn truncated(self, n: 0..) -> Poly<T>:
         Poly([self.at(i) for i in 0..n])
 
     /// The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.
@@ -979,7 +979,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: Newton doubling over `*` and `inv`: \(O(n \log n)\) for a `FastProduct` `T`, else \(O(n^2 \log n)\), plus one `T.sqrt()`
     /// traps: when `n < 0`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
-    pub fn sqrt(self, n: Int) -> ?Poly<T>:
+    pub fn sqrt(self, n: 0..) -> ?Poly<T>:
         assert n >= 0, "Poly.sqrt requires n >= 0"
         if n == 0: return Some(Poly([]))
         var d = 0
@@ -1162,7 +1162,7 @@ pub struct SubproductTree<P>:
 /// empty: `type Z = Mod<998244353>; let e: List<Z> = []; let q: List<Z> = [1, -1]; bostan_mori(e, q, 3) == Z(0)`
 /// traps: when `n < 0`, or `q` is empty or `q[0] == 0`
 /// example: `type Z = Mod<998244353>; let p: List<Z> = [1]; let q: List<Z> = [1, -1, -1]; bostan_mori(p, q, 5) == Z(8)`
-pub fn bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P>:
+pub fn bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: 0..) -> Mod<P>:
     assert n >= 0, "bostan_mori requires n >= 0"
     assert not q.is_empty and q[0].v != 0, "bostan_mori requires q[0] != 0"
     if p.is_empty: return Mod<P>(0)
@@ -1195,7 +1195,7 @@ pub fn transposed_mul<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
 /// order: lowest degree first
 /// traps: when `n < 0`; when `n > 0` and `f.len < 2`, `f[0] != 0` or `f[1] == 0`
 /// example: `type Z = Mod<998244353>; let f: List<Z> = [0, 1, 1]; compose_inv(f, 4) == [Z(0), Z(1), Z(-1), Z(2)]`
-pub fn compose_inv<P>(f: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+pub fn compose_inv<P>(f: List<Mod<P>>, n: 0..) -> List<Mod<P>>:
     assert n >= 0, "compose_inv requires n >= 0"
     if n == 0: return []
     assert f.len >= 2 and f[0].v == 0 and f[1].v != 0, "compose_inv requires f[0] == 0 and f[1] != 0"
@@ -1225,7 +1225,7 @@ pub fn compose_inv<P>(f: List<Mod<P>>, n: Int) -> List<Mod<P>>:
 /// traps: when `k < 0`, or `mod_p` is zero
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; let m: List<Z> = [-1, 0, 1]; pow_mod_poly(a, 3, m) == [Z(0), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; let m: List<Z> = [-1, 0, 1]; pow_mod_poly(a, 0, m) == [Z(1), Z(0)]`
-pub fn pow_mod_poly<P>(a: List<Mod<P>>, k: Int, mod_p: List<Mod<P>>) -> List<Mod<P>>:
+pub fn pow_mod_poly<P>(a: List<Mod<P>>, k: 0.., mod_p: List<Mod<P>>) -> List<Mod<P>>:
     assert k >= 0, "pow_mod_poly requires k >= 0"
     let m = trim_poly(mod_p)
     assert not m.is_empty, "pow_mod_poly requires a nonzero modulus"
@@ -1271,7 +1271,7 @@ pub fn gcd_poly<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
 /// order: by power of `r`, increasing
 /// traps: when `m < 0`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; chirp_z(a, Z(2), 3) == [Z(2), Z(3), Z(5)]`
-pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Int) -> List<Mod<P>>:
+pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: 0..) -> List<Mod<P>>:
     assert m >= 0, "chirp_z requires m >= 0"
     if m == 0: return []
     let n = a.len
@@ -1302,7 +1302,7 @@ pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Int) -> List<Mod<P>>:
 /// order: by point, increasing
 /// traps: when `m < 0`, or `n + m > P` (the sample points collide mod `P`)
 /// example: `type Z = Mod<998244353>; let ys: List<Z> = [0, 1, 4]; sample_points_shift(ys, Z(3), 2) == [Z(9), Z(16)]`
-pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Int) -> List<Mod<P>>:
+pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: 0..) -> List<Mod<P>>:
     assert m >= 0, "sample_points_shift requires m >= 0"
     if m == 0: return []
     let n = ys.len
@@ -1341,7 +1341,7 @@ pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Int) -> List<Mod<P
 /// order: by `k`, increasing
 /// traps: when `deg < 0`
 /// example: `type Z = Mod<998244353>; let xs: List<Z> = [1, 2]; power_sums(xs, 2) == [Z(2), Z(3), Z(5)]`
-pub fn power_sums<P>(xs: List<Mod<P>>, deg: Int) -> List<Mod<P>>:
+pub fn power_sums<P>(xs: List<Mod<P>>, deg: 0..) -> List<Mod<P>>:
     assert deg >= 0, "power_sums requires deg >= 0"
     var out = List.filled(deg + 1, Mod<P>(0))
     if xs.is_empty: return out
@@ -1371,7 +1371,7 @@ fn fact_tables<P>(n: Int) -> (List<Mod<P>>, List<Mod<P>>):
 /// order: by `k`, increasing
 /// traps: when `n < 0`
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling1_row(3); s == [Z(0), Z(2), Z(3), Z(1)]`
-pub fn stirling1_row<P>(n: Int) -> List<Mod<P>>:
+pub fn stirling1_row<P>(n: 0..) -> List<Mod<P>>:
     assert n >= 0, "stirling1_row requires n >= 0"
     if n == 0: return [Mod<P>(1)]
     prod_linear([Mod<P>(-i) for i in 0..n])
@@ -1383,7 +1383,7 @@ pub fn stirling1_row<P>(n: Int) -> List<Mod<P>>:
 /// order: by `k`, increasing
 /// traps: when `n < 0`, or `n >= P` (it divides by factorials up to `n`)
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling2_row(3); s == [Z(0), Z(1), Z(3), Z(1)]`
-pub fn stirling2_row<P>(n: Int) -> List<Mod<P>>:
+pub fn stirling2_row<P>(n: 0..) -> List<Mod<P>>:
     assert 0 <= n < P, "stirling2_row requires 0 <= n < P"
     if n == 0: return [Mod<P>(1)]
     let (_, inv_fact) = fact_tables<P>(n)
@@ -1405,7 +1405,7 @@ pub fn stirling2_row<P>(n: Int) -> List<Mod<P>>:
 /// order: by row, increasing
 /// traps: when `n < 0`, `k < 0`, or `n >= P`
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling1_col(1, 3); s == [Z(0), Z(1), Z(1), Z(2)]`
-pub fn stirling1_col<P>(k: Int, n: Int) -> List<Mod<P>>:
+pub fn stirling1_col<P>(k: Int, n: 0..) -> List<Mod<P>>:
     assert n >= 0 and k >= 0 and n < P, "stirling1_col requires n >= 0, k >= 0 and n < P"
     var out = List.filled(n + 1, Mod<P>(0))
     if k > n: return out
@@ -1428,7 +1428,7 @@ pub fn stirling1_col<P>(k: Int, n: Int) -> List<Mod<P>>:
 /// order: by row, increasing
 /// traps: when `n < 0`, `k < 0`, or `n >= P`
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling2_col(2, 4); s == [Z(0), Z(0), Z(1), Z(3), Z(7)]`
-pub fn stirling2_col<P>(k: Int, n: Int) -> List<Mod<P>>:
+pub fn stirling2_col<P>(k: Int, n: 0..) -> List<Mod<P>>:
     assert n >= 0 and k >= 0 and n < P, "stirling2_col requires n >= 0, k >= 0 and n < P"
     var out = List.filled(n + 1, Mod<P>(0))
     if k > n: return out
@@ -1451,7 +1451,7 @@ pub fn stirling2_col<P>(k: Int, n: Int) -> List<Mod<P>>:
 /// order: by index, increasing
 /// traps: when `n < 0`, or `n >= P`
 /// example: `type Z = Mod<998244353>; let b: List<Z> = bell_table(4); b == [Z(1), Z(1), Z(2), Z(5), Z(15)]`
-pub fn bell_table<P>(n: Int) -> List<Mod<P>>:
+pub fn bell_table<P>(n: 0..) -> List<Mod<P>>:
     assert 0 <= n < P, "bell_table requires 0 <= n < P"
     if n == 0: return [Mod<P>(1)]
     let (fact, inv_fact) = fact_tables<P>(n)
@@ -1467,7 +1467,7 @@ pub fn bell_table<P>(n: Int) -> List<Mod<P>>:
 /// order: by index, increasing
 /// traps: when `n < 0`, or `n + 1 >= P`
 /// example: `type Z = Mod<998244353>; let b: List<Z> = bernoulli_table(2); b == [Z(1), Z(-1) / Z(2), Z(1) / Z(6)]`
-pub fn bernoulli_table<P>(n: Int) -> List<Mod<P>>:
+pub fn bernoulli_table<P>(n: 0..) -> List<Mod<P>>:
     assert n >= 0 and n + 1 < P, "bernoulli_table requires 0 <= n and n + 1 < P"
     if n == 0: return [Mod<P>(1)]
     let (fact, inv_fact) = fact_tables<P>(n + 1)
@@ -1482,7 +1482,7 @@ pub fn bernoulli_table<P>(n: Int) -> List<Mod<P>>:
 /// order: by index, increasing
 /// traps: when `n < 0`
 /// example: `type Z = Mod<998244353>; let p: List<Z> = partition_table(5); p == [Z(1), Z(1), Z(2), Z(3), Z(5), Z(7)]`
-pub fn partition_table<P>(n: Int) -> List<Mod<P>>:
+pub fn partition_table<P>(n: 0..) -> List<Mod<P>>:
     assert n >= 0, "partition_table requires n >= 0"
     if n == 0: return [Mod<P>(1)]
     var f = List.filled(n + 1, Mod<P>(0))

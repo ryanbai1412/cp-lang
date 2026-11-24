@@ -219,7 +219,7 @@ pub struct Deque<T>:
     /// example: `Deque.of([4, 5, 6]).last == Some(6)`
     /// example: `Deque.of([4, 5, 6]).last(1) == Some(5)`
     /// example: `Deque.of([4]).last(1) == None`
-    @get pub fn last(self, k: Int = 0) -> ?T:
+    @get pub fn last(self, k: 0.. = 0) -> ?T:
         if k < 0 or k >= n: return None
         Some(self.get(n - 1 - k))
 

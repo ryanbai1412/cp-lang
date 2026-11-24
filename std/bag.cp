@@ -158,7 +158,7 @@ pub struct SortedBag<K>:
     /// cost: \(O(\log n)\) expected, independent of `c`
     /// traps: when `c < 0`
     /// example: `var b = SortedBag.of([1]); b.add_many(5, 3); b.len == 4 and b.count(5) == 3`
-    pub fn add_many(mut self, x: K, c: Int):
+    pub fn add_many(mut self, x: K, c: 0..):
         assert c >= 0
         if c == 0: return
         let _ = self.insert(x, c, false)

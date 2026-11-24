@@ -196,7 +196,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
 /// order: one entry per row, row order
 /// traps: when `rows < 0` or `cols < 0`
 /// example: `monotone_minima(2, 3, (i, j) => Some((j - i) * (j - i))) == [Some((val: 0, at: 0)), Some((val: 0, at: 1))]`
-pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>:
+pub fn monotone_minima(rows: 0.., cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>:
     assert rows >= 0 and cols >= 0, "monotone_minima requires rows >= 0 and cols >= 0"
     var out: List<?(val: Int, at: Int)> = List.filled(rows, None)
     var todo = [(0, rows, 0, cols)]
@@ -268,7 +268,7 @@ const TWO_31 = 2_147_483_648
 /// example: `knuth(2, (i, j) => j - i)[0][2] == 2`
 /// example: `knuth(3, (i, j) => j - i)[0][3] == 5`
 /// example: `knuth(1, (i, j) => j - i) == [[0, 0], [0, 0]]`
-pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
+pub fn knuth(n: 0.., cost: (Int, Int) -> Int) -> List<List<Int>>:
     assert n >= 0, "knuth requires n >= 0"
     var dp: List<List<Int>> = []
     var opt: List<List<0..TWO_31>> = []
@@ -310,7 +310,7 @@ pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
 /// ties: `aliens(2, lam => (0..=4).map(c => (val: (c - 2) * (c - 2) + lam * c, count: c)).min(by: p => (p.val, p.count))!) == 0`
 /// traps: when `k < 0`, when `lambdas` is empty, or when no `λ` in `lambdas` gives a count of at most `k`
 /// example: `aliens(5, lam => (0..=10).map(c => (val: (c - 3) * (c - 3) + lam * c, count: c)).min(by: p => (p.val, p.count))!) == 4`
-pub fn aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L:
+pub fn aliens<L: Add + Sub + Mul>(k: 0.., solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L:
     assert k >= 0
     var lo: L = -1
     var hi: L = 1
@@ -521,7 +521,7 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     /// cost: \(O(1)\)
     /// traps: when `i < 0` or `i >= len`
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.val(1) == 1`
-    pub fn val(self, i: Int) -> K:
+    pub fn val(self, i: 0..) -> K:
         assert 0 <= i < self.len
         if i == 0: K.zero else: vals[i]
     /// The number of nodes reached so far, `nodes.first` included, so a fresh `MongePath` has `len == 1`.
@@ -589,7 +589,7 @@ fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: Lis
 /// order: one entry per row, row order
 /// traps: when `rows < 0`, or `cols <= 0` with `rows > 0`
 /// example: `smawk(2, 3, (i, j) => (j - i) * (j - i)) == [(val: 0, at: 0), (val: 0, at: 1)]`
-pub fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)>:
+pub fn smawk(rows: 0.., cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)>:
     assert rows >= 0, "`smawk` needs `rows >= 0`"
     if rows == 0: return []
     assert cols > 0, "`smawk` needs `cols > 0` when `rows > 0`"
@@ -941,7 +941,7 @@ pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -
 /// order: increasing
 /// traps: when `bits < 0` or `m` is not in `0..2^bits`
 /// example: `supermasks(0b01, 2).collect() == [1, 3]`
-pub fn supermasks(m: Int, bits: Int) -> yields Int:
+pub fn supermasks(m: Int, bits: 0..) -> yields Int:
     assert bits >= 0 and 0 <= m < (1 << bits), "`m` must be a mask of `bits` bits"
     let full = (1 << bits) - 1
     var s = m
@@ -957,7 +957,7 @@ pub fn supermasks(m: Int, bits: Int) -> yields Int:
 /// order: increasing
 /// traps: when `bits < 0` or `k < 0`
 /// example: `masks_of_size(3, 2).collect() == [3, 5, 6]`
-pub fn masks_of_size(bits: Int, k: Int) -> yields Int:
+pub fn masks_of_size(bits: 0.., k: Int) -> yields Int:
     assert bits >= 0 and k >= 0, "`bits` and `k` must be non-negative"
     if k > bits: return
     if k == 0:

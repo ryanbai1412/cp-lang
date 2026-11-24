@@ -3142,7 +3142,7 @@ pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int:
 /// example: `de_bruijn(2, 2) == [0, 0, 1, 1]`
 /// example: `de_bruijn(2, 3) == [0, 0, 0, 1, 0, 1, 1, 1]`
 /// example: `de_bruijn(3, 1) == [0, 1, 2]`
-pub fn de_bruijn(k: Int, n: Int) -> List<Int>:
+pub fn de_bruijn(k: 1.., n: Int) -> List<Int>:
     assert k >= 1 and n >= 1, "`de_bruijn` needs `k >= 1` and `n >= 1`"
     var out = List<Int>()
     var w = [-1]
@@ -3605,7 +3605,7 @@ pub struct Functional<V>:
     /// cost: \(O(\log k)\)
     /// traps: when `k < 0`
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.after(4, 5) == 0 and f.after(4, 0) == 4`
-    pub fn after(self, v: V, k: Int) -> V:
+    pub fn after(self, v: V, k: 0..) -> V:
         assert k >= 0, "`after` needs `k >= 0`"
         let x = v.ord
         if k < _depth[x]: return V.nth(self.lift(x, k))

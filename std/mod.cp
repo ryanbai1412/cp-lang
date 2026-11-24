@@ -200,7 +200,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// cost: \(O(\min(\mathit{limit}, P))\)
     /// traps: when `limit < 0`, or `P` is not prime
     /// example: `type Z = Mod<7>; let c = Comb<Z>(3); c.fact(3) == Z(6)`
-    pub fn new(limit: Int = 0) -> Comb<M>:
+    pub fn new(limit: 0.. = 0) -> Comb<M>:
         assert limit >= 0, "`Comb(limit)` needs `limit >= 0`"
         let p = M.MOD
         for q in 2..=p.isqrt:
@@ -237,7 +237,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().fact(5) == Z(120)`
     /// example: `type Z = Mod<7>; Comb<Z>().fact(6) == Z(6)`
     /// example: `type Z = Mod<7>; Comb<Z>().fact(7) == Z(0)`
-    pub fn fact(self, n: Int) -> M:
+    pub fn fact(self, n: 0..) -> M:
         assert n >= 0, "`fact(n)` needs `n >= 0`"
         if n >= M.MOD: return M(0)
         self.ensure(n)
@@ -337,7 +337,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(0) == Z(1)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(4) == Z(14)`
     /// example: `type Z = Mod<7>; Comb<Z>().catalan(4) == Z(0)`
-    pub fn catalan(self, n: Int) -> M:
+    pub fn catalan(self, n: 0..) -> M:
         assert n >= 0, "`catalan(n)` needs `n >= 0`"
         self.choose(2 * n, n) - self.choose(2 * n, n + 1)
 
@@ -351,7 +351,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(0) == Z(1)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(4) == Z(9)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(5) == Z(44)`
-    pub fn derange(self, n: Int) -> M:
+    pub fn derange(self, n: 0..) -> M:
         assert n >= 0, "`derange(n)` needs `n >= 0`"
         while d.len <= n:
             let i = d.len
@@ -481,7 +481,7 @@ pub struct ModComb(pub m: Int):
     /// cost: \(O(\sum_i p_i^{e_i})\) for \(m = \prod_i p_i^{e_i}\)
     /// traps: when `m < 1`
     /// example: `ModComb(12).choose(6, 3) == 8`
-    pub fn new(m: Int) -> ModComb:
+    pub fn new(m: 1..) -> ModComb:
         assert m >= 1, "`ModComb(m)` needs `m >= 1`"
         ModComb(m, [PrimePowerComb.new(q, k) for (q, k) in factor(m)])
 

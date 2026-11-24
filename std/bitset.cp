@@ -365,7 +365,7 @@ pub struct Bitset<D>:
     /// cost: \(O(K / 64)\)
     /// traps: when `k < 0`
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.shift_up(1); b.each().collect() == [D(2), D(4), D(9)]`
-    pub fn shift_up(mut self, k: Int):
+    pub fn shift_up(mut self, k: 0..):
         assert k >= 0
         if k == 0: return
         let (words, bits) = (k / 64, k % 64)
@@ -386,7 +386,7 @@ pub struct Bitset<D>:
     /// cost: \(O(K / 64)\)
     /// traps: when `k < 0`
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.shift_or(2); b.each().collect() == [D(1), D(3), D(5), D(8)]`
-    pub fn shift_or(mut self, k: Int):
+    pub fn shift_or(mut self, k: 0..):
         assert k >= 0
         if k == 0: return
         self.or_shifted(k)
@@ -516,7 +516,7 @@ pub struct Bitset<D>:
     /// cost: \(O(K / 64)\)
     /// traps: when `k < 0`
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.shift_down(1); b.each().collect() == [D(0), D(2), D(7)]`
-    pub fn shift_down(mut self, k: Int):
+    pub fn shift_down(mut self, k: 0..):
         assert k >= 0
         let s = self.shifted(-k)
         w = s.w
@@ -573,7 +573,7 @@ pub struct Bitset<D>:
     /// traps: when `k < 0`
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).nth(2) == Some(D(8))`
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).nth(3) == None`
-    pub fn nth(self, k: Int) -> ?D:
+    pub fn nth(self, k: 0..) -> ?D:
         assert k >= 0
         var left = k
         for i in 0..w.len:
@@ -643,7 +643,7 @@ pub struct DynBitset:
     /// cost: \(O(\mathit{cap} / 64)\) time and space
     /// traps: when `cap < 0`
     /// example: `DynBitset(10).len == 0`
-    pub fn new(cap: Int) -> DynBitset:
+    pub fn new(cap: 0..) -> DynBitset:
         assert cap >= 0
         DynBitset(List.filled((cap + 63) / 64, U64(0)), cap, 0)
 
@@ -652,7 +652,7 @@ pub struct DynBitset:
     /// cost: \(O(\mathit{cap} / 64)\) time and space
     /// traps: when `cap < 0`
     /// example: `DynBitset.full(10).len == 10`
-    pub fn full(cap: Int) -> DynBitset:
+    pub fn full(cap: 0..) -> DynBitset:
         assert cap >= 0
         var d = DynBitset(List.filled((cap + 63) / 64, ~U64(0)), cap, cap)
         d.trim()
@@ -743,7 +743,7 @@ pub struct DynBitset:
     /// traps: when `new_cap < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(8); d.resize(4); d.len == 1 and d.cap == 4`
     /// example: `var d = DynBitset.full(2); d.resize(5); d.each().collect() == [0, 1]`
-    pub fn resize(mut self, new_cap: Int):
+    pub fn resize(mut self, new_cap: 0..):
         assert new_cap >= 0
         let words = (new_cap + 63) / 64
         while _w.len > words: _w.pop()
@@ -837,7 +837,7 @@ pub struct DynBitset:
     /// empty: `DynBitset(10).nth(0) == None`
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.nth(1) == Some(3) and d.nth(3) == None`
-    pub fn nth(self, k: Int) -> ?Int:
+    pub fn nth(self, k: 0..) -> ?Int:
         assert k >= 0
         var left = k
         for i in 0.._w.len:
@@ -905,7 +905,7 @@ pub struct DynBitset:
     /// cost: \(O(\mathit{cap} / 64)\)
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_up(2); d.each().collect() == [3, 5]`
-    pub fn shift_up(mut self, k: Int):
+    pub fn shift_up(mut self, k: 0..):
         assert k >= 0
         let n = _w.len
         let (words, bits) = (k / 64, k % 64)
@@ -923,7 +923,7 @@ pub struct DynBitset:
     /// cost: \(O(\mathit{cap} / 64)\)
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_down(2); d.each().collect() == [1, 6]`
-    pub fn shift_down(mut self, k: Int):
+    pub fn shift_down(mut self, k: 0..):
         assert k >= 0
         let n = _w.len
         let (words, bits) = (k / 64, k % 64)
@@ -940,7 +940,7 @@ pub struct DynBitset:
     /// cost: \(O(\mathit{cap} / 64)\)
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_or(2); d.each().collect() == [1, 3, 5, 8]`
-    pub fn shift_or(mut self, k: Int):
+    pub fn shift_or(mut self, k: 0..):
         assert k >= 0
         if k == 0: return
         let n = _w.len
@@ -993,7 +993,7 @@ pub struct DynBitset:
     /// empty: `DynBitset.subset_sums(5, []).each().collect() == [0] and DynBitset.subset_sums(0, []).each().collect() == []`
     /// traps: when `cap < 0` or a weight is negative
     /// example: `DynBitset.subset_sums(11, [3, 5, 5]).each().collect() == [0, 3, 5, 8, 10]`
-    pub fn subset_sums(cap: Int, weights: List<Int>) -> DynBitset:
+    pub fn subset_sums(cap: 0.., weights: List<Int>) -> DynBitset:
         var reach = DynBitset.new(cap)
         if cap == 0: return reach
         reach.add(0)
@@ -1064,7 +1064,7 @@ pub struct XorTrie:
     /// cost: \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise
     /// traps: when `nodes < 0`
     /// example: `var t = XorTrie(3); t.reserve(100); t.len == 0`
-    pub fn reserve(mut self, nodes: Int):
+    pub fn reserve(mut self, nodes: 0..):
         assert nodes >= 0
         _c0.reserve(nodes)
         _c1.reserve(nodes)
@@ -1196,7 +1196,7 @@ pub struct XorTrie:
     /// traps: when `k < 0` or `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 1) == Some(4)`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 3) == None`
-    pub fn kth_xor(self, x: Int, k: Int) -> ?Int:
+    pub fn kth_xor(self, x: Int, k: 0..) -> ?Int:
         assert k >= 0 and 0 <= x < 1 << _bits
         if k >= _cnt[0]: return None
         let z = x ^ _mask
@@ -1288,7 +1288,7 @@ pub struct BitTrieArena<W>:
     /// cost: \(O(1)\)
     /// traps: when `cap < 0`
     /// example: `BitTrieArena<3>.new(cap: 8).node_count == 0`
-    pub fn new(cap: Int = 0) -> BitTrieArena<W>:
+    pub fn new(cap: 0.. = 0) -> BitTrieArena<W>:
         var nodes: List<BitTrieNode> = []
         nodes.reserve(cap)
         BitTrieArena(nodes)

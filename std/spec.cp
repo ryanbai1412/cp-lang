@@ -308,7 +308,7 @@ fn mul_rec<P>(a: List<Mod<P>>, b: List<Mod<P>>, c: List<Mod<P>>) -> List<Mod<P>>
 /// traps: when `n < 0` or `init.len != c.len`
 /// example: `type Z = Mod<998244353>; recurrence_at([Z(1), Z(1)], [Z(0), Z(1)], 10) == Z(55)`
 /// example: `type Z = Mod<998244353>; recurrence_at([Z(2)], [Z(3)], 4) == Z(48)`
-pub fn recurrence_at<P>(c: List<Mod<P>>, init: List<Mod<P>>, n: Int) -> Mod<P>:
+pub fn recurrence_at<P>(c: List<Mod<P>>, init: List<Mod<P>>, n: 0..) -> Mod<P>:
     assert n >= 0, "recurrence_at requires n >= 0"
     assert init.len == c.len, "recurrence_at requires init.len == c.len"
     let k = c.len
@@ -338,7 +338,7 @@ pub fn recurrence_at<P>(c: List<Mod<P>>, init: List<Mod<P>>, n: Int) -> Mod<P>:
 /// example: `type Z = Mod<998244353>; guess_at([Z(1), Z(1), Z(2), Z(3), Z(5)], 9) == Some(Z(55))`
 /// example: `type Z = Mod<998244353>; guess_at([Z(1), Z(2), Z(4), Z(8)], 2) == Some(Z(4))`
 /// example: `type Z = Mod<998244353>; guess_at([Z(1), Z(5), Z(2), Z(7)], 10) == None`
-pub fn guess_at<P>(xs: List<Mod<P>>, n: Int) -> ?Mod<P>:
+pub fn guess_at<P>(xs: List<Mod<P>>, n: 0..) -> ?Mod<P>:
     assert n >= 0, "guess_at requires n >= 0"
     if n < xs.len: return Some(xs[n])
     let c = berlekamp_massey(xs)

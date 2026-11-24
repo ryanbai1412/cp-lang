@@ -50,7 +50,7 @@ pub struct Concave(start: Int, base: Int):
     /// cost: \(O(n)\)
     /// traps: when `n < 0`
     /// example: `var f = Concave.flat(0..=3); f.reserve(100); f.at(2) == 0`
-    pub fn reserve(mut self, n: Int) = slopes.reserve(n)
+    pub fn reserve(mut self, n: 0..) = slopes.reserve(n)
 
     /// The first point of the domain.
     ///

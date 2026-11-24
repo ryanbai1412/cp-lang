@@ -1,4 +1,4 @@
-// expect: R0401 (checked)
+// expect: E0902
 // rule: std.bag.SortedBag.add_many
 var b = SortedBag.of([1])
 b.add_many(5, -1) // <- here

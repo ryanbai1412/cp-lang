@@ -27,7 +27,7 @@ pub struct PArena<T>:
     /// cost: \(O(1)\); the room is not touched until it is used
     /// traps: when `cap < 0`
     /// example: `PArena<Int>(cap: 8).is_empty`
-    pub fn new(cap: Int = 0) -> PArena<T>:
+    pub fn new(cap: 0.. = 0) -> PArena<T>:
         var xs: List<T> = []
         xs.reserve(cap)
         PArena(xs)
@@ -70,7 +70,7 @@ pub struct PArena<T>:
     /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: when `cap < 0`
     /// example: `var a = PArena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
-    pub fn reserve(mut self, cap: Int):
+    pub fn reserve(mut self, cap: 0..):
         _xs.reserve(cap)
 
 /// Opaque version handle for `PersistentSegTree`.
@@ -284,7 +284,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes it holds), \(O(1)\) otherwise
     /// traps: when `nodes < 0`
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.reserve(100); t.all(t.base) == 6`
-    pub fn reserve(mut self, nodes: Int):
+    pub fn reserve(mut self, nodes: 0..):
         assert nodes >= 0, "reserve requires nodes >= 0"
         left.reserve(nodes)
         right.reserve(nodes)
@@ -469,7 +469,7 @@ pub struct RangeKth<D, T>:
     /// ties: `let k = RangeKth([2, 1, 2]); k.kth(0..3, 1) == 2 and k.kth(0..3, 2) == 2`
     /// traps: when `k < 0` or `k >= r.len`, or `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).kth(1..4, 1) == 2`
-    pub fn kth(self, r: Range<D>, k: Int) -> T:
+    pub fn kth(self, r: Range<D>, k: 0..) -> T:
         let (lo, hi) = r.ends
         assert 0 <= k < hi - lo, "RangeKth.kth index out of range"
         unchecked:

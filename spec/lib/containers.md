@@ -260,8 +260,8 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
     fn bitxor(self, o: Bitset<D>) -> Bitset<D>  // O(K / 64)
     fn meets(self, o: Bitset<D>) -> Bool        // O(K / 64), early exit
     fn shifted(self, k: Int) -> Bitset<D>       // O(K / 64), signed k
-    fn shift_up(mut self, k: Int)               // O(K / 64) in place, k >= 0
-    fn shift_or(mut self, k: Int)               // O(K / 64) in place: self |= self << k
+    fn shift_up(mut self, k: 0..)               // O(K / 64) in place, k >= 0
+    fn shift_or(mut self, k: 0..)               // O(K / 64) in place: self |= self << k
     fn each(self) -> yields D                   // O(K / 64 + |self|)
     fn find(self, pred: D -> Bool) -> ?D        // O(K / 64 + visited)
 
@@ -272,7 +272,7 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
 <!-- signatures: std/bitset.cp -->
 ```cp
 struct BitTrieArena<W>  // the nodes of every BitTrie<W> built in it
-    fn new(cap: Int = 0) -> BitTrieArena<W>               // O(cap), reserves cap nodes
+    fn new(cap: 0.. = 0) -> BitTrieArena<W>               // O(cap), reserves cap nodes
     @get fn node_count(self) -> Int                       // O(1), nodes held
 struct BitTrie<W>  // multiset of 0..2^W: a root handle into an arena
     fn new() -> BitTrie<W>                                // O(1), no node
@@ -318,7 +318,7 @@ struct SortedBag<K>                           // O(log n) ops, O(distinct) mem
     fn clear(mut self)                        // O(1)
     fn take(mut self) -> SortedBag<K>         // O(1)
     fn add(mut self, x: K) -> Bool            // O(log n); inserts one copy
-    fn add_many(mut self, x: K, c: Int)       // O(log n); inserts c >= 0 copies
+    fn add_many(mut self, x: K, c: 0..)       // O(log n); inserts c >= 0 copies
     fn remove(mut self, x: K) -> Bool         // O(log n); removes one copy
     fn remove_all(mut self, x: K) -> Int      // O(log n); returns removed count
     fn count(self, x: K) -> Int               // O(log n)
@@ -608,12 +608,12 @@ version's values in key order (decision 555).
 <!-- signatures: std/persistent.cp std/dsu.cp -->
 ```cp
 struct PArena<T>                       // append-only node pool
-    fn new(cap: Int = 0) -> PArena<T>  // O(cap)
+    fn new(cap: 0.. = 0) -> PArena<T>  // O(cap)
     @get fn len(self) -> Int           // O(1)
     @get fn is_empty(self) -> Bool     // O(1)
     fn alloc(mut self, x: T) -> Id<T>  // O(1) amortized; ids 0, 1, ...
     fn get(self, id: Id<T>) -> T       // O(1); traps past len
-    fn reserve(mut self, cap: Int)     // O(cap)
+    fn reserve(mut self, cap: 0..)     // O(cap)
 
 struct PMultiset<D>                                                    // hashed persistent multiset
     fn empty() -> PMultiset<D>                                         // O(1), no node

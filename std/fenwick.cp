@@ -108,7 +108,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// example: `Fenwick([1, 0, 2]).kth(2) == Some(2)`
     /// example: `Fenwick([1, 0, 2]).kth(1) == Some(0)`
     /// example: `Fenwick([1, 0, 2]).kth(4) == None`
-    pub fn kth(self, k: Int) -> ?D:
+    pub fn kth(self, k: 1..) -> ?D:
         assert k >= 1, "`kth` counts from 1"
         let b = self.first_ge(k)
         if b == None: None else: b!.left

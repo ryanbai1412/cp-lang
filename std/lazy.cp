@@ -476,7 +476,7 @@ pub struct LazyTreap<T, F>(
     /// cost: \(O(n)\) when it grows, else \(O(1)\)
     /// traps: when `n < 0` or `n >= 2^31` (the size bound)
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.reserve(10); t.len == 0`
-    pub fn reserve(mut self, n: Int):
+    pub fn reserve(mut self, n: 0..):
         assert 0 <= n < TWO_31, "`reserve` needs `0 <= n < 2^31`"
         nodes.reserve(n)
 
@@ -620,7 +620,7 @@ pub struct LazyTreap<T, F>(
     /// cost: \(O(\log n)\) expected
     /// traps: when `pos < 0` or `pos > len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(3); t.insert_at(1, 2); t.to_list() == [1, 2, 3]`
-    pub fn insert_at(mut self, pos: Int, x: T):
+    pub fn insert_at(mut self, pos: 0.., x: T):
         assert 0 <= pos <= self.len
         let idx = nodes.len
         nodes.push(TreapNode(None, None, self.priority(), 1, x, None, false))
@@ -642,7 +642,7 @@ pub struct LazyTreap<T, F>(
     /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.apply_range(1, 1, 5); t.to_list() == [1]`
     /// traps: when `lo < 0`, `hi > len` or `lo > hi`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(0); t.push(0); t.push(0); t.apply_range(1, 3, 5); t.to_list() == [0, 5, 5]`
-    pub fn apply_range(mut self, lo: Int, hi: Int, f: F):
+    pub fn apply_range(mut self, lo: 0.., hi: Int, f: F):
         assert 0 <= lo <= hi <= self.len
         if lo == hi: return
         let (a, bc) = self.split_pos(root, lo)
@@ -680,7 +680,7 @@ pub struct LazyTreap<T, F>(
     /// cost: \(O(\log n)\) expected
     /// traps: when `pos < 0` or `pos >= len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply_all(5); t.erase_at(0) == 6 and t.to_list() == [7]`
-    pub fn erase_at(mut self, pos: Int) -> T:
+    pub fn erase_at(mut self, pos: 0..) -> T:
         assert 0 <= pos < self.len, "`erase_at` position out of range"
         let (a, bc) = self.split_pos(root, pos)
         let (b, c) = self.split_pos(bc, 1)
@@ -713,7 +713,7 @@ pub struct LazyTreap<T, F>(
     /// cost: \(O(\min(k, n - k) + \log n)\) expected amortized
     /// traps: when `k < 0` or `k > len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); let u = t.split_at(1); t.to_list() == [1] and u.to_list() == [2, 3]`
-    pub fn split_at(mut self, k: Int) -> LazyTreap<T, F>:
+    pub fn split_at(mut self, k: 0..) -> LazyTreap<T, F>:
         assert 0 <= k <= self.len, "`split_at` position out of range"
         let (a, b) = self.split_pos(root, k)
         var out = LazyTreap(apply_fn, split_fn, compose_fn, before_fn, mirror_fn, [], None, Rng(48))
@@ -773,7 +773,7 @@ pub struct LazyTreap<T, F>(
     /// cost: \(O(\log n)\) expected
     /// traps: when `pos < 0` or `pos >= len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply(0..1, 4); t.get(0) == 5`
-    pub fn get(mut self, pos: Int) -> T:
+    pub fn get(mut self, pos: 0..) -> T:
         assert 0 <= pos < self.len
         var cur = root
         var rem = pos
@@ -827,7 +827,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when `k < 0`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.take(2) == [1, 2]`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.take(5) == [1]`
-    pub fn take(self, k: Int) -> List<T>:
+    pub fn take(self, k: 0..) -> List<T>:
         var out: List<T> = []
         if k > 0: self.walk(root, None, false, k, mut out)
         out
@@ -902,7 +902,7 @@ pub struct LazyForest<T, F>:
     /// cost: \(O(\log n)\) expected
     /// traps: when `k < 0` or `k > len(s)`
     /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); let u = f.split_at(s, 1); f.to_list(s) == [1] and f.to_list(u) == [2, 3]`
-    pub fn split_at(mut self, s: ForestSeq, k: Int) -> ForestSeq:
+    pub fn split_at(mut self, s: ForestSeq, k: 0..) -> ForestSeq:
         let u = self.at(s)
         assert 0 <= k <= t.sz_of(u), "`split_at` position out of range"
         let (a, b) = t.split_pos(u, k)
@@ -946,7 +946,7 @@ pub struct LazyForest<T, F>:
     /// cost: \(O(\log n)\) expected
     /// traps: when `pos < 0` or `pos >= len(s)`
     /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); f.get(s, 2) == 3`
-    pub fn get(mut self, s: ForestSeq, pos: Int) -> T:
+    pub fn get(mut self, s: ForestSeq, pos: 0..) -> T:
         t.root = self.at(s)
         let v = t.get(pos)
         roots[s.id] = t.root
@@ -1291,7 +1291,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// cost: \(O(\log n)\) expected
     /// traps: when `pos < 0` or `pos > len`
     /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "c"]); s.insert_at(1, "b"); s.total == "abc"`
-    pub fn insert_at(mut self, pos: Int, x: E):
+    pub fn insert_at(mut self, pos: 0.., x: E):
         assert 0 <= pos <= self.len, "`insert_at` position out of range"
         let (a, b) = self.cut(root, pos)
         root = self.join(self.join(a, self.leaf(x)), b)
@@ -1303,7 +1303,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// empty: `var s = SeqFold<Int>(+, [1, 2]); s.insert_many(1, List<Int>()); s.items.collect() == [1, 2]`
     /// traps: when `pos < 0` or `pos > len`
     /// example: `var s = SeqFold<Int>(+, [1, 2]); s.insert_many(1, [7, 8, 9]); s.items.collect() == [1, 7, 8, 9, 2] and s.fold(1..4) == 24`
-    pub fn insert_many<S: Seq<E>>(mut self, pos: Int, xs: S):
+    pub fn insert_many<S: Seq<E>>(mut self, pos: 0.., xs: S):
         assert 0 <= pos <= self.len, "`insert_many` position out of range"
         let (a, b) = self.cut(root, pos)
         root = self.join(self.join(a, self.build(xs)), b)
@@ -1332,7 +1332,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// empty: `var s = SeqFold<Int>(+, [1, 2]); let t = s.split_at(2); t.is_empty and s.len == 2`
     /// traps: when `k < 0` or `k > len`
     /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); let t = s.split_at(1); s.items.collect() == [1] and t.items.collect() == [2, 3] and t.total == 5`
-    pub fn split_at(mut self, k: Int) -> SeqFold<T, F, E>:
+    pub fn split_at(mut self, k: 0..) -> SeqFold<T, F, E>:
         assert 0 <= k <= self.len, "`split_at` position out of range"
         let (a, b) = self.cut(root, k)
         var xs: List<E> = []
@@ -1351,7 +1351,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// empty: `var s = SeqFold<Int>(+, [1, 2]); var t = SeqFold<Int>(+); s.splice(1, mut t); s.items.collect() == [1, 2]`
     /// traps: when `pos < 0` or `pos > len`
     /// example: `var s = SeqFold<Int>(+, [1, 2]); var t = SeqFold<Int>(+, [5, 6]); s.splice(1, mut t); s.items.collect() == [1, 5, 6, 2] and t.is_empty`
-    pub fn splice(mut self, pos: Int, mut other: SeqFold<T, F, E>):
+    pub fn splice(mut self, pos: 0.., mut other: SeqFold<T, F, E>):
         assert 0 <= pos <= self.len, "`splice` position out of range"
         var xs: List<E> = []
         var tags: List<?F> = []
@@ -1366,7 +1366,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// cost: \(O(\log n)\) expected
     /// traps: when `pos < 0` or `pos >= len`
     /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); s.reverse(0..3); s.get(0) == 3`
-    pub fn get(mut self, pos: Int) -> T:
+    pub fn get(mut self, pos: 0..) -> T:
         assert 0 <= pos < self.len, "`get` position out of range"
         self.fold(pos..pos + 1)
 

@@ -32,7 +32,7 @@ pub struct TimeTree<E>:
     /// cost: \(O(q)\) time and memory
     /// traps: when `q < 0`
     /// example: `TimeTree<Int>(2).steps().len == 2`
-    pub fn new(q: Int) -> TimeTree<E>:
+    pub fn new(q: 0..) -> TimeTree<E>:
         assert q >= 0, "TimeTree needs q >= 0"
         let size = bit_ceil(max(1, q))
         TimeTree(q, size, List.filled(2 * size, -1), [], [])
@@ -51,7 +51,7 @@ pub struct TimeTree<E>:
     /// cost: \(O(\log q)\)
     /// traps: when `lo < 0` or `hi > q` on a non-empty interval
     /// example: `var tt = TimeTree<Str>(2); tt.add_interval(0, 2, "e"); tt.steps().len == 4`
-    pub fn add_interval(mut self, lo: Int, hi: Int, ev: E):
+    pub fn add_interval(mut self, lo: 0.., hi: Int, ev: E):
         let ql = max(0, lo)
         let qr = min(q, hi)
         if ql >= qr: return

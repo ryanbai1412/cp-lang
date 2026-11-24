@@ -283,7 +283,7 @@ pub struct Interner<K>:
     /// cost: \(O(\mathit{len})\) when it grows (it moves the keys), \(O(1)\) otherwise
     /// traps: when `cap < 0`
     /// example: `var t = Interner<Int>(); t.reserve(100); t.id(5); t.len == 1`
-    pub fn reserve(mut self, cap: Int):
+    pub fn reserve(mut self, cap: 0..):
         assert cap >= 0
         keys.reserve(cap)
 
@@ -394,7 +394,7 @@ pub struct Arena<T>:
     /// cost: \(O(1)\) time: the room is allocated, not filled
     /// traps: when `cap < 0`
     /// example: `Arena<Int>(cap: 8).is_empty`
-    pub fn new(cap: Int = 0) -> Arena<T>:
+    pub fn new(cap: 0.. = 0) -> Arena<T>:
         var xs: List<T> = []
         xs.reserve(cap)
         Arena(_xs: xs)
@@ -486,7 +486,7 @@ pub struct Arena<T>:
     /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: when `cap < 0`
     /// example: `var a = Arena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
-    pub fn reserve(mut self, cap: Int):
+    pub fn reserve(mut self, cap: 0..):
         _xs.reserve(cap)
 
     /// Drop every node, so the next `alloc` returns handle `0` again. Every handle issued before is

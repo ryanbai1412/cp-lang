@@ -20,7 +20,7 @@ type Slot = -1..=CAP
 /// traps: when `n < 0`
 /// example: `"ab".repeat(3) == "ababab"`
 /// example: `"x".repeat(0) == ""`
-pub fn repeat(self: Str, n: Int) -> Str:
+pub fn repeat(self: Str, n: 0..) -> Str:
     assert n >= 0, "`repeat` needs a count of 0 or more"
     Str(self[i % self.len] for i in 0..n * self.len)
 
@@ -1293,7 +1293,7 @@ pub struct SuffixArray<T: Ord>:
     /// traps: when `k < 0`
     /// example: `SuffixArray("banana").kth_distinct(1) == Some(3..5)`
     /// example: `SuffixArray("banana").kth_distinct(15) == None`
-    pub fn kth_distinct(self, k: Int) -> ?Range<Int>:
+    pub fn kth_distinct(self, k: 0..) -> ?Range<Int>:
         assert k >= 0, "`kth_distinct(k)` needs `k >= 0`"
         let n = sa.len
         if k >= dcum[n]: return None
@@ -1590,7 +1590,7 @@ pub struct RollingHash:
     /// cost: \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\)
     /// traps: when `b_len < 0`
     /// example: `let h = RollingHash("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
-    pub fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal:
+    pub fn combine(self, a: HashVal, b: HashVal, b_len: 0..) -> HashVal:
         assert b_len >= 0, "RollingHash.combine: negative length"
         let fits = b_len < pow1.len
         let q1 = if fits: pow1[b_len] else: pow_mod(bases.0, b_len, RH_M1)
@@ -1823,7 +1823,7 @@ pub struct RollingHash61:
     /// cost: \(O(1)\) amortized (the power table grows past `len` on demand)
     /// traps: when `b_len < 0`
     /// example: `let h = RollingHash61("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
-    pub fn combine(self, a: Hash61, b: Hash61, b_len: Int) -> Hash61:
+    pub fn combine(self, a: Hash61, b: Hash61, b_len: 0..) -> Hash61:
         assert b_len >= 0, "RollingHash61.combine: negative length"
         var p = if b_len < pow.len: pow[b_len] else: U64(1)
         if b_len >= pow.len:
@@ -2358,7 +2358,7 @@ pub struct SuffixAutomaton<A>:
     /// traps: when `k < 0`
     /// example: `SuffixAutomaton<Char>.of("abb").kth_substring(3) == Some(['b'])`
     /// example: `SuffixAutomaton<Char>.of("abb").kth_substring(5, distinct: false) == Some(['b', 'b'])`
-    pub fn kth_substring(self, k: Int, distinct: Bool = true) -> ?List<A>:
+    pub fn kth_substring(self, k: 0.., distinct: Bool = true) -> ?List<A>:
         assert k >= 0, "kth_substring requires k >= 0"
         let m = links.len
         let order = self.topo_order()
@@ -2940,7 +2940,7 @@ pub struct Trie<A>:
     /// order: the letters of the word, first to last
     /// traps: when `k < 0`
     /// example: `var t = Trie<Char>(); t.add("b"); t.add("ab"); t.add("a"); t.kth(1) == Some(['a', 'b']) and t.kth(3) == None`
-    pub fn kth(self, k: Int) -> ?List<A>:
+    pub fn kth(self, k: 0..) -> ?List<A>:
         assert k >= 0, "`kth(k)` needs `k >= 0`"
         if k >= pass[0]: return None
         var left = k

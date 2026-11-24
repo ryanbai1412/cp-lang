@@ -1015,7 +1015,7 @@ pub struct MeldHeaps<T>:
     /// cost: \(O(\mathit{nodes})\)
     /// traps: when `nodes < 0`
     /// example: `var p = MeldHeaps<Int>(); p.reserve(100); let h = p.of([3, 1]); p.top(h) == Some(1)`
-    pub fn reserve(mut self, nodes: Int):
+    pub fn reserve(mut self, nodes: 0..):
         assert nodes >= 0, "reserve requires nodes >= 0"
         _nodes.reserve(nodes)
         if _adds.len > 0: _adds.reserve(nodes)

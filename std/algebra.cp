@@ -230,7 +230,7 @@ pub trait Reversible:
 /// example: `pow(3, 0, op: +) == 0`
 /// example: `pow(3, 5, op: +) == 15`
 /// example: `pow(Affine(2, 1), 3, op: Affine.monoid()).eval(0) == 7`
-pub fn pow<T, M>(x: T, k: Int; op: M) -> T:
+pub fn pow<T, M>(x: T, k: 0..; op: M) -> T:
     assert k >= 0, "pow: a negative exponent"
     let m = Monoid<T>.of(op)
     var acc = m.id
@@ -294,7 +294,7 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// traps: when `k < 0`
     /// example: `MaxSub.of(-2).repeat(3) == MaxSub.of(-2) + MaxSub.of(-2) + MaxSub.of(-2)`
     /// example: `let s = MaxSub.of(-1) + MaxSub.of(3); s.repeat(3) == s + s + s and s.repeat(3).best == 7`
-    pub fn repeat(self, k: Int) -> MaxSub:
+    pub fn repeat(self, k: 0..) -> MaxSub:
         assert k >= 0, "`repeat` count is negative"
         if k == 0 or not has: return MaxSub.zero
         if k == 1: return self
@@ -308,7 +308,7 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// traps: when `k < 0`
     /// example: `MaxSub.of(-3).scale(2).try_best == Some(-6)`
     /// example: `MaxSub.of(-3).scale(0).try_best == Some(0)`
-    pub fn scale(self, k: Int) -> MaxSub:
+    pub fn scale(self, k: 0..) -> MaxSub:
         assert k >= 0
         if not has: self
         else: MaxSub(true, best * k, total * k, pre * k, suf * k)

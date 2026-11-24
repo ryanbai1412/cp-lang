@@ -43,7 +43,7 @@ type SieveVal = 0..=2_000_000_000
 /// example: `isqrt(16) == 4`
 /// example: `isqrt(0) == 0`
 /// example: `isqrt(9_223_372_036_854_775_807) == 3_037_000_499`
-@get pub fn isqrt(self: Int) -> Int:
+@get pub fn isqrt(self: 0..) -> Int:
     assert self >= 0, "isqrt({self}) of a negative number"
     var r = trunc(sqrt(F64(self)))
     while r < SQRT_MAX and (r + 1) * (r + 1) <= self: r += 1
@@ -71,7 +71,7 @@ pub fn ceil_sqrt(x: Int) -> Int:
 /// example: `iroot(27, 3) == 3`
 /// example: `iroot(5, 1) == 5`
 /// example: `iroot(0, 5) == 0`
-pub fn iroot(x: Int, k: Int) -> Int:
+pub fn iroot(x: 0.., k: Int) -> Int:
     assert x >= 0 and k >= 1
     if k == 1 or x <= 1: return x
     var r = floor(F64(x) ** (F64(1) / F64(k)))
@@ -213,7 +213,7 @@ pub struct Sieve:
     /// example: `Sieve(0).is_prime(0) == false`
     /// example: `Sieve(1).primes.is_empty`
     /// example: `Sieve(30).primes == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]`
-    pub fn new(n: Int) -> Sieve:
+    pub fn new(n: 0..) -> Sieve:
         let bound: SieveVal = n
         var odd_composite = List.filled(n / 128 + 1, U64(0))
         odd_composite[0] = U64(1)
@@ -458,7 +458,7 @@ pub struct Sieve:
 /// traps: when `n < 0`
 /// example: `sieve_multiplicative(6, (p, e, pe) => e + 1) == [1, 1, 2, 2, 3, 2, 4]`
 /// example: `sieve_multiplicative(4, (p, e, pe) => pe - pe / p) == [1, 1, 1, 2, 2]`
-pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>:
+pub fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T>:
     assert n >= 0
     var res = List.filled(n + 1, T.one)
     var spf = List.filled(n + 1, 0)
@@ -602,7 +602,7 @@ pub fn bit_len(x: Int) -> Int = bit_width(x)
 /// example: `1203.digits() == [3, 0, 2, 1]`
 /// example: `0.digits() == [0]`
 /// example: `10.digits(base: 2) == [0, 1, 0, 1]`
-pub fn digits(self: Int, base: Int = 10) -> List<Int>:
+pub fn digits(self: 0.., base: Int = 10) -> List<Int>:
     assert self >= 0 and base >= 2
     var (out, x) = ([self % base], self / base)
     while x > 0:
@@ -655,7 +655,7 @@ pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 /// example: `5.bit(1) == false`
 /// example: `(-1).bit(100) == true`
 /// example: `5.bit(70) == false`
-pub fn bit(self: Int, i: Int) -> Bool = if i >= 64: self < 0 else: (self >> i) & 1 == 1
+pub fn bit(self: Int, i: 0..) -> Bool = if i >= 64: self < 0 else: (self >> i) & 1 == 1
 
 /// Is `self` a power of two? `self > 0 and self & (self - 1) == 0`.
 ///
@@ -695,7 +695,7 @@ pub fn splitmix64(x: U64) -> U64:
 /// example: `factor(1) == []`
 /// example: `factor(600_851_475_143) == [(71, 1), (839, 1), (1471, 1), (6857, 1)]`
 /// example: `factor(1_000_000_007) == [(1_000_000_007, 1)]`
-pub fn factor(x: Int) -> List<(Int, Int)>:
+pub fn factor(x: 1..) -> List<(Int, Int)>:
     assert x >= 1
     if x <= 1_000_000:
         var out = List<(Int, Int)>()
@@ -788,7 +788,7 @@ fn ext_gcd_x(a: Int, b: Int) -> (Int, Int):
 /// example: `inv_mod(-3, 7) == Some(2)`
 /// example: `inv_mod(2, 4) == None`
 /// example: `inv_mod(5, 1) == Some(0)`
-pub fn inv_mod(a: Int, m: Int) -> ?Int:
+pub fn inv_mod(a: Int, m: 1..) -> ?Int:
     assert m >= 1
     let (g, x) = ext_gcd_x(a % m, m)
     if g != 1: return None
@@ -804,7 +804,7 @@ pub fn inv_mod(a: Int, m: Int) -> ?Int:
 /// example: `crt(2, 3, 3, 5) == Some((8, 15))`
 /// example: `crt(1, 4, 3, 6) == Some((9, 12))`
 /// example: `crt(0, 2, 1, 4) == None`
-pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
+pub fn crt(r1: Int, m1: 1.., r2: Int, m2: Int) -> ?(Int, Int):
     let (g, x) = ext_gcd_x(m1, m2)
     if (r2 - r1) % g != 0: return None
     let m = m1 / g * m2
@@ -840,7 +840,7 @@ pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int):
 /// traps: when `m < 1`
 /// example: `mul_mod(1_000_000_000_000_000_000, 1_000_000_000_000_000_000, 1_000_000_007) == 2401`
 /// example: `mul_mod(-3, 5, 7) == 6`
-pub fn mul_mod(a: Int, b: Int, m: Int) -> Int:
+pub fn mul_mod(a: Int, b: Int, m: 1..) -> Int:
     if -SQRT_MAX <= a <= SQRT_MAX and -SQRT_MAX <= b <= SQRT_MAX: a * b % m
     else: Int(I128(a) * I128(b) % I128(m))
 
@@ -852,7 +852,7 @@ pub fn mul_mod(a: Int, b: Int, m: Int) -> Int:
 /// example: `pow_mod(-2, 3, 7) == 6`
 /// example: `pow_mod(0, 0, 7) == 1`
 /// example: `pow_mod(5, 0, 1) == 0`
-pub fn pow_mod(a: Int, e: Int, m: Int) -> Int:
+pub fn pow_mod(a: Int, e: 0.., m: Int) -> Int:
     var (acc, x, k) = (1 % m, a % m, e)
     while k > 0:
         if k % 2 == 1: acc = mul_mod(acc, x, m)
@@ -933,7 +933,7 @@ fn rho(x: Int) -> Int:
 /// example: `phi(36) == 12`
 /// example: `phi(1) == 1`
 /// example: `phi(1_000_000_007) == 1_000_000_006`
-pub fn phi(x: Int) -> Int:
+pub fn phi(x: 1..) -> Int:
     var acc = x
     for (p, _) in factor(x): acc = acc / p * (p - 1)
     acc
@@ -949,7 +949,7 @@ pub struct Exp(pub v: Int, pub m: Int):
     /// traps: when `e < 0` or `m < 1`
     /// example: `Exp.of(5, 7).v == 5 and Exp.of(12, 7).v == 12 and Exp.of(19, 7).v == 12`
     /// example: `Exp.of(0, 1).v == 0 and Exp.of(9, 1).v == 1`
-    pub fn of(e: Int, m: Int) -> Exp:
+    pub fn of(e: 0.., m: Int) -> Exp:
         assert e >= 0 and m >= 1, "`Exp.of(e, m)` takes `e >= 0` and `m >= 1`"
         Exp(v: capped(e, m), m:)
 
@@ -969,7 +969,7 @@ fn mul_capped(x: Int, y: Int, m: Int) -> Int:
 /// example: `pow_exp(2, Exp.of(10, phi(7)), 7).v % 7 == pow_mod(2, 10, 7)`
 /// example: `pow_exp(3, Exp.of(2, phi(100)), 100).v == 9`
 /// example: `pow_exp(6, Exp.of(1_000_000, phi(8)), 8).v % 8 == pow_mod(6, 1_000_000, 8)`
-pub fn pow_exp(a: Int, x: Exp, m: Int) -> Exp:
+pub fn pow_exp(a: 0.., x: Exp, m: Int) -> Exp:
     assert a >= 0 and m >= 1, "`pow_exp(a, x, m)` takes `a >= 0` and `m >= 1`"
     var (acc, b, k) = (capped(1, m), capped(a, m), x.v)
     while k > 0:
@@ -1028,7 +1028,7 @@ pub fn primitive_root(p: Int) -> Int:
 /// example: `mod_log(2, 3, 7) == None`
 /// example: `mod_log(0, 0, 5) == Some(1)`
 /// example: `mod_log(2, 1, 1) == Some(0)`
-pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int:
+pub fn mod_log(a: Int, b: Int, m: 1..) -> ?Int:
     assert m >= 1
     let (a0, b0) = (a % m, b % m)
     if m == 1 or b0 == 1: return 0
@@ -1107,7 +1107,7 @@ pub fn mod_sqrt(a: Int, p: Int) -> ?Int:
 /// example: `floor_sum(4, 10, 6, 3) == 3`
 /// example: `floor_sum(3, 2, -1, 0) == -2`
 /// example: `floor_sum(0, 5, 1, 1) == 0`
-pub fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int:
+pub fn floor_sum(n: 0.., m: Int, a: Int, b: Int) -> Int:
     assert n >= 0 and m > 0
     var (count, den, slope, start) = (n, m, a, b)
     var total = 0
@@ -1185,7 +1185,7 @@ pub fn prime_count(n: Int) -> Int:
 /// example: `floor_quotients(10).collect() == [(10, 1, 2), (5, 2, 3), (3, 3, 4), (2, 4, 6), (1, 6, 11)]`
 /// example: `floor_quotients(10, from: 4).collect() == [(2, 4, 6), (1, 6, 11)]`
 /// example: `floor_quotients(0).collect() == []`
-pub fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: Int):
+pub fn floor_quotients(n: Int, from: 1.. = 1) -> yields (q: Int, lo: Int, hi: Int):
     var i = max(from, 1)
     while i <= n:
         let q = n / i
@@ -1200,7 +1200,7 @@ pub fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: In
 /// traps: when `x < 1`
 /// example: `each_divisor(12).collect() == [1, 2, 4, 3, 6, 12]`
 /// example: `each_divisor(1).collect() == [1]`
-pub fn each_divisor(x: Int) -> yields Int:
+pub fn each_divisor(x: 1..) -> yields Int:
     for d in divisors_in_radix_order(factor(x)): yield d
 
 fn divisors_in_radix_order(fs: List<(Int, Int)>) -> yields Int:
@@ -1228,7 +1228,7 @@ fn divisors_in_radix_order(fs: List<(Int, Int)>) -> yields Int:
 /// traps: when `mask < 0`
 /// example: `submasks(5).collect() == [5, 4, 1, 0]`
 /// example: `submasks(0).collect() == [0]`
-pub fn submasks(mask: Int) -> yields Int:
+pub fn submasks(mask: 0..) -> yields Int:
     var s = mask
     while true:
         yield s
@@ -1245,7 +1245,7 @@ pub fn submasks(mask: Int) -> yields Int:
 /// example: `bit_subsets(4, 2).collect() == [3, 5, 6, 9, 10, 12]`
 /// example: `bit_subsets(3, 0).collect() == [0]`
 /// example: `bit_subsets(2, 3).collect() == []`
-pub fn bit_subsets(n: Int, k: Int) -> yields Int:
+pub fn bit_subsets(n: 0.., k: Int) -> yields Int:
     if k == 0: yield 0
     if 1 <= k <= n:
         var s = (1 << k) - 1
@@ -1265,7 +1265,7 @@ pub fn bit_subsets(n: Int, k: Int) -> yields Int:
 /// traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
 /// example: `dirichlet_convolve([0, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, 2, 2, 3, 2, 4]`
 /// example: `dirichlet_convolve([0, 1, 2, 3], [0, 1, 0, 0], 3) == [0, 1, 2, 3]`
-pub fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: Int) -> List<T>:
+pub fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: 0..) -> List<T>:
     assert n >= 0, "dirichlet_convolve requires n >= 0"
     assert a.len >= n + 1 and b.len >= n + 1, "dirichlet_convolve requires a.len and b.len >= n + 1"
     var c = List.filled(n + 1, T.zero)
@@ -1284,7 +1284,7 @@ pub fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: Int) -> List<
 /// order: `b[k]` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
 /// example: `dirichlet_inv([0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, -1, -1, 0, -1, 1]`
-pub fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: Int) -> List<T>:
+pub fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: 0..) -> List<T>:
     assert n >= 0, "dirichlet_inv requires n >= 0"
     var b = List.filled(n + 1, T.zero)
     if n == 0: return b
@@ -1321,7 +1321,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     /// empty: `var ds = DirichletSum<Int>(10, [], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     /// traps: when `n < 0`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
-    pub fn new(n: Int, f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>:
+    pub fn new(n: 0.., f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>:
         assert n >= 0, "DirichletSum requires n >= 0"
         var pre = List.filled(max(f_small.len, 1), T.zero)
         for k in 1..f_small.len: pre[k] = pre[k - 1] + f_small[k]
@@ -1485,7 +1485,7 @@ pub fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x:
 /// example: `linear_congruence(6, 4, 10) == Some((4, 5))`
 /// example: `linear_congruence(2, 1, 4) == None`
 /// example: `linear_congruence(0, 0, 3) == Some((0, 1))`
-pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int):
+pub fn linear_congruence(a: Int, b: Int, m: 1..) -> ?(r: Int, step: Int):
     assert m >= 1
     let (a2, b2) = (a % m, b % m)
     let (g, x) = ext_gcd_x(a2, m)
@@ -1533,7 +1533,7 @@ pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int:
 /// example: `mult_order(3, 7) == Some(6)`
 /// example: `mult_order(2, 4) == None`
 /// example: `mult_order(5, 1) == Some(1)`
-pub fn mult_order(a: Int, m: Int) -> ?Int:
+pub fn mult_order(a: Int, m: 1..) -> ?Int:
     assert m >= 1
     if m == 1: return Some(1)
     let a2 = a % m
@@ -1575,7 +1575,7 @@ pub fn jacobi(a: Int, n: Int) -> Int:
 /// example: `carmichael(8) == 2`
 /// example: `carmichael(15) == 4`
 /// example: `carmichael(7) == 6`
-pub fn carmichael(n: Int) -> Int:
+pub fn carmichael(n: 1..) -> Int:
     assert n >= 1
     var res = 1
     for (p, e) in factor(n):

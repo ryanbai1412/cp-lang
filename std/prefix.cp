@@ -506,7 +506,7 @@ pub struct Prefix<T: Sub>:
     /// cost: \(O(n)\) time and space
     /// traps: when `n < 0`
     /// example: `var f = Prefix<Int>.filling(2); f.set(0, 9); f.fold(0..1) == 9`
-    pub fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>:
+    pub fn filling(n: 0.., order: FillOrder = FillOrder.Forward) -> FillPrefix<T>:
         assert n >= 0
         let rev = order == FillOrder.Reverse
         FillPrefix<T>(List.filled(n + 1, T.zero), rev, if rev: n - 1 else: 0)

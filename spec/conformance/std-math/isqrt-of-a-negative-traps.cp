@@ -1,6 +1,5 @@
-// expect: exit 3
+// expect: E0902
 // rule: 11
-// tool: run
-// has: "isqrt(-4) of a negative number"
+// has: "`a` is out of range for `0..`"
 let a = -4
-print(isqrt(a))
+print(isqrt(a)) // <- here
