@@ -794,7 +794,7 @@ fn disagreements(src: &Path, out: &Path) -> Option<Vec<String>> {
 
 /// The programs split into this many tests, so nextest spreads them over
 /// CI's test partitions instead of one job running them all.
-const SHARDS: usize = 8;
+const SHARDS: usize = 16;
 
 fn explain_claims_on_shard(shard: usize) {
     let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join("explain_accuracy");
@@ -873,6 +873,46 @@ fn explain_claims_only_what_the_cpp_does_6() {
 #[test]
 fn explain_claims_only_what_the_cpp_does_7() {
     explain_claims_on_shard(7);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_8() {
+    explain_claims_on_shard(8);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_9() {
+    explain_claims_on_shard(9);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_10() {
+    explain_claims_on_shard(10);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_11() {
+    explain_claims_on_shard(11);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_12() {
+    explain_claims_on_shard(12);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_13() {
+    explain_claims_on_shard(13);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_14() {
+    explain_claims_on_shard(14);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_15() {
+    explain_claims_on_shard(15);
 }
 
 /// The copies `cpl explain --json` lists for `src`, and the ones the C++

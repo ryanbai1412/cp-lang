@@ -16,7 +16,7 @@ mod corpus_cases;
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
-const SHARDS: usize = 16;
+const SHARDS: usize = 32;
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -257,4 +257,20 @@ shards! {
     fixes_keep_behaviour_13 = 13,
     fixes_keep_behaviour_14 = 14,
     fixes_keep_behaviour_15 = 15,
+    fixes_keep_behaviour_16 = 16,
+    fixes_keep_behaviour_17 = 17,
+    fixes_keep_behaviour_18 = 18,
+    fixes_keep_behaviour_19 = 19,
+    fixes_keep_behaviour_20 = 20,
+    fixes_keep_behaviour_21 = 21,
+    fixes_keep_behaviour_22 = 22,
+    fixes_keep_behaviour_23 = 23,
+    fixes_keep_behaviour_24 = 24,
+    fixes_keep_behaviour_25 = 25,
+    fixes_keep_behaviour_26 = 26,
+    fixes_keep_behaviour_27 = 27,
+    fixes_keep_behaviour_28 = 28,
+    fixes_keep_behaviour_29 = 29,
+    fixes_keep_behaviour_30 = 30,
+    fixes_keep_behaviour_31 = 31,
 }

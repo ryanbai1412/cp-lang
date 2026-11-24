@@ -4,6 +4,9 @@
 //!
 //! Rule: `errors/R11`, handbook/guidelines/errors-checklist.md#r11-a-trap-names-the-values-and-the-way-out.
 
+#[path = "support/cxx.rs"]
+mod cxx;
+
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -389,7 +392,6 @@ fn build_and_run_cpp(source: &str) -> (i32, String) {
     fs::create_dir_all(&dir).unwrap();
     let file = dir.join("a.cp");
     let cpp = dir.join("a.cpp");
-    let exe = dir.join("a.bin");
     fs::write(&file, source).unwrap();
     let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args([
@@ -407,21 +409,9 @@ fn build_and_run_cpp(source: &str) -> (i32, String) {
         "cpl build failed:\n{}",
         String::from_utf8_lossy(&build.stderr)
     );
-    let compile = Command::new("g++")
-        .args([
-            "-std=c++17",
-            "-O2",
-            cpp.to_str().unwrap(),
-            "-o",
-            exe.to_str().unwrap(),
-        ])
-        .output()
-        .expect("g++");
-    assert!(
-        compile.status.success(),
-        "g++ failed:\n{}",
-        String::from_utf8_lossy(&compile.stderr)
-    );
+    let exe = cxx::build(&fs::read(&cpp).unwrap(), &["-std=c++17", "-O2"])
+        .unwrap_or_else(|e| panic!("{e}"))
+        .0;
     let out = Command::new(&exe).output().expect("run binary");
     let code = out.status.code().unwrap_or(-1);
     let err = String::from_utf8_lossy(&out.stderr).into_owned();
@@ -505,7 +495,6 @@ fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.cp");
         let cpp = dir.join("a.cpp");
-        let exe = dir.join("a.bin");
         fs::write(&file, src).unwrap();
         let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
             .args([
@@ -523,22 +512,9 @@ fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
             "cpl build failed:\n{}",
             String::from_utf8_lossy(&build.stderr)
         );
-        let compile = Command::new("g++")
-            .args([
-                "-std=c++17",
-                "-O1",
-                "-DLOCAL",
-                cpp.to_str().unwrap(),
-                "-o",
-                exe.to_str().unwrap(),
-            ])
-            .output()
-            .expect("g++");
-        assert!(
-            compile.status.success(),
-            "g++ failed:\n{}",
-            String::from_utf8_lossy(&compile.stderr)
-        );
+        let exe = cxx::build(&fs::read(&cpp).unwrap(), &["-std=c++17", "-O1", "-DLOCAL"])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .0;
         let out = Command::new(&exe).output().expect("run binary");
         let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
         let _ = fs::remove_dir_all(&dir);
@@ -581,7 +557,6 @@ fn reach_non_monotone_traps_in_interp_and_checked_cpp() {
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.cp");
         let cpp = dir.join("a.cpp");
-        let exe = dir.join("a.bin");
         fs::write(&file, src).unwrap();
         let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
             .args([
@@ -599,22 +574,9 @@ fn reach_non_monotone_traps_in_interp_and_checked_cpp() {
             "cpl build failed:\n{}",
             String::from_utf8_lossy(&build.stderr)
         );
-        let compile = Command::new("g++")
-            .args([
-                "-std=c++17",
-                "-O1",
-                "-DLOCAL",
-                cpp.to_str().unwrap(),
-                "-o",
-                exe.to_str().unwrap(),
-            ])
-            .output()
-            .expect("g++");
-        assert!(
-            compile.status.success(),
-            "g++ failed:\n{}",
-            String::from_utf8_lossy(&compile.stderr)
-        );
+        let exe = cxx::build(&fs::read(&cpp).unwrap(), &["-std=c++17", "-O1", "-DLOCAL"])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .0;
         let out = Command::new(&exe).output().expect("run binary");
         let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
         let _ = fs::remove_dir_all(&dir);
@@ -724,7 +686,6 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.cp");
         let cpp = dir.join("a.cpp");
-        let exe = dir.join("a.bin");
         fs::write(&file, src).unwrap();
         let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
             .args([
@@ -742,22 +703,9 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
             "cpl build failed:\n{}",
             String::from_utf8_lossy(&build.stderr)
         );
-        let compile = Command::new("g++")
-            .args([
-                "-std=c++17",
-                "-O1",
-                "-DLOCAL",
-                cpp.to_str().unwrap(),
-                "-o",
-                exe.to_str().unwrap(),
-            ])
-            .output()
-            .expect("g++");
-        assert!(
-            compile.status.success(),
-            "g++ failed:\n{}",
-            String::from_utf8_lossy(&compile.stderr)
-        );
+        let exe = cxx::build(&fs::read(&cpp).unwrap(), &["-std=c++17", "-O1", "-DLOCAL"])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .0;
         let mut child = Command::new(&exe)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -813,7 +761,6 @@ fn domain_array_literal_mismatch_traps_in_interp_and_checked_cpp() {
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a.cp");
         let cpp = dir.join("a.cpp");
-        let exe = dir.join("a.bin");
         fs::write(&file, src).unwrap();
         let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
             .args([
@@ -831,22 +778,9 @@ fn domain_array_literal_mismatch_traps_in_interp_and_checked_cpp() {
             "cpl build failed:\n{}",
             String::from_utf8_lossy(&build.stderr)
         );
-        let compile = Command::new("g++")
-            .args([
-                "-std=c++17",
-                "-O1",
-                "-DLOCAL",
-                cpp.to_str().unwrap(),
-                "-o",
-                exe.to_str().unwrap(),
-            ])
-            .output()
-            .expect("g++");
-        assert!(
-            compile.status.success(),
-            "g++ failed:\n{}",
-            String::from_utf8_lossy(&compile.stderr)
-        );
+        let exe = cxx::build(&fs::read(&cpp).unwrap(), &["-std=c++17", "-O1", "-DLOCAL"])
+            .unwrap_or_else(|e| panic!("{e}"))
+            .0;
         let out = Command::new(&exe).output().expect("run binary");
         let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
         let _ = fs::remove_dir_all(&dir);
@@ -889,10 +823,7 @@ fn prefix_filling_traps_in_interp_and_checked_cpp() {
             "domain R = 0..2\ndomain C = 0..3\nvar p = Prefix<R, C, Int>.filling(order: FillOrder.Reverse)\np.set(R(1), C(2), 1)\nprint(p.fold(R(1)..=R(1), C(1)..=C(2)))\n",
             "in_filled",
         ),
-        (
-            "var p = Prefix<Int>.filling(4)\np.set(2, 7)\n",
-            "in_order",
-        ),
+        ("var p = Prefix<Int>.filling(4)\np.set(2, 7)\n", "in_order"),
         (
             "var p = Prefix<Int>.filling(4, order: FillOrder.Reverse)\np.set(3, 7)\nprint(p.fold(2..4))\n",
             "in_filled",

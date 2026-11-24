@@ -1,19 +1,18 @@
 //! What the sanitized differential tests share: a seeded generator, a
-//! runner that feeds stdin, and a cache of sanitized binaries keyed by a
-//! hash of the C++, the flags and the compiler.
+//! runner that feeds stdin, and sanitized builds from the shared C++ cache.
 
-use std::hash::{Hash, Hasher};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::OnceLock;
 
-pub const GXX_FLAGS: [&str; 5] = [
+#[path = "cxx.rs"]
+mod cxx;
+
+pub const GXX_FLAGS: [&str; 4] = [
     "-std=c++17",
     "-fsanitize=address,undefined",
     "-fno-sanitize-recover=all",
     "-w",
-    "-o",
 ];
 
 /// xorshift64*: the same cases on every machine.
@@ -56,49 +55,7 @@ pub fn run(mut command: Command, input: &str) -> std::process::Output {
     child.wait_with_output().expect("exits")
 }
 
-fn gxx_version() -> &'static [u8] {
-    static VERSION: OnceLock<Vec<u8>> = OnceLock::new();
-    VERSION.get_or_init(|| {
-        Command::new("g++")
-            .arg("--version")
-            .output()
-            .map(|out| out.stdout)
-            .unwrap_or_default()
-    })
-}
-
-/// The sanitized binary of `cpp`, kept in `cache`, compiled now or kept from an earlier run.
-pub fn sanitized_binary(cache: &Path, cpp: &[u8]) -> Result<PathBuf, String> {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    (gxx_version(), GXX_FLAGS, cpp).hash(&mut hasher);
-    let key = format!("{:016x}", hasher.finish());
-    std::fs::create_dir_all(cache).map_err(|e| e.to_string())?;
-    let (source, binary) = (cache.join(format!("{key}.cpp")), cache.join(&key));
-    if binary.exists() && std::fs::read(&source).is_ok_and(|kept| kept == cpp) {
-        return Ok(binary);
-    }
-    let unique = format!(
-        "{key}.{}.{:?}",
-        std::process::id(),
-        std::thread::current().id()
-    )
-    .replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "");
-    let (tmp_source, tmp_binary) = (cache.join(format!("{unique}.cpp")), cache.join(&unique));
-    std::fs::write(&tmp_source, cpp).map_err(|e| e.to_string())?;
-    let compiled = Command::new("g++")
-        .args(GXX_FLAGS)
-        .arg(&tmp_binary)
-        .arg(&tmp_source)
-        .output()
-        .map_err(|e| format!("g++ did not start ({e}); these tests need it"))?;
-    if !compiled.status.success() {
-        return Err(format!(
-            "g++ failed on {}:\n{}",
-            tmp_source.display(),
-            String::from_utf8_lossy(&compiled.stderr)
-        ));
-    }
-    std::fs::rename(&tmp_binary, &binary).map_err(|e| e.to_string())?;
-    std::fs::rename(&tmp_source, &source).map_err(|e| e.to_string())?;
-    Ok(binary)
+/// The sanitized binary of `cpp`, from the shared C++ cache or compiled now.
+pub fn sanitized_binary(cpp: &[u8]) -> Result<PathBuf, String> {
+    cxx::build(cpp, &GXX_FLAGS).map(|(binary, _)| binary)
 }

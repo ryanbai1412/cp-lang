@@ -12,26 +12,28 @@
 //!
 //! The programs are split into `SHARDS` tests by their index in sorted
 //! order, so the test runner spreads them over its threads. A sanitized
-//! binary is kept under the C++ it was built from and reused while that
-//! source, the flags and the compiler are unchanged; it is still run every
-//! time.
+//! binary comes from the C++ cache the suites share (`support/cxx.rs`) while
+//! the source, flags and compiler are unchanged; it is still run every time.
 
-use std::hash::{Hash, Hasher};
+#[path = "support/cxx.rs"]
+mod cxx;
+#[path = "support/parallel.rs"]
+mod parallel;
+use parallel::parallel;
+
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::OnceLock;
 
 const SHARDS: usize = 16;
 
-const GXX_FLAGS: [&str; 7] = [
+const GXX_FLAGS: [&str; 6] = [
     "-std=c++17",
     "-fsanitize=address,undefined",
     "-D_GLIBCXX_DEBUG",
     "-fno-sanitize-recover=all",
     "-Wall",
     "-Wextra",
-    "-o",
 ];
 
 /// The programs of `tests/parity`: `mut` receivers, fields and cells
@@ -84,6 +86,11 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "interval_default_on_old",
             "items_of_temporary",
             "lent_fields",
+            "lent_temp_capture",
+            "lent_temp_for",
+            "lent_temp_let",
+            "lent_temp_return",
+            "lent_temp_store",
             "lent_views",
             "let_of_local_row_lends",
             "map_get_lend",
@@ -144,34 +151,6 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
     .flatten()
     .collect();
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
-}
-
-/// `f` over `items` on every core, the results in order: each thread
-/// takes the next item as it frees up, so the g++ builds overlap.
-fn parallel<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let next = std::sync::atomic::AtomicUsize::new(0);
-    let mut done: Vec<(usize, R)> = std::thread::scope(|scope| {
-        let handles: Vec<_> = (0..threads.min(items.len()).max(1))
-            .map(|_| {
-                scope.spawn(|| {
-                    let mut done = Vec::new();
-                    loop {
-                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        let Some(item) = items.get(i) else { break };
-                        done.push((i, f(item)));
-                    }
-                    done
-                })
-            })
-            .collect();
-        handles
-            .into_iter()
-            .flat_map(|h| h.join().unwrap())
-            .collect()
-    });
-    done.sort_by_key(|(i, _)| *i);
-    done.into_iter().map(|(_, r)| r).collect()
 }
 
 fn programs() -> Vec<PathBuf> {
@@ -251,62 +230,22 @@ fn against_judge(
     Ok(ran)
 }
 
-/// What `g++ --version` prints, so a compiler upgrade rebuilds every binary.
-fn gxx_version() -> &'static [u8] {
-    static VERSION: OnceLock<Vec<u8>> = OnceLock::new();
-    VERSION.get_or_init(|| {
-        Command::new("g++")
-            .arg("--version")
-            .output()
-            .map(|out| out.stdout)
-            .unwrap_or_default()
-    })
-}
-
-/// The sanitized binary built from `cpp`, compiled now or reused from an
-/// earlier run that compiled the same bytes with the same flags and compiler.
+/// The sanitized binary built from `cpp`, from the shared C++ cache or
+/// compiled now; g++ must build it without a warning.
 fn sanitized_binary(cpp: &[u8]) -> Result<PathBuf, String> {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    (gxx_version(), GXX_FLAGS, cpp).hash(&mut hasher);
-    let key = format!("{:016x}", hasher.finish());
-    let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("differential/cache");
-    std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
-    let source = cache.join(format!("{key}.cpp"));
-    let binary = cache.join(&key);
-    if binary.exists() && std::fs::read(&source).is_ok_and(|kept| kept == cpp) {
-        return Ok(binary);
-    }
-    // Built under a name of its own and renamed, so a shard never runs a
-    // binary another one is still writing.
-    let unique = format!(
-        "{key}.{}.{:?}",
-        std::process::id(),
-        std::thread::current().id()
-    )
-    .replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "");
-    let (tmp_source, tmp_binary) = (cache.join(format!("{unique}.cpp")), cache.join(&unique));
     if let Some(line) = std::str::from_utf8(cpp).ok().and_then(moved_const_ref) {
         return Err(format!(
             "`std::move` of a `const T&` name only copies: {line}"
         ));
     }
-    std::fs::write(&tmp_source, cpp).map_err(|e| e.to_string())?;
-    let compiled = Command::new("g++")
-        .args(GXX_FLAGS)
-        .arg(&tmp_binary)
-        .arg(&tmp_source)
-        .output()
-        .map_err(|e| format!("g++ did not start ({e}); these tests need it"))?;
-    let warnings = String::from_utf8_lossy(&compiled.stderr);
-    if !compiled.status.success() || !warnings.is_empty() {
-        let _ = std::fs::remove_file(&tmp_binary);
+    let (binary, warnings) = cxx::build(cpp, &GXX_FLAGS)?;
+    if !warnings.is_empty() {
+        let source = binary.with_extension("cpp");
         return Err(format!(
             "g++ complained about {}:\n{warnings}",
-            tmp_source.display()
+            source.display()
         ));
     }
-    std::fs::rename(&tmp_binary, &binary).map_err(|e| e.to_string())?;
-    std::fs::rename(&tmp_source, &source).map_err(|e| e.to_string())?;
     Ok(binary)
 }
 
@@ -1324,26 +1263,38 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
     let mut wrong = Vec::new();
     let mut alone = Vec::new();
     let mut through = Vec::new();
-    for (fixture, values) in EDGE_FIXTURES {
+    // Each row runs alone first, every core at once, to see whether it runs through.
+    let rows: Vec<(&str, &str, usize, &cpl_check::BuiltinMember)> = EDGE_FIXTURES
+        .iter()
+        .flat_map(|&(fixture, values)| {
+            (cpl_check::BUILTIN_MEMBERS.iter().enumerate())
+                .map(move |(i, m)| (fixture, values, i, m))
+        })
+        .collect();
+    let ran = parallel(&rows, |&(fixture, values, i, member)| {
+        let func = format!(
+            "fn row{i}():\n{}{}",
+            indented(values),
+            indented(&edge_body(member))
+        );
+        let name = format!("{fixture}_row{i}");
+        let path = write(&name, &format!("{func}row{i}()\n"));
+        let ran = cpl_cli::run_with_input(&["run", &path], b"");
+        (func, name, path, ran.code, ran.stderr)
+    });
+    for (fixture, _) in EDGE_FIXTURES {
         // Rows that run through, a few to a program so each stays under a judge's 64 KB.
         let mut together: Vec<String> = Vec::new();
-        for (i, member) in cpl_check::BUILTIN_MEMBERS.iter().enumerate() {
-            let func = format!(
-                "fn row{i}():\n{}{}",
-                indented(values),
-                indented(&edge_body(member))
-            );
-            let name = format!("{fixture}_row{i}");
-            let path = write(&name, &format!("{func}row{i}()\n"));
-            let ran = cpl_cli::run_with_input(&["run", &path], b"");
-            match ran.code {
+        for ((_, _, i, member), (func, name, path, code, stderr)) in
+            rows.iter().zip(&ran).filter(|(row, _)| row.0 == fixture)
+        {
+            match *code {
                 0 => together.push(format!("{func}print(\"{name}\")\nrow{i}()\n")),
-                cpl_cli::EXIT_FAILED => alone.push((name, path)),
+                cpl_cli::EXIT_FAILED => alone.push((name.clone(), path.clone())),
                 code => wrong.push(format!(
-                    "{}.{} on {fixture} values: `cpl run` exited with {code}:\n{}",
+                    "{}.{} on {fixture} values: `cpl run` exited with {code}:\n{stderr}",
                     member.receiver.name(),
                     member.name,
-                    ran.stderr
                 )),
             }
         }

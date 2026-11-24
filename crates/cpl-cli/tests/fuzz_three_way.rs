@@ -70,7 +70,7 @@ fn three_way(name: &str, src: &str, cases: &[(String, Expect)]) -> Vec<String> {
             String::from_utf8_lossy(&built.stderr)
         )];
     }
-    let binary = match sanitized_binary(&dir().join("cache"), &built.stdout) {
+    let binary = match sanitized_binary(&built.stdout) {
         Ok(binary) => binary,
         Err(message) => return vec![format!("{name}: {message}")],
     };

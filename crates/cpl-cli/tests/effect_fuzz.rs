@@ -119,7 +119,7 @@ fn check(seed: u64) -> Vec<String> {
             String::from_utf8_lossy(&built.stderr)
         )];
     }
-    let binary = match sanitized_binary(&dir().join("cache"), &built.stdout) {
+    let binary = match sanitized_binary(&built.stdout) {
         Ok(binary) => binary,
         Err(message) => return vec![format!("seed {seed}: {message}")],
     };

@@ -2,6 +2,12 @@
 //! and traps the same way in the interpreter and in the native `-DLOCAL`
 //! build (R09.4), so no place form can lose its check unnoticed.
 
+#[path = "support/cxx.rs"]
+mod cxx;
+#[path = "support/parallel.rs"]
+mod parallel;
+use parallel::parallel;
+
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -147,25 +153,10 @@ fn matrix(
     (decls + &fns + &calls, cases)
 }
 
-fn native(cpp: &[u8], dir: &Path, k: usize) -> std::path::PathBuf {
-    let (source, binary) = (
-        dir.join(format!("matrix{k}.cpp")),
-        dir.join(format!("matrix{k}")),
-    );
-    std::fs::write(&source, cpp).unwrap();
-    let built = Command::new("g++")
-        .args(["-std=c++17", "-O1", "-DLOCAL", "-fsanitize=undefined"])
-        .args(["-fno-sanitize-recover=all", "-o"])
-        .arg(&binary)
-        .arg(&source)
-        .output()
-        .expect("g++ did not start; this test needs it");
-    assert!(
-        built.status.success(),
-        "{}",
-        String::from_utf8_lossy(&built.stderr)
-    );
-    binary
+fn native(cpp: &[u8]) -> std::path::PathBuf {
+    let flags = ["-std=c++17", "-O1", "-DLOCAL", "-fsanitize=undefined"];
+    let flags = [&flags[..], &["-fno-sanitize-recover=all"]].concat();
+    cxx::build(cpp, &flags).unwrap_or_else(|e| panic!("{e}")).0
 }
 
 #[test]
@@ -190,8 +181,10 @@ fn every_int_op_through_every_place_traps_in_interp_and_native() {
         let path = path.to_string_lossy().into_owned();
         let built = cpl_cli::run(&["build", &path, "-o", "-"]);
         assert_eq!(built.code, 0, "{}", built.stderr);
-        let binary = native(&built.stdout, &dir, k);
-        for (i, case) in cases.iter().enumerate() {
+        let binary = native(&built.stdout);
+        let indexed: Vec<(usize, &Case)> = cases.iter().enumerate().collect();
+        let found = parallel(&indexed, |&(i, case)| {
+            let mut wrong = Vec::new();
             let input = format!("{i} {}\n", case.step);
             let interp = cpl_cli::run_with_input(&["run", &path], input.as_bytes());
             if interp.code != 3 || !interp.stderr.contains(trap) || !interp.stdout.is_empty() {
@@ -229,7 +222,9 @@ fn every_int_op_through_every_place_traps_in_interp_and_native() {
                     String::from_utf8_lossy(&ran.stdout)
                 ));
             }
-        }
+            wrong
+        });
+        wrong.extend(found.into_iter().flatten());
     }
     assert!(
         wrong.is_empty(),
@@ -268,7 +263,7 @@ fn an_absent_key_folds_the_same_whatever_the_value_range() {
         let path = path.to_string_lossy().into_owned();
         let built = cpl_cli::run(&["build", &path, "-o", "-"]);
         assert_eq!(built.code, 0, "{}", built.stderr);
-        let binary = native(&built.stdout, &dir, k);
+        let binary = native(&built.stdout);
         for (case, ranged_traps) in [(0, false), (1, true), (2, true), (3, true), (4, true)] {
             let input = format!("{case} 500\n");
             let traps = ranged_traps && value == "R";

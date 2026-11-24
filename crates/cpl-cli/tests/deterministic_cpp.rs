@@ -22,7 +22,7 @@ fn build(src: &Path, out: &Path) -> Option<Vec<u8>> {
 
 /// The test is split into `SHARDS` tests by each source's index, so CI
 /// spreads the corpus over its shards.
-const SHARDS: usize = 4;
+const SHARDS: usize = 8;
 
 fn shard_of(sources: &[PathBuf], shard: usize) -> Vec<&PathBuf> {
     sources.iter().skip(shard).step_by(SHARDS).collect()
@@ -98,4 +98,8 @@ shards! {
     building_a_program_twice_gives_the_same_cpp_1 = 1,
     building_a_program_twice_gives_the_same_cpp_2 = 2,
     building_a_program_twice_gives_the_same_cpp_3 = 3,
+    building_a_program_twice_gives_the_same_cpp_4 = 4,
+    building_a_program_twice_gives_the_same_cpp_5 = 5,
+    building_a_program_twice_gives_the_same_cpp_6 = 6,
+    building_a_program_twice_gives_the_same_cpp_7 = 7,
 }
