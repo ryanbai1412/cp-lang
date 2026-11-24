@@ -1,6 +1,7 @@
-// expect: ok, output "1 5 5"
-use std.bitset.{BitTrie}
-var t = BitTrie<3>.of(5)
-t.add(1)
-t.add(5)
-print(t)
+// expect: ok, output "root 0 7 nodes"
+use std.bitset.{BitTrie, BitTrieArena}
+var ar = BitTrieArena<3>()
+var t = BitTrie<3>.of(mut ar, 5)
+t.add(mut ar, 1)
+t.add(mut ar, 5)
+print(t, ar)

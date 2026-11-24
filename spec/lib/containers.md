@@ -271,15 +271,19 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
 
 <!-- signatures: std/bitset.cp -->
 ```cp
-struct BitTrie<W>                                           // multiset of 0..2^W, a count per node
-    fn new() -> BitTrie<W>                                  // O(1)
-    fn of(x: Int) -> BitTrie<W>                             // O(W), traps unless x in 0..2^W
-    @get fn len(self) -> Int                                // O(1), with multiplicity
+struct BitTrieArena<W>                                      // the nodes of every BitTrie<W> built in it
+    fn new(cap: Int = 0) -> BitTrieArena<W>                 // O(cap), reserves cap nodes
+    @get fn node_count(self) -> Int                         // O(1), nodes held
+struct BitTrie<W>                                           // multiset of 0..2^W: a root handle into an arena
+    fn new() -> BitTrie<W>                                  // O(1), no node
+    fn of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>    // O(W), traps unless x in 0..2^W
+    fn len(self, ar: BitTrieArena<W>) -> Int                // O(1), with multiplicity
     @get fn is_empty(self) -> Bool                          // O(1)
-    fn add(mut self, x: Int)                                // O(W)
-    fn count(self, x: Int) -> Int                           // O(W), 0 when absent
-    fn walk(self, x: Int) -> yields (bit: Int, count: Int)  // O(W), path of x from bit W - 1
-    fn absorb(mut self, mut other: BitTrie<W>)              // O(min nodes), smaller into larger; empties other
+    fn each(self, ar: BitTrieArena<W>) -> yields Int        // O(nodes + len), ascending
+    fn add(mut self, mut ar: BitTrieArena<W>, x: Int)       // O(W)
+    fn count(self, ar: BitTrieArena<W>, x: Int) -> Int      // O(W), 0 when absent
+    fn walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int)  // O(W), path of x from bit W - 1
+    fn absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>)  // O(min nodes), links other's nodes in, no copy; empties other
 ```
 
 Laws: every set operation agrees pointwise with `[D]Bool`; `b.first` equals

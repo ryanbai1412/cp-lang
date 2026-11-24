@@ -1717,13 +1717,14 @@ out = "0 4"
 
 [case."Show/BitTrie/show"]
 code = """
-use std.bitset.{BitTrie}
-var t = BitTrie<3>.of(5)
-t.add(1)
-t.add(5)
-print(t)
+use std.bitset.{BitTrie, BitTrieArena}
+var ar = BitTrieArena<3>()
+var t = BitTrie<3>.of(mut ar, 5)
+t.add(mut ar, 1)
+t.add(mut ar, 5)
+print(t, ar)
 """
-out = "1 5 5"
+out = "root 0 7 nodes"
 
 [case."Show/MongePath/show"]
 code = """

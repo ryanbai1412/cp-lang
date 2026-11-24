@@ -14,7 +14,7 @@
 //   counts, at each set bit b of mask, the left ends whose XOR agrees with the AND on bits
 //   >= b; add 2^b times that. O(n * 25^2) plus trie merges.
 // Bounds: n: 1..=4e5; a: 0..=FULL
-use std.bitset.{BitTrie}
+use std.bitset.{BitTrie, BitTrieArena}
 
 const L = 25
 const FULL = (1 << L) - 1
@@ -26,6 +26,7 @@ struct Group:
 @!multitest
 let n: 1..=4e5 = read()
 let a: [0..n]Word = read()
+var ar = BitTrieArena<L>(cap: n * (L + 1))
 
 // Narrow each suffix AND by `x`; neighbours whose ANDs become equal merge into one group.
 fn shrink(mut groups: List<Group>, x: Word):
@@ -34,18 +35,18 @@ fn shrink(mut groups: List<Group>, x: Word):
     while i < groups.len:
         if groups[i].mask != groups[i - 1].mask: i += 1
         else:
-            groups[i - 1].ends.absorb(mut groups[i].ends)
+            groups[i - 1].ends.absorb(mut ar, mut groups[i].ends)
             groups.remove(i)
 
 // 2^b for each set bit b of `mask` and each left end whose xor first differs from it at b.
 fn count_along(g: Group, pref: Word) -> Int =
-    sum(count << bit for (bit, count) in g.ends.walk(pref ^ g.mask) if g.mask.bit(bit))
+    sum(count << bit for (bit, count) in g.ends.walk(ar, pref ^ g.mask) if g.mask.bit(bit))
 
 var groups = List<Group>()
 var pref: Word = 0
 var ans = 0
 for x in a:
-    groups.push(Group(FULL, BitTrie<L>.of(pref)))
+    groups.push(Group(FULL, BitTrie<L>.of(mut ar, pref)))
     shrink(mut groups, x)
     pref ^= x
     ans += sum(count_along(g, pref) for g in groups)

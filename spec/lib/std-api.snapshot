@@ -219,15 +219,17 @@ std/beats.cp: HistoricBeatsSegTree.hist_sum(mut self, r: Range<D>) -> Int
 std/beats.cp: HistoricBeatsSegTree.max_val(mut self, r: Range<D>) -> ?Int
 std/beats.cp: HistoricBeatsSegTree.new(a: ?[D]Int = None, fill: ?Int = None) -> HistoricBeatsSegTree<D>
 std/beats.cp: HistoricBeatsSegTree.sum(mut self, r: Range<D>) -> Int
-std/bitset.cp: BitTrie.absorb(mut self, mut other: BitTrie<W>)
-std/bitset.cp: BitTrie.add(mut self, x: Int)
-std/bitset.cp: BitTrie.count(self, x: Int) -> Int
-std/bitset.cp: BitTrie.each(self) -> yields Int
+std/bitset.cp: BitTrie.absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>)
+std/bitset.cp: BitTrie.add(mut self, mut ar: BitTrieArena<W>, x: Int)
+std/bitset.cp: BitTrie.count(self, ar: BitTrieArena<W>, x: Int) -> Int
+std/bitset.cp: BitTrie.each(self, ar: BitTrieArena<W>) -> yields Int
 std/bitset.cp: BitTrie.is_empty(self) -> Bool
-std/bitset.cp: BitTrie.len(self) -> Int
+std/bitset.cp: BitTrie.len(self, ar: BitTrieArena<W>) -> Int
 std/bitset.cp: BitTrie.new() -> BitTrie<W>
-std/bitset.cp: BitTrie.of(x: Int) -> BitTrie<W>
-std/bitset.cp: BitTrie.walk(self, x: Int) -> yields (bit: Int, count: Int)
+std/bitset.cp: BitTrie.of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>
+std/bitset.cp: BitTrie.walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int)
+std/bitset.cp: BitTrieArena.new(cap: Int = 0) -> BitTrieArena<W>
+std/bitset.cp: BitTrieArena.node_count(self) -> Int
 std/bitset.cp: Bitset.add(mut self, i: D) -> Bool
 std/bitset.cp: Bitset.any(self, pred: D -> Bool) -> Bool
 std/bitset.cp: Bitset.bitand(self, o: Bitset<D>) -> Bitset<D>

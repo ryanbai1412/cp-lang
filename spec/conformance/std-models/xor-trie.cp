@@ -2,11 +2,12 @@
 // input: "1 300\n"
 // model: XorTrie
 // model: BitTrie
+// model: BitTrieArena
 // XorTrie(5) and BitTrie<5> against a List of the stored values: seeded random adds, removes,
 // global xors, absorbs and rare clears, with counts, extreme, k-th and mex xors and prefix walks
 // compared by brute force after each op. Reads `seed n`; prints the first op that differs.
 use std.rand.{Rng}
-use std.bitset.{BitTrie, XorTrie}
+use std.bitset.{BitTrie, BitTrieArena, XorTrie}
 let w = 5
 let top = 1 << w
 let seed0 = read<Int>()
@@ -14,6 +15,7 @@ let n = read<Int>()
 var rng = Rng(seed0)
 var t = XorTrie(w)
 var a: List<Int> = []
+var ar = BitTrieArena<5>()
 var bt = BitTrie<5>.new()
 var b: List<Int> = []
 var bad = ""
@@ -39,17 +41,17 @@ for k in 0..n:
     elif op == 4:
         t.reserve(x)
     if op == 5 and x % 3 == 0:
-        var o = if x % 2 == 0: BitTrie<5>.of(x) else: BitTrie<5>.new()
+        var o = if x % 2 == 0: BitTrie<5>.of(mut ar, x) else: BitTrie<5>.new()
         var ob = if x % 2 == 0: [x] else: []
         for _ in 0..rng.int(0, 4):
             let y = rng.int(0, top - 1)
-            o.add(y)
+            o.add(mut ar, y)
             ob.push(y)
-        bt.absorb(mut o)
-        b = b + ob
+        bt.absorb(mut ar, mut o)
+        b += ob
         if not o.is_empty: bad = "op {k}: absorbed trie not empty"
     elif op == 5:
-        bt.add(x)
+        bt.add(mut ar, x)
         b.push(x)
     if bad != "": break
     let q = rng.int(0, top - 1)
@@ -71,7 +73,7 @@ for k in 0..n:
     elif t.count_xor_less(q, lim) != [v for v in xs if v < lim].len: bad = "op {k}: count_xor_less {q} {lim}"
     elif t.kth_xor(q, r) != (if r < xs.len: Some(xs[r]) else: None): bad = "op {k}: kth_xor {q} {r}"
     elif t.mex_xor(q) != mex or t.mex_xor() != mex0: bad = "op {k}: mex_xor {q}"
-    elif bt.len != b.len or bt.is_empty != (b.len == 0) or bt.count(q) != [y for y in b if y == q].len: bad = "op {k}: bit trie count {q}"
-    elif [(Int(e.bit), e.count) for e in bt.walk(q)] != want_walk: bad = "op {k}: walk {q}"
+    elif bt.len(ar) != b.len or bt.is_empty != (b.len == 0) or bt.count(ar, q) != [y for y in b if y == q].len: bad = "op {k}: bit trie count {q}"
+    elif [(Int(e.bit), e.count) for e in bt.walk(ar, q)] != want_walk: bad = "op {k}: walk {q}"
     if bad != "": break
 print(if bad == "": "ok" else: bad)
