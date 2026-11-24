@@ -745,9 +745,9 @@ impl TropicalProduct for Int:
                     if f == far: continue
                     let bk = k * c
                     if most:
-                        for j in 0..c: out[oi + j] = max(out[oi + j], f + fb[bk + j])
+                        for j in 0..c: out[oi + j] max= f + fb[bk + j]
                     else:
-                        for j in 0..c: out[oi + j] = min(out[oi + j], f + fb[bk + j])
+                        for j in 0..c: out[oi + j] min= f + fb[bk + j]
         let edge = far / 2
         Some([if (v >= edge) == most: Some(v) else: None for v in out])
 
