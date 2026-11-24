@@ -909,14 +909,14 @@ class DebtRatchetTest(unittest.TestCase):
 
 
     def test_debt_already_on_main_is_not_this_changes_error(self):
-        base = {"lint_std_names": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
-        main = {"lint_std_names": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
+        base = {"near_dup_fns": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
+        main = {"near_dup_fns": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
         eff = dr.inherited_baseline(base, main)
-        same = {"lint_std_names": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
+        same = {"near_dup_fns": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
         self.assertEqual(dr.evaluate(same, eff)[0], [])
-        more = {"lint_std_names": 13, "rs_file_size_allowlist": {"a.rs": 2201}}
+        more = {"near_dup_fns": 13, "rs_file_size_allowlist": {"a.rs": 2201}}
         self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
-        self.assertEqual(base["lint_std_names"], 10)
+        self.assertEqual(base["near_dup_fns"], 10)
 
     def test_last_touched_never_blames_a_shallow_clones_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as d:
@@ -1128,6 +1128,30 @@ class DebtRatchetTest(unittest.TestCase):
             # Numbers fold to `0`, so `(3)` vs `(4)` is an exact token match but not an exact body.
             self.assertEqual(got, ["crates/cpl-b/src/b.rs:1 two ~ crates/cpl-a/src/a.rs:1 one",
                                    "crates/cpl-c/src/c.rs:1 exact ~ crates/cpl-b/src/b.rs:1 two"])
+
+    def test_near_dup_fns_pairs_renamed_std_copies_across_modules(self) -> None:
+        def rmq(fn: str, mask: str, at: str, pub: str = "") -> str:
+            return (f"    {pub}fn {fn}(self, l: Int, r: Int) -> Int:\n"
+                    f"        let base = l - l % 64\n"
+                    f"        let {at} = {mask}[r] & ~((U64(1) << (l - base)) - U64(1))\n"
+                    f"        base + bit_width({at} & (~{at} + U64(1))) - 1\n")
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "std/sparse.cp", "struct Rmq:\n" + rmq("in_block", "mask", "m", "pub "))
+            # The same body under other names, in another module: one pair.
+            self._write(root, "std/strings.cp", "struct Sa:\n" + rmq("lowest_in", "bits", "at")
+                        + rmq("again_here", "bits2", "w"))
+            # Too short to be evidence, and a different shape of the same length.
+            self._write(root, "std/tiny.cp", "fn one(x: Int) -> Int = x + 1\n"
+                        "fn two(y: Int) -> Int:\n" + "".join(f"    if y > {i}: print(y * {i}, \"{i}\")\n"
+                                                             for i in range(8)))
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            got = [x.split(" (")[0] for x in dr._cp_renamed_dups(root)]
+            self.assertEqual(got, ["std/strings.cp:2 lowest_in ~ std/sparse.cp:2 in_block",
+                                   "std/strings.cp:6 again_here ~ std/sparse.cp:2 in_block"])
+            self.assertEqual(dr._cp_shape(["let a = b + 1"])[1], dr._cp_shape(["let x = y + 2"])[1])
+            self.assertNotEqual(dr._cp_shape(["let a = b + 1"])[1], dr._cp_shape(["let a = b - 1"])[1])
 
     def test_consumer_rederived(self) -> None:
         with tempfile.TemporaryDirectory() as d:

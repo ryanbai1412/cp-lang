@@ -9,7 +9,8 @@
 //   each second take the best of the cell and its side neighbours, then apply that second's
 //   drops. O(100 n^2 + p + b).
 // original: corpus/submissions/3944717.cpp
-// Bounds: n: 1..=100; coins, bombs: 0..=1000; r, c: Row, Col; t: Tick
+// Bounds: n: 1..=100; coins, bombs: 0..=1000; start.0, popcorn.0, boulders.0: 0..=n - 1; start.1, popcorn.1, boulders.1: 0..=n - 1;
+//   popcorn.2, boulders.2: 1..=100
 let (n, coins, bombs): (1..=100, 0..=1000, 0..=1000) = read()
 domain Row = 0..n
 domain Col = 0..n

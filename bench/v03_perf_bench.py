@@ -4,8 +4,10 @@
 Measures the runtime ratio (emitted C++ / matched C++ original), each side's
 fastest user+sys CPU time over its runs, across:
   1. corpus   -- every corpus package's port.cp and its accepted C++
-                 (corpus.accepted_cpps: orig.cpp, else its first AC submission)
-                 (max-N via corpus_generators, gen.py --max, or tests/*.in)
+                 (orig.cpp, else the AC submission port.cp names as its original,
+                 else the first; linked with the package's stub.cpp if it has one)
+                 (max-N via gen.py --max, corpus_generators, or tests/*.in; an
+                 interactive package runs against its interactor.py)
   2. dryrun   -- research/dryrun/v03/p*.cp at large N vs bench/dryrun-matched/p*.cpp
                  (the same algorithm as research/dryrun/p*_ref.cpp with the fast
                  I/O hand-written contest C++ uses), else the _ref.cpp itself
@@ -40,6 +42,7 @@ import math
 import os
 import re
 import resource
+from pathlib import Path
 import shutil
 import signal
 import subprocess
@@ -77,7 +80,9 @@ DRYRUN_MATCHED = [
 
 def big_stack():
     try:
-        resource.setrlimit(resource.RLIMIT_STACK, (1 << 30, 1 << 30))
+        # Unlimited, as `corpus.py` runs the accepted C++: deep recursion is how
+        # many of them walk a path-shaped tree.
+        resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
     except OSError:
         pass
 
@@ -153,16 +158,72 @@ def run_once(binary, inp, outp, timeout):
     return cpu, "ok" if pr.returncode == 0 else f"exit {pr.returncode}", rss
 
 
+def spawns(interactor):
+    """`cpl test`'s rule: a `# interactor: spawn` comment among the leading `#` lines
+    means the interactor runs the solution itself (`PROG <input> -- <solution>`)."""
+    for line in open(interactor, errors="replace"):
+        if not line.startswith("#"):
+            break
+        if line.rstrip() == "# interactor: spawn":
+            return True
+    return False
+
+
+def run_interactive(binary, interactor, case, timeout):
+    """`binary` against `interactor.py case`, connected the way `cpl test --interactor`
+    connects them; (cpu, status, peak RSS) of the solution alone, from `time`. "ok"
+    needs the interactor to accept and the solution to exit 0."""
+    stats = os.path.join(os.path.dirname(binary) or ".", f".istats.{os.getpid()}.{threading.get_ident()}")
+    sol = [TIME, "-f", "%x %U %S %M", "-o", stats, binary]
+    judge = [sys.executable, interactor, case]
+    if spawns(interactor):
+        procs = [subprocess.Popen(judge + ["--"] + sol, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL, preexec_fn=lambda: limit_child(timeout),
+                                  start_new_session=True)]
+    else:
+        a_r, a_w = os.pipe()  # interactor -> solution
+        b_r, b_w = os.pipe()  # solution -> interactor
+        procs = [
+            subprocess.Popen(sol, stdin=a_r, stdout=b_w, stderr=subprocess.DEVNULL,
+                             preexec_fn=lambda: limit_child(timeout), start_new_session=True),
+            subprocess.Popen(judge, stdin=b_r, stdout=a_w, stderr=subprocess.DEVNULL, start_new_session=True),
+        ]
+        for fd in (a_r, a_w, b_r, b_w):
+            os.close(fd)
+    timed_out = False
+    deadline = time.monotonic() + timeout
+    for pr in procs:
+        try:
+            pr.wait(timeout=max(0.1, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired:
+            timed_out = True
+    for pr in procs:
+        if pr.poll() is None:
+            os.killpg(pr.pid, signal.SIGKILL)
+            pr.wait()
+    try:
+        code, user, sys_, rss = open(stats).read().split()[-4:]
+        os.remove(stats)
+    except (OSError, ValueError):
+        code, user, sys_, rss = "-1", "0", "0", "0"
+    if timed_out:
+        return timeout, "timeout", 0
+    judged = procs[-1].returncode
+    status = "ok" if judged == 0 and code == "0" else f"exit {code}" if code != "0" else "interactor rejects"
+    return float(user) + float(sys_), status, int(rss)
+
+
 # Originals that use C++23 (deducing `this`, <format>) need a newer compiler
 # than the system g++: the g++ 14+ that builds the corpus's references.
 DEFAULT_CXX23 = next((c for c in ("g++-15", "g++-14") if shutil.which(c)), "")
 
 
-def timed_gxx(src, out, std="c++17", cxx=None):
-    """g++ (or the `cxx` command line) on `src`; returns (CompletedProcess, ms)."""
+def timed_gxx(src, out, std="c++17", cxx=None, extra=()):
+    """g++ (or the `cxx` command line) on `src` and the `extra` sources linked with
+    it; returns (CompletedProcess, ms)."""
     cmd = (cxx or ["g++"]) + [f"-std={std}", "-O2", "-w"]
     t0 = time.perf_counter()
-    r = subprocess.run(cmd + [src, "-o", out], capture_output=True, text=True)
+    r = subprocess.run(cmd + [src, *extra, "-o", out], capture_output=True, text=True)
     ms = (time.perf_counter() - t0) * 1000.0
     return r, ms
 
@@ -174,13 +235,13 @@ def compile_ms(bin_path):
         return None
 
 
-def compile_cpp_cached(src, cache_dir, tag, std="gnu++20", cxx=None):
-    key = f"{tag}_{'cxx23_' if cxx else ''}{std}_{sha256_file(src)}"
+def compile_cpp_cached(src, cache_dir, tag, std="gnu++20", cxx=None, extra=()):
+    key = f"{tag}_{'cxx23_' if cxx else ''}{std}_{sha256_file(src)}" + "".join(f"_{sha256_file(x)}" for x in extra)
     bin_path = os.path.join(cache_dir, key)
     if os.path.exists(bin_path):
         return bin_path, None
     tmp = bin_path + f".tmp.{os.getpid()}.{threading.get_ident()}"
-    r, ms = timed_gxx(src, tmp, std, cxx)
+    r, ms = timed_gxx(src, tmp, std, cxx, extra)
     if r.returncode != 0:
         if os.path.exists(tmp):
             os.remove(tmp)
@@ -361,6 +422,73 @@ def scaled_gen_inputs(gen, cache_dir):
     return outs[-2:]
 
 
+def reference_cpp(pkg):
+    """orig.cpp, else the AC submission the port names on its `// original:` line
+    (the one it was rethought from), else the first AC submission."""
+    refs = accepted_cpps(pkg)
+    if pkg.orig or not refs or not pkg.port:
+        return refs[0] if refs else None
+    named = re.search(r"^// original: (\S+)", pkg.port.read_text(errors="replace"), re.M)
+    named = named and Path(ROOT, named.group(1))
+    return named if named in refs else refs[0]
+
+
+def package_stub(suite, name):
+    """The package's stub.cpp: the judge's side of a function-style problem for its
+    accepted C++, a `main` that calls the submission's functions (or the functions
+    the submission's own `main` calls), speaking interactor.py's protocol on stdio.
+    Not grader.cpp, which `cpl test` links into the port and dream."""
+    g = os.path.join(ROOT, "corpus", "problems", name, "stub.cpp")
+    return [g] if suite == "corpus" and os.path.exists(g) else []
+
+
+def max_input(gen, cache_dir):
+    """`gen.py --max`, cached by the generator's content; None when it fails. An empty
+    input counts: an output-only problem's generator writes nothing."""
+    out = os.path.join(cache_dir, f"corpus_max_{sha256_file(gen)}.in")
+    if not os.path.exists(out):
+        tmp = out + f".tmp.{os.getpid()}.{threading.get_ident()}"
+        with open(tmp, "wb") as fo:
+            ok = subprocess.run([sys.executable, gen, "--max"], stdout=fo, timeout=300).returncode == 0
+        if not ok:
+            os.remove(tmp)
+            return None
+        os.replace(tmp, out)
+    return out
+
+
+def corpus_inputs(p, prob_dir, spec, cache_dir):
+    """The package's own `gen.py --max` first: `corpus.py verify` holds it to the
+    problem's guarantees (problem-packages/R6), which a bench generator is not.
+    Then the bench generator, then the largest test and generated inputs."""
+    gen = os.path.join(prob_dir, "gen.py")
+    if os.path.exists(gen) and "--max" in open(gen).read():
+        out = max_input(gen, cache_dir)
+        if out:
+            return [out]
+    if spec is not None:
+        out = os.path.join(cache_dir, f"corpus_gen_{p}.in")
+        if not (os.path.exists(out) and os.path.getsize(out) > 0):
+            try:
+                spec[4](out, True, {})
+            except Exception:
+                if os.path.exists(out):
+                    os.remove(out)
+        if os.path.exists(out) and os.path.getsize(out) > 0:
+            return [out]
+    ins = sorted(glob.glob(os.path.join(prob_dir, "tests", "*.in")))
+    # A problem's own gen.py knows its alphabet and invariants; inputs
+    # derived from `read()` types alone can break them (random letters
+    # for a string over "ab?"), so they stand in only without one.
+    if os.path.exists(gen):
+        derived, scaled = [], scaled_gen_inputs(gen, cache_dir)
+    elif os.path.exists(os.path.join(prob_dir, "interactor.py")):
+        derived, scaled = [], []
+    else:
+        derived, scaled = derived_inputs(os.path.join(prob_dir, "port.cp"), cache_dir), []
+    return derived + scaled + ([max(ins, key=os.path.getsize)] if ins else [])
+
+
 def collect_items(suites, only, cache_dir, live=False):
     items = []
     if "dryrun" in suites:
@@ -384,10 +512,10 @@ def collect_items(suites, only, cache_dir, live=False):
         except Exception:
             pass
         for pkg in problems(ids=only or None):
-            refs = accepted_cpps(pkg)
-            if not refs:
+            ref = reference_cpp(pkg)
+            if not ref:
                 continue
-            orig, d, pid = str(refs[0]), str(pkg.dir), pkg.id
+            orig, d, pid = str(ref), str(pkg.dir), pkg.id
             # The frozen v0.2 copy keeps the series comparable while ports are re-ported in place.
             cp = os.path.join(ROOT, "tests", "v02-snapshot", pid, "port.cp")
             if live or not os.path.exists(cp):
@@ -396,38 +524,7 @@ def collect_items(suites, only, cache_dir, live=False):
                 continue
 
             def make_input(p=pid, prob_dir=d, spec=cg_by_prob.get(pid)):
-                if spec is not None:
-                    out = os.path.join(cache_dir, f"corpus_gen_{p}.in")
-                    if not (os.path.exists(out) and os.path.getsize(out) > 0):
-                        try:
-                            spec[4](out, True, {})
-                        except Exception:
-                            if os.path.exists(out):
-                                os.remove(out)
-                    if os.path.exists(out) and os.path.getsize(out) > 0:
-                        return [out]
-                gen = os.path.join(prob_dir, "gen.py")
-                if os.path.exists(gen) and "--max" in open(gen).read():
-                    out = os.path.join(cache_dir, f"corpus_max_{p}.in")
-                    if not (os.path.exists(out) and os.path.getsize(out) > 0):
-                        with open(out, "wb") as fo:
-                            if subprocess.run([sys.executable, gen, "--max"], stdout=fo, timeout=300).returncode:
-                                fo.truncate(0)
-                    if os.path.getsize(out) > 0:
-                        return [out]
-                if os.path.exists(os.path.join(prob_dir, "interactor.py")):
-                    return []
-                ins = sorted(glob.glob(os.path.join(prob_dir, "tests", "*.in")))
-                # A problem's own gen.py knows its alphabet and invariants; inputs
-                # derived from `read()` types alone can break them (random letters
-                # for a string over "ab?"), so they stand in only without one.
-                if os.path.exists(gen):
-                    derived, scaled = [], scaled_gen_inputs(gen, cache_dir)
-                else:
-                    derived, scaled = derived_inputs(os.path.join(prob_dir, "port.cp"), cache_dir), []
-                return derived + scaled + (
-                    [max(ins, key=os.path.getsize)] if ins else []
-                )
+                return corpus_inputs(p, prob_dir, spec, cache_dir)
 
             items.append(("corpus", pid, cp, orig, make_input))
 
@@ -482,6 +579,7 @@ def summarize(rows, min_ms):
     tuned = sorted(min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) for r in measured)
     return {
         "total_ok": sum(1 for r in rows if r.get("status") == "ok"),
+        "skipped": sum(1 for r in rows if r.get("status") != "ok"),
         "measured_ge_min_ms": len(measured),
         "p50": round(percentile(ratios, 0.50), 3),
         "p90": round(percentile(ratios, 0.90), 3),
@@ -553,10 +651,11 @@ def main():
         if perr:
             return {"suite": suite, "name": name, "status": "skip", "reason": perr}
         tag = f"orig_{name.replace('/', '__')}"
-        obin, oerr = compile_cpp_cached(orig, args.cache, tag)
+        stub = package_stub(suite, name)
+        obin, oerr = compile_cpp_cached(orig, args.cache, tag, extra=stub)
         cxx = None
         if oerr and cxx23:
-            obin, cerr = compile_cpp_cached(orig, args.cache, tag, "c++23", cxx23)
+            obin, cerr = compile_cpp_cached(orig, args.cache, tag, "c++23", cxx23, extra=stub)
             if cerr:
                 return {"suite": suite, "name": name, "status": "skip", "reason": f"g++ and --cxx23 orig: {cerr}"}
             gxx_pbin, pbin = pbin, None
@@ -575,9 +674,9 @@ def main():
             if not terr and cxx:
                 tbin, terr = compile_cpp_cached(tcpp, args.cache, "tuned", "c++17", cxx23)
         inp = input_fn()
+        interactor = os.path.join(ROOT, "corpus", "problems", name, "interactor.py")
+        interactor = interactor if suite == "corpus" and os.path.exists(interactor) else None
         if not inp:
-            if os.path.exists(os.path.join(os.path.dirname(cp), "interactor.py")):
-                return {"suite": suite, "name": name, "status": "skip", "reason": "interactive: needs the interactor, which the bench does not run"}
             return {"suite": suite, "name": name, "status": "skip", "reason": "no input: no generator, no tests, and `cpl bench` derives none"}
         return {
             "suite": suite,
@@ -587,6 +686,7 @@ def main():
             "cp": cp,
             "cpp_path": cpp_path,
             "inp": inp,
+            "interactor": interactor,
             "cxx": cxx,
             "tbin": tbin,
             "tuned_error": terr,
@@ -602,6 +702,15 @@ def main():
     # Per process: two benches sharing a cache must not compare each other's output.
     out_p = os.path.join(args.cache, f"out_p.{os.getpid()}.txt")
     out_o = os.path.join(args.cache, f"out_o.{os.getpid()}.txt")
+    def run(b, binary, inp, outp):
+        if b.get("interactor"):
+            return run_interactive(binary, b["interactor"], inp, args.timeout)
+        return run_once(binary, inp, outp, args.timeout)
+
+    def agree(b, inp):
+        # An interactive run is judged by its interactor, which accepted both.
+        return bool(b.get("interactor")) or outputs_agree(b["cp"], inp, out_p, out_o)
+
     for b in built:
         if b["status"] != "built":
             rows.append(b)
@@ -609,15 +718,15 @@ def main():
         # Among the candidate inputs both programs agree on, time the one the original is slowest on.
         agreed, tried = [], []
         for inp in b["inp"]:
-            t_o, s_o, rss_o = run_once(b["obin"], inp, out_o, args.timeout)
+            t_o, s_o, rss_o = run(b, b["obin"], inp, out_o)
             if s_o != "ok":
                 tried.append(f"orig {s_o}")
                 continue
-            t_p, s_p, rss_p = run_once(b["pbin"], inp, out_p, args.timeout)
+            t_p, s_p, rss_p = run(b, b["pbin"], inp, out_p)
             if s_p != "ok":
                 tried.append(f"port {s_p}")
                 continue
-            if not outputs_agree(b["cp"], inp, out_p, out_o):
+            if not agree(b, inp):
                 tried.append("outputs differ")
                 continue
             agreed.append((t_o, t_p, rss_o, rss_p, inp))
@@ -632,8 +741,8 @@ def main():
         ts_p = [t_p]
         if max(t_o, t_p) * 1000.0 >= args.min_ms:
             for _ in range(args.runs - 1):
-                to, _, _ = run_once(b["obin"], b["inp"], out_o, args.timeout)
-                tp, _, _ = run_once(b["pbin"], b["inp"], out_p, args.timeout)
+                to, _, _ = run(b, b["obin"], b["inp"], out_o)
+                tp, _, _ = run(b, b["pbin"], b["inp"], out_p)
                 ts_o.append(to)
                 ts_p.append(tp)
         med_o = min(ts_o) * 1000.0
@@ -643,8 +752,8 @@ def main():
         if b.get("tbin"):
             ts_t, rss_t = [], 0
             for _ in range(len(ts_p)):
-                tt, s_t, rss_t = run_once(b["tbin"], b["inp"], out_p, args.timeout)
-                if s_t != "ok" or not outputs_agree(b["cp"], b["inp"], out_p, out_o):
+                tt, s_t, rss_t = run(b, b["tbin"], b["inp"], out_p)
+                if s_t != "ok" or not agree(b, b["inp"]):
                     ts_t = []
                     tuned = {"tuned_error": f"tuned {s_t if s_t != 'ok' else 'output differs'} on {b['inp']}"}
                     break
@@ -700,7 +809,7 @@ def main():
                 print(f"    {r['name']:18s}  {r['status']}: {r.get('reason', '')}")
 
     overall = summarize(rows, args.min_ms)
-    print(f"=== OVERALL (n={overall['measured_ge_min_ms']} >= {args.min_ms}ms) ===")
+    print(f"=== OVERALL (n={overall['measured_ge_min_ms']} >= {args.min_ms}ms, no ratio: {overall['skipped']}) ===")
     print(
         f"  p50={overall['p50']:.3f}x  p90={overall['p90']:.3f}x  p95={overall['p95']:.3f}x  max={overall['max']:.3f}x  "
         f"(>1.1x: {overall['gt_1_1']}, >1.5x: {overall['gt_1_5']}); tuned max={overall['tuned_max']:.3f}x (bar <= {TUNED_BAR}x)"

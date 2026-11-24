@@ -26,7 +26,7 @@ function cpFiles(dir: string): string[] {
 function corpusFiles(): string[] {
     const args = ['run', '--quiet', 'python', 'scripts/corpus.py', 'ls', '--file', '*.cp'];
     const out = execFileSync('uv', args, { cwd: REPO_ROOT, encoding: 'utf8' });
-    return out.split('\n').filter(Boolean).map(file => path.join(REPO_ROOT, file));
+    return out.split(/\r?\n/).filter(Boolean).map(file => path.join(REPO_ROOT, file));
 }
 
 function has(token: Token, prefix: string): boolean {

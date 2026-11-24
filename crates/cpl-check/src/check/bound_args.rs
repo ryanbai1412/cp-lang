@@ -4,7 +4,70 @@
 use super::*;
 use cpl_syntax::ast;
 
+/// `(param, trait, args)` of each bound that gives its trait arguments.
+pub(crate) type BoundArgs = Vec<(String, String, Vec<Ty>)>;
+
 impl Checker<'_> {
+    /// The bindings of an impl's generics for `ty`: its target's, then each generic only a
+    /// head bound names, from the bound parameter's own impl of that bound.
+    pub(crate) fn impl_bindings(
+        &mut self,
+        target: &Ty,
+        head_bounds: &BoundArgs,
+        ty: &Ty,
+    ) -> crate::ty::Bindings {
+        let mut on = crate::ty::Bindings::default();
+        target.unify(ty, &mut on);
+        for (param, trait_name, args) in head_bounds {
+            let Some(actual) = on.get(param).cloned() else {
+                continue;
+            };
+            if let Some(given) = self.trait_args_of(&actual, trait_name, args.len()) {
+                for (want, got) in args.iter().zip(&given) {
+                    want.unify(got, &mut on);
+                }
+            }
+        }
+        on
+    }
+
+    /// `f`'s bounds: the record rows (`R: (u: V, ..)`) and the traits (`T: Ord`) its type
+    /// parameters must meet.
+    pub(crate) fn fn_bounds(
+        &mut self,
+        f: &ast::FnDecl,
+    ) -> (crate::def::RowBounds, Vec<(String, String)>, BoundArgs) {
+        let outer = self.generics.len();
+        self.generics
+            .extend(f.generics.iter().map(|g| g.text.clone()));
+        let mut rows = Vec::new();
+        let mut traits = Vec::new();
+        let mut bound_args = Vec::new();
+        for b in &f.bounds {
+            for t in &b.traits {
+                match &t.kind {
+                    ast::TypeKind::Row(fields) => {
+                        let resolved = fields
+                            .iter()
+                            .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
+                            .collect();
+                        rows.push((b.name.text.clone(), resolved));
+                    }
+                    ast::TypeKind::Named { name: tname, args } => {
+                        traits.push((b.name.text.clone(), tname.text.clone()));
+                        if !args.is_empty() {
+                            let args = args.iter().map(|a| self.resolve_type(a)).collect();
+                            bound_args.push((b.name.text.clone(), tname.text.clone(), args));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        self.generics.truncate(outer);
+        (rows, traits, bound_args)
+    }
+
     /// Puts a fn's bounds in scope for its body; [`Self::leave_bounds`] takes them out.
     pub(crate) fn enter_fn_bounds(&mut self, f: &ast::FnDecl) -> (usize, usize) {
         let outer = (self.param_bounds.len(), self.param_bound_args.len());
@@ -90,16 +153,20 @@ impl Checker<'_> {
                         t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name.as_str());
                     match &*def {
                         Def::Impl {
-                            trait_args, target, ..
-                        } if named => Some((trait_args.clone(), target.clone())),
+                            trait_args,
+                            target,
+                            head_bounds,
+                            ..
+                        } if named => {
+                            Some((trait_args.clone(), target.clone(), head_bounds.clone()))
+                        }
                         _ => None,
                     }
                 });
-                let Some((trait_args, target)) = found else {
+                let Some((trait_args, target, head_bounds)) = found else {
                     continue;
                 };
-                let mut on = crate::ty::Bindings::default();
-                target.unify(&on_ty, &mut on);
+                let on = self.impl_bindings(&target, &head_bounds, &on_ty);
                 for (g, arg) in of_trait.iter().zip(trait_args) {
                     if free(g, bindings) {
                         bindings.insert(g.clone(), arg.subst(&on));
@@ -131,4 +198,109 @@ impl Checker<'_> {
         }
         None
     }
+
+    /// At a call: each generic a bound's trait arguments name, from the
+    /// type the bound's parameter is bound to, so `sum(xs)` over
+    /// `S: Seq<T>` given a `List<Int>` has `T = Int`.
+    pub(crate) fn bind_bound_args(&mut self, bindings: &mut crate::ty::Bindings) {
+        for (param, trait_name, args) in self.call_bound_args.clone() {
+            let Some(actual) = bindings.get(&param).cloned() else {
+                continue;
+            };
+            let actual = self.settle(&actual);
+            if let Some(given) = self.trait_args_of(&actual, &trait_name, args.len()) {
+                for (want, got) in args.iter().zip(&given) {
+                    want.unify(got, bindings);
+                }
+            }
+        }
+    }
+
+    /// The arguments `ty` gives trait `trait_name`: a bound's in a generic
+    /// body, an `impl`'s as written, or a built-in sequence's key and
+    /// element.
+    pub(crate) fn trait_args_of(&mut self, ty: &Ty, trait_name: &str, n: usize) -> Option<Vec<Ty>> {
+        if let Ty::Param(p) = ty {
+            return (self.param_bound_args.iter().rev())
+                .find(|(q, t, args)| q == p && t == trait_name && args.len() == n)
+                .map(|(_, _, args)| args.clone());
+        }
+        if let Ty::Named { name, .. } = ty {
+            let mut impls: Vec<_> = (self.global(&crate::def::impl_name(Some(trait_name), name)))
+                .into_iter()
+                .collect();
+            impls.extend(
+                (self.env.impls(name).into_iter())
+                    .filter(|(t, _)| {
+                        t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name)
+                    })
+                    .map(|(_, d)| d),
+            );
+            for def in impls {
+                if let Def::Impl {
+                    trait_args,
+                    target,
+                    head_bounds,
+                    ..
+                } = &*def
+                {
+                    if trait_args.len() == n {
+                        let on = self.impl_bindings(target, head_bounds, ty);
+                        return Some(trait_args.iter().map(|t| t.subst(&on)).collect());
+                    }
+                }
+            }
+        }
+        if n == 0
+            || !self.trait_implies(trait_name, "Seq")
+            || !self.implements_trait(ty, trait_name)
+        {
+            return None;
+        }
+        let elem = self.element_ty(ty);
+        if elem.has_vague() {
+            return None;
+        }
+        let key = match ty {
+            Ty::Array { index, .. } if index.len() == 1 => index[0].clone(),
+            Ty::Str => Ty::list_index(),
+            Ty::Named { name, .. } if name == "List" => Ty::list_index(),
+            _ => Ty::Unknown,
+        };
+        let mut out = vec![Ty::Unknown; n - 1];
+        if let Some(last) = out.last_mut() {
+            *last = key;
+        }
+        out.push(elem);
+        Some(out)
+    }
+}
+
+/// `of: T -> U = x => x`: each generic a defaulted identity lambda gives
+/// back, with the parameter type it then is (`U` is `T`).
+pub(crate) fn identity_defaults(f: &ast::FnDecl, ty: &Ty) -> Vec<(String, Ty)> {
+    let Ty::Fn { params, .. } = ty else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for p in &f.params {
+        let Some(ast::Expr {
+            kind: ast::ExprKind::Lambda {
+                params: lp, body, ..
+            },
+            ..
+        }) = &p.default
+        else {
+            continue;
+        };
+        let identity = matches!((lp.as_slice(), &body.kind),
+            ([one], ast::ExprKind::Name(b)) if matches!(&one.kind, ast::PatternKind::Name(x) if x == b));
+        let sig = params.iter().find(|q| q.name == p.name.text).map(|q| &q.ty);
+        if let (true, Some(Ty::Fn { params: takes, ret })) = (identity, sig) {
+            if let ([taken], Ty::Param(r)) = (takes.as_slice(), ret.as_ref()) {
+                out.push((r.clone(), taken.ty.clone()));
+            }
+        }
+    }
+    out
 }

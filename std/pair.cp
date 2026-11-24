@@ -72,6 +72,5 @@ pub fn symmetric<V, T>(self: [Pair<V>]T, diag: T) -> [V, V]T:
             for h in th * 64..min(th * 64 + 64, n):
                 for l in tl * 64..min(tl * 64 + 64, h):
                     let x = self[Pair(V.nth(l), V.nth(h))]
-                    m[V.nth(h), V.nth(l)] = x
-                    m[V.nth(l), V.nth(h)] = x
+                    for (a, b) in [(h, l), (l, h)]: m[V.nth(a), V.nth(b)] = x
     m

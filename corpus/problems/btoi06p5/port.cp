@@ -11,12 +11,11 @@
 //   assign-then-add tag and `None` for the forbidden escape. O(m + runs log n), then a
 //   forward pass replays the recorded switches to emit the code.
 // original: corpus/submissions/4156310.cpp
-// Bounds: n: 2..=100_000; m: 1..=2_000_000; code: 0..=n - 1
+// Bounds: n: 2..=100_000; m: 1..=2_000_000; c: 0..=n - 1; b: 0..=n - 1; k: 0..=n - 1
 const SWITCH_COST = 3
 
 let (n, m): (2..=100_000, 1..=2_000_000) = read()
 domain Sym = 0..n
-let code: [0..m]Sym = read()
 
 fn escaped_cost(k: Int) -> Int = 3 * ceil_div(k, n)
 
@@ -31,16 +30,15 @@ fn add_run(s: Sym, k: Int):
 var esc = Sym(0)
 var at = 0
 while at < m:
-    let c = code[at]
+    let c: Sym = read()
     if c != esc:
         add_run(c, 1)
         at += 1
     else:
-        let b = code[at + 1]
-        let k = code[at + 2].ord
-        if b == esc: add_run(esc, k + 1)
-        elif k == 0: esc = b
-        else: add_run(b, k + 3)
+        let (b, k): (Sym, Sym) = read()
+        if b == esc: add_run(esc, k.ord + 1)
+        elif k.ord == 0: esc = b
+        else: add_run(b, k.ord + 3)
         at += 3
 
 domain R = 0..runs.len
@@ -64,8 +62,17 @@ fn apply_tag(t: Tag, v: Entry, _span: Int) -> Entry = match t.set:
     SetOp.Keep => if let cur = v.cost: (cost: Some(cur + t.add), sym: v.sym) else: v
 
 let cheapest = Monoid<Entry>((cost: None, sym: Sym.last!), pick_min)
-let assign_add = Action<Entry, Tag>(id: (SetOp.Keep, 0), compose: compose_tag, apply: apply_tag, over: cheapest)
-var cost = SegTree<Sym, Entry, Tag>(cheapest, a: [Sym] s => (cost: Some(0), sym: s), act: assign_add)
+let assign_add = Action<Entry, Tag>(
+    id: (SetOp.Keep, 0),
+    compose: compose_tag,
+    apply: apply_tag,
+    over: cheapest,
+)
+var cost = SegTree<Sym, Entry, Tag>(
+    cheapest,
+    a: [Sym] s => (cost: Some(0), sym: s),
+    act: assign_add,
+)
 
 // switch_to[i]: escape to switch to before run i when esc == runs[i].sym;
 // adopt[i]: switch to runs[i].sym from any other escape before run i.

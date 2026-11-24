@@ -9,6 +9,7 @@ use std.algebra.{Monoid, Semiring}
 use std.math.{mul_mod, bit, ceil_div}
 use std.mod.{Mod}
 use std.rand.{Rng}
+use std.spec.{berlekamp_massey}
 use std.seq.{collect}
 
 const SEED = 998_244_353
@@ -202,7 +203,7 @@ pub struct Mat<T>:
         let g = ring!
         var out = List.filled(rows, g.zero)
         for i in 0..rows:
-            for j in 0..cols: out[i] = g.add(out[i], g.mul(data[i * cols + j], v[j]))
+            for j in 0..cols: out[i] = g.plus(out[i], g.times(data[i * cols + j], v[j]))
         out
 
     /// The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`):
@@ -626,13 +627,12 @@ impl Mul for Mat<T>:
                                 for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
                     return Mat(r, c, out)
         let g = a.ring!
-        let (add, mul) = (g.add, g.mul)
         var acc = List.filled(r * c, g.zero)
         for i in 0..r:
             for k in 0..m:
                 let f = a.data[i * m + k]
                 if f == g.zero: continue
-                for j in 0..c: acc[i * c + j] = add(acc[i * c + j], mul(f, b.data[k * c + j]))
+                for j in 0..c: acc[i * c + j] = g.plus(acc[i * c + j], g.times(f, b.data[k * c + j]))
         Mat(r, c, acc, a.ring)
 
 impl Pow for Mat<T>:
@@ -649,7 +649,7 @@ impl Pow for Mat<T>:
 
 /// The `(zero, one, add, mul)` a non-default `Mat(over:)` multiplies under. On `?W` entries the
 /// semiring over `W` is lifted so `None` is the zero, absorbing under `mul`.
-struct Ring<T>(zero: T, one: T, add: (T, T) -> T, mul: (T, T) -> T)
+struct Ring<T>(zero: T, one: T, plus: (T, T) -> T, times: (T, T) -> T)
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
@@ -1284,38 +1284,12 @@ fn wiedemann<P>(
         for k in 0..n: dot += u[k] * v[k]
         seq.push(dot)
         v = sparse_apply(n, entries, diag, v)
-    let c = berlekamp_massey(seq)
-    let deg = c.len - 1
+    let r = berlekamp_massey(seq)
+    let deg = r.len
     var f = List.filled(deg + 1, Mod<P>(0))
-    for i in 0..=deg: f[deg - i] = c[i]
+    f[deg] = Mod<P>(1)
+    for i in 1..=deg: f[deg - i] = Mod<P>(0) - r[i - 1]
     (f:, diag:, singular: deg >= 1 and f[0] == Mod<P>(0))
-
-fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
-    var cur: List<Mod<P>> = [Mod<P>(1)]
-    var prev: List<Mod<P>> = [Mod<P>(1)]
-    var len = 0
-    var shift = 1
-    var last = Mod<P>(1)
-    for i in 0..s.len:
-        var d = s[i]
-        for j in 1..=min(len, cur.len - 1): d += cur[j] * s[i - j]
-        if d == Mod<P>(0):
-            shift += 1
-            continue
-        let coef = d / last
-        var next = cur.clone()
-        while next.len < prev.len + shift: next.push(Mod<P>(0))
-        for j in 0..prev.len: next[j + shift] -= coef * prev[j]
-        if 2 * len <= i:
-            len = i + 1 - len
-            prev = cur
-            last = d
-            shift = 1
-        else:
-            shift += 1
-        cur = next
-    while cur.len < len + 1: cur.push(Mod<P>(0))
-    [cur[i] for i in 0..=len]
 
 /// Maximize `c . x` subject to `a * x <= b`, `x >= 0`; `None` if infeasible or unbounded.
 ///

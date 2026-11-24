@@ -5,11 +5,15 @@
   {"id": "3619853", "language": "CPP17", "result": "TLE", "time": 5.576685029, "memory_kb": 67280.0, "file": "corpus/submissions/3619853.cpp"},
   {"id": "3619868", "language": "CPP17", "result": "TLE", "time": 5.564976099, "memory_kb": 67284.0, "file": "corpus/submissions/3619868.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/aac2p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Both C++ submissions are TLE, so there is no accepted reference. orig.cpp is a corpus-written reference (Euler tour, binary-lifting LCA and a virtual tree per day), checked against the statement samples and an independent per-day brute on 60 random small cases."
 }

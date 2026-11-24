@@ -8,7 +8,8 @@
 //   against a `Counter` per store. Each sequence is a `Deque`, so push and pop are O(20); a join
 //   moves the smaller store's values and counts into the larger (small to large),
 //   O((n + q) log) in all, and a query costs O(20 m).
-// Bounds: n, q: 1..=5e5; len: 0..=5e5; x, y, z: 1..=n + q; kind: 1..=4; m: 1..=5e5
+// Bounds: n, q: 1..=5e5; len: 0..=5e5; x, y, z: 1..=n + q; kind: 1..=4; m: 1..=5e5;
+//   s: 1..=n + q; picked: 1..=n + q
 // original: corpus/submissions/4800882.cpp (20 random probes; this port is exact)
 let (n, q): (1..=5e5, 1..=5e5) = read()
 domain Store = 0..n

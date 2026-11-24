@@ -14,13 +14,14 @@
 let n: 1..=300_000 = read()
 let a: [0..n]1..=10 ** 9 = read()
 
-var prv: [0..n]?Int = [0..n] i => if i > 0: i - 1 else: None
-var nxt: [0..n]?Int = [0..n] i => if i + 1 < n: i + 1 else: None
+var prv: [0..n]0..=n = [0..n] i => if i > 0: i - 1 else: n  // n: none
+var nxt: [0..n]0..=n = [0..n] i => i + 1                    // n: none
 var ans = n * (n + 1) * (n + 2) / 6
-for i in (0..n).sorted(by: i => (-a[i], i)):
-    if let p = prv[i] and a[p] == a[i] - 1:
+for key in sorted([(10 ** 9 - a[i]) << 19 | i for i in 0..n]):  // a desc, then i (n < 2^19)
+    let i = key % (1 << 19)
+    let p = prv[i]
+    if p < n and a[p] == a[i] - 1:
         ans -= (p + 1) * (n - i)
-        let nx = nxt[i]
-        nxt[p] = nx
-        if let q = nx: prv[q] = p
+        nxt[p] = nxt[i]
+        if nxt[i] < n: prv[nxt[i]] = p
 print(ans)

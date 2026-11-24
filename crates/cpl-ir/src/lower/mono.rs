@@ -1566,7 +1566,10 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 }
             });
-            if let Some(arg) = key.and_then(|t| self.seq_key_of(&t)).and_then(GenArg::of_key) {
+            if let Some(arg) = key
+                .and_then(|t| self.seq_key_of(&t))
+                .and_then(GenArg::of_key)
+            {
                 inferred.insert("D".to_string(), arg);
             }
         }

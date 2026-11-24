@@ -104,7 +104,9 @@ it reads a ranged type, then `// original:` if there is one:
 ```
 
 `// Bounds:` is the statement's input bounds in `cpl new --constraints`
-form, a struct field as `name.field`. Each must be taken by the port's
+form, a struct field as `name.field` and an unnamed tuple's as `name.0`,
+`name.1`; a part may also give a whole read type, port domains included
+(`strokes: [q](1..=3, Col, Row)`). Each must be taken by the port's
 `read()` type of that name, and each ranged read must be stated, so a port
 can't read narrower than the statement (it would reject a valid judge
 input) without a header that visibly disagrees with the statement.

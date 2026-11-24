@@ -9,7 +9,7 @@
 //   queried with `at_next` at the block's pending add t, which only grows until the block
 //   is rebuilt: O(n sqrt n).
 // original: corpus/submissions/6415690.cpp
-// Bounds: n: 1..=150_000
+// Bounds: n: 1..=150_000; pts.0, pts.1: 0..=1e9
 
 const B = 400
 

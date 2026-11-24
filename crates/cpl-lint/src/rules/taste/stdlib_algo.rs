@@ -943,7 +943,7 @@ pub(super) struct CopyMutate {
     pub(super) target: String,
     pub(super) range: String,
     pub(super) lo: Option<String>,
-    pub(super) method: &'static str,
+    pub(super) method: String,
     pub(super) args: String,
     pub(super) wb_idx: usize,
 }

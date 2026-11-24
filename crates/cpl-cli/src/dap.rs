@@ -1051,12 +1051,20 @@ impl Eval<'_> {
     }
 
     fn and(&mut self) -> Result<Valued, String> {
-        let mut left = self.compare()?;
+        let mut left = self.not()?;
         while self.eat("and") || self.eat("&&") {
-            let right = self.compare()?;
+            let right = self.not()?;
             left = boolean(truth(&left)? && truth(&right)?);
         }
         Ok(left)
+    }
+
+    /// `not` binds looser than comparisons: `not a == b` is `not (a == b)`.
+    fn not(&mut self) -> Result<Valued, String> {
+        if self.eat("not") {
+            return Ok(boolean(!truth(&self.not()?)?));
+        }
+        self.compare()
     }
 
     fn compare(&mut self) -> Result<Valued, String> {
@@ -1117,7 +1125,7 @@ impl Eval<'_> {
         if self.eat("-") {
             return number(int(&self.unary()?)?.checked_neg());
         }
-        if self.eat("not") || self.eat("!") {
+        if self.eat("!") {
             return Ok(boolean(!truth(&self.unary()?)?));
         }
         let mut value = self.atom()?;

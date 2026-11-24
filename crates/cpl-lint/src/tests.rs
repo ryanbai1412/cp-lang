@@ -1814,3 +1814,37 @@ fn std_fn_names_what_std_declares_and_where() {
         "DECLARED_IN is sorted for its binary search"
     );
 }
+
+#[test]
+fn a_window_min_by_hand_is_named_but_a_hull_turn_is_not() {
+    let l0566 = |src: &str| {
+        let found = lint(src, &all_on());
+        found.iter().filter(|d| d.code.0 == "L0566").count()
+    };
+    let window = |pop: &str| {
+        format!("let a = [3, 1, 4, 1, 5]\nlet k = 2\nvar q: List<Int> = []\nfor i in 0..a.len:\n{pop}    q.push(i)\n    if q[0] <= i - k: q.remove(0)\n    print(a[q[0]])\n")
+    };
+    assert_eq!(
+        l0566(&window(
+            "    while q.len > 0 and a[q.last!] >= a[i]: q.pop()\n"
+        )),
+        1
+    );
+    assert_eq!(
+        l0566(&window(
+            "    while q.len > 0:\n        if a[q.last!] < a[i]: break\n        q.pop()\n"
+        )),
+        1
+    );
+    // Andrew's monotone chain: the pop test turns over the top two entries.
+    let hull = |pop: &str| {
+        format!("fn cross(o: Int, a: Int, b: Int) -> Int = (a - o) * (b - o)\nlet pts = [0, 1, 2, 3]\nvar h: List<Int> = []\nfor p in pts:\n{pop}    h.push(p)\nprint(h.len)\n")
+    };
+    assert_eq!(
+        l0566(&hull(
+            "    while h.len >= 2 and cross(h[h.len - 2], h.last!, p) >= 0: h.pop()\n"
+        )),
+        0
+    );
+    assert_eq!(l0566(&hull("    while h.len >= 2:\n        if cross(h[h.len - 2], h.last!, p) < 0: break\n        h.pop()\n")), 0);
+}

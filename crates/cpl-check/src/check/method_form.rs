@@ -243,6 +243,13 @@ impl Checker<'_> {
             .collect();
         let mut beaten = beaten.into_iter();
         fit.retain(|_| !beaten.next().unwrap_or(false));
+        // Of candidates the receiver fits alike, those the argument count fits.
+        if let Some(args) = args.filter(|_| fit.len() > 1) {
+            let given = args.iter().filter(|a| a.name.is_none()).count();
+            if fit.iter().any(|(_, d)| takes_count(d, given)) {
+                fit.retain(|(_, d)| takes_count(d, given));
+            }
+        }
         match fit.len() {
             0 => Pick::NoFit,
             1 => {
@@ -519,12 +526,21 @@ impl<'a> Checker<'a> {
             self.chosen_methods.retain(|r| r.0 != span);
             self.chosen_methods.push((span, resolved));
         }
-        if plain_value(&ty) || self.declared_value(&ty) {
+        // A built-in container's own member, `xs.sorted(..)` on a `List`, is
+        // the catalog's to check; a library fn's container result is modelled.
+        if plain_value(&ty) || self.declared_value(&ty) || (!own_member && self.modelled(&ty)) {
             // The probe's facts went with it, and the caller checks nothing
             // more: check the call for real so its arguments keep their
             // hovers, refs and warnings (a lambda's body).
             let (hovers, refs) = (self.hovers.len(), self.resolved.len());
+            let calls = self.exprs.calls.len();
             self.infer(&free);
+            // The call is the method's, `xs.sorted()`, not the free form's.
+            let mut at = 0;
+            self.exprs.calls.retain(|c| {
+                at += 1;
+                at <= calls || c.call != call.span
+            });
             let mut at = 0;
             self.hovers.retain(|h| {
                 at += 1;
@@ -624,7 +640,11 @@ impl Checker<'_> {
             return false;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
+        let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
+            Pick::NoFit => self.pick_method(&base_ty, &name.text),
+            pick => pick,
+        };
+        let Pick::One(_, def) = pick else {
             return false;
         };
         let params = row_params(row.params);
@@ -694,8 +714,23 @@ impl Checker<'_> {
         let Ty::Named { name, args } = ty else {
             return false;
         };
-        args.iter().all(plain_value)
+        args.iter().all(|a| self.modelled(a))
             && (self.type_def(name)).is_some_and(|d| matches!(&*d, Def::Struct { .. }))
+    }
+
+    /// A type the checker models in full: a plain value, a declared struct,
+    /// or a built-in container its catalog gives the members of, over such
+    /// types: `Map<Int, List<Int>>` from `xs.group(by: f)`.
+    fn modelled(&mut self, ty: &Ty) -> bool {
+        if plain_value(ty) || self.declared_value(ty) {
+            return true;
+        }
+        let Ty::Named { name, args } = ty else {
+            return false;
+        };
+        let catalogued =
+            (crate::builtins::BUILTIN_TYPES.iter()).any(|b| b.name == name && b.members.is_some());
+        catalogued && args.iter().all(|a| self.modelled(a))
     }
 
     /// E0701: two candidates fit the receiver equally well.
@@ -828,4 +863,18 @@ fn names_param(ty: &Ty) -> bool {
         found.then(|| t.clone())
     });
     found
+}
+
+/// Whether the method `def` takes `given` positional arguments after `self`.
+fn takes_count(def: &Def, given: usize) -> bool {
+    let Def::Fn {
+        ty: Ty::Fn { params, .. },
+        ..
+    } = def
+    else {
+        return false;
+    };
+    let after: Vec<_> = params.iter().skip(1).filter(|p| !p.named_only).collect();
+    let required = after.iter().filter(|p| !p.has_default).count();
+    after.iter().any(|p| p.variadic) || (required <= given && given <= after.len())
 }

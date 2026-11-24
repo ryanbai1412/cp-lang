@@ -25,6 +25,9 @@
   "dream": [
    "corpus/problems/etsr23r4p2/dream.cp"
   ],
+  "original": [
+   "corpus/problems/etsr23r4p2/orig.cpp"
+  ],
   "port": [
    "corpus/problems/etsr23r4p2/port.cp"
   ],

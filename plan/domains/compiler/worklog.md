@@ -12,6 +12,9 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 ## 2026-11-24
 - 2026-11-24 landed (from Core, cpl-lsp red `a_personal_library_gets_what_std_gets`): three general getter fixes. (1) db.rs no longer stores a def cut short by a cycle over the one being worked out, so `ring_mine` stopped coming back with return type Error. (2) A written `@get fn` (Def::Fn `getter`) read as a field, `xs.wrap_mine`, is the call `wrap_mine(xs)` from any module, not only std's prelude list. (3) A free method's generics are bound from the receiver and from the receiver's impl of each bound (`bind_bound_params`), so `last<S: Bidir, T>` on a struct that is `Bidir<Int>` gives `?Int`, not `?T`. A built-in row of the same name still answers first. Cases: std-seq/a-bidir-struct-of-its-own-has-last (E0606 on main), cpl-check `a_getter_its_own_struct_reads_types_the_same_on_every_read`. Conformance matches main's 12 fails. Open in the same test: `SteppedMine.each` (the copy's `step` isn't renamed, so it is E0701 beside std's) and `shift_mine` (`V(0).l_mine` is E0302 because std's `V(0).l` goes through a built-in row the copy can't use).
 
+## 2026-11-24
+- 2026-11-24 (for std-unshadow, on devin/generic-in): the method pick is arity-aware in one place. `pick_method_for` keeps, of the candidates the receiver fits alike, those the positional count fits (`takes_count`), and `past_builtin_row` asks it with the call's args, so a file's `fn contains(self: [0..2]Int, i, x)` beside std's one-arg `contains` is the call in check and in lowering (it goes past the built-in row to the UFCS call). The separate Ambiguous arm in `method_form_call` is gone. Case: core-05/a-free-fn-named-like-a-builtin-method-is-callable (E0303 on the branch before). std-search/real-bsearch-is-a-range-method is red on 3d26dff84 before and after.
+
 ## 2026-11-23
 - 2026-11-23 landed (from site): the outline drops the doc lines again (they cost 55 KB gz of the 113 KB lazy-std freed). A completion item from a std module not given yet carries `data: {module, owner?}`; the LSP now resolves completion items (`completionItem/resolve`), and once the host has given that module the reply carries the item's full docs. Test: lazy_std.rs.
 - 2026-11-23 landed (from parent and site): a std module that hasn't been given reads as its outline until it is. The check still reports E0206 and `needs`, and hover, completion (including `.` methods: `m.is_some_and`, `xs.sorted().scan`) and types use the outline's signatures. The outline also keeps each item's first `///` line just above the item, so hover shows it. That costs about 55 KB gz: the lazy cpl.wasm is 1,817,929 B gz, 57 KB under the cap. Tests: lazy_std.rs (hover and `.` completion before the module is given), outline doc placement. bfs_named_product in wasm was already fixed by 80eb62d81. Open: cut_beside_walk_order.cp (b3501f224) fails with E0301 natively and in wasm on main.
@@ -1057,3 +1060,24 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   Recording is about 10x an untraced run in debug (from 14x), 6.5x in release.
 - VM-memory: `ArrayData` becomes `value::Cells` in its own module, the typed cell store an `Array` derefs to, so lists can share it instead of a second packed store.
 - VM-memory: `List` keeps its cells in `value::Cells`, the typed store arrays use: a list of `Int`, `Bool`, `Char`, `?Int`, `Float`, one-int structs or 2..=4-field scalar tuples is packed (8 bytes a scalar field) and boxed only when read; an empty list takes its first cell's kind and a cell of another kind turns it back to boxed values. Peaks: cco24p1 809 -> 406 MB, yac7p3 555 -> 427, dmopc21c4p2 418 -> 395, sac22cc2p5 403 -> 368, cco21p4 230 -> 179, dmopc20c4p4 245 -> 223 (the last two under 256 MB). Regressions: `a_list_of_scalars_is_packed`, program `packed_lists`.
+
+### VM-traced lane (2026-11-24): traced calls of fn values lend `mut` args
+
+- A traced call of a fn value with `mut` arguments compiles to `CallTraced` (stmt.rs
+  `traced_call`); the VM moves each lent place out for the call and puts it back after
+  (vm/exec/trace.rs `call_moving_lent`), as the tree-walker lends to a closure. The traced
+  `stmt:Expr(CallExpr)` and `stmt:Let(CallExpr)` kinds are gone: vm_fallbacks 12 -> 10.
+- Regression: tests/programs/vm_traced_closure_mut_args.cp (an element and a field lent),
+  and batch12_mut_fn, which used to fall back.
+
+### Compiler (d) (2026-11-24): a call through a fn-typed field changes nothing
+
+- `g.add(1, 2)` on `struct R(add: (Int, Int) -> Int)` called the field, but the checker
+  decided "mutating" from the name `add` alone: E0403 when `g`'s type was not yet known
+  (a trait impl's untyped `a, b`), and E0401 for a field named like a `mut self` method
+  (`q.push(1)`). check/known.rs `row_mutator` now asks the receiver's type first: a field
+  it declares (`declares_field`) answers, and an untyped receiver calls no built-in row;
+  `mutates_view`, `change_in`, `assign_alias` and call.rs `mutates_self` share it. The
+  syntactic may-write scans (`Written`, `Touched`) still over-approximate by name, which
+  only drops a narrowing or a lint, never adds a diagnostic.
+- Regression: spec/conformance/core-05/fn-field-call-changes-nothing.cp (both engines).

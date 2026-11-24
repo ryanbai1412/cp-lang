@@ -1,0 +1,11 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"rows":{"name":"rows","type":"List\u003cInt>","kind":"array"},"b":{"name":"b","type":"Box","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":5,"label":"var rows: List\u003cInt> = [1, 2, 3]","stage":"main","values":{"stdout":[],"rows":[1,2,3]},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":1,"line":6,"label":"var b = Box(total: 0)","stage":"main","values":{"stdout":[],"rows":[1,2,3],"b":{"total":0}},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":2,"line":10,"label":"x += by * k","stage":"main","values":{"stdout":[],"rows":["…",2,3],"b":{"total":"…"}},"locals":{"x":11,"t":0,"by":10,"k":1},"frames":[{"fn":"\u003cclosure>","line":10},{"fn":"main","line":12}]},
+{"id":3,"line":11,"label":"t += x","stage":"main","values":{"stdout":[],"rows":["…",2,3],"b":{"total":"…"}},"locals":{"x":11,"t":11,"by":10,"k":1},"frames":[{"fn":"\u003cclosure>","line":11},{"fn":"main","line":12}]},
+{"id":4,"line":10,"label":"x += by * k","stage":"main","values":{"stdout":[],"rows":[11,"…",3],"b":{"total":"…"}},"locals":{"x":22,"t":11,"by":10,"k":2},"frames":[{"fn":"\u003cclosure>","line":10},{"fn":"main","line":12}]},
+{"id":5,"line":11,"label":"t += x","stage":"main","values":{"stdout":[],"rows":[11,"…",3],"b":{"total":"…"}},"locals":{"x":22,"t":33,"by":10,"k":2},"frames":[{"fn":"\u003cclosure>","line":11},{"fn":"main","line":12}]},
+{"id":6,"line":10,"label":"x += by * k","stage":"main","values":{"stdout":[],"rows":[11,22,"…"],"b":{"total":"…"}},"locals":{"x":33,"t":33,"by":10,"k":3},"frames":[{"fn":"\u003cclosure>","line":10},{"fn":"main","line":12}]},
+{"id":7,"line":11,"label":"t += x","stage":"main","values":{"stdout":[],"rows":[11,22,"…"],"b":{"total":"…"}},"locals":{"x":33,"t":66,"by":10,"k":3},"frames":[{"fn":"\u003cclosure>","line":11},{"fn":"main","line":12}]},
+{"id":8,"line":13,"label":"print → 11 22 33 66","stage":"main","values":{"stdout":["11 22 33 66"],"rows":[11,22,33],"b":{"total":66}},"locals":{"i":2,"k":3},"checkpoint":"print 1","frames":[{"fn":"main","line":13}]},
+{"id":9,"line":13,"label":"the program ended","stage":"main","values":{"stdout":["11 22 33 66"],"rows":[11,22,33],"b":{"total":66}},"locals":{"i":2,"k":3},"checkpoint":"end","frames":[{"fn":"main","line":13}]}]}}}
+stderr:

@@ -2,15 +2,18 @@
  "problem": "cf1139e",
  "source": "cf",
  "submissions": [],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
   "dream": [
    "corpus/gold/cf1139e.cp"
+  ],
+  "original": [
+   "corpus/problems/cf1139e/orig.cpp"
   ]
  },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ was collected, so orig.cpp is a new reference: students rejoin in reverse and potentials are matched to clubs by Kuhn's augmenting paths, checked against the statement samples and a brute force that rebuilds the matching every day."
 }

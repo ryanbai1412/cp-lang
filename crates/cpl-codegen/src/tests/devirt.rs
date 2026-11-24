@@ -447,3 +447,18 @@ print(x.now, x.flipped, m.id.now)
         "`Flip.op(+)` captures a Monoid whose `op` is one known fn, so its own `op` is static:\n{out}"
     );
 }
+
+#[test]
+fn a_fn_returning_one_closure_returns_its_lambda_type() {
+    let out = cpp("fn adder(n: Int) -> (Int -> Int):
+    (k: Int) => k * n + 1
+fn twice(n: Int) -> Int:
+    let f = adder(n)
+    f(f(1))
+print(adder(3)(2), twice(2))
+");
+    assert!(
+        out.contains("auto adder(") && !out.contains("std::function"),
+        "`adder` makes one closure at its one return, so it returns `auto`:\n{out}"
+    );
+}

@@ -244,9 +244,9 @@ adds cyclic convolution and bitwise transforms.
 // Number-theoretic transform and polynomial convolution
 fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
 // O(n log n) in place; a.len a power of 2 dividing P - 1.
-// Uses radix-4 Montgomery butterflies for standard primes (998244353,
-// 469762049, 167772161, 754974721) and primitive_root(P) for any other
-// NTT-friendly prime P.
+// Radix-2 butterflies over one twiddle table per call; root 3 for the
+// standard primes (998244353, 469762049, 167772161), 11 for 754974721 and
+// primitive_root(P) for any other NTT-friendly prime P.
 
 fn convolve<T: Add + Sub + Mul, O, R>(
     a: List<T>,

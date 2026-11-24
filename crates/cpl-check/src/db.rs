@@ -584,6 +584,9 @@ impl Database {
                         if prev_dot {
                             dot_ident_tokens.insert(s);
                         }
+                    } else if tok.kind == cpl_syntax::TokenKind::In {
+                        // `x in s` is `s.contains(x)`, std's for a `Seq` (R07.9.5).
+                        dot_ident_tokens.insert("contains");
                     } else if tok.kind == cpl_syntax::TokenKind::Str {
                         let s = &text[tok.span.start as usize..tok.span.end as usize];
                         if s.contains('{') {
@@ -1070,7 +1073,7 @@ impl Database {
                     .iter()
                     .any(|(span, ty)| *span == at && !matches!(ty, Ty::Optional(_)))
             };
-            for reread in view_rereads(&items, index, &is_view) {
+            for reread in view_rereads(&items, &checks, index, &is_view) {
                 sink.push(reread.diagnostic(range.span.start));
             }
         }
@@ -2262,5 +2265,6 @@ mod env;
 mod fields;
 mod rebind;
 mod scoping;
+mod silent;
 #[cfg(test)]
 mod tests;

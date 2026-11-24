@@ -311,9 +311,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// result kept in one register.
     pub(super) fn traced_call(&self, e: &'p Expr) -> Option<(Callee<'p>, &'p [Arg])> {
         if let ExprKind::CallExpr(callee, args) = &e.kind {
-            let ok = self.traced
-                && matches!(callee.ty, Ty::Fn(..))
-                && args.iter().all(|a| matches!(a, Arg::Value(_)));
+            let ok = self.traced && matches!(callee.ty, Ty::Fn(..));
             return ok.then_some((Callee::Value(callee), args.as_slice()));
         }
         let ExprKind::Call(fn_id, args) = &e.kind else {

@@ -103,6 +103,41 @@ fn conjuncts<'e>(e: &'e Expr, out: &mut Vec<&'e Expr>) {
     }
 }
 
+/// The queue a `while` pops, the test it pops under, and whether that test is
+/// negated: `while t: q.pop()`, or `while ..:` with `if t: break` then `q.pop()`.
+fn pop_test(s: &Stmt) -> Option<(&str, &Expr, bool)> {
+    let StmtKind::While {
+        cond: Cond::Expr(cond),
+        body,
+        ..
+    } = &s.kind
+    else {
+        return None;
+    };
+    match body.stmts.as_slice() {
+        [pop] => Some((method_call(pop, std_fn::POP)?.0, cond, false)),
+        [stop, pop] => {
+            let StmtKind::Expr(e) = &stop.kind else {
+                return None;
+            };
+            let ExprKind::If {
+                branches,
+                otherwise: None,
+            } = &e.kind
+            else {
+                return None;
+            };
+            let [(Cond::Expr(test), then)] = branches.as_slice() else {
+                return None;
+            };
+            matches!(then.stmts.as_slice(), [b] if matches!(b.kind, StmtKind::Break(None)))
+                .then_some(())?;
+            Some((method_call(pop, std_fn::POP)?.0, test, true))
+        }
+        _ => None,
+    }
+}
+
 /// The starts of `word` in `text` as a whole identifier.
 fn starts_of<'t>(text: &'t str, word: &'t str) -> impl Iterator<Item = usize> + 't {
     text.match_indices(word).map(|(i, _)| i).filter(move |&i| {
@@ -190,8 +225,9 @@ impl HandGraph<'_> {
         );
     }
 
-    /// `for i ..: while .. q[q.len - 1] >= a[i]: q.pop()` then `q.push(i)`,
-    /// with the window's start (`i - k`) tested in the same loop.
+    /// `for i ..: while .. q[q.len - 1] >= a[i]: q.pop()` (or `if a[q.last!] < a[i]: break`
+    /// then `q.pop()`) then `q.push(i)`, with the window's start (`i - k`) tested in the
+    /// same loop.
     fn deque(&mut self, stmt: &Stmt) {
         let StmtKind::For { pat, body, .. } = &stmt.kind else {
             return;
@@ -199,21 +235,11 @@ impl HandGraph<'_> {
         let PatternKind::Name(i) = &pat.kind else {
             return;
         };
-        let Some(at) = body.stmts.iter().position(|s| {
-            matches!(&s.kind, StmtKind::While { body, .. }
-                if body.stmts.len() == 1 && method_call(&body.stmts[0], std_fn::POP).is_some())
-        }) else {
-            return;
-        };
-        let StmtKind::While {
-            cond: Cond::Expr(cond),
-            body: pops,
-            ..
-        } = &body.stmts[at].kind
+        let Some((at, (q, test, negated))) =
+            (body.stmts.iter().enumerate()).find_map(|(at, s)| Some((at, pop_test(s)?)))
         else {
             return;
         };
-        let (q, _) = method_call(&pops.stmts[0], std_fn::POP).unwrap();
         let pushes_i = body
             .stmts
             .get(at + 1)
@@ -224,12 +250,24 @@ impl HandGraph<'_> {
         if !pushes_i {
             return;
         }
+        // The test compares the back (or a key of it) with the item pushed (or its key):
+        // a turn over two entries, `cross(h.last! - h[h.len - 2], ..)`, is no window's.
         let back = |e: &Expr| {
             let t = squash(self.text(e.span));
-            t.contains(&format!("{q}[{q}.len-1]")) || has_followed(&t, q, ".last")
+            let rest = t
+                .replace(&format!("{q}[{q}.len-1]"), "")
+                .replace(&format!("{q}.last"), "");
+            rest.len() < t.len() && starts_of(&rest, q).next().is_none()
+        };
+        let item = |e: &Expr| {
+            let t = squash(self.text(e.span));
+            starts_of(&t, i).next().is_some() && starts_of(&t, q).next().is_none()
         };
         let mut parts = Vec::new();
-        conjuncts(cond, &mut parts);
+        match negated {
+            false => conjuncts(test, &mut parts),
+            true => parts.push(test),
+        }
         let Some(keeps_min) = parts.iter().find_map(|c| {
             let (l, op, r) = compare(c)?;
             let drops_larger = match op {
@@ -237,10 +275,10 @@ impl HandGraph<'_> {
                 CmpOp::Le | CmpOp::Lt => false,
                 _ => return None,
             };
-            if back(l) {
-                Some(drops_larger)
-            } else if back(r) {
-                Some(!drops_larger)
+            if back(l) && item(r) {
+                Some(drops_larger != negated)
+            } else if back(r) && item(l) {
+                Some(drops_larger == negated)
             } else {
                 None
             }

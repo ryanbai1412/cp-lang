@@ -225,3 +225,25 @@ fn a_getter_its_own_struct_reads_types_the_same_on_every_read() {
         db.analyze("main.cp").unwrap();
     }
 }
+
+fn silent_unknowns_of(src: &str) -> (Vec<String>, usize) {
+    let mut db = Database::new();
+    db.set_file("main.cp", src);
+    let a = db.analyze("main.cp").unwrap();
+    let spans = (a.silent_unknowns().iter())
+        .map(|s| src[s.start as usize..s.end as usize].to_string())
+        .collect();
+    (spans, a.diagnostics.len())
+}
+
+#[test]
+fn an_unknown_type_with_no_error_there_is_a_silent_unknown() {
+    assert_eq!(
+        silent_unknowns_of("print([])\n"),
+        (vec!["[]".to_string()], 0)
+    );
+    let (reported, errors) = silent_unknowns_of("print(nope)\n");
+    assert!(reported.is_empty() && errors > 0, "{reported:?}");
+    let callee = "fn g(xs: List<Int>) -> Int:\n    xs.map(x => x * 2).sum()\nprint(g([1]))\n";
+    assert_eq!(silent_unknowns_of(callee), (vec![], 0));
+}

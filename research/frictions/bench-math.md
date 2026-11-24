@@ -37,6 +37,17 @@ Three rows remain slightly above 1.10x (`crt` 1.17x, `comb` 1.15x, `sieve` 1.11x
 - **Status:** resolved (`sieve` `<= 1.10x`)
 - **Area:** codegen
 
+## `std.poly` `pow` / `compose` spend their time in a signed-remainder `ntt`
+
+- **Where:** `std.poly` `pow` and `compose` in `bench/math/polypow.cp` and `bench/math/polycompose.cp`, against ecnerwala's `ps_pow_monic` and `ps_compose` (`bench/math/ecnerwala_series.h`); `pow` was `1.49x`, `compose` `1.04x` (`1.07x` over 5 rounds).
+- **What felt wrong:** about 90% of both runs is `ntt`, and its `Mod` product `a.v * b.v % P` compiled to a signed 64-bit remainder with a sign fix-up the C++ compiler could not drop; the twiddle for each block was a serial product chain; `exp` (behind `pow`) ran a full `log` per Newton round, re-transforming `r` and `1 / r` from scratch.
+- **Goal it hurts:** performance
+- **Ideal code:** `pow(c, k, n)` and `compose(f, g, n)` as written.
+- **General fix:** codegen divides a wide non-negative dividend unsigned (`ll(uint64_t(a) % P)`); `ntt` fills one twiddle table per call; `exp` carries `1 / r` and the transforms of both across rounds.
+- **Severity:** medium
+- **Status:** resolved (`pow` `0.89x`, `compose` `1.01x`)
+- **Area:** codegen, stdlib
+
 ## Measurements
 
 | Row | CP Lang | C++17 | Ratio | Emitted bytes |
@@ -47,5 +58,7 @@ Three rows remain slightly above 1.10x (`crt` 1.17x, `comb` 1.15x, `sieve` 1.11x
 | `matpow` | 0.042s | 0.043s | 0.98x | 7,760 B |
 | `crt` | 0.068s | 0.080s | 0.86x | 6,508 B |
 | `comb` | 0.081s | 0.071s | 1.15x | 10,132 B |
+| `polypow` | 0.281s | 0.317s | 0.89x | 28,652 B |
+| `polycompose` | 0.542s | 0.536s | 1.01x | 29,338 B |
 
 Aggregate: `p50 = 0.97x`, `max = 1.15x` (target: `p50 <= 1.1x`, `max <= 1.5x`).

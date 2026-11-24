@@ -11,7 +11,7 @@
 //   unoccupied ancestor of a below the top, a `jump_while`. Leaves are kept as a set, and each
 //   deletion pays for an insertion, so the total is O((n + m) log n).
 // original: corpus/submissions/5705324.cpp
-// Bounds: n, m: 1..=200_000; u, v, a: V
+// Bounds: n, m: 1..=200_000; roads.0, roads.1, a: 1..=n
 let (n, m): (1..=200_000, 1..=200_000) = read()
 domain V = 1..=n
 let roads: [0..n - 1](V, V) = read()

@@ -540,10 +540,11 @@ fn flat_map_shows_by_key():
     assert "{m}" == "-2=5, 3=30, 7=70"
     assert "{FlatMap(0)}" == ""
 
-impl Show for Counter<K, V>:
+/// A Counter prints `k=v` in key order on both engines, not in hash order: \(O(n \log n)\).
+impl Show for Counter<K: Ord, V>:
     fn show(c):
         var out = ""
-        for (k, v) in c.items:
+        for (k, v) in c.items.sorted(by: e => e.0):
             if not out.is_empty: out += ", "
             out += "{k}={v}"
         out

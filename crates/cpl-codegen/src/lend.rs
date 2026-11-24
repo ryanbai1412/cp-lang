@@ -1107,11 +1107,25 @@ impl Emitter<'_> {
         let whole = matches!(init.kind, ExprKind::Local(s)
                 if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))
             || matches!(init.kind, ExprKind::Global(_));
-        if !holds_heap(self.program, &init.ty) || !(place || whole) || moved(text) {
+        if !holds_heap(self.program, &init.ty)
+            || !(place || whole)
+            || moved(text)
+            || self.lent_slot(slot)
+        {
             return;
         }
         let why = self.copy_reason(slot, init, tail, whole);
         self.copies.push(Copied::Let(init.span, why));
+    }
+
+    /// Whether local `slot` of the fn being emitted is a `cpl::Lent`
+    /// ([`crate::lentopt::lent_opts`]): a pointer to the caller's value, so
+    /// binding it copies no container.
+    pub(crate) fn lent_slot(&self, slot: usize) -> bool {
+        matches!(
+            self.current_scope(),
+            cpl_ir::ScopeId::Fn(id) if self.lent_opts[id].contains(&slot)
+        )
     }
 
     /// Records a closure capturing the heap value `name` by value.

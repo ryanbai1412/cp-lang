@@ -33,7 +33,7 @@ fn bit_reverse<T>(mut a: List<T>):
 /// by `n`, so it exactly undoes the forward transform. `bit_reversed: true` skips the
 /// bit-reversal permutation: the forward transform then leaves `â` in bit-reversed order and the
 /// inverse expects its input in that order, so a pointwise product between the two needs no
-/// reordering. The standard primes use radix-4 Montgomery butterflies; `cpl explain` names the
+/// reordering. Radix-2 butterflies over one twiddle table per call; `cpl explain` names the
 /// engine.
 ///
 /// cost: \(O(n \log n)\)
@@ -51,19 +51,28 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
     var g = Mod<P>(3)
     if P == 754_974_721: g = Mod<P>(11)
     elif P != NTT_P1 and P != NTT_P3 and P != NTT_P2: g = Mod<P>(primitive_root(P))
-    // rate[i] = -w^(3 (P - 1) / 2^(i + 2)): the step between the twiddles of consecutive blocks
-    var rate = List.filled(ctz(n), Mod<P>(0))
-    for i in 0..rate.len - 1:
-        let e = 3 * ((P - 1) >> (i + 2))
-        rate[i] = Mod<P>(0) - g ** (if inverse: P - 1 - e else: e)
+    // tw[s] is block s's twiddle in every layer: `z^bitrev(s)` over `log2(n) - 1` bits, `z` the
+    // primitive n-th root (conjugated for the inverse). One table, filled by independent products,
+    // keeps a serial twiddle chain off the short-block layers.
+    let h = ctz(n)
+    let half = n >> 1
+    var roots = List.filled(h + 1, Mod<P>(1))
+    roots[h] = g ** (if inverse: P - 1 - (P - 1) / n else: (P - 1) / n)
+    var tw = List.filled(half, Mod<P>(1))
     if inverse and not bit_reversed: bit_reverse(mut a)
     unchecked:
-        var p = if inverse: 1 else: n >> 1
+        for k in (0..h).rev: roots[k] = roots[k + 1] * roots[k + 1]
+        var b = 1
+        while b < half:
+            let c = roots[ctz(b) + 2]
+            for t in 0..b: tw[b + t] = tw[t] * c
+            b *= 2
+        var p = if inverse: 1 else: half
         while 0 < p < n:
-            var rot = Mod<P>(1)
+            var o = 0
             var s = 0
-            while s * 2 * p < n:
-                let o = s * 2 * p
+            while o < n:
+                let rot = tw[s]
                 if inverse:
                     for i in o..o + p:
                         let (l, r) = (a[i], a[i + p])
@@ -74,7 +83,7 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
                         let (l, r) = (a[i], a[i + p] * rot)
                         a[i] = l + r
                         a[i + p] = l - r
-                rot *= rate[ctz(s ^ -1)]
+                o += 2 * p
                 s += 1
             p = if inverse: p * 2 else: p >> 1
         if inverse:
@@ -121,11 +130,12 @@ pub const subset = Disjoint()
 /// for `max`, slopes merged; `Right`: only `b`, `monotone_minima`; `Neither`: the \(O(n m)\) loop by
 /// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
 ///
-/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; three NTT primes for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
+/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; three NTT primes and Garner's CRT for any other `Mod<P>` while `(P - 1)^2 * min(n, m)` is under 7.8e25, and for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25; a complex FFT for `F64`), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
 /// empty: `let e: List<Int> = []; convolve([1, 2], e) == [] and convolve(e, [1, 2]) == []`
 /// order: by output index `0..len`; a new `List`, keyed from 0
-/// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
+/// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows; never for `F64`, whose FFT outputs are each off from the exact sum by up to about `(sum of a[i]^2 + sum of b[j]^2) * log2(n) * 2^-52` (inputs up to 60 long take the exact loop)
 /// example: `convolve([1, 2], [3, 4]) == [3, 10, 8]`
+/// example: `convolve([0.5, 2.0], [4.0, 1.0]) == [2.0, 8.5, 2.0]`
 /// example: `convolve([1, 2, 3], [4, 5, 6], cyclic: true) == [31, 31, 28]`
 /// example: `convolve([1, 2], [3, 4], on: ^) == [11, 10]`
 /// example: `convolve([1, 2, 3, 4], [1, 1, 1, 1], on: subset) == [1, 3, 4, 10]`
@@ -212,7 +222,7 @@ impl FastProduct for Mod<P>:
                     for j in 0..nb: out[i + j] += ai * b[j]
             return Some(out)
         let need = bit_ceil(n_out)
-        if (P - 1) % need != 0: return None
+        if (P - 1) % need != 0: return crt_product(a, b)
         var fa = List.filled(need, Mod<P>(0))
         var fb = List.filled(need, Mod<P>(0))
         unchecked:
@@ -243,17 +253,13 @@ impl FastProduct for Int:
         let r2 = residues(Mod<NTT_P2>(0), a, b) ?? return None
         var r3: List<Mod<NTT_P3>> = []
         if three: r3 = residues(Mod<NTT_P3>(0), a, b) ?? return None
-        // Garner over p1 = 998_244_353, p2 = 167_772_161, p3 = 469_762_049: 47_450_712 is
-        // 1 / p1 mod p2, 115_990_628 is 1 / (p1 p2) mod p3, P12 is p1 p2
         var out = List.filled(na + nb - 1, 0)
         for k in 0..out.len:
-            let x1 = r1[k].v
-            let c = x1 + ((r2[k] - Mod<NTT_P2>(x1)) * Mod<NTT_P2>(47_450_712)).v * NTT_P1
+            let c = garner2(r1[k], r2[k])
             if not three:
                 out[k] = if c > P12 / 2: c - P12 else: c
                 continue
-            let x3 = ((r3[k] - Mod<NTT_P3>(c)) * Mod<NTT_P3>(115_990_628)).v
-            let w = I128(c) + I128(x3) * I128(P12)
+            let w = garner3(c, r3[k])
             out[k] = Int(if w * I128(2) > I128(P12) * I128(NTT_P3): w - I128(P12) * I128(NTT_P3) else: w)
         Some(out)
 
@@ -265,6 +271,92 @@ const NTT_P3 = 469_762_049
 // `a * b` modulo `P`, through `Mod<P>`'s NTT product; `None` when `P - 1` lacks the power of two.
 fn residues<P>(_: Mod<P>, a: List<Int>, b: List<Int>) -> ?List<Mod<P>> =
     Mod<P>.product([Mod<P>(x) for x in a], [Mod<P>(x) for x in b])
+
+// Garner over p1 = 998_244_353, p2 = 167_772_161, p3 = 469_762_049: 47_450_712 is 1 / p1 mod p2,
+// 115_990_628 is 1 / (p1 p2) mod p3, and P12 is p1 p2. `garner2` is the value mod p1 p2 and
+// `garner3` the value mod p1 p2 p3, each in `0..` its modulus.
+fn garner2(r1: Mod<NTT_P1>, r2: Mod<NTT_P2>) -> Int:
+    let x1 = Int(r1.v)
+    x1 + Int(((r2 - Mod<NTT_P2>(x1)) * Mod<NTT_P2>(47_450_712)).v) * NTT_P1
+
+fn garner3(c: Int, r3: Mod<NTT_P3>) -> I128 = I128(c) + I128(garner_digit(c, r3)) * I128(P12)
+
+fn garner_digit(c: Int, r3: Mod<NTT_P3>) -> Int = Int(((r3 - Mod<NTT_P3>(c)) * Mod<NTT_P3>(115_990_628)).v)
+
+// `a * b` for a `Mod<P>` whose `P - 1` lacks the power of two: the exact product of the residues,
+// modulo the three NTT primes, rebuilt by Garner and reduced mod `P`. `None` when a coefficient
+// could reach p1 p2 p3 (about 7.9e25), past which the residues no longer pin it down.
+fn crt_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> ?List<Mod<P>>:
+    let bound = I128(P - 1) * I128(P - 1) * I128(min(a.len, b.len))
+    if bound >= I128(P12) * I128(NTT_P3): return None
+    let xa = [Int(x.v) for x in a]
+    let xb = [Int(x.v) for x in b]
+    let r1 = residues(Mod<NTT_P1>(0), xa, xb) ?? return None
+    let r2 = residues(Mod<NTT_P2>(0), xa, xb) ?? return None
+    let r3 = residues(Mod<NTT_P3>(0), xa, xb) ?? return None
+    let p12 = Mod<P>(P12)
+    var out = List.filled(r1.len, Mod<P>(0))
+    unchecked:
+        for k in 0..out.len:
+            let c = garner2(r1[k], r2[k])
+            out[k] = Mod<P>(c) + Mod<P>(garner_digit(c, r3[k])) * p12
+    Some(out)
+
+impl FastProduct for F64:
+    /// The FFT product: `a + i b` goes through one complex transform, is squared and split back,
+    /// then one more transform, \(O(n \log n)\). `None` for `min(a.len, b.len) <= 60`, where
+    /// `convolve` runs its exact loop. Each output is off from the exact sum by at most about
+    /// `(sum of a[i]^2 + sum of b[j]^2) * log2(n) * 2^-52`, so integer inputs round back exactly
+    /// while that stays under `0.5`.
+    fn product(a: List<F64>, b: List<F64>) -> ?List<F64>:
+        let (na, nb) = (a.len, b.len)
+        if min(na, nb) <= 60: return None
+        let n_out = na + nb - 1
+        let n = bit_ceil(n_out)
+        var re = List.filled(n, 0.0)
+        var im = List.filled(n, 0.0)
+        unchecked:
+            for i in 0..na: re[i] = a[i]
+            for i in 0..nb: im[i] = b[i]
+        fft(mut re, mut im)
+        var ore = List.filled(n, 0.0)
+        var oim = List.filled(n, 0.0)
+        unchecked:
+            for i in 0..n:
+                let j = (n - i) & (n - 1)
+                let (xr, xi) = (re[i], im[i])
+                let (yr, yi) = (re[j], im[j])
+                // (in[j])^2 - conj((in[i])^2)
+                ore[i] = (yr * yr - yi * yi) - (xr * xr - xi * xi)
+                oim[i] = 2.0 * yr * yi + 2.0 * xr * xi
+        fft(mut ore, mut oim)
+        let scale = 4.0 * F64(n)
+        Some([oim[i] / scale for i in 0..n_out])
+
+// In-place forward complex FFT of `re + i im`, length a power of two; the roots of each level are
+// taken from `cos`/`sin` directly so their error doesn't build up across levels.
+fn fft(mut re: List<F64>, mut im: List<F64>):
+    let n = re.len
+    bit_reverse(mut re)
+    bit_reverse(mut im)
+    let pi = acos(-1.0)
+    var k = 1
+    while k < n:
+        let wr = [cos(pi * F64(j) / F64(k)) for j in 0..k]
+        let wi = [sin(pi * F64(j) / F64(k)) for j in 0..k]
+        unchecked:
+            var i = 0
+            while i < n:
+                for j in 0..k:
+                    let (xr, xi) = (re[i + j + k], im[i + j + k])
+                    let zr = wr[j] * xr - wi[j] * xi
+                    let zi = wr[j] * xi + wi[j] * xr
+                    re[i + j + k] = re[i + j] - zr
+                    im[i + j + k] = im[i + j] - zi
+                    re[i + j] += zr
+                    im[i + j] += zi
+                i += 2 * k
+        k *= 2
 
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
@@ -607,6 +699,31 @@ fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
                 for m in 0..n:
                     if m.bit(bit): f[r * n + m] -= f[r * n + (m ^ (1 << bit))]
     [f[popcount(m) * n + m] for m in 0..n]
+
+@test
+fn ntt_matches_the_naive_dft_in_both_orders():
+    // Every length up to the largest power of two the prime allows; `Mod<97>` has only
+    // `2^5 | P - 1` and a computed primitive root.
+    ntt_matches_dft(Mod<NTT_P1>(3), 9)
+    ntt_matches_dft(Mod<97>(primitive_root(97)), 5)
+    ntt_matches_dft(Mod<17>(primitive_root(17)), 4)
+
+fn ntt_matches_dft<P>(g: Mod<P>, max_lg: Int):
+    for lg in 0..=max_lg:
+        let n = 1 << lg
+        let a = [Mod<P>(rand(0, P - 1)) for _ in 0..n]
+        let w = g ** ((P - 1) / n)
+        let want = [sum(a[j] * w ** (j * k % n) for j in 0..n) for k in 0..n]
+        var f = a.collect()
+        ntt(mut f)
+        assert f == want
+        ntt(mut f, inverse: true)
+        assert f == a
+        var b = a.collect()
+        ntt(mut b, bit_reversed: true)
+        for k in 0..n: assert b[k] == want[sum((k >> i & 1) << (lg - 1 - i) for i in 0..lg)]
+        ntt(mut b, inverse: true, bit_reversed: true)
+        assert b == a
 
 @test
 fn ntt_round_trip_and_convolve():

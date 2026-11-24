@@ -10,8 +10,7 @@ input = "4\n2\n1 2\n2 1\n"
 input = "4\n2\n1 2\n2 3\n"
 
 [[case]]
-seed = 1
-size = 0
+input = "1 2\n1 1\n1 1\n"
 
 [[case]]
 seed = 2

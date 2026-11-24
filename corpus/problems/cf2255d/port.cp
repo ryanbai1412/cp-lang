@@ -8,7 +8,7 @@
 //   most one too large. fewer() checks ans - 1 directly: step i goes to the largest non-empty
 //   level, splitting its smallest value when it sits at level i + 1.
 //   O(n + log^2 max a) per test.
-// Bounds: n: 1..=2e5
+// Bounds: n: 1..=2e5; x: 1..=1e9
 let max_a = 1e9
 
 fn level(x: 1..=max_a) -> Int = bit_width(x - 1)
@@ -24,7 +24,7 @@ fn add(x: 1..=max_a):
     freq[b] += 1
     least[b] = min(least[b] ?? x, x)
 
-for x in read<[n]1..=max_a>(): add(x)
+for x in read<[n]1..=1e9>(): add(x)
 
 var ans = 0
 var carry = 0

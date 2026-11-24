@@ -43,8 +43,6 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 
 \(O(1)\) per arc read: `g.weighted(f)`, the arcs of `g` with `.w` read as `f(a)` (or `f(u, a)`), `.to` and `.e` passed through.
 
-- `fn out(self, u: V) -> yields (to: V, e: E, w: W)` — \(O(1)\) per arc plus one call of `f`; The arcs out of `u` as `(to:, e:, w: f(a))`.
-
 ## `struct Graph<V: Domain, A: Target<V>>`
 
 \(O(n + m)\) memory and build.

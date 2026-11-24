@@ -223,3 +223,48 @@ fn cpl_run_without_a_grader_names_the_flag() {
     );
     assert_eq!(String::from_utf8_lossy(&ran.stdout), "6\n");
 }
+
+/// A grader that declares a boundary fn in another type than the program's
+/// (here `std::tuple` where a 2-tuple crosses as `std::pair`) does not
+/// compile, and the error names the fn; it never links and crashes.
+#[test]
+fn a_grader_declaring_a_fn_otherwise_does_not_build() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/grader_mismatch");
+    let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(here.join("guess.cp"))
+        .arg("--grader")
+        .arg(here.join("grader.cpp"))
+        .output()
+        .expect("cpl runs");
+    let stderr = String::from_utf8_lossy(&ran.stderr);
+    assert!(!ran.status.success(), "{stderr}");
+    assert!(stderr.contains("ambiguating new declaration"), "{stderr}");
+    assert!(stderr.contains("stats"), "{stderr}");
+}
+
+/// `cpl test` of a grader-style program with cases and no grader is an
+/// error that names `--grader`, not the linker's undefined references.
+#[test]
+fn cpl_test_without_a_grader_names_the_flag() {
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join("grader_test_without");
+    std::fs::create_dir_all(out.join("tests")).expect("a scratch dir");
+    let program = out.join("solve.cp");
+    std::fs::write(
+        &program,
+        "extern fn compare(a: Int, b: Int) -> Int\n@grader\nfn solve(n: Int) -> Int = compare(1, n)\n",
+    )
+    .expect("the program is written");
+    std::fs::write(out.join("tests/1.in"), "3\n").expect("a case");
+    std::fs::write(out.join("tests/1.out"), "1\n").expect("an answer");
+    let tested = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("test")
+        .arg(&program)
+        .output()
+        .expect("cpl runs");
+    let stderr = String::from_utf8_lossy(&tested.stderr);
+    assert!(!tested.status.success(), "{stderr}");
+    assert!(stderr.contains("--grader"), "{stderr}");
+    assert!(stderr.contains("compare"), "{stderr}");
+    assert!(!stderr.contains("undefined reference"), "{stderr}");
+}

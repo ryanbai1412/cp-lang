@@ -281,6 +281,9 @@ pub(crate) struct Checker<'a> {
     /// The types a lambda passed to a built-in method gives its unwritten
     /// parameters, from the method's catalog row, by the lambda's span.
     lambda_params: Vec<(Span, Vec<Ty>)>,
+    /// The bounds with trait arguments of the fn whose arguments are being
+    /// checked: binding `S` binds what `S: Seq<T>` says of `T`.
+    call_bound_args: Vec<(String, String, Vec<Ty>)>,
     /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
     /// mapped to the span of the move (§128).
     pub(crate) moved: HashMap<String, Span>,
@@ -360,6 +363,7 @@ impl<'a> Checker<'a> {
             walk_only: Default::default(),
             local_defs: HashMap::default(),
             lambda_params: Vec::new(),
+            call_bound_args: Vec::new(),
             moved: HashMap::default(),
             assigning_name: None,
             memo_captured: Vec::new(),

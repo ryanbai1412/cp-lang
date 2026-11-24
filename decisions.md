@@ -8932,7 +8932,12 @@ Reserved for call 5, which landed as decision 519.
 
 ## 551. (reserved, content)
 
-## 552. (reserved, compiler)
+## 552. `reversed` is a std body over `rev`, not a compiler lowering (compiler, 2026-11-24)
+
+- **Call.** `reversed<S: Bidir, T>(self: S) -> List<T> = self.rev.collect()` in std/seq.cp, exported by the prelude; the IR's `reversed` arm is deleted (ir_builtin_names and ir_builtin_derived drop by one). std.math writes its two digit reversals as comprehensions, since it can't import std.seq (math -> seq -> prefix -> algebra -> math).
+- **Why.** Decision 266: a derived builtin is debt; `rev` already walks without copying, so the value form is one line of std and both engines and codegen read the same body.
+- **Cost.** `lint_std_names` rises 136 -> 137: the taste lint's value-form/in-place table (`sorted`/`sort`, `reversed`/`reverse`) now names a std fn. Owner Consumers; it is deleted when std declares each value form's in-place twin and the lint reads that.
+- **Reverse.** Restore the IR arm and drop the std body and its prelude export.
 
 ## 554. `BitTrie<W>` is a root handle into a `BitTrieArena<W>` (stdlib, 2026-11-24)
 
@@ -8955,3 +8960,9 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** If a file-notification crate is admitted, replace `files.rs`'s poll with it and drop it from `SLEEP_OWNERS`.
 
 ## 558. (reserved, content)
+
+## 560. A `Counter` shows in key order (stdlib, 2026-11-24)
+
+- **Call.** `impl Show for Counter<K: Ord, V>` prints `k=v` sorted by key, \(O(n \log n)\), the same on both engines. A `Counter` whose keys aren't `Ord` is not `Show`, like a `HashMap` (decision 460).
+- **Why.** The impl walked `items`, which are in hash order, so the interpreter and the C++ printed one `Counter` differently. A tally is printed often, and its keys are usually ordered, so key order serves better than taking `Show` away.
+- **Reverse.** Drop `Show` from `Counter` as 460 did for `HashMap`, and name `c.items.sorted()` in the E0606 help.

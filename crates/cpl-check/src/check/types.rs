@@ -832,38 +832,6 @@ impl<'a> Checker<'a> {
         (sigs, getters, mutators, selves)
     }
 
-    /// `f`'s bounds: the record rows (`R: (u: V, ..)`) and the traits (`T: Ord`) its type
-    /// parameters must meet.
-    pub(crate) fn fn_bounds(
-        &mut self,
-        f: &ast::FnDecl,
-    ) -> (crate::def::RowBounds, Vec<(String, String)>) {
-        let outer = self.generics.len();
-        self.generics
-            .extend(f.generics.iter().map(|g| g.text.clone()));
-        let mut rows = Vec::new();
-        let mut traits = Vec::new();
-        for b in &f.bounds {
-            for t in &b.traits {
-                match &t.kind {
-                    TypeKind::Row(fields) => {
-                        let resolved = fields
-                            .iter()
-                            .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
-                            .collect();
-                        rows.push((b.name.text.clone(), resolved));
-                    }
-                    TypeKind::Named { name: tname, .. } => {
-                        traits.push((b.name.text.clone(), tname.text.clone()));
-                    }
-                    _ => {}
-                }
-            }
-        }
-        self.generics.truncate(outer);
-        (rows, traits)
-    }
-
     /// The definitions a top-level statement gives to the names it declares.
     pub(crate) fn defs_of(&mut self, stmt: &ast::Stmt) -> Vec<(String, Def)> {
         use ast::StmtKind as S;
@@ -1007,7 +975,8 @@ impl<'a> Checker<'a> {
                         },
                     ));
                 }
-                let (row_bounds, trait_bounds) = self.fn_bounds(f);
+                let (row_bounds, trait_bounds, bound_args) = self.fn_bounds(f);
+                let default_binds = super::bound_args::identity_defaults(f, &ty);
                 out.push((
                     f.name.text.clone(),
                     Def::Fn {
@@ -1017,6 +986,8 @@ impl<'a> Checker<'a> {
                         lends: f.lends.is_some(),
                         row_bounds,
                         trait_bounds,
+                        bound_args,
+                        default_binds,
                         droppable: stmt.decorators.iter().any(|d| d.name.text == "droppable"),
                         // An unwritten getter is still answered by lowering.
                         getter: stmt.decorators.iter().any(|d| d.name.text == "get")
@@ -1287,6 +1258,7 @@ impl<'a> Checker<'a> {
                 let outer_assoc = std::mem::replace(&mut self.self_assoc, assoc.clone());
                 let owned = self.owned(&target_name, &body.stmts);
                 let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);
+                let head_bounds = self.quietly(|c| c.bound_args(bounds));
                 self.self_assoc = outer_assoc;
                 self.leave_body(scope);
                 let trait_head = trait_name.as_ref().and_then(trait_impl_key);
@@ -1301,6 +1273,7 @@ impl<'a> Checker<'a> {
                         owned,
                         projections: self.projections(&body.stmts),
                         target: self_ty,
+                        head_bounds,
                         assoc,
                     },
                 )]
@@ -1742,7 +1715,7 @@ impl<'a> Checker<'a> {
                 Ty::Array { .. } | Ty::Fn { .. } => true,
                 Ty::Named { name, .. } => matches!(
                     name.as_str(),
-                    "Graph" | "Reweighted" | "RevGraph" | "FilteredGraph" | "Adj"
+                    "Graph" | "RevGraph" | "FilteredGraph" | "Adj"
                 ),
                 _ => false,
             },

@@ -328,14 +328,25 @@ impl Checker<'_> {
             let prev_bounds_range = self.expected_bounds_range;
             let prev_piece = self.expected_piece;
             self.expected_piece = false;
+            let mut typed_lambda = false;
             if let Some(p) = param {
                 let expected = p.ty.subst(bindings);
                 if Self::expects_bounds_range(&expected) {
                     self.expected_bounds_range = true;
                 }
                 self.expected_piece = Self::expects_piece(&expected);
+                typed_lambda = self.lambda_takes(arg, &expected);
             }
             let arg_ty = self.infer(&arg.value);
+            // A lambda with unwritten parameters keeps its signature for
+            // itself; the generic its result is binds from it.
+            let lambda_sig = (typed_lambda && arg_ty == Ty::Unknown)
+                .then(|| {
+                    (self.exprs.types.iter().rev())
+                        .find(|(at, sig)| *at == arg.value.span && matches!(sig, Ty::Fn { .. }))
+                        .map(|(_, sig)| sig.clone())
+                })
+                .flatten();
             self.expected_bounds_range = prev_bounds_range;
             self.expected_piece = prev_piece;
             let Some(param) = param else {
@@ -365,7 +376,8 @@ impl Checker<'_> {
             };
             let arg_ty = self.fn_value_for(&arg.value, arg_ty, &slot.subst(bindings));
             let arg_ty = self.narrowed(&arg_ty, slot);
-            slot.unify(&arg_ty, bindings);
+            slot.unify(lambda_sig.as_ref().unwrap_or(&arg_ty), bindings);
+            self.bind_bound_args(bindings);
             let want = slot.subst(bindings);
             if let (
                 ExprKind::Lambda {
@@ -635,5 +647,32 @@ impl Checker<'_> {
                 diag.fix(format!("write `{new}`"), call.span, new);
             }
         }
+    }
+
+    /// `sum(xs, of: x => x * x)`: a lambda whose parameters it leaves
+    /// unwritten takes the ones the fn's earlier arguments fixed, so its
+    /// body, and the generic its result binds, are checked with them.
+    fn lambda_takes(&mut self, arg: &Arg, expected: &Ty) -> bool {
+        let (ExprKind::Lambda { param_tys, .. }, Ty::Fn { params, .. }) =
+            (&arg.value.kind, expected)
+        else {
+            return false;
+        };
+        let fixed = |t: &Ty| !t.has_vague() && !t.mentions_param();
+        if param_tys.iter().any(Option::is_some) || !params.iter().all(|p| fixed(&p.ty)) {
+            return false;
+        }
+        // A catalog row's guess that left a parameter unknown gives way.
+        let at = arg.value.span;
+        match self.lambda_params.iter().position(|(s, _)| *s == at) {
+            Some(i) if self.lambda_params[i].1.iter().all(fixed) => return false,
+            Some(i) => {
+                self.lambda_params.swap_remove(i);
+            }
+            None => {}
+        }
+        let tys = params.iter().map(|p| p.ty.clone()).collect();
+        self.lambda_params.push((arg.value.span, tys));
+        true
     }
 }

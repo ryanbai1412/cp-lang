@@ -5,8 +5,11 @@
   {"id": "3578447", "language": "CPP17", "result": "TLE", "time": 7.738152325, "memory_kb": 47048.0, "file": "corpus/submissions/3578447.cpp"},
   {"id": "3578469", "language": "CPP17", "result": "TLE", "time": 8.104992728, "memory_kb": 138736.0, "file": "corpus/submissions/3578469.cpp"}
  ],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/occ19g4/orig.cpp"
+  ],
   "port": [
    "corpus/problems/occ19g4/port.cp"
   ]
@@ -15,5 +18,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is a brute-force reference written for this package, O(N^2) over every pair: neither saved submission is accepted (3578447 and 3578469 are TLE, and 3578469 disagrees with the brute and the port on small cases). It agrees with the port on gen.py seeds 1..8."
 }

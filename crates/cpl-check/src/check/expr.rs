@@ -3323,6 +3323,15 @@ impl<'a> Checker<'a> {
             (_, Ty::Optional(inner)) => {
                 return self.fits(got, inner);
             }
+            // A struct fits a trait it implements whose arguments fit: a std `Filtered` is a `Seq<T>`.
+            (Ty::Named { .. }, Ty::Named { name, args })
+                if matches!(self.type_def(name).as_deref(), Some(Def::Trait { .. })) =>
+            {
+                return self.implements_trait(got, name)
+                    && self
+                        .trait_args_of(got, name, args.len())
+                        .is_none_or(|given| given.iter().zip(args).all(|(g, w)| self.fits(g, w)));
+            }
             _ => {}
         }
         false

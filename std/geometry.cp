@@ -10,8 +10,8 @@
 //! - 3D `|x|, |y|, |z| <= 1e9`: `cross3` components <= `8e18` fit `Int` (or `I128`
 //!   up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
-use std.bag.{SortedSet}
-use std.seq.{collect}
+use std.bag.{SortedMap, SortedSet}
+use std.seq.{collect, reversed}
 use std.hashmap.{Counter, push}
 use std.range.{first_true, last_true}
 use std.strings.{min_rotation}
@@ -487,9 +487,11 @@ pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
         h.push(i)
     h
 
-/// \(O(n)\) memory. Incremental 2D convex hull of integer points backed by upper and lower chains.
+/// \(O(n)\) memory. Incremental 2D convex hull of integer points, kept as its upper and lower
+/// chains in sorted maps keyed by `x`.
 pub struct OnlineHull:
-    hull: List<Pt>
+    up: HullChain
+    lo: HullChain
     pub area: Int
 
     /// An empty online convex hull.
@@ -499,26 +501,24 @@ pub struct OnlineHull:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `OnlineHull().is_empty == true`
-    pub fn new() -> OnlineHull = OnlineHull([], 0)
+    pub fn new() -> OnlineHull = OnlineHull(HullChain.new(), HullChain.new(), 0)
 
     /// Insert `p` and report whether the hull changed (whether `p` is now a corner).
     ///
     /// A point inside, on the boundary, or equal to a corner returns false and changes nothing.
     ///
-    /// cost: \(O(\log n)\) amortized
+    /// cost: \(O(\log n)\) amortized, expected
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)) == true`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)) == false`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(0, 0)) == false`
     pub fn add(mut self, p: Pt) -> Bool:
         if self.locate(p) != Location.Outside: return false
-        var pts = hull.collect()
-        pts.push(p)
-        hull = convex_hull(pts, collinear: false)
-        var a2: I128 = 0
-        let m = hull.len
-        if m >= 3:
-            for i in 0..m: a2 += hull[i].cross128(hull[(i + 1) % m])
+        up.insert(p)
+        lo.insert(flip_y(p))
+        let (l0, l1) = (flip_y(lo.first_pt()), flip_y(lo.last_pt()))
+        let (u0, u1) = (up.first_pt(), up.last_pt())
+        let a2: I128 = l1.cross128(u1) + u0.cross128(l0) - lo.cross - up.cross
         area = Int(a2)
         true
 
@@ -527,62 +527,53 @@ pub struct OnlineHull:
     /// An empty hull has everything `Outside`; a one-point or segment hull has only its points on
     /// the `Boundary`.
     ///
-    /// cost: \(O(\log n)\)
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(1, 1)) == Location.Inside`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(2, 0)) == Location.Boundary`
     /// example: `OnlineHull().locate(Pt(0, 0)) == Location.Outside`
     pub fn locate(self, p: Pt) -> Location:
-        let m = hull.len
-        if m == 0: return Location.Outside
-        if m == 1: return if p == hull[0]: Location.Boundary else: Location.Outside
-        if m == 2: return if on_segment(
-            p,
-            hull[0],
-            hull[1],
-        ): Location.Boundary else: Location.Outside
-        let c1 = cross128_3(hull[0], hull[1], p)
-        let c2 = cross128_3(hull[0], hull[m - 1], p)
-        if c1 < 0 or c2 > 0: return Location.Outside
-        if c1 == 0: return if on_segment(
-            p,
-            hull[0],
-            hull[1],
-        ): Location.Boundary else: Location.Outside
-        if c2 == 0: return if on_segment(
-            p,
-            hull[0],
-            hull[m - 1],
-        ): Location.Boundary else: Location.Outside
-        var lo = 1
-        var hi = m - 1
-        while hi - lo > 1:
-            let mid = (lo + hi) / 2
-            if cross128_3(hull[0], hull[mid], p) >= 0: lo = mid else: hi = mid
-        let s = cross128_3(hull[lo], hull[hi], p)
-        if s < 0: Location.Outside
-        elif s == 0: Location.Boundary
-        else: Location.Inside
+        if up.at.is_empty: return Location.Outside
+        let (x0, x1) = (up.first_pt().x, up.last_pt().x)
+        if p.x < x0 or p.x > x1: return Location.Outside
+        let (a, b) = (up.side(p), lo.side(flip_y(p)))
+        if a > 0 or b > 0: return Location.Outside
+        if a == 0 or b == 0 or p.x == x0 or p.x == x1: return Location.Boundary
+        Location.Inside
 
     /// The hull corner maximizing `v.dot128(dir)`, or `None` when the hull is empty.
     ///
     /// Ties go to the corner that comes first in `vertices()` order.
     ///
-    /// cost: \(O(\log n)\)
+    /// cost: \(O(\log n)\) expected
     /// ties: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(4, 4)); h.extreme(Pt(1, 0)) == h.vertices().find(q => q.x == 4)`
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(1, 1)) == Some(Pt(4, 0))`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(0, 1)) == Some(Pt(0, 4))`
     /// example: `OnlineHull().extreme(Pt(1, 0)) == None`
     pub fn extreme(self, dir: Pt) -> ?Pt:
-        if hull.is_empty: return None
-        var best = hull[0]
-        var best_v = best.dot128(dir)
-        for i in 1..hull.len:
-            let v = hull[i].dot128(dir)
-            if v > best_v:
-                best_v = v
-                best = hull[i]
+        if up.at.is_empty: return None
+        // Each chain's dot with `dir` rises then falls, or falls then rises: its maximum is an end
+        // or the peak. A corner's place in `vertices()` is (0, x) on the lower chain, else (1, -x).
+        var best = flip_y(lo.first_pt())
+        var bv = best.dot128(dir)
+        var (bs, bx) = (0, best.x)
+        for q in lo.peaks(flip_y(dir)):
+            let r = flip_y(q)
+            let v = r.dot128(dir)
+            if v > bv or (v == bv and (bs > 0 or r.x < bx)):
+                best = r
+                bv = v
+                bs = 0
+                bx = r.x
+        for r in up.peaks(dir):
+            let (s, x) = if lo.has(flip_y(r)): (0, r.x) else: (1, -r.x)
+            let v = r.dot128(dir)
+            if v > bv or (v == bv and (s < bs or (s == bs and x < bx))):
+                best = r
+                bv = v
+                bs = s
+                bx = x
         Some(best)
 
     /// Twice the area of the current hull; 0 with fewer than 3 non-collinear points.
@@ -598,7 +589,13 @@ pub struct OnlineHull:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)); h.len == 3`
-    @get pub fn len(self) -> Int = hull.len
+    @get pub fn len(self) -> Int:
+        if up.at.is_empty: return 0
+        let (l0, l1) = (flip_y(lo.first_pt()), flip_y(lo.last_pt()))
+        var k = up.at.len + lo.at.len
+        if up.first_pt() == l0: k -= 1
+        if up.last_pt() == l1 and l0 != l1: k -= 1
+        k
 
     /// Whether no point has been added since creation or the last `clear`.
     ///
@@ -606,7 +603,7 @@ pub struct OnlineHull:
     /// traps: never
     /// example: `OnlineHull().is_empty == true`
     /// example: `var h = OnlineHull(); h.add(Pt(1, 1)); h.is_empty == false`
-    @get pub fn is_empty(self) -> Bool = hull.is_empty
+    @get pub fn is_empty(self) -> Bool = up.at.is_empty
 
     /// The current hull corners, counter-clockwise from the least `(x, y)`.
     ///
@@ -614,7 +611,11 @@ pub struct OnlineHull:
     /// order: counter-clockwise, starting at the least `(x, y)`; a new `List`, keyed from 0
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.vertices() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
-    pub fn vertices(self) -> List<Pt> = hull.collect()
+    pub fn vertices(self) -> List<Pt>:
+        var out: List<Pt> = []
+        out.reserve(self.len)
+        for q in self.iter(): out.push(q)
+        out
 
     /// The current hull corners, yielded in `vertices()` order without building a list.
     ///
@@ -623,16 +624,114 @@ pub struct OnlineHull:
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.iter().collect() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
     pub fn iter(self) -> yields Pt:
-        for p in hull: yield p
+        if not up.at.is_empty:
+            let (l0, l1) = (flip_y(lo.first_pt()), flip_y(lo.last_pt()))
+            for q in lo.walk(): yield flip_y(q)
+            let top = up.walk().collect()
+            for i in 0..top.len:
+                let q = top[top.len - 1 - i]
+                if q != l0 and q != l1: yield q
 
     /// Remove every point; the hull is then empty.
     ///
-    /// cost: \(O(n)\)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(1, 1)); h.clear(); h.is_empty`
     pub fn clear(mut self):
-        hull = []
+        up.reset()
+        lo.reset()
         area = 0
+
+/// One chain of an `OnlineHull` as an upper hull, left to right: each corner's `x` maps to its `y`
+/// and the next corner, and `cross` sums `a.cross128(b)` over consecutive corners. The lower chain
+/// is the upper chain of the points mirrored in `y`.
+struct HullChain:
+    at: SortedMap<Int, HullLink>
+    cross: I128
+
+    fn new() -> HullChain = HullChain(SortedMap(), I128(0))
+
+    fn reset(mut self):
+        at.clear()
+        cross = I128(0)
+
+    fn first_pt(self) -> Pt:
+        let (x, l) = at.first!
+        Pt(x, l.y)
+
+    fn last_pt(self) -> Pt:
+        let (x, l) = at.last!
+        Pt(x, l.y)
+
+    fn prev(self, x: Int) -> ?Pt = if let (k, l) = at.last_lt(x): Some(Pt(k, l.y)) else: None
+
+    fn next(self, x: Int) -> ?Pt = if let (k, l) = at.first_gt(x): Some(Pt(k, l.y)) else: None
+
+    /// The corners left to right, along the links.
+    fn walk(self) -> yields Pt:
+        var at_p: ?Pt = Some(self.first_pt())
+        while let p = at_p:
+            yield p
+            at_p = at.get(p.x)!.next
+
+    fn has(self, p: Pt) -> Bool = if let l = at.get(p.x): l.y == p.y else: false
+
+    /// 1 above the chain, 0 on it, -1 under it, for `p.x` within the chain's `x` range.
+    fn side(self, p: Pt) -> Int:
+        if let l = at.get(p.x): return if p.y > l.y: 1 elif p.y < l.y: -1 else: 0
+        let c = cross128_3(self.prev(p.x)!, self.next(p.x)!, p)
+        if c > 0: 1 elif c < 0: -1 else: 0
+
+    /// The ends of the chain and its peak in `dir`, with the corner after the peak for a tie.
+    fn peaks(self, dir: Pt) -> List<Pt>:
+        var out = [self.first_pt(), self.last_pt()]
+        if let (x, l) = at.first_true((x, l) => falls_after(Pt(x, l.y), l.next, dir)):
+            out.push(Pt(x, l.y))
+            if let q = l.next: out.push(q)
+        out
+
+    fn remove(mut self, x: Int):
+        let l = at.remove(x)!
+        let p = Pt(x, l.y)
+        if let a = self.prev(x):
+            cross -= a.cross128(p)
+            at.set(a.x, HullLink(a.y, l.next))
+            if let b = l.next: cross += a.cross128(b)
+        if let b = l.next: cross -= p.cross128(b)
+
+    /// Make `p` a corner unless it is on or under the chain, dropping the corners it hides.
+    fn insert(mut self, p: Pt):
+        if let l = at.get(p.x):
+            if l.y >= p.y: return
+            self.remove(p.x)
+        let (a, b) = (self.prev(p.x), self.next(p.x))
+        if let u = a:
+            if let v = b:
+                if cross128_3(u, v, p) <= 0: return
+                cross -= u.cross128(v)
+        at.set(p.x, HullLink(p.y, b))
+        if let u = a:
+            cross += u.cross128(p)
+            at.set(u.x, HullLink(u.y, Some(p)))
+        if let v = b: cross += p.cross128(v)
+        while self.hides_next(p): self.remove(self.next(p.x)!.x)
+        while self.hides_prev(p): self.remove(self.prev(p.x)!.x)
+
+    fn hides_next(self, p: Pt) -> Bool:
+        if let b = self.next(p.x):
+            if let c = self.next(b.x): return cross128_3(p, b, c) >= 0
+        false
+
+    fn hides_prev(self, p: Pt) -> Bool:
+        if let b = self.prev(p.x):
+            if let a = self.prev(b.x): return cross128_3(a, b, p) >= 0
+        false
+
+struct HullLink(y: Int, next: ?Pt)
+
+fn flip_y(p: Pt) -> Pt = Pt(p.x, -p.y)
+
+fn falls_after(p: Pt, next: ?Pt, dir: Pt) -> Bool = if let q = next: q.dot128(dir) <= p.dot128(dir) else: true
 
 fn min_yx_idx(poly: List<Pt>) -> Int:
     var best = 0

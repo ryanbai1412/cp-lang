@@ -167,6 +167,17 @@ fn rank(reply: &[Value], typed: &str, word: &str) -> Option<usize> {
     items.iter().position(|(_, l)| l == word).map(|i| i + 1)
 }
 
+/// A stable hash (FNV-1a) of a site's port, line and word.
+fn sampled(pid: &str, src: &str, start: usize, end: usize) -> u64 {
+    let line = src[..start].lines().last().unwrap_or("");
+    let key = [pid, line, &src[start..end]];
+    key.iter()
+        .flat_map(|k| k.bytes().chain([0]))
+        .fold(0xcbf29ce484222325, |h, b| {
+            (h ^ u64::from(b)).wrapping_mul(0x100000001b3)
+        })
+}
+
 #[test]
 fn completion_offers_what_each_hill_climb_port_types_next() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -204,10 +215,20 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
                 ]),
             )]),
         ));
-        // A debug build replays every eighth site to stay quick; release
-        // (the latency job) replays all of them.
-        let step = if cfg!(debug_assertions) { 8 } else { 1 };
-        let sampled = sites(&src).into_iter().step_by(step);
+        // A debug build replays a share of each kind's sites to stay quick,
+        // enough of the rarer kinds that its recall is not a coin toss: every
+        // after-call site, a quarter of the members, an eighth of the scope
+        // names. Release (the latency job) replays all of them. The share is
+        // chosen by each site's own line and word, so a change to which
+        // sites `sites` finds elsewhere leaves the sample of the rest as it was.
+        let step = |kind: Kind| match (cfg!(debug_assertions), kind) {
+            (false, _) | (true, Kind::AfterCall) => 1,
+            (true, Kind::Member) => 4,
+            (true, Kind::Scope) => 8,
+        };
+        let sampled = sites(&src).into_iter().filter(|&(start, end, kind)| {
+            sampled(pid, &src, start, end).is_multiple_of(step(kind))
+        });
         for (version, (start, end, kind)) in (2..).zip(sampled) {
             let keep = if kind == Kind::Scope { 1 } else { 0 };
             let cursor = start + keep;

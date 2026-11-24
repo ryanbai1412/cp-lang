@@ -3,6 +3,64 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    pub(super) fn resolve_product_factor(&mut self, e: &ast::Expr) -> Option<ProductFactor> {
+        if is_range_factor(e) {
+            return Some(ProductFactor::Domain(self.range_factor(e)));
+        }
+        let ast::ExprKind::Name(name) = &e.kind else {
+            return None;
+        };
+        if name == "Bool" {
+            return Some(ProductFactor::Bool);
+        }
+        if let Some(d) = self.resolve_domain_name(name) {
+            return Some(ProductFactor::Domain(d));
+        }
+        if let Some(Sym::Enum(eid)) = self.get_sym(name) {
+            if self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty()) {
+                return Some(ProductFactor::Enum {
+                    enum_id: eid,
+                    len: self.enums[eid].variants.len() as i64,
+                });
+            }
+        }
+        None
+    }
+
+    /// The anonymous domain a range factor of a product is, as if it were
+    /// `domain F = 0..=k` (R04.2.10). Its count is set where the product is.
+    fn range_factor(&mut self, e: &ast::Expr) -> DomainId {
+        let key = (self.cur_mod, self.offset, e.span.start);
+        if let Some(&d) = self.range_factors.get(&key) {
+            return d;
+        }
+        let d = self.domains.len();
+        self.domains.push(format!("Range{d}"));
+        self.range_factors.insert(key, d);
+        d
+    }
+
+    /// Register `factors` as the product domain `id` and set the count of
+    /// each range factor of its `def`, before the product's own.
+    pub(super) fn def_product_factors(
+        &mut self,
+        id: DomainId,
+        def: &ast::Expr,
+        factors: &[(Option<String>, ProductFactor)],
+        out: &mut Vec<Stmt>,
+    ) {
+        self.product_domains.insert(id, factors.to_vec());
+        let items: Vec<&ast::Expr> = match &def.kind {
+            ast::ExprKind::Tuple(items) => items.iter().collect(),
+            ast::ExprKind::Record(fields) => fields.iter().map(|(_, v)| v).collect(),
+            _ => return,
+        };
+        for item in items.into_iter().filter(|e| is_range_factor(e)) {
+            let d = self.range_factor(item);
+            self.init_domain_id(d, item, out);
+        }
+    }
+
     /// Every position of `d`, as a range: `hi` is one past the last key and
     /// `lo` is no key at all when the domain is empty.
     pub(super) fn domain_keys(&mut self, d: DomainId, span: Span) -> Expr {
@@ -309,4 +367,17 @@ impl<'a> Lowerer<'a> {
             ),
         }
     }
+}
+
+/// A product factor written as a range, `0..=k`: an index space of its own.
+fn is_range_factor(e: &ast::Expr) -> bool {
+    matches!(
+        e.kind,
+        ast::ExprKind::Range {
+            lo: Some(_),
+            hi: Some(_),
+            step: None,
+            ..
+        }
+    )
 }

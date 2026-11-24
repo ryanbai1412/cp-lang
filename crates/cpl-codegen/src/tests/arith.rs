@@ -58,6 +58,13 @@ fn a_divisor_unpacked_from_input_keeps_its_declared_range() {
 }
 
 #[test]
+fn a_wide_non_negative_dividend_divides_unsigned() {
+    let body = body("let a: 0..=1000000000 = read()\nlet b: 1..=100 = read()\nprint(a * a % 998244353, a * a / b)\n");
+    assert!(body.contains("ll(uint64_t(a * a) % 998244353)"), "{body}");
+    assert!(body.contains("ll(uint64_t(a * a) / uint64_t(b))"), "{body}");
+}
+
+#[test]
 fn a_dividend_that_may_be_negative_gets_the_branchless_fix() {
     let source = "let a: Int = read()\nlet b: 1..=100 = read()\nprint(a / b, a % b)\n";
     let body = body(source);
@@ -110,7 +117,7 @@ print((Z(a) * Z(b)).v)
         .find(|s| s.contains("_mul("))
         .expect("Mod::mul emitted");
     assert!(
-        mul.contains("% 998244353") && !mul.contains("cpl::modp"),
+        mul.contains(") % 998244353") && mul.contains("uint64_t(") && !mul.contains("cpl::modp"),
         "U32-narrowed Mod.v fields should prove non-negativity and avoid cpl::modp:\n{mul}"
     );
 }
@@ -128,7 +135,7 @@ print(acc)
 ");
     let body = out.split("void solve()").nth(1).expect("solve emitted");
     assert!(
-        body.contains("s % 1000") && body.contains("cpl::modp(x, 1000)"),
+        body.contains("ll(uint64_t(s) % 1000)") && body.contains("cpl::modp(x, 1000)"),
         "bitmask-updated var should prove NonNeg while sub-updated var stays tainted:\n{body}"
     );
 }
@@ -157,7 +164,10 @@ fn a_ranged_param_divides_with_cpps_own_operator() {
         "let n: Int = read()\n",
         "print(step(n, 7))\n",
     ));
-    assert!(cpp.contains("cpl::imul(x, 3), 1) % m;"), "{cpp}");
+    assert!(
+        cpp.contains("cpl::imul(x, 3), 1)) % uint64_t(m));"),
+        "{cpp}"
+    );
     assert!(!cpp.contains("cpl::emod("), "{cpp}");
     // Every call checks its argument into the range the body relies on.
     assert!(cpp.contains("step(cpl::check_range(n, 0, 1000,"), "{cpp}");
@@ -212,4 +222,14 @@ fn ntt_over_the_first_ntt_prime_leaves_primitive_root_out() {
     ));
     assert!(out.contains("ntt"), "{out}");
     assert!(!out.contains("primitive_root"), "{out}");
+}
+
+#[test]
+fn a_grid_index_folds_its_dims_with_no_loop() {
+    let out = cpp("domain A = [3]\ndomain B = [4]\nvar g: [A, B, A]Int = 0\nlet i: 0..3 = read()\ng[A(i), B(0), A(i)] = 1\nprint(g[A(i), B(0), A(i)])\n");
+    assert!(
+        out.contains("((p = p * n[k++] + (size_t)(ll)i), ...)"),
+        "{out}"
+    );
+    assert!(!out.contains("for (int k = 0; k < K; k++) p ="), "{out}");
 }

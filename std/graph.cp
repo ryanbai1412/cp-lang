@@ -102,14 +102,18 @@ pub type EdgeArc<V, E, R> = (to: V, e: E, ..R without (u, v))
 
 /// \(O(1)\) per arc read: `g.weighted(f)`, the arcs of `g` with `.w` read as
 /// `f(a)` (or `f(u, a)`), `.to` and `.e` passed through. Nothing is stored.
-pub struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W):
+pub struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W)
+
+impl Next<V> for Reweighted<V, E, A, W>:
+    type Arc = (to: V, e: E, w: W)
+
     /// The arcs out of `u` as `(to:, e:, w: f(a))`.
     ///
     /// cost: \(O(1)\) per arc plus one call of `f`
     /// order: the graph's arc order
     /// traps: never
     /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; Graph.directed(es).weighted(a => 5).out(0).collect() == [(to: V(1), e: E(0), w: 5)]`
-    pub fn out(self, u: V) -> yields (to: V, e: E, w: W):
+    fn out(self, u: V) -> yields (to: V, e: E, w: W):
         for a in g.out(u):
             yield (to: a.to, e: a.e, w: f(a))
 
@@ -3936,6 +3940,35 @@ fn gen_graph<V, A>(
         pairs.push((from: u, arc: a))
         if not directed: pairs.push((from: v, arc: mirror(a, u)))
     Graph.of(pairs)
+
+impl Show for Reweighted<V, E, A, W>:
+    /// Every arc as `u->v:w`, space-separated in vertex then arc order; `no arcs` for none.
+    ///
+    /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; "{Graph.directed(es).weighted(a => 5)}" == "0->1:5"`
+    fn show(r):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for a in r.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{a.to}:{a.w}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for Complement<V, G>:
+    /// Every arc of the complement as `u->v`, space-separated in vertex then arc order; `no arcs`
+    /// for none.
+    ///
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0]]; "{complement(g)}" == "2->1"`
+    fn show(c):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for v in c.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{v}"
+        if out.is_empty: return "no arcs"
+        out
 
 impl Show for Paths<V, W, A>:
     fn show(p):

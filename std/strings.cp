@@ -2421,7 +2421,7 @@ pub struct SuffixAutomaton<A>:
 /// empty: `(lcs_all(List<Str>()), lcs_all(["abc"])) == (0, 3)`
 /// traps: never
 /// example: `lcs_all(["abcd", "xbcy", "bcz"]) == 2`
-pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int:
+pub fn lcs_all<A, S: Seq<A>>(words: List<S>) -> Int:
     if words.is_empty: return 0
     let b1 = rand(1 << 20, 1 << 29)
     let b2 = rand(1 << 20, 1 << 29)

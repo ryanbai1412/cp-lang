@@ -104,6 +104,13 @@ impl Lowerer<'_> {
                 }
                 continue;
             }
+            // `impl Bidir<T> for [D]T` covers built-in shapes, never a struct.
+            if !self.impl_params(m, target).is_empty() {
+                if !matches!(ty, Ty::Struct(_)) {
+                    return true;
+                }
+                continue;
+            }
             let saved = (
                 std::mem::replace(&mut self.cur_mod, m),
                 std::mem::replace(&mut self.offset, offset),

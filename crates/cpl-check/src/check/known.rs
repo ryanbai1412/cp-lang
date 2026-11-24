@@ -188,6 +188,17 @@ impl<'a> Checker<'a> {
             ("all" | "any", [_]) if generator => Some(Ty::Bool),
             ("abs", [Ty::Int | Ty::Range { .. }]) => Some(Ty::Int),
             ("abs", [t @ (Ty::I128 | Ty::Float)]) => Some(t.clone()),
+            // `first(xs)`, `last(xs, x => x > 3)`: the free form of the members, an optional.
+            ("first" | "last", [over, ..])
+                if args.len() <= 2
+                    && args[0].name.is_none()
+                    && !matches!(over, Ty::Named { name, .. } if name.contains("Map")) =>
+            {
+                match self.element_ty(over) {
+                    Ty::Unknown => None,
+                    elem => Some(Ty::Optional(Box::new(elem))),
+                }
+            }
             // `none` is neither skipped nor passed on by `sum` (v2.2).
             ("sum", [over]) => {
                 let elem = self.element_ty(over);
@@ -480,6 +491,70 @@ impl<'a> Checker<'a> {
                     && !m.mutators.contains(&name.text)
         })
     }
+
+    /// `base.name(..)` calls a `mut self` method of `base`'s own type.
+    pub(crate) fn own_mutator(&mut self, base: &Ty, name: &str) -> bool {
+        let Ty::Named { name: owner, .. } = base else {
+            return false;
+        };
+        self.members_of(owner)
+            .is_some_and(|m| m.mutators.iter().any(|n| n == name))
+    }
+
+    /// `base.name(args)` calls a built-in row that changes its receiver. A
+    /// field `base`'s type declares is what a call of that name calls, and
+    /// a receiver not yet typed calls no row.
+    pub(crate) fn row_mutator(&mut self, base: &Ty, name: &str, args: &[Arg]) -> bool {
+        !base.is_vague() && !self.declares_field(base, name) && mutating_call(name, args)
+    }
+
+    /// `base`'s type declares a field `name`: `base.name(..)` calls it.
+    pub(crate) fn declares_field(&mut self, base: &Ty, name: &str) -> bool {
+        match base {
+            Ty::Record(fields) => fields.iter().any(|(n, _)| n == name),
+            Ty::Named { name: owner, .. } => {
+                (self.members_of(owner)).is_some_and(|m| m.fields.iter().any(|f| f.name == name))
+            }
+            _ => false,
+        }
+    }
+}
+
+/// Methods that change their receiver.
+const MUTATORS: &[&str] = &[
+    "push",
+    "pop",
+    "sort",
+    "reverse",
+    "rotate_left",
+    "rotate_right",
+    "scan_in_place",
+    "suffix_scan_in_place",
+    "nth_element",
+    "next_permutation",
+    "prev_permutation",
+    "shuffle",
+    "clear",
+    "insert",
+    "remove",
+    "take",
+    "swap",
+    "swap_idx",
+    "set",
+    "set_at",
+    "add",
+    "resize",
+    "truncate",
+    "reserve",
+    "fill",
+];
+/// `List` methods that change length and therefore cannot run on a fixed-length slice view.
+pub(super) const LENGTH_CHANGING_MUTATORS: &[&str] = &[
+    "push", "pop", "clear", "insert", "remove", "take", "resize", "truncate", "reserve", "extend",
+];
+/// `xs.take()` empties `xs`; `xs.take(k)` is a view of its first `k`.
+pub(super) fn mutating_call(name: &str, args: &[Arg]) -> bool {
+    MUTATORS.contains(&name) && !(name == "take" && !args.is_empty())
 }
 
 /// An optional has no text for `None`, so it prints once that is said

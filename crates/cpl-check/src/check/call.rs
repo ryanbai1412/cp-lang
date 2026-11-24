@@ -593,6 +593,9 @@ impl<'a> Checker<'a> {
             return;
         };
         let base_ty = self.quietly(|c| c.infer(base));
+        if self.declares_field(&base_ty, &name.text) {
+            return;
+        }
         if matches!(name.text.as_str(), "set_at" | "swap_idx") && base_ty.is_indexed_mut() {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
             return;
@@ -967,6 +970,8 @@ impl<'a> Checker<'a> {
             },
             _ => None,
         });
+        // `a.reverse()` on a `LinkedList`: a type's own fn, not the built-in row of the name.
+        let seq_elem = seq_elem.filter(|_| !self.declares_member(&base_ty, &name.text));
         if let Some(elem) = seq_elem {
             match name.text.as_str() {
                 "map" => {
@@ -1290,7 +1295,6 @@ impl<'a> Checker<'a> {
         match callee_ty {
             Ty::Fn { params, ret } => {
                 let mut bindings = Bindings::default();
-                self.args(&callee_text, "takes", &params, args, call, &mut bindings);
                 let callee_name = match &callee.kind {
                     ExprKind::Name(n) => Some(n.as_str()),
                     ExprKind::Generic { base, .. } => match &base.kind {
@@ -1299,6 +1303,24 @@ impl<'a> Checker<'a> {
                     },
                     _ => None,
                 };
+                let (bound_args, default_binds) =
+                    match callee_name.and_then(|n| self.global(n)).as_deref() {
+                        Some(Def::Fn {
+                            bound_args,
+                            default_binds,
+                            ..
+                        }) => (bound_args.clone(), default_binds.clone()),
+                        _ => Default::default(),
+                    };
+                let outer = std::mem::replace(&mut self.call_bound_args, bound_args);
+                self.args(&callee_text, "takes", &params, args, call, &mut bindings);
+                self.call_bound_args = outer;
+                for (generic, ty) in default_binds {
+                    if !bindings.contains_key(&generic) {
+                        let ty = ty.subst(&bindings);
+                        bindings.insert(generic, ty);
+                    }
+                }
                 if let Some(fn_name) = callee_name {
                     if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
                         for (param, traits) in bounds {

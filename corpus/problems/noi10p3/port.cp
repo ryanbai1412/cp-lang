@@ -26,14 +26,16 @@ fn below(i: 0..=n, j: 1..=n) -> Face = if i == n: low else: cell(i + 1, j)
 fn left(i: 1..=n, j: 0..=n) -> Face = if j == 0: low else: cell(i, j)
 fn right(i: 1..=n, j: 0..=n) -> Face = if j == n: high else: cell(i, j + 1)
 
-var dual: List<(u: Face, v: Face, w: Int)> = []
-for i in 0..=n:
-    for j in 1..=n:
-        dual.push((u: below(i, j), v: above(i, j), w: east[i, j]))
-        dual.push((u: above(i, j), v: below(i, j), w: west[i, j]))
-for i in 1..=n:
-    for j in 0..=n:
-        dual.push((u: left(i, j), v: right(i, j), w: south[i, j]))
-        dual.push((u: right(i, j), v: left(i, j), w: north[i, j]))
-domain Arc = 0..dual.len
-print(dijkstra(Graph.directed([Arc] a => dual[a.ord]), from: [(low, 0)], until: high)[high]!)
+domain Arc = 0..4 * n * (n + 1)
+let rows = 2 * n * (n + 1)  // arcs 0..rows cross a row road, the rest a column road
+fn arc(a: Arc) -> (u: Face, v: Face, w: 0..=1e6):
+    let k = a.ord
+    if k < rows:
+        let (i, j) = (k / (2 * n), k / 2 % n + 1)
+        if k % 2 == 0: (u: below(i, j), v: above(i, j), w: east[i, j])
+        else: (u: above(i, j), v: below(i, j), w: west[i, j])
+    else:
+        let (i, j) = ((k - rows) / (2 * (n + 1)) + 1, (k - rows) / 2 % (n + 1))
+        if k % 2 == 0: (u: left(i, j), v: right(i, j), w: south[i, j])
+        else: (u: right(i, j), v: left(i, j), w: north[i, j])
+print(dijkstra(Graph.directed([Arc] a => arc(a)), from: [(low, 0)], until: high)[high]!)

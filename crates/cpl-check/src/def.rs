@@ -29,6 +29,12 @@ pub enum Def {
         lends: bool,
         row_bounds: RowBounds,
         trait_bounds: Vec<(String, String)>,
+        /// `S: Seq<T>`: each bound's trait arguments, over the fn's
+        /// generics, so a call binds `T` from the `S` it is given.
+        bound_args: Vec<(String, String, Vec<Ty>)>,
+        /// `of: T -> U = x => x`: the generic a defaulted identity lambda's
+        /// result is, and the type it is when the call leaves it out.
+        default_binds: Vec<(String, Ty)>,
         /// `@droppable`: its result may be dropped without W0101.
         droppable: bool,
         /// A written `@get`: `x.name` reads it as the call `name(x)` (R02.6.6).
@@ -57,7 +63,7 @@ pub enum Def {
         /// Each method's row bounds, `R: (u: V, v: V, ..)`: a `T.name(..)` call checks them.
         /// With them, the bounds that give a trait arguments, `S: Indexed<E, R>`, through
         /// which `R` binds.
-        method_rows: Vec<(String, RowBounds, Vec<(String, String, Vec<Ty>)>)>,
+        method_rows: Vec<MethodRows>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
         /// The owned domains sized from fields (`domain Idx = 0..src.len`):
@@ -111,6 +117,9 @@ pub enum Def {
         projections: Vec<Projection>,
         /// The type it is for, with the impl's generics as params.
         target: Ty,
+        /// The trait arguments its head's bounds give: `(S, Keyed, [D, T])` for
+        /// `impl Seq<(D, T)> for Items<S: Keyed<D, T>>`, so `D` and `T` solve from `S`.
+        head_bounds: Vec<(String, String, Vec<Ty>)>,
         /// The associated types it chooses, `type Found = ?Int` (R08.1.9).
         assoc: Vec<(String, Ty)>,
     },
@@ -174,6 +183,10 @@ pub struct DomainInfo {
 
 /// `R: (u: V, v: V, ..)` per type parameter: the fields a record argument must have.
 pub type RowBounds = Vec<(String, Vec<(String, Ty)>)>;
+
+/// A method's name, its row bounds, and its bounds that give a trait arguments
+/// (`S: Indexed<E, R>` as `("S", "Indexed", [E, R])`).
+pub type MethodRows = (String, RowBounds, Vec<(String, String, Vec<Ty>)>);
 
 impl Def {
     /// The type of a variant of enum `of` used as a value.
@@ -289,6 +302,8 @@ impl Def {
                 lends,
                 row_bounds,
                 trait_bounds,
+                bound_args,
+                default_binds,
                 droppable,
                 getter,
                 ..
@@ -299,6 +314,8 @@ impl Def {
                 lends,
                 row_bounds,
                 trait_bounds,
+                bound_args,
+                default_binds,
                 droppable,
                 getter,
             },

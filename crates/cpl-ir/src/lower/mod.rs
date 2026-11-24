@@ -19,6 +19,7 @@ mod consts;
 mod contains;
 mod declare;
 mod declared_keys;
+mod do_block;
 mod domain_impl;
 mod expr;
 mod float_fn;
@@ -861,6 +862,8 @@ struct Lowerer<'a> {
     pub(super) anon_product_domains: HashMap<Vec<(Option<String>, ProductFactor)>, DomainId>,
     pub(super) anon_product_domain_set: HashSet<DomainId>,
     anon_range_domains: HashMap<(ModId, String), DomainId>,
+    /// `domain S = (a: 0..=k, b: 0..2)`: each range factor's own domain, by where it is written.
+    range_factors: HashMap<(ModId, u32, u32), DomainId>,
     aliases: Vec<(ModId, &'a ast::Type, u32)>,
     alias_stack: Vec<usize>,
     alias_shadows: HashMap<usize, Sym>,
@@ -1013,6 +1016,7 @@ impl<'a> Lowerer<'a> {
             anon_product_domains: HashMap::new(),
             anon_product_domain_set: HashSet::new(),
             anon_range_domains: HashMap::new(),
+            range_factors: HashMap::new(),
             aliases: Vec::new(),
             alias_stack: Vec::new(),
             alias_shadows: HashMap::new(),
@@ -1228,27 +1232,6 @@ impl<'a> Lowerer<'a> {
             }
         }
         self.cur_mod = 0;
-    }
-
-    pub(super) fn resolve_product_factor(&mut self, e: &ast::Expr) -> Option<ProductFactor> {
-        let ast::ExprKind::Name(name) = &e.kind else {
-            return None;
-        };
-        if name == "Bool" {
-            return Some(ProductFactor::Bool);
-        }
-        if let Some(d) = self.resolve_domain_name(name) {
-            return Some(ProductFactor::Domain(d));
-        }
-        if let Some(Sym::Enum(eid)) = self.get_sym(name) {
-            if self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty()) {
-                return Some(ProductFactor::Enum {
-                    enum_id: eid,
-                    len: self.enums[eid].variants.len() as i64,
-                });
-            }
-        }
-        None
     }
 
     pub(super) fn resolve_product_factors(

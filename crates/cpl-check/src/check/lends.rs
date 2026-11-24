@@ -20,6 +20,7 @@
 mod capture;
 mod walk;
 
+use super::known::{mutating_call, LENGTH_CHANGING_MUTATORS};
 use super::moves::{is_compound, nested_moves};
 use super::views::Keyed;
 use super::*;
@@ -27,42 +28,6 @@ use crate::fx::HashSet;
 use cpl_syntax::ast::{self, Arg, BinOp, Block, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_block, walk_expr, walk_stmt, Visitor};
 
-/// Methods that change their receiver.
-const MUTATORS: &[&str] = &[
-    "push",
-    "pop",
-    "sort",
-    "reverse",
-    "rotate_left",
-    "rotate_right",
-    "scan_in_place",
-    "suffix_scan_in_place",
-    "nth_element",
-    "next_permutation",
-    "prev_permutation",
-    "shuffle",
-    "clear",
-    "insert",
-    "remove",
-    "take",
-    "swap",
-    "swap_idx",
-    "set",
-    "set_at",
-    "add",
-    "resize",
-    "truncate",
-    "reserve",
-    "fill",
-];
-/// `List` methods that change length and therefore cannot run on a fixed-length slice view.
-const LENGTH_CHANGING_MUTATORS: &[&str] = &[
-    "push", "pop", "clear", "insert", "remove", "take", "resize", "truncate", "reserve", "extend",
-];
-/// `xs.take()` empties `xs`; `xs.take(k)` is a view of its first `k`.
-fn mutating_call(name: &str, args: &[Arg]) -> bool {
-    MUTATORS.contains(&name) && !(name == "take" && !args.is_empty())
-}
 /// Methods that store their arguments in the receiver.
 const STORES: &[&str] = &["push", "insert", "set", "set_at", "add"];
 
@@ -1980,15 +1945,10 @@ impl<'a> Checker<'a> {
             }
             match &callee.kind {
                 ExprKind::Field { base, name } => {
-                    let own = match self.quietly(|c| c.infer(base)) {
-                        Ty::Named {
-                            name: type_name, ..
-                        } => self
-                            .members_of(&type_name)
-                            .is_some_and(|m| m.mutators.contains(&name.text)),
-                        _ => false,
-                    };
-                    if own || mutating_call(&name.text, args) {
+                    let base_ty = self.quietly(|c| c.infer(base));
+                    if self.own_mutator(&base_ty, &name.text)
+                        || self.row_mutator(&base_ty, &name.text, args)
+                    {
                         let root = root_name(base).unwrap_or("what it is called on");
                         return Some((call.span, format!("changes `{root}`")));
                     }
@@ -2229,7 +2189,7 @@ impl<'a> Checker<'a> {
         if op == ast::AssignOp::Set && matches!(unparen(target).kind, ExprKind::Name(_)) {
             return;
         }
-        struct Changed(Vec<Expr>);
+        struct Changed(Vec<Expr>, Vec<Expr>);
         impl Visitor for Changed {
             fn expr(&mut self, e: &Expr) {
                 let ExprKind::Call { callee, args } = &e.kind else {
@@ -2237,15 +2197,27 @@ impl<'a> Checker<'a> {
                 };
                 self.0
                     .extend(args.iter().filter(|a| a.mutable).map(|a| a.value.clone()));
-                if let ExprKind::Field { base, name } = &callee.kind {
+                if let ExprKind::Field { name, .. } = &callee.kind {
                     if mutating_call(&name.text, args) {
-                        self.0.push((**base).clone());
+                        self.1.push(e.clone());
                     }
                 }
             }
         }
-        let mut changed = Changed(Vec::new());
+        let mut changed = Changed(Vec::new(), Vec::new());
         walk_expr(value, &mut changed);
+        for call in std::mem::take(&mut changed.1) {
+            let ExprKind::Call { callee, args } = &call.kind else {
+                continue;
+            };
+            let ExprKind::Field { base, name } = &callee.kind else {
+                continue;
+            };
+            let base_ty = self.quietly(|c| c.infer(base));
+            if self.row_mutator(&base_ty, &name.text, args) {
+                changed.0.push((**base).clone());
+            }
+        }
         if changed.0.is_empty() {
             return;
         }
@@ -2583,15 +2555,10 @@ impl<'a> Checker<'a> {
         let ExprKind::Call { args, .. } = &call.kind else {
             return;
         };
-        let own = match self.quietly(|c| c.infer(base)) {
-            Ty::Named {
-                name: type_name, ..
-            } => self
-                .members_of(&type_name)
-                .is_some_and(|m| m.mutators.contains(&name.text)),
-            _ => false,
-        };
-        if !own && !mutating_call(&name.text, args) {
+        let base_ty = self.quietly(|c| c.infer(base));
+        let own = self.own_mutator(&base_ty, &name.text);
+        let by_row = self.row_mutator(&base_ty, &name.text, args);
+        if !own && !by_row {
             return;
         }
         if name.text == "sort" {
@@ -2606,7 +2573,7 @@ impl<'a> Checker<'a> {
         // `xs.push(x)` changes `xs` as an assignment to it would.
         self.check_access(base, true);
         // A type's own `mut self` method says why its receiver can't change.
-        if own && !mutating_call(&name.text, args) {
+        if own && !by_row {
             return;
         }
         let viewed = self.view_kind(base).is_some();

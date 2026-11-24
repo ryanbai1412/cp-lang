@@ -24,7 +24,7 @@ pub type Perm<V> = [V]V
 /// empty: `let a: List<Int> = []; a.prod() == 1`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[2, 3, 4].prod() == 24`
-pub fn prod<S: Seq, T>(self: S) -> T:
+pub fn prod<S: Seq<T>, T>(self: S) -> T:
     var out = T.one
     for x in self: out *= x
     out
@@ -36,7 +36,7 @@ pub fn prod<S: Seq, T>(self: S) -> T:
 /// empty: `let a: List<Int> = []; a.sum() == 0`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
-pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U:
+pub fn sum<S: Seq<T>, T, U>(self: S, of: T -> U = x => x) -> U:
     var out = U.zero
     for x in self: out += of(x)
     out
@@ -47,7 +47,7 @@ pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U:
 /// empty: `let a: List<Int> = []; a.mean() == None`
 /// traps: never
 /// example: `[1, 2].mean() == Some(1.5)`
-pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
+pub fn mean<S: Seq<T>, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
     var total = 0.0
     var n = 0
     for x in self:
@@ -72,7 +72,7 @@ pub enum Ties = First | Last
 /// example: `[3, 1, 1].min() == Some(1)`
 /// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
 /// example: `[(1, 'a'), (1, 'b')].min(by: .0, ties: Ties.Last) == Some((1, 'b'))`
-pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
     for x in self:
@@ -90,7 +90,7 @@ pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) 
 /// traps: never
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0, ties: Ties.Last) == Some((2, 'b'))`
-pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
     for x in self:
@@ -110,7 +110,7 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) 
 /// traps: never
 /// example: `[5, 1, 4].minmax() == Some((1, 5))`
 /// example: `[(2, 'a'), (1, 'b'), (2, 'c')].minmax(by: .0) == Some(((1, 'b'), (2, 'a')))`
-pub fn minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T):
+pub fn minmax<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(T, T):
     var best: ?(T, T) = None
     for x in self:
         if let (lo, hi) = best:
@@ -126,7 +126,7 @@ pub fn minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T):
 /// traps: never
 /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
 /// example: `[1, 2, 3].pairs().count() == 3`
-pub fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int:
+pub fn count<S: Seq<T>, T>(self: S, p: T -> Bool = _ => true) -> Int:
     var n = 0
     for x in self:
         if p(x): n += 1
@@ -138,7 +138,7 @@ pub fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int:
 /// empty: `let a: List<Int> = []; not a.any(x => x > 0)`
 /// traps: never
 /// example: `[1, 2].any(x => x > 1) == true`
-pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
+pub fn any<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
     for x in self:
         if p(x): return true
     false
@@ -149,7 +149,7 @@ pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
 /// empty: `let a: List<Int> = []; a.all(x => x > 0) == true`
 /// traps: never
 /// example: `[1, 2].all(x => x > 1) == false`
-pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
+pub fn all<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
     for x in self:
         if not p(x): return false
     true
@@ -161,7 +161,7 @@ pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
 /// empty: `let a: List<Int> = []; a.is_sorted() == true`
 /// traps: never
 /// example: `[1, 1, 2].is_sorted() == true`
-pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool:
+pub fn is_sorted<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Bool:
     var prev: ?K = None
     for x in self:
         let k = by(x)
@@ -225,7 +225,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// ties: `[(1, 'a'), (1, 'b')].first == Some((1, 'a'))`
 /// traps: never
 /// example: `[4, 5].first == Some(4)`
-@get pub fn first<S: Seq, T>(self: S) -> ?T:
+@get pub fn first<S: Seq<T>, T>(self: S) -> ?T:
     for x in self: return Some(x)
     None
 
@@ -238,7 +238,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// ties: `[(1, 'a'), (1, 'b')].last == Some((1, 'b'))`
 /// traps: never
 /// example: `[4, 5].last == Some(5)`
-@get pub fn last<S: Bidir, T>(self: S) -> ?T:
+@get pub fn last<S: Bidir<T>, T>(self: S) -> ?T:
     for x in self.iter_rev(): return Some(x)
     None
 
@@ -312,10 +312,19 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int):
 /// traps: never (beyond what `by` traps on)
 /// example: `[3, 1, 2].sorted() == [1, 2, 3]`
 /// example: `[3, 1, 2].sorted(by: x => desc(x)) == [3, 2, 1]`
-pub fn sorted<S: Seq, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>:
+pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>:
     var out: List<T> = self.collect()
     sort(mut out, by:)
     out
+
+/// \(O(n)\). A new list of the elements in reverse order; `self.rev` walks them without copying.
+///
+/// cost: \(O(n)\)
+/// empty: `let e: List<Int> = []; e.reversed() == []`
+/// order: reverse source order, keyed from 0
+/// traps: never
+/// example: `[1, 2, 3].reversed() == [3, 2, 1]`
+pub fn reversed<S: Bidir, T>(self: S) -> List<T> = self.rev.collect()
 
 /// \(O(n)\). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).
@@ -361,7 +370,7 @@ pub fn dedup<T>(mut self: List<T>):
 /// order: first of each run, in input order; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 1, 2, 1].deduped() == [1, 2, 1]`
-pub fn deduped<S: Seq, T>(self: S) -> List<T>:
+pub fn deduped<S: Seq<T>, T>(self: S) -> List<T>:
     var out: List<T> = []
     for x in self:
         if out.is_empty or out.last! != x:
@@ -397,7 +406,7 @@ pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D:
 /// order: first-seen order; a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 1, 3, 2, 1].distinct() == [3, 1, 2]`
-pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>:
+pub fn distinct<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> List<T>:
     var seen = HashSet<K>()
     let out: List<T> = [x for x in self if seen.add(by(x))]
     out
@@ -409,7 +418,7 @@ pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>:
 /// order: each list keeps input order
 /// traps: never
 /// example: `[1, 2, 3, 4].partition(x => x % 2 == 0) == ([2, 4], [1, 3])`
-pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
+pub fn partition<S: Seq<T>, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
     var (yes, no): (List<T>, List<T>) = ([], [])
     for x in self:
         if keep(x): yes.push(x)
@@ -550,7 +559,7 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 /// order: left to right
 /// traps: never
 /// example: `[10, 20, 30].adjacent.collect() == [(10, 20), (20, 30)]`
-@get pub fn adjacent<S: Seq, T>(self: S) -> yields (T, T):
+@get pub fn adjacent<S: Seq<T>, T>(self: S) -> yields (T, T):
     var prev: ?T = None
     for x in self:
         if let p = prev: yield (p, x)
@@ -565,7 +574,7 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 /// traps: never
 /// example: `[1, 2, 3].pairs().count() == 3`
 /// see: `adjacent` for neighbours, `Pair<V>` for a table keyed by unordered pairs
-pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
+pub fn pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
     let xs: List<T> = self.collect()
     for i in 0..xs.len:
         for j in i + 1..xs.len: yield (xs[i], xs[j])
@@ -578,7 +587,7 @@ pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
 /// order: left to right, starting with `(None, first)`
 /// traps: never
 /// example: `[10, 20].with_prev.collect() == [(None, 10), (Some(10), 20)]`
-@get pub fn with_prev<S: Seq, T>(self: S) -> yields (?T, T):
+@get pub fn with_prev<S: Seq<T>, T>(self: S) -> yields (?T, T):
     var prev: ?T = None
     for x in self:
         yield (prev, x)
@@ -595,7 +604,7 @@ pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
 /// order: left to right, then `(last, first)`
 /// traps: never
 /// example: `[1, 2, 3].cyclic_pairs().collect() == [(1, 2), (2, 3), (3, 1)]`
-pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
+pub fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
     var first_val: ?T = None
     var prev: ?T = None
     for x in self:
@@ -720,7 +729,7 @@ pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = Non
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 3].rotated_left(-1) == [3, 1, 2]`
-pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>:
+pub fn rotated_left<S: Seq<T>, T>(self: S, k: Int) -> List<T>:
     let n = self.len
     if n <= 1: return self.collect()
     let s = k % n
@@ -744,7 +753,7 @@ pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>:
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 3].rotated_right(1) == [3, 1, 2]`
-pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>:
+pub fn rotated_right<S: Seq<T>, T>(self: S, k: Int) -> List<T>:
     rotated_left(self, -k)
 
 /// Step `self` to the next arrangement in sorted order, in place. Returns false, leaving `self`
@@ -1038,7 +1047,7 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
 /// ties: `[1, 2].first_some(x => Some(x * 10)) == Some(10)`
 /// traps: never
 /// example: `[1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)`
-pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U:
+pub fn first_some<S: Seq<T>, T, U>(self: S, f: T -> ?U) -> ?U:
     for x in self:
         let y = f(x)
         if y != None: return y
@@ -1052,7 +1061,7 @@ pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U:
 /// ties: `[(1, 'a'), (1, 'b')].find(p => p.0 == 1) == Some((1, 'a'))`
 /// traps: never
 /// example: `(1..=10).find(x => x * x > 20) == Some(5)`
-pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T:
+pub fn find<S: Seq<T>, T>(self: S, p: T -> Bool) -> ?T:
     for x in self:
         if p(x): return Some(x)
     None
@@ -1187,7 +1196,7 @@ pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
 /// traps: never
 /// example: `[3, 1, 2].inversions() == 2`
 /// example: `inversions([3, 1, 2]) == 2`
-pub fn inversions<S: Seq, T>(self: S) -> Int:
+pub fn inversions<S: Seq<T>, T>(self: S) -> Int:
     var cur: List<T> = self.collect()
     let n = cur.len
     var tmp = cur.clone()
@@ -1854,7 +1863,7 @@ pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T:
 /// order: input order; the container the context expects, else a `List`
 /// traps: never
 /// example: `(1..4).map(x => x * x).collect() == [1, 4, 9]`
-pub fn collect<S: Seq, T>(self: S) -> List<T>:
+pub fn collect<S: Seq<T>, T>(self: S) -> List<T>:
     let out: List<T> = [x for x in self]
     out
 
@@ -1870,7 +1879,7 @@ pub fn collect<S: Seq, T>(self: S) -> List<T>:
 /// order: input order, with the k-th key of `keys` or `by(x)`
 /// traps: when both `keys` and `by` are given; when `keys` runs out first
 /// example: `"ab".keyed().items.collect() == [(0, 'a'), (1, 'b')]`
-pub fn keyed<S: Seq, I: Indexed, T, K>(
+pub fn keyed<S: Seq<T>, I: Indexed, T, K>(
     self: S,
     keys: I = 0..,
     by: ?(T -> K) = None,
@@ -1898,7 +1907,7 @@ impl Keyed<K, T> for Keys<S, I, T, K>:
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 5, 1].take_while(x => x < 3).collect() == [1, 2]`
-pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T:
+pub fn take_while<S: Seq<T>, T>(self: S, keep: T -> Bool) -> yields T:
     for x in self:
         if not keep(x): return
         yield x
@@ -1910,7 +1919,7 @@ pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T:
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 5, 1].drop_while(x => x < 3).collect() == [5, 1]`
-pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T:
+pub fn drop_while<S: Seq<T>, T>(self: S, drop: T -> Bool) -> yields T:
     var dropping = true
     for x in self:
         if dropping and drop(x): continue
@@ -1925,7 +1934,7 @@ pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T:
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 3].filter_map(x => if x != 2: Some(x * 10) else: None).collect() == [10, 30]`
-pub fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U:
+pub fn filter_map<S: Seq<T>, T, U>(self: S, f: T -> ?U) -> yields U:
     for x in self:
         if let y = f(x): yield y
 
@@ -2020,7 +2029,7 @@ pub fn iterate<T>(from: ?T, step: T -> ?T) -> yields T:
 /// order: left to right, ending `(last, None)`
 /// traps: never
 /// example: `[1, 2].with_next().collect() == [(1, Some(2)), (2, None)]`
-pub fn with_next<S: Seq, T>(self: S) -> yields (T, ?T):
+pub fn with_next<S: Seq<T>, T>(self: S) -> yields (T, ?T):
     var prev: ?T = None
     for x in self:
         if let p = prev: yield (p, Some(x))
@@ -2055,13 +2064,27 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
 
 // --- Reductions, folds, frequencies, and selection ---
 
+/// \(O(n)\). Whether some element equals `x`; `x in s` reads the same. A type with a faster
+/// `contains` of its own (a set, a map, a bag, a hashed or keyed type) declares it, and its
+/// declared member wins.
+///
+/// cost: \(O(n)\) comparisons
+/// empty: `let a: List<Int> = []; (3 in a) == false`
+/// traps: never
+/// example: `(1..=3).map(x => x * x).contains(4)`
+pub fn contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool:
+    for y in self:
+        if y == x: return true
+    false
+
+
 /// \(O(n)\). Seedless left fold returning `None` on empty (never traps).
 ///
 /// cost: \(O(n)\) calls of `f`
 /// empty: `let a: List<Int> = []; a.reduce((x, y) => x * y) == None`
 /// traps: never
 /// example: `[3, 4].reduce((a, b) => a * b) == Some(12)`
-pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T:
+pub fn reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T:
     var acc: ?T = None
     for x in self:
         if let a = acc: acc = Some(f(a, x))
@@ -2102,7 +2125,7 @@ pub fn fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> A
 /// ties: `[(3, 'a'), (1, 'b'), (3, 'c')].max_count(by: .0) == Some((val: (3, 'a'), count: 2))`
 /// traps: never
 /// example: `[3, 1, 3].max_count() == Some((val: 3, count: 2))`
-pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
+pub fn max_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
     var best: ?(T, K) = None
     var count = 0
     for x in self:
@@ -2124,7 +2147,7 @@ pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
 /// ties: `[(1, 'a'), (3, 'b'), (1, 'c')].min_count(by: .0) == Some((val: (1, 'a'), count: 2))`
 /// traps: never
 /// example: `[1, 2, 1].min_count() == Some((val: 1, count: 2))`
-pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
+pub fn min_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
     var best: ?(T, K) = None
     var count = 0
     for x in self:
@@ -2148,7 +2171,7 @@ pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
 /// empty: `let a: List<Int> = []; a.majority() == None`
 /// traps: never
 /// example: `[2, 1, 2].majority() == Some((val: 2, count: 2))`
-pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int):
+pub fn majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int):
     var chain: List<T> = []
     var same: List<T> = []
     for x in self:
@@ -2177,7 +2200,7 @@ pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(
 /// traps: never
 /// example: `"abca".tally()['a'] == 2`
 /// example: `[1, 1, 2].tally()[7] == 0`
-pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
+pub fn tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
     var out = Counter<K, Int>()
     for x in self:
         out.add(by(x), 1)
@@ -2190,7 +2213,7 @@ pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
 /// order: keys ascending; each group keeps input order
 /// traps: never
 /// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)[1] == ['a', 'c']`
-pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>:
+pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>:
     var out = Map<K, List<U>>()
     for x in self:
         let k = by(x)
@@ -2206,7 +2229,7 @@ pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
-pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
+pub fn min_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
     assert k >= 0, "min_k requires k >= 0"
     var ps: List<(K, Int, T)> = []
     for x in self: ps.push((by(x), ps.len, x))
@@ -2221,7 +2244,7 @@ pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
-pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
+pub fn max_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
     assert k >= 0, "max_k requires k >= 0"
     var ps: List<(K, Int, T)> = []
     for x in self: ps.push((by(x), ps.len, x))
@@ -2274,7 +2297,7 @@ pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool)
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 5, 4].adjacent_diff() == [3, 2, -1]`
-pub fn adjacent_diff<S: Seq, T>(self: S) -> List<T>:
+pub fn adjacent_diff<S: Seq<T>, T>(self: S) -> List<T>:
     var out: List<T> = []
     var prev: ?T = None
     for x in self:
@@ -2491,7 +2514,7 @@ pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K):
 /// traps: never
 /// example: `[1, 2, 2].is_permutation([2, 1, 2]) == true`
 /// example: `[2, 0, 1].is_permutation(0..3) == true`
-pub fn is_permutation<A: Seq, B: Seq, T>(self: A, b: B) -> Bool:
+pub fn is_permutation<A: Seq<T>, B: Seq<T>, T>(self: A, b: B) -> Bool:
     var left = HashMap<T, Int>()
     var n = 0
     for x in self:
@@ -2511,7 +2534,7 @@ pub fn is_permutation<A: Seq, B: Seq, T>(self: A, b: B) -> Bool:
 /// empty: `"".is_subsequence("abc") == true`
 /// traps: never
 /// example: `"ace".is_subsequence("abcde") == true`
-pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool:
+pub fn is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool:
     var j = 0
     for x in self:
         while j < of.len and of.nth(j) != x: j += 1

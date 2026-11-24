@@ -208,3 +208,10 @@ fn a_global_read_after_the_fn_that_takes_it_is_copied() {
         "`base` is printed after `build`, so `build` copies it:\n{out}"
     );
 }
+
+#[test]
+fn binding_a_lent_optional_copies_nothing() {
+    let source = "use std.persistent.PersistentSegTree\ndomain N = 0..4\nlet z: [N]Int = [0, 0, 0, 0]\nvar t = PersistentSegTree<N, Int>(+, a: z)\nlet v1 = t.set(t.base, N(1), 1)\nprint(yes(t.diff_kth(v1, t.base, 0) == Some(N(1))))\n";
+    assert!(crate::tests::cpp(source).contains("cpl::Lent<"));
+    assert_eq!(copy_reasons(source), [] as [&str; 0]);
+}

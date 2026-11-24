@@ -1451,4 +1451,46 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Give(res));
         })
     }
+
+    /// `lo..hi by k` kept as a value is the std view `(lo..hi).step(k)`: it
+    /// reverses, and its `len`, `first` and `last` are \(O(1)\) (R01.8.4).
+    pub(super) fn stepped_range_val(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
+        let ast::ExprKind::Range {
+            lo,
+            hi,
+            inclusive,
+            step: Some(k),
+        } = &e.kind
+        else {
+            return self.err_expr(e.span);
+        };
+        let range = ast::ExprKind::Range {
+            lo: lo.clone(),
+            hi: hi.clone(),
+            inclusive: *inclusive,
+            step: None,
+        };
+        let name = ast::Name {
+            text: "step".into(),
+            span: k.span,
+        };
+        let base = Box::new(ast::Expr {
+            kind: range,
+            span: e.span,
+        });
+        let callee = ast::Expr {
+            kind: ast::ExprKind::Field { base, name },
+            span: e.span,
+        };
+        let arg = ast::Arg {
+            name: None,
+            mutable: false,
+            value: (**k).clone(),
+        };
+        let kind = ast::ExprKind::Call {
+            callee: Box::new(callee),
+            args: vec![arg],
+        };
+        self.expr(&ast::Expr { kind, span: e.span }, hint)
+    }
 }

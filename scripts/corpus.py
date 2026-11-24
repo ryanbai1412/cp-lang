@@ -441,33 +441,61 @@ def read_ranges(names, t, domains):
         if len(names) == len(parts):
             for n, p in zip(names, parts): out.update(read_ranges([n], p, domains))
         elif len(names) == 1:
-            for p in parts:
-                if ":" in p and not p.split(":")[0].strip().count(" "):
-                    f, ft = p.split(":", 1); out.update(read_ranges([f"{names[0]}.{f.strip()}"], ft, domains))
+            labelled = [p for p in parts if ":" in p and not p.split(":")[0].strip().count(" ")]
+            for i, p in enumerate(parts):
+                # An unnamed tuple's fields are positional: `name.0`, `name.1`, ...
+                f, ft = p.split(":", 1) if labelled else (str(i), p)
+                if labelled and p not in labelled:
+                    continue
+                out.update(read_ranges([f"{names[0]}.{f.strip()}"], ft, domains))
         return out
     t = domains.get(t, t)
     m = READ_RANGE.match(t)
     if not m: return {}
     hi = m.group(3).strip()
     return {n: (m.group(1).strip(), hi if m.group(2) else f"{hi} - 1") for n in names}
+READ_BINDER = re.compile(r"^\s*(?:(?:let|var) (.+?)(?::[^=]+)?=(?!=)|for (.+?) in )")
+def read_of(line):
+    """The type of the first `read<T>()` anywhere in `line`, or None."""
+    i = line.find("read<")
+    if i < 0 or (i and (line[i - 1].isalnum() or line[i - 1] == "_")):
+        return None
+    depth = 0
+    for j in range(i + 4, len(line)):
+        depth += {"<": 1, ">": -1}.get(line[j], 0)
+        if depth == 0:
+            return line[i + 5:j] if line.startswith("()", j + 1) else None
+    return None
+def port_domains(text):
+    """Each `domain`/`type`/`struct` the port declares: name -> its type text."""
+    domains = {}
+    for line in text.split("\n"):
+        m = DOMAIN_LINE.match(line.split("//")[0].strip()) or STRUCT_LINE.match(line.split("//")[0].strip())
+        if m: domains[m.group(1)] = m.group(2)
+    return domains
 def port_ranges(text):
-    """name (a field as name.field) -> (lo, hi) text of each ranged `read()` in the port."""
-    domains, out = {}, {}
+    """name (a field as name.field, a positional one as name.0) -> (lo, hi) text of each
+    ranged read in the port: `let x: T = read()`, or a `read<T>()` bound by `let`/`for`
+    anywhere on its line (`let xs = read<[n]T>().sorted()`, `for a in read<[m]T>():`)."""
+    domains, out = port_domains(text), {}
     for line in text.split("\n"):
         line = line.split("//")[0].rstrip()
-        m = DOMAIN_LINE.match(line.strip()) or STRUCT_LINE.match(line.strip())
-        if m: domains[m.group(1)] = m.group(2)
-        m = READ_LINE.match(line)
+        m, b = READ_LINE.match(line), READ_BINDER.match(line)
         if m:
-            pat = (m.group(1) or m.group(3)).strip()
-            names = split_top(pat[1:-1]) if pat.startswith("(") else [pat]
-            out.update(read_ranges(names, m.group(2) or m.group(4), domains))
+            pat, t = (m.group(1) or m.group(3)).strip(), m.group(2) or m.group(4)
+        elif b and (t := read_of(line)) is not None:
+            pat = (b.group(1) or b.group(2)).strip()
+        else:
+            continue
+        names = split_top(pat[1:-1]) if pat.startswith("(") else [pat]
+        out.update(read_ranges(names, t, domains))
     return out
 
 
 def declared_bounds(text):
     """The header's `// Bounds:` in `cpl new --constraints` form, as name -> (lo, hi)
-    text, or None without one; a part it can't read maps to None."""
+    text, or None without one; a part it can't read maps to None. A part may name the
+    port's domains and give a whole read type: `s: [q](1..=3, Col)` states s.0 and s.1."""
     lines, on = [], False
     for line in text.split("\n"):
         if not line.startswith("//"):
@@ -481,7 +509,7 @@ def declared_bounds(text):
             lines.append(line[2:])
     if not lines:
         return None
-    out = {}
+    out, domains = {}, port_domains(text)
     for part in " ".join(lines).split(";"):
         if not part.strip():
             continue
@@ -489,9 +517,9 @@ def declared_bounds(text):
         if not t:
             out[part.strip()] = None
             continue
-        got = read_ranges(["_"], t, {})
         for n in split_top(names):
-            out[n] = got.get("_")
+            got = read_ranges([n], t, domains)
+            out.update(got or {n: None})
     return out
 
 

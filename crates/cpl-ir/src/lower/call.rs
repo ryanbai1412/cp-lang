@@ -181,10 +181,11 @@ impl<'a> Lowerer<'a> {
         // `xs.map(x => f(x))` returns `[D...]U` on fixed arrays `[D...]T`
         // (preserving index domains), and `List<U>` across every other sequence.
         if let ([func], "map") = (args, name.text.as_str()) {
-            if func.name.is_none() && !func.mutable {
-                if matches!(self.probe_ty_silent(base), Some(Ty::Array { .. })) {
-                    return self.lower_array_map(base, &func.value, span);
-                }
+            if func.name.is_none()
+                && !func.mutable
+                && matches!(self.probe_ty_silent(base), Some(Ty::Array { .. }))
+            {
+                return self.lower_array_map(base, &func.value, span);
             }
         }
         if name.text == "keyed" {
