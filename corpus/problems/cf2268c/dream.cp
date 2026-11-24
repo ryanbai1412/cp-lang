@@ -11,30 +11,40 @@ use std.prefix.{prefix_fold}
 @!multitest
 domain I = read(1..=2e5)
 
-struct Span(lo: I.bounds, hi: I.bounds):  // leftmost and rightmost cut of one parity
-    fn join(self, o: Span) -> Span = Span(min(lo, o.lo), max(hi, o.hi))
+struct Span(lo: I.bounds, hi: I.bounds)  // leftmost and rightmost cut of one parity
 
-// The extreme cuts of each parity on one side of a gap.
+fn hull(x: ?Span, y: ?Span) -> ?Span:
+    if let s = x and let t = y: Span(min(s.lo, t.lo), max(s.hi, t.hi)) else: x ?? y
+
+fn wide(left: ?Span, right: ?Span) -> Bool:
+    if let l = left and let r = right: r.hi.ord - l.lo.ord > 1 else: false
+
 struct Ends(even: ?Span, odd: ?Span):
-    fn join(self, o: Ends) -> Ends = Ends(even.join(o.even), odd.join(o.odd))
+    fn join(self, o: Ends) -> Ends = Ends(hull(even, o.even), hull(odd, o.odd))
     // some cut here and an opposite-parity cut in `right` are at least 2 apart
-    fn reaches(self, right: Ends) -> Bool =
-        (right.odd.hi - even.lo ?? 0) > 1 or (right.even.hi - odd.lo ?? 0) > 1
+    fn reaches(self, right: Ends) -> Bool = wide(even, right.odd) or wide(odd, right.even)
 
 let a: [I]Int = read()
 let peak = SparseTable<I, Int>(max, a)
 
 fn feasible(v: Int) -> Bool:
-    let pre = prefix_fold(^, a & v)
+    let pre = prefix_fold(^, [I] i => a[i] & v)
     let class = [I.bounds] c => min(pre[c], pre[c] ^ v)
-    let at = c => if pre[c] != class[c]: Ends(None, Span(c, c)) else: Ends(Span(c, c), None)
-    I.cuts.sorted(by: c => (class[c], c)).chunk_by(c => class[c]).any(cuts =>
-        cuts.cartesian(
-            gap: (l, r) => peak.fold(l..r),
-            leaf: at,
-            join: Ends.join,
-        ).any((m, left, right) => m & v == v and left.reaches(right))
-    )
+    fn at(c: I.bounds) -> Ends:
+        if pre[c] != class[c]: Ends(None, Span(c, c)) else: Ends(Span(c, c), None)
+
+    // One class's cuts in order: split at the highest gap first, as a max Cartesian tree over the gaps.
+    fn splits(cuts: List<I.bounds>) -> Bool:
+        let gaps = [peak.fold(cuts[j]..cuts[j + 1]) for j in 0..cuts.len - 1]
+        let tree = gaps.cartesian_tree(min_root: false)
+        fn walk(node: ?Int, leaf: Int) -> (ends: Ends, found: Bool):
+            guard let g = node else: return (at(cuts[leaf]), false)
+            let (le, lf) = walk(tree.left[g], g)
+            let (re, rf) = walk(tree.right[g], g + 1)
+            (le.join(re), lf or rf or (gaps[g] & v == v and le.reaches(re)))
+        walk(tree.root, 0).found
+
+    I.cuts.sorted(by: c => (class[c], c)).runs(by: c => class[c]).any(run => splits(run.collect()))
 
 var ans = 0
 for b in (0..18).rev if feasible(ans | 1 << b): ans |= 1 << b
