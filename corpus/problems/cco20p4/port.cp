@@ -1,4 +1,5 @@
 // Source: CCO 2020 P4, Travelling Salesperson, https://dmoj.ca/problem/cco20p4
+// limits: 7000 ms, 1024 MB
 // Problem: 2 <= n <= 2000 buildings, every pair joined by a red or a blue road (line i gives
 //   the colours to buildings 1..i-1). For each start, print a route of minimum length
 //   (buildings visited, repeats counted) that visits every building and switches road colour

@@ -1,4 +1,13 @@
 import sys, random
+
+if sys.argv[1] == "--max":
+    # n = 2000, red inside two hidden groups and blue across: every insertion meets the junction
+    rng = random.Random(1)
+    n = 2000
+    side = [rng.randrange(2) for _ in range(n)]
+    print(n)
+    print("\n".join("".join("R" if side[i] == side[j] else "B" for j in range(i)) for i in range(1, n)))
+    sys.exit()
 # seed size: n = size buildings (or fewer), roads red with a random bias, or by a hidden
 # split (red inside two groups, blue across) to stress the junction moves
 rng = random.Random(int(sys.argv[1])); S = max(2, min(int(sys.argv[2]), 2000))

@@ -1,4 +1,5 @@
 // Source: Mock CCC '22 Contest 2 J5 (Dominating the Olympics), https://dmoj.ca/problem/mccc4j5
+// limits: 1500 ms, 512 MB
 // Problem: n <= 5000 events, event i takes 1 <= T_i <= 1e4 minutes and lists R_i < n prerequisites
 //   (which may form loops; events that can never start are ignored). With unlimited
 //   parallel clones, print the least time to finish every event that can be done.

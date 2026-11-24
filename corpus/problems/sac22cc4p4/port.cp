@@ -1,4 +1,5 @@
 // Source: SAC '22 Code Challenge 4 P4, https://dmoj.ca/problem/sac22cc4p4
+// limits: 3000 ms, 1024 MB
 // Problem: n <= 1e6 integers |a[i]| <= 1e9 and 0 <= B <= T <= 2e9. Print how many subarrays [l, r]
 //   have B <= max - min <= T.
 // Solution: count(t), the subarrays with max - min <= t, is a two-pointer scan: for each right

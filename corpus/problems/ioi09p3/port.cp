@@ -1,4 +1,5 @@
 // Source: IOI 2009 P3 (POI), https://dmoj.ca/problem/ioi09p3
+// limits: 1000 ms, 64 MB
 // Problem: N <= 2000 contestants, T <= 2000 tasks, a 0/1 table of who solved what. A task is worth
 //   the number who did not solve it. Rank by score, then tasks solved (both descending), then ID.
 //   Print the score and the rank of contestant P.

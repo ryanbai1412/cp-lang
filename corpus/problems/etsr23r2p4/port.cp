@@ -1,4 +1,5 @@
 // Source: SDOI 2009, School Canteen, https://dmoj.ca/problem/etsr23r2p4
+// limits: 1000 ms, 125 MB
 // Problem: 1 <= C <= 5 tests. 1 <= n <= 1000 students queue; student i has taste
 //   0 <= T_i <= 1000 and tolerance 0 <= B_i <= 7: at most the B_i people right behind i may be
 //   served before i. Cooking a dish after one of taste a costs a xor b (the first is free).

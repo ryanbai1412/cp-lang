@@ -2,6 +2,13 @@
 Grids are random 2x2 flips of a few base grids, so similar pairs are common;
 size >= 1e4 gives N = 10, G = 1e4."""
 import random, sys
+
+if sys.argv[1] == "--max":
+    # N = 10, G = 1e4 random grids
+    rng = random.Random(1)
+    print(10); print(10**4)
+    print("\n".join("".join(rng.choice("RW") for _ in range(10)) for _ in range(10**5)))
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 if size >= 10 ** 4:

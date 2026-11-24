@@ -1,4 +1,5 @@
 // Source: CCO 2016 Day 2 (O Canada), https://dmoj.ca/problem/cco16p4
+// limits: 600 ms, 1024 MB
 // Problem: 2 <= G <= 1e4 grids of n x n red/white cells (2 <= n <= 10). A change flips the
 //   four cells of a 2 x 2 square. Count the pairs of grids that changes can turn into each other.
 // Solution: a change keeps the parity of red cells in every row and every column, and these

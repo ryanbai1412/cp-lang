@@ -2,6 +2,20 @@
 size <= 20 is a small random case; larger sizes cycle through max-N shapes:
 a dense DAG (sum R ~ N^2 / 4), a 5000-chain of T = 1e4, and a DAG mixed with loops."""
 import random, sys
+
+if sys.argv[1] == "--max":
+    # N = 5000 in a shuffled order where each event needs every earlier one (R_i up to N - 1,
+    # about N^2 / 2 prerequisites in all), times up to 1e4
+    rng = random.Random(1)
+    n = 5000
+    order = list(range(n)); rng.shuffle(order)
+    deps = [[] for _ in range(n)]
+    for k, i in enumerate(order): deps[i] = order[:k]
+    out = [str(n)]
+    for i in range(n):
+        out.append(" ".join(map(str, [rng.randint(1, 10**4), len(deps[i])] + [d + 1 for d in deps[i]])))
+    print("\n".join(out))
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 if size <= 20:

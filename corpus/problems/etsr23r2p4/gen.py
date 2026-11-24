@@ -1,4 +1,13 @@
 import sys, random
+
+if sys.argv[1] == "--max":
+    # C = 5 queues of n = 1000, tolerance 7 everywhere (the most window states), tastes up to 1000
+    rng = random.Random(1)
+    print(5)
+    for _ in range(5):
+        print(1000)
+        print("\n".join(f"{rng.randint(0, 1000)} 7" for _ in range(1000)))
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 if size <= 20:
