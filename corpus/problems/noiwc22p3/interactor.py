@@ -2,10 +2,15 @@
 """Judge for WC 2022 P3 (Wordle with a known first letter), on stdin: send the dictionary size,
 the dictionary run together (the official scramble_pure.txt) and T; then each game sends the
 answer's first letter, and after each guess a line of five g / s / - marks ("ggggg": solved).
-A guess outside the dictionary scores the game 0. The statement scores min(average, 100); the
-verdict here is accepted iff the average is at least 98, since full marks sit at the best play
-(a strong greedy reference averages 100.1 over uniform answers, about 0.6 deviation at
-T = 1000). The case file is T and the T answers' dictionary indices."""
+A guess outside the dictionary scores the game 0.
+
+Scoring: the statement awards 150 / 120 / 100 / 90 / 85 for a solve in 1 to 5 guesses and
+scores min(average, 100) as partial credit. This judge accepts iff the average is at least 98, on
+purpose: 100 sits at the best play, the best greedy reference averages about 100.1-100.3 over
+uniform answers, and the average of 1,000 games moves by about +-0.6, so a bar of 100 would
+reject a strong reference about half the time. Do not tighten it without new numbers.
+
+The case file is T and the T answers' dictionary indices."""
 import os
 import sys
 
