@@ -435,6 +435,7 @@ impl<'p> Emitter<'p> {
                 let ExprKind::Closure(cid) = init.kind else {
                     unreachable!()
                 };
+                self.borrow_if_named_closure(*slot, Some(init));
                 self.need("rec");
                 self.rec_slot = Some(*slot);
                 let text = self.emit_closure(cid, false).text;

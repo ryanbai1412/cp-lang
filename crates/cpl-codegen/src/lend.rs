@@ -857,13 +857,30 @@ pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, 
                 .iter()
                 .filter(|c| !c.is_global && c.outer == slot)
             {
-                escapes |= !passed_on.contains(cid)
-                    || !only_called(program, &def.body, cap.inner, depth.saturating_sub(1));
+                let held = passed_on.contains(cid)
+                    || closure_name(body, *cid).is_some_and(|s| {
+                        s == slot || (depth > 0 && only_called(program, body, s, depth - 1))
+                    });
+                escapes |=
+                    !held || !only_called(program, &def.body, cap.inner, depth.saturating_sub(1));
             }
         }
         _ => {}
     });
     !escapes && uses == calls
+}
+
+/// The slot of the `let f = closure` that names closure `cid` in `body`.
+fn closure_name(body: &Block, cid: usize) -> Option<usize> {
+    let mut name = None;
+    walk::deep_stmts(body, &mut |stmt| {
+        if let Stmt::Let(s, Some(init)) = stmt {
+            if matches!(init.kind, ExprKind::Closure(c) if c == cid) {
+                name = Some(*s);
+            }
+        }
+    });
+    name
 }
 
 fn fn_param_only_called_at(

@@ -478,6 +478,36 @@ for v in 0..n:
 }
 
 #[test]
+fn a_local_fn_called_by_itself_or_another_local_fn_borrows_its_captures() {
+    let head =
+        "let xs = read<List<Int>>()\nfn f(k: Int) -> Int:\n    let ys = [x * k for x in xs]\n";
+    for body in [
+        "    fn walk(i: Int) -> Int:\n        if i >= ys.len: return 0\n        ys[i] + walk(i + 1)\n    walk(0)\n",
+        "    fn at(i: Int) -> Int = ys[i]\n    fn g(n: Int) -> Int:\n        var s = 0\n        for i in 0..n: s += at(i)\n        s\n    g(ys.len)\n",
+    ] {
+        let out = cpp(&format!("{head}{body}print(f(2))\n"));
+        assert!(
+            out.contains("&ys_2 = ys"),
+            "the local fn is only ever called, so `ys` is borrowed:\n{out}"
+        );
+    }
+    let kept = cpp(concat!(
+        "let xs = read<List<Int>>()\n",
+        "fn f(k: Int) -> Int:\n",
+        "    let ys = [x * k for x in xs]\n",
+        "    fn at(i: Int) -> Int = ys[i]\n",
+        "    var h = (i: Int) => at(i)\n",
+        "    if k > 1: h = (i: Int) => i\n",
+        "    h(0)\n",
+        "print(f(2))\n",
+    ));
+    assert!(
+        !kept.contains("&ys_2 = ys"),
+        "a closure stored in a var keeps `at`, so `at` owns `ys`:\n{kept}"
+    );
+}
+
+#[test]
 fn sorted_at_the_last_read_sorts_the_list_itself() {
     let out = cpp(concat!(
         "let es: [0..3](a: Int, w: Int) = read()\n",
