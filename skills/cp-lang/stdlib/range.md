@@ -11,6 +11,8 @@ Import: `use std.range.{...}`.
 A run of positions of `D` read cyclically, possibly wrapping past the last position, at most `D.count` of them.
 
 - `@get fn len(self) -> Int` — \(O(1)\); The number of positions in the run.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the span covers no position.
+- `fn each(self) -> yields D` — \(O(\mathit{len})\)
 - `@get fn start(self) -> D` — \(O(1)\)
 - `@get fn end(self) -> D` — \(O(1)\); traps: on an empty span
 - `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.

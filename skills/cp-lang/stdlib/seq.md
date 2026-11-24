@@ -21,6 +21,8 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 - `fn get(self, i: D) -> T` — \(O(1)\)
 - `fn slice(self, r: Range<D>) -> List<T>` — \(O(r.\mathit{len})\); The compressed values over a range `r` of `xs.D`, as a list.
 - `@get fn len(self) -> Int` — \(O(1)\); How many distinct values there are.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no value was compressed.
+- `@get fn items(self) -> yields (D, T)` — \(O(\mathit{len})\)
 - `fn index_of(self, val: T) -> D` — \(O(\log n)\); The index of `val`, which must be one of the compressed values.; traps: when `val` was not compressed
 - `fn try_index_of(self, val: T) -> ?D` — \(O(\log n)\); The index of `val` if it was compressed, or `None`.
 - `fn contains(self, val: T) -> Bool` — \(O(\log n)\); Whether `val` is one of the compressed values.
@@ -87,6 +89,7 @@ Fields: `f: T -> U,`.
 - `@get fn keys<K>(self) -> Range<K>` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the slice.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the slice has no elements.
+- `@get fn items<K, T>(self) -> yields (K, T)` — \(O(\mathit{len})\)
 
 ## `struct Rebased<S>(pub src: S)`
 
@@ -97,6 +100,8 @@ The view `rebase` returns.
 \(O(1)\) to make.
 
 - `@get fn len(self) -> Int` — \(O(1)\)
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the stepped view has no elements.
+- `fn each(self) -> yields T` — \(O(\mathit{len})\)
 - `fn nth(self, j: Int) -> T` — \(O(1)\); traps: unless `0 <= j < self.len`
 - `fn at<K>(self, i: K) -> T` — \(O(1)\); traps: unless `i` is a key the stride visits (`first`, `first + k`, ...), naming them
 - `@get fn keys(self) -> StepKeys` — \(O(1)\)
@@ -125,6 +130,7 @@ The view `keyed` returns.
 - `fn push(mut self, x: T) -> Int` — \(O(\log n)\)
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
+- `@get fn items(self) -> yields (Int, T)` — \(O(\mathit{len})\)
 - `fn clear(mut self)` — \(O(1)\)
 - `fn reconstruct(self) -> List<Int>` — \(O(n)\), \(O(n)\) memory
 - `fn mark(self) -> Int` — \(O(1)\)
@@ -138,6 +144,7 @@ The view `keyed` returns.
 - `@get fn top(self) -> ?(index: D, val: T)` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
+- `@get fn items(self) -> yields (D, T)` — \(O(\mathit{len})\)
 - `fn clear(mut self)` — \(O(1)\)
 - `fn mark(self) -> Int` — \(O(1)\)
 - `fn undo_to(mut self, m: Int)` — \(O(1)\) amortized per undone push; \(O(1)\) amortized.; traps: when `m` is not a live mark of this stack
@@ -173,6 +180,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 
 - `@get fn range(self) -> RingRange<D>` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the window covers no position.
+- `fn each(self) -> yields D` — \(O(\mathit{len})\)
 - `@get fn start(self) -> D` — \(O(1)\)
 - `@get fn end(self) -> D` — \(O(1)\)
 - `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
