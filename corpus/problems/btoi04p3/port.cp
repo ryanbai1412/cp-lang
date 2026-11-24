@@ -23,9 +23,7 @@ var pool = MeldHeaps<Key>()
 pool.reserve(n)
 var blocks = List<Block>()
 for i in V:
-    let low: Key = -x(i)
-    let one: List<Key> = [low]
-    var b = Block(i, i, 1, pool.of(one))
+    var b = Block(i, i, 1, pool.of([-x(i)]))
     while let top = blocks.last:
         if pool.top(top.low)! >= pool.top(b.low)!:
             break
