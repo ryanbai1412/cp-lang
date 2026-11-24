@@ -682,11 +682,7 @@ impl<'a> Lowerer<'a> {
                     t.offset,
                 ),
                 None => {
-                    let (generics, body) = cpl_check::core_trait_decl(trait_name)?;
-                    let f = body.iter().find_map(|s| match &s.kind {
-                        ast::StmtKind::Fn(f) if f.name.text == method => Some(f),
-                        _ => None,
-                    })?;
+                    let (generics, f) = cpl_check::core_trait_fn(trait_name, method)?;
                     let names = generics.iter().map(|g| g.text.as_str()).collect();
                     (f, names, self.cur_mod, self.offset)
                 }

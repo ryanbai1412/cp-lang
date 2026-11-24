@@ -855,6 +855,18 @@ pub fn core_trait_decl(name: &str) -> Option<(&'static [ast::Name], &'static [as
     None
 }
 
+/// Core trait `name`'s fn `method` and the trait's generics.
+pub fn core_trait_fn(
+    name: &str,
+    method: &str,
+) -> Option<(&'static [ast::Name], &'static ast::FnDecl)> {
+    let (generics, body) = core_trait_decl(name)?;
+    body.iter().find_map(|s| match &s.kind {
+        ast::StmtKind::Fn(f) if f.name.text == method => Some((generics, f)),
+        _ => None,
+    })
+}
+
 /// `cell`'s value, built by `init` the first time. `init` is a fn, not a
 /// closure, so the cells of one type share one copy of the code that fills them.
 fn lazy<T>(cell: &'static OnceLock<T>, init: fn() -> T) -> &'static T {

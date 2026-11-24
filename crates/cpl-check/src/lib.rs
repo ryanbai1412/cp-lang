@@ -55,13 +55,13 @@ pub use modules::{
     std_outline, take_std_needs, FsLoader, GivenFiles, Loader,
 };
 pub use overflow::Overflow;
-pub use prelude::core_trait_decl;
 pub use prelude::{
     arity_key, domain_member, import_edit, labels_fit, method_key, method_module,
     methods as std_methods, overload_key, overload_part, required_labels, std_family, std_module,
     std_names, std_self_heads, ty as prelude_type, type_arity, word_type, written_name,
     VALUE_NAMES as PRELUDE_VALUES,
 };
+pub use prelude::core_trait_fn;
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};
 
