@@ -1629,7 +1629,7 @@ fn heavy_light_and_subtree_cover_the_children():
         else:
             assert r.top(v) == v
         let chain = r.chain(v).map(q => r.at[q]).collect()
-        assert chain.first == r.top(v) and r.children(chain.last!).count() == 0
+        assert chain.first == r.top(v) and r.children(chain.last!).is_empty
         for k in 1..chain.len:
             assert r.parent(chain[k]) == Some(chain[k - 1]) and chain[k] not in r.light(chain[k - 1]).collect()
         var lights = 0

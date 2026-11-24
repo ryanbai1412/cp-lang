@@ -1116,8 +1116,8 @@ fn a_plain_edge_list_needs_no_edge_domain():
     domain V = 1..=4
     let g = Graph.undirected([(V(1), V(2)), (V(2), V(3))])
     assert [[v.ord for v in g[u]] for u in V] == [[1], [0, 2], [1], []]
-    let d = Graph.directed([(V(1), V(2), 5), (V(1), V(4), 7)])
-    assert [(v.ord, w) for (v, w) in d[V(1)]] == [(1, 5), (3, 7)]
+    let d = Graph.directed([(u: V(1), v: V(2), w: 5), (u: V(1), v: V(4), w: 7)])
+    assert [(a.to.ord, a.w) for a in d[V(1)]] == [(1, 5), (3, 7)]
     assert d[V(2)].is_empty
 
 /// \(O(n)\) memory.
