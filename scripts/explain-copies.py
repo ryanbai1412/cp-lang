@@ -44,9 +44,53 @@ def is_place(text):
     return bool(NAME.fullmatch(text)) or (text.startswith("cpl::at(") and text.endswith(")") and "::" not in text[8:])
 
 
+def split_top(text):
+    """`text` split at the commas outside `<>`, `()` and `{}`."""
+    parts, depth, start = [], 0, 0
+    for i, c in enumerate(text):
+        if c in "<({":
+            depth += 1
+        elif c in ">)}":
+            depth -= 1
+        elif c == "," and depth == 0:
+            parts.append(text[start:i].strip())
+            start = i + 1
+    parts.append(text[start:].strip())
+    return parts
+
+
+def tuple_copies(decl):
+    """Copies in a by-value `std::tuple<..> t = place;` whose type holds a
+    container, and container fields of a brace initialiser `{a.x, b}` taken
+    from places."""
+    depth = 0
+    for i, c in enumerate(decl):
+        if c == "<":
+            depth += 1
+        elif c == ">":
+            depth -= 1
+            if depth == 0:
+                break
+    else:
+        return 0
+    args, rest = split_top(decl[len("std::tuple<") : i]), decl[i + 1 :].strip()
+    name, eq, init = rest.partition("=")
+    name, init = name.strip(), init.strip().removesuffix(";").strip()
+    if not eq or not re.fullmatch(r"\w+", name):
+        return 0
+    if is_place(init):
+        return int(any(a.startswith(CONTAINERS) for a in args))
+    brace = init.find("{")
+    if brace < 0 or not init.endswith("}"):
+        return 0
+    items = split_top(init[brace + 1 : -1])
+    return sum(1 for a, x in zip(args, items) if a.startswith(CONTAINERS) and is_place(x))
+
+
 def deep_copies(cpp):
     """Mirrors deep_copies in crates/cpl-cli/tests/support/cpp_counts.rs, plus
-    copies spelled as a constructor call or `cpl::to_list`."""
+    copies spelled as a constructor call or `cpl::to_list`, tuples holding a
+    container copied from places, and a container assigned from a place."""
     held, count = set(), len(COPY.findall(cpp))
     for line in cpp.splitlines():
         line = line.strip()
@@ -72,6 +116,12 @@ def deep_copies(cpp):
                 if by_value and rest.startswith("=") and rest.endswith(";") and is_place(rest[1:-1]):
                     count += 1
         if line.startswith("std::tuple<") and any(c in line for c in CONTAINERS) and ".first, " in line and ".second)" in line:
+            count += 1
+        elif decl.startswith("std::tuple<"):
+            count += tuple_copies(decl)
+    for line in cpp.splitlines():
+        lhs, eq, rhs = line.strip().partition(" = ")
+        if eq and rhs.endswith(";") and NAME.fullmatch(lhs) and lhs.rsplit(".", 1)[-1] in held and is_place(rhs[:-1]):
             count += 1
     for line in cpp.splitlines():
         open_ = line.find("= [")
