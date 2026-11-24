@@ -497,64 +497,66 @@ pub(crate) fn interact(
         piped(judge.stderr.take())?,
     );
     let (heard, to_solution, said, to_judge, solution_err, judge_err) = pipes;
-    let (statuses, own, timed_out, solution_stderr, judge_stderr) = std::thread::scope(|scope| {
-        let (clock, transcript) = (&clock, &transcript);
-        scope.spawn(move || {
-            relay(heard, to_solution, Side::Interactor, transcript, || {
-                locked(clock).heard()
-            })
-        });
-        scope.spawn(move || {
-            relay(said, to_judge, Side::Solution, transcript, || {
-                locked(clock).said()
-            })
-        });
-        let solution_stderr = scope.spawn(move || drain(solution_err));
-        let judge_stderr = scope.spawn(move || drain(judge_err));
-        let wall = judge_limit(limit);
-        let mut own = None;
-        let mut timed_out = false;
-        let mut reject_deadline: Option<Instant> = None;
-        let statuses = loop {
-            let (a, b) = (contestant.try_wait()?, judge.try_wait()?);
-            if a.is_some() && own.is_none() {
-                own = Some(locked(clock).own());
-            }
-            if let (Some(a), Some(b)) = (a, b) {
-                break (a, b);
-            }
-            // Once the interactor has rejected, a solution still waiting for an
-            // answer will never get one; give it a brief window to finish exiting
-            // before killing it. When the interactor accepted, wait up to `limit`
-            // so scheduling delay under load does not turn an accepted run into RE.
-            if let Some(status) = b {
-                if a.is_none() && !status.success() {
-                    reject_deadline
-                        .get_or_insert_with(|| Instant::now() + Duration::from_millis(200));
+    let (statuses, own, timed_out, solution_stdout, solution_stderr, judge_stderr) =
+        std::thread::scope(|scope| {
+            let (clock, transcript) = (&clock, &transcript);
+            scope.spawn(move || {
+                relay(heard, to_solution, Side::Interactor, transcript, || {
+                    locked(clock).heard()
+                })
+            });
+            let solution_stdout = scope.spawn(move || {
+                relay(said, to_judge, Side::Solution, transcript, || {
+                    locked(clock).said()
+                })
+            });
+            let solution_stderr = scope.spawn(move || drain(solution_err));
+            let judge_stderr = scope.spawn(move || drain(judge_err));
+            let wall = judge_limit(limit);
+            let mut own = None;
+            let mut timed_out = false;
+            let mut reject_deadline: Option<Instant> = None;
+            let statuses = loop {
+                let (a, b) = (contestant.try_wait()?, judge.try_wait()?);
+                if a.is_some() && own.is_none() {
+                    own = Some(locked(clock).own());
                 }
-            }
-            let expired =
-                own.unwrap_or_else(|| locked(clock).own()) >= limit || start.elapsed() >= wall;
-            let grace_over = reject_deadline.is_some_and(|d| Instant::now() >= d);
-            if expired || grace_over {
-                timed_out = expired;
-                crate::program::kill_group(contestant.id());
-                crate::program::kill_group(judge.id());
-                let _ = contestant.kill();
-                let _ = judge.kill();
-                break (contestant.wait()?, judge.wait()?);
-            }
-            std::thread::sleep(Duration::from_micros(300));
-        };
-        let own = own.unwrap_or_else(|| locked(clock).own());
-        std::io::Result::Ok((
-            statuses,
-            own,
-            timed_out,
-            solution_stderr.join().unwrap_or_default(),
-            judge_stderr.join().unwrap_or_default(),
-        ))
-    })?;
+                if let (Some(a), Some(b)) = (a, b) {
+                    break (a, b);
+                }
+                // Once the interactor has rejected, a solution still waiting for an
+                // answer will never get one; give it a brief window to finish exiting
+                // before killing it. When the interactor accepted, wait up to `limit`
+                // so scheduling delay under load does not turn an accepted run into RE.
+                if let Some(status) = b {
+                    if a.is_none() && !status.success() {
+                        reject_deadline
+                            .get_or_insert_with(|| Instant::now() + Duration::from_millis(200));
+                    }
+                }
+                let expired =
+                    own.unwrap_or_else(|| locked(clock).own()) >= limit || start.elapsed() >= wall;
+                let grace_over = reject_deadline.is_some_and(|d| Instant::now() >= d);
+                if expired || grace_over {
+                    timed_out = expired;
+                    crate::program::kill_group(contestant.id());
+                    crate::program::kill_group(judge.id());
+                    let _ = contestant.kill();
+                    let _ = judge.kill();
+                    break (contestant.wait()?, judge.wait()?);
+                }
+                std::thread::sleep(Duration::from_micros(300));
+            };
+            let own = own.unwrap_or_else(|| locked(clock).own());
+            std::io::Result::Ok((
+                statuses,
+                own,
+                timed_out,
+                solution_stdout.join().unwrap_or_default(),
+                solution_stderr.join().unwrap_or_default(),
+                judge_stderr.join().unwrap_or_default(),
+            ))
+        })?;
     let (solution_status, judge_status) = statuses;
     let exit = if timed_out {
         Exit::TimedOut
@@ -562,7 +564,7 @@ pub(crate) fn interact(
         solution_status.code().map_or(Exit::Signal, Exit::Code)
     };
     let outcome = Outcome {
-        stdout: String::new(),
+        stdout: solution_stdout,
         stderr: solution_stderr,
         exit,
         elapsed: own,
@@ -620,16 +622,18 @@ impl Clock {
 }
 
 /// Copies `from` to `to` as it arrives, noting each chunk on the clock
-/// first and each line in the transcript. Once `to` is gone, `from` is
-/// still read to its end, so the side writing it never blocks.
+/// first and each line in the transcript, and returns all of it. Once
+/// `to` is gone, `from` is still read to its end, so the side writing it
+/// never blocks.
 fn relay(
     mut from: impl std::io::Read,
     to: impl std::io::Write,
     side: Side,
     transcript: &std::sync::Mutex<Transcript>,
     mut note: impl FnMut(),
-) {
+) -> String {
     let mut to = Some(to);
+    let mut all = Vec::new();
     let mut chunk = vec![0; 1 << 16];
     let mut line = Vec::new();
     while let Ok(read @ 1..) = from.read(&mut chunk) {
@@ -643,6 +647,7 @@ fn relay(
                 to = None;
             }
         }
+        all.extend_from_slice(&chunk[..read]);
         line.extend_from_slice(&chunk[..read]);
         if let Some(end) = line.iter().rposition(|&b| b == b'\n') {
             let text = String::from_utf8_lossy(&line[..=end]).replace("\r\n", "\n");
@@ -654,6 +659,7 @@ fn relay(
     if !line.is_empty() {
         locked(transcript).say(side, &String::from_utf8_lossy(&line));
     }
+    String::from_utf8_lossy(&all).replace("\r\n", "\n")
 }
 
 fn locked<T>(mutex: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -743,7 +749,7 @@ fn rule(success: bool, said: &str) -> Ruling {
 fn talked(ruling: Ruling, outcome: Outcome) -> (Talked, Outcome) {
     let talked = Talked {
         solution: Ran {
-            out: String::new(),
+            out: outcome.stdout.clone(),
             stop: failure(&outcome),
         },
         ruling,
