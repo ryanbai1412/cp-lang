@@ -56,7 +56,7 @@ An ordered multiset (bag) of `K` backed by a randomized treap over a single flat
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Visit every element, duplicates included, in ascending order; `for x in b` uses this.
 - `fn each_rev(self) -> yields K` — \(O(1)\) amortized per step; Visit every element, duplicates included, in descending order.
 - `fn to_list(self) -> List<K>` — \(O(n)\); Every element in ascending order, repeated by multiplicity.
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` distinct keys.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` distinct keys.
 - `fn split_at(mut self, k: K) -> SortedBag<K>` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Split off and return all elements `>= k`, keeping `< k` in `self`.
 - `fn join(mut self, other: SortedBag<K>)` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and `self.last >= other.first`
 - `fn absorb(mut self, mut other: SortedBag<K>)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all elements of `other` into `self` (small-to-large, emptying `other`).
@@ -89,7 +89,7 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Visit every key in ascending order.
 - `fn each_rev(self) -> yields K` — \(O(1)\) amortized per step; Visit every key in descending order.
 - `fn to_list(self) -> List<K>` — \(O(n)\); Return all keys in ascending order as a `List<K>`.
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` keys.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` keys.
 - `fn split_at(mut self, k: K) -> SortedSet<K>` — \(O(\log n + s \log n)\) expected, `s` the smaller side's size; Split off and return all keys `>= k`, keeping `< k` in `self`.
 - `fn join(mut self, other: SortedSet<K>)` — as `SortedBag.join`; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and `self.last >= other.first`
 - `fn absorb(mut self, mut other: SortedSet<K>)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all keys of `other` into `self` (small-to-large, emptying `other`).
@@ -138,7 +138,7 @@ Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtr
 Fields: `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 
 - `fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedBag<K, T>` — \(O(1)\); Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` elements.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` elements.
 - `@get fn len(self) -> Int` — \(O(1)\); Total number of elements (with multiplicity).
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the bag is empty.
 - `@get fn all(self) -> T` — \(O(1)\); Fold of all elements in the bag.
@@ -164,7 +164,7 @@ Monoid-augmented ordered unique set maintaining `op` over `leaf(k)` on every sub
 Fields: `bag: AugSortedBag<K, T>`.
 
 - `fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedSet<K, T>` — \(O(1)\); Create an empty `AugSortedSet<K, T>` with associative `op`, identity `id`, and key map `leaf`.
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` keys.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` keys.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of distinct keys.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the set is empty.
 - `@get fn all(self) -> T` — \(O(1)\); Fold of all keys in the set.
@@ -197,7 +197,7 @@ Fields: `lo: Int`, `hi: Int`, `bs: Int`, `total: Int`, `cnt: List<Int>`, `blk: L
 - `fn kth(self, k: Int) -> Int` — \(O(\sqrt{N})\); traps: when `k` is not in `0..len`
 - `@get fn len(self) -> Int` — \(O(1)\); The total count of everything added, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
-- `fn each(self) -> yields Int` — \(O(\sqrt{N})\) per block holding a copy, plus \(O(\sqrt{N} + \mathit{len})\); Visit every stored copy, skipping empty blocks.
+- `fn each(self) -> yields Int` — \(O(\sqrt{N} + \sqrt{N} \cdot b + \mathit{len})\) for `b` blocks holding a copy; Visit every stored copy, skipping empty blocks.
 - `fn clear(mut self)` — \(O(r.\mathit{len})\)
 
 ## `struct SortedRange<K>`
