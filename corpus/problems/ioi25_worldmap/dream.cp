@@ -14,7 +14,8 @@ fn create_map(n: 1..=40, m: Int, a: List<1..=n>, b: List<1..=n>) -> List<List<1.
     let deep = tree.path(V.first!, V.max(by: v => tree.depth(v))!)
     var up: [V]List<V> = []  // up[v]: the ancestors v's back edges reach
     for e in g.edges().filter(e => not tree_edge[e.e]):
-        if tree.depth(e.u) > tree.depth(e.v): up[e.u].push(e.v) else: up[e.v].push(e.u)
+        let o = tree.orient(e.u, e.v)
+        up[o.desc].push(o.anc)
 
     var diags: List<List<V>> = []
     var expanded = Bitset<V>.empty()
@@ -23,7 +24,7 @@ fn create_map(n: 1..=40, m: Int, a: List<1..=n>, b: List<1..=n>) -> List<List<1.
         if up[v].len > 0 and not expanded.contains(v):
             expanded.add(v)
             diags.extend([up[v], [v]])
-    while diags.len < 4 * n - 1: diags.push(diags.last!)
+    diags.resize(4 * n - 1, diags.last!)
 
     let map = [2 * n] x => [2 * n] y =>
         let d = diags[x + y]
