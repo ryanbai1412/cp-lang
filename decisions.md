@@ -9285,7 +9285,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Status.** Accepted; std's `sort`/`sorted` move to it with the arm's
   deletion.
 
-## 625. (reserved, compiler)
+## 625. A fn's `var` bound to a top-level heap value is E0608, migrated by `cpl fix` (compiler, 2026-11-24)
+
+- **Call.** Inside a fn, `var b = g` where `g` is a top-level heap value (List, Map, Str, a struct holding one, ...) is E0608 with the fix `var b = g.clone()`; `let b = g` stays a lend. A fn reads top-level state lent, as it does a parameter (R05.2.2, R05.4.1), so the binding can neither move `g` out of the file body nor copy it silently. The frozen `tests/v02-snapshot` copies change only through `cpl fix` output, the codemod path every breaking rule uses. Core ruling of 2026-11-24.
+- **Why.** The binding used to compile to a silent deep copy, a cost the source never spelled. Making it E0608 keeps costs visible: `.clone()` is the one O(n) copy.
+- **Reverse.** Drop the rule; `var b = g` in a fn compiles to the copy again, and the migrated `.clone()`s stay valid.
 
 ## 626. `Subset` is plain std: GAPS:7 closes (stdlib, 2026-11-24)
 
