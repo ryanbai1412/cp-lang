@@ -243,7 +243,7 @@ class CheckCacheTest(unittest.TestCase):
             r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
                                capture_output=True, text=True, env=env)
             self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn("push rejected (try 1 of 5)", r.stderr)
+            self.assertIn("retry: try 1 of 5 failed: push", r.stderr)
             self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
 
     def test_land_refuses_when_nothing_is_ahead_of_main(self):

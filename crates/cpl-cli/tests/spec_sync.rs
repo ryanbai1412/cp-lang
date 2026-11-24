@@ -54,7 +54,7 @@ fn names(list: &[&str]) -> BTreeSet<String> {
 fn the_spec_and_the_binary_name_the_same_commands_but_a_shrinking_list() {
     let spec = spec_commands();
     let cli = cli_commands();
-    assert_eq!(cli.len(), 27, "{cli:?}");
+    assert_eq!(cli.len(), 28, "{cli:?}");
     let spec_only: BTreeSet<String> = spec.difference(&cli).cloned().collect();
     let cli_only: BTreeSet<String> = cli.difference(&spec).cloned().collect();
     assert_eq!(

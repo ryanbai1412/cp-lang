@@ -388,7 +388,7 @@ fn every_command_has_help_and_rejects_an_unknown_option() {
         .filter(|line| !line.starts_with("   "))
         .filter_map(|line| line.split_whitespace().next())
         .collect();
-    assert_eq!(commands.len(), 27, "{help}");
+    assert_eq!(commands.len(), 28, "{help}");
     for command in commands {
         helps(command);
         let out = cpl(Path::new("."), &[command, "--no-such-option"]);
@@ -413,7 +413,7 @@ fn help_json_lists_every_command_with_its_usage_summary_json_and_help() {
     assert_eq!(out.status.code(), Some(0));
     let json = cpl_json::parse(&text(&out.stdout)).expect("cpl --help --json is JSON");
     let commands = json.at(&["commands"]).as_array().unwrap();
-    assert_eq!(commands.len(), 27);
+    assert_eq!(commands.len(), 28);
     let listed = text(&cpl(Path::new("."), &["--help"]).stdout);
     let no_json: Vec<_> = commands
         .iter()
