@@ -96,7 +96,7 @@ let n: 1..=20 = read()
 
 fn f(x: Int) -> Int = x + 1
 
-@brute(f)
+@alt(f)
 fn f_slow(x: Int) -> Int = x + OFFSET
 
 print(f(n))

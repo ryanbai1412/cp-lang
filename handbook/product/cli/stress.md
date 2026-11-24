@@ -35,8 +35,7 @@ a time-out, and `--explain` names the loop whose state stopped changing.
 line, and one from the fix back to a clean run. Today stress, shrinking,
 saving, checkers, interactors, the reader-checked generator and `--explain`
 work as above. The gaps, each a use case: `--explain` is a flag rather than
-part of every failure; `@brute(f)` and `@alt(f)` are two spellings of one
-idea; 30 input shapes in the corpus can't be generated yet
+part of every failure; 30 input shapes in the corpus can't be generated yet
 (`crates/cpl-stress/tests/generate-gaps.txt`); and nothing measures that
 generated cases reach the edges (`n = 1`, all equal, the maximum value).
 

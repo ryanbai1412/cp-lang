@@ -1,5 +1,5 @@
 //! The debugger end to end, through the `cpl` binary: `debug(...)`,
-//! `cpl run --trace`, and `cpl stress` with a file's own `@brute`,
+//! `cpl run --trace`, and `cpl stress` with a file's own `@alt`,
 //! `@check` and `@interactor` under `@!multitest`.
 //!
 //! The programs in `tests/debugger/` are Codeforces Round 1132 solutions

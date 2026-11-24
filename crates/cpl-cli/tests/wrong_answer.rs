@@ -209,7 +209,7 @@ fn a_clean_stress_points_at_the_bound_lint_and_its_saved_witness() {
     assert!(tested.contains("0/1 passed"), "{tested}");
 }
 
-/// A swapped-in `@brute(f)` fn that traps is blamed as an `@alt(program)`
+/// A swapped-in `@alt(f)` fn that traps is blamed as an `@alt(program)`
 /// brute is: its error, line and locals, in text and in JSON (`stress/U18`).
 #[test]
 fn a_swapped_in_brute_fn_that_traps_is_blamed_with_its_line_and_locals() {
@@ -220,7 +220,7 @@ fn a_swapped_in_brute_fn_that_traps_is_blamed_with_its_line_and_locals() {
     for i in 0..n: m = max(m, a[i])
     m
 
-@brute(best)
+@alt(best)
 fn best_slow() -> Int:
     var m = 0
     for i in 0..n: m = max(m, a[i + 1])

@@ -333,7 +333,7 @@ fn items_are_top_level_statements_with_their_blocks() {
 
 #[test]
 fn decorators_and_else_branches_stay_with_their_item() {
-    let src = "@memo\n@brute(slow)\nfn f(x: Int) -> Int:\n    x\nif a:\n    b\nelif c:\n    d\nelse:\n    e\nprint(1)\n";
+    let src = "@memo\n@alt(slow)\nfn f(x: Int) -> Int:\n    x\nif a:\n    b\nelif c:\n    d\nelse:\n    e\nprint(1)\n";
     let items = item_texts(src);
     assert_eq!(items.len(), 3);
     assert!(items[0].starts_with("@memo") && items[0].ends_with("    x"));

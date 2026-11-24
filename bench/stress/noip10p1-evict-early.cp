@@ -23,7 +23,7 @@ fn misses(m: Int, words: List<Int>) -> Int:
             head += 1
     count
 
-@brute(misses)
+@alt(misses)
 fn misses_slow(m: Int, words: List<Int>) -> Int:
     var memory: List<Int> = []
     var count = 0

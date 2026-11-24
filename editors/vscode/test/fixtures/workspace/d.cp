@@ -6,7 +6,7 @@ let a: [I]Int = read()
 var pre: [I.cuts]Int = 0
 for i in I: pre[i.r] = pre[i.l] + a[i]
 
-@brute(count_brute)
+@alt(count_brute)
 fn count() -> Int:
     var total = 0
     var lo = I.first!

@@ -10,7 +10,7 @@ for i in P:
 fn range_sum(l: P, r: P) -> Int:
     if r < l: return 0 else: return pre[r - P.first!] - pre[l - P.first!]
 
-@brute(range_sum)
+@alt(range_sum)
 fn range_sum_slow(l: P, r: P) -> Int:
     sum(a[i] for i in l..=r)
 

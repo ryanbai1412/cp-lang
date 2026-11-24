@@ -6,7 +6,7 @@ fn total(a: List<Int>) -> Int:
     for x in a[1..a.len - 1]: cur = if x >= cur: x else: cur + x  // planted
     cur
 
-@brute(total)
+@alt(total)
 fn total_slow(a: List<Int>) -> Int:
     var cur = a[0]
     for x in a[1..a.len]: cur = if x >= cur: x else: cur + x

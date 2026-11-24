@@ -12,7 +12,7 @@ fn best(items: List<(w: Int, v: Int)>) -> Int:
         for total in v..=top: lightest[total] min= lightest[total - v] + w  // planted
     [total for total in 0..=top if lightest[total] != None and lightest[total]! <= cap].max()!
 
-@brute(best)
+@alt(best)
 fn best_slow(items: List<(w: Int, v: Int)>) -> Int:
     var top = 0
     for mask in 0..(1 << items.len):

@@ -989,7 +989,7 @@ fn a_swapped_in_brute_builds_once_and_leaves_no_file_beside_the_source() {
     }
     let dir = scratch("part-brute");
     let file = dir.join("p.cp");
-    let src = "fn f(n: Int) -> Int = n * 2\n\n@brute(f)\nfn f_slow(n: Int) -> Int = n + n\n\nlet n: 1..=9 = read()\nprint(f(n))\n";
+    let src = "fn f(n: Int) -> Int = n * 2\n\n@alt(f)\nfn f_slow(n: Int) -> Int = n + n\n\nlet n: 1..=9 = read()\nprint(f(n))\n";
     std::fs::write(&file, src).unwrap();
     let swapped = crate::cli::swap_in_part_brutes(src).unwrap();
     let first = crate::cli::build_part_brute(&file, "p.cp", &swapped).unwrap();

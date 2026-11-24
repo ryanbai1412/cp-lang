@@ -11,7 +11,7 @@ fn operations(a: List<Int>) -> Int:
             distinct += 1
     2 * distinct - 1
 
-@brute(operations)
+@alt(operations)
 fn operations_slow(a: List<Int>) -> Int = 2 * Set(a).len - 1
 
 @!multitest

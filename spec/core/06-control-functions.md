@@ -142,8 +142,8 @@ library or by this spec:
 - `@get`: an \(O(1)\) read-only method called without parentheses. (R06.4.2)
 - `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool
   roles (`tools/stress.md`); the item is otherwise unchanged. The old
-  spellings `@alt(main)`, `@brute(main)` and `@checker` are E0503, naming
-  `@alt(program)` and `@check`. Under `@!multitest` a `@check` runs
+  spellings `@alt(main)`, `@brute(main)`, `@brute(f)` and `@checker` are
+  E0503, naming `@alt(program)`, `@alt(f)` and `@check`. Under `@!multitest` a `@check` runs
   once per case, its `read()` over that case's input and its output
   over that case's printed lines. (R06.4.3)
 - `@cache` on a struct field: compiler-safe interior mutability with an

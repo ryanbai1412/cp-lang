@@ -3,7 +3,7 @@
 //   i, removing it splits the tree; add i to x_v for every v in the larger part. Print x_1..x_N.
 // Solution: root at 1. The edge above child c adds i to sub(c) when size(c) > N - size(c), else to
 //   everything outside sub(c): add i to a base and -i at c. Pushing the offsets down in preorder
-//   gives every x in O(N); the @brute redoes each cut by DFS in O(N^2).
+//   gives every x in O(N); the @alt redoes each cut by DFS in O(N^2).
 
 let n: 3..=2e5 = read()
 domain V = 1..=n

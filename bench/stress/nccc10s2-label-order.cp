@@ -25,7 +25,7 @@ fn longest() -> Int:
         best[u] = ([best[v] for v in L if v != u and ahead[v, u]].max() ?? 0) + 1
     [best[u] for u in L].max()!
 
-@brute(longest)
+@alt(longest)
 fn longest_slow() -> Int:
     let ahead = ahead_in()
     var best: [L]Int = 0

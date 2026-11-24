@@ -5,7 +5,7 @@
 // Solution: lay the cakes in some order and cut at every multiple of T = S / M: that costs M
 //   minus the number of prefixes whose sum is a multiple of T, and is optimal. dp[s] is the most
 //   such prefixes over orders of the cakes in s (rem[s] = sum mod T); answer M - dp[full].
-//   O(2^N N). The @brute partitions into groups with sums divisible by T over submasks, O(3^N).
+//   O(2^N N). The @alt partitions into groups with sums divisible by T over submasks, O(3^N).
 
 let (n, m): (1..=20, 1..=100) = read()
 domain I = 0..n

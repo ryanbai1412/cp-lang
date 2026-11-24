@@ -1,5 +1,5 @@
 //! The seeded-bug benchmark: every `bench/stress/<bug>.cp` is a port with
-//! a classic bug planted in it and the correct fn as its `@brute`. One
+//! a classic bug planted in it and the correct fn as its `@alt`. One
 //! `cpl stress <bug>.cp` must find the bug and shrink it to
 //! `bench/stress/<bug>.min`, the smallest input that shows it. The time to
 //! that minimal counterexample is printed per bug, with the median.

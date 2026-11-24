@@ -26,7 +26,7 @@ fn way() -> Int:
     let walk: [V]List<V> = [V] u => [v for v in out[u] if safe[u]]  // planted
     if safe[s]: bfs(v => walk[v], from: [s])[t] ?? -1 else: -1
 
-@brute(way)
+@alt(way)
 fn way_slow() -> Int:
     let walk: [V]List<V> = [V] u => [v for v in out[u] if safe[u] and safe[v]]
     if safe[s]: bfs(v => walk[v], from: [s])[t] ?? -1 else: -1

@@ -15,7 +15,7 @@ the trace viewer.
 ## What good looks like
 
 A contestant's answer to a merging problem is wrong. They add a slow
-version of the same function marked `@brute(effort)` and run
+version of the same function marked `@alt(effort)` and run
 `cpl stress effort.cp --explain`. Within a second it prints a three-number
 input on which the two disagree, saves it as a test, and says that
 `heap.pop()` at line 12 takes the end the `MaxHeap` declared at line 8
@@ -77,7 +77,7 @@ that check them.
 
 | Owns | Does not own (owner) |
 |---|---|
-| `cpl stress`: input generation from typed `read()`s, `@gen` generators, `@alt` and `@brute` comparison, `@check` checkers, `@interactor` judges, shrinking, seeds, saved cases (`crates/cpl-stress`) | What those decorators mean in the language (`spec/lib/random-stress.md`, spec) |
+| `cpl stress`: input generation from typed `read()`s, `@gen` generators, `@alt` comparison, `@check` checkers, `@interactor` judges, shrinking, seeds, saved cases (`crates/cpl-stress`) | What those decorators mean in the language (`spec/lib/random-stress.md`, spec) |
 | `cpl stress --explain`: the first divergence and the lines it blames | The interpreter and VM the trace hooks into (`crates/cpl-interp` outside the trace files, compiler) |
 | Trace recording, the step log, checkpoints, windows, replay of an edited call (`cpl run --trace`, `--live`, `cpl replay`) | Moving constructs onto the VM (compiler, tech-debt); the debugger reports what the trace still needs from the tree-walker |
 | The time-travel debug adapter `cpl dap` and how it behaves | Editor extensions that host it (`editors/`, tools) |

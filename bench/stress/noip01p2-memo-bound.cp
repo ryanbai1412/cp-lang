@@ -9,7 +9,7 @@ fn ways(total: Int, parts: Int) -> Int:
     if total <= parts: return 0  // planted
     ways(total - 1, parts - 1) + ways(total - parts, parts)
 
-@brute(ways)
+@alt(ways)
 fn ways_slow(total: Int, parts: Int) -> Int:
     fn count(left: Int, parts: Int, least: Int) -> Int:
         if parts == 0: return Int(left == 0)

@@ -159,8 +159,8 @@ Evidence: conformance `spec/conformance/core-09/stress-cache-cold-disagrees.cp`
 ### stress/U27: one spelling for "the slow version of"
 Need: write the brute without wondering which decorator it is.
 Design: `@alt(f)` and `@alt(program)` only.
-Milestone: M1-differentiating. Status: gap (`@brute(f)` is still accepted and the report says `@alt`)
-Evidence: gap
+Milestone: M1-differentiating. Status: supported
+Evidence: conformance `spec/conformance/core-06/brute-fn-is-removed.cp`
 
 ### stress/U28: stress passes but the judge says WA at maximum size
 Need: find the overflow or limit bug that only maximum-size input reaches, when small cases all agree.

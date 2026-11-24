@@ -16,7 +16,7 @@ fn needed(coins: List<Int>) -> Int:
                 if let b = a.back(c) and payable[b]: payable[a] = true
     needed
 
-@brute(needed)
+@alt(needed)
 fn needed_slow(coins: List<Int>) -> Int:
     var count = 0
     for c in Set(coins):

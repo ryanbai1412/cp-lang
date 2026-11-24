@@ -302,7 +302,6 @@ impl<'a> Parser<'a> {
                 )),
             );
         }
-        // Decorator arguments v2.2 took away.
         let removed = match name.text.as_str() {
             "memo" => args.iter().find_map(|arg| match &arg.value.kind {
                 ExprKind::Name(kind) if arg.name.is_none() && (kind == "flat" || kind == "hash") => Some((
@@ -321,12 +320,14 @@ impl<'a> Parser<'a> {
                     )
                 }),
             "alt" | "brute"
-                if matches!(args.as_slice(), [arg] if arg.name.is_none()
+                if name.text == "brute"
+                    || matches!(args.as_slice(), [arg] if arg.name.is_none()
                     && matches!(&arg.value.kind, ExprKind::Name(f) if f == "main")) =>
             {
+                let old = if name.text == "alt" { "@alt(main)" } else { "@brute" };
                 Some((
-                    format!("`@{}(main)` was removed in CP Lang 0.3; write `@alt(program)`", name.text),
-                    "`@alt(program)` marks a whole alternative program for `cpl stress`",
+                    format!("`{old}` was removed in CP Lang 0.3; write `@alt(program)` or `@alt(f)`"),
+                    "`@alt(program)` marks a whole slow program for `cpl stress`, `@alt(f)` a slow `f`",
                 ))
             }
             "checker" => Some((

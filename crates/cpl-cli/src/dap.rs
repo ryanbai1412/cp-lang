@@ -678,7 +678,7 @@ impl Session {
                 };
                 let replayed = match self.brute {
                     true => {
-                        Err("replay runs the solution: this session debugs the @brute".to_string())
+                        Err("replay runs the solution: this session debugs the @alt".to_string())
                     }
                     false => crate::replay::replay_call(
                         &self.program_path,

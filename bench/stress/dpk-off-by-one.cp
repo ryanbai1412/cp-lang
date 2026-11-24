@@ -12,7 +12,7 @@ fn first_wins(k: Int, moves: List<Int>) -> Bool:
             if a < p and not wins[p - a]: wins[p] = true  // planted
     wins[k]
 
-@brute(first_wins)
+@alt(first_wins)
 fn first_wins_slow(k: Int, moves: List<Int>) -> Bool =
     moves.any(a => a <= k and not first_wins_slow(k - a, moves))
 

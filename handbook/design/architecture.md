@@ -238,7 +238,7 @@ that enforces it. A phase that drops what a concern needs is a bug.
 | Explain | why each layout, check and inline was chosen | `cpl explain` covers all of them | explain snapshots |
 | Judge targets | profile (standard, flags, stack, ISA) flows to codegen | one profile per supported judge | judge profile tests |
 | Determinism | no hash-order or address dependence | identical bytes on rebuild | build twice and compare |
-| Stress testing | declared input types become a typed input schema; test roles (`@brute`, `@alt`, `@check`, `@interactor`) are program-model queries; seeded determinism | a generator and constraint-respecting shrinker for every input type; first diverging event reported, not just output; counterexample to a false conjecture in under 10 s | `cpl stress` cases; time-to-counterexample drill |
+| Stress testing | declared input types become a typed input schema; test roles (`@alt`, `@check`, `@interactor`) are program-model queries; seeded determinism | a generator and constraint-respecting shrinker for every input type; first diverging event reported, not just output; counterexample to a false conjecture in under 10 s | `cpl stress` cases; time-to-counterexample drill |
 | Spec traceability | rule ID from spec to diagnostic, test and docs | every rule has a case | `conformance.py --rules` |
 | Library power | no name checks in the compiler | intrinsics table only | name-ban gate; no-privilege test |
 

@@ -7,7 +7,7 @@ fn counts(a: List<Int>) -> List<Int>:
     for x in a: cnt[x] += 1
     [cnt[i + 1] for i in 0..a.len]  // planted
 
-@brute(counts)
+@alt(counts)
 fn counts_slow(a: List<Int>) -> List<Int> =
     [a.count(y => y == x) for x in a]
 

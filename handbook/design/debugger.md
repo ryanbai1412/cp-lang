@@ -13,10 +13,10 @@ qualities and suites are in `handbook/domains/debugger.md`.
 ## A run through the parts
 
 `cpl stress sum.cp --explain --trace` on a file with a solution and a
-`@brute`:
+`@alt` fn:
 
 1. **Find the program's parts.** `crates/cpl-stress/src/program.rs` reads
-   the decorators: the solution, its `@alt`/`@brute`, any `@gen`, `@check`
+   the decorators: the solution, its `@alt`, any `@gen`, `@check`
    and `@interactor`.
 2. **Generate inputs.** `spec.rs` turns the typed `read()` declarations
    (`let n: 1..=5 = read()`, `let a: [n]0..=9 = read()`) into an

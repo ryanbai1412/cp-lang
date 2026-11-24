@@ -720,7 +720,7 @@ fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
     );
     assert!(!text.contains("cpl locate"), "no part to locate: {text}");
     // A file that pairs a part with its alt is told which call of the part is wrong.
-    let part = "fn f(n: Int) -> Int = if n == 3: 0 else: n\n@brute(f)\nfn f_slow(n: Int) -> Int = n\nlet n: 1..=9 = read()\nprint(f(n))\n";
+    let part = "fn f(n: Int) -> Int = if n == 3: 0 else: n\n@alt(f)\nfn f_slow(n: Int) -> Int = n\nlet n: 1..=9 = read()\nprint(f(n))\n";
     let text = stress("narrow-part-wrong", part);
     assert!(
         text.contains("first wrong call: `f(n: 3)`")

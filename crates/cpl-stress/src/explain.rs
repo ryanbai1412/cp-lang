@@ -29,7 +29,7 @@ pub fn trap_report(path: &Path, input: &str, brute: bool, json: bool) -> Option<
 }
 
 /// [`trap_report`] of `text` in place of the file's own source, such as the
-/// file with its `@brute(f)` fns swapped in, whose lines stay where they were.
+/// file with its `@alt(f)` fns swapped in, whose lines stay where they were.
 /// With `stack_limit`, it runs on the calling thread (wasm), without the
 /// locals, which take a second run on a thread of its own.
 pub fn trap_report_in(

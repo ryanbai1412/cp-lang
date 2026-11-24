@@ -9,7 +9,7 @@ fn hankson(a0: Int, a1: Int, b0: Int, b1: Int) -> Int:
         if gcd(x, a0) == a1 and lcm(x, b0) == b1: found += 1
     found
 
-@brute(hankson)
+@alt(hankson)
 fn hankson_slow(a0: Int, a1: Int, b0: Int, b1: Int) -> Int =
     divisors(b1).count(x => gcd(x, a0) == a1 and lcm(x, b0) == b1)
 

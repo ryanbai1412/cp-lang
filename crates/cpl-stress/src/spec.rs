@@ -663,7 +663,7 @@ impl InputSpec {
             // A reader's lines, like the interactor's, are offset from
             // its own item.
             builder.base = base;
-            // Decorated fns (`@brute`, `@check`, `@interactor`)
+            // Decorated fns (`@alt`, `@check`, `@interactor`)
             // read for themselves; the divider splits the input.
             if let Some(divider) = stmt.decorators.iter().find(|d| d.name.text == "multitest") {
                 if above.is_none() {
@@ -857,7 +857,7 @@ impl InputSpec {
                     }
                 }
                 // A fn the program calls reads input no field
-                // describes; `@brute`, `@check` and the like read for
+                // describes; `@alt`, `@check` and the like read for
                 // themselves.
                 StmtKind::Fn(decl)
                     if (in_judge || judge.is_none())

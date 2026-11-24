@@ -6,7 +6,7 @@ let (a, b): (0..=1e18, 1..=1e9) = read()
 
 fn boxes(a: Int, b: Int) -> Int = floor(F64(a) / F64(b))  // planted
 
-@brute(boxes)
+@alt(boxes)
 fn boxes_slow(a: Int, b: Int) -> Int = a / b
 
 print(boxes(a, b))

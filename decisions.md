@@ -8534,3 +8534,8 @@ all components. `dfs_tree` already roots each vertex outside the component on it
 matches it. Cost: a wrong `from` no longer traps, so a program that wanted one tree per given root
 learns of the overlap only from `t.roots`. Reverse by restoring the trap and the empty-`from` case.
 
+## 455. `@brute(f)` is removed; `@alt(f)` is the one spelling (debugger, 2026-11-24)
+
+- **Call.** `@brute`, with any argument, is E0503 naming `@alt(f)` and `@alt(program)`, as `@brute(main)` already was. The corpus, the seeded stress bench and the tests now write `@alt(f)`.
+- **Why.** The two meant the same thing and the report already said `@alt`, so a contestant had to remember which decorator to write for one idea (use case stress/U27, R06.4.3's closed decorator set).
+- **Reverse.** Drop the `"brute"` arm of the removed-decorator match in `crates/cpl-syntax/src/parser/stmt.rs`.

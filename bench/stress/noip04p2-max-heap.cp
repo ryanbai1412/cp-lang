@@ -14,7 +14,7 @@ fn effort(piles: List<Int>) -> Int:
         heap.push(merged)
     total
 
-@brute(effort)
+@alt(effort)
 fn effort_slow(piles: List<Int>) -> Int:
     var left = piles
     var total = 0

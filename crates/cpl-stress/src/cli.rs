@@ -217,7 +217,7 @@ pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
     Program::resolve(fast.unwrap_or(file)).map_err(|e| e.to_string())
 }
 
-/// The file with each `@brute(f) fn g` put in place of `fn f`: `g` takes
+/// The file with each `@alt(f) fn g` put in place of `fn f`: `g` takes
 /// `f`'s name, `f` steps aside and the decorator is blanked. Lines stay
 /// where they were, so `debug(...)` lines still pair up. `None` when the
 /// file pairs no fn with a brute.
@@ -599,7 +599,7 @@ pub fn run_with(
             return 1;
         }
     }
-    // `@brute(f) fn g`: the brute is the whole file with `g` in `f`'s place.
+    // `@alt(f) fn g`: the brute is the whole file with `g` in `f`'s place.
     let part_brute = match (
         &args.brute,
         &own_brute,
@@ -803,7 +803,7 @@ pub fn run_with(
         _ => None,
     };
     // Where a debug run of the brute stops: its own `@alt(program)` fn, or
-    // the file with its `@brute(f)` fns swapped in.
+    // the file with its `@alt(f)` fns swapped in.
     let brute_trap = |input: &str, json: bool| match (&own_brute, &part_brute) {
         _ if args.fast.is_some() => None,
         (Some(_), _) => crate::explain::trap_report(&args.file, input, true, json),
@@ -1159,11 +1159,11 @@ mod tests {
 
     #[test]
     fn a_recursive_brute_calls_itself_by_the_name_it_takes() {
-        let src = "fn ways(n: Int) -> Int = n\n@brute(ways)\nfn slow(n: Int) -> Int = if n <= 1: 1 else: slow(n - 1) + slow(n - 2)\nprint(ways(read()))\n";
+        let src = "fn ways(n: Int) -> Int = n\n@alt(ways)\nfn slow(n: Int) -> Int = if n <= 1: 1 else: slow(n - 1) + slow(n - 2)\nprint(ways(read()))\n";
         let swapped = swap_in_part_brutes(src).expect("a pair");
         assert_eq!(
             swapped,
-            "fn ways_cpl_fast(n: Int) -> Int = n\n            \nfn ways(n: Int) -> Int = if n <= 1: 1 else: ways(n - 1) + ways(n - 2)\nprint(ways(read()))\n"
+            "fn ways_cpl_fast(n: Int) -> Int = n\n          \nfn ways(n: Int) -> Int = if n <= 1: 1 else: ways(n - 1) + ways(n - 2)\nprint(ways(read()))\n"
         );
     }
 

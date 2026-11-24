@@ -31,7 +31,7 @@ fn volumes(height: [Pillar]1..=50) -> List<Int>:
     [v.idx for v in Volume if reach[v]]
 
 // Every order, with the textbook prefix-max / suffix-max water count.
-@brute(volumes)
+@alt(volumes)
 fn volumes_by_orders(height: [Pillar]1..=50) -> List<Int>:
     var seen: [Volume]Bool = false
     var order: List<Int> = []

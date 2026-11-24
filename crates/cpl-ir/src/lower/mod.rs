@@ -143,8 +143,8 @@ fn decorated(analysis: &Analysis, wanted: fn(&ast::Decorator) -> bool) -> Option
     })
 }
 
-/// `@alt(program)`, `@alt(program)`, or a bare `@brute` / `@alt`: a slow
-/// program to compare the whole file with. `@brute(part)` / `@alt(part)`
+/// `@alt(program)`, `@alt(program)`, or a bare `@alt` / `@alt`: a slow
+/// program to compare the whole file with. `@alt(part)` / `@alt(part)`
 /// pairs one fn with another and is not one of these.
 fn is_whole_brute(decorator: &ast::Decorator) -> bool {
     matches!(decorator.name.text.as_str(), "brute" | "alt")

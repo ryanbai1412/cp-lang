@@ -8,7 +8,7 @@ fn cubes(a: List<Int>) -> Int:
     for x in a: s = (s + x * x * x % MOD) % MOD  // planted
     s
 
-@brute(cubes)
+@alt(cubes)
 fn cubes_slow(a: List<Int>) -> Int:
     var s = 0
     for x in a: s = (s + x * x % MOD * x % MOD) % MOD

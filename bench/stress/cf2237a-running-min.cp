@@ -10,7 +10,7 @@ fn prefix_min_sum(a: List<Int>) -> Int:
         total += lo
     total
 
-@brute(prefix_min_sum)
+@alt(prefix_min_sum)
 fn prefix_min_sum_slow(a: List<Int>) -> Int:
     var lo = a[0]
     var s = 0
