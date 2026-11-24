@@ -657,3 +657,66 @@ fn a_fed_body_that_never_stops_says_so_in_its_callback_type() {
     );
     assert!(calls[1].contains("-> int {"), "{cpp}");
 }
+
+/// The lines of `cpl_each_{name}`'s form that call a `cpl_each_` form.
+fn pusher_calls(cpp: &str, name: &str) -> Vec<String> {
+    let head = format!("int cpl_each_{name}(");
+    let form: Vec<&str> = cpp
+        .lines()
+        .skip_while(|l| !(l.starts_with("template") && l.contains(&head) && l.ends_with('{')))
+        .take_while(|l| *l != "}")
+        .collect();
+    assert!(!form.is_empty(), "no cpl_each_{name} in\n{cpp}");
+    form.iter()
+        .filter(|l| l.contains("= cpl_each_"))
+        .map(|l| l.to_string())
+        .collect()
+}
+
+#[test]
+fn a_recursive_generator_hands_itself_one_callback_type() {
+    let cpp = cpp(concat!(
+        "fn walk(n: Int) -> yields Int:\n    yield n\n",
+        "    if n > 0:\n        for x in walk(n - 1): yield x\n",
+        "fn f() -> Int:\n    for x in walk(10):\n        if x == 7: return x\n    0\n",
+        "print(f())\n",
+    ));
+    // A fresh lambda per level would make g++ instantiate the form forever.
+    let calls = pusher_calls(&cpp, "walk");
+    assert_eq!(calls.len(), 1, "{cpp}");
+    assert!(
+        calls[0].contains("cpl_each_walk(cpl::isub(n, 1), cpl::fn_ref([&]"),
+        "{cpp}"
+    );
+    assert_eq!(cpp.matches("cpl_each_walk(").count(), 3, "{cpp}");
+}
+
+#[test]
+fn mutually_recursive_generators_hand_on_one_callback_type() {
+    let cpp = cpp(concat!(
+        "fn odd(n: Int) -> yields Int:\n    if n > 0:\n        yield n\n",
+        "        for x in even(n - 1): yield x\n",
+        "fn even(n: Int) -> yields Int:\n    if n > 0:\n        yield -n\n",
+        "        for x in odd(n - 1): yield x\n",
+        "var s = 0\nfor x in odd(9): s += x\nprint(s)\n",
+    ));
+    for (name, other) in [("odd", "even"), ("even", "odd")] {
+        let calls = pusher_calls(&cpp, name);
+        assert_eq!(calls.len(), 1, "{cpp}");
+        assert!(calls[0].contains(&format!("cpl_each_{other}(")), "{cpp}");
+        assert!(calls[0].contains("cpl::fn_ref([&]"), "{cpp}");
+    }
+}
+
+#[test]
+fn a_generator_over_a_recursive_one_passes_its_own_lambda() {
+    let cpp = cpp(concat!(
+        "fn walk(n: Int) -> yields Int:\n    yield n\n",
+        "    if n > 0:\n        for x in walk(n - 1): yield x\n",
+        "fn twice() -> yields Int:\n    for x in walk(3): yield 2 * x\n",
+        "var s = 0\nfor x in twice(): s += x\nprint(s)\n",
+    ));
+    let calls = pusher_calls(&cpp, "twice");
+    assert_eq!(calls.len(), 1, "{cpp}");
+    assert!(calls[0].contains("cpl::fn_ref([&]"), "{cpp}");
+}
