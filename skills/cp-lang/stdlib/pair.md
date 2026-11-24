@@ -8,7 +8,7 @@ In prelude (no `use` needed): `Pair`.
 
 ## `struct Pair<V>(pub lo: V, pub hi: V)`
 
-An unordered pair `{lo, hi}` of distinct positions of `V`, `lo` before `hi`.
+An unordered pair of distinct positions `lo` and `hi` of `V`, `lo` before `hi`.
 
 - `fn new(u: V, v: V) -> Pair<V>` — \(O(1)\); The pair of `u` and `v`, in either order: the smaller position becomes `lo`.; traps: when `u == v`
 - `fn at(u: V, v: V) -> ?Pair<V>` — \(O(1)\); The pair of `u` and `v` in either order, or `None` when `u == v`: the non-trapping [`new`](Pair.new).

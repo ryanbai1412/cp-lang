@@ -2,7 +2,7 @@
 
 use std.math.{isqrt}
 
-/// An unordered pair `{lo, hi}` of distinct positions of `V`, `lo` before `hi`. `Pair<V>` is a
+/// An unordered pair of distinct positions `lo` and `hi` of `V`, `lo` before `hi`. `Pair<V>` is a
 /// domain of `V.count * (V.count - 1) / 2` positions, so `[Pair<V>]T` stores one value per pair,
 /// packed, with no diagonal and no mirrored half. It walks by `hi`, then by `lo`: `(0, 1)`,
 /// `(0, 2)`, `(1, 2)`, `(0, 3)`, ..., which is the order a lower triangle is given in (row `i`

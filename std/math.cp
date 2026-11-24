@@ -1297,7 +1297,7 @@ pub fn mult_order(a: Int, m: Int) -> ?Int:
         while t % p == 0 and pow_mod(a2, t / p, m) == 1: t /= p
     Some(t)
 
-/// The Jacobi symbol `(a / n)` in `{-1, 0, 1}` for odd `n > 0`; 0 exactly when `gcd(a, n) != 1`.
+/// The Jacobi symbol `(a / n)`, one of -1, 0 and 1, for odd `n > 0`; 0 exactly when `gcd(a, n) != 1`.
 ///
 /// For prime `n` it is the Legendre symbol. `a` may be any `Int`; `(a / 1) == 1`.
 ///
