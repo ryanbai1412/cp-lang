@@ -49,14 +49,25 @@ impl<'p> Compiler<'p, '_> {
     }
 }
 
-impl Compiler<'_, '_> {
+impl<'p> Compiler<'p, '_> {
+    /// Whether a call must lend its args: a fn value passed may reach a place
+    /// the call takes out, its `mut` args or a slot this frame holds lent.
+    #[inline(never)]
+    pub(super) fn call_must_lend(&self, fn_id: FnId, args: &'p [Arg]) -> bool {
+        let f = &self.program.fns[fn_id];
+        let has_fn_param =
+            (f.locals.iter().take(f.params.len())).any(|l| matches!(l.ty, Ty::Fn(..)));
+        let has_mut = f.params.iter().any(|p| p.mutable);
+        has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args)
+            || self.fn_args_reach_held(f, args)
+    }
+
     /// Whether a fn value among `args` may reach a slot this frame holds
     /// lent: the callee would call it while the lender's place is empty.
-    pub(super) fn fn_args_reach_held(&self, fn_id: FnId, args: &[Arg]) -> bool {
+    fn fn_args_reach_held(&self, f: &cpl_ir::Function, args: &[Arg]) -> bool {
         if self.held.is_empty() {
             return false;
         }
-        let f = &self.program.fns[fn_id];
         let held = |s: &Slot| self.held.contains(&(*s as u16));
         (args.iter().zip(&f.locals)).any(|(arg, param)| {
             if !param.ty.has_fn(self.program) {
