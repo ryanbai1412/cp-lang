@@ -250,14 +250,15 @@ class GatesTest(unittest.TestCase):
 
     def test_std_docs(self):
         doc = "/// Adds.\n/// cost: O(1)\n/// traps: never\n/// example: f(1) == 1\n"
-        files = {"std/a.cp": doc + "pub fn f(x: Int) -> Int = x\nstruct S(n: Int):\n    /// cost: O(n)\n    @get pub fn g(self) -> Int = 1\n",
+        files = {"std/a.cp": doc + "pub fn f(x: Int) -> Int = x\npub fn k<A: Ord<A> > (\n    x: A,\n) -> Int = 1\nstruct S(n: Int):\n    /// cost: O(n)\n    @get pub fn g(self) -> Int = 1\n",
                  "std/prelude.cp": "use std.a.{f, h}\n",
                  "spec/core/a.md": "`f(x)`\n"}
         with Tree(files) as t:
             got = [(p.where, p.what.split(" ")[0]) for p in run("std-docs")]
             self.assertIn(("std/prelude.cp", "`h`"), got)
-            self.assertIn(("std/a.cp:8", "`g`"), got)
-            self.assertEqual([p.where for p in run("std-docs", "--audit", str(t.root / "std/a.cp"))], ["std/a.cp:8"])
+            self.assertIn(("std/a.cp:11", "`g`"), got)
+            self.assertEqual([p for p in run("std-docs") if "return type" in p.what], [])
+            self.assertEqual([p.where for p in run("std-docs", "--audit", str(t.root / "std/a.cp"))], ["std/a.cp:6", "std/a.cp:11"])
             self.assertEqual(run("std-docs", "--stub", str(t.root / "std/a.cp")), [])
             self.assertIn("todo", t.read("std/a.cp"))
 

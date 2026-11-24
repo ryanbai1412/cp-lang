@@ -1399,3 +1399,68 @@ let b = s.advance(1)
 print("{s}", a, b)
 """
 out = "5 0 5"
+
+[case."Track/Undoing/push"]
+code = """
+domain V = 0..3
+fn add<S: Track<(V, V)>>(mut s: S, e: (V, V)) = s.push(e)
+var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1))
+add(mut u, (V(0), V(1)))
+add(mut u, (V(1), V(2)))
+print(u.state.components)
+"""
+out = "1"
+
+[case."Track/Undoing/pop"]
+code = """
+domain V = 0..3
+fn evict<S: Track<(V, V)>>(mut s: S, e: (V, V)) = s.pop(e)
+var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1))
+u.push((V(0), V(1)))
+u.push((V(1), V(2)))
+evict(mut u, (V(0), V(1)))
+print(u.state.components)
+"""
+out = "2"
+
+[case."Track/Tracked/push"]
+code = """
+fn add<S: Track<Int>>(mut s: S, x: Int) = s.push(x)
+var t = track(0, (mut s, x: Int) => s += x, (mut s, x: Int) => s -= x)
+add(mut t, 3)
+add(mut t, 4)
+print(t.state)
+"""
+out = "7"
+
+[case."Track/Tracked/pop"]
+code = """
+fn evict<S: Track<Int>>(mut s: S, x: Int) = s.pop(x)
+var t = track(0, (mut s, x: Int) => s += x, (mut s, x: Int) => s -= x)
+t.push(3)
+t.push(4)
+evict(mut t, 3)
+print(t.state)
+"""
+out = "4"
+
+[case."Track/SortedBag/push"]
+code = """
+use std.bag.{SortedBag}
+fn add<S: Track<Int>>(mut s: S, x: Int) = s.push(x)
+var b: SortedBag<Int> = SortedBag()
+add(mut b, 3)
+add(mut b, 3)
+print(b.len)
+"""
+out = "2"
+
+[case."Track/SortedBag/pop"]
+code = """
+use std.bag.{SortedBag}
+fn evict<S: Track<Int>>(mut s: S, x: Int) = s.pop(x)
+var b = SortedBag.of([3, 1, 3])
+evict(mut b, 3)
+print(b.to_list())
+"""
+out = "1 3"

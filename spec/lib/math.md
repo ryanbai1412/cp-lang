@@ -51,6 +51,10 @@ arithmetic-progression sums. In `proto/ports/ecnerwala/`, `gcd`/`ext_gcd`
 appear in 11 submissions and `floor_sum` is a standard AtCoder Library
 building block.
 
+The integer helpers are prelude fns: `isqrt(x)` is the floor square root, `bit_len(x)`
+the number of bits needed to write `x >= 0`, and `minmax(a, b)` the two values in order.
+Each is \(O(1)\).
+
 Second, **primality, sieves, factorization and multiplicative functions**:
 three distinct cost regimes appear in contests. For many queries up to
 `n <= 2e7`, a linear sieve (`Sieve(n)`) gives \(O(1)\) primality, \(O(\log x)\)

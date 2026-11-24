@@ -303,7 +303,7 @@ for d in divisors(n):
 | `product(a, b)` | `Seq<(T, U)>`, every `(x, y)` with `x` from `a` and `y` from `b`, `a` outer | \(O(1)\) per step; `b` is walked once per `x`, so it must be `Indexed` (E0606 on a generator) (R07.7.12) |
 | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices (R07.7.9) |
 | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range (R07.7.10) |
-| `s.step(k)` | every k-th element | ranges and indexed (R07.7.11) |
+| `s.step(k)` | every k-th element, a `Stepped` view | ranges and indexed (R07.7.11) |
 
 **Parentheses mean work.** Only \(O(1)\) members read without `()`: `@get`
 properties such as `.len`, and views and generators, which cost \(O(1)\) to
