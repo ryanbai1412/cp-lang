@@ -5,6 +5,7 @@
 // Solution: crossings are sum over letters c of cntS[c] * cntT[c]. Changing a T letter x into y
 //   gains cntS[y] - cntS[x], so the best gain is max over all letters of cntS minus min over
 //   letters in T of cntS, if positive. O(|S| + |T|).
+// Bounds: n, m: 1..=1e6
 // original: corpus/submissions/4223424.cpp
 let (n, m): (1..=1_000_000, 1..=1_000_000) = read()
 let s: [domain S]Char = read()

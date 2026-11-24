@@ -3,6 +3,7 @@
 //   where the sum on the left equals the sum on the right, or "Andrew is sad." if none.
 // Solution: scores are positive, so prefix sums increase and at most one is half the total:
 //   scan for the first prefix with 2 * prefix == total. O(n).
+// Bounds: n: 1..=1e6; score: 1..=100
 // original: corpus/submissions/4264907.cpp
 let n: 1..=1_000_000 = read()
 domain V = 1..=n

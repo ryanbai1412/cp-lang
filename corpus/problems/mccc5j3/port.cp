@@ -4,6 +4,7 @@
 // Solution: the a_i are distinct, so b_j has at most one partner a_i = M - b_j, and the b_j are
 //   distinct, so the good pairs are already disjoint: count them. A Map takes each value of a
 //   to its position; for each j look up M - b_j and check |i - j| >= K. O(n).
+// Bounds: n: 1..=2e5; k: 0..=199_999; m: 1..=1e18; a, b: 1..=m
 // original: corpus/submissions/5333116.cpp
 let (n, k, m): (1..=200_000, 0..=199_999, 1..=1e18) = read()
 assert k < n

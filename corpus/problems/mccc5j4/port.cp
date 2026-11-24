@@ -5,6 +5,7 @@
 // Solution: with r left to spend on w asterisks it is possible iff w <= r <= 26w. Fill the
 //   asterisks left to right, each with the smallest letter that leaves the rest feasible:
 //   max(1, r - 26(w - 1)). O(|S|).
+// Bounds: goal: 1..=1e9
 // original: corpus/submissions/5333145.cpp
 let goal: 1..=1_000_000_000 = read()
 var s: [domain P]Char = read()

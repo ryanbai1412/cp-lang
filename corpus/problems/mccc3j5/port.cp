@@ -3,6 +3,7 @@
 //   most resolutions that can be kept (a maximum independent set).
 // Solution: try all 2^N subsets (`Subset<V>`), keep those holding no restricted pair, and print
 //   the largest popcount. O(2^N M).
+// Bounds: n: 1..=18; m: 0..=153
 // original: corpus/submissions/4223449.cpp
 // Bounds: n: 1..=18; m: 0..=153; restricted.u, restricted.v: 1..=n
 let (n, m): (1..=18, 0..=153) = read()
