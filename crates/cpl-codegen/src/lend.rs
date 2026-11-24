@@ -325,20 +325,12 @@ impl<'p> Emitter<'p> {
         tail: Option<&Tail>,
     ) -> Option<[&'e Expr; 2]> {
         let (map, key) = entry_read(init)?;
-        let value_ty = match &map.ty {
-            Ty::Map(_, v) | Ty::HashMap(_, v) => v,
-            _ => return None,
-        };
         let pattern_temp = self.locals()[slot].name.is_empty();
         let named = tail.is_some_and(|tail| tail.lendable);
-        let plain = matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_));
-        (self.closure_id.is_none()
-            && (pattern_temp || named)
-            && plain
-            && !value_ty.is_scalar()
-            && !self.spent.contains(&slot)
-            && self.source_stays(slot, map, tail))
-        .then_some([map, key])
+        let (Ty::Map(_, value) | Ty::HashMap(_, value)) = &map.ty else {
+            return None;
+        };
+        ((pattern_temp || named) && self.lends_entry(slot, map, value, tail)).then_some([map, key])
     }
 
     /// Writes `const auto t = cpl::map_lend(m, k); const cpp& name = t ? *t : (own = d);`
@@ -358,14 +350,7 @@ impl<'p> Emitter<'p> {
         let Some((map, key)) = entry_read(got) else {
             return false;
         };
-        let plain = matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_));
-        if got.ty == init.ty
-            || init.ty.is_scalar()
-            || self.closure_id.is_some()
-            || !plain
-            || self.spent.contains(&slot)
-            || !self.source_stays(slot, map, tail)
-        {
+        if got.ty == init.ty || !self.lends_entry(slot, map, &init.ty, tail) {
             return false;
         }
         self.need("map_lend");

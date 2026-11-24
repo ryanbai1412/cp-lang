@@ -335,6 +335,24 @@ impl crate::emit::Emitter<'_> {
             && self.source_change(slot, init, tail).is_none()
     }
 
+    /// Whether the `let` of `slot` from an entry of `map` (`m.get(k)`, or
+    /// `m.get(k) ?? d`), a `value` once found, can point into `map` instead
+    /// of copying the entry: the general rule of [`Emitter::lends`], asked
+    /// of the map itself.
+    pub(crate) fn lends_entry(
+        &self,
+        slot: usize,
+        map: &Expr,
+        value: &Ty,
+        tail: Option<&Tail>,
+    ) -> bool {
+        self.closure_id.is_none()
+            && !value.is_scalar()
+            && matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_))
+            && !self.spent.contains(&slot)
+            && self.source_stays(slot, map, tail)
+    }
+
     /// Why the `let` of `slot` from `init` copies, for `cpl explain`: the
     /// table's reason ([`Emitter::source_change`]) when it has one.
     pub(crate) fn copy_reason(
