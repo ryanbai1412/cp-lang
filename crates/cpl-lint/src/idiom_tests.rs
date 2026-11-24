@@ -407,3 +407,207 @@ fn a_list_only_the_checker_types_is_still_an_unproven_index() {
     assert_eq!(found.len(), 1, "{found:?}");
     assert!(found[0].message.contains("xs["), "{}", found[0].message);
 }
+
+#[test]
+fn newcomer_fixes_still_check() {
+    // n07: `var lo` and `var hi` are two top-level items; `hi`'s text was read at `lo`'s offset.
+    let search = "let k = 10\nvar lo = 1\nvar hi = 1000000001\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if mid * 2 < k:\n        lo = mid + 1\n    else:\n        hi = mid\nprint(lo)\n";
+    let out = fixed(search);
+    assert!(
+        out.contains("(1..1000000001).first_true(mid => mid * 2 >= k)"),
+        "{out}"
+    );
+    // n25: `all`/`any` take a predicate, not a generator. (n25's own mirrored
+    // compare is `palindrome_by_hand`, which supersedes the search.)
+    let palindrome = "let s: Str = \"abba\"\nlet n = s.len\nvar ok = true\nfor i in 0..n / 2:\n    if s[i] != s[n - 1 - i]:\n        ok = false\n        break\nprint(yes(ok))\n";
+    let found = codes(palindrome);
+    assert!(
+        found.contains(&"L0583") && !found.contains(&"L0501"),
+        "{found:?}"
+    );
+    let all = "let s: Str = \"abba\"\nlet n = s.len\nvar ok = true\nfor i in 0..n / 2:\n    if s[i] != s[i + 1]:\n        ok = false\n        break\nprint(yes(ok))\n";
+    let any = "let a = [1, 2]\nvar ok = false\nfor x in a:\n    if x > 1:\n        ok = true\n        break\nprint(yes(ok))\n";
+    for src in [search, all, any] {
+        let out = fixed(src);
+        assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
+    }
+    assert!(fixed(all).contains("(0..n / 2).all(i => s[i] == s[i + 1])"));
+    assert!(fixed(any).contains("let ok = a.any(x => x > 1)"));
+}
+
+#[test]
+fn library_fn_is_not_told_to_call_itself() {
+    // std/math.cp: `divisors` is where std writes the trial division L0561 teaches.
+    let body = "fn divisors(x: Int) -> List<Int>:\n    var (small, large) = (List<Int>(), List<Int>())\n    var d = 1\n    while d * d <= x:\n        if x % d == 0:\n            small.push(d)\n            if d * d != x: large.push(x / d)\n        d += 1\n    small + large.rev\n";
+    assert!(!codes(&format!("pub {body}")).contains(&"L0561"));
+    // Outside a library module the lint still teaches: std's `divisors` replaces it.
+    assert!(codes(&format!("{body}print(divisors(12))\n")).contains(&"L0561"));
+    // The fn a help names is not enough when it is another one.
+    let other = body.replacen("fn divisors", "fn my_divs", 1);
+    assert!(codes(&format!("pub {other}")).contains(&"L0561"));
+}
+
+#[test]
+fn trial_division_under_an_if_factors() {
+    // std/math.cp `factor`: the dividing loop sits under `if rest % p == 0`.
+    let src = "fn f(x: Int) -> List<(Int, Int)>:\n    var out = List<(Int, Int)>()\n    var (rest, p) = (x, 2)\n    while p * p <= rest:\n        if rest % p == 0:\n            var e = 0\n            while rest % p == 0:\n                rest /= p\n                e += 1\n            out.push((p, e))\n        p += 1\n    if rest > 1: out.push((rest, 1))\n    out\nprint(f(12))\n";
+    let d = lint(src, &all_on());
+    let d = d.iter().find(|d| d.code.0 == "L0561").expect("L0561");
+    assert!(
+        d.help.as_deref().unwrap().contains("`factor(rest)`"),
+        "{d:#?}"
+    );
+}
+
+#[test]
+fn copy_comprehension_needs_a_seq() {
+    // std/bag.cp: a `SortedSet` walks in `for` but has no `collect`.
+    let set = "var s = SortedSet<Int>.of([1, 3])\nassert [x for x in s] == [1, 3]\n";
+    assert!(!codes(set).contains(&"L0549"));
+    let seqs = "domain V = 0..3\nlet a = [3, 1]\nprint([x for x in a], [v for v in V], [c for c in \"ab\"], [i for i in 0..3])\n";
+    assert_eq!(codes(seqs).iter().filter(|c| **c == "L0549").count(), 4);
+}
+
+#[test]
+fn split_range_check_fixes_to_a_chain() {
+    // corpus noi14p5 and ioi19p6: the two comparisons become one chain.
+    let src = "let (x, n): (Int, 1..=100) = read()\nif x < n and x >= 0:\n    print(1)\nif not (0 < x and x < n):\n    print(2)\n";
+    let out = fixed(src);
+    assert!(out.contains("if 0 <= x < n:"), "{out}");
+    assert!(out.contains("if not (0 < x < n):"), "{out}");
+    // std/lazy.cp and std/marks.cp: a longer chain, and a chain inside a
+    // longer `and`, written in the statement before (spans are per item).
+    let long = "let (x, n): (Int, 1..=100) = read()\nlet y: Int = read()\nassert 0 <= x and x <= y and y <= n\nif x >= 0 and x < n and n > 5:\n    print(1)\n";
+    let out = fixed(long);
+    assert!(out.contains("assert 0 <= x <= y <= n\n"), "{out}");
+    assert!(out.contains("if 0 <= x < n and n > 5:"), "{out}");
+    // A bound call that would run in a new order keeps only the help.
+    let kept =
+        "let (x, n): (Int, 1..=100) = read()\nif x < n.min(9) and x >= abs(n):\n    print(2)\n";
+    assert_eq!(fixed(kept), kept);
+    assert!(codes(kept).contains(&"L0551"));
+}
+
+#[test]
+fn copy_comprehension_fixes_only_a_list_copy() {
+    let src = "let a = [3, 1]\nvar b = [x for x in a]\nb.push(0)\nprint(b, [c for c in \"ab\"])\n";
+    let out = fixed(src);
+    assert!(out.contains("var b = a.collect()"), "{out}");
+    // A `Str` collects into what the context asks for, so it keeps only the help.
+    assert!(out.contains("[c for c in \"ab\"]"), "{out}");
+}
+
+#[test]
+fn loop_argmax_names_the_call() {
+    // corpus noi03p4: `best` starts at `Home.first!`, so the call traps where it did.
+    let src = "domain Home = 0..4\n\
+let d: [Home]Int = read()\n\
+var best = Home.first!\n\
+for v in Home:\n    if d[v] > d[best]: best = v\n\
+print(best)\n";
+    assert!(
+        fixed(src).contains("best = Home.max(by: v => d[v])!\nprint(best)"),
+        "{}",
+        fixed(src)
+    );
+    // acceptance run 4 cf2272A and std/geometry.cp: a range gets the exact call
+    // as help, no fix, since an empty range kept `j` and the call traps.
+    let range = "let p: 1..=9 = read()\n\
+let a: [0..9]Int = read()\n\
+var j = 0\n\
+for i in 0..p if a[i] > a[j]:\n    j = i\n\
+var s = 0\n\
+for i in 1..p:\n    if a[i] < a[s]: s = i\n\
+print(j, s)\n";
+    let helps: Vec<String> = lint(range, &all_on())
+        .into_iter()
+        .filter(|d| d.code.0 == "L0547")
+        .map(|d| d.help.unwrap_or_default())
+        .collect();
+    assert!(
+        helps[0].contains("`var j = (0..p).max(by: i => a[i])!`"),
+        "{helps:?}"
+    );
+    assert!(
+        helps[1].contains("`var s = (0..p).min(by: i => a[i])!`"),
+        "{helps:?}"
+    );
+    assert_eq!(fixed(range), range);
+}
+
+#[test]
+fn float_equality_asks_the_checker_about_fields() {
+    // std/geometry.cp: `Vec.x` is an `F64`, so every `.x` read as a float,
+    // but `Pt.x` is an `Int`.
+    let src = "struct Pt(x: Int, y: Int)\n\
+struct Vec(x: F64, y: F64)\n\
+let p = Pt(1, 2)\n\
+let v = Vec(1.0, 2.0)\n\
+print(yes(p.x == 0), yes(v.x == 0))\n";
+    let found = lint(src, &all_on());
+    let floats: Vec<_> = found
+        .iter()
+        .filter(|d| d.code == FLOAT_EQUALITY.code)
+        .collect();
+    assert_eq!(floats.len(), 1, "{found:#?}");
+    assert!(floats[0].span.text(src).starts_with("v.x"), "{found:#?}");
+}
+
+#[test]
+fn chmin_chmax_fix_keeps_the_line_break() {
+    // corpus ioi08p3: a two-line `if` became `max_len[g] max= l` glued to the next line.
+    let src = "var m = 0\nfor l in [3, 5]:\n    if l > m:\n        m = l\n\nprint(m)\n";
+    assert_eq!(
+        fixed(src),
+        "var m = 0\nfor l in [3, 5]:\n    m max= l\n\nprint(m)\n"
+    );
+}
+
+#[test]
+fn chmin_chmax_needs_a_scalar() {
+    // std/geometry.cp least_rotation: on lists `min=` is elementwise and `<`
+    // lexicographic, so `best min= rot` returned a different rotation.
+    let src = concat!(
+        "let cyc = [3, 1, 2]\nvar best = [3, 1, 2]\nvar low = 9\n",
+        "for s in 1..3:\n",
+        "    let rot = [cyc[(s + i) % 3] for i in 0..3]\n",
+        "    if rot < best: best = rot\n",
+        "    best = min(best, [cyc[s], 0, 0])\n",
+        "    if s < low: low = s\n",
+        "print(best, low)\n",
+    );
+    let found: Vec<_> = lint(src, &all_on())
+        .into_iter()
+        .filter(|d| d.code == CHMIN_CHMAX_IF.code || d.code == COMPOUND_SELF_REF.code)
+        .map(|d| d.span.text(src).trim().to_string())
+        .collect();
+    assert_eq!(found, ["if s < low: low = s"]);
+}
+
+/// A fold through a fn that widens the element (`Pos` into `?Pos`) is
+/// suggested as a typed lambda, which checks; `fold(merge, None)` would not.
+/// Rule: `lints/R9`.
+#[test]
+fn loop_reduction_keeps_a_widening_call_in_a_typed_lambda() {
+    let src = "domain Pos = 0..4\nfn merge(a: ?Pos, b: ?Pos) -> ?Pos = if let x = a: x else: b\nvar root: ?Pos = None\nfor p in Pos:\n    root = merge(root, p)\nprint(root)\n";
+    let found = format!("{:?}", crate::lint(src, &crate::Config::default()));
+    assert!(
+        found.contains("Pos.fold((root: ?Pos, p: Pos) => merge(root, p), None)"),
+        "{found}"
+    );
+}
+
+/// `desc:` is gone from `sort` (decisions 290, 366): a negated key, field or
+/// not, becomes `desc(..)`. Rule: `idiomatic-code/R3`.
+#[test]
+fn sort_desc_by_negation_wraps_the_key_in_desc() {
+    let src = "let ps = [(1, 2), (3, 4)]\nprint(ps.sorted(by: p => -p.1))\n";
+    assert_eq!(
+        only(src).help.as_deref(),
+        Some("write `by: p => desc(p.1)`; `desc` reverses the order, and negating the key overflows on the smallest value")
+    );
+    assert_eq!(
+        fixed(src),
+        "let ps = [(1, 2), (3, 4)]\nprint(ps.sorted(by: p => desc(p.1)))\n"
+    );
+}
