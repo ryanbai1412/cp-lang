@@ -27,7 +27,7 @@ options are named arguments: the real-valued binary search is
 `(0.0..8.0).bsearch(ok, steps: 60)` on a `Range<F64>`, not a separate
 `bsearch_real`. An alternate spelling either gets a diagnostic with a
 machine fix (`else if` gives E0503, fixed to `elif`) or doesn't exist.
-`scripts/spec-vocab.py` checks the vocabulary across the spec.
+`scripts/spec-gate.py vocab` checks the vocabulary across the spec.
 
 ### spec-rules/R3. Every rule has an id, every reference says `see`
 
@@ -62,7 +62,7 @@ replacement, under the current version's breaking changes in
 `CHANGELOG.md`, because an old solution meets it first as an error. The
 release notes are generated from that file. Example: `D.bounds` is
 `D.cuts` appears as a breaking-changes line. Enforced by
-`scripts/spec-changelog.py`.
+`scripts/spec-gate.py changelog`.
 
 ### spec-rules/R8. Every tool feature has a rule id
 

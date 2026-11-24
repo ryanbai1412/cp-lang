@@ -1,7 +1,7 @@
 # Glossary
 
 One term per concept, used the same way in the spec, the stubs, the
-errors, the trace and the docs. `scripts/spec-vocab.py` fails on the
+errors, the trace and the docs. `scripts/spec-gate.py vocab` fails on the
 spellings in the right column.
 
 | Term | Meaning | Never |

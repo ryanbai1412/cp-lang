@@ -22,7 +22,7 @@ One idea has one name in every module; a new idea adds a row here in the commit 
 
 - **Why:** a contestant guesses the next type's calls from the last one.
 - **Example:** every set-like container uses `add` and `remove`, never `insert` and `erase`.
-- **Enforced by:** `scripts/spec-vocab.py` bans the right-hand column across std, spec and docs; `missing` as an API-consistency lint over `cpl doc --format json std`.
+- **Enforced by:** `scripts/spec-gate.py vocab` bans the right-hand column across std, spec and docs; `missing` as an API-consistency lint over `cpl doc --format json std`.
 
 | Idea | Name | Not |
 |---|---|---|

@@ -209,7 +209,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 
 | Quality | Metric | Mechanism |
 |---|---|---|
-| One spelling per idea | banned spellings in std and docs | rule `std-api/R1`; `scripts/spec-vocab.py` |
+| One spelling per idea | banned spellings in std and docs | rule `std-api/R1`; `scripts/spec-gate.py vocab` |
 | Names follow one lexicon (`first_ge`, `count`, `len`, `try_`, `_at`) | signatures that break `guidelines/std-api.md` | rule `std-api/R1`; `missing` (API-consistency lint over `cpl doc --format json std`, shrink-only) |
 | Searches and min/max return `?T`, never a sentinel | fns returning `-1`, `n` or `INF` for "none" | rule `std-api/R4`; `scripts/std-api-lint.py` (in `scripts/check.sh`, shrink-only) |
 | Options are named arguments (`by:`), never `_by` variants | `_by`/`_key` names, positional options | rule `std-api/R6`; `scripts/std-api-lint.py` (in `scripts/check.sh`, shrink-only) |
@@ -317,7 +317,7 @@ Probes, run by a reader with only the docs (pass or fail, time, files touched):
 | `scripts/conformance-sigs.py` | spec named arguments std lacks | `uv run scripts/conformance-sigs.py --check` |
 | `scripts/conformance-prelude.py` | spec table names missing from the prelude | `uv run scripts/conformance-prelude.py --check` |
 | `scripts/spec-stub.py` | missing doc labels, `@get` members that do work | `python3 scripts/spec-stub.py --check`, `--audit` |
-| `scripts/spec-vocab.py` | banned spellings | `python3 scripts/spec-vocab.py` |
+| `scripts/spec-gate.py vocab` | banned spellings | `uv run scripts/spec-gate.py vocab` |
 | `std_checks` | std breaking user-library rules | `cargo test --release -p cpl-cli --test std_checks` |
 | `scripts/debt-ratchet.py` | `todo` count growing | `python3 scripts/debt-ratchet.py --check` |
 | `measure.py` | privilege, cycles, uncovered modules, `todo` split | `python3 plan/domains/stdlib/measure.py <metric>` |

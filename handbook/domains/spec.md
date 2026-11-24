@@ -4,7 +4,7 @@
 |---|---|
 | Kind | Domain charter |
 | Owner | spec |
-| Describes | `spec/core/`, `spec/lib/`, `spec/tools/`, `spec/conformance/`, `spec/SUBSET.md`, `spec/GLOSSARY.md`, `handbook/language/`, `crates/cpl-conform/`, `scripts/conformance-*.py`, `scripts/spec-vocab.py`, `scripts/spec-check.sh`, `scripts/spec-stub.py`, `scripts/next-decision.py` |
+| Describes | `spec/core/`, `spec/lib/`, `spec/tools/`, `spec/conformance/`, `spec/SUBSET.md`, `spec/GLOSSARY.md`, `handbook/language/`, `crates/cpl-conform/`, `scripts/conformance-*.py`, `scripts/spec-gate.py vocab`, `scripts/spec-check.sh`, `scripts/spec-stub.py`, `scripts/next-decision.py` |
 
 The spec domain says exactly what CP Lang is, explains why it is shaped
 that way, and holds the compiler to it. A contestant reading a chapter, a
@@ -72,7 +72,7 @@ rows marked `missing` in the register below.
 | `spec/SUBSET.md`: which sections are supported, documented or a known gap, with an owner per failing case | `handbook/language/std.md` (stdlib) |
 | `handbook/language/` design docs, except `std.md` | The gate script and CI (infra) |
 | `crates/cpl-conform` (the runner: `conformance`, `spec-blocks`, `corpus`, `docs`, `diff`) | The corpus programs and scoreboard (idioms) |
-| `scripts/conformance-*.py`, `spec-vocab.py`, `spec-check.sh`, `spec-stub.py`, `next-decision.py` | Site chapters built from the language docs (site) |
+| `scripts/conformance-*.py`, `spec-gate.py vocab`, `spec-check.sh`, `spec-stub.py`, `next-decision.py` | Site chapters built from the language docs (site) |
 | Settling spec ambiguities, logged in `decisions.md` | |
 
 Spec writes cases, never compiler code. A failing case goes to the owning
@@ -84,12 +84,12 @@ domain with its path.
 
 | Interface | Used by | Held by |
 |---|---|---|
-| Authority: handbook leads design; spec/ is its downstream exhaustive form. A handbook/spec disagreement is a bug spec resolves; every other doc yields to both | every domain | this charter; `spec-vocab.py` |
+| Authority: handbook leads design; spec/ is its downstream exhaustive form. A handbook/spec disagreement is a bug spec resolves; every other doc yields to both | every domain | this charter; `spec-gate.py vocab` |
 | Rule ids `Rnn.n.n` | compiler, diagnostics (`spec/diagnostics.md` cites them), site, idioms | `cpl-conform --rules`, `conformance-coverage.py --check` |
 | The conformance case format (`// expect:`, `// rule:`, `// input:`, `// timeout:`, `// has:` headers; a code's line ends with `// <- here`) | compiler, stdlib (`std-*` groups), tools, diagnostics | `crates/cpl-conform/tests/ratchet.rs`, `spec/conformance/README.md` |
 | The pass list in `research/scoreboard.json` | compiler (its headline number), infra (the `cpl-conform ratchet` gate step) | `cpl-conform all --check` |
 | the scoreboard's failing cases (`spec/SUBSET.md` is generated from them; no case carries a `// gap:` line) | every implementing domain, the milestone owner | `spec-gate.py subset`, `gaps` |
-| `spec/GLOSSARY.md`: one term per concept | diagnostics, site, idioms | `spec-vocab.py` |
+| `spec/GLOSSARY.md`: one term per concept | diagnostics, site, idioms | `spec-gate.py vocab` |
 | `cpl-conform corpus` judging, including `checker.py` for problems with several right answers | idioms | `crates/cpl-conform` tests |
 | Design docs in `handbook/language/` | site (in-depth chapters), new contributors | `scripts/check-handbook.py` |
 
@@ -129,7 +129,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Every case is itself right | wrong cases found by implementers | gate for new cases; known-gap cases checked for a wrong `// <- here` line or an unwrapped `?T` ([conformance/R3](../guidelines/conformance-checklist.md)) | `scripts/conform_staged.py`, `scripts/conformance-gaps.py` |
 | Code examples in the spec run ([conformance/R7](../guidelines/conformance-checklist.md)) | spec blocks failing that are not `spec-only` | ratchet | `cpl-conform spec-blocks --check` |
 | Milestone gaps are visible, not hidden | `// gap:` lines in cases (the scoreboard is the one record) | gate (hard zero) | `scripts/debt-ratchet.py` (marker counter) |
-| One spelling per idea | banned spellings in spec | lint | `scripts/spec-vocab.py` |
+| One spelling per idea | banned spellings in spec | lint | `scripts/spec-gate.py vocab` |
 | Each decision is recorded once | duplicate decision numbers (`decision_dup_numbers`, hard zero) | gate: a number is reserved on main first | `scripts/next-decision.py --reserve`, `--check-landing` in `scripts/land.sh` |
 | Cases test the language, not the compiler's internals | cases that reach crate internals | design: a case is a `.cp` file run through `cpl` | `crates/cpl-conform/src/conformance.rs` |
 | A cold reader can write correct code from `spec/` alone | holes and contradictions per cold rebuild round | process: rebuild rounds | `research/rebuild-rounds/` |
@@ -152,11 +152,11 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Known gaps get fixed, not just listed | failing cases on the scoreboard (`conformance_failing`); entries in `prelude-gaps.txt` | gate: the raw count only falls, no case carries a gap line ([conformance/R3](../guidelines/conformance-checklist.md)); the lists only shrink | `scripts/debt-ratchet.py` (`conformance_failing`, marker counter), `spec/conformance/*-gaps.txt` |
 | A known-gap case fails for the reason it names ([conformance/R3](../guidelines/conformance-checklist.md)) | known-gap cases whose current error isn't the gap's subject (a wrong `// <- here` line, a misused API) | check: a failure with the case's own expected code means a wrong `// <- here` line or `has:`; an E0606 on a printed `?T` means a missing `!` | `scripts/conformance-gaps.py` |
 | The suite is deterministic | cases that pass and fail on the same build | per-case `// timeout:`; flake report over repeated runs ([conformance/R6](../guidelines/conformance-checklist.md)) | `scripts/conformance-flakes.py`, `scripts/check.sh --full`, `crates/cpl-conform/tests/timeout.rs` |
-| Cross-references in the spec resolve | rule ids anywhere in the repo naming no rule; links to missing files | gate ([spec-rules/R3](../guidelines/spec-rules-checklist.md)) | `scripts/spec-xref.py --check`, `scripts/check-doc-links.py` |
-| The spec says what changed between versions ([spec-rules/R7](../guidelines/spec-rules-checklist.md)) | removed spellings (E0503) with no changelog line | every E0503 spelling in `spec/diagnostics.md` is named under the current version in `CHANGELOG.md` | `scripts/spec-changelog.py` in `scripts/check.sh` |
+| Cross-references in the spec resolve | rule ids anywhere in the repo naming no rule; links to missing files | gate ([spec-rules/R3](../guidelines/spec-rules-checklist.md)) | `scripts/spec-gate.py xref --check`, `scripts/check-doc-links.py` |
+| The spec says what changed between versions ([spec-rules/R7](../guidelines/spec-rules-checklist.md)) | removed spellings (E0503) with no changelog line | every E0503 spelling in `spec/diagnostics.md` is named under the current version in `CHANGELOG.md` | `scripts/spec-gate.py changelog` in `scripts/check.sh` |
 | Old programs keep their meaning (pins and `cpl migrate`, R11.4.3) | R11.4.x cases failing; `cpl migrate` cases whose rewrite differs | cases for each of R11.4.1–3: the stamp, a build with a pinned compiler, a removed spelling's E0503, and `cpl migrate` rewriting it (`// tool: migrate`, `// rewritten:`), with rule coverage from `conformance-coverage.py` | `spec/conformance/core-11/` |
 | Each chapter teaches its model first | supported chapters with no model paragraph | process | `spec/core/` |
-| Every design decision gives its reason and the alternatives that lost | decisions cited in `spec/` that no handbook doc names | ratchet: the count only goes down ([spec-rules/R6](../guidelines/spec-rules-checklist.md)) | `scripts/spec-decisions-explained.py`, `scripts/check.sh` |
+| Every design decision gives its reason and the alternatives that lost | decisions cited in `spec/` that no handbook doc names | ratchet: the count only goes down ([spec-rules/R6](../guidelines/spec-rules-checklist.md)) | `scripts/spec-gate.py decisions-explained`, `scripts/check.sh` |
 | The suite is fast enough to run on every land ([conformance/R8](../guidelines/conformance-checklist.md)) | CPU seconds of `cpl-conform conformance spec-blocks` (wall time is in `metrics.toml`) | gate: total CPU under a budget of about twice today's | `scripts/conformance-speed.py` in `scripts/check.sh --full` |
 
 ### Building the `missing` rows
@@ -234,7 +234,7 @@ Three probes put the rubric to work:
 | `scripts/conformance-sigs.py`, `conformance-prelude.py` | Chapter vs `std` disagreements on named args and prelude names | `uv run scripts/conformance-sigs.py --check` |
 | `scripts/spec-gate.py subset` / `gaps` / `markers` | A stale `SUBSET.md`; a case carrying a `// gap:` line; a diagnostic case that counts lines instead of marking `// <- here` | `uv run scripts/spec-gate.py <gate>` |
 | `scripts/conformance-bugcatch.py` | Past compiler fixes the suite would not have caught | `uv run scripts/conformance-bugcatch.py` |
-| `scripts/spec-vocab.py` | Banned spellings | `python3 scripts/spec-vocab.py` |
+| `scripts/spec-gate.py vocab` | Banned spellings | `uv run scripts/spec-gate.py vocab` |
 | Rebuild rounds | Holes and contradictions a cold reader hits; reports in `research/rebuild-rounds/` | process, one cold agent per round |
 
 ## Changes

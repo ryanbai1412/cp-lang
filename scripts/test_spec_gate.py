@@ -62,6 +62,32 @@ class GateListTest(unittest.TestCase):
 
 
 class GatesTest(unittest.TestCase):
+    def test_changelog(self):
+        files = {"spec/diagnostics.md": "| E0503 | removed | `a.size` is `a.len`, `pop_front` is `pop` |\n",
+                 "CHANGELOG.md": "# Changelog\n\n## 0.3\n\n- `a.size` is gone\n\n## 0.2\n\n- `pop_front`\n"}
+        with Tree(files):
+            self.assertEqual([p.what.split(" ")[0] for p in run("changelog")], ["`pop_front`"])
+
+    def test_decisions_explained(self):
+        files = {"spec/core/a.md": "Per decision 12 and decision 345.\n",
+                 "handbook/language/b.md": "Decision 345 chose this.\n"}
+        with Tree(files):
+            self.assertEqual([p.where for p in run("decisions-explained")], ["decision 12"])
+
+    def test_vocab(self):
+        files = {"std/a.cp": "pub fn f() -> ?Int = some(1)\n/// some(x) in a doc is prose\n",
+                 "spec/core/b.md": "Mint in prose\n```\nlet m: Mint = 1\n```\n"}
+        with Tree(files):
+            self.assertEqual(sorted(p.where for p in run("vocab")), ["spec/core/b.md:1", "spec/core/b.md:3", "std/a.cp:1"])
+
+    def test_xref(self):
+        import subprocess
+        files = {"spec/core/01-a.md": "A rule (R01.1.1).\n", "handbook/x.md": "See R01.1.1 and R01.1.2.\n"}
+        with Tree(files) as t:
+            subprocess.run(["git", "init", "-q"], cwd=t.root, check=True)
+            subprocess.run(["git", "add", "."], cwd=t.root, check=True)
+            self.assertEqual([(p.where, p.what[:7]) for p in run("xref")], [("handbook/x.md:1", "R01.1.2")])
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

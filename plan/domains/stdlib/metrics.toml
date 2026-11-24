@@ -124,7 +124,7 @@ milestone = "M3"
 
 [[metric]]
 name = "banned_spellings"
-command = "python3 scripts/spec-vocab.py"
+command = "uv run scripts/spec-gate.py vocab"
 value = 0
 target = 0
 milestone = "-"

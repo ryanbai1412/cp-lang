@@ -151,7 +151,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | The most frequent lints are worth seeing | hits per lint on corpus `port.cp`; top lints sampled for true positives | process, ranked in metrics | `plan/domains/lint-fmt/metrics.toml` |
 | A finding teaches in one read: the fact, the CP Lang way, a link | findings without a help or an explain page | gate | `crates/cpl-lint/src/record_tests.rs`, `crates/cpl-lint/src/checker_tests.rs` `every_checker_lint_has_a_registry_entry_for_cpl_explain` |
 | Help text names things that exist (`lints/R14`) | helps naming a missing function, method or option | generated suite | `crates/cpl-lint/src/record_tests.rs` `every_help_names_real_vocabulary` |
-| One spelling per idea across lint, spec and errors | banned spellings in records and helps | gate: `spec/GLOSSARY.md` bans over every record; option spellings over every help | `scripts/spec-vocab.py`, `crates/cpl-lint/src/record_tests.rs` `records_and_helps_spell_options_some_none` |
+| One spelling per idea across lint, spec and errors | banned spellings in records and helps | gate: `spec/GLOSSARY.md` bans over every record; option spellings over every help | `scripts/spec-gate.py vocab`, `crates/cpl-lint/src/record_tests.rs` `records_and_helps_spell_options_some_none` |
 
 ### Fixes you can apply blind
 

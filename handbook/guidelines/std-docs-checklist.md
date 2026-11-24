@@ -95,7 +95,7 @@ Docs use the spelling of `spec/GLOSSARY.md` and link the spec section for long e
 
 - **Why:** one vocabulary across spec, errors, trace and docs.
 - **Example:** "cut", not "boundary index"; "domain", not "index type".
-- **Enforced by:** `scripts/spec-vocab.py`.
+- **Enforced by:** `scripts/spec-gate.py vocab`.
 
 ### R10. Each module opens with what it is for
 
