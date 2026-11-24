@@ -301,8 +301,8 @@ Evidence: program `spec/conformance/std-seq/seq-u50-combinations-subsets.cp`; `p
 ### seq/U51: linear-time sorts
 Need: sort a million small keys.
 Design: `a.radix_sort(by:)`, `a.counting_sort(by:)`.
-Milestone: later. Status: gap
-Evidence: `[3, 1, 2].radix_sort()` is E0401 inside std on a literal.
+Milestone: later. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u51-linear-sorts.cp`; on a literal both are E0401 at the call, asking for a `var`.
 
 ### seq/U52: coordinate compression
 Need: map values to ranks `0..k`.
