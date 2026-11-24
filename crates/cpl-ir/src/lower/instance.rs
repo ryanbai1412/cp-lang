@@ -25,11 +25,14 @@ impl<'a> Lowerer<'a> {
         trait_params: &[(usize, Ty)],
         op_params: &[(String, BareOp)],
         rev_params: Vec<String>,
+        range_ends: &[(String, GenArg)],
     ) -> FnId {
         // A `T: Read` fn called under `with io(base: 1)` reads its counted
         // positions 1-based, like the caller's own `read<T>()` (R10.2.2).
         let base_one = self.base_one() && reads_a_param(self.gen_fns[gfid].decl);
-        let key = (gfid, args.clone(), rev_params.clone(), base_one);
+        let mut key_args = args.clone();
+        key_args.extend(range_ends.iter().map(|(_, a)| a.clone()));
+        let key = (gfid, key_args, rev_params.clone(), base_one);
         if let Some(&id) = self.fn_insts.get(&key) {
             if !self.sigs[id].returns_fresh_domain && self.sigs[id].new_domain_slots.is_empty() {
                 return id;
@@ -91,6 +94,7 @@ impl<'a> Lowerer<'a> {
         if base_one {
             env.insert(IO_BASE_ONE.to_string(), GenArg::Int(1));
         }
+        env.extend(range_ends.iter().cloned());
         let id = self.declare_fn_in(decl, tpl_mod, tpl_offset, owner, env);
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
         self.record_instance(id, gfid, &args);

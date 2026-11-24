@@ -61,6 +61,13 @@ pub(super) fn int_key_marker(k: &str) -> String {
     format!("__int_key_{k}")
 }
 
+/// The env entry holding the ends of the range generic `k`'s `Int` was inferred from: `T` of
+/// `fold` over a `List<1..=9>` is `Int`, so its values widen as a range's do (R03.1.7), while
+/// `T.MIN`/`T.MAX`/`T.count` read `1..=9` (decision 544).
+pub(super) fn range_ends_marker(k: &str) -> String {
+    format!("__range_ends_{k}")
+}
+
 /// Marks a fn's own generic `k`: given `Int`, its `[k]T` is the array it was called with,
 /// where a struct's `D = Int` makes `[D]T` a list (R07.3.5).
 pub(super) fn own_generic_marker(k: &str) -> String {

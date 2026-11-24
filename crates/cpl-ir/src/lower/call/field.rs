@@ -284,8 +284,10 @@ impl<'a> Lowerer<'a> {
         }
         if let ast::ExprKind::Name(type_name) = &base.kind {
             if self.lookup(type_name).is_none() {
-                if type_name == "Int"
-                    || matches!(self.gen_env.get(type_name), Some(GenArg::Ty(Ty::Int)))
+                let ends = self.gen_env.get(&mono::range_ends_marker(type_name)).cloned();
+                if ends.is_none()
+                    && (type_name == "Int"
+                        || matches!(self.gen_env.get(type_name), Some(GenArg::Ty(Ty::Int))))
                 {
                     match name.text.as_str() {
                         "MAX" => return self.mk(ExprKind::Int(i64::MAX), Ty::Int, span),
@@ -321,7 +323,8 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 // A range type, or a `T` bound to one, has its ends as `MIN` and `MAX` (R02.6.2).
-                if let Some(GenArg::Range(lo, hi)) = self.named_gen_arg(type_name) {
+                let ends = ends.or_else(|| self.named_gen_arg(type_name));
+                if let Some(GenArg::Range(lo, hi)) = ends {
                     let v = match name.text.as_str() {
                         "MIN" => Some(lo.unwrap_or(INT_MIN)),
                         "MAX" => Some(hi.unwrap_or(i64::MAX)),

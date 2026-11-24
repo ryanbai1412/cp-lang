@@ -9,7 +9,7 @@ impl<'a> Lowerer<'a> {
     /// domain and that stands where the argument's type is a range (`List<R>` given a
     /// `List<0..2>`) is bound to that range, so it is the anonymous domain the range is
     /// (R04.4.30). Any other generic keeps the range's `Int`, so `scan<D, T>` over `[I]-9..=9`
-    /// still names `Monoid<T>`.
+    /// still sums in `Int`, and records the range's ends for `T.MIN`/`T.MAX` (decision 544).
     #[allow(clippy::too_many_arguments)]
     pub(super) fn unify_arg(
         &mut self,
@@ -28,12 +28,33 @@ impl<'a> Lowerer<'a> {
         }
         let lowered = self.probe_expr(&arg.value, None);
         if let Some(info) = self.expr_range(&lowered) {
-            let domains: Vec<String> = gen_names
-                .iter()
-                .filter(|g| fn_uses_domain(decl, g))
-                .cloned()
-                .collect();
-            bind_range_generics(pty, &info, &domains, env);
+            let domains = domain_generics(decl, gen_names);
+            bind_range_generics(pty, &info, gen_names, &domains, env);
+        }
+    }
+
+    /// Bind the element generic of a `Seq` bound (`T` of `S: Seq<T>`, or the generics of its
+    /// pattern `pat`) to the range `arg`'s elements carry, as `unify_arg` binds a written
+    /// `List<T>`: `e.fold(max)` over a `List<1..=9>` has `T = 1..=9`.
+    pub(super) fn bind_elem_range(
+        &mut self,
+        decl: &ast::FnDecl,
+        arg: &ast::Arg,
+        pat: Option<&ast::Type>,
+        gen_names: &[String],
+        env: &mut GenEnv,
+    ) {
+        if !matches!(arg.value.kind, ast::ExprKind::Name(_)) {
+            return;
+        }
+        let lowered = self.probe_expr(&arg.value, None);
+        let Some(RangeInfo::Elem(inner)) = self.expr_range(&lowered) else {
+            return;
+        };
+        let domains = domain_generics(decl, gen_names);
+        match pat {
+            Some(p) => bind_range_generics(p, &inner, gen_names, &domains, env),
+            None => bind_scalar_range("T", &inner, &domains, env),
         }
     }
 
@@ -507,27 +528,54 @@ impl<'a> Lowerer<'a> {
     }
 }
 
+fn domain_generics(decl: &ast::FnDecl, gen_names: &[String]) -> Vec<String> {
+    gen_names
+        .iter()
+        .filter(|g| fn_uses_domain(decl, g))
+        .cloned()
+        .collect()
+}
+
+/// Bind generic `name`, standing where `info` records a constant range: a generic in
+/// `domains` is that range; any other `Int` keeps its type and records the range's ends.
+fn bind_scalar_range(name: &str, info: &RangeInfo, domains: &[String], env: &mut GenEnv) {
+    let RangeInfo::Scalar(b) = info else { return };
+    let (Some(lo), Some(hi)) = (b.lo_const, b.hi_const) else { return };
+    let range = GenArg::Range(Some(lo), Some(hi));
+    match env.get(name) {
+        None | Some(GenArg::Ty(Ty::Int)) if domains.iter().any(|d| d == name) => {
+            env.insert(name.to_string(), range);
+        }
+        Some(GenArg::Ty(Ty::Int)) => {
+            env.insert(mono::range_ends_marker(name), range);
+        }
+        _ => {}
+    }
+}
+
 /// Bind each bare generic of `pty` that stands where `info` records a constant range.
-fn bind_range_generics(pty: &ast::Type, info: &RangeInfo, gen_names: &[String], env: &mut GenEnv) {
+fn bind_range_generics(
+    pty: &ast::Type,
+    info: &RangeInfo,
+    gen_names: &[String],
+    domains: &[String],
+    env: &mut GenEnv,
+) {
     match (&pty.kind, info) {
-        (ast::TypeKind::Named { name, args }, RangeInfo::Scalar(b))
+        (ast::TypeKind::Named { name, args }, RangeInfo::Scalar(_))
             if args.is_empty() && gen_names.contains(&name.text) =>
         {
-            if let (Some(lo), Some(hi), None | Some(GenArg::Ty(Ty::Int))) =
-                (b.lo_const, b.hi_const, env.get(&name.text))
-            {
-                env.insert(name.text.clone(), GenArg::Range(Some(lo), Some(hi)));
-            }
+            bind_scalar_range(&name.text, info, domains, env);
         }
         (ast::TypeKind::Named { args, .. }, RangeInfo::Elem(inner)) if args.len() == 1 => {
-            bind_range_generics(&args[0], inner, gen_names, env);
+            bind_range_generics(&args[0], inner, gen_names, domains, env);
         }
         (
             ast::TypeKind::Array { elem, .. } | ast::TypeKind::OwnDomain { elem, .. },
             RangeInfo::Elem(inner),
-        ) => bind_range_generics(elem, inner, gen_names, env),
+        ) => bind_range_generics(elem, inner, gen_names, domains, env),
         (ast::TypeKind::Optional(inner_ty), RangeInfo::Opt(inner)) => {
-            bind_range_generics(inner_ty, inner, gen_names, env);
+            bind_range_generics(inner_ty, inner, gen_names, domains, env);
         }
         _ => {}
     }

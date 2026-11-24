@@ -650,6 +650,7 @@ impl<'a> Lowerer<'a> {
                             &[],
                             &[],
                             Vec::new(),
+                            &[],
                         ))
                     });
                     if let (Some(len_fn), Some(nth_fn)) = (len_fn, nth_fn) {

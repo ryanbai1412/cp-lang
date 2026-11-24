@@ -251,6 +251,7 @@ impl<'a> Lowerer<'a> {
                         }
                         (_, ety) => ety,
                     };
+                    let bound = elem_ty.is_some();
                     match (elem_ty, pat) {
                         (Some(ety), Some(p)) => {
                             self.unify_ast_ty(p, &ety, tpl_mod, &gen_names, &mut inferred)
@@ -259,6 +260,9 @@ impl<'a> Lowerer<'a> {
                             inferred.insert("T".to_string(), GenArg::Ty(ety));
                         }
                         _ => {}
+                    }
+                    if bound {
+                        self.bind_elem_range(decl, arg, pat, &gen_names, &mut inferred);
                     }
                 }
             }
@@ -732,7 +736,16 @@ impl<'a> Lowerer<'a> {
         if let Some(e) = self.growing_call(gfid, &decl.name.text, span) {
             return e;
         }
-        let fn_id = self.instantiate_fn(gfid, final_args, &trait_params, &op_params, rev);
+        let range_ends: Vec<(String, GenArg)> = gen_names
+            .iter()
+            .filter_map(|g| {
+                let key = mono::range_ends_marker(g);
+                let ends = inferred.get(&key)?.clone();
+                Some((key, ends)).filter(|_| inferred.get(g) == Some(&GenArg::Ty(Ty::Int)))
+            })
+            .collect();
+        let fn_id =
+            self.instantiate_fn(gfid, final_args, &trait_params, &op_params, rev, &range_ends);
         if let Some(ty) = hashed {
             self.sigs[fn_id].params[0].ty = ty;
         }
