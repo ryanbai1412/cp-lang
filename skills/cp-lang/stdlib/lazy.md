@@ -13,11 +13,11 @@ Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTre
 - `fn of(on: Bool, x: T, id: T) -> Flip<T>` — \(O(1)\); The leaf for one element that is currently `on` or off: `Flip(x, id)` when `on`, else `Flip(id, x)`.
 - `fn op<M>(m: M) -> Monoid<Flip<T>>` — \(O(1)\); The monoid on pairs that folds both halves with `m` independently: `op(a, b) == Flip(m(a.now, b.now), m(a.flipped, b.flipped))`, identity `Flip(id, id)` with `id` from `Monoid.of(m)`.; traps: never (an `m` without a known identity is a compile-time error)
 
-## `struct LazyTreap<T, F>(apply_fn: (T, Int, F) -> T, split_fn: (F, Int) -> (F, F), compose_fn: (F, F) -> F, before_fn: (T, T) -> Bool)`
+## `struct LazyTreap<T, F>(apply_fn: (T, Int, F) -> T, split_fn: (F, Int) -> (F, F), compose_fn: (F, F) -> F, before_fn: (T, T) -> Bool, mirror_fn: (F, Int) -> F)`
 
 Arena-backed randomized treap with subtree-size-aware lazy tag propagation.
 
-Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose_fn: (F, F) -> F,`, `before_fn: (T, T) -> Bool,`.
+Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose_fn: (F, F) -> F,`, `before_fn: (T, T) -> Bool,`, `mirror_fn: (F, Int) -> F,`.
 
 ## `struct Rope<D, T>`
 
