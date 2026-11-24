@@ -6,10 +6,10 @@
 //   unreachable; relative error 1e-6. Sum n, sum m <= 1e5 over the grader calls.
 // Solution: a reset at a reachable kind-0 country is as good as starting there, so all of
 //   them (and country 0) are Dijkstra sources, with no road leaving h. Then add halvings one
-//   layer at a time: re-run Dijkstra from every country's best time plus, for kind-2 countries,
-//   half that time plus each road. Times stay below 1e14 and 1e14 / 2^70 is under the
-//   tolerance, so min(k, 70) layers suffice, and a layer whose halvings improve nothing is the
-//   fixpoint. O(min(k, 70) (n + m) log n).
+//   layer at a time: for kind-2 countries, half the best time plus each road seeds a Dijkstra
+//   that settles only what those halvings improve. Times stay below 1e14 and 1e14 / 2^70 is
+//   under the tolerance, so min(k, 70) layers suffice, and a layer whose halvings improve
+//   nothing is the fixpoint. O(min(k, 70) (n + m) log n).
 //
 // The original is a grader function; this port reads the sample grader's input: T calls,
 // each `n m k h`, the n kinds, then m lines `u v time`.
@@ -44,5 +44,14 @@ else:
                 halved.push((r.to, t / 2 + r.w))
         if halved.is_empty:
             break
-        best = times([(c, t) for c in C if let t = best[c]] + halved)
+        // best is already a fixpoint, so only the halvings' gains need settling.
+        var gains = MinHeap<(F64, C)>()
+        for (v, t) in halved if t < best[v]!:
+            best[v] = Some(t)
+            gains.push((t, v))
+        while let (d, u) = gains.pop():
+            if d > best[u]!: continue
+            for r in out[u] if d + r.w < best[r.to]!:
+                best[r.to] = Some(d + r.w)
+                gains.push((d + r.w, r.to))
     print(best[h]!, precision: 6)
