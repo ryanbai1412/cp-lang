@@ -1,4 +1,5 @@
 // Source: Codeforces 2089B1 (Canteen, Easy), https://codeforces.com/contest/2089/problem/B1
+// limits: 2000 ms, 500 MB
 // Problem: circular arrays a, b of n <= 2e5 values (1..=1e9), sum a <= sum b, k = 0. Each round
 //   every i drops t = min(a[i], b[i]) from both, then a rotates one step forward. Print the
 //   rounds until all of a is 0. Multitest, sum of n <= 2e5.

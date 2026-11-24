@@ -2,6 +2,16 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = sum q = 2e5, values up to 1e9
+    rng = random.Random(1)
+    n = q = 200_000
+    print(1)
+    print(n, q)
+    print(" ".join(str(rng.randint(1, 10**9)) for _ in range(n)))
+    print("\n".join(f"{rng.randint(1, n)} {rng.randint(1, 10**9)}" for _ in range(q)))
+    sys.exit()
+
 seed = int(sys.argv[1])
 size = int(sys.argv[2])
 rng = random.Random(seed)

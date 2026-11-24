@@ -1,4 +1,5 @@
 // Source: Codeforces 2057D (Gifts Order), https://codeforces.com/contest/2057/problem/D
+// limits: 2000 ms, 500 MB
 // Problem: an array a of n <= 2e5 values <= 1e9. Print the maximum over l <= r of
 //   max(a[l..=r]) - min(a[l..=r]) - (r - l), initially and after each of q <= 2e5 point
 //   assignments. Multitest, sums of n and q <= 2e5.

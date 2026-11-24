@@ -2,6 +2,17 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = 5e5 with 70% of the entries blank
+    rng = random.Random(1)
+    n = 500_000
+    perm = list(range(1, n + 1))
+    rng.shuffle(perm)
+    print(1)
+    print(n)
+    print(*[0 if rng.random() < 0.7 else x for x in perm])
+    sys.exit()
+
 
 def main():
     seed = int(sys.argv[1])

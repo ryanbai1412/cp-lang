@@ -1,5 +1,6 @@
 // Source: Codeforces 2066 D2 (Club of Young Aircraft Builders, hard version),
 //   https://codeforces.com/contest/2066/problem/D2
+// limits: 4000 ms, 1000 MB
 // Problem: n <= 100 floors launch m planes in turn (c <= m <= n c); the resident of floor i sees
 //   launches from floors <= i and stops once they have seen c, and at the end every resident
 //   has seen >= c. Given the launch floors with gaps (0), count the ways to fill the gaps,

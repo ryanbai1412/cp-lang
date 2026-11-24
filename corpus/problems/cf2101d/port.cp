@@ -1,4 +1,5 @@
 // Source: Codeforces 2101 D, Mani and Segments, https://codeforces.com/contest/2101/problem/D
+// limits: 3000 ms, 250 MB
 // Problem: multitest (sum n <= 2e5): a permutation a of length n. Count the non-empty
 //   subarrays b that are cute: LIS(b) + LDS(b) = |b| + 1.
 // Solution: b is cute iff no element lies strictly between two earlier elements in value,

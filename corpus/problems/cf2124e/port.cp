@@ -1,4 +1,5 @@
 // Source: Codeforces 2124E (Make it Zero), https://codeforces.com/contest/2124/problem/E
+// limits: 2000 ms, 250 MB
 // Problem: n <= 5e4 positive a[i] <= 1e12. An operation subtracts some b with 0 <= b[i] <= a[i]
 //   whose prefix up to some cut sums to the rest. Print the fewest operations that make a all
 //   zero and each b, or -1 if impossible. Multitest, sum of n <= 5e4.

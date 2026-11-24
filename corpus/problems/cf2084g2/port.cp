@@ -1,5 +1,6 @@
 // Source: Codeforces 2084G2 (Wish Upon a Satellite, Hard Version),
 //   https://codeforces.com/contest/2084/problem/G2
+// limits: 4000 ms, 500 MB
 // Problem: f(c) is the end value of a game on c: players alternately merge two adjacent entries,
 //   Turtle (first, maximising) into their min, Piggy (minimising) into their max, until one is
 //   left. The beauty of a permutation sums f over all subsegments. Fill the zeros of a partial

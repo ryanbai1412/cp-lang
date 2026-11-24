@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 import random, sys
 
+if sys.argv[1] == "--max":
+    # one test at sum m = 1e4: n = c = 100, m = n c; floors launch c each in rising order
+    # (the only valid order at m = n c), 70% of the entries erased
+    r = random.Random(1)
+    n = c = 100
+    a = [f if r.random() < 0.3 else 0 for f in range(1, n + 1) for _ in range(c)]
+    print(1)
+    print(n, c, n * c)
+    print(*a)
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 T = 5 if S == 0 else 4

@@ -1,4 +1,5 @@
 // Source: Codeforces 2084C, https://codeforces.com/contest/2084/problem/C
+// limits: 2000 ms, 250 MB
 // Problem: permutations a and b of 1..n, n <= 2e5. In at most n operations, each swapping a[i]
 //   with a[j] and b[i] with b[j] together, make a[i] = b[n+1-i] for every i; print the swaps,
 //   or -1 if impossible. Multitest, sum of n <= 2e5.

@@ -1,4 +1,5 @@
 // Source: Codeforces 2096C (Wonderful City), https://codeforces.com/contest/2096/problem/C
+// limits: 2000 ms, 250 MB
 // Problem: an n x n grid of heights; raising all of row i by 1 costs a[i], all of column j costs
 //   b[j], each at most once. Print the least cost that leaves no two side-adjacent cells equal,
 //   or -1. n <= 1000, sum of n <= 1000; multitest.
