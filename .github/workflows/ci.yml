@@ -254,7 +254,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: ["hash:1/12", "hash:2/12", "hash:3/12", "hash:4/12", "hash:5/12", "hash:6/12", "hash:7/12", "hash:8/12", "hash:9/12", "hash:10/12", "hash:11/12", "hash:12/12"]
+        # Dealt by measured time (research/perf/ci-test-times.json, scripts/ci.py time_shard):
+        # nextest's hash partition left shards at 118-366 s (run 45449405888).
+        part: ["time:1/12", "time:2/12", "time:3/12", "time:4/12", "time:5/12", "time:6/12", "time:7/12", "time:8/12", "time:9/12", "time:10/12", "time:11/12", "time:12/12"]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

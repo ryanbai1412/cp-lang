@@ -10,12 +10,14 @@ CI splits --fast across parallel jobs (.github/workflows/ci.yml):
   conform[:S+S@N/M] the conformance ratchet (only suites S, shard N/M) and, with the
                     conformance suite, the script unit tests
   tests:doc         the doctests
-  tests:<partition> that nextest partition (e.g. tests:hash:1/12)
+  tests:<partition> that nextest partition (e.g. tests:hash:1/12), or tests:time:k/n,
+                    shard k of n dealt by research/perf/ci-test-times.json
 Unset runs all of --fast. With --full, `full` runs only the --full suites (ci-slow.yml).
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -68,6 +70,41 @@ def wall_filter() -> str:
     return "binary(budget) or test(/(^|::)front_end_check_is_under_50_ms$/)" + _tests(WALL_CLOCK_TESTS)
 
 
+NEXTEST_LINE = re.compile(r"\b(?:PASS|FAIL|TIMEOUT|SIG[A-Z]+)\s+\[\s*([0-9.]+)s\]\s+(?:\(\s*\d+/\d+\)\s+)?(\S+)\s+(\S+)")
+
+
+def time_shard(listing: str, times: dict, shard: str) -> list[tuple[str, str]]:
+    """Shard k/n of the tests a `cargo nextest list --message-format json` matched, dealt by
+    measured time (longest first, each to the least-loaded shard) so the shards end
+    together; a test with no time weighs `default_s`. Every shard deals the same list the
+    same way, so each test runs in exactly one."""
+    k, n = (int(x) for x in shard.split("/"))
+    if not 1 <= k <= n:
+        raise ValueError(f"time:{shard}: the shard must be 1..{n}")
+    secs, default = times.get("tests", {}), float(times.get("default_s", 1.0))
+    weight = lambda bt: secs.get(f"{bt[0]} {bt[1]}", default)
+    tests = sorted((b, t) for b, suite in json.loads(listing)["rust-suites"].items()
+                   for t, case in suite["testcases"].items()
+                   if case["filter-match"]["status"] == "matches" and not case.get("ignored"))
+    load, mine = [0.0] * n, []
+    for bt in sorted(tests, key=lambda bt: -weight(bt)):
+        i = min(range(n), key=lambda j: (load[j], j))
+        load[i] += weight(bt)
+        if i == k - 1:
+            mine.append(bt)
+    return mine
+
+
+def test_times(logs: list[str], floor: float = 2.0) -> str:
+    """The record time_shard deals by, from nextest's result lines in CI test parts' logs:
+    each test at or over `floor` s, and the mean of the rest as `default_s`."""
+    secs = {f"{m[2]} {m[3]}": float(m[1]) for log in logs for m in NEXTEST_LINE.finditer(log)}
+    short = [s for s in secs.values() if s < floor]
+    long = sorted(((t, round(s, 1)) for t, s in secs.items() if s >= floor), key=lambda ts: (-ts[1], ts[0]))
+    return json.dumps({"default_s": round(sum(short) / len(short), 2) if short else 1.0,
+                       "tests": dict(long)}, indent=1) + "\n"
+
+
 def gate_part(part: str, mode: str) -> dict[str, str]:
     """CPL_GATE_PART -> {kind, suites, shard, partition}; raises ValueError on a bad one."""
     out = {"kind": "checks", "suites": "", "shard": "", "partition": ""}
@@ -100,6 +137,7 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
 
 
 ROOT = Path(__file__).resolve().parent.parent
+TEST_TIMES = ROOT / "research" / "perf" / "ci-test-times.json"
 SPEC_GATE = ROOT / "scripts/spec-gate.py"
 
 
@@ -841,10 +879,22 @@ class Tail:
             archive = env.get("CPL_NEXTEST_ARCHIVE")
             src = (["--archive-file", archive, "--workspace-remap", ".", "--extract-to", ".", "--extract-overwrite"]
                    if archive else ["--workspace"])
-            self.step(f"cargo nextest run --partition {g['partition']} (without the --full tests)")
+            part = g["partition"]
+            if part.startswith("time:"):
+                listed = self.run(["cargo", "nextest", "list", *src, "--profile", "gate", "-E", f"not ({slow_filter()})",
+                                   "--message-format", "json"], cwd=ROOT, capture_output=True, text=True)
+                if listed.returncode:
+                    raise Failed("cargo nextest list failed; the lines above say why")
+                mine = time_shard(listed.stdout, json.loads(TEST_TIMES.read_text()), part.removeprefix("time:"))
+                select = ["-E", " | ".join(f"(binary_id({b}) & test(={t}))" for b, t in mine) or "none()",
+                          "--no-tests=warn"]
+                self.step(f"cargo nextest run: shard {part.removeprefix('time:')} by measured time"
+                          f" ({len(mine)} tests, without the --full tests)")
+            else:
+                select = ["--partition", part, "-E", f"not ({slow_filter()})"]
+                self.step(f"cargo nextest run --partition {part} (without the --full tests)")
             # No retries: a flaky test fails on its first run (ci/R35).
-            if self.call(["cargo", "nextest", "run", *src, "--profile", "gate", "--no-fail-fast",
-                          "--partition", g["partition"], "-E", f"not ({slow_filter()})"]):
+            if self.call(["cargo", "nextest", "run", *src, "--profile", "gate", "--no-fail-fast", *select]):
                 raise Failed("a test failed; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'")
             return f"test partition {g['partition']}"
         if g["kind"] == "fmt":
@@ -1269,6 +1319,8 @@ def main(argv: list[str] | None = None) -> int:
     tr = sub.add_parser("cxx-trim", help="drop the g++ cache's binaries unused since --since (epoch seconds)")
     tr.add_argument("--since", type=float, required=True)
     tr.add_argument("--dir", action="append", help="a cache dir to trim, repeatable; default ~/.cache/cpl/cxx")
+    tt = sub.add_parser("test-times", help="rewrite research/perf/ci-test-times.json from CI test parts' logs")
+    tt.add_argument("logs", nargs="+")
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["check"]:
         return check(argv[1:])
@@ -1283,6 +1335,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "cxx-trim":
         for d in args.dir or [str(Path.home() / ".cache" / "cpl" / "cxx")]:
             cxx_trim(Path(d), args.since)
+        return 0
+    if args.cmd == "test-times":
+        TEST_TIMES.write_text(test_times([Path(p).read_text(errors="replace") for p in args.logs]))
         return 0
     if args.cmd == "gate":
         return run_gate(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest, args.since)

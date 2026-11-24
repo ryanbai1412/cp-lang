@@ -821,7 +821,7 @@ _RUST_TEST = re.compile(r"#\[test\]\s*((?:#\[[^\]]*\]\s*)*)(?:pub\s+)?(?:async\s
 
 def tests_unrun(root: Path) -> list[str]:
     """Workspace #[test]s no CI tier runs: ignored ones, every one when ci.yml's
-    hash:i/N partitions miss a part, a SLOW_TESTS one no ci.py step names (by name
+    hash:i/N or time:i/N partitions miss a part, a SLOW_TESTS one no ci.py step names (by name
     or its whole `--test` binary), and
     a wall-clock one when ci-slow.yml has no timing job."""
     ci = root / "scripts/ci.py"
@@ -836,7 +836,7 @@ def tests_unrun(root: Path) -> list[str]:
     slow_yml = (root / ".github/workflows/ci-slow.yml")
     main_ci = yml.read_text() if yml.is_file() else ""
     slow_ci = slow_yml.read_text() if slow_yml.is_file() else ""
-    parts = {(int(i), int(n)) for i, n in re.findall(r"hash:(\d+)/(\d+)", main_ci)}
+    parts = {(int(i), int(n)) for i, n in re.findall(r"(?:hash|time):(\d+)/(\d+)", main_ci)}
     totals = {n for _, n in parts}
     partitioned = len(totals) == 1 and {i for i, _ in parts} == set(range(1, max(totals) + 1))
     full = "just check-full" in slow_ci

@@ -581,6 +581,8 @@ class DebtRatchetTest(unittest.TestCase):
             ])
             self._write(root, ".github/workflows/ci.yml", 'part: ["hash:1/2"]\n')
             self.assertIn("crates/a/tests/t.rs::plain (ci.yml's hash partitions miss a part)", dr.tests_unrun(root))
+            self._write(root, ".github/workflows/ci.yml", 'part: ["time:1/2", "time:2/2"]\n')
+            self.assertNotIn("crates/a/tests/t.rs::plain (ci.yml's hash partitions miss a part)", dr.tests_unrun(root))
         self.assertIn("tests_unrun", dr.HARD_ZERO)
 
     def test_stale_arch_paths_skips_ignored_and_known_debt(self) -> None:

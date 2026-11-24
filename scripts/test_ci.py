@@ -400,6 +400,45 @@ class TailTest(unittest.TestCase):
         self.assertIn("--workspace --profile gate", next(e for e in ev if e.startswith("cargo nextest run")))
         self.assertIn("nextest's summary above names it", err)
 
+    def test_time_shards_deal_every_test_once_longest_first(self) -> None:
+        ok = {"filter-match": {"status": "matches"}}
+        listing = json.dumps({"rust-suites": {
+            "a::x": {"testcases": {"slow": ok, "t1": ok, "skipped": {"filter-match": {"status": "mismatch"}}}},
+            "b": {"testcases": {"t2": ok, "new": ok, "ign": {**ok, "ignored": True}}}}})
+        times = {"default_s": 1, "tests": {"a::x slow": 10, "a::x t1": 4, "b t2": 3}}
+        shards = [ci.time_shard(listing, times, f"{k}/2") for k in (1, 2)]
+        self.assertEqual(shards, [[("a::x", "slow")], [("a::x", "t1"), ("b", "t2"), ("b", "new")]])
+        self.assertEqual(ci.time_shard(listing, times, "3/3"), [("b", "t2"), ("b", "new")])
+        with self.assertRaises(ValueError):
+            ci.time_shard(listing, times, "3/2")
+
+    def test_test_times_reads_nextests_result_lines(self) -> None:
+        log = ("2026-11-24T17:40:00.1Z         PASS [ 145.827s] (165/241) cpl-cli::judges every_x_3\n"
+               "2026-11-24T17:40:01.1Z         PASS [   0.300s] (166/241) b t\n"
+               "2026-11-24T17:40:02.1Z         FAIL [   2.500s] (167/241) b u\n")
+        self.assertEqual(json.loads(ci.test_times([log])),
+                         {"default_s": 0.3, "tests": {"cpl-cli::judges every_x_3": 145.8, "b u": 2.5}})
+
+    def test_a_time_partition_runs_the_tests_its_measured_share_deals_it(self) -> None:
+        ok = {"filter-match": {"status": "matches"}}
+        listing = json.dumps({"rust-suites": {"b": {"testcases": {"long": ok, "short": ok}}}})
+        with tempfile.TemporaryDirectory() as d:
+            times = Path(d, "times.json")
+            times.write_text(json.dumps({"default_s": 1, "tests": {"b long": 9}}))
+            with mock.patch.object(ci, "TEST_TIMES", times):
+                code, ev, out, _, _, _ = self._part("tests:time:2/2", env={"CPL_NEXTEST_ARCHIVE": "a.tar.zst"},
+                                                    outs={"cargo nextest list": listing})
+                self.assertEqual(code, 0)
+                code3, ev3, _, _, _, _ = self._part("tests:time:3/3", outs={"cargo nextest list": listing})
+        listed = next(e for e in ev if e.startswith("cargo nextest list"))
+        self.assertIn("--archive-file a.tar.zst --workspace-remap . --extract-to . --extract-overwrite", listed)
+        run = next(e for e in ev if e.startswith("cargo nextest run"))
+        self.assertIn("--no-fail-fast -E (binary_id(b) & test(=short)) --no-tests=warn", run)
+        self.assertNotIn("--partition", run)
+        self.assertIn("check: test partition time:2/2 passed in", out)
+        self.assertEqual(code3, 0)
+        self.assertIn("-E none() --no-tests=warn", next(e for e in ev3 if e.startswith("cargo nextest run")))
+
     def test_the_doc_and_fmt_parts(self) -> None:
         code, ev, out, _, _, _ = self._part("tests:doc")
         self.assertEqual((code, [e for e in ev if e.startswith("cargo")]), (0, ["cargo test -q --workspace --doc"]))
@@ -625,6 +664,7 @@ class GateTest(unittest.TestCase):
         self.enterContext(mock.patch.dict(ci.os.environ, env or {}))
         ci.os.environ.pop("CHECK_BASE", None) if not (env or {}).get("CHECK_BASE") else None
         ci.os.environ.pop("CPL_NO_WALL_CLOCK", None)
+        ci.os.environ.pop("CPL_COMMIT_PROGRESS", None)
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             code = ci.run_gate(mode, part, since=100.0, run=run, tail_cls=GateTest.FakeTier, clock=lambda: 100.0 + elapsed)
