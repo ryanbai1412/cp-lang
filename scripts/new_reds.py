@@ -22,6 +22,7 @@ names (a build error) refuses as before.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -58,6 +59,19 @@ def tee(cmd, cwd=None, env=None):
     return proc.wait(), "".join(out)
 
 
+# An aggregate test's rows (`cpl-finding: <test> <row> +<excess>`): one test id covers
+# every file and cause, so with it red at the base a land is judged by its rows.
+FINDING = re.compile(r"cpl-finding: (\S+) (.+) \+(\d+)\s*$", re.M)
+
+
+def findings(out):
+    """{test name: {row: excess}} from an output's cpl-finding lines."""
+    rows = {}
+    for test, row, n in FINDING.findall(out):
+        rows.setdefault(test, {})[row] = int(n)
+    return rows
+
+
 def only(cmd, tests):
     """`cmd` with its -E filter replaced by one naming just `tests`."""
     expr = " | ".join(f"(binary_id({b}) & test(={t}))" for b, t in tests)
@@ -69,11 +83,11 @@ def only(cmd, tests):
     return cmd
 
 
-def base_checkout(common, base):
+def base_checkout(common, base, fresh=False):
     """The scratch base worktree at `base`, rebuilt when it can't check out (slice 3's
     `git checkout -f --detach` failed in it, and no base comparison ran)."""
     wt = common / "cpl-base-wt"
-    if (wt / ".git").exists() and not git("checkout", "-q", "-f", "--detach", base, cwd=wt, check=False, code=True):
+    if not fresh and (wt / ".git").exists() and not git("checkout", "-q", "-f", "--detach", base, cwd=wt, check=False, code=True):
         return wt
     if wt.exists():
         print(f"new-reds: rebuilding the base worktree {wt}", file=sys.stderr)
@@ -87,15 +101,24 @@ def base_checkout(common, base):
 
 
 def at_base(cmd, tests, base, common):
-    """{test: 'fail' | 'pass' | 'unbuilt'} for `tests` at `base`."""
+    """({test: 'fail' | 'pass' | 'unbuilt'}, findings) for `tests` at `base`."""
     wt = base_checkout(common, base)
     env = {**base_env(), "CARGO_TARGET_DIR": os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))}
     print(f"new-reds: rerunning {len(tests)} failing test(s) at the base {base[:9]}", file=sys.stderr)
     code, out = tee(only(cmd, tests), cwd=wt, env=env)
+    if code not in (0, 4, 100):
+        # perf's ord and bw: the base "didn't build" (a test file missing from the
+        # worktree, a generated msgs constant not found), and its reds counted as new.
+        print(f"new-reds: the base {base[:9]} didn't build; rebuilding its worktree and trying once more",
+              file=sys.stderr)
+        wt = base_checkout(common, base, fresh=True)
+        code, out = tee(only(cmd, tests), cwd=wt, env=env)
     failed = set(failing_tests(out))
     if code not in (0, 4, 100):
-        return {t: "fail" if t in failed else "unbuilt" for t in tests}
-    return {t: "fail" if t in failed else "pass" for t in tests}
+        print(f"new-reds: the base {base[:9]} doesn't build in {wt}, so its tests can't be compared; "
+              "the reds below count as this change's", file=sys.stderr)
+        return {t: "fail" if t in failed else "unbuilt" for t in tests}, findings(out)
+    return {t: "fail" if t in failed else "pass" for t in tests}, findings(out)
 
 
 def owner(test, base):
@@ -120,15 +143,25 @@ def main(argv):
     base = git("rev-parse", a.base)
     cache_file = common / "cpl-base-tests" / f"{git('rev-parse', base + '^{tree}')}.json"
     cache = json.loads(cache_file.read_text()) if cache_file.is_file() else {}
-    todo = [t for t in tests if " ".join(t) not in cache]
+    rows = findings(out)
+    todo = [t for t in tests if " ".join(t) not in cache or (t[1] in rows and f"rows {' '.join(t)}" not in cache)]
     if todo:
-        for t, r in at_base(cmd, todo, base, common).items():
+        results, base_rows = at_base(cmd, todo, base, common)
+        for t, r in results.items():
             if r != "unbuilt":
                 cache[" ".join(t)] = r
+                cache[f"rows {' '.join(t)}"] = base_rows.get(t[1], {})
         cache_file.parent.mkdir(exist_ok=True)
         cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
     new = [t for t in tests if cache.get(" ".join(t)) != "fail"]
-    old = [t for t in tests if t not in new]
+    grown = {}
+    for t in tests:
+        theirs = cache.get(f"rows {' '.join(t)}", {})
+        # A base that reports no rows predates them (or failed on a build): judge by the id.
+        worse = {r: n for r, n in rows.get(t[1], {}).items() if theirs and t not in new and n > theirs.get(r, 0)}
+        if worse:
+            grown[t] = {r: (theirs.get(r, 0), n) for r, n in worse.items()}
+    old = [t for t in tests if t not in new and t not in grown]
     with open(common / "cpl-preexisting-reds.log", "a") as log:
         for t in old:
             who = owner(t, base)
@@ -148,10 +181,14 @@ def main(argv):
                     print(f"new-reds: flaky at the tip, owner {who}: {' '.join(t)} failed in the full run, "
                           "passes alone here and at the base; not refusing", file=sys.stderr)
                     log.write(f"{base} {who} {' '.join(t)}\n")
+    for t, worse in grown.items():
+        print(f"new-reds: NEW rows in {' '.join(t)}, red at the base {base[:9]} too; this change grows "
+              + ", ".join(f"{r} (+{b} there, +{n} here)" for r, (b, n) in sorted(worse.items())[:20])
+              + (f" and {len(worse) - 20} more" if len(worse) > 20 else ""), file=sys.stderr)
     for t in new:
         print(f"new-reds: NEW red: {' '.join(t)} passes at the base {base[:9]} (or doesn't build there) "
               "and fails with this change", file=sys.stderr)
-    return 1 if new else 0
+    return 1 if new or grown else 0
 
 
 if __name__ == "__main__":

@@ -109,8 +109,11 @@ fn silent_unknowns_only_go_down() {
             now.get(file).map_or(0, Vec::len),
         );
         if is > was {
+            // One line per grown row, for new_reds: with this test red at the base too,
+            // a land is refused for any row grown more than there.
             grew.push(format!(
-                "{file}: {was} -> {is}\n  {}",
+                "cpl-finding: silent_unknowns_only_go_down {file} +{}\n{file}: {was} -> {is}\n  {}",
+                is - was,
                 now[file][..now[file].len().min(40)].join("\n  ")
             ));
         } else if is < was {

@@ -60,11 +60,26 @@ fn warnings(root: &Path) -> Vec<String> {
 fn corpus_warnings_only_go_down() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let found = warnings(&root);
+    // Per file and lint, for new_reds: with this test red at the base too, a land is
+    // refused for any row grown more than there.
+    let mut rows = std::collections::BTreeMap::<String, usize>::new();
+    for w in &found {
+        let mut parts = w.splitn(3, ": ");
+        let (file, code) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""));
+        let file = Path::new(file)
+            .strip_prefix(&root)
+            .map_or(file.into(), |f| f.display().to_string());
+        *rows.entry(format!("{file}:{code}")).or_default() += 1;
+    }
+    let rows: Vec<String> = (rows.iter())
+        .map(|(row, n)| format!("cpl-finding: corpus_warnings_only_go_down {row} +{n}"))
+        .collect();
     assert!(
         found.is_empty(),
         "std and corpus spec.cp have lint warnings (a false positive to fix in the \
-         lint, or code to fix):\n{}",
-        found.join("\n")
+         lint, or code to fix):\n{}\n{}",
+        found.join("\n"),
+        rows.join("\n")
     );
 }
 

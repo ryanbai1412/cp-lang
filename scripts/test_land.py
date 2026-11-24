@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -197,6 +198,74 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("NEW red: cpl-codegen tests::new_red", r.stderr)
         self.assertNotIn("new-reds: rerunning", r.stderr)
+
+    def test_an_aggregate_red_at_the_base_still_refuses_a_row_it_grows(self):
+        # b23f483bf grew ccc20s1/port.cp 0 -> 12 silent unknowns while
+        # silent_unknowns_only_go_down was red at the base on cause:branch, and new_reds
+        # passed it as main's red: one test id covers every row.
+        theirs, same, grows = self.clone("theirs"), self.clone("same"), self.clone("grows")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\nrows=$(cat rows*.txt 2>/dev/null)\n[ -n \"$rows\" ] || exit 0\n"
+            "echo '        FAIL [   0.010s] cpl-conform::silent_unknowns silent_unknowns_only_go_down'\n"
+            "echo \"$rows\" | sed 's/^/cpl-finding: silent_unknowns_only_go_down /'\nexit 100\n")
+        (theirs / "rows.txt").write_text("cause:branch +6\n")
+        self.commit(theirs, "main is red on one row")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        for repo in (same, grows):
+            git(repo, "pull", "-q", "origin", "main")
+        (same / "x.txt").write_text("x\n")
+        r = subprocess.run(cmd, cwd=same, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+        (grows / "rows-ours.txt").write_text("ccc20s1/port.cp +12\n")
+        r = subprocess.run(cmd, cwd=grows, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("NEW rows in cpl-conform::silent_unknowns silent_unknowns_only_go_down", r.stderr)
+        self.assertIn("ccc20s1/port.cp (+0 there, +12 here)", r.stderr)
+        self.assertNotIn("cause:branch (", r.stderr)
+        # The land that brings the rows: the base's test prints none, so its id decides.
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\n[ -f rows.txt ] || exit 0\n"
+            "echo '        FAIL [   0.010s] cpl-conform::silent_unknowns silent_unknowns_only_go_down'\nexit 100\n")
+        self.commit(theirs, "the test before it printed rows")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        first = self.clone("first")
+        (first / "scripts" / "fake-tests.sh").write_text((same / "scripts" / "fake-tests.sh").read_text())
+        r = subprocess.run(cmd, cwd=first, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+
+    def test_a_base_that_doesnt_build_is_rebuilt_before_its_reds_count_as_new(self):
+        # perf's ord: the base worktree lacked a test file ("couldn't find file"), the
+        # base run failed to build, and two reds main had too refused the land.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\n[ ! -f broken.txt ] || exit 101\n"
+            "echo '        FAIL [   0.010s] cpl-cli::trace_goldens red_on_main'\nexit 100\n")
+        self.commit(theirs, "main is red")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "origin", "main")
+        common = Path(git(ours, "rev-parse", "--path-format=absolute", "--git-common-dir").strip())
+        git(ours, "worktree", "add", "-q", "--detach", str(common / "cpl-base-wt"), "HEAD")
+        (common / "cpl-base-wt" / "broken.txt").write_text("stale\n")
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        r = subprocess.run(cmd, cwd=ours, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("didn't build; rebuilding its worktree", r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+
+    def test_every_aggregate_rust_test_reports_its_rows(self):
+        # An `*_only_go_down` test is one id over many rows; without cpl-finding lines a
+        # red at the base hides every row a land grows.
+        root = Path(__file__).resolve().parent.parent
+        silent = []
+        for f in (root / "crates").rglob("*.rs"):
+            src = f.read_text()
+            for name in re.findall(r"fn (\w+_only_go_down)\(", src):
+                if f"cpl-finding: {name} " not in src:
+                    silent.append(f"{f.relative_to(root)}: {name}")
+        self.assertEqual(silent, [], "print `cpl-finding: <test> <row> +<excess>` per grown row")
 
     def test_a_new_red_that_passes_alone_at_the_tip_is_flaky_not_refused(self):
         # cpl-wasm parity's transcript order raced under the full run only, and
