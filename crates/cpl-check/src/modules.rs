@@ -34,13 +34,12 @@ impl Loader for FsLoader {
 pub struct GivenFiles(BTreeMap<String, String>);
 
 impl GivenFiles {
-    pub fn new(files: BTreeMap<String, String>) -> GivenFiles {
-        GivenFiles(
-            files
-                .into_iter()
-                .map(|(path, text)| (given_key(Path::new(&path)), text))
-                .collect(),
-        )
+    pub fn new(files: Vec<(String, String)>) -> GivenFiles {
+        let mut given = BTreeMap::new();
+        for (path, text) in files {
+            given.insert(given_key(Path::new(&path)), text);
+        }
+        GivenFiles(given)
     }
 }
 
@@ -73,10 +72,10 @@ impl Files for Disk {
 
 /// `path` as a key of [`GivenFiles`]: its names joined by `/`, without `.`.
 fn given_key(path: &Path) -> String {
-    let names = path.components().filter_map(|c| match c {
-        std::path::Component::Normal(name) => Some(name.to_string_lossy()),
-        _ => None,
-    });
+    let path = path.to_string_lossy();
+    let names = path
+        .split(['/', '\\'])
+        .filter(|name| !name.is_empty() && *name != ".");
     names.collect::<Vec<_>>().join("/")
 }
 

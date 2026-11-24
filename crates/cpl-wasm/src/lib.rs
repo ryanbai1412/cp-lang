@@ -130,14 +130,17 @@ impl Playground {
     /// (`{"cp.toml": "...", "kit/m.cp": "..."}`), for every command after:
     /// a `use kit.m` finds `kit/m.cp` as `cpl` finds it on disk.
     pub fn set_files(&mut self, files: &str) -> Value {
-        let given = json::parse(files).ok().and_then(|v| {
-            (v.as_object()?.iter())
-                .map(|(path, text)| Some((path.clone(), text.as_str()?.to_string())))
-                .collect::<Option<BTreeMap<_, _>>>()
-        });
-        let Some(given) = given else {
+        let parsed = json::parse(files).ok();
+        let Some(members) = parsed.as_ref().and_then(Value::as_object) else {
             return obj([("error", "files are an object of path to text".into())]);
         };
+        let mut given = Vec::new();
+        for (path, text) in members {
+            let Some(text) = text.as_str() else {
+                return obj([("error", format!("{path}: a file's text is a string").into())]);
+            };
+            given.push((path.clone(), text.to_string()));
+        }
         self.db = Session::with_loader(Box::new(cpl_check::GivenFiles::new(given)));
         obj([])
     }
