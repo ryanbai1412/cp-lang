@@ -282,3 +282,20 @@ fn convolve_over_an_ntt_prime_leaves_the_fft_and_crt_paths_out() {
     assert!(!out.contains("split_product"), "{out}");
     assert!(!out.contains("crt_product"), "{out}");
 }
+
+#[test]
+fn a_guarded_step_by_more_than_one_keeps_its_overflow_check() {
+    let cpp = cpp("let xs: [0..4]Int = read()\nvar h = 0\n\
+         fn f():\n    for x in xs:\n        if x > 5: h += 1000000000000000000\n\
+         f()\nprint(h)\n");
+    assert!(cpp.contains("cpl::iadd(h, 1000000000000000000"), "{cpp}");
+    assert!(!cpp.contains("h += ("), "{cpp}");
+}
+
+#[test]
+fn a_restored_variable_is_not_its_first_value() {
+    let cpp = cpp(
+        "let n: 1..=10 = read()\nvar c = 0\nfor i in 0..n:\n    c = c + 1000000000000000000\nprint(c)\n",
+    );
+    assert!(cpp.contains("cpl::iadd(c, 1000000000000000000"), "{cpp}");
+}

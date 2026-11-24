@@ -42,10 +42,27 @@ impl<'p> Emitter<'p> {
             _ => return None,
         };
         (place.ty == Ty::Int
-            && matches!(value.kind, ExprKind::Int(_))
+            && matches!(value.kind, ExprKind::Int(1))
+            && self.facts.unit_step((None, true, *id))
             && !self.const_globals.contains(id)
             && !self.dropped_store(place, op))
         .then_some(sym)
+    }
+
+    /// Whether `v op= value` on an `Int` variable is proved to stay an
+    /// `Int`, as `v op value` would be.
+    fn store_fits(&self, place: &Place, op: BinOp, value: &Expr) -> bool {
+        let kind = match place.kind {
+            PlaceKind::Local(slot) => ExprKind::Local(slot),
+            PlaceKind::Global(id) => ExprKind::Global(id),
+            _ => return false,
+        };
+        let read = Expr {
+            kind,
+            ty: place.ty.clone(),
+            span: place.span,
+        };
+        place.ty == Ty::Int && self.facts.fits(self.facts_home(), op, &read, value)
     }
 
     pub(super) fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
@@ -176,6 +193,22 @@ impl<'p> Emitter<'p> {
                         }
                         return;
                     }
+                    AssignOp::Binary(BinOp::Mul) if matches!(place.ty, Ty::Int | Ty::I128) => {
+                        let f = self.overflow_checked(&place.ty, BinOp::Mul);
+                        let it = self.temp();
+                        self.line(
+                            out,
+                            &format!(
+                                "if (auto {it} = {b}.find({k}); {it} == {b}.end()) {b}.emplace({k}, {}); \
+                                 else {it}->second = {f}({it}->second, {});",
+                                v.text, v.text
+                            ),
+                        );
+                        if let Some(at) = &at {
+                            self.line(out, &format!("{at} = cpl::map_slot({b}, {k});"));
+                        }
+                        return;
+                    }
                     AssignOp::Binary(BinOp::Mul) => {
                         self.need("map_fold");
                         self.line(out, &format!("cpl::map_mul({b}, {k}, {});", v.text));
@@ -199,6 +232,8 @@ impl<'p> Emitter<'p> {
                             AssignOp::Binary(BinOp::BitXor) => "^",
                             _ => "+",
                         };
+                        let checked = matches!(place.ty, Ty::Int | Ty::I128)
+                            && matches!(op, AssignOp::Binary(BinOp::Add | BinOp::Sub));
                         if let Some(cpl_ir::NarrowLayout::Map(_, Some(w))) =
                             self.place_elem_layout(base)
                         {
@@ -209,6 +244,17 @@ impl<'p> Emitter<'p> {
                                 out,
                                 &format!("{{ auto& {c} = {cell}; {c} = cpl::fit<{w}>(ll({c}) {sym} {}); }}", v.text),
                             );
+                        } else if checked {
+                            let bop = if sym == "-" { BinOp::Sub } else { BinOp::Add };
+                            let f = self.overflow_checked(&place.ty, bop);
+                            let (tmp, r) = (self.temp(), self.temp());
+                            self.line(out, "{");
+                            self.indent += 1;
+                            self.line(out, &format!("auto {tmp} = {};", v.text));
+                            self.line(out, &format!("auto& {r} = {cell};"));
+                            self.line(out, &format!("{r} = {f}({r}, {tmp});"));
+                            self.indent -= 1;
+                            self.line(out, "}");
                         } else if matches!(base.ty, Ty::HashMap(..))
                             && expr_may_alias_root(value, walk::root(base))
                         {
@@ -308,7 +354,9 @@ impl<'p> Emitter<'p> {
                 (Ty::Float, BinOp::Pow) => {
                     twice(self, out, &|p, v| format!("{p} = std::pow({p}, {v});"))
                 }
-                (Ty::Int | Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
+                (Ty::Int | Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul)
+                    if !self.store_fits(place, bop, value) =>
+                {
                     let f = self.overflow_checked(&place.ty, bop);
                     twice(self, out, &|p, v| format!("{p} = {f}({p}, {v});"));
                 }
