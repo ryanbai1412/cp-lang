@@ -85,10 +85,15 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
             if !public(w) {
                 return None;
             }
-            if let Some((local, _)) =
-                (analysis.imports().iter()).find(|(_, imp)| imp.module == i && imp.name == w)
-            {
-                return (local != w).then(|| local.clone());
+            // A method imported under its key (`max of std.seq`) is spelled
+            // as written; only a plain name is a spelling the file can write.
+            let mut imported = (analysis.imports().iter())
+                .filter(|(_, imp)| imp.module == i && imp.name == w)
+                .map(|(local, _)| local)
+                .peekable();
+            if imported.peek().is_some() {
+                let local = imported.find(|l| l.chars().all(|c| c.is_alphanumeric() || c == '_'));
+                return local.filter(|l| *l != w).cloned();
             }
             let (alias, _) = analysis.aliases().iter().find(|(_, &at)| at == i)?;
             Some(format!("{alias}.{w}"))
@@ -138,9 +143,18 @@ fn declare(
         kinds.push(t.0);
     }
     let mut spelled = Vec::new();
-    for t in library_lint::tokens(&decl.to) {
+    let to_tokens = library_lint::tokens(&decl.to);
+    for (i, t) in to_tokens.iter().enumerate() {
         let w = &decl.to[t.span.start as usize..t.span.end as usize];
-        if let Some(s) = spell(w) {
+        // `x max= e` writes the language's operator, not the module's `max`,
+        // and `l lcm= x` takes a name, never a path.
+        let op =
+            (to_tokens.get(i + 1)).is_some_and(|n| n.kind == K::Eq && n.span.start == t.span.end);
+        let writable = |s: &String| {
+            !op || (!matches!(w, "min" | "max")
+                && s.chars().all(|c| c.is_alphanumeric() || c == '_'))
+        };
+        if let Some(s) = spell(w).filter(writable) {
             spelled.push((w.to_string(), s));
         }
     }

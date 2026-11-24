@@ -960,3 +960,25 @@ fn lines_from_writes_differently_match_different_code() {
     assert_eq!(found("g[0].push(2)\ng[2].push(0)\n"), 1);
     assert_eq!(found("g[1].push(1)\ng[1].push(1)\n"), 0);
 }
+
+#[test]
+fn a_min_max_fix_writes_the_operator_not_the_module_s_name() {
+    let src = "use std.seq\nlet n: 1..=9 = read()\nvar u: [0..=9]Int = 0\nlet t: [0..=9]Int = 0\nfor i in 0..=4:\n    for j in 0..=4:\n        u[i + j] = max(u[i + j], t[i])\nvar x = 0\nx = max(x, n)\nprint(u[1], x)\n";
+    let found = crate::lint(src, &crate::Config::default());
+    let says: Vec<String> = (found.iter())
+        .filter(|d| d.code.0 == "L0523")
+        .map(|d| d.message.clone())
+        .collect();
+    assert_eq!(says, ["write `u[i + j] max= t[i]`", "write `x max= n`"]);
+    let (fixed, _) = crate::fix::fix(src, &crate::Config::default());
+    assert!(
+        fixed.contains("        u[i + j] max= t[i]\n") && fixed.contains("\nx max= n\n"),
+        "{fixed}"
+    );
+    assert!(
+        crate::fix_tests::checker_errors(&fixed).is_empty(),
+        "{fixed}"
+    );
+    let left = crate::lint(&fixed, &crate::Config::default());
+    assert!(!left.iter().any(|d| d.code.0 == "L0523"), "{left:?}");
+}
