@@ -528,6 +528,13 @@ impl Server {
                     Some(def) if rename::spelled_by_input(&mut self.db, &def, &[&uri]) => {
                         Err((INVALID_PARAMS, Self::spelled_by_input(&name)))
                     }
+                    Some(def) if rename::std_calls(&mut self.db, &uri, &def, &name).is_some() => {
+                        let by = rename::std_calls(&mut self.db, &uri, &def, &name);
+                        Err((
+                            INVALID_PARAMS,
+                            Self::std_calls(&name, &by.unwrap_or_default()),
+                        ))
+                    }
                     Some(def) if self.renamable(&uri, &def) => Ok(Reply::result(obj([
                         ("range", range_json(span, &analysis.text, &analysis.lines)),
                         ("placeholder", name.into()),
@@ -576,6 +583,9 @@ impl Server {
                 }
                 let name = rename::word_at(&analysis.text, offset)
                     .map_or(String::new(), |(_, w)| w.to_string());
+                if let Some(by) = rename::std_calls(&mut self.db, &uri, &target, &name) {
+                    return Err((INVALID_PARAMS, Self::std_calls(&name, &by)));
+                }
                 // Every open file, the declaring file, and each file of the
                 // project on disk that imports the name.
                 let mut files: Vec<String> = self.docs.keys().cloned().collect();
@@ -863,6 +873,10 @@ impl Server {
     }
 
     /// Why a variant the input spells keeps its name.
+    fn std_calls(name: &str, by: &str) -> String {
+        format!("`{name}` keeps its name: {by} calls it on your type")
+    }
+
     fn spelled_by_input(name: &str) -> String {
         format!(
             "`{name}` is how the input spells this variant: renaming it changes what `read` accepts"

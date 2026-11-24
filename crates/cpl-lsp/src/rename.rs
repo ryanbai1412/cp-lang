@@ -7,6 +7,7 @@
 
 use cpl_check::{Definition, Session};
 use cpl_diag::Span;
+use cpl_syntax::ast::StmtKind;
 
 fn is_ident(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
@@ -221,6 +222,55 @@ pub fn spelled_by_input(db: &mut Session, target: &Definition, files: &[&str]) -
         }
     }
     false
+}
+
+/// What std type calls the method `target`, `name`, on the user's type
+/// (`LiChao` calls a line's `at`): renaming it would break that call, as
+/// lowering the program renamed tells.
+pub fn std_calls(db: &mut Session, path: &str, target: &Definition, name: &str) -> Option<String> {
+    let text = db.file_text(path)?;
+    let analysis = db.analyze(path)?;
+    let is_method = analysis.items.iter().any(|item| {
+        let methods = item
+            .syntax
+            .parsed
+            .stmts
+            .iter()
+            .flat_map(|stmt| match &stmt.kind {
+                StmtKind::Struct(decl) => decl.methods.as_slice(),
+                StmtKind::Enum(decl) => decl.methods.as_slice(),
+                _ => &[],
+            });
+        let mut fns = methods.filter_map(|m| match &m.kind {
+            StmtKind::Fn(f) => Some(f.name.span.shift(item.offset)),
+            _ => None,
+        });
+        fns.any(|span| span == target.span)
+    });
+    if !same_file(&target.path, path) || !is_method {
+        return None;
+    }
+    let gap = |d: &cpl_diag::Diagnostic| d.notes.iter().any(|n| n.contains("the gap is in `std."));
+    let lowered = |db: &mut Session| {
+        let diagnostics = db.analyze(path).map(|a| cpl_ir::reported(&a));
+        let gaps = diagnostics.unwrap_or_default().into_iter().filter(gap);
+        gaps.map(|d| d.message).collect::<Vec<_>>()
+    };
+    let before = lowered(db);
+    let trial = format!("{name}_");
+    let spans = uses_in(db, path, target, name);
+    let edited = cpl_diag::splice(&text, spans.iter().map(|&s| (s, trial.clone())).collect())?;
+    let loaded = db.file_loaded(path);
+    db.set_file(path, edited);
+    let after = lowered(db);
+    db.restore_file(path, text, loaded);
+    let new = after.into_iter().find(|m| !before.contains(m))?;
+    Some(
+        new.split(" does not work")
+            .next()
+            .unwrap_or("std")
+            .to_string(),
+    )
 }
 
 /// The edit renaming `old` to `new` at `span`.

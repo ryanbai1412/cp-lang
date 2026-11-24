@@ -11,14 +11,6 @@ use std::process::Command;
 #[path = "support/corpus_cases.rs"]
 mod corpus_cases;
 
-/// Renames known to change meaning or be refused wrongly, `port word`; the
-/// checker's causes are with compiler. Only shrinks: a fixed one fails the
-/// test until it is removed here.
-const KNOWN: &[&str] = &[
-    // A method a std type calls on the user's type (`LiChao` needs `at`).
-    "ioi16p6 at",
-];
-
 const URI: &str = "file:///rename/port.cp";
 
 fn message(id: Option<u32>, method: &str, params: Value) -> Value {
@@ -242,7 +234,7 @@ fn renaming_every_name_keeps_each_port_checking_clean_and_printing_the_same() {
     std::fs::create_dir_all(&dir).unwrap();
     // A debug build replays every fourth port; release replays them all.
     let step = if cfg!(debug_assertions) { 4 } else { 1 };
-    let (mut renamed, mut ran, mut broken, mut seen) = (0, 0, Vec::new(), Vec::new());
+    let (mut renamed, mut ran, mut broken) = (0, 0, Vec::new());
     let replayed: Vec<&str> = ids.iter().step_by(step).map(String::as_str).collect();
     corpus_cases::make(&root, &replayed);
     for pid in replayed {
@@ -268,11 +260,7 @@ fn renaming_every_name_keeps_each_port_checking_clean_and_printing_the_same() {
         let (text, n, odd) = rename_all(&mut server, &src);
         renamed += n;
         for (word, why) in odd {
-            let key = format!("{pid} {word}");
-            if !KNOWN.contains(&key.as_str()) {
-                broken.push(format!("{key}: {why}"));
-            }
-            seen.push(key);
+            broken.push(format!("{pid} {word}: {why}"));
         }
         let input = cpl_contest::problem::find_tests_dir(&problem.join("spec.cp")).join("01.in");
         if input.is_file() {

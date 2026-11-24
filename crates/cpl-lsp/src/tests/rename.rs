@@ -275,3 +275,22 @@ fn rename_reaches_a_value_a_type_argument_names() {
     let src = "let p| = read<1..=100>()\ntype Z = Mod<p>\nprint(Z(3) + Z(p))\n";
     assert_eq!(renamed_texts(src, "q"), ["q", "q", "q"]);
 }
+
+#[test]
+fn a_method_std_calls_on_the_user_s_type_keeps_its_name() {
+    let src = "struct P(k: Int):\n    fn a|t(self, x: Int) -> Int = k * x\n\
+               var t = LiChao<P, Int>(min, over: 0..=9)\nt.add(P(2))\nprint(t.at(3)!)\n";
+    let reply = ask_at_with("textDocument/prepareRename", src, obj([]));
+    let why = reply.at(&["message"]).as_str().unwrap_or("");
+    assert!(
+        why.starts_with("`at` keeps its name: `LiChao."),
+        "{reply:?}"
+    );
+    let src = "struct P(k: Int):\n    fn tw|ice(self) -> Int = 2 * k\nprint(P(2).twice())\n";
+    let reply = ask_at_with("textDocument/prepareRename", src, obj([]));
+    assert_eq!(
+        reply.at(&["placeholder"]).as_str(),
+        Some("twice"),
+        "{reply:?}"
+    );
+}
