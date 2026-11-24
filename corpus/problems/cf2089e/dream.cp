@@ -41,18 +41,20 @@ for v in V if let p = parent[v]:
 var dp: [V]P = P.zero
 var ans: List<Z> = [1]
 for t in V.rev if t != V.first:
-    let moving = if let s = t.next: dp.take(s) else: P.x
-    let stop = t.next.map(s => parent[s]!) ?? V.first
+    let moving = if let s = t.next: dp[s] else: P.x
+    let stop = t.next.map(s => parent[s]!) ?? V.first!
     dp[t] += moving
     var ways = P.one
     for (c, p) in tree.path(t, stop).drop_last().with_prev:
         if let c = c: ways *= before[c]
-        dp[p] += moving.transposed_mul(ways.integral())
+        let w = ways.integral()
+        dp[p] += moving.truncated(moving.len + w.len - 1).transposed_mul(w)
         ways += ways.integral()
+    if let s = t.next: dp[s] = P.zero
 
     var carry = P.zero
-    for (c, p) in tree.path(t, V.first).with_prev:
-        if let c = c: carry = carry.transposed_mul(before[c])
+    for (c, p) in tree.path(t, V.first!).with_prev:
+        if let c = c: carry = carry.truncated(carry.len + before[c].len - 1).transposed_mul(before[c])
         (dp[p], carry) = (P.x * (P.x * dp[p]).deriv() + carry, carry + dp[p])
     ans.push(dp[V.first!][0])
 print(ans)
