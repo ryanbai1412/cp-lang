@@ -5,7 +5,8 @@ use crate::facts::Facts;
 use crate::std_fn;
 use crate::Calls;
 use cpl_check::Ty;
-use cpl_diag::msgs::lint_rules;
+use cpl_diag::msgs::{lint_rules, Msg};
+use std::fmt::Display;
 
 /// Flags hand-rolled union-find (L0517), prime/SPF sieve (L0518), and
 /// binary-lifting tables (L0519) that duplicate `std.dsu`, `std.math`, and
@@ -17,10 +18,17 @@ pub(super) fn hand_rolled_stdlib_algos(file: &File) -> Vec<Finding> {
     }
 
     impl Scan {
-        fn warn(&mut self, lint: &'static crate::Lint, span: Span, msg: &str, help: &str) {
+        fn warn_at(
+            &mut self,
+            lint: &'static crate::Lint,
+            span: Span,
+            msg: &'static Msg,
+            args: &[&dyn Display],
+            help: &str,
+        ) {
             self.findings.push(Finding {
                 lint,
-                diag: Diagnostic::warning(lint.code, span.shift(self.base), msg).with_help(help),
+                diag: msg.warning(span.shift(self.base), args).with_help(help),
             });
         }
     }
@@ -29,20 +37,22 @@ pub(super) fn hand_rolled_stdlib_algos(file: &File) -> Vec<Finding> {
         fn stmt(&mut self, stmt: &Stmt) {
             match &stmt.kind {
                 StmtKind::While { cond, body, .. } if is_dsu_path_halving_loop(cond, body) => {
-                    self.warn(
+                    self.warn_at(
                         &HAND_ROLLED_DSU,
                         stmt.span,
-                        "hand-rolled union-find (DSU) path compression",
+                        &lint_rules::HAND_ROLLED_DSU,
+                        &[],
                         "use `Dsu`, `DsuOf`, `ParityDsu`, or `PotentialDsu` from `std.dsu`",
                     );
                 }
                 StmtKind::Fn(decl) => {
                     if let FnBody::Block(body) = &decl.body {
                         if is_dsu_recursive_or_two_pass_fn(decl, body) {
-                            self.warn(
+                            self.warn_at(
                                 &HAND_ROLLED_DSU,
                                 stmt.span,
-                                "hand-rolled union-find (DSU) `find` function",
+                                &lint_rules::HAND_ROLLED_DSU_2,
+                                &[],
                                 "use `Dsu`, `DsuOf`, `ParityDsu`, or `PotentialDsu` from `std.dsu`",
                             );
                         }
@@ -51,18 +61,19 @@ pub(super) fn hand_rolled_stdlib_algos(file: &File) -> Vec<Finding> {
                 StmtKind::For { pat, body, .. } => {
                     if let PatternKind::Name(var) = &pat.kind {
                         if is_sieve_loop(var, body) {
-                            self.warn(
+                            self.warn_at(
                                 &HAND_ROLLED_SIEVE,
                                 stmt.span,
-                                "hand-rolled prime/SPF sieve loop",
+                                &lint_rules::HAND_ROLLED_SIEVE,
+                                &[],
                                 "use `Sieve` or `sieve_multiplicative` from `std.math`",
                             );
                         }
                         if is_binary_lifting_loop(var, body) {
-                            self.warn(
+                            self.warn_at(
                                 &HAND_ROLLED_BINARY_LIFTING,
                                 stmt.span,
-                                "hand-rolled binary lifting table",
+&lint_rules::HAND_ROLLED_BINARY_LIFTING, &[],
                                 "use `Rooted.lca` / `Rooted.ancestor` or `JumpTree` from `std.tree`",
                             );
                         }

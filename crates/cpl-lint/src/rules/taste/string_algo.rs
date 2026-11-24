@@ -1,6 +1,8 @@
 //! L0516 `hand_rolled_string_algo`: KMP, Z-function, polynomial hash, trie.
 
 use super::*;
+use cpl_diag::msgs::{lint_rules, Msg};
+use std::fmt::Display;
 
 /// Flags hand-rolled KMP prefix-function, Z-function, polynomial rolling-hash,
 /// and trie insertion loops that duplicate `std.strings`.
@@ -11,11 +13,10 @@ pub(super) fn hand_rolled_string_algos(file: &File) -> Vec<Finding> {
     }
 
     impl Scan {
-        fn warn(&mut self, span: Span, msg: &str, help: &str) {
+        fn warn_at(&mut self, span: Span, msg: &'static Msg, args: &[&dyn Display], help: &str) {
             self.findings.push(Finding {
                 lint: &HAND_ROLLED_STRING_ALGO,
-                diag: Diagnostic::warning(HAND_ROLLED_STRING_ALGO.code, span.shift(self.base), msg)
-                    .with_help(help),
+                diag: msg.warning(span.shift(self.base), args).with_help(help),
             });
         }
     }
@@ -30,42 +31,47 @@ pub(super) fn hand_rolled_string_algos(file: &File) -> Vec<Finding> {
                     };
                     if let Some(v) = var {
                         if is_kmp_prefix_loop(v, body) {
-                            self.warn(
+                            self.warn_at(
                                 stmt.span,
-                                "hand-rolled prefix-function (KMP) loop",
+                                &lint_rules::HAND_ROLLED_STRING_ALGO,
+                                &[],
                                 "use `prefix_function` or `find_all` from `std.strings`",
                             );
                             return;
                         }
                         if is_z_function_loop(v, body) {
-                            self.warn(
+                            self.warn_at(
                                 stmt.span,
-                                "hand-rolled Z-function loop",
+                                &lint_rules::HAND_ROLLED_STRING_ALGO_2,
+                                &[],
                                 "use `z_function` from `std.strings`",
                             );
                             return;
                         }
                         if is_poly_hash_loop(v, body) {
-                            self.warn(
+                            self.warn_at(
                                 stmt.span,
-                                "hand-rolled polynomial rolling hash",
+                                &lint_rules::HAND_ROLLED_STRING_ALGO_3,
+                                &[],
                                 "use `RollingHash` or `Hash2D` from `std.strings`",
                             );
                             return;
                         }
                     }
                     if is_trie_insert_loop(body) {
-                        self.warn(
+                        self.warn_at(
                             stmt.span,
-                            "hand-rolled trie loop",
+                            &lint_rules::HAND_ROLLED_STRING_ALGO_4,
+                            &[],
                             "use `Trie` or `AhoCorasick` from `std.strings`",
                         );
                     }
                 }
                 StmtKind::While { body, .. } if is_trie_insert_loop(body) => {
-                    self.warn(
+                    self.warn_at(
                         stmt.span,
-                        "hand-rolled trie loop",
+                        &lint_rules::HAND_ROLLED_STRING_ALGO_4,
+                        &[],
                         "use `Trie` or `AhoCorasick` from `std.strings`",
                     );
                 }

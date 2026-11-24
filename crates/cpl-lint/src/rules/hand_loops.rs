@@ -10,13 +10,14 @@ use crate::is_std;
 use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{
-    File, Finding, Lint, CONTAINS_THEN_ADD, COPY_COMPREHENSION, LOOP_ARGMAX, MANUAL_MEX,
+    File, Finding, CONTAINS_THEN_ADD, COPY_COMPREHENSION, LOOP_ARGMAX, MANUAL_MEX,
     QUEUE_HEAD_INDEX, SPLIT_RANGE_CHECK,
 };
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::*;
 
 use super::shapes::{compare, int, is_step, name, single};
+use super::Warn;
 use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -76,14 +77,15 @@ fn index_names(e: &Expr) -> Option<(&str, &str)> {
     }
 }
 
+impl super::Warn for HandLoops<'_> {
+    fn sink(&mut self) -> (&mut Vec<Finding>, u32) {
+        (&mut self.out, self.base)
+    }
+}
+
 impl HandLoops<'_> {
     fn text(&self, span: Span) -> &str {
         span.shift(self.base).text(self.src)
-    }
-
-    fn warn(&mut self, lint: &'static Lint, span: Span, msg: String, help: String) {
-        let diag = Diagnostic::warning(lint.code, span.shift(self.base), msg).with_help(help);
-        self.out.push(Finding { lint, diag });
     }
 
     fn starts(&mut self, stmts: &[(u32, &Stmt)]) {
@@ -257,10 +259,10 @@ impl HandLoops<'_> {
         if !single(body).is_some_and(|s| is_step(s, m)) {
             return;
         }
-        self.warn(
+        self.warn_at(
             &MANUAL_MEX,
             stmt.span,
-            format!("`while {t}[{m}]: {m} += 1` searches for the first unmarked value by hand"),
+&lint_rules::MANUAL_MEX, &[&t, &m, &m],
             format!(
                 "write `(lo..=hi).find({m} => not {t}[{m}])` over the values `{m}` can take: it names the search, the mex when `{t}` marks what is present"
             ),

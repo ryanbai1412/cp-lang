@@ -3,7 +3,8 @@
 //! nothing.
 
 use crate::{File, Finding, ALWAYS_TRUE_BOUNDS_CHECK};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     super::proven::hazards::proven_settled(file)
@@ -14,18 +15,18 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let text = span.text(file.src);
             let (message, help) = if always {
                 (
-                    format!("`{text}` always holds: the declared bounds here already say so"),
+                    &lint_rules::ALWAYS_TRUE_BOUNDS_CHECK,
                     "drop the test, or, if the statement allows values it rules out, widen the declared range so the test means something",
                 )
             } else {
                 (
-                    format!("`{text}` never holds: the declared bounds here rule it out, so what it guards never runs"),
+                    &lint_rules::NEVER_TRUE_BOUNDS_CHECK,
                     "drop the dead branch, or, if the statement allows that case, widen the declared range to include it",
                 )
             };
             Finding {
                 lint: &ALWAYS_TRUE_BOUNDS_CHECK,
-                diag: Diagnostic::warning(ALWAYS_TRUE_BOUNDS_CHECK.code, span, message)
+                diag: message.warning(span, &[&text])
                     .with_help(help.to_string()),
             }
         })

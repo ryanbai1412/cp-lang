@@ -5,11 +5,13 @@
 
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
-use crate::{File, Finding, Lint, CYCLE_BY_COLORS, DEPTH_BY_HAND, SLIDING_MIN_BY_HAND};
-use cpl_diag::{Diagnostic, Span};
+use crate::{File, Finding, CYCLE_BY_COLORS, DEPTH_BY_HAND, SLIDING_MIN_BY_HAND};
+use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
 use super::shapes::{compare, index1, int, name, squash};
+use super::Warn;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandGraph {
@@ -33,10 +35,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     v.base = 0;
     for (t, at) in std::mem::take(&mut v.depths) {
         if v.compared.contains(&t) {
-            v.warn(
+            v.warn_at(
                 &DEPTH_BY_HAND,
                 at,
-                format!("`{t}` steps each depth from the parent's by hand"),
+&lint_rules::DEPTH_BY_HAND, &[&t],
                 "`Rooted.from_parents(par)` (`par: [V]?V`, `None` at the root) or `Rooted.new(adj, root)` knows `t.depth(v)`, `t.parent(v)` and `t.lca(u, v)`".to_string(),
             );
         }
@@ -186,14 +188,15 @@ fn tests_colour(text: &str, t: &str, c: i128) -> bool {
     })
 }
 
+impl super::Warn for HandGraph<'_> {
+    fn sink(&mut self) -> (&mut Vec<Finding>, u32) {
+        (&mut self.out, self.base)
+    }
+}
+
 impl HandGraph<'_> {
     fn text(&self, span: Span) -> &str {
         span.shift(self.base).text(self.src)
-    }
-
-    fn warn(&mut self, lint: &'static Lint, span: Span, msg: String, help: String) {
-        let diag = Diagnostic::warning(lint.code, span.shift(self.base), msg).with_help(help);
-        self.out.push(Finding { lint, diag });
     }
 
     /// `fn dfs(u): c[u] = 1; ... c[v] == 1 ...; c[u] = 2`.
@@ -217,10 +220,10 @@ impl HandGraph<'_> {
             return;
         }
         let f = &decl.name.text;
-        self.warn(
+        self.warn_at(
             &CYCLE_BY_COLORS,
             decl.sig_span,
-            format!("`fn {f}` colours `{t}` {open} on entry and {done} on exit to find a directed cycle by hand"),
+&lint_rules::CYCLE_BY_COLORS, &[&f, &t, &open, &done],
             "`find_cycle(g)` (`std.graph`) returns one directed cycle or `None`, without recursion: `find_cycle(g) != None` asks whether there is one, and `topo(g)` gives an order when there is none".to_string(),
         );
     }
@@ -289,10 +292,10 @@ impl HandGraph<'_> {
             return;
         }
         let m = if keeps_min { std_fn::MIN } else { std_fn::MAX };
-        self.warn(
+        self.warn_at(
             &SLIDING_MIN_BY_HAND,
             stmt.span,
-            format!("`{q}` is a monotone deque kept by hand for the {m} of each window"),
+&lint_rules::SLIDING_MIN_BY_HAND, &[&q, &m],
             format!("`var w = Window({m})` (`std.window`) keeps that deque: `w.push(x)` as an item enters, `w.pop()` as the oldest leaves, and `w.all!` is the window's {m}"),
         );
     }

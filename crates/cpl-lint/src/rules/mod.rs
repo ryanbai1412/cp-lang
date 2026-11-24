@@ -59,7 +59,10 @@ mod while_pop;
 mod wide_shift;
 mod zero_div;
 
-use crate::{Config, File, Finding};
+use crate::{Config, File, Finding, Lint};
+use cpl_diag::msgs::Msg;
+use cpl_diag::Span;
+use std::fmt::Display;
 
 pub(crate) use proven::*;
 
@@ -132,5 +135,23 @@ pub(crate) fn witness(text: &str, value: i128) -> Vec<(String, i128)> {
         vec![(text.to_string(), value)]
     } else {
         Vec::new()
+    }
+}
+
+/// A rule that reports into a `Vec<Finding>`, with spans relative to `base`.
+trait Warn {
+    fn sink(&mut self) -> (&mut Vec<Finding>, u32);
+
+    fn warn_at(
+        &mut self,
+        lint: &'static Lint,
+        span: Span,
+        msg: &'static Msg,
+        args: &[&dyn Display],
+        help: String,
+    ) {
+        let (out, base) = self.sink();
+        let diag = msg.warning(span.shift(base), args).with_help(help);
+        out.push(Finding { lint, diag });
     }
 }

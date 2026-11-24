@@ -3,11 +3,13 @@
 //! of points read as parallel coordinate arrays (`tuple_points`).
 
 use crate::walk::Visitor;
-use crate::{File, Finding, Lint, QUERY_INDEX_SHIFT, TUPLE_POINTS};
-use cpl_diag::{Diagnostic, Span};
+use crate::{File, Finding, QUERY_INDEX_SHIFT, TUPLE_POINTS};
+use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
 use super::shapes::squash;
+use super::Warn;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandInput {
@@ -128,6 +130,12 @@ fn y_of(x: &str) -> Option<String> {
     (x.len() <= 3).then(|| format!("{}y{}", &x[..i], &x[i + 1..]))
 }
 
+impl super::Warn for HandInput<'_> {
+    fn sink(&mut self) -> (&mut Vec<Finding>, u32) {
+        (&mut self.out, 0)
+    }
+}
+
 impl HandInput<'_> {
     fn text(&self, base: u32, span: Span) -> &str {
         span.shift(base).text(self.src)
@@ -140,11 +148,6 @@ impl HandInput<'_> {
             .map(|(b, s)| squash(self.text(*b, s.span)))
             .collect();
         texts.join(";")
-    }
-
-    fn warn(&mut self, lint: &'static Lint, span: Span, msg: String, help: String) {
-        let diag = Diagnostic::warning(lint.code, span, msg).with_help(help);
-        self.out.push(Finding { lint, diag });
     }
 
     /// `let x: T = read()`: the names and their declared types, as written.
@@ -192,10 +195,10 @@ impl HandInput<'_> {
                 continue;
             };
             let (name, from) = (name.to_string(), from.to_string());
-            self.warn(
+            self.warn_at(
                 &QUERY_INDEX_SHIFT,
                 stmt.span.shift(base),
-                format!("`{name}` is read as `{from}` and shifted back with `{name} - 1` to index"),
+&lint_rules::QUERY_INDEX_SHIFT, &[&name, &from, &name],
                 format!("declare the array over the positions as they are read: `domain I = {from}`, `let a: [I]Int = read()`, and read `{name}` as `I`; then `a[{name}]` needs no `- 1`, and `a.scan(+).fold(l..=r)` sums a query `l..=r`"),
             );
         }
@@ -223,10 +226,10 @@ impl HandInput<'_> {
                 continue;
             }
             let (x, y, dom) = (x.to_string(), y.to_string(), dom.to_string());
-            self.warn(
+            self.warn_at(
                 &TUPLE_POINTS,
                 pair[0].1.span.shift(pair[0].0).to(pair[1].1.span.shift(pair[1].0)),
-                format!("`{x}` and `{y}` are the coordinates of one list of points"),
+&lint_rules::TUPLE_POINTS, &[&x, &y],
                 format!("build the points once: `let p = [{dom}] i => Pt({x}[i], {y}[i])`; then `p[i] - p[j]`, `p[i].cross(p[j])` and `p[i].dot(p[j])` replace the coordinate arithmetic"),
             );
         }

@@ -7,7 +7,7 @@ use super::bounds::Bounds;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, Lint, DOMAIN_EMPTY_FIRST_LAST, UNWRAP_ON_POSSIBLY_EMPTY};
 use cpl_diag::msgs::lint_rules;
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::Span;
 use cpl_syntax::ast::{Expr, ExprKind, Pattern, PatternKind, StmtKind, Type, TypeKind};
 
 /// What empties a domain or an array: its declared index set, the end
@@ -164,14 +164,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let read = &shown[..shown.len() - 1];
             let (name, end, at) = (&e.name, &e.end, e.at);
             let what = if e.domain { "domain" } else { "list" };
-            let diag = Diagnostic::warning(
-                lint.code,
-                span,
-                format!(
-                    "`{}` is empty when `{end}` is {at}, and then `{shown}` traps",
-                    e.shown
-                ),
-            )
+            let mut diag =
+                lint_rules::EMPTY_THEN_FIRST_LAST.warning(span, &[&e.shown, &end, &at, &shown]);
+            diag.code = lint.code;
+            let diag = diag
             .with_help(format!(
                 "`{read}` is `None` on an empty {what}: handle it with `if let v = {read}:` or `{read} ?? fallback`, or declare `{end}` so `{name}` is never empty"
             ))
