@@ -449,7 +449,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         let compound = library_lint::code(&d.decl.to)
             .is_some_and(|to| library_lint::compound(&to, &d.decl.fn_name));
         // With no fix nothing is dropped, so `to` may leave out any hole.
-        let fixes = d.lint.no_fix.is_none();
+        let fixes = d.lint.no_fix.is_none() && !d.decl.advice;
         let to_kinds: Vec<(K, String)> = (to.iter())
             .map(|t| {
                 (
@@ -458,6 +458,10 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 )
             })
             .collect();
+        // With no fix the statements a statement hole matched stay as written.
+        let kept = |h: &String| {
+            !fixes && (d.from.iter().zip(&d.stmt_holes)).any(|((_, t), s)| *s && t == h)
+        };
         let repeated: Vec<bool> = (d.decl.holes.iter())
             .map(|h| {
                 let at = |i: &usize| d.from[*i].1 == *h && !d.labels[*i];
@@ -465,7 +469,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 compound
                     || uses > 1
                     || (fixes && !in_to(h))
-                    || (per_item(&d.from, h) && !per_item(&to_kinds, h))
+                    || (per_item(&d.from, h) && !per_item(&to_kinds, h) && !kept(h))
             })
             .collect();
         let matcher = |pat, stmt, labels| Matcher {
@@ -553,7 +557,18 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 at.and_then(|i| holes[i])
                     .is_some_and(|run| proven(file, &spans.consts, &toks, &text, run, b))
             };
+            // An advice loop is one call: its statement holes move no
+            // name the loop did not declare.
+            let looped =
+                d.decl.advice && (d.from.iter()).any(|(k, _)| matches!(k, K::For | K::While));
+            let stmt_hole = |h: usize| {
+                (d.from.iter().zip(&d.stmt_holes)).any(|((_, t), s)| *s && *t == d.decl.holes[h])
+            };
+            let moves = |(a, b): (usize, usize)| writes_outside(file.src, &toks, &text, a, b);
             if !matched
+                || (looped
+                    && (holes.iter().enumerate())
+                        .any(|(h, run)| stmt_hole(h) && run.is_some_and(moves)))
                 || !d.decl.when.iter().all(bounded)
                 || !(holes.iter().enumerate()).all(|(h, run)| run.is_none_or(|r| typed(h, r)))
             {
@@ -1019,6 +1034,39 @@ fn fill(
     }
     out.push_str(&lines(&to[last..]));
     out
+}
+
+/// The statements in tokens `a..b` assign a name they do not declare
+/// (`psum += x`, `t[r] = m`).
+fn writes_outside(src: &str, toks: &[Token], text: &[&str], a: usize, b: usize) -> bool {
+    let starts = |i: usize| {
+        i == a
+            || matches!(toks[i - 1].kind, K::Colon | K::Semi)
+            || src[toks[i - 1].span.end as usize..toks[i].span.start as usize].contains('\n')
+    };
+    let (mut own, mut start, mut depth) = (Vec::new(), a, 0);
+    for i in a..b {
+        if starts(i) && depth == 0 {
+            start = i;
+        }
+        match toks[i].kind {
+            K::LParen | K::LBracket | K::LBrace => depth += 1,
+            K::RParen | K::RBracket | K::RBrace => depth -= 1,
+            K::Eq | K::OpEq if depth == 0 => {
+                if matches!(toks[start].kind, K::Let | K::Var) {
+                    own.extend(
+                        (start + 1..i)
+                            .filter(|&j| toks[j].kind == K::Ident)
+                            .map(|j| text[j]),
+                    );
+                } else if !(toks[start].kind == K::Ident && own.contains(&text[start])) {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 /// `m` negated with no `not` before it: `a < b` as `a >= b` for one

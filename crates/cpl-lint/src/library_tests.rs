@@ -744,3 +744,31 @@ fn not_before_a_hole_negates_it_and_an_iterable_keeps_no_brackets() {
         ]
     );
 }
+
+/// An advice spelling whose `from` is a loop says the loop is one call, so
+/// its statement holes match only statements that assign no name they do
+/// not declare themselves. Rule: R06.4.9.
+#[test]
+fn an_advice_loops_statement_hole_moves_no_outside_name() {
+    let decl = "@lint(any_by_hand, from: \"var x = \\\"no\\\"\\nfor p in it:\\n    s\\n    if c:\\n        x = \\\"yes\\\"\\n        break\", advice: \"let x = it.any(p => c)\", holes: \"it, s, c\")\npub fn any_of(b: Bool) = ()\n";
+    let found = |body: &str| -> usize {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "any_by_hand")
+            .inspect(|d| assert!(d.fixes.is_empty(), "{:?}", d.fixes))
+            .count()
+    };
+    let search = |s: &str| {
+        format!("var f = \"no\"\nfor y in [1, 2]:\n{s}    if y > 1:\n        f = \"yes\"\n        break\nprint(f)\n")
+    };
+    for quiet in [
+        "    print(y)\n",
+        "    var t = y\n    t += 1\n    print(t)\n",
+    ] {
+        assert_eq!(found(&search(quiet)), 1, "{quiet}");
+    }
+    let outer = "var n = 0\nvar tbl = [0, 0, 0]\n";
+    for moves in ["    n += y\n", "    tbl[y] = 1\n", "    if y > 0: n = y\n"] {
+        assert_eq!(found(&format!("{outer}{}", search(moves))), 0, "{moves}");
+    }
+}
