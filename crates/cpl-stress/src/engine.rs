@@ -427,6 +427,7 @@ impl SourceStressResult {
             self.explained.as_ref(),
             self.error.as_deref(),
             false,
+            None,
         )
     }
 }

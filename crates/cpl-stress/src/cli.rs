@@ -375,6 +375,7 @@ pub fn divergence_json(d: &Divergence) -> String {
 }
 
 /// The report in the shape the editor reads (`editors/vscode/README.md`).
+#[allow(clippy::too_many_arguments)]
 pub fn report_json(
     report: &Report,
     saved: Option<&Path>,
@@ -383,10 +384,14 @@ pub fn report_json(
     explained: Option<&Result<Option<Divergence>, String>>,
     error: Option<&str>,
     toolchain_bug: bool,
+    build: Option<&str>,
 ) -> String {
+    let build = build.map_or(String::new(), |build| {
+        format!(",\"build\":{}", json_string(build))
+    });
     let Some(failure) = &report.failure else {
         return format!(
-            "{{\"status\":\"ok\",\"case_count\":{},\"saved_count\":{},\"tried\":{}}}\n",
+            "{{\"status\":\"ok\"{build},\"case_count\":{},\"saved_count\":{},\"tried\":{}}}\n",
             report.cases,
             report.saved,
             json_string(&report.reached.describe())
@@ -418,7 +423,7 @@ pub fn report_json(
         false => "",
     };
     format!(
-        "{{\"status\":\"fail\",\"case_count\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error}{toolchain},\"stages\":[{}],\"saved\":{},\"rerun\":{},\"trace\":{}{explain}}}}}\n",
+        "{{\"status\":\"fail\"{build},\"case_count\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error}{toolchain},\"stages\":[{}],\"saved\":{},\"rerun\":{},\"trace\":{}{explain}}}}}\n",
         report.cases,
         failure.case,
         failure.seed,
@@ -514,6 +519,15 @@ fn ordinal(n: usize) -> String {
 /// Whether a wrong answer is the toolchain's: a debug run of the file
 /// neither traps nor differs from the brute, and the built C++ does
 /// (stress/U29).
+/// The judge profile the cases were built for, unless `--fast` gave a
+/// program stress didn't build.
+fn build_stamp(args: &Args, src: &str) -> Option<String> {
+    args.fast.is_none().then_some(())?;
+    cpl_judge::resolve(&args.file, src, None)
+        .ok()
+        .map(|profile| profile.stamp())
+}
+
 fn toolchain_bug(args: &Args, failure: &crate::run::Failure) -> bool {
     matches!(failure.verdict, crate::Verdict::Wrong(_))
         && args.fast.is_none()
@@ -924,6 +938,7 @@ pub fn run_with(
                     .failure
                     .as_ref()
                     .is_some_and(|failure| toolchain_bug(&args, failure)),
+                build_stamp(&args, &src).as_deref(),
             )
         );
         return report.failure.is_some() as u8;
@@ -941,14 +956,8 @@ pub fn run_with(
     );
     // The build the cases ran, so a judge's verdict can be laid beside it
     // (use case stress/U29).
-    if args.fast.is_none() {
-        if let Ok(profile) = cpl_judge::resolve(&args.file, &src, None) {
-            let _ = writeln!(
-                stdout,
-                "  build: {}; checked, as `cpl run`",
-                profile.stamp()
-            );
-        }
+    if let Some(stamp) = build_stamp(&args, &src) {
+        let _ = writeln!(stdout, "  build: {stamp}; checked, as `cpl run`");
     }
     let Some(failure) = &report.failure else {
         let skipped = match report.skipped {

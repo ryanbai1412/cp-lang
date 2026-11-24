@@ -351,6 +351,7 @@ fn a_build_the_interpreter_disagrees_with_is_a_toolchain_bug() {
     );
     let json = run(true);
     assert!(json.contains("\"toolchain_bug\":true"), "{json}");
+    assert!(json.contains("\"build\":\"judge `"), "{json}");
 }
 
 /// The cases stress saved run first, whatever the seed, until they pass
