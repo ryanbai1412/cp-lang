@@ -399,6 +399,7 @@ impl<'a> Checker<'a> {
         let quoted = self.quote(at.span);
         let origin = self.origin(at, &format!("declared as {}", got.with_article()));
         let struct_of_tuple = self.struct_of_tuple(got, want, at);
+        let defaulted_apart = self.defaulted_apart(got, want);
         let reported = match text {
             Some(text) => self.report_as(code, at.span, text),
             None => None,
@@ -413,9 +414,26 @@ impl<'a> Checker<'a> {
             } else if let Some((help, fix)) = struct_of_tuple {
                 diag.help = Some(help);
                 diag.fixes.extend(fix);
+            } else if defaulted_apart {
+                diag.help = Some(format!(
+                    "write `{got}` in full: a type param left out takes its default"
+                ));
             }
         }
         self.char_literal_fix(got, want, at)
+    }
+
+    /// Two instances of one struct that differ first at a param with a default.
+    fn defaulted_apart(&mut self, got: &Ty, want: &Ty) -> bool {
+        let (Ty::Named { name, args: g }, Ty::Named { name: w, args: wa }) = (got, want) else {
+            return false;
+        };
+        let Some(i) = g.iter().zip(wa).position(|(a, b)| a != b) else {
+            return false;
+        };
+        name == w
+            && matches!(self.type_def(name).as_deref(),
+                Some(Def::Struct { defaults, .. }) if matches!(defaults.get(i), Some(Some(_))))
     }
 
     /// R08.1.6: a tuple is not a struct, even one with its fields' types.
