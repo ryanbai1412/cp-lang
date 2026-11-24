@@ -4,27 +4,34 @@
 // Solution: walk the Cantor construction: a segment [k / b, (k + 1) / b] holding numerators
 //   l..=r keeps its left and right thirds, so about n^log3(2) segments are visited. Once a
 //   segment holds at most 11 numerators, test each by long division of x / n in base 3
-//   until a remainder repeats; a digit 1 is fine only when nothing follows it.
+//   until a remainder repeats (Floyd's cycle walk, no set); a digit 1 is fine only when
+//   nothing follows it.
+// original: corpus/submissions/5350810.cpp
 let n: 2..=1e9 = read()
 
-fn in_cantor(x: Int) -> Bool:
-    // ternary digits of x / n by long division; a digit 1 is fine only when nothing follows it
-    var seen: Set<Int> = []
-    var rem = x
+fn in_cantor(x: 0..=n) -> Bool:
+    // the remainders of the long division of x / n in base 3 repeat eventually (Floyd's
+    // tortoise and hare: the hare passes every remainder before they meet); a digit 1 is
+    // fine only when nothing follows it
+    fn step(rem: Int) -> ?Int:
+        let next = rem % n * 3
+        if rem / n == 1 and next != 0: None else: Some(next)
+    var slow = x
+    var fast = x
     while true:
-        let digit = rem / n
-        rem = rem % n * 3
-        if digit == 1 and rem != 0: return false
-        if rem in seen: return true
-        seen.insert(rem)
+        repeat 2:
+            fast = step(fast) ?? return false
+        slow = step(slow)!
+        if slow == fast: return true
 
-var kept: List<Int> = []
-fn filter(l: Int, r: Int, k: Int, b: Int):
+// the numerators l..=r of the segment [k / b, (k + 1) / b] that survive
+var kept: List<0..=n> = []
+fn keep(l: 0..=n, r: 0..=n, k: Int, b: Int):
     if r - l <= 10:
         for x in l..=r:
             if in_cantor(x): kept.push(x)
         return
-    filter(l, n * (3 * k + 1) / (3 * b), 3 * k, 3 * b)
-    filter((n * (3 * k + 2) + 3 * b - 1) / (3 * b), r, 3 * k + 2, 3 * b)
-filter(0, n, 0, 1)
+    keep(l, n * (3 * k + 1) / (3 * b), 3 * k, 3 * b)
+    keep((n * (3 * k + 2) + 3 * b - 1) / (3 * b), r, 3 * k + 2, 3 * b)
+keep(0, n, 0, 1)
 for x in kept: print(x)

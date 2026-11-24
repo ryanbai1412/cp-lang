@@ -6,6 +6,8 @@
 //   whose coordinates multiply to x, and the exit is reached once a held value is M * N.
 //   Bucket the cell values by r * c and BFS from the value at (1, 1). O(MN + 1e6).
 
+// original: corpus/submissions/4323590.cpp
+with io(answers: ("yes", "no"))
 let rows: 1..=1000 = read()
 let cols: 1..=1000 = read()
 domain R = 1..=rows
@@ -16,5 +18,6 @@ let room: [R, C]Num = read()
 var leads: [Num]List<Num> = []
 for r in R:
     for c in C: leads[Num(r.label * c.label)].push(room[r, c])
-let reach = bfs(x => leads[x], from: [room[R.first!, C.first!]])
-print(if reach[Num(rows * cols)] != None: "yes" else: "no")
+let exit = Num(rows * cols)
+let reach = bfs(x => leads[x], from: [room[R.first!, C.first!]], until: exit)
+print(yes(reach.reached(exit)))
