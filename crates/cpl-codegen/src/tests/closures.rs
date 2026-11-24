@@ -600,6 +600,22 @@ fn a_block_local_generator_feeds_its_loop_like_a_top_level_one() {
 }
 
 #[test]
+fn a_struct_fn_field_stored_to_later_is_not_one_closures_type() {
+    let out = cpp(concat!(
+        "struct Op1:\n",
+        "    var f: (Int) -> Int\n",
+        "let k: Int = read()\n",
+        "var b = Op1(x => x + k)\n",
+        "b.f = x => x * k\n",
+        "print(b.f(2))\n",
+    ));
+    assert!(
+        !out.contains("cpl_cl0 f;"),
+        "b.f holds two closures:\n{out}"
+    );
+}
+
+#[test]
 fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
     let src = concat!(
         "struct Plus(z: Int):\n",

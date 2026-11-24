@@ -3,6 +3,7 @@
 //! operator), so no `std::function` erases it.
 
 use super::*;
+use crate::uses::places::{each_built, each_written};
 
 impl<'p> Devirt<'p> {
     pub(super) fn compute_functors(&mut self) {
@@ -17,39 +18,23 @@ impl<'p> Devirt<'p> {
                 .or_insert(cid);
         };
         let mut scan = |block: &Block| {
-            walk::deep_stmts(block, &mut |stmt| {
-                if let Stmt::Assign(place, _, _) = stmt {
-                    if let (PlaceKind::Field(_, index), Ty::Struct(s)) =
-                        (&place.kind, place_base_ty(place))
-                    {
-                        note((*s, *index), None);
-                    }
+            each_written(block, &mut |place| {
+                if let (PlaceKind::Field(_, index), Ty::Struct(s)) =
+                    (&place.kind, place_base_ty(place))
+                {
+                    note((*s, *index), None);
                 }
             });
-            walk::deep_exprs(block, &mut |e| match (&e.kind, &e.ty) {
-                (ExprKind::Tuple(fields), Ty::Struct(s)) => {
-                    for (index, field) in fields.iter().enumerate() {
-                        if matches!(field.ty, Ty::Fn(..)) {
-                            let cid = match field.kind {
-                                ExprKind::Closure(cid) if self.functor_shaped(cid, *s) => Some(cid),
-                                _ => None,
-                            };
-                            note((*s, index), cid);
-                        }
+            each_built(block, &mut |s, fields| {
+                for (index, field) in fields.iter().enumerate() {
+                    if matches!(field.ty, Ty::Fn(..)) {
+                        let cid = match field.kind {
+                            ExprKind::Closure(cid) if self.functor_shaped(cid, s) => Some(cid),
+                            _ => None,
+                        };
+                        note((s, index), cid);
                     }
                 }
-                (ExprKind::Call(_, args), _) => {
-                    for arg in args {
-                        if let Arg::Mut(place) = arg {
-                            if let (PlaceKind::Field(_, index), Ty::Struct(s)) =
-                                (&place.kind, place_base_ty(place))
-                            {
-                                note((*s, *index), None);
-                            }
-                        }
-                    }
-                }
-                _ => {}
             });
         };
         scan(&self.program.setup);

@@ -3,8 +3,8 @@
 use crate::walk;
 use cpl_ir::{Arg, Block, Expr, ExprKind, Place, Stmt, Ty};
 
-/// Every place `block` stores to, sets in place or passes `mut`, at any
-/// depth: each target a write could change.
+/// Every place `block` stores to, sets in place, views `mut` or passes
+/// `mut`, at any depth: each target a write could change.
 pub(crate) fn each_written(block: &Block, f: &mut dyn FnMut(&Place)) {
     walk::deep_stmts(block, &mut |stmt| {
         if let Stmt::Assign(target, ..) = stmt {
@@ -19,7 +19,10 @@ pub(crate) fn each_written(block: &Block, f: &mut dyn FnMut(&Place)) {
                 }
             }
         }
-        ExprKind::Mutate(_, target, _) | ExprKind::Sort(target, _, _) => f(target),
+        ExprKind::Mutate(_, target, _)
+        | ExprKind::Sort(target, _, _)
+        | ExprKind::MutSlice(target, ..)
+        | ExprKind::MutLine(target, ..) => f(target),
         _ => {}
     });
 }

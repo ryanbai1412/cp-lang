@@ -91,7 +91,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "one-closure-field",
         "devirt/functor.rs",
-        Unasked,
+        Uses(&["each_written", "each_built"]),
         "a_struct_field_built_from_one_capturing_closure_is_that_closures_type",
     ),
     pass(
