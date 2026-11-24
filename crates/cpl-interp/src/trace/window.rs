@@ -4,7 +4,7 @@
 
 use super::{Recording, TraceConfig, Tracer};
 use crate::checkpoint::{observe_on_this_thread as checkpointed, Checkpoint, Checkpoints};
-use crate::stop::Limits;
+use crate::stop::{Limits, Stop, CANCELLED, OUT_OF_TIME};
 use crate::{observe_on_this_thread, run_observed, Io, Observed};
 use cpl_ir::Program;
 use std::io::Write;
@@ -110,7 +110,28 @@ pub fn resumed_tail(
     config: TraceConfig,
     steps: usize,
 ) -> Observed {
-    resumed_tail_every(program, input, output, config, steps, CHECKPOINT_EVERY)
+    resumed_tail_until(program, input, output, config, steps, Stop::new())
+}
+
+/// [`resumed_tail`], both runs ended by `stop`: a window that is not ready
+/// by then is none, and the run's trap is the stop's.
+pub fn resumed_tail_until(
+    program: &Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    config: TraceConfig,
+    steps: usize,
+    stop: Stop,
+) -> Observed {
+    resumed_tail_every(
+        program,
+        input,
+        output,
+        config,
+        steps,
+        CHECKPOINT_EVERY,
+        stop,
+    )
 }
 
 /// [`resumed_tail`] with a checkpoint every `every` loop rounds and calls.
@@ -122,6 +143,7 @@ pub fn resumed_tail_every(
     config: TraceConfig,
     steps: usize,
     every: u64,
+    stop: Stop,
 ) -> Observed {
     let config = TraceConfig {
         last_steps: Some(steps),
@@ -133,11 +155,17 @@ pub fn resumed_tail_every(
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let want = Checkpoints::taking(every, CHECKPOINTS_KEPT);
-        let run = checkpointed(program, Io::fixed(input), &mut **output, limits, None, want);
+        let io = Io::fixed(input).until(stop.clone());
+        let run = checkpointed(program, io, &mut **output, limits, None, want);
         let (mut whole, taken) = (run.observed, run.taken);
-        whole.recording = tail_from(program, input, &taken, &config, steps, limits);
+        whole.recording = tail_from(program, input, &taken, &config, steps, limits, &stop);
         whole
     })
+}
+
+/// Whether a run ended with this trap because its [`Stop`] went off.
+fn is_stop(message: &str) -> bool {
+    [OUT_OF_TIME, CANCELLED].contains(&message)
 }
 
 /// The last `steps` steps of the run on `input`, traced again from the
@@ -149,20 +177,33 @@ fn tail_from(
     config: &TraceConfig,
     steps: usize,
     limits: Limits,
+    stop: &Stop,
 ) -> Option<Recording> {
+    let stopped = |observed: Observed| match &observed.trap {
+        Some(trap) if is_stop(&trap.message) => None,
+        _ => observed.recording,
+    };
     let mut back = 1;
     loop {
         let trace = Some(config.clone());
         let mut ignored = std::io::sink();
+        let io = Io::fixed(input).until(stop.clone());
         let Some(from) = taken.len().checked_sub(back).map(|at| &taken[at]) else {
-            let io = Io::fixed(input);
-            return observe_on_this_thread(program, io, &mut ignored, limits, trace).recording;
+            return stopped(observe_on_this_thread(
+                program,
+                io,
+                &mut ignored,
+                limits,
+                trace,
+            ));
         };
         let want = Checkpoints::resuming(from);
-        let io = Io::fixed(input);
-        let resumed = checkpointed(program, io, &mut ignored, limits, trace, want)
-            .observed
-            .recording;
+        let resumed = checkpointed(program, io, &mut ignored, limits, trace, want).observed;
+        let stopped_early = resumed.trap.as_ref().is_some_and(|t| is_stop(&t.message));
+        let resumed = stopped(resumed);
+        if stopped_early {
+            return None;
+        }
         if resumed
             .as_ref()
             .is_some_and(|rec: &Recording| rec.len() >= steps)
@@ -238,7 +279,7 @@ pub fn interactive(
         );
         let (mut whole, taken, sent) = (run.observed, run.taken, run.sent);
         whole.recording = match tail {
-            Some(steps) => tail_from(program, &sent, &taken, &config, steps, limits),
+            Some(steps) => tail_from(program, &sent, &taken, &config, steps, limits, &Stop::new()),
             None => {
                 let config = TraceConfig {
                     stop_when_full: true,

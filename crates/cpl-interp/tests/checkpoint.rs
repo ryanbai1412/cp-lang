@@ -415,8 +415,15 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
             observe_on_this_thread(&program, io, &mut whole_out, LIMITS, Some(keep.clone()));
         let whole = whole.recording.unwrap();
         let mut out = Vec::new();
-        let tail =
-            cpl_interp::trace::resumed_tail_every(&program, input, &mut out, keep, steps, 64);
+        let tail = cpl_interp::trace::resumed_tail_every(
+            &program,
+            input,
+            &mut out,
+            keep,
+            steps,
+            64,
+            cpl_interp::Stop::new(),
+        );
         assert!(tail.trap.is_none(), "{:?}", tail.trap);
         assert_eq!(
             String::from_utf8_lossy(&out),
