@@ -10,7 +10,7 @@
 //   leave chain step between neighbours at cost 0, and the arrived chain crosses to the next
 //   leave node at their LCP (an LCA depth). O(m) nodes and arcs, O(m log m).
 // original: corpus/submissions/5515890.cpp
-// Bounds: n: 2..=5e4; m: 1..=5e4; k: 1..=2e4; roads.u, roads.v: 1..=n; roads.w: 0..=2e4; roads.word: 1..=k
+// Bounds: n: 2..=5e4; m: 1..=5e4; k: 1..=2e4; roads.u, roads.v: 1..=n; roads.w: 0..=2e4; roads.word: 1..=k; trie.u, trie.v: 1..=k; trie.c: 1..=2e4
 @!multitest
 let (n, m, k): (2..=5e4, 1..=5e4, 1..=2e4) = read()
 domain V = 1..=n

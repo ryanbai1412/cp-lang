@@ -10,16 +10,17 @@
 //   on the tree path i-j: a second Kruskal over the cuts by decreasing cost adds
 //   cost * leaves * leaves per join. A leaf's cut is at most max weight * (n - 1), so capping
 //   costs there keeps every path minimum and avoids overflow. Two sorts and DSUs, O(N log N).
+// Bounds: n: 2..=250_000; edges.u, edges.v: 1..=n; edges.w: 1..=1e12
 
 type Z = Mod<998_244_353>
 
 struct Cut(w: Int, size: Int, parent: Node)
 
 @!multitest
-let n: Int = read()
+let n: 2..=250_000 = read()
 domain U = 1..=n
 domain Node = 0..2 * n - 1
-let edges = read<[0..n - 1](u: U, v: U, w: Int)>().sorted(by: e => desc(e.w))
+let edges = read<[0..n - 1](u: U, v: U, w: 1..=1e12)>().sorted(by: e => desc(e.w))
 let max_w = edges[0].w * (n - 1)
 
 var cut: [Node]?Cut = None
