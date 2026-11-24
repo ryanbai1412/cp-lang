@@ -5,10 +5,14 @@
   {"id": "4693238", "language": "CPP17", "result": "AC", "time": 0.346749093, "memory_kb": 3568.0, "file": "corpus/submissions/4693238.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi10p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Interactive (faceup calls), stdio-adapted: orig.cpp is accepted submission 4693238 (corpus/submissions/4693238.cpp) with faceup over stdio and a main that prints 0 once play returns; interactor.py turns the cards and checks 25 candies in at most 100 calls. The statement gives no full sample deal, so case 1 is a hand-picked mirrored deal."
 }

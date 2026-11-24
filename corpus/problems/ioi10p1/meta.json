@@ -5,10 +5,14 @@
   {"id": "4692340", "language": "CPP17", "result": "AC", "time": 0.013912607, "memory_kb": 3604.0, "file": "corpus/submissions/4692340.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi10p1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Interactive (Theory calls), stdio-adapted: orig.cpp is accepted submission 4692340 (corpus/submissions/4692340.cpp) with Theory over stdio and a main that runs T cases; interactor.py plays Jack, refuting by a random wrong part, at most 20 theories a case."
 }
