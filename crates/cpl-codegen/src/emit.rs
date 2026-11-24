@@ -722,8 +722,7 @@ impl<'p> Emitter<'p> {
     /// The fn's C++ signature, the parameter whose place it lends when it
     /// returns `const T&`, and the held root and by-reference parameters when
     /// it returns `cpl::Held<T>`.
-    fn signature(&self, f: &Function) -> (String, Option<usize>, Option<HeldRoot>) {
-        let id = self.fn_id.expect("a fn");
+    fn signature(&self, id: usize, f: &Function) -> (String, Option<usize>, Option<HeldRoot>) {
         let mut named = crate::scope::named_params(&f.body, f.params.len());
         named.retain(|slot| !self.devirt.dead_local(Some(id), *slot));
         let tparams = self.devirt.template_params(id);
@@ -1159,7 +1158,7 @@ impl<'p> Emitter<'p> {
                 crate::Part::Yours
             };
             self.enter(Some(id), &f.body, f.params.len());
-            let (signature, root, held) = self.signature(f);
+            let (signature, root, held) = self.signature(id, f);
             self.lends_result = root.is_some();
             if let Some(slot) = root {
                 self.lent_roots.insert(id, slot);
