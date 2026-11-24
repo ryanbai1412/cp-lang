@@ -128,7 +128,7 @@ reexec_if_land_changed() {
     # Set only once push() ran, after drop_lock is defined; the first pull holds no lock.
     [ -z "${lock_held:-}" ] || drop_lock
     [ -z "${queued:-}" ] || dequeue
-    CPL_LAND_REEXEC=1 CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked \
+    CPL_LAND_REEXEC=1 CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked CPL_LAND_TICKET=${ticket:-} \
         exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
 }
 pull || exit 1
@@ -364,7 +364,8 @@ if [ "$lock_stale" -lt 120 ]; then
     echo "land: CPL_LAND_LOCK_STALE=${CPL_LAND_LOCK_STALE} is under 120 s and would take live lands' locks; using 120" >&2
     lock_stale=120
 fi
-lock_wait=${CPL_LAND_LOCK_WAIT:-1200}
+# Unset, a waiter never gives up (tests bound it to observe a wait).
+lock_wait=${CPL_LAND_LOCK_WAIT:-}
 # The holder restamps the lock this often, so a lock is stale only when its holder
 # stopped beating: a live one is never taken over however long it holds.
 lock_beat=${CPL_LAND_LOCK_BEAT:-30}
@@ -394,10 +395,12 @@ stop_beat() {
     wait "$beat_pid" 2>/dev/null || :
     beat_pid=""
 }
-ticket=""
+# One name per land, kept across lost races, failed pushes and the re-exec, so a
+# land never rejoins at the back. A live waiter never times out: only a ticket
+# (or lock) that stops changing is dead.
+ticket=${CPL_LAND_TICKET:-refs/locks/queue/$(date +%s%N)-$$-$(printf %s "${domain:-none}" | tr -c 'A-Za-z0-9_-' _)}
 queued=""
 enqueue() {
-    [ -n "$ticket" ] || ticket="refs/locks/queue/$(date +%s%N)-$$-$(printf %s "$domain" | tr -c 'A-Za-z0-9_-' _)"
     git push -q --no-verify -f "$remote" \
         "$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land ticket $(hostname) $$ $domain"):$ticket" 2>/dev/null &&
         queued=1
@@ -407,31 +410,47 @@ dequeue() {
     git push -q --no-verify "$remote" ":$ticket" 2>/dev/null || :
     queued=""
 }
-# The oldest ticket stamped within $lock_stale s; older ones are deleted (CAS).
+drop_ticket() {
+    echo "land: dropping queue ticket ${1##*/}: $3" >&2
+    git push -q --no-verify --force-with-lease="$1:$2" "$remote" ":$1" 2>/dev/null || :
+}
+# Sets $first to the oldest live ticket. A ticket is live while its sha changes
+# (each heartbeat is a new commit), timed by this land's clock from ls-remote
+# alone: fetching the tickets' commits failed whole on one bad ref (HTTP 500),
+# and that let every waiter skip the line. Fails if the queue can't be listed.
+declare -A ticket_sha=() ticket_seen=()
 first_in_line() {
-    local seen=refs/land-seen/queue name sha at
-    git fetch -q --prune --no-write-fetch-head "$remote" "+refs/locks/queue/*:$seen/*" 2>/dev/null || return 0
-    git for-each-ref --sort=refname --format='%(refname:lstrip=3) %(objectname) %(committerdate:unix)' "$seen/" |
-        while read -r name sha at; do
-            if [ $(( $(date +%s) - at )) -gt "$lock_stale" ]; then
-                git push -q --no-verify --force-with-lease="refs/locks/queue/$name:$sha" "$remote" \
-                    ":refs/locks/queue/$name" 2>/dev/null || :
-                continue
-            fi
-            echo "refs/locks/queue/$name"
-            break
-        done
+    local list sha ref name now re='^[0-9]{19}-[0-9]+-[A-Za-z0-9_-]+$'
+    first=""
+    list=$(git ls-remote "$remote" 'refs/locks/queue/*' 2>/dev/null) || return 1
+    now=$(date +%s)
+    while read -r sha ref; do
+        [ -n "$ref" ] || continue
+        name=${ref#refs/locks/queue/}
+        [[ $name =~ $re ]] || { drop_ticket "$ref" "$sha" "malformed name"; continue; }
+        if [ "${ticket_sha[$name]:-}" != "$sha" ]; then
+            ticket_sha[$name]=$sha
+            ticket_seen[$name]=$now
+        elif [ "$ref" != "$ticket" ] && [ $((now - ticket_seen[$name])) -gt "$lock_stale" ]; then
+            drop_ticket "$ref" "$sha" "no heartbeat for over ${lock_stale}s"
+            continue
+        fi
+        first=${first:-$ref}
+    done < <(printf '%s\n' "$list" | sort -k2)
 }
 take_lock() {
-    local me holder held_by at waited=0 first lined=""
+    local me holder held_by at waited=0 lined="" blind=""
     enqueue || :
     while :; do
         first=""
-        [ -z "$queued" ] || first=$(first_in_line)
+        if [ -n "$queued" ] && ! first_in_line; then
+            [ -n "$blind" ] || echo "land: can't list the land queue; waiting, not skipping it" >&2
+            blind=1 first="?"
+        fi
         if [ -n "$first" ] && [ "$first" != "$ticket" ]; then
-            [ -n "$lined" ] || echo "land: waiting in line behind ${first##*/}" >&2
-            lined=1
-            [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
+            [ "$first" = "$lined" ] || [ "$first" = "?" ] || echo "land: waiting in line behind ${first##*/}" >&2
+            lined=$first
+            [ -z "$lock_wait" ] || [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
             sleep 2
             waited=$((waited + 2))
             [ $((waited % 10)) != 0 ] || enqueue || :
@@ -471,7 +490,7 @@ take_lock() {
             continue
         fi
         [ "$waited" != 0 ] || echo "land: waiting for the land lock ($held_by)" >&2
-        [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
+        [ -z "$lock_wait" ] || [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
         sleep 2
         waited=$((waited + 2))
         [ $((waited % 10)) != 0 ] || [ -z "$queued" ] || enqueue || :
@@ -517,7 +536,21 @@ push() {
         git fetch -q "$remote" main
         git merge-base --is-ancestor FETCH_HEAD HEAD || { drop_lock; return 1; }
     fi
-    git push -q --no-verify "$remote" HEAD:main || { drop_lock; return 1; }
+    # A failed push (Idioms' "remote rejected ... (failed)") tries again holding
+    # the lock; only main moving under it lets the lock and the turn go.
+    moved=""
+    RETRY_TRIES=3 RETRY_WAIT=1 retry push_held && [ -z "$moved" ] && return 0
+    drop_lock
+    return 1
+}
+# Succeeds once pushed, or once main moved under the lock (set $moved): then
+# only a rebase helps, not another try.
+push_held() {
+    git push -q --no-verify "$remote" HEAD:main && return 0
+    echo "land: the push failed; trying again holding the land lock" >&2
+    git fetch -q "$remote" main
+    git merge-base --is-ancestor FETCH_HEAD HEAD || moved=1
+    [ -n "$moved" ]
 }
 RETRY_TRIES=$tries RETRY_WAIT=0 retry push || { echo "land: gave up after $tries tries" >&2; exit 1; }
 drop_lock
