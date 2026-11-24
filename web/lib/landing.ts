@@ -5,16 +5,6 @@ import { highlight } from '@/lib/highlight';
 
 const dir = join(process.cwd(), 'content/landing');
 
-export interface Showcase {
-  id: string;
-  title: string;
-  caption: string;
-  status: Status;
-  lines: number;
-  html: string;
-  href?: string;
-}
-
 const syntax = [
   {
     id: 'input',
@@ -69,23 +59,6 @@ const library = [
 const gate = () =>
   JSON.parse(readFileSync(join(process.cwd(), '.gate/status.json'), 'utf8')) as Record<string, { status: Status }>;
 
-async function load(group: string, items: { id: string; title: string; caption: string }[], link: boolean) {
-  const status = gate();
-  return Promise.all(
-    items.map(async (t): Promise<Showcase> => {
-      const file = existsSync(join(dir, group, `${t.id}.cp`)) ? `${t.id}.cp` : `${t.id}.spec.cp`;
-      const source = readFileSync(join(dir, group, file), 'utf8').trimEnd();
-      return {
-        ...t,
-        status: status[`content/landing/${group}/${file}`].status,
-        lines: source.split('\n').length,
-        html: await highlight(source, 'cp'),
-        href: link && existsSync(join(process.cwd(), '../corpus/problems', t.id)) ? `/corpus/${t.id}` : undefined,
-      };
-    }),
-  );
-}
-
 export interface Live {
   id: string;
   title: string;
@@ -95,6 +68,7 @@ export interface Live {
   cpp?: string;
   status: Status;
   html: string;
+  href?: string;
 }
 
 const hero = [
@@ -141,7 +115,9 @@ const lib = [
   },
 ];
 
-function live(group: string, items: { id: string; title: string; caption: string }[]): Promise<Live[]> {
+// Every landing example is a program: Run shows once the compiler runs it.
+// `link` points each at its corpus page when the problem has one.
+function live(group: string, items: { id: string; title: string; caption: string }[], link = false): Promise<Live[]> {
   const status = gate();
   return Promise.all(
     items.map(async (t) => {
@@ -151,10 +127,11 @@ function live(group: string, items: { id: string; title: string; caption: string
       return {
         ...t,
         source,
-        stdin: readFileSync(`${base}.in`, 'utf8'),
+        stdin: existsSync(`${base}.in`) ? readFileSync(`${base}.in`, 'utf8') : '',
         cpp: existsSync(`${base}.cpp`) ? readFileSync(`${base}.cpp`, 'utf8').trimEnd() : undefined,
         status: status[`content/landing/${group}/${file}`].status,
         html: await highlight(source.trimEnd(), 'cp'),
+        href: link && existsSync(join(process.cwd(), '../corpus/problems', t.id)) ? `/corpus/${t.id}` : undefined,
       };
     }),
   );
@@ -168,8 +145,8 @@ const runsFirst = async <T extends { status: Status }>(items: Promise<T[]>) => {
 
 export const heroPrograms = () => live('hero', hero);
 export const libraryPrograms = () => runsFirst(live('lib', lib));
-export const syntaxShowcases = () => runsFirst(load('syntax', syntax, false));
-export const libraryShowcases = () => runsFirst(load('library', library, true));
+export const syntaxPrograms = () => runsFirst(live('syntax', syntax));
+export const solutionPrograms = () => runsFirst(live('library', library, true));
 
 export function debugDemo() {
   const read = (f: string) => readFileSync(join(dir, 'debug', f), 'utf8');

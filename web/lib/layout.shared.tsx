@@ -1,7 +1,7 @@
 import type { DocsLayoutProps } from "fumadocs-ui/layouts/notebook";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import { NavLinks } from "@/components/nav-links";
-import { PhoneInstall } from "@/components/phone-install";
+import type { HomeLayoutProps } from "fumadocs-ui/layouts/home";
+import { DocsHeader, HomeHeader } from "@/components/site-header";
 
 export const site = {
   name: "CP Lang",
@@ -19,33 +19,16 @@ export const navLinks = [
 ];
 
 export function baseOptions(): BaseLayoutProps {
-  return {
-    nav: {
-      title: <span className="font-semibold">{site.name}</span>,
-      children: <PhoneInstall />,
-    },
-    githubUrl: site.github,
-    links: navLinks,
-  };
+  return { githubUrl: site.github, links: navLinks };
 }
 
-// The notebook layout puts its links right of a centred search. Docs and Learn
-// show them after the title instead, as the landing does, and keep them in
-// the phone menu; `global.css` moves the search next to the icons.
-export function notebookOptions(): Omit<DocsLayoutProps, "tree"> {
-  const base = baseOptions();
-  return {
-    ...base,
-    nav: {
-      ...base.nav,
-      mode: "top",
-      children: (
-        <>
-          <NavLinks />
-          <PhoneInstall />
-        </>
-      ),
-    },
-    links: navLinks.map((l) => ({ ...l, on: "menu" as const })),
-  };
-}
+// Both layouts render components/site-header.tsx, so every page has the same
+// header. Docs and Learn keep the links in their sidebar for phones.
+export const homeOptions = (): HomeLayoutProps => ({ ...baseOptions(), slots: { header: HomeHeader } });
+
+export const notebookOptions = (): Omit<DocsLayoutProps, "tree"> => ({
+  ...baseOptions(),
+  nav: { mode: "top" },
+  links: navLinks.map((l) => ({ ...l, on: "menu" as const })),
+  slots: { header: DocsHeader },
+});

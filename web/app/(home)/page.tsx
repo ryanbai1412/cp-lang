@@ -19,10 +19,9 @@ import {
   debugDemo,
   heroPrograms,
   libraryPrograms,
-  libraryShowcases,
   type Live,
-  type Showcase,
-  syntaxShowcases,
+  solutionPrograms,
+  syntaxPrograms,
 } from "@/lib/landing";
 
 const starts = [
@@ -90,6 +89,11 @@ function LiveTabs({ items }: { items: Live[] }) {
               bar={<StatusBadge status={s.status} />}
             />
           )}
+          {s.href && (
+            <Link href={s.href} className="block text-sm text-muted-foreground hover:underline">
+              Compare with the accepted C++ <ArrowRight className="inline size-3.5" />
+            </Link>
+          )}
           {s.cpp && (
             <details className="rounded-xl border bg-muted/30">
               <summary className="cursor-pointer px-4 py-2 text-sm text-muted-foreground">
@@ -132,46 +136,10 @@ function Static({
   );
 }
 
-function Showcases({ items }: { items: Showcase[] }) {
-  return (
-    <Tabs defaultValue={items[0].id} className="min-w-0">
-      <TabsList className="max-w-full flex-wrap justify-start group-data-[orientation=horizontal]/tabs:h-auto">
-        {items.map((s) => (
-          <TabsTrigger key={s.id} value={s.id}>
-            {s.title}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      {items.map((s) => (
-        <TabsContent key={s.id} value={s.id}>
-          <Static
-            html={s.html}
-            caption={s.caption}
-            bar={
-              <>
-                <span>{s.lines} lines</span>
-                <span className="ml-auto flex items-center gap-3">
-                  {s.href && (
-                    <Link href={s.href} className="hover:underline">
-                      Compare with the C++{" "}
-                      <ArrowRight className="inline size-3.5" />
-                    </Link>
-                  )}
-                  <StatusBadge status={s.status} />
-                </span>
-              </>
-            }
-          />
-        </TabsContent>
-      ))}
-    </Tabs>
-  );
-}
-
 export default async function Home() {
   const [syntax, library, hero, lib] = await Promise.all([
-    syntaxShowcases(),
-    libraryShowcases(),
+    syntaxPrograms(),
+    solutionPrograms(),
     heroPrograms(),
     libraryPrograms(),
   ]);
@@ -325,13 +293,13 @@ export default async function Home() {
           </h2>
           <p className="text-muted-foreground">
             Complete solutions to real olympiad problems, next to more of the
-            syntax they rely on. Each carries its status: the ones the compiler
-            does not run yet have no Run button.
+            syntax they rely on. Run each in place; one the compiler does not
+            run yet shows its status instead, until it does.
           </p>
         </div>
         <div className="grid gap-8 lg:grid-cols-2">
-          <Showcases items={library} />
-          <Showcases items={syntax} />
+          <LiveTabs items={library} />
+          <LiveTabs items={syntax} />
         </div>
       </section>
 
