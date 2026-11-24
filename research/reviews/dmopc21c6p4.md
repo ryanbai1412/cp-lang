@@ -1,9 +1,9 @@
 # dmopc21c6p4
 
-Score: 3/5
-Dream: none (no dream.cp; the ideal is in the friction report)
+Score: 4/5
+Dream: 4/5 (the friction's `## Dream`)
 
-Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
+Scored cold against the checklist and the port.
 
 Two BFS runs from a to b, one avoiding d and one avoiding c; the shorter decides which colour the other roads get.
 

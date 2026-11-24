@@ -1,9 +1,9 @@
 # dmopc21c9p3
 
-Score: 3/5
-Dream: none (no dream.cp; the ideal is in the friction report)
+Score: 4/5
+Dream: 4/5 (the friction's `## Dream`)
 
-Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
+Scored cold against the checklist and the port.
 
 All-pairs BFS distances, then each query checks either trip alone or the two meeting-point orders.
 

@@ -1,6 +1,10 @@
 # Friction report: dmopc21c6p3
 
-No gap. The expansion is std `bfs` from every coloured cell over `p.adj4`, with `enter: d <= k`. In BFS order, each claimed cell takes the lowest colour among its neighbours one step closer. That replaces the hand-written wave lists, the `DIRS` table, the bounds-checked `step` helper and the colour sort (the old `WISH L1`/`WISH L7` notes).
+No gap. The expansion is k rounds of a frontier from the coloured cells in colour order over `p.adj4`; the first colour to reach a cell keeps it, so the paint grid also marks the cells seen and no distance grid is needed. That replaces the hand-written wave lists, the `DIRS` table, the bounds-checked `step` helper and the colour sort (the old `WISH L1`/`WISH L7` notes).
+
+## Dream
+
+The port as written. Painted cells spread for k rounds in colour order; the first colour to reach a cell keeps it, so the paint grid also marks the cells seen.
 
 ## Measurements
 

@@ -1,9 +1,9 @@
 # dmopc21c5p1
 
-Score: 3/5
-Dream: none (no dream.cp; the ideal is in the friction report)
+Score: 4/5
+Dream: 4/5 (the friction's `## Dream`)
 
-Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
+Scored cold against the checklist and the port.
 
 A construction: the odd numbers except 5, then 5 and 4, then the even numbers except 4, so each adjacent sum is composite; n = 1 and n <= 4 are handled first.
 

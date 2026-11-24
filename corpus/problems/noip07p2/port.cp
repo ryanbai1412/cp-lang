@@ -26,7 +26,7 @@ for i in 0..s.len:
         var fill = [shown(Char(c)) for c in s[i - 1].ord + 1..s[i + 1].ord]
         if p3 == 2: fill.reverse()
         for c in fill:
-            for _ in 0..p2: out.push(c)
+            repeat p2: out.push(c)
     else:
         out.push(s[i])
 print(out)

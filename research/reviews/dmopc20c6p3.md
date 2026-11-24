@@ -1,9 +1,9 @@
 # dmopc20c6p3
 
-Score: 3/5
-Dream: none (no dream.cp; the ideal is in the friction report)
+Score: 4/5
+Dream: 4/5 (the friction's `## Dream`)
 
-Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
+Scored cold against the checklist and the port.
 
 Backward propagation on the reverse graph: a city with no free route is caught, and a caught city frees one route from each predecessor, catching it when it has police or no free route left.
 

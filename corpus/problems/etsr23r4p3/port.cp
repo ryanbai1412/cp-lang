@@ -27,7 +27,6 @@ let tree = Rooted<V>(Graph.undirected(tree_edges), root: V.first!)
 var ans: U64 = 0
 var dp: [V, V]U64 = 0
 for mask in Subset<V>:
-    if mask.len == 0: continue
     for u in tree.at.rev:
         for v1 in mask:
             var ways: U64 = 1

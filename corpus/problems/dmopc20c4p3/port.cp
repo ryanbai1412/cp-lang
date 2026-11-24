@@ -12,17 +12,14 @@ type Pt = (x: 1..=1e9, y: 1..=1e9)
 let n: 1..=2e5 = read()
 let m: 1..=2e5 = read()
 var roombas: [n]Pt = read()
-var cords: [m]Pt = read()
+var cords: List<Pt> = read<[m]Pt>()
 
 let (X, xs) = compress([c.x for c in cords])
-cords.sort(by: c => desc(c.y))
+cords.sort(by: c => c.y)  // the tallest last, to pop
 roombas.sort(by: r => desc(r.y))
 var standing = Fenwick<X, Int>()
-var added = 0
 var touching = 0
 for r in roombas:
-    while added < m and cords[added].y >= r.y:
-        standing.add(xs.index_of(cords[added].x), 1)
-        added += 1
+    for c in cords.pop_while(c => c.y >= r.y): standing.add(xs.index_of(c.x), 1)
     if let reach = xs.last_le(r.x): touching += standing.prefix(reach.r)
 print(touching)

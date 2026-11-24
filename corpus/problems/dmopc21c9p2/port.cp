@@ -19,7 +19,7 @@ for c in a:
     while pending.len >= 2 and pending.last! == pending[pending.len - 2] and pending.last! != 'z':
         let x = pending.pop()!
         pending.pop()
-        pending.push(Char(Int(x) + 1))
+        pending.push(x + 1)
     while matched < b.len and pending.first == Some(b[matched]):
         pending.pop_front()
         matched += 1

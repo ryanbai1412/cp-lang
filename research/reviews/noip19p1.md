@@ -1,9 +1,8 @@
 # noip19p1
 
-Score: 3/5
-Dream: none (no dream.cp and no `## Dream` in the friction)
+Score: 4/5
+Dream: 5/5 (the friction's `## Dream`)
 
-With no dream (no dream.cp and no `## Dream` in the friction) the port scores at most 3 (README); against the checklist alone it reads as a 4.
 
 Cold review: `k ^ (k >> 1)` in a `U64`, printed bit by bit from the top (lines 10-13), the header's identity.
 
@@ -17,7 +16,7 @@ Cold review: `k ^ (k >> 1)` in a `U64`, printed bit by bit from the top (lines 1
 
 ## Language gaps
 
-- None; research/frictions/noip19p1.md names the port as the dream.
+- An n-digit binary `U64` has no format: `:b` takes only `Int` and the width is a literal, so the port masks bit by bit. In research/frictions/noip19p1.md, owner Core.
 
 ## Dream notes
 
