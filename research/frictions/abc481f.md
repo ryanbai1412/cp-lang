@@ -14,6 +14,8 @@ refinement as a pipeline would put the `value[v] = ...` assignment inside a filt
 `[1..=9]List<V>` directly. There is no dream/port gap to route.
 
 ## Measurements
+
+- Judge limits: 2000 ms, 1024 MB, as the port's `limits:` line says; checked against the AtCoder task page, https://atcoder.jp/contests/abc481/tasks/abc481_f.
 - Tokens: port 295, original 341.
 - `--max` (best of 10): port 0.032 s / 18 MB, `orig.cpp` (not judge-accepted, stress-checked)
   0.107 s / 13 MB. Same output.

@@ -5,6 +5,8 @@ builds the product table in one line, `I.at(...)` keeps an out-of-range quotient
 and `?[I]I` says that a try can fail. There are no gaps.
 
 ## Measurements
+
+- Judge limits: 3000 ms, 256 MB, as the port's `limits:` line says; checked against the DMOJ API (`/api/v2/problem/aac5p2`), https://dmoj.ca/problem/aac5p2.
 - Tokens: port 214, original 569.
 - `--max` port run: 0.008 s / 4 MB. The accepted C++ is interactive and aborts without
   `interactor.py`, so this standalone run has no C++ time to compare.

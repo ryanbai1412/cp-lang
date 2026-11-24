@@ -13,6 +13,8 @@ std, and users are the domain `U`. The statement says the values increase with i
 guarantee is ever read loosely, at O(n log n), so it stays. There is no dream/port gap.
 
 ## Measurements
+
+- Judge limits: 750 ms, 256 MB, as the port's `limits:` line says; checked against the DMOJ API (`/api/v2/problem/acc7p3`), https://dmoj.ca/problem/acc7p3.
 - Tokens: port 148, original 779.
 - `--max` (best of 10): port 0.031 s / 14 MB, accepted C++ 0.065 s / 17 MB. Same output.
 - Emitted C++: 21,498 bytes.

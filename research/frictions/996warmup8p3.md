@@ -17,6 +17,10 @@ The port is `dream.cp` (same code), so there is no dream/port gap. One gap is sh
 - **Owner:** Core (syntax).
 
 ## Measurements
+
+- Judge limits: unknown, so the port has no `limits:` line. https://dmoj.ca/api/v2/problem/996warmup8p3 answers
+  404 (not public), a DMOJ problem search finds no 996 Warmup problem, and meta.json and the repo
+  hold no statement. Tools use the 2000 ms / 256 MB default until someone with the statement sets it.
 - Tokens: port 546, original 903.
 - `--max` (best of 10): port 0.016 s / 6 MB, accepted C++ 0.060 s / 5 MB. Same output.
 - Emitted C++: 19,323 bytes.

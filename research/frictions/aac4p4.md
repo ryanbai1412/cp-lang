@@ -22,6 +22,8 @@
 - **Owner:** idioms (this port): try that `plan()` and measure its memory at `--max`.
 
 ## Measurements
+
+- Judge limits: 1000 ms, 256 MB, as the port's `limits:` line says; checked against the DMOJ API (`/api/v2/problem/aac4p4`), https://dmoj.ca/problem/aac4p4.
 - Tokens: port 444, original 999.
 - `--max` (best of 10): port 0.033 s / 5 MB, accepted C++ 0.078 s / 6 MB. Same output.
 - Emitted C++: 18,427 bytes.

@@ -53,6 +53,8 @@ if forced <= m <= room: for e in edges().take(m): print(e) else: print(-1)
 - **Owner:** idioms (this port).
 
 ## Measurements
+
+- Judge limits: 1000 ms, 256 MB, as the port's `limits:` line says; checked against the DMOJ API (`/api/v2/problem/aac4p5`), https://dmoj.ca/problem/aac4p5.
 - Tokens: port 430, original 1,258.
 - `--max` (best of 10): port 0.055 s / 24 MB, accepted C++ 0.108 s / 16 MB. The two print
   different valid edge sets; `checker.py` accepts both.

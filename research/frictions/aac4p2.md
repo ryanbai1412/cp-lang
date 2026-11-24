@@ -8,6 +8,8 @@ Both forms compile and give the same output. At `--max` (q = 1e6) the dream take
 There are no gaps, so nothing is routed.
 
 ## Measurements
+
+- Judge limits: 1000 ms, 256 MB, as the port's `limits:` line says; checked against the DMOJ API (`/api/v2/problem/aac4p2`), https://dmoj.ca/problem/aac4p2.
 - Tokens: port 137, original 373.
 - `--max` (best of 10): port 0.081 s / 6 MB, accepted C++ 0.102 s / 5 MB. Same output.
 - Emitted C++: 15,204 bytes.

@@ -26,6 +26,8 @@
 - **Owner:** Core (types).
 
 ## Measurements
+
+- Judge limits: 4000 ms, 1024 MB, as the port's `limits:` line says; checked against the AtCoder task page, https://atcoder.jp/contests/abc481/tasks/abc481_g.
 - Tokens: port 761, original 1,402.
 - `--max` (best of 10): port 0.199 s / 20 MB, accepted C++ 0.266 s / 17 MB. Same output.
 - Emitted C++: 26,576 bytes.

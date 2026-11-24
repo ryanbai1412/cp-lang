@@ -12,6 +12,8 @@ Edges are their own domain `E = 1..n`, so `e.label` is the edge number the state
 The rooted-tree queries come from std. There is no dream/port gap to route.
 
 ## Measurements
+
+- Judge limits: 2000 ms, 1024 MB, as the port's `limits:` line says; checked against the AtCoder task page, https://atcoder.jp/contests/abc479/tasks/abc479_e.
 - Tokens: port 195, original 423.
 - `--max` (best of 10): port 0.043 s / 21 MB, `orig.cpp` (not judge-accepted, stress-checked)
   0.099 s / 19 MB. Same output.

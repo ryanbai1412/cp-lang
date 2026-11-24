@@ -17,6 +17,8 @@ but uses 2.3x the memory.
 - **Owner:** Content (stdlib `Rooted`). Repro: `/usr/bin/time -f %M` on the port at `--max`.
 
 ## Measurements
+
+- Judge limits: 1000 ms, 256 MB, as the port's `limits:` line says; checked against the DMOJ API (`/api/v2/problem/aac5p3`), https://dmoj.ca/problem/aac5p3.
 - Tokens: port 347, original 709.
 - `--max` (best of 10): port 0.068 s / 34 MB, accepted C++ 0.063 s / 15 MB (1.08x). Same
   output.

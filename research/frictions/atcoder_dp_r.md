@@ -37,15 +37,17 @@ print(walks.sum())
 
 ## Friction 2: 1.17x at --max on an 11 ms run
 
-- Where: the whole program; both runs are 10-12 ms, dominated by start-up and 50^3 * 60
-  multiplications.
-- What felt wrong: the port is over the 1.1x target. After 6525aa9fc the power emits no
-  `std::function`; the remaining difference is the `Mat` product loop checking each
-  `get`/`set` index, which the accepted C++'s raw `long long[50][50]` does not.
+- Where: `Mat.mul`'s no-ring product loop (std/matrix.cp), reached through `** k`; perf record
+  puts 91% of the port's samples in `Mat_S24_25_mul` (88% of the AC's in its `operator*`).
+- What felt wrong: the port is over the 1.1x target. The loop already runs under `unchecked:`
+  with no index checks; the cost is two reductions per multiply-add (`Mod.mul`'s `% P`, then
+  `Mod.add`'s compare), where the AC writes one `(ret + a * b) % mod`.
 - Goal it hurts: R10.
-- Ideal code: unchanged; the fix is in codegen.
-- General fix: drop the bounds checks in `Mat.mul`'s inner loop, whose indices are
-  provably in `0..n`.
-- Severity: low (13 ms against a 2000 ms limit).
-- Owner: Core (codegen), repro `cpl build corpus/problems/atcoder_dp_r/port.cp` and the
-  `--max` input.
+- Ideal code: unchanged; the fix is in std or codegen.
+- General fix: accumulate a residue dot product lazily. With `P < 2^30` a product is below
+  `2^60`, so a u64 row buffer takes 16 products before one `%= P`. Hand-applied to the emitted
+  loop it runs 7.3 ms against the AC's 9.8 ms (0.74x, median of 41, same output); fusing the two
+  reductions into one `%` (Perf's measurement) reaches parity, 9.8 ms.
+- Severity: low (11 ms against a 2000 ms limit).
+- Owner: Perf, owed in plan/domains/perf/PLAN.md (b7c7f0f0e); the lazy-reduction measurement
+  and patched C++ were sent to Perf.
