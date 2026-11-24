@@ -354,6 +354,14 @@ fn build_judged(
     Ok(profile.on_stack(binary))
 }
 
+/// The C++ compiler `source`'s judge builds with here, when this machine
+/// has none by that name, so its release build runs in the interpreter.
+pub fn missing_compiler(source: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(source).ok()?;
+    let host = cpl_judge::resolve(source, &text, None).ok()?.host();
+    (!found(&host.compiler)).then_some(host.compiler)
+}
+
 /// Whether `compiler` can be started here, asked once per compiler.
 fn found(compiler: &str) -> bool {
     type Asked = std::sync::Mutex<std::collections::HashMap<String, bool>>;

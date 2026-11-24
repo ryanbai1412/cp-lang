@@ -21,7 +21,7 @@ pub use engine::{
 };
 pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
 pub use judge::{Judge, Judged, Verdict};
-pub use program::{BuildError, Exit, Outcome, Program};
+pub use program::{missing_compiler, BuildError, Exit, Outcome, Program};
 pub use rng::Rng;
 pub use shrink::{fit, shrink};
 pub use spec::{InputSpec, Shape, SpecError};

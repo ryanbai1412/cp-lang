@@ -47,6 +47,7 @@ pub(crate) fn submit(
     }
     let mut sink = Vec::new();
     let said: &mut (dyn Write + Send) = if json { &mut sink } else { stdout };
+    warn_interpreted(path, "the cases", stderr);
     let source = cpl_contest::problem::source_path(path);
     let cases = cpl_contest::problem::cases(&source);
     let tests = cpl_contest::problem::find_tests_dir(&source);
@@ -82,6 +83,17 @@ pub(crate) fn submit(
     let code = ready_to_send(&source, copy, said, stderr);
     report(true, &built, &out, stdout);
     code
+}
+
+/// Says that `what` ran in the interpreter because `path`'s judge compiler
+/// is missing here: same answers, but not the C++ the judge runs.
+pub(crate) fn warn_interpreted(path: &str, what: &str, stderr: &mut String) {
+    if let Some(compiler) = cpl_stress::missing_compiler(std::path::Path::new(path)) {
+        *stderr += &format!(
+            "cpl: warning: there is no `{compiler}` here, so {what} ran in the interpreter, not the \
+             judge's C++; install a C++ compiler to check that build\n"
+        );
+    }
 }
 
 pub(crate) fn ready_to_send(

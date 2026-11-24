@@ -1015,6 +1015,7 @@ fn run_release(
             return EXIT_ERRORS;
         }
     };
+    crate::submit::warn_interpreted(args.file, "`--release`", stderr);
     // An interactive problem with its judge in the file: the input is the
     // hidden test, which the judge reads, as without `--release`.
     if !args.brute {
