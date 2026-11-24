@@ -8,6 +8,12 @@ const DROPPED: &str = "never read; it and its stores are left out";
 const SUNK: &str = "the list passed here is never built; its loop runs at each push";
 const HASHED: &str = "a hash table: nothing reads its order";
 
+/// Whether a copy's reason says a move or a borrow in its place would
+/// show ([`crate::uses::KEPT`]): `detail` ends with that reason.
+pub fn kept_copy(detail: &str) -> bool {
+    crate::uses::KEPT.iter().any(|why| detail.ends_with(why))
+}
+
 /// The report for `program`, lowered from `text`, naming the file `path`.
 pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
     report_with(path, text, program, None)

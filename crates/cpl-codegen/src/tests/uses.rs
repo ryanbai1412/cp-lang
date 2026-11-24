@@ -111,7 +111,7 @@ fn a_copy_names_the_reason_the_table_found() {
 print(f([[1], [2]]))
 "
         ),
-        [crate::uses::SET_AGAIN]
+        [crate::uses::KEPT_CHANGED]
     );
 }
 
@@ -137,7 +137,7 @@ fn a_value_that_owns_no_heap_memory_is_never_listed_as_a_copy() {
     let pair = "fn f(ps: List<(Int, Int)>) -> Int:\n    var p = ps[0]\n    p.0 += 1\n    p.0\nprint(f([(1, 2)]))\n";
     assert_eq!(copy_reasons(pair), [] as [&str; 0]);
     let holder = "struct H:\n    xs: List<Int>\nfn f(hs: List<H>) -> Int:\n    var h = hs[0]\n    h.xs.push(1)\n    h.xs.len\nprint(f([H(xs: [1])]))\n";
-    assert_eq!(copy_reasons(holder), [crate::uses::SET_AGAIN]);
+    assert_eq!(copy_reasons(holder), [crate::uses::KEPT_CHANGED]);
 }
 
 #[test]
@@ -446,7 +446,7 @@ print(f([[\"a\"]], \"b\"))
 ";
     assert_eq!(
         copy_reasons(source),
-        [crate::uses::SET_AGAIN, crate::uses::SET_AGAIN]
+        [crate::uses::KEPT_CHANGED, crate::uses::KEPT_CHANGED]
     );
 }
 

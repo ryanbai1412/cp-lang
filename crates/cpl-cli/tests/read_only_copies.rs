@@ -453,3 +453,175 @@ fn explained_copies(src: &Path) -> usize {
         .filter(|l| l.trim_start().starts_with("[copy] "))
         .count()
 }
+
+/// Codegen's copy fact is the truth about which copies are required: a
+/// copy `cpl explain --json` marks `kept` is one that rewriting its C++ to a
+/// move or a borrow of what it copies changes the output of, and no other
+/// copy is. Each spec/conformance case with a `// copies:` header is built
+/// `--full`, each copy rewritten both ways, and the outputs compared.
+#[test]
+fn a_copy_is_kept_exactly_when_a_move_or_a_borrow_would_show() {
+    let cases: Vec<PathBuf> = sources()
+        .into_iter()
+        .filter(|src| rel(src).starts_with("spec/conformance/"))
+        .filter(|src| {
+            declared(&std::fs::read_to_string(src).unwrap(), "copies").is_ok_and(|n| n > 0)
+        })
+        .collect();
+    assert!(!cases.is_empty(), "no conformance case states a copy");
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("kept_copies");
+    std::fs::create_dir_all(&dir).unwrap();
+    let wrong: Vec<String> = std::thread::scope(|s| {
+        let jobs: Vec<_> = cases
+            .iter()
+            .enumerate()
+            .map(|(i, src)| {
+                let dir = dir.join(i.to_string());
+                s.spawn(move || {
+                    std::fs::create_dir_all(&dir).unwrap();
+                    let (kept, shown) = (kept_copies(src), shown_copies(src, &dir));
+                    (kept != shown).then(|| {
+                        format!(
+                            "{}: `cpl explain` keeps {kept} copies, a move or a borrow shows {shown}",
+                            rel(src)
+                        )
+                    })
+                })
+            })
+            .collect();
+        jobs.into_iter().filter_map(|j| j.join().unwrap()).collect()
+    });
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// The copies `cpl explain --json` marks kept in `src`.
+fn kept_copies(src: &Path) -> usize {
+    let explain = cpl_cli::run(&["explain", "--json", src.to_str().unwrap()]);
+    String::from_utf8_lossy(&explain.stdout)
+        .matches("\"kept\":true")
+        .count()
+}
+
+/// The copies of `src`'s `--full` C++ whose rewrite to a move or a borrow
+/// of what they copy changes what the program prints on its `// input:`.
+fn shown_copies(src: &Path, dir: &Path) -> usize {
+    let cpp_path = dir.join("p.cpp");
+    let built = cpl_cli::run(&[
+        "build",
+        "--full",
+        src.to_str().unwrap(),
+        "-o",
+        cpp_path.to_str().unwrap(),
+    ]);
+    assert_eq!(built.code, 0, "{} does not build", rel(src));
+    let cpp = std::fs::read_to_string(&cpp_path).unwrap();
+    let input = case_input(&std::fs::read_to_string(src).unwrap());
+    let base = run_cpp(&cpp, &input, dir).unwrap_or_else(|e| panic!("{}: {e}", rel(src)));
+    let lines: Vec<&str> = cpp.lines().collect();
+    let total = container_copies(&cpp);
+    let mut sites = 0;
+    let mut shown = 0;
+    for (k, line) in lines.iter().enumerate() {
+        let Some((moved, borrowed)) = rewrites(line) else {
+            continue;
+        };
+        let with = |new: &str| {
+            let mut out = lines.clone();
+            out[k] = new;
+            out.join("\n")
+        };
+        if container_copies(&with(&moved)) >= total {
+            continue;
+        }
+        sites += 1;
+        let differs = [moved, borrowed].iter().any(|new| {
+            run_cpp(&with(new), &input, dir).unwrap_or_else(|e| panic!("{}: {e}", rel(src))) != base
+        });
+        shown += usize::from(differs);
+    }
+    assert_eq!(
+        sites,
+        total,
+        "{}: found {sites} of its {total} copies",
+        rel(src)
+    );
+    shown
+}
+
+/// `T name = place;` rewritten to move out of the place and to borrow it.
+fn rewrites(line: &str) -> Option<(String, String)> {
+    let body = line.trim_start().strip_suffix(';')?;
+    let indent = &line[..line.len() - line.trim_start().len()];
+    let (decl, place) = body.split_once(" = ")?;
+    let (ty, name) = decl.rsplit_once(' ')?;
+    let plain = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_');
+    if !plain(name) || ty.starts_with("const ") || ty == "auto" {
+        return None;
+    }
+    Some((
+        format!("{indent}{ty} {name} = std::move(const_cast<{ty}&>({place}));"),
+        format!("{indent}{ty}& {name} = const_cast<{ty}&>({place});"),
+    ))
+}
+
+/// What the C++ `cpp` prints on `input`, built in `dir`.
+fn run_cpp(cpp: &str, input: &str, dir: &Path) -> Result<String, String> {
+    use std::io::Write;
+    let (src, bin) = (dir.join("v.cpp"), dir.join("v"));
+    std::fs::write(&src, cpp).unwrap();
+    let cc = std::process::Command::new("g++")
+        .args(["-std=c++17", "-O1", "-w", "-o"])
+        .arg(&bin)
+        .arg(&src)
+        .output()
+        .map_err(|e| format!("g++: {e}"))?;
+    if !cc.status.success() {
+        return Err(String::from_utf8_lossy(&cc.stderr)
+            .lines()
+            .take(3)
+            .collect());
+    }
+    let mut child = std::process::Command::new(&bin)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().map_err(|e| e.to_string())?;
+    Ok(format!(
+        "{:?}\n{}",
+        out.status.code(),
+        String::from_utf8_lossy(&out.stdout)
+    ))
+}
+
+/// A case's `// input: "..."` header, unescaped; empty when absent.
+fn case_input(text: &str) -> String {
+    let Some(quoted) = text
+        .lines()
+        .take_while(|l| l.starts_with("//"))
+        .find_map(|l| l.strip_prefix("// input: \"")?.strip_suffix('"'))
+    else {
+        return String::new();
+    };
+    let mut out = String::new();
+    let mut chars = quoted.chars();
+    while let Some(c) = chars.next() {
+        out.push(match (c, c == '\\') {
+            (_, true) => match chars.next() {
+                Some('n') => '\n',
+                Some('t') => '\t',
+                Some(other) => other,
+                None => break,
+            },
+            (c, false) => c,
+        });
+    }
+    out
+}

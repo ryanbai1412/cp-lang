@@ -53,7 +53,8 @@ fn explain_json_lists_each_copy_and_why() {
         .at(&["detail"])
         .as_str()
         .unwrap()
-        .contains("changed later"));
+        .contains("is changed while what it copies is still read"));
+    assert_eq!(copy.at(&["kept"]).as_bool(), Some(true));
 }
 
 /// A file's explanation ends with the specializations its C++ takes and
