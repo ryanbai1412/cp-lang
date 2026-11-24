@@ -329,3 +329,16 @@ names a recipe nobody defined sends them nowhere.
 recipe fails the gate with `handbook/domains/infra.md: add a justfile recipe
 that runs it`.
 *Enforced by:* `scripts/test_justfile.py`, run by `scripts/check.sh`.
+
+### ci/R37
+
+CI compiles the workspace test binaries once per run: `tests (build)` packs
+them with `cargo nextest archive`, and every `tests (hash:N/M)` shard runs
+that archive (`CPL_NEXTEST_ARCHIVE`) without restoring a target/ or
+invoking the compiler.
+*Why:* six shards that each compiled the same binaries spent about 2.5 min
+apiece before their first test, which kept main CI far from its 3-minute
+target and cost one runner-hour every few runs.
+*Example:* adding a `Restore target/` step or a `cargo build` to the `tests`
+job fails `test_the_workspace_tests_compile_once`.
+*Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.

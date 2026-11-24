@@ -1,6 +1,6 @@
 """Workflow invariants: every job has a time cap (ci/R28), and blocking jobs
 run on Linux, macOS and Windows (ci/R29), and only a green job marks a cached
-target/ as built at HEAD (ci/R32), and releases are signed (ci/R33); handbook/guidelines/ci-checklist.md."""
+target/ as built at HEAD (ci/R32), and releases are signed (ci/R33), and the tests compile once per run (ci/R37); handbook/guidelines/ci-checklist.md."""
 import glob
 import os
 import re
@@ -162,6 +162,19 @@ class WorkflowTest(unittest.TestCase):
             cap = int(re.search(r"^    timeout-minutes: (\d+)", job_block(f.read(), "gate"), re.M).group(1))
         # Both tries of a hung test end with minutes left for the build.
         self.assertLess(2 * int(m.group(1)) * int(m.group(2)), (cap - 5) * 60)
+
+    def test_the_workspace_tests_compile_once(self):
+        with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
+            ci = f.read()
+        self.assertIn("cargo nextest archive --workspace --archive-file nextest.tar.zst", job_block(ci, "tests-build"))
+        shards = job_block(ci, "tests")
+        self.assertIn("needs: tests-build", shards)
+        self.assertIn("CPL_NEXTEST_ARCHIVE: nextest.tar.zst", shards)
+        for compiles in ("Restore target/", "rust-cache", "cargo build", "cargo test"):
+            self.assertNotIn(compiles, shards, f"tests shards run the archive, never compile (ci/R37): {compiles}")
+        self.assertNotIn("tests:hash", job_block(ci, "gate"), "the gate must not rebuild the tests")
+        with open(os.path.join(ROOT, "scripts", "check.sh"), encoding="utf-8") as f:
+            self.assertIn('--archive-file "$CPL_NEXTEST_ARCHIVE"', f.read())
 
     def test_finds_an_uncapped_job(self):
         text = "on: push\njobs:\n  a:\n    timeout-minutes: 5\n    steps: []\n  b:\n    runs-on: x\n    steps:\n      - timeout-minutes: 3\n"

@@ -285,8 +285,8 @@ fi
 # CPL_GATE_PART=checks runs everything but the workspace tests, the
 # conformance ratchet and fmt_check (CPL_GATE_PART=fmt), CPL_GATE_PART=conform runs the ratchet and the script
 # unit tests (CPL_GATE_PART=conform:<suite+...> runs only those suites, the
-# script tests with the conformance suite; a trailing @N/M passes --shard N/M), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
-# runs only that share of the tests, plus the doctests in share 1. Unset runs
+# script tests with the conformance suite; a trailing @N/M passes --shard N/M), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/12)
+# runs only that share of the tests, CPL_GATE_PART=tests:doc the doctests. Unset runs
 # all of --fast.
 script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py scripts/test_devex_stats.py scripts/test_new_lint.py scripts/test_conform_staged.py scripts/test_domain_of.py scripts/test_culprit.py scripts/test_commit_status.py scripts/test_check_handbook.py scripts/test_expectation_edits.py scripts/test_conformance_gaps.py scripts/test_mutation_score.py scripts/test_coverage_matrix.py scripts/test_workflows.py scripts/test_wall_clock.py scripts/test_flaky.py scripts/test_justfile.py scripts/test_port_check.py scripts/test_check_usecases.py scripts/test_corpus_tests.py scripts/test_differential.py scripts/test_stdlib_measure.py bench/test_sizes.py)
 gate_part="${CPL_GATE_PART:-}"
@@ -323,20 +323,29 @@ case "$gate_part" in
         printf '\ncheck: conformance part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
         exit 0
         ;;
+    tests:doc)
+        [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
+        step "cargo test --workspace --doc"
+        cargo test -q --workspace --doc
+        step_end
+        printf '\ncheck: doctests passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
+        exit 0
+        ;;
     tests:*)
         [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
         part="${gate_part#tests:}"
-        step "cargo nextest run --workspace --partition $part (without the --full tests)"
+        # CI compiles the test binaries once (cargo nextest archive) and every
+        # partition runs them from CPL_NEXTEST_ARCHIVE; unset, nextest builds.
+        from=(--workspace)
+        [ -z "${CPL_NEXTEST_ARCHIVE:-}" ] \
+            || from=(--archive-file "$CPL_NEXTEST_ARCHIVE" --workspace-remap . --extract-to . --extract-overwrite)
+        step "cargo nextest run --partition $part (without the --full tests)"
         # One retry, so a flaky test can't turn main red; flaky.py names it (ci/R35).
         nextest_log="$(mktemp)"
-        cargo nextest run --workspace --profile gate --no-fail-fast --retries 1 --partition "$part" -E "not ($slow_filter)" \
+        cargo nextest run "${from[@]}" --profile gate --no-fail-fast --retries 1 --partition "$part" -E "not ($slow_filter)" \
             2>&1 | tee "$nextest_log" || tests_status=$?
         uv run --quiet python scripts/flaky.py "$nextest_log"
         [ "${tests_status:-0}" = 0 ] || fail "a test failed twice; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'"
-        if [[ "$part" == *:1/* ]]; then
-            step "cargo test --workspace --doc"
-            cargo test -q --workspace --doc
-        fi
         step_end
         printf '\ncheck: test partition %s passed in %ss\n' "$part" "$(( $(date +%s) - gate_t0 ))"
         exit 0
