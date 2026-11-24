@@ -1753,7 +1753,7 @@ pub fn flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T:
 /// order: input order
 /// traps: never
 /// example: `[Some(1), None, Some(3)].present().collect() == [1, 3]`
-pub fn present<S: Seq, T>(self: S) -> yields T:
+pub fn present<S: Seq<?U>, U>(self: S) -> yields U:
     for x in self:
         if let y = x: yield y
 
@@ -1764,8 +1764,8 @@ pub fn present<S: Seq, T>(self: S) -> yields T:
 /// order: input order
 /// traps: never
 /// example: `[Some(1), None].all_some() == None`
-pub fn all_some<S: Seq, T>(self: S) -> ?List<T>:
-    var out: List<T> = []
+pub fn all_some<S: Seq<?U>, U>(self: S) -> ?List<U>:
+    var out: List<U> = []
     for x in self:
         if let y = x: out.push(y)
         else: return None
