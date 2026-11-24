@@ -804,6 +804,18 @@ mod tests {
     }
 
     #[test]
+    fn an_edited_gen_py_makes_the_cases_again() {
+        let dir = package("gen", "[[case]]\nseed = 7\nsize = 1\n", "print(1)\n");
+        let out = cases_dir(&dir);
+        make(&dir, &out).unwrap();
+        assert_eq!(text(out.join("01.in")), "1\n");
+        std::fs::write(dir.join("gen.py"), "print(2)\n").unwrap();
+        make(&dir, &out).unwrap();
+        assert_eq!(text(out.join("01.in")), "2\n");
+        std::fs::remove_dir_all(dir.ancestors().nth(3).unwrap()).unwrap();
+    }
+
+    #[test]
     fn cases_are_lf_whatever_wrote_them() {
         let gen = "import sys\nsys.stdout.write('7\\r\\n8\\r\\n')\n";
         let toml = "[[case]]\ninput = \"1\\r\\n2\"\n\n[[case]]\nseed = 7\nsize = 1\n";

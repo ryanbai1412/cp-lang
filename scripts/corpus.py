@@ -209,7 +209,7 @@ def stress_inputs(pkg, cpl=None):
     """The cases tests.toml makes, else gen.py at small sizes: what a solution must agree on."""
     if pkg.tests:
         make_cases(pkg, cpl=cpl)
-        return [p.read_text() for p in generated(pkg)]
+        return [p.read_text() for p in generated(pkg, cpl)]
     if pkg.gen:
         return [pkg.gen_input([i, s]) for i, s in enumerate(STRESS_SIZES * 2, 1)]
     return []
@@ -740,7 +740,7 @@ def check_package(pkg, ctx):
                 and not re.search(rf"\b{re.escape(pkg.id)}\b", ctx.hillclimb()):
             found.append(f"dream-unlogged {pkg.id} -")
     found += [f"stale-tests-path {pkg.id} {path}" for path in ctx.tests_paths().get(pkg.id, ())]
-    for inp in generated(pkg) if pkg.tests else ():
+    for inp in generated(pkg, ctx.cpl) if pkg.tests else ():
         ans = inp.with_suffix(".ans")
         t = tokens(inp.read_bytes())
         if ans.exists() and len(t) > 2 and t == tokens(ans.read_bytes()):
@@ -758,7 +758,7 @@ def check_package(pkg, ctx):
                     make_cases(pkg, cpl=ctx.cpl)
                 except ReferenceFails as e:
                     return found + [f"reference-fails {pkg.id} {e.case}"]
-            for i, inp in enumerate(generated(pkg), 1) if len(exes) > 1 else ():
+            for i, inp in enumerate(generated(pkg, ctx.cpl), 1) if len(exes) > 1 else ():
                 data = inp.read_bytes()
                 outs = {e: run_out(e, data) for e in exes}
                 if None in outs.values():
@@ -773,8 +773,14 @@ def check_package(pkg, ctx):
     return found
 
 
-def generated(pkg):
-    """The cases `make` wrote for the package: target/corpus-tests/<id>/*.in."""
+def generated(pkg, cpl=None):
+    """The package's cases in target/corpus-tests/<id>/*.in, made again first when an
+    older tests.toml, gen.py or reference made them, so a stale case is never judged."""
+    if pkg.tests:
+        try:
+            make_cases(pkg, cpl=cpl)
+        except (RuntimeError, subprocess.SubprocessError, OSError) as e:
+            raise InfraError(f"can't make {pkg.id}'s cases: {e}") from e
     d = Path(ROOT, "target", "corpus-tests", pkg.id)
     return sorted(d.glob("*.in")) if d.is_dir() else []
 
@@ -914,7 +920,7 @@ def check_stress(pkg, ctx):
     if not exe:
         return [f"no-build {pkg.id} -"]
     found = []
-    for inp in generated(pkg):
+    for inp in generated(pkg, ctx.cpl):
         why = compare(run_result, [ctx.cpl, "run", str(pkg.port)], [exe], inp.read_bytes())
         if why == TIMED_OUT:
             found.append(f"interp-timeout {pkg.id} {inp.name}")
@@ -1080,7 +1086,7 @@ def interacted(pkg, ctx):
     """The interactor rules the same on the interpreter and on the port's C++ for
     every case. An interactive case is no stdin to feed both sides: interactor.py
     talks to each, once per case, through `cpl test --interactor`."""
-    cases = generated(pkg)
+    cases = generated(pkg, ctx.cpl)
     if not cases:
         return []
     judge = ("--tests", str(cases[0].parent), "--interactor", str(pkg.interactor), *package_limits(pkg))

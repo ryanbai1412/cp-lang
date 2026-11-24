@@ -120,7 +120,8 @@ class ProblemsTest(Corpus):
     def test_a_gen_that_fails_at_a_small_size_is_a_finding(self):
         gen = "import random, sys\nprint(random.randint(1, int(sys.argv[2]) - 1))\n"
         pkg = corpus.Package.at(self.package("p", gen_py=gen, tests_toml="[[case]]\nseed = 1\nsize = 0\n"))
-        self.assertIn("gen-fails p size=1", corpus.check_package(pkg, corpus.Context("cpl", run=True)))
+        with mock.patch.object(corpus, "make_cases", lambda pkg, cpl=None: None):
+            self.assertIn("gen-fails p size=1", corpus.check_package(pkg, corpus.Context("cpl", run=True)))
 
     def test_a_gxx_older_than_14_is_not_the_reference(self):
         old = self.root / "g++"
@@ -325,6 +326,20 @@ class CliTest(unittest.TestCase):
             self.assertIn(f"unrecognized arguments: {argv[1]}", err.getvalue())
 
 
+class GeneratedTest(Corpus):
+    def test_the_cases_are_made_before_they_are_read_and_a_failed_make_is_no_verdict(self):
+        pkg = corpus.Package.at(self.package("p", tests_toml="", port_cp=""))
+        made = []
+        with mock.patch.object(corpus, "make_cases", lambda pkg, cpl=None: made.append((pkg.id, cpl))):
+            self.assertEqual(corpus.generated(pkg, "cpl"), [])
+        self.assertEqual(made, [("p", "cpl")])
+
+        def fails(pkg, cpl=None):
+            raise RuntimeError("gen.py exits 3")
+        with mock.patch.object(corpus, "make_cases", fails), self.assertRaises(corpus.InfraError):
+            corpus.generated(pkg, "cpl")
+
+
 class InterpTimeoutTest(Corpus):
     def test_a_case_past_the_interpreter_is_a_finding(self):
         d = self.package("p", port_cp="print(1)\n")
@@ -334,7 +349,7 @@ class InterpTimeoutTest(Corpus):
         def run_result(cmd, data, timeout=corpus.TIMEOUT):
             return corpus.TIMED_OUT if cmd[0] == "cpl" else (0, b"1\n", b"")
         with mock.patch.object(corpus, "native", lambda pkg, ctx: ("exe", 1)), \
-                mock.patch.object(corpus, "generated", lambda pkg: [case]), \
+                mock.patch.object(corpus, "generated", lambda pkg, cpl=None: [case]), \
                 mock.patch.object(corpus, "run_result", run_result):
             ctx = corpus.Context("cpl", named=["p"])
             self.assertEqual(corpus.check_stress(corpus.Package.at(d), ctx), ["interp-timeout p 01.in"])
@@ -614,7 +629,7 @@ class InteractedTest(Corpus):
             return [{"name": n, "verdict": v, "why": None} for n, v in zip(("01", "02"), ruled)]
         build = mock.Mock(return_value=mock.Mock(returncode=0))
         ctx = mock.Mock(cpl="cpl")
-        with mock.patch.object(corpus, "generated", lambda pkg: sorted(cases.glob("*.in"))), \
+        with mock.patch.object(corpus, "generated", lambda pkg, cpl=None: sorted(cases.glob("*.in"))), \
                 mock.patch.object(corpus, "cpl_cases", cpl_cases), mock.patch.object(corpus.subprocess, "run", build):
             found = corpus.interacted(corpus.Package.at(d), ctx)
         return found, calls, d, cases

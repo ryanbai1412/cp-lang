@@ -46,6 +46,7 @@
     "cpl-codegen -> cpl-ir",
     "cpl-conform -> cpl-check",
     "cpl-conform -> cpl-codegen",
+    "cpl-conform -> cpl-contest",
     "cpl-conform -> cpl-corpus",
     "cpl-conform -> cpl-diag",
     "cpl-conform -> cpl-env",

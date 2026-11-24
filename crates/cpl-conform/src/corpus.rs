@@ -1,4 +1,6 @@
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use cpl_check::Session;
@@ -19,6 +21,8 @@ pub struct CorpusProblem {
     pub max_tests: Vec<PathBuf>,
     /// `interactor.py <in>` judges each run; its cases have no `.ans`.
     pub interactor: Option<PathBuf>,
+    /// Why its tests.toml cases couldn't be made: it has no verdict.
+    pub make_error: Option<String>,
 }
 
 pub fn discover(root: &Path, filter: Option<&str>) -> Vec<CorpusProblem> {
@@ -33,9 +37,11 @@ pub fn discover_file(root: &Path, filter: Option<&str>, file: &str) -> Vec<Corpu
         .filter(|name| filter.is_none_or(|f| name.contains(f)))
         .collect();
     ids.sort();
+    let make_errors = make_seeded(root, &ids);
 
     ids.into_iter()
-        .map(|id| {
+        .zip(make_errors)
+        .map(|(id, make_error)| {
             let prob_dir = cpl_corpus::package(root, &id);
             let spec_path = prob_dir.join(file);
             // `corpus.py make` marks each `--max` case with an `NN.max`.
@@ -59,9 +65,35 @@ pub fn discover_file(root: &Path, filter: Option<&str>, file: &str) -> Vec<Corpu
                 max_tests,
                 checker,
                 interactor,
+                make_error,
             }
         })
         .collect()
+}
+
+/// Makes each seeded problem's cases (`cpl test --make`), several at a time, so cases an
+/// older tests.toml, gen.py or reference made are made again, never read stale. Why each
+/// one that fails couldn't be made, beside its id.
+fn make_seeded(root: &Path, ids: &[String]) -> Vec<Option<String>> {
+    let next = AtomicUsize::new(0);
+    let errors = Mutex::new(vec![None; ids.len()]);
+    let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+    std::thread::scope(|s| {
+        for _ in 0..workers.min(ids.len()) {
+            s.spawn(|| loop {
+                let i = next.fetch_add(1, Ordering::Relaxed);
+                let Some(id) = ids.get(i) else { break };
+                let dir = cpl_corpus::package(root, id);
+                if !dir.join("tests.toml").is_file() {
+                    continue;
+                }
+                if let Err(e) = cpl_contest::package::make(&dir, &tests_dir(root, &dir, id)) {
+                    errors.lock().unwrap()[i] = Some(e);
+                }
+            });
+        }
+    });
+    errors.into_inner().unwrap()
 }
 
 /// A problem's cases: its committed `tests/`, or, for a problem whose cases are a seed list
@@ -75,6 +107,12 @@ fn tests_dir(root: &Path, prob_dir: &Path, id: &str) -> PathBuf {
 }
 
 pub fn run_one(db: &mut Session, prob: &CorpusProblem) -> CaseOutcome {
+    if let Some(why) = &prob.make_error {
+        return CaseOutcome {
+            status: "error".into(),
+            detail: format!("can't make its cases: {why}"),
+        };
+    }
     if prob.tests.is_empty() {
         return CaseOutcome {
             status: "untested".into(),
@@ -329,30 +367,58 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
 mod tests {
     use super::*;
 
+    /// An interactive problem `p` (no answers, so no C++ builds) whose tests.toml is one
+    /// inline case and gen.py's `--max`, under a fresh repo root.
+    fn seeded(name: &str, gen: &str) -> (PathBuf, PathBuf) {
+        let root = std::env::temp_dir().join(format!("cpl-conform-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let pkg = root.join("corpus/problems/p");
+        std::fs::create_dir_all(&pkg).unwrap();
+        std::fs::write(pkg.join("spec.cp"), "").unwrap();
+        std::fs::write(pkg.join("interactor.py"), "").unwrap();
+        std::fs::write(
+            pkg.join("tests.toml"),
+            "[[case]]\ninput = \"1\"\n\n[[case]]\nargs = [\"--max\"]\n",
+        )
+        .unwrap();
+        std::fs::write(pkg.join("gen.py"), gen).unwrap();
+        (root, pkg)
+    }
+
     #[test]
     fn max_cases_are_timed_apart_and_an_interactive_case_needs_no_answer() {
-        let root = std::env::temp_dir().join(format!("cpl-conform-corpus-{}", std::process::id()));
-        let pkg = root.join("corpus/problems").join("p");
+        let (root, pkg) = seeded("max", "print(9)\n");
         let cases = root.join("target/corpus-tests/p");
-        std::fs::create_dir_all(&pkg).unwrap();
-        std::fs::create_dir_all(&cases).unwrap();
-        for (dir, file) in [
-            (&pkg, "spec.cp"),
-            (&pkg, "tests.toml"),
-            (&pkg, "interactor.py"),
-            (&cases, "01.in"),
-            (&cases, "02.in"),
-            (&cases, "02.max"),
-        ] {
-            std::fs::write(dir.join(file), "").unwrap();
-        }
         let found = discover(&root, None);
         let _ = std::fs::remove_dir_all(&root);
         let [p] = found.as_slice() else {
             panic!("{found:?}")
         };
+        assert_eq!(p.make_error, None);
         assert_eq!(p.tests, [(cases.join("01.in"), cases.join("01.ans"))]);
         assert_eq!(p.max_tests, [cases.join("02.in")]);
         assert_eq!(p.interactor, Some(pkg.join("interactor.py")));
+    }
+
+    #[test]
+    fn cases_an_older_gen_py_made_are_made_again_before_they_are_read() {
+        let (root, pkg) = seeded("stale", "print(9)\n");
+        let max = root.join("target/corpus-tests/p/02.in");
+        discover(&root, None);
+        assert_eq!(std::fs::read_to_string(&max).unwrap(), "9\n");
+        std::fs::write(pkg.join("gen.py"), "print(8)\n").unwrap();
+        discover(&root, None);
+        let read = std::fs::read_to_string(&max).unwrap();
+        std::fs::write(pkg.join("gen.py"), "import sys\nsys.exit(3)\n").unwrap();
+        let broken = discover(&root, None);
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(read, "8\n");
+        let [p] = broken.as_slice() else {
+            panic!("{broken:?}")
+        };
+        assert!(
+            p.make_error.is_some(),
+            "a gen.py that fails is no verdict, not the old cases"
+        );
     }
 }
