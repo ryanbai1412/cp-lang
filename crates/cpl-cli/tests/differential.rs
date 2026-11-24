@@ -564,6 +564,29 @@ print(y ?? 0, z ?? 0, w ?? 0)
 ",
             "6 -1 5\n",
         ),
+        (
+            // A bare `+` for `M: Op<Int>` is the `Monoid<Int>` an impl for
+            // `Monoid<T>` asks for, so it folds `T`; a closure stays a fn
+            // value and takes the fn-type impl's `?T`.
+            "bare_op_takes_the_monoid_impl",
+            "\
+trait Op3<T>:
+    type Fold
+    fn fold2(self, a: T, b: T) -> Self.Fold
+impl<T> Op3<T> for Monoid<T>:
+    type Fold = T
+    fn fold2(self, a: T, b: T) -> T = self.op(a, b)
+impl<T> Op3<T> for (T, T) -> T:
+    type Fold = ?T
+    fn fold2(self, a: T, b: T) -> ?T = Some(self(a, b))
+fn go<M: Op3<Int>>(m: M) -> M.Fold = m.fold2(2, 3)
+let x: Int = go(+)
+let m: Int = go(max)
+let y = go((a: Int, b: Int) => a * b)
+print(x, m, y ?? 0)
+",
+            "5 3 6\n",
+        ),
     ];
 
     let tmp = std::env::temp_dir().join(format!("cpl_lowering_gaps_{}", std::process::id()));
