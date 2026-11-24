@@ -34,6 +34,7 @@
         "core-01/comprehension-filter-commas-and-clauses.cp": "pass",
         "core-01/comprehension-filter-if-let.cp": "pass",
         "core-01/comprehension-if-let-binds-later-clauses.cp": "pass",
+        "core-01/comprehension-is-binding-not-seen-later.cp": "pass",
         "core-01/comprehension-is-binds-in-its-and-chain.cp": "pass",
         "core-01/comprehension-over-generic-type-filters.cp": "pass",
         "core-01/comprehension-several-for-clauses.cp": "pass",
@@ -173,7 +174,7 @@
         "core-01/top-level-return-ends-the-test.cp": "pass",
         "core-01/top-level-return.cp": "pass",
         "core-01/trailing-comma.cp": "pass",
-        "core-01/tuple-field-chain.cp": "fail",
+        "core-01/tuple-field-chain.cp": "pass",
         "core-01/type-args-capitalized.cp": "pass",
         "core-01/unchecked-block-runs.cp": "pass",
         "core-01/unchecked-not-expression.cp": "pass",
@@ -268,6 +269,7 @@
         "core-02/literal-union-read.cp": "pass",
         "core-02/local-range-type-runtime-bound.cp": "pass",
         "core-02/lowercase-none-local-beside-none-named-arg.cp": "pass",
+        "core-02/min-as-a-value-keeps-none-identity.cp": "pass",
         "core-02/min-assign-none-identity.cp": "pass",
         "core-02/min-assign-none.cp": "pass",
         "core-02/move-into-ctor-receiver-then-use.cp": "pass",
@@ -353,6 +355,8 @@
         "core-02/var-field-assign.cp": "pass",
         "core-02/variant-named-like-prelude-type.cp": "pass",
         "core-02/variant-through-tuple-annotation.cp": "pass",
+        "core-03/a-list-or-handle-of-itself-is-fine.cp": "pass",
+        "core-03/a-struct-never-holds-itself.cp": "pass",
         "core-03/abs-of-int.cp": "pass",
         "core-03/annotation-widens-fresh-read.cp": "pass",
         "core-03/byte-slot-is-range.cp": "pass",
@@ -420,6 +424,7 @@
         "core-03/store-in-range-fits.cp": "pass",
         "core-03/str-plus-eq-char-if.cp": "pass",
         "core-03/struct-niche.cp": "pass",
+        "core-03/structs-holding-each-other-is-an-error.cp": "pass",
         "core-03/tag-byte-enum.cp": "pass",
         "core-03/wide-array-lint.cp": "pass",
         "core-03/window-plus-over-ranged-is-int.cp": "pass",
@@ -550,7 +555,7 @@
         "core-04/grid-row-from-rows-lends-the-grid.cp": "pass",
         "core-04/grid-row-view-keys-are-columns.cp": "pass",
         "core-04/grid-rows-cols-views.cp": "pass",
-        "core-04/grid-rows-is-a-getter.cp": "fail",
+        "core-04/grid-rows-is-a-getter.cp": "pass",
         "core-04/grid-rows-view-lends-the-grid.cp": "pass",
         "core-04/h-drop-take-keys.cp": "pass",
         "core-04/h-filter-has-no-keys.cp": "pass",
@@ -569,9 +574,9 @@
         "core-04/int-to-mod.cp": "pass",
         "core-04/into-int-generic-bound.cp": "pass",
         "core-04/into-int-reads-current-fields.cp": "pass",
-        "core-04/keyed-counter-is-not-a-key.cp": "fail",
+        "core-04/keyed-counter-is-not-a-key.cp": "pass",
         "core-04/keys-of-domain-keyed-array.cp": "pass",
-        "core-04/library-domain-count-trap-names-sizing-site-release.cp": "fail",
+        "core-04/library-domain-count-trap-names-sizing-site-release.cp": "pass",
         "core-04/library-domain-count-trap-names-sizing-site.cp": "pass",
         "core-04/library-domain-cxx-names-apart.cp": "pass",
         "core-04/library-domain-generic-members.cp": "pass",
@@ -582,8 +587,10 @@
         "core-04/library-domain-seq.cp": "pass",
         "core-04/library-domain-sized-after-every-base.cp": "pass",
         "core-04/library-domain-sized-after-read.cp": "pass",
+        "core-04/library-domain-sized-in-the-branch-taken.cp": "pass",
         "core-04/library-domain-sized-per-generic-fn.cp": "pass",
         "core-04/library-domain-sized-per-instance.cp": "pass",
+        "core-04/library-domain-sized-where-first-used.cp": "pass",
         "core-04/library-domain-walk-builds-no-list.cp": "pass",
         "core-04/library-domain-walk-queries.cp": "pass",
         "core-04/library-domain-walk-visits-each.cp": "pass",
@@ -814,6 +821,10 @@
         "core-05/heap-element-is-lent.cp": "pass",
         "core-05/heap-move.cp": "pass",
         "core-05/heap-row-lend-blocks-push.cp": "pass",
+        "core-05/int-element-goes-into-a-struct-field.cp": "pass",
+        "core-05/int-element-outlives-a-pop-of-its-list.cp": "pass",
+        "core-05/int-element-outlives-a-write-to-its-place.cp": "pass",
+        "core-05/int-of-a-list-of-lists-is-not-lent.cp": "pass",
         "core-05/lambda-name-not-hoisted.cp": "pass",
         "core-05/lambda-return-is-local.cp": "pass",
         "core-05/lend-statement-returns-a-place.cp": "pass",
@@ -877,6 +888,7 @@
         "core-05/plain-element-copies.cp": "pass",
         "core-05/plain-tuple-copies.cp": "pass",
         "core-05/pop-while-place-lent.cp": "pass",
+        "core-05/position-of-a-table-of-lists-is-not-lent.cp": "pass",
         "core-05/projections-conflict.cp": "pass",
         "core-05/projections-one-at-a-time.cp": "pass",
         "core-05/push-after-row-lend-ends.cp": "pass",
@@ -973,7 +985,7 @@
         "core-06/free-fn-called-as-method.cp": "pass",
         "core-06/function-types.cp": "pass",
         "core-06/gen-array-over-domain.cp": "pass",
-        "core-06/gen-graph-simple-connected.cp": "fail",
+        "core-06/gen-graph-simple-connected.cp": "pass",
         "core-06/gen-int-in-range.cp": "pass",
         "core-06/gen-perm.cp": "pass",
         "core-06/gen-rooted-shape.cp": "pass",
@@ -1003,6 +1015,7 @@
         "core-06/lint-declared-twice.cp": "pass",
         "core-06/lint-from-does-not-parse.cp": "pass",
         "core-06/lint-needs-from-and-to.cp": "pass",
+        "core-06/lint-not-on-a-fn.cp": "pass",
         "core-06/lint-to-does-not-call-the-fn.cp": "pass",
         "core-06/lint-to-does-not-parse.cp": "pass",
         "core-06/lint-to-drops-a-hole.cp": "pass",
@@ -1032,6 +1045,7 @@
         "core-06/shared-state-above-multitest-carries-over.cp": "pass",
         "core-06/shared-var-carries-across-cases.cp": "pass",
         "core-06/tool-roles-leave-item.cp": "pass",
+        "core-06/tuple-field-shorthand-is-a-fn.cp": "pass",
         "core-06/two-closures-share-var.cp": "pass",
         "core-06/unknown-arg-name.cp": "pass",
         "core-06/var-lambda-no-recursion.cp": "pass",
@@ -1122,15 +1136,20 @@
         "core-07/materialize.cp": "pass",
         "core-07/min-k-max-k.cp": "pass",
         "core-07/min-max-optional-first-tie.cp": "pass",
+        "core-07/negative-literal-index-is-an-error.cp": "pass",
+        "core-07/negative-literal-str-index-is-an-error.cp": "pass",
         "core-07/next-permutation.cp": "pass",
         "core-07/overlapping-mut-views.cp": "pass",
         "core-07/pairs.cp": "pass",
         "core-07/parens-mean-work.cp": "pass",
         "core-07/partition-point-equal-range.cp": "pass",
         "core-07/partition-point-on-list-is-int.cp": "pass",
+        "core-07/prefix-excl-fixes-to-two-scans.cp": "pass",
+        "core-07/prefix-excl-on-a-list-fixes-to-keys-map.cp": "pass",
         "core-07/prefix-scan-cuts.cp": "pass",
         "core-07/product-pairs-every-x-with-every-y.cp": "pass",
         "core-07/product-second-argument-is-indexed.cp": "pass",
+        "core-07/push-id-gives-the-new-index.cp": "pass",
         "core-07/range-ends-answer-min-max-count.cp": "pass",
         "core-07/range-folds-are-ranges-own.cp": "pass",
         "core-07/range-has-no-source.cp": "pass",
@@ -1195,13 +1214,16 @@
         "core-07/str-count-takes-predicate.cp": "pass",
         "core-07/str-from-char-seq.cp": "pass",
         "core-07/suffix-and-all-but-one-folds-are-scans.cp": "pass",
-        "core-07/suffix-fold-is-gone.cp": "fail",
+        "core-07/suffix-fold-fixes-to-rev-scan.cp": "pass",
+        "core-07/suffix-fold-is-gone.cp": "pass",
         "core-07/suffix-fold-is-not-a-name.cp": "pass",
+        "core-07/suffix-fold-is-removed.cp": "pass",
         "core-07/sum-prod-identity.cp": "pass",
         "core-07/swap-with-one-index-past-the-end-traps.cp": "pass",
         "core-07/table-over-keys.cp": "pass",
         "core-07/take-drop-clamped.cp": "pass",
         "core-07/take-on-generator.cp": "pass",
+        "core-07/take-on-infinite-generator-is-lazy.cp": "pass",
         "core-07/tally-is-counter.cp": "pass",
         "core-07/tally-missing-key-is-zero.cp": "pass",
         "core-07/tally.cp": "pass",
@@ -1223,6 +1245,8 @@
         "core-07/windows-chunks-keep-keys.cp": "pass",
         "core-07/with-prev.cp": "pass",
         "core-07/yielded-closure-collected-escapes.cp": "pass",
+        "core-07/yielded-closure-in-struct-collected-escapes.cp": "pass",
+        "core-07/yielded-closure-in-struct-writes-generator-local.cp": "pass",
         "core-07/yielded-closure-writes-generator-local.cp": "pass",
         "core-07/zip-domain-mismatch.cp": "pass",
         "core-07/zip-domain-stops-at-shorter-list-and-rev.cp": "pass",
@@ -1367,7 +1391,7 @@
         "core-09/range-store-trap.cp": "pass",
         "core-09/rb1-q40-with-must-come-first.cp": "pass",
         "core-09/release-division-by-zero-fallback.cp": "pass",
-        "core-09/release-list-index-unchecked.cp": "fail",
+        "core-09/release-list-index-unchecked.cp": "pass",
         "core-09/release-overflow-wraps.cp": "pass",
         "core-09/release-skips-assert.cp": "pass",
         "core-09/sqrt-negative-trap.cp": "pass",
@@ -1453,6 +1477,7 @@
         "core-10/print-shapes.cp": "pass",
         "core-10/print-str-is-one-word.cp": "pass",
         "core-10/print-view-honours-sep.cp": "pass",
+        "core-10/ragged-read-names-pair-domain.cp": "pass",
         "core-10/range-field-in-variant-reads-two-ends.cp": "pass",
         "core-10/rb1-q25-optional-not-print.cp": "pass",
         "core-10/rb1-q39-bool-not-print.cp": "pass",
@@ -1569,10 +1594,12 @@
         "core-12/generator-not-bidir.cp": "pass",
         "core-12/generator-not-keyed.cp": "pass",
         "core-12/generic-indexed-walks-with-nth.cp": "pass",
+        "core-12/impl-head-bound-names-the-element.cp": "pass",
+        "core-12/impl-head-bound-that-fails-gives-nothing.cp": "pass",
         "core-12/index-set-calls-set.cp": "pass",
         "core-12/indexed-access.cp": "pass",
         "core-12/indexed-mut-sort.cp": "pass",
-        "core-12/keyed-argmax.cp": "fail",
+        "core-12/keyed-argmax.cp": "pass",
         "core-12/lends-return.cp": "pass",
         "core-12/lent-param-escapes.cp": "pass",
         "core-12/move-into-struct.cp": "pass",
@@ -1630,7 +1657,7 @@
         "diagnostics/index-impl-old-names.cp": "pass",
         "diagnostics/index-impl-var.cp": "pass",
         "diagnostics/int-of-struct-names-into-impl.cp": "pass",
-        "diagnostics/is-empty-fixed-to-len-zero.cp": "fail",
+        "diagnostics/is-empty-fixed-to-len-zero.cp": "pass",
         "diagnostics/library-domain-next-core-only.cp": "pass",
         "diagnostics/max-of-a-slice-is-optional.cp": "pass",
         "diagnostics/missing-name.cp": "pass",
@@ -1678,7 +1705,7 @@
         "lints/repeated-literal.cp": "pass",
         "lints/search-loop.cp": "pass",
         "lints/shadows-top-level.cp": "pass",
-        "lints/std-declares-idiom-lints.cp": "fail",
+        "lints/std-declares-idiom-lints.cp": "pass",
         "lints/symmetric-write.cp": "pass",
         "lints/tree-order.cp": "pass",
         "lints/turbofish-call.cp": "pass",
@@ -1933,6 +1960,7 @@
         "std-algebra/cmp-ordering.cp": "pass",
         "std-algebra/counts.cp": "pass",
         "std-algebra/default-operator-argument.cp": "pass",
+        "std-algebra/each-fuses-ops-per-component.cp": "pass",
         "std-algebra/each-monoid-components.cp": "pass",
         "std-algebra/each-named-components.cp": "pass",
         "std-algebra/each-of-bare-operators.cp": "pass",
@@ -1947,6 +1975,8 @@
         "std-algebra/minmax-is-a-std-fn.cp": "pass",
         "std-algebra/opt-lifts-any-op-to-a-monoid.cp": "pass",
         "std-algebra/opt-of-two-closures-in-one-file.cp": "pass",
+        "std-algebra/pow-folds-under-any-monoid.cp": "fail",
+        "std-algebra/pow-negative-exponent-traps.cp": "pass",
         "std-algebra/unit-literal-is-unit.cp": "pass",
         "std-bag/add-many-negative-traps.cp": "pass",
         "std-bag/add-many-zero.cp": "pass",
@@ -1968,6 +1998,7 @@
         "std-bag/range-view-keeps-the-bag-lent.cp": "pass",
         "std-bag/range-views-in-sequence.cp": "pass",
         "std-bag/remove-all-missing-is-zero.cp": "pass",
+        "std-bag/reserve-keeps-contents.cp": "pass",
         "std-bag/sorted-bag-add-many-negative-traps.cp": "pass",
         "std-bag/sorted-bag-add-many-zero.cp": "pass",
         "std-bag/sorted-bag-duplicates.cp": "pass",
@@ -2095,6 +2126,8 @@
         "std-dsu/new.cp": "pass",
         "std-dsu/parity.cp": "pass",
         "std-dsu/persistent-dsu-branches.cp": "pass",
+        "std-dsu/persistent-dsu-fresh-per-test-case.cp": "pass",
+        "std-dsu/persistent-dsu-matches-replay.cp": "pass",
         "std-dsu/potential-dsu-xor-group.cp": "pass",
         "std-dsu/potential.cp": "pass",
         "std-dsu/rollback-array-nested-marks.cp": "pass",
@@ -2179,6 +2212,7 @@
         "std-geometry/polygon-area-degenerate.cp": "pass",
         "std-geometry/polygon-cut-keeps-all-and-none.cp": "pass",
         "std-geometry/polygon-triangulate-clockwise-traps.cp": "pass",
+        "std-geometry/pt-dot-method-is-the-free-fn.cp": "pass",
         "std-geometry/pt.cp": "pass",
         "std-geometry/rect-3d.cp": "pass",
         "std-geometry/reflect-degenerate-line-traps.cp": "pass",
@@ -2229,6 +2263,8 @@
         "std-graph/dijkstra-multi-source-and-until.cp": "pass",
         "std-graph/dijkstra-over-vertex-state-pairs.cp": "pass",
         "std-graph/dijkstra-range-weights-sum-as-int.cp": "pass",
+        "std-graph/dijkstra-step-max-is-the-bottleneck-path.cp": "pass",
+        "std-graph/dijkstra-step-that-makes-a-path-cheaper-traps.cp": "pass",
         "std-graph/dominators-unreachable-none.cp": "pass",
         "std-graph/edges-undirected-ends-in-v-order.cp": "pass",
         "std-graph/euler-walk-no-edges.cp": "pass",
@@ -2237,6 +2273,7 @@
         "std-graph/floyd-warshall-diagonal.cp": "pass",
         "std-graph/floyd-warshall-range-weights-sum-past-range.cp": "pass",
         "std-graph/functional-call-builds-and-matches-brute.cp": "pass",
+        "std-graph/functional-walks-match-brute-with-jump-pointers.cp": "pass",
         "std-graph/functional.cp": "pass",
         "std-graph/girth-acyclic-none.cp": "pass",
         "std-graph/graph-at-next-lists.cp": "pass",
@@ -2271,6 +2308,7 @@
         "std-graph/peel-self-loop-removes-nothing.cp": "pass",
         "std-graph/reach-sets-no-arcs-is-reflexive-only.cp": "pass",
         "std-graph/reachable-dedup-sources.cp": "pass",
+        "std-graph/reachable-matches-dfs-enter-order.cp": "pass",
         "std-graph/record-arc-fields-satisfy-graph-traits.cp": "pass",
         "std-graph/scc-singletons.cp": "pass",
         "std-graph/scc-times.cp": "pass",
@@ -2403,6 +2441,7 @@
         "std-heap/meld-heap-of-a-list-is-rejected.cp": "pass",
         "std-heap/meld-heap-of-a-non-add-type.cp": "pass",
         "std-heap/meld-heaps-fresh-per-test-case.cp": "pass",
+        "std-heap/meld-heaps-reserve-keeps-heaps.cp": "pass",
         "std-heap/meld-heaps-share-a-pool.cp": "pass",
         "std-heap/meld-heaps-skew-spine-stays-iterative.cp": "pass",
         "std-heap/meld-stale-copy-traps.cp": "pass",
@@ -2528,24 +2567,27 @@
         "std-math/to-str.cp": "pass",
         "std-matrix/bigger.cp": "pass",
         "std-matrix/bitmat.cp": "pass",
-        "std-matrix/det-real-not-square-traps.cp": "pass",
-        "std-matrix/det-real-singular-is-zero.cp": "pass",
+        "std-matrix/det-f64-not-square-traps.cp": "pass",
+        "std-matrix/det-f64-singular-is-zero.cp": "pass",
         "std-matrix/elim.cp": "pass",
+        "std-matrix/f64-elimination-pivots-by-abs-within-eps.cp": "pass",
         "std-matrix/get-outside-columns-traps.cp": "pass",
-        "std-matrix/inverse-real-singular-none.cp": "pass",
+        "std-matrix/inverse-f64-singular-none.cp": "pass",
         "std-matrix/min-plus-gaps-fold-in-a-segtree.cp": "pass",
+        "std-matrix/min-plus-over-reaches-pow-and-filled.cp": "pass",
         "std-matrix/mul-vec-wrong-length-traps.cp": "pass",
         "std-matrix/mul-vec-zero-columns.cp": "pass",
         "std-matrix/of-nested-rows-counts-walks.cp": "pass",
         "std-matrix/product-identity-of-size.cp": "pass",
-        "std-matrix/rank-real-tiny-pivot.cp": "pass",
-        "std-matrix/solve-real-singular-none.cp": "pass",
-        "std-matrix/solve-real-wrong-length-traps.cp": "pass",
+        "std-matrix/rank-f64-tiny-pivot.cp": "pass",
+        "std-matrix/solve-f64-singular-none.cp": "pass",
+        "std-matrix/solve-f64-wrong-length-traps.cp": "pass",
         "std-matrix/sparse-wiedemann-and-simplex-match-dense.cp": "pass",
         "std-matrix/transpose-of-a-row.cp": "pass",
         "std-mo/mo-bodies-match-brute.cp": "pass",
         "std-mo/mo-order-empty-and-single.cp": "pass",
         "std-mod/arith.cp": "pass",
+        "std-mod/barrett-reduces-without-division.cp": "pass",
         "std-mod/barrett.cp": "pass",
         "std-mod/big-mul.cp": "pass",
         "std-mod/choose-k-above-n-is-zero.cp": "pass",
@@ -2582,6 +2624,7 @@
         "std-ntt/fwht-and-sos-take-a-mask-table.cp": "pass",
         "std-ntt/fwht-inverse-not-divisible-traps.cp": "pass",
         "std-ntt/fwht-length-one.cp": "pass",
+        "std-ntt/max-plus-shape-right-matches-the-loop.cp": "pass",
         "std-ntt/ntt.cp": "pass",
         "std-ntt/online.cp": "pass",
         "std-ntt/sos-empty-traps.cp": "pass",
@@ -2592,6 +2635,7 @@
         "std-opt/is-some-and-skips-the-predicate-on-none.cp": "pass",
         "std-pair/new-at-other.cp": "pass",
         "std-pair/pair-bodies.cp": "pass",
+        "std-pair/symmetric-fills-both-halves.cp": "pass",
         "std-persistent/parena-get-out-of-range-traps.cp": "pass",
         "std-persistent/parena-handles-stay-valid.cp": "pass",
         "std-persistent/persistent-bodies.cp": "pass",
@@ -2600,6 +2644,8 @@
         "std-persistent/pmultiset-fresh-per-test-case.cp": "pass",
         "std-persistent/pmultiset-matches-brute.cp": "pass",
         "std-persistent/reserve-keeps-versions.cp": "pass",
+        "std-persistent/version-of-another-structure-rejected.cp": "pass",
+        "std-persistent/versions-fresh-per-test-case.cp": "pass",
         "std-persistent/versions-live-in-the-value.cp": "pass",
         "std-poly/advanced-free-fns-match-brute.cp": "pass",
         "std-poly/basics.cp": "pass",
@@ -2629,18 +2675,21 @@
         "std-prefix/prefix-suffix-fold-whole.cp": "pass",
         "std-prefix/rev-scan-all-reads-the-first-cut.cp": "pass",
         "std-prefix/rev-scan-folds-right-of-each-cut.cp": "pass",
-        "std-prefix/rev-scan-is-suffix-fold.cp": "fail",
+        "std-prefix/rev-scan-is-suffix-fold.cp": "pass",
         "std-prefix/scan-at-position-folds-through.cp": "pass",
+        "std-prefix/scan-cut-call-index-is-a-cut.cp": "pass",
         "std-prefix/scan-empty-list.cp": "pass",
         "std-prefix/scan-fn-int-index-is-an-error.cp": "pass",
         "std-prefix/scan-fn-range-array-int-index-is-an-error.cp": "pass",
         "std-prefix/scan-index-by-another-domain.cp": "pass",
+        "std-prefix/scan-int-index-is-an-error.cp": "pass",
         "std-prefix/scan-int-index-is-cut.cp": "pass",
         "std-prefix/scan-max-of-bounded.cp": "pass",
         "std-prefix/scan-min-range-fold-traps.cp": "pass",
         "std-prefix/scan-of-list-int-is-cut.cp": "pass",
         "std-prefix/scan-owns-its-table.cp": "pass",
         "std-prefix/scan-prefix-ends.cp": "pass",
+        "std-prefix/scan-range-array-int-index-is-an-error.cp": "pass",
         "std-prefix/scan-sums-are-int.cp": "pass",
         "std-rand/chance-pick.cp": "pass",
         "std-rand/float-in-unit-interval.cp": "pass",
@@ -2743,6 +2792,7 @@
         "std-seq/first_true-1.cp": "pass",
         "std-seq/flat_map-1.cp": "pass",
         "std-seq/flatten-and-fold-methods.cp": "pass",
+        "std-seq/get-on-domain-array-takes-position.cp": "pass",
         "std-seq/group-by-euclidean-keys-ascending.cp": "pass",
         "std-seq/halve-subsequences-reserve-track.cp": "pass",
         "std-seq/insert-at-len-appends.cp": "pass",
@@ -2754,7 +2804,7 @@
         "std-seq/is-sorted-edges.cp": "pass",
         "std-seq/items-of-a-cuts-table-walks.cp": "pass",
         "std-seq/iterate-1.cp": "pass",
-        "std-seq/keyed-by-answers-with-the-key.cp": "fail",
+        "std-seq/keyed-by-answers-with-the-key.cp": "pass",
         "std-seq/last-true-false-then-true-traps.cp": "pass",
         "std-seq/last-true-never.cp": "pass",
         "std-seq/last_true-1.cp": "pass",
@@ -2772,6 +2822,7 @@
         "std-seq/method-after-std-import.cp": "pass",
         "std-seq/min-k-negative-traps.cp": "pass",
         "std-seq/min-k-past-len.cp": "pass",
+        "std-seq/min-max-by-tuple-field-shorthand.cp": "pass",
         "std-seq/min-of-empty-list-is-none.cp": "pass",
         "std-seq/minimal-never-ok-is-none.cp": "pass",
         "std-seq/minmax-empty-and-ties.cp": "pass",
@@ -2887,6 +2938,7 @@
         "std-seq/seq-u65-construct.cp": "pass",
         "std-seq/seq-u70-position-wrong-domain-rejected.cp": "pass",
         "std-seq/seq-u9-fold-seed.cp": "pass",
+        "std-seq/set-union-intersect-subtract.cp": "pass",
         "std-seq/slice-max-optional.cp": "pass",
         "std-seq/slice-runs-maximal-minimal.cp": "pass",
         "std-seq/sort-sorted-last.cp": "pass",
@@ -3036,6 +3088,7 @@
         "std-timetree/timetree-add-range-matches-add-interval.cp": "pass",
         "std-timetree/timetree-walk-1.cp": "pass",
         "std-timetree/timetree-walk-matches-steps.cp": "pass",
+        "std-tree/arcs-keep-edge-fields.cp": "pass",
         "std-tree/centroids-doc-tree.cp": "pass",
         "std-tree/centroids-path-of-two.cp": "pass",
         "std-tree/centroids-single-vertex.cp": "pass",
@@ -3131,7 +3184,7 @@
         "tools-bundle/cpp-body-emitted-verbatim.cp": "pass",
         "tools-bundle/cpp-body-names-params-that-shadow-a-global.cp": "pass",
         "tools-bundle/cpp-only-as-a-whole-fn-body.cp": "pass",
-        "tools-bundle/vendor-copies-pinned-libraries.cp": "fail",
+        "tools-bundle/vendor-copies-pinned-libraries.cp": "pass",
         "tools-cli/check-json-error.cp": "pass",
         "tools-cli/check-json-shape.cp": "pass",
         "tools-cli/exit-0-no-errors.cp": "pass",
@@ -3144,14 +3197,17 @@
         "tools-fmt-lint/lint-never-blocks-run.cp": "pass",
         "tools-fmt-lint/lint-reports-code.cp": "pass",
         "tools-judge/explain-checks-peak-memory-against-the-judge.cp": "pass",
+        "tools-judge/i128-on-a-judge-with-int128-builds.cp": "pass",
         "tools-judge/i128-on-a-judge-without-int128-is-an-error.cp": "pass",
         "tools-judge/judge-flag-beats-line.cp": "pass",
         "tools-judge/judge-line-names-one-profile.cp": "pass",
         "tools-judge/judge-line-picks-codeforces.cp": "pass",
         "tools-judge/no-judge-is-generic.cp": "pass",
+        "tools-judge/profile-time-fits-a-fast-program.cp": "pass",
         "tools-judge/profile-time-is-the-default-time-limit.cp": "pass",
         "tools-judge/release-run-gets-a-large-judge-stack.cp": "pass",
         "tools-judge/release-run-gets-the-judges-stack-and-crashes-like-it.cp": "pass",
+        "tools-judge/size-over-the-source-limit-is-an-error.cp": "pass",
         "tools-judge/size-warns-above-half-a-small-source-limit.cp": "pass",
         "tools-judge/unknown-judge-lists-the-built-ins.cp": "pass",
         "tools-lsp/completion-lacks-what-the-checker-rejects.cp": "pass",
@@ -3164,11 +3220,18 @@
         "tools-lsp/hover-shows-type-and-proven-range.cp": "pass",
         "tools-lsp/inlay-hints-show-unwritten-types.cp": "pass",
         "tools-lsp/setup-neovim.cp": "pass",
+        "tools-lsp/vscode-submit-reads-the-judge.cp": "pass",
         "tools-stress/stress-agreeing-alt-passes.cp": "pass",
+        "tools-stress/stress-reports-a-saved-case-that-still-fails.cp": "pass",
         "tools-stress/stress-reports-and-saves-failure.cp": "pass",
+        "tools-stress/stress-reruns-a-saved-case-first.cp": "pass",
         "tools-trace/debug-prints-value-with-its-line.cp": "pass",
+        "tools-trace/debugger-steps-back-to-an-earlier-value.cp": "pass",
         "tools-trace/release-agrees-with-checked-run.cp": "pass",
         "tools-trace/release-trap-flushes-output-first.cp": "pass",
+        "tools-trace/replay-at-a-step-with-no-call-is-an-error.cp": "pass",
+        "tools-trace/replay-reruns-one-call-on-its-recorded-arguments.cp": "pass",
+        "tools-trace/trace-keeps-only-the-watched-variable.cp": "pass",
         "tools-trace/trace-writes-one-html-file.cp": "pass",
         "tools-trace/trap-flushes-output-and-shows-locals.cp": "pass",
         "traits/Add/BigInt--add.cp": "pass",
@@ -3199,6 +3262,7 @@
         "traits/Div/Vec3--div.cp": "pass",
         "traits/Eq/ByAngle--eq.cp": "pass",
         "traits/Eq/ByAngleFrom--eq.cp": "pass",
+        "traits/Eq/Mat--eq.cp": "pass",
         "traits/FastProduct/Mod--product.cp": "pass",
         "traits/Index/Pair--nth.cp": "pass",
         "traits/Index/Pair--ord.cp": "pass",
@@ -3220,6 +3284,7 @@
         "traits/Into/Pair--into.cp": "pass",
         "traits/Into/Subset--into.cp": "pass",
         "traits/Keyed/Array--items.cp": "pass",
+        "traits/Keyed/Keys--items.cp": "pass",
         "traits/Keyed/List--items.cp": "pass",
         "traits/Keyed/Map--items.cp": "pass",
         "traits/Keyed/Range--items.cp": "pass",
@@ -3260,6 +3325,7 @@
         "traits/Reversible/MaxSub--rev.cp": "pass",
         "traits/Seq/Array--iter.cp": "pass",
         "traits/Seq/Domain--iter.cp": "pass",
+        "traits/Seq/Keys--iter.cp": "pass",
         "traits/Seq/List--iter.cp": "pass",
         "traits/Seq/Map--iter.cp": "pass",
         "traits/Seq/Range--iter.cp": "pass",
@@ -3364,21 +3430,11 @@
       "causes": [
         {
           "cause": "wrong output",
-          "count": 6,
+          "count": 3,
           "examples": [
-            "core-04/library-domain-count-trap-names-sizing-site-release.cp",
             "core-04/zip-keyed-by-first.cp",
             "core-05/let-heap-element-lends-no-copy.cp",
-            "core-05/map-entry-index-key-lends.cp",
-            "core-09/release-list-index-unchecked.cp"
-          ]
-        },
-        {
-          "cause": "E0302: `<id>` (`<id>`) does not work on the types it was given here: a `<id>` can't walk over a `<id>`",
-          "count": 2,
-          "examples": [
-            "core-12/keyed-argmax.cp",
-            "std-seq/keyed-by-answers-with-the-key.cp"
+            "core-05/map-entry-index-key-lends.cp"
           ]
         },
         {
@@ -3397,24 +3453,10 @@
           ]
         },
         {
-          "cause": "E0108: expected a field or method name after `<id>`",
-          "count": 1,
-          "examples": [
-            "core-01/tuple-field-chain.cp"
-          ]
-        },
-        {
           "cause": "E0201: no `<id>` in scope",
           "count": 1,
           "examples": [
             "core-08/law-calls-trait-method.cp"
-          ]
-        },
-        {
-          "cause": "E0203: a `<id>` has no method `<id>`",
-          "count": 1,
-          "examples": [
-            "std-search/real-bsearch-is-a-range-method.cp"
           ]
         },
         {
@@ -3460,6 +3502,13 @@
           ]
         },
         {
+          "cause": "E0303: `<id>` takes 3 arguments (x, k, op), but `<id>` is missing",
+          "count": 1,
+          "examples": [
+            "std-algebra/pow-folds-under-any-monoid.cp"
+          ]
+        },
+        {
           "cause": "E0305: a `<id>` can't be indexed",
           "count": 1,
           "examples": [
@@ -3467,10 +3516,10 @@
           ]
         },
         {
-          "cause": "E0320: `<id>`: an `<id>` index into a cut table can't say position or cut",
+          "cause": "E0310: `<id>` has no parameter named `<id>`",
           "count": 1,
           "examples": [
-            "std-prefix/rev-scan-is-suffix-fold.cp"
+            "std-search/real-bsearch-is-a-range-method.cp"
           ]
         },
         {
@@ -3495,13 +3544,6 @@
           ]
         },
         {
-          "cause": "wanted E0201; got no diagnostic",
-          "count": 1,
-          "examples": [
-            "core-07/suffix-fold-is-gone.cp"
-          ]
-        },
-        {
           "cause": "wanted E0203; got E0201: `<id>` (`<id>`) does not work on the types it was given here: no value named `<id>` here",
           "count": 1,
           "examples": [
@@ -3509,24 +3551,10 @@
           ]
         },
         {
-          "cause": "wanted E0301; got E0302: a `<id>` can't walk over a `<id>`",
-          "count": 1,
-          "examples": [
-            "core-04/keyed-counter-is-not-a-key.cp"
-          ]
-        },
-        {
           "cause": "wanted E0301; got E0302: expected `<id>`, found `<id>`",
           "count": 1,
           "examples": [
             "core-04/list-of-domain-array-loses-domain.cp"
-          ]
-        },
-        {
-          "cause": "wanted E0304; got no diagnostic",
-          "count": 1,
-          "examples": [
-            "core-04/grid-rows-is-a-getter.cp"
           ]
         },
         {
@@ -3565,40 +3593,19 @@
           ]
         },
         {
-          "cause": "wanted Ok; got E0203: (to: V, w: 1..=9) has no field or method `<id>`",
-          "count": 1,
-          "examples": [
-            "core-06/gen-graph-simple-connected.cp"
-          ]
-        },
-        {
-          "cause": "wanted Ok; got cpl: unknown command `<id>`",
-          "count": 1,
-          "examples": [
-            "tools-bundle/vendor-copies-pinned-libraries.cp"
-          ]
-        },
-        {
           "cause": "wanted R0101; got R0102: 4 is not in `<id>`, which is 1..=2",
           "count": 1,
           "examples": [
             "core-04/runtime-domain-literal-between-traps.cp"
           ]
-        },
-        {
-          "cause": "wanted prefix_totals_list; got L0521: `<id>` is a running total built by hand: use `<id>`",
-          "count": 1,
-          "examples": [
-            "lints/std-declares-idiom-lints.cp"
-          ]
         }
       ],
       "counts": {
-        "fail": 39,
-        "pass": 3318
+        "fail": 27,
+        "pass": 3396
       },
-      "passed": 3318,
-      "total": 3357
+      "passed": 3396,
+      "total": 3423
     },
     "corpus": {
       "cases": {
