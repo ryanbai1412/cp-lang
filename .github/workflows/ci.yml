@@ -558,13 +558,13 @@ jobs:
         run: just check | tee -a "$GITHUB_STEP_SUMMARY"
 
   acceptance:
-    name: acceptance solutions stay AC (${{ matrix.shard }}/8)
+    name: acceptance solutions stay AC (${{ matrix.shard }}/16)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -574,7 +574,7 @@ jobs:
       - name: Build cpl
         run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
-        run: just acceptance target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/8
+        run: just acceptance target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/16
       # Keyed by content in scripts/corpus.py: built ports and references
       # (CXX_CACHE), --checks builds (corpus-generators) and seeded problems'
       # cases (target/corpus-tests, problem-packages/R9). Per shard, so each
@@ -598,8 +598,8 @@ jobs:
         # slow run still leaves the next one warm.
         run: |
           # shellcheck disable=SC2016  # the inner bash expands $(nproc)
-          timeout 340 bash -c 'just corpus-tests-make --cpl target/ci/cpl --set v03 --shard ${{ matrix.shard }}/8 >/dev/null &&
-            just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" --set v03 --shard ${{ matrix.shard }}/8'
+          timeout 340 bash -c 'just corpus-tests-make --cpl target/ci/cpl --set v03 --shard ${{ matrix.shard }}/16 >/dev/null &&
+            just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" --set v03 --shard ${{ matrix.shard }}/16'
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() }}
         with:
