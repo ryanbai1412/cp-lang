@@ -235,7 +235,7 @@ struct FileState {
     module: Option<Arc<Analysis>>,
     /// Each item's body facts by item index, checked when first asked
     /// for (`body_facts`). Forgotten with the analyses.
-    body_facts: HashMap<usize, Arc<crate::Facts>>,
+    body_facts: Vec<Option<Arc<crate::Facts>>>,
     /// Read by the module loader, not given by `set_file`: the loader may
     /// replace its text.
     loaded: bool,
@@ -378,7 +378,7 @@ impl Database {
                         text,
                         program: None,
                         module: None,
-                        body_facts: HashMap::default(),
+                        body_facts: Vec::new(),
                         loaded,
                     },
                 );

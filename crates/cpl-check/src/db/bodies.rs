@@ -21,7 +21,7 @@ impl Database {
             .items
             .get(index)
             .filter(|i| i.span.touches(at.start))?;
-        if let Some(facts) = file.body_facts.get(&index) {
+        if let Some(Some(facts)) = file.body_facts.get(index) {
             return Some(facts.clone());
         }
         let check = if checked {
@@ -33,7 +33,11 @@ impl Database {
             &analysis,
             &[(item.offset, &*check)],
         ));
-        (self.files.get_mut(path)?.body_facts).insert(index, facts.clone());
+        let slots = &mut self.files.get_mut(path)?.body_facts;
+        if slots.len() <= index {
+            slots.resize_with(index + 1, || None);
+        }
+        slots[index] = Some(facts.clone());
         Some(facts)
     }
 
