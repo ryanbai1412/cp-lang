@@ -920,7 +920,10 @@ class DebtRatchetTest(unittest.TestCase):
                 subprocess.run(["git", "-C", str(root), *args], check=True, env=env)
             old = os.environ.pop("CI", None)
             try:
-                self.assertIsNotNone(dr.measure_upstream(root, 20, ref="HEAD"))
+                first = dr.measure_upstream(root, 20, ref="HEAD")
+                self.assertIsNotNone(first)
+                with mock.patch.object(dr, "_measure_at", side_effect=AssertionError("measured twice")):
+                    self.assertEqual(dr.measure_upstream(root, 20, ref="HEAD"), json.loads(json.dumps(first)))
                 os.environ["CI"] = "true"
                 self.assertIsNone(dr.measure_upstream(root, 20, ref="HEAD"))
             finally:

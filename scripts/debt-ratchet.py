@@ -2418,7 +2418,7 @@ HARD_ZERO = frozenset({
     "site_rederived", "browser_lsp_gaps",
     "unrun_script_tests",
     "permits", "written_twice",
-    "plan_delta_lines", "idioms_evidenced_unlinted",
+    "plan_delta_lines", "idioms_evidenced_unlinted", "v02_port_files", "judge_tables",
     "trait_gaps",
     "std_trait_matrix",
     "edge_labels_unrun",
@@ -2599,6 +2599,10 @@ def _count(name: str, root: Path) -> int:
     return len(COUNTERS[name][1](root))
 
 
+SLOW_COUNTERS = ("std_model_gaps", "near_dup_fns", "corpus_no_statement", "unwrap_input", "written_twice",
+                 "corpus_walkers")
+
+
 def _counts(names: list[str], root: Path) -> dict[str, int]:
     """Each counter's count, measured in forked processes: serially they take
     longer than the commit tier's whole budget."""
@@ -2608,16 +2612,22 @@ def _counts(names: list[str], root: Path) -> dict[str, int]:
     import multiprocessing
     import traceback
     ctx = multiprocessing.get_context("fork")
-    results = ctx.SimpleQueue()
+    results, todo = ctx.SimpleQueue(), ctx.SimpleQueue()
+    # Workers take the next counter as they finish, the slowest first: fixed
+    # chunks left two slow counters in one worker.
+    for n in sorted(names, key=lambda n: n not in SLOW_COUNTERS):
+        todo.put(n)
+    for _ in range(jobs):
+        todo.put(None)
 
-    def work(chunk: list[str]) -> None:
-        for n in chunk:
+    def work() -> None:
+        while (n := todo.get()) is not None:
             try:
                 results.put((n, _count(n, root), None))
             except BaseException:
                 results.put((n, None, traceback.format_exc()))
 
-    procs = [ctx.Process(target=work, args=(names[i::jobs],)) for i in range(jobs)]
+    procs = [ctx.Process(target=work) for _ in range(jobs)]
     for p in procs:
         p.start()
     counts, failures = {}, []
@@ -2856,9 +2866,32 @@ def measure_upstream(root: Path, max_rs_lines: int, ref: str = "origin/main") ->
     head, up = (_git(root, "rev-parse", "-q", "--verify", r, env=_git_env()) for r in ("HEAD", ref))
     if not head or not up or (head == up and os.environ.get("CI")):
         return None
+    # Every commit on a tip whose own debt is over its baseline measures that
+    # tip; once per tip (and per measuring code) is enough.
+    common = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir", env=_git_env())
+    code = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
+    cache = Path(common[0]) / "cpl-ratchet-upstream" / f"{up[0]}-{max_rs_lines}-{code}.json" if common else None
+    if cache and cache.is_file():
+        try:
+            return json.loads(cache.read_text(encoding="utf-8"))
+        except ValueError:
+            pass
+    data = _measure_at(root, up[0], max_rs_lines)
+    if cache:
+        if cache.parent.is_dir():
+            for old in cache.parent.iterdir():
+                old.unlink(missing_ok=True)
+        cache.parent.mkdir(exist_ok=True)
+        tmp = cache.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        tmp.replace(cache)
+    return data
+
+
+def _measure_at(root: Path, rev: str, max_rs_lines: int) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         wt = Path(tmp) / "main"
-        add = subprocess.run(["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(wt), up[0]],
+        add = subprocess.run(["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(wt), rev],
                              capture_output=True, text=True, env=_git_env())
         if add.returncode != 0:
             raise UpstreamUnknown(add.stderr.strip() or f"git worktree add exited {add.returncode}")
