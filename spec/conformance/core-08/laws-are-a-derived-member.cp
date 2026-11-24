@@ -1,4 +1,4 @@
-// expect: ok, output "assoc 3 3 3 YES NO\nsmall 3 YES YES\n2 assoc YES\nident 3 YES\nreplace 3 3 3 YES\ncommute 3 3 3 YES\ncomposes 3 3 3 YES"
+// expect: ok, output "assoc 3 3 3 YES NO\nsmall 3 YES YES\n2 assoc YES\nident 3 YES\nreplace 3 3 3 YES\ncommute 3 3 3 YES\ncomposes 3 3 3 YES\ncomposes_in_place 3 3 3 YES"
 // rule: 08.3.5
 // A struct with `law`s has a derived `@get laws`: each law by name, the pool size for each parameter, and `holds(samples, picks)`. One parameter type takes a `List<T>` of samples; several take a record keyed by type name.
 use std.algebra.{Monoid, Action}
