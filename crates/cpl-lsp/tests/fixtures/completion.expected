@@ -18,9 +18,9 @@ pop [2] pop() -> ?Edge
 get [2] get(i: Int) -> ?Edge
 insert [2] insert(i: Int, x: Edge)
 remove [2] remove(i: Int) -> Edge
-cut_after [2] cut_after(i: Int) -> Int
-cut_before [2] cut_before(i: Int) -> Int
 swap [2] swap(i: Int, j: Int)
+resize [2] resize(n: Int, x: Edge)
+truncate [2] truncate(n: Int)
 
 == completion @ 10:14
 c [6] c: Int
