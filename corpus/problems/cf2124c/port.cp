@@ -1,4 +1,5 @@
 // Source: Codeforces 2124C (Subset Multiplication), https://codeforces.com/contest/2124/problem/C
+// limits: 3000 ms, 250 MB
 // Problem: a has a_i | a_{i+1}; b is a with some subset multiplied by an unknown x. Given b
 //   (n <= 6e5, b_i <= 1e9, sum n <= 6e5, multitest), print any valid x (1 <= x <= 1e9).
 // Solution: where b_i does not divide b_{i+1}, b_i was multiplied and b_{i+1} was not, so b_i / x

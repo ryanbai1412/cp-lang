@@ -1,4 +1,5 @@
 // Source: Codeforces 2096B (Wonderful Gloves), https://codeforces.com/contest/2096/problem/B
+// limits: 1000 ms, 250 MB
 // Problem: colour i has l_i left and r_i right gloves (n <= 2e5, counts <= 1e9, multitest).
 //   Print the fewest gloves drawn blind that guarantee matching pairs in at least k <= n colours.
 // Solution: the worst draw takes max(l_i, r_i) of every colour (no pair) and min(l_i, r_i) of

@@ -1,4 +1,5 @@
 // Source: Codeforces 2124B (Minimise Sum), https://codeforces.com/contest/2124/problem/B
+// limits: 1500 ms, 250 MB
 // Problem: n <= 2e5 values in 0..=n. At most once, pick i < j, add a[j] to a[i] and set a[j] = 0.
 //   Print the least possible sum of the prefix minima. Multitest, sum n <= 2e5.
 // Solution: the first minimum a[0] can only grow and the second stays min(a[0], a[1]) unless a[1]

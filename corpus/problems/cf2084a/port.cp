@@ -1,4 +1,5 @@
 // Source: Codeforces 2084A (Max and Mod), https://codeforces.com/contest/2084/problem/A
+// limits: 1000 ms, 250 MB
 // Problem: multitest; n (2 <= n <= 100). Print a permutation p of 1..n with
 //   max(p_{i-1}, p_i) mod i = i - 1 for all 2 <= i <= n, or -1 if none exists.
 // Solution: [1, ..., pos - 1, n, pos, ..., n - 1] has max(p_{j-1}, p_j) = j - 1 except at
