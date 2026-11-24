@@ -627,6 +627,10 @@ step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
 uv run --quiet python scripts/std-api-lint.py --max 0 \
     || fail "a std signature breaks a std-api rule; see above"
 
+step "every inventory spelling is a documented std name (scripts/std-inventory.py)"
+uv run --quiet python scripts/std-inventory.py \
+    || fail "spec/lib/inventory.md names something cpl doc does not document; see above"
+
 step "std's public signatures match their snapshot (scripts/std-api-snapshot.py)"
 uv run --quiet python scripts/std-api-snapshot.py \
     || fail "std's public API changed; review the diff above and run scripts/std-api-snapshot.py --write"

@@ -220,7 +220,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Spec and std agree on names and named arguments | unmatched `f(k: v)` in spec blocks | rule `std-api/R6`; `scripts/spec-gate.py sigs`, gap list only shrinks |
 | Each type's common tasks are one short call | journeys per type with a tested example (`SortedBag`: insert, erase one, erase at cursor, predecessor, successor, range) | rule `std-api/R13`; `scripts/std-api-lint.py` R13 (each journey has a case in `spec/conformance/std-journeys/`) |
 | Composes: views, keys and ops pass through each other | pairs of std features that fail together (`.rev` into `zip`, `Window` into `maximal`) | rule `std-api/R14`; `missing` (pairwise composition suite) |
-| Every common operation from the C++ STL, Python, Rust and the AtCoder Library has a spelling | inventory operations with no spelling and no listed gap | rule `std-api/R15`; `missing` (comparative inventory checked against `cpl doc --format json std`) |
+| Every common operation from the C++ STL, Python, Rust and the AtCoder Library has a spelling | inventory operations with no spelling and no listed gap | rule `std-api/R15`; `scripts/std-inventory.py` (every spelling in `spec/lib/inventory.md` is a name `cpl doc --format json std` documents) |
 | The obvious code is the fast code | std calls that look O(1) and are not | rule `std-api/R16`; `bench/scaling.py --check` (time per call at n and 4n against the `cost:` line; `scaling_mismatches` hard zero, `std_fns_unscaled` only shrinks) |
 
 ### Discoverable (J2, J5)
