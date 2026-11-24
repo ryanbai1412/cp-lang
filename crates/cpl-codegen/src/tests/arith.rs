@@ -421,3 +421,63 @@ print((a * a).get(0, 0))
         .expect("Mat.mul emitted");
     assert!(mul.contains("residue_product"), "{mul}");
 }
+
+#[test]
+fn a_branch_condition_bounds_the_locals_it_compares() {
+    let fn_of = |src: &str, name: &str| {
+        let out = cpp(src);
+        let f = out
+            .split("\ninline ")
+            .chain(out.split("\nll "))
+            .find(|s| s.contains(&format!("{name}(ll")))
+            .unwrap_or_else(|| panic!("{name}:\n{out}"))
+            .to_string();
+        f.split("\n}\n").next().unwrap_or_default().to_string()
+    };
+    let checked = |f: &str| f.contains("cpl::imul") || f.contains("cpl::iadd");
+    // Inside the branch, and past a branch that returns.
+    let inside = fn_of(
+        "fn f(x: Int, n: Int) -> Int:\n    if x >= 0 and x < 1000 and n >= 0 and n <= 1000: return x * n + 1\n    0\n\
+         print(f(read(), read()))\n",
+        "f",
+    );
+    assert!(!checked(&inside), "{inside}");
+    let past = fn_of(
+        "fn g(x: Int) -> Int:\n    if x < 0 or x > 1000: return 0\n    x * x + x\nprint(g(read()))\n",
+        "g",
+    );
+    assert!(!checked(&past), "{past}");
+    // A store after the condition undoes it.
+    let stored = fn_of(
+        "fn h(x: Int) -> Int:\n    var y = x\n    if y >= 0 and y < 1000:\n        y = read()\n        return y * 2\n    0\n\
+         print(h(read()))\n",
+        "h",
+    );
+    assert!(stored.contains("cpl::imul"), "{stored}");
+    // So does a store later in a loop body, on the next lap.
+    let lapped = fn_of(
+        "fn k(x: Int) -> Int:\n    var y = x\n    var s = 0\n    if y >= 0 and y < 1000:\n        for _ in 0..3:\n            s = y * 3\n            y = read()\n    s\n\
+         print(k(read()))\n",
+        "k",
+    );
+    assert!(lapped.contains("cpl::imul"), "{lapped}");
+    // And a call to a fn that stores to the global.
+    let called = body(
+        "var g: Int = read()\nfn bump():\n    g = read()\nif g >= 0 and g < 1000:\n    bump()\n    print(g * 2)\n",
+    );
+    assert!(called.contains("cpl::imul(g, 2)"), "{called}");
+}
+
+#[test]
+fn a_loop_guard_bounds_what_its_body_sets_the_local_to() {
+    let guarded = body(
+        "let n: 1..=1_000_000_000 = read()\nvar i = 1\nwhile i < n: i = 2 * i + 1\nprint(i * 2)\n",
+    );
+    assert!(guarded.contains("i = 2 * i + 1;"), "{guarded}");
+    // Each store is at most `2 * (n - 1) + 1`, so `i` stays below 2^31 after the loop.
+    assert!(guarded.contains("put_int(i * 2,"), "{guarded}");
+    let past = body(
+        "let n: 1..=1_000_000_000 = read()\nvar i = 1\nwhile i < n: i = 2 * i + 1\ni = i * i\nprint(i * 2)\n",
+    );
+    assert!(past.contains("cpl::imul(i, 2)"), "{past}");
+}

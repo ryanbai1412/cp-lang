@@ -49,8 +49,12 @@ impl Facts<'_> {
                 Spec::Int { lo: Some(lo), .. } => at(lo),
                 _ => None,
             },
-            ExprKind::Local(slot) => once(self.local(fn_id, *slot)),
-            ExprKind::Global(id) => once((None, true, *id)),
+            ExprKind::Local(slot) => (once(self.local(fn_id, *slot)).into_iter())
+                .chain(self.guard_lo(e, depth))
+                .max(),
+            ExprKind::Global(id) => (once((None, true, *id)).into_iter())
+                .chain(self.guard_lo(e, depth))
+                .max(),
             ExprKind::Binary(BinOp::Add, l, r) => at(l)?.checked_add(at(r)?),
             ExprKind::Binary(BinOp::Sub, l, r) => {
                 at(l)?.checked_sub(self.upper_bound(fn_id, r, depth + 1)?)

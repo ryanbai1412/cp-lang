@@ -11,8 +11,8 @@
 
 use crate::uses::Home;
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, Builtin, Cast, Expr, ExprKind, Iter, Place, PlaceKind, Program,
-    Spec, Stmt, Ty,
+    Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, Iter, Place, PlaceKind,
+    Program, Spec, Stmt, Ty, UnOp,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -44,6 +44,92 @@ enum StoreOp {
 }
 
 type Store<'p> = (Option<usize>, StoreOp, &'p Expr);
+
+/// What a branch or loop condition in force says about a local `v`:
+/// `v <= e + k` or `v >= e + k`, with `e` read where the condition is.
+#[derive(Clone, Copy)]
+enum Fact<'p> {
+    Le(&'p Expr, i64),
+    Ge(&'p Expr, i64),
+}
+
+/// A condition's facts: a guard on a local, and when the guard was made.
+type Guard<'p> = (Var, Fact<'p>, usize);
+
+/// Where an expression is: a guard's facts hold for one read of a local.
+fn at(e: &Expr) -> usize {
+    std::ptr::from_ref(e) as usize
+}
+
+/// A block that never falls through to the statement after it.
+fn diverges(b: &Block) -> bool {
+    matches!(
+        b.stmts.last(),
+        Some(Stmt::Return(_) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..))
+    )
+}
+
+fn read_var(fn_id: Option<usize>, e: &Expr) -> Option<Var> {
+    match e.kind {
+        ExprKind::Local(slot) => Some((fn_id, false, slot)),
+        ExprKind::Global(id) => Some((None, true, id)),
+        _ => None,
+    }
+}
+
+/// What `cond` being `holds` says about the locals it compares.
+fn cond_facts<'p>(
+    fn_id: Option<usize>,
+    cond: &'p Expr,
+    holds: bool,
+    out: &mut Vec<(Var, Fact<'p>)>,
+) {
+    use CmpOp::*;
+    match &cond.kind {
+        ExprKind::Unary(UnOp::Not, x) => cond_facts(fn_id, x, !holds, out),
+        ExprKind::Binary(BinOp::And, a, b) if holds => {
+            cond_facts(fn_id, a, true, out);
+            cond_facts(fn_id, b, true, out);
+        }
+        ExprKind::Binary(BinOp::Or, a, b) if !holds => {
+            cond_facts(fn_id, a, false, out);
+            cond_facts(fn_id, b, false, out);
+        }
+        ExprKind::Cmp(op, l, r) if l.ty == Ty::Int && r.ty == Ty::Int => {
+            let op = match (holds, op) {
+                (true, op) => *op,
+                (false, Lt) => Ge,
+                (false, Le) => Gt,
+                (false, Gt) => Le,
+                (false, Ge) => Lt,
+                (false, Eq) => Ne,
+                (false, Ne) => Eq,
+                _ => return,
+            };
+            let flip = match op {
+                Lt => Gt,
+                Le => Ge,
+                Gt => Lt,
+                Ge => Le,
+                op => op,
+            };
+            for (x, op, y) in [(l, op, r), (r, flip, l)] {
+                let Some(v) = read_var(fn_id, x) else {
+                    continue;
+                };
+                match op {
+                    Lt => out.push((v, Fact::Le(y, -1))),
+                    Le => out.push((v, Fact::Le(y, 0))),
+                    Gt => out.push((v, Fact::Ge(y, 1))),
+                    Ge => out.push((v, Fact::Ge(y, 0))),
+                    Eq => out.extend([(v, Fact::Le(y, 0)), (v, Fact::Ge(y, 0))]),
+                    _ => {}
+                }
+            }
+        }
+        _ => {}
+    }
+}
 
 #[derive(Default)]
 pub(crate) struct Facts<'p> {
@@ -89,6 +175,19 @@ pub(crate) struct Facts<'p> {
     /// Variables set more than once, each time to a value under the bound
     /// (or kept under it by `&=`/`%=` while `>= 0`): see [`Facts::stores_hi`].
     var_hi: BTreeMap<Var, i64>,
+    /// While `collect` walks a body, the guards in force; a store to the
+    /// guarded local kills its guard for the rest of the walk.
+    active: Vec<Option<Guard<'p>>>,
+    /// How many guards have been made, numbering them in walk order.
+    made: usize,
+    /// Every store to a local in walk order, so a loop can drop the facts
+    /// its body's stores undo on the next lap.
+    store_log: Vec<Var>,
+    /// Each read of a guarded local: where it is, and the guard.
+    leaf_log: Vec<(usize, Guard<'p>)>,
+    /// What the conditions in force say about a read of a local, by where
+    /// the read is (R09.3.4). One walk finds them; no loop is iterated.
+    guarded: BTreeMap<usize, Vec<(Var, Fact<'p>)>>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -131,6 +230,7 @@ impl<'p> Facts<'p> {
             }
             facts.block(home, &c.body);
         }
+        facts.settle_guards(program);
         for (cid, c) in program.closures.iter().enumerate() {
             let homes = facts.closure_homes.get(&cid).filter(|h| h.len() == 1);
             let Some(&made) = homes.and_then(BTreeSet::first) else {
@@ -292,6 +392,7 @@ impl<'p> Facts<'p> {
     }
 
     fn block(&mut self, fn_id: Option<usize>, block: &'p Block) {
+        let mark = self.active.len();
         for stmt in &block.stmts {
             match stmt {
                 Stmt::Let(slot, init) => {
@@ -307,6 +408,7 @@ impl<'p> Facts<'p> {
                     } else {
                         self.taint(v);
                     }
+                    self.kill(v);
                 }
                 Stmt::Assign(place, op, value) => {
                     self.store(fn_id, place);
@@ -348,21 +450,39 @@ impl<'p> Facts<'p> {
                     }
                     self.place(fn_id, place);
                     self.expr(fn_id, value);
+                    self.kill_place(fn_id, place);
                 }
                 Stmt::Expr(e) | Stmt::Give(e) | Stmt::Return(Some(e)) => self.expr(fn_id, e),
                 Stmt::If(cond, then, otherwise) => {
                     self.expr(fn_id, cond);
+                    let (mark, stored) = (self.active.len(), self.store_log.len());
+                    self.assume(fn_id, cond, true, stored);
                     self.block(fn_id, then);
+                    self.active.truncate(mark);
+                    self.assume(fn_id, cond, false, stored);
                     self.block(fn_id, otherwise);
+                    self.active.truncate(mark);
+                    // Past a branch that leaves, the other one's condition holds.
+                    match (diverges(then), diverges(otherwise)) {
+                        (true, false) => self.assume(fn_id, cond, false, stored),
+                        (false, true) => self.assume(fn_id, cond, true, stored),
+                        _ => {}
+                    }
                 }
                 Stmt::While(_, cond, body) => {
+                    let lap = self.lap();
                     self.expr(fn_id, cond);
+                    let mark = self.active.len();
+                    self.assume(fn_id, cond, true, self.store_log.len());
                     self.block(fn_id, body);
+                    self.active.truncate(mark);
+                    self.lapped(lap);
                 }
                 Stmt::For(_, slot, iter, body) => {
                     let v = (fn_id, false, *slot);
                     *self.stores.entry(v).or_default() += 1;
                     self.taint(v);
+                    self.kill(v);
                     match iter {
                         Iter::Walk { .. } => {
                             crate::fuse::iter_exprs(iter, &mut |e| self.expr(fn_id, e))
@@ -402,12 +522,23 @@ impl<'p> Facts<'p> {
                             }
                         }
                     }
+                    let lap = self.lap();
                     self.block(fn_id, body);
+                    self.lapped(lap);
                 }
-                Stmt::Assert { cond, message, .. } => {
+                Stmt::Assert {
+                    cond,
+                    message,
+                    kept,
+                    ..
+                } => {
                     self.expr(fn_id, cond);
                     if let Some(message) = message {
                         self.expr(fn_id, message);
+                    }
+                    // An assert `checks: none` drops proves nothing.
+                    if *kept {
+                        self.assume(fn_id, cond, true, self.store_log.len());
                     }
                 }
                 Stmt::DefDomain { id, lo, len, .. } => {
@@ -434,6 +565,105 @@ impl<'p> Facts<'p> {
                 Stmt::Return(None) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
             }
         }
+        self.active.truncate(mark);
+    }
+
+    /// `cond` holds from here to the end of the scope, for the locals it
+    /// compares that no store since `since` in the store log has changed.
+    fn assume(&mut self, fn_id: Option<usize>, cond: &'p Expr, holds: bool, since: usize) {
+        let mut out = Vec::new();
+        cond_facts(fn_id, cond, holds, &mut out);
+        for (v, fact) in out {
+            if !self.store_log[since..].contains(&v) {
+                self.made += 1;
+                self.active.push(Some((v, fact, self.made)));
+            }
+        }
+    }
+
+    /// A store to `v`: the guards on it no longer hold.
+    fn kill(&mut self, v: Var) {
+        self.store_log.push(v);
+        for g in &mut self.active {
+            if matches!(g, Some((gv, ..)) if *gv == v) {
+                *g = None;
+            }
+        }
+    }
+
+    fn kill_place(&mut self, fn_id: Option<usize>, place: &Place) {
+        if let Some(v) = var(fn_id, &place.kind) {
+            self.kill(v);
+        }
+    }
+
+    /// Where a loop body starts: the store log, the read log and the guards made.
+    fn lap(&self) -> (usize, usize, usize) {
+        (self.store_log.len(), self.leaf_log.len(), self.made)
+    }
+
+    /// The loop body that started at `lap` is walked: a guard made before
+    /// it does not hold at a read in it of a local the body stores to,
+    /// since the store may come first on the next lap.
+    fn lapped(&mut self, (stores, reads, made): (usize, usize, usize)) {
+        let stored: BTreeSet<Var> = self.store_log[stores..].iter().copied().collect();
+        if stored.is_empty() {
+            return;
+        }
+        let body = self.leaf_log.split_off(reads);
+        (self.leaf_log).extend(
+            body.into_iter()
+                .filter(|&(_, (v, _, m))| m > made || !stored.contains(&v)),
+        );
+    }
+
+    /// The reads' guards, once every body is walked. A local a closure
+    /// captures by reference can change under a call, so none hold for it.
+    fn settle_guards(&mut self, program: &Program) {
+        let mut shared = BTreeSet::new();
+        for (cid, c) in program.closures.iter().enumerate() {
+            let inner = self.key(Home::Closure(cid));
+            for cap in c.captures.iter().filter(|cap| cap.by_ref && !cap.is_global) {
+                shared.insert((inner, false, cap.inner));
+                for &home in self.closure_homes.get(&cid).into_iter().flatten() {
+                    shared.insert((home, false, cap.outer));
+                }
+            }
+        }
+        // A global a fn stores to can change under any call.
+        for (&v, stores) in &self.var_stores {
+            if v.1 && stores.iter().any(|&(home, ..)| home.is_some()) {
+                shared.insert(v);
+            }
+        }
+        shared.extend(self.tainted.iter().filter(|v| v.1));
+        for (read, (v, fact, _)) in std::mem::take(&mut self.leaf_log) {
+            if !shared.contains(&v) {
+                self.guarded.entry(read).or_default().push((v, fact));
+            }
+        }
+        self.active = Vec::new();
+        self.store_log = Vec::new();
+    }
+
+    /// The least upper bound the guards in force give the read `e`.
+    fn guard_hi(&self, e: &Expr, depth: u8) -> Option<i64> {
+        (self.guarded.get(&at(e))?.iter())
+            .filter_map(|&(v, fact)| match fact {
+                Fact::Le(b, k) => self.upper_bound(v.0, b, depth + 1)?.checked_add(k),
+                Fact::Ge(..) => None,
+            })
+            .min()
+    }
+
+    /// The greatest lower bound the guards in force give the read `e`.
+    pub(crate) fn guard_lo(&self, e: &Expr, depth: u8) -> Option<i64> {
+        (self.guarded.get(&at(e))?.iter())
+            .filter_map(|&(v, fact)| match fact {
+                Fact::Ge(b, k) => self.lower_bound(v.0, b, depth + 1)?.checked_add(k),
+                Fact::Le(..) => None,
+            })
+            .max()
     }
 
     fn place(&mut self, fn_id: Option<usize>, place: &'p Place) {
@@ -454,8 +684,30 @@ impl<'p> Facts<'p> {
         if let ExprKind::Closure(cid) = e.kind {
             self.closure_homes.entry(cid).or_default().insert(fn_id);
         }
+        if let Some(v) = read_var(fn_id, e) {
+            for &g in self.active.iter().flatten().filter(|g| g.0 == v) {
+                self.leaf_log.push((at(e), g));
+            }
+        }
         match &e.kind {
             ExprKind::Do(block) => self.block(fn_id, block),
+            ExprKind::Binary(op @ (BinOp::And | BinOp::Or), a, b) => {
+                self.expr(fn_id, a);
+                let mark = self.active.len();
+                self.assume(fn_id, a, *op == BinOp::And, self.store_log.len());
+                self.expr(fn_id, b);
+                self.active.truncate(mark);
+            }
+            ExprKind::If(cond, then, otherwise) => {
+                self.expr(fn_id, cond);
+                let (mark, stored) = (self.active.len(), self.store_log.len());
+                self.assume(fn_id, cond, true, stored);
+                self.expr(fn_id, then);
+                self.active.truncate(mark);
+                self.assume(fn_id, cond, false, stored);
+                self.expr(fn_id, otherwise);
+                self.active.truncate(mark);
+            }
             ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
                 if let ExprKind::CallExpr(callee, _) = &e.kind {
                     self.expr(fn_id, callee);
@@ -471,6 +723,7 @@ impl<'p> Facts<'p> {
                                 self.taint(v);
                             }
                             self.place(fn_id, place);
+                            self.kill_place(fn_id, place);
                         }
                     }
                 }
@@ -486,6 +739,7 @@ impl<'p> Facts<'p> {
                 for arg in args {
                     self.expr(fn_id, arg);
                 }
+                self.kill_place(fn_id, place);
             }
             ExprKind::Sort(place, sort_by, desc) => {
                 self.store(fn_id, place);
@@ -508,6 +762,7 @@ impl<'p> Facts<'p> {
                     }
                     cpl_ir::SortBy::Fn { func, .. } => self.expr(fn_id, func),
                 }
+                self.kill_place(fn_id, place);
             }
             _ => crate::walk::children(e, &mut |child| self.expr(fn_id, child)),
         }
@@ -641,28 +896,19 @@ impl<'p> Facts<'p> {
                 _ => None,
             },
             ExprKind::Local(slot) => {
-                let v = self.local(fn_id, *slot);
-                if let (1, Some(&(hi, closed))) = (self.stores(v), self.loop_hi.get(&v)) {
-                    let hi = self.upper_bound(v.0, hi, depth + 1)?;
-                    return if closed { Some(hi) } else { hi.checked_sub(1) };
-                }
-                if self.stores(v) == 1 {
-                    self.init
-                        .get(&v)
-                        .and_then(|init| self.upper_bound(v.0, init, depth + 1))
-                } else {
-                    self.var_hi.get(&v).copied()
-                }
+                let own = self.local_hi(self.local(fn_id, *slot), depth);
+                own.into_iter().chain(self.guard_hi(e, depth)).min()
             }
             ExprKind::Global(id) => {
                 let v = (None, true, *id);
-                if self.stores(v) == 1 {
+                let own = if self.stores(v) == 1 {
                     self.init
                         .get(&v)
                         .and_then(|init| self.upper_bound(None, init, depth + 1))
                 } else {
                     self.var_hi.get(&v).copied()
-                }
+                };
+                own.into_iter().chain(self.guard_hi(e, depth)).min()
             }
             // A count held in an `int` is below 2^31.
             ExprKind::DomainLen(d) => self.domain_len_hi(*d, depth + 1),
@@ -758,6 +1004,20 @@ impl<'p> Facts<'p> {
             }
             ExprKind::Cast(_, inner) => self.upper_bound(fn_id, inner, depth + 1),
             _ => None,
+        }
+    }
+
+    fn local_hi(&self, v: Var, depth: u8) -> Option<i64> {
+        if let (1, Some(&(hi, closed))) = (self.stores(v), self.loop_hi.get(&v)) {
+            let hi = self.upper_bound(v.0, hi, depth + 1)?;
+            return if closed { Some(hi) } else { hi.checked_sub(1) };
+        }
+        if self.stores(v) == 1 {
+            self.init
+                .get(&v)
+                .and_then(|init| self.upper_bound(v.0, init, depth + 1))
+        } else {
+            self.var_hi.get(&v).copied()
         }
     }
 
@@ -1009,10 +1269,22 @@ impl<'p> Facts<'p> {
     }
 
     pub(crate) fn sign_at(&self, fn_id: Option<usize>, e: &Expr, depth: u32) -> Sign {
-        use Sign::*;
         if depth > 16 || e.ty != Ty::Int {
-            return Unknown;
+            return Sign::Unknown;
         }
+        let guarded = match e.kind {
+            ExprKind::Local(_) | ExprKind::Global(_) => self.guard_lo(e, depth as u8 + 1),
+            _ => None,
+        };
+        match (guarded, self.sign_own(fn_id, e, depth)) {
+            (Some(lo), _) if lo > 0 => Sign::Positive,
+            (Some(0), Sign::Unknown) => Sign::NonNeg,
+            (_, own) => own,
+        }
+    }
+
+    fn sign_own(&self, fn_id: Option<usize>, e: &Expr, depth: u32) -> Sign {
+        use Sign::*;
         let of = |e: &Expr| self.sign_at(fn_id, e, depth + 1);
         let both = |a: Sign, b: Sign| match (a, b) {
             (Unknown, _) | (_, Unknown) => Unknown,

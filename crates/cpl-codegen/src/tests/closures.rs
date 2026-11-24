@@ -719,7 +719,7 @@ fn a_recursive_generator_hands_itself_one_callback_type() {
     let calls = pusher_calls(&cpp, "walk");
     assert_eq!(calls.len(), 1, "{cpp}");
     assert!(
-        calls[0].contains("cpl_each_walk(cpl::isub(n, 1), cpl::fn_ref([&]"),
+        calls[0].contains("cpl_each_walk(n - 1, cpl::fn_ref([&]"),
         "{cpp}"
     );
     assert_eq!(cpp.matches("cpl_each_walk(").count(), 3, "{cpp}");
