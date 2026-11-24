@@ -31,6 +31,8 @@ for i in 0..64 * n:
     s += b.last ?? 0 // timed: bag.SortedBag.last
     s += b.key_of(c0) // timed: bag.SortedBag.key_of
     s += b.count_of(c0) // timed: bag.SortedBag.count_of
+for r in 0..160:
+    s += b.to_list().len // timed: bag.SortedBag.to_list
 for r in 0..16:
     for x in b.each(): // timed: bag.SortedBag.each
         s += x // timed: bag.SortedBag.each
@@ -40,6 +42,6 @@ for r in 0..16:
         s += e.count // timed: bag.SortedBag.entries
     for e in b.entries_rev(): // timed: bag.SortedBag.entries_rev
         s ^= e.key // timed: bag.SortedBag.entries_rev
-    s += b.to_list().len // timed: bag.SortedBag.to_list
+for r in 0..256:
     s += b.sum() // timed: bag.SortedBag.sum
 print(s)
