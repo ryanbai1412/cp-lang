@@ -23,13 +23,16 @@ class GatePartTest(unittest.TestCase):
         g = ci.gate_part("conform:conformance+lints,std@2/3", "fast")
         self.assertEqual((g["suites"], g["shard"]), ("conformance lints std", "--shard 2/3"))
 
+    def test_fmt_and_corpus(self) -> None:
+        self.assertEqual([ci.gate_part(p, "fast")["kind"] for p in ("fmt", "corpus")], ["fmt", "corpus"])
+
     def test_tests_partitions(self) -> None:
         self.assertEqual(ci.gate_part("tests:doc", "fast")["kind"], "doc")
         g = ci.gate_part("tests:hash:1/12", "fast")
         self.assertEqual((g["kind"], g["partition"]), ("tests", "hash:1/12"))
 
     def test_parts_need_fast(self) -> None:
-        for part in ("fmt", "conform", "conform:all", "tests:doc", "tests:hash:1/2"):
+        for part in ("fmt", "corpus", "conform", "conform:all", "tests:doc", "tests:hash:1/2"):
             with self.assertRaisesRegex(ValueError, "needs --fast"):
                 ci.gate_part(part, "land")
 
@@ -271,7 +274,8 @@ class TailTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual([e for e in ev if e.startswith("spawn")], ["spawn gate.mjs"])
         self.assertEqual([e for e in ev if e.startswith("cargo")], [self.FMT, self.CLIPPY, self.BUILD])
-        self.assertEqual(out.count("CPL_GATE_PART=checks"), 4)
+        self.assertEqual(out.count("CPL_GATE_PART=checks"), 5)
+        self.assertFalse([e for e in ev if e.startswith("scripts/corpus.py")])
 
     def test_a_failed_job_names_its_rerun_and_stops_the_rest(self) -> None:
         board = FakeProc(0, running=True)
@@ -365,6 +369,15 @@ class TailTest(unittest.TestCase):
         code, ev, out, _, _, _ = self._part("fmt")
         self.assertEqual(ev[-3:], ["cargo build -q -p cpl-cli", "scripts/fmt_check.py --cpl target/debug/cpl", "save fmt_corpus"])
         self.assertIn("check: fmt part passed in", out)
+
+    def test_the_corpus_part_runs_the_static_modes_alone(self) -> None:
+        code, ev, out, _, _, _ = self._part("corpus")
+        self.assertEqual(code, 0)
+        self.assertEqual(ev, ["cargo build -q -p cpl-cli", "scripts/corpus.py verify --no-run --only header,check,package,lint --cpl target/debug/cpl"])
+        self.assertIn("check: corpus part passed in", out)
+        code, _, _, err, _, _ = self._part("corpus", codes={"scripts/corpus.py": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("names the mode and the package", err)
 
     def test_a_part_needs_fast_and_checks_is_not_a_part(self) -> None:
         self.assertEqual(self._part("fmt", mode="land")[0], 1)

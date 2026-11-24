@@ -73,11 +73,11 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     out = {"kind": "checks", "suites": "", "shard": "", "partition": ""}
     if part in ("", "checks"):
         return out
-    if part == "fmt" or part == "conform" or part.startswith(("conform:", "tests:")):
+    if part in ("fmt", "corpus", "conform") or part.startswith(("conform:", "tests:")):
         if mode != "fast":
             raise ValueError(f"CPL_GATE_PART={part} needs --fast")
-    if part == "fmt":
-        out["kind"] = "fmt"
+    if part in ("fmt", "corpus"):
+        out["kind"] = part
     elif part == "conform" or part.startswith("conform:"):
         suites = part.partition(":")[2] or "all"
         suites, at, shard = suites.partition("@")
@@ -90,7 +90,7 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     elif part.startswith("tests:") and part != "tests:":
         out.update(kind="tests", partition=part.removeprefix("tests:"))
     else:
-        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, conform or tests:<partition>)")
+        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform or tests:<partition>)")
     return out
 
 
@@ -614,10 +614,7 @@ class Tail:
         if recovery == "run":
             self.spawn("recovery", ["cargo", "test", "-q", "-p", "cpl-cli", "--test", "recovery"], logs)
 
-        self.step("every corpus package passes the static modes (scripts/corpus.py verify --no-run)")
-        if self.call([sys.executable, "scripts/corpus.py", "verify", "--no-run", "--only",
-                      "header,check,package,lint", "--cpl", self.cpl]):
-            raise Failed("a corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
+        self._corpus_static(checks)
         self.step("std/prelude.cp: name count")
         print(f"prelude: {prelude_names((ROOT / 'std/prelude.cp').read_text(encoding='utf-8'))} names")
 
@@ -687,8 +684,17 @@ class Tail:
         traps = open_traps((ROOT / "crates/cpl-cli/tests/known_traps.cp").read_text(encoding="utf-8"))
         print(f"\nknown_traps: {traps} open (crates/cpl-cli/tests/known_traps.cp)")
 
+    def _corpus_static(self, checks: bool = False) -> None:
+        self.step("every corpus package passes the static modes (scripts/corpus.py verify --no-run)")
+        if checks:
+            print("skipped: the CI corpus part runs it (CPL_GATE_PART=checks)")
+            return
+        if self.call([sys.executable, "scripts/corpus.py", "verify", "--no-run", "--only",
+                      "header,check,package,lint", "--cpl", self.cpl]):
+            raise Failed("a corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
+
     def part(self, since: float) -> int:
-        """A CI gate part other than checks (CPL_GATE_PART=conform..., tests:..., fmt);
+        """A CI gate part other than checks (CPL_GATE_PART=conform..., tests:..., fmt, corpus);
         `since` is when the gate started, for its closing line."""
         try:
             done = self._part(gate_part(self.gate_part, self.mode))
@@ -756,6 +762,11 @@ class Tail:
                     raise Failed("cpl fmt is unstable or changes meaning; rerun: scripts/fmt_check.py")
                 self.save("fmt_corpus")
             return "fmt part"
+        if g["kind"] == "corpus":
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli"]):
+                raise Failed("cargo build -p cpl-cli failed")
+            self._corpus_static()
+            return "corpus part"
         raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
 
     def _tests(self) -> None:
