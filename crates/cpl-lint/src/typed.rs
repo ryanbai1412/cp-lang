@@ -7,8 +7,8 @@
 
 use crate::facts::Facts;
 use crate::{
-    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY,
-    FLOAT_SQRT_FOR_INT, LOOP_REDUCTION, MANUAL_BIT_TEST, NEG_MOD_FIXUP, UNPROVEN_LIST_INDEX,
+    CEIL_DIV_FORMULA, COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT,
+    LOOP_REDUCTION, MANUAL_BIT_TEST, NEG_MOD_FIXUP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
@@ -135,7 +135,6 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         };
     }
     match d.code {
-        c if c == CHMIN_CHMAX_IF.code => scalar_place(d, facts),
         c if c == COMPOUND_SELF_REF.code => plain_place(d, facts),
         c if c == CEIL_DIV_FORMULA.code => match label() {
             None => true,
@@ -172,10 +171,6 @@ fn plain_place(diag: &Diagnostic, facts: &Facts) -> bool {
 
 /// `min=` and `max=` agree with `<` only on scalars: on a list or a tuple
 /// they work elementwise, while `<` compares lexicographically.
-fn scalar_place(diag: &Diagnostic, facts: &Facts) -> bool {
-    place_type(diag, facts).is_some_and(|ty| ty.is_numeric() || matches!(ty, Ty::Char | Ty::Pos(_)))
-}
-
 fn place_type<'f>(diag: &Diagnostic, facts: &'f Facts) -> Option<&'f Ty> {
     if let Some(label) = diag.labels.first() {
         return facts.place_type(label.span);

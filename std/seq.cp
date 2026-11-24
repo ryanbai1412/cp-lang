@@ -76,6 +76,12 @@ pub enum Ties = First | Last
 /// example: `[3, 1, 1].min() == Some(1)`
 /// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
 /// example: `[(1, 'a'), (1, 'b')].min(by: .0, ties: Ties.Last) == Some((1, 'b'))`
+@lint(chmin_chmax_if, from: "x = min(x, e)", to: "x min= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "x = min(e, x)", to: "x min= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "if e < x: x = e", to: "x min= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "if x > e: x = e", to: "x min= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "if e <= x: x = e", to: "x min= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "if x >= e: x = e", to: "x min= e", holes: "x, e")
 pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -94,6 +100,12 @@ pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.Firs
 /// traps: never
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0, ties: Ties.Last) == Some((2, 'b'))`
+@lint(chmin_chmax_if, from: "x = max(x, e)", to: "x max= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "x = max(e, x)", to: "x max= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "if e > x: x = e", to: "x max= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "if x < e: x = e", to: "x max= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "if e >= x: x = e", to: "x max= e", holes: "x, e")
+@lint(chmin_chmax_if, from: "if x <= e: x = e", to: "x max= e", holes: "x, e")
 pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None

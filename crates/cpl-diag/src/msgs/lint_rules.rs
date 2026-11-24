@@ -9,8 +9,6 @@ super::msgs! {
     BOOL_TERNARY_PRINT = "L0524", "`\"{}\"` and `\"{}\"` written out; `yes({})` is the answer word";
     CEIL_DIV_FORMULA = "L0526", "`{}` rounds `{} / {}` up by hand";
     CHAR_OFFSET_INDEX = "L0574", "`{} - '{}'` turns a letter into an `Int` index";
-    CHMIN_CHMAX_IF = "L0523", "`{}` keeps the {} of itself and a value; this is `{}=`";
-    CHMIN_CHMAX_IF_2 = "L0523", "this `if` keeps the {} in `{}`; this is `{}=`";
     COALESCE_TEST_THEN_UNWRAP = "L0595", "`{}` is tested with the stand-in `?? {}`, then `{}!` unwraps it";
     COMPONENTS_BY_DFS = "L0560", "a search from each unvisited `{}` counts components by hand, with `{}`";
     COMPOUND_SELF_REF = "L0210", "`{}` is written in terms of itself; this is `{} {} ...`";
