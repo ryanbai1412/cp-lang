@@ -1853,3 +1853,15 @@ fn a_window_min_by_hand_is_named_but_a_hull_turn_is_not() {
     );
     assert_eq!(l0566(&hull("    while h.len >= 2:\n        if cross(h[h.len - 2], h.last!, p) < 0: break\n        h.pop()\n")), 0);
 }
+
+#[test]
+fn every_lint_message_names_a_lint() {
+    for m in cpl_diag::msgs::lint::ALL {
+        assert!(
+            crate::LINTS.iter().any(|lint| lint.code == m.code),
+            "{:?} has no lint with code {}",
+            m.text,
+            m.code.0
+        );
+    }
+}

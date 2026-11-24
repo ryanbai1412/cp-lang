@@ -14,6 +14,7 @@ use crate::{
     HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE, HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP,
     LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
 };
+use cpl_diag::msgs;
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
 use std::collections::HashSet;
@@ -287,12 +288,9 @@ impl<'a> Taste<'a> {
         } else {
             std_fn::FIRST_TRUE
         };
-        let mut diag = Diagnostic::warning(
-            HAND_ROLLED_ANSWER_SEARCH.code,
-            stmt.span,
-            format!("a hand-rolled binary search: this is `{call}`"),
-        )
-        .with_help(format!(
+        let mut diag = msgs::lint::ANSWER_SEARCH
+            .warning(stmt.span, &[&call])
+            .with_help(format!(
             "`let {lo} = (..).{call}({mid} => ..)`: the predicate must be monotone along the range",
             lo = found.lo,
             mid = found.mid
@@ -398,11 +396,7 @@ impl<'a> Taste<'a> {
         if mentions(rhs_text, found.arr) || has_try(stmt) {
             return;
         }
-        let mut diag = Diagnostic::warning(
-            HAND_ROLLED_PREFIX_SUM.code,
-            stmt.span,
-            format!("a hand-rolled prefix sum into `{}`: use `Prefix(...)`", found.arr),
-        )
+        let mut diag = msgs::lint::PREFIX_SUM.warning(stmt.span, &[&found.arr])
         .with_help(format!(
             "`let {} = Prefix(..)` builds the prefix table in O(n) with O(1) `.fold(range)` and `.prefix(cut)`",
             found.arr
@@ -530,15 +524,9 @@ impl<'a> Taste<'a> {
             start: first_stmt.span.start,
             end,
         };
-        let mut diag = Diagnostic::warning(
-            COPY_SORT_WRITEBACK.code,
-            span,
-            format!(
-                "copies `{}[{}]`, mutates it, and writes it back: use `{replacement}`",
-                found.target, found.range
-            ),
-        )
-        .with_help(format!("mutate the slice in place: `{replacement}`"));
+        let mut diag = msgs::lint::COPY_SORT_WRITEBACK
+            .warning(span, &[&found.target, &found.range, &replacement])
+            .with_help(format!("mutate the slice in place: `{replacement}`"));
 
         let sub_used_after = stmts[found.wb_idx + 1..]
             .iter()
@@ -716,14 +704,11 @@ impl<'a> Taste<'a> {
         if !matches!(pat.kind, PatternKind::Wildcard) || !self.valued_fns.contains(name) {
             return;
         }
-        let diag = Diagnostic::warning(
-            DISCARDED_RESULT.code,
-            stmt.span,
-            format!("`let _ =` throws away what `{name}` returns"),
-        )
-        .with_help(format!(
-            "use the result, or if `{name}` is called for what it does, make it return nothing"
-        ));
+        let diag = msgs::lint::DISCARDED_RESULT
+            .warning(stmt.span, &[&name])
+            .with_help(format!(
+                "use the result, or if `{name}` is called for what it does, make it return nothing"
+            ));
         self.push(&DISCARDED_RESULT, diag);
     }
 
@@ -780,11 +765,7 @@ impl<'a> Taste<'a> {
         if !mirrored {
             return;
         }
-        let diag = Diagnostic::warning(
-            SYMMETRIC_WRITE.code,
-            self.pair_span(a.span, b.span),
-            "one fact written twice, once for each order",
-        )
+        let diag = msgs::lint::SYMMETRIC_WRITE.warning(self.pair_span(a.span, b.span), &[])
         .with_help(if cells {
             "keep it in one place: key it by `Pair<V>` and build the matrix with `.symmetric(diag: ..)`"
         } else {
@@ -864,15 +845,7 @@ impl<'a> Taste<'a> {
                 None,
             ),
         };
-        let mut diag = Diagnostic::warning(
-            SEARCH_LOOP.code,
-            self.pair_span(decl.span, next.span),
-            if breaks_after_setting(&body.stmts, name) {
-                format!("a search loop that sets `{name}` and breaks")
-            } else {
-                format!("a search loop: only the first write to `{name}` counts")
-            },
-        )
+        let mut diag = (if breaks_after_setting(&body.stmts, name) { &msgs::lint::SEARCH_LOOP_BREAKS } else { &msgs::lint::SEARCH_LOOP_FIRST }).warning(self.pair_span(decl.span, next.span), &[&name])
         .with_help(if let Some(text) = &fix {
             let keep = if sentinel {
                 format!(", or keep the `?Int` `first` returns instead of the sentinel `{init_text}`")
@@ -990,11 +963,7 @@ impl<'a> Taste<'a> {
         } else {
             format!("{i} + {comp}")
         };
-        let mut diag = Diagnostic::warning(
-            PUSH_LOOP.code,
-            self.pair_span(decl.span, next.span),
-            format!("a loop that only pushes onto `{name}` is a comprehension"),
-        )
+        let mut diag = msgs::lint::PUSH_LOOP.warning(self.pair_span(decl.span, next.span), &[&name])
         .with_help(if reversed.is_some() {
             format!("write `{text}`: it is the sequence reversed, with no `- 1 -` index to get wrong")
         } else {
@@ -1051,11 +1020,7 @@ impl<'a> Taste<'a> {
         if !unwraps.1 {
             return;
         }
-        let diag = Diagnostic::warning(
-            NONE_CHECK_UNWRAP.code,
-            expr.span,
-            format!("`{x} != None` and then `{x}!`: the check is said twice"),
-        )
+        let diag = msgs::lint::NONE_CHECK_UNWRAP.warning(expr.span, &[&x, &x])
         .with_help(format!(
             "bind it once: `if let v = {x} and ..:`, or compare the option itself (`{x} == Some(..)`, `{x} ?? d`)"
         ));
@@ -1075,12 +1040,9 @@ impl<'a> Taste<'a> {
                 && test.name.is_none()
                 && matches!(test.value.kind, ExprKind::Lambda { .. })
             {
-                let mut diag = Diagnostic::warning(
-                    FREE_FOLD.code,
-                    method.span,
-                    "the element a test holds for is `find`; `first` is the first element",
-                )
-                .with_help("write `.find(..)`");
+                let mut diag = msgs::lint::FIRST_WITH_TEST
+                    .warning(method.span, &[])
+                    .with_help("write `.find(..)`");
                 diag.fixes.push(Fix {
                     title: "use `.find`".to_string(),
                     edits: vec![(method.span, std_fn::FIND.to_string())],
@@ -1155,11 +1117,7 @@ impl<'a> Taste<'a> {
             other => other,
         };
         let call = format!("{recv}.{method}({rest})");
-        let mut diag = Diagnostic::warning(
-            FREE_FOLD.code,
-            expr.span,
-            format!("`{name}` of one sequence reads as its method"),
-        )
+        let mut diag = msgs::lint::FREE_FOLD.warning(expr.span, &[&name])
         .with_help(format!("write `{call}`; the method follows the sequence, so a chain like `xs.filter(..).sum()` reads in order"));
         diag.fixes.push(Fix {
             title: format!("use `.{method}`"),
@@ -1191,11 +1149,7 @@ impl<'a> Taste<'a> {
             Some("postorder" | "post_order") => "at.rev",
             _ => return,
         };
-        let mut diag = Diagnostic::warning(
-            TREE_ORDER.code,
-            name.span,
-            format!("`{}` is the preorder array `{to}`", name.text),
-        )
+        let mut diag = msgs::lint::TREE_ORDER.warning(name.span, &[&name.text, &to])
         .with_help(format!("write `.{to}`; the tree already keeps that order, so there is no array to build or keep in step"));
         diag.fixes.push(Fix {
             title: format!("use `.{to}`"),
@@ -1222,12 +1176,9 @@ impl<'a> Taste<'a> {
                     domain,
                     Some(cpl_check::Ty::Domain(_) | cpl_check::Ty::TypeName(_))
                 ) {
-                    let mut diag = Diagnostic::warning(
-                        DOMAIN_SPELLING.code,
-                        method.span,
-                        format!("use `{n}.sort(...)` instead of `{n}.sorted(...)`"),
-                    )
-                    .with_help("domains sort with `.sort(by:)`, matching `xs.sort(by:)`");
+                    let mut diag = msgs::lint::DOMAIN_SORTED
+                        .warning(method.span, &[&n, &n])
+                        .with_help("domains sort with `.sort(by:)`, matching `xs.sort(by:)`");
                     diag.fixes.push(Fix {
                         title: "rename to `sort`".into(),
                         edits: vec![(method.span, std_fn::SORT.into())],
@@ -1244,12 +1195,9 @@ impl<'a> Taste<'a> {
                         start: arg_name.span.start,
                         end: args[0].value.span.start,
                     };
-                    let mut diag = Diagnostic::warning(
-                        DOMAIN_SPELLING.code,
-                        arg_name.span,
-                        "a predicate search is `.find(p)`, without `where:`",
-                    )
-                    .with_help(
+                    let mut diag = msgs::lint::FIND_WHERE
+                        .warning(arg_name.span, &[])
+                        .with_help(
                         "`first` is the first element; `find(p)` is the first one `p` holds for",
                     );
                     diag.fixes.push(Fix {
@@ -1315,11 +1263,7 @@ impl<'a> Taste<'a> {
                 (_, Some(t)) if t.starts_with('?') && !is_type_name(elem) => return,
                 _ => f.to_string(),
             };
-            let diag = Diagnostic::warning(
-                LOOP_REDUCTION.code,
-                self.pair_span(decl.span, next.span),
-                format!("a loop that only folds `{name}` through `{f}` is one `fold`"),
-            )
+            let diag = msgs::lint::LOOP_FOLD.warning(self.pair_span(decl.span, next.span), &[&name, &f])
             .with_help(format!(
                 "write `{seq}.fold_from({i}, {folded})`; one call says what the loop computes, with the start value first"
             ));
@@ -1382,11 +1326,7 @@ impl<'a> Taste<'a> {
         {
             return;
         }
-        let mut diag = Diagnostic::warning(
-            LOOP_REDUCTION.code,
-            self.pair_span(decl.span, next.span),
-            format!("a loop that only accumulates `{name}` is one `{call}`"),
-        )
+        let mut diag = msgs::lint::LOOP_ACCUMULATE.warning(self.pair_span(decl.span, next.span), &[&name, &call])
         .with_help(match &text {
             Some(text) => format!(
                 "write `{text}`; one call says what the loop computes, with no starting value to get wrong"
@@ -1449,12 +1389,9 @@ impl<'a> Taste<'a> {
         if !uses.ok || uses.reads.is_empty() || !uses.names.iter().all(|s| inside(*s)) {
             return;
         }
-        let mut diag = Diagnostic::warning(
-            INDEX_ONLY_LOOP.code,
-            pat.span.to(iter.span),
-            format!("`{index}` is only used as `{list}[{index}]`"),
-        )
-        .with_help(format!(
+        let mut diag = msgs::lint::INDEX_ONLY_LOOP
+            .warning(pat.span.to(iter.span), &[&index, &list, &index])
+            .with_help(format!(
             "iterate the values: `for x in {list}:`; with no index there is nothing to get wrong"
         ));
         if let Some(elem) = list
