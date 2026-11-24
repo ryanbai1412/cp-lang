@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -279,8 +280,58 @@ class LandTest(unittest.TestCase):
         r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), CPL_LAND_TRIES="2")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(runs.read_text(), "commit --only nextest\n" * 2)
-        self.assertIn("(try 2)", r.stdout)
+        self.assertIn("pushed", r.stdout)
         self.assertFalse(pending.exists())
+
+    def lock(self, repo, age=0):
+        """Hold refs/land/lock on the remote as a lane that took it `age` s ago."""
+        empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
+        sha = git(repo, "commit-tree", empty, "-m", f"land-lock other 1 {int(time.time()) - age} infra").strip()
+        git(repo, "push", "-q", "origin", f"{sha}:refs/land/lock")
+        return sha
+
+    def lock_on_remote(self):
+        return git(self.tmp, "ls-remote", str(self.tmp / "remote.git"), "refs/land/lock").strip()
+
+    def test_a_land_takes_the_land_lock_and_drops_it(self):
+        repo = self.clone("lane")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.lock_on_remote(), "")
+
+    def test_a_held_land_lock_makes_land_wait_and_leaves_it_alone(self):
+        repo = self.clone("lane")
+        held = self.lock(repo)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_LOCK_WAIT="2")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("waiting for the land lock (land-lock other", r.stderr)
+        self.assertIn("no land lock after", r.stderr)
+        self.assertTrue(self.lock_on_remote().startswith(held))
+        self.assertNotEqual(git(repo, "rev-parse", "HEAD"), git(repo, "ls-remote", "origin", "main").split()[0] + "\n")
+
+    def test_a_dead_lanes_stale_land_lock_is_taken_over(self):
+        repo = self.clone("lane")
+        self.lock(repo, age=1000)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("taking over a land lock", r.stderr)
+        self.assertEqual(self.lock_on_remote(), "")
+
+    def test_a_refused_land_drops_the_land_lock(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        pending, runs = self._steps_runner(ours)
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        pending.write_text("wasm\n")
+        r = self.land(ours, CI_RUNS=str(runs))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.lock_on_remote(), "")
 
     def test_the_pending_steps_rerun_once_after_lost_races_then_land(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
@@ -295,7 +346,6 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(runs.read_text(), "commit --only nextest\n" * 2)
         self.assertIn("landing on the skipped steps' rerun", r.stderr)
-        self.assertIn("(try 3)", r.stdout)
 
     def test_a_lanes_land_leaves_another_worktrees_pending_steps_alone(self):
         a = self.clone("ours")

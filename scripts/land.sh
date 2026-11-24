@@ -318,10 +318,52 @@ print(" ".join("-p " + n for n in sorted(seen)))
     esac
 fi
 . "$(dirname "$0")/retry.sh"
+# Lanes take turns pushing: whoever holds refs/land/lock on the remote rebases onto
+# main's tip, reruns what main's new commits change (recheck, the content cache)
+# and pushes, so a gated change no longer loses push races to unrelated lands
+# (explain's counter lost 10 in a row). A lock older than $lock_stale s is a dead
+# holder's and is taken over; pushes that skip land.sh still race, hence retry.
+lock_ref=refs/land/lock
+lock_stale=${CPL_LAND_LOCK_STALE:-300}
+lock_wait=${CPL_LAND_LOCK_WAIT:-1200}
+lock_held=""
+take_lock() {
+    local me holder at waited=0
+    me=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $(hostname) $$ $(date +%s) $domain")
+    while :; do
+        if git push -q --no-verify --force-with-lease="$lock_ref:" "$remote" "$me:$lock_ref" 2>/dev/null; then
+            lock_held=$me
+            [ "$waited" = 0 ] || echo "land: took the land lock after ${waited}s" >&2
+            return 0
+        fi
+        holder=$(git ls-remote "$remote" "$lock_ref" | cut -f1)
+        [ -n "$holder" ] || continue
+        git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null || :
+        at=$(git log -1 --format=%s "$holder" 2>/dev/null | cut -d' ' -f4)
+        if [ $(( $(date +%s) - ${at:-0} )) -gt "$lock_stale" ]; then
+            echo "land: taking over a land lock held over ${lock_stale}s ($(git log -1 --format=%s "$holder" 2>/dev/null))" >&2
+            git push -q --no-verify --force-with-lease="$lock_ref:$holder" "$remote" "$me:$lock_ref" 2>/dev/null &&
+                { lock_held=$me; return 0; }
+            continue
+        fi
+        [ "$waited" != 0 ] || echo "land: waiting for the land lock ($(git log -1 --format=%s "$holder"))" >&2
+        [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; return 1; }
+        sleep 2
+        waited=$((waited + 2))
+    done
+}
+drop_lock() {
+    [ -n "$lock_held" ] || return 0
+    git push -q --no-verify --force-with-lease="$lock_ref:$lock_held" "$remote" ":$lock_ref" 2>/dev/null || :
+    lock_held=""
+}
+take_lock || exit 1
+trap drop_lock EXIT
 try=0
 push() {
     try=$((try + 1))
-    if [ "$try" != 1 ]; then
+    git fetch -q "$remote" main
+    if ! git merge-base --is-ancestor FETCH_HEAD HEAD; then
         pull || exit 1
         recheck
         run_pending_steps
@@ -331,6 +373,7 @@ push() {
     git push -q --no-verify "$remote" HEAD:main
 }
 RETRY_TRIES=$tries RETRY_WAIT=0 retry push || { echo "land: gave up after $tries tries" >&2; exit 1; }
+drop_lock
 rm -f "$pending_steps"
 secs=$(( $(date +%s) - t0 ))
 printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
