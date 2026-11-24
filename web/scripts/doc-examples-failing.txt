@@ -1,4 +1,3 @@
 # std example: lines that don't run as programs, so the reference shows them static.
 # Written by web/scripts/gen-ref.mjs's check; it fails when a line is missing or runs again.
 segtree.SegTree.new: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-seq.Mapped.src: `let a = [1, 2]; a.map(x => x * 2).src == a`
