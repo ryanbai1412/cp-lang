@@ -42,8 +42,6 @@ dmopc20c7p1
 dmopc21c4p4
 egoi22p4
 egoi23p2
-etsr23r1p2
-etsr23r3p2
 ioi05p6
 ioi07p2
 ioi09p8

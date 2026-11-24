@@ -33637,94 +33637,6 @@
         "status": "D",
         "time": 0.044057198
     },
-    "5494248": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:37:39+00:00",
-        "language": "CPP17",
-        "memory": 3508.0,
-        "problem": "etsr23r1p2",
-        "result": "AC",
-        "status": "D",
-        "time": 0.896260235
-    },
-    "5494270": {
-        "case_points": 12.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:46:47+00:00",
-        "language": "CPP17",
-        "memory": 3484.0,
-        "problem": "etsr23r1p3",
-        "result": "WA",
-        "status": "D",
-        "time": 0.080475754
-    },
-    "5494284": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:51:37+00:00",
-        "language": "CPP17",
-        "memory": 412740.0,
-        "problem": "etsr23r1p3",
-        "result": "RTE",
-        "status": "D",
-        "time": 21.054488396
-    },
-    "5494285": {
-        "case_points": 72.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:52:02+00:00",
-        "language": "CPP17",
-        "memory": 5724.0,
-        "problem": "etsr23r1p3",
-        "result": "TLE",
-        "status": "D",
-        "time": 8.817757577
-    },
-    "5494288": {
-        "case_points": 72.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:52:22+00:00",
-        "language": "CPP17",
-        "memory": 8016.0,
-        "problem": "etsr23r1p3",
-        "result": "TLE",
-        "status": "D",
-        "time": 14.830936124
-    },
-    "5494289": {
-        "case_points": 72.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:52:43+00:00",
-        "language": "CPP17",
-        "memory": 24716.0,
-        "problem": "etsr23r1p3",
-        "result": "TLE",
-        "status": "D",
-        "time": 18.899853088
-    },
-    "5494302": {
-        "case_points": 88.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:58:11+00:00",
-        "language": "CPP17",
-        "memory": 7580.0,
-        "problem": "etsr23r1p3",
-        "result": "WA",
-        "status": "D",
-        "time": 0.828753468
-    },
-    "5494303": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:58:22+00:00",
-        "language": "CPP17",
-        "memory": 11648.0,
-        "problem": "etsr23r1p3",
-        "result": "AC",
-        "status": "D",
-        "time": 1.223760034
-    },
     "5494375": {
         "case_points": 100.0,
         "case_total": 100.0,
@@ -33779,17 +33691,6 @@
         "result": "AC",
         "status": "D",
         "time": 6.597845624
-    },
-    "5494453": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T03:11:29+00:00",
-        "language": "CPP17",
-        "memory": 3384.0,
-        "problem": "etsr23r2p3",
-        "result": "AC",
-        "status": "D",
-        "time": 0.083392705
     },
     "5494510": {
         "case_points": 100.0,
@@ -34220,17 +34121,6 @@
         "status": "D",
         "time": 44.177059481
     },
-    "5521224": {
-        "case_points": 0.0,
-        "case_total": 0.0,
-        "date": "2023-05-03T02:01:52+00:00",
-        "language": "CPP17",
-        "memory": null,
-        "problem": "etsr23r3p1",
-        "result": "CE",
-        "status": "CE",
-        "time": null
-    },
     "5521291": {
         "case_points": 36.0,
         "case_total": 100.0,
@@ -34263,149 +34153,6 @@
         "result": "AC",
         "status": "D",
         "time": 28.762865553
-    },
-    "5521304": {
-        "case_points": 5.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T02:52:09+00:00",
-        "language": "CPP17",
-        "memory": 3676.0,
-        "problem": "etsr23r3p2",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.021374377
-    },
-    "5521312": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:05:32+00:00",
-        "language": "CPP17",
-        "memory": 6708.0,
-        "problem": "etsr23r3p1",
-        "result": "WA",
-        "status": "D",
-        "time": 0.117702979
-    },
-    "5521315": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:06:11+00:00",
-        "language": "CPP17",
-        "memory": 6892.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.279654333
-    },
-    "5521317": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:07:07+00:00",
-        "language": "CPP17",
-        "memory": 6928.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.21552543
-    },
-    "5521324": {
-        "case_points": 5.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:11:46+00:00",
-        "language": "CPP17",
-        "memory": 34768.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 1.248897134
-    },
-    "5521363": {
-        "case_points": 37.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:26:22+00:00",
-        "language": "CPP17",
-        "memory": 172864.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 11.836085871
-    },
-    "5521366": {
-        "case_points": 37.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:27:14+00:00",
-        "language": "CPP17",
-        "memory": 574600.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 6.028356677
-    },
-    "5521370": {
-        "case_points": 37.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:28:11+00:00",
-        "language": "CPP17",
-        "memory": 574544.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 10.809965052
-    },
-    "5521382": {
-        "case_points": 37.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:33:23+00:00",
-        "language": "CPP17",
-        "memory": 574360.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 10.763193131
-    },
-    "5521410": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T04:06:39+00:00",
-        "language": "CPP17",
-        "memory": 3444.0,
-        "problem": "etsr23r4p1",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003589024
-    },
-    "5521412": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T04:06:56+00:00",
-        "language": "CPP17",
-        "memory": 3376.0,
-        "problem": "etsr23r4p1",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003766952
-    },
-    "5521416": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T04:08:00+00:00",
-        "language": "CPP17",
-        "memory": 3472.0,
-        "problem": "etsr23r4p1",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003540934
-    },
-    "5521420": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T04:27:18+00:00",
-        "language": "CPP17",
-        "memory": 3484.0,
-        "problem": "etsr23r4p1",
-        "result": "AC",
-        "status": "D",
-        "time": 5.776223223
     },
     "5521437": {
         "case_points": 10.0,
@@ -34505,17 +34252,6 @@
         "result": "TLE",
         "status": "D",
         "time": 4.065594376
-    },
-    "5527625": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-05-06T18:00:00+00:00",
-        "language": "CPP17",
-        "memory": 45412.0,
-        "problem": "etsr23r3p1",
-        "result": "AC",
-        "status": "D",
-        "time": 23.242310186
     },
     "5527725": {
         "case_points": 14.0,
@@ -34637,17 +34373,6 @@
         "result": "AC",
         "status": "D",
         "time": 18.379387051
-    },
-    "5529780": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-05-08T03:27:55+00:00",
-        "language": "CPP17",
-        "memory": 3552.0,
-        "problem": "etsr23r3p2",
-        "result": "AC",
-        "status": "D",
-        "time": 0.193837979
     },
     "5532652": {
         "case_points": 0.0,
