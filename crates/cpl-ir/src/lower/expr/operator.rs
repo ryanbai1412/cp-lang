@@ -381,10 +381,10 @@ impl<'a> Lowerer<'a> {
             }
             (a, b)
                 if op == Add
-                    && seq_concat_elem(a).is_some()
-                    && seq_concat_elem(a) == seq_concat_elem(b) =>
+                    && let Some(elem) = seq_concat_elem(a)
+                    && Some(elem) == seq_concat_elem(b) =>
             {
-                let elem = seq_concat_elem(a).unwrap().clone();
+                let elem = elem.clone();
                 let list_ty = Ty::list(elem);
                 if !matches!(l.ty, Ty::List(_)) || !matches!(r.ty, Ty::List(_)) {
                     return self.mk_builtin(Builtin::ListConcat, [l, r], list_ty, span);
@@ -456,8 +456,7 @@ impl<'a> Lowerer<'a> {
         let ty = Ty::opt(num.clone());
         self.do_expr(Some(&ty), span, |lw, out| {
             let mut present: Option<Expr> = None;
-            let mut sides = Vec::with_capacity(2);
-            for side in [l, r] {
+            let [l, r] = [l, r].map(|side| {
                 let side_ty = side.ty.clone();
                 let slot = lw.temp(side_ty.clone());
                 out.push_let(slot, side);
@@ -472,15 +471,17 @@ impl<'a> Lowerer<'a> {
                 } else {
                     held
                 };
-                sides.push(lw.coerce(value, &num, span));
-            }
-            let r = sides.pop().expect("two sides");
-            let l = sides.pop().expect("two sides");
+                lw.coerce(value, &num, span)
+            });
             let sum = lw.mk_binary(op, l, r, num.clone(), span);
             let some = lw.coerce(sum, &ty, span);
-            let none = lw.mk(ExprKind::None, ty.clone(), span);
-            let cond = present.expect("one side is optional");
-            let value = lw.mk_if(cond, some, none, ty.clone(), span);
+            let value = match present {
+                Some(cond) => {
+                    let none = lw.mk(ExprKind::None, ty.clone(), span);
+                    lw.mk_if(cond, some, none, ty.clone(), span)
+                }
+                None => some,
+            };
             out.push_give(value);
         })
     }
