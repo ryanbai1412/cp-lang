@@ -49,12 +49,19 @@ impl<'p> Emitter<'p> {
                 }
                 if cap.is_global {
                     let gname = crate::names::global_ident(self.program, cap.outer);
-                    if cap.by_ref
-                        || (borrow_immutable
-                            && non_scalar
-                            && self.const_globals.contains(&cap.outer))
-                    {
-                        let constant = if self.const_globals.contains(&cap.outer) {
+                    // A closure that lives only through its call reads in
+                    // place a global it does not write itself.
+                    let scoped = self.call_scoped.contains(&cid)
+                        && self
+                            .uses
+                            .table
+                            .closure_access(self.program, cid)
+                            .is_some_and(|a| !a.writes.contains(&(true, cap.outer)));
+                    let lent = borrow_immutable
+                        && non_scalar
+                        && (self.const_globals.contains(&cap.outer) || scoped);
+                    if cap.by_ref || lent {
+                        let constant = if lent || self.const_globals.contains(&cap.outer) {
                             "const "
                         } else {
                             ""

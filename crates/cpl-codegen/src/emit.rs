@@ -10,6 +10,15 @@ use std::collections::{BTreeMap, BTreeSet};
 mod layout;
 pub mod lowered;
 mod reach;
+
+/// The closures no code that runs makes (see [`reach::Reach`]).
+pub(crate) fn unreached_closures(program: &Program) -> std::collections::BTreeSet<usize> {
+    let same: Vec<usize> = (0..program.closures.len()).collect();
+    let reached = reach::Reach::of(program, &same).closures;
+    (0..program.closures.len())
+        .filter(|c| !reached.contains(c))
+        .collect()
+}
 mod text;
 
 use text::{header, inline_hint, names, Proto};
@@ -88,6 +97,9 @@ pub(crate) struct Emitter<'p> {
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
+    /// Closures that live only through the call they are written in, as a
+    /// sort key does: only their own writes can change what they read.
+    pub call_scoped: BTreeSet<usize>,
     /// Why each capture of a borrowing closure that may not borrow owns
     /// its copy, by (closure, captured slot).
     pub capture_owns: std::collections::BTreeMap<(usize, usize), &'static str>,
@@ -242,6 +254,7 @@ impl<'p> Emitter<'p> {
             direct: BTreeSet::new(),
             written: Default::default(),
             borrow_closures: BTreeSet::new(),
+            call_scoped: BTreeSet::new(),
             capture_owns: Default::default(),
             copies: Vec::new(),
             niche_types: std::cell::Cell::new(0),

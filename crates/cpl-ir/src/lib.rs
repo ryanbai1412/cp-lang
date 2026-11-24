@@ -1425,6 +1425,9 @@ pub struct Program {
     /// code generator.
     pub unordered_maps: Vec<Ty>,
     pub unordered_sets: Vec<Ty>,
+    /// Closures no code that runs can make, so they decide no fn value's
+    /// representation. Filled in by the code generator.
+    pub unreached_closures: std::collections::BTreeSet<ClosureId>,
     pub structs: Vec<StructDef>,
     /// Each struct's name as the file writes it, `MinHeap<(Int, V)>`.
     pub struct_shown: Vec<String>,

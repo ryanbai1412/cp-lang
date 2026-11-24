@@ -73,7 +73,7 @@ const NEVER: [(&str, Count); 3] = [
 const DIRECTIVES: [(&str, Count); 1] = [("copies", deep_copies)];
 
 /// The most `std::function`s the corpus may build to, summed over programs.
-const TOTALS: [(&str, Count, usize); 1] = [("std_functions", std_functions, 79)];
+const TOTALS: [(&str, Count, usize); 1] = [("std_functions", std_functions, 70)];
 
 /// The value of the header line `// <key>: N` (0 without one), or why the
 /// header is malformed. The header is the file's leading `//` lines.

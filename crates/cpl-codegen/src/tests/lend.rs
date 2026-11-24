@@ -178,7 +178,7 @@ fn a_map_entry_read_through_a_closure_and_a_domain_block_is_never_copied() {
         "m[0] = [1, 5, 9]\n",
         "var s = 0\n",
         "for hi in 0..4:\n",
-        "    let l = m.get(0) ?? []\n",
+        "    let l: List<Int> = m.get(0) ?? []\n",
         "    s += l.bsearch(x => x >= hi)\n",
         "print(s)\n",
     ));
@@ -658,4 +658,75 @@ fn a_closure_handed_to_a_fn_that_recurses_with_it_borrows_its_captures() {
     ));
     assert!(out.contains("&b_2 = b"), "{out}");
     assert!(!out.contains("[b_2 = b]"), "{out}");
+}
+
+#[test]
+fn a_method_value_sort_key_lends_its_receiver() {
+    let out = cpp(concat!(
+        "struct Ranks(r: List<Int>):\n",
+        "    fn pos(self, i: Int) -> Int = r[i]\n",
+        "let t = Ranks([read<Int>(), 1, 2])\n",
+        "let xs = [0, 1, 2]\n",
+        "print(xs.sorted(by: t.pos))\n",
+        "print(t.r.len)\n",
+    ));
+    assert!(
+        !out.contains("self = t]") && !out.contains("self = t4]"),
+        "a key only called inside the sort must not copy its receiver:\n{out}"
+    );
+}
+
+#[test]
+fn a_local_fn_another_local_fn_only_calls_lends_its_captures() {
+    let out = cpp(concat!(
+        "fn solve(n: Int):\n",
+        "    let t = [read<Int>() for _ in 0..n]\n",
+        "    fn get(i: Int) -> Int = t[i]\n",
+        "    fn walk(i: Int):\n",
+        "        if i < n:\n",
+        "            print(get(i))\n",
+        "            walk(i + 1)\n",
+        "    walk(0)\n",
+        "solve(read<Int>())\n",
+    ));
+    assert!(
+        !out.contains("[t_2 = t") && !out.contains(", t_2 = t"),
+        "`get` is only called, by `walk` which is only called, so it borrows `t`:\n{out}"
+    );
+}
+
+#[test]
+fn a_local_fn_inside_a_local_fn_borrows_what_it_only_reads() {
+    let out = cpp(concat!(
+        "fn f(k: Int) -> Int:\n",
+        "    fn outer(n: Int) -> Int:\n",
+        "        let ys = [i * k for i in 0..n]\n",
+        "        fn at(i: Int) -> Int = ys[i]\n",
+        "        at(0) + at(n - 1)\n",
+        "    outer(3)\n",
+        "print(f(read()))\n",
+    ));
+    assert!(
+        !out.contains("[ys_2 = ys") && !out.contains(" ys_2 = ys"),
+        "a nested local fn that is only called must not copy its capture:\n{out}"
+    );
+}
+
+#[test]
+fn a_match_binding_of_a_read_string_lends_the_scrutinee() {
+    let out = cpp(concat!(
+        "let q: 1..=10 = read()\n",
+        "var n = 0\n",
+        "for _ in 0..q:\n",
+        "    match read<Str>():\n",
+        "        \"ADD\" => n += 1\n",
+        "        kind =>\n",
+        "            let l: 1..=10 = read()\n",
+        "            if kind == \"SUB\": n -= l else: n += l\n",
+        "print(n)\n",
+    ));
+    assert!(
+        !out.contains("std::string kind ="),
+        "a name bound to a scrutinee it only reads must not copy it:\n{out}"
+    );
 }

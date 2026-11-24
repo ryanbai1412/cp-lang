@@ -63,7 +63,7 @@ fn erased(program: &Program, ty: &Ty, reason: &str) -> ClosureMode {
         t => t,
     };
     match fn_ty {
-        Ty::Fn(args, _) if crate::names::fn_pointer(program, args.len()) => ClosureMode::FnPointer,
+        Ty::Fn(args, ret) if crate::names::fn_pointer(program, args, ret) => ClosureMode::FnPointer,
         _ => ClosureMode::DynamicStdFunction {
             reason: reason.to_string(),
         },

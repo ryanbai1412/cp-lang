@@ -258,23 +258,22 @@ impl<'p> Emitter<'p> {
         slot: usize,
         cid: usize,
     ) -> Option<Vec<(usize, &'static str)>> {
-        if self.closure_id.is_some() {
-            return None;
-        }
+        use crate::uses::Home;
         let program = self.program;
-        let blocks: Vec<&Block> = match self.fn_id {
-            Some(id) => vec![&program.fns[id].body],
-            None => vec![&program.setup, &program.main],
+        let (blocks, home): (Vec<&Block>, _) = match (self.closure_id, self.fn_id) {
+            (Some(c), _) => (vec![&program.closures[c].body], Home::Closure(c)),
+            (None, Some(id)) => (vec![&program.fns[id].body], Home::Fn(id)),
+            (None, None) => (vec![&program.setup, &program.main], Home::Top),
         };
         if self.facts.stores(self.facts_local(slot)) > 1
             || !blocks.iter().all(|b| only_called(program, b, slot, 3))
         {
             return None;
         }
-        let home = self
+        let sunk = self
             .fn_id
-            .map_or(crate::uses::Home::Top, crate::uses::Home::Fn);
-        let sunk = self.fn_id.map(|id| &self.sunk[id]);
+            .filter(|_| self.closure_id.is_none())
+            .map(|id| &self.sunk[id]);
         let def = &program.closures[cid];
         let owners = def
             .captures
@@ -836,10 +835,16 @@ fn only_called_in(
 ) -> bool {
     let (mut uses, mut calls, mut escapes) = (0usize, 0usize, false);
     let mut passed_on = std::collections::BTreeSet::new();
-    walk::deep_stmts(body, &mut |stmt| {
-        if let Stmt::Assign(place, _, _) = stmt {
-            escapes |= walk::root(place) == (false, slot);
+    // A closure bound by `let` is kept only as long as that name is.
+    let mut bound = std::collections::BTreeMap::new();
+    walk::deep_stmts(body, &mut |stmt| match stmt {
+        Stmt::Assign(place, _, _) => escapes |= walk::root(place) == (false, slot),
+        Stmt::Let(s, Some(init)) => {
+            if let ExprKind::Closure(cid) = init.kind {
+                bound.insert(cid, *s);
+            }
         }
+        _ => {}
     });
     let lent = |args: &[Arg]| {
         args.iter()
@@ -864,6 +869,9 @@ fn only_called_in(
                     _ => {}
                 }
             }
+        }
+        ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => {
+            calls += usize::from(matches!(func.kind, ExprKind::Local(s) if s == slot));
         }
         ExprKind::Closure(cid) => {
             let def = &program.closures[*cid];

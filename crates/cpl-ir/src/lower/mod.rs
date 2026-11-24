@@ -462,16 +462,15 @@ impl Lowerer<'_> {
             })
             .collect();
         let lines = &lw.mods[0].lines;
-        let user_line_starts = (0..lines.line_count())
-            .map(|l| lines.line_start(l))
-            .collect();
+        let user_line_starts = (0..lines.line_count()).map(|l| lines.line_start(l));
         let program = Program {
-            user_line_starts,
+            user_line_starts: user_line_starts.collect(),
             warnings: lw.warnings,
             struct_shown,
             unordered_maps: Vec::new(),
             wide_domains: Vec::new(),
             unordered_sets: Vec::new(),
+            unreached_closures: Default::default(),
             structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
             enums: lw.enums,
             domains: lw.domains,

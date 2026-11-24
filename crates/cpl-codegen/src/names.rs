@@ -335,7 +335,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         ),
         Ty::Mut(of) => format!("{}&", cty(program, niches, of)),
         Ty::Fn(args, ret) => {
-            let pointer = fn_pointer(program, args.len());
+            let pointer = fn_pointer(program, args, ret);
             let ps: Vec<String> = args
                 .iter()
                 .map(|t| match t {
@@ -444,14 +444,22 @@ fn pos_path(ty: &Ty) -> Option<Vec<usize>> {
     })
 }
 
-/// Whether a fn value of this arity lowers to a plain function pointer: every
-/// closure of that arity in the whole program captures nothing, so each value
-/// that can reach the slot is a captureless lambda.
-pub(crate) fn fn_pointer(program: &Program, arity: usize) -> bool {
-    program
-        .closures
-        .iter()
-        .all(|c| c.params.len() != arity || c.captures.is_empty())
+/// Whether a fn value of this signature lowers to a plain function pointer:
+/// every closure of that signature the program can make captures nothing, so
+/// each value that can reach the slot is a captureless lambda.
+pub(crate) fn fn_pointer(program: &Program, args: &[Ty], ret: &Ty) -> bool {
+    let same = |param: &Ty, arg: &Ty| param == arg || matches!(arg, Ty::Mut(of) if **of == *param);
+    program.closures.iter().enumerate().all(|(cid, c)| {
+        c.captures.is_empty()
+            || program.unreached_closures.contains(&cid)
+            || c.ret != *ret
+            || c.params.len() != args.len()
+            || !c
+                .params
+                .iter()
+                .zip(args)
+                .all(|(&p, a)| same(&c.locals[p].ty, a))
+    })
 }
 
 /// Whether reading a value may fill a cache: a struct with a `@cache`

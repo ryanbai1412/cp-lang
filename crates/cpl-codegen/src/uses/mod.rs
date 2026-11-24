@@ -336,7 +336,10 @@ impl crate::emit::Emitter<'_> {
                 | ExprKind::Index(..)
                 | ExprKind::Unwrap(..) => true,
                 // The optional an `if let` or `while let` tests.
-                ExprKind::Local(_) | ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
+                ExprKind::Local(src) => {
+                    self.locals()[slot].name.is_empty() || self.locals()[src].name.is_empty()
+                }
+                ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
                 _ => false,
             }
             && self.source_change(slot, init, tail).is_none()

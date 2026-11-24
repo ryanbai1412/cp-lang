@@ -2864,18 +2864,14 @@ impl<'a> Lowerer<'a> {
             .collect();
         let ret = self.ret_of(fn_id, span);
         let fn_ty = Ty::Fn(params.clone(), Box::new(ret.clone()));
-        self.do_expr(Some(&fn_ty), span, |lw, out| {
-            let outer_recv = lw.temp(recv_ty.clone());
-            out.push(Stmt::Let(outer_recv, Some(recv)));
+        let build = |lw: &mut Self, outer_recv: usize, is_global: bool| -> Expr {
             let mut locals = Vec::new();
-            let mut p_slots = Vec::new();
             let mut call_args = Vec::new();
             for (i, ty) in params.iter().enumerate() {
                 locals.push(Local {
                     name: format!("a{i}"),
                     ty: ty.clone(),
                 });
-                p_slots.push(i);
             }
             let inner_recv = locals.len();
             locals.push(Local {
@@ -2906,23 +2902,28 @@ impl<'a> Lowerer<'a> {
             };
             let cid = lw.closures.len();
             lw.closures.push(ClosureDef {
-                params: p_slots,
+                params: (0..params.len()).collect(),
                 muts: Vec::new(),
                 captures: vec![Capture {
                     outer: outer_recv,
                     inner: inner_recv,
-                    is_global: false,
+                    is_global,
                     by_ref: false,
                 }],
                 locals,
                 ret: ret.clone(),
                 body: Block { stmts },
             });
-            out.push(Stmt::Give(lw.mk(
-                ExprKind::Closure(cid),
-                fn_ty.clone(),
-                span,
-            )));
+            lw.mk(ExprKind::Closure(cid), fn_ty.clone(), span)
+        };
+        // A variable receiver is captured itself, so a key can lend it.
+        if let ExprKind::Local(slot) | ExprKind::Global(slot) = recv.kind {
+            return build(self, slot, matches!(recv.kind, ExprKind::Global(_)));
+        }
+        self.do_expr(Some(&fn_ty), span, |lw, out| {
+            let temp = lw.temp(recv_ty.clone());
+            out.push(Stmt::Let(temp, Some(recv)));
+            out.push(Stmt::Give(build(lw, temp, false)));
         })
     }
 

@@ -313,3 +313,75 @@ fn a_local_read_only_as_a_direct_callee_is_not_declared() {
         "the `act!` check stays:\n{out}"
     );
 }
+
+#[test]
+fn a_capturing_closure_of_another_signature_leaves_a_monoid_op_a_fn_pointer() {
+    let out = cpp("use std.algebra.{Monoid}
+struct Qs(m: Monoid<Int>)
+fn tag(s: Str):
+    let f = (t: Str, n: Int) => s + t + \"{n}\"
+    print(f(\"a\", 1))
+let q = Qs(Monoid(0, (a, b) => min(a, b)))
+let f = q.m.op
+tag(read<Str>())
+print(f(3, 4))
+");
+    assert!(
+        out.contains("std::add_pointer_t<ll(ll, ll)>"),
+        "only closures of `op`'s own signature decide its representation:\n{out}"
+    );
+}
+
+#[test]
+fn a_capturing_closure_no_running_code_makes_leaves_a_monoid_op_a_fn_pointer() {
+    let out = cpp("use std.algebra.{Monoid}
+struct Qs(m: Monoid<Int>)
+fn unused(k: Int) -> Int:
+    let g = (a: Int, b: Int) => a + b + k
+    g(1, 2)
+let q = Qs(Monoid(0, (a, b) => min(a, b)))
+let f = q.m.op
+print(f(3, read<Int>()))
+");
+    assert!(
+        out.contains("std::add_pointer_t<ll(ll, ll)>") && !out.contains("std::function<"),
+        "a closure in a fn nothing calls decides no representation:\n{out}"
+    );
+}
+
+#[test]
+fn an_optional_fn_field_only_none_fills_is_no_std_function() {
+    let out = cpp("domain D = 0..4
+let init = [D] _ => 0
+var st = SegTree<D, Int, Int>(min, act: add, a: init)
+fn first_le(mut st: SegTree<D, Int, Int>, t: Int) -> Int = (0..4).first_true(m => st.get(D(m)) <= t) ?? 4
+st.apply(0..2, 1)
+print(first_le(mut st, 1))
+");
+    assert!(
+        !out.contains("std::function"),
+        "`source` is None in every tree the program builds:\n{out}"
+    );
+}
+
+#[test]
+fn an_optional_fn_field_of_tuple_t_only_none_fills_is_no_std_function() {
+    let out = cpp("domain D = 0..4
+type P = (a: Int, b: Int)
+let onto = Action<P, Int>(
+    id: 0,
+    compose: (newer, older) => newer + older,
+    apply: (f, p, _) => (a: p.a + f, b: p.b),
+    over: Monoid((a: 0, b: 0), (x, _) => x),
+)
+let init = [D] _ => (a: 0, b: 0)
+var st = SegTree<D, P, Int>(act: onto, a: init)
+fn first_le(mut st: SegTree<D, P, Int>, t: Int) -> Int = (0..4).first_true(m => st.get(D(m)).a <= t) ?? 4
+st.apply(0..2, 1)
+print(first_le(mut st, 1))
+");
+    assert!(
+        !out.contains("std::function"),
+        "`source` holds tuples but is None in every tree the program builds:\n{out}"
+    );
+}

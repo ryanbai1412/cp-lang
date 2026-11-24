@@ -76,7 +76,7 @@ fn a_closure_has_the_effects_of_its_body() {
 }
 
 #[test]
-fn a_block_touches_what_its_calls_touch_and_an_unseen_fn_value_is_opaque() {
+fn a_block_touches_what_its_calls_touch_and_a_fn_value_what_its_closures_touch() {
     let (program, table) = table(SOURCE, true);
     let body = |name: &str| {
         let f = program.fns.iter().position(|f| f.name == name).expect(name);
@@ -86,9 +86,35 @@ fn a_block_touches_what_its_calls_touch_and_an_unseen_fn_value_is_opaque() {
     assert!(twice.writes.iter().any(|&(global, _)| global), "{twice:?}");
     assert!(!twice.io && !twice.opaque, "{twice:?}");
     assert!(body("show").io);
+    // The only closure of type `Int -> Int` reads `total`.
     let apply = body("apply");
-    assert!(apply.opaque && apply.conflicts(&twice), "{apply:?}");
+    assert!(
+        !apply.opaque && apply.reads.iter().any(|&(global, _)| global),
+        "{apply:?}"
+    );
+    assert!(apply.conflicts(&twice), "{apply:?}");
     assert!(!body("double").conflicts(&twice));
+}
+
+#[test]
+fn a_fn_value_whose_closure_writes_a_captured_variable_is_opaque() {
+    let source = concat!(
+        "fn apply(f: Int -> Int, x: Int) -> Int = f(x)\n",
+        "var hits = 0\n",
+        "fn count(n: Int) -> Int:\n",
+        "    var seen = 0\n",
+        "    let r = apply(y => do: seen += 1; y, n)\n",
+        "    r + seen\n",
+        "print(count(read()))\n",
+    );
+    let (program, table) = table(source, true);
+    let f = program
+        .fns
+        .iter()
+        .position(|f| f.name == "apply")
+        .expect("apply");
+    let apply = table.block_access(&program, Some(f), &|_, _| None, &program.fns[f].body);
+    assert!(apply.opaque, "{apply:?}");
 }
 
 #[test]

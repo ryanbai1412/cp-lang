@@ -251,7 +251,23 @@ impl<'p> Emitter<'p> {
                 }
             }
             SortBy::Fn { func, is_order } => {
+                // The sort only calls its key, so a closure written there lends
+                // what it captures (see `crate::lend::only_called`).
+                // (E0602 keeps the list being sorted out of the key.)
+                let lent = match func.kind {
+                    ExprKind::Closure(cid) => {
+                        self.call_scoped.insert(cid);
+                        self.borrow_closures.insert(cid).then_some(cid)
+                    }
+                    _ => None,
+                };
                 let f_text = self.expr(func).text;
+                if let ExprKind::Closure(cid) = func.kind {
+                    self.call_scoped.remove(&cid);
+                }
+                if let Some(cid) = lent {
+                    self.borrow_closures.remove(&cid);
+                }
                 let kf = self.temp();
                 self.line(out, &format!("auto {kf} = {f_text};"));
                 let desc = desc.clone().unwrap_or_else(|| "false".to_string());
