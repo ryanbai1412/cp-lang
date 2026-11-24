@@ -534,6 +534,11 @@ impl<'p> Devirt<'p> {
     /// Whether `let name = <join>` (see [`Devirt::join_leaves`]) binds
     /// `auto`: nothing stores to `name` again and no branch names it.
     pub fn let_auto_join(&self, home: Option<ClosureId>, slot: usize, init: &Expr, n: u32) -> bool {
+        // A field of a tuple or struct is a value of whatever type that
+        // field has, its own closure type or an erased one.
+        if matches!(init.kind, ExprKind::Field(..)) {
+            return self.bound_once(home, slot, n);
+        }
         self.bound_once(home, slot, n)
             && self.join_leaves(init).is_some_and(|leaves| {
                 leaves.iter().all(|leaf| match leaf.kind {

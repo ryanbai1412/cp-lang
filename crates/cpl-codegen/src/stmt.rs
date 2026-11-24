@@ -549,7 +549,7 @@ impl<'p> Emitter<'p> {
                 && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
             {
                 let item = self.flatten(&items[0], out);
-                let text = self.expr(item).text;
+                let text = self.yielded(item, out);
                 match how {
                     Mutation::Extend => {
                         let x = self.temp();
@@ -1389,5 +1389,33 @@ pub(crate) fn identity_order(program: &cpl_ir::Program, ty: &Ty, depth: usize) -
             .flat_map(|v| &v.1)
             .collect()),
         _ => false,
+    }
+}
+
+impl Emitter<'_> {
+    /// A pushed item; a tuple of closure literals keeps each closure's own
+    /// type, each built first (side-effect free) so the rest still run in order.
+    fn yielded(&mut self, item: &Expr, out: &mut String) -> String {
+        let (ExprKind::Tuple(parts), Ty::Tuple(tys)) = (&item.kind, &item.ty) else {
+            return self.expr(item).text;
+        };
+        if !parts.iter().any(|p| matches!(p.kind, ExprKind::Closure(_))) {
+            return self.expr(item).text;
+        }
+        let mut cpp = Vec::new();
+        let mut vals = Vec::new();
+        for (part, ty) in parts.iter().zip(tys) {
+            if matches!(part.kind, ExprKind::Closure(_)) {
+                let tmp = self.temp();
+                let text = self.expr(part).text;
+                self.line(out, &format!("auto {tmp} = {text};"));
+                cpp.push(format!("decltype({tmp})"));
+                vals.push(format!("std::move({tmp})"));
+            } else {
+                cpp.push(self.ty(ty));
+                vals.push(self.expr(part).text);
+            }
+        }
+        format!("std::tuple<{}>{{{}}}", cpp.join(", "), vals.join(", "))
     }
 }

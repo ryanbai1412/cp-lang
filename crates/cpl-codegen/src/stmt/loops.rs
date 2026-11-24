@@ -638,14 +638,21 @@ impl<'p> Emitter<'p> {
                     return;
                 }
                 if !rev && matches!(seq.kind, ExprKind::Call(..)) {
-                    let (decl, pushed_first): (String, &[String]) =
-                        if matches!(ty, Ty::Struct(_)) && !hoisted {
-                            (format!("auto&& {name}"), &[])
-                        } else if ty.is_scalar() || var != name {
-                            (format!("{cpp} {var}"), &first)
-                        } else {
-                            (format!("const {cpp}& {var}"), &first)
-                        };
+                    let (decl, pushed_first): (String, &[String]) = if matches!(ty, Ty::Struct(_))
+                        && !hoisted
+                    {
+                        (format!("auto&& {name}"), &[])
+                    } else if !hoisted
+                        && var == name
+                        && matches!(&ty, Ty::Tuple(ts) if ts.iter().any(|t| matches!(t, Ty::Fn(..))))
+                    {
+                        // A yielded tuple keeps each closure's own type.
+                        (format!("auto&& {var}"), &first)
+                    } else if ty.is_scalar() || var != name {
+                        (format!("{cpp} {var}"), &first)
+                    } else {
+                        (format!("const {cpp}& {var}"), &first)
+                    };
                     let mut read = !pushed_first.is_empty();
                     crate::walk::deep_exprs(body, &mut |e| {
                         read |= matches!(e.kind, ExprKind::Local(s) if s == slot)

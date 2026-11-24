@@ -37,6 +37,7 @@ pub(crate) fn dropped_fields(program: &Program, cpp: &str) -> Vec<String> {
 pub fn explain_closures(
     program: &Program,
     written: &crate::emit::lowered::Written,
+    cpp: &str,
 ) -> Vec<ClosureLowering> {
     let mut devirt = Devirt::collect(program);
     devirt.built_only_in(&written.fns, &written.closures);
@@ -248,9 +249,16 @@ pub fn explain_closures(
         .iter()
         .for_each(|g| nested_fns(&g.ty, true, &mut nested));
     for ty in nested {
+        let mode = erased(program, &ty, "fn inside a tuple, record or container");
+        // Read off the C++: a tuple of closures keeps their own types, so an
+        // erased fn nested in a type is one the C++ spells.
+        if matches!(mode, ClosureMode::DynamicStdFunction { .. }) && !cpp.contains("std::function<")
+        {
+            continue;
+        }
         out.push(ClosureLowering {
             site: format!("fn {ty:?} inside a tuple, record or container"),
-            mode: erased(program, &ty, "fn inside a tuple, record or container"),
+            mode,
         });
     }
     out

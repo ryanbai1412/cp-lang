@@ -1,7 +1,6 @@
 // expect: ok, output "skipped 1"
 // A closure a generator yields can write the generator's own locals; the generator sees the write
 // when it resumes (what `backtrack`'s `Step.prune()` needs).
-// std_functions: 3
 fn gen() -> yields (Int, () -> ()):
     var skip = false
     for i in 0..3:

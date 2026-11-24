@@ -55,9 +55,9 @@ impl Emitter<'_> {
     }
 
     /// The closures the written file calls by name, and what it defines.
-    pub fn called_and_written(mut self) -> (BTreeSet<usize>, Written) {
-        self.write("", None);
-        (std::mem::take(&mut self.direct), self.take_written())
+    pub fn called_and_written(mut self) -> (String, BTreeSet<usize>, Written) {
+        let cpp = self.write("", None);
+        (cpp, std::mem::take(&mut self.direct), self.take_written())
     }
 
     fn take_written(&mut self) -> Written {

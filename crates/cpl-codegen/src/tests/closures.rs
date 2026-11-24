@@ -915,3 +915,30 @@ fn a_local_fn_only_called_in_its_home_reads_its_captures_in_place() {
         "{explained:?}"
     );
 }
+
+#[test]
+fn a_yielded_tuple_keeps_its_closures_own_type() {
+    let src = concat!(
+        "fn gen() -> yields (Int, () -> ()):\n",
+        "    var skip = false\n",
+        "    for i in 0..3:\n",
+        "        skip = false\n",
+        "        yield (i, () => skip = true)\n",
+        "        if skip: print(\"skipped\", i)\n",
+        "for (i, cut) in gen():\n",
+        "    if i == 1: cut()\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("auto cut = std::get<1>("), "{out}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        !explained
+            .iter()
+            .any(|e| matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
+        "{explained:?}"
+    );
+}

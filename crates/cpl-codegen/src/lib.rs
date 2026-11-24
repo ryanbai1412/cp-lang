@@ -253,8 +253,8 @@ fn judge_target() -> Target {
 pub fn explain_closures(program: &cpl_ir::Program) -> Vec<ClosureLowering> {
     let target = judge_target();
     let program = prepared(program, &target);
-    let (called, written) = emit::Emitter::new(&program, &target).called_and_written();
-    let mut lowerings = devirt::explain_closures(&program, &written);
+    let (cpp, called, written) = emit::Emitter::new(&program, &target).called_and_written();
+    let mut lowerings = devirt::explain_closures(&program, &written, &cpp);
     for lowering in &mut lowerings {
         if let ClosureMode::StaticDirect { closure } = lowering.mode {
             if !called.contains(&closure) {
@@ -281,7 +281,7 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
     let target = judge_target();
     let prepared = prepared(program, &target);
     let (cpp, copies, called, written) = emit::Emitter::new(&prepared, &target).lowered();
-    let mut closures = devirt::explain_closures(&prepared, &written);
+    let mut closures = devirt::explain_closures(&prepared, &written, &cpp);
     for lowering in &mut closures {
         if let ClosureMode::StaticDirect { closure } = lowering.mode {
             if !called.contains(&closure) {
