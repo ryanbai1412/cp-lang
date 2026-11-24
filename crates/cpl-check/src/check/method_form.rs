@@ -26,6 +26,13 @@ fn takes_self(def: &Def) -> bool {
         if params.first().is_some_and(|p| p.name == "self" && !p.named_only))
 }
 
+/// Whether `def` takes `n` positional arguments after `self`: one never
+/// binds a named-only parameter, so `xs.sorted(x => -x)` isn't `sorted(by:)`.
+fn takes_positionals(def: &Def, n: usize) -> bool {
+    matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
+        if params.iter().skip(1).filter(|p| !p.named_only).count() >= n)
+}
+
 fn self_ty(def: &Def) -> Option<Ty> {
     match def {
         Def::Fn {
@@ -517,13 +524,13 @@ impl Checker<'_> {
             return false;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        if !matches!(self.pick_method(&base_ty, &name.text), Pick::One(..)) {
+        let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
             return false;
-        }
+        };
         let params = row_params(row.params);
         let takes_fn = |ty: &str| ty.contains("->") || (ty.len() == 1 && ty != "T");
         let positional = args.iter().filter(|a| a.name.is_none()).count();
-        if positional > params.len() {
+        if positional > params.len() && takes_positionals(&def, positional) {
             self.exprs.past_rows.push(name.span);
             return true;
         }

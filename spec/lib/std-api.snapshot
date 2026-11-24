@@ -1700,8 +1700,8 @@ std/seq.cp: rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>
 std/seq.cp: rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>
 std/seq.cp: runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 std/seq.cp: select<S: IndexedMut, T, K>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)
-std/seq.cp: sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x)
-std/seq.cp: sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>
+std/seq.cp: sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x)
+std/seq.cp: sorted<S: Seq, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
 std/seq.cp: sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
 std/seq.cp: sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
 std/seq.cp: sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>

@@ -263,7 +263,7 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
 /// traps: never (beyond what `by` traps on)
 /// example: `var a = [3, 1, 2]; a.sort(); a == [1, 2, 3]`
 /// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
-pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x):
+pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x):
     let n = self.len
     let ks = self.keys
     var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
@@ -312,7 +312,7 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int):
 /// traps: never (beyond what `by` traps on)
 /// example: `[3, 1, 2].sorted() == [1, 2, 3]`
 /// example: `[3, 1, 2].sorted(by: x => desc(x)) == [3, 2, 1]`
-pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>:
+pub fn sorted<S: Seq, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>:
     var out: List<T> = self.collect()
     sort(mut out, by:)
     out
