@@ -373,6 +373,7 @@ pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) 
 /// order: reverse source order, keyed from 0
 /// traps: never
 /// example: `[1, 2, 3].reversed() == [3, 2, 1]`
+@lint(reverse_index, from: "[self[self.len - 1 - i] for i in 0..self.len]", to: "self.reversed()")
 pub fn reversed<S: Bidir, T>(self: S) -> List<T> = self.rev.collect()
 
 /// \(O(n)\). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).

@@ -36,7 +36,6 @@ mod overflow;
 mod pop_end;
 mod proven;
 mod read_loop;
-mod reverse;
 mod scopes;
 mod sentinel_scalar;
 mod settled;
@@ -77,7 +76,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(map_lookup::check(file));
     findings.extend(test_count::check(file));
     findings.extend(euclid::check(file));
-    findings.extend(reverse::check(file));
     findings.extend(isqrt::check(file));
     findings.extend(sentinel_scalar::check(file));
     findings.extend(found_flag::check(file));

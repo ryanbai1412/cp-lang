@@ -75,7 +75,6 @@ super::msgs! {
     REDUNDANT_PRELUDE_IMPORT = "L0208", "{} is in the prelude: this `use` is not needed";
     REPEATED_LITERAL = "L0506", "`{}` is written {} {}; it is first on line {}";
     REVERSED_RANGE_LITERAL = "L0303", "`{}` is empty for every input, so this loop never runs: `{}` is always above `{}`";
-    REVERSE_INDEX = "L0528", "this copies the list backwards by index: it is `{}`";
     RUNS_BY_HAND = "L0558", "`{}` counts runs of equal values by hand";
     SENTINEL_SCALAR = "L0536", "`{}` starts at `{}` to mean \"nothing yet\"";
     SENTINEL_TABLE = "L0530", "`{}` is filled with `{}` to mean \"not set\"";

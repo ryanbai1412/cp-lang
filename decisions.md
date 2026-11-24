@@ -6936,8 +6936,8 @@ Formerly 318 (renumbered: the number was taken twice).
 - **Why.** Only the whole-copy shape has a fix that keeps meaning by
   construction (same O(n), same new list). 3 `std` findings, 0 corpus
   `spec.cp`; the 67 other `[n - 1 - i]` sites in corpus/std are left alone.
-- **Reverse.** Delete `crates/cpl-lint/src/rules/reverse.rs` and
-  `spec/lints/reverse_index/`.
+- **Reverse.** Delete the `@lint(reverse_index, ...)` on `std/seq.cp`
+  `reversed` and `spec/lints/reverse_index/`.
 
 ## 312. `research/` has an index and topic folders; bench results live in `research/perf/` (2026-11-22)
 
