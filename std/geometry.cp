@@ -1617,8 +1617,7 @@ fn triangulate_monotone(poly: List<Pt>, face: List<Int>, mut tris: List<(Int, In
             for t in 0..st.len - 1: tris.push(ccw_tri(poly, face[u], face[st[t]], face[st[t + 1]]))
             st = [st.last!, u]
         else:
-            var p = st.last!
-            st.pop()
+            var p = st.pop()!
             while st.len > 0 and diagonal_inside(poly, face[st.last!], face[p], face[u], left[u]):
                 let q = st.last!
                 tris.push(ccw_tri(poly, face[q], face[p], face[u]))
