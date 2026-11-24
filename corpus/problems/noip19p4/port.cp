@@ -23,7 +23,7 @@ for j in Food:
     var ways = [Lead] d => Z(if d.label == 0: 1 else: 0)
     for i in Method:
         var next = ways.clone()
-        for d in Lead:
+        for d in Lead(1 - i.label)..=Lead(i.label - 1):  // |lead| < i before method i
             if let up = d.next: next[up] += ways[d] * a[i, j]
             if let down = d.prev: next[down] += ways[d] * (row[i] - a[i, j])
         ways = next
