@@ -25,7 +25,7 @@ for i in I:
     let best = best ?? continue
     if gap.clip(iv[i]) != iv[i]:
         continue
-    let (left, right) = (gap.l..iv[i].l, iv[i].r..gap.r)
+    let (left, right): (Range<X>, Range<X>) = (gap.l..iv[i].l, iv[i].r..gap.r)
     let (a, b) = (fit(left), fit(right))
     if a + 1 + b == best:
         picked.push(i)
