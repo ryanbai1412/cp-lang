@@ -5,11 +5,15 @@
   {"id": "5694415", "language": "CPP17", "result": "TLE", "time": 68.188397349, "memory_kb": 966712.0, "file": "corpus/submissions/5694415.cpp"},
   {"id": "5694420", "language": "CPP17", "result": "TLE", "time": 75.171046338, "memory_kb": 966696.0, "file": "corpus/submissions/5694420.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi21p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission. orig.cpp is the TLE submission corpus/submissions/5694415.cpp (strength levels 2^k with binary lifting) plus a sample-grader main; it matches a direct simulation on 500 random cases and on --max (where the simulation takes 30 s), and needs about 1 GB."
 }
