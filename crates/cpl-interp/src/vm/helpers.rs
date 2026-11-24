@@ -214,6 +214,15 @@ fn slot_from_stack(
 
 #[inline(always)]
 pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
+    // Bounds checks here cost the array benches about 2%; the VM checks
+    // `at` against the array's domain before it calls this, and debug
+    // builds (every test) check it again.
+    debug_assert!(
+        at < arr.data.len(),
+        "cell {at} past the array's {}",
+        arr.data.len()
+    );
+    // SAFETY: in range, as asserted above.
     unsafe {
         match &arr.data {
             Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked(at),
@@ -227,6 +236,15 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
 
 #[inline(always)]
 pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
+    // Bounds checks here cost the array benches about 2%; the VM checks
+    // `at` against the array's domain before it calls this, and debug
+    // builds (every test) check it again.
+    debug_assert!(
+        at < arr.data.len(),
+        "cell {at} past the array's {}",
+        arr.data.len()
+    );
+    // SAFETY: in range, as asserted above.
     unsafe {
         match &mut arr.data {
             Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked_mut(at) = val,
@@ -250,6 +268,15 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
 
 #[inline(always)]
 pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
+    // Bounds checks here cost the array benches about 2%; the VM checks
+    // `at` against the array's domain before it calls this, and debug
+    // builds (every test) check it again.
+    debug_assert!(
+        at < arr.data.len(),
+        "cell {at} past the array's {}",
+        arr.data.len()
+    );
+    // SAFETY: in range, as asserted above.
     unsafe {
         match &arr.data {
             Cells::OptInt(v) => match *v.get_unchecked(at) {
@@ -264,10 +291,20 @@ pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
 
 #[inline(always)]
 pub(super) fn write_array_opt_i(arr: &mut Array, at: usize, val: i64, some: i64, kind: ScalarKind) {
+    // Bounds checks here cost the array benches about 2%; the VM checks
+    // `at` against the array's domain before it calls this, and debug
+    // builds (every test) check it again.
+    debug_assert!(
+        at < arr.data.len(),
+        "cell {at} past the array's {}",
+        arr.data.len()
+    );
     match &mut arr.data {
+        // SAFETY: in range, as asserted above.
         Cells::OptInt(v) if kind == ScalarKind::Int => unsafe {
             *v.get_unchecked_mut(at) = if some != 0 { Some(val) } else { None };
         },
+        // SAFETY: in range, as asserted above.
         Cells::Values(v) => unsafe {
             *v.get_unchecked_mut(at) = kind.box_opt(val, some);
         },
