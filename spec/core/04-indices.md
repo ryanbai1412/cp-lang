@@ -54,7 +54,7 @@ domain Letter = 'a'..='z'              // so is a Char range: Letter(c), [Letter
 | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.cuts = 0`); outside a static bound it is a compile error | free (R04.2.18) |
 
 **Library domains.** Any struct, in std or user code, becomes a domain by
-implementing `Index` with three members (decision 382):
+implementing `Index` with three members (decision 504):
 
 ```python
 struct Two(a: Int, b: Int)              // the pairs a < b of 0..4, 6 of them
@@ -444,7 +444,7 @@ fold of the first `k`. Keeping only half-open `Int` ranges (the Python
 and C++ convention) gets the empty range right but leaves every prefix
 index to be shifted by hand.
 
-**Why views keep their keys.** `a[l..=r][i]` is `a[i]` (decision 354):
+**Why views keep their keys.** `a[l..=r][i]` is `a[i]` (decision 496):
 a key names the same element through every slice, filter and sort, so a
 position from one view indexes the source. Rebasing each slice to start
 at 0 (Python) makes every index shift per view, the off-by-one the domain

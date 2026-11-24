@@ -3,7 +3,7 @@
 // tool: fix
 // rewritten: "    let count = 2\n    @get fn ord(self) -> Int = Int(b)\n    fn nth(i: Int) -> Two = Two(i == 1)"
 // rewritten: "print(Two.count, Two.nth(1).ord)"
-// `cpl fix` moves an `impl Index` and its uses from `K`/`to_idx`/`from_idx` to `count`/`ord`/`nth` (decision 382).
+// `cpl fix` moves an `impl Index` and its uses from `K`/`to_idx`/`from_idx` to `count`/`ord`/`nth` (decision 504).
 struct Two:
     b: Bool
 impl Index for Two:

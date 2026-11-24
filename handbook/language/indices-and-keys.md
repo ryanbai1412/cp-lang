@@ -131,7 +131,7 @@ C++ habit; then `tin[v]` used as a vertex compiles, and the most common
 Euler-tour bug is back. Why: the count is a run-time fact, but the
 *kind* of index is a compile-time one, and the type should carry it.
 
-### Library types become domains through `impl Index` (decision 382)
+### Library types become domains through `impl Index` (decision 504)
 
 **Chose:** any struct, in std or user code, is a domain once it
 implements `Index` with `let count`, `@get fn ord(self) -> Int` and
@@ -139,7 +139,7 @@ implements `Index` with `let count`, `@get fn ord(self) -> Int` and
 `for x in T`, `T.rev`, `T.first`, `T.nth(k)` and every `Seq` method. The
 value conversions (`T(x)`, `Int(x)`), neighbours and cuts stay with the
 ordered core domains, because an ordinal is a walk order, not a value
-(decision 382).
+(decision 504).
 
 ```cp
 struct Two(a: Int, b: Int)  // the pairs a < b of 0..4, 6 of them

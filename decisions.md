@@ -1959,7 +1959,7 @@ via `pos_inside`/`neg_inside` counters in `Tracer`. `Bound(d)` labels and values
 Reverse: remove the extra fields from `TraceConfig`, restore single-fn `only_fn` matching, and
 remove `--test`/`--watch`/`--last`/`--depth` from `RunArgs` in `crates/cpl-cli/src/lib.rs`.
 
-## 27.4. Time-travel DAP debugger (`cpl dap`) backed by interpreter snapshots
+27.4. **Time-travel DAP debugger (`cpl dap`) backed by interpreter snapshots**
 
 - **Decision:** Add `cpl dap` implementing the Debug Adapter Protocol over stdio (`Content-Length`-framed JSON) with zero new dependencies, wired into `editors/vscode` (`type: "cp"`, `cp.debug` command, `DebugAdapterDescriptorFactory`). When `TraceConfig::record_frames` is enabled, each step records the full call stack (`(fn_name, line)`) alongside locals and domain-labeled globals, allowing both forward stepping (`next`, `stepIn`, `stepOut`, `continue`) and backward time-travel (`stepBack`, `reverseContinue`), hover/watch `evaluate`, and exception stops on runtime traps.
 - **Why:** Reusing the deterministic snapshot recorder guarantees that backward stepping, replay of failing judge inputs (`input` / `inputText`), and domain-labeled variable inspection work out of the box with zero overhead on untraced runs or normal `--trace` runs (`record_frames: false`).
@@ -5913,7 +5913,9 @@ Reason: rebuild round 3's H-PRINT-TRAIT-NAME; `print` the function and
 `Show` the trait no longer share a name. Reverse: rename back in those
 chapters and add `Print` to the checker.
 
-## 230. `--json` and `--format json` are one flag (2026-11-22)
+## 473. `--json` and `--format json` are one flag (2026-11-22)
+
+Formerly 230 (renumbered: the number was taken twice).
 
 `run`, `doc`, `bench`, `profile` and `cover` spelled JSON output
 `--format json`; `check`, `judges` and `explain` spelled it `--json`, so the
@@ -6915,7 +6917,9 @@ Reverse: `git mv` each file back and delete `scripts/status.py`.
 - **Why.** Tool behaviour (exit codes, `--json` shapes) had no citable rules, so a tool regression broke no rule and coverage could not see it; numbered chapters belong to the core, and a tool name reads better than a fake chapter number.
 - **Reverse.** Drop the `(R<tool>.<n>)` marks from `spec/tools/`, the `tools` glob and the `[a-z]+` alternative from `RULE_DEF`, and the `// rule: <tool>.<n>` lines from `spec/conformance/tools-cli/`.
 
-## 318. L0528 `reverse_index` covers only the whole-list reversed copy (2026-11-22)
+## 476. L0528 `reverse_index` covers only the whole-list reversed copy (2026-11-22)
+
+Formerly 318 (renumbered: the number was taken twice).
 
 - **Decision.** `[xs[xs.len - 1 - i] for i in 0..xs.len]` warns with a fix to
   `xs.reversed()` when `xs` is a plain path the checker types as `List`.
@@ -6976,7 +6980,9 @@ the edge; the site falls back to checker diagnostics only.
 - **Why.** Rebuild round 6 (H-RANGEFENWICK-GONE) found the spec and `std/fenwick.cp` disagreeing; one way per job, and `act:` already says which operations a tree supports, which was 42.2's reason for separate types.
 - **Reverse.** Restore 42.2: document the two types in `spec/lib/ops-ranges.md` and drop the "goes" line.
 
-## 314. `cpl setup neovim` (and `vim`) installs the editor files built into `cpl` (2026-11-22)
+## 474. `cpl setup neovim` (and `vim`) installs the editor files built into `cpl` (2026-11-22)
+
+Formerly 314 (renumbered: the number was taken twice).
 Milestone 1's friend uses Neovim and needs a one-step setup; the old one asked for
 a clone of this repo and a runtime-path line. `cpl setup <editor>`
 (`crates/cpl-cli/src/setup.rs`) writes `editors/neovim/` (plus the tree-sitter
@@ -7010,7 +7016,9 @@ Reason: the layout doc (decision 303); a cold agent finds a crate's job,
 its invariants and where its tests are without reading `lib.rs`.
 Reverse: delete the 11 files.
 
-## 317. Unix-only test setup is `#[cfg(unix)]`, so the tests compile on Windows (2026-11-22)
+## 475. Unix-only test setup is `#[cfg(unix)]`, so the tests compile on Windows (2026-11-22)
+
+Formerly 317 (renumbered: the number was taken twice).
 
 The `os` workflow builds the workspace tests on Windows; the shell-script helpers in cpl-stress and cpl-contest set the exec bit only on unix, which grows `cpl-stress/src/tests.rs` past its ratchet cap by 1 line. Reverse: gate those test modules on unix instead.
 
@@ -7041,15 +7049,21 @@ compares the callee's name (`crates/cpl-lint/src/rules/taste/forms.rs`
 `spelled_out`) and the `lint_std_names` ratchet rises 135 -> 138. Reverse:
 drop the `ExprKind::Call` arm of `spelled_out` and re-run `--update`.
 
-## 318. `cpl-check` check/stmt.rs grows 3 lines for the L0609 help (2026-11-22)
+## 477. `cpl-check` check/stmt.rs grows 3 lines for the L0609 help (2026-11-22)
+
+Formerly 318 (renumbered: the number was taken twice).
 
 L0609 `cache_field_written_outside` had no help; a lint help that says why and what to write is the Milestone 1 lint bar, and the help sits at its only emission site. Raised the ratchet baseline for check/stmt.rs by 3 lines. Reverse: move the message into a helper outside the capped file and lower the baseline.
 
-## 319. `cpl-ir` lower/call.rs grows 58 lines for the `Int(sqrt(n))` fix (2026-11-22)
+## 478. `cpl-ir` lower/call.rs grows 58 lines for the `Int(sqrt(n))` fix (2026-11-22)
+
+Formerly 319 (renumbered: the number was taken twice).
 
 `Int(sqrt(n))` is C++'s `(int)sqrt(n)`, a newcomer habit; E0302 now offers `n.isqrt` (exact) at its only site, `convert`, with a text check (`sqrt_operand`) so the fix is given only when the source is exactly that shape. Raised the ratchet baseline for lower/call.rs. Reverse: move `sqrt_operand` and the branch into a conversion-diagnostics module and lower the baseline.
 
-## 320. L0529 matches `sqrt` by name; lint_std_names 138 -> 140 (2026-11-22)
+## 479. L0529 matches `sqrt` by name; lint_std_names 138 -> 140 (2026-11-22)
+
+Formerly 320 (renumbered: the number was taken twice).
 
 `float_sqrt_for_int` (3c4480379) reads `sqrt` off the syntax, as the other float rules do, and the fact table then checks the operand is an integer. Raised the `lint_std_names` baseline by its 2 lines instead of leaving main red. Reverse: when the fact table records the fn a call resolves to, match `std.math` `sqrt` through it and lower the baseline.
 
@@ -7059,7 +7073,9 @@ the answer word, so L0524 reads a branch that is one `print` of a string
 literal (`crates/cpl-lint/src/rules/answers.rs` `word`); `lint_std_names`
 rises 138 -> 139. Reverse: drop the `print` arm in `word` and re-run `--update`.
 
-## 321. Checker lints get page records in `spec/checker-lints/` (2026-11-22)
+## 480. Checker lints get page records in `spec/checker-lints/` (2026-11-22)
+
+Formerly 321 (renumbered: the number was taken twice).
 
 - **Decision.** Each L06xx checker lint (`CHECKER_LINTS`) has a record in
   `spec/checker-lints/<name>/` (the same five files as `spec/lints/`), so the
@@ -7094,12 +7110,16 @@ or user fn of that name still wins. Spec corrected `count-on-bools-counts-every-
 
 `lib/ops-ranges.md` §2 writes `each(sum: +, hi: max)` for an op on records, but R06.1.5 only said `..xs: Ts` is a tuple, so a library could not declare it and `cpl run` reports E0310 (`each` has no parameter named `sum`). Rule: positional arguments to `..xs` make a tuple, named ones a named tuple with fields in written order; one call does not mix them. It is the general mechanism behind `each`, so user libraries get it too (no stdlib privilege). Lost: a separate `each_named` (a `_by`-style twin, decision 60) or a record literal argument `each((sum: +, hi: max))` (extra parentheses at every use). Cases: `core-06/variadic-named-args-make-record.cp`, `std-algebra/each-named-components.cp`. Reverse: drop the sentence from R06.1.5 and write `each((sum: +, hi: max))` in ops-ranges.
 
-## 322. Seven newcomer spelling lints, L0540-L0546 (2026-11-22)
+## 481. Seven newcomer spelling lints, L0540-L0546 (2026-11-22)
+
+Formerly 322 (renumbered: the number was taken twice).
 
 `manual_bit_test`, `sort_desc_by_negation`, `last_via_len`, `manual_pair_loop`, `manual_digit_loop`, `hand_rolled_pow` and `hand_rolled_gcd` (`crates/cpl-lint/src/rules/spelled.rs`) teach the CPL name for a C++ spelling the `corpus/newcomer/` set marks. All are `idiom`, `warn`. The bit test and the last-element read carry a fix and keep their finding only where the checker types the place as an `Int` or a list (`typed.rs`); the others only teach, since the rewrite replaces a loop or a function. The pair loop fires only when the body reads one sequence at the two indices and uses them for nothing else. They match `sort`, `sorted`, `len`, `pow_mod`-shaped and `gcd`-shaped code by name, so `lint_std_names` goes from 141 to 146. Their `spec/std` findings (34, 1, 62, 6, 2) are real spellings, not false positives, and enter the shrink-only baseline. The same baseline also takes L0204 13 -> 16, L0206 3 -> 7, L0210 72 -> 74 and L0509 6 -> 8 from recent stdlib commits. L0521's running-total shape (`run += x; out.push(run)`, `ps.push(ps.last! + x)`) matches `push`, `last` and `len` by name, so `lint_std_names` goes from 146 to 149; it only teaches, with no fix. Reverse: delete the records and `rules/spelled.rs`, drop the arms in `typed.rs`, and restore `corpus_warnings.txt`.
 
 
-## 325. Interval DP: `V.ranges` cells are `Range<V>`; `ir_builtin_names` 85 -> 88 (2026-11-22)
+## 483. Interval DP: `V.ranges` cells are `Range<V>`; `ir_builtin_names` 85 -> 88 (2026-11-22)
+
+Formerly 325 (renumbered: the number was taken twice).
 
 `spec/lib/search-dp.md` specified `V.ranges`, but nothing implemented it. The cell type is `Range<V>` itself, not a new position type, so `r.len`, `r.first!`, `r.drop(1)`, `r.drop_last(1)` and `r.splits` all work on it with no conversion, and `[V.ranges]T` shares the triangle storage of `[Sym<V>]T`: `l..r` is the pair `(l, r - 1)`. Indexing with an empty range traps in every build. A `Range<Int>` index also traps when it leaves `V`. `for r in V.ranges` lowers to two nested loops (length, then left end) with no list, the way `V.pairs` does. `Range.drop_last` / `take_last` joined `drop` / `take` as lowered range members, and with `ranges` they add 3 string-matched names to lower/call.rs. Reverse: give `V.ranges` its own position type (`Piece<V>`) and convert at the index; move the range members into std bodies once a `Range<D>` method can overload a `Seq` one, and lower the baseline.
 
@@ -7110,7 +7130,9 @@ or user fn of that name still wins. Spec corrected `count-on-bools-counts-every-
 
 Ryan's request: `p.up`, `p.down`, `p.left`, `p.right` on a `(Row, Col)` cell return `?(Row, Col)`, `None` off the grid, and take no parens, like `r.prev` (a cheap, total lookup reads as a property). `Dir4.up`, `Dir4.right`, `Dir4.down`, `Dir4.left` become constants, not calls, so `p.step(Dir4.up) == p.up`. Lost: `p.step(Dir4.up())` as the only spelling (two calls for one neighbour) and hand-written `(R.at(r - 1), c)` neighbours (an off-by-one site per move). Spec: `lib/graphs-trees.md` "Also in the prelude". Cases: `std-grid/cell-neighbour-getters.cp`, and the `Dir4` constant spelling in `std-grid/*` and `matrix/index/product--step.cp`. Reverse: restore the `()` on the four `Dir4` names and drop the four getters.
 
-## 324. Constant top-level domains hoist; lower/mod.rs cap 5959 -> 5961 (2026-11-22)
+## 482. Constant top-level domains hoist; lower/mod.rs cap 5959 -> 5961 (2026-11-22)
+
+Formerly 324 (renumbered: the number was taken twice).
 
 `print(V.count)` above `domain V = 0..5` printed 0 in both engines: the checker
 accepts it (R11.1.1 hoists items whose value is compile-time), but lowering ran
@@ -7128,7 +7150,9 @@ Reverse: drop the `hoist_constant_domains` call.
 - **326.2 Math is LaTeX in `\( ... \)`, rendered with KaTeX at build time** (remark-math with single dollars off, rehype-katex; KaTeX CSS only on docs and lint pages, so `/` is unchanged). Until stdlib converts its doc comments, `cost:` lines in the old `O(n log n)` form are converted (`log`, `·`, `α`, `²`, `sqrt`). The build fails on a math span KaTeX can't render. Reverse: drop the two plugins and `texSpans`.
 - **326.3 Signatures over 72 columns are laid out one parameter per line**, defaults kept, as `cpl fmt` lays out a long call. Reverse: `layoutSignature` returns its input.
 
-## 326. Lints for newcomer loops std names: argmax, mex, copy, queue, range, map count (2026-11-22)
+## 484. Lints for newcomer loops std names: argmax, mex, copy, queue, range, map count (2026-11-22)
+
+Formerly 326 (renumbered: the number was taken twice).
 
 `loop_argmax` (L0547), `manual_mex` (L0548), `copy_comprehension` (L0549),
 `queue_head_index` (L0550), `split_range_check` (L0551) and
@@ -7146,7 +7170,9 @@ delete the six records and `rules/hand_loops.rs`, and restore
 
 `spec/lib/search-dp.md` specified `V.ranges`, but nothing implemented it. The cell type is `Range<V>` itself, not a new position type, so `r.len`, `r.first!`, `r.drop(1)`, `r.drop_last(1)` and `r.splits` all work on it with no conversion, and `[V.ranges]T` shares the triangle storage of `[Sym<V>]T`: `l..r` is the pair `(l, r - 1)`. Indexing with an empty range traps in every build. A `Range<Int>` index also traps when it leaves `V`. `for r in V.ranges` lowers to two nested loops (length, then left end) with no list, the way `V.pairs` does. `Range.drop_last` / `take_last` joined `drop` / `take` as lowered range members, and with `ranges` they add 3 string-matched names to lower/call.rs. Reverse: give `V.ranges` its own position type (`Piece<V>`) and convert at the index; move the range members into std bodies once a `Range<D>` method can overload a `Seq` one, and lower the baseline. The `for r in V.ranges` lowering grew the capped `crates/cpl-ir/src/lower/stmt.rs` from 6398 to 6431 lines (baseline raised with `--update rs_over_cap`); reverse by moving the domain-iteration lowerings (`V.pairs`, `V.ranges`) into their own module.
 
-## 326. A trait bound's key and element parameters come from the bound sequence (2026-11-22)
+## 485. A trait bound's key and element parameters come from the bound sequence (2026-11-22)
+
+Formerly 326 (renumbered: the number was taken twice).
 
 `S: Indexed<K, T>` (also `Keyed`, `IndexedMut`) now binds `K` to the key `S` is indexed by, a domain for `[D]T`, and `T` to its element, so generic std code returns the caller's keys (`manacher`, `z_function`, `min_rotation` on a `[Pos]Char`, cf1943b). `.at` takes the receiver's key type, and a keyed view covering all of `D` (`cells.rekey(s.keys)`) is a `[D]T`, trapping if shorter. This grew the capped `crates/cpl-ir/src/lower/mono.rs` (4450 -> 4488) and `lower/mod.rs` (5976 -> 6016); baselines raised with `--update rs_over_cap`. Reverse: drop the bound pass in `mono.rs` and the coercion in `mod.rs`; generic std code then returns `Int` keys, and `[D]T` callers convert.
 - **326.4 Intra-doc links are rustdoc's: [`up`], [`Rooted.up`], or [`text`](Rooted.up).** `cpl doc` resolves each from the documented item's scope (the owner type's members, then the module, then every module), writes the targets into its JSON (`links`) and its HTML, and exits 1 on a link that names no item. Plain `up` is never a link: guessing every code span would link words like `n` or `op` that aren't items. Reverse: drop `links::unresolved` from `cpl doc`'s exit code.
@@ -7237,7 +7263,9 @@ the chained layout does not lex back to the same tokens the file is laid
 out again with chains off. Both cases are tests in `cpl-fmt`.
 
 
-## 326. A fold costs what the receiver's type says (2026-11-22)
+## 486. A fold costs what the receiver's type says (2026-11-22)
+
+Formerly 326 (renumbered: the number was taken twice).
 
 Ryan rejected an O(1) special case for `(3..m).step(2).sum()`. The rule is general: an operation's cost belongs to the receiver's type, through ordinary method resolution. The generic folds (`sum`, `prod`, `count`, `min`, `max`, `fold`, `contains`, `last`, `nth`) are default methods of the capability trait that gives them. A type overrides one in its `impl`, in CP Lang, with its documented cost: `impl Seq for Range` gives closed forms, as `Prefix.fold` is O(1) and `Bitset.len` is a popcount. R08.1.4 stays as written (inherent methods first, then traits), and generic code calls the receiver's impl, so an override holds through generics (`core-08/trait-default-overridden-through-generic.cp`, which passes). A free extension function is final: a concrete `self: Range<Int>` and a generic `self: S` of one name are E0701. Today the compiler silently picks the generic one (`core-08/extension-concrete-and-generic-ambiguous.cp`). Parens still mean "may do work" (decision 140). Hover and `cpl explain` show the resolved method. The compiler's `range_sum` intrinsic (`crates/cpl-ir/src/lower/call.rs` `try_range_int_sum`) goes once std overrides `sum` on ranges. Lost: compiler pattern matching of pipelines (a privilege user types can't have, and the next fold needs another special case); "most specific `self` wins" over extension functions (that is specialization: concrete and generic calls on one type would differ). Reverse: allow concrete extensions to shadow generic ones at concrete receivers.
 ## 334. Three hand-written graph and window algorithms teach their std names: L0565-L0567; `lint_std_names` 152 -> 159 (2026-11-22)
@@ -7273,7 +7301,9 @@ the cp.toml nearest the current directory instead of the default, so
 Vim's `gq` honours `[fmt]`. Reverse: restore the `"."` default in
 `crates/cpl-fmt/src/cli.rs`.
 
-## 335. Math is LaTeX inside `\( ... \)` (2026-11-22)
+## 487. Math is LaTeX inside `\( ... \)` (2026-11-22)
+
+Formerly 335 (renumbered: the number was taken twice).
 
 Ryan's call, relayed by the coordinator: math in doc comments, the spec and lint records is LaTeX inside `\( ... \)` (`/// cost: \(O(n \log n)\)`). The site renders it with KaTeX at build time, LSP hover and CLI output get a plain-Unicode fallback (`O(n log n)`), and a docs check fails a `cost:` line or math-looking span that isn't valid LaTeX. Spec converted its prose and table cost spans (515 spans, 74 distinct, all accepted by KaTeX 0.16 with `throwOnError`). Sizes use `\lvert x \rvert` so table cells need no `\|`; code blocks keep `// O(n)` comments as source. Lost: plain `O(n)` source, which reads fine raw but can't be typeset or checked. Reverse: strip the delimiters (a mechanical rewrite).
 ## 336. Lint codes come from `scripts/new-lint.py`, not by hand (2026-11-22)
@@ -7288,7 +7318,9 @@ linter, not contestants. Allocations made before either lands can still
 collide; `record_codes_are_unique` catches those. Reverse: delete the script.
 
 
-## 335. `check/expr.rs` takes +4 lines for the `_by` twin fix (2026-11-23)
+## 488. `check/expr.rs` takes +4 lines for the `_by` twin fix (2026-11-23)
+
+Formerly 335 (renumbered: the number was taken twice).
 
 `xs.max_by(f)` (the C++/Rust spelling, BLOCKERS row 31) suggested the
 heap method `max_at`; it now gets `xs.max(by: f)` as a machine fix,
@@ -7311,7 +7343,9 @@ prints `YES`. The acceptance run lost minutes to a sample printing `Yes`.
 Only the words yes and no fold; every other token stays exact. AtCoder
 wants the exact case, so a judge-aware comparison is the maximal version.
 Reverse: drop `same_token` in cpl-stress judge.rs.
-## 337. Small-to-large, Fenwick inversions and by-length interval DPs teach `absorb`, `inversions` and `[I.ranges]`: L0568-L0570; `lint_std_names` 159 -> 164 (2026-11-22)
+## 490. Small-to-large, Fenwick inversions and by-length interval DPs teach `absorb`, `inversions` and `[I.ranges]`: L0568-L0570; `lint_std_names` 159 -> 164 (2026-11-22)
+
+Formerly 337 (renumbered: the number was taken twice).
 
 `small_to_large_by_hand` (L0568): `if a.len < b.len: (a, b) = (b, a)` then a
 loop adding each element of the smaller (`add`/`insert`) into the larger;
@@ -7325,7 +7359,9 @@ and std. The 5 new `lint_std_names` are the method names the shapes read
 delete the three records and `rules/hand_ds.rs`.
 
 
-## 336. `xs.items` walks a `Range<Int>`, so std's keyed fns take ranges; `lower/call.rs` +25 (2026-11-23)
+## 489. `xs.items` walks a `Range<Int>`, so std's keyed fns take ranges; `lower/call.rs` +25 (2026-11-23)
+
+Formerly 336 (renumbered: the number was taken twice).
 
 `(0..p).argmax(by: i => a[i])` failed inside `std.seq` with "a `for`
 can't walk over a `Items<Range<Int>>`" (BLOCKERS row 13). Decision 289
@@ -7392,7 +7428,9 @@ a `SortedBag` or `SortedSet`. Matching `first`, `last`, `remove`,
 174 -> 179. Reverse: delete `spec/lints/pop_min_loop/` and
 `rules/pop_end.rs`.
 
-## 343. Lints for 1-based query shifts and parallel coordinate arrays (2026-11-23)
+## 491. Lints for 1-based query shifts and parallel coordinate arrays (2026-11-23)
+
+Formerly 343 (renumbered: the number was taken twice).
 
 L0577 `query_index_shift` warns when a name read as `1..` is used as
 `[l - 1]` later in its block, unless the name also bounds a range or sizes
@@ -7435,7 +7473,9 @@ whole-file format. Reason: one layout engine for file, range and keystroke,
 so the three can never disagree. Reverse: drop `range.rs`; the LSP falls
 back to whole-file formatting.
 
-## 345. `binom_by_hand` also reads a factorial table times two inverse-table entries; `lint_std_names` 180 -> 181 (2026-11-23)
+## 492. `binom_by_hand` also reads a factorial table times two inverse-table entries; `lint_std_names` 180 -> 181 (2026-11-23)
+
+Formerly 345 (renumbered: the number was taken twice).
 
 L0557 flagged only `fact[a] * inv(fact[b]) * inv(fact[a - b])`, one table. Ports and newcomers more often keep the inverses in a second table: `fact[a + b] * inv_fact[a] * inv_fact[b]` (atcoder_dp_y) or `fact[n] * ifact[k] % P * ifact[n - k] % P` (cco22p4). The rule now also matches a product of `f[A]` and two entries of a table named for inverses (`inv` in the name, or `i` + the factorial table's name) whose indices split `A` (`A = B + C`, or `C = A - B`); a `T(x)` index wrapper is read through. The name test keeps `xs[i + j] * ys[i] * ys[j]` quiet; it is the one string match added. Reverse: drop `binom_inverse_table` in `crates/cpl-lint/src/rules/hand_math.rs` and its test, and lower the baseline.
 
@@ -7443,7 +7483,9 @@ L0557 flagged only `fact[a] * inv(fact[b]) * inv(fact[a - b])`, one table. Ports
 
 `corpus/newcomer/score.py` counted a `// expect: missing <pattern>` mark as flagged when any diagnostic was within three lines, so an unrelated lint (`peek_then_pop` beside `big_inf_literal`, `repeated_literal` beside a ternary search) earned credit and the score read 100% with 18 patterns untaught. Now a `missing` mark is never a hit, and a mark that an existing lint does teach names that lint (8 marks relabelled: e.g. n19's multitest reset is `state_above_multitest`). The honest score fell from 151/151 to 132/150 (88%) and is climbing back by new lints. Reverse: restore the `near` test for `missing` marks in `score.py`.
 
-## 346. A scientific literal with an exact integer value is an `Int`, whatever its mantissa (2026-11-23)
+## 493. A scientific literal with an exact integer value is an `Int`, whatever its mantissa (2026-11-23)
+
+Formerly 346 (renumbered: the number was taken twice).
 
 R01.4.1 said an exponent literal denoting an exact integer is `Int`; R01.4.2 said floats "need a fraction", so `1.5e5` read both ways (rebuild 8, H-SCI-LITERAL), and Codeforces writes bounds as `1.5e5` and `2.5e5`. Rule: with an exponent, the value decides (`1.5e5` is `Int`, `2.5e-1` is a float); without one, a `.` makes a float (`2.0`). Reason: the statement's bound is copied as written, and no float literal changes meaning. Reverse: R01.4.2 back to "a fraction makes a float" and drop core-01/scientific-fraction-is-int.cp.
 
@@ -7459,13 +7501,15 @@ Chapter 5 built lists as `List(1, 2)` while R07.8.1 makes `List(s)` a conversion
 
 R07.1.6 indexes a scan by cuts and lets a position fold through itself, but on a `List` or `[n]T` both are `Int`, so `pre[k]` read two ways one element apart, a silent WA (rebuild 8, H-INT-KEY-PREFIX). Rule: an `Int` index is the cut, `n + 1` entries, `pre[0]` the identity, as in every C++ prefix array; the fold through `k` is `pre[k + 1]`, and a domain makes the distinction typed. Reason: the scan has one entry per cut, and the cut reading is the one contestants already write. Reverse: make an `Int` index a position and write cuts as `pre.prefix(k)`.
 
-## 346. `some(x)` and `none` are errors with a fix: E0503, applied by `cpl migrate` (2026-11-23)
+## 494. `some(x)` and `none` are errors with a fix: E0503, applied by `cpl migrate` (2026-11-23)
+
+Formerly 346 (renumbered: the number was taken twice).
 
 The spec has spelled optionals `Some(x)`/`None` since decision 157, but the checker still accepted the old spellings silently, so ports kept teaching them. The checker now reports a lowercase `some` (call or pattern) and the `none` keyword as E0503 `REMOVED_SYNTAX` with a fix to `Some`/`None`; `cpl migrate` applies every E0503 fix, so one run migrates a folder. `none` stays an ordinary name where it is bound (a local, a parameter or a top-level `let none`), and `None` no longer resolves to such a binding. Every old spelling in the repo was migrated in the same commit (corpus, std, examples, editors, crate fixtures and test sources). General rule this follows: a renamed spelling is an E0503 with a fix, never a silent alias. Reverse: drop `old_optional_spelling` in `crates/cpl-check/src/check/advice.rs` and its three callers.
 
 ## 350. A `Str` counts with `count(p)`; `count(c: Char)` leaves the spec (2026-11-23)
 
-`spec/lib/strings.md` and `std/strings.cp` gave `Str` a `count(c: Char)` beside every sequence's `count(p)`, an overload R06.1.6 rules out, and under decision 326 the type's own method would hide the predicate form on `Str` (rebuild 7, H-COUNT-STR). Rule: one `count(p)`; a character is `s.count(c => c == 'a')`. Reason: one spelling per idea, and the predicate form already works on every `Str`. Reverse: put `count(c: Char)` back in `spec/lib/strings.md` and name it apart (`count_char`) so it overloads nothing.
+`spec/lib/strings.md` and `std/strings.cp` gave `Str` a `count(c: Char)` beside every sequence's `count(p)`, an overload R06.1.6 rules out, and under decision 486 the type's own method would hide the predicate form on `Str` (rebuild 7, H-COUNT-STR). Rule: one `count(p)`; a character is `s.count(c => c == 'a')`. Reason: one spelling per idea, and the predicate form already works on every `Str`. Reverse: put `count(c: Char)` back in `spec/lib/strings.md` and name it apart (`count_char`) so it overloads nothing.
 
 ## 351. Editors show a library type's API, not its internals (2026-11-23)
 
@@ -7476,7 +7520,9 @@ Completion, hover and signature help on a type from another module (std included
 
 `cpl lsp` does not advertise `executeCommandProvider`. Its run, test and stress lenses carry `cpl.exec` with the `cpl` arguments, and each editor runs that in its own terminal (VS Code, Neovim and JetBrains all register it). Reason: the output belongs in a terminal the contestant can read and type into, not in the server's log, and a server-advertised `cpl.exec` would collide with the command VS Code's extension already registers. Reverse: advertise `executeCommandProvider` with `cpl.run` and `cpl.test`, run them from the server and report through `window/showMessage`.
 
-## 350. `lower/call.rs` and `lower/mono.rs` grow for defaulted operator arguments (stdlib, 2026-11-23)
+## 495. `lower/call.rs` and `lower/mono.rs` grow for defaulted operator arguments (stdlib, 2026-11-23)
+
+Formerly 350 (renumbered: the number was taken twice).
 
 An omitted `over: M = (+)` now binds `M` to the operator its default
 names, the same as passing `over: +`, so `Monoid.of` sees `+` rather than
@@ -7514,7 +7560,9 @@ so `tag: P = ()` with `P = ()` failed with "expected `()`, found `()`"
 `Unit`; the line in `lower/expr.rs` moves its cap 5554 -> 5557
 (`--update rs_over_cap`). Reverse: drop the `items.is_empty()` arm.
 
-## 354. A reversed view is not indexable (spec, 2026-11-23)
+## 496. A reversed view is not indexable (spec, 2026-11-23)
+
+Formerly 354 (renumbered: the number was taken twice).
 
 `a.rev` keeps its source's keys (`.items` and `.keys` give `a`'s keys,
 walked backwards), but `a.rev[i]` is now E0305, with a fix that writes
@@ -7556,7 +7604,9 @@ says so; `core-02/token-set-is-an-enum.cp` pins it, and diagnostics should make
 E0309 on `"A" | "B"` suggest `enum D = A | B`. Reverse: add literal types to
 R02 and drop the sentence. Reversed by 357.
 
-## 356. A `range` view on a value with no home holds that value (stdlib, 2026-11-23)
+## 497. A `range` view on a value with no home holds that value (stdlib, 2026-11-23)
+
+Formerly 356 (renumbered: the number was taken twice).
 
 `SortedBag.of(xs).range(r).len` failed with E0401 ("only a variable, a field,
 or an element can be assigned to"): the sorted-view lowering asked for the
@@ -7580,7 +7630,9 @@ parameter; user generic fns get it the same. Case
 `Sym::GenFn` arm in `Lowerer::name_as_written`. `lower/mod.rs` +1 line
 (`--update rs_over_cap`).
 
-## 357. Reverse 356: literal unions stay; an enum is for tokens with a payload (2026-11-23)
+## 498. Reverse 356: literal unions stay; an enum is for tokens with a payload (2026-11-23)
+
+Formerly 357 (renumbered: the number was taken twice).
 
 Rebuild round 10 (H-LITERAL-UNION) showed decision 356 contradicted decision
 135 and R02.2.2, which already make `'+' | '-'` and `"add" | "del"` scalar
@@ -7722,7 +7774,9 @@ The edge fits A4 (`cpl-json` exists to be shared by every tool that speaks
 JSON) and adds no cycle, so the baseline takes it. Reverse: give `cpl-diag`
 its own printer and drop the edge with `--update crate_edges`.
 
-## 364. `cpl-diag` depends on `cpl-json` for the one diagnostic JSON shape (tools, 2026-11-23)
+## 499. `cpl-diag` depends on `cpl-json` for the one diagnostic JSON shape (tools, 2026-11-23)
+
+Formerly 364 (renumbered: the number was taken twice).
 `cpl check`, `fix` and `lint` (in cpl-cli) and `cpl watch` (in cpl-contest)
 print diagnostics in one JSON shape, so its serializer moved from
 cpl-cli's `json_out.rs` to `cpl_diag::json::diagnostic`. Both crates are
@@ -7856,7 +7910,9 @@ describes the implemented forms, which already run under `cpl test`, `cpl
 judge`, `cpl run` and `cpl stress`. Reverse: restore parameters and route the
 change to tools.
 
-## 375. `sin`, `cos`, `tan`, `asin`, `acos` are intrinsics (2026-11-23)
+## 500. `sin`, `cos`, `tan`, `asin`, `acos` are intrinsics (2026-11-23)
+
+Formerly 375 (renumbered: the number was taken twice).
 
 Decision 1.5 locked the `F64` intrinsics, but only `sqrt` and `atan2` existed, so
 `Vec.from_angle` and `Vec3.rot` were `todo` (spec/lib/geometry.md Powers 1). The five
@@ -7892,7 +7948,9 @@ predicate (`first_true` false-then-true); an array's axes may be plain ranges
 decimals in both backends. The spec now states them. Reverse the float
 default by changing `io.precision`'s default and this rule together.
 
-## 377. `convolve` takes its fast product from a `FastProduct` impl (2026-11-23)
+## 501. `convolve` takes its fast product from a `FastProduct` impl (2026-11-23)
+
+Formerly 377 (renumbered: the number was taken twice).
 
 `convolve`'s doc promised NTT for an NTT-prime `Mod<P>`, but its body was the \(O(n m)\)
 loop for every type, and `std.poly` kept a private NTT `times`. Now `std.ntt` has `trait
@@ -7912,12 +7970,14 @@ Acceptance P0 `count-of-bools-counts-all` (3 runs): `b.count()` on a
 its meaning (every element, as for any `Seq`), and on a `Seq<Bool>` it is a
 compile error naming `count(x => x)` and `len`: the one place where the
 no-predicate form reads as a different question. P0
-`rev-view-index-not-reversed` (4 runs) is decision 354, unimplemented: the
+`rev-view-index-not-reversed` (4 runs) is decision 496, unimplemented: the
 compiler types `xs.rev` as `List<T>`, so `xs.rev[0]` checks. The hover for
 `rev` now says the view keeps keys and names `.nth(0)`. Reverse the `count`
 error by deleting the rule; the cases mark both.
 
-## 378. Site editors follow the typist's own indentation (2026-11-23)
+## 502. Site editors follow the typist's own indentation (2026-11-23)
+
+Formerly 378 (renumbered: the number was taken twice).
 
 Someone typing code with its own indentation into a site editor (from a
 statement, from memory, from another editor) ended the line after a loop
@@ -7943,7 +8003,9 @@ removes a level, as in Python editors. Reverse: drop `typesOwnIndent`.
   slip; making it go through `Int(v)` keeps the slip visible.
 - **Reverse.** Accept every integer operator on positions.
 
-## 380. A scan's index hook is `at` over cuts; a position is its right cut (2026-11-23)
+## 503. A scan's index hook is `at` over cuts; a position is its right cut (2026-11-23)
+
+Formerly 380 (renumbered: the number was taken twice).
 
 `Prefix` had a `get(i: D)` returning the element `a[i]`, and `x[i]` on a struct calls `get` before `at`, so `pre[i]` silently gave `a[i]` on a range-domain array and trapped on a `List`'s last cut, against R07.1.6 and decision 349 (acceptance `scan-prefix-int-index-wrong`). Rule: `Prefix.at(c: Cut<D>)` is the index hook, and `get` is gone (`fold(v..=v)` recovers an element); any struct whose `at` takes `Cut<D>` also takes a position `v` of `D` as `v.r`, the "a position folds through itself" reading, for user structs too. Reason: one index meaning per table, and no overload. Reverse: put `get` back under another name and drop the `Bound` rewrite in `struct_at` (`lower/stmt/lends.rs`).
 
@@ -8017,7 +8079,9 @@ site and release.yml's skip check read latest.json, never the tag or release
 target. Reverse: publish with a token that has workflows write and make the
 tag move fatal again.
 
-## 382. A library type is a domain through `impl Index` with `count`, `ord`, `nth` (stdlib, 2026-11-23)
+## 504. A library type is a domain through `impl Index` with `count`, `ord`, `nth` (stdlib, 2026-11-23)
+
+Formerly 382 (renumbered: the number was taken twice).
 
 - **Decision.** Any struct, std or user, becomes a domain by implementing
   `Index` with `let count`, `@get fn ord(self) -> Int` and `fn nth(k: Int)`

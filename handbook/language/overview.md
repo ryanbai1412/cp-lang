@@ -318,7 +318,7 @@ doc that gives its reasons.
 | Lowering to C++ | `spec/core/13-lowering.md` | |
 | The standard library | `spec/lib/` | [std.md](std.md) |
 
-## How math is written (decision 335)
+## How math is written (decision 487)
 
 Costs and bounds are math, and the spec, doc comments and lint records
 write them as LaTeX inside `\( ... \)`: `\(O(n \log n)\)`, with sizes as

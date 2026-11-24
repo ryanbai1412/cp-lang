@@ -313,7 +313,7 @@ labels, so options are named arguments (`by:`, `init:`), never a `_by`
 twin, and a call resolves by reading it. Recursive `let` lambdas cover
 the case overloading was most often wanted for.
 
-**A fold costs what the receiver's type says (decision 326).** A generic
+**A fold costs what the receiver's type says (decision 486).** A generic
 `.sum()` on a user `Seq` walks it; on a structure with an \(O(1)\) total
 it is \(O(1)\). Costs are visible in each signature's `/// cost:` line
 (W12), so a library type's cost is as discoverable as std's.

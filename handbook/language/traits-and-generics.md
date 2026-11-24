@@ -201,7 +201,7 @@ Method lookup is inherent methods first, then traits in scope; two
 candidates at one step is an error naming both, resolved with
 `Trait.m(x)` (R08.1.4). Generic code calls the receiver's own impl, so a
 default a type overrides is overridden everywhere. A type that wants its
-own cost for a fold overrides the trait method (decision 326), which is
+own cost for a fold overrides the trait method (decision 486), which is
 how `Range.sum` becomes a closed form.
 
 ## Worked examples

@@ -367,7 +367,7 @@
       "lane": "spec",
       "summary": "OPEN ON EDGE 68a1a48e, FIXED ON MAIN 845ce7572 (decision 388): on edge, `a.rev[0]` still compiles and prints `a[0]`; on main 38f04e5ba, `a.rev[0]` and `a.rev[k]` are E0305 (\"`a.rev` walks backwards, out of key order, so it can't be indexed\"). 845ce7572 is not an ancestor of 68a1a48ef. Agent's report: `a.rev[0]` compiles and returns the unreversed `a[0]`, while the spec chapter says indexing a reversed view is an error and the std reference says keys survive, so the docs contradict each other and my prediction (`30`) was wrong.",
       "minutes_lost": 3,
-      "evidence": "design/p5_rev_index.cp: `let a = [10, 20, 30]` `print(a.rev[0], a.rev[2])` -> `cpl run` prints `10 30`; llms-full.txt: 'a.rev, can't be indexed: a.rev[0] is an error and a.rev.nth(0) reads' / 'a.rev[i] is an error' (spec, decision 354) vs std ref `rev`: 'Keys survive: a.rev[i] is still a[i]'"
+      "evidence": "design/p5_rev_index.cp: `let a = [10, 20, 30]` `print(a.rev[0], a.rev[2])` -> `cpl run` prints `10 30`; llms-full.txt: 'a.rev, can't be indexed: a.rev[0] is an error and a.rev.nth(0) reads' / 'a.rev[i] is an error' (spec, decision 496) vs std ref `rev`: 'Keys survive: a.rev[i] is still a[i]'"
     },
     {
       "id": "partition-point-copies-list",

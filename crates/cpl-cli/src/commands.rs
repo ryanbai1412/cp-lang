@@ -533,7 +533,7 @@ options:
 ";
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every
-/// command that has one (decisions.md 230).
+/// command that has one (decisions.md 473).
 /// Short forms typed mid-contest: `cpl b -c` is `cpl build --copy`.
 const SHORT_COMMANDS: &[(&str, &str)] = &[("b", "build"), ("r", "run"), ("t", "test")];
 const SHORT_OPTIONS: &[(&str, &str, &str)] =

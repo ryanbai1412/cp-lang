@@ -16,7 +16,7 @@ running `?Ratio` minimum and maximum instead.
   from `scan` on a slice view keeps `D` unbound. Minimal: `let s =
   a[P.first!.r..]` / `let lo = s.scan(max)` / `lo[s.keys.last!.r]`; the same
   read on the whole array checks.
-- **What felt wrong:** a slice keeps its keys (decision 354), so its scan
+- **What felt wrong:** a slice keeps its keys (decision 496), so its scan
   should be indexed by the source's cuts; instead the idiom from spec 22
   (`prefix records`) stops at the type checker.
 - **Goal it hurts:** express, coherence.

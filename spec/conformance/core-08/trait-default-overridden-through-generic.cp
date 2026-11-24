@@ -1,6 +1,6 @@
 // expect: ok, output "0 5 5"
 // rule: 08.1.4
-// A trait default overridden in a type's impl is overridden everywhere, generic code included (decision 326).
+// A trait default overridden in a type's impl is overridden everywhere, generic code included (decision 486).
 trait Tot:
     fn tot(self) -> Int = 0
 struct A(x: Int)

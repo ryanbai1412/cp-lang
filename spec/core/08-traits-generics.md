@@ -48,7 +48,7 @@ impl Ord for Frac:
   can't be overridden: two of one name that both take the receiver (one
   `self: Range<Int>`, one `self: S` with `S: Seq`) are the same ambiguity
   error. To give a type its own cost, override the trait method instead
-  (decision 326). (R08.1.4)
+  (decision 486). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,
   `Show`, `Read`, `Unwrap`). Compound assignment comes from the

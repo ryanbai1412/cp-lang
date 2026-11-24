@@ -117,7 +117,7 @@ a type error (`spec/core/04-indices.md`). Writing `w[3]` with a literal on
 a slice gets lint L0605, which says the key is the source's and names
 `w.nth(3)`.
 
-### One indexing rule for every keyed view; `.rev` is walk-only (decision 354, decision 388)
+### One indexing rule for every keyed view; `.rev` is walk-only (decision 496, decision 388)
 
 **Chosen.** Only a view that walks in key order is indexable, and
 indexing always means "by source key" (R07.5.3). `.rev` walks out of key
@@ -181,7 +181,7 @@ literal already says the second.
 **Chosen.** `xs.sum()`, `xs.max(by: f)`, `xs.fold(op)` are methods
 (decision 53), so completion finds them after a dot. Each fold resolves
 through ordinary method lookup on the receiver, so `Range.sum` is a
-closed form and `(0..3e9).sum()` is \(O(1)\) (decision 326). Folds of a
+closed form and `(0..3e9).sum()` is \(O(1)\) (decision 486). Folds of a
 possibly empty input return an option (`max() -> ?T`); there are no
 sentinels. `count()` counts elements; `count(p)` counts matches
 (decision 378). Options are named: `max(by: f)`, never `max_by`

@@ -194,7 +194,7 @@ pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
 
 /// \(O(1)\). A view walking `self` backwards. Keys survive: `.items` and `.keys` give source keys,
 /// only the walk order changes, so `a.rev[i]` is a compile error and `a.rev.nth(0)` is the last
-/// element (decision 354).
+/// element (decision 496).
 ///
 /// cost: \(O(1)\)
 /// empty: an empty view

@@ -74,7 +74,7 @@ Math in the spec, in doc comments and in lint records is LaTeX inside
 table cell needs no escaped pipe; a multi-letter name is `\mathit{len}`.
 The site renders it with KaTeX at build time; hover and CLI output show a
 plain-Unicode fallback (`O(n log n)`). Code blocks are source and keep their
-`// O(n)` comments as written. (decision 335)
+`// O(n)` comments as written. (decision 487)
 
 ## Checking
 

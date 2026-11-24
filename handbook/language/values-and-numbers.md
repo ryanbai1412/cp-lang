@@ -202,7 +202,7 @@ print(b.total, b.steps.len)
 ```
 
 **Lost:** an enum for every token set (two declarations for a fact the
-statement says in one line, decision 357 keeps the enum for a token
+statement says in one line, decision 498 keeps the enum for a token
 followed by a payload); validating strings with a hand-written loop after
 the read; a raw-literal alphabet, which could not name `"` or a newline
 and read differently from every other string. Field defaults remove
@@ -349,7 +349,7 @@ expression form.
   returning enums, so patterns stay core-only.
 - **Members that compute without `()`** lost (decision 140): parentheses
   mean work, so `g.transpose()` looks like the \(O(n)\) it is.
-- **An enum for every token set** lost (decision 357): tokens that carry
+- **An enum for every token set** lost (decision 498): tokens that carry
   nothing read as a literal union, `"add" | "del"`; the enum is for a
   token followed by its payload.
 - **Path lengths in the weight's range** lost (decision 315): a sum of

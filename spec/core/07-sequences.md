@@ -329,7 +329,7 @@ method (R08.1.4), generic code included, and the compiler never pattern
 matches a pipeline. User types get the same power. Parentheses still
 mean "may do work" (decision 140), and the cost is the one the resolved
 method documents; hover and `cpl explain` name that method and its cost
-(decision 326). (R07.9.6)
+(decision 486). (R07.9.6)
 
 Position queries are folds over `a.keys`, because the keys are a range of
 positions. `argmin`/`argmax` are kept as the named form of the first
