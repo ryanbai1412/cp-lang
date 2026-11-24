@@ -100,9 +100,16 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                self.unify_bounds(&mdecl.bounds, tpl_mod, &all_gen_names, &mut inferred);
-                self.unify_bounds(&decl.bounds, tpl_mod, &all_gen_names, &mut inferred);
-                self.bind_impl_bounds(&mdecl.bounds, tpl_mod, &mut inferred);
+                // `S: Indexed<E, R>` binds R, then `R: (u: V, ..)` binds the struct's V.
+                loop {
+                    let before = inferred.len();
+                    self.unify_bounds(&mdecl.bounds, tpl_mod, &all_gen_names, &mut inferred);
+                    self.unify_bounds(&decl.bounds, tpl_mod, &all_gen_names, &mut inferred);
+                    self.bind_impl_bounds(&mdecl.bounds, tpl_mod, &mut inferred);
+                    if inferred.len() == before {
+                        break;
+                    }
+                }
             }
         }
         let final_args: Vec<GenArg> = gen_names
