@@ -2036,10 +2036,10 @@ pub fn dfs<V, G: Next<V>>(
         var vis: [V]Bool = false
         for e in dfs_walk(g, from, mut vis, prune): yield e
 
-fn dfs_arcs<V, G: Next<V>>(g: G, v: V, prune: ?(V -> Bool)) -> List<G.Arc>:
+fn push_dfs_arcs<V, G: Next<V>>(g: G, v: V, prune: ?(V -> Bool), mut arcs: List<G.Arc>):
     if let p = prune:
-        if p(v): return List<G.Arc>()
-    g.out(v).collect()
+        if p(v): return
+    for a in g.out(v): arcs.push(a)
 
 fn dfs_walk<V, G: Next<V>>(
     g: G,
@@ -2052,17 +2052,21 @@ fn dfs_walk<V, G: Next<V>>(
         if vis[s]: continue
         vis[s] = true
         yield Visit.Enter(s, no_via)
+        // the stacked vertices' arcs in one list, not one list each: frame k's unwalked
+        // arcs are arcs[stk_i[k]..stk_end[k]], and frame k + 1's start at stk_end[k]
+        var arcs: List<G.Arc> = []
+        push_dfs_arcs(g, s, prune, mut arcs)
         var stk_v = [s]
         var stk_via: List<?G.Arc> = [no_via]
-        var stk_arcs: List<List<G.Arc>> = [dfs_arcs(g, s, prune)]
         var stk_i = [0]
+        var stk_end = [arcs.len]
         while stk_v.len > 0:
             let top = stk_v.len - 1
             let u = stk_v[top]
             let i = stk_i[top]
-            if i < stk_arcs[top].len:
+            if i < stk_end[top]:
                 stk_i[top] = i + 1
-                let a = stk_arcs[top][i]
+                let a = arcs[i]
                 let v = a.to
                 if vis[v]:
                     yield Visit.Again(u, a)
@@ -2071,14 +2075,17 @@ fn dfs_walk<V, G: Next<V>>(
                     yield Visit.Enter(v, Some(a))
                     stk_v.push(v)
                     stk_via.push(Some(a))
-                    stk_arcs.push(dfs_arcs(g, v, prune))
-                    stk_i.push(0)
+                    stk_i.push(arcs.len)
+                    push_dfs_arcs(g, v, prune, mut arcs)
+                    stk_end.push(arcs.len)
             else:
                 let via = stk_via[top]
+                let base = if top > 0: stk_end[top - 1] else: 0
+                while arcs.len > base: arcs.pop()
                 stk_v.pop()
                 stk_via.pop()
-                stk_arcs.pop()
                 stk_i.pop()
+                stk_end.pop()
                 yield Visit.Exit(u, via)
 
 /// Every vertex reachable from `from`, each once, sources included. `reachable(g, from:
