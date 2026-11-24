@@ -2689,7 +2689,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 HARD_ZERO = frozenset({
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "lint_std_names", "cpl_env_reads", "dead_code_allows",
-    "lint_name_matchers",
+    "lint_name_matchers", "lint_type_syntax",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
     "stdlib_todo",
     "uncached_installs",

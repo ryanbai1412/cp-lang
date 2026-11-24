@@ -1891,3 +1891,11 @@ print(pre[C.last.r] - pre[C.first.l])
 ";
     assert_eq!(taste_codes(aliased), ["L0521"]);
 }
+
+#[test]
+fn a_declared_tuple_reads_each_name_s_range_from_the_checker() {
+    let src = "let (n, a): (0..=9, [0..n]Int) = read()\nprint(n, a.max()!)\n";
+    assert_eq!(codes(src), ["L0305"]);
+    let src = "let (n, a): (1..=9, [0..n]Int) = read()\nprint(n, a.max()!)\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+}

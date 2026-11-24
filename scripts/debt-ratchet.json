@@ -165,7 +165,7 @@
     "tools": 9
   },
   "written_twice": 0,
-  "lint_type_syntax": 9,
+  "lint_type_syntax": 0,
   "idioms_evidenced_unlinted": 0,
   "bench_lists": 0,
   "unwrap_input": 687,

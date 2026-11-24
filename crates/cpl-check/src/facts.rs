@@ -67,6 +67,16 @@ pub struct ExprFacts {
     pub unresolved: Vec<(Span, Vec<String>)>,
     /// The type each written type resolved to: `Map<V, Int>` in `m: Map<V, Int>`.
     pub written: Vec<(Span, Ty)>,
+    /// The ends of each range type written with both: `x + 1..=n`.
+    pub ranges: Vec<(Span, RangeEnds)>,
+}
+
+/// The end expressions of a written range type, by span.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RangeEnds {
+    pub lo: Span,
+    pub hi: Span,
+    pub inclusive: bool,
 }
 
 impl ExprFacts {
@@ -112,6 +122,8 @@ pub struct Facts {
     unresolved: BySpan<Vec<String>>,
     /// The type each written type resolved to, by file span.
     written: BySpan<Ty>,
+    /// The ends of each range type written with both, by file span.
+    ranges: BySpan<RangeEnds>,
 }
 
 impl Facts {
@@ -129,7 +141,7 @@ impl Facts {
             ..Facts::default()
         };
         let (mut exprs, mut owners, mut unresolved) = (Vec::new(), Vec::new(), Vec::new());
-        let (mut written, mut named) = (Vec::new(), Vec::new());
+        let (mut written, mut named, mut ranges) = (Vec::new(), Vec::new(), Vec::new());
         for &(offset, check) in items {
             let shift = |s: Span| s.shift(offset);
             for (span, path) in &check.exprs.unresolved {
@@ -143,6 +155,10 @@ impl Facts {
             }
             for entry in check.hovers.iter().filter(|e| !e.ty.is_vague()) {
                 named.push((shift(entry.span), entry.ty.clone()));
+            }
+            for &(span, RangeEnds { lo, hi, inclusive }) in &check.exprs.ranges {
+                let (lo, hi) = (shift(lo), shift(hi));
+                ranges.push((shift(span), RangeEnds { lo, hi, inclusive }));
             }
             for entry in &check.hovers {
                 if let ("field", Some(owner)) = (entry.keyword, &entry.owner) {
@@ -180,6 +196,7 @@ impl Facts {
         facts.owners = BySpan::new(owners);
         facts.unresolved = BySpan::new(unresolved);
         facts.written = BySpan::new(written);
+        facts.ranges = BySpan::new(ranges);
         facts.callees = BySpan::new(callees);
         facts.instantiations = BySpan::new(instantiations);
         facts
@@ -210,6 +227,11 @@ impl Facts {
     /// The type the type written at exactly `ty` resolved to.
     pub fn written_type(&self, ty: Span) -> Option<&Ty> {
         self.written.get(ty)
+    }
+
+    /// The ends of the range type written at exactly `range`.
+    pub fn range_ends(&self, range: Span) -> Option<RangeEnds> {
+        self.ranges.get(range).copied()
     }
 
     /// Every typed expression inside `span`, in source order: by start, then end.
@@ -350,6 +372,37 @@ mod tests {
             facts.written_type(at("Set<K>")),
             Some(Ty::Named { args, .. }) if matches!(args[..], [Ty::Pos(_)])
         ));
+    }
+
+    #[test]
+    fn a_written_range_keeps_the_spans_of_its_ends() {
+        let src = "let n: 1..=9 = read()\nlet x: 0..n = read()\nlet y: x + 1..=n = read()\nlet a: [V, 0..n]Int = read()\ndomain V = 1..=n\nlet z: 0.. = read()\nprint(x, y, a, z)\n";
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        let at = |text: &str, nth: usize| {
+            let start = src.match_indices(text).nth(nth).unwrap().0 as u32;
+            Span::new(start, start + text.len() as u32)
+        };
+        let facts = analysis.facts();
+        let ends = |lo, hi, inclusive| Some(super::RangeEnds { lo, hi, inclusive });
+        let x_plus_one = at("x + 1", 0);
+        assert_eq!(
+            facts.range_ends(at("x + 1..=n", 0)),
+            ends(x_plus_one, at("n", 2), true)
+        );
+        assert_eq!(
+            facts.range_ends(at("0..n", 0)),
+            ends(at("0", 0), at("n", 1), false)
+        );
+        let index = at("0..n", 1);
+        let index_ends = facts.range_ends(index).unwrap();
+        assert_eq!(
+            (index_ends.lo.start, index_ends.hi.end),
+            (index.start, index.end)
+        );
+        assert_eq!(facts.range_ends(at("1..=n", 0)), None);
+        assert_eq!(facts.range_ends(at("0..", 1)), None);
     }
 
     #[test]

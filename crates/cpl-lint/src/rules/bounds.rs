@@ -7,8 +7,8 @@
 
 use crate::std_fn;
 use crate::File;
-use cpl_check::Ty;
-use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, StmtKind, Type, TypeKind, UnOp};
+use cpl_check::{RangeEnds, Ty};
+use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, StmtKind, Type, UnOp};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -170,25 +170,53 @@ impl<'f> Bounds<'f> {
         bounds
     }
 
-    /// `pat` is bound to a value of type `ty`, part by part for a tuple.
+    /// `pat` is bound to a value of type `ty`, each name to the type the
+    /// checker gave it.
     fn declare(&mut self, base: u32, pat: &cpl_syntax::ast::Pattern, ty: &Type) {
-        match (&pat.kind, &ty.kind) {
-            (PatternKind::Name(name), _) => {
+        match &pat.kind {
+            PatternKind::Name(name) => {
                 let declared = self.declared(base, pat.span);
                 if let Some(range) = declared.and_then(|t| self.range(t)) {
-                    super::proven::hazards::declared(name, range, ty, self);
+                    let ends = declared.and_then(|t| self.range_exprs(base, ty, t));
+                    super::proven::hazards::declared(name, range, ends, self);
                 }
                 if let Some(size) = super::proven::array_size(base, ty, declared, self) {
                     self.set_size(name, size);
                 }
             }
-            (PatternKind::Tuple(pats), TypeKind::Tuple(tys)) if pats.len() == tys.len() => {
-                for (pat, ty) in pats.iter().zip(tys) {
+            PatternKind::Tuple(pats) => {
+                for pat in pats {
                     self.declare(base, pat, ty);
                 }
             }
             _ => {}
         }
+    }
+
+    /// The ends of the range written in `ty` that the checker resolved to
+    /// `of`, as the checker recorded them.
+    pub(crate) fn written_range(&self, base: u32, ty: &Type, of: &Ty) -> Option<RangeEnds> {
+        self.find_range(base, ty, of).ends
+    }
+
+    /// The end expressions of the range written in `ty` that the checker
+    /// resolved to `of`, and whether it includes its upper end.
+    pub(crate) fn range_exprs(&self, base: u32, ty: &Type, of: &Ty) -> Option<(Expr, Expr, bool)> {
+        let found = self.find_range(base, ty, of);
+        Some((found.lo?, found.hi?, found.ends?.inclusive))
+    }
+
+    fn find_range<'a>(&'a self, base: u32, ty: &Type, of: &'a Ty) -> FoundRange<'a> {
+        let mut found = FoundRange {
+            facts: self.facts,
+            base,
+            of,
+            ends: None,
+            lo: None,
+            hi: None,
+        };
+        crate::walk::walk_ty(&mut found, ty);
+        found
     }
 
     /// From here on `name` is in `value`, or unknown: a local that
@@ -1027,6 +1055,40 @@ pub(crate) fn keeps_len(method: &str) -> bool {
         .filter(|m| m.name == method)
         .peekable();
     members.peek().is_some() && members.all(|m| !m.mutates || IN_PLACE.contains(&m.name))
+}
+
+/// A range type found in a written type by the type the checker gave it,
+/// with its end expressions found by the spans the checker recorded.
+struct FoundRange<'a> {
+    facts: Option<&'a crate::Facts>,
+    base: u32,
+    of: &'a Ty,
+    ends: Option<RangeEnds>,
+    lo: Option<Expr>,
+    hi: Option<Expr>,
+}
+
+impl crate::walk::Visitor for FoundRange<'_> {
+    fn ty(&mut self, ty: &Type) {
+        let (Some(facts), None) = (self.facts, self.ends) else {
+            return;
+        };
+        let at = ty.span.shift(self.base);
+        if facts.written_type(at) == Some(self.of) {
+            self.ends = facts.range_ends(at);
+        }
+    }
+
+    fn expr(&mut self, expr: &Expr) {
+        let (Some(ends), at) = (self.ends, expr.span.shift(self.base)) else {
+            return;
+        };
+        if at == ends.lo && self.lo.is_none() {
+            self.lo = Some(expr.clone());
+        } else if at == ends.hi && self.hi.is_none() {
+            self.hi = Some(expr.clone());
+        }
+    }
 }
 
 /// `T` in `read<T>()`.

@@ -195,11 +195,11 @@ pub(crate) fn can_be_empty(
 pub(crate) fn declared(
     name: &str,
     range: bounds::Interval,
-    ty: &cpl_syntax::ast::Type,
+    ends: Option<(Expr, Expr, bool)>,
     bounds: &mut bounds::Bounds,
 ) {
     bounds.input(name, range);
-    let cpl_syntax::ast::TypeKind::Range { lo, hi, inclusive } = &ty.kind else {
+    let Some((lo, hi, inclusive)) = ends else {
         return;
     };
     let mut rel: Vec<(String, bounds::Interval)> = Vec::new();
@@ -214,28 +214,24 @@ pub(crate) fn declared(
     };
     let shift = |e: &Expr| super::shift_of(e, bounds);
     // `name - y` from each end `y + c`, with the end's range for `y`'s.
-    if let Some(lo) = lo {
-        if let (Some((y, c)), Some(end)) = (shift(lo), bounds.expr(lo)) {
-            add(
-                y,
-                bounds::Interval {
-                    lo: c,
-                    hi: range.hi - (end.lo - c),
-                },
-            );
-        }
+    if let (Some((y, c)), Some(end)) = (shift(&lo), bounds.expr(&lo)) {
+        add(
+            y,
+            bounds::Interval {
+                lo: c,
+                hi: range.hi - (end.lo - c),
+            },
+        );
     }
-    if let Some(hi) = hi {
-        if let (Some((y, c)), Some(end)) = (shift(hi), bounds.expr(hi)) {
-            let top = if *inclusive { c } else { c - 1 };
-            add(
-                y,
-                bounds::Interval {
-                    lo: range.lo - (end.hi - c),
-                    hi: top,
-                },
-            );
-        }
+    if let (Some((y, c)), Some(end)) = (shift(&hi), bounds.expr(&hi)) {
+        let top = if inclusive { c } else { c - 1 };
+        add(
+            y,
+            bounds::Interval {
+                lo: range.lo - (end.hi - c),
+                hi: top,
+            },
+        );
     }
     for (y, d) in rel {
         if y != name && d.lo <= d.hi {

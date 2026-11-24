@@ -158,6 +158,11 @@ impl<'a> Checker<'a> {
                 Ty::Record(fields)
             }
             TypeKind::Range { lo, hi, inclusive } => {
+                if let (Some(lo), Some(hi)) = (lo, hi) {
+                    let (lo, hi, inclusive) = (lo.span, hi.span, *inclusive);
+                    let ends = crate::facts::RangeEnds { lo, hi, inclusive };
+                    self.exprs.ranges.push((ty.span, ends));
+                }
                 let lo = lo.as_deref().and_then(|lo| {
                     self.infer(lo);
                     self.bounds(lo).0

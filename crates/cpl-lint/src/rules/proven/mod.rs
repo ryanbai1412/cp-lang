@@ -112,33 +112,22 @@ pub(super) fn array_size(
     bounds: &bounds::Bounds,
 ) -> Option<(u128, Vec<Factor>)> {
     use cpl_check::Ty;
-    use cpl_syntax::ast::TypeKind;
-    let (TypeKind::Array { index, .. }, Some(Ty::Array { index: sets, .. })) = (&ty.kind, declared)
-    else {
+    let Some(Ty::Array { index: sets, .. }) = declared else {
         return None;
     };
-    if index.len() != sets.len() {
-        return None;
-    }
     let mut total = 1u128;
     let mut factors = Vec::new();
-    for (t, set) in index.iter().zip(sets) {
+    for set in sets {
         let size = bounds.type_size(set)?;
         total = total.checked_mul(size)?;
-        factors.push(match (&t.kind, set) {
-            (_, Ty::Pos(domain)) if bounds.domain_size(domain).is_some() => {
+        factors.push(match set {
+            Ty::Pos(domain) if bounds.domain_size(domain).is_some() => {
                 Factor::Domain(domain.clone(), size)
             }
-            (
-                TypeKind::Range {
-                    lo: Some(lo),
-                    hi: Some(hi),
-                    inclusive,
-                },
-                _,
-            ) if counts_from_start(lo, *inclusive) => {
-                Factor::Text(base + hi.span.start, base + hi.span.end)
-            }
+            // `0..n` and `1..=n` count to their upper end.
+            Ty::Range { lo: Some(lo), .. } => (bounds.written_range(base, ty, set))
+                .filter(|e| matches!((*lo, e.inclusive), (0, false) | (1, true)))
+                .map_or(Factor::Number(size), |e| Factor::Text(e.hi.start, e.hi.end)),
             _ => Factor::Number(size),
         });
     }
@@ -778,26 +767,22 @@ fn ranges_of_stmt(
                     Option<&'p cpl_syntax::ast::Expr>,
                     Option<&'p cpl_syntax::ast::Type>,
                 );
-                let parts: Vec<Part> = match (
-                    &whole.kind,
-                    whole_init.as_ref().map(|e| &e.kind),
-                    declared.map(|t| &t.kind),
-                ) {
-                    (PatternKind::Tuple(ps), Some(ExprKind::Tuple(es)), None)
-                        if ps.len() == es.len() && !reads_any(es, &declared_names(whole)) =>
-                    {
-                        ps.iter()
-                            .zip(es.iter().map(Some))
-                            .map(|(p, e)| (p, e, None))
-                            .collect()
-                    }
-                    (PatternKind::Tuple(ps), _, Some(cpl_syntax::ast::TypeKind::Tuple(ts)))
-                        if ps.len() == ts.len() =>
-                    {
-                        ps.iter().zip(ts).map(|(p, t)| (p, None, Some(t))).collect()
-                    }
-                    _ => vec![(whole, whole_init.as_ref(), whole_ty.as_ref())],
-                };
+                let parts: Vec<Part> =
+                    match (&whole.kind, whole_init.as_ref().map(|e| &e.kind), declared) {
+                        (PatternKind::Tuple(ps), Some(ExprKind::Tuple(es)), None)
+                            if ps.len() == es.len() && !reads_any(es, &declared_names(whole)) =>
+                        {
+                            ps.iter()
+                                .zip(es.iter().map(Some))
+                                .map(|(p, e)| (p, e, None))
+                                .collect()
+                        }
+                        // Each name reads the type the checker gave it.
+                        (PatternKind::Tuple(ps), _, Some(_)) => {
+                            ps.iter().map(|p| (p, None, declared)).collect()
+                        }
+                        _ => vec![(whole, whole_init.as_ref(), whole_ty.as_ref())],
+                    };
                 let siblings: Vec<(String, cpl_syntax::ast::Expr, bool)> = parts
                     .iter()
                     .filter(|_| parts.len() > 1)
@@ -850,7 +835,11 @@ fn ranges_of_stmt(
                     forget(pat, bounds);
                     if let PatternKind::Name(name) = &pat.kind {
                         match (value, ty, init) {
-                            (Some(v), Some(ty), _) => hazards::declared(name, v, ty, bounds),
+                            (Some(v), Some(ty), _) => {
+                                let declared = bounds.declared(base, pat.span);
+                                let ends = declared.and_then(|t| bounds.range_exprs(base, ty, t));
+                                hazards::declared(name, v, ends, bounds);
+                            }
                             (_, None, Some(init)) if !mutable => {
                                 bounds.bind(name, value);
                                 bounds.define(name, init);

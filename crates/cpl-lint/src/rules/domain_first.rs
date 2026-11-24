@@ -6,9 +6,10 @@
 use super::bounds::Bounds;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, Lint, DOMAIN_EMPTY_FIRST_LAST, UNWRAP_ON_POSSIBLY_EMPTY};
+use cpl_check::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
-use cpl_syntax::ast::{Expr, ExprKind, Pattern, PatternKind, StmtKind, Type, TypeKind};
+use cpl_syntax::ast::{Expr, ExprKind, Pattern, PatternKind, StmtKind};
 
 /// What empties a domain or an array: its declared index set, the end
 /// that does it and the value it takes then.
@@ -53,31 +54,33 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             StmtKind::Let {
                 pat, ty: Some(ty), ..
             } => {
-                let mut arrays = Vec::new();
-                named_types(pat, ty, &mut arrays);
-                for (name, ty) in arrays {
-                    let TypeKind::Array { index, .. } = &ty.kind else {
+                let mut names = Vec::new();
+                bound_names(pat, &mut names);
+                for (name, at) in names {
+                    let declared = bounds.declared(base, at);
+                    let Some(Ty::Array { index, .. }) = declared else {
                         continue;
                     };
-                    let [first] = index.as_slice() else {
+                    let [set] = index.as_slice() else {
                         continue;
                     };
-                    let found = match &first.kind {
-                        TypeKind::Range {
-                            lo: Some(lo),
-                            hi: Some(hi),
-                            inclusive,
-                        } => empties(lo, hi, *inclusive).map(|(e, at)| (text(e.span), at)),
-                        TypeKind::Named { name: d, .. } => empty
+                    let found = match set {
+                        Ty::Pos(d) => empty
                             .iter()
-                            .find(|e| e.domain && e.name == d.text)
+                            .find(|e| e.domain && e.name == *d)
                             .map(|e| (e.end.clone(), e.at)),
-                        _ => None,
+                        _ => (bounds.range_exprs(base, ty, set))
+                            .and_then(|(lo, hi, inclusive)| empties(&lo, &hi, inclusive))
+                            .map(|(e, at)| (text(e.span), at)),
                     };
-                    if let Some((end, at)) = found {
+                    if let (Some((end, at)), Some(declared)) = (found, declared) {
+                        let shown = match &pat.kind {
+                            PatternKind::Name(_) => text(ty.span),
+                            _ => declared.to_string(),
+                        };
                         empty.push(Empty {
                             name: name.to_string(),
-                            shown: format!("{name}: {}", text(ty.span)),
+                            shown: format!("{name}: {shown}"),
                             end,
                             at,
                             domain: false,
@@ -189,15 +192,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     v.out
 }
 
-/// The names a `let` pattern binds, each with its declared type.
-fn named_types<'a>(pat: &'a Pattern, ty: &'a Type, out: &mut Vec<(&'a str, &'a Type)>) {
-    match (&pat.kind, &ty.kind) {
-        (PatternKind::Name(name), _) => out.push((name, ty)),
-        (PatternKind::Tuple(pats), TypeKind::Tuple(tys)) if pats.len() == tys.len() => {
-            for (p, t) in pats.iter().zip(tys) {
-                named_types(p, t, out);
-            }
-        }
+/// The names a `let` pattern binds, each with its span.
+fn bound_names<'a>(pat: &'a Pattern, out: &mut Vec<(&'a str, Span)>) {
+    match &pat.kind {
+        PatternKind::Name(name) => out.push((name, pat.span)),
+        PatternKind::Tuple(pats) => pats.iter().for_each(|p| bound_names(p, out)),
         _ => {}
     }
 }
