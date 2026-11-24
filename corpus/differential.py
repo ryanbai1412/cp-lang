@@ -3,13 +3,16 @@
 
 For each id in corpus/sets/v03.txt, `cpl run port.cp` and the C++ from
 `cpl build --judge codeforces` (g++ -O2) run every test in the problem's
-`tests/`, or in `target/corpus-tests/<id>/` once it has moved there. A
+`tests/`, or in `target/corpus-tests/<id>/` once it has moved there (made
+first when its tests.toml lists them). A
 finding is `differ <id> <test>`: the two print different bytes or exit
 differently (AGENTS.md goal 5: the interpreter and the C++ agree on every
 program, including on input they reject); a new one names both exit codes and
 the first stdout line that differs. A case the interpreter can't finish in
 TIMEOUT seconds is skipped and counted, never a finding; a C++ timeout is
-retried once, since the C++ outruns the interpreter that just finished.
+retried once, since the C++ outruns the interpreter that just finished. A
+package with an interactor.py feeds neither side its case: the interactor
+judges each, once per case, and a `differ` is the two verdicts disagreeing.
 
 The same builds give two more findings: `over-32kb <id> -`, a Codeforces
 build over the 32 KB every solution should fit (goal 5), and
@@ -65,7 +68,8 @@ def run(cmd, inp):
 
 
 def native(pid, port, cpl):
-    """The port's Codeforces C++ built with g++ -O2, cached by source; None if either step fails."""
+    """The port's Codeforces C++ built with g++ -O2, cached by source (kept beside it as
+    `<exe>.cpp`, which `cpl test` reads); None if either step fails."""
     os.makedirs(CACHE, exist_ok=True)
     cpp = os.path.join(CACHE, f"{pid}.{os.getpid()}.{threading.get_ident()}.cpp")
     if subprocess.run([cpl, "build", "--judge", "codeforces", port, "-o", cpp], capture_output=True).returncode:
@@ -80,7 +84,7 @@ def native(pid, port, cpl):
             os.remove(cpp)
             return None
         os.replace(tmp, exe)
-    os.remove(cpp)
+    os.replace(cpp, f"{exe}.cpp")
     return exe
 
 
@@ -131,19 +135,69 @@ def ratchet(name, path, found, a, what):
     return 1 if a.check and new else 0
 
 
+def interactor(pid):
+    """The package's interactor.py, which judges its cases instead of a byte compare."""
+    path = os.path.join(ROOT, "corpus", "problems", pid, "interactor.py")
+    return path if os.path.exists(path) else None
+
+
+def make_cases(pid, cpl):
+    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "corpus-tests.py"), "make", pid],
+                   cwd=ROOT, env={**os.environ, "CPL": cpl}, capture_output=True)
+
+
+def made(pid, cpl):
+    """The package's cases; a package listing them in tests.toml gets them made first."""
+    ins = tests(pid)
+    if not ins and os.path.exists(os.path.join(ROOT, "corpus", "problems", pid, "tests.toml")):
+        make_cases(pid, cpl)
+        ins = tests(pid)
+    return ins
+
+
 def check(pid, cpl):
     port = os.path.join(ROOT, "corpus", "problems", pid, "port.cp")
-    ins = tests(pid)
     if not os.path.exists(port):
         return []
+    ins = made(pid, cpl)
     if not ins:
         return cpl_test(pid, port, cpl)
     exe = native(pid, port, cpl)
     if not exe:
         return [f"no-build {pid} -"]
     found = [f"over-32kb {pid} -"] if BYTES.get(pid, 0) > TARGET_BYTES else []
-    found += [f for inp in ins if (f := compare(pid, port, exe, inp, cpl))]
-    return found + cpl_test(pid, port, cpl)
+    judge = interactor(pid)
+    if not judge:
+        found += [f for inp in ins if (f := compare(pid, port, exe, inp, cpl))]
+        return found + cpl_test(pid, port, cpl)
+    ours = judged(cpl, port)
+    return found + interacted(pid, exe, ins, judge, cpl, ours) + cpl_test(pid, port, cpl, ours)
+
+
+def interacted(pid, exe, ins, judge, cpl, ours):
+    """`differ <id> <test>` where interactor.py rules on the C++ unlike on the port.
+
+    An interactive case is no stdin to feed both sides: the interactor talks
+    to each, once per case, through `cpl test --interactor`."""
+    if isinstance(ours, str):
+        return []
+    theirs = judged(cpl, f"{exe}.cpp", "--tests", os.path.dirname(ins[0]), "--interactor", judge)
+    if isinstance(theirs, str):
+        finding = f"differ {pid} -"
+        DETAIL[finding] = f"c++: {theirs}"
+        return [finding]
+    port = {c["name"]: c for c in ours}
+    cxx = {c["name"]: c for c in theirs}
+    found = []
+    for inp in ins:
+        name = os.path.splitext(os.path.basename(inp))[0]
+        a, b = port.get(name, {}), cxx.get(name, {})
+        COMPARED.append(pid)
+        if a.get("verdict") != b.get("verdict"):
+            finding = f"differ {pid} {os.path.relpath(inp, ROOT)}"
+            DETAIL[finding] = f"interp {a.get('verdict')} ({a.get('why')}), c++ {b.get('verdict')} ({b.get('why')})"
+            found.append(finding)
+    return found
 
 
 def compare(pid, port, exe, inp, cpl):
@@ -185,18 +239,25 @@ def mismatch(interp, cxx):
     return say
 
 
-def cpl_test(pid, port, cpl):
-    """What `cpl test` makes of the package the corpus tools read (problem-packages/R8)."""
+def judged(cpl, program, *args):
+    """`cpl test <program> <args>`'s cases, or the finding when it gives none."""
     try:
-        r = subprocess.run([cpl, "test", port, "--format", "json"], cwd=ROOT, capture_output=True, text=True, timeout=10 * TIMEOUT)
+        r = subprocess.run([cpl, "test", program, *args, "--format", "json"], cwd=ROOT, capture_output=True, text=True, timeout=10 * TIMEOUT)
     except subprocess.TimeoutExpired:
-        return [f"cpl-test-timeout {pid} -"]
+        return "cpl-test-timeout"
     if "has no cases" in r.stderr:
-        return [f"cpl-test-no-cases {pid} -"]
+        return "cpl-test-no-cases"
     try:
-        cases = json.loads(r.stdout)["cases"]
+        return json.loads(r.stdout)["cases"]
     except (ValueError, KeyError):
-        return [f"cpl-test-error {pid} -"]
+        return "cpl-test-error"
+
+
+def cpl_test(pid, port, cpl, cases=None):
+    """What `cpl test` makes of the package the corpus tools read (problem-packages/R8)."""
+    cases = judged(cpl, port) if cases is None else cases
+    if isinstance(cases, str):
+        return [f"{cases} {pid} -"]
     found = [f"cpl-test-fails {pid} {c['name']}" for c in cases if c["verdict"] not in (None, "ok")]
     judges = os.path.join(os.path.dirname(port), "interactor.py")
     if os.path.exists(judges) and all(c["verdict"] is None for c in cases):
