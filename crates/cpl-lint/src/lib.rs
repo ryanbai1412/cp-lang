@@ -654,7 +654,7 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
     file.walk(&mut fns, |fns, base| fns.base = base);
     let mut findings = allows.unknown;
     findings.extend(rules::run(file, config));
-    findings.extend(library::find(file, declared));
+    findings.extend(library::find(file, declared, None));
 
     let mut out: Vec<Diagnostic> = Vec::new();
     for Finding { lint, mut diag } in findings {
