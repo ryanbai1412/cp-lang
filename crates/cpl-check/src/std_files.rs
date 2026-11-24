@@ -48,7 +48,7 @@ pub fn outline(text: &str) -> String {
         let trimmed = code.trim_start();
         let comment = trimmed.starts_with("//");
         let top = !trimmed.is_empty() && trimmed.len() == code.len() && !comment;
-        let declares = code.contains("fn ") && !trimmed.starts_with("///");
+        let declares = code.contains("fn ") && !comment;
         if top {
             open = 0;
         }

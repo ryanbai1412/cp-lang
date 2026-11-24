@@ -54,13 +54,7 @@ impl Kind {
     }
 }
 
-/// A fenced block in a doc comment.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Example {
-    pub code: String,
-    /// The 1-based line of the file its first line is on.
-    pub line: u32,
-}
+pub use cpl_syntax::doc::{DocText, Example, Facts};
 
 /// One documented declaration.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -71,8 +65,12 @@ pub struct Item {
     pub signature: String,
     /// The doc comment, as Markdown. Empty when there is none.
     pub doc: String,
-    /// The argument of `@cost`, such as `O(log n)`.
+    /// The argument of `@cost`, such as `O(log n)`, else the doc's `cost:`.
     pub cost: Option<String>,
+    /// The doc's `cost:`, `traps:`, ... lines.
+    pub facts: Facts,
+    /// The doc without its facts and `example:` lines.
+    pub prose: String,
     /// The 1-based line the declaration starts on.
     pub line: u32,
     pub examples: Vec<Example>,
@@ -198,35 +196,16 @@ impl<'a> DocComments<'a> {
     }
 }
 
-/// The fenced blocks of a doc comment that starts on 0-based line `first`.
-fn examples(doc: &str, first: u32) -> Vec<Example> {
-    let mut out = Vec::new();
-    let mut open: Option<(u32, Vec<&str>)> = None;
-    for (offset, line) in doc.lines().enumerate() {
-        let fence = line.trim_start().strip_prefix("```");
-        match (&mut open, fence) {
-            (None, Some(language)) => {
-                // ```text, ```cpp and the like are shown, not checked.
-                if matches!(language.trim(), "" | "cp") {
-                    open = Some((first + offset as u32 + 2, Vec::new()));
-                } else {
-                    open = Some((0, Vec::new()));
-                }
-            }
-            (Some(_), Some(_)) => {
-                let (line, code) = open.take().unwrap();
-                if line > 0 {
-                    out.push(Example {
-                        code: code.join("\n") + "\n",
-                        line,
-                    });
-                }
-            }
-            (Some((_, code)), None) => code.push(line),
-            (None, None) => {}
-        }
-    }
-    out
+/// The examples of a doc comment that starts on 0-based line `first`,
+/// each with the 1-based line of the file its code starts on.
+fn examples(text: DocText, first: u32) -> Vec<Example> {
+    text.examples
+        .into_iter()
+        .map(|mut e| {
+            e.line += first + 1;
+            e
+        })
+        .collect()
 }
 
 /// `@cost("O(log n)")` or `@cost(O(1))`: the argument as written, without
@@ -316,11 +295,14 @@ impl Extractor<'_> {
 
     fn item(&self, kind: Kind, name: &str, signature: String, at: u32, doc_above: u32) -> Item {
         let (doc, first) = self.docs.above(doc_above);
+        let text = DocText::parse(&doc);
         Item {
             kind,
             name: name.to_string(),
             signature,
-            examples: examples(&doc, first),
+            facts: text.facts.clone(),
+            prose: text.prose.clone(),
+            examples: examples(text, first),
             doc,
             cost: None,
             line: at + 1,
@@ -347,7 +329,8 @@ impl Extractor<'_> {
             line,
             self.first_line(stmt),
         );
-        item.cost = cost(&stmt.decorators, self.docs.src, self.base);
+        item.cost =
+            cost(&stmt.decorators, self.docs.src, self.base).or_else(|| item.facts.cost.clone());
         item
     }
 
@@ -508,7 +491,7 @@ pub fn extract(src: &str, path: &str) -> Module {
         .collect();
     if !inner.is_empty() {
         doc = inner.join("\n").trim().to_string();
-        module_examples = examples(&doc, 0);
+        module_examples = examples(DocText::parse(&doc), 0);
     } else if let Some((first, _)) = extractor.docs.comments.first() {
         let leading = src
             .lines()
@@ -524,7 +507,7 @@ pub fn extract(src: &str, path: &str) -> Module {
             + first;
         if leading && first_item_line != Some(run_end) {
             (doc, _) = extractor.docs.above(run_end);
-            module_examples = examples(&doc, *first);
+            module_examples = examples(DocText::parse(&doc), *first);
         }
     }
 

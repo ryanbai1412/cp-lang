@@ -1,6 +1,7 @@
 //! `cpl doc --test`: the examples in doc comments must be programs.
 //!
-//! Each fenced block is parsed on its own. An example that no longer
+//! Each fenced block is parsed on its own (`example:` lines are run by
+//! cpl-conform's doc suite). An example that no longer
 //! parses is one the reader cannot copy, which is the drift this guards
 //! against. Running them and comparing output waits on the interpreter;
 //! [`Failure`] is what that will report too.
@@ -36,14 +37,15 @@ pub fn check(module: &Module) -> Report {
         let name = item.anchor(owner);
         item.examples.iter().map(move |e| (name.clone(), e))
     });
-    for (item, example) in own.chain(items) {
+    for (item, example) in own.chain(items).filter(|(_, e)| e.block) {
+        let code = example.code.as_deref().unwrap_or_default();
         report.checked += 1;
-        let diagnostics = cpl_syntax::parse_file(&example.code).diagnostics;
+        let diagnostics = cpl_syntax::parse_file(code).diagnostics;
         if !diagnostics.is_empty() {
             report.failures.push(Failure {
                 item,
                 line: example.line,
-                code: example.code.clone(),
+                code: code.to_string(),
                 diagnostics,
             });
         }

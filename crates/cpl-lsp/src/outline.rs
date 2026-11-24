@@ -218,23 +218,7 @@ impl Reader<'_> {
 
     /// The `///` lines above the declaration starting at `start`.
     fn doc_at(&self, start: u32) -> String {
-        let start = (self.base + start) as usize;
-        // From the start of its line, past `var` or a decorator before it.
-        let start = self.text[..start.min(self.text.len())]
-            .rfind('\n')
-            .map_or(0, |i| i + 1);
-        let mut lines = Vec::new();
-        for line in self.text[..start.min(self.text.len())].lines().rev() {
-            let line = line.trim();
-            if let Some(doc) = line.strip_prefix("///") {
-                lines.push(doc.strip_prefix(' ').unwrap_or(doc));
-            } else if !(line.starts_with('@') || line.is_empty() && lines.is_empty()) {
-                break;
-            }
-        }
-        // The text before a statement's own span ends on its line's indent.
-        lines.reverse();
-        lines.join("\n").trim().to_string()
+        cpl_syntax::doc::doc_above(self.text, (self.base + start) as usize)
     }
 
     /// The names a top-level `let (n, k) = ..` binds, each a value.

@@ -178,6 +178,13 @@ fn cost_is_read_from_the_decorator_with_or_without_quotes() {
     assert_eq!(find(&module, "of").cost.as_deref(), Some("O(n)"));
     assert_eq!(find(&module, "sum").cost.as_deref(), Some("O(1)"));
     assert_eq!(find(&module, "larger").cost, None);
+    let stated = extract("/// Sums.\n///\n/// cost: O(n)\nfn s() = 1\n", "m.cp");
+    assert_eq!(
+        stated.items[0].cost.as_deref(),
+        Some("O(n)"),
+        "a `cost:` line is the cost"
+    );
+    assert_eq!(stated.items[0].prose, "Sums.");
 }
 
 #[test]
@@ -235,8 +242,8 @@ fn examples_carry_their_line_and_only_cp_fences_count() {
     let module = lib();
     let example = &find(&module, "Prefix").examples[0];
     assert_eq!(
-        example.code,
-        "let p = Prefix.of([3, 1, 4])\nprint(p.sum(0, 2))\n"
+        example.code.as_deref(),
+        Some("let p = Prefix.of([3, 1, 4])\nprint(p.sum(0, 2))\n")
     );
     assert_eq!(example.line, 8);
     assert_eq!(
@@ -248,7 +255,10 @@ fn examples_carry_their_line_and_only_cp_fences_count() {
         "m.cp",
     );
     assert_eq!(mixed.items[0].examples.len(), 1);
-    assert_eq!(mixed.items[0].examples[0].code, "print(1)\n");
+    assert_eq!(
+        mixed.items[0].examples[0].code.as_deref(),
+        Some("print(1)\n")
+    );
 }
 
 #[test]
@@ -391,7 +401,9 @@ fn json_carries_every_field_and_escapes_strings() {
         text,
         "{\"modules\":[{\"name\":\"m\",\"path\":\"m.cp\",\"doc\":\"\",\"examples\":[],\"links\":[],\"items\":[\
          {\"kind\":\"fn\",\"name\":\"hi\",\"signature\":\"fn hi()\",\"doc\":\"Says \\\"hi\\\"\\\\n.\",\
-         \"summary\":\"Says \\\"hi\\\"\\\\n.\",\"cost\":\"O(1)\",\"line\":3,\"examples\":[],\"links\":[],\"members\":[]}]}]}\n"
+         \"summary\":\"Says \\\"hi\\\"\\\\n.\",\"cost\":\"O(1)\",\
+         \"facts\":{\"cost\":null,\"empty\":null,\"order\":null,\"ties\":null,\"traps\":null},\
+         \"prose\":\"Says \\\"hi\\\"\\\\n.\",\"line\":3,\"examples\":[],\"links\":[],\"members\":[]}]}]}\n"
     );
     assert_eq!(json::string("a\tb\u{1}"), "\"a\\tb\\u0001\"");
     assert_eq!(json::render(&[]), "{\"modules\":[]}\n");

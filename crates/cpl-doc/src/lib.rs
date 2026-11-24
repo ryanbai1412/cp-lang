@@ -28,8 +28,8 @@ pub mod links;
 pub use cpl_diag::plain;
 
 pub mod json {
-    use crate::{links, Example, Item, Module};
-    use cpl_json::escape_string;
+    use crate::{links, Example, Facts, Item, Module};
+    use cpl_json::{escape_string, obj, Value};
 
     pub(crate) fn string(text: &str) -> String {
         escape_string(text)
@@ -39,12 +39,42 @@ pub mod json {
         format!("[{}]", items.iter().map(one).collect::<Vec<_>>().join(","))
     }
 
+    fn opt(text: &Option<String>) -> Value {
+        text.as_deref().map_or(Value::Null, Value::from)
+    }
+
     fn example(example: &Example) -> String {
+        let (setup, expr, value) = example.claim();
+        let line = obj([
+            ("block", Value::Bool(example.block)),
+            ("text", example.text.as_str().into()),
+            ("stdin", opt(&example.stdin)),
+            ("expect", opt(&example.expect)),
+            (
+                "setup",
+                Value::Array(setup.into_iter().map(Value::from).collect()),
+            ),
+            ("expr", expr.into()),
+            ("value", opt(&value)),
+        ]);
+        let rest = cpl_json::to_string(&line);
         format!(
-            "{{\"code\":{},\"line\":{}}}",
-            string(&example.code),
-            example.line
+            "{{\"code\":{},\"line\":{},{}",
+            opt(&example.code),
+            example.line,
+            &rest[1..]
         )
+    }
+
+    fn facts(facts: &Facts) -> String {
+        let [cost, traps, empty, ties, order] = Facts::LABELS;
+        cpl_json::to_string(&obj([
+            (cost, opt(&facts.cost)),
+            (traps, opt(&facts.traps)),
+            (empty, opt(&facts.empty)),
+            (ties, opt(&facts.ties)),
+            (order, opt(&facts.order)),
+        ]))
     }
 
     fn link(target: &links::Target) -> String {
@@ -62,13 +92,15 @@ pub mod json {
         let scope = owner.or((!item.members.is_empty()).then_some(item.name.as_str()));
         let links = links::targets(modules, m, scope, &item.doc);
         format!(
-            "{{\"kind\":{},\"name\":{},\"signature\":{},\"doc\":{},\"summary\":{},\"cost\":{},\"line\":{},\"examples\":{},\"links\":{},\"members\":{}}}",
+            "{{\"kind\":{},\"name\":{},\"signature\":{},\"doc\":{},\"summary\":{},\"cost\":{},\"facts\":{},\"prose\":{},\"line\":{},\"examples\":{},\"links\":{},\"members\":{}}}",
             string(item.kind.as_str()),
             string(&item.name),
             string(&item.signature),
             string(&item.doc),
             string(item.summary()),
             item.cost.as_deref().map_or("null".to_string(), string),
+            facts(&item.facts),
+            string(&item.prose),
             item.line,
             list(&item.examples, example),
             list(&links, link),
@@ -96,7 +128,7 @@ pub mod json {
     }
 }
 
-pub use model::{extract, Example, Item, Kind, Module};
+pub use model::{extract, DocText, Example, Facts, Item, Kind, Module};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

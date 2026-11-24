@@ -62,6 +62,7 @@ dependencies = [
  "cpl-ir",
  "cpl-json",
  "cpl-lint",
+ "cpl-syntax",
 ]
 
 [[package]]

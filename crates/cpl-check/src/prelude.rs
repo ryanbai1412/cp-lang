@@ -94,7 +94,7 @@ fn member_names(std: Std) -> std::collections::HashSet<String> {
     for (_, text) in std {
         for line in text.lines() {
             let code = line.split('#').next().unwrap_or("").trim_start();
-            if code.starts_with("///") {
+            if code.starts_with("//") {
                 continue;
             }
             if let Some(at) = code.find("fn ") {

@@ -4,7 +4,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import katex from 'katex';
-import { commonSetup, layoutSignature, mathSpans, parseExample, plainSpans, splitTop, texSpans } from './doc-examples.mjs';
+import { commonSetup, layoutSignature, mathSpans, plainSpans, splitTop, texSpans } from './doc-examples.mjs';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -108,33 +108,32 @@ const std = JSON.parse(
   }),
 );
 
-const labelNames = ['cost', 'traps', 'trap', 'empty', 'ties', 'order'];
-function splitDoc(doc) {
-  const facts = [];
-  const examples = [];
-  const prose = [];
-  for (const line of doc.split('\n')) {
-    const m = /^([a-z]+):\s+(.*)$/.exec(line);
-    if (m && labelNames.includes(m[1])) facts.push([m[1], m[2]]);
-    else if (m && m[1] === 'example') examples.push(m[2]);
-    else if (m && facts.length && !line.trim()) prose.push('');
-    else prose.push(line);
-  }
-  return { facts, examples, prose: prose.join('\n').trim() };
+// What `cpl doc` read from an item's own doc (cpl_syntax::doc): its prose,
+// its `cost:`/`traps:`/... facts in std/README.md order, and its `example:`
+// lines. A field repeating its type's doc has none of its own.
+function ownDoc(item, parentDoc) {
+  if (!item.doc || item.doc === parentDoc) return { facts: [], examples: [], prose: '' };
+  return {
+    facts: Object.entries(item.facts).filter(([, v]) => v !== null).sort(([a], [b]) => factOrder.indexOf(a) - factOrder.indexOf(b)),
+    examples: item.examples.filter((e) => !e.block),
+    prose: item.prose,
+  };
 }
+const factOrder = ['cost', 'traps', 'empty', 'ties', 'order'];
 
 // Each `example:` line becomes a program: the module's import and the setup
 // its type's examples share (collapsed), then its own statements and
 // `print(expr)`; when the value can't be printed, `assert(expr == value)`,
 // or `assert(expr)` for an example with no value, a claim that holds.
 // Only a program that runs is shown runnable; the rest are listed.
-function programs(text, module, shared) {
-  const e = parseExample(text);
+function programs(e, module, shared) {
   const ownsShared = shared.length && shared.every((st, i) => e.setup[i] === st);
   const setup = [`use std.${module}.*`, ...(ownsShared ? shared : [])].join('\n');
   const own = e.setup.slice(ownsShared ? shared.length : 0);
-  const bodies = [[...own, `print(${e.expr})`]];
-  if (e.value) bodies.push([...own, `assert(${e.expr} == ${e.value})`]);
+  // An `example:` that is prose, not code, runs nothing and is listed.
+  const bodies = e.code === null ? [] : [[...own, `print(${e.expr})`]];
+  if (e.code === null);
+  else if (e.value) bodies.push([...own, `assert(${e.expr} == ${e.value})`]);
   else bodies.push([...own, `assert(${e.expr})`]);
   return { e, setup, own, bodies: bodies.map((b) => b.join('\n')) };
 }
@@ -142,13 +141,14 @@ function programs(text, module, shared) {
 // What runAll runs: the program, then its stated stdin after a NUL.
 const runKey = (setup, body, stdin) => `${setup}\n${body}\n${stdin ? `\0${stdin}` : ''}`;
 
-function renderExample(text, module, shared, ran, failing, at) {
-  const { e, setup, own, bodies } = programs(text, module, shared);
+function renderExample(example, module, shared, ran, failing, at) {
+  const { e, setup, own, bodies } = programs(example, module, shared);
   const body = bodies.find((b) => ran.get(runKey(setup, b, e.stdin)));
   const result = e.value ? ['', `Result: \`${e.value}\``] : [];
   const input = e.stdin ? ` input="${e.stdin.replace(/\n/g, '\\n')}"` : '';
   if (body) return [`\`\`\`cp run compact${input}`, setup, '//---', body, '```', ...result, ''];
-  failing.push(`${at}: ${text}`);
+  failing.push(`${at}: ${e.text}`);
+  if (e.code === null) return [e.text, ''];
   return ['```cp', ...own, e.expr, '```', ...result, ''];
 }
 
@@ -212,8 +212,7 @@ function ownParams(sig) {
 
 function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared = []) {
   const name = prefix ? `${prefix}.${item.name}` : item.name;
-  const own = item.doc && item.doc !== parentDoc ? item.doc : '';
-  const { facts, examples, prose } = splitDoc(own);
+  const { facts, examples, prose } = ownDoc(item, parentDoc);
   const plain = (text, cost = false) => linked(plainSpans(texSpans(text, { legacyCost: cost })), item.links ?? []);
   const hover = [prose && plain(prose), ...facts.map(([k, v]) => `${k}: ${plain(v, k === 'cost')}`)].filter(Boolean).join('\n\n');
   ctx.anchors.push([module, item.line, slug(name), hover]);
@@ -247,7 +246,7 @@ function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared =
   if (item.kind === 'fn' || item.kind === 'struct' || item.kind === 'enum' || item.kind === 'trait') {
     index.push({ name, module, kind: item.kind, cost: facts.find(([k]) => k === 'cost')?.[1] ?? '' });
   }
-  const memberShared = item.members?.length ? commonSetup(memberExamples(item).map(parseExample)) : [];
+  const memberShared = item.members?.length ? commonSetup(memberExamples(item)) : [];
   for (const m of item.members ?? []) {
     if (m.kind === 'field' && (!m.doc || m.doc === item.doc)) continue;
     lines.push(renderItem(m, Math.min(level + 1, 4), item.name, item.doc, index, module, ctx, memberShared));
@@ -255,7 +254,7 @@ function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared =
   return lines.join('\n');
 }
 
-const memberExamples = (item) => (item.members ?? []).flatMap((m) => (m.doc && m.doc !== item.doc ? splitDoc(m.doc).examples : []));
+const memberExamples = (item) => (item.members ?? []).flatMap((m) => ownDoc(m, item.doc).examples);
 
 // Runs every example program once, 16 at a time, remembering results by hash.
 async function runAll(sources) {
@@ -310,12 +309,11 @@ const modules = std.modules.filter((m) => m.items.some((i) => /^pub\b/.test(i.si
 // Each example's programs, in the order renderExample tries them.
 const tries = [];
 const collect = (item, module, parentDoc, shared) => {
-  const own = item.doc && item.doc !== parentDoc ? item.doc : '';
-  for (const e of splitDoc(own).examples) {
+  for (const e of ownDoc(item, parentDoc).examples) {
     const { e: ex, setup, bodies } = programs(e, module, shared);
     tries.push(bodies.map((b) => runKey(setup, b, ex.stdin)));
   }
-  const memberShared = item.members?.length ? commonSetup(memberExamples(item).map(parseExample)) : [];
+  const memberShared = item.members?.length ? commonSetup(memberExamples(item)) : [];
   for (const m of item.members ?? []) collect(m, module, item.doc, memberShared);
 };
 for (const m of modules) for (const i of m.items) collect(i, m.name, '', []);

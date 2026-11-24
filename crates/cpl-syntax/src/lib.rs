@@ -13,6 +13,7 @@
 
 pub mod ast;
 pub mod const_int;
+pub mod doc;
 mod items;
 mod lexer;
 pub mod library_lint;

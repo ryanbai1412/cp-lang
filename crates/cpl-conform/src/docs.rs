@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use cpl_check::Session;
+use cpl_syntax::doc::{self, DocText};
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
@@ -34,38 +35,23 @@ pub fn example_ids(rel: &str, text: &str) -> Vec<(String, String)> {
 /// `///` comments, as `(id, body, block)`. A block's body is its code, dedented.
 pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
     let mut out = Vec::new();
-    let mut pending: Vec<(String, bool)> = Vec::new();
+    let mut block: Vec<&str> = Vec::new();
     let mut container = String::new();
     let mut seen: HashMap<String, usize> = HashMap::new();
-    let mut fence: Option<(usize, Vec<String>)> = None;
+    let mut push = |id: &dyn Fn(usize) -> String, block: &mut Vec<&str>| {
+        let examples = DocText::parse(&block.join("\n")).examples;
+        block.clear();
+        for (k, e) in examples.into_iter().enumerate() {
+            let body = e.text.strip_suffix('\n').unwrap_or(&e.text).to_string();
+            out.push((id(k + 1), body, e.block));
+        }
+    };
     for line in text.lines() {
-        let trimmed = line.trim_start();
-        if let Some(after_doc) = trimmed.strip_prefix("///") {
-            let doc_line = after_doc.strip_prefix(' ').unwrap_or(after_doc);
-            let marker = doc_line.trim();
-            match &mut fence {
-                Some((indent, lines)) if marker == "```" => {
-                    let indent = *indent;
-                    let code: Vec<String> = lines
-                        .drain(..)
-                        .map(|l| l.get(indent..).unwrap_or(l.trim_start()).to_string())
-                        .collect();
-                    fence = None;
-                    pending.push((code.join("\n"), true));
-                }
-                Some((_, lines)) => lines.push(doc_line.to_string()),
-                None if marker == "```" || marker == "```cp" => {
-                    fence = Some((doc_line.len() - doc_line.trim_start().len(), Vec::new()));
-                }
-                None => {
-                    if let Some(rest) = doc_line.trim_start().strip_prefix("example:") {
-                        pending.push((rest.trim().to_string(), false));
-                    }
-                }
-            }
+        if let Some(doc) = doc::doc_line(line) {
+            block.push(doc);
             continue;
         }
-        fence = None;
+        let trimmed = line.trim_start();
         if trimmed.is_empty() || trimmed.starts_with('@') || trimmed.starts_with("//") {
             continue;
         }
@@ -79,7 +65,7 @@ pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
         if top {
             container = name;
         }
-        if pending.is_empty() {
+        if block.is_empty() {
             continue;
         }
         let occ = seen.entry(qualified.clone()).or_insert(0);
@@ -89,13 +75,9 @@ pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
         } else {
             format!("{qualified}~{occ}")
         };
-        for (k, (body, block)) in pending.drain(..).enumerate() {
-            out.push((format!("{rel}#{item}:{}", k + 1), body, block));
-        }
+        push(&|k| format!("{rel}#{item}:{k}"), &mut block);
     }
-    for (k, (body, block)) in pending.into_iter().enumerate() {
-        out.push((format!("{rel}#eof:{}", k + 1), body, block));
-    }
+    push(&|k| format!("{rel}#eof:{k}"), &mut block);
     out
 }
 
@@ -159,129 +141,15 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
 }
 
 /// Splits `` `code` (stdin `x`) (traps R0401) `` into the code, its stdin and the expected
-/// trap or error code. The tags may come in any order; anything else after the code is not
-/// an example (`None` code).
+/// trap or error code (`cpl_syntax::doc` reads it); `None` code when it is prose.
 pub fn parse_example_body(body: &str) -> (Option<String>, String, Option<String>) {
-    let none = (None, String::new(), None);
-    let Some(after_open) = body.strip_prefix('`') else {
-        return none;
-    };
-    let Some(end) = after_open.find('`') else {
-        return none;
-    };
-    let code = after_open[..end].to_string();
-    let mut tail = after_open[end + 1..].trim();
-    let mut stdin = String::new();
-    let mut expect = None;
-    while !tail.is_empty() {
-        if let Some(rest) = tail.strip_prefix("(stdin `") {
-            let Some(close) = rest.find("`)") else {
-                return none;
-            };
-            stdin = format!("{}\n", &rest[..close]);
-            tail = rest[close + 2..].trim_start();
-        } else if let Some(rest) = tail
-            .strip_prefix("(traps ")
-            .or_else(|| tail.strip_prefix("(error "))
-        {
-            let Some(close) = rest.find(')') else {
-                return none;
-            };
-            expect = Some(rest[..close].trim().to_string());
-            tail = rest[close + 1..].trim_start();
-        } else {
-            return none;
-        }
-    }
-    (Some(code), stdin, expect)
-}
-
-/// Splits a semicolon-separated example snippet at top level (ignoring `;` inside
-/// strings, char literals, or brackets/parens/braces).
-fn split_top_level_semis(code: &str) -> Vec<String> {
-    let mut parts = Vec::new();
-    let mut cur = String::new();
-    let mut depth: usize = 0;
-    let mut in_str = false;
-    let mut in_char = false;
-    let mut escape = false;
-
-    for ch in code.chars() {
-        if escape {
-            cur.push(ch);
-            escape = false;
-            continue;
-        }
-        if in_str {
-            cur.push(ch);
-            if ch == '\\' {
-                escape = true;
-            } else if ch == '"' {
-                in_str = false;
-            }
-            continue;
-        }
-        if in_char {
-            cur.push(ch);
-            if ch == '\\' {
-                escape = true;
-            } else if ch == '\'' {
-                in_char = false;
-            }
-            continue;
-        }
-        match ch {
-            '"' => {
-                in_str = true;
-                cur.push(ch);
-            }
-            '\'' => {
-                in_char = true;
-                cur.push(ch);
-            }
-            '(' | '[' | '{' => {
-                depth += 1;
-                cur.push(ch);
-            }
-            ')' | ']' | '}' => {
-                depth = depth.saturating_sub(1);
-                cur.push(ch);
-            }
-            ';' if depth == 0 => {
-                let s = cur.trim();
-                if !s.is_empty() {
-                    parts.push(s.to_string());
-                }
-                cur.clear();
-            }
-            _ => cur.push(ch),
-        }
-    }
-    let s = cur.trim();
-    if !s.is_empty() {
-        parts.push(s.to_string());
-    }
-    parts
-}
-
-/// Splits a fenced block into its top-level statements: a line that is indented or starts by
-/// closing a bracket continues the statement above, so a multi-line call stays one statement.
-fn split_top_level_lines(code: &str) -> Vec<String> {
-    let mut parts: Vec<String> = Vec::new();
-    for line in code.lines() {
-        if line.trim().is_empty() || line.trim_start().starts_with("//") {
-            continue;
-        }
-        let continues = line.starts_with([' ', '\t', ')', ']', '}']);
-        match parts.last_mut() {
-            Some(last) if continues => {
-                last.push('\n');
-                last.push_str(line);
-            }
-            _ => parts.push(line.to_string()),
-        }
-    }
-    parts
+    let e = doc::Example::from_line(body);
+    let stdin = e
+        .stdin
+        .filter(|s| !s.is_empty())
+        .map(|s| s + "\n")
+        .unwrap_or_default();
+    (e.code, stdin, e.expect)
 }
 
 fn build_example_program(ex: &DocExample, code: &str, import_module: bool) -> String {
@@ -289,11 +157,7 @@ fn build_example_program(ex: &DocExample, code: &str, import_module: bool) -> St
     if import_module && !ex.module.is_empty() && ex.module != "prelude" && ex.module != "core" {
         lines.push(format!("use std.{}.*", ex.module));
     }
-    let stmts = if ex.block {
-        split_top_level_lines(code)
-    } else {
-        split_top_level_semis(code)
-    };
+    let stmts = doc::statements(code, ex.block);
     if let Some((last, init)) = stmts.split_last() {
         for s in init {
             lines.push(s.clone());

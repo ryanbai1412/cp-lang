@@ -1,6 +1,5 @@
-// Turns a one-line doc example, `setup; ...; expr == value`, into a program
-// you can run: the statements one per line, then `print(expr)`, with `value`
-// kept as the expected result.
+// Presentation helpers for the reference pages gen-ref.mjs writes. What a
+// doc says (facts, examples, prose) comes parsed from `cpl doc`.
 
 // Splits `s` at top-level occurrences of `sep`, outside brackets and strings.
 export function splitTop(s, sep) {
@@ -30,17 +29,6 @@ export function splitTop(s, sep) {
 
 // An example that reads input states it after the code: (stdin `4 5`), or
 // (empty stdin); `stdin` is null for one that states none.
-export function parseExample(text) {
-  const given = text.trim().match(/^([\s\S]*?)\s*\((?:stdin `([^`]*)`|(empty) stdin)\)$/);
-  const stdin = given ? (given[3] ? '' : given[2]) : null;
-  const stmts = splitTop((given ? given[1] : text).trim().replace(/^`([\s\S]*)`$/, '$1'), ';').filter(Boolean);
-  const last = stmts.pop() ?? '';
-  const eq = splitTop(last, ' == ');
-  const expr = eq.length >= 2 ? eq.slice(0, -1).join(' == ') : last;
-  const value = eq.length >= 2 ? eq[eq.length - 1] : null;
-  return { setup: stmts, expr, value, stdin };
-}
-
 // The leading statements a type's examples share: of the prefixes that at
 // least two examples start with, the one that hides the most lines.
 export function commonSetup(examples) {
