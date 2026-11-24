@@ -146,6 +146,15 @@ pub fn exec<S: AsRef<str>>(
     let rest = commands::json_spelling(args.first().map_or("", AsRef::as_ref), rest);
     let named = commands::file_names(args.first().map_or("", AsRef::as_ref), rest);
     let rest: Vec<&str> = named.iter().map(|arg| arg.as_ref()).collect();
+    let asks_help = usage.is_some() && rest.iter().any(|arg| matches!(*arg, "-h" | "--help"));
+    if let Some((command, option)) = args
+        .first()
+        .map(AsRef::as_ref)
+        .filter(|_| !asks_help)
+        .and_then(|c| Some((c, unknown_option(c, &rest)?)))
+    {
+        return usage_error(cpl_diag::usage::no_option(command, option));
+    }
     match args.first().map(AsRef::as_ref) {
         Some("-h" | "--help") if rest == ["--json"] => {
             let _ = writeln!(stdout, "{}", commands::help_json());
@@ -159,14 +168,10 @@ pub fn exec<S: AsRef<str>>(
             let _ = writeln!(stdout, "{}", version_line());
             0
         }
-        Some(_) if usage.is_some() && rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
+        Some(_) if asks_help => {
             let _ = stdout.write_all(usage.unwrap_or(main_usage()).as_bytes());
             0
         }
-        Some(c) if unknown_option(c, &rest).is_some() => usage_error(cpl_diag::usage::no_option(
-            c,
-            unknown_option(c, &rest).unwrap(),
-        )),
         Some("replay") => replay::cli(&rest, stdout, stderr),
         Some("profile") => profile::profile(&rest, stdout, stderr),
         Some("cover") => profile::cover(&rest, stdout, stderr),
@@ -369,28 +374,35 @@ pub fn exec<S: AsRef<str>>(
             }
         }
         Some("test") if should_run_unit_tests(&rest) => run_unit_tests(&rest, stdout, stderr),
-        Some(command) if tool(command).is_some() => {
-            let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
-            let mut errors = Vec::new();
-            let code = tool(command).unwrap()(&args, stdout, &mut errors);
-            *stderr += &String::from_utf8_lossy(&errors);
-            let flags = args.iter().any(|a| a.starts_with("--"));
-            if let Some(file) = args.first().filter(|_| command == "test" && !flags) {
-                *stderr += &next_after_test(file, code);
+        Some(command) => match tool(command) {
+            Some(run) => {
+                let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
+                let mut errors = Vec::new();
+                let code = run(&args, stdout, &mut errors);
+                *stderr += &String::from_utf8_lossy(&errors);
+                let flags = args.iter().any(|a| a.starts_with("--"));
+                if let Some(file) = args.first().filter(|_| command == "test" && !flags) {
+                    *stderr += &next_after_test(file, code);
+                }
+                code
             }
-            code
-        }
-        Some("lsp") => usage_error("`lsp` talks to an editor over stdio and takes no files".into()),
-        Some("dap") => usage_error("`dap` talks to an editor over stdio and takes no files".into()),
-        Some(other) if other.ends_with(".cp") || std::path::Path::new(other).is_file() => {
-            usage_error(format!(
-                "`{other}` is a file, not a command: `cpl run {other}` runs it"
-            ))
-        }
-        Some(other) => usage_error(match commands::guess(other) {
-            Some(guess) => format!("unknown command `{other}`; did you mean `cpl {guess}`?"),
-            None => format!("unknown command `{other}`"),
-        }),
+            None if command == "lsp" => {
+                usage_error("`lsp` talks to an editor over stdio and takes no files".into())
+            }
+            None if command == "dap" => {
+                usage_error("`dap` talks to an editor over stdio and takes no files".into())
+            }
+            None if command.ends_with(".cp") || std::path::Path::new(command).is_file() => {
+                let other = command;
+                usage_error(format!(
+                    "`{other}` is a file, not a command: `cpl run {other}` runs it"
+                ))
+            }
+            None => usage_error(match commands::guess(command) {
+                Some(guess) => format!("unknown command `{command}`; did you mean `cpl {guess}`?"),
+                None => format!("unknown command `{command}`"),
+            }),
+        },
     }
 }
 
@@ -1671,6 +1683,20 @@ mod tests {
         assert_eq!(out.code, 2);
         assert!(out.stdout.is_empty());
         assert!(out.stderr.starts_with("cpl: unknown command `frobnicate`"));
+    }
+
+    #[test]
+    fn a_command_past_the_tools_still_gets_its_usage_error() {
+        let out = run(&["fmt", "--bogus"]);
+        assert_eq!(out.code, 2);
+        assert!(out.stderr.contains("--bogus"), "{}", out.stderr);
+        let out = run(&["lsp", "a.cp"]);
+        assert_eq!(out.code, 2);
+        assert!(out.stderr.starts_with("cpl: `lsp` talks to an editor"));
+        let out = run(&["frobnicate.cp"]);
+        assert!(out
+            .stderr
+            .starts_with("cpl: `frobnicate.cp` is a file, not a command"));
     }
 
     #[test]
