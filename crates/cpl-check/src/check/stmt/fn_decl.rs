@@ -311,7 +311,19 @@ impl<'a> Checker<'a> {
             }
             let ty = sig_params.next().map_or(Ty::Unknown, |p| p.ty.clone());
             if let Some(default) = &param.default {
-                let default_ty = self.infer(default);
+                // `op: G = (+)` is `type_of(+)`, as a written `(+)` given for `G` is (R08.1.10).
+                let item = (default.fn_item_type()).filter(|_| matches!(ty, Ty::Param(_)));
+                let default_ty = match item {
+                    Some(name) => {
+                        let item = Ty::Named {
+                            name,
+                            args: Vec::new(),
+                        };
+                        self.record_shape(default, &item);
+                        item
+                    }
+                    None => self.infer(default),
+                };
                 if !self.array_fills(&ty, &default_ty, default) {
                     self.expect_fits(&default_ty, &ty, default, &|c, got, want| {
                         cpl_diag::msgs::check::BUT_DEFAULT.at(&[
