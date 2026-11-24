@@ -41,6 +41,7 @@
         "rowDomain": {"type": "string"},
         "colDomain": {"type": "string"},
         "directed": {"type": "boolean"},
+        "window": {"const": true, "description": "Too large to keep whole at some step: an array holds only its first 500 items, a grid its top-left 100 × 100 cells"},
         "root": {"type": ["string", "number"], "description": "Root node id; defaults to the first node. Tree edges point parent to child."}
       }
     },

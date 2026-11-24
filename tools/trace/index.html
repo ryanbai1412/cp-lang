@@ -1178,7 +1178,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
       })));
     const table = el("table", {class:"matrix", "aria-label":`${d.name}: ${value.length} × ${value[0]?.length ?? 0}`}, el("thead", {}, head), el("tbody", {}, body));
     const clipped = value.length > LIMIT.matrix || value.some(r => r.length > LIMIT.matrix);
-    return clipped ? el("div", {}, table, el("p", {class:"lane-note", text:`Showing the first ${LIMIT.matrix} × ${LIMIT.matrix} cells`})) : table;
+    return clipped || d.window ? el("div", {}, table, el("p", {class:"lane-note", text:`Showing the first ${LIMIT.matrix} × ${LIMIT.matrix} cells`})) : table;
   }
 
   const flat = x => x === null || typeof x !== "object";
@@ -1205,6 +1205,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     parts.push(el("div", {class:"array"}, items.map((x, i) => el("div", {class:"slot"},
       el("span", {class:"idx", text:d.labels?.[i] ?? i}), cell("div", [i], x, display(x), marks, x === null || x === 0 ? ["zero"] : [])))));
     if (value.length > LIMIT.array) parts.push(el("p", {class:"lane-note", text:`Showing ${LIMIT.array} of ${value.length} elements`}));
+    else if (d.window) parts.push(el("p", {class:"lane-note", text:`Showing the first ${value.length} elements: the value is too large to keep whole`}));
     return el("div", {"aria-label":`${d.name}: ${value.length} elements`}, parts);
   }
 

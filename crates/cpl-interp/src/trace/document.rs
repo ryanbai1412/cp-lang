@@ -23,11 +23,14 @@ pub fn document(
     let mut dropped = std::collections::HashSet::new();
     if let Some((_, slow)) = slow {
         for var in &slow.vars {
-            let same = vars.iter().find(|known| {
+            let same = vars.iter().position(|known| {
                 known.id == var.id && known.kind == var.kind && known.extra == var.extra
             });
             match same {
-                Some(_) => slow_ids.push(var.id.clone()),
+                Some(known) => {
+                    vars[known].window |= var.window;
+                    slow_ids.push(var.id.clone());
+                }
                 None if vars.iter().any(|known| known.id == var.id) => {
                     let mut var = var.clone();
                     var.id = format!("{} (brute)", var.id);
@@ -73,7 +76,8 @@ pub fn document(
         string(&mut out, &var.name);
         out.push_str(",\"type\":");
         string(&mut out, &var.ty);
-        out += &format!(",\"kind\":\"{}\"{}}}", var.kind, var.extra);
+        let window = if var.window { ",\"window\":true" } else { "" };
+        out += &format!(",\"kind\":\"{}\"{}{window}}}", var.kind, var.extra);
     }
     let is_dropped = |name: &str| dropped.contains(name);
     out.push_str("},\"runs\":{\"fast\":");

@@ -130,6 +130,8 @@ pub struct Var {
     pub extra: String,
     /// Compared between the solution and the brute.
     pub compare: bool,
+    /// Too large to keep whole at some step, so drawn by a window of its first cells.
+    pub window: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -509,6 +511,7 @@ impl Tracer {
                 kind: "json",
                 extra: String::new(),
                 compare: true,
+                window: false,
             },
             Kind::Json,
         );
@@ -720,6 +723,7 @@ impl Tracer {
                 kind: kind_name(kind),
                 extra,
                 compare: false,
+                window: false,
             },
             kind,
         );
@@ -929,6 +933,7 @@ impl Tracer {
             }
         }
         let (json, tree) = snapshot(value, ty, self.kinds[var], view);
+        self.rec.vars[var].window |= drawn_by_window(value, ty, self.kinds[var]);
         if self.kinds[var] == Kind::Parents {
             match tree {
                 Some(tree) => self.rec.log.set_tree(var, &tree),
@@ -1091,6 +1096,7 @@ impl Tracer {
                         kind: "json",
                         extra: String::new(),
                         compare: true,
+                        window: false,
                     },
                     Kind::Json,
                 );

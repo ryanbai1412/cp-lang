@@ -285,3 +285,48 @@ fn a_traced_run_prints_what_an_untraced_run_prints() {
         differ.join("\n")
     );
 }
+
+/// A variable too large to keep whole is drawn by a window of its first
+/// cells, not left empty.
+#[test]
+fn a_large_array_is_drawn_by_a_window() {
+    let dir = std::env::temp_dir().join(format!("cpl-window-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let program = dir.join("big.cp");
+    std::fs::write(
+        &program,
+        "var big = [0 for _ in 0..30000]\nbig[3] = 7\nprint(big[3])\n",
+    )
+    .unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args([
+            "run",
+            program.to_str().unwrap(),
+            "--trace",
+            "--format",
+            "json",
+        ])
+        .env_remove("CPL_TRACE_ENGINE")
+        .output()
+        .unwrap();
+    let document = String::from_utf8_lossy(&out.stdout);
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        document.contains("\"window\":true"),
+        "the descriptor names the window: {}",
+        &document[..document.len().min(600)]
+    );
+    let last = document.rfind("\"big\":[").expect("a step holds big");
+    let drawn = &document[last + "\"big\":".len()..];
+    let drawn = &drawn[..drawn.find(']').unwrap() + 1];
+    assert!(
+        drawn.starts_with("[0,0,0,7,0,"),
+        "the window starts at the first cell: {}",
+        &drawn[..drawn.len().min(80)]
+    );
+    assert_eq!(
+        drawn.matches(',').count() + 1,
+        500,
+        "the window holds 500 cells"
+    );
+}

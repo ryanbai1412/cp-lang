@@ -377,6 +377,64 @@ pub(super) fn item_json(value: &Value, ty: &Ty, index: usize, view: &View) -> Op
     Some(json)
 }
 
+/// The most items of a list or array a window draws: what the viewer shows.
+const WINDOW: usize = 500;
+/// The most rows, and columns, of a grid a window draws.
+const WINDOW_SIDE: usize = 100;
+
+/// Whether `value` is too large to keep whole and is drawn by [`window`].
+pub(super) fn drawn_by_window(value: &Value, ty: &Ty, kind: Kind) -> bool {
+    let shaped = match (kind, value, ty) {
+        (Kind::Array, Value::Array(array), Ty::Array { .. }) => array.dims.len() == 1,
+        (Kind::Array, Value::List(_), Ty::List(_)) => true,
+        (Kind::Grid | Kind::Dp, Value::Array(array), Ty::Array { .. }) => array.dims.len() == 2,
+        _ => false,
+    };
+    shaped && cells(value) > MAX_CELLS
+}
+
+/// The first cells of a [`drawn_by_window`] value: its first [`WINDOW`] items, or
+/// the top-left [`WINDOW_SIDE`] square of a grid.
+fn window(value: &Value, ty: &Ty, view: &View) -> Option<String> {
+    let mut out = String::from("[");
+    let item = |out: &mut String, at: usize, item: &Value, elem: &Ty| {
+        if at > 0 {
+            out.push(',');
+        }
+        render(out, item, elem, view, Mode::Json);
+    };
+    match (value, ty) {
+        (Value::List(items), Ty::List(elem)) => {
+            for (at, x) in items.iter().take(WINDOW).enumerate() {
+                item(&mut out, at, x, elem);
+            }
+        }
+        (Value::Array(array), Ty::Array { elem, .. }) if array.dims.len() == 1 => {
+            for at in 0..array.len().min(WINDOW) {
+                item(&mut out, at, &array.get(at).unwrap_or(Value::Unit), elem);
+            }
+        }
+        (Value::Array(array), Ty::Array { elem, .. }) => {
+            let (rows, cols) = (array.dims[0] as usize, array.dims[1] as usize);
+            for r in 0..rows.min(WINDOW_SIDE) {
+                out.push_str(if r > 0 { ",[" } else { "[" });
+                for c in 0..cols.min(WINDOW_SIDE) {
+                    item(
+                        &mut out,
+                        c,
+                        &array.get(r * cols + c).unwrap_or(Value::Unit),
+                        elem,
+                    );
+                }
+                out.push(']');
+            }
+        }
+        _ => return None,
+    }
+    out.push(']');
+    Some(out)
+}
+
 /// The snapshot of a variable, and for a `[V]?V` its tree form when it
 /// is a tree.
 pub(super) fn snapshot(
@@ -385,6 +443,12 @@ pub(super) fn snapshot(
     kind: Kind,
     view: &View,
 ) -> (String, Option<String>) {
+    if let Some(window) = drawn_by_window(value, ty, kind)
+        .then(|| window(value, ty, view))
+        .flatten()
+    {
+        return (window, None);
+    }
     if cells(value) > MAX_CELLS {
         let mut out = String::new();
         // Too large to draw: an empty value of the right shape, so the
