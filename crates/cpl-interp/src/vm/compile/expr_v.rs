@@ -138,6 +138,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 return self.make_tuple_i(fields, kind, span);
             }
         }
+        self.compile_expr_v_kind(expr)
+    }
+
+    /// `expr` into a value register by its kind alone, whatever its type.
+    pub(super) fn compile_expr_v_kind(&mut self, expr: &'p Expr) -> u16 {
+        let span = expr.span;
         match &expr.kind {
             ExprKind::Format(pieces) => self.compile_format(pieces, span),
             ExprKind::Str(bytes) => {

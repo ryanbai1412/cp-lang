@@ -77,3 +77,11 @@ fn int_calls_past_the_mixed_frame_run_on_the_vm() {
         assert_eq!(walked(&program, traced), 0, "traced: {traced}");
     }
 }
+
+#[test]
+fn an_optional_int_runs_on_the_vm() {
+    let program = tests_dir().join("programs/vm_opt_int_shapes.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}
