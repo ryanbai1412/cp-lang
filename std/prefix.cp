@@ -902,3 +902,6 @@ fn rev_scan_folds_every_suffix():
         for d in V.cuts:
             if d < c: continue
             assert s.fold(c..d) == sum(a[i] for i in V if c <= i.l and i.r <= d)
+
+impl Show for SweepAdd<D, T>:
+    fn show(s) = "{s.current}"

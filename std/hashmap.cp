@@ -530,3 +530,11 @@ fn hash_map_and_set_erase_clear_and_equality():
     hm.clear()
     hs.clear()
     assert hm.is_empty and hs.is_empty
+
+impl Show for Counter<K, V>:
+    fn show(c):
+        var out = ""
+        for (k, v) in c.items:
+            if not out.is_empty: out += ", "
+            out += "{k}={v}"
+        out

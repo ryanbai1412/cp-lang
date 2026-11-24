@@ -2111,6 +2111,7 @@ impl<'a> Lowerer<'a> {
                 .filter(|(_, f)| f.cached)
                 .map(|(i, _)| i)
                 .collect();
+            self.structs[id].def.hidden = self.hidden_fields(self.structs[id].mod_id, decl);
             self.structs[id].def.fixed = self.fixed_rows(decl);
             self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
             self.collect_struct_field_ranges(id, decl);
@@ -4179,12 +4180,7 @@ impl<'a> Lowerer<'a> {
             def: StructDef {
                 name,
                 fields,
-                fixed: Default::default(),
-                narrow_ints: Default::default(),
-                show_fn: None,
-                eq_fn: None,
-                ord: None,
-                cached_fields: Default::default(),
+                ..Default::default()
             },
             decl: None,
             mod_id: 0,

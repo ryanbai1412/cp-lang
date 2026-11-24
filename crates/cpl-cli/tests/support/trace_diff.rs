@@ -93,7 +93,7 @@ fn split(text: &str) -> Saved<'_> {
 }
 
 /// The length of the JSON object `text` starts with.
-fn object_len(text: &str) -> usize {
+pub(super) fn object_len(text: &str) -> usize {
     let (mut depth, mut string, mut escaped) = (0usize, false, false);
     for (at, c) in text.char_indices() {
         match c {

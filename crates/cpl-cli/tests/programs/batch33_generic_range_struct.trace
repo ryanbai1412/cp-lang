@@ -25,7 +25,7 @@
 {"id":24,"line":14,"label":"pub fn part(self, r: Range\u003cD>) -> Int = sum(a[i] for i in r)","stage":"main","values":{"stdout":["4 4 13 54 1 4 9 16 25","1 25"],"n":5,"b":{"a":[1,4,9,16,25]},"w":[1,4,9,16,25],"c":{"a":[1,2,3,4,5]},"j":2},"locals":{"self":{"a":[1,2,3,4,5]},"r":"0..5","i":4},"frames":[{"fn":"Box.part","line":14},{"fn":"main","line":29}]},
 {"id":25,"line":29,"label":"print → 3 3 15","stage":"main","values":{"stdout":["4 4 13 54 1 4 9 16 25","1 25","3 3 15"],"n":5,"b":{"a":[1,4,9,16,25]},"w":[1,4,9,16,25],"c":{"a":[1,2,3,4,5]},"j":2},"locals":{"i":5,"i":4},"checkpoint":"print 3","frames":[{"fn":"main","line":29}]},
 {"id":26,"line":20,"label":"fn rev_of\u003cD>(a: [D]Int) -> List\u003cD> = [i for i in D.rev]","stage":"main","values":{"stdout":["4 4 13 54 1 4 9 16 25","1 25","3 3 15"],"n":5,"b":{"a":[1,4,9,16,25]},"w":[1,4,9,16,25],"c":{"a":[1,2,3,4,5]},"j":2},"locals":{"a":[1,4,9,16,25],"i":5},"frames":[{"fn":"rev_of","line":20},{"fn":"main","line":30}]},
-... 20 more lines, 10743 bytes, fnv64 0542cfeb397a6437
+... 20 more lines, 6858 bytes, fnv64 f4e6e7c9382dae7b
 stderr:
 error[R0102]: 6 is not in `D_0`, which is 1..=5
   --> batch33_generic_range_struct.cp:38:12

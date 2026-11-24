@@ -1497,6 +1497,33 @@ def trace_engine_refs(root: Path) -> list[str]:
     return _grep_all(root, "CPL_TRACE_ENGINE")
 
 
+STRUCT_RE = re.compile(r"pub struct (\w+)")
+FIELD_RE = re.compile(r"(?:@\w+ )*(?:var )?(pub )?(\w+): ")
+
+
+def std_types_shown_empty(root: Path) -> list[str]:
+    """`pub struct`s in std with no `pub` field and no `impl Show`: a trace shows their
+    values as `{}`, since a std type's private fields never reach a user (Content)."""
+    shows, empty = set(), []
+    for rel in _git(root, "ls-files", "std/*.cp"):
+        lines = (root / rel).read_text(encoding="utf-8").split("\n")
+        shows |= {m.group(1) for l in lines if (m := re.match(r"impl Show for (\w+)", l))}
+        for i, line in enumerate(lines):
+            if not (m := STRUCT_RE.match(line)):
+                continue
+            header = re.search(r"\((.*)\)", line)
+            fields = [FIELD_RE.match(a.strip()) for a in header.group(1).split(",")] if header else []
+            for body in lines[i + 1:]:
+                if body.strip() and not body.startswith("    "):
+                    break
+                if body.startswith("    ") and not body.startswith("     "):
+                    fields.append(FIELD_RE.match(body.strip()))
+            fields = [f for f in fields if f]
+            if fields and not any(f.group(1) for f in fields):
+                empty.append((m.group(1), f"{rel}:{i + 1}"))
+    return [at for name, at in empty if name not in shows]
+
+
 CONTINUE_RE = re.compile(r"^(\s*)(?:-\s+)?continue-on-error:\s*(.+?)\s*$")
 
 
@@ -1896,6 +1923,8 @@ COUNTERS = {
     "or_true": ("`|| true` anywhere (scoreboard CI2)", or_true, True),
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
+    "std_types_shown_empty": ("std types a trace shows as `{}`: no pub field, no Show (Content)",
+                              std_types_shown_empty, True),
     "corpus_known": ("entries of corpus/*-known.txt (scoreboard K6, Content)", corpus_known, True),
     "allow_attrs": ("#[allow(...)] in crates (Core, Consumers)", allow_attrs, True),
     "unsafe_blocks": ("unsafe blocks, fns and impls in crates (Core)", unsafe_blocks, True),

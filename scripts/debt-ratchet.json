@@ -131,7 +131,7 @@
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 1,
-    "debugger": 11,
+    "debugger": 10,
     "diagnostics": 0,
     "idioms": 1,
     "infra": 0,
@@ -195,5 +195,6 @@
   "conformance_wrong_output": 3,
   "rust_idiom_lints": 77,
   "scaling_mismatches": 0,
-  "std_fns_unscaled": 2109
+  "std_fns_unscaled": 2109,
+  "std_types_shown_empty": 99
 }

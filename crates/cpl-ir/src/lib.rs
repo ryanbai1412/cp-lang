@@ -1340,7 +1340,7 @@ pub enum ElemLoc {
     ClosureRet(ClosureId),
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct StructDef {
     pub name: String,
     pub fields: Vec<(String, Ty)>,
@@ -1358,6 +1358,9 @@ pub struct StructDef {
     pub ord: Option<OrdHook>,
     /// Field indices marked `@cache` (interior-mutable, skipped by `==`).
     pub cached_fields: std::collections::BTreeSet<usize>,
+    /// Field indices private to a module other than the program's own:
+    /// what a std type is made of, which no tool shows the program.
+    pub hidden: std::collections::BTreeSet<usize>,
 }
 
 /// A struct's own order: the spec's `fn cmp(a, b) -> Ordering` (R08.1.1),

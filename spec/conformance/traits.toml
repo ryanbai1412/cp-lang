@@ -1354,3 +1354,48 @@ domain V = 0..4
 print(Subset<V>.single(V(0)) | Subset<V>.single(V(2)))
 """
 out = "5"
+
+[case."Show/Counter/show"]
+code = """
+use std.hashmap.{Counter}
+let c = Counter(['a', 'b', 'a'])
+print("{c}")
+"""
+out = "a=2, b=1"
+
+[case."Show/Heap/show"]
+code = """
+use std.heap.{Heap}
+let h = Heap.of([3, 1, 2])
+print("{h}", h.len)
+"""
+out = "1 2 3 3"
+
+[case."Show/Paths/show"]
+code = """
+domain V = 0..3
+let g: [V]List<V> = [[1], [2], []]
+print("{bfs(g, from: [V(0)])}")
+"""
+out = "0=0, 1=1, 2=2"
+
+[case."Show/SparseIntervalMap/show"]
+code = """
+use std.interval.{SparseIntervalMap}
+var m = SparseIntervalMap(0, 10, 0)
+m.assign(3..5, 1)
+print("{m}")
+"""
+out = "0..3=0, 3..5=1, 5..10=0"
+
+[case."Show/SweepAdd/show"]
+code = """
+use std.prefix.{SweepAdd}
+domain D = 0..4
+var s = SweepAdd<D, Int>()
+s.add(1..=2, 5)
+let a = s.advance(0)
+let b = s.advance(1)
+print("{s}", a, b)
+"""
+out = "5 0 5"

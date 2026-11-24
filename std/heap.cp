@@ -1424,3 +1424,12 @@ pub struct Settle<K, P>(best: (P, P) -> P = min):
     /// traps: never
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 4); s.get('a') == Some(4) and s.get('b') == None`
     pub fn get(self, k: K) -> ?P = cur.get(k)
+
+impl Show for Heap<T>:
+    fn show(h):
+        var out = ""
+        var rest = h
+        for x in rest.drain():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

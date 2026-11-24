@@ -688,3 +688,11 @@ pub struct SparseIntervalMap<T>:
     pub fn each_rev(self) -> yields (range: Range<Int>, val: T):
         let all = [(s, seg) for (s, seg) in segs.items]
         for k in (0..all.len).rev: yield (range: all[k].0..all[k].1.hi, val: all[k].1.val)
+
+impl Show for SparseIntervalMap<T>:
+    fn show(z):
+        var out = ""
+        for run in z.each():
+            if not out.is_empty: out += ", "
+            out += "{run.range.l}..{run.range.r}={run.val}"
+        out

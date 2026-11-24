@@ -3846,3 +3846,11 @@ fn gen_graph<V, A>(
         pairs.push((from: u, arc: a))
         if not directed: pairs.push((from: v, arc: mirror(a, u)))
     Graph.of(pairs)
+
+impl Show for Paths<V, W, A>:
+    fn show(p):
+        var out = ""
+        for (v, d) in p.iter():
+            if not out.is_empty: out += ", "
+            out += "{v}={d}"
+        out

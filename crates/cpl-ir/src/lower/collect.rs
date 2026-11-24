@@ -27,12 +27,7 @@ impl<'a> Lowerer<'a> {
                         def: StructDef {
                             name: sname,
                             fields: Vec::new(),
-                            fixed: Default::default(),
-                            narrow_ints: Default::default(),
-                            show_fn: None,
-                            eq_fn: None,
-                            ord: None,
-                            cached_fields: Default::default(),
+                            ..Default::default()
                         },
                         decl: Some(decl),
                         mod_id: m,
@@ -463,6 +458,22 @@ pub(super) fn is_cpp(e: &ast::Expr) -> bool {
 }
 
 impl<'a> Lowerer<'a> {
+    /// The fields of `decl`, declared in module `m`, that are private to
+    /// a module other than the program's own.
+    pub(super) fn hidden_fields(
+        &self,
+        m: ModId,
+        decl: &ast::StructDecl,
+    ) -> std::collections::BTreeSet<usize> {
+        if m == 0 {
+            return Default::default();
+        }
+        (decl.fields.iter().enumerate())
+            .filter(|(_, f)| !f.public)
+            .map(|(i, _)| i)
+            .collect()
+    }
+
     /// `fn new(next: Next<V>)`: a trait-typed parameter makes the fn generic in
     /// that argument's type, as an explicit `<N: Next<V>>` would.
     /// A `?mut T` param does too: each call shape is its own instance.

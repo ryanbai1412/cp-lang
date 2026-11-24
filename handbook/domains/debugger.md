@@ -162,7 +162,7 @@ tests for wording.
 | An interactive failure says what the solution misread | interactive bugs explained by the read that went wrong | `missing`: the report names the rejected answer only | `missing` |
 | A trap names the rule, the place, the locals and the call path | trap codes with a golden that shows locals | golden suite per code | `crates/cpl-cli/tests/runtime_errors.rs` |
 | A trap in the interpreter traps in the judge build too | traps that only one build raises | differential suite | `crates/cpl-cli/tests/trap_parity.rs` |
-| Explanations use the program's words: variable names, domain parts, `Subset` members | values shown as internals (ordinals, struct fields of std types) | saved traces; `missing`: a check that no std-internal field reaches a user trace | `crates/cpl-cli/tests/trace_goldens.rs`; `missing` |
+| Explanations use the program's words: variable names, domain parts, `Subset` members | values shown as internals (ordinals, struct fields of std types) | saved traces show a std type by its `Show` or `pub` fields, never its private ones; `std_types_shown_empty` counts the types left showing `{}` | `crates/cpl-cli/tests/trace_goldens.rs` `no_saved_trace_shows_the_insides_of_a_std_type`; `python3 scripts/debt-ratchet.py --show` `std_types_shown_empty` |
 
 ### Seeing the run
 

@@ -204,8 +204,13 @@ pub(super) fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode
                         out.push_str(name.split(['<', '_']).next().unwrap_or(name));
                     }
                     out.push(if json { '{' } else { '(' });
-                    for (i, ((field, ty), name)) in fields.iter().zip(&tys).zip(&names).enumerate()
-                    {
+                    let hidden = match ty {
+                        Ty::Struct(id) => &view.program.structs[*id].hidden,
+                        _ => &Default::default(),
+                    };
+                    let shown = (fields.iter().zip(&tys).zip(&names).enumerate())
+                        .filter(|(i, _)| !hidden.contains(i));
+                    for (i, (_, ((field, ty), name))) in shown.enumerate() {
                         if i > 0 {
                             out.push_str(sep);
                         }

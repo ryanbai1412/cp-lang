@@ -443,6 +443,16 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.corpus_known(root), ["corpus/generators-known.txt"] * 2)
             self.assertEqual(dr.rs_over_cap(root, 1), {"crates/a/src/big.rs": 2})
 
+    def test_std_types_shown_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "std/a.cp", "pub struct Hid(m: Int):\n    t: List<Int>\n\n"
+                        "pub struct Shown:\n    t: Int\n\npub struct Open:\n    pub x: Int\n    y: Int\n\n"
+                        "impl Show for Shown:\n    fn show(s) = \"\"\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.std_types_shown_empty(root), ["std/a.cp:1"])
+
     def test_zero_fails_while_any_gated_counter_is_above_zero(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

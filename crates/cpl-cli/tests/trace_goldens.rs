@@ -330,3 +330,160 @@ fn a_large_array_is_drawn_by_a_window() {
         "the window holds 500 cells"
     );
 }
+
+/// The private fields of each `pub struct` in `std/`: what a value of a
+/// std type is made of inside, which a trace must never show.
+fn std_private_fields() -> std::collections::BTreeMap<String, Vec<String>> {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let mut fields = std::collections::BTreeMap::new();
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|e| e != "cp") {
+            continue;
+        }
+        let source = std::fs::read_to_string(&path).unwrap();
+        let lines: Vec<&str> = source.lines().collect();
+        for (at, line) in lines.iter().enumerate() {
+            let Some(rest) = line.strip_prefix("pub struct ") else {
+                continue;
+            };
+            let name: String = (rest.chars())
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            let mut private = Vec::new();
+            let mut take = |param: &str| {
+                let mut param = param.trim();
+                while let Some(after) = param.strip_prefix('@') {
+                    param = after
+                        .split_once(' ')
+                        .map_or("", |(_, rest)| rest)
+                        .trim_start();
+                }
+                if param.starts_with("pub ") || param.starts_with("///") {
+                    return;
+                }
+                if let Some((ident, _)) = param.split_once(": ") {
+                    if !ident.is_empty() && ident.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                        private.push(ident.to_string());
+                    }
+                }
+            };
+            if let Some(open) = rest.find('(') {
+                if let Some(close) = rest.rfind(')') {
+                    rest[open + 1..close].split(',').for_each(&mut take);
+                }
+            }
+            if rest.trim_end().ends_with(':') {
+                for body in lines[at + 1..]
+                    .iter()
+                    .take_while(|l| l.trim().is_empty() || l.starts_with("    "))
+                {
+                    if body.starts_with("    ") && !body.starts_with("     ") {
+                        take(body);
+                    }
+                }
+            }
+            if !private.is_empty() {
+                fields.insert(name, private);
+            }
+        }
+    }
+    fields
+}
+
+/// The private fields of `ty`'s struct that `value` shows.
+fn shown_fields(value: &cpl_json::Value, private: &[String], found: &mut Vec<String>) {
+    if let Some(object) = value.as_object() {
+        for (key, inner) in object {
+            if private.contains(key) && !found.contains(key) {
+                found.push(key.clone());
+            }
+            shown_fields(inner, private, found);
+        }
+    } else if let Some(items) = value.as_array() {
+        items
+            .iter()
+            .for_each(|item| shown_fields(item, private, found));
+    }
+}
+
+/// Enforces the debugger register row "explanations use the program's
+/// words": no saved trace shows a value of a std type as the private
+/// fields it is made of.
+#[test]
+fn no_saved_trace_shows_the_insides_of_a_std_type() {
+    let private = std_private_fields();
+    assert!(
+        private.len() > 20,
+        "{} std structs with private fields",
+        private.len()
+    );
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");
+    let mut traces: Vec<PathBuf> = (std::fs::read_dir(&dir).unwrap())
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|e| e == "trace"))
+        .collect();
+    traces.sort();
+    let mut leaks = Vec::new();
+    let mut checked = 0;
+    for trace in &traces {
+        let text = std::fs::read_to_string(trace).unwrap();
+        let source = std::fs::read_to_string(trace.with_extension("cp")).unwrap_or_default();
+        let own = |name: &str| {
+            (source.lines()).any(|line| {
+                line.trim_start()
+                    .strip_prefix("struct ")
+                    .or_else(|| line.trim_start().strip_prefix("pub struct "))
+                    .is_some_and(|rest| {
+                        rest.starts_with(name)
+                            && !rest[name.len()..]
+                                .starts_with(|c: char| c.is_alphanumeric() || c == '_')
+                    })
+            })
+        };
+        let object = |line: &str, at: usize| {
+            let end = at + trace_diff::object_len(&line[at..]);
+            cpl_json::parse(&line[at..end]).ok()
+        };
+        let Some(variables) = (text.lines())
+            .find_map(|line| line.find("\"variables\":").map(|at| object(line, at + 12)))
+            .flatten()
+        else {
+            continue;
+        };
+        for line in text.lines() {
+            let Some(step) = line.find("{\"id\":").and_then(|at| object(line, at)) else {
+                continue;
+            };
+            for scope in ["values", "locals"] {
+                let Some(values) = step.get(scope).and_then(cpl_json::Value::as_object) else {
+                    continue;
+                };
+                for (name, value) in values {
+                    let ty = (variables.get(name))
+                        .and_then(|v| v.get("type"))
+                        .and_then(cpl_json::Value::as_str)
+                        .unwrap_or("");
+                    let head = ty.split(['<', '(', '[']).next().unwrap_or("");
+                    let Some(fields) = private.get(head).filter(|_| !own(head)) else {
+                        continue;
+                    };
+                    checked += 1;
+                    let mut found = Vec::new();
+                    shown_fields(value, fields, &mut found);
+                    if !found.is_empty() {
+                        let file = trace.file_name().unwrap().to_string_lossy();
+                        leaks.push(format!("{file}: `{name}: {ty}` shows {found:?}"));
+                    }
+                }
+            }
+        }
+    }
+    leaks.dedup();
+    assert!(checked > 0, "no saved trace holds a value of a std type");
+    assert!(
+        leaks.is_empty(),
+        "values shown as their insides:\n{}",
+        leaks.join("\n")
+    );
+}

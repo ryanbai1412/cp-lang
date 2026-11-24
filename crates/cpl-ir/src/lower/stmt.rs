@@ -1241,12 +1241,7 @@ impl<'a> Lowerer<'a> {
                     def: StructDef {
                         name: sname,
                         fields,
-                        fixed: Default::default(),
-                        narrow_ints: Default::default(),
-                        show_fn: None,
-                        eq_fn: None,
-                        ord: None,
-                        cached_fields: Default::default(),
+                        ..Default::default()
                     },
                     decl: None,
                     mod_id: self.cur_mod,
