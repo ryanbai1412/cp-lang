@@ -1005,10 +1005,7 @@ impl Emitter<'_> {
         let whole = matches!(init.kind, ExprKind::Local(s)
                 if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))
             || matches!(init.kind, ExprKind::Global(_));
-        if !holds_heap(self.program, &init.ty)
-            || !(place || whole)
-            || text.starts_with("std::move(")
-        {
+        if !holds_heap(self.program, &init.ty) || !(place || whole) || moved(text) {
             return;
         }
         let why = self.copy_reason(slot, init, tail, whole);
@@ -1027,6 +1024,16 @@ impl Emitter<'_> {
 /// Each copy as the span of its source, what is copied and why.
 /// True when a value of `ty` owns heap memory, so copying it is a deep
 /// copy `cpl explain` lists; a `Mod` or a tuple of ints copies its bytes.
+/// Whether the C++ initialiser moves its value: `std::move(t)`, or a part
+/// of a moved tuple, `std::get<0>(std::move(t))`.
+fn moved(text: &str) -> bool {
+    let part = text
+        .strip_prefix("std::get<")
+        .and_then(|rest| rest.split_once(">("))
+        .map_or(text, |(_, inner)| inner);
+    part.starts_with("std::move(")
+}
+
 pub(crate) fn holds_heap(program: &cpl_ir::Program, ty: &Ty) -> bool {
     fn go(program: &cpl_ir::Program, ty: &Ty, depth: u32) -> bool {
         let inner = |t: &Ty| depth < 16 && go(program, t, depth + 1);

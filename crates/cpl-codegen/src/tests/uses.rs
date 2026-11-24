@@ -99,6 +99,12 @@ fn a_value_that_owns_no_heap_memory_is_never_listed_as_a_copy() {
 }
 
 #[test]
+fn a_name_destructured_from_a_fresh_tuple_is_moved_not_copied() {
+    let source = "fn f() -> Int:\n    var (a, b) = ([1], [2])\n    a.push(3)\n    a.len + b.len\nprint(f())\n";
+    assert_eq!(copy_reasons(source), [] as [&str; 0]);
+}
+
+#[test]
 fn a_clone_or_sorted_of_a_place_is_listed_as_a_copy() {
     let source = "var a = [3, 1, 2]\nvar b = a.clone()\nb.push(4)\nprint(a, b)\n";
     assert_eq!(copy_reasons(source), [crate::uses::CLONED]);
