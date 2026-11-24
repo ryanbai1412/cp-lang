@@ -479,43 +479,14 @@ impl<'a> Lowerer<'a> {
                         );
                         return self.err_expr(span);
                     }
-                    // Optional min/max: `none` is the identity element.
-                    let mut acc_expr = self.coerce(
-                        std::mem::replace(&mut values[0], self.err_expr(span)),
-                        &ty,
-                        args[0].value.span,
-                    );
-                    for i in 1..values.len() {
-                        let rhs_expr = self.coerce(
-                            std::mem::replace(&mut values[i], self.err_expr(span)),
-                            &ty,
-                            args[i].value.span,
-                        );
-                        let lhs_ty = ty.clone();
-                        let inner_c = (*inner).clone();
-                        acc_expr = self.do_expr(Some(&ty), span, |lw, out| {
-                            let a_slot = lw.temp(lhs_ty.clone());
-                            let b_slot = lw.temp(lhs_ty.clone());
-                            out.push_let(a_slot, acc_expr);
-                            out.push_let(b_slot, rhs_expr);
-                            let a = lw.local(a_slot, span);
-                            let b = lw.local(b_slot, span);
-                            let a_some = lw.mk_is_some(a.clone(), Ty::Bool, span);
-                            let b_some = lw.mk_is_some(b.clone(), Ty::Bool, span);
-                            let av = lw.mk_unwrap(a.clone(), false, inner_c.clone(), span);
-                            let bv = lw.mk_unwrap(b.clone(), false, inner_c.clone(), span);
-                            let op = if is_max { Builtin::Max } else { Builtin::Min };
-                            let both = lw.mk_some(
-                                lw.mk_builtin(op, [av, bv], inner_c, span),
-                                lhs_ty.clone(),
-                                span,
-                            );
-                            let inner_if = lw.mk_if(b_some, both, a, lhs_ty.clone(), span);
-                            let res = lw.mk_if(a_some, inner_if, b, lhs_ty, span);
-                            out.push_give(res);
-                        });
+                    // Optional min/max: `none` is the identity element, one builtin both
+                    // engines read.
+                    for (i, arg) in args.iter().enumerate() {
+                        let value = std::mem::replace(&mut values[i], self.err_expr(span));
+                        values[i] = self.coerce(value, &ty, arg.value.span);
                     }
-                    return acc_expr;
+                    let op = if is_max { Builtin::Max } else { Builtin::Min };
+                    return self.mk(ExprKind::Builtin(op, values), ty, span);
                 }
                 if !self.ordered(&ty) {
                     self.report(

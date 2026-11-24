@@ -1149,7 +1149,9 @@ impl<'a> Lowerer<'a> {
                     thi.zip(ehi).map(|(a, b)| a.max(b)),
                 )
             }
-            ExprKind::Builtin(Builtin::Min, args) if args.len() == 2 => {
+            ExprKind::Builtin(Builtin::Min, args)
+                if args.len() == 2 && !matches!(e.ty, Ty::Opt(_)) =>
+            {
                 let (alo, ahi) = self.expr_const_bounds(&args[0]);
                 let (blo, bhi) = self.expr_const_bounds(&args[1]);
                 (
@@ -1161,7 +1163,9 @@ impl<'a> Lowerer<'a> {
                     },
                 )
             }
-            ExprKind::Builtin(Builtin::Max, args) if args.len() == 2 => {
+            ExprKind::Builtin(Builtin::Max, args)
+                if args.len() == 2 && !matches!(e.ty, Ty::Opt(_)) =>
+            {
                 let (alo, ahi) = self.expr_const_bounds(&args[0]);
                 let (blo, bhi) = self.expr_const_bounds(&args[1]);
                 (

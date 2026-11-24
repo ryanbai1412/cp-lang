@@ -52,18 +52,30 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 })
             }
             Builtin::Min => {
+                // On `?T`, `none` is the identity: it never wins and loses to any value.
+                let none =
+                    |v: &Value| matches!(e.ty, Ty::Opt(_)) && matches!(v, Value::Opt(OptVal::None));
                 let mut best = first;
                 for v in values {
-                    if self.cmp_ty_val(&e.ty, &v, &best, span)?.is_lt() {
+                    if none(&v) {
+                        continue;
+                    }
+                    if none(&best) || self.cmp_ty_val(&e.ty, &v, &best, span)?.is_lt() {
                         best = v;
                     }
                 }
                 best
             }
             Builtin::Max => {
+                // On `?T`, `none` is the identity: it never wins and loses to any value.
+                let none =
+                    |v: &Value| matches!(e.ty, Ty::Opt(_)) && matches!(v, Value::Opt(OptVal::None));
                 let mut best = first;
                 for v in values {
-                    if self.cmp_ty_val(&e.ty, &v, &best, span)?.is_gt() {
+                    if none(&v) {
+                        continue;
+                    }
+                    if none(&best) || self.cmp_ty_val(&e.ty, &v, &best, span)?.is_gt() {
                         best = v;
                     }
                 }

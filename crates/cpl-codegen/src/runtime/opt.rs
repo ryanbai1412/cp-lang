@@ -50,6 +50,24 @@ using OptPos = Niche<int, int, -1>;
 ",
     },
     Piece {
+        name: "opt_min_max",
+        needs: &["niche"],
+        code: "\
+// `max` and `min` of optionals: `none` is the identity, and ties keep the left one.
+template <class O> O opt_max(const O& a, const O& b) { return !a.has_value() ? b : !b.has_value() ? a : *a < *b ? b : a; }
+template <class O> O opt_min(const O& a, const O& b) { return !a.has_value() ? b : !b.has_value() ? a : *b < *a ? b : a; }
+// With `none` first, one less than `none` wraps it past every value: one unsigned compare.
+template <class T, class S, S NONE> Niche<T, S, NONE> opt_min(Niche<T, S, NONE> a, Niche<T, S, NONE> b) {
+    if constexpr (Niche<T, S, NONE>::none_first) {
+        using U = std::make_unsigned_t<S>;
+        return U(U(b.raw) - U(NONE) - U(1)) < U(U(a.raw) - U(NONE) - U(1)) ? b : a;
+    } else {
+        return !a.has_value() ? b : !b.has_value() ? a : *b < *a ? b : a;
+    }
+}
+",
+    },
+    Piece {
         name: "niche_bool",
         needs: &["niche"],
         code: "\

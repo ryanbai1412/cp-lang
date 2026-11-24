@@ -410,3 +410,15 @@ fn a_profiled_build_counts_the_line_that_tests_an_into_fn() {
         "no site counts `if let h = half(i)`: {spans:?}\n{profiled}"
     );
 }
+
+#[test]
+fn the_max_of_optional_positions_is_one_std_max_and_their_min_one_unsigned_compare() {
+    let cpp = cpp(
+        "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]?I = [if i.ord % 3 == 0: None else: Some(i) for i in I]\n\
+         print(a.fold(max), a.fold(min))\nvar b: ?I = None\nfor x in a: b = max(b, x)\nprint(b)\n",
+    );
+    assert!(cpp.contains("std::max<cpl::OptPos>(a_2, b_2)"), "{cpp}");
+    assert!(cpp.contains("b = std::max<cpl::OptPos>(b, x)"), "{cpp}");
+    assert!(cpp.contains("cpl::opt_min("), "{cpp}");
+    assert!(!cpp.contains("has_value() ? ("), "{cpp}");
+}
