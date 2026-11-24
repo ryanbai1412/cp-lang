@@ -7,9 +7,6 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/apio23p1/dream.cp"
-  ],
   "original": [
    "corpus/problems/apio23p1/orig.cpp"
   ],
@@ -27,7 +24,7 @@
   "grader"
  ],
  "difficulty": "hard",
- "dream": "draft",
+ "dream": "none",
  "spec": "draft",
  "notes": "Next customization by lambda (v => roads[v].filter(...)) passed to dijkstra. orig.cpp is the AC submission corpus/submissions/5593318.cpp (a grader function) with a sample grader main that reads the port's input."
 }
