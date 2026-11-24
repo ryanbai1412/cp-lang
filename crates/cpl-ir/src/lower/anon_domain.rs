@@ -328,7 +328,22 @@ impl<'a> Lowerer<'a> {
         for (ix, d) in index.iter().zip(dims) {
             match d {
                 Dim::Pos(did) | Dim::Sym(did) => {
-                    self.unify_ast_ty(ix, &Ty::Pos(*did), tpl_mod, gen_names, env);
+                    // `[Pair<W>]T` given `[Pair<V>]Int`: a struct's index domain unifies
+                    // through the struct, so its arguments bind `W`.
+                    let by_struct =
+                        matches!(&ix.kind, ast::TypeKind::Named { args, .. } if !args.is_empty())
+                            .then(|| {
+                                self.structs
+                                    .iter()
+                                    .position(|s| s.index_domain == Some(*did))
+                            })
+                            .flatten();
+                    match by_struct {
+                        Some(sid) => {
+                            self.unify_ast_ty(ix, &Ty::Struct(sid), tpl_mod, gen_names, env)
+                        }
+                        None => self.unify_ast_ty(ix, &Ty::Pos(*did), tpl_mod, gen_names, env),
+                    }
                 }
                 Dim::Bound(did) => {
                     self.unify_ast_ty(ix, &Ty::Bound(*did), tpl_mod, gen_names, env);
