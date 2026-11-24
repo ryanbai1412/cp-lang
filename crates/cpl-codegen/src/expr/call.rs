@@ -10,7 +10,10 @@ impl<'p> Emitter<'p> {
         args.iter()
             .map(|arg| match arg {
                 Arg::Value(v) => {
-                    let text = codes.next().expect("one per value").text;
+                    let text = match codes.next() {
+                        Some(code) => code.text,
+                        None => self.expr(v).text,
+                    };
                     match (&v.ty, text.as_str()) {
                         // A fn value's `()` parameter is a `cpl::Unit`: the value runs, then one is given.
                         (Ty::Unit, "(void)0") => "cpl::Unit{}".to_string(),
@@ -133,7 +136,10 @@ impl<'p> Emitter<'p> {
                             texts.push("false".to_string());
                             continue;
                         }
-                        let code = codes.next().expect("one per value");
+                        let code = match codes.next() {
+                            Some(code) => code,
+                            None => this.expr(value),
+                        };
                         if slot < f.params.len() && f.locals[slot].ty == Ty::Unit {
                             if code.text != "(void)0" {
                                 ran.push(code.text);

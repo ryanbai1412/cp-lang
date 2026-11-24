@@ -236,3 +236,16 @@ fn a_structs_own_order_spells_every_comparison_through_its_lt() {
         assert!(cpp.contains(&format!("if {test} {{")), "{test}: {cpp}");
     }
 }
+
+#[test]
+fn each_value_of_a_format_and_a_fn_value_call_is_written_once_in_order() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\nlet s = \"a{n}b{n:05}\"\n",
+        "let g = (x: Int) => x + 1\nlet h = if n > 0: g else: (x: Int) => x * 2\n",
+        "print(h(n))\nprint(s)\n",
+    ));
+    let pieces =
+        r#"cpl::put_str("a"); cpl::put_int(n); cpl::put_str("b"); cpl::put_num(n, 10, true, 5);"#;
+    assert!(cpp.contains(pieces), "{cpp}");
+    assert!(cpp.contains("= h(n);"), "{cpp}");
+}

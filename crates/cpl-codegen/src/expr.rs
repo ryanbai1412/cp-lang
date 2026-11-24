@@ -1286,15 +1286,21 @@ impl<'p> Emitter<'p> {
                     match piece {
                         FmtPiece::Text(bytes) => parts.push(this.put_text(bytes)),
                         FmtPiece::Value(arg) => {
-                            let code = values.next().expect("one per value");
+                            let code = match values.next() {
+                                Some(code) => code,
+                                None => this.expr(&arg.value),
+                            };
                             parts.push(this.show_stmt(
                                 &code,
                                 &arg.value.ty,
                                 &arg.digits.to_string(),
                             ));
                         }
-                        FmtPiece::Number(_, fmt) => {
-                            let code = values.next().expect("one per value");
+                        FmtPiece::Number(value, fmt) => {
+                            let code = match values.next() {
+                                Some(code) => code,
+                                None => this.expr(value),
+                            };
                             this.need("put_num");
                             let (zero, width) = (fmt.zero, fmt.width);
                             parts.push(match fmt.kind {
