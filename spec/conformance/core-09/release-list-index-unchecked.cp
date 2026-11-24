@@ -1,5 +1,4 @@
 // expect: ok
-// gap: perf 2026-11-24T05Z
 // rule: 09.2.2 09.3.2
 // tool: build -o -
 // has: "put_int"

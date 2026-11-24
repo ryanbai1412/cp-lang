@@ -343,6 +343,7 @@ impl<'p> Emitter<'p> {
                         }
                     })
                     .collect();
+                let untrapped = self.target.checks == crate::Checks::None;
                 match &base.ty {
                     Ty::Array { dims, .. } if dims.len() > 1 => {
                         format!(
@@ -350,6 +351,9 @@ impl<'p> Emitter<'p> {
                             self.grid_ck(&base.kind, indices),
                             at.join(", ")
                         )
+                    }
+                    Ty::Array { .. } | Ty::Str | Ty::List(_) | Ty::MutView(..) if untrapped => {
+                        format!("{b}[{}]", at[0])
                     }
                     Ty::Array { .. } | Ty::Str if !proven(indices) => {
                         if self.place_fixed_len(base).is_some() {
@@ -884,7 +888,9 @@ impl<'p> Emitter<'p> {
                 let base_ty = &base.ty;
                 let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id))
                     || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _))
-                    || self.inside_at(crate::bounds::var_of(&base.kind), indices);
+                    || self.inside_at(crate::bounds::var_of(&base.kind), indices)
+                    || (self.target.checks == crate::Checks::None
+                        && !matches!(base_ty, Ty::Range(_)));
                 let checked = !proven(indices) && !raw_list;
                 if (matches!(
                     base_ty,
