@@ -1,4 +1,6 @@
 import sys, random
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "200000"]
 # `seed size`: n <= size + 1 (size >= 2e5 gives n = 2e5), skills up to 2e9, k up to 1e9.
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 N = 2 * 10 ** 5

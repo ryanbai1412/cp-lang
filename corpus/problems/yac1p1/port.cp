@@ -5,20 +5,20 @@
 // Solution: pair in sorted order. An increment to one side of a pair gains the other side, and
 //   the top pair's larger side is the most anything gains, so every increment goes to the top
 //   pair: first level its two sides, then split the rest evenly. Sort: O(n log n).
-const P = 1000000007
-type Z = Mod<P>
+// original: corpus/submissions/4376122.cpp
+
+type Z = Mod<1_000_000_007>
+
 let n: 1..=2e5 = read()
 let k: 0..=1e9 = read()
-let a_in: [n]1..=2e9 = read()
-let b_in: [n]1..=2e9 = read()
-let a = a_in.sorted()
-let b = b_in.sorted()
+let a = read<[n]1..=2e9>().sorted()
+let b = read<[n]1..=2e9>().sorted()
 
 var x = a.last!
 var y = b.last!
-let level = min(k, abs(x - y))  // first bring the smaller side up
+let level = min(k, abs(x - y))
 if x < y: x += level else: y += level
-x += (k - level) / 2  // then split what is left
+x += (k - level) / 2
 y += (k - level + 1) / 2
 
 print(sum(Z(a[i]) * Z(b[i]) for i in 0..n - 1) + Z(x) * Z(y))

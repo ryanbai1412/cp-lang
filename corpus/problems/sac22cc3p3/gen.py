@@ -2,6 +2,8 @@
 size >= 1e5 gives N = 1e5 with shapes by seed: uniform to 1e9 (10 rounds); all ten-digit
 values; values sharing long suffixes (fewer than N when the range is small); mixed lengths 1..1e9."""
 import random, sys
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["1", "100000"]
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 big = size >= 10 ** 5

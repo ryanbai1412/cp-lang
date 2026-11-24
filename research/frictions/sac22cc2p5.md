@@ -10,3 +10,26 @@
 - **Severity:** low
 
 Measurements: native (`cpl build` + g++ -O2) at n = q = 10^6, spec 0.16 s vs AC 0.38 s, outputs equal; emitted C++ 12,263 bytes.
+
+## Two Fenwick trees picked by parity instead of a strided view
+- **Where:** `port.cp`, `domain Parity`, `fn side`, and each tree built with zeros at the other parity.
+- **What felt wrong:** "every second element of [L, R]" is a strided range; the port spends half
+  of each tree on zeros and names the parity by hand.
+- **General fix:** a step on `Range<D>` (`(l..=r).step(2)`) that a `Fenwick` or `SegTree` fold accepts, backed by per-residue trees.
+- **Goal it hurts:** express.
+- **Severity:** low.
+
+## Dream
+
+```cp
+let n = read<1..=1e6>()
+let q = read<1..=1e6>()
+domain Pos = 1..=n
+var a = Fenwick(read<[Pos]-1e9..=1e9>(), stride: 2)
+for _ in 0..q:
+    match read<1..=2>():
+        1 => a.set(read<Pos>(), read<-1e9..=1e9>())
+        2 =>
+            let (l, r) = read<(Pos, Pos)>()
+            print(a.fold((l..=r).step(2)))
+```
