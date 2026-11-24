@@ -11,4 +11,14 @@ for i in 0..8 * n:
     s += x.ceil // timed: math.ceil
     s += x.round // timed: math.round
     s += x.trunc // timed: math.trunc
+    let u = F64(i % 1000) / 1000.0
+    t += sin(x) // timed: math.sin
+    t += cos(x) // timed: math.cos
+    t += tan(u) // timed: math.tan
+    t += asin(u) // timed: math.asin
+    t += acos(u) // timed: math.acos
+    t += atan2(x, 3.0) // timed: math.atan2
+    t += hypot(x, u) // timed: math.hypot
+    t += exp(u) // timed: math.exp
+    t += ln(u + 1.0) // timed: math.ln
 print(s, t.floor)

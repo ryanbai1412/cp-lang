@@ -11,6 +11,9 @@ for i in 0..8 * n:
     s += r.ends.0 // timed: range.ends
     s += V(i % 64).shift(-2..=9).len // timed: range.shift
     s += V(i % 64).shift_saturating(i % 9 - 4).ord // timed: range.shift_saturating
+    if let w = V(i % 64).offset(i % 9 - 4): s += w.ord // timed: range.offset
+    if let w = V(i % 64).ahead(i % 5): s += w.ord // timed: range.ahead
+    if let w = V(i % 64).back(i % 5): s += w.ord // timed: range.back
 for (a, b) in (0..8 * n).splits: // timed: range.splits
     s += a.len - b.len // timed: range.splits
 for i in 0..4 * n:

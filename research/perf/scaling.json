@@ -3316,7 +3316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "derive.Char.hash",
-   "measured": 1.09,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -3324,7 +3324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "derive.I128.hash",
-   "measured": 1.1,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -3332,7 +3332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "derive.Int.hash",
-   "measured": 0.98,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -3340,7 +3340,7 @@
    "cost": "\\mathit{length}",
    "documented": 4.0,
    "fn": "derive.Str.hash",
-   "measured": 4.18,
+   "measured": 4.08,
    "n": 16384,
    "ok": true
   },
@@ -3348,7 +3348,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "derive.U64.hash",
-   "measured": 1.08,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -3356,7 +3356,15 @@
    "cost": "\\mathit{fields}",
    "documented": 1.0,
    "fn": "derive.eq_fields",
-   "measured": 1.1,
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/derive.cp::derive.gen_fields": {
+   "cost": "\\mathit{fields}",
+   "documented": 1.0,
+   "fn": "derive.gen_fields",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -3372,7 +3380,7 @@
    "cost": "\\mathit{fields}",
    "documented": 1.0,
    "fn": "derive.lt_fields",
-   "measured": 1.13,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -3388,7 +3396,7 @@
    "cost": "\\mathit{fields}",
    "documented": 1.0,
    "fn": "derive.show_fields",
-   "measured": 1.07,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -10868,7 +10876,31 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.abs",
-   "measured": 1.04,
+   "measured": 0.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.acos": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.acos",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.asin": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.asin",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.atan2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.atan2",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -10876,7 +10908,23 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.ceil",
-   "measured": 1.07,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.cos": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.cos",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.exp": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.exp",
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -10884,7 +10932,23 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.floor",
-   "measured": 1.05,
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.hypot": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.hypot",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.ln": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.ln",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -10892,7 +10956,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.round",
-   "measured": 1.03,
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.sin": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.sin",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -10900,7 +10972,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.sqrt",
-   "measured": 1.08,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.tan": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.tan",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -10908,7 +10988,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.trunc",
-   "measured": 1.05,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -13092,7 +13172,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.contains",
-   "measured": 1.06,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -13100,7 +13180,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "range.RingRange.each",
-   "measured": 4.4,
+   "measured": 4.07,
    "n": 16384,
    "ok": true
   },
@@ -13108,7 +13188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.end",
-   "measured": 1.05,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -13116,7 +13196,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.is_empty",
-   "measured": 1.05,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -13124,7 +13204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.keys",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -13132,7 +13212,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.len",
-   "measured": 1.06,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -13140,7 +13220,23 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.start",
-   "measured": 1.06,
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/range.cp::range.ahead": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "range.ahead",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/range.cp::range.back": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "range.back",
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -13148,7 +13244,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "range.bsearch",
-   "measured": 1.12,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -13156,7 +13252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.clip",
-   "measured": 0.94,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -13164,7 +13260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.ends",
-   "measured": 0.94,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -13172,7 +13268,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "range.first_true",
-   "measured": 1.12,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -13180,7 +13276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.halve",
-   "measured": 0.94,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -13188,7 +13284,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.l",
-   "measured": 0.94,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -13196,7 +13292,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "range.last_true",
-   "measured": 1.14,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -13204,7 +13300,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.mid",
-   "measured": 0.94,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/range.cp::range.offset": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "range.offset",
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -13212,7 +13316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.r",
-   "measured": 0.93,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -13220,7 +13324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.shift",
-   "measured": 0.94,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -13228,7 +13332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.shift_saturating",
-   "measured": 0.94,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -13236,7 +13340,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.splits",
-   "measured": 0.91,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -19545,10 +19649,5 @@
    "ok": true
   }
  },
- "unscaled": [
-  "derive.gen_fields",
-  "range.ahead",
-  "range.back",
-  "range.offset"
- ]
+ "unscaled": []
 }

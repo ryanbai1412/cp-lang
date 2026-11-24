@@ -1,7 +1,8 @@
 // fixed: fields
 // stdin: 12
-use std.derive.{eq_fields, lt_fields, show_fields, read_fields, hash_fields}
+use std.derive.{eq_fields, lt_fields, show_fields, read_fields, hash_fields, gen_fields}
 struct P(a: Int, b: Int, c: Int)
+struct Q(a: 1..=9, b: 1..=9, c: 1..=9)
 let n: Int = read()
 let reps = 1 << 18
 let xs = [P(i, (i * 7) % n, i % 3) for i in 0..n]
@@ -16,6 +17,7 @@ for i in 0..reps:
     h ^= I128(i).hash() // timed: derive.I128.hash
     h ^= Char(97 + i % 26).hash() // timed: derive.Char.hash
     h ^= (i % 3 == 0).hash() // timed: derive.Bool.hash
+    s += gen_fields<Q>().b // timed: derive.gen_fields
 for i in 0..reps / 4:
     s += show_fields(xs[i % n]).len // timed: derive.show_fields
 for _ in 0..4 * n:
