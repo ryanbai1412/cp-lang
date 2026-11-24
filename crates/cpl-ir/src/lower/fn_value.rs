@@ -5,6 +5,21 @@ use super::mono::GenFnId;
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// `T.of` with no call is a fn value when `of` is static and needs an
+    /// argument, or a fn is expected: `a.map(MaxSub.of)` (decision 472).
+    pub(super) fn static_fn_value(
+        &mut self,
+        fn_id: FnId,
+        hint: Option<&Ty>,
+        span: Span,
+    ) -> Option<Expr> {
+        let sig = &self.sigs[fn_id];
+        let needs_arg = sig.params.iter().any(|p| p.default.is_none());
+        let fn_expected = matches!(hint, Some(Ty::Fn(..)));
+        (sig.receiver.is_none() && (needs_arg || fn_expected))
+            .then(|| self.fn_as_closure(fn_id, hint, span))
+    }
+
     pub(super) fn gen_fn_as_closure(
         &mut self,
         gfid: GenFnId,

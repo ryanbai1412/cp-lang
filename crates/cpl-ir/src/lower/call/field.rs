@@ -168,6 +168,9 @@ impl<'a> Lowerer<'a> {
                 if let Some(&fn_id) = self.structs[id].methods.get(&name.text).filter(|&&f| {
                     self.sigs[f].receiver.is_none() || self.structs[id].index_domain.is_none()
                 }) {
+                    if let Some(value) = self.static_fn_value(fn_id, hint, span) {
+                        return value;
+                    }
                     return self.method_call(fn_id, None, &[], span);
                 }
                 if let Some(number) = self.struct_number_param(id, &name.text, span) {
@@ -196,6 +199,9 @@ impl<'a> Lowerer<'a> {
                                     || self.structs[id].index_domain.is_none()
                             })
                         {
+                            if let Some(value) = self.static_fn_value(fn_id, hint, span) {
+                                return value;
+                            }
                             return self.method_call(fn_id, None, &[], span);
                         }
                         if let Some(number) = self.struct_number_param(id, &name.text, span) {
