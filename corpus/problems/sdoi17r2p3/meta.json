@@ -8,11 +8,15 @@
   {"id": "5474714", "language": "CPP17", "result": "TLE", "time": 50.45318119, "memory_kb": 39776.0, "file": "corpus/submissions/5474714.cpp"},
   {"id": "5481974", "language": "CPP17", "result": "TLE", "time": 50.440492478, "memory_kb": 39804.0, "file": "corpus/submissions/5481974.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/sdoi17r2p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Every recorded submission is WA or TLE. orig.cpp is a written reference (dynamic DP over heavy paths in the Walsh-Hadamard domain, zero-counted light factors mod 10007); it matches the statement sample and a transform-free tree DP on 430 random small inputs. Statement: LOJ 2269."
 }
