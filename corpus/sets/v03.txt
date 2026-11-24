@@ -364,12 +364,14 @@ dmopc20c4p3
 dmopc20c4p4
 dmopc20c5p2
 dmopc20c6p3
+dmopc20c6p6
 dmopc20c7p1
 dmopc20c7p2
 dmopc20c7p4
 dmopc20c7p5
 dmopc21c2p1
 dmopc21c2p2
+dmopc21c2p3
 dmopc21c9p4
 dmpg16g2
 egoi23p7
