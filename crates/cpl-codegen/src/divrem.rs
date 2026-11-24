@@ -72,11 +72,13 @@ impl<'p> Emitter<'p> {
             };
             return Code::primary(format!("{int}(uint64_t({}) {sym} {divisor})", a.text));
         }
-        let helper = match (divisor == Sign::Positive, div) {
-            (true, true) => "divp",
-            (true, false) => "modp",
-            (false, true) => "ediv",
-            (false, false) => "emod",
+        let helper = match (divisor == Sign::Positive, dividend != Sign::Unknown, div) {
+            (true, _, true) => "divp",
+            (true, _, false) => "modp",
+            (false, true, true) => "divn",
+            (false, true, false) => "modn",
+            (false, false, true) => "ediv",
+            (false, false, false) => "emod",
         };
         self.need(helper);
         Code::primary(format!("cpl::{helper}({}, {})", a.text, b.text))

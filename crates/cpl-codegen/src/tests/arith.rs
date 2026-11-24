@@ -248,3 +248,14 @@ fn a_grid_index_folds_its_dims_with_no_loop() {
     );
     assert!(!out.contains("for (int k = 0; k < K; k++) p ="), "{out}");
 }
+
+#[test]
+fn a_non_negative_dividend_drops_the_sign_fix_up_whatever_the_divisor() {
+    let body = body("let a: 0..=1000000 = read()\nlet b: Int = read()\nprint(a / b, a % b)\n");
+    assert!(body.contains("cpl::divn(a, b)"), "{body}");
+    assert!(body.contains("cpl::modn(a, b)"), "{body}");
+    assert!(
+        !body.contains("cpl::ediv") && !body.contains("cpl::emod"),
+        "{body}"
+    );
+}

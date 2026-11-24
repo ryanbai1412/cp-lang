@@ -29,6 +29,28 @@ inline ll emod(ll a, ll b) {
 ",
     },
     Piece {
+        name: "divn",
+        needs: &[],
+        code: "\
+// A dividend known to be non-negative: C++'s own `/` and `%` are
+// Euclidean for any non-zero divisor.
+inline ll divn(ll a, ll b) {
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    return a / b;
+}
+",
+    },
+    Piece {
+        name: "modn",
+        needs: &[],
+        code: "\
+inline ll modn(ll a, ll b) {
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    return a % b;
+}
+",
+    },
+    Piece {
         name: "divp",
         needs: &[],
         code: "\
