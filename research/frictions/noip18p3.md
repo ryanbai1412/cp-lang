@@ -9,5 +9,10 @@
 - **General fix:** a bottom-up fold on `Rooted` that hands a vertex its children's results.
 - **Severity:** low.
 
+## Repro
+
+`t.fold_up(v => 1)` on a `Rooted`, fresh `cpl run`: `error[E0203]: Rooted has no field or
+method `fold_up``.
+
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC 4002963; max (n = 5e4) 0.14 s vs C++ 0.12 s, same output. The v0.2 skip-pointer union-find is now `SortedBag.take_first`.

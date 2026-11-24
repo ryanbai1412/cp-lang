@@ -2,8 +2,11 @@
 
 ## 1. Adjacency lists built by hand
 - **Where:** `var out`, `var back` filled from `edges`.
-- **What felt wrong:** `Graph.directed(edges)` gives both directions, but `bfs` takes a neighbour function
-  and the safe-subgraph filter is spelled over lists.
+- **What felt wrong:** `Graph.directed(edges)` has no reversed view and its `only` filter does not feed `bfs`, so
+  both directions and the safe subgraph are spelled over lists. On a fresh `cpl run`,
+  `bfs(g.rev, from: [t])` is `error[E0203]: Graph<_, _> has no field or method `rev`` and
+  `bfs(g.only(safe), from: [s])` is `error[E0606]: `Only<_, Graph<_, _>>` does not implement
+  `Next` required by `bfs``.
 - **Goal it hurts:** express.
 - **Ideal code:** `let g = Graph.directed(edges)`; `bfs(g.rev, from: [t])`; `bfs(g.only(safe), from: [s])`.
 - **General fix:** vertex-filtered graph views for BFS.

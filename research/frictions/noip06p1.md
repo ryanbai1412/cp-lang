@@ -8,6 +8,14 @@
 - **General fix:** a cyclic domain whose `+ Int` wraps.
 - **Severity:** low.
 
+## Repro: no cyclic domain
+
+`domain Bead = ring 0..n` on a fresh `cpl run`:
+
+```text
+error[E0107]: expected the end of the statement, found a number
+```
+
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and AC 5165686 on gen.py inputs; max (N = 100) 0.012 s vs C++ 0.020 s, same output.
 

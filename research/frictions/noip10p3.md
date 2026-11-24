@@ -6,7 +6,9 @@
   representative of the other side.
 - **Goal it hurts:** express.
 - **Ideal code:** `var side = ParityDsu<V>()`; `if not side.apart(a, b): return print(anger)`.
-- **General fix:** a parity/bipartite DSU in std.
+- **General fix:** none needed: std `ParityDsu` (`std/dsu.cp`, used by noip08p4) exists;
+  `var s = ParityDsu<V>(); s.unite(V(1), V(2)); print(yes(s.consistent))` runs on a fresh
+  `cpl`. The port owes the rewrite.
 - **Severity:** low.
 
 ## Measurements

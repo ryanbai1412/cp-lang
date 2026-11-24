@@ -1,9 +1,22 @@
 # noip14p6
 
-Score: pending
-Dream: pending
+Score: 4/5
+Dream: 4/5
 
-Re-port for headroom: f(x) = f(x mod p) (mod p), so three primes near 10^4 each decide every x
-with one pass over their residues, and only survivors get the exact Horner check modulo
-2^61 - 1. That keeps the one-in-2^61 guarantee of the old port and drops `--max` from 0.91 s
-to 0.06 s natively (AC 0.85 s), 4.0 MB RSS against the AC's 5.5 MB.
+Cold review: sieve the candidates by f mod three small primes, then check the survivors modulo 2^61 - 1 (lines 19-31), the header's argument, now that a local `Mod(p)` parses.
+
+## Checklist failures
+
+- R1: the header's "at most n roots" mod p (line 7) fails when p divides every coefficient, and "about n / 2^61 per x" (line 10) is not a probability for a fixed modulus; the cost and error claims need that caveat.
+
+## Owed rewrites
+
+- `print(roots, sep: "\n")` (as in dream.cp line 17) in place of the `for` (line 31).
+
+## Language gaps
+
+- None open; the local `Mod(p)` read fixed in research/frictions/noip14p6.md.
+
+## Dream notes
+
+- None.

@@ -8,5 +8,10 @@
 - **General fix:** `Domain.clamp(Int) -> D`.
 - **Severity:** low.
 
+## Repro
+
+`H.clamp(9)` on `domain H = 1..=5`, fresh `cpl run`: `error[E0203]: a `domain H` has no method
+`clamp``.
+
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC; max (n = 10000, m = 1000, k = 5000) 0.004 s vs C++ 0.027 s, same output.

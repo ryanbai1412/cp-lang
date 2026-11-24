@@ -16,6 +16,12 @@
 - **General fix:** an unbounded-coin reachable-sums helper on `Bitset` (`sums.unbounded(c)`).
 - **Severity:** low.
 
+## Repro
+
+On a fresh `cpl run`, `var s = Bitset<A>.of([A(0)]); s.unbounded(3)` is `error[E0203]:
+Bitset<A> has no field or method `unbounded``, and the dream's two-argument
+`Bitset.of(0..=25000, [0])` is `error[E0303]: `Bitset.of` takes 1 argument (xs), but 2 were given`.
+
 ## Measurements
 Stress: 30/30 agree with AC 4002899 on gen.py inputs; max (T = 20, n = 100) 0.009 s vs C++ 0.007 s, same output.
 

@@ -9,6 +9,12 @@
 - **General fix:** a `first_gap(len, from:)` query on std's interval set.
 - **Severity:** low.
 
+## Evidence
+
+std `IntervalSet` (`std/interval.cp`) has `add`, `remove`, `contains`, `contains_range`,
+`run_at`, `next_covered` and `next_gap(from)`, but no query for a free stretch of a given
+length; `first_gap(len, from:)` is the missing call.
+
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC 5165783; max (m = n = 20) 0.004 s vs C++ 0.003 s, same output.
 

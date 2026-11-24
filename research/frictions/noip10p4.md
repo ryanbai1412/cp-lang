@@ -16,6 +16,12 @@
 - **General fix:** `min_cover` in `std.interval`.
 - **Severity:** low.
 
+## Repro
+
+On a fresh `cpl run`: `let s: Hull<C> = Hull.empty` is `error[E0204]: no type or domain named
+`Hull`, and not in the stdlib (yet)`, and `min_cover([0..2, 1..5], 0..5)` is
+`error[E0201]: no `min_cover` in scope, and not in the stdlib (yet)`.
+
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC 5205786; max (500 x 500 descending snake) 0.011 s vs C++ 1.13 s, same output (both with an unlimited stack).
 

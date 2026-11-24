@@ -17,6 +17,12 @@
 - **General fix:** `Graph.undirected` over a `Seq` of pairs, not only an edge array.
 - **Severity:** low.
 
+## 3. Slower than the C++ at the max
+
+The max case runs 0.011 s against the C++'s 0.004 s (2.75x, over the 1.1x bar). Both are
+near process start-up, and the cause is not measured: the O(n^2) `clash` calls through
+`later[j]` options and `ParityDsu.unite` are the candidates. Owner: codegen. Severity: low.
+
 ## Measurements
 Stress: 30/30 agree with AC 5185830 (the v0.2 port disagrees, section 1); max (n = 1000) 0.011 s vs C++ 0.004 s, same output.
 

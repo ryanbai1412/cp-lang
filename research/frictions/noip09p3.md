@@ -9,6 +9,12 @@
 - **General fix:** a `fold_from(source, init, combine)` DP on a topologically ordered DAG.
 - **Severity:** low.
 
+## Repro
+
+`dag.fold_from(comp[V.first!], least, min)` on a fresh `cpl run` resolves to the sequence fold:
+`error[E0303]: `fold_from` takes 3 arguments, but 4 were given`. A DAG-DP fold needs its own
+name (or a source argument on a graph method).
+
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC 5185139; max (n = 1e5, m = 5e5) 0.091 s vs C++ 0.127 s, same output.
 
