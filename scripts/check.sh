@@ -327,24 +327,20 @@ case "$gate_kind" in
         ;;
 esac
 
-if [ "$mode" = land ]; then
-    land_base="${CHECK_BASE:-$(git rev-parse -q --verify origin/main || true)}"
+# --land diffs the train against origin/main, --commit the staged files.
+if [ "$mode" = land ] || [ "$mode" = commit ]; then
     sel_all=1
     sel_reason="no base to diff the train against"
-    if [ -n "$land_base" ]; then
+    affected=(scripts/affected.py)
+    if [ "$mode" = land ]; then
+        land_base="${CHECK_BASE:-$(git rev-parse -q --verify origin/main || true)}"
+        [ -z "$land_base" ] || affected+=(--base "$land_base")
+    fi
+    if [ "$mode" = commit ] || [ -n "$land_base" ]; then
         while IFS='=' read -r key value; do
             printf -v "sel_$key" '%s' "$value"
-        done < <(uv run --quiet python scripts/affected.py --base "$land_base")
+        done < <(uv run --quiet python "${affected[@]}")
     fi
-    if [ "$sel_all" = 1 ]; then
-        printf '\ncheck: %s is not mapped by scripts/affected.py; running --fast\n' "$sel_reason"
-        mode=fast
-    fi
-fi
-if [ "$mode" = commit ]; then
-    while IFS='=' read -r key value; do
-        printf -v "sel_$key" '%s' "$value"
-    done < <(uv run --quiet python scripts/affected.py)
     if [ "$sel_all" = 1 ]; then
         printf '\ncheck: %s is not mapped by scripts/affected.py; running --fast\n' "$sel_reason"
         mode=fast
@@ -615,7 +611,7 @@ uv run scripts/conformance-coverage.py --check ||
 
 step "conformance gaps: SUBSET.md generated from the board, no case carries a // gap: line (scripts/spec-gate.py subset, gaps)"
 uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"
-uv run --quiet python scripts/spec-gate.py gaps || fail "a case carries a // gap: line; delete it (research/scoreboard.json records the failure)"
+uv run --quiet python scripts/spec-gate.py gaps || fail "a case carries a // gap: line; delete it (research/scoreboard.json records the failure), then rerun: uv run scripts/spec-gate.py gaps"
 
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
