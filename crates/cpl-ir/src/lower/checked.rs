@@ -111,14 +111,19 @@ fn product_name(ty: &Checked) -> Option<String> {
     match ty {
         Checked::Pos(name) => Some(name.clone()),
         Checked::Tuple(ts) if ts.len() > 1 => {
-            let parts = ts.iter().map(|t| match t {
-                Checked::Pos(n) if !n.contains(['(', ')']) => Some(n.as_str()),
-                _ => None,
-            });
-            Some(format!(
-                "({})",
-                parts.collect::<Option<Vec<_>>>()?.join(", ")
-            ))
+            let mut name = String::from("(");
+            for (i, t) in ts.iter().enumerate() {
+                let Checked::Pos(n) = t else { return None };
+                if n.contains(['(', ')']) {
+                    return None;
+                }
+                if i > 0 {
+                    name.push_str(", ");
+                }
+                name.push_str(n);
+            }
+            name.push(')');
+            Some(name)
         }
         _ => None,
     }
@@ -135,9 +140,11 @@ fn written(ty: &Checked, at: Span) -> Option<ast::Type> {
         args,
     };
     let all = |tys: &[Checked]| {
-        tys.iter()
-            .map(|t| written(t, at))
-            .collect::<Option<Vec<_>>>()
+        let mut out = Vec::with_capacity(tys.len());
+        for t in tys {
+            out.push(written(t, at)?);
+        }
+        Some(out)
     };
     let kind = match ty {
         Checked::Int | Checked::Range { .. } => named("Int", Vec::new()),
@@ -155,11 +162,13 @@ fn written(ty: &Checked, at: Span) -> Option<ast::Type> {
         },
         Checked::Optional(t) => ast::TypeKind::Optional(Box::new(written(t, at)?)),
         Checked::Tuple(items) => ast::TypeKind::Tuple(all(items)?),
-        Checked::Record(fields) => ast::TypeKind::Record(
-            (fields.iter())
-                .map(|(n, t)| Some((name(n), written(t, at)?)))
-                .collect::<Option<_>>()?,
-        ),
+        Checked::Record(fields) => {
+            let mut out = Vec::with_capacity(fields.len());
+            for (n, t) in fields {
+                out.push((name(n), written(t, at)?));
+            }
+            ast::TypeKind::Record(out)
+        }
         _ => return None,
     };
     Some(ast::Type { kind, span: at })
