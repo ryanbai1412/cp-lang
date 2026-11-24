@@ -57,3 +57,23 @@ fn a_var_that_is_not_show_prints_through_yes_or_a_default() {
     );
     assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
 }
+
+#[test]
+fn a_hash_container_prints_in_an_order_both_engines_share() {
+    let mut db = Database::new();
+    let text = "var seen: HashMap<Int, Int> = [3: 1]\nvar got: HashSet<Int> = HashSet()\nfor i in 0..3:\n    seen[i] = i\n    got.add(i)\nprint(seen.len, got.len)\n";
+    let (variant, _) = build(&mut db, "probe.cp", text).expect("some probe checks");
+    assert!(!variant.contains("print(seen)\n"), "{variant}");
+    assert!(!variant.contains("print(got)\n"), "{variant}");
+    assert!(variant.contains("sorted()"), "{variant}");
+    assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
+}
+
+#[test]
+fn a_hash_container_inside_a_table_prints_its_sizes() {
+    let mut db = Database::new();
+    let text = "domain R = 0..3\nvar cnt: [R]HashMap<Int, Int> = HashMap()\nfor r in R:\n    cnt[r][Int(r)] = 1\nprint(cnt[R(0)].len)\n";
+    let (variant, _) = build(&mut db, "probe.cp", text).expect("some probe checks");
+    assert!(variant.contains(".len for cpl_x in cnt]"), "{variant}");
+    assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
+}

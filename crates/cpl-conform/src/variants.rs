@@ -39,6 +39,50 @@ const SHOWN: [&str; 7] = [
     "{}.len",
 ];
 
+/// How a probe prints a var whose type walks in hash order (`HashMap`, `HashSet`, an
+/// `Interner`): that order is undefined (containers.md §2.8), so only an ordered view of it
+/// shows the same in both engines.
+const SHOWN_HASHED: [&str; 4] = [
+    "[(cpl_k, {}[cpl_k]) for cpl_k in {}.keys.sorted()]",
+    "{}.keys.sorted()",
+    "[cpl_x for cpl_x in {}].sorted()",
+    "{}.len",
+];
+
+/// How a probe prints a var with a hash-ordered type inside it: the sizes, which have no
+/// order to disagree on.
+const SHOWN_HASH_INSIDE: [&str; 2] = ["[cpl_x.len for cpl_x in {}]", "{}.len"];
+
+/// The probe forms for the top-level `var v` of `text`, by whether its type walks in hash
+/// order at the top, only inside, or not at all.
+fn shown_forms(db: &mut Database, path: &str, text: &str, v: &str) -> &'static [&'static str] {
+    const HASHED: [&str; 3] = ["HashMap", "HashSet", "Interner"];
+    let decl = format!("var {v}");
+    let Some(at) = text
+        .match_indices(&decl)
+        .find(|(i, _)| *i == 0 || text.as_bytes()[i - 1] == b'\n')
+        .map(|(i, _)| i + 4)
+    else {
+        return &SHOWN;
+    };
+    db.set_file(path, text);
+    let hover = db.hover(path, at as u32);
+    db.remove_file(path);
+    let Some(ty) = hover.map(|h| {
+        h.text
+            .split_once(": ")
+            .map_or(h.text.clone(), |(_, t)| t.to_string())
+    }) else {
+        return &SHOWN;
+    };
+    let count = HASHED.iter().map(|t| ty.matches(t).count()).sum::<usize>();
+    match count {
+        0 => &SHOWN,
+        1 if HASHED.iter().any(|t| ty.starts_with(t)) => &SHOWN_HASHED,
+        _ => &SHOWN_HASH_INSIDE,
+    }
+}
+
 /// The top-level `var`s of `text`, in declaration order.
 fn top_vars(text: &str) -> Vec<String> {
     let mut vars: Vec<String> = Vec::new();
@@ -218,11 +262,16 @@ pub fn build(db: &mut Database, path: &str, text: &str) -> Option<(String, usize
     let shown: Vec<&str> = top_vars(text)
         .iter()
         .map(|v| {
+            let forms = shown_forms(db, path, text, v);
             let checks = |s: &&str| {
                 let print = format!("{text}{sep}print({})\n", s.replace("{}", v));
                 error_lines(db, path, &print).is_none()
             };
-            SHOWN.iter().copied().find(checks).unwrap_or("{}")
+            forms
+                .iter()
+                .copied()
+                .find(checks)
+                .unwrap_or(forms[forms.len() - 1])
         })
         .collect();
     let probes = probes_shown(text, &shown);
