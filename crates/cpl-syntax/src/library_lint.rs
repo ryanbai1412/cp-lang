@@ -3,7 +3,7 @@
 //! fn's parameter names are the holes. The checker reports the declarations
 //! it cannot use (E0505); `cpl-lint` matches the rest.
 
-use crate::ast::{ExprKind, Stmt, StmtKind, StrPiece};
+use crate::ast::{EnumDecl, ExprKind, Stmt, StmtKind, StrPiece, StructDecl};
 use crate::token::{Token, TokenKind};
 use crate::ParsedItem;
 use cpl_diag::{msgs, Diagnostic, Span};
@@ -259,6 +259,15 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
             item: stmt.span.shift(offset),
         });
     }
+    if let StmtKind::Struct(StructDecl { methods, .. }) | StmtKind::Enum(EnumDecl { methods, .. }) =
+        &stmt.kind
+    {
+        for m in methods {
+            let (more, errs) = declared(m, offset);
+            lints.extend(more);
+            errors.extend(errs);
+        }
+    }
     (lints, errors)
 }
 
@@ -388,6 +397,23 @@ mod tests {
                 "{bad}"
             );
         }
+    }
+
+    #[test]
+    fn a_struct_or_enum_method_declares_a_lint() {
+        let lints = |src: &str| {
+            let parsed = crate::parse_file(src);
+            (parsed.items.iter())
+                .flat_map(|(off, item)| item.stmts.iter().map(|s| super::declared(s, *off)))
+                .flat_map(|(lints, _)| lints.into_iter().map(|l| (l.name, l.fn_name)))
+                .collect::<Vec<_>>()
+        };
+        let on_struct = "pub struct Box:\n    v: Int\n    @lint(boxed, from: \"x * x\", to: \"Box.sq(x)\")\n    pub fn sq(x: Int) -> Int = x * x\n";
+        assert_eq!(lints(on_struct), [("boxed".to_string(), "sq".to_string())]);
+        let on_enum = "pub enum Sign:\n    Neg\n    Pos\n    @lint(signed, from: \"x < 0\", to: \"Sign.of(x)\")\n    pub fn of(x: Int) -> Sign = if x < 0: Neg else: Pos\n";
+        assert_eq!(lints(on_enum), [("signed".to_string(), "of".to_string())]);
+        let bad = "pub struct Box:\n    v: Int\n    @lint(boxed, from: \"x * x\", to: \"cube(x)\")\n    pub fn sq(x: Int) -> Int = x * x\n";
+        assert_eq!(errors(bad).len(), 1, "{:?}", errors(bad));
     }
 
     #[test]

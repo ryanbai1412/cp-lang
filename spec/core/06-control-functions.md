@@ -201,7 +201,7 @@ library or by this spec:
   `from` does not match an assigned place (`xs[i] = v`) or the base it
   indexes.
   It applies in every file that uses the module, and in the module outside
-  the fn. E0505 (`bad_library_lint`) when `@lint` is not on a fn, lacks a
+  the fn. A struct's or enum's method may declare one like a top-level fn. E0505 (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:`, when `from` or `to` is not one expression or
   statement, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name `from` does not use, when `when:` is not

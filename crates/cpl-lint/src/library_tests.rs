@@ -200,6 +200,20 @@ fn a_fn_from_declares_binds_its_name_and_parameters() {
     assert!(found(mixed).is_empty());
 }
 
+/// A struct's method declares a lint like a top-level fn, and `to` calls
+/// it through the struct. Rule: R06.4.9.
+#[test]
+fn a_struct_method_declares_a_lint() {
+    let decl = "struct Sq:\n    v: Int\n    @lint(sq_by_hand, from: \"x * x\", to: \"Sq.of(x)\")\n    pub fn of(x: Int) -> Int = x * x\n";
+    let src = format!("{decl}let a: Int = read()\nprint(a * a)\n");
+    let found: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "sq_by_hand")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(found, ["Sq.of(a)"]);
+}
+
 /// `when:` keeps a finding only where what a hole matched is proven in
 /// bounds: an integer literal, or a range type whose ends lie in them.
 /// Rule: R06.4.9.
