@@ -122,9 +122,9 @@ impl Checker<'_> {
             return;
         }
         let shown = format!("{}.{}", self.quote(base.span), name.text);
-        let message = format!("`{shown}` does work, but without `()` it reads like an O(1) field");
         self.sink.push(
-            Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
+            cpl_diag::msgs::check::PARENS_MEAN_WORK
+                .warning(expr.span, &[&shown])
                 .with_help(format!("write `{shown}()`: `()` marks a call that does work, and only O(1) getters read as fields")),
         );
     }

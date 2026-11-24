@@ -95,12 +95,10 @@ impl<'a> Checker<'a> {
             return;
         }
         let shown = self.quote(expr.span);
-        let message = format!(
-            "`{shown}` returns {}, and it is dropped",
-            ret.with_article()
-        );
         self.sink.push(
-            Diagnostic::warning(codes::UNUSED_VALUE, expr.span, message).with_help(format!(
+            cpl_diag::msgs::check::RESULT_DROPPED
+                .warning(expr.span, &[&shown, &ret.with_article()])
+                .with_help(format!(
                 "use it (`let r = {shown}`), or mark `{name}` `@droppable` if its result is optional"
             )),
         );
@@ -1242,13 +1240,9 @@ impl<'a> Checker<'a> {
                                         if cached_fields.iter().any(|c| c == &field.text)
                                 );
                                 if is_cached {
-                                    self.sink.push(Diagnostic::warning(
-                                        codes::CACHE_FIELD_WRITTEN_OUTSIDE,
+                                    self.sink.push(cpl_diag::msgs::check::CACHE_FIELD_WRITTEN.warning(
                                         target.span,
-                                        format!(
-                                            "`{}.{}` is a `@cache` field and should only be written inside `{sname}`",
-                                            sname, field.text
-                                        ),
+                                        &[&sname, &field.text, &sname],
                                     ).with_help(format!(
                                         "`{sname}`'s methods keep a `@cache` field in step with the fields it derives from; \
                                          write it from one of them, or drop `@cache` if it is plain state"

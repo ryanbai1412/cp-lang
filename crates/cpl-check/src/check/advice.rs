@@ -91,10 +91,10 @@ impl Checker<'_> {
             return;
         }
         let shown = format!("{}.{}", self.quote(base.span), name.text);
-        let message = format!("`{shown}` does work, but without `()` it reads like an O(1) field");
         let end = Span::new(expr.span.end, expr.span.end);
         self.sink.push(
-            Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
+            cpl_diag::msgs::check::PARENS_MEAN_WORK
+                .warning(expr.span, &[&shown])
                 .with_help(habits::SUM.say(&[&shown]))
                 .with_fix(habits::SUM_2.say(&[&shown]), end, "()"),
         );
@@ -1652,17 +1652,15 @@ pub(crate) fn same_place(
     op: cpl_syntax::ast::AssignOp,
     parts: std::cmp::Ordering,
     why: String,
-) -> (String, String) {
+) -> Diagnostic {
     use super::lends::show;
+    use cpl_diag::msgs::check::{PART_OF, SAME_PLACE};
     let (changed, assigned) = (show(place), show(target));
     let why = match parts {
-        std::cmp::Ordering::Greater => format!("`{assigned}` is part of `{changed}`"),
-        std::cmp::Ordering::Less => format!("`{changed}` is part of `{assigned}`"),
+        std::cmp::Ordering::Greater => PART_OF.say(&[&assigned, &changed]),
+        std::cmp::Ordering::Less => PART_OF.say(&[&changed, &assigned]),
         std::cmp::Ordering::Equal => why,
     };
-    let message = format!(
-        "`{changed}` is changed on the right side of an assignment to `{assigned}`, and {why}"
-    );
     let lends_mut =
         matches!(&value.kind, ExprKind::Call { args, .. } if args.iter().any(|a| a.mutable));
     let first = match op {
@@ -1671,8 +1669,9 @@ pub(crate) fn same_place(
         }
         _ => "into a `let` first, then assign".into(),
     };
-    let help = habits::SAME_PLACE.say(&[&first]);
-    (message, help)
+    SAME_PLACE
+        .warning(place.span, &[&changed, &assigned, &why])
+        .with_help(habits::SAME_PLACE.say(&[&first]))
 }
 
 impl Checker<'_> {

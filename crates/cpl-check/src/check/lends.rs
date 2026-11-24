@@ -1971,11 +1971,9 @@ impl<'a> Checker<'a> {
                 continue;
             };
             let parts = target_place.steps.len().cmp(&changed_place.steps.len());
-            let (message, help) = super::advice::same_place(&place, target, value, op, parts, why);
-            self.sink.push(
-                Diagnostic::warning(codes::SAME_PLACE_READ_WRITE, place.span, message)
-                    .with_help(help),
-            );
+            self.sink.push(super::advice::same_place(
+                &place, target, value, op, parts, why,
+            ));
         }
     }
 

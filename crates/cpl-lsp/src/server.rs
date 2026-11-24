@@ -10,7 +10,7 @@ use crate::outline::Outline;
 use crate::rename;
 use crate::uri::uri_of_path;
 use cpl_check::{DeclKind, Definition, Session};
-use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
+use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{obj, Value};
 #[cfg(not(target_arch = "wasm32"))]
 use diagnostics::lint_config;
@@ -145,15 +145,18 @@ impl Server {
         for (uri, text) in &self.docs {
             self.db.set_file(uri, text.as_str());
         }
-        let text = format!("internal error in cpl while handling `{method}`: {what}");
+        let args: &[&dyn std::fmt::Display] = &[&method, &what];
+        let text = cpl_diag::msgs::check::INTERNAL_ERROR.say(args);
         let mut out = Vec::new();
         if !id.is_null() {
             out.push(error(id, INTERNAL_ERROR, &text));
         }
         if let Some(uri) = params.at(&["textDocument", "uri"]).as_str() {
-            let diag = Diagnostic::error(codes::INTERNAL, Span::point(0), text).with_help(
-                "this is a bug in cpl, not in your code; please report it with this file",
-            );
+            let diag = cpl_diag::msgs::check::INTERNAL_ERROR
+                .error(Span::point(0), args)
+                .with_help(
+                    "this is a bug in cpl, not in your code; please report it with this file",
+                );
             let source = self.docs.get(uri).map_or("", String::as_str);
             let lines = LineIndex::new(source);
             out.push(publish(

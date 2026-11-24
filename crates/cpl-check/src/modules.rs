@@ -6,7 +6,7 @@
 //! under `[libs]`, or else a folder with a `lib.toml` that says
 //! `name = "<that name>"`, found by walking up from the importing file.
 
-use cpl_diag::{codes, Diagnostic, Span};
+use cpl_diag::{Diagnostic, Span};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -532,12 +532,11 @@ pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
     let dotted = parts.join(".");
     if let Some(name) = unprovided(parts) {
         add(&mut NEEDS.lock().unwrap_or_else(|e| e.into_inner()), name);
-        return Diagnostic::error(
-            codes::UNRESOLVED_MODULE,
-            whole,
-            format!("std module `{dotted}` is not loaded yet"),
-        )
-        .with_help("the host gives it with `provide_std`; `std_needed` lists what a check needs");
+        return cpl_diag::msgs::check::STD_NOT_LOADED
+            .error(whole, &[&dotted])
+            .with_help(
+                "the host gives it with `provide_std`; `std_needed` lists what a check needs",
+            );
     }
     let near = nearest_std(parts);
     let help = match (parts[0].as_str(), &near) {
@@ -547,11 +546,11 @@ pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
             "`{lib}` is a library: name its folder under `[libs]` in a `cp.toml` at or above this file (`{lib} = \"path\"`), or put this file below a folder whose `lib.toml` says `name = \"{lib}\"`"
         ),
     };
-    let message = match parts[0] == "std" {
-        true => format!("no module `{dotted}`, and not in the stdlib (yet)"),
-        false => format!("no module `{dotted}`"),
+    let row = match parts[0] == "std" {
+        true => &cpl_diag::msgs::check::NO_MODULE_NOT_STD,
+        false => &cpl_diag::msgs::check::NO_MODULE,
     };
-    let mut diag = Diagnostic::error(codes::UNRESOLVED_MODULE, whole, message).with_help(help);
+    let mut diag = row.error(whole, &[&dotted]).with_help(help);
     if let Some(m) = near {
         diag.fix(format!("use `{m}`"), whole, m);
     }

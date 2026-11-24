@@ -469,12 +469,9 @@ impl<'a> Lowerer<'a> {
         } else {
             self.asked_at.at
         };
-        let diag = Diagnostic::error(
-            codes::DEFINITION_CYCLE,
-            at,
-            format!("`{name}`'s parameter types depend on `{name}` itself"),
-        )
-        .with_label(
+        let diag = cpl_diag::msgs::check::PARAM_TYPES_CYCLE
+            .error(at, &[&name, &name])
+            .with_label(
             self.span(call),
             format!("this call needs `{name}`'s parameter types while they are being worked out"),
         )

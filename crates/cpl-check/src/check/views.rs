@@ -94,11 +94,8 @@ impl Checker<'_> {
             }
         }
         if keyed.keys.is_some_and(|(lo, hi)| lo <= v && v < hi) {
-            let message = format!(
-                "`{w}[{v}]` reads source key {v}: a slice keeps its source's keys, so this is not its element {v}"
-            );
             self.sink.push(
-                Diagnostic::warning(codes::LITERAL_SLICE_INDEX, index.span, message).with_help(
+                cpl_diag::msgs::check::SLICE_KEY_READ.warning(index.span, &[&w, &v, &v, &v]).with_help(
                     format!(
                         "write `{w}.nth({v})` (or `{w}.first!`) for the element by position, or `{w}.rebase` to count from 0"
                     ),

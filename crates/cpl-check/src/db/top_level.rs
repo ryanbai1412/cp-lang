@@ -64,18 +64,13 @@ impl ViewReread {
             Some(f) => (format!("`{f}`"), format!("`{f}`")),
             None => ("its function".to_string(), "it".to_string()),
         };
-        let how = if self.repeated {
-            "a loop reads it again on every pass".to_string()
-        } else {
-            format!("it is read {} times by index", self.index_reads)
-        };
         let at = self.init.shift(shift);
-        let mut diag = Diagnostic::warning(
-            codes::MAP_RECOMPUTED,
-            at,
-            format!("`{name}` is a lazy `.{method}` view and {how}: each read reruns {reruns}"),
-        )
-        .with_help(format!(
+        let diag = if self.repeated {
+            msgs::VIEW_REREAD_IN_LOOP.warning(at, &[name, &method, &reruns])
+        } else {
+            msgs::VIEW_REREAD_BY_INDEX.warning(at, &[name, &method, &self.index_reads, &reruns])
+        };
+        let mut diag = diag.with_help(format!(
             "copy it once with `List(...)`, so {runs} runs once per item and each read of `{name}` is plain (R07.2.11)"
         ));
         diag.fixes.push(cpl_diag::Fix {

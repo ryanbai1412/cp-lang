@@ -144,14 +144,16 @@ impl Database {
             .take(3)
             .map(|(name, bytes)| format!("`{name}` {}", crate::human_bytes(*bytes)))
             .collect();
-        let message = format!(
-            "at the input bounds this takes {}, over the {} MB limit on {}: {}",
-            crate::human_bytes(total),
-            judge.memory_mb,
-            judge.name,
-            largest.join(", ")
-        );
-        let diag = cpl_diag::Diagnostic::error(cpl_diag::codes::MEMORY_OVER_PROFILE, span, message)
+        let diag = cpl_diag::msgs::check::MEMORY_OVER_PROFILE
+            .error(
+                span,
+                &[
+                    &crate::human_bytes(total),
+                    &judge.memory_mb,
+                    &judge.name,
+                    &largest.join(", "),
+                ],
+            )
             .with_help("narrow a bound the sizes come from, store a narrower element, or keep fewer cells; `cpl explain` lists each array's peak");
         let at = analysis
             .diagnostics

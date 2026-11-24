@@ -394,6 +394,17 @@ pub struct Fitted {
 impl Fitted {
     /// What was left out to fit, said to the contestant; `None` when nothing was.
     pub fn note(&self, file: &str, bar: &str, judge: &str) -> Option<String> {
+        let left = self.left_out();
+        (!left.is_empty()).then(|| {
+            let note = &cpl_diag::msgs::check::SIZE_AS_WRITTEN;
+            let args: &[&dyn std::fmt::Display] =
+                &[&file, &self.full, &bar, &judge, &left.join(", ")];
+            format!("cpl: {}\n", note.say(args))
+        })
+    }
+
+    /// What was left out to fit, each said as a clause.
+    pub fn left_out(&self) -> Vec<&'static str> {
         let mut left = Vec::new();
         if !self.comments {
             left.push("the comments on the C++ are left out");
@@ -413,14 +424,7 @@ impl Fitted {
         if !self.names.is_empty() {
             left.push("the numbered names are shortened");
         }
-        (!left.is_empty()).then(|| {
-            format!(
-                "cpl: as written, the C++ for `{file}` would be {} bytes, over the {bar} of judge `{judge}`; \
-                 {}\n",
-                self.full,
-                left.join(", ")
-            )
-        })
+        left
     }
 }
 

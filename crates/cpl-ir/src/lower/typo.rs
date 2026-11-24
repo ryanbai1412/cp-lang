@@ -256,8 +256,7 @@ impl<'a> Lowerer<'a> {
             return false;
         }
         let (text, at) = (self.source(base.span).to_string(), self.span(base.span));
-        let message = format!("this method is called on a `Str`, and `{text}` is a `List<Char>`");
-        let mut d = Diagnostic::error(codes::TYPE_MISMATCH, at, message);
+        let mut d = cpl_diag::msgs::check::STR_METHOD_ON_CHARS.error(at, &[&text]);
         d.help = Some(format!("write `Str({text})`"));
         d.fix(format!("write `Str({text})`"), at, format!("Str({text})"));
         self.diags.push(d);
@@ -926,8 +925,8 @@ impl<'a> Lowerer<'a> {
             _ => "Int".to_string(),
         };
         let recv = self.source(base.span).to_string();
-        let message = format!("`parse` needs the type it reads: `{recv}.parse<{ty}>()`");
-        let mut d = Diagnostic::error(codes::WRONG_ARG_COUNT, self.span(name.span), message);
+        let mut d =
+            cpl_diag::msgs::check::PARSE_NEEDS_TYPE.error(self.span(name.span), &[&recv, &ty]);
         d.help = Some(format!(
             "`parse<T>()` reads a `T` by the rules `read` uses (R10.2.4), so name it: `{recv}.parse<{ty}>()`, or `{recv}.parse<(Int, Int)>()` for two numbers"
         ));

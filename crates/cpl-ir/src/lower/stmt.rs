@@ -146,11 +146,8 @@ impl<'a> Lowerer<'a> {
         if only_a_value {
             let shown = self.show(&value.ty);
             let span = self.span(span);
-            self.warnings.push(Diagnostic::warning(
-                codes::UNUSED_VALUE,
-                span,
-                format!("this `{shown}` is worked out and then dropped"),
-            ));
+            self.warnings
+                .push(cpl_diag::msgs::check::VALUE_DROPPED.warning(span, &[&shown]));
             if let Some(last) = self.warnings.last_mut() {
                 last.help =
                     Some("use it (`let y = ...` or `print(...)`), or delete the line".into());

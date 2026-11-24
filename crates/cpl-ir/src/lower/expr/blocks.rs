@@ -262,13 +262,10 @@ impl<'a> Lowerer<'a> {
             let value = match self.try_coerce(value, &ty) {
                 Ok(value) => value,
                 Err(value) => {
-                    let message = format!(
-                        "the branches of this `if` have different types: `{}` and `{}`",
-                        self.show(&ty),
-                        self.show(&value.ty)
+                    let (then, other) = (self.show(&ty), self.show(&value.ty));
+                    self.diags.push(
+                        cpl_diag::msgs::check::IF_BRANCHES_DIFFER.error(span, &[&then, &other]),
                     );
-                    self.diags
-                        .push(Diagnostic::error(codes::TYPE_MISMATCH, span, message));
                     Expr {
                         kind: ExprKind::Error,
                         ty: Ty::Error,

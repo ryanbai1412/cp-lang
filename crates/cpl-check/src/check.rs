@@ -1302,14 +1302,11 @@ impl<'a> Checker<'a> {
                 continue;
             }
             let name = &p.name.text;
-            let mut diag = cpl_diag::Diagnostic::warning(
-                codes::MUT_PARAM_UNUSED,
-                p.name.span,
-                format!("`{name}` is taken `mut`, but the fn never changes it"),
-            )
-            .with_help(format!(
-                "take `{name}` without `mut`, and pass it without `mut` where the fn is called"
-            ));
+            let mut diag = cpl_diag::msgs::check::MUT_PARAM_UNUSED
+                .warning(p.name.span, &[name])
+                .with_help(format!(
+                    "take `{name}` without `mut`, and pass it without `mut` where the fn is called"
+                ));
             let at = Span::new(p.span.start, p.name.span.start);
             if self.src.get(at.start as usize..at.end as usize) == Some("mut ") {
                 diag.fix(format!("take `{name}` without `mut`"), at, String::new());
