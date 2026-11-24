@@ -6,13 +6,21 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/atcoder_dp_m/dream.cp"
+  ],
   "port": [
    "corpus/problems/atcoder_dp_m/port.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "",
+ "dream_stress": {
+  "ok": true,
+  "cases": 7,
+  "sha": "83cd275110a930f7ab020273f64398cf15ea65a8"
+ }
 }

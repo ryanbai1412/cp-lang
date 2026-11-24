@@ -9,8 +9,9 @@ let n: 1..=100 = read()
 let k: 1..=1e5 = read()
 let a: [n]1..=k = read()
 
+domain Stones = 0..=k
 // wins[s]: the player to move with s stones left can force a win.
-var wins: [0..=k]Bool = false
-for s in 0..=k:
-    wins[s] = any(s >= x and not wins[s - x] for x in a)
-print(if wins[k]: "First" else: "Second")
+var wins: [Stones]Bool = false
+for s in Stones:
+    wins[s] = any(Stones.at(s - x).is_some_and(rest => not wins[rest]) for x in a)
+print(if wins[Stones.last!]: "First" else: "Second")
