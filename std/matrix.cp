@@ -19,7 +19,7 @@ pub struct Mat<T>:
     ring: ?Ring<T> = None
 
     /// A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`):
-    /// `Mat(over: Semiring(min, +), d)`. `m * m2`, `pow(m, k)` and a `SegTree(*, ...)` of
+    /// `Mat(over: Semiring(min, +), d)`. `m * m2`, `m ** k` and a `SegTree(*, ...)` of
     /// matrices all use it. \(O(\mathit{rows} \cdot \mathit{cols})\).
     ///
     /// Row `i` is `R`'s `i`-th position and column `j` is `C`'s `j`-th, so `get(i, j)` reads

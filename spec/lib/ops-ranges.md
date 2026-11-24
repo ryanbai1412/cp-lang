@@ -338,8 +338,8 @@ The pair is written with the ops themselves, so the names
   let k = 2 -->
 ```python
 let m = Mat(over: Semiring(min, +), d)          // d: [V, V]?Int
-let k_steps = pow(m, k)                         // shortest walk of exactly k arcs
-let ways = pow(Mat(adj), k)                     // number of walks: (+, *)
+let k_steps = m ** k                            // shortest walk of exactly k arcs
+let ways = Mat(adj) ** k                        // number of walks: (+, *)
 ```
 
 - `Mat<T>(over: S)` multiplies under `S`; `m * m2` is `S.mul`-of-`S.add`.
@@ -357,7 +357,7 @@ The same values fold any `Seq`, with no structure:
 | `xs.sum()`, `xs.prod()` | `fold(+)`, `fold(*)` | \(O(n)\) |
 | `xs.min()`, `xs.max()`, `xs.min(by:)` | `fold(min)` and friends; `?T`, `None` when empty | \(O(n)\) |
 | `xs.scan(op)` | a `Prefix<D, T>`: the n + 1 exclusive folds, indexed by cuts (ch. 7) | \(O(n)\) |
-| `pow(x, k, op = *)` | `x` folded with itself `k` times by squaring | \(O(\log k)\) ops |
+| `pow(x, k, op:)` | `x` folded with itself `k` times by squaring | \(O(\log k)\) ops |
 
 `pow` is the one fast power (`x ** k` is its operator spelling, through `Pow`): numbers, `Mod<P>`, matrices under any
 semiring, `Affine` maps, permutations, and any user monoid. `op` is anything

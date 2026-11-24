@@ -171,18 +171,17 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
     acc
 
 /// `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`, with `op` anything
-/// `Monoid.of` accepts (`*` when left out). `k = 0` gives the identity of `op`. Powers of one
+/// `Monoid.of` accepts; a plain power is `x ** k`. `k = 0` gives the identity of `op`. Powers of one
 /// value commute, so any associative `op` works: a number, `Mod<P>`, an `Affine` map
 /// (`op: Affine.monoid()`), a permutation (`op: Monoid(id, compose)`).
 ///
 /// cost: \(O(\log k)\) calls of `op`
 /// empty: `k == 0` gives the identity of `op`
 /// traps: when `k < 0`
-/// example: `pow(3, 4) == 81`
-/// example: `pow(3, 0) == 1`
+/// example: `pow(3, 0, op: +) == 0`
 /// example: `pow(3, 5, op: +) == 15`
 /// example: `pow(Affine(2, 1), 3, op: Affine.monoid()).eval(0) == 7`
-pub fn pow<T, M>(x: T, k: Int, op: M = (*)) -> T:
+pub fn pow<T, M>(x: T, k: Int, op: M) -> T:
     assert k >= 0, "pow: a negative exponent"
     let m = Monoid<T>.of(op)
     var acc = m.id
@@ -758,5 +757,5 @@ fn pow_matches_repeated_op():
             mul *= 3
             total += 3
             aff = Affine.then(aff, Affine(2, 1))
-        assert pow(3, k) == mul and pow(3, k, op: +) == total
+        assert pow(3, k, op: *) == mul and pow(3, k, op: +) == total
         assert pow(Affine(2, 1), k, op: Affine.monoid()).eval(5) == aff.eval(5)
