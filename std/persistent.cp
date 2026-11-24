@@ -9,7 +9,7 @@ use std.algebra.{Action, Monoid}
 use std.marks.{Id}
 use std.math.{splitmix64, bit_width}
 use std.range.{Len, ends}
-use std.seq.{deduped}
+use std.seq.{deduped, all}
 
 /// An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte
 /// `Id<T>`, and a node never changes after it is allocated, so every version that shares it stays

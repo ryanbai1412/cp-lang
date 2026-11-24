@@ -12,7 +12,7 @@ use std.algebra.{Monoid, Semiring}
 use std.math.{abs, mul_mod, bit, ceil_div}
 use std.mod.{Mod, Residue}
 use std.rand.{Rng}
-use std.seq.{collect}
+use std.seq.{collect, all}
 use std.spec.{berlekamp_massey}
 use std.range.{Len}
 

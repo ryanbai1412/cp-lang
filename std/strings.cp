@@ -5,7 +5,7 @@
 //! example: `"banana".search("nan") == Some(2)`
 
 use std.math.{pow_mod, inv_mod}
-use std.seq.{collect, nth, find, Seq}
+use std.seq.{collect, nth, find, Seq, all}
 use std.sparse.{LinearRmq}
 use std.range.{Len, first_true, last_true}
 

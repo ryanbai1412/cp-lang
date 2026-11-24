@@ -8,6 +8,7 @@
 //! example: `convexity_break([4, 1, 0, 1, 4]) == None`
 
 use std.mod.{Mod}
+use std.seq.{all}
 
 /// The first position whose element is below the one before it: `Some(i)` for the smallest
 /// `i >= 1` with `xs[i] < xs[i - 1]`, or `None` when `xs` never decreases.

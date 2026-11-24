@@ -7,6 +7,7 @@
 //! Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized
 //! (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
 use std.range.{Len, ends}
+use std.seq.{any}
 
 // One node's aggregates as seen from above: the stored ones with every ancestor's pending tag
 // applied, and `add` the pending add its children have not seen yet.

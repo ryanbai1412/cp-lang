@@ -12,7 +12,7 @@
 use std.algebra.{Monoid, Semiring}
 use std.math.{abs, is_pow2, primitive_root, bit, gcd, lcm, isqrt, popcount, trunc, bit_ceil, ctz}
 use std.mod.{Mod}
-use std.seq.{collect}
+use std.seq.{collect, all}
 
 fn bit_reverse<T>(mut a: List<T>):
     let n = a.len
