@@ -13,16 +13,10 @@ domain Fork = 0..2 ** k - 1
 domain Node = 1..=2 ** (k + 1) - 1
 let forks: [Fork](at: Node, take: Node, skip: Node, gain: -1e9..=1e9) = read()
 
-var parent: [Node]?Node = None
 var fork_at: [Node]?Fork = None
-for f in Fork:
-    let (at, take, skip, _) = forks[f]
-    (parent[take], parent[skip], fork_at[at]) = (at, at, f)
-let t = Rooted.from_parents(parent)
+for f in Fork: fork_at[forks[f].at] = f
 
-let best = t.up(
-    max,
-    lift: (x, c, p) => if let f = fork_at[p] and forks[f].take == c: x + forks[f].gain else: x,
-    finish: (s, v) => if fork_at[v] == None: 0 else: s,
-)
-print(r + best[Node.first!])
+fn best(v: Node) -> Int:
+    let f = fork_at[v] else: return 0
+    max(forks[f].gain + best(forks[f].take), best(forks[f].skip))
+print(r + best(Node.first!))
