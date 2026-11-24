@@ -564,6 +564,21 @@ impl<'p> Emitter<'p> {
             }
             return;
         }
+        // A check the loops' bounds prove never fails; a profile counts it.
+        if let ([Stmt::Trap(what, span)], true) =
+            (then.stmts.as_slice(), otherwise.stmts.is_empty())
+        {
+            if lead.trim().is_empty()
+                && self.sites.is_none()
+                && self
+                    .facts
+                    .order(self.program, self.facts_home())
+                    .never(cond)
+            {
+                self.note_proven(*span, what);
+                return;
+            }
+        }
         let fused = found_entry(cond, then);
         // A profiled build counts the step's own line, so it keeps the branch.
         if fused.is_none()

@@ -200,12 +200,11 @@ fn a_ranges_table_is_indexed_by_plain_index_math() {
     assert!(body.contains("cpl::tri_idx("), "{body}");
     assert!(!body.contains("cpl::sym_idx("), "{body}");
     // `r` is a key, so its own cell has no empty check; `drop`, `drop_last`
-    // and the split pieces read the ends without copying a `Range`.
+    // and the split pieces read the ends without copying a `Range`. The
+    // pieces' checks go too: the cut walks `r.drop(1)`, so both are proven
+    // non-empty.
     let checks = body.matches("an empty range has no cell").count();
-    assert_eq!(
-        checks, 6,
-        "the two drops, the two pieces and the two `I.range`s: {body}"
-    );
+    assert_eq!(checks, 4, "the two drops and the two `I.range`s: {body}");
     assert!(!body.contains("cpl::Range<int> piece"), "{body}");
     assert!(!body.contains("cpl::Range<int> range = r"), "{body}");
     // `r.splits` runs in place as the loop over its cuts: no callback form.
@@ -213,6 +212,58 @@ fn a_ranges_table_is_indexed_by_plain_index_math() {
     assert!(body.contains("for (int p = "), "{body}");
     // `min` over the splits starts from its identity: no first-value branch.
     assert!(body.contains("9223372036854775807LL"), "{body}");
+}
+
+#[test]
+fn a_split_of_a_cut_walking_a_drop_has_no_empty_check() {
+    // A user fn shaped like `splits`: the bounds of the loop over the cuts
+    // prove both pieces non-empty, whatever the fn is called.
+    let source = concat!(
+        "fn halves<D>(r: Range<D>) -> yields (Range<D>, Range<D>):\n",
+        "    for p in r.drop(1):\n",
+        "        let m = (p..p).l\n",
+        "        yield (r.l..m, m..r.r)\n",
+        "let n: 1..=3000 = read()\ndomain I = 1..=n\nlet a: [I]Int = read()\n",
+        "var cost: [I.ranges]Int = 0\n",
+        "for r in I.ranges:\n",
+        "    if r.len >= 2:\n",
+        "        cost[r] = min(cost[x] + cost[y] + a[r.first] for (x, y) in halves(r))!\n",
+        "print(cost[I.range])\n",
+    );
+    let body = body(source);
+    let checks = body.matches("an empty range has no cell").count();
+    assert_eq!(checks, 1, "only `I.range`'s: {body}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let report = crate::explain::report("t.cp", source, &program);
+    assert_eq!(
+        report.matches(crate::explain::PROVEN).count(),
+        2,
+        "{report}"
+    );
+}
+
+#[test]
+fn a_split_whose_cut_can_reach_an_end_keeps_its_check() {
+    // The cut walks all of `r`, so `r.l..m` is empty at the first one.
+    let body = body(concat!(
+        "fn halves<D>(r: Range<D>) -> yields (Range<D>, Range<D>):\n",
+        "    for p in r:\n",
+        "        let m = (p..p).l\n",
+        "        yield (r.l..m, m..r.r)\n",
+        "let n: 1..=3000 = read()\ndomain I = 1..=n\n",
+        "var cost: [I.ranges]Int = 0\n",
+        "for r in I.ranges:\n",
+        "    if r.len >= 2:\n",
+        "        cost[r] = min(cost[x] + cost[y] for (x, y) in halves(r))!\n",
+        "print(cost[I.range])\n",
+    ));
+    assert_eq!(
+        body.matches("an empty range has no cell").count(),
+        2,
+        "{body}"
+    );
 }
 
 #[test]

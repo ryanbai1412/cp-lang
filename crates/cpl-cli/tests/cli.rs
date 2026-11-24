@@ -1737,6 +1737,24 @@ fn a_user_library_uses_std_names_in_check_run_and_build() {
 /// over 4e6 states: the field, its allocation and its stores are left out,
 /// and `cpl explain` says so (decision 178).
 #[test]
+fn explain_lists_each_check_the_loop_bounds_prove() {
+    let port =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/split_cuts.cp");
+    let explained = cpl(
+        &["explain".as_ref(), port.as_os_str(), "--json".as_ref()],
+        b"",
+    );
+    assert!(explained.status.success(), "{explained:?}");
+    let explained = String::from_utf8_lossy(&explained.stdout);
+    let dropped = "\"lowering\":\"check_dropped\",\"detail\":\"an empty range has no cell in `V.ranges`: the bounds of the loops it is in prove it never fails\"";
+    assert_eq!(
+        explained.matches(dropped).count(),
+        2,
+        "both pieces' checks: {explained}"
+    );
+}
+
+#[test]
 fn a_witness_field_nothing_reads_is_left_out_of_the_cpp() {
     let source = "\
 use std.graph.{fixed_cost_paths}

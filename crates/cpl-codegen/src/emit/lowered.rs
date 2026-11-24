@@ -31,12 +31,22 @@ impl Emitter<'_> {
     ) -> (
         Vec<(cpl_diag::Span, crate::explain::Index)>,
         Vec<(cpl_diag::Span, bool)>,
+        Vec<(cpl_diag::Span, String)>,
     ) {
         self.write("", None);
         (
             std::mem::take(&mut self.index_checks),
             std::mem::take(&mut self.arith_checks),
+            std::mem::take(&mut self.proven_checks),
         )
+    }
+
+    /// Records the check at `span`, whose failure says `what`, as dropped:
+    /// the order facts prove it never fails. Library bodies are left out.
+    pub(crate) fn note_proven(&mut self, span: cpl_diag::Span, what: &str) {
+        if !self.in_library() {
+            self.proven_checks.push((span, what.to_string()));
+        }
     }
 
     /// Records the `Int` `+ - *` from `l` to `r`, which the C++ checks for

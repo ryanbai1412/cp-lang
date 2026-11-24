@@ -121,6 +121,8 @@ pub(crate) struct Emitter<'p> {
     pub copies: Vec<crate::lend::Copied>,
     /// Each index the file writes and whether its C++ checks it, for `cpl explain`.
     pub index_checks: Vec<(cpl_diag::Span, crate::explain::Index)>,
+    /// Each check the order facts prove never fails, by span, with what it checks.
+    pub proven_checks: Vec<(cpl_diag::Span, String)>,
     /// Each `Int` `+ - *` the file writes and whether its C++ checks it
     /// for overflow, for `cpl explain`.
     pub arith_checks: Vec<(cpl_diag::Span, bool)>,
@@ -370,6 +372,7 @@ impl<'p> Emitter<'p> {
             capture_owns: Default::default(),
             copies: Vec::new(),
             index_checks: Vec::new(),
+            proven_checks: Vec::new(),
             arith_checks: Vec::new(),
             niche_types: std::cell::Cell::new(0),
             used: BTreeSet::new(),

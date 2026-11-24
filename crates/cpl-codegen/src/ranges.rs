@@ -10,6 +10,8 @@
 //! undo the fact.
 
 use crate::uses::Home;
+
+mod order;
 use cpl_ir::{
     Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, DomainId, Expr, ExprKind, Iter, Place,
     PlaceKind, Program, Spec, Stmt, Ty, UnOp,
@@ -175,6 +177,8 @@ pub(crate) struct Facts<'p> {
     nonneg_vars: BTreeSet<Var>,
     /// Loop variables: the low end of the range they run over.
     loop_lo: BTreeMap<Var, &'p Expr>,
+    /// Loop variables: what they walk ([`order`]).
+    loop_iter: BTreeMap<Var, &'p cpl_ir::Iter>,
     /// Loop variables: the high end of the range, and whether it is reached.
     loop_hi: BTreeMap<Var, (&'p Expr, bool)>,
     /// Each domain's length expression, when defined once.
@@ -537,6 +541,7 @@ impl<'p> Facts<'p> {
                 Stmt::For(_, slot, iter, body) => {
                     let v = (fn_id, false, *slot);
                     *self.stores.entry(v).or_default() += 1;
+                    self.loop_iter.insert(v, iter);
                     self.taint(v);
                     self.kill(v);
                     match iter {

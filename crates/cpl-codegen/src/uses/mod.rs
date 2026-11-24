@@ -204,6 +204,21 @@ fn mentions(program: &Program, stmts: &[Stmt], slot: usize) -> Mentions {
     m
 }
 
+/// The one value `block` pushes onto the local list `vec`, when one `push`
+/// in it does.
+pub(crate) fn pushed_value(block: &Block, vec: usize) -> Option<&Expr> {
+    let (mut found, mut pushes) = (None, 0);
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Mutate(cpl_ir::Mutation::Push, place, args) = &e.kind {
+            if matches!(place.kind, PlaceKind::Local(v) if v == vec) {
+                pushes += 1;
+                found = args.first();
+            }
+        }
+    });
+    found.filter(|_| pushes == 1)
+}
+
 /// Which of the `n` fields of the local tuple `slot` `block` reads, when it
 /// reads `slot` only through its fields and no closure captures it.
 pub(crate) fn fields_only(
