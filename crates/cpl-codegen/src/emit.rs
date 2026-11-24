@@ -179,6 +179,8 @@ pub(crate) struct Emitter<'p> {
     /// The statement being written stores a local read for the last time,
     /// or `let`s a variable the next statements set before reading it.
     pub moves_last: bool,
+    /// Each `if` branch being written and the locals dead once it ends.
+    pub branch_dead: Vec<(*const Block, BTreeSet<usize>)>,
     /// Items of the struct or tuple a `let` builds that read a place the
     /// next statements set before reading it (`let out = T(xs); xs = []`):
     /// each is moved in, not copied.
@@ -326,6 +328,7 @@ impl<'p> Emitter<'p> {
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,
+            branch_dead: Vec::new(),
             taken_items: BTreeSet::new(),
             pushed_moves: Vec::new(),
             pushers: BTreeMap::new(),
