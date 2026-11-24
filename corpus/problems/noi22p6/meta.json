@@ -32,5 +32,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": "No DMOJ submission is AC, so orig.cpp is LOJ 3852's accepted submission 2362881 without its qip.in/qip.out freopen. It and LOJ ACs 2391683 and 2470446 match LOJ's 22 official tests and all 8 statement samples, and an exhaustive brute (every sequence in the ranges) on 400 random gen.py cases with n <= 6. gen.py keeps one k per input, as every test point does; the other two ACs carry v_{k-1} over between tests and need it. tests.toml inlines samples 1, 2, 3, 6 and 7; samples 4, 5 and 8 (3.6-6.8 MB each) are left to the --max case."
+ "notes": "No DMOJ submission is AC, so orig.cpp is LOJ 3852's accepted submission 2362881 without its qip.in/qip.out freopen. It and LOJ ACs 2391683 and 2470446 match LOJ's 22 official tests and all 8 statement samples, and an exhaustive brute (every sequence in the ranges) on 400 random gen.py cases with n <= 6. gen.py keeps one k per input, as every test point does; the other two ACs carry v_{k-1} over between tests and need it."
 }
