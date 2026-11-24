@@ -3,21 +3,28 @@
 // contain an endpoint p of this one (l < p < r), so a plan so far is summed up
 // by end[p]: its best total when the last day has an endpoint at cut p.
 // A new right end r earns pref[r] + max over p < r of (end[p] - min over l < p
-// of pref[l]): a prefix max of a prefix min. On day one there is no p, so
-// l = p opens with -pref[p]. Left ends are right ends of the mirrored row.
+// of pref[l]): one sweep keeps both running extremes. On day one there is no p,
+// so l = p opens with -pref[p]. Left ends are right ends of the reversed sweep.
 @!multitest
-let (n, m): (1..=2e5, 3..=2e5) = read()
+let (n, m): (1..=200_000, 3..=200_000) = read()
 domain Drink = 0..m
+type Cut = Drink.cuts
 
-fn right_ends(pref: [Drink.cuts]Int, end: ?[Drink.cuts]Int) -> [Drink.cuts]?Int:
-    let open = if let e = end: e - pref.prefix_min(at:.cuts)  // l < p
-        else: -pref                                           // day one: l = p
-    pref + open.prefix_max(at:.cuts)                          // p < r
+// best[r] max= the best day whose far end r is reached last in `order`.
+fn sweep<S>(mut best: [Cut]?Int, order: S, pref: Cut -> Int, end: ?[Cut]Int):
+    var open: ?Int = None  // best open[p], p before here
+    var low: ?Int = None   // least pref[l], l before here
+    for c in order:
+        if let o = open: best[c] max= pref(c) + o
+        // `end!`, not `if let e = end`: binding the array copies it every cut (friction 1).
+        open max= if end.is_some: low.map(l => end![c] - l) else: Some(-pref(c))
+        low min= pref(c)
 
-var end: ?[Drink.cuts]Int = None
+var end: ?[Cut]Int = None
 repeat n:
-    let pref = read<[Drink]-1e9..=1e9>().prefix_sums()
-    let right = right_ends(pref, end)
-    let left = right_ends(-pref.rev, end?.rev).rev
-    end = max(right, left)!  // every cut is some day's end
-print(end!.max())
+    let pre = read<[Drink]-1e9..=1e9>().scan(+)
+    var next: [Cut]?Int = None
+    sweep(mut next, Drink.cuts, c => pre[c], end)
+    sweep(mut next, Drink.cuts.rev, c => -pre[c], end)
+    end = [Cut] p => next[p]!
+print(end!.max()!)
