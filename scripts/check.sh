@@ -747,10 +747,10 @@ if [ "$mode" = full ]; then
     step "random programs: interpreter, C++ and sanitized C++ match an independent model (conformance/R6)"
     uv run scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
         --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
-    uv run scripts/conformance-metamorphic.py --check || fail "a meaning-preserving edit changed a case's output; see above"
+    uv run --quiet python scripts/spec-gate.py metamorphic || fail "a meaning-preserving edit changed a case's output; see above"
     uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
     uv run --quiet python scripts/spec-gate.py speed || fail "the conformance and spec-block suites went over their CPU budget; see above"
-    uv run scripts/explain-copies.py --check --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
+    uv run --quiet python scripts/spec-gate.py explain-copies --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
     uv run scripts/tool-vocab.py || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
     uv run --quiet python scripts/spec-gate.py flakes --runs 2 || fail "a conformance case changed verdict between runs; see above"
 

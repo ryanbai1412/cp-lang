@@ -9,7 +9,7 @@ use crate::scoreboard::{CaseOutcome, SuiteReport};
 /// What checks and runs a case: the linked compiler, or, when
 /// `CPL_CONFORM_CLI` names a `cpl` binary, that binary. The second lets
 /// HEAD's runner and cases measure an older compiler
-/// (`scripts/conformance-bugcatch.py`). `CPL_CONFORM_RELEASE=1` runs
+/// (`scripts/spec-gate.py bugcatch`). `CPL_CONFORM_RELEASE=1` runs
 /// cases as `cpl run --release`, the C++ a judge runs, so a backend bug
 /// shows up too.
 enum Backend<'a> {

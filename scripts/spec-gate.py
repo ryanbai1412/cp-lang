@@ -2,7 +2,8 @@
 """The one entry for every spec and conformance gate: `spec-gate.py <gate> [args]`.
 
 `spec-gate.py --list` names them. Each gate lives in `scripts/specgate/`
-and has a test in `scripts/test_spec_gate.py`. The gap gates enforce
+and has a test in `scripts/test_spec_gate*.py`. Problems go to stdout, the
+summary line to stderr, so a gate that prints a value (`decisions`) can be captured. The gap gates enforce
 `handbook/guidelines/conformance-checklist.md#conformance-r3-a-known-gap-fails-for-the-reason-it-names`
 (conformance/R3).
 """
@@ -15,7 +16,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-GATES = ["case-bugs", "changelog", "decisions-explained", "flakes", "markers", "matrix", "ownership", "prelude", "sigs", "speed", "std-signatures", "subset", "tool-rules", "traits", "vocab", "widths", "xref"]
+GATES = ["bugcatch", "case-bugs", "changelog", "decisions", "decisions-explained", "explain-copies", "flakes", "markers", "matrix", "metamorphic", "mutants", "ownership", "prelude", "sigs", "speed", "std-signatures", "subset", "tool-rules", "traits", "vocab", "widths", "xref"]
 
 
 def load(name: str):
@@ -37,7 +38,8 @@ def main(argv: list[str]) -> int:
     problems = gate.run(p.parse_args(rest))
     for pr in problems:
         print(f"spec-gate {name}: {pr.where}: {pr.what}")
-    print(f"spec-gate {name}: {len(problems)} problem{'s' * (len(problems) != 1)}" if problems else f"spec-gate {name}: ok")
+    print(f"spec-gate {name}: {len(problems)} problem{'s' * (len(problems) != 1)}" if problems else f"spec-gate {name}: ok",
+          file=sys.stderr)
     return 1 if problems else 0
 
 

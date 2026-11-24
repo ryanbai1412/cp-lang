@@ -5,7 +5,9 @@ import os
 import pathlib
 import sys
 import tempfile
+import json
 import unittest
+from pathlib import Path
 from unittest import mock
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -182,6 +184,69 @@ class GatesTest(unittest.TestCase):
                  "spec/lib/a.md": "```cp\nf(1, by: 2)\nf(1, key: 2)\ng(1, key: 2)\n```\n"}
         with Tree(files):
             self.assertEqual([(p.where, p.what) for p in run("sigs")], [("lib/a.md", "f(key:)")])
+
+    def test_metamorphic(self):
+        from specgate import metamorphic
+        files = {"research/scoreboard.json": '{"suites": {"conformance": {"cases": {"a.cp": "pass", "b.cp": "pass", "c.cp": "fail"}}}}',
+                 "spec/conformance/a.cp": '// expect: ok, output "1"\nprint(1)\n',
+                 "spec/conformance/b.cp": '// expect: ok, output "2"\n// input: "x"\nprint(2)\n'}
+        def fake(src):
+            return (0, "1\n", "") if "\r" not in src else (0, "9\n", "")
+        with Tree(files), mock.patch.object(metamorphic, "run_src", fake), \
+                mock.patch.dict(metamorphic.TRANSFORMS, {"fmt": lambda s: s}):
+            self.assertEqual([(p.where, p.what.split(":")[0]) for p in run("metamorphic", "--jobs", "1")], [("a.cp", "crlf")])
+
+    def test_bugcatch(self):
+        from specgate import bugcatch as bc
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "tree").mkdir()
+
+            def fake(cmd, cwd=None, **_):
+                if "--scoreboard" in cmd:
+                    board = Path(cmd[cmd.index("--scoreboard") + 1])
+                    (Path(cwd) / board).write_text(json.dumps({"suites": {"conformance": {"cases": {"a.cp": "pass", "b.cp": "pass"}}}}))
+                return mock.Mock(returncode=0)
+
+            old = Path.cwd()
+            os.chdir(root)
+            try:
+                with mock.patch.object(bc.subprocess, "run", fake):
+                    cases = bc.run_suite(root / "tree", {"CARGO_TARGET_DIR": "t"}, Path("base.json"))
+            finally:
+                os.chdir(old)
+            self.assertEqual(cases, {"a.cp": "pass", "b.cp": "pass"})
+            self.assertTrue((root / "base.json").is_file())
+            with mock.patch.object(bc, "known_gaps", lambda: {"b.cp"}):
+                self.assertEqual(bc.broken(cases, {"a.cp": "fail", "b.cp": "fail"}), ["a.cp"])
+
+    def test_mutants(self):
+        from specgate import mutants
+        with Tree({"crates/cpl-check/src/a.rs": "fn f(x: i32) -> bool { x < 1 && true }\n"}) as t:
+            pool = mutants.sites()
+            self.assertTrue(pool)
+            path, i, k = pool[0]
+            was, now = mutants.mutate(t.root, path, i, k)
+            self.assertNotEqual(was, now)
+            self.assertEqual(t.read(path).split("\n")[i], now)
+
+    def test_explain_copies(self):
+        from specgate import explain_copies as ec
+        self.assertEqual(ec.deep_copies("auto b = std::vector<int64_t>(a);\n"), 1)
+        rows = {"a.cp": ("a.cp", 2, 1), "b.cp": ("b.cp", 1, 1)}
+        with Tree({"spec/conformance/a.cp": "", "spec/conformance/b.cp": "", "spec/conformance/c.cp": ""}), \
+                mock.patch.object(ec, "one", lambda cpl, c, tmp: rows.get(c.name)):
+            self.assertEqual([(p.where, p.what) for p in run("explain-copies")],
+                             [("a.cp", "explain lists 2 copies, the C++ makes 1")])
+            self.assertEqual(run("explain-copies", "--max", "1"), [])
+
+    def test_decisions(self):
+        # reserve and --check-landing run against a scratch remote in test_spec_gate_decisions.py
+        with Tree({"decisions.md": "## 1. A\n## 2. B\n## 2. C\n"}) as t:
+            self.assertEqual([p.what for p in run("decisions", "--check", "--file", str(t.root / "decisions.md"))],
+                             ["decision number 2 is used twice"])
+            (t.root / "decisions.md").write_text("## 1. A\n## 2. B\n")
+            self.assertEqual(run("decisions", "--check", "--file", str(t.root / "decisions.md")), [])
 
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"

@@ -129,5 +129,5 @@ Compiler signed off on the interface below, with these conditions:
    - the ord-out-of-range trap.
 3. Move `Pair<V>`, then `Char` (128 written once), the same way.
 4. Fold the rule into spec/core/04 and 12, with a decision number from
-   `scripts/next-decision.py` and an R04 rule ID per item, then delete
+   `scripts/spec-gate.py decisions` and an R04 rule ID per item, then delete
    this file.

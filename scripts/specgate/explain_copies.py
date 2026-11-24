@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# Enforces handbook/guidelines/conformance-checklist.md#conformancer6-results-agree-across-engines-with-and-without-sanitizers
 """Check that every copy `cpl explain` lists is a copy in the generated C++.
 
 For each `ok` conformance case, runs `cpl explain`; where it lists copies
@@ -10,19 +8,20 @@ constructed from another (`= std::vector<T>(x);`) and `cpl::to_list(...)`. A
 case whose explain lists more copies than its C++ makes is a false claim
 (spec/tools/explain.md: each heap value the judge build copies, R05.3.5).
 
-    uv run scripts/explain-copies.py [--check] [--max N] [--jobs N]
-
 `--max` is shrink-only: lower it as tools fixes false claims.
+Enforces handbook/guidelines/conformance-checklist.md#conformancer6-results-agree-across-engines-with-and-without-sanitizers
 """
-import argparse
 import concurrent.futures as cf
 import re
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+import specgate
+from specgate import Problem
+
+HELP = "every copy `cpl explain` lists is a deep copy in the judge C++ (--max false claims allowed, shrink-only)"
+
 COPY = re.compile(r"(?:std::vector<[^;()]*?>|cpl::Grid<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|\w+(?:\[[^\[\]]+\])*(?:\.\w+)*)\)|cpl::to_list\(|cpl::sorted\(\w+(?:\.\w+)*\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.[A-Za-z_]\w*)*")
@@ -180,28 +179,21 @@ def one(cpl, case, tmp):
     if subprocess.run([cpl, "build", str(case), "-o", str(out)], capture_output=True, timeout=120).returncode:
         return None
     made = deep_copies(out.read_text())
-    return case.relative_to(ROOT), claimed, made
+    return case.relative_to(specgate.CONFORMANCE.parent.parent), claimed, made
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--check", action="store_true")
+def args(ap) -> None:
     ap.add_argument("--max", type=int, default=0, help="false claims allowed (shrink-only)")
     ap.add_argument("--jobs", type=int, default=8)
-    ap.add_argument("--cpl", default=str(ROOT / "target" / "debug" / "cpl"))
-    a = ap.parse_args()
-    cases = sorted((ROOT / "spec" / "conformance").rglob("*.cp"))
+    ap.add_argument("--cpl")
+
+
+def run(a) -> list[Problem]:
+    cpl = a.cpl or str(specgate.ROOT / "target" / "debug" / "cpl")
+    cases = sorted(specgate.CONFORMANCE.rglob("*.cp"))
     with tempfile.TemporaryDirectory() as tmp, cf.ThreadPoolExecutor(a.jobs) as pool:
-        rows = [r for r in pool.map(lambda c: one(a.cpl, c, tmp), cases) if r]
+        rows = [r for r in pool.map(lambda c: one(cpl, c, tmp), cases) if r]
     false = [r for r in rows if r[1] > r[2]]
-    print(f"explain-copies: {len(rows)} cases list copies; {len(false)} list more than the C++ makes")
-    for path, claimed, made in false:
-        print(f"  {path}: explain lists {claimed}, the C++ makes {made}")
-    if a.check and len(false) > a.max:
-        print(f"explain-copies: {len(false)} false claims, more than the {a.max} allowed")
-        return 1
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    if len(false) <= a.max:
+        return []
+    return [Problem(str(path), f"explain lists {claimed} copies, the C++ makes {made}") for path, claimed, made in false]

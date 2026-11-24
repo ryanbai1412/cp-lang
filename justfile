@@ -62,7 +62,7 @@ hooks:
 
 # Reserve the next decision number on main and print it.
 next-decision:
-    uv run python scripts/next-decision.py --reserve
+    uv run python scripts/spec-gate.py decisions --reserve
 
 # Check that repo paths cited in live docs exist.
 check-links:

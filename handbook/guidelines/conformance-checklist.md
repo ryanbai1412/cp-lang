@@ -42,7 +42,7 @@ hard zero; decision 527).
 ### conformance/R4. Every fixed bug lands with a case that fails without the fix
 
 A fix without a case can regress silently. The case has to fail when the
-fix is reverted. `scripts/conformance-bugcatch.py` reverts recent fixes and
+fix is reverted. `scripts/spec-gate.py bugcatch` reverts recent fixes and
 counts how many some case catches.
 
 ### conformance/R5. Where a rule covers a space, generate the cases
@@ -85,7 +85,7 @@ comparison flipped, `&&` for `||`, `+ 1` for `- 1`) and the suite rerun.
 A surviving mutant either needs a case or is shown to change nothing a
 program can see, and the report says which. Example: reusing the wrong
 map's entry under two nested `if k in m:` tests survived until a case read
-two maps with the same key. Enforced by `scripts/conformance-mutants.py`,
+two maps with the same key. Enforced by `scripts/spec-gate.py mutants`,
 in the non-blocking `ci-slow` workflow, with its report in
 `plan/domains/spec/mutants.md`.
 

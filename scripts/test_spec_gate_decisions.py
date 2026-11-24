@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-"""Unit tests for scripts/next-decision.py."""
-import importlib.util
+"""Unit tests for `scripts/spec-gate.py decisions`."""
 import os
+import sys
 import subprocess
 import tempfile
 import unittest
 
-SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "next-decision.py")
-SPEC = importlib.util.spec_from_file_location("next_decision", SCRIPT)
-assert SPEC and SPEC.loader
-MOD = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(MOD)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from specgate import decisions as MOD  # noqa: E402
 
 
 class NextDecisionTest(unittest.TestCase):

@@ -130,7 +130,7 @@ tier = "ci"
 name = "bugcatch"
 files = ["plan/domains/spec/bugcatch.md"]
 inputs = ["git history of crates/*/src"]
-write = ["scripts/conformance-bugcatch.py"]
+write = ["scripts/spec-gate.py", "bugcatch"]
 check = "none"
 tier = "manual"
 

@@ -1,29 +1,31 @@
-#!/usr/bin/env python3
 """Decision numbers in decisions.md: print the next, reserve one, or check.
 
 Usage:
-    python3 scripts/next-decision.py                # next integer (max + 1 over this tree and origin/main)
-    python3 scripts/next-decision.py --reserve      # push a `## N. (reserved, <lane>)` stub to main, print N
-    python3 scripts/next-decision.py --check        # exit 1 if duplicate heading numbers exist
-    python3 scripts/next-decision.py --check-landing FETCH_HEAD
-                                                    # exit 1 if HEAD heads a number the base never had
+    scripts/spec-gate.py decisions                # next integer (max + 1 over this tree and origin/main)
+    scripts/spec-gate.py decisions --reserve      # push a `## N. (reserved, <lane>)` stub to main, print N
+    scripts/spec-gate.py decisions --check        # fail if duplicate heading numbers exist
+    scripts/spec-gate.py decisions --check-landing FETCH_HEAD
+                                                  # fail if HEAD heads a number the base never had
 
 A number is taken only once it is on main, so two lanes cannot both take
 `max + 1`: `--reserve` commits the stub on top of main without touching the
 worktree and pushes it, retrying on a rejected push. Pull, then replace the
 stub's heading with the decision. `scripts/land.sh` runs `--check-landing`.
 """
-import argparse
 import os
 import re
 import subprocess
 import sys
 import tempfile
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from retry import retry  # noqa: E402
+from retry import retry
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import specgate
+from specgate import Problem
+
+HELP = "decision numbers: print the next, --reserve one on main, --check duplicates, --check-landing BASE"
+
+ROOT = str(specgate.ROOT)
 DECISIONS = os.path.join(ROOT, "decisions.md")
 HEADING_RE = re.compile(r"^##\s+(\d+)\.", re.MULTILINE)
 STUB_RE = re.compile(r"^##\s+(\d+)\.\s+\(reserved, [^)]*\)\s*$", re.MULTILINE)
@@ -85,7 +87,7 @@ def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
     def attempt() -> int:
         f = git("fetch", "-q", remote, "main")
         if f.returncode != 0:
-            print(f"next-decision: cannot fetch {remote} main (offline?): {f.stderr.strip()}", file=sys.stderr)
+            print(f"spec-gate decisions: cannot fetch {remote} main (offline?): {f.stderr.strip()}", file=sys.stderr)
             return 2
         base = git("rev-parse", "FETCH_HEAD").stdout.strip()
         text = show(base) or ""
@@ -101,7 +103,7 @@ def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
         if git("push", "-q", remote, f"{commit}:refs/heads/main").returncode == 0:
             print(n)
             print(
-                f"next-decision: reserved {n} on main ({commit[:9]}); `git pull --rebase`, "
+                f"spec-gate decisions: reserved {n} on main ({commit[:9]}); `git pull --rebase`, "
                 f"then replace `## {n}. (reserved, {lane})` with the decision",
                 file=sys.stderr,
             )
@@ -111,14 +113,14 @@ def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
     try:
         return retry(attempt, transient=lambda e: isinstance(e, PushRejected), tries=tries, wait=0)
     except PushRejected:
-        print(f"next-decision: push rejected {tries} times; try again", file=sys.stderr)
+        print(f"spec-gate decisions: push rejected {tries} times; try again", file=sys.stderr)
         return 1
 
 
 def check_landing(base_ref: str) -> int:
     if git("rev-parse", "-q", "--verify", f"{base_ref}^{{commit}}").returncode != 0:
         print(
-            f"next-decision: {base_ref} is missing (offline, or no fetch ran): "
+            f"spec-gate decisions: {base_ref} is missing (offline, or no fetch ran): "
             "cannot check decision reservations; fetch main and land again",
             file=sys.stderr,
         )
@@ -129,17 +131,16 @@ def check_landing(base_ref: str) -> int:
     new = unreserved(base, head)
     if new:
         print(
-            f"next-decision: decision heading(s) {new} are not reserved on main; run "
-            "`python3 scripts/next-decision.py --reserve`, pull, and put the entry under the stub",
+            f"spec-gate decisions: decision heading(s) {new} are not reserved on main; run "
+            "`uv run scripts/spec-gate.py decisions --reserve`, pull, and put the entry under the stub",
             file=sys.stderr,
         )
         return 1
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--file", default=DECISIONS, help="Path to decisions.md")
+def args(parser) -> None:
+    parser.add_argument("--file", help="Path to decisions.md")
     parser.add_argument("--check", action="store_true", help="Fail if duplicate decision numbers exist")
     parser.add_argument("--reserve", action="store_true", help="Reserve the next number on main")
     parser.add_argument("--check-landing", metavar="BASE", help="Fail on headings BASE never had")
@@ -147,23 +148,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--domain", default=os.environ.get("CPL_DOMAIN", "spec"))
     parser.add_argument("--remote", default="origin")
     parser.add_argument("--tries", type=int, default=int(os.environ.get("CPL_LAND_TRIES", "5")))
-    args = parser.parse_args(argv)
+
+
+def run(args) -> list[Problem]:
     if args.reserve:
-        return reserve(args.lane, args.domain, args.remote, args.tries)
+        code = reserve(args.lane, args.domain, args.remote, args.tries)
+        return [Problem("decisions.md", "no number reserved; see above")] if code else []
     if args.check_landing:
-        return check_landing(args.check_landing)
-    with open(args.file, encoding="utf-8") as fh:
+        code = check_landing(args.check_landing)
+        return [Problem("decisions.md", "landing check failed; see above")] if code else []
+    path = args.file or DECISIONS
+    with open(path, encoding="utf-8") as fh:
         text = fh.read()
     if args.check:
-        dups = find_duplicates(text)
-        if dups:
-            print(f"duplicate decision numbers in {args.file}: {dups}", file=sys.stderr)
-            return 1
-        print(f"ok ({len(parse_decision_numbers(text))} decisions, next is {next_number(text)})")
-        return 0
+        return [Problem(path, f"decision number {n} is used twice") for n in find_duplicates(text)]
     print(max(next_number(text), next_number(upstream_text())))
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    return []
