@@ -2902,12 +2902,8 @@ impl<'a> Lowerer<'a> {
                         return Some(DimSpec::Sym(id));
                     }
                 }
-                if let Some(domain) = name.text.strip_suffix(".subsets") {
-                    if let Some(id) = self.resolve_domain_name(domain) {
-                        if let Ty::Struct(sid) = self.subset_ty(id, name.span) {
-                            return self.structs[sid].index_domain.map(DimSpec::Pos);
-                        }
-                    }
+                if let Some(dim) = self.subsets_dim(&name.text, name.span, values) {
+                    return dim;
                 }
             } else if name.text == "Cut" && args.len() == 1 {
                 if let Ty::Pos(id) = self.resolve_ty(&args[0]) {

@@ -330,21 +330,12 @@ impl<'a> Lowerer<'a> {
         };
         if name.text != "subsets"
             || self.lookup(n).is_some()
-            || self.resolve_domain_name(n).is_none()
+            || (self.resolve_domain_name(n).is_none() && !self.is_type_domain(n))
         {
             return None;
         }
         let span = base.span;
-        let arg = ast::Type {
-            kind: ast::TypeKind::Named {
-                name: ast::Name {
-                    text: n.clone(),
-                    span,
-                },
-                args: Vec::new(),
-            },
-            span,
-        };
+        let arg = Self::named_ty(n, span);
         Some(ast::Expr {
             kind: ast::ExprKind::Generic {
                 base: Box::new(ast::Expr {
@@ -355,6 +346,60 @@ impl<'a> Lowerer<'a> {
             },
             span: e.span,
         })
+    }
+
+    /// A fieldless enum or an `impl Index` struct: a type that is its own domain.
+    pub(super) fn is_type_domain(&mut self, name: &str) -> bool {
+        if let Some(Sym::Enum(eid)) = self.get_sym(name) {
+            return self.enums[eid].variants.iter().all(|(_, f)| f.is_empty());
+        }
+        self.index_struct(name).is_some()
+    }
+
+    fn named_ty(text: &str, span: Span) -> ast::Type {
+        ast::Type {
+            kind: ast::TypeKind::Named {
+                name: ast::Name {
+                    text: text.to_string(),
+                    span,
+                },
+                args: Vec::new(),
+            },
+            span,
+        }
+    }
+
+    /// The type `Subset<name>`, which `name.subsets` spells.
+    /// `[D.subsets]T`'s dimension, for a declared domain or a type domain `D`.
+    pub(super) fn subsets_dim(
+        &mut self,
+        text: &str,
+        span: Span,
+        values: bool,
+    ) -> Option<Option<DimSpec>> {
+        let domain = text.strip_suffix(".subsets")?;
+        if let Some(id) = self.resolve_domain_name(domain) {
+            if let Ty::Struct(sid) = self.subset_ty(id, span) {
+                return Some(self.structs[sid].index_domain.map(DimSpec::Pos));
+            }
+        }
+        if self.is_type_domain(domain) {
+            return Some(self.dim(&Self::subset_of(domain, span), values));
+        }
+        None
+    }
+
+    fn subset_of(name: &str, span: Span) -> ast::Type {
+        ast::Type {
+            kind: ast::TypeKind::Named {
+                name: ast::Name {
+                    text: "Subset".to_string(),
+                    span,
+                },
+                args: vec![Self::named_ty(name, span)],
+            },
+            span,
+        }
     }
 
     /// `Subset<B>`: std's struct over the domain `d`.
