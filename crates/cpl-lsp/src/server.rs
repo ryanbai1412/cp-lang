@@ -593,13 +593,18 @@ impl Server {
                             format!("`{new_name}` is already a name in {shown}"),
                         ));
                     }
-                    planned.push((file.clone(), spans.clone()));
-                    let edits: Vec<Value> = spans
+                    let labels = rename::shorthand_args(&mut self.db, &file);
+                    let texts: Vec<(Span, String)> = spans
                         .into_iter()
-                        .map(|span| {
+                        .map(|span| rename::edit_at(span, &labels, &name, &new_name))
+                        .collect();
+                    planned.push((file.clone(), texts.clone()));
+                    let edits: Vec<Value> = texts
+                        .into_iter()
+                        .map(|(span, text)| {
                             obj([
                                 ("range", range_json(span, &analysis.text, &analysis.lines)),
-                                ("newText", new_name.as_str().into()),
+                                ("newText", text.into()),
                             ])
                         })
                         .collect();

@@ -108,6 +108,52 @@ pub fn uses_in(db: &mut Session, path: &str, target: &Definition, name: &str) ->
     spans
 }
 
+/// The spans in `path` where a name is also its argument's label,
+/// `f(best:)`, each with its colon: renaming one keeps the label,
+/// `best: best_rn`.
+pub fn shorthand_args(db: &mut Session, path: &str) -> Vec<(Span, Span)> {
+    use cpl_syntax::ast::{Expr, ExprKind};
+    struct Labels(Vec<Span>);
+    impl cpl_syntax::visit::Visitor for Labels {
+        fn expr(&mut self, expr: &Expr) {
+            if let ExprKind::Call { args, .. } = &expr.kind {
+                let short = args.iter().filter(|a| {
+                    matches!(&a.value.kind, ExprKind::Name(_))
+                        && a.name.as_ref().is_some_and(|n| n.span == a.value.span)
+                });
+                self.0.extend(short.map(|a| a.value.span));
+            }
+        }
+    }
+    let Some(analysis) = db.analyze(path) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for item in &analysis.items {
+        let mut labels = Labels(Vec::new());
+        for stmt in &item.syntax.parsed.stmts {
+            cpl_syntax::visit::walk_stmt(stmt, &mut labels);
+        }
+        for span in labels.0 {
+            let span = span.shift(item.offset);
+            let rest = &analysis.text[span.end as usize..];
+            let gap = rest.len() - rest.trim_start().len();
+            if rest[gap..].starts_with(':') {
+                out.push((span, Span::new(span.start, span.end + gap as u32 + 1)));
+            }
+        }
+    }
+    out
+}
+
+/// The edit renaming `old` to `new` at `span`.
+pub fn edit_at(span: Span, labels: &[(Span, Span)], old: &str, new: &str) -> (Span, String) {
+    match labels.iter().find(|(name, _)| *name == span) {
+        Some((_, with_colon)) => (*with_colon, format!("{old}: {new}")),
+        None => (span, new.to_string()),
+    }
+}
+
 /// Whether two paths name one file: an import reads a module by its path,
 /// the editor opens it by a `file://` URI.
 pub fn same_file(a: &str, b: &str) -> bool {
@@ -264,18 +310,26 @@ pub fn project_files(_: &str, _: &str) -> Vec<String> {
 /// files are re-checked with the edits applied and restored afterwards.
 pub fn changed_meaning(
     db: &mut Session,
-    edits: &[(String, Vec<Span>)],
+    edits: &[(String, Vec<(Span, String)>)],
     old: &str,
     new: &str,
 ) -> Option<String> {
-    let grow = new.len() as i64 - old.len() as i64;
+    // Where the name at `at` sits once the edits are made: each edit
+    // before it shifts it, and an edit at it ends in the new name.
     let moved = |file: &str, at: u32| -> u32 {
         let spans = edits
             .iter()
             .find(|(f, _)| same_file(f, file))
             .map_or(&[][..], |(_, s)| s.as_slice());
-        let before = spans.iter().filter(|s| s.start < at).count() as i64;
-        (at as i64 + before * grow) as u32
+        let mut to = at as i64;
+        for (span, text) in spans.iter().filter(|(s, _)| s.start <= at) {
+            if span.start == at {
+                to += text.len() as i64 - new.len() as i64;
+            } else {
+                to += text.len() as i64 - (span.end - span.start) as i64;
+            }
+        }
+        to as u32
     };
     let mut expected = Vec::new();
     for (file, _) in edits {
@@ -298,7 +352,7 @@ pub fn changed_meaning(
             let Some(text) = db.file_text(&path) else {
                 continue;
             };
-            let words = spans.iter().map(|s| (*s, new.to_string())).collect();
+            let words = spans.to_vec();
             let Some(edited) = cpl_diag::splice(&text, words) else {
                 continue;
             };

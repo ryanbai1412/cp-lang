@@ -34,9 +34,6 @@ const KNOWN: &[&str] = &[
     "noi17p2 Join",
     "noi17p2 Split",
     "noi17p2 Ask",
-    // A parameter's `name:` labels at calls are not renamed with it.
-    "egoi23p4 over",
-    "noi10p2 best",
     // A name used as a compile-time constant (E0005 after the rename).
     "etsr23r4p2 p",
     // A method a std type calls on the user's type (`LiChao` needs `at`).

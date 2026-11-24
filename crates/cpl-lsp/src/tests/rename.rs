@@ -195,3 +195,26 @@ fn rename_reaches_every_open_file_and_the_library_that_declares_the_name() {
     let message = reply[0].at(&["error", "message"]).as_str().unwrap_or("");
     assert!(message.contains("standard library"), "{reply:?}");
 }
+
+/// The new texts a rename at the cursor edits in, in source order.
+fn renamed_texts(src: &str, to: &str) -> Vec<String> {
+    let reply = ask_at_with("textDocument/rename", src, obj([("newName", to.into())]));
+    let changes = reply
+        .at(&["changes"])
+        .as_object()
+        .cloned()
+        .unwrap_or_default();
+    changes
+        .values()
+        .flat_map(|edits| edits.as_array().unwrap_or(&[]).to_vec())
+        .map(|e| e.at(&["newText"]).as_str().unwrap_or("").to_string())
+        .collect()
+}
+
+/// A shorthand argument keeps its label (`f(best:)` becomes
+/// `f(best: top)`).
+#[test]
+fn rename_keeps_shorthand_argument_labels() {
+    let src = "fn f(best: Int) -> Int = best + 1\nlet best| = 2\nprint(f(best:))\n";
+    assert_eq!(renamed_texts(src, "top"), ["top", "best: top"]);
+}
