@@ -170,34 +170,6 @@ impl Checker<'_> {
                     if is_generated_ctor {
                         self.move_ctor_args(args);
                     }
-                    if generics.iter().any(|g| g == "F") && !bindings.contains_key("F") {
-                        if let Some(act_arg) = args
-                            .iter()
-                            .find(|a| a.name.as_ref().is_some_and(|n| n.text == "act"))
-                        {
-                            let act_ty = self.quietly(|c| c.infer(&act_arg.value));
-                            let elem_ty = bindings.get("T").cloned().unwrap_or(Ty::Int);
-                            let inferred_f = match &act_ty {
-                                Ty::Named { name: n, args: aa }
-                                    if n == "Action" && aa.len() == 2 =>
-                                {
-                                    Some(aa[1].clone())
-                                }
-                                Ty::Named { name: n, .. } if n == "AddAction" => Some(elem_ty),
-                                Ty::Named { name: n, .. } if n == "AssignAction" => {
-                                    Some(Ty::Optional(Box::new(elem_ty)))
-                                }
-                                Ty::Named { name: n, .. } if n == "AffineAction" => {
-                                    Some(Ty::Tuple(vec![elem_ty.clone(), elem_ty]))
-                                }
-                                Ty::Named { name: n, .. } if n == "FlipAction" => Some(Ty::Bool),
-                                _ => None,
-                            };
-                            if let Some(f_ty) = inferred_f {
-                                bindings.insert("F".to_string(), f_ty);
-                            }
-                        }
-                    }
                     for (i, g) in generics.iter().enumerate() {
                         if !bindings.contains_key(g) {
                             if let Some(Some(def_ty)) = defaults.get(i) {

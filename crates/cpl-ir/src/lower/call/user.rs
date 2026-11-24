@@ -1158,48 +1158,6 @@ impl<'a> Lowerer<'a> {
         }
         // `Within<S: Versioned<D, T>, D, T>(store: S)`: `D` and `T` come from `S`'s impl.
         self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut inferred);
-        if gen_names.iter().any(|g| g == "F") && !inferred.contains_key("F") {
-            if let Some(act_arg) = args
-                .iter()
-                .find(|a| a.name.as_ref().is_some_and(|n| n.text == "act"))
-            {
-                if let Some(Ty::Struct(sid)) = self.probe_ty_silent(&act_arg.value) {
-                    let sname = self.structs[sid].def.name.as_str();
-                    let elem_ty = match inferred.get("T") {
-                        Some(GenArg::Ty(t)) => t.clone(),
-                        _ => Ty::Int,
-                    };
-                    let inferred_f = if let Some((orig_gid, gargs)) = &self.structs[sid].origin_gen
-                    {
-                        if self.gen_structs[*orig_gid].decl.name.text == "Action"
-                            && gargs.len() == 2
-                        {
-                            match &gargs[1] {
-                                GenArg::Ty(t) => Some(t.clone()),
-                                _ => None,
-                            }
-                        } else {
-                            None
-                        }
-                    } else {
-                        let base = sname
-                            .strip_prefix('m')
-                            .and_then(|rest| rest.split_once('_'))
-                            .map_or(sname, |(_, b)| b);
-                        match base {
-                            "AddAction" => Some(elem_ty),
-                            "AssignAction" => Some(Ty::opt(elem_ty)),
-                            "AffineAction" => Some(Ty::Tuple(vec![elem_ty.clone(), elem_ty])),
-                            "FlipAction" => Some(Ty::Bool),
-                            _ => None,
-                        }
-                    };
-                    if let Some(f_ty) = inferred_f {
-                        inferred.insert("F".to_string(), GenArg::Ty(f_ty));
-                    }
-                }
-            }
-        }
         let mut final_args = Vec::with_capacity(gen_names.len());
         for (i, g) in gen_names.iter().enumerate() {
             match inferred.get(g) {

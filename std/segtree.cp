@@ -1,5 +1,5 @@
 //! Segment tree over a domain, for any associative operation: point or range update, range query.
-use std.algebra.{Action, Monoid}
+use std.algebra.{Action, Acts, Monoid}
 use std.bag.{SortedBag}
 use std.math.{gcd, bit, popcount}
 use std.range.{ends, first_true}
@@ -7,6 +7,11 @@ use std.range.{ends, first_true}
 type Pos = 0..=2_000_000_000
 
 struct NoAction
+
+impl<T, F> Acts<T, F> for NoAction:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, F>:
+        assert false, "a tree without `act:` has no action"
+        Action(F.zero, (f, g) => f, (f, v, span) => v, over)
 struct NoOp
 struct NoOver
 fn same<A, B>(a: A, b: B) -> Bool = a == b
@@ -75,7 +80,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-    pub fn new<M, A, O>(
+    pub fn new<M, A: Acts<T, F>, O>(
         op: M = NoOp(),
         a: ?[D]T = None,
         fill: ?T = None,
@@ -94,7 +99,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         if same(act, NoAction()): return SegTree<D, T, F>.sparse(m, over, fill, None)
         SegTree<D, T, F>.sparse(m, over, fill, Some(Action<T, F>.of(act, op)))
 
-    fn on_domain<M, A>(op: M, a: ?[D]T, fill: ?T, act: A) -> SegTree<D, T, F>:
+    fn on_domain<M, A: Acts<T, F>>(op: M, a: ?[D]T, fill: ?T, act: A) -> SegTree<D, T, F>:
         if same(op, NoOp()):
             // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
             // values, so `apply` runs on leaves only.

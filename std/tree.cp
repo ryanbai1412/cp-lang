@@ -9,7 +9,7 @@
 //! structure indexed by `t.Pre` (a `SegTree`, with or without `act:`, a `Fenwick`), and
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
-use std.algebra.{Monoid, MaxSub, Action}
+use std.algebra.{Monoid, MaxSub, Action, Acts}
 use std.algebra.{Reversible}
 use std.algebra.{add}
 use std.dp.{Step}
@@ -2434,7 +2434,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); lc.get(1) == 0`
     /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(add); lc.link(0, 1); lc.link(1, 2); lc.apply_path(0, 2, 3); lc.fold_path(0, 2) == 9`
-    pub fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>:
+    pub fn new<A: Acts<T, F>, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>:
         let act = Action<T, F>.of(act, over)
         let val = if let init = a: init else: [V] _ => act.over.id
         LazyLinkCut(
@@ -3765,7 +3765,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); et.get(1) == 0`
     /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(0, 1); et.apply_tree(0, 3); et.fold_tree(1) == 6`
-    pub fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>:
+    pub fn new<A: Acts<T, F>, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>:
         let act = Action<T, F>.of(act, over)
         let val = if let init = a: init else: [V] _ => act.over.id
         LazyEulerTourTree(

@@ -133,31 +133,39 @@ pub struct Action<T, F>(
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Action<Int, Int>.of(add, +).apply(2, 10, 3) == 16`
-    pub fn of<A, M>(a: A, op: M) -> Action<T, F>:
-        let m = Monoid<T>.of(op)
-        if same(a, add):
-            if same(op, +):
-                return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f * span, m, true)
-            return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f, m, true)
-        if same(a, assign):
-            if same(op, +):
-                return Action(
-                    None,
-                    (nf, of) => nf ?? of,
-                    (f, v, span) => if let x = f: x * span else: v,
-                    m,
-                )
-            return Action(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, m)
-        if same(a, affine):
-            return Action(
-                (T.one, T.zero),
-                (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1),
-                (f, v, span) => f.0 * v + f.1 * span,
-                m,
-            )
-        if same(a, flip):
-            return Action(false, (nf, of) => nf != of, (f, v, span) => if f: T(v.flipped, v.now) else: v, m, true)
-        a
+    pub fn of<A: Acts<T, F>, M>(a: A, op: M) -> Action<T, F> = a.action(Monoid<T>.of(op), same(op, +))
+
+/// What an `act:` argument is: a stock action or an `Action`, acting with tags `F` on values `T`.
+/// The impl fixes `F` from `T`, so `SegTree(+, a, act: assign)` has `?T` tags without naming them.
+pub trait Acts<T, F>:
+    /// The `Action` this stands for over the fold `over`; `sums` says `over` is `+`, so a tag
+    /// on a span of `n` leaves counts `n` times.
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, F>
+
+impl<T, F> Acts<T, F> for Action<T, F>:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, F> = self
+
+impl<T> Acts<T, T> for AddAction:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, T>:
+        if sums: return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f * span, over, true)
+        Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f, over, true)
+
+impl<T> Acts<T, ?T> for AssignAction:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, ?T>:
+        if sums: return Action(None, (nf, of) => nf ?? of, (f, v, span) => if let x = f: x * span else: v, over)
+        Action(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, over)
+
+impl<T> Acts<T, (T, T)> for AffineAction:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, (T, T)> = Action(
+        (T.one, T.zero),
+        (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1),
+        (f, v, span) => f.0 * v + f.1 * span,
+        over,
+    )
+
+impl<T> Acts<T, Bool> for FlipAction:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, Bool> =
+        Action(false, (nf, of) => nf != of, (f, v, span) => if f: T(v.flipped, v.now) else: v, over, true)
 
 /// `x` with its order reversed. Build it with `desc(x)`.
 pub struct Desc<T>(pub x: T)
