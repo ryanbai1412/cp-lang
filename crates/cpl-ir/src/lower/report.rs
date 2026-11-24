@@ -421,3 +421,31 @@ impl Asked {
         }
     }
 }
+
+impl<'a> Lowerer<'a> {
+    /// `assert i in s.keys` is the `bounds` check, not an `asserts` one,
+    /// and traps as an index does (R09.3.10). The report of an `assert` whose whole condition is `i in s.keys`:
+    /// "key 5 is not one of `a.keys`". `None` for any other condition.
+    pub(super) fn key_test_report(&mut self, cond: &ast::Expr) -> Option<Expr> {
+        let ast::ExprKind::Compare { first, rest } = &cond.kind else {
+            return None;
+        };
+        let [(ast::CmpOp::In, keys)] = rest.as_slice() else {
+            return None;
+        };
+        if !matches!(&keys.kind, ast::ExprKind::Field { name, .. } if name.text == "keys") {
+            return None;
+        }
+        let key = self.expr(first, None);
+        let tail = format!(" is not one of `{}`", self.source(keys.span));
+        let pieces = vec![
+            FmtPiece::Text(b"key ".to_vec()),
+            FmtPiece::Value(FmtArg {
+                value: key,
+                digits: crate::FLOAT_DIGITS,
+            }),
+            FmtPiece::Text(tail.into_bytes()),
+        ];
+        Some(self.mk(ExprKind::Format(pieces), Ty::Str, cond.span))
+    }
+}

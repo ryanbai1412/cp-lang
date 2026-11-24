@@ -1556,12 +1556,21 @@ impl<'a> Lowerer<'a> {
             }
             ast::StmtKind::Yield { value, from } => self.yield_stmt(value, *from, stmt.span, out),
             ast::StmtKind::Assert { cond, message } => {
-                let (text, line, note) = self.assert_place(cond.span);
+                let (mut text, line, note) = self.assert_place(cond.span);
                 let span = self.span(stmt.span);
+                let key_test = self.key_test_report(cond);
+                let checks = if key_test.is_some() {
+                    "bounds"
+                } else {
+                    "asserts"
+                };
                 let cond = self.expect(cond, &Ty::Bool);
-                let message = message.as_ref().map(|m| self.expect(m, &Ty::Str));
+                let mut message = message.as_ref().map(|m| self.expect(m, &Ty::Str));
+                if key_test.is_some() {
+                    (text, message) = (String::new(), key_test);
+                }
                 let kept = self
-                    .context("checks", "asserts")
+                    .context("checks", checks)
                     .is_some_and(|v| matches!(&v.kind, ast::ExprKind::Name(n) if n == "on"));
                 out.push(Stmt::Assert {
                     cond,
