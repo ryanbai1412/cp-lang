@@ -14,5 +14,5 @@ let size = prefix(a)
 
 var cost: [I.ranges]Int = 0
 for r in I.ranges if r.len >= 2:
-    cost[r] = r.splits.map((x, y) => cost[x] + cost[y]).min()! + size.fold(r)
+    cost[r] = min(cost[x] + cost[y] for (x, y) in r.splits)! + size.fold(r)
 print(cost[I.range])
