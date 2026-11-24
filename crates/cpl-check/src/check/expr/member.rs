@@ -1085,12 +1085,14 @@ impl<'a> Checker<'a> {
                     {
                         return ty.clone();
                     }
+                    if let Some((_, ty)) =
+                        name.text.parse::<usize>().ok().and_then(|i| factors.get(i))
+                    {
+                        return ty.clone();
+                    }
                 }
                 // R04.2.10: a product position viewed as its factor tuple.
                 if let Some(parts) = self.position_factors(&base_ty) {
-                    if let Some(ty) = name.text.parse::<usize>().ok().and_then(|i| parts.get(i)) {
-                        return ty.clone();
-                    }
                     let viewed = Ty::Tuple(parts);
                     if self.own_method(&viewed, &name.text).is_some() {
                         let ty = self.own_method_at(&viewed, name).unwrap_or(Ty::Unknown);
