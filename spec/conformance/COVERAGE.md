@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3451 (3427 passing). Rules: 616.
+Cases: 3457 (3427 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -524,7 +524,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.12 [1+ 1-]: | `product(a, b)` | `Seq<(T, U)>`, every `(x, y)` with `x` from `a` and `y` from `b`, `a` ...
 - R07.7.9 [3+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
-- R07.7.11 [4+ 1-]: | `s.step(k)` | every k-th element | ranges and indexed
+- R07.7.11 [4+ 1-]: | `s.step(k)` | every k-th element, a `Stepped` view | ranges and indexed
 - R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [5+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
