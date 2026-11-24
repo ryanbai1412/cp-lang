@@ -86,4 +86,11 @@ for i in 0..reps:
     s += ms.len // timed: persistent.PMultiset.len
     if ms.is_empty: s += 1 // timed: persistent.PMultiset.is_empty
     s += ms.cmp(mar, e) // timed: persistent.PMultiset.cmp
+for _ in 0..reps:
+    let w = qv.within(q) // timed: persistent.Version.within
+    s += w.len // timed: persistent.VersionWithin.len
+    if w.is_empty: s += 1 // timed: persistent.VersionWithin.is_empty
+for _ in 0..16:
+    for x in qv.within(q).each(): s += x // timed: persistent.VersionWithin.each
+    for (i, x) in qv.within(q).items: s += i.ord ^ x // timed: persistent.VersionWithin.items
 print(s)

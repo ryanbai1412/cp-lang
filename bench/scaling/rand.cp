@@ -1,4 +1,4 @@
-use std.rand.{Rng}
+use std.rand.{Rng, shuffle}
 let n: Int = read()
 domain D = 0..n
 var r = Rng(7)
@@ -14,6 +14,7 @@ for i in 0..8 * n:
     acc += r.pick(xs) ?? 0 // timed: rand.Rng.pick
 for _ in 0..48:
     r.shuffle(mut a) // timed: rand.Rng.shuffle
+    shuffle(mut a) // timed: rand.shuffle
     let p = r.perm<D>() // timed: rand.Rng.perm
     acc += p[D(0)].ord
     acc += r.sample(n / 2, from: xs).len // timed: rand.Rng.sample

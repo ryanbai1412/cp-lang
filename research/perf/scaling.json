@@ -10084,7 +10084,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PArena.alloc",
-   "measured": 1.02,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -10092,7 +10092,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PArena.get",
-   "measured": 1.04,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -10100,7 +10100,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PArena.is_empty",
-   "measured": 1.07,
+   "measured": 1.11,
    "n": 16384,
    "ok": true
   },
@@ -10108,7 +10108,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PArena.len",
-   "measured": 1.04,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -10116,7 +10116,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PArena.new",
-   "measured": 1.07,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -10124,7 +10124,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "persistent.PArena.reserve",
-   "measured": 4.59,
+   "measured": 3.9,
    "n": 16384,
    "ok": true
   },
@@ -10132,7 +10132,7 @@
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
    "fn": "persistent.PMultiset.cmp",
-   "measured": 1.09,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -10140,7 +10140,7 @@
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
    "fn": "persistent.PMultiset.count",
-   "measured": 1.51,
+   "measured": 1.45,
    "n": 16384,
    "ok": true
   },
@@ -10148,7 +10148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PMultiset.empty",
-   "measured": 1.0,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -10156,7 +10156,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PMultiset.is_empty",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -10164,7 +10164,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PMultiset.len",
-   "measured": 1.01,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -10172,7 +10172,7 @@
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
    "fn": "persistent.PMultiset.with",
-   "measured": 1.38,
+   "measured": 1.29,
    "n": 16384,
    "ok": true
   },
@@ -10180,7 +10180,7 @@
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
    "fn": "persistent.PMultiset.without",
-   "measured": 0.96,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
@@ -10188,7 +10188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PersistentArray.base",
-   "measured": 0.97,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
@@ -10196,7 +10196,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentArray.get",
-   "measured": 1.02,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -10204,7 +10204,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "persistent.PersistentArray.new",
-   "measured": 4.2,
+   "measured": 4.06,
    "n": 16384,
    "ok": true
   },
@@ -10212,7 +10212,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentArray.set",
-   "measured": 1.65,
+   "measured": 1.6,
    "n": 16384,
    "ok": true
   },
@@ -10220,7 +10220,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PersistentLazySegTree.all",
-   "measured": 1.01,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -10228,7 +10228,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentLazySegTree.apply",
-   "measured": 2.0,
+   "measured": 2.09,
    "n": 16384,
    "ok": true
   },
@@ -10236,7 +10236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PersistentLazySegTree.base",
-   "measured": 0.99,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -10244,7 +10244,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentLazySegTree.fold",
-   "measured": 1.19,
+   "measured": 1.18,
    "n": 16384,
    "ok": true
   },
@@ -10252,7 +10252,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentLazySegTree.get",
-   "measured": 1.45,
+   "measured": 1.67,
    "n": 16384,
    "ok": true
   },
@@ -10260,7 +10260,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "persistent.PersistentLazySegTree.new",
-   "measured": 3.9,
+   "measured": 4.47,
    "n": 16384,
    "ok": true
   },
@@ -10268,7 +10268,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentLazySegTree.set",
-   "measured": 0.87,
+   "measured": 0.88,
    "n": 16384,
    "ok": true
   },
@@ -10276,7 +10276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PersistentSegTree.all",
-   "measured": 0.94,
+   "measured": 1.11,
    "n": 16384,
    "ok": true
   },
@@ -10284,7 +10284,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "persistent.PersistentSegTree.base",
-   "measured": 0.93,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -10292,7 +10292,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentSegTree.diff_kth",
-   "measured": 1.35,
+   "measured": 1.56,
    "n": 16384,
    "ok": true
   },
@@ -10300,7 +10300,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentSegTree.fold",
-   "measured": 1.66,
+   "measured": 1.94,
    "n": 16384,
    "ok": true
   },
@@ -10308,7 +10308,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentSegTree.get",
-   "measured": 1.65,
+   "measured": 1.98,
    "n": 16384,
    "ok": true
   },
@@ -10316,7 +10316,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentSegTree.left_while",
-   "measured": 1.07,
+   "measured": 1.19,
    "n": 16384,
    "ok": true
   },
@@ -10324,7 +10324,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "persistent.PersistentSegTree.new",
-   "measured": 4.5,
+   "measured": 4.19,
    "n": 16384,
    "ok": true
   },
@@ -10332,7 +10332,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentSegTree.right_while",
-   "measured": 1.19,
+   "measured": 1.35,
    "n": 16384,
    "ok": true
   },
@@ -10340,7 +10340,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentSegTree.set",
-   "measured": 1.13,
+   "measured": 1.3,
    "n": 16384,
    "ok": true
   },
@@ -10348,7 +10348,47 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "persistent.PersistentSegTree.update",
-   "measured": 1.6,
+   "measured": 1.86,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/persistent.cp::persistent.Version.within": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "persistent.Version.within",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/persistent.cp::persistent.VersionWithin.each": {
+   "cost": "\\lvert D \\rvert \\log \\lvert D \\rvert",
+   "documented": 4.57,
+   "fn": "persistent.VersionWithin.each",
+   "measured": 4.38,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/persistent.cp::persistent.VersionWithin.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "persistent.VersionWithin.is_empty",
+   "measured": 0.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/persistent.cp::persistent.VersionWithin.items": {
+   "cost": "\\lvert D \\rvert \\log \\lvert D \\rvert",
+   "documented": 4.57,
+   "fn": "persistent.VersionWithin.items",
+   "measured": 4.51,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/persistent.cp::persistent.VersionWithin.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "persistent.VersionWithin.len",
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -11132,7 +11172,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "rand.Rng.chance",
-   "measured": 1.0,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -11140,7 +11180,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "rand.Rng.float",
-   "measured": 1.0,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -11148,7 +11188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "rand.Rng.int",
-   "measured": 0.99,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -11156,7 +11196,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "rand.Rng.new",
-   "measured": 1.0,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -11164,7 +11204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "rand.Rng.next",
-   "measured": 1.0,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -11172,7 +11212,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "rand.Rng.perm",
-   "measured": 3.96,
+   "measured": 4.12,
    "n": 16384,
    "ok": true
   },
@@ -11188,7 +11228,7 @@
    "cost": "\\lvert \\mathit{from} \\rvert",
    "documented": 4.0,
    "fn": "rand.Rng.sample",
-   "measured": 4.3,
+   "measured": 4.12,
    "n": 16384,
    "ok": true
   },
@@ -11196,7 +11236,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "rand.Rng.shuffle",
-   "measured": 4.46,
+   "measured": 4.44,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/rand.cp::rand.shuffle": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "rand.shuffle",
+   "measured": 4.08,
    "n": 16384,
    "ok": true
   },
@@ -16500,7 +16548,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixArray.compare",
-   "measured": 1.14,
+   "measured": 0.97,
    "n": 512,
    "ok": true
   },
@@ -16508,7 +16556,7 @@
    "cost": "\\lvert \\mathit{pat} \\rvert \\log n",
    "documented": 4.89,
    "fn": "strings.SuffixArray.count",
-   "measured": 8.21,
+   "measured": 4.42,
    "n": 512,
    "ok": true
   },
@@ -16516,7 +16564,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixArray.distinct",
-   "measured": 1.11,
+   "measured": 0.99,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.each": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.SuffixArray.each",
+   "measured": 4.04,
    "n": 512,
    "ok": true
   },
@@ -16524,7 +16580,7 @@
    "cost": "\\lvert \\mathit{pat} \\rvert \\log n + \\mathit{occurrences}",
    "documented": 4.8,
    "fn": "strings.SuffixArray.find_all",
-   "measured": 5.87,
+   "measured": 4.07,
    "n": 512,
    "ok": true
   },
@@ -16532,7 +16588,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixArray.is_empty",
-   "measured": 1.05,
+   "measured": 0.99,
    "n": 512,
    "ok": true
   },
@@ -16540,7 +16596,15 @@
    "cost": "\\log n",
    "documented": 1.22,
    "fn": "strings.SuffixArray.kth_distinct",
-   "measured": 1.34,
+   "measured": 1.12,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.lcp": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixArray.lcp",
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -16548,7 +16612,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixArray.lcp_between",
-   "measured": 1.43,
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -16556,7 +16620,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixArray.lcp_of_ranks",
-   "measured": 1.3,
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -16564,7 +16628,7 @@
    "cost": "\\log n",
    "documented": 1.22,
    "fn": "strings.SuffixArray.lcp_range",
-   "measured": 1.64,
+   "measured": 1.28,
    "n": 512,
    "ok": true
   },
@@ -16572,15 +16636,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixArray.len",
-   "measured": 1.5,
+   "measured": 0.99,
    "n": 512,
    "ok": true
   },
   "bench/scaling/suffix_array.cp::strings.SuffixArray.new": {
-   "cost": "n \\log n",
-   "documented": 4.89,
+   "cost": "n",
+   "documented": 4.0,
    "fn": "strings.SuffixArray.new",
-   "measured": 4.24,
+   "measured": 4.14,
    "n": 512,
    "ok": true
   },
@@ -16588,7 +16652,7 @@
    "cost": "\\lvert \\mathit{pat} \\rvert \\log n",
    "documented": 4.89,
    "fn": "strings.SuffixArray.rank_range",
-   "measured": 7.27,
+   "measured": 4.39,
    "n": 512,
    "ok": true
   },
@@ -16596,7 +16660,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixArray.split",
-   "measured": 1.24,
+   "measured": 1.04,
    "n": 512,
    "ok": true
   },
@@ -17737,14 +17801,6 @@
   "persistent.PMultisetWithin.each",
   "persistent.PMultisetWithin.is_empty",
   "persistent.PMultisetWithin.len",
-  "persistent.Version.within",
-  "persistent.VersionWithin.each",
-  "persistent.VersionWithin.is_empty",
-  "persistent.VersionWithin.items",
-  "persistent.VersionWithin.len",
-  "rand.shuffle",
-  "strings.Palindromes.items",
-  "strings.SuffixArray.each",
-  "strings.SuffixArray.lcp"
+  "strings.Palindromes.items"
  ]
 }

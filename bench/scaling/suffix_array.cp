@@ -16,6 +16,7 @@ for i in 0..1 << 19:
     let lo = i % (n - 2)
     let hi = lo + 2 + i * 31 % (n - lo - 1)
     acc += sa.len // timed: strings.SuffixArray.len
+    acc += sa.lcp[j] // timed: strings.SuffixArray.lcp
     if sa.is_empty: acc += 1 // timed: strings.SuffixArray.is_empty
     acc += sa.lcp_between(j, k) // timed: strings.SuffixArray.lcp_between
     acc += sa.compare(j, n, k, n) // timed: strings.SuffixArray.compare
