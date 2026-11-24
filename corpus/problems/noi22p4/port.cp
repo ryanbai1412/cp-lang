@@ -9,10 +9,10 @@
 //   leftover child of u that prunes into it, a bipartite `max_matching` (u's other leftovers
 //   are deleted whole). Each leftover costs a deletion, so at most k remain on either side.
 // original: corpus/submissions/4802121.cpp
-// Bounds: _c: 1..=26; tests: 1..=500; k: 0..=5; ng: 1..=1e5; g_par: -1..=ng; nh: 1..=ng; h_par: -1..=nh
+// Bounds: _c: 0..=26; tests: 1..=500; k: 0..=5; ng: 1..=1e5; g_par: -1..=ng; nh: 1..=ng; h_par: -1..=nh
 with io(answers: ("Yes", "No"))
 
-let _c: 1..=26 = read()
+let _c: 0..=26 = read()
 let tests: 1..=500 = read()
 let k: 0..=5 = read()
 for _ in 0..tests:
