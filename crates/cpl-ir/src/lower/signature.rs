@@ -430,6 +430,13 @@ impl<'a> Lowerer<'a> {
                 .filter(|(_, f)| f.cached)
                 .map(|(i, _)| i)
                 .collect();
+            self.structs[id].def.bits_fields = decl
+                .fields
+                .iter()
+                .enumerate()
+                .filter(|(_, f)| f.bits)
+                .map(|(i, _)| i)
+                .collect();
             self.structs[id].def.hidden = self.hidden_fields(self.structs[id].mod_id, decl);
             self.structs[id].def.fixed = self.fixed_rows(decl);
             self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);

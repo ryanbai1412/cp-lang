@@ -535,9 +535,7 @@ impl<'p> Emitter<'p> {
         } else {
             return None;
         };
-        if !is_bitset_ty(&inner.ty, self.program) {
-            return None;
-        }
+        let (words, _) = bits_field(&inner.ty, self.program)?;
 
         fn parse_tree<'a>(
             expr: &'a Expr,
@@ -575,13 +573,13 @@ impl<'p> Emitter<'p> {
             BitsetTree::Leaf(idx)
         }
 
-        fn emit_word_expr(tree: &BitsetTree<'_>, vars: &[String], wi: &str) -> String {
+        fn emit_word_expr(tree: &BitsetTree<'_>, vars: &[String], words: &str, wi: &str) -> String {
             match tree {
-                BitsetTree::Leaf(i) => format!("{}.w[{wi}]", vars[*i]),
+                BitsetTree::Leaf(i) => format!("{}.{words}[{wi}]", vars[*i]),
                 BitsetTree::Bin(op, l, r) => format!(
                     "({} {op} {})",
-                    emit_word_expr(l, vars, wi),
-                    emit_word_expr(r, vars, wi)
+                    emit_word_expr(l, vars, words, wi),
+                    emit_word_expr(r, vars, words, wi)
                 ),
                 BitsetTree::_Phantom(_) => unreachable!(),
             }
@@ -605,20 +603,20 @@ impl<'p> Emitter<'p> {
                 vars.push(v);
             }
             let wi = this.temp();
-            let word_expr = emit_word_expr(&tree, &vars, &wi);
+            let word_expr = emit_word_expr(&tree, &vars, words, &wi);
             match fold {
                 BitsetFold::Len => {
                     let acc = this.temp();
                     out.push_str(&format!("{p}ll {acc} = 0;\n"));
                     out.push_str(&format!(
-                        "{p}for (size_t {wi} = 0; {wi} < {}.w.size(); ++{wi}) {acc} += (ll)__builtin_popcountll({word_expr});\n",
+                        "{p}for (size_t {wi} = 0; {wi} < {}.{words}.size(); ++{wi}) {acc} += (ll)__builtin_popcountll({word_expr});\n",
                         vars[0]
                     ));
                     out.push_str(&format!("{p}return {acc};\n"));
                 }
                 BitsetFold::IsEmpty => {
                     out.push_str(&format!(
-                        "{p}for (size_t {wi} = 0; {wi} < {}.w.size(); ++{wi}) if (({word_expr}) != 0ULL) return false;\n",
+                        "{p}for (size_t {wi} = 0; {wi} < {}.{words}.size(); ++{wi}) if (({word_expr}) != 0ULL) return false;\n",
                         vars[0]
                     ));
                     out.push_str(&format!("{p}return true;\n"));

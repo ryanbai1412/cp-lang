@@ -269,6 +269,35 @@ fn a_bitset_expression_counted_once_is_fused_into_one_popcount_loop() {
 }
 
 #[test]
+fn a_user_struct_with_a_bits_field_gets_the_bitset_storage_and_fusion() {
+    // `@bits` is a representation any library can declare, not a name the
+    // compiler knows: a user `Bits<D>` shaped like std's `Bitset` gets the
+    // same inline words and the same one-loop popcount. (R05.10.15, R05.10.16)
+    let cpp = cpp(concat!(
+        "pub struct Bits<D>:\n",
+        "    @bits w: List<U64>\n",
+        "    pub fn full() -> Bits<D> = Bits(List.filled((D.count + 63) / 64, U64(0) - U64(1)))\n",
+        "    pub fn count(self) -> Int = sum(popcount(x) for x in w)\n",
+        "    pub fn bitand(self, o: Bits<D>) -> Bits<D>:\n",
+        "        var out = Bits<D>.full()\n",
+        "        for k in 0..w.len: out.w[k] = w[k] & o.w[k]\n",
+        "        out\n",
+        "let n: 1..=300 = read()\n",
+        "domain V = 0..n\n",
+        "let a = Bits<V>.full()\n",
+        "let b = Bits<V>.full()\n",
+        "print((a & b).count())\n",
+    ));
+    assert!(cpp.contains("cpl::Row<cpl::u64, 5> w;"), "{cpp}");
+    assert!(
+        cpp.lines()
+            .any(|l| l.contains("__builtin_popcountll(") && l.contains(".w[") && l.contains(" & ")),
+        "one popcount loop over both operands' words: {cpp}"
+    );
+    assert!(!cpp.contains("std::vector<cpl::u64>("), "{cpp}");
+}
+
+#[test]
 fn a_let_of_a_local_list_element_is_a_lend() {
     // R05.3.5: `let prev = ends[j % 2]` names the row; a copy costs the
     // whole row on every iteration.

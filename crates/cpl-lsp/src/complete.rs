@@ -245,6 +245,10 @@ const DECORATORS: &[(&str, &str)] = &[
     ("memo", "`@memo(array)` / `@memo(map)`: cache a function"),
     ("get", "an O(1) read-only method called without parentheses"),
     ("cache", "on a struct field: interior mutability"),
+    (
+        "bits",
+        "on a `List<U64>` field: one bit per domain position",
+    ),
     ("trusted", "`@trusted:` block: the unsafe tier"),
     ("cpp", "an item written in C++: the unsafe tier"),
     ("grader", "`@grader(..)`: a judge entry point"),

@@ -535,6 +535,16 @@ against "no privileged stdlib"); Rust's `Cell`/`RefCell` types, which
 put the mode in the type; making `find` take `mut self`, which would
 forbid `find` on a `let` DSU and inside any read-only walk.
 
+### 11a. `@bits` fields: a bit row any struct can declare
+
+**Chose:** a struct over a domain marks its `List<U64>` of words `@bits`
+(one bit per domain position, the words past the domain zero, and
+`count`/`&`/`|`/`^` meaning the set operations on those words). The build
+keeps such words inline for a small static domain and fuses
+`(a & b).len` into one popcount loop. std's `Bitset` uses the attribute
+like any library would; the compiler never looks at a struct's name
+(chapter 5 §10b).
+
 ### 12. Three tiers of trust, all greppable
 
 | Tier | Spellings | If broken | Surfaced by |

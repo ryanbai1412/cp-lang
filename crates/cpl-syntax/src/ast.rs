@@ -365,6 +365,9 @@ pub struct FieldDecl {
     pub mutable: bool,
     /// `@cache parent: ...`: interior-mutable cache field, skipped by `==`.
     pub cached: bool,
+    /// `@bits w: List<U64>`: one bit per position of the struct's domain
+    /// parameter, 64 to a word, with the words past the domain zero.
+    pub bits: bool,
     /// `pub x: Int`: visible outside the declaring module (R11.1.4).
     pub public: bool,
 }

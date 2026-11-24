@@ -1435,6 +1435,9 @@ pub struct StructDef {
     pub ord: Option<OrdHook>,
     /// Field indices marked `@cache` (interior-mutable, skipped by `==`).
     pub cached_fields: std::collections::BTreeSet<usize>,
+    /// Field indices marked `@bits`: a `List<U64>` of one bit per position
+    /// of the struct's domain, the words past it zero (R05.10.15).
+    pub bits_fields: std::collections::BTreeSet<usize>,
     /// Field indices private to a module other than the program's own:
     /// what a std type is made of, which no tool shows the program.
     pub hidden: std::collections::BTreeSet<usize>,

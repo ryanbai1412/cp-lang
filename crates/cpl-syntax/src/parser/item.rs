@@ -499,7 +499,7 @@ impl<'a> Parser<'a> {
             let field_attr = self.at(T::At) && self.peek_n(1) == T::Ident && {
                 let at = self.pos;
                 self.pos += 1;
-                let ok = matches!(self.text(), "tag" | "cache");
+                let ok = matches!(self.text(), "tag" | "cache" | "bits");
                 self.pos = at;
                 ok
             };
@@ -563,6 +563,7 @@ impl<'a> Parser<'a> {
                     default,
                     mutable: false,
                     cached: false,
+                    bits: false,
                     public,
                 }
             });
@@ -571,13 +572,12 @@ impl<'a> Parser<'a> {
         if !header && self.at(T::Colon) && !matches!(self.peek_n(1), T::Newline | T::Eof) {
             self.bump();
             loop {
-                let mut cached = false;
+                let (mut cached, mut bits) = (false, false);
                 if self.at(T::At) && self.peek_n(1) == T::Ident {
                     self.bump();
                     let attr = self.expect_name("a field attribute");
-                    if attr.text == "cache" {
-                        cached = true;
-                    }
+                    cached = attr.text == "cache";
+                    bits = attr.text == "bits";
                 }
                 let public = self.eat(T::Pub);
                 let mutable = self.eat(T::Var);
@@ -595,6 +595,7 @@ impl<'a> Parser<'a> {
                         default: default.clone(),
                         mutable,
                         cached,
+                        bits,
                         public,
                     });
                 }
@@ -622,13 +623,12 @@ impl<'a> Parser<'a> {
             });
         }
         let mut methods = self.members(&format!("`struct {}`", name.text), |p| {
-            let mut cached = false;
+            let (mut cached, mut bits) = (false, false);
             if p.at(T::At) && p.peek_n(1) == T::Ident {
                 p.bump();
                 let attr = p.expect_name("a field attribute");
-                if attr.text == "cache" {
-                    cached = true;
-                }
+                cached = attr.text == "cache";
+                bits = attr.text == "bits";
             }
             let public = p.eat(T::Pub);
             let mutable = p.eat(T::Var);
@@ -654,6 +654,7 @@ impl<'a> Parser<'a> {
                     default: default.clone(),
                     mutable,
                     cached,
+                    bits,
                     public,
                 });
             }

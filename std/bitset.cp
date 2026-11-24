@@ -10,7 +10,7 @@ use std.math.{bit, popcount, bit_width, ctz}
 /// per element and never turns into this behind your back.
 /// Single-bit operations are \(O(1)\); whole-set operations are \(O(K / 64)\).
 pub struct Bitset<D>:
-    w: List<U64>
+    @bits w: List<U64>
     // The member count, or -1 after a word-parallel op until `len` is asked for.
     n: Int
 

@@ -435,16 +435,19 @@ pub(crate) fn cast(ty: &str, text: &str) -> String {
     }
 }
 
-/// True for the stdlib `Bitset`: its words are its `w: List<U64>`.
-pub(crate) fn is_bitset_ty(ty: &Ty, program: &Program) -> bool {
+/// The `@bits` field of a struct, a `List<U64>` holding its words: its
+/// name and position.
+pub(crate) fn bits_field<'p>(ty: &Ty, program: &'p Program) -> Option<(&'p str, usize)> {
     let Ty::Struct(sid) = ty else {
-        return false;
+        return None;
     };
-    let s = &program.structs[*sid];
-    s.name.starts_with("Bitset")
-        && s.fields.iter().any(|(name, ty)| {
-            name == "w" && matches!(ty, Ty::List(elem) if elem.as_ref() == &Ty::U64)
-        })
+    bits_field_of(&program.structs[*sid])
+}
+
+pub(crate) fn bits_field_of(def: &cpl_ir::StructDef) -> Option<(&str, usize)> {
+    let at = *def.bits_fields.first()?;
+    let (name, ty) = &def.fields[at];
+    matches!(ty, Ty::List(elem) if elem.as_ref() == &Ty::U64).then_some((name.as_str(), at))
 }
 
 /// The path through nested tuples to a position in `ty`, which `?ty` keeps
