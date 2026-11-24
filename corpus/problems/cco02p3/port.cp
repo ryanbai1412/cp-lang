@@ -17,27 +17,17 @@ domain Col = 1..=m
 type Cell = (Row, Col)
 var at: Cell = read()
 let facing: Char = read()
-
-const DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]  // N E S W, clockwise
-fn step(p: Cell, d: (Int, Int)) -> ?Cell:        // WISH L1: p.step(d) over Dir4
-    if let r = Row.at(p.0 + d.0) and let c = Col.at(p.1 + d.1):
-        return (r, c)
-    return None
-
-var face = 0  // WISH L2: var face: Dir4 = read(); face.cw, face.ccw
-if facing == 'E': face = 1
-if facing == 'S': face = 2
-if facing == 'W': face = 3
+var face = Dir4.from("NESW", facing)!
 
 fn right():
-    face = (face + 1) % 4
+    face = face.cw
     print("R")
 fn left():
-    face = (face + 3) % 4
+    face = face.ccw
     print("L")
 fn forward() -> Bool:
     let moved: 0..=1 = ask("F")
-    if moved == 1: at = step(at, DIRS[face])!
+    if moved == 1: at = at.step(face)!
     moved == 1
 
 var open: [Row, Col]Bool = false
@@ -45,11 +35,11 @@ var wall: [Row, Col]Bool = false
 // Look all four ways from here; every call leaves the robot as it found it.
 fn explore():
     open[at] = true
-    for side in 0..4:
-        if let q = step(at, DIRS[face]) and not open[q] and not wall[q]:
+    for _ in 0..4:
+        if let q = at.step(face) and not open[q] and not wall[q]:
             if forward():
                 explore()
-                right()  // WISH L14: with forward(): explore() steps back by itself
+                right()
                 right()
                 forward()
                 left()
