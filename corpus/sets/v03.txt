@@ -511,7 +511,11 @@ mccc5j5
 mmcc14p3
 modinv
 nccc10s1
+nccc10s2
+nccc10s3
 nccc10s4
+nccc8s1
+nccc8s2
 nccc8s3
 noi02p1
 noi02p3

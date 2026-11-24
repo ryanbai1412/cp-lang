@@ -4,15 +4,11 @@
 //   which every letter appears at most once (the empty one included), mod 1e9 + 7.
 // Solution: each letter is either left out or taken from one of its cnt occurrences, so the
 //   answer is the product of (cnt[c] + 1) over the 26 letters. O(|s|).
-// Runnable under proto/cp.py lib-run today
-// (proto/cpc cannot iterate unknown-length Str). See ../nccc8s2.cp.
 // original: corpus/submissions/3381135.java
-
-let s: Str = read()
-var cnt = List.filled(26, 0)
-for i in 0..s.len:
-    cnt[s[i] - 'a'] += 1
-var ans: Mod<1_000_000_007> = 1
-for i in 0..26:
-    ans = ans * Mod<1_000_000_007>(cnt[i] + 1)
-print(ans)
+type Z = Mod<1_000_000_007>
+let s: [domain P]Char = read()
+assert 1 <= P.count <= 100_000
+domain Letter = 'a'..='z'
+var count: [Letter]Int = 0
+for c in s: count[Letter(c)] += 1
+print(prod(Z(count[c] + 1) for c in Letter))

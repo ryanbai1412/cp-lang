@@ -7,20 +7,18 @@
 // Solution: ahead[x, y] holds when x precedes y on every ballot (cleared by each ballot's
 //   pairs). That relation is a DAG and a council is a chain in it, so the answer is the
 //   longest path, memoised per letter: O(N * K^2) to build, O(K^2) to search.
-// cp: 0.1 8ef64b9+dirty
 // Bounds: n: 1..=1e4; k: 1..=26
-let n: 1..=1e4 = read()
-let k: 1..=26 = read()
+// original: corpus/submissions/4214203.cpp
+let (n, k): (1..=1e4, 1..=26) = read()
 domain L = 'A'..'A' + k
-let orders: [n]Str = read()  // WISH: read each word as a `Perm<L>` (filed with stdlib)
+let ballots: [n]Str = read()
 
-var ahead: [L, L]Bool = true  // ahead[x, y]: x before y in every order
-for o in orders:
-    for (x, y) in o.pairs():
+var ahead: [L, L]Bool = true  // ahead[x, y]: x before y on every ballot
+for b in ballots:
+    for (x, y) in b.pairs():
         ahead[L(y), L(x)] = false
 
 @memo
-fn chain(u: L) -> Int:
-    ([chain(v) for v in L if v != u and ahead[u, v]].max() ?? 0) + 1
+fn chain(u: L) -> Int = 1 + (max(chain(v) for v in L if v != u and ahead[u, v]) ?? 0)
 
-print([chain(u) for u in L].max()!)
+print(max(chain(u) for u in L)!)
