@@ -187,7 +187,7 @@
   "std_lint_allows": 0,
   "unsafe_blocks": 26,
   "cpl_env_reads": 43,
-  "test_sleeps": 2,
+  "test_sleeps": 0,
   "ci_retries": 0,
   "stale_arch_paths": 0,
   "hardcoded_codes": 0,

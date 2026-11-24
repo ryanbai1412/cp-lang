@@ -4,6 +4,14 @@
 import { base, done, open, until } from './browser.mjs';
 
 const { page, errors } = await open();
+// CodeMirror ignores the menu's keys (Enter, Tab, arrows) for its
+// interactionDelay (75 ms) after it updates; `menuKey` moves the page clock
+// past that rather than sleeping.
+await page.clock.install();
+async function menuKey(key) {
+  await page.clock.fastForward(100);
+  await page.keyboard.press(key);
+}
 const fail = (what) => {
   console.error(`completion-surfaces: ${what}`);
   done(1);
@@ -11,13 +19,8 @@ const fail = (what) => {
 const menu = page.locator('.cm-tooltip-autocomplete');
 const labels = () => menu.locator('.cm-completionLabel').allInnerTexts().catch(() => []);
 async function shows(what, test, ms = 30000) {
-  const end = Date.now() + ms;
   let got = [];
-  while (Date.now() < end) {
-    got = await labels();
-    if (test(got)) return got;
-    await page.waitForTimeout(200);
-  }
+  if (await until(async () => test((got = await labels())), ms)) return got;
   fail(`${what}: the menu shows ${JSON.stringify(got.slice(0, 8))}`);
 }
 const editable = () => page.locator('.cm-content[aria-label="CP Lang source"]').first();
@@ -34,7 +37,7 @@ await typeAtEnd('\nlet s = Spars');
 await page.keyboard.press('Control+Space');
 await shows('std example, a name from the hidden setup', (l) => l.includes('SparseTable'));
 // U31: Enter accepts, at the cursor rather than shifted by the setup's lines.
-await page.keyboard.press('Enter');
+await menuKey('Enter');
 if ((await lastLine()) !== 'let s = SparseTable') fail(`Enter in the std example made ${JSON.stringify(await lastLine())}`);
 console.log('std reference example: offers the hidden setup\'s names; Enter accepts in place');
 
@@ -44,7 +47,7 @@ await typeAtEnd('\nlet xs = [3, 1, 2]\nprint(xs.');
 await shows('practice editor after `xs.`', (l) => l.includes('len'));
 await page.keyboard.insertText('le');
 await shows('practice editor after `xs.le`', (l) => l[0] === 'len');
-await page.keyboard.press('Tab');
+await menuKey('Tab');
 if ((await lastLine()) !== 'print(xs.len') fail(`Tab in the practice editor made ${JSON.stringify(await lastLine())}`);
 await page.keyboard.insertText(')\nprint(xs.');
 await shows('practice editor, second `xs.`', (l) => l.includes('len'));
@@ -97,8 +100,8 @@ await typeAtEnd('\nlet t = Spa');
 await page.keyboard.press('Control+Space');
 await shows('a std name from a module not loaded yet', (l) => l.includes('SparseIntervalMap'));
 if (fetched.length) fail('std.interval was fetched before an item from it showed its detail');
-const selected = () => menu.locator('[aria-selected=true] .cm-completionLabel').innerText().catch(() => null);
-for (let i = 0; i < 12 && (await selected()) !== 'SparseIntervalMap'; i++) await page.keyboard.press('ArrowDown');
+const selected = async () => (await menu.locator('[aria-selected=true] .cm-completionLabel').allInnerTexts())[0] ?? null;
+for (let i = 0; i < 12 && (await selected()) !== 'SparseIntervalMap'; i++) await menuKey('ArrowDown');
 if ((await selected()) !== 'SparseIntervalMap') fail(`ArrowDown never selected SparseIntervalMap (at ${await selected()})`);
 const info = page.locator('.cm-completionInfo');
 await info.filter({ hasText: 'Interval partition map' }).waitFor({ timeout: 20000 })

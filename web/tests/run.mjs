@@ -8,11 +8,12 @@
 // once hid a real red behind CI's job limit).
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { RESULT, until } from './browser.mjs';
+import { RESULT } from './browser.mjs';
 
 const tests = dirname(fileURLToPath(import.meta.url));
 const out = join(dirname(tests), 'out');
@@ -92,7 +93,7 @@ function runSuite(test) {
       for (const l of lines)
         if (l.startsWith(RESULT) && verdict === null) {
           verdict = l.slice(RESULT.length).trim();
-          until(() => exited, grace).then((gone) => gone || kill(`printed its result but was still running ${grace} ms later`));
+          once(child, 'exit', { signal: AbortSignal.timeout(grace) }).catch(() => exited || kill(`printed its result but was still running ${grace} ms later`));
         }
     });
     child.on('exit', (code, signal) => {
