@@ -489,20 +489,8 @@ impl<'a> Checker<'a> {
                     self.branch += value;
                     let ty = self.tested_block(cond, body);
                     self.branch -= value;
-                    let branch_leaves = matches!(
-                        body.stmts.last().map(|s| &s.kind),
-                        Some(
-                            ast::StmtKind::Return(_)
-                                | ast::StmtKind::Break(_)
-                                | ast::StmtKind::Continue(_)
-                        )
-                    );
-                    if !branch_leaves {
-                        for (k, v) in self.moved.clone() {
-                            if self.declared_before(&k, u32::MAX) {
-                                post_moved.entry(k).or_insert(v);
-                            }
-                        }
+                    if !leaves(body) {
+                        self.keep_moves(&mut post_moved);
                     }
                     self.present.truncate(past);
                     let failed = narrow::past(
@@ -517,16 +505,6 @@ impl<'a> Checker<'a> {
                     self.pop_scope();
                     result.get_or_insert(ty);
                 }
-                let leaves = |body: &ast::Block| {
-                    matches!(
-                        body.stmts.last().map(|s| &s.kind),
-                        Some(
-                            ast::StmtKind::Return(_)
-                                | ast::StmtKind::Break(_)
-                                | ast::StmtKind::Continue(_)
-                        )
-                    )
-                };
                 // `if i == j: return` leaves `i != j` for the rest of the block.
                 let after = match (branches.as_slice(), otherwise) {
                     ([(cond, body)], None) if leaves(body) => Some(cond),
@@ -540,11 +518,7 @@ impl<'a> Checker<'a> {
                         let ty = self.block(body);
                         self.branch -= value;
                         if !leaves(body) {
-                            for (k, v) in self.moved.clone() {
-                                if self.declared_before(&k, u32::MAX) {
-                                    post_moved.entry(k).or_insert(v);
-                                }
-                            }
+                            self.keep_moves(&mut post_moved);
                         }
                         match result {
                             Some(first) if first.is_vague() => ty,
@@ -587,33 +561,14 @@ impl<'a> Checker<'a> {
                     self.branch += value;
                     let ty = self.block(&arm.body);
                     self.branch -= value;
-                    let arm_leaves = matches!(
-                        arm.body.stmts.last().map(|s| &s.kind),
-                        Some(
-                            ast::StmtKind::Return(_)
-                                | ast::StmtKind::Break(_)
-                                | ast::StmtKind::Continue(_)
-                        )
-                    );
+                    let arm_leaves = leaves(&arm.body);
                     if !arm_leaves {
-                        for (k, v) in self.moved.clone() {
-                            if self.declared_before(&k, u32::MAX) {
-                                post_moved.entry(k).or_insert(v);
-                            }
-                        }
+                        self.keep_moves(&mut post_moved);
                     }
                     self.pop_scope();
                     // The value is the first arm's that has one: an arm
                     // that leaves (`Skip => continue`) has none.
-                    let leaves = arm.body.stmts.last().is_some_and(|last| {
-                        matches!(
-                            last.kind,
-                            ast::StmtKind::Return(_)
-                                | ast::StmtKind::Break(_)
-                                | ast::StmtKind::Continue(_)
-                        )
-                    });
-                    if result.is_none() && !leaves {
+                    if result.is_none() && !arm_leaves {
                         result = Some(ty.widen());
                     }
                 }
@@ -723,6 +678,15 @@ impl<'a> Checker<'a> {
                 other => Self::unwrapped_cells(other),
             },
             ExprKind::Missing | ExprKind::Error => Ty::Error,
+        }
+    }
+
+    /// After a branch that falls through, what it moved stays moved.
+    fn keep_moves(&mut self, post_moved: &mut crate::names::NameMap<Span>) {
+        for (k, v) in self.moved.clone() {
+            if self.declared_before(&k, u32::MAX) {
+                post_moved.entry(k).or_insert(v);
+            }
         }
     }
 
@@ -1152,4 +1116,12 @@ fn int_fn(ret: Ty) -> Ty {
         }],
         ret: Box::new(ret),
     }
+}
+
+/// Whether `body` ends by leaving: `return`, `break` or `continue`.
+fn leaves(body: &ast::Block) -> bool {
+    matches!(
+        body.stmts.last().map(|s| &s.kind),
+        Some(ast::StmtKind::Return(_) | ast::StmtKind::Break(_) | ast::StmtKind::Continue(_))
+    )
 }
