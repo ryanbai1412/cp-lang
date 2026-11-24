@@ -59,12 +59,13 @@ impl Lowerer<'_> {
         if inner.contains(['(', ')']) {
             return None;
         }
-        let items = (inner.split(", "))
-            .map(|n| ast::Expr {
+        let mut items = Vec::new();
+        for n in inner.split(", ") {
+            items.push(ast::Expr {
                 kind: ast::ExprKind::Name(n.to_string()),
                 span: at,
-            })
-            .collect();
+            });
+        }
         let tuple = ast::Expr {
             kind: ast::ExprKind::Tuple(items),
             span: at,
