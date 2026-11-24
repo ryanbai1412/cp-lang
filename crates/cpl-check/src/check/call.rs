@@ -1400,6 +1400,7 @@ impl<'a> Checker<'a> {
                 last.unify(&elem, &mut bindings);
             }
         }
+        self.method_bounds_hold(callee_text, (&through, &params), &bindings, (args, call));
         // A tuple argument (`Graph.directed(pairs)`) is read by another path; only a record
         // can miss a field.
         bindings.retain(|_, t| matches!(t, Ty::Record(_)));
