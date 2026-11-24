@@ -20,7 +20,7 @@ pub mod transport;
 mod uri;
 
 pub use server::Server;
-pub use transport::{read_message, serve, write_message};
+pub use transport::{read_message, serve, serve_with, write_message};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

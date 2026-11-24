@@ -45,6 +45,14 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   through `cpl fmt` from `cpl setup vim`, and the server through the
   vim-lsp it installs beside them (or the vim-lsp or yegappan/lsp already
   installed); any other LSP client runs `cpl lsp`. (Rlsp.5, permits)
+- **Running `cpl`**: the server says how an editor runs a lens's `cpl.exec`
+  arguments or a command the user typed, so the editor only forwards and
+  draws. `cpl/command` takes `{arguments, file?}` and answers `{argv, view}`:
+  the arguments after `cpl` (none is `test`, `file` goes after the
+  command), and `view` true when they ask for JSON whose `view` the editor
+  draws (`cpl stress`, `cpl locate`) instead of a terminal. `cpl/commands`
+  takes `{line}` and answers the `cpl` command names completing its second
+  word. Neovim's plugin uses both (`crates/cpl-lsp/src/tests/command.rs`).
 
 Editor settings, every one each editor exposes
 (`crates/cpl-cli/tests/editor_settings.rs` checks this table against each

@@ -1,6 +1,7 @@
 use crate::{serve, write_message, Server};
 use cpl_json::{self as json, obj, Value};
 
+mod command;
 mod complete;
 mod fixes;
 mod format;

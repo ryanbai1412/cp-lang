@@ -1615,7 +1615,9 @@ pub fn dap() -> u8 {
 pub fn lsp() -> u8 {
     let stdin = std::io::stdin();
     let stdout = std::io::stdout();
-    match cpl_lsp::serve(stdin.lock(), stdout.lock()) {
+    let names = commands::COMMANDS.iter().map(|c| c.name).collect();
+    let server = cpl_lsp::Server::new().with_commands(names);
+    match cpl_lsp::serve_with(server, stdin.lock(), stdout.lock()) {
         Ok(code) => code as u8,
         Err(error) => {
             eprintln!("cpl lsp: {error}");

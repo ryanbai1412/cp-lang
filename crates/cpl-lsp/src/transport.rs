@@ -59,8 +59,16 @@ pub fn write_message(output: &mut (impl Write + ?Sized), message: &Value) -> io:
 
 /// Serves the protocol until the client sends `exit` or closes the input.
 /// Returns the process exit code.
-pub fn serve(mut input: impl BufRead, mut output: impl Write) -> io::Result<i32> {
-    let mut server = Server::new();
+pub fn serve(input: impl BufRead, output: impl Write) -> io::Result<i32> {
+    serve_with(Server::new(), input, output)
+}
+
+/// [`serve`] with `server`, as the binary serving sets it up.
+pub fn serve_with(
+    mut server: Server,
+    mut input: impl BufRead,
+    mut output: impl Write,
+) -> io::Result<i32> {
     while let Some(body) = read_message(&mut input)? {
         let replies = match json::parse(&body) {
             Ok(message) => server.respond(&message),

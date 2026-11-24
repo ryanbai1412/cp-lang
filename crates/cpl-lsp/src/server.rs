@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 mod actions;
 mod calls;
+mod command;
 mod cost;
 mod diagnostics;
 pub(crate) mod format;
@@ -54,6 +55,8 @@ pub struct Server {
     /// The client asked for a Replay lens above each solution fn
     /// (`initializationOptions.replayLenses`), shown while debugging.
     replay: bool,
+    /// The `cpl` commands `cpl/commands` completes, from the binary serving.
+    commands: Vec<&'static str>,
     /// The semantic tokens last sent for each document, newest last, with
     /// their result ids: a client may hold any of the last few (VS Code asks
     /// again for a visible editor while another request is in flight).
@@ -80,11 +83,18 @@ impl Server {
             owed: None,
             lenses: false,
             replay: false,
+            commands: Vec::new(),
             tokens: HashMap::new(),
             token_ids: 0,
             shutdown: false,
             exit: None,
         }
+    }
+
+    /// The server, completing these `cpl` command names (`cpl/commands`).
+    pub fn with_commands(mut self, names: Vec<&'static str>) -> Server {
+        self.commands = names;
+        self
     }
 
     /// After the std modules the compiler has changed (`provide_std`):
@@ -687,6 +697,8 @@ impl Server {
                 }
                 Ok(Reply::result(Value::Array(items)))
             }
+            "cpl/command" => Ok(Reply::result(command::command(params))),
+            "cpl/commands" => Ok(Reply::result(command::commands(&self.commands, params))),
             "workspace/symbol" => {
                 let query = params
                     .get("query")
