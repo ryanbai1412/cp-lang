@@ -200,7 +200,12 @@ fn write_files(
     let dir = dir
         .or_else(|| package_dir(editor))
         .ok_or("no home folder to install into; pass --dir")?;
-    write_all(&dir, files).map_err(|e| format!("can't write {}: {e}", dir.shown()))?;
+    write_all(&dir, files).map_err(|e| {
+        format!(
+            "can't write {}: {e}\nhelp: pass `--dir DIR` to install into a folder you can write",
+            dir.shown()
+        )
+    })?;
     Ok(format!(
         "installed CP Lang for {editor} in {}\nopen a .cp file to start; it runs the `cpl` on the PATH, else the installer's ~/.cpl/bin/cpl (set g:cpl_path for another)",
         dir.shown()
@@ -313,7 +318,9 @@ fn install_vscode(vsix: Option<PathBuf>) -> Result<String, String> {
                 "{}/download/edge/cp-lang.vsix",
                 crate::toolchain::releases_url()
             );
-            crate::toolchain::fetch(&url, &downloaded)?;
+            crate::toolchain::fetch(&url, &downloaded).map_err(|e| {
+                format!("{e}\nhelp: check the network, or download {url} yourself and pass `--vsix FILE`")
+            })?;
             downloaded.clone()
         }
     };
@@ -573,7 +580,9 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
                 "{}/download/edge/cp-lang-jetbrains.zip",
                 crate::toolchain::releases_url()
             );
-            crate::toolchain::fetch(&url, &downloaded)?;
+            crate::toolchain::fetch(&url, &downloaded).map_err(|e| {
+                format!("{e}\nhelp: check the network, or download {url} yourself and pass `--zip FILE`")
+            })?;
             downloaded.clone()
         }
     };

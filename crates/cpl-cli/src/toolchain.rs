@@ -343,10 +343,13 @@ pub(crate) fn fetch(url: &str, dest: &Path) -> Result<(), String> {
     if out.status.success() {
         Ok(())
     } else {
-        Err(format!(
-            "could not download {url}: {}",
-            String::from_utf8_lossy(&out.stderr).trim()
-        ))
+        let why = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        let why = match (why.is_empty(), out.status.code()) {
+            (false, _) => why,
+            (true, Some(code)) => format!("curl exited with code {code}"),
+            (true, None) => "curl was stopped".to_string(),
+        };
+        Err(format!("could not download {url}: {why}"))
     }
 }
 

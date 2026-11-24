@@ -1463,6 +1463,53 @@ fn setup_writes_the_editor_files() {
     );
 }
 
+/// A setup that fails says why and what to do instead.
+#[cfg(unix)]
+#[test]
+fn setup_failures_say_why_and_what_to_do() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = scratch("setup-fails");
+    let bin = dir.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    for (name, body) in [("curl", "exit 7"), ("code", "exit 0")] {
+        let path = bin.join(name);
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let setup = |args: &[&str], path: &Path| {
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(args)
+            .current_dir(&dir)
+            .env("PATH", path)
+            .env("HOME", &dir)
+            .env("CPL_CODE", bin.join("code"))
+            .output()
+            .expect("cpl runs");
+        assert_eq!(out.status.code(), Some(1), "{}", text(&out.stdout));
+        text(&out.stderr)
+    };
+    // No network: the download fails, and the release file can be passed in.
+    let err = setup(&["setup", "vscode"], &bin);
+    assert!(
+        err.contains("could not download") && err.contains("curl exited with code 7"),
+        "{err}"
+    );
+    assert!(
+        err.contains("help: check the network") && err.contains("--vsix FILE"),
+        "{err}"
+    );
+    // No curl at all.
+    let err = setup(&["setup", "vscode"], &dir.join("none"));
+    assert!(err.contains("needs curl on the PATH"), "{err}");
+    // A folder that can't be written.
+    std::fs::write(dir.join("taken"), "").unwrap();
+    let err = setup(&["setup", "neovim", "--dir", "taken"], &bin);
+    assert!(
+        err.contains("can't write taken") && err.contains("help: pass `--dir DIR`"),
+        "{err}"
+    );
+}
+
 /// `cpl setup vscode --vsix FILE` hands the file to `code --install-extension`.
 #[cfg(unix)]
 #[test]
