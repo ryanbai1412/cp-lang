@@ -2835,3 +2835,50 @@ for x in s.iter_rev(): print(x)
 print([x for x in s.rev])
 """
 out = "5\n4\n3\n5 4 3"
+
+[case."Next/Graph/out"]
+code = """
+use std.graph.{Graph}
+domain V = 0..3
+domain E = 0..2
+let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2)]
+let g = Graph.directed(es)
+for a in g.out(V(0)): print(a.to.ord)
+"""
+out = "1\n2"
+
+[case."Show/Only/show"]
+code = """
+domain V = 0..3
+let g: [V]List<V> = [[1, 2], [2], []]
+print(g.only(keep: v => v != 1))
+"""
+out = "0->2"
+
+[case."Versioned/PersistentArray/get"]
+code = """
+use std.persistent.{PersistentArray}
+domain P = 0..3
+var p = PersistentArray<P, Int>(a: [P] i => i.ord + 1)
+let v = p.set(p.base, P(2), 7)
+print(v.within(p))
+"""
+out = "1 2 7"
+
+[case."Versioned/PersistentSegTree/get"]
+code = """
+use std.persistent.{PersistentSegTree}
+var t = PersistentSegTree(+, a: [4, 0, 2])
+let v = t.set(t.base, 1, 9)
+print(v.within(t))
+"""
+out = "4 9 2"
+
+[case."Versioned/PersistentLazySegTree/get"]
+code = """
+use std.persistent.{PersistentLazySegTree}
+var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [3, 1, 2])
+let v = t.set(t.base, 1, 9)
+print(v.within(t))
+"""
+out = "3 9 2"
