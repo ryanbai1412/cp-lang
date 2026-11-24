@@ -26,7 +26,6 @@ line when the gap closes and the body lands.
 - seq, `filter` / `map`: `Filtered<S>` and `Mapped<S, U>` have no fields and no `T` parameter to hold the closure, and a struct cannot implement `Seq` yet; the compiler's built-in views serve these calls.
 - seq, `min` / `max` (example with `by: .0`): tuple-field shorthand `.0` as a closure is not parsed.
 - segtree, `SegTree.new` (and so `all`, `monoid`, `try_fold`, `clear`, `walk`, which need a tree to test): `apply`'s tag type `F` is not a declared parameter (`F is not a type cpl run knows`), the struct's header parameter `m: Monoid<T>` captures the `op` argument, and `at`'s `-> lends mut T` does not parse.
-- heap, `MeldHeap` (all methods): `meld`/`absorb` in O(log n) need recursive node storage (a struct holding `?Box<Node>` or a shared arena); the stub has only `_len`, and adding a per-heap arena makes `meld` O(other.len).
 - hashmap, `Counter.reserve`: the builtin `HashMap` has no `reserve` in `cpl run` (waits on the `Map` stub).
 - search, real-valued examples using `close(...)`: `close` is not in scope for a bare doc example; verified with `abs(...) < eps` in `spec/conformance/std-search`.
 - io, `read_all`: no end-of-input test (`read` traps past the end), so "read to end" is not expressible.

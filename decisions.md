@@ -8744,4 +8744,9 @@ from `just next-decision`.
 
 ## 513. (reserved, content)
 
-## 514. (reserved, content)
+## 514. Meldable heaps are skew heaps in one pool; `MeldHeap` wraps a pool (stdlib, 2026-11-24)
+
+- **Call.** `MeldHeaps<T>` is a pool of skew heaps with 4-byte links and an iterative top-down merge, so a long right spine never recurses; pending `add_all` offsets live in a side list that stays empty until the first `add_all`. `MeldHeap<T>` is one pool plus one `Meld<T>` handle, so the two types share one merge. A pool `meld` relinks in \(O(\log n)\) amortized; `MeldHeap.meld` copies the smaller heap's live nodes (\(O(k + \log n)\) amortized, small into large) and says so. cf2152h2's dream keeps every component in one pool: 0.21 s against 0.19 s for the C++ original on a 250k tree (1.1x), down from 0.30 s with one `MeldHeap` per vertex.
+- **Why.** The old `MeldHeap.meld` copied the other heap's whole node list and claimed \(O(\log n)\). An owning heap cannot relink across two node lists, and owned recursive nodes are not coming (persistent and linked structures take a value-owned arena, decision 438's pool is that arena). Leftist ranks cost a cache miss per level for no gain over skew merging. Refines decision 438.
+- **Reverse.** Go back to leftist ranks in `MeldNode` and the recursive `merge`.
+

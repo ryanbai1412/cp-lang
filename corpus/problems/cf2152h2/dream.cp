@@ -10,8 +10,9 @@
 // max(F, l - D) at the integers, which only matters when D < min B: walk
 // the breakpoints while F(b) < b - D, then re-enter F where the line l - D
 // meets it, splitting the slope jump across the two integers around the
-// crossing. The answer for l is F_V(l).
-use std.heap.{MeldHeap}
+// crossing. The answer for l is F_V(l). Every component's breakpoints are one heap
+// in a single `MeldHeaps` pool, so melding relinks nodes and copies nothing.
+use std.heap.{MeldHeaps, Meld}
 
 @!multitest
 let n: 2..=250_000 = read()
@@ -21,30 +22,31 @@ var bound: [V]Int = 0
 for (u, v, w) in edges:
     bound[u] += w
     bound[v] += w
-var set: [V]MeldHeap<(at: Int, cnt: Int)> = [V] v => MeldHeap.of([(at: bound[v], cnt: 1)])
+var pool = MeldHeaps<(at: Int, cnt: Int)>()
+var set: [V]Meld<(at: Int, cnt: Int)> = [V] v => pool.of([(at: bound[v], cnt: 1)])
 var dsu = Dsu<V>()
 
 // Raise F (the breakpoints of component `u`) to max(F, l - d) at the integers.
 fn raise(u: V, d: Int):
-    var (pos, slope, val) = (set[u].top!.at, 0, 0)   // F(pos) = val, slope just right of pos
-    while let b = set[u].top, val + slope * (b.at - pos) < b.at - d:
+    var (pos, slope, val) = (pool.top(set[u])!.at, 0, 0)   // F(pos) = val, slope just right of pos
+    while let b = pool.top(set[u]), val + slope * (b.at - pos) < b.at - d:
         (val, pos, slope) = (val + slope * (b.at - pos), b.at, slope + b.cnt)
-        set[u].pop()
+        pool.pop(mut set[u])
     let (step, part) = (pos - val - d).divmod(slope - 1)
     let added = [
         (at: d, cnt: 1),
         (at: pos + step, cnt: slope - 1 - part),
         (at: pos + step + 1, cnt: part),
     ].filter(b => b.cnt > 0)
-    set[u].push_all(added)
+    pool.push_all(mut set[u], added)
 
 for (u, v, w) in edges.sorted(by: e => -e.w):
     let (kept, merged) = dsu.merge(u, v)!
-    set[kept].meld(set[merged].take())
+    set[kept] = pool.meld(set[kept], set[merged])
     bound[kept] += bound[merged] - 2 * w
-    if bound[kept] < set[kept].top!.at: raise(kept, bound[kept])
+    if bound[kept] < pool.top(set[kept])!.at: raise(kept, bound[kept])
 
-let breaks = List(set[dsu.find(V.first!)].drain().flat_map(b => [b.at] * b.cnt))
+let breaks = List(pool.drain(mut set[dsu.find(V.first!)]).flat_map(b => [b.at] * b.cnt))
 let below = prefix(breaks)
 let q: 1..=250_000 = read()
 let asks: [0..q]1..=1e9 = read()
