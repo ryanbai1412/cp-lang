@@ -152,14 +152,15 @@ fn gives_outer_place(block: &cpl_ir::Block, ty: &Ty) -> bool {
             walk::stmt_blocks(stmt, &mut |inner| gives(inner, own, out));
         }
     }
-    // The variable `e` names, `usize::MAX` for a global; a list given as an
-    // array over a domain is the same C++ value.
+    // The variable `e` names or is a part of (`sa.sa`, `rows[i]`), `usize::MAX`
+    // for a global; a list given as an array over a domain is the same C++ value.
     fn variable(e: &Expr) -> Option<usize> {
         match &e.kind {
-            ExprKind::Local(slot) => Some(*slot),
-            ExprKind::Global(_) => Some(usize::MAX),
             ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => variable(of.first()?),
-            _ => None,
+            _ => match crate::stmt::place_root(e)? {
+                (true, _) => Some(usize::MAX),
+                (false, slot) => Some(slot),
+            },
         }
     }
     if !matches!(
@@ -247,7 +248,7 @@ impl<'p> Emitter<'p> {
     /// variable from outside it, `{ D_len = xs.len; xs }`, returns a
     /// reference to it, never a copy.
     pub(crate) fn do_lambda(&mut self, block: &cpl_ir::Block, ty: &Ty, ret: String) -> Code {
-        let by_ref = gives_outer_place(block, ty);
+        let by_ref = gives_outer_place(block, ty) && self.keeps_given_roots(block);
         let ret = if by_ref {
             "decltype(auto)".to_string()
         } else {
@@ -279,6 +280,21 @@ impl<'p> Emitter<'p> {
             code.text = code.text.replacen(&placeholder, ret, 1);
         }
         code
+    }
+
+    /// Whether running `block` leaves the variables it gives parts of as
+    /// they were, so the reference it returns still names what it gave.
+    fn keeps_given_roots(&self, block: &cpl_ir::Block) -> bool {
+        let mut roots = Vec::new();
+        walk::deep_stmts(block, &mut |s| {
+            if let Stmt::Give(g) = s {
+                roots.push(given_root(g, &self.lent_roots));
+            }
+        });
+        let touch = self.block_touch(block);
+        roots
+            .into_iter()
+            .all(|r| r.is_some_and(|r| !touch.opaque && !touch.writes.contains(&r)))
     }
 
     /// Marks a `let f = closure` that may borrow its captures, and records
@@ -1411,10 +1427,12 @@ impl Emitter<'_> {
             self.taken_items.clear();
         }
         self.pushed_moves = crate::uses::pushed_last_reads(self.program, block, k, outer);
+        self.called_moves = crate::uses::called_last_reads(self.program, block, k, outer);
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
         self.taken_items.clear();
         self.pushed_moves.clear();
+        self.called_moves.clear();
     }
 
     /// `let t = o!` of an optional read for the last time into a tuple
@@ -1533,7 +1551,7 @@ impl Emitter<'_> {
         };
         let at = stmt as *const Stmt;
         self.uses.dying.contains(&at)
-            && !matches!(crate::uses::in_place(init).kind,
+            && !matches!(crate::uses::copied(init).unwrap_or_else(|| crate::uses::in_place(init)).kind,
                 ExprKind::Local(src) if self.ref_bound.contains(&src))
             && !self.lends(*slot, init, self.tail.as_ref())
     }

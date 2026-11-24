@@ -144,7 +144,8 @@ impl<'p> Emitter<'p> {
                             && this.devirt.template_param_index(id, slot).is_none()
                             && this.facts.stores((Some(id), false, slot)) <= 2
                             && !this.sunk[id].contains(&slot);
-                        if last_use && !by_ref && this.moves_in(id, slot, value, args, &code.text) {
+                        let dies = last_use || this.called_moves.contains(&(value as *const Expr));
+                        if dies && !by_ref && this.moves_in(id, slot, value, args, &code.text) {
                             texts.push(format!("std::move({})", code.text));
                             continue;
                         }

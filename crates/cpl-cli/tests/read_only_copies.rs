@@ -353,8 +353,8 @@ fn every_program_makes_the_copies_its_header_says() {
 
 #[test]
 fn explain_gives_one_reason_per_copy_a_library_call_makes() {
-    let src = repo().join("corpus/problems/nccc10s3/port.cp");
-    let out = std::env::temp_dir().join(format!("cpl-explain-nccc-{}.cpp", std::process::id()));
+    let src = repo().join("corpus/problems/cf2165c/port.cp");
+    let out = std::env::temp_dir().join(format!("cpl-explain-cf2165c-{}.cpp", std::process::id()));
     let built = cpl_cli::run(&["build", src.to_str().unwrap(), "-o", out.to_str().unwrap()]);
     assert_eq!(built.code, 0);
     let cpp = std::fs::read_to_string(&out).unwrap();

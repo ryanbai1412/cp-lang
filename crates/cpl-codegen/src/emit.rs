@@ -197,6 +197,9 @@ pub(crate) struct Emitter<'p> {
     pub taken_items: BTreeSet<*const Expr>,
     /// The locals the statement being written pushes for the last time.
     pub pushed_moves: Vec<*const Expr>,
+    /// The arguments of a call statement it reads for the last time
+    /// ([`crate::uses::called_last_reads`]).
+    pub called_moves: Vec<*const Expr>,
     pub pushers: BTreeMap<usize, usize>,
     /// The pushers that run to their end, never feeding a loop.
     pub eager: BTreeSet<usize>,
@@ -351,6 +354,7 @@ impl<'p> Emitter<'p> {
             loop_vars: crate::lend::loop_vars(program),
             taken_items: BTreeSet::new(),
             pushed_moves: Vec::new(),
+            called_moves: Vec::new(),
             pushers: BTreeMap::new(),
             eager: BTreeSet::new(),
             feed_scope: cpl_ir::pushed::FeedScope::default(),

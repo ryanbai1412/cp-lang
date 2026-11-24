@@ -294,3 +294,9 @@ fn a_last_read_assigned_inside_an_if_moves() {
         "`w` and `next` are last read where they are assigned, so they move:\n{out}"
     );
 }
+
+#[test]
+fn a_list_sorted_by_a_key_at_its_last_use_lists_no_copy() {
+    let source = "let n: 2..=10 = read()\nlet xs: [n](t: Int, x: Int) = read()\nprint(xs.sorted(by: o => o.t).first!.x)\n";
+    assert_eq!(copy_reasons(source), [] as [&str; 0]);
+}

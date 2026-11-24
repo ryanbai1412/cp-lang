@@ -555,3 +555,41 @@ fn a_param_dead_after_its_sink_moves_past_a_closure_that_does_not_hold_it() {
         "join's param moves; held's, which a closure made first holds, is copied:\n{out}"
     );
 }
+
+#[test]
+fn a_list_sorted_by_a_key_at_its_last_use_moves_into_the_sort() {
+    let out = cpp(concat!(
+        "let n: 2..=10 = read()\n",
+        "let xs: [n](t: Int, x: Int) = read()\n",
+        "print(xs.sorted(by: o => o.t).first!.x)\n",
+    ));
+    assert!(out.contains("= std::move(xs);"), "{out}");
+}
+
+#[test]
+fn a_param_copied_whole_into_a_var_is_taken_by_value_and_moved_in() {
+    let out = cpp(concat!(
+        "fn top(xs: List<Int>) -> List<Int>:\n",
+        "    var ys = List(xs)\n",
+        "    ys.sort()\n",
+        "    ys\n",
+        "print(top([read<Int>(), 1]))\n",
+    ));
+    assert!(out.contains("(std::vector<ll> xs)"), "{out}");
+    assert!(out.contains("= std::move(xs);"), "{out}");
+}
+
+#[test]
+fn a_local_passed_at_its_last_read_moves_into_a_var_param() {
+    let out = cpp(concat!(
+        "fn f(var xs: List<Int>, d: Int):\n",
+        "    if d == 0:\n",
+        "        print(xs.len)\n",
+        "        return\n",
+        "    xs.push(d)\n",
+        "    let ys = xs.filter(x => x > 0).to_list()\n",
+        "    f(ys, d - 1)\n",
+        "f([read<Int>()], 3)\n",
+    ));
+    assert!(out.contains("(std::move(ys), "), "{out}");
+}

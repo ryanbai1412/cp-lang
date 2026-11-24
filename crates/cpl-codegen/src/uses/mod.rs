@@ -270,8 +270,8 @@ pub(crate) fn dead_past(
         .collect()
 }
 
-/// True when nothing after statement `k` of `block`, nor a closure in it,
-/// reads `slot`.
+/// True when nothing after statement `k` of `block`, nor a closure in it
+/// that captures `slot`, reads `slot`.
 pub(crate) fn unread_after(program: &Program, block: &Block, k: usize, slot: usize) -> bool {
     // A closure made before `k` may hold the slot by reference and run later.
     let mut held = false;
@@ -633,6 +633,41 @@ pub(crate) fn pushed_last_reads(
         .collect()
 }
 
+/// The arguments of the call statement `k` of `block` is, `f(xs, ..)`, that
+/// are locals named once in it and dead after it: each may move into a
+/// parameter taken by value.
+pub(crate) fn called_last_reads(
+    program: &Program,
+    block: &Block,
+    k: usize,
+    outer: &BTreeSet<usize>,
+) -> Vec<*const Expr> {
+    let Stmt::Expr(e) = &block.stmts[k] else {
+        return Vec::new();
+    };
+    let ExprKind::Call(_, args) = &e.kind else {
+        return Vec::new();
+    };
+    let named = |slot: usize| {
+        let mut n = 0;
+        walk::deep_expr(e, &mut |x| {
+            n += usize::from(x.kind == ExprKind::Local(slot))
+        });
+        n
+    };
+    args.iter()
+        .filter_map(|arg| match arg {
+            Arg::Value(value) => match value.kind {
+                ExprKind::Local(slot) => Some((value, slot)),
+                _ => None,
+            },
+            Arg::Mut(_) => None,
+        })
+        .filter(|&(_, slot)| named(slot) == 1 && dead_after(program, block, k, slot, outer))
+        .map(|(value, _)| value as *const Expr)
+        .collect()
+}
+
 /// The local `y` of `Some(y)`.
 fn some_local(e: &Expr) -> Option<usize> {
     match &e.kind {
@@ -721,19 +756,17 @@ pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
         .stmts
         .iter()
         .filter_map(|stmt| match stmt {
-            Stmt::Let(
-                to,
-                Some(Expr {
-                    kind: ExprKind::Local(p),
-                    ty,
-                    ..
-                }),
-            ) if *p < f.params.len()
-                && reads[*p] == 1
-                && !f.params[*p].mutable
-                && !ty.is_scalar()
-                && !matches!(ty, Ty::Fn(..))
-                && stored.contains(to) =>
+            Stmt::Let(to, Some(init)) => Some((to, init, copied(init).unwrap_or(in_place(init)))),
+            _ => None,
+        })
+        .filter_map(|(to, init, src)| match (&src.kind, &init.ty) {
+            (ExprKind::Local(p), ty)
+                if *p < f.params.len()
+                    && reads[*p] == 1
+                    && !f.params[*p].mutable
+                    && !ty.is_scalar()
+                    && !matches!(ty, Ty::Fn(..))
+                    && stored.contains(to) =>
             {
                 Some(*p)
             }
@@ -781,7 +814,19 @@ fn moved_source(init: &Expr) -> &Expr {
             (Some(src), None) | (None, Some(src)) => src,
             _ => init,
         },
-        _ => in_place(init),
+        _ => copied(init).unwrap_or_else(|| in_place(init)),
+    }
+}
+
+/// The variable `xs` a lowered `Copy(xs)` copies whole: once `xs` dies the
+/// copy can take it.
+pub(crate) fn copied(init: &Expr) -> Option<&Expr> {
+    match &init.kind {
+        ExprKind::Builtin(Builtin::Copy, args) => match args.as_slice() {
+            [src] if matches!(in_place(src).kind, ExprKind::Local(_)) => Some(in_place(src)),
+            _ => None,
+        },
+        _ => None,
     }
 }
 
@@ -811,20 +856,15 @@ fn once_lets<'s>(stmt: &'s Stmt, out: &mut Vec<&'s Stmt>) {
             once_lets(inner, out);
         }
     }
-    // A value block runs once, and so does one an argument evaluates: each
-    // argument is evaluated once, before the call (`edges.sorted(by: ..)
-    // .adjacent` sorts its own copy in the generator's argument).
+    // The value blocks `e` runs at most once: its own, and those of the
+    // operands it evaluates once, such as a call's arguments (`edges.sorted(by:
+    // ..).adjacent` sorts its own copy in the generator's argument), not a
+    // fill's per-cell value.
     fn value<'s>(e: &'s Expr, out: &mut Vec<&'s Stmt>) {
         match &e.kind {
             ExprKind::Do(block) => stmts(block, out),
-            ExprKind::Call(_, args) => {
-                for arg in args {
-                    if let Arg::Value(a) = arg {
-                        value(a, out);
-                    }
-                }
-            }
-            _ => {}
+            ExprKind::Fill(..) => {}
+            _ => walk::children(e, &mut |child| value(child, out)),
         }
     }
     match stmt {

@@ -134,7 +134,8 @@ impl<'p> Emitter<'p> {
         let (Stmt::Let(_, Some(init)), Some(id)) = (&block.stmts[k], self.fn_id) else {
             return false;
         };
-        let ExprKind::Local(p) = init.kind else {
+        let src = crate::uses::copied(init).unwrap_or(crate::uses::in_place(init));
+        let ExprKind::Local(p) = src.kind else {
             return false;
         };
         std::ptr::eq(block, &self.program.fns[id].body)
@@ -682,12 +683,22 @@ impl<'p> Emitter<'p> {
                 }
                 let hold = if hoisted { Hold::Static } else { Hold::Block };
                 let pinned = self.pinned_view(init, hold, out);
-                let text = match &init.kind {
-                    _ if pinned.is_some() => pinned.unwrap_or_default(),
-                    ExprKind::Field(base, index) => match &base.kind {
-                        ExprKind::Local(of) if self.spent.contains(of) => {
-                            format!("std::get<{index}>(std::move({}))", self.names[*of])
-                        }
+                let text = match crate::uses::copied(init) {
+                    Some(src) if self.moves_last && pinned.is_none() => self.expr(src).text,
+                    _ => match &init.kind {
+                        _ if pinned.is_some() => pinned.unwrap_or_default(),
+                        ExprKind::Field(base, index) => match &base.kind {
+                            ExprKind::Local(of) if self.spent.contains(of) => {
+                                format!("std::get<{index}>(std::move({}))", self.names[*of])
+                            }
+                            _ => {
+                                if fixed_len.is_some() {
+                                    self.expr_with_fixed_len(init, fixed_len).text
+                                } else {
+                                    self.expr_with_elem_layout(init, elem_l.as_ref()).text
+                                }
+                            }
+                        },
                         _ => {
                             if fixed_len.is_some() {
                                 self.expr_with_fixed_len(init, fixed_len).text
@@ -696,13 +707,6 @@ impl<'p> Emitter<'p> {
                             }
                         }
                     },
-                    _ => {
-                        if fixed_len.is_some() {
-                            self.expr_with_fixed_len(init, fixed_len).text
-                        } else {
-                            self.expr_with_elem_layout(init, elem_l.as_ref()).text
-                        }
-                    }
                 };
                 let text = self.take_if_overwritten(init, text);
                 // A payload taken from an optional nothing reads again is owned:
