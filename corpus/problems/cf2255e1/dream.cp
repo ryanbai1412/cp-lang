@@ -5,7 +5,6 @@
 // |value|; after one, the value is constant and the recorded history fixed. Tags
 // compose in O(1): one dual segment tree (range apply, point get) does everything.
 use std.algebra.MaxSub
-use std.lazy.DualSegTree
 
 enum Sign: neg = -1, zero = 0, pos = 1
 
@@ -41,16 +40,24 @@ fn assign(v: Int) -> Tag = tag(set: Cell(v, MaxSub.empty()))
 let (n, q): (1..=5e5, 1..=5e5) = read()
 domain I = 1..=n
 let a: [I]-1e9..=1e9 = read()
-var st = DualSegTree<I, Cell, Tag>(a: [I] i => Cell(a[i], MaxSub.of(a[i])), id: tag(), compose: then, apply: run)
+let unfolded = Monoid<Cell>(Cell(0, MaxSub.empty()), (x, _) => x)
+var st = SegTree<I, Cell, Tag>(
+    a: [I] i => Cell(a[i], MaxSub.of(a[i])),
+    act: Action<Cell, Tag>(id: tag(), compose: (g, f) => then(g, f), apply: (f, c, _) => run(f, c), over: unfolded),
+)
 var last: U64 = 0
-fn at(y: U64) -> I = I.at((y ^ last) % n)
+fn at(y: U64) -> I = I.nth(Int((y ^ last) % U64(n)))
 repeat q:
     match read<1..=4>():
         4 =>
             let ans = st[at(read())].hist.best
             print(ans)
-            last = U64.wrap(ans)
+            last = U64(ans)
         kind =>
             let (l, r) = minmax(at(read()), at(read()))
-            st.apply(l..=r, match kind: 1 => assign(read()); 2 => negate; _ => clamp)
+            let f = match kind:
+                1 => assign(read())
+                2 => negate
+                _ => clamp
+            st.apply(l..=r, f)
     st.apply(.., record)
