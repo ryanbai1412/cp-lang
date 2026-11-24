@@ -746,7 +746,25 @@ fn own_member_uses(
                 let offset = (head.len() + u - shift + 1) as u32;
                 let def = session.definition_location("/w/example.cp", offset);
                 examined.insert(at + open + u);
-                if def.is_some_and(|d| d.path.ends_with(&format!("/{module}.cp"))) {
+                // `[5, 6, 7][1..].to_list()` takes the `Slice` syntax builds, which the
+                // checker reads as its source: a copy's own `SliceMine` can't take it.
+                let dot = offset - 2;
+                let facts = session.facts("/w/example.cp");
+                let receiver = (facts.iter())
+                    .flat_map(|f| f.types_in(cpl_diag::Span { start: 0, end: dot }))
+                    .filter(|(s, _)| s.end == dot)
+                    .max_by_key(|(s, _)| s.end - s.start)
+                    .map(|(_, ty)| ty.clone());
+                let takes = def.as_ref().and_then(|d| {
+                    let decl = text[d.span.start as usize..].lines().next()?;
+                    let ty = decl.split_once("self: ")?.1;
+                    Some(ty[..ty.find(|c: char| !is_word(c as u8)).unwrap_or(ty.len())].to_string())
+                });
+                let built = takes.is_some_and(|t| {
+                    names.contains(&t.as_str())
+                        && !matches!(&receiver, Some(cpl_check::Ty::Named { name, .. }) if *name == t)
+                });
+                if !built && def.is_some_and(|d| d.path.ends_with(&format!("/{module}.cp"))) {
                     own.insert(at + open + u);
                 }
             }
@@ -754,6 +772,18 @@ fn own_member_uses(
         at += line.len();
     }
     (examined, own)
+}
+
+/// A copy of a module renames a member used on a value its own fn built,
+/// and keeps std's name for one used on a value syntax built.
+#[test]
+fn a_copy_keeps_std_names_on_values_syntax_builds() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text = std::fs::read_to_string(root.join("std/seq.cp")).unwrap();
+    let copy = own_names(&text, "seq");
+    assert!(copy.contains("`[5, 6, 7][1..].to_list() == [6, 7]`"));
+    assert!(copy.contains("pub fn to_list_mine<"));
+    assert!(copy.contains("a.filter_mine(x => x > 0).collect_mine() == []"));
 }
 
 /// A personal library (`cp.toml`'s `[libs]`) holding a copy of every std
