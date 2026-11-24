@@ -30,7 +30,7 @@ fn union_len(spans: List<(Int, Int)>) -> Int:
         reach = max(hi, reach ?? hi)
     total
 
-fn signs(p: Pt) -> Pt = Pt(p.x.sign, p.y.sign)
+fn signs(p: Pt) -> Pt = Pt(Int(p.x.sign), Int(p.y.sign))
 
 @!multitest
 let (n, px, py, q): (2..=1e9, 1..=1e9, 1..=1e9, 1..=2e5) = read()
