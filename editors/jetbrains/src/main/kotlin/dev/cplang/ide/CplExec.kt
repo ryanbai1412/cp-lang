@@ -46,7 +46,7 @@ object CplExec {
         val file = File(args.getOrNull(1) ?: return).absoluteFile
         FileDocumentManager.getInstance().saveAllDocuments()
         if ("--trace" in args) {
-            return CplTrace.open(project, file, null, args.getOrNull(2)?.takeIf { it != "--trace" }?.let(::File))
+            return CplTrace.open(project, file, args)
         }
         ExecutionEnvironmentBuilder.create(project, DefaultRunExecutor.getRunExecutorInstance(), Profile(args, file))
             .buildAndExecute()

@@ -4,8 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
-import java.nio.file.Files
 
 class CplTest {
     @Test
@@ -18,8 +16,6 @@ class CplTest {
 
     @Test
     fun `commands are the cpl subcommands`() {
-        assertEquals(listOf("run", "a.cp", "--trace", "--format", "html"), Cpl.traceArgs("a.cp", null))
-        assertEquals(listOf("run", "a.cp", "--trace", "dfs", "--format", "html"), Cpl.traceArgs("a.cp", "dfs"))
         assertEquals(listOf("lsp"), Cpl.lspArgs())
     }
 
@@ -32,30 +28,11 @@ class CplTest {
     }
 
     @Test
-    fun `the first sample is the one cpl lists first`() {
-        assertEquals(listOf("run", "a.cp", "--samples", "--list", "--format", "json"), Cpl.samplesArgs("a.cp"))
-        val dir = File("/p")
-        val json = """{"samples":[{"name":"1","input":"tests/1.in"},{"name":"2","input":"tests/2.in"}]}"""
-        assertEquals(File(dir, "tests/1.in"), Cpl.firstSample(json, dir))
-        assertNull(Cpl.firstSample("""{"samples":[]}""", dir))
-        assertNull(Cpl.firstSample("error: no such file", dir))
-    }
-
-    @Test
     fun `the view a cpl report gives is drawn as is`() {
         val json = """{"status":"fail","view":{"panel":"FAIL\n","lines":[],"diagnostic":{"line":3,"message":"first wrong call: `tri(k: 1)`, the 1st call of `tri`","source":"cpl"}}}"""
         assertEquals(Cpl.View("FAIL\n", Cpl.WrongCall(3, "first wrong call: `tri(k: 1)`, the 1st call of `tri`")), Cpl.view(json))
         assertEquals(Cpl.View("ok\n", null), Cpl.view("""{"view":{"panel":"ok\n","lines":[]}}"""))
         assertNull(Cpl.view("error: no such file"))
-    }
-
-    @Test
-    fun `the fn at the caret is the one to trace`() {
-        val text = "use x\n\n/// d\n@memo\nfn dfs(v: Int):\n    go(v)\n\n// c\nfn main():\n    dfs(0)\nlet top = 1\n"
-        assertNull(Cpl.enclosingFn(text, text.indexOf("use")))
-        assertEquals("dfs", Cpl.enclosingFn(text, text.indexOf("go(")))
-        assertEquals("main", Cpl.enclosingFn(text, text.indexOf("dfs(0)")))
-        assertNull(Cpl.enclosingFn(text, text.indexOf("top")))
     }
 
     @Test

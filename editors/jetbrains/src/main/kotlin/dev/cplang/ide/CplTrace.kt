@@ -6,17 +6,12 @@ import com.google.gson.JsonParser
 import com.intellij.ide.BrowserUtil
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.actionSystem.ActionUpdateThread
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.LogicalPosition
 import com.intellij.openapi.editor.ScrollType
 import com.intellij.openapi.editor.markup.HighlighterLayer
 import com.intellij.openapi.editor.markup.RangeHighlighter
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.progress.ProgressIndicator
@@ -40,10 +35,9 @@ import javax.swing.JPanel
 object CplTrace {
     class Failed(message: String) : Exception(message)
 
-    /** `cpl run FILE --trace [FN] --format html` on `input`: the trace viewer, one self-contained page. */
-    fun render(source: File, fn: String?, input: File?): String {
-        val cmd = Cpl.commandLine(Cpl.traceArgs(source.path, fn), source.absoluteFile.parentFile)
-        if (input != null) cmd.withInput(input)
+    /** `cpl ARGS --format html` for a `--trace` run: the trace viewer, one self-contained page. */
+    fun render(source: File, args: List<String>): String {
+        val cmd = Cpl.commandLine(args + listOf("--format", "html"), source.absoluteFile.parentFile)
         val out = CapturingProcessHandler(cmd).runProcess(120_000)
         if (out.isTimeout) throw Failed("cpl run --trace took over 2 minutes")
         if (!Regex("^\\s*<(!doctype|html)", RegexOption.IGNORE_CASE).containsMatchIn(out.stdout)) {
@@ -64,24 +58,13 @@ object CplTrace {
         return html.substring(0, head.range.last + 1) + shim + html.substring(head.range.last + 1)
     }
 
-    /** The first sample `cpl run --samples` runs for `source`, as `cpl` finds it. */
-    fun firstSample(source: File): File? {
-        val dir = source.absoluteFile.parentFile
-        val out = CapturingProcessHandler(Cpl.commandLine(Cpl.samplesArgs(source.name), dir)).runProcess(30_000)
-        return Cpl.firstSample(out.stdout, dir)
-    }
-
-    /**
-     * Runs `source` on `given` (else on its first sample when `onFirstSample`) with `--trace` in the
-     * background and opens the trace viewer, scoped to `fn`.
-     */
-    fun open(project: Project, source: File, fn: String?, given: File?, onFirstSample: Boolean = false) {
+    /** Runs `cpl ARGS` (a `--trace` run of `source`) in the background and opens the trace viewer. */
+    fun open(project: Project, source: File, args: List<String>) {
+        val title = "Trace: ${source.name}"
         object : Task.Backgroundable(project, "cpl run --trace", true) {
             override fun run(indicator: ProgressIndicator) {
                 try {
-                    val input = given ?: if (onFirstSample) firstSample(source) else null
-                    val title = "Trace: ${source.name}" + (fn?.let { " ($it)" } ?: "") + (input?.let { " on ${it.name}" } ?: "")
-                    val html = CplTrace.render(source, fn, input)
+                    val html = CplTrace.render(source, args)
                     ApplicationManager.getApplication().invokeLater { CplTrace.show(project, title, html, source) }
                 } catch (err: Exception) {
                     if (err !is CplTrace.Failed && err !is ExecutionException) throw err
@@ -179,23 +162,4 @@ class CplTracePanel(project: Project, val file: VirtualFile) : JPanel(BorderLayo
     fun load(html: String) = browser.loadHTML(CplTrace.bridge(html, query.inject("json")))
 
     override fun dispose() {}
-}
-
-/** Run the file on its first sample with `--trace` and open the trace viewer, scoped to the fn at the caret. */
-class CplShowTraceAction : AnAction() {
-    override fun getActionUpdateThread() = ActionUpdateThread.BGT
-
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = e.getData(CommonDataKeys.VIRTUAL_FILE)?.extension == "cp"
-    }
-
-    override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val file = e.getData(CommonDataKeys.VIRTUAL_FILE)?.takeIf { it.extension == "cp" } ?: return
-        val editor = e.getData(CommonDataKeys.EDITOR)
-        val fn = editor?.let { Cpl.enclosingFn(it.document.charsSequence, it.caretModel.offset) }?.takeIf { it != "main" }
-        FileDocumentManager.getInstance().saveAllDocuments()
-        val source = File(file.path)
-        CplTrace.open(project, source, fn, null, onFirstSample = true)
-    }
 }

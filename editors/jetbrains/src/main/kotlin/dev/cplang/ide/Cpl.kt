@@ -80,18 +80,6 @@ object Cpl {
         runCatching { com.google.gson.JsonParser.parseString(line).asJsonObject.get("path")?.asString }.getOrNull()
     }
 
-    fun traceArgs(file: String, fn: String?) =
-        listOf("run", file, "--trace") + listOfNotNull(fn) + listOf("--format", "html")
-
-    /** `cpl run FILE --samples --list --format json`: the samples `cpl run --samples` runs, in its order. */
-    fun samplesArgs(file: String) = listOf("run", file, "--samples", "--list", "--format", "json")
-
-    /** The first sample's input in what [samplesArgs] printed, with a relative path under `dir`. */
-    fun firstSample(json: String, dir: File): File? = runCatching {
-        val sample = com.google.gson.JsonParser.parseString(json).asJsonObject.getAsJsonArray("samples").firstOrNull()
-        sample?.asJsonObject?.get("input")?.asString?.let { File(it).takeIf(File::isAbsolute) ?: File(dir, it) }
-    }.getOrNull()
-
     /** The first wrong call a report's `view` marks: its 0-based line and headline. */
     data class WrongCall(val line: Int, val message: String)
 
@@ -103,17 +91,4 @@ object Cpl {
         val d = view.get("diagnostic")?.takeIf { it.isJsonObject }?.asJsonObject
         View(view.get("panel").asString, d?.let { WrongCall(it.get("line").asInt, it.get("message").asString) })
     }.getOrNull()
-
-    /** The top-level `fn` the offset is in, for `cpl run --trace FN`. */
-    fun enclosingFn(text: CharSequence, offset: Int): String? {
-        val fn = Regex("^fn\\s+([A-Za-z_][A-Za-z0-9_]*)", RegexOption.MULTILINE)
-        val top = Regex("^\\S", RegexOption.MULTILINE)
-        val head = fn.findAll(text).lastOrNull { it.range.first <= offset } ?: return null
-        val next = top.findAll(text, head.range.last + 1).firstOrNull { m ->
-            val line = text.subSequence(m.range.first, text.indexOf('\n', m.range.first).let { if (it < 0) text.length else it })
-            !line.startsWith("//") && !line.startsWith("@")
-        }
-        if (next != null && next.range.first <= offset) return null
-        return head.groupValues[1]
-    }
 }

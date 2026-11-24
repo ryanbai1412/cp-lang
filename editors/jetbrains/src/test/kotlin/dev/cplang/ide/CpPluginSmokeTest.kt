@@ -201,11 +201,10 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         val dir = Files.createTempDirectory("cpl").toFile()
         val source = File(dir, "sum.cp").apply { writeText("var total = 0\n\nfn main():\n    let n: Int = read()\n    for i in 0..n:\n        total += i\n    print(total)\n") }
         val input = File(dir, "i1").apply { writeText("4\n") }
-        val html = CplTrace.render(source, null, input)
+        val html = CplTrace.render(source, listOf("run", source.path, input.path, "--trace"))
         assertTrue(html.take(200), Regex("^\\s*<(!doctype|html)", RegexOption.IGNORE_CASE).containsMatchIn(html))
         assertTrue(html.contains("total"))
-        assertEquals(input.canonicalFile, CplTrace.firstSample(source)?.canonicalFile)
-        val failed = runCatching { CplTrace.render(File(dir, "missing.cp"), null, null) }.exceptionOrNull()
+        val failed = File(dir, "missing.cp").let { m -> runCatching { CplTrace.render(m, listOf("run", m.path, "--trace")) } }.exceptionOrNull()
         assertTrue(failed is CplTrace.Failed)
         val bridged = CplTrace.bridge(html, "post(json);")
         assertTrue(bridged.indexOf("window.acquireVsCodeApi") < bridged.indexOf("<script id=\"trace-ui\">"))

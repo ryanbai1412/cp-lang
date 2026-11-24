@@ -1550,9 +1550,10 @@ fn replay_lenses(text: &str) -> Vec<(u32, String)> {
 }
 
 /// Each lens's 0-based line, title and `cpl` arguments: Run, Run on all,
-/// Trace, Test and Stress above the file, and a Stress lens above each fn
-/// `cpl stress` judges by. The samples and cases are the ones `cpl run
-/// --samples` and `cpl test` find (`cpl_contest::problem`, commands/R15).
+/// Trace, Test and Stress above the file, a Stress lens above each fn
+/// `cpl stress` judges by, and a Trace lens above every other fn but
+/// `main`. The samples and cases are the ones `cpl run --samples` and
+/// `cpl test` find (`cpl_contest::problem`, commands/R15).
 fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
     let file = std::path::Path::new(path);
     if file.parent().is_none() || file.file_stem().is_none() {
@@ -1598,7 +1599,18 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
             .decorators
             .iter()
             .find(|d| cpl_ir::STRESS_DECORATORS.contains(&d.name.text.as_str()));
+        let name = &f.name.text;
+        let start = base
+            + (stmt.decorators.first())
+                .map_or(stmt.span.start, |d| d.span.start.min(stmt.span.start))
+                as usize;
+        let line = text.get(..start).unwrap_or(text).matches('\n').count() as u32;
         let Some(judge) = judge else {
+            if name != "main" {
+                let trace = vec!["run".into(), path.into(), "--trace".into(), name.clone()];
+                let (_, _, args) = with_input("Trace", trace);
+                lenses.push((line, "Trace".into(), args));
+            }
             continue;
         };
         let target = judge.args.first().map(|a| {
@@ -1607,7 +1619,6 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
                 .unwrap_or("")
                 .trim()
         });
-        let name = &f.name.text;
         let alt = matches!(judge.name.text.as_str(), "alt" | "brute");
         let title = match (judge.name.text.as_str(), target) {
             (_, Some("program") | None) if alt => format!("Stress the program against {name}"),
@@ -1615,8 +1626,6 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
             ("interactor", _) => format!("Stress with interactor {name}"),
             _ => format!("Stress with checker {name}"),
         };
-        let start = base + stmt.decorators[0].span.start.min(stmt.span.start) as usize;
-        let line = text.get(..start).unwrap_or(text).matches('\n').count() as u32;
         lenses.push((line, title, vec!["stress".into(), path.into()]));
         if alt {
             let mut trace = vec!["run".into(), path.into(), "--trace".into()];

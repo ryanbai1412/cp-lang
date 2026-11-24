@@ -55,7 +55,7 @@ plugin). Helix has none: its `languages.toml` is the user's own config.
 | VS Code | `cp.server.path` | `"cpl"` | The `cpl` binary: the PATH, then the workspace's `target/`. |
 | VS Code | `cp.server.args` | `["lsp"]` | Arguments that start the language server. |
 | VS Code | `cp.trace.server` | `"off"` | Log the LSP messages. |
-| VS Code | `cp.codeLens.enabled` | `true` | Run, Stress and Trace lenses. |
+| VS Code | `cp.codeLens.enabled` | `true` | Run, Stress and Trace lenses (a Trace lens above each fn but `main`). |
 | VS Code | `cp.inlayHints.enabled` | `true` | Inlay hints: types, proven ranges, domain loops. |
 | VS Code | `cp.liveValues.enabled` | `false` | Each top-level `let`'s value after a save. |
 | VS Code | `cp.liveValues.input` | `""` | The sample live values run on; empty is the first. |

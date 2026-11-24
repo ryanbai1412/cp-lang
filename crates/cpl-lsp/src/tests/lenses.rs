@@ -218,3 +218,35 @@ fn lenses_run_the_cases_cpl_test_finds_in_each_layout() {
     }
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn lenses_trace_each_fn_but_main_on_the_first_sample() {
+    let dir = std::env::temp_dir().join(format!("cpl-lens-trace-fn-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("i1"), "3\n").unwrap();
+    let path = dir.join("a.cp").display().to_string();
+    let uri = format!("file://{path}");
+    let input = dir.join("i1").display().to_string();
+    let src = "fn dfs(v: Int) -> Int:\n    return v\n\nfn main():\n    print(dfs(read()))\n";
+    let traces: Vec<Lens> = lenses_of(&uri, src, obj([("codeLens", true.into())]))
+        .into_iter()
+        .filter(|(_, title, _)| title.starts_with("Trace"))
+        .collect();
+    let s = |v: &[&str]| v.iter().map(|a| a.to_string()).collect::<Vec<_>>();
+    assert_eq!(
+        traces,
+        [
+            (
+                0,
+                "Trace on i1".to_string(),
+                s(&["run", &path, &input, "--trace"])
+            ),
+            (
+                0,
+                "Trace".to_string(),
+                s(&["run", &path, &input, "--trace", "dfs"])
+            ),
+        ]
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}

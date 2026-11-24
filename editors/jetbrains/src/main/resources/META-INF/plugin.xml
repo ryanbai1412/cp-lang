@@ -30,13 +30,6 @@
     </extensions>
 
     <actions>
-        <action id="CpLang.ShowTrace" class="dev.cplang.ide.CplShowTraceAction" text="CP Lang: Show Trace"
-                description="Run the file on its first sample with cpl run --trace and open the trace viewer"
-                icon="AllIcons.Actions.Profile">
-            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt T"/>
-        </action>
         <action id="CpLang.ImportProblem" class="dev.cplang.ide.CplImportProblemAction" text="CP Lang: Import a Problem"
                 description="Wait for Competitive Companion, then create the problem and its samples with cpl new --listen"
                 icon="AllIcons.Actions.Download">
