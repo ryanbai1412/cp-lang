@@ -25,6 +25,7 @@ mod labels;
 mod modules;
 mod multitest;
 mod nav;
+mod overflow;
 mod prelude;
 mod session;
 #[cfg(test)]
@@ -50,6 +51,7 @@ pub use modules::{
     home_dir, provide_std, std_calls, std_from_disk, std_needed, std_needed_with, std_outline,
     take_std_needs, FsLoader, GivenFiles, Loader,
 };
+pub use overflow::Overflow;
 pub use prelude::{
     arity_key, import_edit, method_key, method_module, methods as std_methods, overload_key,
     overload_part, set_domain, std_family, std_module, std_names, std_self_heads,

@@ -13,10 +13,6 @@ cpl-diag.workspace = true
 cpl-json.workspace = true
 cpl-syntax.workspace = true
 
-# The prover stays out of the playground build (about 105 KB gzipped).
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cpl-prover.workspace = true
-
 [dev-dependencies]
 cpl-env.workspace = true
 cpl-corpus.workspace = true

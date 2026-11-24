@@ -5953,6 +5953,9 @@ playground still shows the overflow lint; it only lacks the counterexample
 (`n = 55110`). Every other lint, including the checker-backed ones, runs on
 wasm32. Reverse: move `cpl-prover` to `[dependencies]` in
 `crates/cpl-lint/Cargo.toml` and delete the two `cfg` arms in `bounds.rs`.
+Amended 2026-11-24 (infra): the prover call moved to `cpl_check::Overflow`
+(`crates/cpl-check/src/overflow.rs`), with the same wasm32 gate, so lint reads
+the fact from the checker and the forbidden `cpl-lint -> cpl-prover` edge is gone.
 
 ## 236. `cpl fmt` sorts `use` runs, `std` first (2026-11-22)
 `spec/tools/fmt-lint.md` asks for sorted `use` lines without a key. `cpl fmt`

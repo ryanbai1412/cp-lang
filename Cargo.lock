@@ -20,6 +20,7 @@ dependencies = [
  "cpl-diag",
  "cpl-env",
  "cpl-judge",
+ "cpl-prover",
  "cpl-rt",
  "cpl-syntax",
 ]
@@ -179,7 +180,6 @@ dependencies = [
  "cpl-fmt",
  "cpl-ir",
  "cpl-json",
- "cpl-prover",
  "cpl-syntax",
 ]
 

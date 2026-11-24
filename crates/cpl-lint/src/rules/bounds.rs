@@ -72,7 +72,7 @@ pub(crate) struct Bounds<'f> {
     /// Fns the program declares, which hide the prelude's `min`, `max`, `abs`.
     fns: Rc<HashSet<String>>,
     /// How each name the prover can reason about got its value.
-    defs: HashMap<String, Def>,
+    defs: cpl_check::Overflow,
     /// What a condition proves about `a - b` for two bounded names, which
     /// their own intervals cannot say (`lo < hi` makes `hi - lo` positive).
     diffs: HashMap<(String, String), Interval>,
@@ -86,54 +86,6 @@ pub(crate) struct Bounds<'f> {
 
 /// The most a `.len` is taken to be: only relations bound it usefully.
 pub(crate) const LEN_MAX: i128 = i64::MAX as i128;
-
-/// A name the prover can be told about: an input of a declared range, or an
-/// immutable `let` of arithmetic over such names, as prover text. The
-/// playground build has no prover, so it keeps only which names are inputs.
-#[derive(Clone)]
-enum Def {
-    Input {
-        #[cfg(not(target_arch = "wasm32"))]
-        range: Interval,
-    },
-    #[cfg(not(target_arch = "wasm32"))]
-    Let { text: String, names: Vec<String> },
-}
-
-/// `expr` as fully parenthesized prover text and the names it reads, when
-/// it is only integers, names and arithmetic.
-#[cfg(not(target_arch = "wasm32"))]
-fn prover_text(expr: &Expr, names: &mut Vec<String>) -> Option<String> {
-    Some(match &expr.kind {
-        ExprKind::Int(value) => value.to_string(),
-        ExprKind::Name(name) => {
-            names.push(name.clone());
-            name.clone()
-        }
-        ExprKind::Paren(inner) => prover_text(inner, names)?,
-        ExprKind::Unary {
-            op: UnOp::Neg,
-            expr,
-        } => format!("(-{})", prover_text(expr, names)?),
-        ExprKind::Binary { op, lhs, rhs, .. } => {
-            let op = match op {
-                BinOp::Add => "+",
-                BinOp::Sub => "-",
-                BinOp::Mul => "*",
-                BinOp::Div => "/",
-                BinOp::Rem => "%",
-                BinOp::Pow => "**",
-                _ => return None,
-            };
-            format!(
-                "({} {op} {})",
-                prover_text(lhs, names)?,
-                prover_text(rhs, names)?
-            )
-        }
-        _ => return None,
-    })
-}
 
 impl<'f> Bounds<'f> {
     pub(crate) fn of(file: &File<'f>) -> Bounds<'f> {
@@ -672,7 +624,7 @@ impl<'f> Bounds<'f> {
 
     /// Whether `name` is an input of a declared range, as read.
     pub(crate) fn is_input(&self, name: &str) -> bool {
-        matches!(self.defs.get(name), Some(Def::Input { .. }))
+        self.defs.is_input(name)
     }
 
     pub(crate) fn bound_once(&self, name: &str) -> bool {
@@ -680,7 +632,7 @@ impl<'f> Bounds<'f> {
     }
 
     pub(crate) fn bind(&mut self, name: &str, value: Option<Interval>) {
-        self.defs.remove(name);
+        self.defs.forget(name);
         self.sizes.remove(name);
         self.unrelate(name);
         match value {
@@ -705,75 +657,27 @@ impl<'f> Bounds<'f> {
 
     /// A test proved `name` is in `value`: what was known about it stays.
     pub(crate) fn restrict(&mut self, name: &str, value: Interval) {
-        self.defs.remove(name);
+        self.defs.forget(name);
         self.values.insert(name.to_string(), value);
     }
 
     /// From here on `name` is an input anywhere in `range`.
     pub(crate) fn input(&mut self, name: &str, range: Interval) {
         self.bind(name, Some(range));
-        let def = Def::Input {
-            #[cfg(not(target_arch = "wasm32"))]
-            range,
-        };
-        self.defs.insert(name.to_string(), def);
+        self.defs.input(name, range.lo, range.hi);
     }
 
     /// `name` was just bound to the value of `init`, which the prover can
     /// follow when it is arithmetic over names it can follow.
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn define(&mut self, name: &str, init: &Expr) {
-        let mut names = Vec::new();
-        if let Some(text) = prover_text(init, &mut names) {
-            if names.iter().all(|n| self.defs.contains_key(n)) {
-                self.defs.insert(name.to_string(), Def::Let { text, names });
-            }
-        }
+        self.defs.define(name, init);
     }
 
     /// Inputs in their declared ranges for which `expr` itself leaves
     /// `Int`, found and checked by the prover, as `n = 55110`.
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn overflow(&self, expr: &Expr) -> Option<String> {
-        fn tell(
-            bounds: &Bounds,
-            name: &str,
-            ctx: &mut cpl_prover::Context,
-            told: &mut HashSet<String>,
-        ) -> Option<()> {
-            if !told.insert(name.to_string()) {
-                return Some(());
-            }
-            match bounds.defs.get(name)? {
-                Def::Input { range } => ctx.var(name, &format!("{}..={}", range.lo, range.hi)).ok(),
-                Def::Let { text, names } => {
-                    for n in names {
-                        tell(bounds, n, ctx, told)?;
-                    }
-                    ctx.define(name, text).ok()
-                }
-            }
-        }
-        let mut names = Vec::new();
-        let text = prover_text(expr, &mut names)?;
-        let mut ctx = cpl_prover::Context::new();
-        let mut told = HashSet::new();
-        for name in &names {
-            tell(self, name, &mut ctx, &mut told)?;
-        }
-        let whole = cpl_prover::parse::term(&text).ok()?.to_string();
-        let findings = ctx.check_overflow(&text).ok()?;
-        let finding = findings.into_iter().find(|f| f.expr == whole)?;
-        finding.verdict.counterexample().map(|c| c.to_string())
+        self.defs.witness(expr)
     }
-
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn overflow(&self, _expr: &Expr) -> Option<String> {
-        None
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn define(&mut self, _name: &str, _init: &Expr) {}
 
     /// From here on `a - b` is in `diff`, as well as in what the intervals
     /// of `a` and `b` give.
