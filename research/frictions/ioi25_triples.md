@@ -105,14 +105,49 @@ built `cpl`.
   `pairs`/`windows`-style generator in a hot loop. Owner: codegen.
 - **Severity:** medium.
 
+## Mapping a closure's local table copies it
+- **Where:** `port.cp` and `dream.cp`, `attempt`: `h.map(v => v ?? rng.int(1, 2))` on the
+  `var h: [0..m]?Int` local to the nested fn. `cpl explain` gave
+  `[copy] 76:9  h -> a `let` inside a closure owns its value`. Repro:
+  `fn f(m: 1..=10) -> List<Int>:` / `fn g(seed: Int) -> List<Int>:` /
+  `var h: [0..m]?Int = None` / `h[seed % m] = seed` / `h.map(v => v ?? 0)` / `g(1)`, then
+  `print(f(read<1..=10>()))`: `cpl explain` reports the same copy at `h`.
+- **What felt wrong:** `h` is dead after the map, so the map can read it in place. The port now
+  writes `var h: [0..m]Int = m` with `m` as a "no peak yet" sentinel, fills the sentinels in a
+  loop and returns `List(h)`: a sentinel where `?Int` said the same thing exactly.
+- **Goal it hurts:** zero-cost safety, costs are visible.
+- **Ideal code:** the dream's `h.map(v => v ?? rng.int(1, 2))` with no copy.
+- **General fix (codegen):** a closure-local table read for the last time is a borrow (or a
+  move) into the map, as it is outside a closure.
+- **Severity:** medium (one O(M) copy per try; 8e5 / M tries).
+
+## `max(by:)!.1` copies the winning element
+- **Where:** `construct_range`,
+  `(0..8e5 / m).map(attempt).map(h => (count_triples(h), h)).max(by: p => p.0)!.1`.
+  `cpl explain` gave two reasons on it: "an optional holds its own value" and "the name is
+  moved later, so it owns its value". Repro:
+  `let m: 1..=10 = read()` /
+  `print((0..m).map(s => [s, s + 1]).map(h => (h.len + h[0], h)).max(by: p => p.0)!.1)`.
+- **What felt wrong:** the pipeline is the editorial's "keep the best try", one line. Taking a
+  field out of the unwrapped optional copies the list instead of moving it, so the port spells
+  the argmax as `var (best, most)` and an `if count > most` loop (first maximum, like
+  `Ties.First`).
+- **Goal it hurts:** the obvious way is the correct and fast way.
+- **Ideal code:** the dream line, with `!` and `.1` moving out of the temporary.
+- **General fix (codegen):** unwrapping a temporary optional and projecting a field moves the
+  field; the same helps `min(by:)`, `first(...)` and `find` results that are taken apart.
+- **Severity:** medium.
+
 ## Measurements
 
 - **Tokens** (scripts/ports-page.py tokenizers): port 837, dream 832, original 1171 (1132
   after `strip_cpp_library`; it includes the sample grader's `main`).
 - **Runtime and memory** (`-O2`): on the `gen.py --max` input (Part I, N = 200000), the port
   takes 0.20 s and 11.3 MB, and orig.cpp takes 0.22 s and 12.5 MB. On Part II with M =
-  200000, the port takes 0.84 s and 21.1 MB, and orig.cpp takes 1.13 s and 14.4 MB.
-- **Emitted C++:** port 28713 bytes, dream 27057 bytes (`cpl build`, judge `generic`).
+  200000, the port took 0.84 s and 21.1 MB against orig.cpp's 1.13 s and 14.4 MB (1.47x
+  the memory) before the two copies above were removed; it now takes 1.65 s and 14.7 MB
+  against orig.cpp's 1.83 s and 14.4 MB, best of 7 on a busier machine.
+- **Emitted C++:** port 27062 bytes after the copies fix (28713 before), dream 27057 bytes (`cpl build`, judge `generic`).
 - **Agreement:** the dream and port match orig.cpp on all 29 package cases, and the dream
   matches it on 1500 gen.py seeds (sizes 10, 40 and 300). orig.cpp itself agrees with the
   archive's O(n^3) and O(n^2) correct solutions.

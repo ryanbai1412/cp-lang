@@ -32,7 +32,8 @@ fn max_coupons(a0: 1..=1e9, prices: List<1..=1e9>, types: List<1..=4>) -> List<I
             if let j = k.prev and let t = best[i][j] and t >= p[c]: best[i + 1][k] max= buy(t, c)
 
     let cost = plain.map(c => p[c]).scan(+)
-    fn total(k: K) -> Int = k + (cost.first_gt(best[rest.len][k]!).map(c => Int(c) - 1) ?? plain.len)
+    let plains = plain.len
+    fn total(k: K) -> Int = k + (cost.first_gt(best[rest.len][k]!).map(c => Int(c) - 1) ?? plains)
     let k = K.filter(k => best[rest.len][k] != None).max(by: total)!
 
     var took: List<C> = []                            // walk back: a skip that keeps best was optimal

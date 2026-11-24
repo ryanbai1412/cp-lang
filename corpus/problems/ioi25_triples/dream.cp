@@ -53,12 +53,18 @@ fn construct_range(m: 3..=2e5, _k: Int) -> List<Int>:
         let size = isqrt(6 * m)
         let evens = (-m / 2 .. 3 * m / 2).filter(x => x % 2 == 0)
         let s = rng.sample(rng.int(2 * size / 3, 4 * size / 3), from: evens).sorted()
-        var h: [0..m]?Int = None
+        var h: [0..m]Int = m                              // m: no pair has put a peak here
         for (x, y) in s.pairs() if (x + y) / 2 in 0..m and (y - x) / 2 in 1..m:
-            h[(x + y) / 2] min= (y - x) / 2              // min= skips none
-        h.map(v => v ?? rng.int(1, 2))
+            h[(x + y) / 2] min= (y - x) / 2
+        for i in 0..m if h[i] == m: h[i] = rng.int(1, 2)
+        return List(h)
     if m == 500: return attempt(1606132)
-    (0..8e5 / m).map(attempt).map(h => (count_triples(h), h)).max(by: p => p.0)!.1
+    var (best, most) = (List<Int>(), -1)
+    for seed in 0..8e5 / m:
+        let h = attempt(seed)
+        let count = count_triples(h)
+        if count > most: (best, most) = (h, count)
+    return best
 
 let part: 1..=2 = read()
 if part == 1:
