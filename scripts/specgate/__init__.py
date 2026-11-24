@@ -64,9 +64,9 @@ def header_values(text: str, key: str) -> list[str]:
 
 
 def sync(out: pathlib.Path, want: dict[str, str], apply: bool, gate: str, glob: str = "*.cp") -> list[Problem]:
-    """Make `out`'s `glob` files exactly `want` (name -> text) when `apply`;
+    """Make `out`'s `glob` files exactly `want` (path under `out` -> text) when `apply`;
     otherwise one problem per missing, extra or differing file."""
-    have = {p.name: read(p) for p in out.glob(glob)} if out.exists() else {}
+    have = {p.relative_to(out).as_posix(): read(p) for p in out.glob(glob)} if out.exists() else {}
     rel = out.relative_to(ROOT).as_posix() if out.is_relative_to(ROOT) else str(out)
     if not apply:
         return [Problem(f"{rel}/{name}", f"stale; run: uv run scripts/spec-gate.py {gate} --write")

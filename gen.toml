@@ -61,8 +61,8 @@ tier = "pre-commit"
 name = "matrix"
 files = ["spec/conformance/matrix/**/*.cp"]
 inputs = ["spec/conformance/matrix.toml"]
-write = ["scripts/conformance-matrix.py"]
-check = ["scripts/conformance-matrix.py", "--check"]
+write = ["scripts/spec-gate.py", "matrix", "--write"]
+check = ["scripts/spec-gate.py", "matrix"]
 tier = "pre-commit"
 
 [[gen]]
@@ -154,6 +154,6 @@ tier = "pre-commit"
 name = "ownership"
 files = ["spec/conformance/ownership/*.cp"]
 inputs = []
-write = ["scripts/conformance-ownership.py"]
-check = ["scripts/conformance-ownership.py", "--check"]
+write = ["scripts/spec-gate.py", "ownership", "--write"]
+check = ["scripts/spec-gate.py", "ownership"]
 tier = "pre-commit"

@@ -1,20 +1,20 @@
-#!/usr/bin/env python3
-# Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """Generate spec/conformance/matrix/ from spec/conformance/matrix.toml.
 
 Each matrix crosses rows (features) with columns (consumers); `optional`
 style matrices cross rows with forms and scopes. Every cell becomes one
-case, unless the matrix's `na` table gives a reason. `--check` fails when
+case, unless the matrix's `na` table gives a reason. The gate fails when
 the generated files are stale or a cell has neither a case nor a reason.
+Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """
+from __future__ import annotations
+
 import re
-import sys
-from pathlib import Path
 from string import Template
 
-ROOT = Path(__file__).resolve().parent.parent
-CONF = ROOT / "spec" / "conformance"
-OUT = CONF / "matrix"
+import specgate
+from specgate import Problem
+
+HELP = "spec/conformance/matrix/ is every matrix.toml cell, a case or an n/a reason (--write regenerates)"
 
 
 def parse_toml(text):
@@ -32,7 +32,7 @@ def parse_toml(text):
             continue
         m = re.fullmatch(r'("[^"]+"|\w+)\s*=\s*(.+)', line)
         if not m or table is None:
-            raise SystemExit(f"matrix.toml: can't parse {raw!r}")
+            raise ValueError(f"matrix.toml: can't parse {raw!r}")
         key, val = m.group(1).strip('"'), m.group(2)
         if re.fullmatch(r"-?\d+", val):
             table[key] = int(val)
@@ -87,39 +87,16 @@ def cells(data):
                 yield mname, key, "\n".join(head) + "\n" + src + "\n", None
 
 
-def main():
-    data = parse_toml((CONF / "matrix.toml").read_text())
-    want, problems, na = {}, [], 0
-    for mname, key, text, reason in cells(data):
-        if text is None:
-            if reason.startswith("MISSING"):
-                problems.append(f"{mname}: {key}: {reason}")
-            else:
-                na += 1
-            continue
-        want[OUT / mname / f"{key}.cp"] = text
-    have = {p: p.read_text() for p in OUT.rglob("*.cp")} if OUT.exists() else {}
-    if "--check" in sys.argv:
-        stale = sorted(str(p.relative_to(ROOT)) for p in set(want) | set(have) if want.get(p) != have.get(p))
-        for s in stale[:20]:
-            problems.append(f"stale: {s}")
-        if problems:
-            print("matrix gate failed:\n  " + "\n  ".join(problems))
-            print("rerun: python3 scripts/conformance-matrix.py")
-            return 1
-        return 0
-    if problems:
-        print("\n".join(problems))
-        return 1
-    for p in set(have) - set(want):
-        p.unlink()
-    for p, t in want.items():
-        p.parent.mkdir(parents=True, exist_ok=True)
-        if have.get(p) != t:
-            p.write_text(t)
-    print(f"matrix: {len(want)} cases, {na} n/a cells")
-    return 0
+def args(p) -> None:
+    p.add_argument("--write", action="store_true")
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+def run(a) -> list[Problem]:
+    conf = specgate.CONFORMANCE
+    want, problems = {}, []
+    for mname, key, text, reason in cells(parse_toml((conf / "matrix.toml").read_text())):
+        if text is not None:
+            want[f"{mname}/{key}.cp"] = text
+        elif reason.startswith("MISSING"):
+            problems.append(Problem(f"matrix.toml {mname}", f"{key}: {reason}"))
+    return problems or specgate.sync(conf / "matrix", want, a.write, "matrix", "**/*.cp")

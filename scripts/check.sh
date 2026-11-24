@@ -622,9 +622,9 @@ step "conformance gaps: SUBSET.md generated from the board (scripts/spec-gate.py
 uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"
 
 step "conformance matrix: generated cases current, every cell a case or n/a"
-uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
+uv run --quiet python scripts/spec-gate.py matrix || fail "matrix gate failed; see above"
 uv run --quiet python scripts/spec-gate.py widths || fail "spec/conformance/widths/ is stale; run: uv run scripts/spec-gate.py widths --write"
-uv run scripts/conformance-ownership.py --check || fail "spec/conformance/ownership/ is stale; run scripts/conformance-ownership.py"
+uv run --quiet python scripts/spec-gate.py ownership || fail "spec/conformance/ownership/ is stale; run: uv run scripts/spec-gate.py ownership --write"
 uv run --quiet python scripts/spec-gate.py xref || fail "a rule id names no rule in spec/core; see above"
 uv run --quiet python scripts/spec-gate.py changelog || fail "a spelling the spec removes has no changelog line; see above"
 uv run --quiet python scripts/spec-gate.py tool-rules || fail "a tool feature in spec/tools/ has no rule id; see above"

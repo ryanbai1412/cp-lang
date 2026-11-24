@@ -87,5 +87,5 @@ Each local fix, and the mechanism that would remove its whole class.
 
 
 - **M1 Every rule tested both ways.** Exit: `conformance-coverage.py` reports 0 happy-path-only rules, 0 unknown cites, 0 rule-less core cases, 0 diagnostic codes without a reject case; `conformance-coverage.py --check` runs in the fast gate.
-- **M2 Generated coverage.** Exit: `devin/wip-conformance-matrix` landed and `conformance-matrix.py --check` gates 0 empty cells; `conformance-traits.py --check` gates the trait table, failing on any method with no case; spec-blocks: every fence is a case or `spec-only`.
+- **M2 Generated coverage.** Exit: `devin/wip-conformance-matrix` landed and `spec-gate.py matrix` gates 0 empty cells; `conformance-traits.py --check` gates the trait table, failing on any method with no case; spec-blocks: every fence is a case or `spec-only`.
 - **M3 Independently rebuildable.** Exit: a rebuild round (cold agent, `spec/` only, 40 questions + 10 programs) records < 5 holes; the bug-catch probe catches >= 90% of reverted compiler fixes.

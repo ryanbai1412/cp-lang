@@ -117,6 +117,26 @@ class GatesTest(unittest.TestCase):
             self.assertIn("print(id(1) + id(2))", t.read("spec/conformance/widths/add-in-range.cp"))
             self.assertEqual(run("widths"), [])
 
+    def test_matrix(self):
+        toml = ('[m.col.c]\ncode = "print($v)"\nout = "$v"\n[m.col.d]\ncode = "print($v + 1)"\nout = "$w"\n'
+                '[m.row.r]\nv = 2\nw = 3\n[m.row.s]\nv = 5\n[m.na]\n"s--d" = "no w"\n')
+        with Tree({"spec/conformance/matrix.toml": toml, "spec/conformance/matrix/m/old.cp": "x"}) as t:
+            self.assertEqual(sorted(p.where.split("/")[-1] for p in run("matrix")), ["old.cp", "r--c.cp", "r--d.cp", "s--c.cp"])
+            self.assertEqual(run("matrix", "--write"), [])
+            self.assertEqual(t.read("spec/conformance/matrix/m/r--d.cp"), '// expect: ok, output "3"\nprint(2 + 1)\n')
+            self.assertFalse((t.conf / "matrix/m/old.cp").exists())
+            self.assertEqual(run("matrix"), [])
+
+    def test_ownership(self):
+        from specgate import ownership
+        cases = ownership.cases()
+        self.assertTrue(cases["top-temp-let.cp"].startswith("// expect: E0603\n"))
+        self.assertTrue(cases["fn-named-let.cp"].startswith('// expect: ok, output "4"\n'))
+        with Tree({}) as t:
+            self.assertEqual(len(run("ownership")), len(cases))
+            self.assertEqual(run("ownership", "--write"), [])
+            self.assertEqual(run("ownership"), [])
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:
