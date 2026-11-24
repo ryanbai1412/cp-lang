@@ -10,10 +10,8 @@ use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
 /// Interactive problems with no `interactor.py`, and why.
-const KNOWN_NO_JUDGE: &[(&str, &str)] = &[
-    ("ioi13p4", "an ideal sketch, not run"),
-    ("ioi18p1", "a grader task; spec.cp plays the sample grader"),
-];
+const KNOWN_NO_JUDGE: &[(&str, &str)] =
+    &[("ioi18p1", "a grader task; spec.cp plays the sample grader")];
 
 /// `gen.py`'s seed and size for the made cases.
 const GENERATED: [(u32, u32); 2] = [(1, 8), (2, 64)];

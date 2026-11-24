@@ -170,7 +170,8 @@ fn a_runtime_error_in_the_json_report_is_a_diagnostic() {
     ]);
     assert_eq!(code, Some(1), "{report}");
     for said in [
-        r#""verdict":"RE","error":{"code":"R0101""#,
+        r#""verdict":"RE""#,
+        r#""error":{"code":"R0101""#,
         r#""start":{"col":7,"line":3"#,
         r#""locals: n = 1"#,
     ] {
