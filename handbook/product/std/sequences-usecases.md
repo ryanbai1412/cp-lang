@@ -414,15 +414,15 @@ Evidence: program `spec/conformance/std-seq/seq-u21-stack-top.cp`; the corpus wr
 
 ### seq/U60: change the top in place
 Need: replace the top of a stack.
-Design: `s.last = x` (a place), or `s.top`.
-Milestone: M1-critical. Status: gap
-Evidence: `a.last = 5` is E0203: `last` is not a place.
+Design: assign by index, `s[s.len - 1] = x`; `last` stays read-only, and `s.last = x` is an error whose fix writes the index form.
+Milestone: M1-critical. Status: supported
+Evidence: `crates/cpl-cli/tests/mistakes/list_last_assign.cp` and `crates/cpl-cli/tests/mistakes/array_last_assign.cp`.
 
 ### seq/U61: push and pop at both ends
 Need: a 0-1 BFS or a sliding window.
 Design: `Deque`: `push`, `push_front`, `pop`, `pop_front`; a list has no `pop_front`.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u61-deque-ends.cp`; `List.pop_front` is E0203 (9 corpus uses); Deque works.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u61-deque-ends.cp`; `crates/cpl-cli/tests/mistakes/list_pop_front.cp` (`List.pop_front` points at `Deque`).
 
 ## Output and shape
 
