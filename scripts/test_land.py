@@ -58,8 +58,8 @@ class LandTest(unittest.TestCase):
         git(repo, "add", "-A")
         git(repo, "commit", "-q", "--no-verify", "-m", msg, "-m", "Domain: infra")
 
-    def land(self, repo):
-        env = {**{k: v for k, v in os.environ.items() if k != "CPL"}, "CPL_LAND_TRIES": "1"}
+    def land(self, repo, **extra):
+        env = {**{k: v for k, v in os.environ.items() if k != "CPL"}, "CPL_LAND_TRIES": "1", **extra}
         return subprocess.run(["bash", "scripts/land.sh"], cwd=repo, env=env, capture_output=True, text=True)
 
     def test_a_generated_file_conflict_takes_mains_copy_and_lands(self):
@@ -137,6 +137,24 @@ class LandTest(unittest.TestCase):
         self.assertIn("gate: bad.txt", r.stderr)
         self.assertIn("bad.txt", git(ours, "show", "--name-only", "--format=", "HEAD"))
         self.assertNotIn("bad.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
+    def test_the_ratchet_measures_with_a_cpl_built_at_the_rebased_tip(self):
+        # corpus_fmt_dirty refuses a cpl older than the sources the rebase brought in.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "Cargo.toml").write_text("[workspace]\n")
+        (theirs / "scripts" / "debt-ratchet.py").write_text(
+            "import os, sys\nsys.exit(0 if os.path.exists('built') else 'cpl is stale')\n")
+        self.commit(theirs, "ratchet")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "cargo").write_text('#!/bin/sh\ncase "$*" in *"build -q -p cpl-cli"*) touch built;; esac\n')
+        (bin_dir / "cargo").chmod(0o755)
+        (ours / ".gitignore").write_text("built\n")
+        self.commit(ours, "ours")
+        r = self.land(ours, PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue((ours / "built").exists())
 
     def test_the_rerun_hands_the_hook_no_stale_cpl(self):
         # A cpl copied from before the rebase escapes the dep-info staleness check

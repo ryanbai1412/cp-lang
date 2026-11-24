@@ -156,6 +156,9 @@ if [ -n "$changed" ]; then
     marks=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' HEAD -- $changed ':!*.png' ':!*.gz' || [ $? = 1 ])
     [ -z "$marks" ] || { echo "land: merge conflict markers:"$'\n'"$marks" >&2; exit 1; }
 fi
+# The rebase rewrote main's crate files: corpus_fmt_dirty refuses a stale cpl, so build it.
+[ ! -f scripts/debt-ratchet.py ] || [ ! -f Cargo.toml ] || cargo build -q -p cpl-cli ||
+    { echo "land: cargo build -p cpl-cli failed at the rebased tip; the ratchet runs that cpl" >&2; exit 1; }
 [ ! -f scripts/debt-ratchet.py ] || uv run --quiet python scripts/debt-ratchet.py --check >/dev/null ||
     { uv run --quiet python scripts/debt-ratchet.py --check >&2; exit 1; }
 # A decision number is taken once it is on main (decision 505): a heading
