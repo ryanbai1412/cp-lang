@@ -24,21 +24,21 @@ let primes = sieve.primes[..P]
 
 // Smooth numbers by count of prime factors; x grows only by primes up to its
 // smallest, so each is listed once (the C++ order, which the output depends on).
-fn grow(x: Int) -> List<Int>:
+fn grow(x: 1..=V) -> List<1..=V>:
     let cap = if x == 1: primes.last! else: sieve.spf[x]
-    var out = List<Int>()
+    var out: List<1..=V> = []
     for p in primes:
         if p > cap or x * p > V: break
         out.push(x * p)
     out
 
-var smooth = List<Int>()
-var layer = [1]
+var smooth: List<1..=V> = [1]
+var at = 0  // smooth[..at] have grown: a breadth-first walk over the list itself
 while smooth.len < 1 << SYMBOL:
-    smooth += layer
-    layer = [y for x in layer for y in grow(x)]
+    smooth += grow(smooth[at])
+    at += 1
 let symbols = smooth[..1 << SYMBOL]
-var symbol: [0..=V]?Int = None
+var symbol: [0..=V]?(0..1 << SYMBOL) = None
 for (s, x) in symbols.items: symbol[x] = s
 
 fn top_power(p: Int) -> Int:
