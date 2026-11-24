@@ -13,6 +13,8 @@
 //   Pair cut i with cut i + half as one segment, adding cut 0 when the outermost bad pair still
 //   collides and cut n to make the count even. O((n + m) log n).
 // Bounds: n: 1..=2e5; m: 0..=2e5; l, r: 1..=n
+// The prefix xors are taken in place in diff, the keys sort in place, and next is a narrow
+// index with n for none, so the memory is diff, keys and next, as orig.cpp's vectors.
 
 @!multitest
 let (n, m): (1..=2e5, 0..=2e5) = read()
@@ -22,19 +24,20 @@ for _ in 0..m:
     let key = rand(0, (1 << 45) - 1)
     diff[l - 1] ^= key
     diff[r] ^= key
-let xors = scan(diff[0..n], ^)
-let hash = [xors.prefix(i + 1) for i in 0..n]
+for i in 1..n: diff[i] ^= diff[i - 1]
 
-var next: [0..n]?Int = None
+var next: [0..n]0..=n = n  // n: no later equal prefix
 var (first_bad, last_bad): (?Int, ?Int) = (None, None)
-let order = [k % (1 << 18) for k in sorted([hash[i] << 18 | i for i in 0..n])]
-for (a, b) in order.adjacent if hash[a] == hash[b]:
+var keys = [diff[i] << 18 | i for i in 0..n]
+keys.sort()
+for (x, y) in keys.adjacent if x >> 18 == y >> 18:
+    let (a, b) = (x % (1 << 18), y % (1 << 18))
     next[a] min= b
     first_bad min= a
     last_bad max= b
 
 var cuts: List<Int> = []
-if let f = first_bad and let l = last_bad and hash[f] == hash[l]: cuts.push(0)
+if let f = first_bad and let l = last_bad and diff[f] == diff[l]: cuts.push(0)
 for i in 0..n - 1:
     if next[i] == i + 1: cuts.push(i + 1)
     else: next[i + 1] min= next[i]
