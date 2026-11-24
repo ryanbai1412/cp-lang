@@ -22,6 +22,15 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
         | ExprKind::Intrinsic(_, items) => items.iter().collect(),
         ExprKind::Binary(op, lhs, rhs) if !lazy(*op) => vec![lhs, rhs],
         ExprKind::Read(spec) => spec_exprs(spec).unwrap_or_default(),
+        ExprKind::ReadFrom(text, body) => {
+            let spec = match &body.kind {
+                ExprKind::Read(spec) => spec_exprs(spec),
+                _ => None,
+            };
+            std::iter::once(&**text)
+                .chain(spec.unwrap_or_default())
+                .collect()
+        }
         ExprKind::Index(base, indices) => std::iter::once(&**base).chain(indices).collect(),
         _ => Vec::new(),
     }
@@ -62,6 +71,9 @@ pub(crate) fn applies(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Binary(op, ..) => return !lazy(*op),
         ExprKind::Read(spec) => return spec_exprs(spec).is_some(),
+        ExprKind::ReadFrom(_, body) => {
+            return matches!(&body.kind, ExprKind::Read(spec) if spec_exprs(spec).is_some())
+        }
         _ => {}
     }
     matches!(
@@ -255,6 +267,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             ExprKind::Read(spec) => {
                 let given: Vec<_> = operands(e).into_iter().zip(vals).collect();
                 self.read(spec, span, &given)?
+            }
+            ExprKind::ReadFrom(_, body) => {
+                let mut vals = vals.into_iter();
+                let held = self.read_from(vals.next().unwrap_or(Value::Unit));
+                let given: Vec<_> = operands(e).into_iter().skip(1).zip(vals).collect();
+                let value = match &body.kind {
+                    ExprKind::Read(spec) => self.read(spec, span, &given),
+                    _ => self.eval(body),
+                };
+                self.read_from_done(held, value)
             }
             ExprKind::Builtin(op, args) => self.builtin_values(*op, args, e, vals)?,
             ExprKind::Intrinsic(p, _) => crate::intrinsic(*p, &vals, span)?,

@@ -13,6 +13,28 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
+    /// `read<T>(from: s)`: makes the string `text` the whole input,
+    /// returning what was the input for [`Self::read_from_done`]. (R10.2.4)
+    pub(crate) fn read_from(&mut self, text: Value) -> Input<'p> {
+        let text = match text {
+            Value::Str(b) => (*b).clone(),
+            Value::StrView(v) => v.to_vec(),
+            _ => Vec::new(),
+        };
+        std::mem::replace(&mut self.input, Input::owned(text))
+    }
+
+    /// `Some` of what the read gave when it succeeded and left no token
+    /// over, else `None`; `held` is the input again.
+    pub(crate) fn read_from_done(&mut self, held: Input<'p>, value: Res<Value>) -> Value {
+        let whole = value.is_ok() && self.input.at_eof();
+        self.input = held;
+        match value {
+            Ok(value) if whole => Value::some(value),
+            _ => Value::Opt(OptVal::None),
+        }
+    }
+
     /// A value of `spec` from the input, with `given` the values of the
     /// expressions in it the caller already evaluated.
     pub(crate) fn read(

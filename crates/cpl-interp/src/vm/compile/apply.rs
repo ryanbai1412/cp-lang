@@ -61,7 +61,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         // A read evaluates its bounds once, before reading, so they must
         // not depend on when they run.
-        if matches!(expr.kind, ExprKind::Read(_)) && !operands(expr).into_iter().all(quiet) {
+        if matches!(expr.kind, ExprKind::Read(_) | ExprKind::ReadFrom(..))
+            && !operands(expr).into_iter().all(quiet)
+        {
             return None;
         }
         let regs: Vec<u16> = operands(expr)

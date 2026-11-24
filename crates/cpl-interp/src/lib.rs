@@ -1084,7 +1084,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             | ExprKind::Tuple(_)
             | ExprKind::Variant(..)
             | ExprKind::IsVariant(..)
-            | ExprKind::Payload(..) => {
+            | ExprKind::Payload(..)
+            | ExprKind::ReadFrom(..) => {
                 let vals = self.eval_operands(e)?;
                 self.apply(e, vals)?
             }
@@ -1406,22 +1407,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::Unit
             }
             ExprKind::Read(spec) => self.read(spec, span, &[])?,
-            // The string is the input while `f` runs. (R10.2.4)
-            ExprKind::ReadFrom(text, body) => {
-                let text = match self.eval(text)? {
-                    Value::Str(b) => (*b).clone(),
-                    Value::StrView(v) => v.to_vec(),
-                    _ => Vec::new(),
-                };
-                let held = std::mem::replace(&mut self.input, Input::owned(text));
-                let value = self.eval(body);
-                let whole = value.is_ok() && self.input.at_eof();
-                self.input = held;
-                match value {
-                    Ok(value) if whole => Value::some(value),
-                    _ => Value::Opt(OptVal::None),
-                }
-            }
             ExprKind::Debug(line, args) => {
                 let mut values = Vec::new();
                 for arg in args {
