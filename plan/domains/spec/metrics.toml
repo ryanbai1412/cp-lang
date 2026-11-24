@@ -79,7 +79,7 @@ target = "0, over std and core claimers"
 [[metric]]
 name = "named args in spec/core and spec/lib that no std fn takes"
 command = "uv run scripts/conformance-sigs.py --check"
-today = "5 (sig-gaps.txt: convolve(concave:), dijkstra(step:), each(sum:, hi:), pow(op:))"
+today = "0"
 target = "0"
 
 [[metric]]

@@ -73,13 +73,6 @@ write = ["scripts/conformance-traits.py"]
 check = ["scripts/conformance-traits.py", "--check"]
 tier = "pre-commit"
 
-[[gen]]
-name = "sigs"
-files = ["spec/conformance/sig-gaps.txt"]
-inputs = ["spec/core/*.md", "spec/lib/*.md", "std/*.cp"]
-write = ["scripts/conformance-sigs.py"]
-check = ["scripts/conformance-sigs.py", "--check"]
-tier = "pre-commit"
 
 [[gen]]
 name = "prelude"

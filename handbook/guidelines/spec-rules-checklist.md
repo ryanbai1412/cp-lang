@@ -47,8 +47,8 @@ implementers will guess differently.
 A signature, a return type or a named option written in a chapter must
 match `std/*.cp`, and every type a prelude signature names is in the
 prelude (R11.3.2). Enforced by `scripts/conformance-sigs.py --check` and
-`conformance-prelude.py --check`, with `sig-gaps.txt` and
-`prelude-gaps.txt` only shrinking.
+`conformance-prelude.py --check`; any signature mismatch fails, and
+`prelude-gaps.txt` only shrinks.
 
 ### spec-rules/R6. The handbook and the spec change together
 

@@ -1307,6 +1307,11 @@ def rule_gaps(root: Path) -> list[str]:
     return _registered_entries(root, "rule_gaps")
 
 
+def sig_gaps(root: Path) -> list[str]:
+    """Entries of spec/conformance/sig-gaps.txt, deleted: every named arg the chapters use is in std."""
+    return _registered_entries(root, "sig_gaps")
+
+
 def trait_gaps(root: Path) -> list[str]:
     """Entries of spec/conformance/trait-gaps.txt, deleted: every trait method has a case."""
     return _registered_entries(root, "trait_gaps")
@@ -1653,7 +1658,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "spec/conformance/permits.txt": ("permits", "spec", "a case per permit"),
     "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "a case per prelude name"),
     "spec/conformance/rule-gaps.txt": ("rule_gaps", "spec", "deleted: conformance-coverage.py fails on any rule gap"),
-    "spec/conformance/sig-gaps.txt": ("skip_lists", "spec", "a case per signature"),
+    "spec/conformance/sig-gaps.txt": ("sig_gaps", "spec", "deleted: conformance-sigs.py fails on any mismatch"),
     "spec/conformance/trait-gaps.txt": ("trait_gaps", "spec", "deleted: conformance-traits.py fails on any missing case"),
     "spec/idioms/lints-known.txt": ("idiom_lint_gaps", "idioms", "deleted: idioms-catalog.py fails on any finding"),
     "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "fix each example"),
@@ -1745,6 +1750,7 @@ HARD_ZERO = frozenset({
     "idiom_lint_gaps",
     "rule_gaps",
     "direct_python",
+    "sig_gaps",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
@@ -1808,6 +1814,7 @@ COUNTERS = {
     "permits": ("entries of spec/conformance/permits.txt", permits, True),
     "trait_gaps": ("entries of spec/conformance/trait-gaps.txt", trait_gaps, True),
     "rule_gaps": ("entries of spec/conformance/rule-gaps.txt", rule_gaps, True),
+    "sig_gaps": ("entries of spec/conformance/sig-gaps.txt", sig_gaps, True),
     "idiom_lint_gaps": ("entries of spec/idioms/lints-known.txt", idiom_lint_gaps, True),
     "or_true": ("`|| true` anywhere (scoreboard CI2)", or_true, True),
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),

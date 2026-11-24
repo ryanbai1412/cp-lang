@@ -155,6 +155,7 @@
   "permits": 0,
   "trait_gaps": 0,
   "rule_gaps": 0,
+  "sig_gaps": 0,
   "idiom_lint_gaps": 0,
   "or_true": 45,
   "continue_on_error": 0,

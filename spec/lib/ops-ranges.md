@@ -360,12 +360,12 @@ The same values fold any `Seq`, with no structure:
 | `pow(x, k, op = *)` | `x` folded with itself `k` times by squaring | \(O(\log k)\) ops |
 
 `pow` is the one fast power (`x ** k` is its operator spelling, through `Pow`): numbers, `Mod<P>`, matrices under any
-semiring, permutations (`op: compose`), `Affine` maps, and any user monoid.
-`k = 0` needs a `Monoid`; an `Op` traps on it.
+semiring, `Affine` maps, permutations, and any user monoid. `op` is anything
+`Monoid.of` takes, so `k = 0` gives its identity; a negative `k` traps.
 
 ```python
-let f = pow(Affine(a, b), k, op: then)     // apply x -> a x + b, k times
-let p = pow(perm, 1e18, op: compose)       // a permutation applied 10^18 times
+let f = pow(Affine(a, b), k, op: Affine.monoid())    // apply x -> a x + b, k times
+let p = pow(perm, 1e18, op: Monoid(ident, compose))  // a permutation applied 10^18 times
 ```
 ## 7. One vocabulary for range structures
 
@@ -565,7 +565,7 @@ convolve(a, b, on: |)                // c[i | j]  (subset-sum transform)
 convolve(a, b, on: &)                // c[i & j]
 convolve(a, b, on: subset)           // i | j with i & j == 0
 convolve(a, b, on: gcd)              // c[gcd(i, j)]  (Dirichlet-style)
-convolve(a, b, over: Semiring(max, +), concave: .b)   // max-plus, b concave
+convolve(a, b, over: Semiring(max, +), shape: Curved.Right)   // max-plus, b concave
 ```
 
 - The index op is an operation value (`on:`), so the eight
@@ -574,9 +574,10 @@ convolve(a, b, over: Semiring(max, +), concave: .b)   // max-plus, b concave
   with an NTT prime uses NTT; any other `Mod` or `Int` uses three primes and
   CRT; `F64` uses FFT. `cpl explain` names it.
 - `over:` other than `Semiring(+, *)` has no fast transform in general, so
-  it requires a stated shape (`concave: .b` gives the \(O(n \log n)\) SMAWK
-  path; debug checks the shape). Without one it is an error, not a hidden
-  \(O(n^2)\).
+  it requires a stated `shape: Curved`: `Both` (both inputs convex for
+  `min`, concave for `max`) merges slopes in \(O(n + m)\), `Right` (only `b`)
+  takes the monotone-minima path, and `Neither` asks for the \(O(n m)\) loop
+  by name. Without one it is an error, not a hidden \(O(n^2)\).
 - `cyclic: true`, and `convolve_all(polys)` for many at once, stay.
 ## 14. Cost model
 
