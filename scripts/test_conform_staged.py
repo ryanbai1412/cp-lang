@@ -105,11 +105,12 @@ class FullSuite(unittest.TestCase):
     def test_all_failing_names_each_failing_case(self):
         self.assertEqual(sorted(conform_staged.all_failing(OUT)), ["a/wrong.cp", "ab/wrong.cp"])
 
-    def _run_all(self, at_base, alone):
+    def _run_all(self, at_base, alone, red=RED, base_now=""):
         def run(argv, **_):
-            out = RED if argv[-1] == "--verbose" or alone == "fail" else "conformance 1/1 pass\n"
+            out = red if argv[-1] == "--verbose" or alone == "fail" else "conformance 1/1 pass\n"
             return subprocess.CompletedProcess(argv, 0, out, "")
         with mock.patch.object(conform_staged, "base_verdicts", lambda cases, rev, run: {c: at_base for c in cases}), \
+                mock.patch.object(conform_staged, "base_alone", lambda c, rev, run: base_now), \
                 mock.patch.object(conform_staged, "owner", lambda c, rev: "compiler"), \
                 mock.patch("builtins.open", mock.mock_open()), \
                 mock.patch("sys.stderr") as err, mock.patch("sys.stdout"):
@@ -130,6 +131,18 @@ class FullSuite(unittest.TestCase):
         code, said = self._run_all("pass", "pass")
         self.assertEqual(code, 0)
         self.assertIn("flaky at the tip", said)
+
+    def test_a_timeout_the_base_also_hits_under_the_same_load_is_not_refused(self):
+        slow = f"conformance     0/1    fail (1 fail)\n  {CASE}: fail\n    the interpreter timed out after 20s\n"
+        code, said = self._run_all("pass", "fail", red=slow, base_now=slow)
+        self.assertEqual(code, 0)
+        self.assertIn("times out alone here and at the base", said)
+
+    def test_a_timeout_the_base_beats_under_the_same_load_refuses(self):
+        slow = f"conformance     0/1    fail (1 fail)\n  {CASE}: fail\n    the interpreter timed out after 20s\n"
+        code, said = self._run_all("pass", "fail", red=slow, base_now="conformance 1/1 pass\n")
+        self.assertEqual(code, 1)
+        self.assertIn("NEW red", said)
 
 if __name__ == "__main__":
     unittest.main()

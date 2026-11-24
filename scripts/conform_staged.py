@@ -194,6 +194,25 @@ def all_failing(output):
     return {m[1]: new_failures(m[1], output, set()) for l in output.splitlines() if (m := FAIL.match(l))}
 
 
+def timed_out(case, output):
+    """Whether cpl-conform's --verbose output fails `case` on its time limit."""
+    return any("timed out after" in l for l in new_failures(case, output, set()))
+
+
+def base_alone(case, base, run=subprocess.run):
+    """cpl-conform's --verbose output for `case` alone at `base`, run now, under the tip's load."""
+    import new_reds
+    common = Path(new_reds.git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=ROOT))
+    wt = new_reds.base_checkout(common, base)
+    target = Path(os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target")))
+    env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
+    if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=wt, env=env).returncode:
+        return ""
+    r = run([str(target / "debug" / "cpl-conform"), "conformance", "--verbose", case], cwd=wt, env=env,
+            capture_output=True, text=True)
+    return r.stdout + r.stderr
+
+
 def run_all(conform, base, run=subprocess.run):
     """The whole suite at the tip; 1 if a case fails that passes at `base` and fails alone here too."""
     rev = subprocess.run(["git", "rev-parse", base], cwd=ROOT, capture_output=True, text=True).stdout.strip() or base
@@ -217,6 +236,13 @@ def run_all(conform, base, run=subprocess.run):
                 who = owner(c, rev)
                 print(f"conform_staged: flaky at the tip, owner {who}: {PREFIX}{c} failed in the full run, "
                       "passes alone; not refusing", file=sys.stderr)
+                flaky.write(f"{rev} {who} conform:{c}\n")
+                continue
+            # Load, not the change (6c6573a25, codegen-only, at load avg 30): the base, timed right after, times out too.
+            if timed_out(c, alone.stdout + alone.stderr) and timed_out(c, base_alone(c, rev, run)):
+                who = owner(c, rev)
+                print(f"conform_staged: load, owner {who}: {PREFIX}{c} times out alone here and at the base "
+                      f"{rev[:9]} run right after it; not refusing", file=sys.stderr)
                 flaky.write(f"{rev} {who} conform:{c}\n")
                 continue
             print(f"conform_staged: NEW red: {PREFIX}{c} is {at[c]} at the base {rev[:9]} and fails with this change",
