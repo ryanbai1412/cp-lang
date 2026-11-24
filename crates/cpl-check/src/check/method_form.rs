@@ -461,7 +461,12 @@ impl Checker<'_> {
 impl<'a> Checker<'a> {
     /// `sorted(s)` for a prelude fold nothing else types: the same type as
     /// `s.sorted()`, whose element comes from `s` by the one `Seq` rule.
-    pub(super) fn free_as_method(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+    pub(super) fn free_as_method(
+        &mut self,
+        call: &Expr,
+        callee: &Expr,
+        args: &[Arg],
+    ) -> Option<Ty> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;
         };
@@ -480,11 +485,24 @@ impl<'a> Checker<'a> {
                 return None;
             }
             let base = Box::new(first.value.clone());
-            let name = cpl_syntax::ast::Name { text: name.clone(), span: callee.span };
-            let field = Expr { kind: ExprKind::Field { base, name }, span: callee.span };
-            let kind = ExprKind::Call { callee: Box::new(field), args: rest.to_vec() };
-            let ty = c.infer(&Expr { kind, span: call.span });
-            let failed = (c.sink.diagnostics().iter()).any(|d| d.severity == cpl_diag::Severity::Error);
+            let name = cpl_syntax::ast::Name {
+                text: name.clone(),
+                span: callee.span,
+            };
+            let field = Expr {
+                kind: ExprKind::Field { base, name },
+                span: callee.span,
+            };
+            let kind = ExprKind::Call {
+                callee: Box::new(field),
+                args: rest.to_vec(),
+            };
+            let ty = c.infer(&Expr {
+                kind,
+                span: call.span,
+            });
+            let failed =
+                (c.sink.diagnostics().iter()).any(|d| d.severity == cpl_diag::Severity::Error);
             (!failed && !ty.has_vague()).then_some(ty)
         })
     }
