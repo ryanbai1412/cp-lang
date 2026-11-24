@@ -60,7 +60,7 @@ let n: 1..=10 = read()
 var seen: [1..=10]Bool = false
 seen[n] = true
 cases += 1
-print(cases, seen.count(true))
+print(cases, seen.count(x => x))
 ```
 
 `cases` counts across cases; `seen` starts all `false` in each one. Since a domain declared below
