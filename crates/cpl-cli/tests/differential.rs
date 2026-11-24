@@ -262,7 +262,15 @@ fn check(program: &Path, group: &str) -> Result<(), String> {
         ));
     }
 
-    let built = cpl_cli::run(&["build", &path, "--checks", "traps", "-o", "-"]);
+    // A program `cpl run` stops may stop on a check only `--checks all`
+    // keeps (a range store, overflow), so it is held to the C++ at `all`;
+    // one that runs through is held to it at `traps` (decision 299).
+    let checks = if interpreted.code == cpl_cli::EXIT_FAILED {
+        "all"
+    } else {
+        "traps"
+    };
+    let built = cpl_cli::run(&["build", &path, "--checks", checks, "-o", "-"]);
     if built.code != 0 {
         return Err(format!(
             "`cpl build` exited with {}:\n{}",
@@ -275,7 +283,7 @@ fn check(program: &Path, group: &str) -> Result<(), String> {
             built.stdout.len()
         ));
     }
-    if built.stdout != cpl_cli::run(&["build", &path, "--checks", "traps", "-o", "-"]).stdout {
+    if built.stdout != cpl_cli::run(&["build", &path, "--checks", checks, "-o", "-"]).stdout {
         return Err("two builds of one source differ".into());
     }
     let source = std::fs::read_to_string(program).map_err(|e| e.to_string())?;
