@@ -601,8 +601,8 @@ def repeats(t_o, t_p, min_ms):
 
 def timed(r, min_ms):
     """A pair whose samples reached `min_ms`. A row with `repeats` was sized to it from its
-    first run, so it counts even when its fastest sample lands just under (egoi23p8: a first
-    run of 10.4 ms, a fastest of 9.8 ms); a row without it counts by its fastest run."""
+    first run, so it counts even when its fastest sample lands just under (egoi23p8: a
+    fastest of 9.81 ms); a row without it counts by its fastest run."""
     return r.get("status") == "ok" and ("repeats" in r or max(r["port_ms"], r["orig_ms"]) >= min_ms)
 
 
