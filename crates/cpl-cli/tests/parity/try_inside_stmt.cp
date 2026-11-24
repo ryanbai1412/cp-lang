@@ -24,7 +24,7 @@ struct P:
     b: Int
 fn mk(x: ?Int, y: ?Int) -> ?P = Some(P(a: side(1) + x?, b: y? * 2))
 fn idx(xs: List<Int>, x: ?Int) -> ?Int:
-    var ys = xs
+    var ys = xs.clone()
     let first = side(2) + x else: return None
     ys[0] = first
     ys.push(x! + 1)
