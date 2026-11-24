@@ -152,7 +152,7 @@ Marker type for the stock `flip` action.
 
 - `fn desc<T>(x: T) -> Desc<T>` — \(O(1)\); `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when `b < a`.
 - `fn fold<T, M, S: Seq>(m: M, xs: S) -> T` — \(O(n)\) calls of `op`; `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m` sees elements in sequence order.; traps: never (an `m` without a known identity is a compile-time error)
-- `fn pow<T, M>(x: T, k: Int, op: M) -> T` — \(O(\log k)\) calls of `op`; `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`, with `op` anything `Monoid.of` accepts; a plain power is `x ** k`.; traps: when `k < 0`
+- `fn pow<T, M>(x: T, k: Int; op: M) -> T` — \(O(\log k)\) calls of `op`; `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`, with `op` anything `Monoid.of` accepts; a plain power is `x ** k`.; traps: when `k < 0`
 - `fn point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>` — \(O(1)\); An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`.
 - `fn cmp<T: Ord>(self: T, other: T) -> Ordering` — \(O(1)\) plus one or two comparisons of `T`; The three-way comparison of `self` and `other` under `Ord`: `cmp(a, b)` or `a.cmp(b)`.
 - `fn minmax<T: Ord>(a: T, b: T) -> (T, T)` — \(O(1)\) plus one comparison of `T`; The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
