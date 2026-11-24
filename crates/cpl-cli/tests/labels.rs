@@ -6,7 +6,9 @@
 
 use std::fs;
 use std::path::Path;
-use std::process::Command;
+
+#[path = "support/parallel.rs"]
+mod parallel;
 
 /// Lines (1-based) where `src` declares `name`.
 fn declared_on(src: &str, name: &str) -> Vec<usize> {
@@ -92,16 +94,12 @@ fn unlabelled(src: &str, rendered: &str) -> Vec<String> {
     out
 }
 
+/// What `cpl check` prints for `src`, run in process.
 fn check(src: &str, name: &str, dir: &Path) -> String {
     let file = dir.join(format!("{name}.cp"));
     fs::write(&file, src).unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg("check")
-        .arg(&file)
-        .env("NO_COLOR", "1")
-        .output()
-        .unwrap();
-    String::from_utf8_lossy(&out.stderr).into_owned() + &String::from_utf8_lossy(&out.stdout)
+    let out = cpl_cli::run(&["check", file.to_str().unwrap()]);
+    out.stderr + &String::from_utf8_lossy(&out.stdout)
 }
 
 #[test]
@@ -126,12 +124,15 @@ fn errors_label_the_declaration_they_name() {
     {
         cases.push((info.code.0.to_string(), info.trigger.to_string()));
     }
-    let mut missing = Vec::new();
-    for (name, src) in &cases {
-        for e in unlabelled(src, &check(src, name, &dir)) {
-            missing.push(format!("{name}: {e}"));
-        }
-    }
+    let missing: Vec<String> = parallel::parallel(&cases, |(name, src)| {
+        unlabelled(src, &check(src, name, &dir))
+            .into_iter()
+            .map(|e| format!("{name}: {e}"))
+            .collect::<Vec<_>>()
+    })
+    .into_iter()
+    .flatten()
+    .collect();
     let _ = fs::remove_dir_all(&dir);
     eprintln!("{} programs checked", cases.len());
     assert!(
