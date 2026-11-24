@@ -7,6 +7,7 @@
   "requests": [
     {"method": "textDocument/hover", "params": {"position": {"line": 5, "character": 4}}, "expect": ["fn far(r: Road) -> Int"]},
     {"method": "textDocument/completion", "params": {"position": {"line": 5, "character": 27}}, "expect": ["\"label\":\"twice\""]},
+    {"method": "completionItem/resolve", "params": {"label": "lcm", "kind": 3}, "expect": ["\"label\":\"lcm\""]},
     {"method": "textDocument/signatureHelp", "params": {"position": {"line": 7, "character": 11}}, "expect": ["far(r: Road) -> Int"]},
     {"method": "textDocument/definition", "params": {"position": {"line": 7, "character": 7}}, "expect": ["\"line\":5"]},
     {"method": "textDocument/typeDefinition", "params": {"position": {"line": 5, "character": 25}}, "expect": ["\"line\":1"]},

@@ -79,14 +79,22 @@ impl StdLib {
                     .chain(name.split('.'))
                     .map(str::to_string)
                     .collect();
-                let text = match FsLoader.load(from, &path) {
-                    Some((_, text)) => text,
-                    None => match cpl_check::std_outline(&path)? {
-                        (len, _, outline) if len == path.len() => outline.to_string(),
-                        _ => return None,
-                    },
-                };
-                Some(Arc::new(Outline::of_source(&text)))
+                if let Some((_, text)) = FsLoader.load(from, &path) {
+                    return Some(Arc::new(Outline::of_source(&text)));
+                }
+                let (len, _, text) = cpl_check::std_outline(&path)?;
+                let mut outline = Outline::of_source(text);
+                let marks = outline.entries.iter_mut().map(|e| (None, e));
+                let owned = outline.impls.iter_mut().flat_map(|(target, entries)| {
+                    entries.iter_mut().map(|e| (Some(target.clone()), e))
+                });
+                for (owner, entry) in marks.chain(owned) {
+                    for member in &mut entry.members {
+                        member.origin = Some((name.to_string(), Some(entry.name.clone())));
+                    }
+                    entry.origin = Some((name.to_string(), owner));
+                }
+                (len == path.len()).then(|| Arc::new(outline))
             })
             .clone()
     }
@@ -126,6 +134,32 @@ impl StdLib {
         self.prelude = Some(names.clone());
         names
     }
+}
+
+/// The docs of a completion item from a std module the host has given
+/// since it was offered: `data` names the module, and the type of a member.
+pub fn resolve(item: &Value, std: &mut StdLib) -> Option<String> {
+    let module = item.at(&["data", "module"]).as_str()?;
+    let label = item.at(&["label"]).as_str()?;
+    let outline = std.module("", module)?;
+    let entries: Vec<&Entry> = match item.at(&["data", "owner"]).as_str() {
+        Some(owner) => outline
+            .find(owner)
+            .map(|e| e.members.iter())
+            .into_iter()
+            .flatten()
+            .chain(
+                outline
+                    .impls
+                    .iter()
+                    .filter(|(target, _)| target == owner)
+                    .flat_map(|(_, entries)| entries),
+            )
+            .collect(),
+        None => outline.entries.iter().collect(),
+    };
+    let entry = entries.into_iter().find(|e| e.name == label)?;
+    (entry.origin.is_none() && !entry.doc.is_empty()).then(|| entry.doc.clone())
 }
 
 /// What one request looks at: a file's analysis and the cursor in it.
@@ -644,6 +678,15 @@ fn item_json(entry: &Entry, sort: u8) -> Value {
             format!("{sort}{}", entry.name).into(),
         ),
     ]);
+    if let Some((module, owner)) = &entry.origin {
+        let mut data = BTreeMap::from([("module".to_string(), module.as_str().into())]);
+        data.extend(
+            owner
+                .iter()
+                .map(|owner| ("owner".to_string(), owner.as_str().into())),
+        );
+        members.insert("data".to_string(), Value::Object(data));
+    }
     if !entry.doc.is_empty() {
         members.insert(
             "documentation".to_string(),
@@ -678,6 +721,7 @@ fn plain(name: &str, kind: Kind, detail: String, doc: &str) -> Entry {
         params: Vec::new(),
         instance: true,
         members: Vec::new(),
+        origin: None,
     }
 }
 
@@ -1375,6 +1419,7 @@ fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry
         params,
         instance: true,
         members: Vec::new(),
+        origin: None,
     }
 }
 

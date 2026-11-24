@@ -74,21 +74,47 @@ fn a_program_checks_and_runs_once_the_host_gives_the_std_it_needs() {
     assert_eq!(before.at(&["needs"]).to_string(), r#"["math"]"#);
 
     let hover = playground.lsp(r#"{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///main.cp"},"position":{"line":5,"character":10}}}"#);
-    assert!(has(&hover, "SplitMix64: mixes the 64 bits"), "{hover}");
+    assert!(has(&hover, "fn splitmix64(x: U64) -> U64"), "{hover}");
 
-    for (text, line, character, method) in [
-        ("let m: ?Int = None\nprint(m.)\n", 1, 8, "is_some_and"),
-        ("let xs = [3, 1]\nprint(xs.sorted().sc)\n", 1, 20, "scan"),
+    // `.` offers the methods of a module not given yet; its docs come with
+    // `completionItem/resolve` once it is.
+    let mut offered_items = Vec::new();
+    for (text, line, character, method, module) in [
+        (
+            "let m: ?Int = None\nprint(m.)\n",
+            1,
+            8,
+            "is_some_and",
+            "opt",
+        ),
+        (
+            "let xs = [3, 1]\nprint(xs.sorted().sc)\n",
+            1,
+            20,
+            "scan",
+            "prefix",
+        ),
     ] {
         playground.lsp(&open_or_change("file:///dot.cp", 1, text));
         let asked = format!(
             r#"{{"jsonrpc":"2.0","id":3,"method":"textDocument/completion","params":{{"textDocument":{{"uri":"file:///dot.cp"}},"position":{{"line":{line},"character":{character}}}}}}}"#
         );
         let offered = playground.lsp(&asked);
-        assert!(
-            has(&offered, &format!(r#""label":"{method}""#)),
-            "{offered}"
+        let item = offered.as_array().unwrap()[0]
+            .at(&["result", "items"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|item| item.at(&["label"]).as_str() == Some(method))
+            .unwrap_or_else(|| panic!("{offered}"))
+            .clone();
+        assert_eq!(
+            item.at(&["data", "module"]).as_str(),
+            Some(module),
+            "{item}"
         );
+        assert_eq!(item.at(&["documentation"]), &Value::Null, "{item}");
+        offered_items.push((item, module));
     }
 
     let needed = playground.std_needed("main.cp", &source);
@@ -113,6 +139,19 @@ fn a_program_checks_and_runs_once_the_host_gives_the_std_it_needs() {
             );
             given.push((module, text));
         }
+    }
+    for (item, module) in offered_items {
+        let text = std::fs::read_to_string(root().join(format!("std/{module}.cp"))).unwrap();
+        playground.provide_std(module, &text);
+        let resolve = obj([
+            ("jsonrpc", "2.0".into()),
+            ("id", 4.into()),
+            ("method", "completionItem/resolve".into()),
+            ("params", item),
+        ]);
+        let resolved = playground.lsp(&resolve.to_string());
+        let doc = resolved.as_array().unwrap()[0].at(&["result", "documentation", "value"]);
+        assert!(doc.as_str().is_some_and(|d| !d.is_empty()), "{resolved}");
     }
     for (module, text) in &given {
         let again = playground.provide_std(module, text);
