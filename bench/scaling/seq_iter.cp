@@ -66,4 +66,8 @@ for r in 0..64:
         s += a ^ b // within: seq.zip
     for r in xs.valleys(): // timed: seq.valleys
         s += 1 // within: seq.valleys
+for i in 0..1 << 20:
+    let z = zip(xs, ys)
+    s += z.first[i % n] // timed: seq.Zipped.first
+    s += z.second[i % n] // timed: seq.Zipped.second
 print(s)

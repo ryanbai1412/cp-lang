@@ -51,7 +51,7 @@ for r in 0..32:
     let halves = xs.partition(even) // timed: seq.partition
     s += halves.0.len
     s += xs.distinct().len // timed: seq.distinct
-    s += xs.tally().len // timed: seq.tally
+    s += xs.tally().len // timed: hashmap.tally
     if xs.is_permutation(ys): s += 1 // timed: seq.is_permutation
     s += xs.inversions() // timed: seq.inversions
     s += xs.sorted().len // timed: seq.sorted
