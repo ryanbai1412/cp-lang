@@ -1104,3 +1104,10 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   `*const ()`; it is cast as the fallback host's push already was.
 - VM-expr: a WaveletMatrix rank's word ops run in the dispatch loop: `LoadFieldList1I`, `FieldListLen`, `FieldI`, `PopcountI`/`CtzI`/`ClzI` and the `U64` ops move from the out-of-line dispatchers into `exec_chunk_core`, the wrapping `U64` ops and in-range shifts inline, and `Cells::len` inlines natively. ioi14p6 --max 22.2 -> 17.5 s (C++ 1.8 s); cpl_interp wasm unchanged. Regression: `inline_bit_leaf`.
 - VM-memory: an enum value of at most three scalar fields packs into a `Cells::SmallEnum` word block, not an `Rc<Vec<Value>>` per cell; a read array fills its packed store directly; a live input lets go of the bytes it has read (`Input::let_go`) unless a checkpoint run may rewind (`keeping`). interp_memory: sac22cc2p5 309 -> 168 MB, dmopc20c4p4 223 -> 170, dmopc21c4p2 207 -> 162 (cco24p1 398 -> 324, yac7p3 295 -> 278 still over). Regression: `a_list_of_small_enums_is_packed`, `a_live_input_lets_go_of_what_it_read`, programs/packed_enums.cp. cpl_interp wasm 234,010 -> 233,576 B gz: a float cell is stored as its `total_cmp` key so it shares the `i64` arms, enum rows share the tuples' stride moves, and `filled`/`from_values`/`fill` go through `push`/`set` instead of a copy per kind.
+
+- 2026-11-24: one event stream for every observer of a run. The
+  profiler and the VM's fallback counts (`CPL_VM_STATS`) were fields
+  beside the `tracer` slot with their own hooks; now they and the tracer
+  are each an `Observer`, and `watch::Watch` (the one slot) passes each
+  event to the ones asked for. An internal call hushes the tracer and
+  profiler but still counts a fallback. event_models 14 -> 0.

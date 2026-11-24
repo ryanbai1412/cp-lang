@@ -1,7 +1,7 @@
 //! What a run tells whoever watches it: the interface the debugger needs
 //! from the interpreter. The interpreter is built once per kind of
 //! [`Observer`]: an untraced run with [`Unobserved`], whose hooks compile
-//! away, a traced one with [`Tracer`].
+//! away, a watched one with [`crate::watch::Watch`].
 
 use crate::trace::{Recording, Tracer, View};
 use crate::Value;
@@ -14,6 +14,28 @@ use cpl_ir::{Place, PlaceKind, Stmt};
 pub(crate) trait Observer {
     /// False compiles every hook out of the run.
     const ON: bool = true;
+    /// Whether it hears the user's steps: the run is traced.
+    fn traces(&self) -> bool {
+        true
+    }
+    /// Whether it times each [`Observer::step`]: the run is profiled.
+    fn times_steps(&self) -> bool {
+        false
+    }
+    /// An internal call starts (`on`) or ends: true when the observer
+    /// stops hearing the user's steps itself, false to be taken away
+    /// for the call.
+    fn hush(&mut self, _on: bool) -> bool {
+        false
+    }
+    /// The tree-walker ran `stmt`: what deleting it still has to move.
+    fn walked(&mut self, _stmt: &Stmt) {}
+    /// The VM left what `tag` names to the tree-walker, in a loop when `in_loop`.
+    fn fell_back(&mut self, _tag: impl FnOnce() -> String, _in_loop: bool) {}
+    /// Where the run spent its time, once it is over.
+    fn profile(&mut self) -> Option<crate::profile::Profile> {
+        None
+    }
     /// A user statement (one of [`cpl_ir::sites::user_stmts`]) starts: the
     /// step a profiler charges time between. Internal calls, such as a
     /// comparator's strict-weak-order checks, run [`Interp::quietly`] and
@@ -125,16 +147,10 @@ pub(crate) struct Unobserved;
 #[cfg(not(target_family = "wasm"))]
 pub(crate) type Untraced = Unobserved;
 #[cfg(target_family = "wasm")]
-pub(crate) type Untraced = crate::trace::Tracer;
+pub(crate) type Untraced = crate::watch::Watch;
 
 impl Observer for Unobserved {
     const ON: bool = false;
-}
-
-impl Observer for crate::profile::Profiler {
-    fn step(&mut self, stmt: &Stmt) {
-        self.enter(stmt)
-    }
 }
 
 impl Observer for Tracer {
@@ -243,17 +259,64 @@ impl Observer for Tracer {
 impl<O: Observer> Interp<'_, '_, O> {
     /// Whether the run is watched; false at compile time when unobserved.
     pub(crate) fn observed(&self) -> bool {
-        O::ON && self.tracer.is_some()
+        O::ON && self.tracer.as_ref().is_some_and(|o| o.traces())
+    }
+
+    /// Whether each user statement is a timed step: the run is profiled.
+    pub(crate) fn times_steps(&self) -> bool {
+        O::ON && self.tracer.as_ref().is_some_and(|o| o.times_steps())
+    }
+
+    /// A user statement starts (see [`Observer::step`]).
+    pub(crate) fn step_event(&mut self, stmt: &Stmt) {
+        if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
+            o.step(stmt);
+        }
+    }
+
+    /// The tree-walker runs `stmt` (see [`Observer::walked`]).
+    pub(crate) fn walked_event(&mut self, stmt: &Stmt) {
+        if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
+            o.walked(stmt);
+            o.step(stmt);
+        }
+    }
+
+    /// The VM fell back to the tree-walker (see [`Observer::fell_back`]).
+    pub(crate) fn fell_back(&mut self, tag: impl FnOnce() -> String, in_loop: bool) {
+        if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
+            o.fell_back(tag, in_loop);
+        }
     }
 
     /// Runs `run` unwatched: an internal call, such as a comparator's
     /// strict-weak-order check, is no step of the user's program, so no
     /// observer (tracer or profiler) hears of it.
     pub(crate) fn quietly<R>(&mut self, run: impl FnOnce(&mut Self) -> R) -> R {
-        let (profiler, tracer) = (self.profiler.take(), self.tracer.take());
+        let hushed = self.hush();
         let out = run(self);
-        (self.profiler, self.tracer) = (profiler, tracer);
+        self.unhush(hushed);
         out
+    }
+
+    /// The start of an internal call (see [`Interp::quietly`]): the
+    /// observer, when it does not hush itself.
+    pub(crate) fn hush(&mut self) -> Option<Box<O>> {
+        match self.tracer.as_mut().map(|o| o.hush(true)) {
+            Some(true) => None,
+            _ => self.tracer.take(),
+        }
+    }
+
+    /// The end of the internal call [`Interp::hush`] started.
+    pub(crate) fn unhush(&mut self, taken: Option<Box<O>>) {
+        match (taken, self.tracer.as_mut()) {
+            (Some(o), _) => self.tracer = Some(o),
+            (None, Some(o)) => {
+                o.hush(false);
+            }
+            (None, None) => {}
+        }
     }
 
     /// A trap once the tracer has what it wanted, as after the call to replay.
@@ -278,7 +341,7 @@ impl<O: Observer> Interp<'_, '_, O> {
 
     /// Runs `record` on the tracer, when the run is traced.
     pub(crate) fn traced(&mut self, record: impl FnOnce(&mut O, &trace::View)) {
-        if !O::ON {
+        if !self.observed() {
             return;
         }
         if let Some(mut tracer) = self.tracer.take() {
@@ -527,7 +590,7 @@ print(a[1])
         };
         let (io, mut out) = (Io::fixed(b""), Vec::new());
         let observer = Some(Box::new(Heard(heard.clone())));
-        let observed = run_as(&program, io, &mut out, limits, observer, false);
+        let observed = run_as(&program, io, &mut out, limits, observer);
         assert!(observed.trap.is_none() && observed.recording.is_none());
         assert_eq!(String::from_utf8(out).unwrap(), "2\n");
         let heard = heard.borrow();
@@ -562,7 +625,7 @@ print(a[1])
         };
         let (io, mut out) = (Io::fixed(b""), Vec::new());
         let observer = Some(Box::new(Heard(heard.clone())));
-        let observed = run_as(&program, io, &mut out, limits, observer, false);
+        let observed = run_as(&program, io, &mut out, limits, observer);
         assert!(observed.trap.is_none(), "{:?}", observed.trap);
         assert_eq!(String::from_utf8(out).unwrap(), "1\n");
         let heard = heard.borrow();
@@ -578,7 +641,7 @@ print(a[1])
             stack_bytes: 1 << 22,
         };
         let (io, mut out) = (Io::fixed(b""), Vec::new());
-        let observed = run_as::<Unobserved>(&program, io, &mut out, limits, None, false);
+        let observed = run_as::<Unobserved>(&program, io, &mut out, limits, None);
         assert!(observed.trap.is_none() && observed.recording.is_none());
         assert_eq!(String::from_utf8(out).unwrap(), "2\n");
     }

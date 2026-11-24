@@ -1274,10 +1274,6 @@ impl VmStats {
         Some(Self::default())
     }
 
-    pub(crate) fn record(&mut self, tag: String) {
-        self.record_with_loop(tag, false);
-    }
-
     pub(crate) fn record_with_loop(&mut self, tag: String, in_loop: bool) {
         self.total_fallbacks += 1;
         if in_loop {

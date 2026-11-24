@@ -1472,18 +1472,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     })?;
             }
             Op::Step { idx } => {
-                if let Some(profiler) = &mut self.profiler {
-                    profiler.enter(chunk.steps[idx as usize]);
-                }
+                self.step_event(chunk.steps[idx as usize]);
             }
             Op::FallbackStmt {
                 idx,
                 clear_from_v,
                 in_loop,
             } => {
-                if let Some(stats) = &mut self.vm_stats {
-                    stats.record_with_loop(stmt_tag(chunk.fallback_stmts[idx as usize]), in_loop);
-                }
+                self.fell_back(|| stmt_tag(chunk.fallback_stmts[idx as usize]), in_loop);
                 for (r, held) in regs_v.iter_mut().enumerate().skip(clear_from_v as usize) {
                     // A traced local outlives its last use: the tracer shows it.
                     if !(chunk.traced && chunk.slot_map.contains(&SlotLoc::V(r as u16))) {
@@ -1529,12 +1525,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
             }
             Op::FallbackExprI { idx, dst, in_loop } => {
-                if let Some(stats) = &mut self.vm_stats {
-                    stats.record_with_loop(
-                        expr_tag(chunk.fallback_exprs[idx as usize], self.program),
-                        in_loop,
-                    );
-                }
+                let program = self.program;
+                self.fell_back(
+                    || expr_tag(chunk.fallback_exprs[idx as usize], program),
+                    in_loop,
+                );
                 sync_to_stack(
                     &chunk.slot_map,
                     regs_i,
@@ -1559,12 +1554,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst as usize] = ScalarKind::unbox_val(&val);
             }
             Op::FallbackExprV { idx, dst, in_loop } => {
-                if let Some(stats) = &mut self.vm_stats {
-                    stats.record_with_loop(
-                        expr_tag(chunk.fallback_exprs[idx as usize], self.program),
-                        in_loop,
-                    );
-                }
+                let program = self.program;
+                self.fell_back(
+                    || expr_tag(chunk.fallback_exprs[idx as usize], program),
+                    in_loop,
+                );
                 sync_to_stack(
                     &chunk.slot_map,
                     regs_i,

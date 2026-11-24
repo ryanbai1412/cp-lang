@@ -43,6 +43,7 @@ mod trap_help;
 mod unwind;
 mod value;
 mod vm;
+mod watch;
 
 use assign::{cell_mut, field_mut, inside_mut};
 use compare::compare;
@@ -336,12 +337,10 @@ fn run_io(
     trace: Option<trace::TraceConfig>,
     profile: bool,
 ) -> Observed {
-    match trace {
-        Some(config) => {
-            let tracer = Box::new(trace::Tracer::new(config, program));
-            run_as(program, io, output, limits, Some(tracer), profile)
-        }
-        None => run_as::<observe::Untraced>(program, io, output, limits, None, profile),
+    let tracer = trace.map(|config| trace::Tracer::new(config, program));
+    match watch::Watch::of(program, tracer, profile) {
+        Some(watch) => run_as(program, io, output, limits, Some(watch)),
+        None => run_as::<observe::Untraced>(program, io, output, limits, None),
     }
 }
 
@@ -353,10 +352,9 @@ fn run_as<O: Observer>(
     output: &mut (dyn Write + Send),
     limits: Limits,
     tracer: Option<Box<O>>,
-    profile: bool,
 ) -> Observed {
     let off = checkpoint::Clock::default();
-    run_from(program, io, output, limits, tracer, profile, off).0
+    run_from(program, io, output, limits, tracer, off).0
 }
 
 /// [`run_as`], taking checkpoints or starting from one as `ckpt` says.
@@ -366,7 +364,6 @@ fn run_from<O: Observer>(
     output: &mut (dyn Write + Send),
     limits: Limits,
     tracer: Option<Box<O>>,
-    profile: bool,
     ckpt: checkpoint::Clock,
 ) -> (Observed, checkpoint::Clock) {
     let top = 0u8;
@@ -412,7 +409,6 @@ fn run_from<O: Observer>(
         stop: io.stop,
         countdown: stop::EVERY,
         ckpt,
-        profiler: profile.then(|| Box::new(profile::Profiler::new(program))),
         debug_out: Vec::new(),
         feeds: cpl_ir::pushed::Feeds::of(program),
         fed: HashMap::new(),
@@ -433,15 +429,11 @@ fn run_from<O: Observer>(
         trace_indices: Vec::new(),
         trace_path: Vec::new(),
         trace_raw: Vec::new(),
-        vm_stats: vm::VmStats::from_env(),
     };
     let result = match interp.main() {
         Err(trap) if trap.message == trace::STOPPED => Ok(()),
         result => result,
     };
-    if let Some(stats) = &interp.vm_stats {
-        stats.emit_stderr();
-    }
     let _ = interp.sink.write_all(&interp.out);
     let _ = interp.sink.flush();
     let trap = result.err().map(|mut trap| {
@@ -454,8 +446,13 @@ fn run_from<O: Observer>(
         }
         *trap
     });
-    let recording = interp.tracer.take().and_then(|tracer| {
+    let mut profile = None;
+    let recording = interp.tracer.take().and_then(|mut tracer| {
+        profile = tracer.profile();
         let failed = trap.as_ref().map(|trap| (trap.message.as_str(), trap.span));
+        if !tracer.traces() {
+            return tracer.finish(&interp.view(), failed);
+        }
         let depth = interp.call_frames.len();
         let kept = (interp.trap_frame.take()).filter(|kept| failed.is_some() && kept.0 == depth);
         interp.fill_shown();
@@ -473,10 +470,7 @@ fn run_from<O: Observer>(
         trap,
         debug: std::mem::take(&mut interp.debug_out),
         recording,
-        profile: interp
-            .profiler
-            .take()
-            .map(|profiler| profile::Profiler::finish(*profiler)),
+        profile,
     };
     if interp.ckpt.on() {
         interp.ckpt.read = interp.input.bytes().to_vec();
@@ -664,7 +658,6 @@ struct Interp<'p, 'o, O: Observer> {
     stop: Option<Stop>,
     countdown: u32,
     ckpt: checkpoint::Clock,
-    profiler: Option<Box<profile::Profiler>>,
     /// What `debug(...)` showed.
     debug_out: Vec<u8>,
     /// Which loops over a `yields` fn run their body as the fn yields.
@@ -704,8 +697,6 @@ struct Interp<'p, 'o, O: Observer> {
     trace_path: Vec<usize>,
     /// The named `Int` locals a raw trace step shows, kept between steps.
     trace_raw: Vec<(&'p str, i64)>,
-    /// Optional fallback counter enabled via `CPL_VM_STATS`.
-    vm_stats: Option<vm::VmStats>,
 }
 
 /// A loop whose body runs each time the `yields` fn at `callee` pushes
@@ -771,7 +762,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
             if !has_mut_view {
-                let (traced, profiled) = (self.observed(), self.profiler.is_some());
+                let (traced, profiled) = (self.observed(), self.times_steps());
                 self.vm = Some(Rc::new(vm::CompiledProgram::compile(
                     program,
                     &self.feeds,
@@ -877,13 +868,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     fn stmt(&mut self, stmt: &'p Stmt) -> Res<Flow> {
-        if let Some(stats) = &mut self.vm_stats {
-            stats.walked += 1;
-            *stats.walked_counts.entry(vm::stmt_tag(stmt)).or_default() += 1;
-        }
-        if let Some(profiler) = &mut self.profiler {
-            observe::Observer::step(&mut **profiler, stmt);
-        }
+        self.walked_event(stmt);
         match stmt {
             Stmt::Let(slot, init) => {
                 let value = match init {

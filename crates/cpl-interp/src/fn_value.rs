@@ -21,7 +21,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         let fv = self.eval(callee)?;
         if !self.observed()
-            && self.profiler.is_none()
+            && !self.times_steps()
             && args.len() <= 4
             && args.iter().all(|a| matches!(a, Arg::Value(_)))
         {
