@@ -17,7 +17,7 @@ Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
 Fields: `p: [D.cuts]T`.
 
 - `fn set(mut self, i: D, x: T)` — \(O(1)\); Write the next cell in fill order (`D.first..=D.last` for `Forward`, reverse for `Reverse`).; traps: when `i` is not the next position in fill order (out of order, repeated, or after
-- `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of boundary `b`; zero at the first cut.; traps: when a position left of `b` is not yet written (with `Reverse`, every position left
+- `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of the cut `b`; zero at the first cut.; traps: when a position left of `b` is not yet written (with `Reverse`, every position left
 - `fn at(self, c: Cut<D>) -> T` — \(O(1)\); `f[c]`: the same as `prefix(c)`, as on a built `Prefix`; at a position `v`, `f[v]` is the sum through `v`, the same as `f[v.r]` (R07.1.6).; traps: when a position left of `c` is not yet written
 - `fn cut(self, k: Int) -> T` — \(O(1)\); The sum of the first `k` positions, whatever `D`'s base: `prefix` at the cut `k` positions in.; traps: when `k` is not in `0..=D.count`, or a position among the first `k` is not yet written
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty.; traps: when `r` is non-empty and contains a position not yet written
@@ -30,17 +30,17 @@ Fields: `p: [D.cuts]T`, `sums: Bool`, `rises: Bool`, `back: Bool`.
 
 - `fn new(a: [D]T) -> Prefix<D, T>` — \(O(\lvert D \rvert)\) time and space; Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>` — \(O(\lvert D \rvert)\) time and space; Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
-- `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.; traps: on a suffix table (`a.rev.scan(f)`) with `f` other than `+`, which subtracts
+- `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of the cut `b`: zero at the first cut, `all` at the last.; traps: on a suffix table (`a.rev.scan(f)`) with `f` other than `+`, which subtracts
 - `fn of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>` — \(O(n)\) calls of `f`; \(O(n)\) space; The suffix table of `a` under `f`, the table `a.rev.scan(f)` returns.; traps: never (beyond what `f` traps on)
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn cyclic_sum(self, r: RingRange<D>) -> T` — \(O(1)\); The sum over a wrapping run of positions, e.g.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn at(self, c: Cut<D>) -> T` — \(O(1)\); `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`.
 - `fn through(self, v: D) -> T` — \(O(1)\); The running fold at position `v`: through `v` from the start, or from `v` to the end on a suffix table (`a.rev.scan(f)`).
 - `fn cut(self, k: Int) -> T` — \(O(1)\); The fold of the first `k` positions, whatever `D`'s base: the value at the cut `k` positions in, the identity at `0` and `all` at `D.count`.; traps: when `k` is not in `0..=D.count`
-- `fn suffix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.; traps: on a table from `scan(f)` with `f` other than `+`
+- `fn suffix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything right of the cut `b`: `all - prefix(b)`, zero at the last cut.; traps: on a table from `scan(f)` with `f` other than `+`
 - `@get fn all(self) -> T` — \(O(1)\); The sum of the entire domain: `prefix` at the last cut (a suffix table's first), zero for an empty domain.
-- `fn first_ge(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
-- `fn first_gt(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.; traps: when some element is negative
+- `fn first_ge(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first cut `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
+- `fn first_gt(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first cut `b` with `prefix(b) > target`, or `None` when `all <= target`.; traps: when some element is negative
 
 ## `struct FillPrefix<R, C, T: Add + Sub>`
 
@@ -49,7 +49,7 @@ The append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling
 Fields: `p: [R.cuts, C.cuts]T`.
 
 - `fn set(mut self, r: R, c: C, x: T)` — \(O(1)\); Write the next cell in row-major fill order (top-left to bottom-right for `Forward`, bottom-right to top-left for `Reverse`).; traps: when `(r, c)` is not the next cell in fill order
-- `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — \(O(1)\); The sum of everything above row boundary `r` and left of column boundary `c`; zero when either cut is the first.; traps: when that rectangle is non-empty and holds a cell not yet written
+- `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — \(O(1)\); The sum of everything above row cut `r` and left of column cut `c`; zero when either cut is the first.; traps: when that rectangle is non-empty and holds a cell not yet written
 - `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — \(O(1)\); The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty.; traps: when the rectangle is non-empty and holds a cell not yet written
 
 ## `struct Prefix<R, C, T: Add + Sub>`
@@ -60,7 +60,7 @@ Fields: `p: [R.cuts, C.cuts]T`.
 
 - `fn new(a: [R, C]T) -> Prefix<R, C, T>` — \(O(\lvert R \rvert \cdot \lvert C \rvert)\) time and space; Build 2-D prefix sums over `a: [R, C]T`; `Prefix(a)` on a grid calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>` — \(O(\lvert R \rvert \cdot \lvert C \rvert)\) time and space; Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major `order`.
-- `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — \(O(1)\); The sum of everything above row boundary `r` and left of column boundary `c`; zero when either cut is the first.
+- `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — \(O(1)\); The sum of everything above row cut `r` and left of column cut `c`; zero when either cut is the first.
 - `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — \(O(1)\); The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty, by inclusion-exclusion over the four corner cuts.
 
 ## `struct FillPrefix<T: Add + Sub>`

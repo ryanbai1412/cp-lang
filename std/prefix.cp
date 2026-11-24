@@ -67,7 +67,7 @@ pub struct FillPrefix<D, T: Add + Sub>:
             p[i.r] = p[i.l] + x
             next += 1
 
-    /// The sum of everything left of boundary `b`; zero at the first cut.
+    /// The sum of everything left of the cut `b`; zero at the first cut.
     ///
     /// cost: \(O(1)\)
     /// traps: when a position left of `b` is not yet written (with `Reverse`, every position left
@@ -153,7 +153,7 @@ pub struct Prefix<D, T: Add + Sub>:
         let p: [D.cuts]T = T.zero
         FillPrefix(p, rev, if rev: D.count - 1 else: 0)
 
-    /// The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
+    /// The sum of everything left of the cut `b`: zero at the first cut, `all` at the last.
     ///
     /// cost: \(O(1)\)
     /// traps: on a suffix table (`a.rev.scan(f)`) with `f` other than `+`, which subtracts
@@ -260,7 +260,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 1..=3; let p: [D]Int = [4, 1, 2]; p.scan(max).cut(2) == 4`
     pub fn cut(self, k: Int) -> T = self.p[D.cuts.nth(k)]
 
-    /// The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.
+    /// The sum of everything right of the cut `b`: `all - prefix(b)`, zero at the last cut.
     ///
     /// cost: \(O(1)\)
     /// traps: on a table from `scan(f)` with `f` other than `+`
@@ -281,7 +281,7 @@ pub struct Prefix<D, T: Add + Sub>:
     @get pub fn all(self) -> T:
         self.p[D.cuts.nth(if back: 0 else: D.count)]
 
-    /// The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.
+    /// The first cut `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.
     ///
     /// A binary search over the cuts, which needs `prefix` non-decreasing, so every element must be
     /// non-negative; the table records at build time whether that holds. A `target` at or below
@@ -300,7 +300,7 @@ pub struct Prefix<D, T: Add + Sub>:
         let lo = (0..D.count).first_true(mid => self.p[D.cuts.nth(mid)] >= target) ?? D.count
         Some(D.cuts.nth(lo))
 
-    /// The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.
+    /// The first cut `b` with `prefix(b) > target`, or `None` when `all <= target`.
     ///
     /// The same search as `first_ge`, with the same non-negative requirement.
     ///
@@ -339,7 +339,7 @@ pub struct FillPrefix<R, C, T: Add + Sub>:
             p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + x
             next += 1
 
-    /// The sum of everything above row boundary `r` and left of column boundary `c`; zero when
+    /// The sum of everything above row cut `r` and left of column cut `c`; zero when
     /// either cut is the first.
     ///
     /// cost: \(O(1)\)
@@ -414,7 +414,7 @@ pub struct Prefix<R, C, T: Add + Sub>:
         let p: [R.cuts, C.cuts]T = T.zero
         FillPrefix<R, C, T>(p, rev, if rev: R.count * C.count - 1 else: 0)
 
-    /// The sum of everything above row boundary `r` and left of column boundary `c`; zero when
+    /// The sum of everything above row cut `r` and left of column cut `c`; zero when
     /// either cut is the first.
     ///
     /// cost: \(O(1)\)

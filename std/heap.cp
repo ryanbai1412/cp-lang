@@ -320,7 +320,7 @@ pub struct ErasableHeap<T>:
     ///
     /// One copy goes, even when several are present. The copy leaves at once as far as `len`,
     /// `peek` and `pop` can see; its storage is freed when it would reach the top. Removing a
-    /// value that is not present corrupts the heap: debug builds trap when they find such a
+    /// value that is not present corrupts the heap: checked builds trap when they find such a
     /// value surfacing.
     ///
     /// cost: \(O(\log n)\)

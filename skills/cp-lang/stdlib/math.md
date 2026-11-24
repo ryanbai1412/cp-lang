@@ -129,7 +129,7 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `fn mod_log(a: Int, b: Int, m: Int) -> ?Int` — \(O(\sqrt m)\); The least `x >= 0` with `a^x = b (mod m)`, or `None` if there is None.; traps: when `m < 1`
 - `fn mod_sqrt(a: Int, p: Int) -> ?Int` — \(O(\log^2 p)\); A square root `x` in `0..p` with `x * x = a (mod p)` for prime `p`, or `None` if `a` is a quadratic non-residue (Tonelli-Shanks).; traps: when `p` is not prime
 - `fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int` — \(O(\log m)\); The sum of `(a * i + b) / m` over `i` in `0..n`, with floor (Euclidean) division, by the Euclid-like reduction.; traps: when `n < 0` or `m < 1`, or the sum overflows
-- `fn primes_in(lo: Int, hi: Int) -> List<Int>` — \(O((\mathit{hi} - \mathit{lo}) \log \log \mathit{hi} + \sqrt \mathit{hi})\); Every prime in `lo..hi`, by a segmented sieve; `[]` when the range is empty or below 2.
+- `fn primes_in(lo: Int, hi: Int) -> List<Int>` — \(O((\mathit{hi} - \mathit{lo}) \log \log \mathit{hi} + \sqrt \mathit{hi})\); Every prime in `lo..hi`, sieved block by block; `[]` when the range is empty or below 2.
 - `fn prime_count(n: Int) -> Int` — \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory; The number of primes `<= n` (Lucy_Hedgehog); 0 for `n < 2`.
 - `fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: Int)` — \(O(\sqrt n)\); Each distinct floor quotient `q = n / i` for `i` in `from..=n`, with the half-open range `lo..hi` of the `i` that give it.; traps: when `from < 1`
 - `fn each_divisor(x: Int) -> yields Int` — \(O(x^{1/4} + d(x))\) expected; Each positive divisor of `x >= 1`, from `factor(x)`, without building a list.; traps: when `x < 1`

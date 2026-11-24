@@ -552,7 +552,7 @@ pub fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K>(self: A, b: B, by:
         yield b.nth(j)
         j += 1
 
-/// \(O(1)\) per window. Borrowed length-`k` sliding slice views, left to right. Nothing when `k > self.len`.
+/// \(O(1)\) per window. Lent length-`k` sliding slice views, left to right. Nothing when `k > self.len`.
 ///
 /// cost: \(O(1)\) per window
 /// empty: `let a: List<Int> = []; a.windows(2).count() == 0`
@@ -563,7 +563,7 @@ pub fn windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
     assert k >= 1, "a window holds at least one element"
     for i in 0..self.len - k + 1: yield piece(self, i, i + k)
 
-/// \(O(1)\) per chunk. Borrowed non-overlapping slice views of length `k` (the last may be shorter).
+/// \(O(1)\) per chunk. Lent non-overlapping slice views of length `k` (the last may be shorter).
 ///
 /// cost: \(O(1)\) per chunk
 /// empty: `let a: List<Int> = []; a.chunks(2).count() == 0`
@@ -1023,7 +1023,7 @@ pub fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>):
 /// non-empty pieces between consecutive cuts, with `piece[p]` the `Range<D>` that piece covers.
 ///
 /// The range's own ends always count and repeated cuts drop; pieces come in order. It is coordinate compression for
-/// intervals: a segment tree over `P` stores `piece[p].len`, and no +1/-1 converts back.
+/// pieces: a segment tree over `P` stores `piece[p].len`, and no +1/-1 converts back.
 /// \(O(k \log k)\) for k cuts.
 ///
 /// cost: \(O(k \log k)\) for k cuts
@@ -1572,7 +1572,7 @@ impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
     fn at(self, i: D) -> (D, T) = (i, src.at(i))
     @get fn keys(self) -> Range<D> = src.keys
 
-/// \(O(1)\) to make. `s[r]`: a borrowed view of `s` over the range `r`. Every slice keeps its
+/// \(O(1)\) to make. `s[r]`: a lent view of `s` over the range `r`. Every slice keeps its
 /// source's keys: `a[l..=r][i]` is `a[i]` and `i` must lie in `l..=r`; for a `List` or `Str`,
 /// `s[2..5][3]` is `s[3]` and `s[2..5][0]` traps. `w.first`, `w.nth(k)` and `w.rebase()` give
 /// offsets. Writable through a `var` source; the source's length can't change while it is alive.

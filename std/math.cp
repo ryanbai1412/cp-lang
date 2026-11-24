@@ -1122,7 +1122,7 @@ pub fn floor_sum(n: 0.., m: Int, a: Int, b: Int) -> Int:
         swap(mut den, mut slope)
     total
 
-/// Every prime in `lo..hi`, by a segmented sieve; `[]` when the range is empty or below 2.
+/// Every prime in `lo..hi`, sieved block by block; `[]` when the range is empty or below 2.
 ///
 /// cost: \(O((\mathit{hi} - \mathit{lo}) \log \log \mathit{hi} + \sqrt \mathit{hi})\)
 /// order: ascending; a new `List`, keyed from 0

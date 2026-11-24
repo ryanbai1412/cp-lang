@@ -14,15 +14,15 @@ Fields: `t: List<T>`.
 
 - `fn new(a: ?[D]T = None) -> Fenwick<D, T>` — \(O(\lvert D \rvert)\) time; memory |D| + 1 values; A Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
 - `fn add(mut self, i: D, x: T)` — \(O(\log \lvert D \rvert)\); Add `x` to the value at position `i`: `a[i] += x`.; traps: when `i` is outside `D`
-- `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum of every position left of the boundary `b`.; traps: never (`b` is a cut of `D` by type)
+- `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum of every position left of the cut `b`.; traps: never (`b` is a cut of `D` by type)
 - `fn fold(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum over the positions of `r`: `prefix(r.r) - prefix(r.l)`.; traps: when a non-empty `r` reaches outside `D`
-- `fn first_ge(self, target: Int) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree; `None` when even the whole sum is below `target`.; traps: never (negative values give an unspecified cut, not a trap)
+- `fn first_ge(self, target: Int) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The smallest cut `b` with `prefix(b) >= target`, by binary lifting over the tree; `None` when even the whole sum is below `target`.; traps: never (negative values give an unspecified cut, not a trap)
 - `fn kth(self, k: Int) -> ?D` — \(O(\log \lvert D \rvert)\); The `k`-th item counting from 1, when position `d` holds `a[d]` items: the first `d` with `prefix(d.r) >= k`, or `None` when fewer than `k` items exist in total.; traps: when `k < 1` (negative values give an unspecified position, not a trap)
 - `fn get(self, i: D) -> T` — \(O(\log \lvert D \rvert)\); The current value at position `i`: `sum(i..=i)`.; traps: when `i` is outside `D`
 - `fn set(mut self, i: D, x: T)` — \(O(\log \lvert D \rvert)\); Assign `a[i] = x`, by adding the difference `x - get(i)`; also the write-through place for `f[i] = x`.; traps: when `i` is outside `D`
 - `@get fn all(self) -> T` — \(O(1)\); The sum of every position of `D`, kept current by `add`, `set` and `clear`.
-- `fn suffix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum of every position right of the boundary `b`: `all - prefix(b)`.
-- `fn first_gt(self, target: Int) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The smallest boundary `b` with `prefix(b) > target`, or `None` when the whole sum is at most `target`.; traps: never (negative values give an unspecified cut, not a trap)
+- `fn suffix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum of every position right of the cut `b`: `all - prefix(b)`.
+- `fn first_gt(self, target: Int) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The smallest cut `b` with `prefix(b) > target`, or `None` when the whole sum is at most `target`.; traps: never (negative values give an unspecified cut, not a trap)
 - `fn clear(mut self)` — \(O(\lvert D \rvert)\); Reset every value to zero, keeping the domain and the allocation.
 
 ## `struct Fenwick2D<R, C, T: Add + Sub>`
@@ -57,7 +57,7 @@ Fields: `base: List<Int>`, `b1: List<Int>`, `b2: List<Int>`.
 
 - `fn new(a: ?[D]Int = None) -> RangeFenwick<D>` — \(O(\lvert D \rvert)\) time; memory 3(|D| + 1) values; A range-add, range-sum tree over `D`: all zeros, or holding the values of `a` when given.
 - `fn add(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\); Add `x` to every position of `r`.; traps: when a non-empty `r` reaches outside `D`
-- `fn prefix(self, b: Cut<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum of every position left of the boundary `b`, adds included.; traps: never (`b` is a cut of `D` by type)
+- `fn prefix(self, b: Cut<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum of every position left of the cut `b`, adds included.; traps: never (`b` is a cut of `D` by type)
 - `fn fold(self, r: Range<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
 - `fn clear(mut self)` — \(O(\lvert D \rvert)\); Reset every value to zero, keeping the domain and the allocation.
 
@@ -69,7 +69,7 @@ Fields: `t: List<T>`.
 
 - `fn new(a: ?[D]T = None) -> XorFenwick<D, T>` — \(O(\lvert D \rvert)\) time; memory |D| + 1 values; A xor Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
 - `fn add(mut self, i: D, x: T)` — \(O(\log \lvert D \rvert)\); Xor `x` into the value at position `i`: `a[i] ^= x`.; traps: when `i` is outside `D`
-- `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor of every position left of the boundary `b`.; traps: never (`b` is a cut of `D` by type)
+- `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor of every position left of the cut `b`.; traps: never (`b` is a cut of `D` by type)
 - `fn xor(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
 
 ## `struct SparseFenwick2D<T: Add + Sub>`

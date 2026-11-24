@@ -2,7 +2,7 @@
 
 # std.range
 
-Ranges of positions: boundary cuts, halving, binary search and the cyclic `RingRange`. Nothing here imports another std module, so `seq`, `prefix` and every other module can use it.
+Ranges of positions: their end cuts, halving, binary search and the cyclic `RingRange`. Nothing here imports another std module, so `seq`, `prefix` and every other module can use it.
 
 In prelude (no `use` needed): `RingRange`.
 
@@ -20,8 +20,8 @@ A run of positions of `D` read cyclically, possibly wrapping past the last posit
 
 ## Functions
 
-- `@get fn l<D>(self: Range<D>) -> Cut<D>` — \(O(1)\); Left boundary cut of a range (valid even when empty).
-- `@get fn r<D>(self: Range<D>) -> Cut<D>` — \(O(1)\); Right boundary cut of a range (valid even when empty).
+- `@get fn l<D>(self: Range<D>) -> Cut<D>` — \(O(1)\); Left cut of a range (valid even when empty).
+- `@get fn r<D>(self: Range<D>) -> Cut<D>` — \(O(1)\); Right cut of a range (valid even when empty).
 - `fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>)` — \(O(1)\)
 - `@get fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)` — \(O(1)\) to make, \(O(1)\) per pair, nothing allocated; Every way to cut the range into two non-empty pieces, as `(left, right)` with `left.r == right.l`.
 - `@get fn mid<D>(self: Range<D>) -> Cut<D>` — \(O(1)\)

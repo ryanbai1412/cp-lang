@@ -2766,7 +2766,7 @@ pub struct Trie<A>:
     /// example: `Trie<Char>().root == 0`
     @get pub fn root(self) -> Int = 0
 
-    /// The number of nodes, the root included: node ids are `0..nodes`, so a per-node table has
+    /// The number of nodes, the root included: nodes are numbered `0..nodes`, so a per-node table has
     /// this length. `remove` keeps nodes, so this never shrinks except by `clear`.
     ///
     /// cost: \(O(1)\)

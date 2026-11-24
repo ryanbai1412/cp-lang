@@ -109,7 +109,7 @@ Binary lifting over a fixed forest given by parent links, each carrying a value 
 Fields: `jmp: List<[V]?V>`, `val: List<[V]T>`.
 
 - `fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T>` — \(O(n \log n)\) time and memory; Binary lifting over the forest `par`: `par[v]` is `v`'s parent with the value on the edge to it, `None` at a root.; traps: when the parent links have a cycle
-- `fn of(next: V -> ?V) -> Lift<V, ()>` — \(O(n \log n)\) time and memory, n calls of `next`; Lifting over any partial successor function, such as "the next interval a greedy picks".; traps: when the links have a cycle
+- `fn of(next: V -> ?V) -> Lift<V, ()>` — \(O(n \log n)\) time and memory, n calls of `next`; Lifting over any partial successor function, such as "the next range a greedy picks".; traps: when the links have a cycle
 - `fn climb(self, v: V, ok: V -> Bool) -> (steps: Int, at: V)` — \(O(\log n)\) calls of `ok`; Climbs from `v` while the next vertex up satisfies `ok`, returning how many edges were climbed and where it stopped.
 - `fn parent(self, v: V) -> ?V` — \(O(1)\); The parent of `v`, or `None` at a root.
 - `fn depth(self, v: V) -> Int` — \(O(1)\); The number of edges from `v` up to its root.
@@ -178,7 +178,7 @@ A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`,
 
 ## `struct PermTree<I, V, Node>`
 
-The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node covers a run of positions, leaves are single positions, a node's children split its run in two, and the values of every node but a `Partial` one form an interval.
+The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node covers a run of positions, leaves are single positions, a node's children split its run in two, and the values of every node but a `Partial` one form a run of consecutive values.
 
 Fields: `l: [Node]Node`, `last: [Node]I`, `lo: [Node]V`, `hi: [Node]V`.
 

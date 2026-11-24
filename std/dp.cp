@@ -30,10 +30,10 @@ pub struct Line(pub k: Int, pub m: Int):
 /// The lower (`LiChao(min, over: 0..=1e9)`) or upper (`max`) envelope of lines over the integer
 /// coordinates `over`. A line is anything with `at(self, x: Int) -> K`, so a struct whose `at`
 /// returns `(cost, used)` breaks ties by its second field with the same tree. Law: two lines cross
-/// at most once on `xs`. `add` is \(O(\log n)\) for a whole line and \(O(\log^2 n)\) on a segment
+/// at most once on `xs`. `add` is \(O(\log n)\) for a whole line and \(O(\log^2 n)\) on a range
 /// (`on: lo..=hi`), `at` and `line_at` \(O(\log n)\), for n = `xs.len`; memory is
 /// \(O(\mathit{lines})\) cells, allocated as lines arrive. \(O(\log n)\) per `at`, \(O(\log n)\)
-/// per whole-line `add`, \(O(\log^2 n)\) on a segment.
+/// per whole-line `add`, \(O(\log^2 n)\) on a range.
 pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     lines: List<?L>
     // a cell's children; 0 means no cell, since the root is no cell's child
@@ -65,7 +65,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
         (lines, left, right) = ([None], [0], [0])
 
     /// The best value at `x` over every line covering `x`, as chosen by `pick`, or `None` when no line
-    /// covers `x` (nothing added yet, or only segments that miss `x`).
+    /// covers `x` (nothing added yet, or only lines whose range misses `x`).
     ///
     /// cost: \(O(\log n)\) for n = `over.len`
     /// ties: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 4)); t.at(2) == Some(2)`
@@ -125,7 +125,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// Law: any two lines added cross at most once on `over` (true for straight lines, and for `at`
     /// functions whose difference changes sign at most once).
     ///
-    /// cost: \(O(\log n)\) for a whole line, \(O(\log^2 n)\) on a segment, for n = `over.len`; at most one new cell per level
+    /// cost: \(O(\log n)\) for a whole line, \(O(\log^2 n)\) on a range, for n = `over.len`; at most one new cell per level
     /// empty: `var t = LiChao(max, over: 0..=10); t.add(Line(0, 5), on: 3..3); t.at(3) == None`
     /// traps: when `on` reaches outside `over`
     /// example: `var t = LiChao(max, over: 0..=10); t.add(Line(0, 5), on: 2..=4); t.at(3) == Some(5) and t.at(5) == None`
@@ -725,7 +725,7 @@ pub struct MonotoneHull<P: Ord>(pick: (Int, Int) -> Int = min):
 /// \(O(\log n)\) amortized per `add`, \(O(\log n)\) per `at`.
 /// The convex hull trick with lines in any order and queries at any `x`,
 /// no coordinate range needed (KACTL's line container). Use `LiChao` for
-/// segment adds or non-line functions.
+/// adds on a range or non-line functions.
 pub struct LineContainer(pick: (Int, Int) -> Int = min):
     // A max-hull treap keyed by slope; `min` stores negated lines. `ps[t]` is the last `x` at which
     // line `t` beats its successor, so queries descend by `ps` (KACTL's line container).

@@ -20,9 +20,9 @@ Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
 
 - `fn new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K>` — \(O(1)\); An empty envelope over the integer coordinates `over`, keeping at each `x` the value `pick` prefers (`min` for the lower envelope, `max` for the upper).; traps: when `over` is empty
 - `fn clear(mut self)` — \(O(1)\) amortized; Forget every line, keeping `pick` and `over`, so the tree can be reused (between test cases, say) without reallocating.
-- `fn at(self, x: Int) -> ?K` — \(O(\log n)\) for n = `over.len`; The best value at `x` over every line covering `x`, as chosen by `pick`, or `None` when no line covers `x` (nothing added yet, or only segments that miss `x`).; traps: when `x` is not in `over`
+- `fn at(self, x: Int) -> ?K` — \(O(\log n)\) for n = `over.len`; The best value at `x` over every line covering `x`, as chosen by `pick`, or `None` when no line covers `x` (nothing added yet, or only lines whose range misses `x`).; traps: when `x` is not in `over`
 - `fn line_at(self, x: Int) -> ?L` — \(O(\log n)\) for n = `over.len`; The line attaining `at(x)`, or `None` when no line covers `x`.; traps: when `x` is not in `over`
-- `fn add(mut self, line: L, on: ?Range<Int> = None)` — \(O(\log n)\) for a whole line, \(O(\log^2 n)\) on a segment, for n = `over.len`; at most one new cell per level; Add `line` on every coordinate of `over`, or only on the coordinates of `on` (`on: lo..=hi`).; traps: when `on` reaches outside `over`
+- `fn add(mut self, line: L, on: ?Range<Int> = None)` — \(O(\log n)\) for a whole line, \(O(\log^2 n)\) on a range, for n = `over.len`; at most one new cell per level; Add `line` on every coordinate of `over`, or only on the coordinates of `on` (`on: lo..=hi`).; traps: when `on` reaches outside `over`
 
 ## `struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K)`
 

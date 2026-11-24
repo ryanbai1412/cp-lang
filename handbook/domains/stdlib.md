@@ -147,7 +147,7 @@ for its purpose; this table copies those lines.
 | `spec` | Checking observations on small cases: is a table monotone, convex, unimodal or Monge, does a |
 | `strings` | String algorithms. They only compare elements, so they work on a `Str` |
 | `subset` | Subsets of a small domain as one machine word: the mask of mask DP with its domain kept. |
-| `timetree` | Offline segment tree over time (divide-and-conquer on life intervals). |
+| `timetree` | Offline segment tree over time (divide-and-conquer on life ranges). |
 | `tree` | Rooted trees: parents, subtree ranges, LCA, and path folds over one range structure. |
 | `window` | Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`). |
 

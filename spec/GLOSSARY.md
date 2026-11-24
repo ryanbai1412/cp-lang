@@ -8,8 +8,8 @@ spellings in the right column.
 |---|---|---|
 | domain | a finite index space: declared (`domain V = 1..=n`), an integer range, or a product/compressed/pair domain | index type, index space type |
 | position | an element of a domain, `V` | index (as a type name), node id |
-| cut | a gap between positions, `V.cuts`; `0..=count` many | boundary, fencepost |
-| piece | the positions between two cuts, a `Range<V>` | segment (except in segment trees), interval (except the `interval` module) |
+| cut | a gap between positions, `V.cuts`; `0..=count` many | boundary (except a shape's boundary in the `geometry` module), fencepost |
+| piece | the positions between two cuts, a `Range<V>` | segment (except in segment trees and the `geometry` module), interval (except the `interval` module and interval DP) |
 | key | the domain value a sequence is indexed by, `s.keys` | offset (for a key) |
 | `None`, `Some(x)` | the variants of `?T` | `none`, `some`, `null`, `nil` |
 | owned / lent | the two modes of every value; parameters are lent by default | borrowed, reference (as a mode) |

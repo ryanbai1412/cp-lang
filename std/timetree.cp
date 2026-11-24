@@ -1,4 +1,4 @@
-//! Offline segment tree over time (divide-and-conquer on life intervals).
+//! Offline segment tree over time (divide-and-conquer on life ranges).
 //!
 //! start: `cdq`, `TimeTree`, `offline_over`
 //! example: `var pairs = 0; cdq([1, 2, 3], on_cross: (l, r) => pairs += l.len * r.len); pairs == 3`
@@ -19,7 +19,7 @@ pub enum TimeStep:
     Undo
 
 /// Offline segment tree over time `[0, q)` holding events of type `E` active on half-open
-/// intervals `[lo, hi)`.
+/// ranges `[lo, hi)`.
 pub struct TimeTree<E>:
     pub q: Int
     size: Int
@@ -44,12 +44,12 @@ pub struct TimeTree<E>:
             next.push(head[u])
             head[u] = idx
 
-    /// Schedule `ev` to be active at every time slot in `lo..hi` (half-open). The interval is
+    /// Schedule `ev` to be active at every time slot in `lo..hi` (half-open). The range is
     /// stored on the \(O(\log q)\) segment-tree nodes that cover it, one copy of `ev` on each.
-    /// An empty interval (`lo >= hi`) schedules nothing.
+    /// An empty range (`lo >= hi`) schedules nothing.
     ///
     /// cost: \(O(\log q)\)
-    /// traps: when `lo < 0` or `hi > q` on a non-empty interval
+    /// traps: when `lo < 0` or `hi > q` on a non-empty range
     /// example: `var tt = TimeTree<Str>(2); tt.add_interval(0, 2, "e"); tt.steps().len == 4`
     pub fn add_interval(mut self, lo: 0.., hi: Int, ev: E):
         let ql = max(0, lo)
@@ -97,7 +97,7 @@ pub struct TimeTree<E>:
     /// `t` then emits `Query(t)`; leaving the node emits one `Undo` per `Apply` it emitted, so
     /// undos match applies in LIFO order. Children are visited left (earlier times) before right.
     ///
-    /// cost: \(O(q + m \log q)\) time and memory for `m` scheduled intervals
+    /// cost: \(O(q + m \log q)\) time and memory for `m` scheduled ranges
     /// empty: `TimeTree<Int>(0).steps() == []`
     /// order: DFS order; `Query(t)` appears once per `t`, in increasing `t`
     /// traps: never
@@ -144,7 +144,7 @@ pub struct TimeTree<E>:
     /// such a node it calls `undo(m)` once with the value its `mark()` returned. Nodes with no
     /// events call neither.
     ///
-    /// cost: \(O(q + m \log q)\) callback calls for `m` scheduled intervals, \(O(\log q)\) extra stack
+    /// cost: \(O(q + m \log q)\) callback calls for `m` scheduled ranges, \(O(\log q)\) extra stack
     /// empty: `TimeTree<Int>(0).run(mark: () => 0, apply: e => (), answer: t => t, undo: m => ()) == []`
     /// order: `[answer(0), ..., answer(q - 1)]`, indexed by time
     /// traps: never (callbacks may trap)
@@ -246,7 +246,7 @@ pub fn cdq<E>(events: List<E>, on_cross: (List<E>, List<E>) -> ()):
 /// cost: \(O(q + m \log q)\) callback calls for `m` items
 /// empty: `var calls = 0; let out = offline_over(2, List<Int>(), by: e => (0, 1), mark: () => 0, apply: e => calls += 1, answer: t => t + 1, undo: m => calls += 1); out == [1, 2] and calls == 0`
 /// order: `[answer(0), ..., answer(q - 1)]`, indexed by time
-/// traps: when an item's non-empty interval reaches outside `0..q`
+/// traps: when an item's non-empty range reaches outside `0..q`
 /// example: `offline_over(2, [], by: e => (0, 1), mark: () => 0, apply: e => (), answer: t => t + 1, undo: m => ()) == [1, 2]`
 pub fn offline_over<E, M, R>(
     q: Int,

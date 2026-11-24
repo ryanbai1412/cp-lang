@@ -1979,7 +1979,7 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
             k += 1
         Lift(op, identity, up, dep, jmp, val)
 
-    /// Lifting over any partial successor function, such as "the next interval a greedy picks".
+    /// Lifting over any partial successor function, such as "the next range a greedy picks".
     ///
     /// For example `Lift.of(i => first_from(iv[i].r))`. `None` ends a chain; the links must form a forest.
     /// Edge values are `()`, so `climb` and `ancestor` are what it is for.
@@ -2354,7 +2354,7 @@ pub struct PreferredPaths<V>:
     lc: [V]?V
     rc: [V]?V
     pa: [V]?V
-    /// The top vertex of each splay subtree's path segment: its leftmost node.
+    /// The top vertex of the path part each splay subtree holds: its leftmost node.
     pub hd: [V]V
     stk: List<V>
 
@@ -2926,8 +2926,8 @@ fn euler_tour_trees_match_a_brute_forest():
 
 /// How a permutation-tree node joins its two children `l` (earlier positions) and `r`.
 /// `Incr`: `r`'s values sit just above `l`'s; `Decr`: just below; `Partial`: the union is
-/// not an interval on its own and only closes further up; `Full`: `r` fills the gaps of a
-/// `Partial` `l`, closing an interval in neither order.
+/// not a run of consecutive values on its own and only closes further up; `Full`: `r` fills the gaps of a
+/// `Partial` `l`, closing a run in neither order.
 pub enum PermKind = Leaf | Incr | Decr | Partial | Full
 /// A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`, or
 /// `Inner(l, r, kind)` with its two children and how they join.
@@ -2935,7 +2935,7 @@ pub enum PermNode<I, N>: Leaf(i: I), Inner(l: N, r: N, kind: PermKind)
 
 /// The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node
 /// covers a run of positions, leaves are single positions, a node's children split its run in
-/// two, and the values of every node but a `Partial` one form an interval. Nodes have their own
+/// two, and the values of every node but a `Partial` one form a run of consecutive values. Nodes have their own
 /// domain `t.Node` of 2n - 1 members; `kind`, `first`, `last`, `lo` and `hi` are arrays over it.
 /// Built in \(O(n)\) by one stack pass.
 pub struct PermTree<I, V, Node>:

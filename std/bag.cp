@@ -408,9 +408,9 @@ pub struct SortedBag<K>:
         -1
 
     /// Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `None`.
-    /// Checks monotonicity at the boundary. \(O(\log n)\) expected.
+    /// Checks monotonicity at the cut where `ok` turns. \(O(\log n)\) expected.
     ///
-    /// `ok` is called on keys along one root-to-leaf path. Debug builds check that `ok` is
+    /// `ok` is called on keys along one root-to-leaf path. Checked builds check that `ok` is
     /// false on the key just below the answer.
     ///
     /// cost: \(O(\log n)\) expected calls of `ok`
@@ -428,7 +428,7 @@ pub struct SortedBag<K>:
         unchecked: return if s >= 0 and ok(keys[s]): keys[s] else: None
 
     /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `None`.
-    /// Checks monotonicity at the boundary. \(O(\log n)\) expected.
+    /// Checks monotonicity at the cut where `ok` turns. \(O(\log n)\) expected.
     ///
     /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `SortedBag<Int>().last_true(x => true) == None`

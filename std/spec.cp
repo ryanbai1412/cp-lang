@@ -153,8 +153,8 @@ pub fn dnc_break(cost: (Int, Int) -> Int, n: Int) -> ?(Int, Int):
             ) > cost(a, c + 1) + cost(a + 1, c): return Some((a, c))
     None
 
-/// The first interval `[i, j)` of cuts `0..=n` whose best split `opt(i, j)` breaks Knuth's bound
-/// `opt(i, j - 1) <= opt(i, j) <= opt(i + 1, j)`, shortest intervals first, then by `i`; `None`
+/// The first range `[i, j)` of cuts `0..=n` whose best split `opt(i, j)` breaks Knuth's bound
+/// `opt(i, j - 1) <= opt(i, j) <= opt(i + 1, j)`, shortest ranges first, then by `i`; `None`
 /// when the bound holds (the law `knuth` relies on).
 ///
 /// `opt` is asked only for `j - i >= 2`.

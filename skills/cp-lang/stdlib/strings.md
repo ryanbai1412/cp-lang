@@ -190,7 +190,7 @@ Fields: `alpha: Count`, `next: List<Slot>`, `ends: List<Count>`, `pass: List<Cou
 
 - `fn new() -> Trie<A>` — \(O(\lvert A \rvert)\); An empty trie over the alphabet domain `A`: one root node `0`, no words.
 - `@get fn root(self) -> Int` — \(O(1)\); The root node, for the empty word: always `0`.
-- `@get fn nodes(self) -> Int` — \(O(1)\); The number of nodes, the root included: node ids are `0..nodes`, so a per-node table has this length.
+- `@get fn nodes(self) -> Int` — \(O(1)\); The number of nodes, the root included: nodes are numbered `0..nodes`, so a per-node table has this length.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of stored words, counting copies.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when no words are stored (every count is zero), whatever nodes remain.
 - `fn each(self) -> yields List<A>` — \(O(\mathit{nodes} \cdot \lvert A \rvert)\) plus the letters yielded; \(O(\mathit{nodes} \cdot \lvert A \rvert + \mathit{letters})\).

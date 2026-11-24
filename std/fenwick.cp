@@ -45,7 +45,7 @@ pub struct Fenwick<D, T: Add + Sub>:
             t[p] += x
             p += p & -p
 
-    /// The sum of every position left of the boundary `b`. For a position `v`, `prefix(v.r)`
+    /// The sum of every position left of the cut `b`. For a position `v`, `prefix(v.r)`
     /// includes `v` and `prefix(v.l)` does not; the start cut gives zero.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
@@ -71,7 +71,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     pub fn fold(self, r: Range<D>) -> T:
         self.prefix(r.r) - self.prefix(r.l)
 
-    /// The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree;
+    /// The smallest cut `b` with `prefix(b) >= target`, by binary lifting over the tree;
     /// `None` when even the whole sum is below `target`.
     ///
     /// A `target <= 0` gives the start cut. Correct only when every value is non-negative (prefix
@@ -139,7 +139,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     @get pub fn all(self) -> T:
         self.prefix(D.cuts.nth(D.count))
 
-    /// The sum of every position right of the boundary `b`: `all - prefix(b)`. The end cut gives zero.
+    /// The sum of every position right of the cut `b`: `all - prefix(b)`. The end cut gives zero.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: never
@@ -148,7 +148,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     pub fn suffix(self, b: Cut<D>) -> T:
         self.all - self.prefix(b)
 
-    /// The smallest boundary `b` with `prefix(b) > target`, or `None` when the whole sum is at most
+    /// The smallest cut `b` with `prefix(b) > target`, or `None` when the whole sum is at most
     /// `target`. For non-negative values.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
@@ -370,7 +370,7 @@ pub struct RangeFenwick<D>:
         self.bump(lo, x)
         if hi < D.count: self.bump(hi, -x)
 
-    /// The sum of every position left of the boundary `b`, adds included.
+    /// The sum of every position left of the cut `b`, adds included.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: never (`b` is a cut of `D` by type)
@@ -441,7 +441,7 @@ pub struct XorFenwick<D, T>:
             t[p] ^= x
             p += p & -p
 
-    /// The xor of every position left of the boundary `b`.
+    /// The xor of every position left of the cut `b`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: never (`b` is a cut of `D` by type)

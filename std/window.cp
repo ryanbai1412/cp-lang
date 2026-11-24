@@ -336,7 +336,7 @@ pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
 /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1)); u.push((V(0), V(2))); u.state.same(V(2), V(0))`
 pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = Undoing(state, add)
 
-/// A movable interval over `D` feeding a `Track`, for Mo and divide-and-conquer DP. Moving
+/// A movable range over `D` feeding a `Track`, for Mo and divide-and-conquer DP. Moving
 /// expands before shrinking. \(O(\lvert \mathit{change} \rvert)\) pushes and pops per move.
 pub struct Sweep<D, S>(pub state: S):
     lo: Int
@@ -359,7 +359,7 @@ pub struct Sweep<D, S>(pub state: S):
     ///
     /// Moving expands before shrinking, in this order: grow the right end (push each new position,
     /// increasing), grow the left end (push, decreasing), shrink the right end (pop, decreasing),
-    /// shrink the left end (pop, increasing). The state never sees a negative-length interval, but
+    /// shrink the left end (pop, increasing). The state never sees a negative-length range, but
     /// growing on the left and shrinking on the right touch the "wrong" end of the `Track`, so as
     /// with Mo the state's answer must ignore order.
     ///
@@ -390,7 +390,7 @@ pub struct Sweep<D, S>(pub state: S):
             state.pop(D.nth(lo))
             lo += 1
 
-    /// The current interval: the positions whose pushes the state holds.
+    /// The current range: the positions whose pushes the state holds.
     ///
     /// cost: \(O(1)\)
     /// traps: never
