@@ -17,7 +17,7 @@ Fields: `in_arc: [V]?A`.
 - `fn try_from_parents(par: [V]?V) -> ?Rooted<V, _, _>` — \(O(n)\); `from_parents` for parents that may not form a forest: `None` when they have a cycle.
 - `fn forest(next: Next<V>, from: List<V> = []) -> Rooted<V, _, _>` — \(O(n + m)\); A spanning forest: walks `from` as `dfs` does, skipping a root already reached, then roots each unreached vertex in `V` order, so `from: []` spans every component (decision 451).; traps: when `V` is empty
 - `@get fn roots(self) -> yields V` — \(O(1)\) to make, \(O(1)\) per root; The roots in the order given: one for `new`, one per tree for `forest`, key order for `from_parents`.
-- `@get fn order(self) -> List<V>` — \(O(1)\); the list is the tree's own breadth-first order; Every vertex, parents before children: breadth-first from the roots, each vertex's children in child order.
+- `@get fn order(self) -> List<V>` — \(O(n)\); copies the stored breadth-first order, which `t.bfs` reads in place; Every vertex, parents before children: breadth-first from the roots, each vertex's children in child order.
 - `fn pos(self, v: V) -> Pre` — \(O(1)\); The position of `v` in this tree's own preorder domain `t.Pre`; the inverse of `at`.
 - `fn parent(self, v: V) -> ?V` — \(O(1)\); The parent of `v`; `None` at a root.
 - `fn up_arc(self, v: V) -> ?A` — \(O(1)\); The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost` on a tree read with a `cost` field); `None` at a root.
@@ -34,7 +34,7 @@ Fields: `in_arc: [V]?A`.
 - `fn up<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]T` — \(O(n)\) calls of `lift`, `op` and `finish`; A bottom-up tree DP: `out[v] = finish(fold with op of lift(out[c], c, v) over children c, v)`.
 - `fn reroot<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]T` — \(O(n)\) calls of `lift` and `finish`, \(O(n)\) calls of `op`; [`up`] for every root at once: `out[v] = finish(fold with op of lift(out[c], c, v) over neighbours c, v)`, where `out[c]` is `c`'s answer with the tree rooted at `v`.
 - `fn shapes(self) -> (domain Shape, of: [V]Shape)` — \(O(n \log n)\); The isomorphism class of every subtree: `of[a] == of[b]` exactly when the subtrees of `a` and `b` are the same rooted tree up to reordering children.
-- `@get fn subtree_sizes(self) -> [V]Int` — \(O(1)\); a view of the stored sizes; The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
+- `@get fn subtree_sizes(self) -> [V]Int` — \(O(n)\); builds the array, while `t.size(v)` reads one size in \(O(1)\); The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
 - `fn centroid(self) -> V` — \(O(\mathit{depth})\); A centroid of the tree holding `t.root`: a vertex whose removal leaves no piece of more than half its vertices.
 - `fn centroids(self) -> List<V>` — \(O(\mathit{depth})\); Every centroid of the tree holding `t.root`, one or two.
 - `@get fn tour(self) -> yields Visit<V, V>` — \(O(1)\) to make, \(O(n)\) to walk; The enter/exit Euler tour, as the `Visit` events of `std.graph.dfs`.
