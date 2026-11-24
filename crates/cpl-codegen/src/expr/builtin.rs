@@ -109,7 +109,9 @@ impl<'p> Emitter<'p> {
                 self.need("bits");
                 Code::primary(format!("cpl::clz({})", text(0)))
             }
-            Builtin::AxisLen => Code::primary(format!("{}.n[{}]", codes[0].at(PRIMARY), text(1))),
+            Builtin::AxisLen => {
+                Code::primary(format!("((ll){}.n[{}])", codes[0].at(PRIMARY), text(1)))
+            }
             Builtin::BitWidth => {
                 self.need("bits");
                 Code::primary(format!("cpl::bit_width({})", text(0)))

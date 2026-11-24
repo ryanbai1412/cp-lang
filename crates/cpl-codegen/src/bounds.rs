@@ -436,7 +436,7 @@ impl<'p> Emitter<'p> {
             for (d, dim) in dims.iter().enumerate() {
                 match dim {
                     Dim::Slot(min, max) => bad.push(format!(
-                        "(ll)({lo}) + {min} < 0 || {last} + {max} >= {g}.n[{d}]"
+                        "(ll)({lo}) + {min} < 0 || {last} + {max} >= (ll){g}.n[{d}]"
                     )),
                     Dim::Fixed(e) => {
                         let at = self.expr(e).text;

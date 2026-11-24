@@ -72,12 +72,14 @@ template <class O, std::enable_if_t<!std::is_lvalue_reference<O>::value, int> = 
 // An array with K dimensions, stored flat in row-major order.
 template <class T, int K> struct Grid {
     std::vector<T> d;
-    ll n[K] = {};
-    template <class... I> size_t at(I... i) const { ll ix[K] = {(ll)i...}; ll p = 0; for (int k = 0; k < K; k++) p = p * n[k] + ix[k]; return (size_t)p; }
+    // size_t, not ll: a store to an `ll` cell can't alias the sizes, so a
+    // loop over cells keeps them in registers and can vectorise.
+    size_t n[K] = {};
+    template <class... I> size_t at(I... i) const { size_t ix[K] = {(size_t)(ll)i...}; size_t p = 0; for (int k = 0; k < K; k++) p = p * n[k] + ix[k]; return p; }
     template <class... I> T& operator()(I... i) { return d[at(i...)]; }
     template <class... I> const T& operator()(I... i) const { return d[at(i...)]; }
     // Indexed by an `Int` that nothing has proved in range.
-    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}, p = 0; bool bad = 0; for (int k = 0; k < K; k++) bad |= (unsigned long long)ix[k] >= (unsigned long long)n[k], p = p * n[k] + ix[k]; if (bad) fail(\"index outside the array\"); return p; }
+    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}, p = 0; bool bad = 0; for (int k = 0; k < K; k++) bad |= (unsigned long long)ix[k] >= (unsigned long long)n[k], p = p * (ll)n[k] + ix[k]; if (bad) fail(\"index outside the array\"); return p; }
     template <class... I> T& ck(I... i) { return d[in(i...)]; }
     template <class... I> const T& ck(I... i) const { return d[in(i...)]; }
     bool operator==(const Grid& o) const { return d == o.d; }
@@ -85,7 +87,7 @@ template <class T, int K> struct Grid {
 };
 template <class T, int K> Grid<T, K> grid(std::array<ll, K> n, const T& fill) {
     Grid<T, K> g; ll cells = 1;
-    for (int k = 0; k < K; k++) { g.n[k] = n[k]; cells *= n[k]; }
+    for (int k = 0; k < K; k++) { g.n[k] = (size_t)n[k]; cells *= n[k]; }
     g.d.assign((size_t)cells, fill);
     return g;
 }

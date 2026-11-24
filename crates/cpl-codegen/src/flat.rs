@@ -46,7 +46,9 @@ pub(crate) fn cell(b: &str, at: &[String], spans: &[usize]) -> String {
     let mut flat = at[0].clone();
     let mut dim = spans[0];
     for (code, &span) in at.iter().zip(spans).skip(1) {
-        let size: Vec<String> = (dim..dim + span).map(|k| format!("{b}.n[{k}]")).collect();
+        let size: Vec<String> = (dim..dim + span)
+            .map(|k| format!("(ll){b}.n[{k}]"))
+            .collect();
         flat = format!("({flat}) * {} + {code}", size.join(" * "));
         dim += span;
     }
