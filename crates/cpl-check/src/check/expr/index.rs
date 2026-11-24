@@ -154,6 +154,22 @@ impl<'a> Checker<'a> {
         self.index_typed(expr, base, base_ty, indices, false)
     }
 
+    /// Marks each bare `..` among `places` as the whole of its domain.
+    pub(super) fn full_ranges<'e>(&mut self, places: impl Iterator<Item = &'e Expr>) {
+        for e in places {
+            if matches!(
+                e.kind,
+                ExprKind::Range {
+                    lo: None,
+                    hi: None,
+                    ..
+                }
+            ) {
+                self.full_ranges.push(e.span);
+            }
+        }
+    }
+
     /// `a[l..r by k]`: a slice is contiguous, so a step names a walk (R01.8.5).
     fn stepped_slice(&mut self, base: &Expr, indices: &[Expr]) -> bool {
         let Some(range) = indices
@@ -193,6 +209,7 @@ impl<'a> Checker<'a> {
             return Ty::Error;
         }
         let prev_piece = std::mem::replace(&mut self.expected_piece, true);
+        self.full_ranges(indices.iter());
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
         self.expected_piece = prev_piece;
         if let (Ty::Param(param), [_]) = (&base_ty, indices) {

@@ -284,6 +284,7 @@ impl<'a> Checker<'a> {
                 if let ExprKind::Field { base, .. } = &callee.kind {
                     self.method_call_on_param(base);
                 }
+                self.full_ranges(args.iter().map(|a| &a.value));
                 let ty = self.call(expr, callee, args);
                 self.member_for_call(expr, callee, args);
                 ty

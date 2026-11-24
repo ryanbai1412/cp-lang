@@ -436,7 +436,7 @@ but the cut is what both shapes share, and `halve` reads as its definition).
   `Range<V>` is expected (124): literal typing, not a conversion; no implicit
   `Into`. A position-only reading was rejected: it broke
   `for j in ..i: dp[j] + cost(j..i)`. (R04.8.5)
-- `..i`, `..=i`, `i..` are open-ended ranges over the end's domain; bare `..` only inside `[...]`. (R04.8.6)
+- `..i`, `..=i`, `i..` are open-ended ranges over the end's domain; bare `..` only as an index or an argument (`a[..]`, `t.fold(..)`), whose place names the domain; elsewhere it is E0302. (R04.8.6)
 - `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `None` at length <= 1. (R04.8.7)
 - Integer literals convert to positions and cuts of integer domains. (R04.8.8)
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes. (R04.8.9)

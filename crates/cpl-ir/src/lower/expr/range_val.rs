@@ -204,7 +204,8 @@ impl<'a> Lowerer<'a> {
                     )
                 }
                 _ => {
-                    self.unsupported(span, "an unbounded range value");
+                    let end = self.show(&l.ty);
+                    self.report(span, msgs::check::TYPE_MISMATCH_OPEN_RANGE_END, &[&end]);
                     self.err_expr(span)
                 }
             },
@@ -258,12 +259,13 @@ impl<'a> Lowerer<'a> {
                     )
                 }
                 _ => {
-                    self.unsupported(span, "an unbounded range value");
+                    let end = self.show(&r.ty);
+                    self.report(span, msgs::check::TYPE_MISMATCH_OPEN_RANGE_END, &[&end]);
                     self.err_expr(span)
                 }
             },
             (None, None) => {
-                self.unsupported(span, "a range with neither end");
+                self.report(span, msgs::check::TYPE_MISMATCH_FULL_RANGE, &[]);
                 self.err_expr(span)
             }
         }

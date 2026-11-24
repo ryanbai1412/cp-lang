@@ -355,7 +355,10 @@ match dir: L => -1, R => 1, U => 0, D => 0  // one-line match
 - **Ranges** `a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..` (the full range
   wherever a range is taken), steps `a..b by k`. A stepped range is a value like any range: it walks
   both ways (`(1..=n by 2).rev` starts from the last value it reaches) and
-  its `len`, `first` and `last` are \(O(1)\). (R01.8.4)
+  its `len`, `first` and `last` are \(O(1)\). An open range's end is an
+  `Int` or a domain value: `lo..` runs to `Int.MAX` or the end of `lo`'s
+  domain and `..hi` starts at 0 or the domain's first value, so `1.0..`
+  or `..'z'` is E0302. (R01.8.4)
 - **Indexing** `a[i]`, `g[r, c]` (never `g[r][c]`); `a[i]` on `[I, J]T`
   is the row place. A table whose cells are arrays takes the cell's index
   in the same brackets: `dp[r, c, k]` on `[R, C][K]T`. `a[l..r]` is a slice view keeping the source keys.

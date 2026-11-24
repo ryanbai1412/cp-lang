@@ -287,6 +287,24 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `lo..` runs to `Int.MAX` or the end of `lo`'s domain, and `..hi`
+    /// starts at 0 or the domain's first value (R01.8.4).
+    fn open_range_end(end: &Ty) -> bool {
+        match end {
+            Ty::Named { name, .. } => name == "Cut",
+            _ => matches!(
+                end,
+                Ty::Int
+                    | Ty::Range { .. }
+                    | Ty::Pos(_)
+                    | Ty::Param(_)
+                    | Ty::Assoc { .. }
+                    | Ty::Unknown
+                    | Ty::Error
+            ),
+        }
+    }
+
     /// A range runs between two ends of one domain, and `..=` ends at a
     /// position, never at a boundary.
     pub(super) fn range_ends(
@@ -297,6 +315,27 @@ impl<'a> Checker<'a> {
         lo_ty: &Option<Ty>,
         hi_ty: &Option<Ty>,
     ) {
+        match (lo_ty, hi_ty) {
+            (None, None) if !self.full_ranges.contains(&range.span) => {
+                if let Some(diag) =
+                    self.report(range.span, msgs::check::TYPE_MISMATCH_FULL_RANGE, &[])
+                {
+                    diag.help = Some("write the ends it runs between, as in `0..n`".into());
+                }
+                return;
+            }
+            (Some(end), None) | (None, Some(end)) if !Self::open_range_end(end) => {
+                if let Some(diag) = self.report(
+                    range.span,
+                    msgs::check::TYPE_MISMATCH_OPEN_RANGE_END,
+                    &[end],
+                ) {
+                    diag.help = Some("write both ends of the range".into());
+                }
+                return;
+            }
+            _ => {}
+        }
         let domain = |ty: &Option<Ty>| match ty {
             Some(Ty::Pos(d)) => Some(d.strip_suffix(".cuts").unwrap_or(d).to_string()),
             Some(Ty::Named { name, args }) if name == "Cut" => match args.as_slice() {

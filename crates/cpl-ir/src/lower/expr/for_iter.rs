@@ -347,13 +347,14 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Error => error(self),
                     _ => {
-                        self.unsupported(span, "a range without a start in a `for`");
+                        let end = self.show(&hi.ty);
+                        self.report(span, msgs::check::TYPE_MISMATCH_OPEN_RANGE_END, &[&end]);
                         error(self)
                     }
                 }
             }
             ast::ExprKind::Range { .. } => {
-                self.unsupported(span, "a range without both ends in a `for`");
+                self.report(span, msgs::check::TYPE_MISMATCH_FULL_RANGE, &[]);
                 error(self)
             }
             ast::ExprKind::Name(name)

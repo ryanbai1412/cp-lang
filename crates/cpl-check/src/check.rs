@@ -296,6 +296,9 @@ pub(crate) struct Checker<'a> {
     expected_bounds_range: bool,
     /// A `Range<V>` is expected here, so a half-open cut-ended literal is the piece.
     expected_piece: bool,
+    /// Where a bare `..` stands for the whole of a domain: an index or an
+    /// argument, whose place says which domain (R04.8.6).
+    full_ranges: Vec<Span>,
     in_call_callee: bool,
     /// Where the call being checked started recording types: its
     /// receiver's type is read back from there rather than inferred again.
@@ -388,6 +391,7 @@ impl<'a> Checker<'a> {
             lends: lends::Lends::default(),
             expected_bounds_range: false,
             expected_piece: false,
+            full_ranges: Vec::new(),
             in_call_callee: false,
             call_types_from: usize::MAX,
             iterating_range: false,
