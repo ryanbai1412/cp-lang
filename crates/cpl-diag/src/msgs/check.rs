@@ -4,6 +4,8 @@
 super::msgs! {
     A_SECOND_DIRECTIVE = UNEXPECTED_TOKEN, "a second `@!{}`";
     WITH_NOT_FIRST = WITH_NOT_FIRST, "a bare `with` line comes first in its block; indent what it covers under `with ...:`";
+    /// Decision 469: those default bodies were written for the trait's own default.
+    ASSOC_CHOICE_NEEDS_FNS = MISSING_IMPL, "`impl {} for {}` chooses `{}`, so it must write {}";
     FN_OVERLOAD = OVERLOAD_BY_TYPE, "a second `fn {}`: fns are not overloaded by their parameter types";
     DEFINED_TWICE = DUPLICATE_DEFINITION, "`{}` is already defined in this file";
     IMPORTED_TWICE = DUPLICATE_DEFINITION, "`{}` is already imported by `use` in this file";
