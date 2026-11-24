@@ -276,3 +276,18 @@ fn a_local_moved_into_a_narrowed_field_is_packed_on_the_way_in() {
     assert_eq!(decl(&code, "o"), "cpl::OptI32", "{code}");
     assert!(code.contains("cpl::OptI32(std::move(o))"), "{code}");
 }
+
+#[test]
+fn next_of_a_position_short_of_a_position_end_is_one_add() {
+    let cpp = cpp(
+        "let n: 2..=9 = read()\ndomain R = 0..n\nvar a: [R]Int = 0\nfor r in R:\n    a[r] = read()\n\
+         var s = 0\nfor r in R.first!..R.last!:\n    s += a[r.next!]\n\
+         for r1 in R:\n    for r2 in R:\n        if r1 < r2:\n            print(min(a[q.next!] for q in r1..r2)!)\n\
+         for r in R.first!..=R.last!:\n    print(r.next ?? r)\nfor r in R:\n    if r < R.last!:\n        s += a[r.next!]\nprint(s)\n",
+    );
+    assert!(cpp.contains("s = cpl::iadd(s, a[r_2 + 1])"), "{cpp}");
+    assert!(cpp.contains("a[q + 1]"), "{cpp}");
+    // A closed range reaches the last position, and `for r in R` ends at the
+    // domain's length, so their `next` keeps its check.
+    assert_eq!(cpp.matches("cpl::next_pos(r_").count(), 2, "{cpp}");
+}

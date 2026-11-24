@@ -838,6 +838,24 @@ impl<'p> Facts<'p> {
         }
     }
 
+    /// True when `e` is a position of a loop `for v in lo..hi` whose end
+    /// `hi` is itself a position of the same domain, so `v + 1 <= hi` is a
+    /// position too and `v.next` always exists.
+    pub fn next_exists(&self, fn_id: Option<usize>, e: &Expr) -> bool {
+        let (ExprKind::Local(slot), Ty::Pos(d)) = (&e.kind, &e.ty) else {
+            return false;
+        };
+        let v = self.local(fn_id, *slot);
+        let mut hi = match (self.stores(v), self.loop_hi.get(&v)) {
+            (1, Some(&(hi, false))) => hi,
+            _ => return false,
+        };
+        while let ExprKind::Cast(_, inner) = &hi.kind {
+            hi = inner;
+        }
+        hi.ty == Ty::Pos(*d)
+    }
+
     /// A loop variable's first value.
     pub(crate) fn loop_lo(&self, v: Var) -> Option<&'p Expr> {
         self.loop_lo.get(&v).copied()
