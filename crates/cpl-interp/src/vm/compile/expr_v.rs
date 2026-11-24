@@ -165,7 +165,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 dst
             }
-            ExprKind::Field(base, idx) => {
+            ExprKind::Field(base, idx) | ExprKind::Payload(base, _, idx) => {
                 let obj_v = self.compile_expr_v(base);
                 let dst = self.alloc_v();
                 self.emit(
@@ -601,7 +601,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let lv = self.compile_expr_v(lhs);
                 let is_some = self.alloc_i();
                 self.emit(
-                    Op::IsSomeV {
+                    Op::IsVariantI {
+                        tag: 1,
                         dst_i: is_some,
                         src_v: lv,
                     },

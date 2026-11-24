@@ -1565,13 +1565,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_i[dst as usize] = regs_i[a as usize] ^ regs_i[b as usize];
                 }
                 Op::FieldI { dst, obj_v, field } => {
-                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
-                        Value::Tuple(TupleVal::Boxed(fs)) => {
-                            ScalarKind::unbox_val(&fs[field as usize])
-                        }
-                        Value::Tuple(TupleVal::OneInt(v)) => *v,
-                        _ => 0,
-                    };
+                    // A one-Int tuple unboxes to its field.
+                    regs_i[dst as usize] = ScalarKind::unbox_val(match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => &fs[field as usize],
+                        Value::Enum(_, ps) => &ps[field as usize],
+                        v => v,
+                    });
                     if obj_v as usize >= chunk.num_local_v {
                         regs_v[obj_v as usize] = Value::Unit;
                     }

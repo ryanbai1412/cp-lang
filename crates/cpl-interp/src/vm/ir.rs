@@ -797,9 +797,12 @@ pub(crate) enum Op {
     RetUnit,
 
     // General V-channel optionals & sequence/range/bit/list ops
-    IsSomeV {
+    /// Whether `src_v` is variant `tag`: an enum's, or an optional's
+    /// `None` (0) or `Some` (1).
+    IsVariantI {
         dst_i: u16,
         src_v: u16,
+        tag: u32,
     },
     UnwrapV {
         dst_v: u16,

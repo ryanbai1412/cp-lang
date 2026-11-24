@@ -47,6 +47,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let val = match &regs_v[obj_v as usize] {
                     Value::Tuple(TupleVal::Boxed(fs)) => fs[field as usize].clone(),
                     Value::Tuple(TupleVal::OneInt(v)) => Value::Int(*v),
+                    Value::Enum(_, ps) => ps[field as usize].clone(),
                     _ => Value::Unit,
                 };
                 if obj_v as usize >= chunk.num_local_v {
@@ -1233,9 +1234,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 return Ok(Some(ExecExit::ReturnTuple));
             }
             Op::RetUnit => return Ok(Some(ExecExit::Return(Value::Unit))),
-            Op::IsSomeV { dst_i, src_v } => {
-                regs_i[dst_i as usize] =
-                    i64::from(!matches!(regs_v[src_v as usize], Value::Opt(OptVal::None)));
+            Op::IsVariantI { dst_i, src_v, tag } => {
+                regs_i[dst_i as usize] = i64::from(regs_v[src_v as usize].is_variant(tag));
             }
             Op::UnwrapV { dst_v, src_v } => {
                 let v = match &regs_v[src_v as usize] {

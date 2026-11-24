@@ -696,7 +696,7 @@ print(cuts, rcuts, yes(b != None), yes(n == None), yes(b == None), max(xs[0], xs
     // Only `xs.rev` (making the view) is left to the tree-walker.
     assert_eq!(count("ApplyV"), 1, "{ops:?}");
     assert_eq!(count("CutI"), 2, "{ops:?}");
-    assert_eq!(count("IsSomeV"), 3, "{ops:?}");
+    assert_eq!(count("IsVariantI"), 3, "{ops:?}");
     assert!(
         compiled.forwards.iter().any(Option::is_some),
         "`pair` is called through a closure"

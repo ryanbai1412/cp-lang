@@ -1435,7 +1435,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let src_v = self.compile_expr_v(inner);
                 let r_some = self.alloc_i();
                 self.emit(
-                    Op::IsSomeV {
+                    Op::IsVariantI {
+                        tag: 1,
                         dst_i: r_some,
                         src_v,
                     },

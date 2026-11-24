@@ -12,10 +12,7 @@ use cpl_ir::OrdHook;
 pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
     match &e.kind {
         ExprKind::Cmp(_, lhs, rhs) => vec![lhs, rhs],
-        ExprKind::Unary(_, x)
-        | ExprKind::Cast(_, x)
-        | ExprKind::IsVariant(x, _)
-        | ExprKind::Payload(x, ..) => vec![x],
+        ExprKind::Unary(_, x) | ExprKind::Cast(_, x) => vec![x],
         ExprKind::Tuple(items)
         | ExprKind::Variant(_, items)
         | ExprKind::Builtin(_, items)
@@ -86,8 +83,6 @@ pub(crate) fn applies(e: &Expr) -> bool {
             | ExprKind::Cast(..)
             | ExprKind::Tuple(_)
             | ExprKind::Variant(..)
-            | ExprKind::IsVariant(..)
-            | ExprKind::Payload(..)
     )
 }
 
@@ -222,16 +217,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
             ExprKind::Variant(tag, _) => Value::Enum(*tag as u32, Rc::new(vals)),
-            ExprKind::IsVariant(_, tag) => match operand_values(vals, span)? {
-                [Value::Enum(actual, _)] => Value::Bool(actual as usize == *tag),
-                _ => Value::Bool(false),
-            },
-            ExprKind::Payload(_, tag, index) => match operand_values(vals, span)? {
-                [Value::Enum(actual, payload)] if actual as usize == *tag => {
-                    payload[*index].clone()
-                }
-                _ => return bug(span, "payload of another variant"),
-            },
             ExprKind::Unary(op, _) => {
                 let [value] = operand_values(vals, span)?;
                 match (op, value) {

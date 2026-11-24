@@ -56,7 +56,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::RetV { .. }
             | Op::RetSmallTuple { .. }
             | Op::RetUnit
-            | Op::IsSomeV { .. }
+            | Op::IsVariantI { .. }
             | Op::UnwrapV { .. }
             | Op::UnwrapVI { .. }
             | Op::WrapSomeV { .. }

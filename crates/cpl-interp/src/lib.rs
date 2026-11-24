@@ -1113,14 +1113,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             | ExprKind::Cast(..)
             | ExprKind::Tuple(_)
             | ExprKind::Variant(..)
-            | ExprKind::IsVariant(..)
-            | ExprKind::Payload(..)
             | ExprKind::ReadFrom(..) => {
                 let vals = self.eval_operands(e)?;
                 self.apply(e, vals)?
             }
             ExprKind::Index(base, indices) => self.index(base, indices, span)?,
-            ExprKind::Field(base, index) => {
+            ExprKind::Field(base, index) | ExprKind::Payload(base, _, index) => {
                 // A field of a variable is read in place, without first
                 // copying the whole value.
                 let direct = match &base.kind {
@@ -1139,12 +1137,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             Some(field) => field,
                             None => return bug(span, "field of a value without fields"),
                         },
+                        Value::Enum(_, payload) => payload[*index].clone(),
                         _ => return bug(span, "field of a value without fields"),
                     },
                 }
             }
-            ExprKind::IsSome(value) => {
-                Value::Bool(matches!(self.eval(value)?, Value::Opt(opt) if opt.is_some()))
+            ExprKind::IsSome(value) | ExprKind::IsVariant(value, _) => {
+                let tag = match &e.kind {
+                    ExprKind::IsVariant(_, tag) => *tag as u32,
+                    _ => 1,
+                };
+                Value::Bool(self.eval(value)?.is_variant(tag))
             }
             ExprKind::Unwrap(value, _) => match self.eval(value)? {
                 Value::Opt(opt) => match opt.unwrap_owned() {

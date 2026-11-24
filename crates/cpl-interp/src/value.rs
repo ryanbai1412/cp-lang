@@ -67,10 +67,6 @@ impl OptVal {
         }
     }
 
-    pub fn is_some(&self) -> bool {
-        !matches!(self, OptVal::None)
-    }
-
     pub fn unwrap_owned(self) -> Option<Value> {
         match self {
             OptVal::None => None,
@@ -542,6 +538,18 @@ impl Value {
             Value::Array(a) => Some(&mut **Rc::make_mut(a)),
             _ => None,
         }
+    }
+
+    /// Whether this is variant `tag`: an enum's, or an optional's `None`
+    /// (0) or `Some` (1).
+    #[inline(always)]
+    pub fn is_variant(&self, tag: u32) -> bool {
+        let actual = match self {
+            Value::Enum(t, _) => *t,
+            Value::Opt(OptVal::None) => 0,
+            _ => 1,
+        };
+        actual == tag
     }
 
     pub fn int(&self) -> i64 {

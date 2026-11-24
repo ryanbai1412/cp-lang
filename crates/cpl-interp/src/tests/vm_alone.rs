@@ -417,3 +417,37 @@ print(hits, sum, total)
     assert_eq!(leaves.iter().filter(|&&l| l).count(), 2, "{leaves:?}");
     assert!(leaves.contains(&false), "{leaves:?}");
 }
+
+#[test]
+fn vm_matches_payload_variants_in_registers() {
+    let source = "\
+enum Slot:
+    Known(t: Int)
+    Pair(a: Int, b: List<Int>)
+    Empty
+
+fn species(s: Slot, mask: Int) -> Int:
+    match s:
+        Known(t) => t
+        Pair(a, b) => a + b.len + (mask >> a) & 1
+        Empty => -1
+
+let slots = [Known(4), Pair(1, [2, 3]), Empty, Known(-2)]
+print([species(s, 6) for s in slots])
+";
+    assert_eq!(vm_runs_alone(source, ""), "4 0 -1 -2\n");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let id = (0..program.fns.len()).find(|&id| program.fns[id].name.ends_with("species"));
+    let chunk = compiled.fns[id.expect("species")]
+        .as_ref()
+        .expect("on the VM");
+    let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
+    let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
+    assert_eq!(count("ApplyV"), 0, "{ops:?}");
+    assert_eq!(count("IsVariantI"), 3, "{ops:?}");
+}

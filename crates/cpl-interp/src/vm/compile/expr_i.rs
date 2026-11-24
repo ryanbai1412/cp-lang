@@ -98,14 +98,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 dst
             }
-            ExprKind::IsSome(inner) => {
+            ExprKind::IsSome(inner) | ExprKind::IsVariant(inner, _) => {
                 if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() {
                     let (_, s) = self.compile_expr_opt_i(inner);
                     s
                 } else {
                     let src_v = self.compile_expr_v(inner);
                     let dst_i = self.alloc_i();
-                    self.emit(Op::IsSomeV { dst_i, src_v }, span);
+                    let tag = match expr.kind {
+                        ExprKind::IsVariant(_, tag) => tag as u32,
+                        _ => 1,
+                    };
+                    self.emit(Op::IsVariantI { dst_i, src_v, tag }, span);
                     dst_i
                 }
             }
@@ -152,7 +156,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             {
                 self.compile_expr_i(base)
             }
-            ExprKind::Field(base, idx) => {
+            ExprKind::Field(base, idx) | ExprKind::Payload(base, _, idx) => {
                 if let ExprKind::Local(slot) = &base.kind {
                     if let SlotLoc::SmallTuple { base: b, len, .. } = self.slot_loc(*slot) {
                         if *idx < len as usize {
@@ -373,7 +377,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 };
                 let src_v = self.compile_expr_v(opt);
                 let some = self.alloc_i();
-                self.emit(Op::IsSomeV { dst_i: some, src_v }, span);
+                self.emit(
+                    Op::IsVariantI {
+                        dst_i: some,
+                        src_v,
+                        tag: 1,
+                    },
+                    span,
+                );
                 if src_v >= self.num_local_v {
                     self.emit(Op::ClearV { reg: src_v }, span);
                 }
