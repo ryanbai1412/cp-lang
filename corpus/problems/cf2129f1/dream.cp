@@ -33,7 +33,7 @@ fn build_masks() -> [MaxVal]Mask:
             for j in i + 1..order.len:
                 for k in j + 1..order.len:
                     let s: Mask = Set([order[i], order[j], order[k]])
-                    if s not in chosen and s.all(q => room[q] > 0): return Some(s)
+                    if s not in chosen and [q for q in s].all(q => room[q] > 0): return Some(s)
         None
     take(Set(no_queries))
     for a in Query: take(Set([a]))
