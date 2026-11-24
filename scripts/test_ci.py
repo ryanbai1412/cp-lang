@@ -358,8 +358,9 @@ class TailTest(unittest.TestCase):
         self.assertEqual(code, 0)
         conform = next(e for e in ev if e.split()[0].endswith("cpl-conform"))
         self.assertTrue(conform.endswith(" all --check"), conform)
+        make = next(e for e in ev if e.startswith("scripts/corpus.py make") or " scripts/corpus.py make" in e)
         order = [ev.index(e) for e in ("-m unittest scripts/test_ci.py", "cargo build -q -p cpl-cli -p cpl-conform",
-                                         "scripts/corpus.py make", conform)]
+                                         make, conform)]
         self.assertEqual(order, sorted(order))
         self.assertIn("check: conformance part passed in", out)
 
