@@ -466,18 +466,18 @@ fn sift_down<S: IndexedMut, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T
 /// order: non-decreasing by `by`; a new `List`, keyed from 0
 /// traps: never; unsorted inputs give an unspecified interleaving
 /// example: `merge_sorted([1, 3], [2, 3]) == [1, 2, 3, 3]`
-pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(a: A, b: B, by: T -> K = x => x) -> List<T>:
+pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(self: A, b: B, by: T -> K = x => x) -> List<T>:
     var out: List<T> = []
     var (i, j) = (0, 0)
-    while i < a.len and j < b.len:
-        if b.nth(j) < a.nth(i):
+    while i < self.len and j < b.len:
+        if by(b.nth(j)) < by(self.nth(i)):
             out.push(b.nth(j))
             j += 1
         else:
-            out.push(a.nth(i))
+            out.push(self.nth(i))
             i += 1
-    while i < a.len:
-        out.push(a.nth(i))
+    while i < self.len:
+        out.push(self.nth(i))
         i += 1
     while j < b.len:
         out.push(b.nth(j))
@@ -866,9 +866,9 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// order: increasing values, indexed by the fresh domain `C`
 /// traps: never
 /// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.index_of(30) == C.last!`
-pub fn compress<S: Seq, T: Ord>(all: S) -> (domain C, Compressed<C, T>):
+pub fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>):
     with lint(unproven_list_index: allow)
-    var raw: List<T> = all.collect()
+    var raw: List<T> = self.collect()
     raw.sort()
     var uniq: List<T> = []
     for x in raw:

@@ -307,8 +307,8 @@ Evidence: `[3, 1, 2].radix_sort()` is E0401 inside std on a literal.
 ### seq/U52: coordinate compression
 Need: map values to ranks `0..k`.
 Design: `compress(xs)` gives a domain and the map.
-Milestone: M1-critical. Status: partial
-Evidence: `xs.compress()` is E0203: the std fn's parameter is not `self`; the free form is program `spec/conformance/std-seq/compress-and-pieces.cp`.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u52-compress-method.cp`; the free form is program `spec/conformance/std-seq/compress-and-pieces.cp`.
 
 ## Sets of sorted values
 
@@ -329,8 +329,8 @@ Evidence: program `spec/conformance/std-seq/seq-u53-dedup-unsorted.cp`.
 ### seq/U54: merge two sorted sequences
 Need: merge step of a divide and conquer.
 Design: `a.merge_sorted(b, by:)`, `kway_merge(lists)`.
-Milestone: M1-critical. Status: gap
-Evidence: `merge_sorted` is E0201/E0203: not in the prelude and not a method.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u54-merge-sorted.cp`, which also checks that `by:` orders the merge.
 
 ### seq/U55: union, intersection, difference of sorted lists
 Need: common elements of two sorted lists.
@@ -362,15 +362,15 @@ Evidence: program `spec/conformance/std-seq/seq-u20-first-some.cp`.
 
 ### seq/U22: flat map, flatten and concat
 Need: each element expands to several.
-Design: `a.flat_map(f)`, `a.flatten()`, `a + b`, `a.chain(b)`.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u22-flat-map-concat.cp`; `a.chain(b)` is E0203: std's `chain(a, b)` has no `self`.
+Design: `a.flat_map(f)`, `a.flatten()`, `a + b`, `chain(a, b, ...)`; `chain` is free and variadic, like `min` (R07.7.4), and `a.chain(b)` is an error naming it.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u22-flat-map-concat.cp`; reject case `spec/conformance/diagnostics/str-chain-method-names-free-chain.cp`.
 
 ### seq/U15: walk two sequences together, or with positions
 Need: pair `a[i]` with `b[i]`, or `i` with `a[i]`.
-Design: `a.items`, `zip(a, b)`, `a.zip(b)`, `zip_exact`.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u15-zip-and-items.cp`; `a.zip(b)` is E0203: std's `zip(a, b)` has no `self`.
+Design: `a.items`, `zip(a, b, ...)`, `zip_exact`; `zip` is free and variadic, like `min` (R07.6.4).
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u15-zip-and-items.cp`.
 
 ### seq/U57: split a list of pairs
 Need: separate `(x, y)` pairs into two lists.
@@ -438,13 +438,13 @@ Evidence: program `spec/conformance/std-seq/seq-u24-separator.cp`.
 Need: the call you know for arrays also works on a list, a slice, a `Str`, a range or a generator.
 Design: every sequence fn takes `self`, so `a.f(..)` works whatever `a` is.
 Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u25-one-api-every-shape.cp`; U9, U15, U22, U30, U38, U49, U52, U54 and U55 fail because the std fn has no `self`.
+Evidence: program `spec/conformance/std-seq/seq-u25-one-api-every-shape.cp`; U30, U38, U49 and U55 fail because the std fn has no `self`.
 
 ### seq/U62: every call states cost, laziness and empty input
 Need: know before calling whether it is \(O(n)\), lazy, or traps on empty.
 Design: each std fn's doc has `cost:`, `empty:` and `traps:` lines, checked by `std-docs-lint.py`.
-Milestone: M1-critical. Status: partial
-Evidence: `scripts/std-docs-lint.py`: 113 findings.
+Milestone: M1-critical. Status: supported
+Evidence: `scripts/std-docs-lint.py --max 0`: 0 findings.
 
 ### seq/U64: sequence features we don't build
 Need: shuffling, parallel sorts, Python slices with negative steps.
