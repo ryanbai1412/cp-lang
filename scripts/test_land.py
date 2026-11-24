@@ -60,7 +60,7 @@ class LandTest(unittest.TestCase):
         git(repo, "commit", "-q", "--no-verify", "-m", msg, "-m", "Domain: infra")
 
     def land(self, repo, **extra):
-        env = {**{k: v for k, v in os.environ.items() if k != "CPL"}, "CPL_LAND_TRIES": "1", **extra}
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_TRIES": "1", **extra}
         return subprocess.run(["bash", "scripts/land.sh"], cwd=repo, env=env, capture_output=True, text=True)
 
     def test_a_generated_file_conflict_takes_mains_copy_and_lands(self):
