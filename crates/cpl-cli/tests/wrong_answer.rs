@@ -292,6 +292,67 @@ fn stress_traps_a_shift_overflow_as_cpl_run_does() {
     );
 }
 
+/// A g++ that miscompiles `n * 2` is the toolchain's bug, not a WA: the
+/// debug interpreter prints the brute's answer (`stress/U29`).
+#[cfg(unix)]
+#[test]
+fn a_build_the_interpreter_disagrees_with_is_a_toolchain_bug() {
+    use std::os::unix::fs::PermissionsExt;
+    let path = scratch("toolchain-bug");
+    let dir = path.parent().unwrap();
+    std::fs::write(
+        &path,
+        "let n: 1..=5 = read()\nprint(n * 2)\n\n@alt(program)\nfn slow():\n    let n: 1..=5 = read()\n    print(n + n)\n",
+    )
+    .unwrap();
+    let bin = dir.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let gxx = bin.join("g++");
+    let real = String::from_utf8(
+        Command::new("sh")
+            .args(["-c", "command -v g++"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+    std::fs::write(
+        &gxx,
+        format!(
+            "#!/bin/sh\nfor a in \"$@\"; do last=\"$a\"; done\ncase \"$last\" in *.cpp) sed -i 's/put_int(n \\* 2)/put_int(n * 2 + (n == 3))/' \"$last\" ;; esac\nexec {} \"$@\"\n",
+            real.trim()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&gxx, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let run = |json: bool| {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_cpl"));
+        command.args(["stress".as_ref(), path.as_os_str()]);
+        if json {
+            command.args(["--format", "json"]);
+        }
+        let paths = std::env::var_os("PATH").unwrap_or_default();
+        let paths =
+            std::env::join_paths(std::iter::once(bin.clone()).chain(std::env::split_paths(&paths)))
+                .unwrap();
+        let out = command
+            .env("PATH", paths)
+            .env("CPL_CACHE", dir.join("cache"))
+            .env("CPL_NO_PCH", "1")
+            .output()
+            .expect("cpl runs");
+        String::from_utf8_lossy(&out.stdout).into_owned() + &String::from_utf8_lossy(&out.stderr)
+    };
+    let text = run(false);
+    assert!(text.contains("FAIL on case"), "{text}");
+    assert!(
+        text.contains("toolchain bug: the debug interpreter prints the expected answer"),
+        "{text}"
+    );
+    let json = run(true);
+    assert!(json.contains("\"toolchain_bug\":true"), "{json}");
+}
+
 /// The cases stress saved run first, whatever the seed, until they pass
 /// (`stress/U15`).
 #[test]

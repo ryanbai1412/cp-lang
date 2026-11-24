@@ -382,6 +382,7 @@ pub fn report_json(
     trace: Option<&Path>,
     explained: Option<&Result<Option<Divergence>, String>>,
     error: Option<&str>,
+    toolchain_bug: bool,
 ) -> String {
     let Some(failure) = &report.failure else {
         return format!(
@@ -412,8 +413,12 @@ pub fn report_json(
         Some(Err(why)) => format!(",\"explain\":{{\"error\":{}}}", json_string(why)),
     };
     let error = error.map_or(String::new(), |error| format!(",\"error\":{error}"));
+    let toolchain = match toolchain_bug {
+        true => ",\"toolchain_bug\":true",
+        false => "",
+    };
     format!(
-        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error},\"stages\":[{}],\"saved\":{},\"rerun\":{},\"trace\":{}{explain}}}}}\n",
+        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error}{toolchain},\"stages\":[{}],\"saved\":{},\"rerun\":{},\"trace\":{}{explain}}}}}\n",
         report.cases,
         failure.case,
         failure.seed,
@@ -504,6 +509,18 @@ fn ordinal(n: usize) -> String {
         _ => "th",
     };
     format!("{n}{suffix}")
+}
+
+/// Whether a wrong answer is the toolchain's: a debug run of the file
+/// neither traps nor differs from the brute, and the built C++ does
+/// (stress/U29).
+fn toolchain_bug(args: &Args, failure: &crate::run::Failure) -> bool {
+    matches!(failure.verdict, crate::Verdict::Wrong(_))
+        && args.fast.is_none()
+        && crate::explain::runtime_error(&args.file, &failure.input).is_none()
+        && crate::explain::interpreted_output(&args.file, &failure.input).is_some_and(|out| {
+            crate::judge::toolchain_differs(&out, &failure.expected, &failure.got)
+        })
 }
 
 fn indent(text: &str) -> String {
@@ -894,6 +911,10 @@ pub fn run_with(
                 trace_path.as_deref(),
                 explained.as_ref(),
                 trap_json.as_deref(),
+                report
+                    .failure
+                    .as_ref()
+                    .is_some_and(|failure| toolchain_bug(&args, failure)),
             )
         );
         return report.failure.is_some() as u8;
@@ -1038,13 +1059,7 @@ pub fn run_with(
                     "  a debug run of the solution stops:\n{}",
                     indent(explained.trim_end())
                 );
-            } else if (args.fast.is_none())
-                .then(|| crate::explain::interpreted_output(&args.file, &failure.input))
-                .flatten()
-                .is_some_and(|out| {
-                    crate::judge::toolchain_differs(&out, &failure.expected, &failure.got)
-                })
-            {
+            } else if toolchain_bug(&args, failure) {
                 let _ = writeln!(
                     stdout,
                     "  toolchain bug: the debug interpreter prints the expected answer on this case\n  and the built C++ prints something else, so this is no WA of yours\n  `cpl report {}` writes the bug report",

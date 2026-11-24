@@ -171,8 +171,8 @@ Evidence: `crates/cpl-cli/tests/lint_witnesses.rs`, `crates/cpl-cli/tests/wrong_
 ### stress/U29: the interpreter and the judge's C++ disagree
 Need: know that a difference is a toolchain bug, not a WA, and under which judge profile stress ran.
 Design: the header names the build and profile (widths, stack); a case that differs only between builds is reported as a toolchain bug.
-Milestone: M1-critical. Status: partial (the header reads `build: judge `codeforces`: g++ ...; checked, as `cpl run``; a WA the debug interpreter doesn't reproduce, printing the brute's answer, reads `toolchain bug:` and points at `cpl report`; no planted toolchain bug drives that line end to end, and `--format json` has neither)
-Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`stress_names_the_build_its_cases_ran`), unit `crates/cpl-stress/src/judge.rs` (`only_an_interpreter_that_agrees_with_the_brute_blames_the_toolchain`)
+Milestone: M1-critical. Status: supported (the header reads `build: judge `codeforces`: g++ ...; checked, as `cpl run``; a WA the debug interpreter doesn't reproduce, printing the brute's answer, reads `toolchain bug:` and points at `cpl report`, and `--format json` marks it `"toolchain_bug":true`; a planted g++ that miscompiles one line drives both; the JSON report doesn't name the build)
+Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`stress_names_the_build_its_cases_ran`, `a_build_the_interpreter_disagrees_with_is_a_toolchain_bug`), unit `crates/cpl-stress/src/judge.rs` (`only_an_interpreter_that_agrees_with_the_brute_blames_the_toolchain`)
 
 ### stress/U30: the checker, interactor or generator fails
 Need: know which helper broke and why, not see a failing solution.
