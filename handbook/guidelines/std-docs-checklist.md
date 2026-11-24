@@ -28,8 +28,8 @@ Each `pub fn` doc carries the three required labels.
 A fn that can see empty input says what it returns; one that picks among equals says which; one that yields many values says in what order.
 
 - **Why:** these are the edge cases contestants get wrong.
-- **Example:** `empty: None`, `ties: the first`, `order: increasing key`.
-- **Enforced by:** `scripts/std-docs-lint.py` fails a public fn over a `[D]T` with no `empty:`; the generated edge-case suite driven by the labels is stdlib.md's edge row.
+- **Example:** ``empty: `SortedBag<Int>().first == None` ``, ``ties: `[3, 1, 1].argmin() == 1` ``, `order: increasing key`. An `empty:` or `ties:` label is a claim (`a == b`, `a != b`, `not a`, or code tagged `(traps R0401)`), so it runs as a case.
+- **Enforced by:** `scripts/std-docs-lint.py` fails a public fn over a `[D]T` with no `empty:`; `cpl-conform docs` runs every claim label (`crates/cpl-conform/src/docs.rs` `runnable_label`); the `edge_labels_unrun` ratchet counts the labels that are still prose or a bare value.
 
 ### R3. The cost names its variables and every phase
 

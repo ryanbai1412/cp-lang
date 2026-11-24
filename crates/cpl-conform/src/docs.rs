@@ -38,12 +38,17 @@ pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
     let mut block: Vec<&str> = Vec::new();
     let mut container = String::new();
     let mut seen: HashMap<String, usize> = HashMap::new();
-    let mut push = |id: &dyn Fn(usize) -> String, block: &mut Vec<&str>| {
-        let examples = DocText::parse(&block.join("\n")).examples;
+    let mut push = |id: &dyn Fn(&str) -> String, block: &mut Vec<&str>| {
+        let doc = DocText::parse(&block.join("\n"));
         block.clear();
-        for (k, e) in examples.into_iter().enumerate() {
+        for (k, e) in doc.examples.into_iter().enumerate() {
             let body = e.text.strip_suffix('\n').unwrap_or(&e.text).to_string();
-            out.push((id(k + 1), body, e.block));
+            out.push((id(&(k + 1).to_string()), body, e.block));
+        }
+        for (label, text) in [("empty", &doc.facts.empty), ("ties", &doc.facts.ties)] {
+            if let Some(text) = text.as_deref().filter(|t| runnable_label(t)) {
+                out.push((id(label), text.to_string(), false));
+            }
         }
     };
     for line in text.lines() {
@@ -79,6 +84,17 @@ pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
     }
     push(&|k| format!("{rel}#eof:{k}"), &mut block);
     out
+}
+
+/// An `empty:` or `ties:` label that is a claim `docs` runs: backticked code whose last
+/// statement is `a == b`, `a != b` or `not a`, or code tagged `(traps R0401)` / `(error E0302)`.
+pub fn runnable_label(text: &str) -> bool {
+    let e = doc::Example::from_line(text);
+    let Some(code) = e.code.as_deref() else {
+        return false;
+    };
+    let last = doc::statements(code, false).pop().unwrap_or_default();
+    e.expect.is_some() || e.claim().2.is_some() || last.contains(" != ") || last.starts_with("not ")
 }
 
 /// The name an item header declares: `pub fn up() -> Dir4` is `up`,
@@ -321,5 +337,25 @@ mod tests {
             .map(|(id, _, _)| id)
             .collect();
         assert_eq!(ids, ["seq.cp#View.src:1"]);
+    }
+
+    #[test]
+    fn a_claim_edge_label_runs_and_a_value_or_prose_does_not() {
+        let text = "/// The first.\n///\n/// empty: `SortedBag<Int>().first == None`\n\
+                    /// ties: the leftmost\npub fn first(self) -> ?K = todo\n\
+                    /// empty: `None`\npub fn last(self) -> ?K = todo\n";
+        let got: Vec<_> = super::doc_examples("bag.cp", text)
+            .into_iter()
+            .map(|(id, body, _)| (id, body))
+            .collect();
+        assert_eq!(
+            got,
+            [(
+                "bag.cp#first:empty".to_string(),
+                "`SortedBag<Int>().first == None`".to_string()
+            )]
+        );
+        assert!(super::runnable_label("`[].max()` (traps R0401)"));
+        assert!(!super::runnable_label("`0`"));
     }
 }

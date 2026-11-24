@@ -193,7 +193,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 |---|---|---|
 | Correct on hand-picked cases | std conformance cases failing | hand-written suite `spec/conformance/std-*/` in `cpl-conform all --check` |
 | Correct on every input, not just picked ones | containers and algorithms with no random test against a brute-force model (`SortedBag` against a sorted `List`, `Fenwick` against prefix sums, `dijkstra` against Bellman-Ford) | `missing` (model-based property suite, seeded and shrinking, run on both engines) |
-| Correct at the edges: empty, one element, all equal, max n, max value | public fns with no case for each edge their doc names (`empty:`, `ties:`, `traps:`) | rule `std-docs/R2`; `missing` (generated edge-case suite driven by the doc labels) |
+| Correct at the edges: empty, one element, all equal, max n, max value | public fns with no case for each edge their doc names (`empty:`, `ties:`, `traps:`) | rule `std-docs/R2`; `cpl-conform docs` runs each `empty:`/`ties:` claim; `edge_labels_unrun` ratchet counter |
 | Algebraic laws hold | ops in `std/algebra.cp` whose laws are unproved | `crates/cpl-prover/src/laws.rs` |
 | A fold of a monoid is `T`, and any op works with a `?T` fold | std folds or `Window.all` returning `?T` for a monoid; structures rejecting an op with no identity | rule `std-api/R5`; `Monoid.of` examples in `cpl-conform docs`; `missing` for `Window.all` and the `?T` lifting helper |
 | No overflow inside std for inputs in the declared range | std bodies with an unproved intermediate | `missing` (overflow-proof report over std bodies) |
