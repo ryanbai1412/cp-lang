@@ -480,6 +480,7 @@ impl Playground {
             windows: profile.os == cpl_judge::Os::Windows,
             // `cpl build`'s default: a judge build checks what hand-written C++ does.
             checks: cpl_codegen::Checks::None,
+            avx2: profile.avx2,
         };
         let aim = profile.aim();
         let cpp = match cpl_codegen::emit_aiming(

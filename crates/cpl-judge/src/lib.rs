@@ -61,6 +61,9 @@ pub struct Profile {
     pub source_limit: usize,
     /// Whether the compiler has `__int128`.
     pub int128: bool,
+    /// Whether the judge's CPUs have AVX2, so the C++ may ask for it and
+    /// for loop vectorisation with target pragmas (`isa = "avx2"`).
+    pub avx2: bool,
     /// The judge's usual limits, for a problem that names none.
     pub time_ms: u64,
     pub memory_mb: u64,
@@ -400,6 +403,7 @@ fn profile(
         thread_stack: Some(THREAD_STACK),
         source_limit,
         int128: true,
+        avx2: false,
         time_ms: 2000,
         memory_mb: 256,
         evidence: evidence.into(),
@@ -708,6 +712,7 @@ const KEYS: &[(&str, &str)] = &[
     ),
     ("source_kb", "a whole number of KB"),
     ("int128", "true or false"),
+    ("isa", "\"x86-64\" or \"avx2\""),
     ("time_ms", "a whole number of milliseconds"),
     ("memory_mb", "a whole number of MB"),
 ];
@@ -728,10 +733,12 @@ fn check_key(key: &str, value: &Value) -> Result<(), String> {
             | ("stack_mb" | "thread_stack_mb", Value::Int(_))
             | ("source_kb", Value::Int(_))
             | ("int128", Value::Bool(_))
+            | ("isa", Value::Str(_))
             | ("time_ms" | "memory_mb", Value::Int(_))
     ) || matches!((key, value), ("stack_mb", Value::Str(s)) if s == "unlimited");
-    let fits =
-        fits && !matches!((key, value), ("os", Value::Str(s)) if s != "linux" && s != "windows");
+    let fits = fits
+        && !matches!((key, value), ("os", Value::Str(s)) if s != "linux" && s != "windows")
+        && !matches!((key, value), ("isa", Value::Str(s)) if s != "x86-64" && s != "avx2");
     match fits {
         true => Ok(()),
         false => Err(format!("`{key}` is {wants}")),
@@ -755,6 +762,7 @@ fn apply(profile: &mut Profile, key: &str, value: &Value) {
         ("thread_stack_mb", Value::Int(mb)) => profile.thread_stack = (*mb > 0).then(|| mb << 20),
         ("source_kb", Value::Int(kb)) => profile.source_limit = (*kb as usize) * 1024,
         ("int128", Value::Bool(b)) => profile.int128 = *b,
+        ("isa", Value::Str(s)) => profile.avx2 = s == "avx2",
         ("time_ms", Value::Int(ms)) => profile.time_ms = *ms,
         ("memory_mb", Value::Int(mb)) => profile.memory_mb = *mb,
         _ => {}

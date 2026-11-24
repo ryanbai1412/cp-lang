@@ -398,6 +398,7 @@ fn emit_cpp(
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
         checks,
+        avx2: profile.avx2,
     };
     let mut cpp = cpl_codegen::emit_for(&program, &file, None, &target);
     if matches!(part, Part::Gen(_)) {

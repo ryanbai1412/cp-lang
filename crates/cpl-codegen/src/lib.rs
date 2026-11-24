@@ -67,6 +67,9 @@ pub struct Target {
     pub windows: bool,
     /// The runtime checks the build keeps.
     pub checks: Checks,
+    /// Whether the judge's CPUs have AVX2: the C++ then targets it and
+    /// lets g++ vectorise loops whose length is only known at run time.
+    pub avx2: bool,
 }
 
 impl Default for Target {
@@ -76,6 +79,7 @@ impl Default for Target {
             thread_stack: Some(1 << 30),
             windows: false,
             checks: Checks::default(),
+            avx2: false,
         }
     }
 }
