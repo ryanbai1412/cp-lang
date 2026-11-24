@@ -705,11 +705,16 @@ pub fn run_with(
         Ok(report) => report,
         Err(error) => return fail(error.to_string()),
     };
-    // A case the brute fails on is no test of the solution: it isn't saved.
-    let brute_failed =
-        |failure: &crate::run::Failure| matches!(failure.verdict, crate::Verdict::BruteError(_));
+    // A case the brute, checker or interactor fails on is no test of the
+    // solution: it isn't saved.
+    let helper_failed = |failure: &crate::run::Failure| {
+        matches!(
+            failure.verdict,
+            crate::Verdict::BruteError(_) | crate::Verdict::JudgeError(..)
+        )
+    };
     let saved = (report.failure.as_ref())
-        .filter(|failure| !brute_failed(failure))
+        .filter(|failure| !helper_failed(failure))
         .and_then(|failure| match failure.saved {
             true => Some(saved_path(&args.file, failure.seed)),
             false => save(&args.file, failure).ok(),
@@ -726,7 +731,7 @@ pub fn run_with(
         (Some(failure), Some(tracer))
             if args.fast.is_none()
                 && in_file
-                && !brute_failed(failure)
+                && !helper_failed(failure)
                 && (args.explain || finished(failure)) =>
         {
             Some(tracer(
@@ -743,7 +748,7 @@ pub fn run_with(
         _ => (&[][..], None),
     };
     let explained = match (&report.failure, &traced) {
-        (Some(failure), _) if brute_failed(failure) => None,
+        (Some(failure), _) if helper_failed(failure) => None,
         (Some(_), Some(Ok(traced)))
             if (part_brute.is_some()
                 || (args.explain && matches!(judge, Judge::Interactor(_))))
@@ -965,6 +970,14 @@ pub fn run_with(
                 "  fix the brute, or narrow the input it is meant for, then `cpl stress` again"
             );
         }
+        crate::Verdict::JudgeError(kind, trap) => {
+            let _ = writeln!(
+                stdout,
+                "  the {kind} failed, so the run can't be judged:\n{}",
+                indent(trap.trim_end())
+            );
+            let _ = writeln!(stdout, "  fix the {kind}, then `cpl stress` again");
+        }
         crate::Verdict::RuntimeError(why) => match &trapped {
             Some(explained) => {
                 let _ = writeln!(
@@ -1045,7 +1058,7 @@ pub fn run_with(
                 "  after a fix: `cpl test {file}` reruns it, then `cpl stress {file}` again"
             );
         }
-        None if !brute_failed(failure) => {
+        None if !helper_failed(failure) => {
             let _ = writeln!(
                 stderr,
                 "warning: the case could not be saved next to {name}"

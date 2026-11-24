@@ -358,3 +358,45 @@ fn explain_names_the_loop_that_never_ran() {
         "{out}"
     );
 }
+
+/// A checker, interactor or `@gen` fn that traps is blamed with its trap,
+/// and the case is no test of the solution (`stress/U30`).
+#[test]
+fn a_broken_helper_is_blamed_with_its_trap_not_the_solution() {
+    let helpers = [
+        (
+            "checker",
+            "@check\nfn valid():\n    let n: 1..=5 = read()\n    let out: Int = read_output()\n    let a: [n]Int = 0\n    assert a[out] == 0\n",
+        ),
+        (
+            "interactor",
+            "@interactor\nfn judge():\n    let n: 1..=5 = read()\n    print(n)\n    let q: Int = read()\n    let a: [2]Int = 0\n    assert a[q + 5] == 0\n",
+        ),
+    ];
+    for (kind, helper) in helpers {
+        let path = scratch(&format!("broken-{kind}"));
+        let solution = match kind {
+            "checker" => "let n: 1..=5 = read()\nprint(n)\n",
+            _ => "let n: 1..=5 = read()\nlet q: Int = read()\nprint(q)\n",
+        };
+        std::fs::write(&path, format!("{solution}\n{helper}")).unwrap();
+        let (code, out) = cpl(&["stress".as_ref(), path.as_os_str()]);
+        assert_eq!(code, Some(1), "{out}");
+        assert!(out.contains(&format!(": {kind} RE\n")), "{out}");
+        assert!(out.contains(&format!("the {kind} failed")), "{out}");
+        assert!(out.contains("error[R0101]"), "{out}");
+        assert!(out.contains("c.cp:"), "{out}");
+        assert!(saved(&path).is_empty(), "{out}");
+    }
+    let path = scratch("broken-gen");
+    std::fs::write(
+        &path,
+        "let n: 1..=5 = read()\nprint(n)\n\n@gen\nfn small():\n    let a: [3]Int = 0\n    print(a[3 + rand(0, 1)] + 1)\n",
+    )
+    .unwrap();
+    let (code, out) = cpl(&["stress".as_ref(), path.as_os_str()]);
+    assert_ne!(code, Some(0), "{out}");
+    assert!(out.contains("(`small`) failed on seed 1:"), "{out}");
+    assert!(out.contains("index outside"), "{out}");
+    assert!(saved(&path).is_empty(), "{out}");
+}

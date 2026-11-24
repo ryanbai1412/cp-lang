@@ -335,7 +335,10 @@ impl Engine for InterpEngine {
             return match run_ir(checker, io, self.stack_limit, limit) {
                 Ok(_) => Ok(None),
                 Err((_, trap)) => Ok(Some((
-                    Verdict::Wrong(trap.message),
+                    match crate::judge::judge_bug(trap.code().0) {
+                        true => Verdict::JudgeError("checker", trap.message),
+                        false => Verdict::Wrong(trap.message),
+                    },
                     expected.unwrap_or_default(),
                     got,
                 ))),

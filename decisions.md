@@ -8484,3 +8484,9 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Call.** `s.cut_after(i)` and `s.cut_before(i)` (R07.4.14) lower to the `CutAfter`/`CutBefore` builtins, matched by name in `lower/call/value_method.rs`, which raises the `ir_builtin_names` ratchet from 160 to 162.
 - **Why.** They read a view's run-time direction flag, which no std code can see, the same way `nth` reads a view's position. That makes them core members, not stdlib privilege.
 - **Reverse.** Drop `lower/call/cuts.rs`, the two builtins and their rows, then lower the ratchet again.
+
+## 445. A checker or interactor that traps on its own bug is blamed, not the solution (debugger, 2026-11-23)
+
+- **Call.** A trap in a `@check` fn or `@interactor` is that helper's own bug when it is an index, overflow, range, `None`, `todo` or stack trap (codes `R01*`, `R02*`, `R03*`, `R0402`, `R06*`): stress reports `checker RE` or `interactor RE` with the trap, says the run can't be judged, and saves no case. A failed `assert`, a `false` from a `-> Bool` check and solution output that doesn't read as declared still reject the solution as `WA`. A failing `@gen` fn's error carries its trap text.
+- **Why.** A broken checker read as a wrong answer, and its case was saved as a solution regression (use case stress/U30).
+- **Reverse.** Drop `Verdict::JudgeError` and `judge_bug` in `crates/cpl-stress/src/judge.rs`, and the checker match in `engine.rs`.

@@ -38,6 +38,9 @@ pub enum Verdict {
     MemoryLimit,
     /// The brute, not the solution, failed on the case: why.
     BruteError(String),
+    /// The `checker` or `interactor`, not the solution, failed on the
+    /// case: its trap.
+    JudgeError(&'static str, String),
 }
 
 impl Verdict {
@@ -54,8 +57,28 @@ impl Verdict {
             Verdict::TimeLimit => "TLE",
             Verdict::MemoryLimit => "MLE",
             Verdict::BruteError(_) => "brute RE",
+            Verdict::JudgeError("checker", _) => "checker RE",
+            Verdict::JudgeError(..) => "interactor RE",
         }
     }
+}
+
+/// Whether a checker's or interactor's trap with `code` is a bug in it, not
+/// its verdict on the solution: an index, overflow, range, `None`, `todo`
+/// or stack trap. A failed `assert`, a `false` from a `-> Bool` check and
+/// output that doesn't read as declared all reject the solution.
+pub fn judge_bug(code: &str) -> bool {
+    ["R01", "R02", "R03", "R06"]
+        .iter()
+        .any(|kind| code.starts_with(kind))
+        || code == "R0402"
+}
+
+/// The trap a judge's stderr shows, unless it is the judge's verdict.
+fn broke(stderr: &str) -> Option<String> {
+    let at = stderr.find("error[R")?;
+    let code = stderr[at + "error[".len()..].split(']').next()?;
+    judge_bug(code).then(|| stderr[at..].trim_end().to_string())
 }
 
 /// A `@check` or `@interactor` a source file declares.
@@ -259,6 +282,8 @@ impl Judge {
                     .run("", limit.max(Duration::from_secs(10)))?;
                 if checked.ok() {
                     Verdict::Accepted
+                } else if let Some(trap) = broke(&checked.stderr) {
+                    Verdict::JudgeError("checker", trap)
                 } else {
                     let said = format!("{}{}", checked.stderr, checked.stdout);
                     let said = said.lines().next().unwrap_or("").trim();
@@ -373,6 +398,12 @@ fn interact(
             if let Some(verdict) = failure(&outcome) {
                 return Ok(Judged { verdict, outcome });
             }
+        }
+        if let Some(trap) = broke(&judge_stderr) {
+            return Ok(Judged {
+                verdict: Verdict::JudgeError("interactor", trap),
+                outcome,
+            });
         }
         Verdict::Wrong(if said.is_empty() {
             "the interactor rejected the run".to_string()

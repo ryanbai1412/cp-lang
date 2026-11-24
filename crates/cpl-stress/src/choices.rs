@@ -39,7 +39,8 @@ fn scratch() -> PathBuf {
     std::env::temp_dir().join(format!("cpl-choices-{}-{id}", std::process::id()))
 }
 
-fn run(generator: &Program, env: &[(&str, String)]) -> std::io::Result<Option<Drawn>> {
+/// The case the generator draws, or what it wrote to stderr when it failed.
+fn run(generator: &Program, env: &[(&str, String)]) -> std::io::Result<Result<Drawn, String>> {
     let log = scratch();
     let mut program = generator.clone();
     program.env.extend(
@@ -61,11 +62,13 @@ fn run(generator: &Program, env: &[(&str, String)]) -> std::io::Result<Option<Dr
             Some((site.parse::<u32>().ok()?, choice.parse::<u64>().ok()?))
         })
         .unzip();
-    let input = outcome.stdout;
-    Ok(ok.then_some(Drawn {
+    if !ok {
+        return Ok(Err(outcome.stderr));
+    }
+    Ok(Ok(Drawn {
         choices,
         sites,
-        input,
+        input: outcome.stdout,
     }))
 }
 
@@ -73,8 +76,22 @@ fn run(generator: &Program, env: &[(&str, String)]) -> std::io::Result<Option<Dr
 pub fn draw(generator: &Program, seed: u64) -> Result<Drawn, StressError> {
     let failed = |why: String| StressError(format!("the `@gen` fn of {} {why}", generator.name));
     match run(generator, &[("CPL_SEED", seed.to_string())]) {
-        Ok(Some(drawn)) => Ok(drawn),
-        Ok(None) => Err(failed(format!("failed on seed {seed}"))),
+        Ok(Ok(drawn)) => Ok(drawn),
+        Ok(Err(stderr)) => Err(failed(
+            match stderr.find("error[").or_else(|| {
+                let at = stderr.len() - stderr.trim_start().len();
+                (at < stderr.len()).then_some(at)
+            }) {
+                Some(at) => format!(
+                    "failed on seed {seed}:\n{}",
+                    (stderr[at..].trim_end().lines())
+                        .map(|line| format!("  {line}"))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                ),
+                None => format!("failed on seed {seed}"),
+            },
+        )),
         Err(e) => Err(failed(format!("can't run: {e}"))),
     }
 }
@@ -87,7 +104,7 @@ pub fn replay(generator: &Program, choices: &[u64]) -> Option<Drawn> {
     std::fs::write(&list, text).ok()?;
     let drawn = run(generator, &[("CPL_CHOICES", list.display().to_string())]);
     let _ = std::fs::remove_file(&list);
-    drawn.ok().flatten()
+    drawn.ok()?.ok()
 }
 
 /// The smallest case found, within `budget` runs, that `still_fails`.

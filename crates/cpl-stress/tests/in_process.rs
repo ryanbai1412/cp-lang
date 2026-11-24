@@ -59,3 +59,17 @@ fn a_runtime_error_in_the_in_process_report_is_a_diagnostic() {
         assert_eq!(line.and_then(|l| l.as_i64()), Some(3), "{json}");
     }
 }
+
+/// A checker that traps is blamed, not the solution (`stress/U30`).
+#[test]
+fn a_trapping_checker_in_process_is_a_checker_re() {
+    let source = "let n: 1..=5 = read()\nprint(n)\n\n@check\nfn valid():\n    let n: 1..=5 = read()\n    let out: Int = read_output()\n    let a: [n]Int = 0\n    assert a[out] == 0\n";
+    let options = Options {
+        cases: 5,
+        jobs: 1,
+        ..Options::default()
+    };
+    let result = stress_source("c.cp", source, &options, Some(1 << 26), false).unwrap();
+    let failure = result.report.failure.expect("the checker fails");
+    assert_eq!(failure.verdict.code(), "checker RE", "{failure:?}");
+}
