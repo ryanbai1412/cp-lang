@@ -9,7 +9,7 @@ for _ in 0..q:
     var small = id[y]
     if sets[big].len < sets[small].len:
         (big, small) = (small, big)
-    for w in sets[small]:
+    for w in sets[small].clone():
         sets[big].add(w)
     sets[small] = SortedSet.of([])
     id[x] = big
