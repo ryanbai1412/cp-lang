@@ -1195,14 +1195,7 @@ impl<'a> Checker<'a> {
                     })
                     .collect();
                 self.leave_body(scope);
-                let assoc = body
-                    .stmts
-                    .iter()
-                    .filter_map(|s| match &s.kind {
-                        S::TypeAlias { name, .. } => Some(name.text.clone()),
-                        _ => None,
-                    })
-                    .collect();
+                let assoc = super::assoc::declared(&body.stmts);
                 vec![(
                     name.text.clone(),
                     Def::Trait {

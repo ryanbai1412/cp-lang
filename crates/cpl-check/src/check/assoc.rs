@@ -6,6 +6,19 @@ use super::types::type_head;
 use super::*;
 use cpl_syntax::ast::{self, Stmt, StmtKind};
 
+/// The associated types a trait body declares, each with its bound's traits.
+pub(super) fn declared(body: &[Stmt]) -> Vec<(String, Vec<String>)> {
+    body.iter()
+        .filter_map(|s| match &s.kind {
+            StmtKind::TypeAlias { name, bounds, .. } => Some((
+                name.text.clone(),
+                bounds.iter().filter_map(type_head).collect(),
+            )),
+            _ => None,
+        })
+        .collect()
+}
+
 impl Checker<'_> {
     /// `of.name` for a known `of`: the type the impl for `of` chooses (R08.1.9).
     pub(crate) fn project(&mut self, of: &Ty, name: &str) -> Option<Ty> {
@@ -80,13 +93,16 @@ impl Checker<'_> {
         target: &ast::Type,
         body: &[Stmt],
     ) {
-        let Some(Def::Trait { assoc, .. }) = type_head(trait_ty)
+        let Some(Def::Trait {
+            assoc: declared, ..
+        }) = type_head(trait_ty)
             .and_then(|n| self.global(&n))
             .as_deref()
             .cloned()
         else {
             return;
         };
+        let assoc: Vec<String> = declared.iter().map(|(n, _)| n.clone()).collect();
         let trait_text = self.quote(trait_ty.span);
         let chosen: Vec<&ast::Name> = body
             .iter()
@@ -103,6 +119,36 @@ impl Checker<'_> {
                         true => format!("`{trait_text}` declares no associated types"),
                         false => format!("it declares {}", super::expr::list_names(&assoc)),
                     });
+                }
+            }
+        }
+        for s in body {
+            let StmtKind::TypeAlias { name, ty, .. } = &s.kind else {
+                continue;
+            };
+            let Some((_, bounds)) = declared.iter().find(|(n, _)| *n == name.text) else {
+                continue;
+            };
+            let chosen = self.quietly(|c| c.resolve_type(ty));
+            // An impl's own unbounded parameter (`type Arc = V` for any `V`)
+            // has no traits to check yet.
+            if matches!(&chosen, Ty::Param(p) if !self.param_bounds.iter().any(|(q, ts)| q == p && !ts.is_empty()))
+            {
+                continue;
+            }
+            for b in bounds {
+                if self.implements_trait(&chosen, b) {
+                    continue;
+                }
+                let message = format!(
+                    "`{chosen}` does not implement `{b}`, which `{trait_text}` requires of `{}`",
+                    name.text
+                );
+                if let Some(diag) = self.error(codes::MISSING_IMPL, ty.span, message) {
+                    diag.help = Some(format!(
+                        "choose a type that implements `{b}`: the trait declares `type {}: {b}`",
+                        name.text
+                    ));
                 }
             }
         }

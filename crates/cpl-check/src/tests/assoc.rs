@@ -118,3 +118,27 @@ fn a_generic_fn_type_impl_binds_its_params_from_the_fn() {
     assert_eq!(found.len(), 1, "{found:#?}");
     assert!(found[0].message.contains("?Int"), "{}", found[0].message);
 }
+
+#[test]
+fn an_impls_choice_has_the_traits_its_bound_names() {
+    let src = "\
+trait Keyed:
+    type K: Ord
+    fn key(self) -> Self.K
+struct P(a: Int)
+impl Keyed for P:
+    type K = Int -> Int
+    fn key(self) -> Int -> Int = x => x + self.a
+";
+    let found = check(src);
+    assert_eq!(found.len(), 1, "{found:#?}");
+    assert_eq!(found[0].code.0, "E0606");
+    assert!(found[0].message.contains("`Ord`"), "{}", found[0].message);
+    assert_eq!(
+        check(
+            &src.replace("Int -> Int", "Int")
+                .replace("x => x + self.a", "self.a")
+        ),
+        vec![]
+    );
+}

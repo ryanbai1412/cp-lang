@@ -81,8 +81,9 @@ pub enum Def {
         fields: Vec<(String, Ty)>,
         /// `trait Both = Sh + Nm` (R08.2.6).
         alias: bool,
-        /// The associated types it declares, `type Found` (R08.1.9).
-        assoc: Vec<String>,
+        /// The associated types it declares, `type Found` (R08.1.9), each
+        /// with the traits its bound names (`type Arc: Target<V>`).
+        assoc: Vec<(String, Vec<String>)>,
     },
     /// `impl Add for Pt` or `impl Pt`, under the name [`impl_name`] gives it.
     Impl {
