@@ -121,8 +121,12 @@ impl<'a> Lowerer<'a> {
         });
         let mut stmts = Vec::new();
         self.tail(e, Tail::Give, &mut stmts);
-        let frame = self.cx.dos.pop().expect("pushed above");
-        let ty = frame.ty.unwrap_or(Ty::Error);
+        let ty = self
+            .cx
+            .dos
+            .pop()
+            .and_then(|frame| frame.ty)
+            .unwrap_or(Ty::Error);
         let kept = self.temp(ty.clone());
         let place = Place {
             kind: PlaceKind::Local(kept),
@@ -423,20 +427,16 @@ impl Lowerer<'_> {
                 if !matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce) =>
             {
                 parts.extend([*l, *r]);
-                Box::new(move |p| {
-                    let Ok([l, r]) = <[Expr; 2]>::try_from(p) else {
-                        unreachable!("two operands")
-                    };
-                    ExprKind::Binary(op, Box::new(l), Box::new(r))
+                Box::new(move |p| match <[Expr; 2]>::try_from(p) {
+                    Ok([l, r]) => ExprKind::Binary(op, Box::new(l), Box::new(r)),
+                    Err(p) => ExprKind::Tuple(p),
                 })
             }
             ExprKind::Cmp(op, l, r) => {
                 parts.extend([*l, *r]);
-                Box::new(move |p| {
-                    let Ok([l, r]) = <[Expr; 2]>::try_from(p) else {
-                        unreachable!("two operands")
-                    };
-                    ExprKind::Cmp(op, Box::new(l), Box::new(r))
+                Box::new(move |p| match <[Expr; 2]>::try_from(p) {
+                    Ok([l, r]) => ExprKind::Cmp(op, Box::new(l), Box::new(r)),
+                    Err(p) => ExprKind::Tuple(p),
                 })
             }
             ExprKind::Unary(op, x) => {
@@ -513,9 +513,9 @@ impl Lowerer<'_> {
                     let mut values = p.into_iter();
                     let args = places
                         .into_iter()
-                        .map(|place| match place {
-                            Some(place) => Arg::Mut(place),
-                            None => Arg::Value(values.next().expect("one value per slot")),
+                        .filter_map(|place| match place {
+                            Some(place) => Some(Arg::Mut(place)),
+                            None => values.next().map(Arg::Value),
                         })
                         .collect();
                     ExprKind::Call(id, args)
