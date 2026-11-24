@@ -4,7 +4,7 @@ use std.heap.{MeldHeap}
 let n: Int = read()
 let xs = [i * 7919 % n for i in 0..n]
 var s = 0
-for _ in 0..16:
+for _ in 0..32:
     var mk = MeldHeap<Int>.of(xs)
     var other = MeldHeap<Int>.of(xs)
     mk.meld(other) // timed: heap.MeldHeap.meld

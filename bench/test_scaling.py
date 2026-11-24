@@ -92,9 +92,24 @@ class Runs(unittest.TestCase):
             out = {"lines": [{"line": 1, "time_ns": scaling.MIN_NS * order[-1], "start_count": 1}]}
             return mock.Mock(returncode=0, stdout=json.dumps(out), stderr="")
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(scaling.subprocess, "run", run):
-            best = scaling.per_hit("cpl", "case.cp", (1, 4), {"f": {1}}, tmp)
+            best, short = scaling.per_hit("cpl", "case.cp", (1, 4), {"f": {1}}, tmp)
         self.assertEqual(order, [1, 4] * scaling.RUNS)
         self.assertEqual(best, {1: {"f": scaling.MIN_NS}, 4: {"f": 4 * scaling.MIN_NS}})
+        self.assertEqual(short, {})
+
+    def test_a_fn_under_the_time_floor_fails_alone(self):
+        import json
+        import tempfile
+        from unittest import mock
+        out = {"lines": [{"line": 1, "time_ns": scaling.MIN_NS, "start_count": 1},
+                         {"line": 2, "time_ns": 2 * scaling.MIN_NS, "start_count": 1}]}
+        run = mock.Mock(return_value=mock.Mock(returncode=0, stdout=json.dumps(out), stderr=""))
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(scaling.subprocess, "run", run):
+            _, short = scaling.per_hit("cpl", "case.cp", (1,), {"f": {1}, "g": {2}}, tmp)
+            self.assertEqual(short, {})
+            _, short = scaling.per_hit("cpl", "case.cp", (1,), {"f": {1}, "g": {2}}, tmp,
+                                       floor=1.5 * scaling.MIN_NS)
+            self.assertEqual(list(short), ["f"])
 
 
 class Alias(unittest.TestCase):

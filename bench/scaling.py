@@ -190,17 +190,18 @@ def header(text):
     return out
 
 
-def per_hit(cpl, case, sizes, groups, tmp, within=None):
-    """size -> fn -> fastest nanoseconds per hit of its timed lines over RUNS runs, with the
-    time (not the hits) of its `within` lines. Runs alternate between the sizes, so a busy
-    machine slows every size alike instead of skewing their ratio."""
+def per_hit(cpl, case, sizes, groups, tmp, within=None, floor=MIN_NS):
+    """(size -> fn -> fastest nanoseconds per hit of its timed lines over RUNS runs, with the
+    time (not the hits) of its `within` lines; fn -> why its lines take too little time to
+    judge). Runs alternate between the sizes, so a busy machine slows every size alike
+    instead of skewing their ratio."""
     within = within or {}
     inputs = {}
     for n in sizes:
         inputs[n] = os.path.join(tmp, f"{os.path.basename(case)}.{n}.in")
         with open(inputs[n], "w") as f:
             f.write(f"{n}\n")
-    best = {n: {} for n in sizes}
+    best, short = {n: {} for n in sizes}, {}
     for _ in range(RUNS):
         for n in sizes:
             run = subprocess.run([cpl, "profile", "--native", case, inputs[n], "--format", "json"],
@@ -215,10 +216,10 @@ def per_hit(cpl, case, sizes, groups, tmp, within=None):
                 ns += sum(by_line[i]["time_ns"] for i in within.get(fn, ()) if i in by_line)
                 if not hits:
                     raise RuntimeError(f"no line timing {fn} ran")
-                if ns < MIN_NS:
-                    raise RuntimeError(f"the lines timing {fn} take {ns} ns at n={n}, under {MIN_NS}; raise `// n:`")
+                if ns < floor:
+                    short.setdefault(fn, f"its lines take {ns} ns at n={n}, under {floor:.0f}; time more calls")
                 best[n][fn] = min(best[n].get(fn, math.inf), ns / hits)
-    return best
+    return best, short
 
 
 def timed_lines(text, default):
@@ -271,11 +272,14 @@ def run_case(cpl, case, costs, tmp):
             out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}))
     try:
         within = within_lines(text)
-        timed = per_hit(cpl, case, (n, 4 * n), groups, tmp, within)
+        timed, short = per_hit(cpl, case, (n, 4 * n), groups, tmp, within)
         small, big = timed[n], timed[4 * n]
     except (RuntimeError, subprocess.TimeoutExpired) as e:
         return out + [(f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}) for fn in documented]
     for fn, (formula, want) in documented.items():
+        if fn in short:
+            out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": short[fn]}))
+            continue
         measured = big[fn] / small[fn]
         out.append((f"{rel}::{fn}", {"fn": fn, "cost": formula, "n": n, "documented": round(want, 2),
                                       "measured": round(measured, 2), "ok": judge(measured, want)}))

@@ -44,7 +44,7 @@ var cs = cost_chain()
 s += cs.slope(src, dst).len // timed: flow.CostFlow.slope
 var neg = negative_cycle()
 s += neg.cancel_cycles() // timed: flow.CostFlow.cancel_cycles
-for _ in 0..16:
+for _ in 0..32:
     g.reset()
     s += g.push_relabel(src, dst) // timed: flow.FlowGraph.push_relabel
     for p in g.paths(src, dst): s += p.amount // timed: flow.FlowGraph.paths

@@ -10,7 +10,7 @@ for i in 0..64 * n:
     acc += BigInt.from_int(i).to_str().len // timed: math.BigInt.from_int
 let a = BigInt.from_str(s)
 let b = BigInt.from_str(t)
-for _ in 0..32 * n:
+for _ in 0..64 * n:
     if a.abs() > b: acc += 1 // timed: math.BigInt.abs
 for _ in 0..1024:
     acc += BigInt.from_str(s).to_str().len // timed: math.BigInt.from_str

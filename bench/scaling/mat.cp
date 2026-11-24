@@ -13,11 +13,11 @@ let rows = [[Z(x) for x in r] for r in ints]
 let flat = [Z(i * 37 % 1009) for i in 0..n * n]
 let vec = [Z(i + 1) for i in 0..n]
 let a0 = Mat<Z>.of(rows)
-for _ in 0..2048:
+for _ in 0..4096:
     acc += Mat<Z>.of(rows).get(1, 1) // timed: matrix.Mat.of
-for _ in 0..2048:
+for _ in 0..4096:
     acc += Mat<Z>.from_rows(rows).get(1, 1) // timed: matrix.Mat.from_rows
-for _ in 0..6144:
+for _ in 0..12288:
     acc += Mat<Z>.from_flat(n, n, flat).get(1, 1) // timed: matrix.Mat.from_flat
 for _ in 0..32768:
     acc += Mat<Z>.zeros(n, n).get(1, 1) // timed: matrix.Mat.zeros
@@ -54,12 +54,12 @@ for _ in 0..96:
     k += a.rref().rank // timed: matrix.Mat.rref
     acc += (a.solve(vec))![0] // timed: matrix.Mat.solve
     acc += (a.solve_space(vec))!.0[0] // timed: matrix.Mat.solve_space
-for _ in 0..64:
+for _ in 0..128:
     acc += a.char_poly()[0] // timed: matrix.Mat.char_poly
     acc += sk.pfaffian() // timed: matrix.Mat.pfaffian
 for _ in 0..40:
     acc += (a.inverse())!.get(0, 0) // timed: matrix.Mat.inverse
-for _ in 0..24:
+for _ in 0..48:
     k += ai.det_mod(1_000_000) // timed: matrix.Mat.det_mod
     acc += a.adjugate().get(0, 0) // timed: matrix.Mat.adjugate
 for _ in 0..16:

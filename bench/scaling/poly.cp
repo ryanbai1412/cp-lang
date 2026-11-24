@@ -34,7 +34,7 @@ acc ^= interpolate(xs, a).len // timed: poly.interpolate
 acc ^= compose_inv(z, n).len // timed: poly.compose_inv
 for _ in 0..1024:
     acc ^= deriv(a).len // timed: poly.deriv
-for _ in 0..16:
+for _ in 0..32:
     acc ^= taylor_shift(a, Z(3)).len // timed: poly.taylor_shift
     acc ^= binomial_transform(a).len // timed: poly.binomial_transform
     acc ^= transposed_mul(a + b, b).len // timed: poly.transposed_mul

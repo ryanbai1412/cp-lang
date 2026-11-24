@@ -7,7 +7,7 @@ while not is_prime(p): p += 1
 let g = primitive_root(p)
 var acc = 0
 var h = U64(0)
-for i in 0..6 * n:
+for i in 0..8 * n:
     let x = n + i % n
     let y = n + i * 7919 % n
     acc += gcd(x, y) // timed: math.gcd

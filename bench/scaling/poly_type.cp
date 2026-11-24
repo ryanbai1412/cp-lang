@@ -36,6 +36,6 @@ for _ in 0..4096:
     acc ^= Poly.new(c).len // timed: poly.Poly.new
 for _ in 0..32:
     acc ^= p.transposed_mul(q).len // timed: poly.Poly.transposed_mul
-for _ in 0..2:
+for _ in 0..4:
     acc ^= p.shift(Z(3)).len // timed: poly.Poly.shift
 print(acc, q.at(1).v)
