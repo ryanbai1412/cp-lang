@@ -175,6 +175,8 @@ pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
 /// example: `ceil_div(-7, 2) == -3`
 /// example: `ceil_div(7, -2) == -3`
 /// example: `ceil_div(6, 3) == 2`
+@lint(ceil_div_formula, from: "(self + b - 1) / b", to: "ceil_div(self, b)", when: "b >= 1")
+@lint(ceil_div_formula, from: "(b + self - 1) / b", to: "ceil_div(self, b)", when: "b >= 1")
 pub fn ceil_div(self: Int, b: Int) -> Int = if b > 0: -((-self) / b) else: -(self / (-b))
 
 /// The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < |d|` and `self == q * d + r`.

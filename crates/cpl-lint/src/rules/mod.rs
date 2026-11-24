@@ -5,7 +5,6 @@ mod adjacency;
 mod assign;
 mod bag;
 mod bounds;
-mod ceil;
 mod counter;
 mod domain_first;
 mod empty_range;
@@ -79,7 +78,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(while_pop::coalesce(file));
     findings.extend(map_lookup::check(file));
     findings.extend(test_count::check(file));
-    findings.extend(ceil::check(file));
     findings.extend(euclid::check(file));
     findings.extend(reverse::check(file));
     findings.extend(isqrt::check(file));

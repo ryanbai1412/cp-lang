@@ -6,7 +6,6 @@ super::msgs! {
     ARGSORT_LOOP = "L0582", "pairs `({}[{}], {})` sorted to get the positions in order of `{}`";
     BINOM_BY_HAND = "L0557", "`{}[{}]` over `{}[{}]` and `{}[{} - {}]` is `{}` choose `{}`, by hand";
     BINOM_BY_HAND_2 = "L0557", "`{}[..]` over two `{}[..]` entries is `{}` choose `{}`, by hand";
-    CEIL_DIV_FORMULA = "L0526", "`{}` rounds `{} / {}` up by hand";
     CHAR_OFFSET_INDEX = "L0574", "`{} - '{}'` turns a letter into an `Int` index";
     COALESCE_TEST_THEN_UNWRAP = "L0595", "`{}` is tested with the stand-in `?? {}`, then `{}!` unwraps it";
     COMPONENTS_BY_DFS = "L0560", "a search from each unvisited `{}` counts components by hand, with `{}`";

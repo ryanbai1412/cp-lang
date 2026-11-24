@@ -7,8 +7,8 @@
 
 use crate::facts::Facts;
 use crate::{
-    CEIL_DIV_FORMULA, COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT,
-    LOOP_REDUCTION, MANUAL_BIT_TEST, NEG_MOD_FIXUP, UNPROVEN_LIST_INDEX,
+    COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LOOP_REDUCTION,
+    MANUAL_BIT_TEST, NEG_MOD_FIXUP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
@@ -136,10 +136,6 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
     }
     match d.code {
         c if c == COMPOUND_SELF_REF.code => plain_place(d, facts),
-        c if c == CEIL_DIV_FORMULA.code => match label() {
-            None => true,
-            Some(ty) => matches!(ty, Some(Ty::Range { lo: Some(lo), .. }) if *lo >= 1),
-        },
         c if c == FLOAT_SQRT_FOR_INT.code => {
             matches!(label(), Some(Some(Ty::Int | Ty::Range { .. })))
         }
