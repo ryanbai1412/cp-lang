@@ -443,7 +443,13 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
         for var in ["XDG_DATA_HOME", "XDG_CONFIG_HOME", "CPL_HOME", "CPL_STD"] {
             command.env_remove(var);
         }
-        command.output().unwrap()
+        command.output().unwrap_or_else(|e| {
+            panic!(
+                "could not start {}: {e}; this test needs it on the PATH \
+                 (`just install-emacs` installs Emacs, as CI does)",
+                program.display()
+            )
+        })
     };
     let runtime = ["plugin/cpl_path.vim", "ftdetect/cp.vim", "syntax/cp.vim"];
     let mut packages = vec![];
