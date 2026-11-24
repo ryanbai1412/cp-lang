@@ -1,4 +1,5 @@
 // Source: IOI 2001 P1 (Mobile Phones), https://dmoj.ca/problem/ioi01p1
+// limits: 600 ms, 8 MB
 // Problem: an S x S grid (S <= 1024) of counts, all 0. Commands: "0 S" starts, "1 X Y A" adds A
 //   (possibly negative) to cell (X, Y), "2 L B R T" prints the sum over L <= X <= R,
 //   B <= Y <= T, "3" ends. At most 60002 commands; cells stay in 0..=32767.
@@ -10,7 +11,7 @@ let (_, n): (0..=0, 1..=1024) = read()
 domain X = 0..n
 domain Y = 0..n
 
-var grid = Fenwick2D<X, Y, Int>.new()
+var grid = Fenwick2D<X, Y, -(1 << 30)..=1 << 30>.new()  // the whole table holds at most 2^30 phones
 
 while true:
     let op: Int = read()
