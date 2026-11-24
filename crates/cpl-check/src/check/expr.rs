@@ -3901,6 +3901,15 @@ impl Checker<'_> {
         if !matches!(target_ty, Ty::Optional(inner) if inner.is_numeric()) {
             return;
         }
+        // `a.last += 1`: `last` is no place, which lowering reports and fixes.
+        if let ExprKind::Field { base, name } = &target.kind {
+            let base_ty = self.quietly(|c| c.infer(base));
+            let listed = matches!(&base_ty, Ty::Array { .. })
+                || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
+            if name.text == "last" && listed {
+                return;
+            }
+        }
         let sign = if bin == BinOp::Add { "+" } else { "-" };
         let message = format!("`{sign}=` can't be applied to {}", target_ty.with_article());
         if let Some(diag) = self.error(codes::BAD_OPERANDS, target.span, message) {
