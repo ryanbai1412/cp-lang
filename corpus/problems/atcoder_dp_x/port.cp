@@ -5,18 +5,15 @@
 // Solution: exchange argument: some optimal tower has s + w non-decreasing from the top, so
 //   take the blocks in that order and build top down. best[x] is the most value of a tower
 //   weighing x; block b goes under any tower with x <= s_b, a 0/1 knapsack scanned downward
-//   over x. O(N * max s), with weights at most 2e4.
+//   over x. A tower never weighs more than max(s + w) <= 2e4. O(N * max s).
 // original: corpus/submissions/4133420.cpp
 let n: 1..=1000 = read()
 let blocks: [n](w: 1..=1e4, s: 1..=1e4, v: 1..=1e9) = read()
 
-// If a goes right under b, then swapping them is only worse when
-// a.s + a.w < b.s + b.w. So some best tower is sorted that way from the top,
-// and it is built top down: a knapsack over the weight so far, which never
-// passes s + w of the bottom block.
-var best: [0..=20000]?Int = None  // best[x]: most value in a tower weighing x
-best[0] = 0
+domain Weight = 0..=2e4
+var best: [Weight]?Int = None
+best[Weight.first!] = 0
 for b in blocks.sorted(by: b => b.s + b.w):
-    for x in (0..=b.s).rev:
-        if let v = best[x]: best[x + b.w] max= v + b.v
-print([v ?? 0 for v in best].max()!)
+    for x in (..=Weight(b.s)).rev:
+        if let v = best[x]: best[Weight(x.label + b.w)] max= v + b.v
+print(best.map(v => v ?? 0).max()!)

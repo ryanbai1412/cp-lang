@@ -11,8 +11,7 @@ type Z = Mod<P>
 let n: 2..=3000 = read()
 domain Rank = 0..n
 domain Gap = 1..n
-fn random_signs() -> [Gap]Char: [Gap] _ => if rand(0, 1) == 0: '<' else: '>'
-let signs: [Gap]Char = read(gen: random_signs)
+let signs: [Gap]Char = read()
 
 // ways[r]: orderings of the values placed so far in which the last one has
 // r of the others below it. A new value with r below it must follow a value

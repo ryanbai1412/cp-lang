@@ -1,0 +1,24 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "4\n10 20 30 40\n"
+
+[[case]]
+input = "5\n10 10 10 10 10\n"
+
+[[case]]
+input = "3\n1000000000 1000000000 1000000000\n"
+
+[[case]]
+input = "6\n7 6 8 6 1 1\n"
+
+[[case]]
+seed = 1
+size = 4
+
+[[case]]
+seed = 2
+size = 50
+
+[[case]]
+args = ["--max"]

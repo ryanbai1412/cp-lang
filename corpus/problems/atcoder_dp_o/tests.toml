@@ -1,0 +1,21 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "3\n0 1 1\n1 0 1\n1 1 1\n"
+
+[[case]]
+input = "4\n0 1 0 0\n0 0 0 1\n1 0 0 0\n0 0 1 0\n"
+
+[[case]]
+input = "1\n0\n"
+
+[[case]]
+seed = 1
+size = 4
+
+[[case]]
+seed = 2
+size = 10
+
+[[case]]
+args = ["--max"]

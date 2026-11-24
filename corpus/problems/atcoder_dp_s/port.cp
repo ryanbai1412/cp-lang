@@ -6,7 +6,7 @@
 //   A digit extends every number below by 0..=9 and K's prefix by the digits smaller than its
 //   own. Then add K itself and drop 0: O(10 d len(K)).
 type Z = Mod<1_000_000_007>
-let k: Str = read()
+let k: Str<1..=10000> = read()
 let d: 1..=100 = read()
 domain Rem = 0..d
 
@@ -18,7 +18,7 @@ for c in k:
     var next: [Rem]Z = 0
     for r in Rem:
         for x in 0..=9: next[Rem.wrap(r.ord + x)] += below[r]
-    for x in 0..c - '0': next[Rem.wrap(own.ord + x)] += 1
+    for x in 0..c.digit: next[Rem.wrap(own.ord + x)] += 1
     below = next
-    own = Rem.wrap(own.ord + (c - '0'))
+    own = Rem.wrap(own.ord + (c.digit))
 print(below[Rem.first!] - Int(own != Rem.first))  // K itself counts, zero does not
