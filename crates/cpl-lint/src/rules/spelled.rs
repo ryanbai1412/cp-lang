@@ -6,6 +6,7 @@
 //! (`hand_rolled_pow`, `hand_rolled_gcd`), and a slice compared with a
 //! pattern (`manual_starts_with`).
 
+use crate::std_fn;
 use crate::walk::{unparen, walk_expr, walk_stmt, Visitor};
 use crate::{
     File, Finding, Lint, HAND_ROLLED_GCD, HAND_ROLLED_POW, LAST_VIA_LEN, MANUAL_BIT_TEST,
@@ -375,7 +376,7 @@ impl Spelled<'_> {
         let ExprKind::Field { name: method, .. } = &callee.kind else {
             return;
         };
-        if method.text != "sort" && method.text != "sorted" {
+        if method.text != std_fn::SORT && method.text != std_fn::SORTED {
             return;
         }
         for arg in args {
@@ -437,7 +438,7 @@ impl Spelled<'_> {
         let ExprKind::Field { base: of, name } = &unparen(lhs).kind else {
             return;
         };
-        if name.text != "len"
+        if name.text != std_fn::LEN
             || !matches!(rhs.kind, ExprKind::Int(1))
             || self.text(of) != self.text(base)
             || self.targets.contains(&expr.span.shift(self.base))

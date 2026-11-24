@@ -1,6 +1,7 @@
 //! `domain_keyed_map` and `position_arithmetic`: both are about using a
 //! domain as if it were a number.
 
+use crate::std_fn;
 use crate::walk::{unparen, Scope, Visitor};
 use crate::{
     File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, REDUNDANT_ARG_NAME,
@@ -212,15 +213,15 @@ fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr
 
 /// What only a set kept in order answers.
 const ORDERED: &[&str] = &[
-    "first",
-    "last",
-    "first_ge",
-    "first_gt",
-    "last_le",
-    "last_lt",
-    "pop_first",
-    "pop_last",
-    "range",
+    std_fn::FIRST,
+    std_fn::LAST,
+    std_fn::FIRST_GE,
+    std_fn::FIRST_GT,
+    std_fn::LAST_LE,
+    std_fn::LAST_LT,
+    std_fn::POP_FIRST,
+    std_fn::POP_LAST,
+    std_fn::RANGE,
 ];
 
 /// The names `x` of the file with an `x.first`, `x.pop_last()` and so on.

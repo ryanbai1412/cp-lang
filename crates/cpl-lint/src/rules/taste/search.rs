@@ -1,6 +1,7 @@
 //! Binary-search loop shapes behind L0520 `hand_rolled_answer_search`.
 
 use super::*;
+use crate::std_fn;
 
 /// `var x = e` with a plain name.
 /// A `while lo < hi:` loop whose body is `let mid = ..` and one
@@ -215,8 +216,8 @@ pub(super) fn sorted_lookup<'e>(
         return None;
     };
     let method = match (op, keep) {
-        (CmpOp::Ge, true) | (CmpOp::Lt, false) => "first_ge",
-        (CmpOp::Gt, true) | (CmpOp::Le, false) => "first_gt",
+        (CmpOp::Ge, true) | (CmpOp::Lt, false) => std_fn::FIRST_GE,
+        (CmpOp::Gt, true) | (CmpOp::Le, false) => std_fn::FIRST_GT,
         _ => return None,
     };
     let (elem, field) = match &walk::unparen(first).kind {

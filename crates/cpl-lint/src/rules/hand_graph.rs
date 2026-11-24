@@ -3,6 +3,7 @@
 //! minimum or maximum (`sliding_min_by_hand`), and depths stepped from the
 //! parent's (`depth_by_hand`).
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, Lint, CYCLE_BY_COLORS, DEPTH_BY_HAND, SLIDING_MIN_BY_HAND};
 use cpl_diag::{Diagnostic, Span};
@@ -200,7 +201,7 @@ impl HandGraph<'_> {
         };
         let Some(at) = body.stmts.iter().position(|s| {
             matches!(&s.kind, StmtKind::While { body, .. }
-                if body.stmts.len() == 1 && method_call(&body.stmts[0], "pop").is_some())
+                if body.stmts.len() == 1 && method_call(&body.stmts[0], std_fn::POP).is_some())
         }) else {
             return;
         };
@@ -212,11 +213,11 @@ impl HandGraph<'_> {
         else {
             return;
         };
-        let (q, _) = method_call(&pops.stmts[0], "pop").unwrap();
+        let (q, _) = method_call(&pops.stmts[0], std_fn::POP).unwrap();
         let pushes_i = body
             .stmts
             .get(at + 1)
-            .and_then(|s| method_call(s, "push"))
+            .and_then(|s| method_call(s, std_fn::PUSH))
             .is_some_and(|(r, args)| {
                 r == q && matches!(args, [a] if name(&a.value) == Some(i.as_str()))
             });
@@ -249,7 +250,7 @@ impl HandGraph<'_> {
         if !has_followed(self.text(body.span), i, "-") {
             return;
         }
-        let m = if keeps_min { "min" } else { "max" };
+        let m = if keeps_min { std_fn::MIN } else { std_fn::MAX };
         self.warn(
             &SLIDING_MIN_BY_HAND,
             stmt.span,
@@ -269,13 +270,16 @@ impl HandGraph<'_> {
                 Some((t, _)) => (t, value),
                 None => return,
             },
-            _ => match method_call(stmt, "push") {
+            _ => match method_call(stmt, std_fn::PUSH) {
                 Some((t, [a])) => (t, &a.value),
                 _ => return,
             },
         };
         let lower = t.to_ascii_lowercase();
-        if !["dep", "level", "lvl"].iter().any(|w| lower.contains(w)) {
+        if !["dep", std_fn::LEVEL, "lvl"]
+            .iter()
+            .any(|w| lower.contains(w))
+        {
             return;
         }
         let ExprKind::Binary {

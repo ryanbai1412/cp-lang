@@ -5,6 +5,7 @@
 //! labelled so the fact table keeps the finding only on a `Map` or
 //! `HashMap` of `Int` (`typed.rs`).
 
+use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{File, Finding, COUNTER_BY_MAP};
 use cpl_diag::Diagnostic;
@@ -152,7 +153,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let text = |e: &Expr| e.span.shift(self.base).text(self.src);
             let same_key =
                 matches!(&args[..], [a] if a.name.is_none() && text(&a.value) == text(key));
-            if get.text != "get" || name(base) != Some(map) || int(zero) != Some(0) || !same_key {
+            if get.text != std_fn::GET
+                || name(base) != Some(map)
+                || int(zero) != Some(0)
+                || !same_key
+            {
                 return;
             }
             if !self.seen.insert(map.to_string()) {

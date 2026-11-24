@@ -35,6 +35,18 @@ mod library;
 mod recheck;
 mod rules;
 mod session;
+/// The names std declares `pub fn`, generated from `std/*.cp`: lint rules
+/// name std's API through these, never a string literal.
+pub mod std_fn {
+    include!(concat!(env!("OUT_DIR"), "/std_fn.rs"));
+
+    /// The std modules that declare `name`, empty for a name std lacks.
+    pub fn declared_in(name: &str) -> &'static [&'static str] {
+        DECLARED_IN
+            .binary_search_by(|(n, _)| (*n).cmp(name))
+            .map_or(&[], |i| DECLARED_IN[i].1)
+    }
+}
 mod typed;
 mod walk;
 

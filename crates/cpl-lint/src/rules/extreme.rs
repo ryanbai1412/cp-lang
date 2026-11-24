@@ -3,6 +3,7 @@
 //! The list is labelled so the fact table keeps the finding only on a
 //! `List` or an array (`typed.rs`).
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, SORT_FOR_EXTREME};
 use cpl_diag::{Diagnostic, Fix};
@@ -18,11 +19,15 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         fn expr(&mut self, expr: &Expr) {
             let (sorted, pick) = match &expr.kind {
                 ExprKind::Index { base, indices } if matches!(&indices[..], [i] if matches!(i.kind, ExprKind::Int(0))) => {
-                    (&**base, "min")
+                    (&**base, std_fn::MIN)
                 }
                 ExprKind::Unwrap(inner) => match &unparen(inner).kind {
-                    ExprKind::Field { base, name } if name.text == "first" => (&**base, "min"),
-                    ExprKind::Field { base, name } if name.text == "last" => (&**base, "max"),
+                    ExprKind::Field { base, name } if name.text == std_fn::FIRST => {
+                        (&**base, std_fn::MIN)
+                    }
+                    ExprKind::Field { base, name } if name.text == std_fn::LAST => {
+                        (&**base, std_fn::MAX)
+                    }
                     _ => return,
                 },
                 _ => return,
@@ -78,5 +83,5 @@ fn sorted_call(e: &Expr) -> Option<(&Expr, &[Arg])> {
         [a] => a.name.as_ref().is_some_and(|n| n.text == "by"),
         _ => false,
     };
-    (name.text == "sorted" && by).then_some((&**base, &args[..]))
+    (name.text == std_fn::SORTED && by).then_some((&**base, &args[..]))
 }

@@ -80,6 +80,57 @@ fn main() {
     out.push_str("];\n");
     let dest = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo")).join("lints.rs");
     std::fs::write(dest, out).expect("a writable OUT_DIR");
+    std_fns(&manifest);
+}
+
+/// `std_fn.rs`: a constant for every name a top-level std module declares
+/// `pub fn`, so a lint names std's API only through it and a std rename
+/// fails the lint build instead of quietly turning a lint off.
+fn std_fns(manifest: &std::path::Path) {
+    let dir = manifest.join("../../std");
+    println!("cargo:rerun-if-changed={}", dir.display());
+    let mut names: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("std: {e}"))
+        .map(|e| e.expect("a readable std/").path())
+        .filter(|p| p.extension().is_some_and(|x| x == "cp"))
+        .collect();
+    files.sort();
+    for path in files {
+        println!("cargo:rerun-if-changed={}", path.display());
+        let stem = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let module = if stem == "prelude" {
+            stem
+        } else {
+            format!("std.{stem}")
+        };
+        let text =
+            std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        for line in text.lines() {
+            let Some(rest) = line.trim_start().strip_prefix("pub fn ") else {
+                continue;
+            };
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            let modules = names.entry(name).or_default();
+            if !modules.contains(&module) {
+                modules.push(module.clone());
+            }
+        }
+    }
+    let mut out = String::new();
+    for name in names.keys() {
+        writeln!(out, "pub const {}: &str = {name:?};", name.to_uppercase()).unwrap();
+    }
+    out.push_str("\n/// Each name and the std modules that declare it, by name.\npub const DECLARED_IN: &[(&str, &[&str])] = &[\n");
+    for (name, modules) in &names {
+        writeln!(out, "    ({name:?}, &{modules:?}),").unwrap();
+    }
+    out.push_str("];\n");
+    let dest = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo")).join("std_fn.rs");
+    std::fs::write(dest, out).expect("a writable OUT_DIR");
 }
 
 /// A lint record: its code, name, `KEYS` then `OPTIONAL` values, and directory.

@@ -3,6 +3,7 @@
 //! The operand is labelled so the fact table keeps the finding only on an
 //! integer (`typed.rs`).
 
+use crate::std_fn;
 use crate::walk::Visitor;
 use crate::{File, Finding, FLOAT_SQRT_FOR_INT};
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -67,8 +68,8 @@ fn rounded_root(expr: &Expr) -> Option<&Expr> {
         _ => call_of(expr, &["floor", "trunc"])?,
     };
     let n = match &root.kind {
-        ExprKind::Field { base, name } if name.text == "sqrt" => base,
-        _ => call_of(root, &["sqrt"])?,
+        ExprKind::Field { base, name } if name.text == std_fn::SQRT => base,
+        _ => call_of(root, &[std_fn::SQRT])?,
     };
     let n = call_of(n, &["F64"]).unwrap_or(n);
     matches!(n.kind, ExprKind::Name(_) | ExprKind::Field { .. }).then_some(n)

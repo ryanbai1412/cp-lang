@@ -10,6 +10,7 @@
 //! editor shows too) is proven as well: `ys[mid]` in a binary search.
 
 use super::shapes::flip;
+use crate::std_fn;
 use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
 use cpl_check::Ty;
@@ -132,7 +133,7 @@ fn field_receiver<'a>(expr: &'a Expr, field: &str) -> Option<&'a str> {
 
 /// `xs` in `xs.len`.
 fn list_of_len(len: &Expr) -> Option<&str> {
-    field_receiver(len, "len")
+    field_receiver(len, std_fn::LEN)
 }
 
 /// The list `iter` walks the indices of: `0..xs.len`, `xs.indices`, and
@@ -145,7 +146,7 @@ fn indexed_list(iter: &Expr) -> Option<&str> {
             hi: Some(hi),
             inclusive: false,
             step: None,
-        } if matches!(lo.kind, ExprKind::Int(_)) => field_receiver(hi, "len"),
+        } if matches!(lo.kind, ExprKind::Int(_)) => field_receiver(hi, std_fn::LEN),
         _ => field_receiver(iter, "indices"),
     }
 }

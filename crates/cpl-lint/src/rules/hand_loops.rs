@@ -5,6 +5,7 @@
 //! two (`split_range_check`) and a map key tested before `+=`
 //! (`contains_then_add`).
 
+use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{
     File, Finding, Lint, CONTAINS_THEN_ADD, COPY_COMPREHENSION, LOOP_ARGMAX, MANUAL_MEX,
@@ -359,7 +360,8 @@ impl HandLoops<'_> {
             let ExprKind::Field { base, name: len } = &unparen(rhs).kind else {
                 continue;
             };
-            let (Some(q), true) = (name(base), name(lhs) == Some(h) && len.text == "len") else {
+            let (Some(q), true) = (name(base), name(lhs) == Some(h) && len.text == std_fn::LEN)
+            else {
                 continue;
             };
             let read = format!("{q}[{h}]");

@@ -1802,3 +1802,15 @@ fn every_lint_is_on_types_std_or_the_compiler_declares() {
     }
     assert!(checked >= 13, "only {checked} `on` types");
 }
+
+#[test]
+fn std_fn_names_what_std_declares_and_where() {
+    assert_eq!(crate::std_fn::FIRST_GE, "first_ge");
+    assert!(crate::std_fn::declared_in(crate::std_fn::FIRST_GE).contains(&"std.seq"));
+    assert!(crate::std_fn::declared_in("no_such_std_fn").is_empty());
+    let names: Vec<&str> = crate::std_fn::DECLARED_IN.iter().map(|(n, _)| *n).collect();
+    assert!(
+        names.windows(2).all(|w| w[0] < w[1]),
+        "DECLARED_IN is sorted for its binary search"
+    );
+}

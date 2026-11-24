@@ -3,6 +3,7 @@
 //! the fact table keeps the finding only on a `Heap` or `MaxHeap`
 //! (`typed.rs`).
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, PUSH_POP_PAIR};
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -26,7 +27,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let StmtKind::Expr(call) = &push.kind else {
                 return;
             };
-            let Some((heap, "push", [x])) = method(call) else {
+            let Some((heap, std_fn::PUSH, [x])) = method(call) else {
                 return;
             };
             let StmtKind::Let {
@@ -41,7 +42,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let ExprKind::Unwrap(popped) = &init.kind else {
                 return;
             };
-            let Some((popped, "pop", [])) = method(unparen(popped)) else {
+            let Some((popped, std_fn::POP, [])) = method(unparen(popped)) else {
                 return;
             };
             let text = |e: &Expr| e.span.shift(self.base).text(self.src);

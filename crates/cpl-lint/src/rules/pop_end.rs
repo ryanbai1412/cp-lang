@@ -2,6 +2,7 @@
 //! `let x = s.pop_first()!` (`std.bag`). The set is labelled so the fact
 //! table keeps the finding only on a `SortedBag` or `SortedSet` (`typed.rs`).
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, POP_MIN_LOOP};
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -48,8 +49,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 return;
             };
             let pop = match end.text.as_str() {
-                "first" => "pop_first",
-                "last" => "pop_last",
+                std_fn::FIRST => std_fn::POP_FIRST,
+                std_fn::LAST => std_fn::POP_LAST,
                 _ => return,
             };
             let StmtKind::Expr(Expr {
@@ -70,7 +71,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let between = Span::new(read.span.end, remove.span.start).shift(self.base);
             let same =
                 matches!(&args[..], [a] if a.name.is_none() && name(&a.value) == Some(bound));
-            if method.text != "remove"
+            if method.text != std_fn::REMOVE
                 || !same
                 || text(set) != text(removed)
                 || !between.text(self.src).trim().is_empty()

@@ -273,6 +273,17 @@ def lint_std_names(root: Path) -> list[str]:
             if name in public]
 
 
+def lint_name_matchers(root: Path) -> list[str]:
+    """Lint rule lines that decide what a call is by comparing its written name
+    against a std fn (`method.text == std_fn::PUSH`, a `std_fn::SORT =>` arm)
+    instead of asking the checker which fn it calls (`Facts::callee`): a
+    user's own `push` fires them. Names a lint writes into its help or fix
+    don't count. `lint_std_names` keeps every such name on `std_fn`."""
+    matcher = re.compile(r"(==|!=)\s*std_fn::|std_fn::\w+\s*(==|!=|=>|\|)|\|\s*std_fn::|matches!\(.*std_fn::|contains\(std_fn::")
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False)
+            for i, line in enumerate(_lines(p), 1) if matcher.search(line)]
+
+
 def lint_type_syntax(root: Path) -> list[str]:
     """Lint rules reading a written type (`TypeKind::`) to decide what a value is, where
     the checker's facts know it (handbook/guidelines/lints-checklist.md, lints/R4)."""
@@ -2132,7 +2143,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "habit_matchers",
+    "habit_matchers", "lint_std_names",
     "corpus_walkers", "poll_sleeps", "retry_calls",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
@@ -2181,7 +2192,8 @@ COUNTERS = {
     "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
-    "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),
+    "lint_std_names": ("std fn names as string literals in lint rules, not through std_fn", lint_std_names, True),
+    "lint_name_matchers": ("lint rule lines matching a call by its written std fn name, not its callee", lint_name_matchers, True),
     "lint_type_syntax": ("lint rule lines reading a written type instead of checker facts", lint_type_syntax, True),
     "idioms_evidenced_unlinted": ("non-idiomatic spots with evidence that no lint teaches", idioms_evidenced_unlinted, True),
     "dup_fn_bodies": ("copied fn bodies across files", dup_fn_bodies, True),

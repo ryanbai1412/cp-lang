@@ -3,6 +3,7 @@
 //! Fenwick tree (`inversions_by_fenwick`) and an interval DP stepped by
 //! length (`interval_dp_by_length`).
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{
     File, Finding, Lint, INTERVAL_DP_BY_LENGTH, INVERSIONS_BY_FENWICK, SMALL_TO_LARGE_BY_HAND,
@@ -82,7 +83,7 @@ impl HandDs<'_> {
             let Some((l, CmpOp::Lt | CmpOp::Gt | CmpOp::Le | CmpOp::Ge, r)) = compare(c) else {
                 continue;
             };
-            let is_len = |e: &Expr| matches!(&unparen(e).kind, ExprKind::Field { name, .. } if name.text == "len");
+            let is_len = |e: &Expr| matches!(&unparen(e).kind, ExprKind::Field { name, .. } if name.text == std_fn::LEN);
             if !is_len(l) || !is_len(r) {
                 continue;
             }
@@ -114,7 +115,8 @@ impl HandDs<'_> {
             let StmtKind::For { iter, body, .. } = &pair[1].kind else {
                 continue;
             };
-            let Some((recv, _)) = single(body).and_then(|s| call_stmt(s, &["add", "insert"]))
+            let Some((recv, _)) =
+                single(body).and_then(|s| call_stmt(s, &[std_fn::ADD, std_fn::INSERT]))
             else {
                 continue;
             };
@@ -162,13 +164,13 @@ impl HandDs<'_> {
             else {
                 return None;
             };
-            name(call(rhs, "prefix")?.0)
+            name(call(rhs, std_fn::PREFIX)?.0)
         });
         let Some(bit) = counted else {
             return;
         };
         let adds_one = body.stmts.iter().any(|s| {
-            call_stmt(s, &["add"]).is_some_and(|(r, args)| {
+            call_stmt(s, &[std_fn::ADD]).is_some_and(|(r, args)| {
                 name(r) == Some(bit)
                     && match args {
                         [_] => true,

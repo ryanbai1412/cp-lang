@@ -2,6 +2,7 @@
 //! does, found once so every loop-shaped lint reads the same answer.
 
 use super::{breaks_after_setting, pushed_onto, var_decl};
+use crate::std_fn;
 use cpl_syntax::ast::*;
 
 /// `var name = init` followed by a `for` loop: a loop whose job may be to
@@ -143,8 +144,8 @@ fn spelled_out<'a>(name: &str, value: &'a Expr) -> Option<(&'static AssignOp, &'
         } => Some((&ADD, other(lhs, rhs)?)),
         ExprKind::Call { callee, args } => {
             let op = match &callee.kind {
-                ExprKind::Name(n) if n == "max" => &MAX,
-                ExprKind::Name(n) if n == "min" => &MIN,
+                ExprKind::Name(n) if n == std_fn::MAX => &MAX,
+                ExprKind::Name(n) if n == std_fn::MIN => &MIN,
                 ExprKind::Name(_) => {
                     let is_self = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
                     return match &args[..] {

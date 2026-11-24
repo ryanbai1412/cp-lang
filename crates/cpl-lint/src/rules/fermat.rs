@@ -2,6 +2,7 @@
 //! Fermat's little theorem; `Mod<P>` (`std.mod`) has it as `Z(a).inv()`.
 //! Only a constant modulus counts: `Mod<P>` needs one.
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, FERMAT_INVERSE};
 use cpl_diag::Diagnostic;
@@ -20,7 +21,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let ExprKind::Call { callee, args } = &expr.kind else {
                 return;
             };
-            let ([a, e, m], Some("pow_mod")) = (args.as_slice(), name(callee)) else {
+            let ([a, e, m], Some(std_fn::POW_MOD)) = (args.as_slice(), name(callee)) else {
                 return;
             };
             let text = |x: &Expr| unparen(x).span.shift(self.base).text(self.src).to_string();
