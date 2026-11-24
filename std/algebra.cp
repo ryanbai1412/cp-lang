@@ -203,7 +203,7 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `MaxSub.zero.try_best == None`
-    @get pub fn zero() -> MaxSub = MaxSub(false, 0, 0, 0, 0)
+    const zero = MaxSub(false, 0, 0, 0, 0)
 
     /// The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
     ///
