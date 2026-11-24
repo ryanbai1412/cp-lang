@@ -2417,6 +2417,7 @@ HARD_ZERO = frozenset({
     "sig_gaps",
     "std_lint_findings",
     "corpus_lint_warnings",
+    "judge_tables",
     "std_lint_allows",
     "generate_gaps",
     "xfail_markers",
