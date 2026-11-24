@@ -1167,6 +1167,13 @@ impl<'a> Lowerer<'a> {
                     (None, None, Some(proj)) => self.map_proj_bind(pat, proj, &mut stmts),
                     (None, None, None) => self.loop_var(pat, elem, &mut stmts),
                 };
+                // An element of a range-typed list keeps its range, so storing it back
+                // into a cell of that range needs no check.
+                if let (ast::PatternKind::Name(_), Iter::Seq(seq, _)) = (&pat.kind, &iter) {
+                    if let Some(RangeInfo::Elem(inner)) = self.expr_range(seq) {
+                        self.cx.local_ranges.insert(slot, *inner);
+                    }
+                }
                 if elem_is_int
                     && body
                         .stmts

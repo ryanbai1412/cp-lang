@@ -156,6 +156,14 @@ impl<'a> Lowerer<'a> {
                     }))],
                 };
                 let cid = self.closures.len();
+                // Each parameter stores like the field it fills, so a narrowed field
+                // stays narrow when its constructor is also a value.
+                for i in 0..fields.len() {
+                    if let Some(layout) = self.narrow_elems.get(&ElemLoc::Field(id, i)).cloned() {
+                        self.narrow_elems
+                            .insert(ElemLoc::Local(ScopeId::Closure(cid), i), layout);
+                    }
+                }
                 self.closures.push(ClosureDef {
                     params,
                     muts: Vec::new(),

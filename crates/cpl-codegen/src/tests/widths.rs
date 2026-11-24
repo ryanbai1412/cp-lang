@@ -306,3 +306,29 @@ print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
         "expected tuple array passed to [V](Int, Int) to widen:\n{widened}"
     );
 }
+
+#[test]
+fn a_list_built_by_new_stays_narrow_when_called_on_the_type() {
+    let out = cpp("struct S:
+    pub xs: List<0..=2_000_000_000>
+
+    pub fn new(n: Int) -> S:
+        var xs: List<0..=2_000_000_000> = List.filled(n, 0)
+        S(xs)
+let s = S.new(10)
+print(s.xs[9])
+");
+    assert!(out.contains("std::vector<uint32_t> xs"), "{out}");
+}
+
+#[test]
+fn an_element_of_a_range_typed_list_stores_back_unchecked() {
+    let out = cpp("let n: 1..=100 = read()
+var xs: List<0..=1000> = List.filled(n, 0)
+var ys: List<0..=1000> = List.filled(n, 0)
+for x in xs:
+    ys[0] = x
+print(ys[0])
+");
+    assert!(!out.contains("check_range"), "{out}");
+}
