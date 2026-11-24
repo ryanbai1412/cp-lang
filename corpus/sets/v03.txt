@@ -580,8 +580,11 @@ noi02p1
 noi02p3
 noi02p4
 noi02p6
+noi03p4
+noi04p5
 noi05p4
 noi06p3
+noi06p4
 noi07p1
 noi07p6
 noi08p5

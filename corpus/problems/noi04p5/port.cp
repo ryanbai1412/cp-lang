@@ -14,8 +14,7 @@
 // The slopes have one decimal, so everything is counted in tenths.
 let (k1, k2): (F64, F64) = read()
 let (a, b) = (round(k1 * 10), round(k2 * 10))
-let n: 2..=100 = read()
-let m: 2..=100 = read()
+let (n, m): (2..=100, 2..=100) = read()
 
 // least sum of squares when `len` is cut into `parts` positive integers:
 // the parts differ by at most one
@@ -38,10 +37,6 @@ for i in 0..n:
                 for len in 1..=100 - k - after:
                     let main = a * len * len
                     for parts in 1..=min(len, m - j - after):
-                        cost[
-                            i + 1,
-                            k + len,
-                            j + parts,
-                        ] min= base + main + south[len, parts]
+                        cost[i + 1, k + len, j + parts] min= base + main + south[len, parts]
 let best = cost[n, 100, m]!
 print("{best / 10}.{best % 10}")
