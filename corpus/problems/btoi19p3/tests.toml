@@ -28,3 +28,6 @@ size = 60
 
 [[case]]
 args = ["--max"]
+
+[[case]]
+args = ["--max", "--s", "10000"]

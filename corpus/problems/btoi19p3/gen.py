@@ -2,7 +2,8 @@
 
 "N S Q E", then N - 1 roads "A B W" (a tree, W <= 1e9), S distinct shop villages, then Q
 queries "I R" (close road I, start at R). --max: N = Q = 1e5, a deep caterpillar hung far
-from E with heavy roads, shops spread out, queries cutting deep roads from deeper villages.
+from E with heavy roads, a shop in every village (`--s S`: S shops spread out), queries
+cutting deep roads from deeper villages.
 """
 import random
 import sys
@@ -11,7 +12,7 @@ MAX = sys.argv[1] == "--max"
 rng = random.Random(1 if MAX else int(sys.argv[1]))
 n = 10**5 if MAX else rng.randint(2, max(2, int(sys.argv[2])))
 q = 10**5 if MAX else rng.randint(1, max(1, int(sys.argv[2])))
-s = n // 10 if MAX else rng.randint(1, n)
+s = (int(sys.argv[sys.argv.index("--s") + 1]) if "--s" in sys.argv else n) if MAX else rng.randint(1, n)
 lab = list(range(1, n + 1))
 rng.shuffle(lab)
 par = [0] * n

@@ -1,7 +1,6 @@
 {
   "max_short": [
     "max-short btoi18p6 k: --max reads 4, the statement allows 5",
-    "max-short btoi19p3 s: --max reads 10000, the statement allows n",
     "max-short ccc01s5 n: --max reads 2, the statement allows 40",
     "max-short ccc21s2 cols: --max reads 2236, the statement allows 5e6",
     "max-short ccc21s2 rows: --max reads 2236, the statement allows 5e6",
