@@ -510,8 +510,8 @@ class Tail:
         gen = self.run([sys.executable, "scripts/gen.py", "--check"], cwd=ROOT, stdout=subprocess.PIPE,
                        stderr=subprocess.STDOUT, text=True)
         if gen.returncode:
-            print((gen.stdout.strip().splitlines() or [""])[-1])
-            print("note: not blocking; CI's regen job rewrites these on main (details: uv run scripts/gen.py --check)")
+            print((gen.stdout.strip().splitlines() or [""])[-1].removesuffix("; run: just gen"))
+            print("note: not blocking, and no need to regenerate them: CI's regen job rewrites these on main")
         if slices := sel.get("slices", "").split():
             self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
             if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
