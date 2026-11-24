@@ -157,7 +157,9 @@ class CheckCacheTest(unittest.TestCase):
             os.makedirs(os.path.join(tmp, "scripts"))
             check = os.path.join(tmp, "scripts", "check.sh")
             hook = os.path.join(root, ".githooks", "pre-commit")
-            for body, code in (("echo '==> slow step'; sleep 30 | cat; true", 0), ("echo '==> lint'; exit 3", 3)):
+            slices = "echo '==> touched-path slices: vm-trace copies (scripts/affected.py, each under 20 s)'"
+            for body, code in (("echo '==> slow step'; sleep 30 | cat; true", 0), ("echo '==> lint'; exit 3", 3),
+                               (slices + "; sleep 30 | cat; true", 1)):
                 with open(check, "w", encoding="utf-8") as f:
                     f.write("#!/usr/bin/env bash\n" + body + "\n")
                 os.chmod(check, 0o755)
@@ -166,6 +168,9 @@ class CheckCacheTest(unittest.TestCase):
                                    env={**env, "CPL_COMMIT_TIMEOUT": "1"})
                 self.assertEqual(r.returncode, code, r.stderr)
                 self.assertLess(time.monotonic() - t0, 10)
+                if code == 1:
+                    self.assertIn("refusing", r.stderr)
+                    self.assertIn("--run-slices vm-trace copies\n", r.stderr)
             with open(os.path.join(tmp, ".git", "cpl-commit-slow.log"), encoding="utf-8") as f:
                 self.assertIn("slow step", f.read())
 
