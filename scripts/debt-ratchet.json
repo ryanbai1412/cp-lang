@@ -27,6 +27,7 @@
   "unrun_script_tests": 0,
   "crate_edges": [
     "cpl-check -> cpl-diag",
+    "cpl-check -> cpl-judge",
     "cpl-check -> cpl-syntax",
     "cpl-cli -> cpl-check",
     "cpl-cli -> cpl-codegen",
@@ -64,6 +65,7 @@
     "cpl-contest -> cpl-stress",
     "cpl-contest -> cpl-syntax",
     "cpl-diag -> cpl-json",
+    "cpl-doc -> cpl-check",
     "cpl-doc -> cpl-diag",
     "cpl-doc -> cpl-json",
     "cpl-doc -> cpl-syntax",

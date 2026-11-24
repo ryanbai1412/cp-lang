@@ -2199,7 +2199,9 @@ def improved(actual: dict, baseline: dict) -> list[str]:
     if any(n < baseline.get("register_rows_by_domain", {}).get(d, n)
            for d, n in actual.get("register_rows_by_domain", {}).items()):
         names.append("register_rows_by_domain")
-    if set(baseline.get("crate_edges", [])) - set(actual.get("crate_edges", [])):
+    known, now = set(baseline.get("crate_edges", [])), set(actual.get("crate_edges", []))
+    added = now - known
+    if known - now or (added and added <= set(actual.get("a4_edges", []))):
         names.append("crate_edges")
     if set(baseline.get("rs_near_cap", [])) - set(actual.get("rs_near_cap", [])):
         names.append("rs_near_cap")
@@ -2521,9 +2523,11 @@ def main(argv: list[str] | None = None) -> int:
         print("debt-ratchet: remove the new debt; a baseline rises only with a change to the code that measures it",
               file=sys.stderr)
     if notes:
+        for n in notes:
+            print(f"debt-ratchet: {n}")
         names = " ".join(improved(actual, baseline))
         print(f"debt-ratchet: {len(notes)} item(s) improved; tighten with "
-              f"`python3 scripts/debt-ratchet.py --update {names}`")
+              f"`uv run --quiet python scripts/debt-ratchet.py --update {names}`")
     return 1 if errors else 0
 
 

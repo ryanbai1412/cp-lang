@@ -1088,6 +1088,14 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-lsp/src/a.rs:4 type Int", "crates/cpl-lsp/src/a.rs:4 type Str",
                 "crates/cpl-lsp/src/a.rs:5 code E0302"])
 
+    def test_a_documented_new_crate_edge_is_offered_for_tightening(self) -> None:
+        baseline = {"crate_edges": ["a -> b"]}
+        documented = {"crate_edges": ["a -> b", "c -> a"], "a4_edges": ["a -> b", "c -> a"]}
+        self.assertEqual(dr.evaluate(documented, baseline)[0], [])
+        self.assertIn("crate_edges", dr.improved(documented, baseline))
+        undocumented = {"crate_edges": ["a -> b", "c -> a"], "a4_edges": ["a -> b"]}
+        self.assertNotIn("crate_edges", dr.improved(undocumented, baseline))
+
     def test_a_file_entering_the_near_cap_band_fails(self) -> None:
         baseline = {"rs_near_cap": ["a.rs"], "rs_file_size_allowlist": {"big.rs": 2400}}
         actual = {"rs_near_cap": ["big.rs", "new.rs"], "rs_file_size_allowlist": {}}
