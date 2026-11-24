@@ -227,7 +227,9 @@ class LandTest(unittest.TestCase):
             "runs = os.environ['CI_RUNS']\n"
             "first = not os.path.exists(runs)\n"
             "open(runs, 'a').write(' '.join(sys.argv[1:]) + '\\n')\n"
-            "if first and os.environ.get('RACE'):\n"
+            "if (first or len(open(runs).read().splitlines()) <= int(os.environ.get('RACES', 1))) and os.environ.get('RACE'):\n"
+            "    if not first:\n"
+            "        subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'race'], cwd=os.environ['RACE'], check=True)\n"
             "    subprocess.run(['git', 'push', '-q', 'origin', 'HEAD:main'], cwd=os.environ['RACE'], check=True)\n"
             "sys.exit('warning: field `0` is never read' if 'wasm' in sys.argv[-1] else 0)\n")
         self.commit(repo, "a commit tier")
@@ -279,6 +281,21 @@ class LandTest(unittest.TestCase):
         self.assertEqual(runs.read_text(), "commit --only nextest\n" * 2)
         self.assertIn("(try 2)", r.stdout)
         self.assertFalse(pending.exists())
+
+    def test_the_pending_steps_rerun_once_after_lost_races_then_land(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        pending, runs = self._steps_runner(ours)
+        git(theirs, "pull", "-q", "origin", "main")
+        (theirs / "theirs.txt").write_text("x\n")
+        self.commit(theirs, "theirs")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        pending.write_text("nextest\n")
+        r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), RACES="2", CPL_LAND_TRIES="3")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(runs.read_text(), "commit --only nextest\n" * 2)
+        self.assertIn("landing on the skipped steps' rerun", r.stderr)
+        self.assertIn("(try 3)", r.stdout)
 
     def test_a_lanes_land_leaves_another_worktrees_pending_steps_alone(self):
         a = self.clone("ours")

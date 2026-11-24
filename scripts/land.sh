@@ -169,9 +169,14 @@ fi
 # wasm check), on the rebased tip staged against main as the hook stages them,
 # and again on the new tip after a lost push race.
 pending_steps="$(git rev-parse --git-dir)/cpl-pending-steps"
+steps_runs=0
 run_pending_steps() {
     [ -s "$pending_steps" ] || return 0
     steps=$(sort -u "$pending_steps" | tr '\n' ',' | sed 's/,$//')
+    # Once more after a lost race, as recheck: every rerun gives main another
+    # window to move, and at its pace one per race livelocked landing (5 tries).
+    steps_runs=$((steps_runs + 1))
+    [ "$steps_runs" -le 2 ] || { echo "land: main moved again; landing on the skipped steps' rerun, CI checks this tip" >&2; return 0; }
     echo "land: running the commit-tier steps the hook's cut skipped: $steps" >&2
     tip=$(git rev-parse HEAD)
     prev=$(trap -p EXIT)
