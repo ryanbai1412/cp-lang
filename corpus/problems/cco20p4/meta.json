@@ -28,5 +28,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Minimum route of length n per start, following 6416816's insertion order (tests use its answers; 4801875's 2n - 2 walk fails checker.py). Road table read as rows until [Pair<V>]T arrays work."
+ "notes": "Minimum route of length n per start, following 6416816's insertion order (tests use its answers; 4801875's 2n - 2 walk fails checker.py). Road table read as rows until [Pair<V>]T arrays work.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 14,
+  "sha": "70043fef44c3ca37d415d8aa43a721d16ef25c0a"
+ }
 }
