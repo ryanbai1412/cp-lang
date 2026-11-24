@@ -1169,20 +1169,6 @@ pub struct SortedSet<K>:
     /// example: `SortedSet.of([9, 1, 4]).nth(-1) == None`
     pub fn nth(self, i: Int) -> ?K = bag.nth(i)
 
-    /// The sum of the elements in `keys` (all of them by default), for additive `K`:
-    /// `set.sum(..b)` adds everything below `b`. \(O(\log n)\): subtree sums are kept.
-    ///
-    /// `keys` may be any ordered range (`a..b`, `a..=b`, `..b`, `a..`, `..`); its ends need
-    /// not be in the set.
-    ///
-    /// cost: \(O(\log n)\) expected
-    /// empty: `K.zero`, for an empty set or an empty `keys`
-    /// traps: never (overflow wraps in release, traps in debug)
-    /// example: `SortedSet.of([1, 2, 5]).sum() == 8`
-    /// example: `SortedSet.of([1, 2, 5]).sum(..3) == 3`
-    /// example: `SortedSet.of([1, 2, 5]).sum(2..=5) == 7`
-    pub fn sum(self, keys: Range<K> = ..) -> K = todo
-
     /// Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `None`.
     ///
     /// cost: \(O(\log n)\) expected calls of `ok`
