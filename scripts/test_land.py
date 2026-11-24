@@ -596,6 +596,31 @@ class LandTest(unittest.TestCase):
         self.assertNotIn("taking over", r.stderr)
         self.assertTrue(self.lock_on_remote().startswith(held), self.lock_on_remote())
 
+    def test_a_beat_whose_reply_is_lost_keeps_the_lock_beating(self):
+        # The first beat lands but answers an error, as a 504 after the update does.
+        repo = self.clone("lane")
+        shim, log, lost = self.tmp / "bin", self.tmp / "beats", self.tmp / "lost"
+        shim.mkdir()
+        real = shutil.which("git")
+        (shim / "git").write_text(
+            "#!/bin/sh\n"
+            'case "$*" in *" HEAD:main"*) sleep 5 ;; esac\n'
+            'case "$*" in *"--force-with-lease=refs/land/lock:"[0-9a-f]*" "[0-9a-f]*":refs/land/lock"*)\n'
+            f'  "{real}" "$@"; rc=$?\n'
+            f'  [ -e "{lost}" ] || {{ : >"{lost}"; exit 1; }}\n'
+            f'  echo "$rc" >>"{log}"; exit $rc ;;\n'
+            "esac\n"
+            f'exec "{real}" "$@"\n')
+        (shim / "git").chmod(0o755)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}", CPL_LAND_LOCK_BEAT="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(lost.exists())
+        self.assertIn("0", log.read_text().split() if log.exists() else [], r.stderr)
+        self.assertNotIn("heartbeat failed", r.stderr)
+        self.assertEqual(self.lock_on_remote(), "")
+
     def test_a_holder_restamps_its_lock_while_it_holds_it(self):
         # A live holder's lock never ages past the threshold, however long its push takes.
         repo = self.clone("lane")

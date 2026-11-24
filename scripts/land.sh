@@ -380,14 +380,29 @@ beat_pid=""
 start_beat() {
     echo "$lock_held" >"$lock_file"
     (
-        stop=""
-        trap 'stop=1' TERM
+        stop="" nap=""
+        # Kills the nap too: a live sleep holds the land's output open for $lock_beat s.
+        trap 'stop=1; [ -z "$nap" ] || kill "$nap" 2>/dev/null' TERM
         while [ -z "$stop" ]; do
-            sleep "$lock_beat" & wait $! 2>/dev/null
+            sleep "$lock_beat" &
+            nap=$!
+            wait "$nap" 2>/dev/null || :
             [ -z "$stop" ] || break
-            new=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $lock_who $$ $(date +%s) $domain")
-            git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" "$new:$lock_ref" 2>/dev/null &&
+            new=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $lock_who $$ $(date +%s) $domain") || continue
+            if git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" "$new:$lock_ref" 2>/dev/null; then
                 echo "$new" >"$lock_file"
+                continue
+            fi
+            # A beat whose reply was lost (a 504 after the update) leaves the lease
+            # behind, and every later beat fails: compiler took a live holder's lock
+            # at 120 s. Adopt the lock while it still names this holder.
+            cur=$(git ls-remote "$remote" "$lock_ref" 2>/dev/null | cut -f1) || cur=""
+            if [ -n "$cur" ] && git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null &&
+                [ "$(git log -1 --format=%s "$cur" 2>/dev/null | cut -d' ' -f2,3)" = "$lock_who $$" ]; then
+                echo "$cur" >"$lock_file"
+            else
+                echo "land: a land lock heartbeat failed (the lock is now ${cur:-free})" >&2
+            fi
         done
     ) &
     beat_pid=$!
