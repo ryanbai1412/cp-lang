@@ -59,7 +59,7 @@ class LandTest(unittest.TestCase):
         git(repo, "commit", "-q", "--no-verify", "-m", msg, "-m", "Domain: infra")
 
     def land(self, repo):
-        env = {**os.environ, "CPL_LAND_TRIES": "1"}
+        env = {**{k: v for k, v in os.environ.items() if k != "CPL"}, "CPL_LAND_TRIES": "1"}
         return subprocess.run(["bash", "scripts/land.sh"], cwd=repo, env=env, capture_output=True, text=True)
 
     def test_a_generated_file_conflict_takes_mains_copy_and_lands(self):
@@ -138,9 +138,11 @@ class LandTest(unittest.TestCase):
         self.assertIn("bad.txt", git(ours, "show", "--name-only", "--format=", "HEAD"))
         self.assertNotIn("bad.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
 
-    def test_the_rerun_checks_packages_with_the_cpl_the_hook_used(self):
+    def test_the_rerun_hands_the_hook_no_stale_cpl(self):
+        # A cpl copied from before the rebase escapes the dep-info staleness check
+        # and measures main's old sources; the rerun leaves the hook to build its own.
         theirs, ours = self.clone("theirs"), self.clone("ours")
-        self._hook(theirs, 'echo "rerun cpl=$CPL"; [ -x "$CPL" ]\n')
+        self._hook(theirs, 'echo "rerun cpl=${CPL:-unset}"\n')
         self.commit(theirs, "gate")
         git(theirs, "push", "-q", "origin", "HEAD:main")
         (ours / "target" / "release").mkdir(parents=True)
@@ -151,8 +153,7 @@ class LandTest(unittest.TestCase):
         self.commit(ours, "ours")
         r = self.land(ours)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("rerun cpl=", r.stderr)
-        self.assertIn("cpl-land-cpl", r.stderr)
+        self.assertIn("rerun cpl=unset", r.stderr)
 
     def test_a_rebase_past_no_gate_change_lands_without_rerunning_it(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
