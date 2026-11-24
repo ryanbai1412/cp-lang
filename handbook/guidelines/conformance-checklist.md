@@ -36,8 +36,8 @@ one, check that the failure is the bug the case is about. Enforced by
 `scripts/conformance-gaps.py` (the case's own code at another line, or a
 printed `?T` without `!`) and by `scripts/conform_staged.py` (a staged case
 that fails blocks the commit unless HEAD's scoreboard already records it as
-failing). `// gap:` lines still left must be well formed and still fail
-(`scripts/spec-gate.py gaps`, `gap-age`) until the ratchet counts none.
+failing). No case carries a `// gap:` line (`scripts/spec-gate.py gaps`,
+decision 527).
 
 ### conformance/R4. Every fixed bug lands with a case that fails without the fix
 

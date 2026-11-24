@@ -72,36 +72,11 @@ class GatesTest(unittest.TestCase):
             self.assertEqual(run("markers"), [])
 
     def test_gaps(self):
-        import json
         files = {"spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T05Z\nx\n",
                  "spec/conformance/c/g.cp": "// expect: ok\nx\n",
-                 "spec/conformance/c/h.cp": "// expect: ok\n// gap: compiler it is hard\nx\n"}
-        with Tree(files) as t:
-            board = t.root / "board.json"
-            board.write_text(json.dumps({"suites": {"conformance": {"cases": {
-                "c/f.cp": "fail", "c/g.cp": "fail", "c/h.cp": "fail"}}}}))
-            got = {p.where: p.what for p in run("gaps", "--board", str(board))}
-            self.assertEqual(set(got), {"c/h.cp"})
-            self.assertIn("no reason text", got["c/h.cp"])
-            board.write_text(json.dumps({"suites": {"conformance": {"cases": {"c/f.cp": "pass"}}}}))
-            self.assertIn("passes", {p.where: p.what for p in run("gaps", "--board", str(board))}["c/f.cp"])
-
-    def test_gap_age(self):
-        files = {"spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T05Z\nx\n",
-                 "spec/conformance/c/o.cp": "// expect: ok\n// gap: wizard 2026-11-24T05Z\nx\n"}
+                 "spec/conformance/c/h.cp": "// expect: ok\nx\n// gap: in the body is program text\n"}
         with Tree(files):
-            self.assertEqual([p.where for p in run("gap-age", "--now", "2026-11-26T05Z")], ["c/o.cp"])
-            late = run("gap-age", "--now", "2026-11-26T06Z")
-            self.assertIn("49 h old", {p.where: p.what for p in late}["c/f.cp"])
-            self.assertIn("future", {p.where: p.what for p in run("gap-age", "--now", "2026-11-24T03Z")}["c/f.cp"])
-
-    def test_gap_age_rejects_a_later_time(self):
-        with Tree({"spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T09Z\nx\n"}):
-            with mock.patch("specgate.gap_age.head_text",
-                            return_value="// expect: ok\n// gap: compiler 2026-11-24T05Z\nx\n"):
-                got = run("gap-age", "--now", "2026-11-24T10Z", "--staged")
-            self.assertEqual(len(got), 1)
-            self.assertIn("keep the original", got[0].what)
+            self.assertEqual([p.where for p in run("gaps")], ["c/f.cp"])
 
     def test_subset(self):
         from specgate import subset

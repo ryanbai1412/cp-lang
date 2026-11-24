@@ -15,7 +15,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-GATES = ["gap-age", "gaps", "markers", "subset"]
+GATES = ["gaps", "markers", "subset"]
 
 
 def load(name: str):

@@ -613,9 +613,9 @@ step "conformance coverage: COVERAGE.md current, no new rule gaps"
 uv run scripts/conformance-coverage.py --check ||
     derived "rule coverage gate failed; see above, then rerun: uv run scripts/conformance-coverage.py"
 
-step "conformance gaps: SUBSET.md generated, no gap past 48 h (scripts/spec-gate.py subset, gap-age)"
+step "conformance gaps: SUBSET.md generated from the board, no case carries a // gap: line (scripts/spec-gate.py subset, gaps)"
 uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"
-uv run --quiet python scripts/spec-gate.py gap-age --staged || fail "a conformance gap is past 48 h or re-dated; make the case pass, then rerun: uv run scripts/spec-gate.py gap-age --staged"
+uv run --quiet python scripts/spec-gate.py gaps || fail "a case carries a // gap: line; delete it (research/scoreboard.json records the failure)"
 
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
@@ -740,9 +740,6 @@ if [ "$mode" = full ]; then
     uv run scripts/explain-copies.py --check --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
     uv run scripts/tool-vocab.py || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
     uv run scripts/conformance-flakes.py --runs 2 --check || fail "a conformance case changed verdict between runs; see above"
-    step "conformance gaps: every // gap: line left is well formed and its case fails (scripts/spec-gate.py gaps)"
-    uv run --quiet python scripts/spec-gate.py gaps --conform "$target/debug/cpl-conform" \
-        || fail "a // gap: line is malformed or its case passes; delete the line"
 
     step "cargo test: every port compiled with every judge profile's flags"
     cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags

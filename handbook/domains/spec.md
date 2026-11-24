@@ -88,7 +88,7 @@ domain with its path.
 | Rule ids `Rnn.n.n` | compiler, diagnostics (`spec/diagnostics.md` cites them), site, idioms | `cpl-conform --rules`, `conformance-coverage.py --check` |
 | The conformance case format (`// expect:`, `// rule:`, `// input:`, `// timeout:`, `// has:` headers; a code's line ends with `// <- here`) | compiler, stdlib (`std-*` groups), tools, diagnostics | `crates/cpl-conform/tests/ratchet.rs`, `spec/conformance/README.md` |
 | The pass list in `research/scoreboard.json` | compiler (its headline number), infra (the `cpl-conform ratchet` gate step) | `cpl-conform all --check` |
-| `// gap: <owner> <time>` lines in failing cases (`spec/SUBSET.md` is generated from them) | every implementing domain, the milestone owner | `spec-gate.py subset`, `gaps`, `gap-age` |
+| the scoreboard's failing cases (`spec/SUBSET.md` is generated from them; no case carries a `// gap:` line) | every implementing domain, the milestone owner | `spec-gate.py subset`, `gaps` |
 | `spec/GLOSSARY.md`: one term per concept | diagnostics, site, idioms | `spec-vocab.py` |
 | `cpl-conform corpus` judging, including `checker.py` for problems with several right answers | idioms | `crates/cpl-conform` tests |
 | Design docs in `handbook/language/` | site (in-depth chapters), new contributors | `scripts/check-handbook.py` |
@@ -149,7 +149,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Tool behaviour a journey relies on is specified and tested (`check`, `run`, `test`, `stress`, `build`, `fmt`, `lint`, LSP) | journey steps with no rule id and case | hand suite with `// tool:` cases | `spec/tools/`, `spec/conformance/` |
 | Trace, debugger and explain output is specified ([spec-rules/R8](../guidelines/spec-rules-checklist.md)) | tool features in `spec/tools/` with no rule id (28 of 28 at first run) | every top-level feature bullet in `spec/tools/` carries an `(Rnn.n.n)` id, shrink-only | `scripts/spec-tool-rules.py --max` in `scripts/check.sh` |
 | The same source behaves the same on Linux, macOS and Windows (CRLF source and input, paths) | platform cases passing on all three | CRLF source checked for every passing case by the metamorphic suite; crate tests on macOS and Windows runners; the conformance suite itself runs on Linux only | `scripts/conformance-metamorphic.py`, `.github/workflows/os.yml`, `spec/conformance/core-01/` |
-| Known gaps get fixed, not just listed | `// gap:` lines; age of the oldest; entries in `prelude-gaps.txt` | gate: no gap past 48 h, none re-dated ([conformance/R3](../guidelines/conformance-checklist.md)); the lists only shrink | `scripts/spec-gate.py gap-age`, `spec/conformance/*-gaps.txt` |
+| Known gaps get fixed, not just listed | failing cases on the scoreboard (`conformance_failing`); entries in `prelude-gaps.txt` | gate: the raw count only falls, no case carries a gap line ([conformance/R3](../guidelines/conformance-checklist.md)); the lists only shrink | `scripts/debt-ratchet.py`, `scripts/spec-gate.py gaps`, `spec/conformance/*-gaps.txt` |
 | A known-gap case fails for the reason it names ([conformance/R3](../guidelines/conformance-checklist.md)) | known-gap cases whose current error isn't the gap's subject (a wrong `// <- here` line, a misused API) | check: a failure with the case's own expected code means a wrong `// <- here` line or `has:`; an E0606 on a printed `?T` means a missing `!` | `scripts/conformance-gaps.py` |
 | The suite is deterministic | cases that pass and fail on the same build | per-case `// timeout:`; flake report over repeated runs ([conformance/R6](../guidelines/conformance-checklist.md)) | `scripts/conformance-flakes.py`, `scripts/check.sh --full`, `crates/cpl-conform/tests/timeout.rs` |
 | Cross-references in the spec resolve | rule ids anywhere in the repo naming no rule; links to missing files | gate ([spec-rules/R3](../guidelines/spec-rules-checklist.md)) | `scripts/spec-xref.py --check`, `scripts/check-doc-links.py` |
@@ -232,7 +232,7 @@ Three probes put the rubric to work:
 | `scripts/conformance-matrix.py` | Empty feature x consumer cells; generates `spec/conformance/matrix/` | `python3 scripts/conformance-matrix.py --check` |
 | `scripts/conformance-traits.py` | Trait methods with no case | `uv run scripts/conformance-traits.py --check` |
 | `scripts/conformance-sigs.py`, `conformance-prelude.py` | Chapter vs `std` disagreements on named args and prelude names | `uv run scripts/conformance-sigs.py --check` |
-| `scripts/spec-gate.py subset` / `gaps` / `gap-age` | A stale `SUBSET.md`; a failing case with no `// gap:` line or a passing one with it; a gap past 48 h or re-dated | `uv run scripts/spec-gate.py <gate>` |
+| `scripts/spec-gate.py subset` / `gaps` / `markers` | A stale `SUBSET.md`; a case carrying a `// gap:` line; a diagnostic case that counts lines instead of marking `// <- here` | `uv run scripts/spec-gate.py <gate>` |
 | `scripts/conformance-bugcatch.py` | Past compiler fixes the suite would not have caught | `uv run scripts/conformance-bugcatch.py` |
 | `scripts/spec-vocab.py` | Banned spellings | `python3 scripts/spec-vocab.py` |
 | Rebuild rounds | Holes and contradictions a cold reader hits; reports in `research/rebuild-rounds/` | process, one cold agent per round |

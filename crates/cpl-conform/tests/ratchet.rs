@@ -29,15 +29,13 @@ fn header_parser_handles_all_expect_forms() {
     let exp = parse_header("// expect: ok, output \"hello\\n\"\nprint(\"hello\")\n").unwrap();
     assert_eq!(exp, Expect::OkOutput("hello\n".into()));
 
-    let exp = parse_header(
-        "// expect: E0601\n// rule: 05.1\n// gap: compiler why\nlet a = 1\nf(a) // <- here\n",
-    )
-    .unwrap();
+    let exp =
+        parse_header("// expect: E0601\n// rule: 05.1\nlet a = 1\nf(a) // <- here\n").unwrap();
     assert_eq!(
         exp,
         Expect::Diag {
             code: "E0601".into(),
-            line: 5,
+            line: 4,
         }
     );
 
