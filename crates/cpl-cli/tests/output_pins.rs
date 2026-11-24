@@ -135,11 +135,13 @@ fn cpl(dir: &Path, home: &Path, args: &[&str], stdin: &str) -> std::process::Out
 }
 
 /// What a run printed, the same on every machine: CRLF as LF, this `cpl` as `$CPL`, the fixture
-/// folder as `$DIR` and its home inside as `~`, and each measured quantity as `<n>`: times in µs or
-/// ns, times under a second in ms (limits are whole seconds), the JSON
-/// `time_ms`, `time_ns` and `peak_kb`, a share or peak "of" a limit, and a
-/// number right after a measured one (a profile's share, a bench row's
-/// peak).
+/// folder as `$DIR` and its home inside as `~`, each measured time with its
+/// unit (ns, us or ms by its size; not a limit) as `<time>`, and each other
+/// measured quantity as `<n>`: the JSON `time_ms`, `time_ns` and `peak_kb`,
+/// a share or peak "of" a limit, and a number right after a measured one (a
+/// profile's share, a bench row's peak). The padding before a masked value
+/// becomes one space, since a right-aligned column pads by the digit count,
+/// and the bench case that ran slowest becomes `<case>`.
 fn normalized(bytes: &[u8], dir: &Path) -> String {
     let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
     let cpl = env!("CARGO_BIN_EXE_cpl");
@@ -171,19 +173,41 @@ fn normalized(bytes: &[u8], dir: &Path) -> String {
             .unwrap_or("");
         let follows =
             last_masked && !before.contains('\n') && before.trim().chars().all(char::is_alphabetic);
-        let measured = ["\"time_ms\":", "\"time_ns\":", "\"peak_kb\":"]
-            .iter()
-            .any(|key| before.ends_with(key))
-            || matches!(unit, "us" | "µs" | "ns")
-            || (unit == "ms" && number.parse::<f64>().is_ok_and(|n| n < 1000.0))
+        let time =
+            matches!(unit, "us" | "µs" | "ns") || (unit == "ms" && !after.starts_with(" ms limit"));
+        let measured = time
+            || ["\"time_ms\":", "\"time_ns\":", "\"peak_kb\":"]
+                .iter()
+                .any(|key| before.ends_with(key))
             || (after.starts_with("% of the ")
                 && after[9..].starts_with(|c: char| c.is_ascii_digit()))
             || after.starts_with(" MB of ")
             || (follows && matches!(unit, "%" | "MB" | "KB"));
-        out.push_str(if measured { "<n>" } else { number });
+        if measured {
+            let padded = out.trim_end_matches(' ').len();
+            if padded < out.len() {
+                out.truncate(padded);
+                out.push(' ');
+            }
+            if time {
+                out.push_str("<time>");
+                rest = &after[after.find(unit).unwrap() + unit.len()..];
+            } else {
+                out.push_str("<n>");
+            }
+        } else {
+            out.push_str(number);
+        }
         last_masked = measured;
     }
     out.push_str(rest);
+    let out = match out.split_once("slowest: ") {
+        Some((head, tail)) if tail.contains(" at <time>") => {
+            let (_, tail) = tail.split_once(" at <time>").unwrap();
+            format!("{head}slowest: <case> at <time>{tail}")
+        }
+        _ => out,
+    };
     machine_free(&out)
 }
 
@@ -328,5 +352,29 @@ fn every_command_prints_its_pinned_output() {
          `CPL_BLESS=1 cargo nextest run -p cpl-cli --test output_pins` and commit the pins with \
          the change.",
         differ.join("\n")
+    );
+}
+
+#[test]
+fn a_time_of_any_digit_count_keeps_the_column_and_masks_alike() {
+    use cpl_contest::test::{render, CaseResult};
+    use cpl_stress::Verdict;
+    let rendered = [5, 42, 123].map(|ms| {
+        render(&[CaseResult {
+            name: "1".into(),
+            verdict: Some(Verdict::Accepted),
+            elapsed: std::time::Duration::from_millis(ms),
+            peak_kb: None,
+            expected: None,
+            output: String::new(),
+            explained: None,
+        }])
+    });
+    let columns = rendered.clone().map(|text| text.find(" ms\n"));
+    assert_eq!(columns, [columns[0]; 3], "{rendered:?}");
+    let masked = rendered.map(|text| normalized(text.as_bytes(), Path::new("/nowhere")));
+    assert_eq!(
+        masked,
+        ["  1  ok <time>\n  1/1 passed\n"; 3].map(String::from)
     );
 }

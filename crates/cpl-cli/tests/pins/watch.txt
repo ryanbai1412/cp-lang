@@ -2,13 +2,13 @@ $ cpl watch a --once
 exit 0
 -- stdout
   check: no errors
-  1  ok      <n> ms
+  1  ok <time>
   1/1 passed
 -- stderr
 
 $ cpl watch a --once --json
 exit 0
 -- stdout
-{"diagnostics":[],"error":null,"ok":true,"path":"a.cp","skipped":null,"test":{"case_count":1,"cases":[{"expected":"6\n","explained":null,"message":null,"name":"1","outcome":"passed","output":"6\n","peak_kb":<n>,"time_ms":<n>,"verdict":"ok","why":null}],"passed_count":1,"view":{"panel":"  1  ok      <n> ms\n  1/1 passed\n","status":{"label":"1/1 passed","line":0,"ok":true}}}}
+{"diagnostics":[],"error":null,"ok":true,"path":"a.cp","skipped":null,"test":{"case_count":1,"cases":[{"expected":"6\n","explained":null,"message":null,"name":"1","outcome":"passed","output":"6\n","peak_kb":<n>,"time_ms":<n>,"verdict":"ok","why":null}],"passed_count":1,"view":{"panel":"  1  ok <time>\n  1/1 passed\n","status":{"label":"1/1 passed","line":0,"ok":true}}}}
 -- stderr
 

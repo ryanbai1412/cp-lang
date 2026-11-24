@@ -1,10 +1,10 @@
 $ cpl profile a.cp a.tests/1.in
 exit 0
 -- stdout
-profile of a.cp (interpreter): <n> us
+profile of a.cp (interpreter): <time>
  line         hits       time    %
-    1            1    <n> us  <n>%  let n: Int = read()
-    2            1    <n> us  <n>%  print(n * 2)
+    1            1 <time> <n>%  let n: Int = read()
+    2            1 <time> <n>%  print(n * 2)
 -- stderr
 
 $ cpl profile a.cp a.tests/1.in --format json

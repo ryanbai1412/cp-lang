@@ -1,13 +1,13 @@
 $ cpl bench a
 exit 0
 -- stdout
-  random                1 numbers  ok       <n> ms      <n> MB
-  all smallest          1 numbers  ok       <n> ms      <n> MB
-  all largest           1 numbers  ok       <n> ms      <n> MB
-  ascending             1 numbers  ok       <n> ms      <n> MB
-  descending            1 numbers  ok       <n> ms      <n> MB
-  alternating           1 numbers  ok       <n> ms      <n> MB
-  slowest: alternating at <n> ms, <n>% of the 2000 ms limit
+  random                1 numbers  ok <time> <n> MB
+  all smallest          1 numbers  ok <time> <n> MB
+  all largest           1 numbers  ok <time> <n> MB
+  ascending             1 numbers  ok <time> <n> MB
+  descending            1 numbers  ok <time> <n> MB
+  alternating           1 numbers  ok <time> <n> MB
+  slowest: <case> at <time>, <n>% of the 2000 ms limit
   memory: <n> MB of 256 MB
   within limits on every shape
 -- stderr

@@ -13,7 +13,7 @@ exit 0
 $ cpl run bad_index.cp --samples
 exit 3
 -- stdout
-1: runtime error (<n> ms)
+1: runtime error (<time>)
   error[R0101]: index 5 is outside a list of length 2
     --> bad_index.cp:3:7
     |
@@ -25,6 +25,6 @@ exit 3
 $ cpl run bad_index.cp --samples --format json
 exit 3
 -- stdout
-{"samples":[{"name":"1","verdict":"RE","time_ms":<n>,"output":"","expected":null,"why":"index 5 is outside a list of length 2"}],"passed_count":0,"case_count":1,"view":{"panel":"1: runtime error (<n> ms)\n  error[R0101]: index 5 is outside a list of length 2\n    --> bad_index.cp:3:7\n    |\n  3 | print(xs[n])\n    |       ^^^^^\n    = help: the indexes are 0 to 1: a loop over `0..=n` reaches `n`, `0..n` stops before it\n","status":{"line":0,"ok":false,"label":"1: runtime error (<n> ms)","detail":"index 5 is outside a list of length 2"},"lines":[{"line":2,"kind":"error","label":"1 error: [R0101] index 5 is outside a list of length 2","hover":"Runtime error on `1`:\n\n```text\nindex 5 is outside a list of length 2\nhelp: the indexes are 0 to 1: a loop over `0..=n` reaches `n`, `0..n` stops before it\n```"},{"line":0,"kind":"live","label":"1: [1, 2]","hover":"On `1`:\n\n```cp\nxs = [1, 2]\n```"},{"line":1,"kind":"live","label":"1: 5","hover":"On `1`:\n\n```cp\nn = 5\n```"}],"diagnostic":{"line":2,"col":6,"code":"R0101","message":"index 5 is outside a list of length 2","help":"the indexes are 0 to 1: a loop over `0..=n` reaches `n`, `0..n` stops before it","source":"cpl (1)"}}}
+{"samples":[{"name":"1","verdict":"RE","time_ms":<n>,"output":"","expected":null,"why":"index 5 is outside a list of length 2"}],"passed_count":0,"case_count":1,"view":{"panel":"1: runtime error (<time>)\n  error[R0101]: index 5 is outside a list of length 2\n    --> bad_index.cp:3:7\n    |\n  3 | print(xs[n])\n    |       ^^^^^\n    = help: the indexes are 0 to 1: a loop over `0..=n` reaches `n`, `0..n` stops before it\n","status":{"line":0,"ok":false,"label":"1: runtime error (<time>)","detail":"index 5 is outside a list of length 2"},"lines":[{"line":2,"kind":"error","label":"1 error: [R0101] index 5 is outside a list of length 2","hover":"Runtime error on `1`:\n\n```text\nindex 5 is outside a list of length 2\nhelp: the indexes are 0 to 1: a loop over `0..=n` reaches `n`, `0..n` stops before it\n```"},{"line":0,"kind":"live","label":"1: [1, 2]","hover":"On `1`:\n\n```cp\nxs = [1, 2]\n```"},{"line":1,"kind":"live","label":"1: 5","hover":"On `1`:\n\n```cp\nn = 5\n```"}],"diagnostic":{"line":2,"col":6,"code":"R0101","message":"index 5 is outside a list of length 2","help":"the indexes are 0 to 1: a loop over `0..=n` reaches `n`, `0..n` stops before it","source":"cpl (1)"}}}
 -- stderr
 

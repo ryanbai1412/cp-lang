@@ -4,42 +4,42 @@ exit 0
 * generic    C++17 with g++
     g++ -std=c++17 -O2
     Linux, 8 MB stack, the program on a thread with 1024 MB, source up to 64 KB
-    usual limits 2000 ms, 256 MB
+    usual limits <time>, 256 MB
     from: the floor most judges clear: C++17, the 8 MB Linux default stack, a 64 KB source, 2 s and 256 MB
   codeforces GNU G++20 13.2 (64 bit, winlibs)
     g++ -std=c++20 -O2 -DONLINE_JUDGE -static -Wl,--stack=268435456
     Windows, 256 MB stack, the program on a thread with 1024 MB, source up to 64 KB
-    usual limits 2000 ms, 256 MB
+    usual limits <time>, 256 MB
     from: unconfirmed: the Codeforces compiler list and its 256 MB stack link flag are behind a browser check; 2 s and 256 MB are the usual statement limits
   atcoder    C++23 (GCC 15.2.0)
     g++ -std=gnu++23 -O2 -Wall -Wextra -DONLINE_JUDGE -DATCODER -DNOMINMAX -march=native -fconstexpr-depth=1024 -fconstexpr-loop-limit=524288 -fconstexpr-ops-limit=2097152 -fmodules -ftrivial-auto-var-init=zero -pthread
     Linux, stack not documented (8 MB assumed), the program on a thread with 1024 MB, source up to 64 KB
-    usual limits 2000 ms, 1024 MB
+    usual limits <time>, 1024 MB
     from: the compile command is from AtCoder's language list (the flags that change what compiles; its library and link flags are left out); 2 s and 1024 MB are the usual statement limits; the 512 KiB source limit and the stack are unconfirmed
   cses       C++17 (g++ 13.3.0)
     g++ -std=c++17 -O2 -Wall
     Linux, stack not documented (8 MB assumed), the program on a thread with 1024 MB, source up to 64 KB
-    usual limits 1000 ms, 512 MB
+    usual limits <time>, 512 MB
     from: compiler, flags and the 128 kB source limit are from cses.fi/howto; 1 s and 512 MB are the problem set's limits; the stack is not documented
   icpc       DOMjudge's default C++ (g++)
     g++ -x c++ -Wall -O2 -static -pipe
     Linux, unlimited stack, the program on a thread with 1024 MB, source up to 64 KB
-    usual limits 2000 ms, 2048 MB
+    usual limits <time>, 2048 MB
     from: DOMjudge's default build script, its runguard (stack unlimited) and its default 256 KB source limit; a contest's own image sets the g++ version and so the default standard
   kattis     C++ (g++ 15.2.0)
     g++ -g -O2 -std=gnu++23 -static -lrt -Wl,-u,_IO_wfile_doallocate -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
     Linux, stack not documented (8 MB assumed), the program on a thread with 1024 MB, source up to 64 KB
-    usual limits 2000 ms, 1024 MB
+    usual limits <time>, 1024 MB
     from: the compile command is from Kattis' C++ page; the stack and the 128 KB source limit are unconfirmed
   dmoj       C++17 (g++)
     g++ -Wall -DONLINE_JUDGE -O2 -lm -march=native -std=c++17 -s
     Linux, unlimited stack, the program on a thread with 1024 MB, source up to 64 KB
-    usual limits 2000 ms, 256 MB
+    usual limits <time>, 256 MB
     from: DMOJ's judge-server: the command is its GCC executor's, the sandbox sets RLIMIT_STACK unlimited and RLIMIT_NPROC 0, so the thread runner falls back to `main` on that unlimited stack; the g++ version, the 64 KB source limit and 2 s / 256 MB are a site's own
   usaco      C++17 (g++)
     g++ -std=c++17 -O2 -Wall
     Linux, unlimited stack, the program on a thread with 1024 MB, source up to 64 KB
-    usual limits 2000 ms, 256 MB
+    usual limits <time>, 256 MB
     from: usaco.guide: C++17 with -O2 -Wall on Linux, about 2 s and 256 MB, no stack limit beyond memory, standard input and output; the exact command, the g++ version and the source limit are unconfirmed (usaco.org was not reachable)
 -- stderr
 
