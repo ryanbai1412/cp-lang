@@ -1054,26 +1054,6 @@ impl Builder<'_> {
             span: expr.span,
         };
         match &callee.kind {
-            ExprKind::Field { base, name } if args.len() == 1 => {
-                let ExprKind::Generic { base, args: tys } = &base.kind else {
-                    return None;
-                };
-                let (ExprKind::Name(graph), [v, e]) = (&base.kind, tys.as_slice()) else {
-                    return None;
-                };
-                (graph == "Graph" && matches!(name.text.as_str(), "undirected" | "directed")).then(
-                    || Type {
-                        kind: TypeKind::Array {
-                            index: vec![e.clone()],
-                            elem: Box::new(Type {
-                                kind: TypeKind::Tuple(vec![v.clone(), v.clone()]),
-                                span: expr.span,
-                            }),
-                        },
-                        span: expr.span,
-                    },
-                )
-            }
             ExprKind::Name(record) => match self.records.get(record) {
                 Some((_, Record::Struct(fields))) if fields.len() == args.len() => Some(named(
                     &cpl_syntax::ast::Name {

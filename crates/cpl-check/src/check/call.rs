@@ -818,6 +818,11 @@ impl<'a> Checker<'a> {
         else {
             return None;
         };
+        // `Graph<V, E>.directed(pairs)` meets `Graph`'s bounds as `Graph<V, E>.directed(edges)`
+        // does (R08.2.5): the receiver is the same type either way.
+        if !type_args.is_empty() {
+            self.infer(base);
+        }
         let mut bindings = Bindings::default();
         for (generic, arg) in struct_generics.iter().zip(type_args) {
             if generics.contains(generic) {

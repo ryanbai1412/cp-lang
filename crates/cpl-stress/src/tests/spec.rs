@@ -841,15 +841,20 @@ print(lit.count(true))
 
 #[test]
 fn bare_reads_take_the_type_the_call_they_are_passed_to_wants() {
+    // `Edges<V, E>.deg_of(read(), ..)`: the receiver's type arguments fill the static
+    // fn's signature, so the read is `[E](u: V, v: V)`.
     let src = "struct Seg:
     l: 1..=9
     r: 1..=9
+struct Edges<V: Domain, E: Domain>:
+    k: Int
+    fn deg_of(es: [E](u: V, v: V), v: V) -> Int = Graph.undirected(es).deg(v)
 let (n, m): (1..=5, 0..=6) = read()
 domain V = 1..=n
 domain E = 0..m
-let g = Graph<V, E>.undirected(read())
+let d = Edges<V, E>.deg_of(read(), V.first!)
 let s = Seg(read(), read())
-print(g.deg(V.first) + s.l + s.r)
+print(d + s.l + s.r)
 ";
     let spec = InputSpec::from_source(src).unwrap();
     let path = std::env::temp_dir().join(format!("bare-reads-{}.cp", std::process::id()));

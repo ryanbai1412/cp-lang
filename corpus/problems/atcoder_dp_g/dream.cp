@@ -8,7 +8,7 @@ let (n, m): (2..=1e5, 1..=1e5) = read()
 domain V = 1..=n
 domain E = 0..m
 let arcs: [E](V, V) = read()
-let dag = Graph<V, E>.directed(arcs)
+let dag = Graph<V>.directed(arcs)
 
 var longest: [V]Int = 0
 for u in topo(dag)!.rev:  // every edge leads to an already finished vertex
