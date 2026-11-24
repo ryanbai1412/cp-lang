@@ -275,10 +275,6 @@ const DECORATORS: &[(&str, &str)] = &[
         "on a struct's static fn: a bare op passed where the struct is wanted goes through it",
     ),
     (
-        "structural",
-        "on a trait: a tuple, record, optional, array or struct has it when each part does",
-    ),
-    (
         "lint",
         "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint",
     ),
@@ -1200,12 +1196,24 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
             builtin(cpl_check::RANGE_MEMBERS, ty.to_string())
         }
         Ty::Named { name, args } if builtin_receiver(ty).is_none() => {
-            type_members(cursor, std, name, args, true)
+            type_members(cursor, std, name, args, args.len(), true)
         }
         Ty::TypeName(name) if is_domain(cursor.analysis, name) => {
             builtin(cpl_check::DOMAIN_MEMBERS, format!("domain {name}"))
         }
-        Ty::TypeName(name) => type_members(cursor, std, name, &[], false),
+        Ty::TypeName(name) => {
+            let arity = written_arity(&cursor.analysis.text[..cursor.offset as usize]);
+            // A module's second `Prefix` is keyed `Prefix'1` (R02.11.4).
+            let key = cpl_check::arity_key(name, arity);
+            let keyed = (arity > 0)
+                .then(|| type_members(cursor, std, &key, &[], arity, false))
+                .unwrap_or_default();
+            if keyed.is_empty() {
+                type_members(cursor, std, name, &[], arity, false)
+            } else {
+                keyed
+            }
+        }
         Ty::Record(fields) => fields
             .iter()
             .map(|(name, ty)| (plain(name, Kind::Field, format!("{name}: {ty}"), ""), 0))
@@ -1245,7 +1253,7 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
 /// The methods of a built-in scalar: the `fn f(self: Int)` of this file and
 /// its modules, and those the prelude brings in.
 fn scalar_members(cursor: &Cursor, std: &mut StdLib, name: &str) -> Vec<(Entry, u8)> {
-    let mut out = type_members(cursor, std, name, &[], true);
+    let mut out = type_members(cursor, std, name, &[], 0, true);
     let mut seen: HashSet<String> = out.iter().map(|(e, _)| e.name.clone()).collect();
     let prelude = std.prelude(cursor.uri);
     for (module, imported) in prelude.iter() {
@@ -1354,11 +1362,33 @@ fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry
     }
 }
 
+/// How many type arguments the type before the `.` ending `before` is
+/// written with: 1 for `Prefix<Int>.fil` and `Prefix<Int>.filling(`, 0 for `Prefix.fil`.
+fn written_arity(before: &str) -> usize {
+    // The cursor is after the `.`, in the member's name or in its call.
+    let at = before.trim_end_matches(|c: char| c.is_alphanumeric() || c == '_' || c == '(');
+    let Some(at) = at.strip_suffix('.').filter(|t| t.ends_with('>')) else {
+        return 0;
+    };
+    let (mut depth, mut commas) = (0, 0);
+    for c in at.chars().rev() {
+        match c {
+            '>' | ')' | ']' => depth += 1,
+            '<' | '(' | '[' if depth == 1 && c == '<' => return commas + 1,
+            '<' | '(' | '[' => depth -= 1,
+            ',' if depth == 1 => commas += 1,
+            _ => {}
+        }
+    }
+    0
+}
+
 fn type_members(
     cursor: &Cursor,
     std: &mut StdLib,
     name: &str,
     args: &[Ty],
+    arity: usize,
     instance: bool,
 ) -> Vec<(Entry, u8)> {
     let mut seen = HashSet::new();
@@ -1371,7 +1401,7 @@ fn type_members(
         // `Prefix<Int>` is the one of the types named `Prefix` taking one argument.
         let def = (outline.entries.iter())
             .filter(|e| e.name == name)
-            .find(|e| generics_of(&e.detail).len() == args.len())
+            .find(|e| generics_of(&e.detail).len() == arity)
             .or_else(|| outline.find(name));
         let Some(def) = def else {
             if outline.impls.iter().all(|(target, _)| target != name) {
