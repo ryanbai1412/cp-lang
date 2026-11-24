@@ -1008,6 +1008,8 @@ class DebtRatchetTest(unittest.TestCase):
                                                                               upstream={"vm_fallbacks": 62})],
                              ["vm_fallbacks"])
             self.assertEqual(len(dr.unexplained_bumps(root, {"vm_fallbacks": 62}, ref="main")), 1)
+            bumps = dr.unexplained_bumps(root, {"vm_fallbacks": 61}, ref="main")
+            self.assertIn("vm_fallbacks", dr.upstream_counters({"vm_fallbacks": 61}, {"vm_fallbacks": 61}, bumps))
 
     def test_a_file_entering_the_near_cap_list_is_a_raise(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

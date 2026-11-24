@@ -3511,6 +3511,15 @@ def remeasured(root: Path, base: str, name: str) -> bool:
     return bool(paths) and bool(_git(root, "diff", "--name-only", base, "--", *paths))
 
 
+def upstream_counters(actual: dict, baseline: dict, bumps: list[str]) -> set[str]:
+    """The counters main must be measured for: those over their baseline (main's
+    debt or this change's) and those raised (a restore of a number lowered by hand
+    passes only if main measures it; 0e6b20d67's 1 -> 61 was refused unmeasured)."""
+    over = {n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and n in actual
+            and n not in HARD_ZERO and n not in HARD_FLOOR and int(actual[n]) > int(baseline[n])}
+    return over | ({b.partition(":")[0] for b in bumps} & set(COUNTERS))
+
+
 def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
                       upstream: dict | None = None) -> list[str]:
     """Baseline entries raised above `ref`'s.
@@ -3755,9 +3764,7 @@ def main(argv: list[str] | None = None) -> int:
     if errors or bumps:
         try:
             # Only the counters over their baseline can be main's, not this change's.
-            over = {n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and n in actual
-                    and n not in HARD_ZERO and n not in HARD_FLOOR and int(actual[n]) > int(baseline[n])}
-            upstream = measure_upstream(args.root, max_lines, only=over)
+            upstream = measure_upstream(args.root, max_lines, only=upstream_counters(actual, baseline, bumps))
         except UpstreamUnknown as e:
             # Unable to tell main's debt from this change's: warn, and leave
             # the verdict to CI on main rather than block a commit.
