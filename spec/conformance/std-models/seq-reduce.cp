@@ -78,7 +78,7 @@ for k in 0..n:
         elif a.argmax(by: x => -x) != Some(lo): why = "argmax by"
         elif b.max_count(by: .0) != Some((val: b[hi], count: a.count(x => x == a[hi]))): why = "max_count"
         elif b.min_count(by: .0) != Some((val: b[lo], count: a.count(x => x == a[lo]))): why = "min_count"
-        elif a.reduce((x, y) => x * 3 - y) != a.drop(1).fold((x, y) => x * 3 - y, a[0]): why = "reduce"
+        elif a.reduce((x, y) => x * 3 - y) != a.drop(1).fold_from(a[0], (x, y) => x * 3 - y): why = "reduce"
         elif a.first != Some(a[0]) or a.last != Some(a[len - 1]): why = "first/last"
     if why == "":
         var maj: ?(val: Int, count: Int) = None

@@ -146,7 +146,7 @@ const SUBSET_LOOP: &str = concat!(
 fn a_reducer_over_a_yields_getter_runs_on_its_callback_form() {
     for reduce in [
         "    t += s.items.sum(of: b => b.ord * k)\n",
-        "    t += s.items.fold((a, b) => a + b.ord, 0)\n",
+        "    t += s.items.fold_from(0, (a, b) => a + b.ord)\n",
     ] {
         let cpp = cpp(&format!("{SUBSET_LOOP}{reduce}print(t)\n"));
         let solve = &cpp[cpp.find("void solve()").unwrap()..];
