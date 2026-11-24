@@ -2,48 +2,24 @@
 // Problem: N <= 1e6 problems worth d_0..d_{N-1} points and Q <= 5e5 people (m_j < N,
 //   k_j <= 1e6); person j can solve problem i iff m_j xor i <= k_j. For each person print the
 //   most points of a problem they can solve.
-// Solution: a max segment tree over 2^bits leaves (bits covers N - 1, every m and every k) is
-//   a binary trie of the indices. Walk the path of i = m xor k from the root; wherever k has a
-//   1 bit, the sibling subtree has m xor i < k on every leaf, so take its max; the leaf at the
-//   end is m xor i = k itself. O(2^bits) build, O(bits) per query.
+// Solution: the i with m xor i <= k are i = m xor k itself and, for each 1 bit d of k, the
+//   aligned block of 2^d indices whose m xor i agrees with k above bit d and has a 0 at d.
+//   A max sparse table answers each block in O(1). O(N log N + Q log k).
+// Bounds: n: 1..=1e6; q: 1..=5e5; points: 0..=2_147_483_647
 // original: corpus/submissions/5333196.cpp
+let (n, q): (1..=1_000_000, 1..=500_000) = read()
+domain Problem = 0..n
+let points: [Problem]0..=2_147_483_647 = read()
+let best = SparseTable(max, points)
 
-let (n, q): (Int, Int) = read()
-domain I = 0..n
-let a: [I]Int = read()
+fn most(m: Problem, k: 0..=1_000_000) -> Int:
+    let x = Int(m) ^ k
+    fn start(d: Int) -> Int = ((x >> (d + 1)) << (d + 1)) | (Int(m) & (1 << d))
+    let leaf = if x < n: [points[Problem(x)]] else: []
+    let blocks = [best.fold(Problem(start(d))..=Problem(min(start(d) + (1 << d), n) - 1))
+                  for d in 0..=20 if k.bit(d) and start(d) < n]
+    (leaf + blocks).max()!
 
-var qm: List<Int> = []
-var qk: List<Int> = []
-var hi = n - 1
 for _ in 0..q:
-    let (m, k): (Int, Int) = read()
-    qm.push(m)
-    qk.push(k)
-    hi max= m
-    hi max= k
-
-let bits = max(1, bit_width(hi))
-let sz = 1 << bits
-domain Node = 0..(2 * sz)
-var tree: [Node]Int = [Node] _ => 0
-
-for i in I:
-    tree[Node(sz + i.ord)] = a[i]
-for o in (1..sz).rev:
-    tree[Node(o)] = max(tree[Node(2 * o)], tree[Node(2 * o + 1)])
-
-fn query(m: Int, k: Int) -> Int:
-    var o = 1
-    var ans = 0
-    for d in (0..bits).rev:
-        let bit_m = (m >> d) & 1
-        let bit_k = (k >> d) & 1
-        let chi = bit_m ^ bit_k
-        if bit_k == 1:
-            let sib = tree[Node(2 * o + (1 - chi))]
-            ans max= sib
-        o = 2 * o + chi
-    max(ans, tree[Node(o)])
-
-for j in 0..q:
-    print(query(qm[j], qk[j]))
+    let (m, k): (Problem, 0..=1_000_000) = read()
+    print(most(m, k))

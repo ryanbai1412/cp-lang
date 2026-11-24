@@ -507,6 +507,9 @@ mccc4j4
 mccc4j5
 mccc5j3
 mccc5j4
+mccc5j5
+mmcc14p3
+modinv
 nccc10s4
 nccc8s3
 noi02p1
