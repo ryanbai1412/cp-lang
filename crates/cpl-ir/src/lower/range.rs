@@ -486,10 +486,12 @@ impl<'a> Lowerer<'a> {
                         .range_info_from_ast(&args[0])
                         .map(|e| RangeInfo::Elem(Box::new(e)));
                 }
-                if matches!(name.text.as_str(), "HashMap" | "Map")
-                    && args.len() == 2
-                    && self.get_sym(&name.text).is_none()
-                {
+                if args.len() == 2 && self.get_sym(&name.text).is_none() && {
+                    let saved = self.diags.len();
+                    let resolved = self.resolve_ty(ty);
+                    self.diags.truncate(saved);
+                    matches!(resolved, Ty::Map(..) | Ty::HashMap(..))
+                } {
                     let k = self.range_info_from_ast(&args[0]).map(Box::new);
                     let v = self.range_info_from_ast(&args[1]).map(Box::new);
                     return (k.is_some() || v.is_some()).then_some(RangeInfo::Map(k, v));
