@@ -1287,6 +1287,118 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    /// C++'s `for (auto x : a)` or `for (auto& [u, v] : e)`: `for x in a:`.
+    pub(super) fn c_range_for(&mut self) -> Option<(Pattern, Expr)> {
+        let open = self.pos;
+        let end = after_group(self.tokens, open);
+        let inner = self.tokens.get(open + 1..end.checked_sub(1)?)?;
+        let mut depth = 0;
+        let at = inner.iter().position(|t| {
+            match t.kind {
+                T::LParen | T::LBracket => depth += 1,
+                T::RParen | T::RBracket => depth -= 1,
+                _ => {}
+            }
+            depth == 0 && t.kind == T::Colon
+        })?;
+        let left = &inner[..at];
+        let typed = left.len() >= 2 && matches!(left[0].kind, T::Ident | T::Const);
+        if !self.at(T::LParen) || !typed || inner.iter().any(|t| t.kind == T::Semi) {
+            return None;
+        }
+        let names: Vec<&str> = match left.last()?.kind {
+            T::Ident => vec![left.last()?.span.text(self.src)],
+            T::RBracket => {
+                let from = left.iter().rposition(|t| t.kind == T::LBracket)?;
+                (left[from..].iter().filter(|t| t.kind == T::Ident))
+                    .map(|t| t.span.text(self.src))
+                    .collect()
+            }
+            _ => return None,
+        };
+        let by_ref = left.iter().any(|t| matches!(t.kind, T::Amp | T::And))
+            && !left.iter().any(|t| t.kind == T::Const)
+            && self.body_assigns(end, &names);
+        let (a, b) = (self.tokens[open].span.start, self.tokens[end - 1].span.end);
+        let seq = self.src[inner[at].span.end as usize..b as usize - 1].trim();
+        let pat = match names.as_slice() {
+            [one] => one.to_string(),
+            many => format!("({})", many.join(", ")),
+        };
+        let colon = match self.tokens.get(end).map(|t| t.kind) {
+            Some(T::Colon | T::LBrace) => "",
+            _ => ":",
+        };
+        let whole = self.rel(Span::new(a, b));
+        let diag = Diagnostic::error(
+            codes::REMOVED_SYNTAX,
+            whole,
+            "a loop over a sequence is `for x in xs`, with no type",
+        );
+        self.recovered(match by_ref {
+            false => diag
+                .with_help(format!("write `for {pat} in {seq}:`"))
+                .with_fix("loop over it", whole, format!("{pat} in {seq}{colon}")),
+            true => diag.with_help(format!(
+                "the loop variable is a copy, so change the list through its indexes: `for i in 0..{seq}.len: {seq}[i] += 1`"
+            )),
+        });
+        self.pos = end;
+        let one = |n: &str| Pattern {
+            kind: PatternKind::Name(n.to_string()),
+            span: whole,
+        };
+        let kind = match names.as_slice() {
+            [n] => PatternKind::Name(n.to_string()),
+            many => PatternKind::Tuple(many.iter().map(|n| one(n)).collect()),
+        };
+        // `x += 1` through a C++ reference is reported once, above.
+        let kind = match by_ref {
+            true => PatternKind::Var(Box::new(Pattern { kind, span: whole })),
+            false => kind,
+        };
+        let pat = Pattern { kind, span: whole };
+        let iter = Expr {
+            kind: ExprKind::Error,
+            span: whole,
+        };
+        Some((pat, iter))
+    }
+
+    /// Whether the loop body starting at token `from` (braced, on the line, or
+    /// indented under it) assigns one of `names`, as `x += 1` or `cin >> x`.
+    fn body_assigns(&self, from: usize, names: &[&str]) -> bool {
+        let toks = self.tokens;
+        let end = match toks.get(from).map(|t| t.kind) {
+            Some(T::LBrace) => after_group(toks, from),
+            Some(T::Newline) if toks.get(from + 1).map(|t| t.kind) == Some(T::Indent) => {
+                let mut depth = 0;
+                (from + 1..toks.len())
+                    .find(|&i| {
+                        match toks[i].kind {
+                            T::Indent => depth += 1,
+                            T::Dedent => depth -= 1,
+                            _ => {}
+                        }
+                        depth == 0
+                    })
+                    .unwrap_or(toks.len())
+            }
+            _ => (from..toks.len())
+                .find(|&i| toks[i].kind == T::Newline)
+                .unwrap_or(toks.len()),
+        };
+        let text = |i: usize| toks.get(i).map_or("", |t| t.span.text(self.src));
+        (from..end).any(|i| {
+            toks[i].kind == T::Ident
+                && names.contains(&text(i))
+                && (matches!(text(i + 1), "=" | "++" | "--" | "<<=" | ">>=")
+                    || (text(i + 1).ends_with('=')
+                        && !matches!(text(i + 1), "==" | "<=" | ">=" | "!="))
+                    || text(i.wrapping_sub(1)) == ">>")
+        })
+    }
+
     /// Whether the braces opening at `open`, closed just before the cursor,
     /// hold two values and are a call's only argument: `m.insert({k, v})`.
     pub(super) fn pair_arg(&self, open: usize) -> bool {

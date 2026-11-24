@@ -1143,7 +1143,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         let mut clauses = Vec::new();
-        if let Some((pat, iter)) = self.c_for() {
+        if let Some((pat, iter)) = self.c_for().or_else(|| self.c_range_for()) {
             clauses.push((pat, iter, None));
         }
         let c_style = !clauses.is_empty();
