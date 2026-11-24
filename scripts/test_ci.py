@@ -58,5 +58,42 @@ class FilterTest(unittest.TestCase):
         self.assertEqual(ci.main(["plan", "--mode", "fast", "--gate-part", "bogus"]), 1)
 
 
+
+class GatesTest(unittest.TestCase):
+    def _run(self, codes, healed=False):
+        calls = []
+
+        def run(cmd, capture_output, text):
+            calls.append(cmd[2:])
+            return subprocess.CompletedProcess(cmd, codes.get(cmd[2], 0), "out\n", "")
+        return ci.run_gates("checks", run=run, healed=healed), calls
+
+    def test_every_gate_is_a_spec_gate(self) -> None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("spec_gate", ci.SPEC_GATE)
+        sg = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sg)
+        for tier in ci.GATES.values():
+            for gate in tier:
+                self.assertIn(gate.args[0], sg.GATES)
+
+    def test_stops_at_the_first_failure(self) -> None:
+        status, calls = self._run({"matrix": 1})
+        self.assertEqual(status, 1)
+        self.assertEqual(calls[-1], ["matrix"])
+        self.assertNotIn(["widths"], calls)
+
+    def test_a_derived_gate_only_warns_once_healed(self) -> None:
+        self.assertEqual(self._run({"coverage": 1})[0], 1)
+        status, calls = self._run({"coverage": 1}, healed=True)
+        self.assertEqual(status, 0)
+        self.assertEqual(len(calls), len(ci.GATES["checks"]))
+
+    def test_check_sh_runs_no_spec_gate_itself(self) -> None:
+        check = (Path(__file__).parent / "check.sh").read_text(encoding="utf-8")
+        self.assertNotIn("spec-gate.py ", check.replace("runs each scripts/spec-gate.py gate", ""))
+        for tier in ci.GATES:
+            self.assertIn(f"scripts/ci.py gates {tier}", check)
+
 if __name__ == "__main__":
     unittest.main()

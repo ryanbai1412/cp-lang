@@ -612,31 +612,8 @@ step "every std fn with a case grows as its cost: says (bench/scaling.py --check
 uv run --quiet python bench/scaling.py --check --cpl "$cpl" \
     || fail "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"
 
-step "conformance coverage: COVERAGE.md current, no new rule gaps"
-uv run --quiet python scripts/spec-gate.py coverage ||
-    derived "rule coverage gate failed; see above, then rerun: uv run scripts/spec-gate.py coverage"
-
-step "conformance gaps: SUBSET.md generated from the board (scripts/spec-gate.py subset)"
-uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"
-
-step "conformance matrix: generated cases current, every cell a case or n/a"
-uv run --quiet python scripts/spec-gate.py matrix || fail "matrix gate failed; see above"
-uv run --quiet python scripts/spec-gate.py widths || fail "spec/conformance/widths/ is stale; run: uv run scripts/spec-gate.py widths --write"
-uv run --quiet python scripts/spec-gate.py ownership || fail "spec/conformance/ownership/ is stale; run: uv run scripts/spec-gate.py ownership --write"
-uv run --quiet python scripts/spec-gate.py xref || fail "a rule id names no rule in spec/core; see above"
-uv run --quiet python scripts/spec-gate.py changelog || fail "a spelling the spec removes has no changelog line; see above"
-uv run --quiet python scripts/spec-gate.py tool-rules || fail "a tool feature in spec/tools/ has no rule id; see above"
-uv run --quiet python scripts/spec-gate.py std-signatures || fail "a spec/lib chapter and std disagree on a return type; see above"
-uv run --quiet python scripts/spec-gate.py decisions-explained || fail "a decision cited in spec/ has no handbook explanation; see above"
-
-step "conformance traits: every claimed trait method has a case or a gap line"
-uv run --quiet python scripts/spec-gate.py traits || fail "trait gate failed; see above"
-
-step "conformance sigs: named args in spec/core and spec/lib exist in std"
-uv run --quiet python scripts/spec-gate.py sigs || fail "sig gate failed; see above"
-
-step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"
-uv run --quiet python scripts/spec-gate.py prelude || fail "prelude gate failed; see above"
+step "spec and conformance gates (scripts/ci.py gates checks runs each scripts/spec-gate.py gate)"
+uv run --quiet python scripts/ci.py gates checks || exit 1
 
 step "std containers print, walk and have is_empty (scripts/std-trait-matrix.py)"
 uv run --quiet python scripts/std-trait-matrix.py --max 76 \
@@ -645,13 +622,6 @@ uv run --quiet python scripts/std-trait-matrix.py --max 76 \
 step "std docs follow the std-docs checklist (scripts/std-docs-lint.py)"
 uv run --quiet python scripts/std-docs-lint.py --max 0 \
     || fail "a std doc breaks a std-docs rule; see above"
-
-step "every public std fn has its required doc labels (scripts/spec-gate.py std-docs --audit)"
-uv run --quiet scripts/spec-gate.py std-docs --audit > /dev/null \
-    || { uv run --quiet scripts/spec-gate.py std-docs --audit; fail "a public std fn lacks a required doc label; see above"; }
-
-step "std, spec and lints use only GLOSSARY spellings (scripts/spec-gate.py vocab)"
-uv run --quiet python scripts/spec-gate.py vocab || fail "a spelling spec/GLOSSARY.md bans; see above"
 
 step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
 uv run --quiet python scripts/std-api-lint.py --max 0 \
@@ -747,12 +717,8 @@ if [ "$mode" = full ]; then
     step "random programs: interpreter, C++ and sanitized C++ match an independent model (conformance/R6)"
     uv run scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
         --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
-    uv run --quiet python scripts/spec-gate.py metamorphic || fail "a meaning-preserving edit changed a case's output; see above"
     uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
-    uv run --quiet python scripts/spec-gate.py speed || fail "the conformance and spec-block suites went over their CPU budget; see above"
-    uv run --quiet python scripts/spec-gate.py explain-copies --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
-    uv run scripts/spec-gate.py tool-vocab || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
-    uv run --quiet python scripts/spec-gate.py flakes --runs 2 || fail "a conformance case changed verdict between runs; see above"
+    uv run --quiet python scripts/ci.py gates full || exit 1
 
     step "cargo test: every port compiled with every judge profile's flags"
     cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags
