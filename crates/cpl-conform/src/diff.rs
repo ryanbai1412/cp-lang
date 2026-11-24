@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::PoisonError;
 use std::sync::{Condvar, Mutex};
 
 use cpl_check::Session;
@@ -146,9 +147,9 @@ impl GxxGate {
     }
 
     fn acquire(&self) -> GxxPermit<'_> {
-        let mut active = self.active.lock().unwrap();
+        let mut active = self.active.lock().unwrap_or_else(PoisonError::into_inner);
         while *active >= self.max {
-            active = self.cv.wait(active).unwrap();
+            active = self.cv.wait(active).unwrap_or_else(PoisonError::into_inner);
         }
         *active += 1;
         GxxPermit(self)
@@ -159,7 +160,7 @@ struct GxxPermit<'a>(&'a GxxGate);
 
 impl Drop for GxxPermit<'_> {
     fn drop(&mut self) {
-        let mut active = self.0.active.lock().unwrap();
+        let mut active = self.0.active.lock().unwrap_or_else(PoisonError::into_inner);
         *active = active.saturating_sub(1);
         self.0.cv.notify_one();
     }
@@ -851,5 +852,31 @@ mod interactive_tests {
         let split = interactive_outcome(&interactor, &right, &wrong, &inputs);
         assert_eq!(split.status, "mismatch", "{}", split.detail);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
+mod gate_tests {
+    use super::*;
+
+    #[test]
+    fn a_permit_dropped_by_a_panic_frees_its_place() {
+        let gate = GxxGate::new(1);
+        let panicked = std::thread::scope(|scope| {
+            scope
+                .spawn(|| {
+                    let _permit = gate.acquire();
+                    let _active = gate.active.lock();
+                    panic!("a g++ run panicked holding the gate");
+                })
+                .join()
+        });
+        assert!(panicked.is_err());
+        assert!(gate.active.is_poisoned());
+        drop(gate.acquire());
+        assert_eq!(
+            *gate.active.lock().unwrap_or_else(PoisonError::into_inner),
+            0
+        );
     }
 }

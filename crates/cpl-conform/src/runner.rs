@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 use std::time::Instant;
 
 use cpl_check::Session;
@@ -259,7 +259,10 @@ pub static CASE_SECONDS: Mutex<Vec<(String, f64)>> = Mutex::new(Vec::new());
 
 /// The `n` slowest cases run so far, slowest first.
 pub fn slowest_cases(n: usize) -> Vec<(String, f64)> {
-    let mut all = CASE_SECONDS.lock().unwrap().clone();
+    let mut all = CASE_SECONDS
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
     all.sort_by(|a, b| b.1.total_cmp(&a.1));
     all.truncate(n);
     all
@@ -288,7 +291,7 @@ where
     let next = AtomicUsize::new(0);
     let (done, finished) = std::sync::mpsc::channel::<()>();
     let results: Mutex<BTreeMap<String, R>> = Mutex::new(BTreeMap::new());
-    *RUNNING.lock().unwrap() = vec![String::new(); workers];
+    *RUNNING.lock().unwrap_or_else(PoisonError::into_inner) = vec![String::new(); workers];
     std::thread::scope(|s| {
         s.spawn(move || watch_memory(&finished));
         let handles: Vec<_> = (0..workers)
@@ -311,8 +314,14 @@ where
                         if secs > 30.0 {
                             eprintln!("cpl-conform: {key} took {secs:.0} s");
                         }
-                        CASE_SECONDS.lock().unwrap().push((key.clone(), secs));
-                        results.lock().unwrap().insert(key, val);
+                        CASE_SECONDS
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .push((key.clone(), secs));
+                        results
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .insert(key, val);
                     }
                 })
             })
@@ -325,7 +334,7 @@ where
             }
         }
     });
-    results.into_inner().unwrap()
+    results.into_inner().unwrap_or_else(PoisonError::into_inner)
 }
 
 thread_local! {
@@ -338,7 +347,11 @@ static RUNNING: Mutex<Vec<String>> = Mutex::new(Vec::new());
 /// Names the case the calling worker is running, so a run stopped for its
 /// memory use says which cases were in flight.
 pub fn running(name: &str) {
-    if let Some(slot) = RUNNING.lock().unwrap().get_mut(WORKER.get()) {
+    if let Some(slot) = RUNNING
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get_mut(WORKER.get())
+    {
         *slot = name.to_string();
     }
 }
@@ -357,7 +370,10 @@ fn watch_memory(finished: &std::sync::mpsc::Receiver<()>) {
             return;
         };
         if rss > limit {
-            let running = RUNNING.lock().unwrap().clone();
+            let running = RUNNING
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clone();
             let running: Vec<_> = running.into_iter().filter(|r| !r.is_empty()).collect();
             eprintln!(
                 "cpl-conform: stopped at {rss} MB of memory, over the {limit} MB limit \

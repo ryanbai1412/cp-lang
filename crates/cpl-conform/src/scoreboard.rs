@@ -87,7 +87,9 @@ pub fn normalize_message(msg: &str) -> String {
                 i = j;
             }
             _ => {
-                let ch = msg[i..].chars().next().unwrap();
+                let Some(ch) = msg[i..].chars().next() else {
+                    break;
+                };
                 out.push(ch);
                 i += ch.len_utf8();
             }
@@ -564,4 +566,12 @@ pub fn check_ratchet(baseline: &Scoreboard, current: &Scoreboard, filtered: bool
         }
     }
     report
+}
+
+#[cfg(test)]
+mod normalize_tests {
+    #[test]
+    fn a_message_keeps_its_non_ascii_text() {
+        assert_eq!(super::normalize_message("x ≤ é"), "x ≤ é");
+    }
 }

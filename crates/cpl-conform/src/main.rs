@@ -139,8 +139,7 @@ fn main() -> ExitCode {
                     }
                 }
             }
-            other if Suite::parse(other).is_some() => {
-                let s = Suite::parse(other).unwrap();
+            other if let Some(s) = Suite::parse(other) => {
                 if !suites.contains(&s) {
                     suites.push(s);
                 }
