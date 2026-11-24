@@ -95,39 +95,42 @@ impl Database {
     /// E0904: a peak at the input bounds over the memory limit of the judge
     /// the build is for, naming the three largest values (R03.1.9).
     pub(crate) fn memory_over_profile(&mut self, path: &str, analysis: &mut crate::db::Analysis) {
-        let mut sized: Vec<(String, u128)> = self
-            .value_sizes(path, analysis)
-            .into_iter()
-            .filter_map(|(name, size)| Some((name, size.ok()?)))
-            .collect();
-        let total: u128 = sized.iter().map(|(_, bytes)| bytes).sum();
-        if total < 1 << 20 {
-            return;
-        }
         let Ok(judge) = cpl_judge::resolve(std::path::Path::new(path), &analysis.text, None) else {
             return;
         };
-        if total <= u128::from(judge.memory_mb) << 20 {
-            return;
+        let limit = u128::from(judge.memory_mb) << 20;
+        // Only an array the input can fill alone is reported: separate bounds on
+        // two dimensions, or on two arrays, may hold jointly (`n * m <= 1e6`),
+        // so their product or sum is not a peak the input can reach.
+        let mut sized: Vec<(String, u128)> = Vec::new();
+        for (name, size) in self.value_sizes(path, analysis) {
+            let Some(bytes) = size.ok().filter(|b| *b > limit) else {
+                continue;
+            };
+            let index = match self.lookup(path, analysis, &name).as_deref() {
+                Some(Def::Value {
+                    ty: Ty::Array { index, .. },
+                    ..
+                }) => index.clone(),
+                _ => continue,
+            };
+            let mut lookup = |n: &str| self.lookup(path, analysis, n);
+            let bounded = index
+                .iter()
+                .filter(|i| !literal_index(i, &mut lookup))
+                .count();
+            if bounded <= 1 {
+                sized.push((name, bytes));
+            }
         }
         // Largest first; `value_sizes` gave them by name, and the sort is stable.
         cpl_diag::sort_by_key(&mut sized, |(_, bytes)| {
             !u64::try_from(*bytes).unwrap_or(u64::MAX)
         });
-        let arrays: Vec<String> = sized
-            .iter()
-            .filter(|(name, _)| {
-                let def = self.lookup(path, analysis, name);
-                matches!(
-                    def.as_deref(),
-                    Some(Def::Value {
-                        ty: Ty::Array { .. },
-                        ..
-                    })
-                )
-            })
-            .map(|(name, _)| name.clone())
-            .collect();
+        let Some(&(_, total)) = sized.first() else {
+            return;
+        };
+        let arrays: Vec<String> = sized.iter().map(|(name, _)| name.clone()).collect();
         let Some(span) = arrays.first().and_then(|name| analysis.decl_span(name)) else {
             return;
         };
@@ -860,6 +863,19 @@ fn index_size(index: &Ty, lookup: &mut Lookup) -> Option<i128> {
             ..
         } => Some((hi - lo + 1).max(0)),
         _ => None,
+    }
+}
+
+/// Whether an array index's size is fixed by literals, not by the input. A
+/// range type (`[0..n]`) keeps only its bounds, so it counts as the input's.
+fn literal_index(index: &Ty, lookup: &mut Lookup) -> bool {
+    match index {
+        Ty::Pos(name) => {
+            let domain = name.strip_suffix(".cuts").unwrap_or(name);
+            matches!(lookup(domain).as_deref(), Some(Def::Domain(info))
+                if info.text.chars().all(|c| !c.is_alphabetic() || c == 'e'))
+        }
+        _ => false,
     }
 }
 

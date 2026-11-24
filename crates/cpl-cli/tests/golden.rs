@@ -779,14 +779,14 @@ fn explain_a_file_names_the_sections_not_shown_yet() {
 /// The peak is reported against the memory limit of the file's judge
 /// (spec/tools/judge-profiles.md, Rjudge.7).
 #[test]
-fn explain_reports_a_peak_over_the_judges_memory_limit() {
-    let dir = scratch("explain_over_limit");
-    let small = "[judge.small]\nextends = \"generic\"\nmemory_mb = 1\n";
+fn explain_reports_the_peak_against_the_judges_memory_limit() {
+    let dir = scratch("explain_against_limit");
+    let small = "[judge.small]\nextends = \"generic\"\nmemory_mb = 16\n";
     std::fs::write(dir.join("cp.toml"), small).unwrap();
     let src = "// judge: small\nvar a: [0..1000000]Int = 0\na[5] = 1\nprint(a[5])\n";
     std::fs::write(dir.join("m.cp"), src).unwrap();
     let out = text(&cpl(&dir, &["explain", "m.cp"]).stdout);
-    assert!(out.contains(", over the 1 MB limit on small\n"), "{out}");
+    assert!(out.contains("of 16 MB on small"), "{out}");
 }
 
 /// A file's explanation opens with each top-level value's bytes: per
