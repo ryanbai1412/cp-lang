@@ -4,7 +4,7 @@
 
 Ordered multiset and set with order statistics, range views, and cursors: `SortedBag<K>`, `SortedSet<K>`.
 
-In prelude (no `use` needed): `SortedBag`, `SortedMap`, `SortedSet`.
+In prelude (no `use` needed): `SortedBag`, `SortedMap`, `SortedRange`, `SortedSet`.
 
 ## `struct BagCursor(id: Int, stamp: Int)`
 

@@ -277,7 +277,7 @@ Fields: `edge: [N]Int`, `links: JumpTree<N>`.
 
 ## `enum TreeShape`
 
-The shape of tree `gen<Rooted<V>>(shape:)` draws: a path, a star, a binary heap, a caterpillar (a spine with legs), or a random one (each vertex below a uniform earlier one).
+The shape of tree `gen<Rooted<V>>(shape:)` draws: a path, a star, a binary heap, a caterpillar (a spine with legs), or a random recursive tree (each vertex below a uniform earlier one).
 
 ## Functions
 
