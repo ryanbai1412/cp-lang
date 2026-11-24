@@ -7,17 +7,16 @@
 //   symmetric: the classes are the components of the graph with edges i - p_i over all friends.
 //   A Dsu over boxes: n m unions, then one `same` per query.
 // original: corpus/submissions/4143417.cpp
-// Bounds: p, a, b: 1..=n
+// Bounds: n, m: 1..=1000; q: 1..=5e5; p, a, b: 1..=n
 
-let n: Int = read()
-let m: Int = read()
-let q: Int = read()
+let n: 1..=1000 = read()
+let m: 1..=1000 = read()
+let q: 1..=5e5 = read()
 domain Box = 1..=n
-var group = Dsu<Box>.new()
+var reach = Dsu<Box>()
 for _ in 0..m:
     let p: [Box]Box = read()
-    for i in Box: group.unite(i, p[i])
+    for i in Box: reach.unite(i, p[i])
 for _ in 0..q:
-    let a: Box = read()
-    let b: Box = read()
-    print(if group.same(a, b): "DA" else: "NE")
+    let (a, b): (Box, Box) = read()
+    print(if reach.same(a, b): "DA" else: "NE")

@@ -415,6 +415,10 @@ coci06c1p6
 coci10c7p4
 coci21c1p1
 coci21c1p5
+coci21c2p1
+coci21c2p2
+coci21c3p1
+coci21c6p1
 coi06p2
 csps21p2
 ctsc04p4
