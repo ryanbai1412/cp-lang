@@ -3,7 +3,7 @@
 // also counts shortest paths.
 let (n, m) = read<(1..=100, 1..=4500)>()
 domain V = 1..=n
-var best: [V, V]?(d: Int, ways: Int) = [V, V] (s, t) => (s == t).then((d: 0, ways: 1))
+var best: [V, V]?(d: Int, ways: Int) = [V, V] (s, t) => if s == t: Some((d: 0, ways: 1)) else: None
 for (a, b, c) in read<[m](a: V, b: V, c: 1..=1000)>():
     best[a, b] = Some((d: c, ways: 1))
     best[b, a] = Some((d: c, ways: 1))
@@ -17,6 +17,6 @@ for v in V:
                 Some(st) if st.d == via.d => Some((d: st.d, ways: st.ways + via.ways))
                 _ => Some(via)
 for v in V:
-    print(V.pairs_ordered().filter((s, t) => s != v and t != v).sum(of: (s, t) =>
+    print(product(V.all, V.all).filter(((s, t)) => s != t and s != v and t != v).sum(of: ((s, t)) =>
         let (sv, vt, st) = (best[s, v]!, best[v, t]!, best[s, t]!)
         if sv.d + vt.d == st.d: F64(sv.ways * vt.ways) / F64(st.ways) else: 0.0), digits: 3)
