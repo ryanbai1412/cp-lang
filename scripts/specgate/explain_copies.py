@@ -81,6 +81,16 @@ def is_copied(init):
     return is_place(init) or bool((m := GET.fullmatch(init)) and is_place(m.group(1)))
 
 
+def one_call(text):
+    """A single call `f(..)`, whose first `(` closes at the end: not `f(a) + g(b)`."""
+    depth = 0
+    for i, c in enumerate(text):
+        depth += (c == "(") - (c == ")")
+        if c == ")" and depth == 0:
+            return i == len(text) - 1
+    return False
+
+
 def is_place(text):
     text = text.strip()
     return (bool(NAME.fullmatch(text)) and text not in KEYWORDS) or (text.startswith("cpl::at(") and text.endswith(")") and "::" not in text[8:])
@@ -324,7 +334,7 @@ def deep_copies(cpp):
     holders = container_structs(cpp)
     count += sum(m.group(1) in holders for line in program(cpp).splitlines() if not line.lstrip().startswith("//") for m in BUILT.finditer(line))
     refs = {m.group(1) for line in program(cpp).splitlines() if (m := REF_FN.match(line))}
-    copied = lambda init: is_copied(init) or bool((m := CALL.fullmatch(init.strip())) and m.group(1) in refs)
+    copied = lambda init: is_copied(init) or bool((m := CALL.fullmatch(init.strip())) and m.group(1) in refs and one_call(init.strip()))
     fields = struct_fields(cpp)
     owners = holders | {n for n, fs in fields.items() if any(t.startswith(("std::array<", "cpl::Row<")) for t in fs.values())}
     heap = lambda ty: bool(ty) and (ty.startswith(CONTAINERS) or ty in holders)

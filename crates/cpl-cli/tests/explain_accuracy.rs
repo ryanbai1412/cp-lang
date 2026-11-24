@@ -512,6 +512,18 @@ fn place_type<'a>(
 /// declares (a scalar `v.mn1 = p.mx1;` is no copy), or from a fn that
 /// lends it, `N n = get(a, i);` with `const N& get(..)`. Mirrors the
 /// assignment in `deep_copies` in scripts/specgate/explain_copies.py.
+/// A single call `f(..)`, whose first `(` closes at the end: not `f(a) + g(b)`.
+fn one_call(text: &str) -> bool {
+    let mut depth = 0;
+    for (i, c) in text.char_indices() {
+        depth += i32::from(c == '(') - i32::from(c == ')');
+        if c == ')' && depth == 0 {
+            return i + 1 == text.len();
+        }
+    }
+    false
+}
+
 fn assigned_copies(cpp: &str) -> usize {
     let holders = container_structs(cpp);
     let fields = struct_fields(cpp);
@@ -526,7 +538,7 @@ fn assigned_copies(cpp: &str) -> usize {
         .collect();
     let ref_call = |init: &str| {
         init.split_once('(')
-            .is_some_and(|(f, _)| refs.contains(f) && init.ends_with(')'))
+            .is_some_and(|(f, _)| refs.contains(f) && one_call(init))
     };
     let mut types = HashMap::new();
     let mut count = 0;
