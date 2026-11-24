@@ -385,21 +385,13 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.single(D(0)); b.union_shifted(Bitset<D>.of([D(1), D(8)]), 2); b.each().collect() == [D(0), D(3)]`
     /// example: `domain D = 0..10; var b = Bitset<D>(); b.union_shifted(Bitset<D>.of([D(1), D(8)]), -1); b.each().collect() == [D(0), D(7)]`
     pub fn union_shifted(mut self, o: Bitset<D>, k: Int):
-        let d = max(k, -k)
-        let (words, bits) = (d / 64, d % 64)
-        if words >= w.len: return
+        let (words, bits) = (k / 64, k % 64)
         let m = w.len
         unchecked:
-            if k < 0:
-                for i in 0..m - words:
-                    var x = o.w[i + words] >> bits
-                    if bits > 0 and i + words + 1 < m: x |= o.w[i + words + 1] << (64 - bits)
-                    w[i] |= x
-            elif bits == 0:
-                for i in words..m: w[i] |= o.w[i - words]
-            else:
-                w[words] |= o.w[0] << bits
-                for i in words + 1..m: w[i] |= (o.w[i - words] << bits) | (o.w[i - words - 1] >> (64 - bits))
+            for i in 0..m:
+                let j = i - words
+                if 0 <= j < m: w[i] |= o.w[j] << bits
+                if bits > 0 and 0 < j <= m: w[i] |= o.w[j - 1] >> (64 - bits)
         self.trim()
         self.forget_count()
 
@@ -669,7 +661,7 @@ pub struct DynBitset:
     /// cost: \(O(1)\)
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.add(3); d.contains(3) and not d.contains(4)`
-    /// example: `DynBitset(10).contains(10)` (traps R0401)
+    /// example: `not DynBitset(10).contains(10)` (traps R0401)
     pub fn contains(self, i: Int) -> Bool:
         assert 0 <= i < _cap
         (_w[i / 64] >> (i % 64)) & U64(1) == U64(1)
@@ -1411,7 +1403,7 @@ pub struct BitTrie<W>:
     /// order: bits from `W - 1` down
     /// traps: when `x` is not in `0..2^W`
     /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 4); t.add(mut ar, 1); List(t.walk(ar, 5)) == [(bit: 2, count: 2), (bit: 1, count: 2), (bit: 0, count: 1)]`
-    /// example: `var ar = BitTrieArena<3>(); List(BitTrie<3>.of(mut ar, 0).walk(ar, 8)) == []` (traps R0401)
+    /// example: `var ar = BitTrieArena<3>(); List(BitTrie<3>.of(mut ar, 0).walk(ar, 8)).len == 3` (traps R0401)
     pub fn walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int):
         assert 0 <= x < 1 << W
         guard let r = root else: return
@@ -1664,6 +1656,14 @@ fn the_kept_count_follows_every_update():
     assert b.len == 7
     b.flip_range(P(68)..P(72))
     assert b.len == 7 and b.count_range(P(64)..P(72)) == 6
+    var f = Bitset<P>.full()
+    let _ = f.remove(P(5))
+    let _ = f.add(P(5))
+    f.toggle(P(9))
+    assert f.len == 129
+    f.set_range(P(60)..P(70), on: false)
+    f.set_range(P(60)..P(70))
+    assert f.len == 129
     var u = Bitset<P>.single(P(3))
     u.union(Bitset<P>.single(P(4)))
     assert u.len == 2 and u.complement().len == 128
