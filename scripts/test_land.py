@@ -822,6 +822,28 @@ class LandTest(unittest.TestCase):
             r = warm("--parent", "origin/main", touched)
             self.assertEqual(r.stdout.strip(), str(out / "sizes" / f"{main_tree}.json"), touched)
 
+    def test_wasm_warm_parent_reads_a_cpl_x_name_as_its_crate_and_std_as_an_input(self):
+        ours = self.clone("ours")
+        out = self.tmp / "tgt" / "wasm-warm"
+        (out / "sizes").mkdir(parents=True)
+        (ours / "crates" / "cpl-x").mkdir(parents=True)
+        (ours / "crates" / "cpl-x" / "lib.rs").write_text("one\n")
+        self.commit(ours, "one")
+        old = git(ours, "rev-parse", "HEAD^{tree}").strip()
+        (out / "sizes" / f"{old}.json").write_text("{}")
+        warm = lambda *a: subprocess.run(["bash", "scripts/wasm-warm.sh", *a], cwd=ours, env={**os.environ, **self._wasm(ours, 0)},
+                                         capture_output=True, text=True)
+        for edit in (ours / "crates" / "cpl-x" / "lib.rs", ours / "std" / "seq.cp"):
+            edit.parent.mkdir(parents=True, exist_ok=True)
+            edit.write_text("two\n")
+            self.commit(ours, "two")
+            for name in ("cpl-x", "cpl_x"):
+                self.assertEqual(warm("--parent", "HEAD", name).returncode, 1, (edit, name))
+            git(ours, "reset", "-q", "--hard", "HEAD~1")
+        (ours / "README.md").write_text("elsewhere\n")
+        self.commit(ours, "elsewhere")
+        self.assertEqual(warm("--parent", "HEAD", "cpl_x").stdout.strip(), str(out / "sizes" / f"{old}.json"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,10 +8,11 @@
 #   scripts/wasm-warm.sh --wait     build in the foreground
 #   scripts/wasm-warm.sh --current CRATE...
 #                                   print the build's cpl.wasm if it is of HEAD's tree, or of
-#                                   one that differs from it outside these crates; else fail
+#                                   one that differs from it outside these crates and std
+#                                   (a crate is named as its directory or its cpl_x name); else fail
 #   scripts/wasm-warm.sh --parent BASE CRATE...
 #                                   print the per-crate sizes of a build of BASE's tree, or of
-#                                   one that differs from it outside these crates; else fail
+#                                   one that differs from it outside these crates and std; else fail
 # Each recorded build writes its sizes to sizes/<tree>.json, and --wait also builds
 # HEAD's merge-base with origin/main when it has none, so land can hold a crate over
 # its budget to its parent's size (web/scripts/wasm-crates.mjs --parent).
@@ -31,7 +32,7 @@ case "${1:-}" in
     --current)
         shift
         built=$(cat "$out/tree" 2>/dev/null) && [ -s "$out/cpl.wasm" ] || exit 1
-        dirs=(); for c in "$@"; do dirs+=("crates/$c"); done
+        dirs=(std Cargo.toml Cargo.lock); for c in "$@"; do dirs+=("crates/${c//_/-}"); done
         [ "$built" = "$(git rev-parse 'HEAD^{tree}')" ] ||
             git diff --quiet "$built" 'HEAD^{tree}' -- "${dirs[@]}" 2>/dev/null || exit 1
         echo "$out/cpl.wasm" ;;
