@@ -391,7 +391,8 @@ fn every_option_a_row_documents_is_one_of_its_params() {
     for member in BUILTIN_MEMBERS {
         let params: Vec<&str> = cpl_check::split_builtin_params(member.params)
             .into_iter()
-            .map(|p| p.split_once(':').map_or(p, |(n, _)| n).trim())
+            .map(|p| p.split_once(':').map_or(p, |(n, _)| n))
+            .map(|n| n.trim().trim_start_matches(';').trim())
             .collect();
         let mut doc = member.doc;
         while let Some(at) = doc.find('`') {

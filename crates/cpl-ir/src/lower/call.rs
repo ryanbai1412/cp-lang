@@ -238,7 +238,7 @@ impl<'a> Lowerer<'a> {
                 return self.lower_first_or_last_where(base, &test.value, false, span);
             }
         }
-        // `xs.reach(while: (a, b) => ..., cyclic: Bool = false)` returns `List<Int>`.
+        // `xs.reach(while: (a, b) => ...; cyclic: Bool = false)` returns `List<Int>`.
         if name.text == "reach" && base_is_seq {
             return self.lower_reach(base, args, span);
         }
