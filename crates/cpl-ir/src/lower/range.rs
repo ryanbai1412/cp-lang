@@ -36,6 +36,19 @@ pub(super) enum RangeInfo {
 }
 
 impl RangeBounds {
+    /// Bounds known only as limits, `lo..=hi`: enough for a storage width.
+    pub(super) fn spanning(lo: i64, hi: i64) -> RangeBounds {
+        RangeBounds {
+            lo: None,
+            hi: None,
+            lo_const: None,
+            hi_const: None,
+            lo_min: Some(lo),
+            hi_max: Some(hi),
+            text: format!("{lo}..={hi}"),
+        }
+    }
+
     /// `??lo..hi` inside an `int32_t`: two values below the range are the two `none`s.
     pub(super) fn narrow_opt_opt_layout(&self) -> Option<NarrowLayout> {
         let (lo_min, hi_max) = self.limits()?;
@@ -170,6 +183,34 @@ fn expr_limits(e: &Expr) -> Option<(i64, i64)> {
 }
 
 impl RangeInfo {
+    /// A range holding the values of both `self` and `other`: what a list
+    /// built from two lists' elements knows of its own.
+    pub(super) fn join(&self, other: &RangeInfo) -> Option<RangeInfo> {
+        match (self, other) {
+            (RangeInfo::Scalar(a), RangeInfo::Scalar(b)) => {
+                let ((alo, ahi), (blo, bhi)) = (a.limits()?, b.limits()?);
+                Some(RangeInfo::Scalar(RangeBounds::spanning(
+                    alo.min(blo),
+                    ahi.max(bhi),
+                )))
+            }
+            (RangeInfo::Opt(a), RangeInfo::Opt(b)) => Some(RangeInfo::Opt(Box::new(a.join(b)?))),
+            (RangeInfo::Elem(a), RangeInfo::Elem(b)) => Some(RangeInfo::Elem(Box::new(a.join(b)?))),
+            (RangeInfo::Tuple(a), RangeInfo::Tuple(b)) if a.len() == b.len() => {
+                let items: Vec<Option<RangeInfo>> = a
+                    .iter()
+                    .zip(b)
+                    .map(|(x, y)| x.as_ref().zip(y.as_ref()).and_then(|(x, y)| x.join(y)))
+                    .collect();
+                items
+                    .iter()
+                    .any(Option::is_some)
+                    .then_some(RangeInfo::Tuple(items))
+            }
+            _ => None,
+        }
+    }
+
     /// A scalar range as the [`Spec::Int`] the IR carries.
     pub(super) fn spec(&self) -> Option<Spec> {
         let b = self.scalar()?;
@@ -855,17 +896,7 @@ impl<'a> Lowerer<'a> {
         } else {
             hi_max.checked_sub(1)?
         };
-        (lo_min <= hi_max).then(|| {
-            RangeInfo::Scalar(RangeBounds {
-                lo: None,
-                hi: None,
-                lo_const: None,
-                hi_const: None,
-                lo_min: Some(lo_min),
-                hi_max: Some(hi_max),
-                text: format!("{lo_min}..={hi_max}"),
-            })
-        })
+        (lo_min <= hi_max).then(|| RangeInfo::Scalar(RangeBounds::spanning(lo_min, hi_max)))
     }
 
     /// Looks up `RangeInfo` for a value expression (used to prove sub-range sources).

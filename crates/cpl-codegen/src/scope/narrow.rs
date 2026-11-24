@@ -191,7 +191,8 @@ pub(crate) fn narrow_elems(
             if let Write::Mutate(Mutation::Take) = how {
                 return;
             }
-            if let Write::Mutate(_) | Write::Sort = how {
+            // A sort only reorders the values a seeded layout already holds.
+            if let Write::Mutate(_) = how {
                 stored.extend(place_loc(scope, place));
             }
         });
@@ -691,8 +692,20 @@ pub(crate) fn narrow_elems(
                 }
             }
             ExprKind::Sort(place, by, _) => {
+                // A key takes each narrow cell as its wide value, so a
+                // list of narrow ints or tuples stays narrow under it.
+                let leaf_cells = place_root(scope, place).is_some_and(|(loc, depth)| {
+                    depth == 0
+                        && matches!(
+                            narrow.get(&loc),
+                            Some(NarrowLayout::Int(_) | NarrowLayout::Tuple(_))
+                        )
+                });
                 if matches!(by, cpl_ir::SortBy::Natural) && is_narrowable_seq(&place.ty) {
                     check_place_nested(program, scope, place, narrow, changed);
+                } else if let (cpl_ir::SortBy::Key(_, k), true) = (by, leaf_cells) {
+                    check_place_nested(program, scope, place, narrow, changed);
+                    check_val(program, scope, k, narrow, changed);
                 } else {
                     if is_narrowable_seq(&place.ty) {
                         if let Some((loc, _)) = place_root(scope, place) {

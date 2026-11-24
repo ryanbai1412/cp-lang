@@ -1030,7 +1030,9 @@ fn moved_source(init: &Expr) -> &Expr {
 pub(crate) fn copied(init: &Expr) -> Option<&Expr> {
     match &init.kind {
         ExprKind::Builtin(Builtin::Copy, args) => match args.as_slice() {
-            [src] if matches!(in_place(src).kind, ExprKind::Local(_)) => Some(in_place(src)),
+            [src] if matches!(in_place(src).kind, ExprKind::Local(_) | ExprKind::Global(_)) => {
+                Some(in_place(src))
+            }
             _ => None,
         },
         _ => None,

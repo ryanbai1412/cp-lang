@@ -30,6 +30,12 @@ def ints(n, per=1):
     return f"{n}\n{body}\n"
 
 
+def costs(n, per):
+    """`n`, then n * `per` numbers in 1..=1e8."""
+    body = " ".join(str(i * 7919 % 100_000_007 % 100_000_000 + 1) for i in range(n * per))
+    return f"{n}\n{body}\n"
+
+
 def aho_words(n, m):
     """`n` distinct words of 8-10 letters from "abc", then `m` 500-letter texts."""
     import random
@@ -106,6 +112,7 @@ CASES = {
     "cf2268b": lambda: gen("cf2268b"),  # 2e5 point updates into a pushed answer list: within 512 KiB
     "sort_comp": lambda: ints(2_000_000),  # sorted([(a[i], i) for i in 0..n]): 8 B pairs, reserved (cf2187a)
     "ucup5s02e": lambda: gen("ucup5s02e"),  # rank.pairs() over three 2e5 rows, then a row's inverse
+    "sort_links": lambda: costs(1_000_000, 2),  # (cost, enum) pairs of two lists, sorted by cost, moved
 }
 
 

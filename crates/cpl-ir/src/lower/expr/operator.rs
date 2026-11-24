@@ -400,8 +400,15 @@ impl<'a> Lowerer<'a> {
                 if !matches!(l.ty, Ty::List(_)) || !matches!(r.ty, Ty::List(_)) {
                     return self.mk_builtin(Builtin::ListConcat, [l, r], list_ty, span);
                 }
+                let joined = self
+                    .expr_range(&l)
+                    .zip(self.expr_range(&r))
+                    .and_then(|(a, b)| a.join(&b));
                 return self.do_expr(Some(&list_ty), span, |lw, out| {
                     let slot = lw.temp(list_ty.clone());
+                    if let Some(joined) = joined {
+                        lw.cx.local_ranges.insert(slot, joined);
+                    }
                     let cloned = lw.mk_builtin(Builtin::Copy, [l], list_ty.clone(), span);
                     out.push_let(slot, cloned);
                     let ext = lw.mk_mutate(

@@ -607,3 +607,34 @@ print(yes(h.slice(0, s.len) == h.all))
     );
     assert!(!out.contains("pow1"), "{out}");
 }
+
+#[test]
+fn a_joined_list_sorted_by_a_key_keeps_its_narrow_cells_and_is_moved() {
+    let src = |cost: &str| {
+        format!(
+            "let n: 1..=1_000_000 = read()\ndomain F = 0..n\ndomain G = 0..n\n\
+             let f: [F]{cost} = read()\nlet g: [G]{cost} = read()\n\
+             enum Link:\n    Flight(f: F)\n    Portal(g: G)\n\
+             let links = [(f[x], Flight(x)) for x in F] + [(g[y], Portal(y)) for y in G]\n\
+             var tot = 0\n\
+             for (i, (c, l)) in links.sorted(by: l => l.0).items:\n    match l:\n        \
+             Flight(x) => tot += i * x.ord\n        Portal(y) => tot -= i * y.ord\n\
+             print(tot)\n"
+        )
+    };
+    let narrow = cpp(&src("1..=100_000_000"));
+    assert!(
+        narrow.contains("std::vector<std::tuple<uint32_t, int>> links;"),
+        "{narrow}"
+    );
+    assert!(narrow.contains("= std::move(links);"), "{narrow}");
+    assert!(
+        narrow.contains("[&](const std::tuple<ll, int>& l) -> ll"),
+        "{narrow}"
+    );
+    let wide = cpp(&src("Int"));
+    assert!(
+        wide.contains("std::vector<std::tuple<ll, int>> links;"),
+        "{wide}"
+    );
+}
