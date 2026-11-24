@@ -209,30 +209,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         }
                         dst
                     }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            let r_j =
-                                (indices.len() == 2).then(|| self.compile_expr_i(&indices[1]));
-                            let dst = self.alloc_v();
-                            if let Some(r_j) = r_j {
-                                self.emit(
-                                    Op::LoadLArr2V {
-                                        dst,
-                                        arr_v,
-                                        r_i,
-                                        r_j,
-                                    },
-                                    span,
-                                );
-                            } else {
-                                self.emit(Op::LoadLArr1V { dst, arr_v, r_i }, span);
-                            }
-                            dst
-                        } else {
-                            self.emit_fallback_expr_v(expr)
-                        }
-                    }
                     _ => {
                         let arr_v = self.compile_expr_v(base);
                         let r_i = self.compile_expr_i(&indices[0]);
@@ -348,16 +324,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             span,
                         );
                         dst
-                    }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            let dst = self.alloc_v();
-                            self.emit(Op::LoadLList1V { dst, list_v, r_i }, span);
-                            dst
-                        } else {
-                            self.emit_fallback_expr_v(expr)
-                        }
                     }
                     _ => {
                         let list_v = self.compile_expr_v(base);
@@ -681,46 +647,25 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Mutate(Mutation::Pop, place, args)
                 if args.is_empty() && matches!(place.ty, Ty::List(_)) =>
             {
-                match &place.kind {
-                    PlaceKind::Local(slot) => {
-                        if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
-                            let dst_v = self.alloc_v();
-                            self.emit(Op::ListPopLV { dst_v, list_v }, span);
-                            dst_v
-                        } else {
-                            self.emit_fallback_expr_v(expr)
-                        }
-                    }
-                    PlaceKind::Global(gid) => {
-                        let dst_v = self.alloc_v();
-                        self.emit(
-                            Op::ListPopGV {
-                                dst_v,
-                                gid: *gid as u16,
-                            },
-                            span,
-                        );
-                        dst_v
-                    }
-                    PlaceKind::Field(obj_place, field) => {
-                        if let PlaceKind::Local(slot) = obj_place.kind {
-                            if let SlotLoc::V(obj_v) = self.slot_loc(slot) {
-                                let dst_v = self.alloc_v();
-                                self.emit(
-                                    Op::ListPopFieldLV {
-                                        dst_v,
-                                        obj_v,
-                                        field: *field as u16,
-                                    },
-                                    span,
-                                );
-                                return dst_v;
-                            }
-                        }
-                        self.emit_fallback_expr_v(expr)
-                    }
-                    _ => self.emit_fallback_expr_v(expr),
+                if let PlaceKind::Global(gid) = place.kind {
+                    let dst_v = self.alloc_v();
+                    let gid = gid as u16;
+                    self.emit(Op::ListPopGV { dst_v, gid }, span);
+                    return dst_v;
                 }
+                if let PlaceKind::Local(slot) = place.kind {
+                    if let SlotLoc::V(list_v) = self.slot_loc(slot) {
+                        let dst_v = self.alloc_v();
+                        self.emit(Op::ListPopLV { dst_v, list_v }, span);
+                        return dst_v;
+                    }
+                }
+                let Some(path) = self.compile_place_path_to(place, true) else {
+                    return self.emit_fallback_expr_v(expr);
+                };
+                let dst_v = self.alloc_v();
+                self.emit(Op::ListPopPlace { dst_v, path }, span);
+                dst_v
             }
             ExprKind::Mutate(Mutation::Take, place, args) if args.is_empty() => {
                 if let PlaceKind::Local(slot) = place.kind {
@@ -1223,16 +1168,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             _ => match op {
                 Mutation::Pop if args.is_empty() => {
-                    let saved_ops = self.ops.len();
-                    let saved_spans = self.spans.len();
-                    let saved_places = self.places.len();
-                    let Some(path) = self.compile_place_path(place) else {
-                        self.ops.truncate(saved_ops);
-                        self.spans.truncate(saved_spans);
-                        self.places.truncate(saved_places);
+                    let Some(path) = self.compile_place_path_to(place, true) else {
                         return false;
                     };
-                    self.emit(Op::ListPopDiscardPlace { path }, span);
+                    self.emit(
+                        Op::ListPopPlace {
+                            dst_v: u16::MAX,
+                            path,
+                        },
+                        span,
+                    );
                     true
                 }
                 Mutation::Push if args.len() == 1 => {

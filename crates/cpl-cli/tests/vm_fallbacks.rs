@@ -61,3 +61,11 @@ fn a_query_over_a_library_domain_runs_on_the_vm() {
         }
     }
 }
+
+#[test]
+fn a_pop_from_any_list_place_runs_on_the_vm() {
+    let program = tests_dir().join("programs/vm_pop_places.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}

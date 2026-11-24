@@ -194,16 +194,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     combine_in_place(cell, op, val, span)
                 })?;
             }
-            Op::ListPopDiscardPlace { path } => {
+            Op::ListPopPlace { dst_v, path } => {
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
-                match target {
-                    Value::List(items) => {
-                        Rc::make_mut(items).pop();
-                    }
+                let popped = match walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])? {
+                    Value::List(items) => Rc::make_mut(items).pop(),
                     _ => return bug(spans[cur_pc], "expected list"),
+                };
+                if dst_v != u16::MAX {
+                    regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
                 }
             }
             Op::ListPushPlaceI { path, val_i, kind } => {

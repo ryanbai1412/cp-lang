@@ -860,24 +860,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
-            Op::ListPopFieldLV {
-                dst_v,
-                obj_v,
-                field,
-            } => {
-                if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    if let Value::List(items) =
-                        &mut crate::value::Shared::make_mut(fs)[field as usize]
-                    {
-                        regs_v[dst_v as usize] =
-                            Value::Opt(OptVal::from_option(Rc::make_mut(items).pop()));
-                    } else {
-                        return bug(spans[cur_pc], "expected list");
-                    }
-                } else {
-                    return bug(spans[cur_pc], "expected tuple/struct");
-                }
-            }
             Op::MakeRange { dst, r_lo, r_hi } => {
                 let lo = regs_i[r_lo as usize];
                 let hi = regs_i[r_hi as usize];

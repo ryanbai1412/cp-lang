@@ -1879,7 +1879,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::SeqItems { .. }
             | Op::TreeRangeItems { .. }
             | Op::ListPopFieldOptIL { .. }
-            | Op::ListPopFieldLV { .. }
             | Op::MakeRange { .. }
             | Op::CmpOptI { .. }
             | Op::CmpSmallTuple { .. }

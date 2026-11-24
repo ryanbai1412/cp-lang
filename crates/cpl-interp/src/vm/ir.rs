@@ -1048,11 +1048,6 @@ pub(crate) enum Op {
         obj_v: u16,
         field: u16,
     },
-    ListPopFieldLV {
-        dst_v: u16,
-        obj_v: u16,
-        field: u16,
-    },
     MakeRange {
         dst: u16,
         r_lo: u16,
@@ -1276,7 +1271,10 @@ pub(crate) enum Op {
         r_val: u16,
         op: AssignOp,
     },
-    ListPopDiscardPlace {
+    /// Pops the list at `path` into `dst_v`, or drops it when `dst_v` is
+    /// `u16::MAX`.
+    ListPopPlace {
+        dst_v: u16,
         path: u16,
     },
     ListPushPlaceI {
