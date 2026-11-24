@@ -233,7 +233,8 @@ impl Ty {
 
     /// Whether this type is one of `patterns`, each a type name with
     /// optional arguments, `List` or `Map<_, Int>`: `_` takes any type and
-    /// `Int` any integer type. `Str` and `Array` name those types.
+    /// `Int` any integer type. `Str`, `Array` and the other built-in scalars
+    /// (`I128`, `U64`, `F64`, `Bool`, `Char`) name those types.
     pub fn is_one_of(&self, patterns: &[&str]) -> bool {
         patterns.iter().any(|p| self.is_instance_of(p))
     }
@@ -257,6 +258,10 @@ impl Ty {
         match self {
             Ty::Str => name == "Str" && args.is_none(),
             Ty::Array { .. } => name == "Array" && args.is_none(),
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Range { .. } | Ty::Float | Ty::Bool | Ty::Char => {
+                args.is_none()
+                    && (name == "Int" && self.is_int() || self.widen().to_string() == name)
+            }
             Ty::Named {
                 name: have,
                 args: given,
@@ -1254,6 +1259,23 @@ mod tests {
 
     fn no_domains(_: &str) -> Option<i128> {
         None
+    }
+
+    #[test]
+    fn a_pattern_names_a_scalar_and_int_takes_any_integer() {
+        let on = ["Int", "F64", "Char"];
+        for ty in [Ty::Int, Ty::I128, Ty::U64, range(0, 9), Ty::Float, Ty::Char] {
+            assert!(ty.is_one_of(&on), "{ty}");
+        }
+        let list = Ty::Named {
+            name: "List".into(),
+            args: vec![Ty::Int],
+        };
+        for ty in [Ty::Bool, Ty::Str, Ty::Tuple(vec![Ty::Int, Ty::Int]), list] {
+            assert!(!ty.is_one_of(&on), "{ty}");
+        }
+        assert!(Ty::U64.is_one_of(&["U64"]) && !Ty::Int.is_one_of(&["U64"]));
+        assert!(Ty::Bool.is_one_of(&["Bool"]) && !Ty::Int.is_one_of(&["Int<_>"]));
     }
 
     fn no_structs(_: &str) -> Option<u64> {
