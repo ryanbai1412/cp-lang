@@ -94,17 +94,19 @@ Fields: `data: [D]T`, `log: List<(D, T)>`.
 - `fn mark(self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](RollbackArray.undo_to).
 - `fn undo_to(mut self, snap: Mark)` — \(O(1)\) per undone `set`; Reverts every `set` since `snap = mark()`, newest first, so each position holds what it held at the mark.; traps: when `snap` lies after the present (its changes were already undone)
 
+## `struct DsuNode<V>`
+
+One node of a `PersistentDsu<V>`'s path-copied array: a leaf holds one position's parent and, at a root, its set's size; an inner node holds its two halves.
+
 ## `struct PersistentDsu<V>`
 
-Path-copying persistent disjoint-set union over domain `V`.
+One version of a persistent disjoint-set union over domain `V`: an immutable value whose nodes live in a `PArena<DsuNode<V>>` the caller holds and passes to every call.
 
-- `fn new() -> PersistentDsu<V>` — \(O(n)\); A persistent union-find over `V` holding version 0, every position in its own set.
-- `@get fn base(self) -> Int` — \(O(1)\); The handle of version 0, where every position is alone.
-- `fn find(self, ver: Int, v: V) -> V` — \(O(\log^2 n)\); The representative of `v`'s set in version `ver`, chosen by union by size as in [`Dsu.find`](Dsu.find).; traps: when `ver` is not a version handle of `self`
-- `fn same(self, ver: Int, a: V, b: V) -> Bool` — \(O(\log^2 n)\); Whether `a` and `b` are in the same set in version `ver`.; traps: when `ver` is not a version handle of `self`
-- `fn size(self, ver: Int, v: V) -> Int` — \(O(\log^2 n)\); The number of positions in `v`'s set in version `ver`, `v` included.; traps: when `ver` is not a version handle of `self`
-- `fn unite(mut self, ver: Int, a: V, b: V) -> Int` — \(O(\log^2 n)\) time and \(O(\log n)\) memory; A new version equal to `ver` with the sets of `a` and `b` merged; `ver` itself is unchanged.; traps: when `ver` is not a version handle of `self`
-- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\); Preallocates room for at least `nodes` persistent-array nodes, so later `unite`s do not grow the pool.; traps: when `nodes < 0`
+- `fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>` — \(O(n)\) time and \(2n - 1\) arena nodes; The version where every position of `V` is alone, built in `ar`.
+- `fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V` — \(O(\log^2 n)\); The representative of `v`'s set, chosen by union by size as in [`Dsu.find`](Dsu.find).
+- `fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool` — \(O(\log^2 n)\); Whether `a` and `b` are in the same set.
+- `fn size(self, ar: PArena<DsuNode<V>>, v: V) -> Int` — \(O(\log^2 n)\); The number of positions in `v`'s set, `v` included.
+- `fn unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>` — \(O(\log^2 n)\) time and \(O(\log n)\) arena nodes; A new version with the sets of `a` and `b` merged; `self` is unchanged.
 
 ## Example
 
