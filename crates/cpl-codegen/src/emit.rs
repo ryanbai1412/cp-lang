@@ -119,6 +119,8 @@ pub(crate) struct Emitter<'p> {
     /// Temporaries a view lends from, each written as the local holding it.
     pub pinned: Vec<(*const Expr, String)>,
     pub hoisted: BTreeSet<usize>,
+    /// Top-level `let`s of `main` bound by reference ([`Emitter::lends_main_let`]).
+    pub lent_main: BTreeSet<usize>,
     /// The slot the next emitted closure is bound to when it names itself.
     pub rec_slot: Option<usize>,
     /// Globals stored once, with a literal: emitted as `static constexpr`.
@@ -257,6 +259,7 @@ impl<'p> Emitter<'p> {
             names: Vec::new(),
             pinned: Vec::new(),
             hoisted: BTreeSet::new(),
+            lent_main: BTreeSet::new(),
             rec_slot: None,
             const_globals: BTreeSet::new(),
             tail: None,
@@ -810,6 +813,10 @@ impl<'p> Emitter<'p> {
                 self.zero_init(&global.ty)
             };
             if !is_fixed && !shared_globals.contains(&id) && read_in_main.contains(&id) {
+                if self.lends_main_let(id) {
+                    self.lent_main.insert(id);
+                    continue;
+                }
                 solve_locals.push_str(&format!(
                     "  {} {}{};\n",
                     cpp,

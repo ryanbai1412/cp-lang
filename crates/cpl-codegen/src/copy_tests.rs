@@ -298,3 +298,14 @@ fn a_closure_takes_a_struct_holding_a_cache_by_value() {
     let cpp = cpp("struct Holder(pub d: Dsu<V>)\ndomain V = 0..3\nlet h = Holder(Dsu<V>(rollback: true))\nlet ok = (x: Holder) => x.d.components >= 2\nprint(yes(ok(h)))\n");
     assert!(!cpp.contains("const Holder&"), "{cpp}");
 }
+
+#[test]
+fn a_top_level_let_of_a_list_element_is_a_reference() {
+    let cpp = cpp(concat!(
+        "let rows: List<List<Int>> = [[1, 2], [3, 4]]\n",
+        "let r = rows[1]\n",
+        "print(r.sum())\n",
+    ));
+    assert!(cpp.contains("const std::vector<ll>& r = "), "{cpp}");
+    assert!(!cpp.contains("std::vector<ll> r;"), "{cpp}");
+}

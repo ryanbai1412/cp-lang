@@ -15,6 +15,7 @@ mod fuse;
 mod globals;
 mod inline;
 mod lend;
+mod main_lend;
 mod names;
 mod niche;
 mod optfn;

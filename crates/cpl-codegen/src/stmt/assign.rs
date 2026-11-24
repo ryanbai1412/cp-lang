@@ -61,6 +61,9 @@ impl<'p> Emitter<'p> {
         self.mark_moved_entry(place, op, value);
         let whole = value;
         let value = self.flatten(value, out);
+        if matches!(op, AssignOp::Set) && self.let_lent_main(place, value, out) {
+            return;
+        }
         if matches!(op, AssignOp::Set) && self.store_pinned(place, value, out) {
             return;
         }
