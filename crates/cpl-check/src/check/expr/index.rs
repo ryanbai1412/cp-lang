@@ -146,7 +146,25 @@ impl<'a> Checker<'a> {
             }
         }
         let base_ty = self.infer(base);
-        if self.double_index(base, indices) {
+        if let Some(n) = nested_arity(&base_ty, indices.len()) {
+            let inner = Expr::indexed(base, &indices[..n], base.span.to(indices[n - 1].span));
+            let cell = self.index_typed(&inner, base, base_ty, &indices[..n], false);
+            return self.index_typed(expr, &inner, cell, &indices[n..], true);
+        }
+        self.index_typed(expr, base, base_ty, indices, false)
+    }
+
+    /// `index` once `base` has its type; `split` when `base` is the cell a
+    /// table of tables' indices name (R01.8.5).
+    fn index_typed(
+        &mut self,
+        expr: &Expr,
+        base: &Expr,
+        base_ty: Ty,
+        indices: &[Expr],
+        split: bool,
+    ) -> Ty {
+        if !split && self.double_index(base, indices) {
             return Ty::Error;
         }
         self.keyed_view_index(expr.span, base, indices);
@@ -606,6 +624,19 @@ impl Checker<'_> {
         }
         true
     }
+}
+
+/// How many of `n` indices a table whose cells are arrays takes before the
+/// cell's own: `dp[r, c, k]` on `[R, C][K]T` takes 2 (R01.8.5).
+fn nested_arity(ty: &Ty, n: usize) -> Option<usize> {
+    let Ty::Array { index, elem } = ty else {
+        return None;
+    };
+    let Ty::Array { index: inner, .. } = &**elem else {
+        return None;
+    };
+    let sym = matches!(index.as_slice(), [Ty::Named { name, .. }] if matches!(name.as_str(), "Sym" | "Pair"));
+    (!sym && index.len() < n && n <= index.len() + inner.len()).then_some(index.len())
 }
 
 impl Checker<'_> {

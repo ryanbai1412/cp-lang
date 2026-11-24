@@ -355,7 +355,8 @@ match dir: L => -1, R => 1, U => 0, D => 0  // one-line match
   both ways (`(1..=n by 2).rev` starts from the last value it reaches) and
   its `len`, `first` and `last` are \(O(1)\). (R01.8.4)
 - **Indexing** `a[i]`, `g[r, c]` (never `g[r][c]`); `a[i]` on `[I, J]T`
-  is the row place. `a[l..r]` is a slice view keeping the source keys. (R01.8.5)
+  is the row place. A table whose cells are arrays takes the cell's index
+  in the same brackets: `dp[r, c, k]` on `[R, C][K]T`. `a[l..r]` is a slice view keeping the source keys. (R01.8.5)
 - **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y`
   falls back lazily; `x!` unwraps or traps with the source location. (R01.8.6)
 - Members without parentheses are \(O(1)\) (`xs.len`, `t.parent[v]`);
