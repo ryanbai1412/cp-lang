@@ -1,14 +1,15 @@
 """Check that every copy `cpl explain` lists is a copy in the generated C++.
 
-For each `ok` conformance case, runs `cpl explain`; where it lists copies
-(its `[copy]` lines, which codegen records), builds the judge C++ and counts
+For each `ok` conformance case, runs `cpl explain` (its `[copy]` lines,
+which codegen records), builds the judge C++ and counts
 the deep copies in it with the counter explain_accuracy.rs uses (a
 container initialised from a place, a by-value capture), plus a container
 constructed from another (`= std::vector<T>(x);`) and `cpl::to_list(...)`. A
-case whose explain lists more copies than its C++ makes is a false claim
-(spec/tools/explain.md: each heap value the judge build copies, R05.3.5).
+case whose explain lists more copies than its C++ makes over-lists, and (with
+`--exact`) one that lists fewer hides a cost (spec/tools/explain.md: each heap value the
+judge build copies, R05.3.5).
 
-`--max` is shrink-only: lower it as tools fixes false claims.
+`--max` is shrink-only: lower it as tools fixes mismatches.
 Enforces handbook/guidelines/conformance-checklist.md#conformancer6-results-agree-across-engines-with-and-without-sanitizers
 """
 import concurrent.futures as cf
@@ -20,7 +21,7 @@ from pathlib import Path
 import specgate
 from specgate import Problem
 
-HELP = "every copy `cpl explain` lists is a deep copy in the judge C++ (--max false claims allowed, shrink-only)"
+HELP = "`cpl explain` lists exactly the deep copies the judge C++ makes (--max mismatched cases allowed, shrink-only)"
 
 COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.\w+)*)\)(?!>)|cpl::to_list\(|cpl::to_str\(|cpl::sorted\([A-Za-z_]\w*(?:\.\w+)*\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
@@ -263,13 +264,13 @@ def deep_copies(cpp):
     return count
 
 
-def one(cpl, case, tmp):
+def one(cpl, case, tmp, exact):
     text = case.read_text()
     if not text.startswith("// expect: ok") or "\n// tool:" in text:
         return None
     ex = subprocess.run([cpl, "explain", str(case)], capture_output=True, text=True, timeout=120).stdout
     claimed = ex.count("[copy]")
-    if not claimed:
+    if not claimed and not exact:
         return None
     out = Path(tmp) / (case.stem + ".cpp")
     if subprocess.run([cpl, "build", str(case), "--full", "-o", str(out)], capture_output=True, timeout=120).returncode:
@@ -279,7 +280,8 @@ def one(cpl, case, tmp):
 
 
 def args(ap) -> None:
-    ap.add_argument("--max", type=int, default=0, help="false claims allowed (shrink-only)")
+    ap.add_argument("--max", type=int, default=0, help="cases whose copy list differs from the C++ (shrink-only)")
+    ap.add_argument("--exact", action="store_true", help="also flag a case whose explain lists fewer copies than its C++ makes")
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--cpl")
 
@@ -288,8 +290,13 @@ def run(a) -> list[Problem]:
     cpl = a.cpl or str(specgate.ROOT / "target" / "debug" / "cpl")
     cases = sorted(specgate.CONFORMANCE.rglob("*.cp"))
     with tempfile.TemporaryDirectory() as tmp, cf.ThreadPoolExecutor(a.jobs) as pool:
-        rows = [r for r in pool.map(lambda c: one(cpl, c, tmp), cases) if r]
-    false = [r for r in rows if r[1] > r[2]]
-    if len(false) <= a.max:
+        rows = [r for r in pool.map(lambda c: one(cpl, c, tmp, a.exact), cases) if r]
+    over = [r for r in rows if r[1] > r[2]]
+    under = [r for r in rows if r[1] < r[2]] if a.exact else []
+    if len(over) + len(under) <= a.max:
         return []
-    return [Problem(str(path), f"explain lists {claimed} copies, the C++ makes {made}") for path, claimed, made in false]
+    return [
+        Problem(str(path), f"explain {kind} copies: it lists {claimed}, the C++ makes {made}")
+        for kind, wrong in (("over-lists", over), ("under-lists", under))
+        for path, claimed, made in wrong
+    ]

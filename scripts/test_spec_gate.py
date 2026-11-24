@@ -260,12 +260,14 @@ class GatesTest(unittest.TestCase):
             self.assertEqual(ec.deep_copies(holder + line + "\n"), 0, line)
         for line in ("auto v = std::vector<ll>(5);", "auto t = cpl::sorted(f(a));", "auto v = std::vector<ll>(s.begin(), s.end());"):
             self.assertEqual(ec.deep_copies(line + "\n"), 0, line)
-        rows = {"a.cp": ("a.cp", 2, 1), "b.cp": ("b.cp", 1, 1)}
+        rows = {"a.cp": ("a.cp", 2, 1), "b.cp": ("b.cp", 1, 1), "c.cp": ("c.cp", 0, 2)}
         with Tree({"spec/conformance/a.cp": "", "spec/conformance/b.cp": "", "spec/conformance/c.cp": ""}), \
-                mock.patch.object(ec, "one", lambda cpl, c, tmp: rows.get(c.name)):
-            self.assertEqual([(p.where, p.what) for p in run("explain-copies")],
-                             [("a.cp", "explain lists 2 copies, the C++ makes 1")])
+                mock.patch.object(ec, "one", lambda cpl, c, tmp, exact: rows.get(c.name)):
+            over = ("a.cp", "explain over-lists copies: it lists 2, the C++ makes 1")
+            under = ("c.cp", "explain under-lists copies: it lists 0, the C++ makes 2")
+            self.assertEqual([(p.where, p.what) for p in run("explain-copies")], [over])
             self.assertEqual(run("explain-copies", "--max", "1"), [])
+            self.assertEqual([(p.where, p.what) for p in run("explain-copies", "--exact", "--max", "1")], [over, under])
 
     def test_decisions(self):
         # reserve and --check-landing run against a scratch remote in test_spec_gate_decisions.py
