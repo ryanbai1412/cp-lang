@@ -160,7 +160,7 @@ var ans = 0
 
 for x in queries:
     let id = comp.index_of(x)  // exact lookup -> C
-    let original = comp[id]  // original value at id
+    let original = comp[id]    // original value at id
     bit.add(id, 1)
     if let ge = comp.first_ge(x):  // lower bound -> ?C
         ans += bit.prefix(ge.l)
