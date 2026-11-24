@@ -318,3 +318,49 @@ pub(crate) fn write_paths(block: &Block) -> Vec<Path> {
     each_write(block, &mut |_, place| paths.push(place_path(place)));
     paths
 }
+
+/// Whether `e` makes a value of its own instead of naming a place: a list,
+/// tuple or literal it builds, or a block's local it hands on. A yield of
+/// it can hand the value on owned.
+pub(crate) fn makes_own_value(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Local(_)
+        | ExprKind::Global(_)
+        | ExprKind::Field(..)
+        | ExprKind::Index(..)
+        | ExprKind::Payload(..)
+        | ExprKind::Unwrap(..)
+        | ExprKind::Call(..)
+        | ExprKind::CallExpr(..) => false,
+        ExprKind::Do(block) => match block.stmts.last() {
+            Some(Stmt::Give(v)) => match v.kind {
+                ExprKind::Local(s) => block.stmts.iter().any(
+                    |st| matches!(st, Stmt::Let(l, Some(init)) if *l == s && makes_own_value(init)),
+                ),
+                _ => makes_own_value(v),
+            },
+            _ => false,
+        },
+        _ => true,
+    }
+}
+
+/// Whether every value a `yields` fn whose list is `acc` yields is one it
+/// makes ([`makes_own_value`]): the callback may then take each owned.
+pub(crate) fn yields_owned(body: &Block, acc: Slot) -> bool {
+    let (mut any, mut all) = (false, true);
+    each_write(body, &mut |how, place| {
+        if matches!(place.kind, PlaceKind::Local(s) if s == acc) {
+            any = true;
+            all &= matches!(how, Write::Mutate(Mutation::Push));
+        }
+    });
+    walk::deep_exprs(body, &mut |e| {
+        if let ExprKind::Mutate(Mutation::Push, place, items) = &e.kind {
+            if matches!(place.kind, PlaceKind::Local(s) if s == acc) {
+                all &= items.iter().all(makes_own_value);
+            }
+        }
+    });
+    any && all
+}

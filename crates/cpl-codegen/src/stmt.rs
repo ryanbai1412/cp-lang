@@ -694,9 +694,14 @@ impl<'p> Emitter<'p> {
                 && self.closure_id.is_none()
                 && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
             {
+                let owned = crate::uses::places::makes_own_value(&items[0]);
                 let item = self.flatten(&items[0], out);
                 let text = match self.lent_parts(item) {
                     Some(parts) => format!("std::forward_as_tuple({})", parts.join(", ")),
+                    // A block's own local dies with the yield: hand it on.
+                    None if owned && matches!(item.kind, ExprKind::Local(_)) => {
+                        format!("std::move({})", self.yielded(item, out))
+                    }
                     None => self.yielded(item, out),
                 };
                 match how {
