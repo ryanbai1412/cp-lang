@@ -308,9 +308,9 @@ pub fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool:
 /// kept; otherwise only the corners. One point gives itself.
 ///
 /// cost: \(O(n)\) time and memory
-/// empty: `[]`
+/// empty: `lower_hull([]) == []`
 /// order: left to right, by `(x, y)`; a new `List`, keyed from 0
-/// ties: equal points count once; with `collinear: false` the chain keeps only the two ends of a straight stretch
+/// ties: `lower_hull([Pt(0, 0), Pt(0, 0), Pt(1, 0), Pt(2, 0)]) == [Pt(0, 0), Pt(2, 0)]`
 /// traps: when `sorted_pts` is not sorted by `(x, y)`
 /// example: `lower_hull([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [Pt(0, 0), Pt(1, -1), Pt(2, 0)]`
 /// example: `lower_hull([Pt(0, 0), Pt(1, 0), Pt(2, 0)]) == [Pt(0, 0), Pt(2, 0)]`
@@ -332,9 +332,9 @@ pub fn lower_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
 /// `lower_hull`, with the same rules for duplicates and `collinear`.
 ///
 /// cost: \(O(n)\) time and memory
-/// empty: `[]`
+/// empty: `upper_hull([]) == []`
 /// order: left to right, by `(x, y)`; a new `List`, keyed from 0
-/// ties: equal points count once; with `collinear: false` the chain keeps only the two ends of a straight stretch
+/// ties: `upper_hull([Pt(0, 0), Pt(0, 0), Pt(1, 0), Pt(2, 0)]) == [Pt(0, 0), Pt(2, 0)]`
 /// traps: when `sorted_pts` is not sorted by `(x, y)`
 /// example: `upper_hull([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [Pt(0, 0), Pt(1, 1), Pt(2, 0)]`
 pub fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
@@ -357,7 +357,7 @@ pub fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
 /// `collinear: true`, every point in order from the least); one distinct point gives `[p]`.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[]`
+/// empty: `convex_hull([]) == []`
 /// order: counter-clockwise, starting at the least `(x, y)`; a new `List`, keyed from 0
 /// traps: never
 /// example: `convex_hull([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2), Pt(1, 1)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]`
@@ -389,7 +389,7 @@ pub fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
 /// Of several positions with equal coordinates, the smallest in key order stands for them.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[]`
+/// empty: `let p: List<Pt> = []; convex_hull_idx(p) == []`
 /// order: counter-clockwise, starting at the least `(x, y)`; a new `List` of keys of `pts`
 /// traps: never
 /// example: `convex_hull_idx([Pt(1, 1), Pt(0, 0), Pt(2, 0), Pt(0, 0)]) == [1, 2, 0]`
@@ -429,9 +429,9 @@ pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
 /// as `lower_hull`, and equal points keep the smallest position.
 ///
 /// cost: \(O(n)\) time and memory
-/// empty: `[]`
+/// empty: `let p: List<Pt> = []; lower_hull_idx(p) == []`
 /// order: left to right; a new `List` of keys of `pts`
-/// ties: equal points keep the smallest position
+/// ties: `lower_hull_idx([Pt(0, 0), Pt(0, 0), Pt(1, -1), Pt(2, 0)]) == [0, 2, 3]`
 /// traps: when `pts` is not sorted by `(x, y)` in key order
 /// example: `lower_hull_idx([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [0, 1, 3]`
 pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
@@ -455,9 +455,9 @@ pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
 /// as `upper_hull`, and equal points keep the smallest position.
 ///
 /// cost: \(O(n)\) time and memory
-/// empty: `[]`
+/// empty: `let p: List<Pt> = []; upper_hull_idx(p) == []`
 /// order: left to right; a new `List` of keys of `pts`
-/// ties: equal points keep the smallest position
+/// ties: `upper_hull_idx([Pt(0, 0), Pt(0, 0), Pt(1, 1), Pt(2, 0)]) == [0, 2, 3]`
 /// traps: when `pts` is not sorted by `(x, y)` in key order
 /// example: `upper_hull_idx([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [0, 2, 3]`
 pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
@@ -559,7 +559,7 @@ pub struct OnlineHull:
     /// Ties go to the corner that comes first in `vertices()` order.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: the first in `vertices()` order
+    /// ties: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(4, 4)); h.extreme(Pt(1, 0)) == h.vertices().find(q => q.x == 4)`
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(1, 1)) == Some(Pt(4, 0))`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(0, 1)) == Some(Pt(0, 4))`
@@ -638,16 +638,20 @@ fn min_yx_idx(poly: List<Pt>) -> Int:
 /// points dropped. Inputs may start at any corner.
 ///
 /// cost: \(O(\lvert a \rvert + \lvert b \rvert)\) time and memory
-/// empty: traps
+/// empty: `minkowski_sum([], [Pt(0, 0)]).is_empty` (traps R0401)
 /// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
-/// ties: the start is the least `(y, x)`, which is unique
+/// ties: `minkowski_sum([Pt(1, 0), Pt(1, 1), Pt(0, 1), Pt(0, 0)], [Pt(0, 0)])[0] == Pt(0, 0)`
 /// traps: when `a` or `b` is empty
 /// example: `minkowski_sum([Pt(0, 0), Pt(1, 0), Pt(1, 1), Pt(0, 1)], [Pt(0, 0), Pt(1, 0), Pt(0, 1)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 1), Pt(1, 2), Pt(0, 2)]`
 /// example: `minkowski_sum([Pt(1, 1)], [Pt(0, 0), Pt(1, 0), Pt(0, 1)]) == [Pt(1, 1), Pt(2, 1), Pt(1, 2)]`
 pub fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt>:
     assert a.len > 0 and b.len > 0, "minkowski_sum requires non-empty polygons"
-    if a.len == 1: return [a[0] + q for q in b]
-    if b.len == 1: return [p + b[0] for p in a]
+    if a.len == 1:
+        let s = min_yx_idx(b)
+        return [a[0] + b[(s + k) % b.len] for k in 0..b.len]
+    if b.len == 1:
+        let s = min_yx_idx(a)
+        return [a[(s + k) % a.len] + b[0] for k in 0..a.len]
     let na = a.len
     let nb = b.len
     var ia = min_yx_idx(a)
@@ -692,9 +696,9 @@ pub fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt>:
 /// The result is again a left-to-right upper hull with collinear points dropped.
 ///
 /// cost: \(O(\lvert a \rvert + \lvert b \rvert)\) time and memory
-/// empty: traps
+/// empty: `minkowski_upper([], [Pt(0, 0)]).is_empty` (traps R0401)
 /// order: left to right; a new `List`, keyed from 0
-/// ties: collinear sums are dropped, keeping the two ends
+/// ties: `minkowski_upper([Pt(0, 0), Pt(1, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(2, 0)]`
 /// traps: when `a` or `b` is empty
 /// example: `minkowski_upper([Pt(0, 0), Pt(1, 1), Pt(2, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(1, 1), Pt(2, 1), Pt(3, 0)]`
 pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>:
@@ -731,9 +735,9 @@ pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>:
 /// `minkowski_upper`.
 ///
 /// cost: \(O(\lvert a \rvert + \lvert b \rvert)\) time and memory
-/// empty: traps
+/// empty: `minkowski_lower([], [Pt(0, 0)]).is_empty` (traps R0401)
 /// order: left to right; a new `List`, keyed from 0
-/// ties: collinear sums are dropped, keeping the two ends
+/// ties: `minkowski_lower([Pt(0, 0), Pt(1, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(2, 0)]`
 /// traps: when `a` or `b` is empty
 /// example: `minkowski_lower([Pt(0, 0), Pt(1, -1), Pt(2, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(1, -1), Pt(2, -1), Pt(3, 0)]`
 pub fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt>:
@@ -748,7 +752,7 @@ pub fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt>:
 /// included. Exact in `I128`.
 ///
 /// cost: \(O(\lvert a \rvert + \lvert b \rvert)\)
-/// empty: traps
+/// empty: `convex_polygons_overlap([], [Pt(0, 0)])` (traps R0401)
 /// traps: when `a` or `b` is empty
 /// example: `convex_polygons_overlap([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], [Pt(1, 1), Pt(3, 1), Pt(3, 3), Pt(1, 3)]) == true`
 /// example: `convex_polygons_overlap([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], [Pt(2, 2), Pt(3, 2), Pt(3, 3)]) == true`
@@ -764,7 +768,7 @@ pub fn convex_polygons_overlap(a: List<Pt>, b: List<Pt>) -> Bool:
 /// corner.
 ///
 /// cost: \(O(\lvert a \rvert + \lvert b \rvert)\) time and memory
-/// empty: `[]` when either input is empty
+/// empty: `let s = [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0)]; convex_polygon_intersect([], s) == [] and convex_polygon_intersect(s, []) == []`
 /// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
 /// traps: never
 /// example: `convex_polygon_intersect([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)], [Vec(1.0, 1.0), Vec(3.0, 1.0), Vec(3.0, 3.0), Vec(1.0, 3.0)]) == [Vec(1.0, 1.0), Vec(2.0, 1.0), Vec(2.0, 2.0), Vec(1.0, 2.0)]`
@@ -779,7 +783,7 @@ pub fn convex_polygon_intersect(a: List<Vec>, b: List<Vec>, eps: F64 = 1e-9) -> 
 /// counter-clockwise, negative when clockwise; 0 for fewer than 3 vertices.
 ///
 /// cost: \(O(n)\)
-/// empty: 0
+/// empty: `area2([]) == 0`
 /// traps: when the sum overflows `Int`
 /// example: `area2([Pt(0, 0), Pt(2, 0), Pt(0, 2)]) == 4`
 /// example: `area2([Pt(0, 0), Pt(0, 2), Pt(2, 0)]) == -4`
@@ -797,7 +801,7 @@ pub fn area2(poly: List<Pt>) -> Int:
 /// Twice the signed area of `poly`, as `area2`, accumulated exactly in `I128`.
 ///
 /// cost: \(O(n)\)
-/// empty: 0
+/// empty: `area2_128([]) == 0`
 /// traps: when the sum overflows `I128`
 /// example: `area2_128([Pt(0, 0), Pt(2, 0), Pt(0, 2)]) == 4`
 pub fn area2_128(poly: List<Pt>) -> I128:
@@ -820,7 +824,7 @@ pub enum Location = Inside | Boundary | Outside
 /// An empty polygon has everything `Outside`.
 ///
 /// cost: \(O(n)\)
-/// empty: `Location.Outside`
+/// empty: `locate([], Pt(0, 0)) == Location.Outside`
 /// traps: never
 /// example: `locate([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(1, 1)) == Location.Inside`
 /// example: `locate([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(4, 2)) == Location.Boundary`
@@ -855,7 +859,7 @@ pub fn locate(poly: List<Pt>, p: Pt) -> Location:
 /// has everything `Outside`.
 ///
 /// cost: \(O(\log n)\)
-/// empty: `Location.Outside`
+/// empty: `locate_convex([], Pt(0, 0)) == Location.Outside`
 /// traps: never
 /// example: `locate_convex([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(2, 2)) == Location.Inside`
 /// example: `locate_convex([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(0, 0)) == Location.Boundary`
@@ -887,7 +891,7 @@ pub fn locate_convex(hull: List<Pt>, p: Pt) -> Location:
 /// `dist2` between two vertices, by rotating calipers.
 ///
 /// cost: \(O(n)\)
-/// empty: 0 (also for one point)
+/// empty: `diameter2([]) == 0 and diameter2([Pt(3, 4)]) == 0`
 /// traps: when the result overflows `Int`
 /// example: `diameter2([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 8`
 /// example: `diameter2([Pt(0, 0), Pt(3, 4)]) == 25`
@@ -915,9 +919,11 @@ pub fn diameter2(hull: List<Pt>) -> Int:
 /// One side of an optimal rectangle lies along a hull edge, so only those `n` orientations are
 /// tried. Fewer than 3 vertices give a degenerate rectangle (area 0, perimeter twice the length).
 ///
+/// Both results are values, not a chosen rectangle, so tied rectangles give the same answer.
+///
 /// cost: \(O(n)\)
-/// empty: `(0.0, 0.0)`
-/// ties: None; both results are values, not a chosen rectangle
+/// empty: `min_bounding_box([]) == (0.0, 0.0)`
+/// ties: `min_bounding_box([Pt(0, 0), Pt(3, 0), Pt(3, 1), Pt(0, 1)]) == (3.0, 8.0)`
 /// traps: never
 /// example: `min_bounding_box([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == (4.0, 8.0)`
 /// example: `min_bounding_box([Pt(0, 0), Pt(3, 0)]) == (0.0, 6.0)`
@@ -964,8 +970,8 @@ fn better_dir(a: Pt, b: Pt, dir: Pt) -> Bool:
 /// `hull[i].dot128(dir)`, by binary search.
 ///
 /// cost: \(O(\log n)\)
-/// empty: traps
-/// ties: the smallest index
+/// empty: `hull_extreme([], Pt(1, 0)) >= 0` (traps R0401)
+/// ties: `hull_extreme([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(1, 0)) == 1`
 /// traps: when `hull` is empty
 /// example: `hull_extreme([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(1, 1)) == 2`
 /// example: `hull_extreme([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(1, 0)) == 1`
@@ -1060,8 +1066,8 @@ fn find_tangent(hull: List<Pt>, p: Pt, sign: Int) -> Int:
 /// `right`.
 ///
 /// cost: \(O(\log n)\)
-/// ties: when two vertices qualify (`p` on an edge's line), the one nearer to `p`
-/// empty: traps (needs `hull.len >= 3`)
+/// ties: `hull_tangents([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(4, 0)) == (1, 2)`
+/// empty: `hull_tangents([], Pt(5, 5)).left >= 0` (traps R0401)
 /// traps: when `hull.len < 3` or `p` is not strictly outside
 /// example: `hull_tangents([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(4, 1)) == (1, 2)`
 pub fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int):
@@ -1168,7 +1174,7 @@ fn cp_solve(
 /// equal), by divide and conquer.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: traps
+/// empty: `closest_pair2([]) >= 0` (traps R0401)
 /// traps: when `pts.len < 2`, or a distance overflows `Int`
 /// example: `closest_pair2([Pt(0, 0), Pt(5, 5), Pt(1, 1), Pt(9, 9)]) == 2`
 /// example: `closest_pair2([Pt(3, 3), Pt(3, 3)]) == 0`
@@ -1187,8 +1193,8 @@ pub fn closest_pair2(pts: List<Pt>) -> Int:
 /// distance.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: traps
-/// ties: the pair `(a, b)` that comes first in key order, `a` then `b`
+/// empty: `let p: List<Pt> = []; closest_pair(p).dist2 >= 0` (traps R0401)
+/// ties: `closest_pair([Pt(0, 0), Pt(1, 0), Pt(2, 0)]) == (0, 1, 1)`
 /// traps: when `pts` has fewer than 2 points, or a distance overflows `Int`
 /// example: `closest_pair([Pt(0, 0), Pt(5, 5), Pt(1, 1)]) == (0, 2, 2)`
 /// example: `closest_pair([Pt(0, 0), Pt(1, 0), Pt(2, 0)]) == (0, 1, 1)`
@@ -1217,7 +1223,7 @@ pub fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
 /// two parallel supporting lines, by rotating calipers. Fewer than 3 vertices give 0.0.
 ///
 /// cost: \(O(n)\)
-/// empty: 0.0
+/// empty: `hull_width([]) == 0.0`
 /// traps: never
 /// example: `hull_width([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 2.0`
 /// example: `hull_width([Pt(0, 0), Pt(4, 0), Pt(4, 1), Pt(0, 1)]) == 1.0`
@@ -1241,7 +1247,7 @@ pub fn hull_width(hull: List<Pt>) -> F64:
 /// vertex, or along an edge) returns `None`.
 ///
 /// cost: \(O(\log n)\)
-/// empty: `None`
+/// empty: `hull_line_intersect([], Pt(0, 0), Pt(1, 1)) == None`
 /// traps: when `a == b`
 /// example: `hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 1), Pt(3, 1)) == Some((1, 3))`
 /// example: `hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 5), Pt(3, 5)) == None`
@@ -1266,8 +1272,8 @@ fn last_where(from: Int, span: Int, ok: Int -> Bool) -> Int:
 /// distance (convex hull, then rotating calipers).
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: traps
-/// ties: the pair `(a, b)` that comes first in key order, `a` then `b`
+/// empty: `let p: List<Pt> = []; farthest_pair(p).dist2 >= 0` (traps R0401)
+/// ties: `farthest_pair([Pt(0, 0), Pt(1, 0), Pt(1, 1), Pt(0, 1)]) == (0, 2, 2)`
 /// traps: when `pts` has fewer than 2 points, or a distance overflows `Int`
 /// example: `farthest_pair([Pt(0, 0), Pt(1, 1), Pt(3, 0)]) == (0, 2, 9)`
 pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
@@ -1309,7 +1315,7 @@ pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
 /// result for the MST itself.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[]` (also for one point)
+/// empty: `let p: List<Pt> = []; manhattan_mst(p) == [] and manhattan_mst([Pt(1, 1)]) == []`
 /// order: by `(w, u, v)` ascending; a new `List`, keyed from 0
 /// traps: when a distance overflows `Int`
 /// example: `manhattan_mst([Pt(0, 0), Pt(1, 1), Pt(5, 5)]).any(e => e.u == 0 and e.v == 1 and e.w == 2)`
@@ -1357,7 +1363,7 @@ pub fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)>:
 /// orientation.
 ///
 /// cost: \(O(n)\)
-/// empty: traps
+/// empty: `polygon_centroid([]).x >= 0.0` (traps R0401)
 /// traps: when the polygon has zero area
 /// example: `polygon_centroid([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]) == Vec(1.0, 1.0)`
 pub fn polygon_centroid(poly: List<Vec>) -> Vec:
@@ -1382,7 +1388,7 @@ pub fn polygon_centroid(poly: List<Vec>) -> Vec:
 /// A kernel with area at most `eps` is `[]`. The result starts at its least `(y, x)` corner.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[]`
+/// empty: `polygon_kernel([]) == []`
 /// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
 /// traps: never
 /// example: `polygon_kernel([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]) == [Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]`
@@ -1410,7 +1416,7 @@ fn is_ear(poly: List<Pt>, rem: List<Int>, i: Int) -> Bool:
 /// vertex indices, each listed counter-clockwise.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[]` (also for fewer than 3 vertices)
+/// empty: `polygon_triangulate([]) == [] and polygon_triangulate([Pt(0, 0), Pt(1, 0)]) == []`
 /// order: deterministic for a given input; each triple counter-clockwise
 /// traps: when `poly` is not counter-clockwise
 /// example: `polygon_triangulate([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]).len == 2`
@@ -1437,7 +1443,7 @@ pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
 /// orientation, by Pick's theorem: `I = (|area2| - B) / 2 + 1` with `B = pick_boundary(poly)`.
 ///
 /// cost: \(O(n \log \mathit{max\_coord})\)
-/// empty: traps
+/// empty: `pick_interior([]) >= 0` (traps R0401)
 /// traps: when `poly` has fewer than 3 vertices, or the area overflows `Int`
 /// example: `pick_interior([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 1`
 /// example: `pick_interior([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == 3`
@@ -1449,7 +1455,7 @@ pub fn pick_interior(poly: List<Pt>) -> Int:
 /// `gcd(|dx|, |dy|)` over its edges, including the closing edge.
 ///
 /// cost: \(O(n \log \mathit{max\_coord})\)
-/// empty: 0
+/// empty: `pick_boundary([]) == 0`
 /// traps: when the sum overflows `Int`
 /// example: `pick_boundary([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 8`
 /// example: `pick_boundary([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == 12`
@@ -1692,7 +1698,7 @@ pub fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec:
 /// they cross or touch, and the two ends of the shared piece when they overlap collinearly.
 ///
 /// cost: \(O(1)\)
-/// empty: `[]` when disjoint
+/// empty: `segment_intersect(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0)) == []`
 /// order: by `(x, y)` ascending; a new `List`, keyed from 0
 /// traps: never
 /// example: `segment_intersect(Vec(0.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0), Vec(2.0, 0.0)) == [Vec(1.0, 1.0)]`
@@ -1835,7 +1841,7 @@ pub fn incenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle:
 /// and None otherwise.
 ///
 /// cost: \(O(1)\)
-/// empty: `[]` when the line misses
+/// empty: `circle_line_intersect(Circle(Vec(0.0, 0.0), 1.0), Vec(5.0, -1.0), Vec(5.0, 1.0)) == []`
 /// order: along the direction `a -> b`; a new `List`, keyed from 0
 /// traps: when `a == b`
 /// example: `circle_line_intersect(Circle(Vec(0.0, 0.0), 5.0), Vec(-10.0, 3.0), Vec(10.0, 3.0)) == [Vec(-4.0, 3.0), Vec(4.0, 3.0)]`
@@ -1855,7 +1861,7 @@ pub fn circle_line_intersect(circle: Circle, a: Vec, b: Vec, eps: F64 = 1e-9) ->
 /// `eps`), None when apart, nested, or identical (infinitely many).
 ///
 /// cost: \(O(1)\)
-/// empty: `[]`
+/// empty: `let c = Circle(Vec(0.0, 0.0), 1.0); circle_intersect(c, c) == []`
 /// order: the point clockwise of the ray from `a.c` to `b.c` first; a new `List`, keyed from 0
 /// traps: never
 /// example: `circle_intersect(Circle(Vec(0.0, 0.0), 5.0), Circle(Vec(8.0, 0.0), 5.0)) == [Vec(4.0, -3.0), Vec(4.0, 3.0)]`
@@ -1878,7 +1884,7 @@ pub fn circle_intersect(a: Circle, b: Circle, eps: F64 = 1e-9) -> List<Vec>:
 /// `[p]` when `p` is on the circle (within `eps`), None when inside.
 ///
 /// cost: \(O(1)\)
-/// empty: `[]` when `p` is inside
+/// empty: `circle_tangents(Circle(Vec(0.0, 0.0), 2.0), Vec(0.5, 0.5)) == []`
 /// order: the point clockwise of the ray from the centre to `p` first; a new `List`, keyed from 0
 /// traps: never
 /// example: `circle_tangents(Circle(Vec(0.0, 0.0), 1.0), Vec(1.0, 0.0)) == [Vec(1.0, 0.0)]`
@@ -1902,7 +1908,7 @@ pub fn circle_tangents(circle: Circle, p: Vec, eps: F64 = 1e-9) -> List<Vec>:
 /// otherwise, and None for identical circles.
 ///
 /// cost: \(O(1)\)
-/// empty: `[]`
+/// empty: `let c = Circle(Vec(0.0, 0.0), 1.0); circle_circle_tangents(c, c) == []`
 /// order: the tangent clockwise of the ray from `a.c` to `b.c` first; a new `List`, keyed from 0
 /// traps: never
 /// example: `circle_circle_tangents(Circle(Vec(0.0, 0.0), 1.0), Circle(Vec(4.0, 0.0), 1.0)) == [(Vec(0.0, -1.0), Vec(4.0, -1.0)), (Vec(0.0, 1.0), Vec(4.0, 1.0))]`
@@ -1967,7 +1973,7 @@ pub fn invert(p: Vec, across: Circle) -> Vec:
 /// Equal circles (within `eps`) count once; zero-radius circles add nothing.
 ///
 /// cost: \(O(n^2 \log n)\) time, \(O(n)\) memory
-/// empty: 0.0
+/// empty: `circles_union_area([]) == 0.0`
 /// traps: never
 /// example: `circles_union_area([]) == 0.0`
 /// example: `close(circles_union_area([Circle(Vec(0.0, 0.0), 1.0)]), PI)`
@@ -2077,7 +2083,7 @@ fn hp_cross(a: (p: Vec, dir: Vec, ang: F64), b: (p: Vec, dir: Vec, ang: F64)) ->
 /// vertices within `eps` merge.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[]` (unbounded) without `bound`; the box with one
+/// empty: `half_plane_intersect([]) == [] and half_plane_intersect([], bound: Some(1.0)) == [Vec(-1.0, -1.0), Vec(1.0, -1.0), Vec(1.0, 1.0), Vec(-1.0, 1.0)]`
 /// order: counter-clockwise, starting at the least `(y, x)`, `y` compared within `eps`; a new
 /// `List`, keyed from 0
 /// traps: when a plane's `dir` is the zero vector
@@ -2155,7 +2161,7 @@ pub fn half_plane_intersect(
 /// negative clockwise; 0.0 for fewer than 3 vertices.
 ///
 /// cost: \(O(n)\)
-/// empty: 0.0
+/// empty: `polygon_area([]) == 0.0`
 /// traps: never
 /// example: `polygon_area([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(0.0, 2.0)]) == 2.0`
 /// example: `polygon_area([Vec(0.0, 0.0), Vec(0.0, 2.0), Vec(2.0, 0.0)]) == -2.0`
@@ -2177,7 +2183,7 @@ pub fn polygon_area(poly: List<Vec>) -> F64:
 /// orientation of `poly`.
 ///
 /// cost: \(O(n)\) time and memory
-/// empty: `[]`
+/// empty: `polygon_cut([], Vec(0.0, 0.0), Vec(1.0, 0.0)) == []`
 /// order: the walk from `poly[0]`; a new `List`, keyed from 0
 /// traps: when `a == b`
 /// example: `polygon_cut([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)], Vec(1.0, 0.0), Vec(1.0, 2.0)) == [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 2.0), Vec(0.0, 2.0)]`
@@ -2207,8 +2213,8 @@ pub fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec
 /// first with `Rng.shuffle` if it might be.
 ///
 /// cost: \(O(n)\) expected for unadversarial order
-/// empty: `Circle(Vec(0.0, 0.0), 0.0)`
-/// ties: None; the smallest enclosing circle is unique
+/// empty: `min_enclosing_circle([]) == Circle(Vec(0.0, 0.0), 0.0)`
+/// ties: `min_enclosing_circle([Vec(0.0, 0.0), Vec(1.0, 1.0), Vec(2.0, 0.0), Vec(1.0, -1.0)]) == Circle(Vec(1.0, 0.0), 1.0)`
 /// traps: never
 /// example: `min_enclosing_circle([Vec(0.0, 0.0), Vec(2.0, 0.0)]) == Circle(Vec(1.0, 0.0), 1.0)`
 /// example: `min_enclosing_circle([Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0), Vec(1.0, 1.0)]) == Circle(Vec(3.0, 4.0), 5.0)`
@@ -2272,7 +2278,7 @@ fn tri_circle_area(a: Vec, b: Vec, r: F64, eps: F64) -> F64:
 /// from the centre to each edge.
 ///
 /// cost: \(O(n)\)
-/// empty: 0.0
+/// empty: `circle_polygon_area(Circle(Vec(0.0, 0.0), 1.0), []) == 0.0`
 /// traps: never
 /// example: `circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)]) == 1.0`
 /// example: `circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0), Vec(1.0, 0.0)]) == -1.0`
@@ -2428,8 +2434,8 @@ fn sh_first_above_y(
 /// pairs meet, the pair is the first one the sweep finds, not necessarily the least.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `None`
-/// ties: the first meeting pair found by the sweep, as `(i, j)` with `i < j`
+/// empty: `any_segments_meet([]) == None`
+/// ties: `any_segments_meet([(Pt(0, 0), Pt(2, 2)), (Pt(0, 2), Pt(2, 0)), (Pt(1, -1), Pt(1, 3))]) == Some((0, 1))`
 /// traps: never
 /// example: `any_segments_meet([(Pt(0, 0), Pt(2, 2)), (Pt(5, 5), Pt(6, 6)), (Pt(0, 2), Pt(2, 0))]) == Some((0, 2))`
 /// example: `any_segments_meet([(Pt(0, 0), Pt(1, 0)), (Pt(0, 1), Pt(1, 1))]) == None`
@@ -2544,8 +2550,8 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
 /// order for a pair of segments that meet, or `None`.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `None`
-/// ties: the first meeting pair found by the sweep, `a` before `b` in key order
+/// empty: `let s: List<(a: Pt, b: Pt)> = []; any_segments_meet_idx(s) == None`
+/// ties: `any_segments_meet_idx([(Pt(0, 0), Pt(2, 2)), (Pt(0, 2), Pt(2, 0)), (Pt(1, -1), Pt(1, 3))]) == Some((0, 1))`
 /// traps: never
 /// example: `any_segments_meet_idx([(Pt(0, 0), Pt(1, 1)), (Pt(1, 1), Pt(2, 0))]) == Some((0, 1))`
 pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D):
@@ -2578,7 +2584,7 @@ pub struct PointSet:
     /// Build the set holding every point of `pts`; point `i` is `pts[i]`.
     ///
     /// cost: \(O(n \log n)\) time and memory
-    /// empty: an empty `pts` gives an empty set; every `drain` is `[]`
+    /// empty: `var s = PointSet.of([]); s.len == 0 and s.drain(0..9, 0..9) == []`
     /// traps: never
     /// example: `PointSet.of([Pt(1, 1), Pt(2, 5)]).len == 2`
     pub fn of(pts: List<Pt>) -> PointSet:
@@ -2667,7 +2673,7 @@ pub struct PointSet:
     /// Remove and return every point still in the half-open rectangle `x * y`, by index.
     ///
     /// cost: \(O(\log^2 n + k)\) amortized for `k` points returned
-    /// empty: `[]` when no point is left in the rectangle
+    /// empty: `var s = PointSet.of([Pt(1, 1)]); s.drain(0..5, 0..5); s.drain(0..5, 0..5) == []`
     /// order: by `y` within each of \(O(\log n)\) blocks of `x`; sort the result for a fixed order
     /// traps: never
     /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3), Pt(4, 4)]); s.drain(2..5, 2..5).sorted() == [2, 3] and s.drain(2..5, 2..5) == []`
@@ -2736,7 +2742,7 @@ pub struct Rect(pub x: Range<Int>, pub y: Range<Int>):
 /// coordinates. Empty rectangles add nothing.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: 0
+/// empty: `rects_union_area([]) == 0`
 /// traps: when the area overflows `Int`
 /// example: `rects_union_area([Rect(0..2, 0..2), Rect(1..3, 1..3)]) == 7`
 /// example: `rects_union_area([Rect(0..2, 0..2), Rect(0..2, 0..2)]) == 4`
@@ -2803,7 +2809,7 @@ fn cover(
 /// meet only at shared endpoints); that is not checked.
 ///
 /// cost: \(O((n + m) \log m)\) time, \(O(n + m)\) memory
-/// empty: `[]` when `edges` is empty
+/// empty: `planar_faces([Pt(0, 0), Pt(1, 0)], []) == []`
 /// order: each cycle starts at its least vertex in key order; faces sorted by cycle; a new `List`
 /// traps: when an edge joins a vertex to itself, or an edge repeats
 /// example: `planar_faces([Pt(0, 0), Pt(1, 0), Pt(0, 1)], [(0, 1), (1, 2), (2, 0)]) == [[0, 1, 2], [0, 2, 1]]`
@@ -2879,7 +2885,7 @@ fn least_rotation(cyc: List<Int>) -> List<Int>:
 /// sweep).
 ///
 /// cost: \(O((n + m + q) \log(n + m))\) time, \(O(n + m + q)\) memory
-/// empty: `[]` when `queries` is empty
+/// empty: `point_location_planar([Pt(0, 0), Pt(4, 0), Pt(0, 4)], [(0, 1), (1, 2), (2, 0)], []) == []`
 /// order: one answer per query, in query order; a new `List`, keyed from 0
 /// traps: as `planar_faces`
 /// example: `point_location_planar([Pt(0, 0), Pt(4, 0), Pt(0, 4)], [(0, 1), (1, 2), (2, 0)], [Pt(1, 1), Pt(0, 0), Pt(5, 5)]) == [Some(0), None, None]`
@@ -2995,7 +3001,7 @@ fn sweep_below(
 /// one of the valid ones. Fewer than 3 points, or all collinear, give `[]`.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[]`
+/// empty: `let p: List<Pt> = []; delaunay(p) == []`
 /// order: each triple rotated to start at its least handle in key order; triples sorted; a new `List`
 /// traps: when two points are equal
 /// example: `delaunay([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == [(0, 1, 2)]`
@@ -3164,7 +3170,7 @@ struct DelQuads:
 /// cell is the whole box.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: an empty array
+/// empty: `let p: List<Pt> = []; voronoi_cells(p, 1.0).len == 0`
 /// order: each cell counter-clockwise, starting at its least `(y, x)` corner
 /// traps: when two points are equal or `bound <= 0.0`
 /// example: `voronoi_cells([Pt(-1, 0), Pt(1, 0)], 2.0)[0] == [Vec(-2.0, -2.0), Vec(0.0, -2.0), Vec(0.0, 2.0), Vec(-2.0, 2.0)]`
@@ -3328,7 +3334,7 @@ fn col3(a: Pt3, b: Pt3, c: Pt3) -> Bool:
 /// points give `[]`.
 ///
 /// cost: \(O(n^2)\) time, \(O(n)\) memory
-/// empty: `[]`
+/// empty: `convex_hull_3d([]) == []`
 /// order: each face rotated to start at its least index; faces sorted; a new `List`, keyed from 0
 /// traps: never
 /// example: `convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
@@ -3483,7 +3489,7 @@ fn hull2_strict(vs: List<Int>, proj: (Int) -> Pt) -> List<Int>:
 /// order and tie rules, in key order.
 ///
 /// cost: \(O(n^2)\) time, \(O(n)\) memory
-/// empty: `[]`
+/// empty: `let p: List<Pt3> = []; convex_hull_3d_idx(p) == []`
 /// order: each face rotated to start at its least handle; faces sorted; a new `List`
 /// traps: never
 /// example: `convex_hull_3d_idx([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
@@ -3497,7 +3503,7 @@ pub fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)>:
 /// Positive when faces are counter-clockwise seen from outside, as `convex_hull_3d` returns them.
 ///
 /// cost: \(O(\lvert \mathit{faces} \rvert)\)
-/// empty: 0
+/// empty: `polyhedron_volume6([], []) == 0`
 /// traps: when a face index is out of range
 /// example: `polyhedron_volume6([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)], [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]) == 1`
 /// example: `polyhedron_volume6([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)], [(0, 3, 1), (0, 1, 2), (0, 2, 3), (1, 3, 2)]) == -1`
