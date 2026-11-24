@@ -3570,36 +3570,48 @@ class UpstreamUnknown(Exception):
     """`ref` exists but could not be checked out to measure."""
 
 
-def measure_upstream(root: Path, max_rs_lines: int, ref: str = "origin/main") -> dict | None:
-    """Measures `ref` in a scratch worktree; None when `ref` is missing, or HEAD
-    is `ref` in CI (a run on main), so main's own debt still fails there. A
-    local commit on a fresh tip also has HEAD at `ref`, and its base is `ref`."""
+def measure_upstream(root: Path, max_rs_lines: int, ref: str = "origin/main",
+                     only: set[str] | None = None) -> dict | None:
+    """Measures `ref` (its counters in `only`, if given) in a scratch worktree;
+    None when `ref` is missing, or HEAD is `ref` in CI (a run on main), so main's
+    own debt still fails there. A local commit on a fresh tip also has HEAD at
+    `ref`, and its base is `ref`."""
     head, up = (_git(root, "rev-parse", "-q", "--verify", r, env=_git_env()) for r in ("HEAD", ref))
     if not head or not up or (head == up and os.environ.get("CI")):
         return None
-    # Every commit on a tip whose own debt is over its baseline measures that
-    # tip; once per tip (and per measuring code) is enough.
+    # Every land on a tip whose own debt is over its baseline measures that
+    # tip: keyed by its tree (and the measuring code) in the common git dir,
+    # every worktree's land after the first reads it, and measures only the
+    # counters it needs that no land has yet.
     common = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir", env=_git_env())
+    tree = _git(root, "rev-parse", f"{up[0]}^{{tree}}", env=_git_env())
     code = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
-    cache = Path(common[0]) / "cpl-ratchet-upstream" / f"{up[0]}-{max_rs_lines}-{code}.json" if common else None
+    cache = (Path(common[0]) / "cpl-ratchet-upstream" / f"{tree[0]}-{max_rs_lines}-{code}.json"
+             if common and tree else None)
+    data: dict = {}
     if cache and cache.is_file():
         try:
-            return json.loads(cache.read_text(encoding="utf-8"))
+            data = json.loads(cache.read_text(encoding="utf-8"))
         except ValueError:
             pass
-    data = _measure_at(root, up[0], max_rs_lines)
+    have = set(data.get("measured", []))
+    gated = {n for n, (_, _, g) in COUNTERS.items() if g}
+    need = (gated if only is None else set(only) & gated) - have
+    if data and not need:
+        return data["counts"]
+    fresh = _measure_at(root, up[0], max_rs_lines, need)
+    data = {"measured": sorted(have | need), "counts": {**data.get("counts", {}), **fresh}}
     if cache:
-        if cache.parent.is_dir():
-            for old in cache.parent.iterdir():
-                old.unlink(missing_ok=True)
         cache.parent.mkdir(exist_ok=True)
-        tmp = cache.with_suffix(".tmp")
+        tmp = cache.with_suffix(f".{os.getpid()}.tmp")
         tmp.write_text(json.dumps(data), encoding="utf-8")
         tmp.replace(cache)
-    return data
+        for old in sorted(cache.parent.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)[16:]:
+            old.unlink(missing_ok=True)
+    return data["counts"]
 
 
-def _measure_at(root: Path, rev: str, max_rs_lines: int) -> dict:
+def _measure_at(root: Path, rev: str, max_rs_lines: int, only: set[str] | None = None) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         wt = Path(tmp) / "main"
         add = subprocess.run(["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(wt), rev],
@@ -3613,7 +3625,10 @@ def _measure_at(root: Path, rev: str, max_rs_lines: int) -> dict:
             # A counter main's baseline doesn't have yet is new here: main has nothing
             # to inherit for it, and may not have what it reads.
             known = wt / "scripts/debt-ratchet.json"
-            return measure(wt, max_rs_lines, set(json.loads(known.read_text(encoding="utf-8"))) if known.is_file() else None)
+            names = set(json.loads(known.read_text(encoding="utf-8"))) if known.is_file() else None
+            if only is not None:
+                names = only if names is None else names & only
+            return measure(wt, max_rs_lines, names)
         finally:
             if saved is None:
                 os.environ.pop("CPL", None)
@@ -3721,7 +3736,10 @@ def main(argv: list[str] | None = None) -> int:
     bumps = unexplained_bumps(args.root, baseline, os.environ.get("CPL_RATCHET_BASE") or "origin/main")
     if errors:
         try:
-            upstream = measure_upstream(args.root, max_lines)
+            # Only the counters over their baseline can be main's, not this change's.
+            over = {n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and n in actual
+                    and n not in HARD_ZERO and n not in HARD_FLOOR and int(actual[n]) > int(baseline[n])}
+            upstream = measure_upstream(args.root, max_lines, only=over)
         except UpstreamUnknown as e:
             # Unable to tell main's debt from this change's: warn, and leave
             # the verdict to CI on main rather than block a commit.

@@ -1356,6 +1356,32 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertIn("rust_ignore", up)
             self.assertNotIn("brand_new", up)
 
+    def test_upstream_is_measured_once_per_tree_across_worktrees_and_only_what_is_asked(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "main"
+            env = dr._git_env()
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=env)
+            self._write(root, "a.txt", "a\n")
+            for args in (["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"]):
+                subprocess.run(["git", "-C", str(root), *args], check=True, env=env)
+            other = Path(tmp) / "other"
+            subprocess.run(["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(other)],
+                           check=True, env=env)
+            asked = []
+
+            def measured(_root, _rev, _max, only):
+                asked.append(sorted(only))
+                return {n: 7 for n in only}
+            self.enterContext(mock.patch.object(dr, "_measure_at", side_effect=measured))
+            self.enterContext(mock.patch.dict(os.environ, {"CI": ""}))
+            self.assertEqual(dr.measure_upstream(root, 20, ref="HEAD", only={"skip_lists"}), {"skip_lists": 7})
+            # Another worktree's land on the same tree reads it; a counter no land
+            # has asked for yet is the only one measured.
+            self.assertEqual(dr.measure_upstream(other, 20, ref="HEAD", only={"skip_lists"}), {"skip_lists": 7})
+            self.assertEqual(dr.measure_upstream(other, 20, ref="HEAD", only={"skip_lists", "rust_ignore"}),
+                             {"skip_lists": 7, "rust_ignore": 7})
+            self.assertEqual(asked, [["skip_lists"], ["rust_ignore"]])
+
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
