@@ -256,7 +256,7 @@ jobs:
       matrix:
         # Dealt by measured time (research/perf/ci-test-times.json, scripts/ci.py time_shard):
         # nextest's hash partition left shards at 118-366 s (run 45449405888).
-        part: ["time:1/12", "time:2/12", "time:3/12", "time:4/12", "time:5/12", "time:6/12", "time:7/12", "time:8/12", "time:9/12", "time:10/12", "time:11/12", "time:12/12"]
+        part: ["time:1/16", "time:2/16", "time:3/16", "time:4/16", "time:5/16", "time:6/16", "time:7/16", "time:8/16", "time:9/16", "time:10/16", "time:11/16", "time:12/16", "time:13/16", "time:14/16", "time:15/16", "time:16/16"]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
