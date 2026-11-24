@@ -13,7 +13,7 @@
 const MOD = 1_000_000_007
 const L = 29
 type Z = Mod<MOD>
-let comb = Comb<Z>(200_000)
+let comb = Comb<Z>()
 
 @!multitest
 let n: 1..=200_000 = read()
