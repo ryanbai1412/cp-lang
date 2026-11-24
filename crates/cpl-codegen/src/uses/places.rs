@@ -314,6 +314,32 @@ pub(crate) fn each_payload<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr, &'p
     });
 }
 
+/// Every value `block` prints, formats or shows, at any depth.
+pub(crate) fn each_shown<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {
+    walk::deep_exprs(block, &mut |e| match &e.kind {
+        ExprKind::Print(args, _) => args.iter().for_each(|a| f(&a.value)),
+        ExprKind::Format(pieces) => pieces.iter().for_each(|p| {
+            if let cpl_ir::FmtPiece::Value(a) = p {
+                f(&a.value);
+            }
+        }),
+        ExprKind::Builtin(cpl_ir::Builtin::ShowStr, args) => args.iter().for_each(&mut *f),
+        _ => {}
+    });
+}
+
+/// Every builtin call in `block`, at any depth, with its arguments.
+pub(crate) fn each_builtin<'p>(
+    block: &'p Block,
+    f: &mut dyn FnMut(&'p cpl_ir::Builtin, &'p [Expr]),
+) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Builtin(b, args) = &e.kind {
+            f(b, args);
+        }
+    });
+}
+
 /// The base of every read of a part of a value in `block`, at any depth: an
 /// index, a field, a payload, a variant test or a length.
 pub(crate) fn each_part_base<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {

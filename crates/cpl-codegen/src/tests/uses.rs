@@ -236,6 +236,38 @@ fn a_fn_run_once_moves_a_global_nothing_reads_after_it() {
 }
 
 #[test]
+fn a_fn_run_once_moves_a_global_it_walked_before_its_last_read() {
+    let src = |after: &str| {
+        format!(
+            concat!(
+                "let n: 1..=10 = read()\n",
+                "let base = [i for i in 0..n]\n",
+                "fn build() -> List<Int>:\n",
+                "    var s = 0\n",
+                "    for b in base: s += b\n",
+                "    var xs = List(base)\n",
+                "    xs.push(s)\n",
+                "{}",
+                "    xs\n",
+                "let built = build()\n",
+                "print(built)\n",
+            ),
+            after
+        )
+    };
+    let out = super::cpp(&src(""));
+    assert!(
+        out.contains("= std::move(base)"),
+        "a walk of `base` before the fn's last read of it does not hold it:\n{out}"
+    );
+    let out = super::cpp(&src("    xs.push(base.len)\n"));
+    assert!(
+        !out.contains("std::move(base)"),
+        "the fn reads `base` after it copies it, so the copy stays:\n{out}"
+    );
+}
+
+#[test]
 fn a_global_read_after_the_fn_that_takes_it_is_copied() {
     let src = concat!(
         "let n: 1..=10 = read()\n",
@@ -458,4 +490,21 @@ print(sparse_solve(2, [(0, 0, Mod<7>(1)), (1, 1, Mod<7>(2))], [Mod<7>(1), Mod<7>
 ";
     let reasons = copy_reasons(source);
     assert!(reasons.contains(&crate::lend::SOME_COPY), "{reasons:?}");
+}
+
+#[test]
+fn a_param_handed_on_to_a_sunk_param_at_its_last_read_moves_on() {
+    let out = super::cpp(concat!(
+        "struct Inner<T>(id: T, n: Int)\n",
+        "fn inner<T>(id: T) -> Inner<T> = Inner<T>(id:, n: 0)\n",
+        "struct Outer<T>(k: Int, b: Inner<T>)\n",
+        "fn outer<T>(id: T) -> Outer<T> = Outer<T>(k: 1, b: inner(id))\n",
+        "let n: 1..=5 = read()\n",
+        "let s = outer([i for i in 0..n])\n",
+        "print(s.b.id, s.k)\n",
+    ));
+    assert!(
+        out.contains("(std::move(id))") && !out.contains("const std::vector<ll>& id"),
+        "`outer` takes `id` by value and moves it on to `inner`, which keeps it:\n{out}"
+    );
 }

@@ -12,6 +12,7 @@ use cpl_ir::{
     AssignOp, BinOp, Block, Builtin, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind,
     SortBy, Spec, Stmt, Ty,
 };
+use std::collections::BTreeSet;
 
 mod loops;
 
@@ -71,8 +72,27 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn block(&mut self, block: &Block, out: &mut String) {
+        let home = Some((self.closure_id, self.fn_id));
+        let saved = std::mem::take(&mut self.after_outer);
+        let n = block.stmts.len();
+        let reads: Vec<_> = (0..n).map(|k| self.read_in(&block.stmts[k..=k])).collect();
+        let mut after = vec![if saved.0 == home {
+            saved.1.clone()
+        } else {
+            BTreeSet::new()
+        }];
+        for k in (0..n).rev() {
+            let mut next = after[0].clone();
+            next.extend(reads[k].iter().copied());
+            after.insert(0, next);
+        }
         let mut k = 0;
         while k < block.stmts.len() {
+            let mut frame = after[k + 1].clone();
+            if matches!(block.stmts[k], Stmt::For(..) | Stmt::While(..)) {
+                frame.extend(reads[k].iter().copied());
+            }
+            self.after_outer = (home, frame);
             if self.cold_suffix(block, k, out) {
                 break;
             }
@@ -98,6 +118,7 @@ impl<'p> Emitter<'p> {
             };
         }
         self.tail = None;
+        self.after_outer = saved;
     }
 
     pub(crate) fn stmt_at(&mut self, block: &Block, k: usize, out: &mut String) {
@@ -260,7 +281,10 @@ impl<'p> Emitter<'p> {
         let (Stmt::Let(_, Some(init)), Some(id)) = (&block.stmts[k], self.fn_id) else {
             return false;
         };
-        let src = crate::uses::copied(init).unwrap_or(crate::uses::in_place(init));
+        let mut src = crate::uses::copied(init).unwrap_or(crate::uses::in_place(init));
+        while let ExprKind::Field(base, _) = &src.kind {
+            src = base;
+        }
         let ExprKind::Local(p) = src.kind else {
             return false;
         };
@@ -455,7 +479,9 @@ impl<'p> Emitter<'p> {
                     None => String::new(),
                     Some(desc) => {
                         let (a, b) = (self.temp(), self.temp());
-                        format!(", [&](const auto& {a}, const auto& {b}) {{ return {desc} ? {b} < {a} : {a} < {b}; }}")
+                        format!(
+                            ", [&](const auto& {a}, const auto& {b}) {{ return {desc} ? {b} < {a} : {a} < {b}; }}"
+                        )
                     }
                 };
                 self.line(

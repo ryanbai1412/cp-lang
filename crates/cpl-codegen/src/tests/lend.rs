@@ -68,7 +68,7 @@ fn if_let_on_a_field_reads_it_in_place_when_the_branch_copies_out() {
 }
 
 #[test]
-fn coalesced_map_get_points_into_the_map_unless_it_changes() {
+fn coalesced_map_get_points_into_the_map_and_a_changed_one_copies_the_entry() {
     let lent = body(concat!(
         "var m = Map<Int, List<Int>>()\n",
         "m[0] = [1, 2, 3]\n",
@@ -95,18 +95,19 @@ fn coalesced_map_get_points_into_the_map_unless_it_changes() {
         "v.push(5)\n",
         "print(l.len, v.len)\n",
     ));
+    // The entry is pointed at, and only a found one is copied, once.
     assert!(
-        copied.contains("cpl::map_get(m, 0)"),
-        "a changed map keeps the copy: {copied}"
+        copied.contains("cpl::map_lend(m, 0)") && copied.contains("cpl::map_lend(m, 1)"),
+        "a changed map or binding copies the entry: {copied}"
     );
     assert!(
-        copied.contains("cpl::map_get(m, 1)"),
-        "a changed binding keeps the copy: {copied}"
+        copied.contains("-> std::vector<ll> {") && !copied.contains("map_get("),
+        "the copy is the value, not an optional of it: {copied}"
     );
 }
 
 #[test]
-fn for_over_map_get_or_default_walks_the_entry_unless_the_body_changes_the_map() {
+fn for_over_map_get_or_default_walks_the_entry_or_a_copy_when_the_body_changes_the_map() {
     let lent = body(concat!(
         "var m = Map<Int, List<Int>>()\n",
         "m[0] = [1, 2, 3]\n",
@@ -130,8 +131,8 @@ fn for_over_map_get_or_default_walks_the_entry_unless_the_body_changes_the_map()
         "print(m[0])\n",
     ));
     assert!(
-        copied.contains("cpl::map_get(m, 0)"),
-        "a changed map keeps the copy: {copied}"
+        copied.contains("-> std::vector<ll> {") && !copied.contains("map_get("),
+        "a changed map walks a copy of the entry: {copied}"
     );
 }
 
@@ -202,8 +203,8 @@ fn a_map_entry_read_through_a_closure_and_a_domain_block_is_never_copied() {
         "print(s)\n",
     ));
     assert!(
-        copied.contains("cpl::map_get(m, 0)"),
-        "a closure that writes the map keeps the copy: {copied}"
+        copied.contains("-> std::vector<ll> {") && !copied.contains("map_get("),
+        "a closure that writes the map keeps a copy of the entry: {copied}"
     );
 }
 
@@ -231,8 +232,26 @@ fn a_map_entry_passed_to_a_fn_is_read_in_place_unless_the_fn_writes_the_map() {
         "print(bumped(m.get(1) ?? []))\n",
     ));
     assert!(
-        written.contains("cpl::map_get(m, 1)") && !written.contains("map_or("),
+        (written.contains("-> std::vector<ll> {") && !written.contains("map_or("))
+            && !written.contains("map_get("),
         "a fn that writes the map gets a copy: {written}"
+    );
+}
+
+#[test]
+fn a_returned_entry_or_default_copies_only_a_found_entry_once() {
+    // An optional of the entry would copy it, and taking the value out of
+    // that optional would copy it again.
+    let out = cpp(concat!(
+        "var m = Map<Int, List<Int>>()\n",
+        "m[1] = [2]\n",
+        "fn kids(k: Int) -> List<Int> = m.get(k) ?? List()\n",
+        "print(kids(1))\n",
+        "print(kids(1))\n",
+    ));
+    assert!(
+        out.contains("cpl::map_lend(m, k)") && !out.contains("map_get("),
+        "the entry is pointed at, then copied into the result: {out}"
     );
 }
 
@@ -777,7 +796,8 @@ fn a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it() {
         "fn mk(n: Int) -> H = wrap([i for i in 0..n])\nprint(mk(read()).xs.len)\n",
         "var hs: List<H> = []\nlet a = [1, 2]\nhs.push(wrap(a))\nprint(hs[0].xs.len)\n",
     ] {
-        let src = format!("struct H: xs: List<Int>\nfn wrap(xs: List<Int>) -> lends H = H(xs)\n{owned}");
+        let src =
+            format!("struct H: xs: List<Int>\nfn wrap(xs: List<Int>) -> lends H = H(xs)\n{owned}");
         let out = cpp(&src);
         assert!(out.contains("  std::vector<ll> xs;"), "{src}\n{out}");
     }
@@ -1062,7 +1082,7 @@ fn a_tuple_assignment_moves_each_item_into_its_place() {
         "    far[0]\n",
         "print(spin(read()))\n",
     ));
-    assert!(in_fn.contains("far = std::move(t"), "{in_fn}");
+    assert!(in_fn.contains("far = std::move(next);"), "{in_fn}");
     assert!(in_fn.contains("next = std::move(t"), "{in_fn}");
     assert!(!in_fn.contains("const std::vector<ll>& t"), "{in_fn}");
     assert!(
@@ -1073,12 +1093,15 @@ fn a_tuple_assignment_moves_each_item_into_its_place() {
         !out.contains("const std::vector<ll>& t"),
         "a taken source is owned:\n{out}"
     );
-    for place in ["far", "next", "third"] {
-        assert!(
-            out.contains(&format!("{place} = std::move(t")),
-            "{place} takes its item:\n{out}"
-        );
+    // Only `far`, which an earlier item's store changes, is held first.
+    for taken in [
+        "far = std::move(next);",
+        "next = std::move(third);",
+        "third = std::move(t",
+    ] {
+        assert!(out.contains(taken), "{taken}:\n{out}");
     }
+    assert_eq!(out.matches("= std::move(far);").count(), 1, "{out}");
 }
 
 #[test]

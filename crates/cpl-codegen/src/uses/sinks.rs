@@ -87,3 +87,86 @@ pub(crate) fn unmovable_sinks(program: &Program, sunk: &[BTreeSet<usize>]) -> Ve
         .filter(|sink| !named_whole(sink))
         .collect()
 }
+
+/// The parameters of `params` some call hands a value a variable holds,
+/// not one made for the call: a `Value` argument rooted at a local or a
+/// global, or any other kind of argument. Taken by value, such a call
+/// would copy where the C++ shows no copy.
+pub(crate) fn held_args(program: &Program, params: &[BTreeSet<usize>]) -> BTreeSet<(usize, usize)> {
+    fn rooted(e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Local(_) | ExprKind::Global(_) => true,
+            ExprKind::Field(base, _) | ExprKind::Index(base, _) | ExprKind::Unwrap(base, _) => {
+                rooted(base)
+            }
+            _ => false,
+        }
+    }
+    let mut held = BTreeSet::new();
+    let bodies = (program.fns.iter().map(|f| &f.body))
+        .chain(program.closures.iter().map(|c| &c.body))
+        .chain([&program.setup, &program.main]);
+    for body in bodies {
+        walk::deep_exprs(body, &mut |e| {
+            let ExprKind::Call(fid, args) = &e.kind else {
+                return;
+            };
+            for &slot in &params[*fid] {
+                match args.get(slot) {
+                    Some(Arg::Value(value)) if !rooted(value) => {}
+                    _ => {
+                        held.insert((*fid, slot));
+                    }
+                }
+            }
+        });
+    }
+    held
+}
+
+/// Value parameters a fn hands, whole and at their last read, to a sunk
+/// parameter of the fn it calls: `fn new(id: T) = Set(0, Bag.new(id))`.
+/// Taken by value, the call moves the parameter on instead of copying it.
+pub(crate) fn forwarded(program: &Program, sunk: &[BTreeSet<usize>]) -> Vec<BTreeSet<usize>> {
+    let mut out = vec![BTreeSet::new(); program.fns.len()];
+    for (fid, f) in program.fns.iter().enumerate() {
+        for (k, stmt) in f.body.stmts.iter().enumerate() {
+            let (mut handed, mut named) = (Vec::new(), Vec::new());
+            walk::stmt_exprs(stmt, &mut |e| {
+                walk::deep_expr(e, &mut |inner| match &inner.kind {
+                    ExprKind::Call(callee, args) => {
+                        for &slot in &sunk[*callee] {
+                            if let Some(Arg::Value(Expr {
+                                kind: ExprKind::Local(p),
+                                ..
+                            })) = args.get(slot)
+                            {
+                                handed.push(*p);
+                            }
+                        }
+                    }
+                    ExprKind::Local(p) => named.push(*p),
+                    _ => {}
+                })
+            });
+            walk::stmt_blocks(stmt, &mut |inner| {
+                walk::deep_exprs(inner, &mut |e| {
+                    if let ExprKind::Local(p) = e.kind {
+                        named.push(p);
+                    }
+                })
+            });
+            for p in handed {
+                let ty = &f.locals[p].ty;
+                let heap = f.params.get(p).is_some_and(|param| !param.mutable)
+                    && !ty.is_scalar()
+                    && !matches!(ty, cpl_ir::Ty::Fn(..));
+                let once = named.iter().filter(|&&n| n == p).count() == 1;
+                if heap && once && super::unread_after(program, &f.body, k, p) {
+                    out[fid].insert(p);
+                }
+            }
+        }
+    }
+    out
+}

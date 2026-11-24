@@ -709,7 +709,7 @@ impl crate::emit::Emitter<'_> {
 
     /// The variables `stmts` read, `(is_global, slot)`, with those a
     /// closure they make captures.
-    fn read_in(&self, stmts: &[Stmt]) -> BTreeSet<(bool, usize)> {
+    pub(crate) fn read_in(&self, stmts: &[Stmt]) -> BTreeSet<(bool, usize)> {
         let mut read = BTreeSet::new();
         let block = Block {
             stmts: stmts.to_vec(),
@@ -744,7 +744,13 @@ impl crate::emit::Emitter<'_> {
         Some(Tail {
             tested: copied_at_test(*slot, rest),
             lendable: self.lendable_reads(*slot, rest),
-            read_after: self.read_in(rest),
+            read_after: {
+                let mut read = self.read_in(rest);
+                if self.after_outer.0 == Some((self.closure_id, self.fn_id)) {
+                    read.extend(self.after_outer.1.iter().copied());
+                }
+                read
+            },
             ..self.tail(&live)
         })
     }
@@ -1103,6 +1109,42 @@ pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
         .collect()
 }
 
+/// Value parameters a fn's body copies, whole or a field of them, into a
+/// local it changes, at their last read: `var r = a.c` with nothing reading
+/// `a` after it. Taken by value, the copy becomes a move, and a caller at
+/// its last use moves in; one a call hands a variable stays `const&`
+/// ([`sinks::held_args`]), so no call copies in its place.
+pub(crate) fn copied_last(program: &Program, f: &cpl_ir::Function) -> BTreeSet<usize> {
+    fn field_root(e: &Expr) -> Option<usize> {
+        match &e.kind {
+            ExprKind::Local(s) => Some(*s),
+            ExprKind::Field(base, _) => field_root(base),
+            _ => None,
+        }
+    }
+    let stored = Touch::of_block(&f.body).stored_locals();
+    let mut found = BTreeSet::new();
+    for (k, stmt) in f.body.stmts.iter().enumerate() {
+        let Stmt::Let(to, Some(init)) = stmt else {
+            continue;
+        };
+        let src = copied(init).unwrap_or(in_place(init));
+        let Some(p) = field_root(src) else {
+            continue;
+        };
+        if p < f.params.len()
+            && !f.params[p].mutable
+            && !init.ty.is_scalar()
+            && !matches!(init.ty, Ty::Fn(..))
+            && stored.contains(to)
+            && unread_after(program, &f.body, k, p)
+        {
+            found.insert(p);
+        }
+    }
+    found
+}
+
 /// The `let x = src` statements that statement `k` of `block` runs once,
 /// in the value blocks it evaluates, at the last read of `src`, a heap
 /// variable `block` sets: `for e in edges.sorted(by: ..)` with nothing
@@ -1217,13 +1259,15 @@ fn once_lets<'s>(stmt: &'s Stmt, out: &mut Vec<&'s Stmt>) {
 /// (a `let`, or a top-level global's first store in `main`), is read for
 /// the last time by that statement, once: read nowhere after it nor
 /// elsewhere in it, by no closure or fn, and held by no earlier value
-/// that could point into it (a view, a reference).
+/// that could point into it (a view, a reference). `callee` is the fn
+/// statement `k` calls and the statement of its body that reads `src`: what
+/// that body runs before it reads it there, and may hold no view into it.
 fn dies_in(
     program: &Program,
     block: &Block,
     k: usize,
     src: (bool, usize),
-    callee: Option<FnId>,
+    callee: Option<(FnId, usize)>,
 ) -> bool {
     let before = &block.stmts[..k];
     let set = before.iter().any(|stmt| match (stmt, src) {
@@ -1269,7 +1313,7 @@ fn dies_in(
                     .fns
                     .iter()
                     .enumerate()
-                    .any(|(id, f)| Some(id) != callee && count(&f.body) > 0)
+                    .any(|(id, f)| Some(id) != callee.map(|c| c.0) && count(&f.body) > 0)
                 || program.closures.iter().any(|c| {
                     count(&c.body) > 0
                         || c.captures.iter().any(|cap| cap.is_global && cap.outer == g)
@@ -1277,9 +1321,10 @@ fn dies_in(
         }
     };
     let mut held = false;
+    let ran = callee.map_or(&[][..], |(f, j)| &program.fns[f].body.stmts[..j]);
     walk::deep_stmts(
         &Block {
-            stmts: before.to_vec(),
+            stmts: [before, ran].concat(),
         },
         &mut |stmt| match stmt {
             Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) => {
@@ -1288,7 +1333,11 @@ fn dies_in(
             _ => {}
         },
     );
-    let inside = callee.map_or(0, |f| count(&program.fns[f].body));
+    let inside = callee.map_or(0, |(f, j)| {
+        count(&Block {
+            stmts: program.fns[f].body.stmts[j..].to_vec(),
+        })
+    });
     !elsewhere && !held && count(&here) + inside == 1
 }
 
@@ -1329,9 +1378,10 @@ fn built_fresh(e: &Expr) -> bool {
 
 /// The `let x = g` statements of a fn that read the global `g` for the
 /// last time: a statement of `setup` or `main` calls the fn, its only
-/// call, after that block sets `g`, and the fn reads `g` once, in a `let` it runs once,
-/// while nothing else reads `g` (`var room = room_of` in a fn that builds
-/// a table once). Such a `let` may move `g`.
+/// call, after that block sets `g`, and from that `let`, which it runs once,
+/// on the fn reads `g` there alone, while nothing else reads `g` (`var room =
+/// room_of` in a fn that builds a table once, after a loop that reads it).
+/// Such a `let` may move `g`.
 pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
     let mut calls: BTreeMap<FnId, usize> = BTreeMap::new();
     let mut bodies = vec![&program.setup, &program.main];
@@ -1362,15 +1412,17 @@ pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
                 continue;
             }
             let mut found = Vec::new();
-            for inner in &program.fns[f].body.stmts {
+            for (j, inner) in program.fns[f].body.stmts.iter().enumerate() {
+                let mut lets = Vec::new();
                 if let Stmt::Let(_, Some(init)) = inner {
                     if matches!(moved_source(init).kind, ExprKind::Global(_)) {
-                        found.push(inner);
+                        lets.push(inner);
                     }
                 }
-                once_lets(inner, &mut found);
+                once_lets(inner, &mut lets);
+                found.extend(lets.into_iter().map(|l| (j, l)));
             }
-            for inner in found {
+            for (j, inner) in found {
                 let Stmt::Let(_, Some(init)) = inner else {
                     continue;
                 };
@@ -1378,7 +1430,7 @@ pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
                 let src = walk::path_root(from).filter(|_| walk::is_simple(from));
                 if crate::lend::holds_heap(program, &init.ty)
                     && !matches!(init.ty, Ty::Fn(..))
-                    && src.is_some_and(|src| src.0 && dies_in(program, block, k, src, Some(f)))
+                    && src.is_some_and(|src| src.0 && dies_in(program, block, k, src, Some((f, j))))
                 {
                     out.insert(inner as *const Stmt);
                 }
