@@ -427,18 +427,18 @@ impl<'a> Lowerer<'a> {
                             let synth_params: Vec<ast::Param> = params
                                 .iter()
                                 .enumerate()
-                                .map(|(i, p)| {
-                                    let pname = match &p.kind {
-                                        ast::PatternKind::Name(s) => s.clone(),
-                                        _ => unreachable!(),
+                                .filter_map(|(i, p)| {
+                                    let ast::PatternKind::Name(pname) = &p.kind else {
+                                        return None;
                                     };
+                                    let pname = pname.clone();
                                     let pty =
                                         param_tys.get(i).and_then(|t| t.clone()).or_else(|| {
                                             fn_ty_parts
                                                 .as_ref()
                                                 .and_then(|(fps, _)| fps.get(i).cloned())
                                         });
-                                    ast::Param {
+                                    Some(ast::Param {
                                         label: None,
                                         name: ast::Name {
                                             text: pname,
@@ -451,7 +451,7 @@ impl<'a> Lowerer<'a> {
                                         variadic: false,
                                         lazy: false,
                                         span: p.span,
-                                    }
+                                    })
                                 })
                                 .collect();
                             let synth_ret =
@@ -1400,10 +1400,10 @@ impl<'a> Lowerer<'a> {
                         let save = self.temp(io_ty.clone());
                         out.push_let(save, self.mk(ExprKind::Global(gid), io_ty.clone(), span));
                         saved_ctx_slot = Some((gid, save));
-                        let Ty::Record(fields) = &io_ty else {
-                            unreachable!()
+                        let fields = match &io_ty {
+                            Ty::Record(fields) => fields.clone(),
+                            _ => Default::default(),
                         };
-                        let fields = fields.clone();
                         for arg in args {
                             let Some(k) = &arg.name else { continue };
                             let v = &arg.value;
