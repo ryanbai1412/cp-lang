@@ -163,9 +163,97 @@ pub const SCHEMA: &[Table] = &[
     },
 ];
 
+/// The table of `SCHEMA` a `[name]` header opens: `judge.fast` opens `judge.*`.
+pub fn schema_table(name: &str) -> Option<&'static Table> {
+    SCHEMA.iter().find(|t| match t.name.strip_suffix('*') {
+        Some(prefix) => name.len() > prefix.len() && name.starts_with(prefix),
+        None => t.name == name,
+    })
+}
+
+/// Each line of `text` that `SCHEMA` has no place for, 1-based, with why:
+/// an unknown table, a key its table doesn't have, or a key outside any
+/// table. The values are their readers' to check.
+pub fn check(text: &str) -> Vec<(usize, String)> {
+    let mut out = Vec::new();
+    // `None` before the first table; `Some(None)` in one `SCHEMA` lacks.
+    let mut table = None;
+    for (index, raw) in text.lines().enumerate() {
+        let line = strip_comment(raw).trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Some(header) = line.strip_prefix('[') {
+            let name = header.trim_end_matches(']').trim();
+            table = Some(schema_table(name));
+            if matches!(table, Some(None)) {
+                out.push((index + 1, format!("`[{name}]` is not a `{FILE}` table")));
+            }
+            continue;
+        }
+        let key = line.split_once('=').map_or(line, |(k, _)| k.trim());
+        match table {
+            None => out.push((index + 1, format!("`{key}` is outside any table"))),
+            Some(Some(t)) if !t.keys.iter().any(|(k, _)| *k == key || *k == "*") => {
+                out.push((index + 1, format!("`[{}]` has no key `{key}`", t.name)))
+            }
+            Some(_) => {}
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `spec/tools/cp-toml.md`, the page `SCHEMA` writes.
+    fn page() -> String {
+        let mut out = String::from(
+            "# `cp.toml`\n\n<!-- Generated from `SCHEMA` in crates/cpl-config/src/lib.rs; \
+             `BLESS=1 cargo test -p cpl-config` rewrites it. -->\n\n\
+             The nearest `cp.toml` at or above a program's folder configures the tools. \
+             `cpl lint` reports a table or key not listed here.\n",
+        );
+        for t in SCHEMA {
+            let name = t.name.replace('*', "<name>");
+            out += &format!("\n## `[{name}]`\n\n{} Read by `{}`.\n\n", t.doc, t.reader);
+            out += "| Key | Meaning |\n|---|---|\n";
+            for (key, doc) in t.keys {
+                let key = if *key == "*" { "<name>" } else { key };
+                out += &format!("| `{key}` | {doc} |\n");
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn the_cp_toml_page_is_the_schema() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../spec/tools/cp-toml.md");
+        if std::env::var_os("BLESS").is_some() {
+            std::fs::write(path, page()).unwrap();
+        }
+        let on_disk = std::fs::read_to_string(path).unwrap_or_default();
+        assert!(
+            on_disk == page(),
+            "spec/tools/cp-toml.md is stale: BLESS=1 cargo test -p cpl-config"
+        );
+    }
+
+    #[test]
+    fn check_names_what_the_schema_has_no_place_for() {
+        let text = "top = 1\n[fmt]\nindent_width = 2\nindent = 2\n[lints]\nanything = \"deny\"\n\
+                    [judge.fast]\nextends = \"cf\"\n[judges]\nx = 1\n";
+        assert_eq!(
+            check(text),
+            vec![
+                (1, "`top` is outside any table".to_string()),
+                (4, "`[fmt]` has no key `indent`".to_string()),
+                (9, "`[judges]` is not a `cp.toml` table".to_string()),
+            ]
+        );
+        assert!(schema_table("judge.").is_none());
+    }
 
     #[test]
     fn a_table_is_its_own_lines_without_comments() {

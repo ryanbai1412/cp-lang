@@ -276,3 +276,20 @@ fn a_lazy_view_read_on_every_pass_warns_with_a_copy_fix() {
         assert!(lints.iter().all(|d| d.code.0 != "L0603"), "{src}{lints:?}");
     }
 }
+
+#[test]
+fn a_cp_toml_key_no_table_has_is_reported_through_the_schema() {
+    let (_, errors) =
+        Config::from_toml("[fmt]\nindent = 2\n[lints]\npadding = \"deny\"\n[judgee]\n");
+    let found: Vec<_> = errors
+        .iter()
+        .map(|e| (e.line, e.message.as_str()))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            (2, "`[fmt]` has no key `indent`"),
+            (5, "`[judgee]` is not a `cp.toml` table")
+        ]
+    );
+}

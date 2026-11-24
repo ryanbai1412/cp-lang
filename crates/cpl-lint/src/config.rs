@@ -155,6 +155,15 @@ impl Config {
                 )),
             }
         }
+        errors.extend(
+            cpl_config::check(text)
+                .into_iter()
+                .map(|(line, message)| ConfigError {
+                    line,
+                    message,
+                    lint: None,
+                }),
+        );
         (config, errors)
     }
 

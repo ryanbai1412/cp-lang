@@ -2255,6 +2255,8 @@ HARD_ZERO = frozenset({
     "prelude_gaps",
     "json_outside_cpl_json", "rust_ignore",
 })
+# Paid down to the one place the thing lives: above the floor fails, with no baseline.
+HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
 COUNTERS = {
@@ -2452,6 +2454,10 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
             notes.append(f"{rel}: now <= {max_lines} lines (was {cap}; can be removed from allowlist)")
 
     for name, (label, _, gated) in COUNTERS.items():
+        if name in HARD_FLOOR and int(actual.get(name, 0)) > HARD_FLOOR[name]:
+            errors.append(f"{label}: {actual[name]} found; this debt is paid down to {HARD_FLOOR[name]} "
+                          f"and must stay there (`--list {name}` shows them)")
+            continue
         if name in HARD_ZERO and int(actual.get(name, 0)) > 0:
             errors.append(f"{label}: {actual[name]} found; this debt is paid off and must stay at 0 "
                           f"(`--list {name}` shows them)")
@@ -2594,6 +2600,8 @@ def inherited_baseline(baseline: dict, upstream: dict) -> dict:
     for name, (_, _, gated) in COUNTERS.items():
         if name in HARD_ZERO:
             eff[name] = 0
+        elif name in HARD_FLOOR:
+            eff[name] = HARD_FLOOR[name]
         elif gated and name in eff and name in upstream:
             eff[name] = max(int(eff[name]), int(upstream[name]))
     allow = eff.setdefault("rs_file_size_allowlist", {})
@@ -2686,6 +2694,7 @@ def main(argv: list[str] | None = None) -> int:
                 base[keys.get(n, n)] = data[keys.get(n, n)]
             data = base
         raised = [n for n in sorted(HARD_ZERO) if int(data.get(n, 0)) > 0]
+        raised += [n for n, floor in sorted(HARD_FLOOR.items()) if int(data.get(n, 0)) > floor]
         if raised:
             print(f"debt-ratchet: refusing to write hard-zero counters above 0: {', '.join(raised)} "
                   f"(remove the debt; `--list NAME` shows it)", file=sys.stderr)
