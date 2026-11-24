@@ -1007,3 +1007,10 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   tests/programs/vm_traced_statements.cp with its saved trace.
 - VM-memory: `Value` 48 -> 24 bytes. `I128` is held as `Wide` (an `i128` at 8-byte alignment) and `Range128` behind an `Rc`, so no variant forces 16-byte alignment; every list cell, register and stack slot halves. Peaks on the six `interp_memory` inputs: cco24p1 1203 -> 809 MB, yac7p3 918 -> 555, dmopc21c4p2 720 -> 418, sac22cc2p5 605 -> 403, cco21p4 333 -> 230, dmopc20c4p4 329 -> 245. Regression: `a_value_is_three_words` (cpl-interp tests); I128 behaviour stays covered by `wide_ints`, `range_with_i128_ends` and the other `wide_*` programs. Next: lists keep `Vec<Value>` and boxed tuples (heaptrack: cco24p1's 3M `(V, Int)` adjacency tuples are 250 MB); give `List` the typed cell store `Array` has.
 - VM-memory: drop `Array::first`/`last`, left unused by the `Value` shrink (clippy dead code on main).
+
+### VM-traced lane (2026-11-24): re-record traces of views that gained Show
+
+- fa066f2eb gave Stepped a `Show`, so the trace shows `a.step(2)` by its text, as it shows
+  every value with a `show` fn; index_by_at, rev_call and step_walk still held the field
+  form and failed trace_goldens on both engines. Re-recorded: only those values change, and
+  rev_call fits two more steps under its 8 KB cut.
