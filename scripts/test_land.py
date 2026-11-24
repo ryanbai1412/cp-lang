@@ -236,6 +236,26 @@ class LandTest(unittest.TestCase):
             self.assertEqual(git(ours, "show", "origin/main:pkg.txt") if code == 0 else
                              git(ours, "ls-tree", "origin/main", "pkg.txt"), "" if code else slices)
 
+    def test_land_runs_the_slices_the_rebased_tips_affected_py_selects(self):
+        # fc73818ec was committed before main had the silent-unknowns slice, so its hook
+        # never chose it and land ran nothing: land selects again at the rebased tip.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "scripts" / "affected.py").write_text(
+            "import sys\nprint('slices', *sys.argv[1:], file=sys.stderr)\n"
+            "if sys.argv[1:] == ['--base', 'FETCH_HEAD']: print('slices=silent-unknowns')\n"
+            "sys.exit(1 if sys.argv[1:2] == ['--run-slices'] and 'silent-unknowns' in sys.argv else 0)\n")
+        self.commit(theirs, "a slice main added")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "std").mkdir()
+        (ours / "std" / "x.cp").write_text("ours\n")
+        self.commit(ours, "ours")
+        self.assertFalse((ours / ".git" / "cpl-pending-slices").exists())
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertRegex(r.stderr, r"slices --run-slices --base [0-9a-f]{40} silent-unknowns")
+        self.assertIn("land: a touched-path slice fails at the rebased tip", r.stderr)
+        self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
+
     def test_conformance_cases_the_hooks_cut_skipped_run_before_the_push(self):
         ours = self.clone("ours")
         (ours / "scripts" / "conform_staged.py").write_text(
