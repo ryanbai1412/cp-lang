@@ -2528,6 +2528,21 @@ def std_shadowed(root: Path) -> list[str]:
     return sorted(out)
 
 
+
+def arm_guarded(root: Path) -> list[str]:
+    """Std fns a built-in arm answers whose bodies never lower, the arm rebuilding std's
+    leading assert on the built-in value (`ARM_GUARDED` in the lowering): logged debt, gone
+    once the value is the std struct its methods are written for."""
+    src = root / "crates/cpl-ir/src/lower/std_guard.rs"
+    if not src.is_file():
+        return []
+    text = src.read_text(encoding="utf-8")
+    m = re.search(r"ARM_GUARDED: \[[^\]]*\] =\s*\[(.*?)\];", text, re.S)
+    if not m:
+        return []
+    return sorted(f"{t}.{f}" for t, _, f in re.findall(r'\("(\w+)",\s*"(\w+)",\s*"(\w+)"\)', m.group(1)))
+
+
 WALK_RE = re.compile(r"\b(?:glob|rglob|iglob|listdir|iterdir|scandir|walk|read_dir|readdir\w*|ls)\b|\*")
 
 
@@ -3299,6 +3314,7 @@ COUNTERS = {
     "measure_broken": ("plan measure.py scripts with no test", measure_broken, True),
     "mono_unguarded": ("monomorphization with no termination guard", mono_unguarded, True),
     "std_shadowed": ("std names lowering bypasses off the builtin floor", std_shadowed, True),
+    "arm_guarded": ("std fns an arm answers behind std's rebuilt assert (debt)", arm_guarded, True),
     "corpus_walkers": ("files listing corpus/problems besides scripts/corpus.py", corpus_walkers, True),
     "scaling_mismatches": ("bench/scaling cases slower or faster than the std fn's cost:", scaling_mismatches, True),
     "std_fns_unscaled": ("std fns with a cost: and no bench/scaling case", std_fns_unscaled, True),

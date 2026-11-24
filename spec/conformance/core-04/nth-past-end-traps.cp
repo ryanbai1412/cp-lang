@@ -1,4 +1,4 @@
-// expect: R0101
+// expect: R0401
 // rule: 04b.1.4
 let w = [5, 6, 7, 8][1..3]
 let k = 2

@@ -493,6 +493,13 @@ template <class T> Keyed<T> rekey_own(std::vector<T> v, ll lo, ll hi) { if (hi -
 ",
     },
     Piece {
+        name: "rekey_array",
+        needs: &["rekey"],
+        code: "\
+template <class T, size_t K> Keyed<T> rekey_own(const std::array<T, K>& v, ll lo, ll hi) { return rekey_own(std::vector<T>(v.begin(), v.end()), lo, hi); }
+",
+    },
+    Piece {
         name: "mut_view",
         needs: &["fail", "sorted"],
         code: "\

@@ -61,6 +61,7 @@ mod resolve_ty;
 mod seq_roles;
 mod shown;
 mod signature;
+mod std_guard;
 mod stmt;
 mod sum_product;
 mod type_call;
@@ -742,8 +743,9 @@ struct Lowerer<'a> {
     cell_ranges: std::collections::BTreeMap<ElemLoc, (u8, Spec)>,
     written_back: Vec<Span>,
     const_ints: HashMap<String, i64>,
-    /// The `const`s that are a `Bool` known when compiling, for `if const`.
-    const_bools: HashMap<String, bool>,
+    /// The `const`s that are a `Bool` known when compiling, for `if const`,
+    /// as 0 or 1: one map type with `const_ints`, so one copy of its code.
+    const_bools: HashMap<String, i64>,
     /// What the fns of the file assign outside themselves: a call to one
     /// ends what a test showed about an optional it assigns.
     mutators: std::rc::Rc<narrow::Mutators>,
