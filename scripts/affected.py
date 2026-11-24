@@ -78,7 +78,7 @@ SLICES = [
      ["cpl-conform::silent_unknowns"]),
     ("copies", "perf (codegen)", [f"{PACKAGES}/*.cp", "spec/conformance/*.cp", "std/*", "crates/cpl-codegen/*",
                                   "crates/cpl-codegen/src/cpp_counts.rs",
-                                  "crates/cpl-cli/tests/support/result_cache.rs"],
+                                  "crates/cpl-cli/tests/support/result_cache.rs", "crates/cpl-cli/src/explain.rs"],
      ["cpl-cli::read_only_copies"]),
     ("readable-inputs", "debugger (stress)",
      [f"{PACKAGES}/*/spec.cp", "spec/conformance/*.cp", "crates/cpl-cli/tests/programs/*", "crates/cpl-stress/*"],
