@@ -22,16 +22,17 @@ struct Fair:
     profit: 1..=4000
 var fairs: [n]Fair = read()
 
-var from_above = SegTree<Loc, ?Int>(max)  // best[y] + down * y where y is stood on
-var from_below = SegTree<Loc, ?Int>(max)  // best[y] - up * y
+// best[y] is above -U * 5e5 for every y stood on and at most 4000 n; the empty fold is -1e10.
+type Money = -1e10..=1e10
+var from_above = SegTree<Loc, Money>(max)  // best[y] + down * y where y is stood on
+var from_below = SegTree<Loc, Money>(max)  // best[y] - up * y
 
-// Home is stood on from the start, so one side always reaches x.
-fn reach(x: Loc) -> Int =
-    max(from_above.fold(..=x).map(v => v - down * x.label), from_below.fold(x..).map(v => v + up * x.label))!
+// Home is stood on from the start, so one side always reaches x with a real value.
+fn reach(x: Loc) -> Int = max(from_above.fold(..=x) - down * x.label, from_below.fold(x..) + up * x.label)
 
 fn stand(x: Loc, money: Int):
-    from_above.set(x, max(from_above.get(x), Some(money + down * x.label)))
-    from_below.set(x, max(from_below.get(x), Some(money - up * x.label)))
+    from_above.at(x) max= money + down * x.label
+    from_below.at(x) max= money - up * x.label
 
 stand(home, 0)
 fairs.sort(by: f => (f.day, f.at))

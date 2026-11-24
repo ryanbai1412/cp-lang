@@ -13,13 +13,6 @@ for day in fairs.sorted_in_place(by: f => (f.day, f.at)).runs(by: f => f.day):
     ...
 ```
 
-## A bounded max SegTree folds the empty range to Int's low end
-- **Where:** `from_above`/`from_below`. `SegTree<Loc, Money>(max)` with
-  `type Money = -1e10..=1e10` folds an empty range to `-2^63 + 1`, not -1e10,
-  though the docs say the identity is the low end of `T`, so `fold - down * x`
-  overflows. The port stores `?Int` and unwraps once in `reach`. Repro sent to Core.
-- **Severity:** medium.
-
 ## A carried sweep over a slice is an index loop
 - **Where:** `going_down`/`going_up`: each value depends on the previous one and
   the gap to the previous fair. `scan` folds same-typed values only, so the two
