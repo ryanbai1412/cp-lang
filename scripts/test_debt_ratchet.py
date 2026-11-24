@@ -660,6 +660,25 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.ci_jobs_without_recipe(root), [".github/workflows/ci.yml:13 (raw)"])
 
+    def test_editor_logic_lines_counts_tracked_sources_only(self) -> None:
+        """A clean checkout and a worktree full of build output count the same."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, env = Path(tmp) / "clean", dr._git_env()
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=env)
+            self._write(root, "editors/vscode/src/runner.ts", "run();\nstop();\n")
+            self._write(root, ".gitignore", "node_modules/\nout/\ndist/\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=env)
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "x"],
+                           cwd=root, check=True, env=env)
+            clean = dr.editor_logic_lines(root)
+            built = Path(tmp) / "built"
+            subprocess.run(["git", "worktree", "add", "-q", str(built)], cwd=root, check=True, env=env)
+            for rel in ("editors/vscode/node_modules/x/index.js", "editors/vscode/out/runner.js",
+                        "editors/vscode/dist/extension.js", "editors/vscode/src/scratch.ts"):
+                self._write(built, rel, "a();\nb();\n")
+            self.assertEqual(clean, ["editors/vscode/src/runner.ts:1", "editors/vscode/src/runner.ts:2"])
+            self.assertEqual(dr.editor_logic_lines(built), clean)
+
     def test_surface_counters_find_a_second_mechanism(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

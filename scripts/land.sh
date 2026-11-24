@@ -48,10 +48,19 @@ stash_conflict() {
     echo "land: your uncommitted changes conflict with main in: $(echo $left); they are kept in" \
         "$(git stash list -1 --format=%gd); resolve the files, then \`git stash drop\`" >&2
 }
+# A rebase across a change to a counter's measuring code restates that count by
+# the tip's rule, not the lower of two rules' numbers (scripts/ratchet_remeasure.py).
+remeasure() {
+    [ -f scripts/ratchet_remeasure.py ] && [ "$(git rev-parse HEAD)" != "$before" ] || return 0
+    uv run --quiet python scripts/ratchet_remeasure.py "$before" FETCH_HEAD || return 1
+    git diff --quiet -- "$ratchet" || git commit -q --amend --no-edit --no-verify -- "$ratchet"
+}
 pull() {
+    before=$(git rev-parse HEAD)
     if git pull -q --rebase --autostash "$remote" main; then
         stash_conflict && return 1
-        return 0
+        remeasure
+        return
     fi
     while rebasing; do
         conflicts=$(git diff --name-only --diff-filter=U)
@@ -92,6 +101,7 @@ pull() {
         GIT_EDITOR=true git rebase --continue >/dev/null 2>&1 || rebasing ||
             { echo "land: git rebase --continue failed" >&2; return 1; }
     done
+    remeasure
 }
 # Where this commit's hook ran: main's tip before the pull, as far as HEAD has it.
 checked=$(git merge-base HEAD FETCH_HEAD 2>/dev/null || git rev-parse FETCH_HEAD)

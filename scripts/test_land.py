@@ -27,7 +27,7 @@ class LandTest(unittest.TestCase):
         git(self.tmp, "init", "-q", "--bare", "-b", "main", str(remote))
         seed = self.clone("seed")
         (seed / "scripts").mkdir()
-        for name in ("land.sh", "retry.sh", "ratchet_merge.py", "gen.py"):
+        for name in ("land.sh", "retry.sh", "ratchet_merge.py", "ratchet_remeasure.py", "gen.py"):
             shutil.copy(HERE / name, seed / "scripts" / name)
         (seed / "gen.toml").write_text('[[gen]]\nname = "widths"\nfiles = ["spec/conformance/widths/*.cp"]\n')
         # A regen.sh that dirties a file the rebase never saw: land must not run it.
@@ -251,6 +251,66 @@ class LandTest(unittest.TestCase):
         self.assertEqual(json.loads((ours / RATCHET).read_text()), {"a": 3, "b": 4, "names": ["x"]})
         self.assertEqual(git(ours, "status", "--porcelain"), "")
         self.assertIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
+    def rule(self, glue):
+        """A debt-ratchet.py whose `lines` counter counts src.txt, and glue.txt with `glue`."""
+        files = "('src.txt', 'glue.txt')" if glue else "('src.txt',)"
+        return ("import sys\n"
+                f"FILES = {files}\n"
+                "def lines(root):\n"
+                "    return [l for f in FILES for l in (root / f).read_text().splitlines() if l]\n"
+                "COUNTERS = {'lines': ('', lines, True)}\n"
+                "if __name__ == '__main__':\n    sys.exit(0)\n")
+
+    def race(self, ours_changes_the_rule):
+        """One side counts glue.txt too (5 src + 3 glue lines: 8); the other deletes 2 src lines (3)."""
+        seed = self.clone("rule-seed")
+        (seed / "src.txt").write_text("1\n2\n3\n4\n5\n")
+        (seed / "glue.txt").write_text("a\nb\nc\n")
+        (seed / "scripts" / "debt-ratchet.py").write_text(self.rule(glue=False))
+        (seed / RATCHET).write_text(json.dumps({"a": 5, "lines": 5}, indent=2) + "\n")
+        self.commit(seed, "rule seed")
+        git(seed, "push", "-q", "origin", "HEAD:main")
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        rule_side, delete_side = (ours, theirs) if ours_changes_the_rule else (theirs, ours)
+        (rule_side / "scripts" / "debt-ratchet.py").write_text(self.rule(glue=True))
+        (rule_side / RATCHET).write_text(json.dumps({"a": 5, "lines": 8}, indent=2) + "\n")
+        self.commit(rule_side, "count glue")
+        (delete_side / "src.txt").write_text("1\n2\n3\n")
+        (delete_side / RATCHET).write_text(json.dumps({"a": 5, "lines": 3}, indent=2) + "\n")
+        self.commit(delete_side, "delete src lines")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return ours, r
+
+    def test_a_rebase_onto_a_rule_change_restates_the_count_by_the_new_rule(self):
+        ours, r = self.race(ours_changes_the_rule=False)
+        # The lower of 8 (new rule) and 3 (old rule) would be 3; the tip measures 6.
+        self.assertEqual(json.loads((ours / RATCHET).read_text())["lines"], 6)
+        self.assertIn("lines 3 -> 6", r.stderr)
+        self.assertEqual(json.loads(git(ours, "show", f"origin/main:{RATCHET}"))["lines"], 6)
+        self.assertEqual(git(ours, "status", "--porcelain"), "")
+
+    def test_a_rule_change_rebased_onto_a_deletion_restates_mains_count(self):
+        ours, _ = self.race(ours_changes_the_rule=True)
+        self.assertEqual(json.loads(git(ours, "show", f"origin/main:{RATCHET}"))["lines"], 6)
+
+    def test_a_rebase_with_no_rule_change_keeps_the_merged_count(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        for repo in (theirs, ours):
+            (repo / "scripts" / "debt-ratchet.py").write_text(self.rule(glue=False))
+        (theirs / "src.txt").write_text("1\n")
+        (theirs / RATCHET).write_text(json.dumps({"a": 4, "b": 5, "names": ["x", "y"]}, indent=2) + "\n")
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "src.txt").write_text("1\n")
+        (ours / RATCHET).write_text(json.dumps({"a": 3, "b": 5, "names": ["x", "y"]}, indent=2) + "\n")
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("restated", r.stderr)
+        self.assertEqual(json.loads((ours / RATCHET).read_text())["a"], 3)
 
     def test_a_corpus_index_conflict_is_rebuilt_from_both_sides_packages(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")

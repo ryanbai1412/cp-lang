@@ -2552,7 +2552,8 @@ EDITOR_STRING_RE = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[
 
 
 def editor_logic_lines(root: Path) -> list[str]:
-    """Code lines in editor sources other than LSP-client wiring: every code line,
+    """Code lines in git-tracked editor sources (never node_modules/, out/ or dist/ a build
+    leaves) other than LSP-client wiring: every code line,
     and in an `EDITOR_GLUE` file each line that decides or computes (`EDITOR_DECIDES_RE`).
     Editors stay thin, with completion, running, results and tracing in the server."""
     out = []
