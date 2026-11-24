@@ -525,7 +525,15 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        match self.sym(base) {
+        // `w.Idx.wrap(4)`: the domain the value `w` sized from its fields.
+        let value_domain = match &base.kind {
+            ast::ExprKind::Field {
+                base: owner,
+                name: member,
+            } => self.value_domain_named(owner, &member.text),
+            _ => None,
+        };
+        match value_domain.map(Sym::Domain).or_else(|| self.sym(base)) {
             Some(Sym::Mod(target_mod)) => {
                 let sym = self.mod_syms[target_mod].get(&name.text).copied();
                 return match sym {

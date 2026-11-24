@@ -283,6 +283,51 @@ impl<'a> Lowerer<'a> {
         Some(id)
     }
 
+    /// A method's receiver sets the domains its struct sizes from fields, so
+    /// the call's keys are checked against that value's: `mk()[1]`.
+    pub(super) fn receiver_domains(&mut self, value: Expr, span: Span) -> Expr {
+        let Ty::Struct(sid) = value.ty else {
+            return value;
+        };
+        let inits: Vec<_> = self.structs[sid]
+            .owned_domain_inits
+            .iter()
+            .filter(|i| i.per_value)
+            .cloned()
+            .collect();
+        if inits.is_empty() {
+            return value;
+        }
+        let (kind, value) = match value.kind {
+            ExprKind::Local(slot) => (PlaceKind::Local(slot), value),
+            ExprKind::Global(id) => (PlaceKind::Global(id), value),
+            _ => {
+                let slot = self.temp(value.ty.clone());
+                self.cx.pending.push(Stmt::Let(slot, Some(value)));
+                (PlaceKind::Local(slot), self.local(slot, span))
+            }
+        };
+        let place = Place {
+            kind,
+            ty: value.ty.clone(),
+            span,
+        };
+        let scopes = std::mem::replace(&mut self.cx.scopes, vec![HashMap::new()]);
+        let inline = self.cx.inline_self.replace((place, sid));
+        let mut out = Vec::new();
+        for init in inits {
+            let module = std::mem::replace(&mut self.cur_mod, init.mod_id);
+            let offset = std::mem::replace(&mut self.offset, init.offset);
+            self.init_domain_id(init.id, init.def, &mut out);
+            self.cur_mod = module;
+            self.offset = offset;
+        }
+        self.cx.inline_self = inline;
+        self.cx.scopes = scopes;
+        self.cx.pending.extend(out);
+        value
+    }
+
     /// `seq.map(f)` as a list, keyed like `seq` when `seq` is a view:
     /// `a[1..3].map(f)[2]` is `f(a[2])` (R04a.9.4).
     pub(super) fn map_seq(
