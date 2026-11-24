@@ -644,6 +644,10 @@ impl<'a> Checker<'a> {
         };
         // `xs.rev`: every `Bidir` sequence's reverse view, a std `@get`.
         let is_builtin_get = is_builtin_get || (name.text == "rev" && base_ty.is_bidir());
+        // `g.rows()`: a std method that is only ever `@get`, on a built-in receiver.
+        let is_builtin_get = is_builtin_get
+            || (!matches!(base_ty, Ty::Named { .. } | Ty::Unknown | Ty::Error)
+                && crate::prelude::getter_methods().contains(&name.text));
         if !is_builtin_get {
             return None;
         }

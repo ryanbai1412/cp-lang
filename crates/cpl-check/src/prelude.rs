@@ -263,6 +263,40 @@ fn work_methods_in(std: Std) -> std::collections::HashSet<String> {
     work
 }
 
+/// The top-level std methods that are only ever `@get`: every
+/// `pub fn name(self: S, ..)` of that name is a getter, so `g.rows()` is
+/// E0304 as `xs.len()` is (R06.4.2).
+pub fn getter_methods() -> &'static std::collections::HashSet<String> {
+    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+    NAMES.get_or_init(|| getter_methods_in(crate::modules::std_index()))
+}
+
+fn getter_methods_in(std: Std) -> std::collections::HashSet<String> {
+    let mut get = std::collections::HashSet::new();
+    let mut other = std::collections::HashSet::new();
+    for (_, text) in std {
+        if !text.contains("self:") {
+            continue;
+        }
+        for (_, item) in cpl_syntax::parse_file(text).items {
+            for stmt in &item.stmts {
+                let ast::StmtKind::Fn(f) = &stmt.kind else {
+                    continue;
+                };
+                if !stmt.public || !f.params.first().is_some_and(|p| p.name.text == "self") {
+                    continue;
+                }
+                match stmt.decorators.iter().any(|d| d.name.text == "get") {
+                    true => get.insert(f.name.text.clone()),
+                    false => other.insert(f.name.text.clone()),
+                };
+            }
+        }
+    }
+    get.retain(|n| !other.contains(n));
+    get
+}
+
 /// The methods the standard library adds to the types of the language:
 /// each `pub fn name(self: T, ..)` at the top of a module, with that
 /// module. A program that writes `.name` gets the fn without a `use`,
