@@ -137,11 +137,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         index: &indices[0],
                     }
                 }
-                PlaceKind::Index(..) | PlaceKind::Field(..)
-                    if ScalarKind::of_opt_ty(tys[i], self.program).is_none() =>
-                {
-                    MutTake::Path
-                }
+                PlaceKind::Index(..) | PlaceKind::Field(..) => MutTake::Path,
                 _ => return None,
             };
             takes.push(Some((place, take)));
@@ -240,6 +236,23 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     };
                     let r = self.alloc_v();
                     self.emit(Op::TakePlaceV { dst: r, path }, place.span);
+                    if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
+                        let (dst_val, dst_some) = (self.alloc_i(), self.alloc_i());
+                        let unbox = Op::UnboxOptI {
+                            dst_val,
+                            dst_some,
+                            src_v: r,
+                        };
+                        self.emit(unbox, place.span);
+                        i_args[off] = dst_val;
+                        i_args[off + 1] = dst_some;
+                        writebacks.push(WriteBack::PlaceOptI {
+                            path,
+                            kind,
+                            arg_off: off as u16,
+                        });
+                        continue;
+                    }
                     if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
                         let dst_i = self.alloc_i();
                         self.emit(Op::UnboxI { dst_i, src_v: r }, place.span);
@@ -417,6 +430,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 } => {
                     let r_val = arg_base_i + arg_off;
                     self.emit(Op::StorePlaceI { path, r_val, kind }, span);
+                }
+                WriteBack::PlaceOptI {
+                    path,
+                    kind,
+                    arg_off,
+                } => {
+                    let r_val = self.alloc_v();
+                    let boxed = Op::BoxOptI {
+                        dst_v: r_val,
+                        val: arg_base_i + arg_off,
+                        some: arg_base_i + arg_off + 1,
+                        kind,
+                    };
+                    self.emit(boxed, span);
+                    self.emit(Op::StorePlaceV { path, r_val }, span);
+                    self.emit(Op::ClearV { reg: r_val }, span);
                 }
                 WriteBack::LocalI { dst, arg_off } => {
                     let src = arg_base_i + arg_off;
@@ -672,6 +701,11 @@ enum WriteBack {
     },
     Place {
         path: u16,
+        arg_off: u16,
+    },
+    PlaceOptI {
+        path: u16,
+        kind: ScalarKind,
         arg_off: u16,
     },
     PlaceI {

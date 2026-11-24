@@ -744,6 +744,36 @@ print(big.a)
 }
 
 #[test]
+fn vm_passes_a_mut_opt_element_to_a_fn() {
+    // SegTree's `act.compose_onto(mut lz[p], f)` over `?Bool` tags: a `mut`
+    // arg at an indexed `?T` place stays on the VM.
+    let source = "
+fn put(mut old: ?Bool, new: ?Bool):
+    if new != None: old = new
+var lz: List<?Bool> = [None, Some(true), None]
+for i in 0..3: put(mut lz[i], if i == 2: Some(false) else: None)
+for x in lz: print(if x == None: 0 elif x == Some(true): 1 else: 2)
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let fallback =
+        (compiled.main.ops.iter()).any(|op| matches!(op, crate::vm::Op::FallbackStmt { .. }));
+    assert!(!fallback, "{:?}", compiled.main.ops);
+    let (out, trap) = outcome(source, "");
+    assert!(trap.is_none(), "{trap:?}");
+    assert_eq!(out, "0\n1\n2\n");
+}
+
+#[test]
 fn vm_alias_free_mut_closure_runs_without_fallback() {
     let source = "
 fn count_and_bump(mut xs: List<Int>, pred: Int -> Bool) -> Int:
