@@ -976,6 +976,8 @@ pub(super) fn foreign_value(name: &str) -> Option<&'static str> {
         "True" | "TRUE" => Some("true"),
         "False" | "FALSE" => Some("false"),
         "null" | "nil" | "none" | "NULL" | "nullptr" => Some("None"),
+        "INT_MAX" | "LLONG_MAX" | "LONG_MAX" | "INF" => Some("inf"),
+        "INT_MIN" | "LLONG_MIN" | "LONG_MIN" => Some("-inf"),
         _ => None,
     }
 }
@@ -1139,6 +1141,28 @@ pub(super) fn stream_fix(src: &str, name: &str, span: Span) -> Option<(Span, Str
                 (
                     Span::new(span.start, span.end + rest.len() as u32),
                     format!("print({})", args.join(", ")),
+                )
+            })
+        }
+        // `scanf("%d %d", &a, &b)`: plain specs, then the places read into.
+        "scanf" => {
+            let call = rest.strip_prefix("(\"")?.strip_suffix(')')?;
+            let (format, args) = call.split_once('"')?;
+            let plain = ["%d", "%i", "%ld", "%lld", "%u", "%lu", "%llu"];
+            let specs: Vec<&str> = format.split_whitespace().collect();
+            let args: Vec<&str> = args.strip_prefix(", ")?.split(", ").collect();
+            let names: Vec<&str> = args.iter().map(|a| a.trim_start_matches('&')).collect();
+            let ident =
+                |v: &&str| !v.is_empty() && v.chars().all(|c| c.is_alphanumeric() || c == '_');
+            let ok = specs.iter().all(|s| plain.contains(s)) && specs.len() == names.len();
+            let place = match names.as_slice() {
+                [v] => v.to_string(),
+                _ => format!("({})", names.join(", ")),
+            };
+            (ok && names.iter().all(ident)).then(|| {
+                (
+                    Span::new(span.start, span.end + rest.len() as u32),
+                    format!("{place} = read()"),
                 )
             })
         }

@@ -372,6 +372,9 @@ impl<'a> Parser<'a> {
     /// that drops the `*`; the value after it is read as written.
     pub(super) fn c_deref(&mut self) {
         let star = self.span();
+        if self.at(T::Amp) {
+            return self.c_address(star);
+        }
         let prev = self.pos.checked_sub(1).map(|i| self.tokens[i].kind);
         if matches!(prev, Some(T::LParen | T::Comma)) {
             return self.python_splat(star);
@@ -423,9 +426,53 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// `print(*a)`: Python's unpacking. `print` already prints a list's
-    /// items, so there the `*` just goes.
-    fn python_splat(&mut self, star: Span) {
+    /// `swap(&a, &b)`, `scanf("%d", &n)`: C's address-of. In `scanf` the
+    /// checker rewrites the whole call, so the `&` goes without an error.
+    fn c_address(&mut self, amp: Span) {
+        let scanf = self.callee() == Some("scanf");
+        self.bump();
+        if !scanf {
+            self.recovered(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    amp,
+                    "CP Lang has no pointers: a value is passed as it is, without `&`",
+                )
+                .with_help("drop the `&`; a fn that changes an argument takes it as `mut x`")
+                .with_fix("drop the `&`", amp, ""),
+            );
+        }
+    }
+
+    /// `swap(&a, &b)`: C++'s reference argument, which CP Lang writes
+    /// `mut a`. Read as `mut`; in `scanf` the checker rewrites the call.
+    pub(super) fn c_ref_arg(&mut self) -> bool {
+        if !self.at(T::Amp) || self.peek_n(1) != T::Ident {
+            return false;
+        }
+        let amp = self.span();
+        let scanf = self.callee() == Some("scanf");
+        self.bump();
+        if !scanf {
+            let next = self.span();
+            self.recovered(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    amp,
+                    "CP Lang marks an argument the fn changes with `mut`, not `&`",
+                )
+                .with_help(format!(
+                    "write `mut {}`: the fn gets the variable itself",
+                    self.tokens[self.pos].span.text(self.src)
+                ))
+                .with_fix("write `mut`", Span::new(amp.start, next.start), "mut "),
+            );
+        }
+        true
+    }
+
+    /// The name called by the innermost open `(` before this token.
+    fn callee(&self) -> Option<&'a str> {
         let mut depth = 0;
         let mut open = None;
         for i in (0..self.pos).rev() {
@@ -439,8 +486,16 @@ impl<'a> Parser<'a> {
                 _ => {}
             }
         }
-        let callee = open.and_then(|i| i.checked_sub(1)).map(|i| &self.tokens[i]);
-        let print = callee.is_some_and(|t| t.kind == T::Ident && t.span.text(self.src) == "print");
+        let callee = open
+            .and_then(|i| i.checked_sub(1))
+            .map(|i| &self.tokens[i])?;
+        (callee.kind == T::Ident).then(|| callee.span.text(self.src))
+    }
+
+    /// `print(*a)`: Python's unpacking. `print` already prints a list's
+    /// items, so there the `*` just goes.
+    fn python_splat(&mut self, star: Span) {
+        let print = self.callee() == Some("print");
         self.bump();
         let diag = Diagnostic::error(
             codes::REMOVED_SYNTAX,

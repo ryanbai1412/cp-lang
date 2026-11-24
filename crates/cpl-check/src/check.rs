@@ -1490,6 +1490,13 @@ pub(crate) fn drop_mut_cascades(mut diags: Vec<Diagnostic>, src: &str) -> Vec<Di
                 && !rest.contains(')')
         })
     };
+    // `f(&x)` where `f` takes `x` as it is: the call's error drops the
+    // `&`, so the parser's "write `mut`" goes.
+    let by_value: Vec<u32> = (diags.iter())
+        .filter(|d| d.message.ends_with("passed without `&`"))
+        .map(|d| d.span.start)
+        .collect();
+    diags.retain(|d| !(d.code == codes::REMOVED_SYNTAX && by_value.contains(&d.span.end)));
     diags.retain(|d| {
         let callee = d.message.split('`').nth(1).unwrap_or("");
         !(d.message.ends_with("so `mut` doesn't belong here")

@@ -438,6 +438,19 @@ impl Checker<'_> {
                     diag.fix("add `mut`", Span::point(at.start), "mut ");
                 }
             } else if arg.mutable && !param.mutable && verb == "takes" {
+                let amp = Span::new(arg.value.span.start.saturating_sub(1), arg.value.span.start);
+                if self.text(amp) == "&" {
+                    let message = format!(
+                        "`{callee}` doesn't change `{}`, so the argument is passed without `&`",
+                        param.name
+                    );
+                    if let Some(diag) =
+                        self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message)
+                    {
+                        diag.fix("drop the `&`", amp, String::new());
+                    }
+                    continue;
+                }
                 let message = format!(
                     "`{callee}` doesn't change `{}`, so `mut` doesn't belong here",
                     param.name

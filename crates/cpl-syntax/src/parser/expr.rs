@@ -621,7 +621,7 @@ impl<'a> Parser<'a> {
         if matches!(self.peek_n(1), T::Comma | T::RParen | T::RBracket) {
             return self.power();
         }
-        if self.at(T::Star)
+        if matches!(self.peek(), T::Star | T::Amp)
             && !self.after_operator()
             && matches!(self.peek_n(1), T::Ident | T::LParen)
         {
@@ -754,7 +754,7 @@ impl<'a> Parser<'a> {
                 };
             }
         }
-        let mutable = self.eat(T::Mut);
+        let mutable = self.eat(T::Mut) || self.c_ref_arg();
         let start = self.start();
         let mut value = match self.fn_shorthand() {
             Some(value) => value,
