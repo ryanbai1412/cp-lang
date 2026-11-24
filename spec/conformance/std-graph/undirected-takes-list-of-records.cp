@@ -1,4 +1,4 @@
-// expect: ok, output "3"
+// expect: ok, output "2"
 // Graph.undirected takes any keyed edge collection of (u:, v:, ..) records, a List too.
 domain V = 0..3
 let es = [(u: V(0), v: V(1), w: 5), (u: V(1), v: V(2), w: 7)]
