@@ -244,9 +244,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let call = self.ops.len() - 1;
                 self.traced_feeds.push((call as u32, feed));
                 self.note_fed_site(call, stmt, seq);
-                if dst >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: dst }, seq.span);
-                }
+                self.free_temp_v(dst, seq.span);
                 let j_end = self.emit_jump(JumpOp::Jmp, seq.span);
                 self.patch(eager, self.ops.len() as u32);
                 self.compile_eager_for(*id, *slot, seq, body);
@@ -315,9 +313,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Stmt::If(..) | Stmt::While(..) => return false,
             Stmt::Expr(e) if self.traced_call(e).is_some() => {
                 let dst = self.compile_expr_v(e);
-                if dst >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: dst }, e.span);
-                }
+                self.free_temp_v(dst, e.span);
             }
             Stmt::For(_, slot, iter, _) => match self.traced_quiet_iter(iter) {
                 Some(span) => {
@@ -372,9 +368,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if let Op::FeedTree { skip: s, .. } = &mut self.ops[at] {
                     *s = skip;
                 }
-                if src >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src }, e.span);
-                }
+                self.free_temp_v(src, e.span);
             }
             Stmt::Expr(Expr {
                 kind: ExprKind::Sort(place, ..),
@@ -759,18 +753,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 } else {
                                     let src = self.compile_expr_v(arg);
                                     self.emit(Op::FeedYieldV { src, back }, expr.span);
-                                    if src >= self.num_local_v {
-                                        self.emit(Op::ClearV { reg: src }, expr.span);
-                                    }
+                                    self.free_temp_v(src, expr.span);
                                 }
                                 return;
                             }
                             (Mutation::Extend, [arg]) => {
                                 let src = self.compile_expr_v(arg);
                                 self.emit(Op::FeedYieldExtend { src }, expr.span);
-                                if src >= self.num_local_v {
-                                    self.emit(Op::ClearV { reg: src }, expr.span);
-                                }
+                                self.free_temp_v(src, expr.span);
                                 return;
                             }
                             _ => {}
@@ -816,9 +806,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     // Reading a local for nothing does nothing.
                 } else {
                     let dst = self.compile_expr_v(expr);
-                    if dst >= self.num_local_v {
-                        self.emit(Op::ClearV { reg: dst }, expr.span);
-                    }
+                    self.free_temp_v(dst, expr.span);
                 }
             }
             Stmt::Assert {
@@ -1055,9 +1043,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     val.span,
                 );
-                if src >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src }, val.span);
-                }
+                self.free_temp_v(src, val.span);
             }
         }
     }
@@ -1527,9 +1513,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.patch(j_skip, end_pc);
         self.patch_all(lt.breaks, end_pc);
         if let Some(lv) = local_v {
-            if lv >= self.num_local_v {
-                self.emit(Op::ClearV { reg: lv }, seq_expr.span);
-            }
+            self.free_temp_v(lv, seq_expr.span);
         }
     }
 }

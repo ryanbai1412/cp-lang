@@ -42,9 +42,7 @@ impl<'p> Compiler<'p, '_> {
         };
         let r_val = self.compile_expr_v(value);
         self.emit(Op::AssignPlaceV { path, r_val, op }, place.span);
-        if r_val >= self.num_local_v {
-            self.emit(Op::ClearV { reg: r_val }, place.span);
-        }
+        self.free_temp_v(r_val, place.span);
         if let Some((loc, v)) = held {
             self.unbox_slot(loc, v, place.span);
             self.emit(Op::ClearV { reg: v }, place.span);

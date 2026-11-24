@@ -119,9 +119,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let dst = self.alloc_v();
         self.emit(Op::ApplyV { idx, dst, sync }, expr.span);
         for r in regs {
-            if r >= self.num_local_v {
-                self.emit(Op::ClearV { reg: r }, expr.span);
-            }
+            self.free_temp_v(r, expr.span);
         }
         dst
     }
@@ -227,9 +225,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let dst = self.alloc_v();
         self.emit(Op::MutatePlace { idx, path, dst }, expr.span);
         for r in regs {
-            if r >= self.num_local_v {
-                self.emit(Op::ClearV { reg: r }, expr.span);
-            }
+            self.free_temp_v(r, expr.span);
         }
         Some(dst)
     }

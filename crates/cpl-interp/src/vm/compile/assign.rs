@@ -1152,12 +1152,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         },
                         place.span,
                     );
-                    if val_v >= self.num_local_v {
-                        self.emit(Op::ClearV { reg: val_v }, place.span);
-                    }
-                    if key_v >= self.num_local_v {
-                        self.emit(Op::ClearV { reg: key_v }, place.span);
-                    }
+                    self.free_temp_v(val_v, place.span);
+                    self.free_temp_v(key_v, place.span);
                     return true;
                 }
                 self.rewind(undo);
@@ -1314,9 +1310,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             (AssignOp::Max, None, Some(_)) => {
                 let r_val = self.compile_expr_v(value);
                 self.emit(Op::AssignPlaceV { path, r_val, op }, place.span);
-                if r_val >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: r_val }, place.span);
-                }
+                self.free_temp_v(r_val, place.span);
                 true
             }
             _ => {

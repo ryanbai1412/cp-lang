@@ -231,9 +231,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         } else {
                             self.emit(Op::LoadLArr1V { dst, arr_v, r_i }, span);
                         }
-                        if arr_v >= self.num_local_v {
-                            self.emit(Op::ClearV { reg: arr_v }, span);
-                        }
+                        self.free_temp_v(arr_v, span);
                         dst
                     }
                 }
@@ -327,9 +325,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         let r_i = self.compile_expr_i(&indices[0]);
                         let dst = self.alloc_v();
                         self.emit(Op::LoadLList1V { dst, list_v, r_i }, span);
-                        if list_v >= self.num_local_v {
-                            self.emit(Op::ClearV { reg: list_v }, span);
-                        }
+                        self.free_temp_v(list_v, span);
                         dst
                     }
                 }
@@ -388,18 +384,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let val_v = self.compile_expr_v(&args[1]);
                 let dst = self.alloc_v();
                 self.emit(Op::ListFilled { dst, r_n, val_v }, span);
-                if val_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: val_v }, span);
-                }
+                self.free_temp_v(val_v, span);
                 dst
             }
             ExprKind::Builtin(Builtin::ArrayToList | Builtin::ToList, args) if args.len() == 1 => {
                 let src_v = self.compile_expr_v(&args[0]);
                 let dst = self.alloc_v();
                 self.emit(Op::ToList { dst, src_v }, span);
-                if src_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src_v }, span);
-                }
+                self.free_temp_v(src_v, span);
                 dst
             }
             ExprKind::Builtin(Builtin::ListSlice, args) if args.len() == 3 => {
@@ -416,9 +408,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                if src_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src_v }, span);
-                }
+                self.free_temp_v(src_v, span);
                 dst
             }
             ExprKind::Builtin(Builtin::StrSlice, args) if args.len() == 3 => {
@@ -435,9 +425,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                if src_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src_v }, span);
-                }
+                self.free_temp_v(src_v, span);
                 dst
             }
             ExprKind::Fill(dims, value) if dims.len() <= 4 => {
@@ -800,9 +788,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let src = self.compile_expr_v(&args[0]);
                 let dst = self.alloc_v();
                 self.emit(Op::FloatSqrt { dst, src }, span);
-                if src >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src }, span);
-                }
+                self.free_temp_v(src, span);
                 dst
             }
             ExprKind::Sort(place, by, desc) => {
@@ -827,9 +813,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                if src_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src_v }, span);
-                }
+                self.free_temp_v(src_v, span);
                 dst
             }
             ExprKind::Builtin(Builtin::MapGet, args)
@@ -840,12 +824,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let key_v = self.compile_expr_v(&args[1]);
                 let dst = self.alloc_v();
                 self.emit(Op::MapGetV { dst, map_v, key_v }, span);
-                if key_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: key_v }, span);
-                }
-                if map_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: map_v }, span);
-                }
+                self.free_temp_v(key_v, span);
+                self.free_temp_v(map_v, span);
                 dst
             }
             ExprKind::Builtin(
@@ -874,12 +854,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                if key_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: key_v }, span);
-                }
-                if src_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: src_v }, span);
-                }
+                self.free_temp_v(key_v, span);
+                self.free_temp_v(src_v, span);
                 dst
             }
             ExprKind::Mutate(m @ (Mutation::PopFirst | Mutation::PopLast), place, args)
@@ -927,12 +903,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                if key_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: key_v }, span);
-                }
-                if map_v >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: map_v }, span);
-                }
+                self.free_temp_v(key_v, span);
+                self.free_temp_v(map_v, span);
                 dst
             }
             ExprKind::CallExpr(callee, args) => {
@@ -1365,9 +1337,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         r_i,
                     };
                     self.emit(load, span);
-                    if obj_v >= self.num_local_v {
-                        self.emit(Op::ClearV { reg: obj_v }, span);
-                    }
+                    self.free_temp_v(obj_v, span);
                     return;
                 }
                 let root = self.compile_expr_v(base);
@@ -1380,9 +1350,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     r_i,
                 };
                 self.emit(load, span);
-                if root >= self.num_local_v {
-                    self.emit(Op::ClearV { reg: root }, span);
-                }
+                self.free_temp_v(root, span);
             }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
@@ -1441,9 +1409,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 span,
                             );
                         }
-                        if arr_v >= self.num_local_v {
-                            self.emit(Op::ClearV { reg: arr_v }, span);
-                        }
+                        self.free_temp_v(arr_v, span);
                     }
                 }
             }

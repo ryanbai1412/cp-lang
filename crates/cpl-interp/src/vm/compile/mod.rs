@@ -715,6 +715,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    /// Clears `reg` when it is a temp, so a value read into it is not kept
+    /// shared to the statement's end.
+    #[inline(never)]
+    pub(super) fn free_temp_v(&mut self, reg: u16, span: Span) {
+        if reg >= self.num_local_v {
+            self.emit(Op::ClearV { reg }, span);
+        }
+    }
+
     pub(super) fn alloc_v(&mut self) -> u16 {
         let r = self.next_v;
         self.next_v += 1;

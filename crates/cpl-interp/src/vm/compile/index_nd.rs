@@ -70,9 +70,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let (idx, n) = self.compile_index_run(indices);
         let dst = self.alloc_v();
         self.emit(Op::LoadArrNV { dst, arr_v, idx, n }, span);
-        if arr_v >= self.num_local_v {
-            self.emit(Op::ClearV { reg: arr_v }, span);
-        }
+        self.free_temp_v(arr_v, span);
         dst
     }
 }
