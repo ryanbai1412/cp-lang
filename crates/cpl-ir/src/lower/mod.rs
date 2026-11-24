@@ -739,6 +739,7 @@ struct Lowerer<'a> {
     judge_tys: Vec<(FnId, Vec<JudgeTy>, JudgeTy)>,
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays/grids/lists/tuples.
     narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
+    cell_ranges: std::collections::BTreeMap<ElemLoc, (u8, Spec)>,
     written_back: Vec<Span>,
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
@@ -898,6 +899,7 @@ impl<'a> Lowerer<'a> {
             global_ranges: HashMap::new(),
             judge_tys: Vec::new(),
             narrow_elems: std::collections::BTreeMap::new(),
+            cell_ranges: std::collections::BTreeMap::new(),
             written_back: Vec::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),

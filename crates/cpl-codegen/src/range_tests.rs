@@ -203,3 +203,28 @@ print(f(read(), read(), read()))
         "{out}"
     );
 }
+
+#[test]
+fn a_range_typed_array_cell_reads_at_its_declared_range() {
+    let out = cpp("fn f(n: 1..=100, k: Int) -> Int:
+    domain V = 0..n
+    var e: [V]0..=V.count = 0
+    let u = V.first!
+    e[u] = min(e[u] + 1, V.count)
+    var c: 0..=V.count = 0
+    c = e[u]
+    e[u] = e[u] + k
+    c + e[u]
+print(f(read(), read()))
+");
+    assert!(
+        out.contains("e[u] = uint32_t(std::min<ll>(ll(e[u]) + 1, V_0_len));"),
+        "{out}"
+    );
+    assert!(out.contains("c = ll(e[u]);"), "{out}");
+    // `k` may take the cell out of its range.
+    assert!(
+        out.contains("check_range(cpl::iadd(ll(e[u]), k), 0, V_0_len"),
+        "{out}"
+    );
+}

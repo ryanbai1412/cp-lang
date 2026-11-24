@@ -156,6 +156,9 @@ impl Lowerer<'_> {
         cpl_diag::sort_by_key(&mut lw.warnings, |d| d.span.order());
         lw.warnings.dedup();
         for (&gid, info) in &lw.global_ranges {
+            if let Some(cell) = info.cell_spec() {
+                lw.cell_ranges.insert(ElemLoc::Global(gid), cell);
+            }
             if let Some(g) = lw.globals.get(gid).filter(|g| is_narrowable_elem_ty(&g.ty)) {
                 if let Some(layout) = info.narrow_elem_layout(&g.ty) {
                     lw.narrow_elems.insert(ElemLoc::Global(gid), layout);
@@ -208,6 +211,7 @@ impl Lowerer<'_> {
             judge_tys: lw.judge_tys,
             raw_lists: lw.raw_lists,
             narrow_elems: lw.narrow_elems,
+            cell_ranges: lw.cell_ranges,
             written_back: {
                 let mut spans = lw.written_back;
                 spans.sort_by_key(|s| (s.start, s.end));

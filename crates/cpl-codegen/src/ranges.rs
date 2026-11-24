@@ -198,6 +198,9 @@ pub(crate) struct Facts<'p> {
     /// Ranged params: every call checks its argument into the range, and
     /// every store to the param is checked too (R04.4.24).
     param_ranges: BTreeMap<Var, &'p Spec>,
+    /// Range-typed arrays' cells (`Program::cell_ranges`): how many indexes
+    /// reach a cell, and the range every store into one is checked into.
+    cells: BTreeMap<Var, (u8, &'p Spec)>,
     /// The fns before closure 0 in the [`Facts::key`] numbering.
     fns: usize,
     /// Where each closure is made: a home for each `Closure` expr.
@@ -248,6 +251,15 @@ impl<'p> Facts<'p> {
         };
         facts.block(None, &program.setup);
         facts.block(None, &program.main);
+        for (loc, (levels, spec)) in &program.cell_ranges {
+            let v = match *loc {
+                cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(f), s) => (Some(f), false, s),
+                cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Main, s) => (None, false, s),
+                cpl_ir::ElemLoc::Global(g) => (None, true, g),
+                _ => continue,
+            };
+            facts.cells.insert(v, (*levels, spec));
+        }
         for (id, f) in program.fns.iter().enumerate() {
             // A parameter's value comes from each caller: unknown.
             for (slot, param) in f.params.iter().enumerate() {
@@ -1015,6 +1027,13 @@ impl<'p> Facts<'p> {
             }
             // A count held in an `int` is below 2^31.
             ExprKind::DomainLen(d) => self.domain_len_hi(*d, depth + 1),
+            ExprKind::Index(..) => (match self.spec(fn_id, e) {
+                Some(Spec::Int { hi: Some(hi), .. }) => self.upper_bound(fn_id, hi, depth + 1),
+                _ => None,
+            })
+            .into_iter()
+            .chain(self.guard_hi(e, depth))
+            .min(),
             ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) => Some(LEN_MAX),
             ExprKind::Field(base, idx) => (self.field_range(&base.ty, *idx).map(|r| r.1))
                 .into_iter()
@@ -1348,7 +1367,7 @@ impl<'p> Facts<'p> {
     /// The declared range of the value `e` reads, when `e` is a path into
     /// a variable that was read from input and never changed, or a copy of
     /// such a path.
-    fn spec(&self, fn_id: Option<usize>, e: &Expr) -> Option<&'p Spec> {
+    pub(crate) fn spec(&self, fn_id: Option<usize>, e: &Expr) -> Option<&'p Spec> {
         match &e.kind {
             ExprKind::Local(_) | ExprKind::Global(_) => {
                 let v = match &e.kind {
@@ -1370,9 +1389,10 @@ impl<'p> Facts<'p> {
                     _ => None,
                 }
             }
-            ExprKind::Index(base, _) => match self.spec(fn_id, base)? {
-                Spec::Array { elem, .. } => Some(elem),
-                _ => None,
+            ExprKind::Index(base, _) => match self.spec(fn_id, base) {
+                Some(Spec::Array { elem, .. }) => Some(elem),
+                Some(_) => None,
+                None => self.cell(fn_id, e, 0),
             },
             ExprKind::Field(base, index) => match self.spec(fn_id, base)? {
                 Spec::Fields(_, fields) => fields.get(*index),
@@ -1380,6 +1400,24 @@ impl<'p> Facts<'p> {
             },
             _ => None,
         }
+    }
+
+    /// The declared range of the cell `e` reads, `levels` indexes below
+    /// `e`, of a range-typed array of fn `fn_id` itself (a closure's copy
+    /// would read the range's ends in the wrong scope).
+    fn cell(&self, fn_id: Option<usize>, e: &Expr, levels: u8) -> Option<&'p Spec> {
+        let v = match &e.kind {
+            ExprKind::Index(base, _) => return self.cell(fn_id, base, levels + 1),
+            ExprKind::Local(slot) => (fn_id, false, *slot),
+            ExprKind::Global(id) => (None, true, *id),
+            _ => return None,
+        };
+        let &(depth, spec) = self.cells.get(&v)?;
+        (depth == levels && self.local_home(v)).then_some(spec)
+    }
+
+    fn local_home(&self, v: Var) -> bool {
+        v.1 || !self.captured.contains_key(&v)
     }
 
     /// What is known about the sign of the `Int` expression `e`, which

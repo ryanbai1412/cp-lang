@@ -221,6 +221,18 @@ impl RangeInfo {
         })
     }
 
+    /// A sequence's cell range and how many indexes reach it: `[V][W]0..5`
+    /// is `(2, 0..5)`.
+    pub(super) fn cell_spec(&self) -> Option<(u8, Spec)> {
+        let mut info = self.elem()?;
+        let mut depth = 1u8;
+        while let Some(inner) = info.elem() {
+            info = inner;
+            depth += 1;
+        }
+        Some((depth, info.spec()?))
+    }
+
     pub(super) fn scalar(&self) -> Option<&RangeBounds> {
         match self {
             RangeInfo::Scalar(b) => Some(b),
@@ -519,6 +531,9 @@ impl<'a> Lowerer<'a> {
         ranges: &HashMap<Slot, RangeInfo>,
     ) {
         for (&slot, info) in ranges {
+            if let Some(cell) = info.cell_spec() {
+                self.cell_ranges.insert(ElemLoc::Local(scope, slot), cell);
+            }
             if let Some(l) = locals.get(slot).filter(|l| is_narrowable_elem_ty(&l.ty)) {
                 if let Some(layout) = info.narrow_elem_layout(&l.ty) {
                     self.narrow_elems

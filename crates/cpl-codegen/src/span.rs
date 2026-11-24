@@ -118,6 +118,13 @@ impl Facts<'_> {
             ExprKind::Call(id, _) => (self.returned(*id)?.iter())
                 .map(|r| self.lower_bound(Some(*id), r, depth + 2))
                 .try_fold(i64::MAX, |lo, r| Some(lo.min(r?))),
+            ExprKind::Index(..) => (match self.spec(fn_id, e) {
+                Some(Spec::Int { lo: Some(lo), .. }) => at(lo),
+                _ => None,
+            })
+            .into_iter()
+            .chain(self.guard_lo(e, depth))
+            .max(),
             ExprKind::Field(base, idx) => (self.field_range(&base.ty, *idx).map(|r| r.0))
                 .into_iter()
                 .chain(self.guard_lo(e, depth))

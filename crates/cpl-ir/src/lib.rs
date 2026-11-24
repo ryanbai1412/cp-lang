@@ -1580,6 +1580,10 @@ pub struct Program {
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays, grids,
     /// nested arrays, lists, and all-ranged tuple elements.
     pub narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
+    /// The declared range of each cell of a range-typed array, grid or list
+    /// (`var dep: [V]0..=V.count`), with how many indexes reach the cell:
+    /// every store into a cell is checked into it.
+    pub cell_ranges: std::collections::BTreeMap<ElemLoc, (u8, Spec)>,
     /// Each `mut` argument in the user's file passed as a copy and written
     /// back after its call: a place with no address of its own (a `Bool`
     /// element).
