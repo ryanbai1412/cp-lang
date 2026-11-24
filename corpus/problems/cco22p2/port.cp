@@ -7,93 +7,65 @@
 //   rest buy umbrellas. If they run out, earlier markets with spare umbrellas buy instead and
 //   each market between shifts that many people from its right stop to its left, freeing room
 //   in stop i. A stack keeps the spare umbrellas, nearest on top, truncated to the right-goers z
-//   since every shifted unit passes through them; shifts go into a difference array over stops
-//   applied at the end. O(n) amortized.
+//   since every shifted unit passes through them; shifts go into a difference array over the
+//   markets between, applied at the end. O(n) amortized.
 // original: corpus/submissions/4801882.cpp
-let n: 2..=1_000_000 = read()
-domain Bus = 0..n
-domain Mkt = 0..n - 1
-let bus: [Bus]Int = read()
-let ppl: [Mkt]Int = read()
-let umbr: [Mkt]Int = read()
+let n: 2..=1e6 = read()
+domain Stop = 0..n
+domain Market = 0..n - 1
+let room: [Stop]0..=2e9 = read()
+let people: [Market]0..=1e9 = read()
+let umbrellas: [Market]0..=1e9 = read()
 
-var st_at: List<Int> = []
-var st_cnt: List<Int> = []
-var st_pref: List<Int> = []
-var total = 0
+struct Plan:
+    var left: Int
+    var buy: Int
+    var right: Int
 
-fn truncate(cap: Int):
-    if total <= cap: return
-    while st_at.len > 0 and st_pref[st_at.len - 1] >= cap:
-        st_at.pop()
-        st_cnt.pop()
-        st_pref.pop()
-    if st_at.len > 0:
-        let top = st_at.len - 1
-        st_cnt[top] = cap - st_pref[top]
-    total = cap
-
-var left_bus: [Mkt]Int = 0
-var rain: [Mkt]Int = 0
-var right_bus: [Mkt]Int = 0
-var diff: [Bus]Int = 0
-var carry = 0
-var ok = true
-
-for i in 0..n - 1:
-    if ok:
-        let mi = Mkt(i)
-        var x = min(ppl[mi], bus[Bus(i)] - carry)
-        let z = min(bus[Bus(i + 1)], ppl[mi] - x)
-        var y = ppl[mi] - x - z
-        if y <= umbr[mi]:
-            let rem = umbr[mi] - y
-            st_at.push(i)
-            st_cnt.push(rem)
-            st_pref.push(total)
-            total += rem
+fn stay_dry() -> ?[Market]Plan:
+    var plan: [Market]Plan = Plan(0, 0, 0)
+    var spare: List<(at: Market, count: Int, below: Int)> = []
+    var total = 0
+    var shifted = Diff<Market, Int>()
+    var came = 0
+    for i in Market:
+        var left = min(people[i], room[Stop(i.ord)] - came)
+        let right = min(room[Stop(i.ord + 1)], people[i] - left)
+        var buy = people[i] - left - right
+        if buy <= umbrellas[i]:
+            spare.push((at: i, count: umbrellas[i] - buy, below: total))
+            total += umbrellas[i] - buy
         else:
-            let orig_need = y - umbr[mi]
-            if total < orig_need:
-                ok = false
-            else:
-                var need = orig_need
-                total -= need
-                while need > 0:
-                    let top = st_at.len - 1
-                    let j = st_at[top]
-                    let take = min(need, st_cnt[top])
-                    need -= take
-                    rain[Mkt(j)] += take
-                    right_bus[Mkt(j)] -= take
-                    diff[Bus(j + 1)] += take
-                    diff[Bus(i)] -= take
-                    st_cnt[top] -= take
-                    if st_cnt[top] == 0:
-                        st_at.pop()
-                        st_cnt.pop()
-                        st_pref.pop()
-                x += orig_need
-                y -= orig_need
-        if ok:
-            left_bus[mi] = x
-            rain[mi] = y
-            right_bus[mi] = z
-            carry = z
-            truncate(z)
+            let need = buy - umbrellas[i]
+            if need > total: return None
+            total -= need
+            var owed = need
+            while owed > 0:
+                let (j, count, _) = spare.last!
+                let take = min(owed, count)
+                owed -= take
+                plan[j].buy += take
+                plan[j].right -= take
+                shifted.add(j.r..i.l, take)
+                if take == count: spare.pop()
+                else: spare.last!.count -= take
+            left += need
+            buy -= need
+        plan[i] = Plan(left, buy, right)
+        came = right
+        if total > right:
+            while let Some(top) = spare.last and top.below >= right: spare.pop()
+            if let Some(top) = spare.last: spare.last!.count = right - top.below
+            total = right
+    let moved = shifted.finish()
+    for i in Market:
+        plan[i].left += moved[i]
+        plan[i].right -= moved[i]
+    plan
 
-if not ok:
-    print("NO")
-else:
-    var shift = 0
-    var used = 0
-    for i in 0..n - 1:
-        let mi = Mkt(i)
-        shift += diff[Bus(i)]
-        left_bus[mi] += shift
-        right_bus[mi] -= shift
-        used += rain[mi]
+if let plan = stay_dry():
     print("YES")
-    print(used)
-    for i in Mkt:
-        print(left_bus[i], rain[i], right_bus[i])
+    print(Market.map(i => plan[i].buy).sum())
+    for p in plan: print(p.left, p.buy, p.right)
+else:
+    print("NO")
