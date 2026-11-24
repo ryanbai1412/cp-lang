@@ -694,7 +694,7 @@ jobs:
         run: just web-build
       - name: Record cpl.wasm's crate sizes
         if: ${{ !cancelled() && hashFiles('.wasm-size/last') != '' }}
-        run: scripts/wasm-ratchet.sh record "$RUNNER_TEMP/wasm-names/cpl.wasm" .wasm-size/sizes
+        run: just wasm-ratchet record "$RUNNER_TEMP/wasm-names/cpl.wasm" .wasm-size/sizes
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('.wasm-size/last') != '' }}
         with:
@@ -705,7 +705,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RATCHET: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'lower' || 'check' }}
-        run: scripts/wasm-ratchet.sh "$RATCHET" "$RUNNER_TEMP/wasm-names/cpl.wasm" .wasm-size/sizes
+        run: just wasm-ratchet "$RATCHET" "$RUNNER_TEMP/wasm-names/cpl.wasm" .wasm-size/sizes
       - name: Typecheck
         run: just web-typecheck
       - name: Unit tests

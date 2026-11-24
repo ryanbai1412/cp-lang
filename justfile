@@ -187,6 +187,10 @@ site-binaries out="target/site-binaries":
     wait "$names" || { cat "{{out}}/wasm-names.log"; exit 1; }
     cat "{{out}}/wasm.log"
 
+# The shrink-only cpl.wasm ratchet per main tip (CI: ci.yml `site`): record|check|lower.
+wasm-ratchet cmd wasm sizes:
+    scripts/wasm-ratchet.sh {{cmd}} "{{wasm}}" "{{sizes}}"
+
 # A named cpl.wasm of HEAD in the background, for land.sh's wasm budget check (scripts/wasm-warm.sh).
 wasm-warm:
     scripts/wasm-warm.sh
