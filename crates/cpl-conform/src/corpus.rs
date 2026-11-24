@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
 use cpl_check::Session;
@@ -88,12 +88,12 @@ fn make_seeded(root: &Path, ids: &[String]) -> Vec<Option<String>> {
                     continue;
                 }
                 if let Err(e) = cpl_contest::package::make(&dir, &tests_dir(root, &dir, id)) {
-                    errors.lock().unwrap()[i] = Some(e);
+                    errors.lock().unwrap_or_else(PoisonError::into_inner)[i] = Some(e);
                 }
             });
         }
     });
-    errors.into_inner().unwrap()
+    errors.into_inner().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// A problem's cases: its committed `tests/`, or, for a problem whose cases are a seed list
