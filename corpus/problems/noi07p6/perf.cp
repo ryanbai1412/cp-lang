@@ -1,5 +1,5 @@
-// Tuned: every root's detective count comes from one rerooting pass, O(n log n), instead of
-// relabelling the tree from each root.
+// Tuned: every root's detective count comes from one rerooting pass, O(n), instead of
+// relabelling the tree from each root; the plan keeps its steps unformatted until printed.
 //
 // Source: NOI 2007 P6, https://dmoj.ca/problem/noi07p6
 // limits: 600 ms, 256 MB
@@ -20,15 +20,6 @@ domain Road = 1..n
 let roads: [Road](u: City, v: City) = read()
 let g = Graph.undirected(roads, a => a.to)
 
-var need: [City]Int = 0
-fn children(u: City, p: ?City) -> List<City> = [v for v in g[u] if Some(v) != p]
-
-// detectives that clear the subtree of u entered from its parent p
-fn label(u: City, p: ?City) -> Int:
-    let top = children(u, p).map(v => label(v, Some(u))).max_k(2).sorted(by: x => desc(x))
-    need[u] = if top.len == 0: 1 elif top.len == 1: top[0] else: max(top[0], top[1] + 1)
-    need[u]
-
 // every root's count at once, rerooting: a vertex whose branches need a >= b (0 if missing)
 // needs cover(a, b); down[v] is v's branch seen from its parent, up[v] the parent's side seen
 // from v
@@ -45,41 +36,53 @@ fn go_down(u: City, p: ?City):
             elif down[v] > b: b = down[v]
     down[u] = cover(a, b)
 fn go_up(u: City, p: ?City):
-    let branches = ([(down[v], v) for v in g[u] if Some(v) != p] + [(up[u], p!) for _ in 0..Int(p != None)])
-        .max_k(3)
-        .sorted(by: x => desc(x.0))
-    whole[u] = cover(branches.get(0)?.0 ?? 0, branches.get(1)?.0 ?? 0)
+    // the three largest branches of u, and whose the first two are (None: the parent's side)
+    var (a, b, c) = (0, 0, 0)
+    var (by_a, by_b): (?City, ?City) = (None, None)
+    for (x, by) in [(down[v], Some(v)) for v in g[u] if Some(v) != p] + [(up[u], None) for _ in 0..Int(p != None)]:
+        if x > a: (a, b, c, by_a, by_b) = (x, a, b, by, by_a)
+        elif x > b: (b, c, by_b) = (x, b, by)
+        elif x > c: c = x
+    whole[u] = cover(a, b)
     for v in g[u]:
         if Some(v) != p:
-            let rest = branches.filter(x => x.1 != v).collect()
-            up[v] = cover(rest.get(0)?.0 ?? 0, rest.get(1)?.0 ?? 0)
+            up[v] = if by_a == Some(v): cover(b, c) elif by_b == Some(v): cover(a, c) else: cover(a, b)
             go_up(v, Some(u))
 go_down(City.first!, None)
 go_up(City.first!, None)
 let root = City.min(by: r => whole[r])!
-print(label(root, None))
+go_down(root, None)  // down[v] is now what v's subtree needs, rooted at root
+print(down[root])
 
-var plan: List<Str> = []
-fn land(u: City): plan.push("L {u}")
+var plan: List<(step: Str, at: City, to: ?City)> = []  // the steps, printed once T is known
+fn land(u: City): plan.push((step: "L", at: u, to: None))
 
 // clear the subtree of u; `guarded`: a detective already stands on u and stays in the
 // subtree, else one detective comes back up to p
 fn sweep(u: City, p: ?City, guarded: Bool):
-    let cs = children(u, p).sorted(by: v => desc(need[v]))
-    if cs.len == 0 and not guarded: land(u)
-    for i in 1..cs.len:
-        if i == 1 and not guarded: sweep(cs[0], Some(u), false)
-        sweep(cs[i], Some(u), false)
-        plan.push("B {u}")
+    var heavy: ?City = None
+    for v in g[u]:
+        if Some(v) != p and (heavy == None or down[v] > down[heavy!]):
+            heavy = Some(v)
+    let Some(h) = heavy else:
+        if not guarded: land(u)
+        if not guarded: plan.push((step: "M", at: u, to: p))
+        return
+    if not guarded: sweep(h, Some(u), false)
+    for v in g[u]:
+        if Some(v) != p and v != h:
+            sweep(v, Some(u), false)
+            plan.push((step: "B", at: u, to: None))
     if guarded:
-        if let heavy = cs.first:
-            plan.push("M {u} {heavy}")
-            sweep(heavy, Some(u), true)
+        plan.push((step: "M", at: u, to: Some(h)))
+        sweep(h, Some(u), true)
     else:
-        if cs.len == 1: sweep(cs[0], Some(u), false)
-        plan.push("M {u} {p!}")
+        plan.push((step: "M", at: u, to: p))
 
 land(root)
 sweep(root, None, true)
 print(plan.len)
-for s in plan: print(s)
+for s in plan:
+    match s.to:
+        Some(v) => print(s.step, s.at, v)
+        None => print(s.step, s.at)
