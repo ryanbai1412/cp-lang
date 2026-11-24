@@ -8858,4 +8858,8 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** `Visit` is a plain enum, so `step.prune()` had no body to call, and the spec example could not run. A predicate is visible at the call and costs one call per entered vertex.
 - **Reverse.** Drop `prune:` and `dfs_arcs` from `std/graph.cp` and give `Visit` a steering handle.
 
-## 534. (reserved, content)
+## 534. One fold per sliding window is `a.window_fold(k, op)`; `zip` will take any `Seq` (stdlib, 2026-11-24)
+
+- **Call.** `a.window_fold(k, op) -> yields T` yields one fold per length-`k` window, using `Window(op)`'s strategy: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, and any other op keeps two stacks. `windows(k).fold(op)` is not added. `zip`/`zip_exact` will take any `Seq` and walk both in lockstep (4.4), with the pairs keyed by the first argument when it is `Indexed`, and `Rev` of an `Indexed` becomes `Indexed` with reversed keys. `Filtered` stays non-`Indexed`.
+- **Why.** `.fold` on a sequence already means "fold every element", so a second meaning on windows would break one-name-one-meaning. Three module docs taught a `windows(k).fold` that never existed.
+- **Reverse.** Drop `window_fold` from `std/window.cp` and the prelude.

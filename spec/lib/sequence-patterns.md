@@ -84,9 +84,9 @@ the strategy chosen by the op's laws exactly as `Window(op)` chooses it:
   let a = [1, 2, 3, 4]
   let k = 2 -->
 ```python
-a.windows(k).fold(+).max()!           // best sum of k consecutive
-a.windows(k).fold(min)                // sliding minimum, one per window
-a.windows(k).fold(gcd).count(g => g > 1)
+a.window_fold(k, +).max()!            // best sum of k consecutive
+a.window_fold(k, min)                 // sliding minimum, one per window
+a.window_fold(k, gcd).count(g => g > 1)
 ```
 
 On other pieces (`runs`, `chunks`, `split`) `.fold(op)` folds each piece
@@ -273,7 +273,7 @@ from the front.
   positions; per-position results are `[D]...`; per-piece results are a
   `Seq` you fold, collect or `max(by:)`.
 - **Same ops everywhere.** `+`, `min`, `gcd`, `MaxSub`, `min(by:)` mean the
-  same thing in `w.fold`, `windows(k).fold`, `Window`, `SegTree`, `scan`
+  same thing in `w.fold`, `window_fold`, `Window`, `SegTree`, `scan`
   and `Lift`; the laws pick each structure's strategy.
 - **Same order vocabulary.** Every "smaller" is `by:` with `desc` for
   larger, as in `sort`, `Heap` and `min`.
@@ -281,14 +281,14 @@ from the front.
   `Sweep` and `mo`; `Window`, `Counter` and `Bag` implement it, and so can
   a user struct.
 - **Costs read off the code.** Making a piece sequence is \(O(1)\); walking
-  it is \(O(n)\) total for non-overlapping pieces, `windows(k).fold` is \(O(n)\),
+  it is \(O(n)\) total for non-overlapping pieces, `window_fold` is \(O(n)\),
   and re-folding each window is linted.
 
 ## 5. What goes away
 
 | Today | Becomes |
 |---|---|
-| `sliding_min`, `sliding_max`, `sliding_fold` | `a.windows(k).fold(op)` |
+| `sliding_min`, `sliding_max`, `sliding_fold` | `a.window_fold(k, op)` |
 | `MonoDeque`, `WindowFold`, `DequeFold` | `Window(op)` (round 5) |
 | `Window<D>(enter, leave)` | `Sweep(state)` over a `Track` |
 | `prev_less`, `prev_greater`, `next_less`, `next_greater` | `prev_smaller`/`next_smaller` with `by:` |

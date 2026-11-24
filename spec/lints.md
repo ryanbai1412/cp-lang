@@ -89,7 +89,7 @@ those, then run `just gen`. `cpl explain <code>` prints a lint's page.
 | L0563 | map_as_multiset | `cnt[x] += 1` / `if cnt[x] > 0: cnt[x] -= 1`: `SortedBag<K>` (`std.bag`) |
 | L0564 | read_loop | `for _ in 0..k: xs.push(read())`: `let xs: [0..k]T = read()` reads them all |
 | L0565 | cycle_by_colors | `color[u] = 1; ... if color[v] == 1: cyc = true; ... color[u] = 2`: `find_cycle(g)` |
-| L0566 | sliding_min_by_hand | `while dq.len > head and a[dq[dq.len - 1]] >= a[i]: dq.pop()`: `Window(min)` |
+| L0566 | sliding_min_by_hand | `while dq.len > head and a[dq[dq.len - 1]] >= a[i]: dq.pop()`: `a.window_fold(k, min)` or `Window(min)` |
 | L0567 | depth_by_hand | `depth[v] = depth[par[v]] + 1`: `Rooted.from_parents(par).depth(v)` |
 | L0568 | small_to_large_by_hand | `if a.len < b.len: (a, b) = (b, a)` then `for x in b: a.add(x)`: `a.absorb(mut b)` |
 | L0569 | inversions_by_fenwick | `inv += i - bit.prefix(x); bit.add(x, 1)`: `inversions(xs)` |

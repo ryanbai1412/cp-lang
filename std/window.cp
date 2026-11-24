@@ -1,6 +1,6 @@
 //! Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).
 //!
-//! `a.windows(k).fold(op)` and `Window(op)` pick their strategy from the op's laws:
+//! `a.window_fold(k, op)` and `Window(op)` pick their strategy from the op's laws:
 //! a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else uses
 //! two stacks. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo
 //! and divide-and-conquer DP all accept a `Track`.
@@ -8,6 +8,24 @@ use std.algebra.{Op}
 use std.dsu.{Mark, Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.hashmap.{Counter}
 use std.seq.{Track, collect}
+
+/// One fold of `op` per length-`k` window of `self`, left to right, with `Window(op)`'s
+/// strategy: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else
+/// keeps two stacks.
+///
+/// cost: \(O(n)\) amortized calls of `op`
+/// empty: yields nothing; so does `k > self.len`
+/// order: by window start, left to right
+/// traps: when `k < 1`
+/// example: `[3, 1, 4, 1, 5].window_fold(2, max).collect() == [3, 4, 4, 5]`
+/// example: `[1, 2, 3].window_fold(2, +).collect() == [3, 5]`
+pub fn window_fold<S: Indexed, T, M>(self: S, k: Int, op: M) -> yields T:
+    assert k >= 1, "a window holds at least one element"
+    var w = Window<T, M>.new(op)
+    for i in 0..self.len:
+        w.push(self.nth(i))
+        if i >= k: w.pop(self.nth(i - k))
+        if i >= k - 1: yield w.all!
 
 /// A sliding fold queue over `op`. `push` and `pop` are \(O(1)\) amortized; `all` is \(O(1)\).
 pub struct Window<T, M>(op: M):

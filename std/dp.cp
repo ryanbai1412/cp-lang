@@ -8,7 +8,7 @@
 //! recurrence itself stays in your code, and a memoized recursion is
 //! `@memo`. Each optimization names the law it needs; `std.spec` checks it
 //! on small inputs (`monge_break`, `dnc_break`, `knuth_break`,
-//! `convexity_break`). A sliding-window optimum is `a.windows(k).fold(op)` or `std.window.Window(op)`.
+//! `convexity_break`). A sliding-window optimum is `a.window_fold(k, op)` or `std.window.Window(op)`.
 use std.algebra.{Monoid}
 use std.math.{bit}
 use std.seq.{collect}

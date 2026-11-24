@@ -2122,3 +2122,4 @@ std/window.cp: Window.pop(mut self, x: T)
 std/window.cp: Window.push(mut self, x: T)
 std/window.cp: track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T>
 std/window.cp: undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T>
+std/window.cp: window_fold<S: Indexed, T, M>(self: S, k: Int, op: M) -> yields T
