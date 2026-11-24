@@ -1,51 +1,46 @@
-// 996 Warmup 8 P3 (CP Lang 0.2.2): `bsearch_first` replaces manual `while lo < hi:`
-// binary search and domain-indexed `read()` replaces manual input loops.
+// Source: 996 Warmup 8 P3, https://dmoj.ca/problem/996warmup8p3
+// Problem: n <= 1e5 balls move at unit speed on a segment of length L = 1e9 + 1, ball i from
+//   position p_i in direction d_i (1 = right), bouncing off both walls and passing through each
+//   other. Print the time at which the left wall has taken kl <= 1e9 hits and the right wall
+//   kr <= 1e9, measured half a period after the later wall is done.
+// Solution: every 2L seconds each ball hits each wall once, and within a period ball i first
+//   reaches each wall at a fixed offset, so the hits by time t are a count of offsets <= t mod
+//   2L. The hits only grow, so `first_true` finds the moment t1 one wall is done; if the other
+//   is not, its remaining hits come from the balls heading for it at t1, nearest first.
+//   O(n log(kl / n)).
 // original: corpus/submissions/5324670.cpp
-
 const L = 1_000_000_001
-let (n, kl0, kr0): (Int, Int, Int) = read()
+let (n, kl, kr): (1..=1e5, 1..=1e9, 1..=1e9) = read()
 domain Ball = 0..n
-let pos: [Ball]Int = read()
-let dir: [Ball]Int = read()
+let pos: [Ball]0..=L = read()
+let dir: [Ball]0..=1 = read()
 
-var hl = 0
-var hr = 0
-var at: [Ball]Int = 0
-var right: [Ball]Bool = false
+// when, within a period, each ball first reaches each wall
+let reach: [Ball](left: Int, right: Int) = [Ball] b =>
+    if dir[b] == 1: (left: 2 * L - pos[b], right: L - pos[b]) else: (left: pos[b], right: pos[b] + L)
 
-fn simulate(x: Int):
-    let m = x % (2 * L)
-    hl = n * (x / (2 * L))
-    hr = hl
-    for i in Ball:
-        let flip = dir[i] != 0
-        let p = if flip: L - pos[i] else: pos[i]
-        var (np, turned) = (p - m, false)
-        if m >= p + L:
-            hl += 1
-            hr += 1
-            np = 2 * L - m + p
-        elif m >= p:
-            if flip: hr += 1 else: hl += 1
-            np = m - p
-            turned = true
-        at[i] = if flip: L - np else: np
-        right[i] = turned != flip
+fn hits(t: Int) -> (left: Int, right: Int):
+    let (laps, m) = (t / (2 * L), t % (2 * L))
+    (left: n * laps + count(reach[b].left <= m for b in Ball),
+     right: n * laps + count(reach[b].right <= m for b in Ball))
 
-fn hits_enough(mid: Int) -> Bool:
-    simulate(mid)
-    hl >= kl0 or hr >= kr0
+// where ball b is, and whether it heads right, at m seconds into a period
+fn place(b: Ball, m: Int) -> (at: Int, right: Bool):
+    let flip = dir[b] == 1
+    let p = if flip: L - pos[b] else: pos[b]
+    let s = if m < p: (at: p - m, right: false) elif m < p + L: (at: m - p, right: true)
+        else: (at: 2 * L - m + p, right: false)
+    if flip: (at: L - s.at, right: not s.right) else: s
 
-let hi_bound = 1_000_000_000 * 2 * L / n + 2
-let t1 = (0..=hi_bound).first_true(hits_enough)!
-simulate(t1)
-
-if hl >= kl0 and hr >= kr0:
+let t1 = (0..=2e9 * L / n + 2).first_true(t => hits(t).left >= kl or hits(t).right >= kr)!
+let h = hits(t1)
+if h.left >= kl and h.right >= kr:
     print(t1 + L)
 else:
-    let swap_sides = hr >= kr0
-    let need = if swap_sides: kl0 - hl else: kr0 - hr
-    var movers = [if swap_sides: L - at[i] else: at[i] for i in Ball if right[i] != swap_sides]
-    movers.sort(by: p => -p)
-    if need < movers.len: print(t1 + 2 * L - movers[need - 1])
-    else: print(t1 + 2 * L)
+    // seen from the unfinished wall, the balls heading for it, nearest first
+    let to_right = h.right < kr
+    let need = if to_right: kr - h.right else: kl - h.left
+    let movers = [if to_right: s.at else: L - s.at
+                  for b in Ball for s in [place(b, t1 % (2 * L))] if s.right == to_right]
+        .sorted(by: p => desc(p))
+    print(t1 + 2 * L - (if need < movers.len: movers[need - 1] else: 0))

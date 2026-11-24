@@ -21,13 +21,21 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/996warmup8p3/dream.cp"
+  ],
   "port": [
    "corpus/problems/996warmup8p3/port.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "",
+ "dream_stress": {
+  "ok": true,
+  "cases": 6,
+  "sha": "66c2ba6901a063f4524c1c625d49230dc4971741"
+ }
 }
