@@ -8874,3 +8874,5 @@ Reserved for call 5, which landed as decision 519.
 
 - **Call.** The `cpp_deep_copies` bound (read_only_copies and `scripts/debt-ratchet.json`) is 34, not 31. 6525aa9fc lowered it from 35 to 31, but that tree and its parent 4698e6f19 both measure 34 in clean worktrees (`cargo nextest run -p cpl-cli --test read_only_copies`), so main was red from the commit that set it. A correction, not a weakening; the 3 copies go to perf, and a bound only drops to what a clean worktree of main measures.
 - **Reverse.** Set the bound back to 31 once those 3 copies are gone.
+
+## 538. (reserved, stdlib)
