@@ -7,7 +7,8 @@ use super::*;
 
 impl Database {
     /// What checking found in the item of `path` around `at`, in file
-    /// positions, checking its body if `path` was only imported.
+    /// positions, checking its body if `path` was only imported. Each item's
+    /// facts are worked out once per revision; LSP and lowering share them.
     pub(crate) fn body_facts(&mut self, path: &str, at: Span) -> Option<Arc<crate::Facts>> {
         let file = self.files.get(path)?;
         let checked = file.program.is_some();
@@ -20,38 +21,19 @@ impl Database {
             .items
             .get(index)
             .filter(|i| i.span.touches(at.start))?;
+        if let Some(facts) = file.body_facts.get(&index) {
+            return Some(facts.clone());
+        }
         let check = if checked {
             item.check.clone()
         } else {
             self.check_body(id, &analysis, index)
         };
-        let facts = crate::Facts::from_checks(&analysis, &[(item.offset, &*check)]);
-        Some(Arc::new(facts))
-    }
-
-    /// Every body of `path` checked once, as facts: what lowering reads of a
-    /// module the program imports. Kept until the file changes.
-    pub fn module_facts(&mut self, path: &str) -> Option<Arc<crate::Facts>> {
-        let file = self.files.get(path)?;
-        if let Some(facts) = &file.module_facts {
-            return Some(facts.clone());
-        }
-        let checked = file.program.is_some();
-        let (id, analysis) = (
-            file.id,
-            file.program.clone().or_else(|| file.module.clone())?,
-        );
-        let checks: Vec<Arc<ItemCheck>> = (0..analysis.items.len())
-            .map(|i| match checked {
-                true => analysis.items[i].check.clone(),
-                false => self.check_body(id, &analysis, i),
-            })
-            .collect();
-        let items: Vec<(u32, &ItemCheck)> = (analysis.items.iter().zip(&checks))
-            .map(|(item, check)| (item.offset, &**check))
-            .collect();
-        let facts = Arc::new(crate::Facts::from_checks(&analysis, &items));
-        self.files.get_mut(path)?.module_facts = Some(facts.clone());
+        let facts = Arc::new(crate::Facts::from_checks(
+            &analysis,
+            &[(item.offset, &*check)],
+        ));
+        (self.files.get_mut(path)?.body_facts).insert(index, facts.clone());
         Some(facts)
     }
 

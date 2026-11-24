@@ -795,7 +795,7 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
         *stderr += &format!("cpl: `{path}` declares no `{what}` fn\n");
         EXIT_USAGE
     };
-    let facts = with_db(|db| db.imported_facts(&analysis));
+    let facts = front_end::DbFacts;
     let lowered = match side {
         Side::Solution => cpl_ir::lower(&analysis, &facts).and_then(|program| {
             let judge = match cpl_ir::interactor(&analysis) {

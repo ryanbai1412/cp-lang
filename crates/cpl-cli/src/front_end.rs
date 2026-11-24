@@ -11,6 +11,19 @@ pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_check::Session) -> R) -> R {
     DB.with_borrow_mut(f)
 }
 
+/// The thread's session as lowering's source of body facts.
+pub(crate) struct DbFacts;
+
+impl cpl_check::FactsSource for DbFacts {
+    fn body_facts(
+        &self,
+        path: &str,
+        at: cpl_diag::Span,
+    ) -> Option<std::sync::Arc<cpl_check::Facts>> {
+        with_db(|db| db.body_facts(path, at))
+    }
+}
+
 thread_local! {
     static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
 }

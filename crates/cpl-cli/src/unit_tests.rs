@@ -139,7 +139,6 @@ pub(crate) fn run_unit_tests(
             continue;
         };
         let tests = cpl_ir::list_tests(&analysis);
-        let facts = db.imported_facts(&analysis);
         if tests.is_empty() {
             continue;
         }
@@ -157,7 +156,8 @@ pub(crate) fn run_unit_tests(
         let limit = std::time::Duration::from_millis(limit);
         for (idx, name) in tests.iter().enumerate() {
             let label = format!("{path_str}::{name}");
-            match cpl_ir::lower_test(&analysis, &facts, name) {
+            let lowered = cpl_ir::lower_test(&analysis, &db.facts_source(), name);
+            match lowered {
                 Ok(program) => {
                     let Some((out, ran)) = cpl_interp::run_for(&program, &[], limit) else {
                         let _ = writeln!(

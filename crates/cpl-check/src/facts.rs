@@ -664,32 +664,19 @@ mod tests {
     }
 }
 
-/// Where lowering reads what the checker found in a module's bodies.
+/// Where lowering reads what the checker found in an imported module's
+/// bodies, which the module's own analysis left unchecked.
 pub trait FactsSource {
-    /// The facts of `module`, imported at `path` (`None` for the root).
-    fn facts_of(&self, path: Option<&str>, module: &Analysis) -> std::sync::Arc<Facts>;
+    /// The facts of the item of the module at `path` around `at`, in file
+    /// positions; `None` reads the module's own analysis.
+    fn body_facts(&self, path: &str, at: cpl_diag::Span) -> Option<std::sync::Arc<Facts>>;
 }
 
-/// Each module's own facts: an import's bodies are unchecked, so they say
-/// nothing about them.
+/// Each module's own analysis: an import's bodies say nothing.
 pub struct OwnFacts;
 
 impl FactsSource for OwnFacts {
-    fn facts_of(&self, _: Option<&str>, module: &Analysis) -> std::sync::Arc<Facts> {
-        std::sync::Arc::clone(module.facts())
-    }
-}
-
-/// Every imported module with its bodies checked, by path
-/// ([`crate::Session::imported_facts`]).
-#[derive(Default)]
-pub struct ImportedFacts(pub(crate) std::collections::HashMap<String, std::sync::Arc<Facts>>);
-
-impl FactsSource for ImportedFacts {
-    fn facts_of(&self, path: Option<&str>, module: &Analysis) -> std::sync::Arc<Facts> {
-        match path.and_then(|p| self.0.get(p)) {
-            Some(facts) => std::sync::Arc::clone(facts),
-            None => std::sync::Arc::clone(module.facts()),
-        }
+    fn body_facts(&self, _: &str, _: cpl_diag::Span) -> Option<std::sync::Arc<Facts>> {
+        None
     }
 }
