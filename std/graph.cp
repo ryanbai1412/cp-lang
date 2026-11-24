@@ -59,6 +59,9 @@ impl<V: Domain> Target<V> for V:
 impl<V, R: (to: V, ..)> Target<V> for R:
     @get fn to(self) -> V = self.to
 
+impl Target<Int> for Int:
+    @get fn to(self) -> Int = self
+
 impl<V: Domain, S: Seq<A>, A: Target<V>> Next<V> for [V]S:
     type Arc = A
     fn out(self, u: V) -> yields A:

@@ -935,21 +935,6 @@ impl<'a> Lowerer<'a> {
                 };
                 self.seq_search_method(method, value, elem, dom, args, span)
             }
-            (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
-            // `Neighbours` for a table of neighbour lists: `adj.out(u)` is
-            // `adj[u]`, as it is `adj(u)` for a fn.
-            (Ty::Array { dims, elem }, "out")
-                if dims.len() == 1 && args.len() == 1 && matches!(**elem, Ty::List(_)) =>
-            {
-                let at = ast::Expr {
-                    kind: ast::ExprKind::Index {
-                        base: Box::new(base.clone()),
-                        indices: vec![args[0].value.clone()],
-                    },
-                    span,
-                };
-                self.expr(&at, None)
-            }
             // `r.nth(k)` on a range of positions or cuts: its `k`-th, checked against `r`.
             (Ty::Range(inner), "nth")
                 if matches!(**inner, Ty::Pos(_) | Ty::Bound(_)) && args.len() == 1 =>

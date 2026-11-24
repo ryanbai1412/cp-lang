@@ -662,13 +662,14 @@ pub fn renamed(name: &str) -> Option<&'static str> {
     was.get(name).copied()
 }
 
-/// Internal shape specializations brought in from a stdlib module when a
-/// file uses a word, without spending prelude slots or exposing internal
-/// names to users.
+/// Std names brought in from a stdlib module when a file uses a word,
+/// without spending prelude slots: `g.out(u)` gets `Next`, whose impls
+/// answer it for a table or fn of neighbour lists.
 pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
     ("gen", "strings", "_gen_str"),
     ("find", "strings", "_find_str"),
     ("rfind", "strings", "_find_str"),
+    ("out", "graph", "Next"),
 ];
 
 /// The types a prelude type's public signatures name from its own std

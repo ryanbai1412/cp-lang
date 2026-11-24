@@ -25,8 +25,8 @@ impl<'a> Lowerer<'a> {
     /// The method an impl gives a value of a non-struct type: a primitive's
     /// own impl, a domain position's blanket impl, `?T`'s or a fn type's.
     pub(super) fn value_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
-        if let Ty::Pos(_) = ty {
-            return self.domain_impl_method(ty.clone(), method);
+        if let Some(f) = self.domain_impl_method(ty.clone(), method) {
+            return Some(f);
         }
         let prim = self
             .prim_methods
@@ -115,6 +115,9 @@ impl<'a> Lowerer<'a> {
         let arg = match ty {
             Ty::Pos(d) => GenArg::Domain(d),
             Ty::Bound(_) => GenArg::Ty(ty.clone()),
+            Ty::Tuple(ref ts) if ts.iter().all(|t| matches!(t, Ty::Pos(_))) => {
+                GenArg::Ty(ty.clone())
+            }
             _ => return None,
         };
         if let Some(found) = self
