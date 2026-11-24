@@ -1171,7 +1171,8 @@ impl<'a> Checker<'a> {
                         )
                     })
                     .collect();
-                let tagged = stmt.decorators.iter().any(|d| d.name.text == "tags");
+                let tagged = e.variants.iter().any(|v| v.tag.is_some())
+                    || stmt.decorators.iter().any(|d| d.name.text == "tags");
                 let def = Def::Enum {
                     variants,
                     methods,

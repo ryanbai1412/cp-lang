@@ -1284,25 +1284,8 @@ impl<'a> Checker<'a> {
                 };
                 let body = self.enter_body(&generics, self_ty.clone());
                 self.no_comma_variants(&e.variants);
-                let mut seen_tags: Vec<(String, Span)> = Vec::new();
+                self.enum_tags(stmt, e);
                 for variant in &e.variants {
-                    if let Some(tag_expr) = &variant.tag {
-                        let tag_text = self.quote(tag_expr.span);
-                        if let Some((_, prev_span)) = seen_tags.iter().find(|(t, _)| t == &tag_text)
-                        {
-                            let message = format!(
-                                "enum `{}` already has a variant with `@tag({tag_text})`",
-                                e.name.text
-                            );
-                            if let Some(diag) =
-                                self.error(codes::DUPLICATE_VARIANT_TAG, tag_expr.span, message)
-                            {
-                                super::advice::duplicate_tag(diag, *prev_span);
-                            }
-                        } else {
-                            seen_tags.push((tag_text, tag_expr.span));
-                        }
-                    }
                     let fields: Vec<Ty> = variant
                         .fields
                         .iter()

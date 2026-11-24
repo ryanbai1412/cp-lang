@@ -58,9 +58,9 @@ fn reading_an_enum_needs_its_tags() {
     );
     assert_eq!(
         diag.help.as_deref(),
-        Some("put `@tags(\"X\", \"O\")` above the enum")
+        Some("write each variant's token: `@tag(\"X\") X | @tag(\"O\") O`")
     );
-    let ok = format!("@tags(\"X\", \"O\")\nenum Tile:\n    X\n    O\n{rest}");
+    let ok = format!("enum Tile:\n    @tag(\"X\") X\n    @tag(\"O\") O\n{rest}");
     assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
 }
 

@@ -1697,4 +1697,46 @@ impl Checker<'_> {
         }
         Some(Ty::Bool)
     }
+
+    /// An enum's tokens are a distinct `@tag` on each variant; `@tags("U",
+    /// "D")` above the enum is removed (R02.7.2, decision 459).
+    pub(super) fn enum_tags(
+        &mut self,
+        stmt: &cpl_syntax::ast::Stmt,
+        e: &cpl_syntax::ast::EnumDecl,
+    ) {
+        let mut seen: Vec<(String, Span)> = Vec::new();
+        for tag in e.variants.iter().filter_map(|v| v.tag.as_ref()) {
+            let text = self.quote(tag.span);
+            let Some((_, prev)) = seen.iter().find(|(t, _)| *t == text) else {
+                seen.push((text, tag.span));
+                continue;
+            };
+            let prev = *prev;
+            let message = format!(
+                "enum `{}` already has a variant with `@tag({text})`",
+                e.name.text
+            );
+            if let Some(diag) = self.error(codes::DUPLICATE_VARIANT_TAG, tag.span, message) {
+                duplicate_tag(diag, prev);
+            }
+        }
+        let Some(tags) = stmt.decorators.iter().find(|d| d.name.text == "tags") else {
+            return;
+        };
+        let each: Vec<String> = (e.variants.iter().zip(&tags.args))
+            .map(|(v, tag)| format!("@tag({}) {}", self.quote(tag.value.span), v.name.text))
+            .collect();
+        let message = "an enum-level `@tags(...)` was removed; write `@tag(..)` on each variant";
+        let Some(diag) = self.error(codes::REMOVED_SYNTAX, tags.span, message.to_string()) else {
+            return;
+        };
+        if each.len() == e.variants.len() && tags.args.len() == each.len() {
+            diag.help = Some(format!(
+                "write `enum {} = {}`",
+                e.name.text,
+                each.join(" | ")
+            ));
+        }
+    }
 }

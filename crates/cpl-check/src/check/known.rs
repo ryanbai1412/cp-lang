@@ -396,14 +396,18 @@ impl<'a> Checker<'a> {
                     if variants.iter().any(|(_, fields)| !fields.is_empty()) {
                         continue;
                     }
-                    let tags: Vec<String> =
-                        variants.iter().map(|(v, _)| format!("{v:?}")).collect();
+                    let tags: Vec<String> = variants
+                        .iter()
+                        .map(|(v, _)| format!("@tag({v:?}) {v}"))
+                        .collect();
                     let message = format!(
                         "reading a `{name}` needs to know how its variants are written in the input"
                     );
                     if let Some(diag) = self.error(codes::TYPE_MISMATCH, init.span, message) {
-                        diag.help =
-                            Some(format!("put `@tags({})` above the enum", tags.join(", ")));
+                        diag.help = Some(format!(
+                            "write each variant's token: `{}`",
+                            tags.join(" | ")
+                        ));
                     }
                 }
                 _ => {}

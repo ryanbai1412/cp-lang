@@ -78,6 +78,15 @@ impl<'a> Lowerer<'a> {
     /// The token of `@tag("Q")` or `@tag(1)` on a variant.
     pub(super) fn variant_tag(&self, variant: &ast::Variant) -> Option<String> {
         let tag = variant.tag.as_ref()?;
+        match &tag.kind {
+            ast::ExprKind::Char(c) => return Some(c.to_string()),
+            ast::ExprKind::Str(pieces) => {
+                if let [ast::StrPiece::Text(text)] = pieces.as_slice() {
+                    return Some(text.clone());
+                }
+            }
+            _ => {}
+        }
         let text = self.source(tag.span);
         let text = text.trim();
         Some(
