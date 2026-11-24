@@ -1,5 +1,5 @@
 // expect: ok, output "5 2 6 5\n2 YES 3\n10 4\n12\n5\n1 11 12 14 0\n4 5 5\n0 5\n8 0\n16\n11"
-use std.prefix.{SweepAdd, ArithDiff, prefix_excl}
+use std.prefix.{SweepAdd, ArithDiff}
 domain D = 0..3
 let p = Prefix<D, Int>([D] v => 1 + Int(v))
 print(p.fold(D(1)..=D(2)), p.fold(D(1)..=D(1)), p.all, p.suffix(D.cuts.nth(1)))
@@ -30,7 +30,14 @@ print(a, b, s.current)
 var t = SweepAdd<E, Int>()
 t.add(E(1)..=E(2), 5)
 print(t.advance(E(0)), t.advance(E(1)))
-print([2, 3, 4].prefix_excl(*)[1], [5].prefix_excl(+)[0])
+domain X = 0..3
+let xs: [X]Int = [2, 3, 4]
+let (xpre, xsuf) = (xs.scan(*), xs.rev.scan(*))
+domain Y = 0..1
+let ys: [Y]Int = [5]
+let (ypre, ysuf) = (ys.scan(+), ys.rev.scan(+))
+let (xout, yout) = ([X] i => xpre[i.l] * xsuf[i.r], [Y] i => ypre[i.l] + ysuf[i.r])
+print(xout[X(1)], yout[Y(0)])
 domain R = 0..2
 domain C = 0..3
 let q = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c))

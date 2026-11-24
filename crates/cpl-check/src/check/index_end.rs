@@ -16,12 +16,22 @@ impl Checker<'_> {
 
     fn index_reads_two_ways(&mut self, expr: &Expr, base: &Expr, index: &Expr) -> bool {
         if matches!(index.kind, ExprKind::Range { .. })
+            || Self::says_cut(index)
             || !matches!(self.quietly(|c| c.infer(index)), Ty::Int | Ty::Range { .. })
         {
             return false;
         }
         let base_ty = self.quietly(|c| c.infer(base));
         self.bare_int_cut(expr, base, index, &base_ty)
+    }
+
+    /// `s[a.cut_before(i)]`: an index made by a cut-producing call already says "cut".
+    fn says_cut(index: &Expr) -> bool {
+        let ExprKind::Call { callee, .. } = &index.kind else {
+            return false;
+        };
+        matches!(&callee.kind, ExprKind::Field { name, .. }
+            if matches!(name.text.as_str(), "cut" | "cut_before" | "cut_after"))
     }
 
     fn bare_int_cut(&mut self, expr: &Expr, base: &Expr, index: &Expr, base_ty: &Ty) -> bool {

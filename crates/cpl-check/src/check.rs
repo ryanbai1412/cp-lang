@@ -29,6 +29,7 @@ mod moves;
 mod mut_args;
 mod pattern;
 mod question;
+pub(crate) mod removed;
 mod spelling;
 mod steps;
 mod stmt;

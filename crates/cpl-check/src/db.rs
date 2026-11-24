@@ -273,6 +273,9 @@ pub struct Database {
     checks: HashMap<(u32, u64), CheckMemo>,
     stats: Stats,
     loader: Box<dyn Loader>,
+    /// Where the item whose `use` is being imported starts, so an import's fix can reach
+    /// past its spans.
+    import_base: Option<u32>,
     /// The files being analyzed, outermost first: a module that imports
     /// one of them is a cycle.
     analyzing: Vec<String>,
@@ -309,6 +312,7 @@ impl Database {
             checks: HashMap::default(),
             stats: Stats::default(),
             loader,
+            import_base: None,
             analyzing: Vec::new(),
             cycle_floor: usize::MAX,
             cycles: Vec::new(),
@@ -483,6 +487,7 @@ impl Database {
                     );
                     let mut diags = Vec::new();
                     let hits = self.cycle_hits;
+                    self.import_base = Some(ranges[index].span.start);
                     self.import(
                         path,
                         module,
@@ -492,6 +497,7 @@ impl Database {
                         &mut scope,
                         &mut diags,
                     );
+                    self.import_base = None;
                     if self.cycle_hits > hits && diags.is_empty() {
                         diags.extend(self.cycle_error(module));
                     }
@@ -1224,6 +1230,27 @@ impl Database {
             .unwrap_or_default()
     }
 
+    /// The text to delete so `use` no longer lists `name`: it and a comma, or its whole line
+    /// when it is the only name.
+    fn unlisted(&self, from: &str, names: &[ast::Name], name: &ast::Name) -> Option<Span> {
+        let i = names.iter().position(|n| n.span == name.span)?;
+        if let Some(next) = names.get(i + 1) {
+            return Some(Span::new(name.span.start, next.span.start));
+        }
+        if i > 0 {
+            return Some(Span::new(names[i - 1].span.end, name.span.end));
+        }
+        let base = self.import_base?;
+        let text = self.file_text(from)?;
+        let at = (base + name.span.start) as usize;
+        let start = text.get(..at)?.rfind('\n').map_or(0, |i| i + 1) as u32;
+        let end = text
+            .get(at..)?
+            .find('\n')
+            .map_or(text.len(), |i| at + i + 1) as u32;
+        Some(Span::new(start.max(base) - base, end - base))
+    }
+
     /// Loads what one `use` names into `scope`.
     #[allow(clippy::too_many_arguments)]
     fn import(
@@ -1283,6 +1310,14 @@ impl Database {
                         format!("`{module_name}` has no `{}`", name.text),
                     );
                     let std = module_name.starts_with("std.");
+                    if std && crate::check::removed::is_removed(&name.text) {
+                        diag.message.push_str(": std removed it");
+                        if let Some(at) = self.unlisted(from, names, name) {
+                            diag = diag.with_fix(format!("drop `{}`", name.text), at, "");
+                        }
+                        diags.push(diag);
+                        continue;
+                    }
                     if let Some(s) =
                         crate::check::closest(&name.text, public.iter().map(String::as_str))
                     {

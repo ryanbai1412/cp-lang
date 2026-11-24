@@ -391,6 +391,9 @@ impl Checker<'_> {
     /// functions for what CP Lang spells as a member or an operator, so the
     /// unresolved name gets `xs.items` or `a ** b`.
     pub(super) fn member_for_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) {
+        if self.removed_call(call, callee, args) {
+            return;
+        }
         let (name, at, code) = match &callee.kind {
             ExprKind::Name(name) => (name, callee.span, codes::UNRESOLVED_NAME),
             ExprKind::Field { name, .. } => (&name.text, name.span, codes::UNKNOWN_FIELD),

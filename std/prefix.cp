@@ -748,25 +748,6 @@ pub struct ArithDiff<D, T: Add + Sub + Mul>:
             val = val + s
         out
 
-/// \(O(\lvert D \rvert)\). Exclusive monoid fold: `out[i]` is the fold of every element in `self` except `i`,
-/// without requiring inverses.
-///
-/// `out[i] == op(prefix_fold(op, self)[i.l], suffix_fold(op, self)[i.r])`: the elements before `i`
-/// then those after, in order, so `op` need not be commutative. A one-element array gives the
-/// identity.
-///
-/// cost: \(O(\lvert D \rvert)\) calls of `op`; \(O(\lvert D \rvert)\) space
-/// empty: an empty array
-/// order: keyed by `D`
-/// traps: never (beyond what `op` traps on)
-/// example: `[2, 3, 4].prefix_excl(*)[1] == 8`
-/// example: `[5].prefix_excl(+)[0] == 0`
-pub fn prefix_excl<D, T, M>(self: [D]T, op: M) -> [D]T:
-    let pre = prefix_fold(op, self)
-    let suf = suffix_fold(op, self)
-    let m = Monoid<T>.of(op)
-    [D] i => m.op(pre[i.l], suf[i.r])
-
 impl Show for Prefix<D, T>:
     fn show(q): "{q.p}"
 
