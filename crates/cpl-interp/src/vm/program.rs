@@ -243,6 +243,7 @@ impl<'p> CompiledProgram<'p> {
             );
             fc.fed_ok = fed_ok;
             fc.feed_acc = Some(acc_slot);
+            fc.profiled = profiled;
             fc.compile_block(&f.body, None, false);
             fc.emit(Op::FeedEnd, Span::default());
             let mut fchunk = fc.finish();
@@ -257,7 +258,6 @@ impl<'p> CompiledProgram<'p> {
             }
             fchunk.param_count = f.params.len();
             fchunk.takes_fn = (f.locals.iter().take(f.params.len())).any(|l| l.ty.has_fn(program));
-            fchunk.ret_kind = None;
             fchunk.guarded_domains = guarded_domains;
             Some(fchunk)
         };
