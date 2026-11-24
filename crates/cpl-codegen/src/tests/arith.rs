@@ -58,6 +58,21 @@ fn a_divisor_unpacked_from_input_keeps_its_declared_range() {
 }
 
 #[test]
+fn labels_of_a_positive_domain_divide_in_32_bits() {
+    let body = body(concat!(
+        "domain Val = 1..=200000\n",
+        "let a: [3]Val = read()\n",
+        "print(a[0].label % a[1].label, a[0].label / a[2].label)\n",
+    ));
+    assert!(body.contains("% uint32_t("), "{body}");
+    assert!(body.contains("/ uint32_t("), "{body}");
+    assert!(
+        !body.contains("cpl::emod(") && !body.contains("cpl::ediv("),
+        "{body}"
+    );
+}
+
+#[test]
 fn a_wide_non_negative_dividend_divides_unsigned() {
     let body = body("let a: 0..=1000000000 = read()\nlet b: 1..=100 = read()\nprint(a * a % 998244353, a * a / b)\n");
     assert!(body.contains("ll(uint64_t(a * a) % 998244353)"), "{body}");
