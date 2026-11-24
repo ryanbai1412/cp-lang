@@ -10,6 +10,10 @@ pub trait Random:
     /// A value of `Self` drawn from the program's `rand` stream, within its contract.
     fn gen() -> Self
 
+/// `gen<Bool>()`: `true` or `false`, each with chance 1/2.
+impl Random for Bool:
+    fn gen() -> Bool = gen(0..=1) == 1
+
 /// Shuffle `a` in place, uniformly (Fisher-Yates), drawing from the program's `rand` stream.
 ///
 /// For `i` from `a.len - 1` down to `1`, swap positions `i` and `rand(0, i)`, so a run's seed

@@ -786,6 +786,22 @@ impl<'a> Checker<'a> {
                     }
                     _ => false,
                 };
+                // `let v: [V]0..=9 = gen()` reads two ways; the help names both.
+                if let (true, Some(written), Some(init)) = (fills, ty, init) {
+                    let bare_gen = matches!(&init.kind, ExprKind::Call { callee, args }
+                        if args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if n == "gen"));
+                    if let (true, cpl_syntax::ast::TypeKind::Array { elem, .. }) =
+                        (bare_gen, &written.kind)
+                    {
+                        let text = |s: Span| &self.src[s.start as usize..s.end as usize];
+                        let help = format!(
+                            "write `gen<{}>()` for a random array, or `gen<{}>()` for one random value in every cell",
+                            text(written.span),
+                            text(elem.span)
+                        );
+                        self.gen_fill_help.insert(init.span, help);
+                    }
+                }
                 // `var adj: [V]List<V> = []`: the `[]` is one cell.
                 if let (true, Some(Ty::Array { elem, .. }), Some(init)) = (fills, &declared, init) {
                     if matches!(&init.kind, ExprKind::List(items) if items.is_empty()) {

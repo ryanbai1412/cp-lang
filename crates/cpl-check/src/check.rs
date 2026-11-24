@@ -258,6 +258,8 @@ pub(crate) struct Checker<'a> {
     /// rest have no type to draw (E0501).
     bare_gens: Vec<Span>,
     gens_given_a_type: crate::fx::HashSet<Span>,
+    /// A bare `gen()` filling a declared array: both readings, for its help.
+    gen_fill_help: crate::fx::HashMap<Span, String>,
     /// The `type` aliases whose right side is being resolved, innermost last.
     defining_aliases: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
@@ -390,6 +392,7 @@ impl<'a> Checker<'a> {
             generics: Vec::new(),
             bare_gens: Vec::new(),
             gens_given_a_type: Default::default(),
+            gen_fill_help: Default::default(),
             defining_aliases: Vec::new(),
             param_bounds: Vec::new(),
             param_bound_args: Vec::new(),
@@ -587,7 +590,10 @@ impl<'a> Checker<'a> {
     pub(crate) fn finish(mut self) -> Checked {
         for span in std::mem::take(&mut self.bare_gens) {
             if !self.gens_given_a_type.contains(&span) {
-                self.report(span, cpl_diag::msgs::ir::GEN_TAKES, &[]);
+                let help = self.gen_fill_help.remove(&span);
+                if let Some(diag) = self.report(span, cpl_diag::msgs::ir::GEN_TAKES, &[]) {
+                    diag.help = help.or(diag.help.take());
+                }
             }
         }
         let resolved = self.with_chosen_methods();

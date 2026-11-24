@@ -42,6 +42,9 @@ methods = ["at"]
 [trait.Contains]
 methods = ["contains"]
 [[claim]]
+type = "Bool"
+trait = "Random"
+[[claim]]
 type = "Array"
 trait = "Seq"
 [[claim]]
@@ -3172,6 +3175,14 @@ let s = f.seq()
 print(f)
 """
 out = "1 sequences"
+
+[case."Random/Bool/gen"]
+code = """
+let b = gen<Bool>()
+let c: Bool = gen()
+print(yes((b or not b) and (c or not c)))
+"""
+out = "YES"
 
 [case."Random/Perm/gen"]
 code = """

@@ -245,6 +245,13 @@ impl<'a> Lowerer<'a> {
                     None => self.gen_unsupported(span),
                 };
             }
+            GenArg::Ty(ty)
+                if let Some(fn_id) = (self.prim_methods.iter())
+                    .find(|(t, m, _)| *t == ty && m == "gen")
+                    .map(|p| p.2) =>
+            {
+                return self.user_call(fn_id, None, args, span);
+            }
             GenArg::Drawn(ty, items) => (ty, items),
             GenArg::Ty(ty) if let Some(fields) = ty.fields() => {
                 (ty, fields.into_iter().map(GenArg::Ty).collect())
