@@ -15,7 +15,8 @@ fn claim(p: Pin, side: Side) -> Lit<Claim> = Lit(Claim((p, side)), true)
 var sat = TwoSat<Claim>()
 for f in facts:
     let ps = [pins.index_of((s:, x: f.x)) for s in [f.i, f.j, f.k]]
-    for side in Side: sat.at_most_one([claim(p, side) for p in ps])
+    for side in Side:
+        for (a, b) in ps.pairs(): sat.add_or(claim(a, side).neg, claim(b, side).neg)
 for p in Pin: sat.add_or(claim(p, Below).neg, claim(p, Above).neg)
 for (p, q) in Pin.collect().adjacent if pins.get(p).s == pins.get(q).s:
     sat.add_xor(claim(p, Above), claim(q, Below))
