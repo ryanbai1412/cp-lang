@@ -988,6 +988,27 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"skip_lists": 3}, ref="main"),
                              ["skip_lists: reached 0 on main; a counter at 0 is never raised"])
 
+    def test_a_number_lowered_by_hand_is_refused_and_restoring_it_is_not_a_raise(self) -> None:
+        # f1b1dd166 set vm_fallbacks 62 -> 1 with 62 still in the source.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, capture_output=True, env=dr._git_env())
+            git("init", "-q", "-b", "main")
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"vm_fallbacks": 62}))
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            self.assertEqual([e.split(":")[0] for e in dr.hand_lowered(root, {"vm_fallbacks": 1}, {"vm_fallbacks": 62}, ref="main")],
+                             ["vm_fallbacks"])
+            self.assertEqual(dr.hand_lowered(root, {"vm_fallbacks": 59}, {"vm_fallbacks": 59}, ref="main"), [])
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"vm_fallbacks": 1}))
+            git("commit", "-qam", "lowered by hand")
+            self.assertEqual(dr.unexplained_bumps(root, {"vm_fallbacks": 62}, ref="main", upstream={"vm_fallbacks": 62}), [])
+            self.assertEqual([b.split(":")[0] for b in dr.unexplained_bumps(root, {"vm_fallbacks": 63}, ref="main",
+                                                                              upstream={"vm_fallbacks": 62})],
+                             ["vm_fallbacks"])
+            self.assertEqual(len(dr.unexplained_bumps(root, {"vm_fallbacks": 62}, ref="main")), 1)
+
     def test_a_file_entering_the_near_cap_list_is_a_raise(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

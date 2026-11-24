@@ -3511,12 +3511,15 @@ def remeasured(root: Path, base: str, name: str) -> bool:
     return bool(paths) and bool(_git(root, "diff", "--name-only", base, "--", *paths))
 
 
-def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> list[str]:
+def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
+                      upstream: dict | None = None) -> list[str]:
     """Baseline entries raised above `ref`'s.
 
     A raise passes only when the same change rewrites the code that measures
-    that entry (a new definition of the count, re-measured); never on a
-    decisions.md line or a Skipped: trailer. New debt is removed, not admitted.
+    that entry (a new definition of the count, re-measured), or when `ref`
+    itself measures at least the raised number (`upstream`): that restores a
+    number lowered by hand, it admits no debt. Never on a decisions.md line or
+    a Skipped: trailer. New debt is removed, not admitted.
     """
     shown = _git(root, "show", f"{ref}:scripts/debt-ratchet.json")
     if not shown:
@@ -3528,7 +3531,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> l
     mine = json.loads("\n".join(_git(root, "show", f"{base}:scripts/debt-ratchet.json") or ["{}"]))
     raised = [(n, n) for n, v in baseline.items()
               if n in old and isinstance(v, int) and isinstance(old[n], int) and v > old[n]
-              and not (isinstance(mine.get(n), int) and v <= mine[n])]
+              and not (isinstance(mine.get(n), int) and v <= mine[n])
+              and not (upstream and isinstance(upstream.get(n), int) and v <= upstream[n])]
     old_allow, mine_allow = old.get("rs_file_size_allowlist", {}), mine.get("rs_file_size_allowlist", {})
     raised += [(rel, "rs_file_size_allowlist") for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
                if cap > old_allow.get(rel, 0) and cap > mine_allow.get(rel, 0)]
@@ -3544,6 +3548,19 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> l
             f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); remove the new debt "
             f"instead (only a change to the code that measures it may re-measure it)"
             for n, key in raised if not remeasured(root, base, key)]
+
+
+def hand_lowered(root: Path, baseline: dict, actual: dict, ref: str = "origin/main") -> list[str]:
+    """Counters this change lowers below `ref`'s to a number under what the tree
+    measures: a number lowered by hand, not by removing debt (f1b1dd166 set
+    vm_fallbacks 62 -> 1 with 62 still in the source, and every lane writing
+    its real count was then refused as a raise). `--update NAME` lowers it."""
+    old = json.loads("\n".join(_git(root, "show", f"{ref}:scripts/debt-ratchet.json") or ["{}"]))
+    return [f"{n}: lowered from {old[n]} to {v} on {ref}, but this tree measures {actual[n]}; "
+            f"remove the debt and run `--update {n}` instead of editing the number"
+            for n, v in baseline.items()
+            if n in COUNTERS and isinstance(v, int) and isinstance(old.get(n), int) and v < old[n]
+            and isinstance(actual.get(n), int) and actual[n] > v]
 
 
 def inherited_baseline(baseline: dict, upstream: dict) -> dict:
@@ -3733,8 +3750,9 @@ def main(argv: list[str] | None = None) -> int:
     actual = measure(args.root, max_lines)
     errors, warnings, notes = evaluate(actual, baseline)
     # On main, HEAD is origin/main: CI names the tip it last saw instead.
-    bumps = unexplained_bumps(args.root, baseline, os.environ.get("CPL_RATCHET_BASE") or "origin/main")
-    if errors:
+    ref = os.environ.get("CPL_RATCHET_BASE") or "origin/main"
+    bumps = unexplained_bumps(args.root, baseline, ref)
+    if errors or bumps:
         try:
             # Only the counters over their baseline can be main's, not this change's.
             over = {n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and n in actual
@@ -3750,7 +3768,8 @@ def main(argv: list[str] | None = None) -> int:
             warnings += [f"already on main, not from this change (infra fixes it): {e}"
                          for e in errors if e not in mine]
             errors = mine
-    errors += bumps
+            bumps = unexplained_bumps(args.root, baseline, ref, upstream)
+    errors += bumps + hand_lowered(args.root, baseline, actual, ref)
 
     # Name the last commits to touch a grown file, so its owner is pinged
     # rather than whoever pushes next.
