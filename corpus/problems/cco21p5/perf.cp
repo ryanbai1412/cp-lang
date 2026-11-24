@@ -42,9 +42,6 @@ for i in Town.drop(1).rev:
         best.apply(Town.nth(found[unseen] % (1 << 18)).r..=end, 1)
     if earliest[i] == None: best.apply(i.r..=end, 1)
     // the first cut after i with no town found before i beyond it only moves left as i does
-    while next > i.r:
-        let before = Town.cuts(Int(next) - 1)
-        if later[before].is_none_or(e => e >= i): next = before
-        else: break
+    while next > i.r and later[Town.cuts(Int(next) - 1)].is_none_or(e => e >= i): next = Town.cuts(Int(next) - 1)
     best.set(i.l, best.fold(next..=end))
 print(best.get(Town(2).l))
