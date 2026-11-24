@@ -655,7 +655,34 @@ impl<'a> Lowerer<'a> {
                 };
                 if let Some(value) = val {
                     let inferred_rinfo = if ty.is_none() {
-                        self.expr_range(&value)
+                        // `Map<K, V>()` states its type where it is called.
+                        let stated = match init.as_ref().map(|e| &e.kind) {
+                            Some(ast::ExprKind::Call { callee, args }) if args.is_empty() => {
+                                match &callee.kind {
+                                    ast::ExprKind::Generic { base, args: tys } => {
+                                        match &base.kind {
+                                            ast::ExprKind::Name(n) => {
+                                                self.range_info_from_ast(&ast::Type {
+                                                    kind: ast::TypeKind::Named {
+                                                        name: ast::Name {
+                                                            text: n.clone(),
+                                                            span: base.span,
+                                                        },
+                                                        args: tys.clone(),
+                                                    },
+                                                    span: callee.span,
+                                                })
+                                            }
+                                            _ => None,
+                                        }
+                                    }
+                                    _ => None,
+                                }
+                            }
+                            _ => None,
+                        };
+                        stated
+                            .or_else(|| self.expr_range(&value))
                             .filter(|r| r.narrow_elem_layout(&value.ty).is_some())
                     } else {
                         None

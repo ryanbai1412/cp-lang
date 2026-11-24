@@ -198,7 +198,7 @@ print(sum_all<V>(a))
 }
 
 #[test]
-fn ranged_2d_nested_and_tuple_elements_narrow_and_widen_conservatively() {
+fn ranged_2d_nested_and_tuple_elements_narrow_through_plain_params() {
     let grid = cpp("let n: 1..=50 = read()
 let m: 1..=50 = read()
 domain R = 0..n
@@ -291,20 +291,25 @@ var mat: [D][D]0..=1_000 = 0
 var pts: [D](0..=1_000, -100..=100) = (0, 0)
 print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
 ");
-    assert!(
-        widened.contains("cpl::Grid<uint16_t, 2> g")
-            && widened.contains("(const cpl::Grid<uint16_t, 2>& g_"),
-        "expected 2D grid passed to [R, C]Int to keep its width in the instance:\n{widened}"
-    );
-    assert!(
-        widened.contains("std::vector<std::vector<ll>> mat"),
-        "expected nested array whose row flows to [E]Int to widen:\n{widened}"
-    );
-    assert!(
-        widened.contains("std::vector<std::tuple<uint16_t, int8_t>> pts")
-            && widened.contains("(const std::vector<std::tuple<uint16_t, int8_t>>& pts_"),
-        "expected tuple array passed to [V](Int, Int) to keep its width in the instance:\n{widened}"
-    );
+    for (arg, param) in [
+        (
+            "cpl::Grid<uint16_t, 2> g;",
+            "(const cpl::Grid<uint16_t, 2>& g_2)",
+        ),
+        (
+            "std::vector<std::vector<uint16_t>> mat;",
+            "(const std::vector<uint16_t>& row)",
+        ),
+        (
+            "std::vector<std::tuple<uint16_t, int8_t>> pts;",
+            "(const std::vector<std::tuple<uint16_t, int8_t>>& pts_2)",
+        ),
+    ] {
+        assert!(
+            widened.contains(arg) && widened.contains(param),
+            "expected a plain param to take the layout of `{arg}`:\n{widened}"
+        );
+    }
 }
 
 #[test]
@@ -494,6 +499,52 @@ print(adj[V.first!].len, given[0].s)
     );
     assert!(
         out.contains("std::vector<std::tuple<int, int, uint16_t, uint16_t, bool>> given;"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_ranged_map_stays_narrow_through_params_arrays_swaps_and_literals() {
+    let out = cpp("type R = 0..=9
+type Key = -1e9..=1e9
+let (n, m): (1..=10, 2..=200_000) = read()
+var top = Map<Key, R>()
+var reach: [0..n]HashMap<Int, 1..=m> = []
+fn bump(mut t: Map<Key, R>, k: Key):
+    t[k] = 3
+fn f(v: Int):
+    var here: HashMap<Int, 1..=m> = [v: 1]
+    var there: HashMap<Int, 1..=m> = []
+    swap(mut there, mut reach[v])
+    for (far, hops) in there: here[far] min= hops
+    swap(mut reach[v], mut here)
+bump(mut top, -5)
+for v in 0..n: f(v)
+print(top.len, reach[0].len)
+");
+    for want in [
+        "cpl::HashMap<int32_t, uint8_t, cpl::CpHash> top;",
+        "bump(cpl::HashMap<int32_t, uint8_t, cpl::CpHash>& t,",
+        "std::vector<cpl::HashMap<ll, uint32_t, cpl::CpHash>> reach;",
+        "cpl::HashMap<ll, uint32_t, cpl::CpHash> here",
+        "cpl::HashMap<ll, uint32_t, cpl::CpHash> there",
+    ] {
+        assert!(out.contains(want), "expected `{want}`:\n{out}");
+    }
+    assert!(!out.contains("HashMap<ll, ll"), "{out}");
+}
+
+#[test]
+fn a_ranged_map_widens_when_it_meets_a_plain_one() {
+    let out = cpp("type R = 0..=9
+fn fill(mut t: HashMap<Int, Int>):
+    t[1] = 1_000_000_000_000
+var a: HashMap<Int, R> = []
+fill(mut a)
+print(a.len)
+");
+    assert!(
+        out.contains("cpl::HashMap<ll, ll, cpl::CpHash> a;"),
         "{out}"
     );
 }

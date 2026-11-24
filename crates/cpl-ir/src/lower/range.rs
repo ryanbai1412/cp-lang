@@ -231,6 +231,9 @@ impl RangeInfo {
                     .any(|f| matches!(f, FieldLayout::Int(_)))
                     .then_some(NarrowLayout::Tuple(fields))
             }
+            (RangeInfo::Map(..), Ty::Map(..) | Ty::HashMap(..)) => {
+                Some(NarrowLayout::Seq(Box::new(self.narrow_elem_layout(ty)?)))
+            }
             (
                 RangeInfo::Elem(_),
                 Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _),
@@ -342,7 +345,12 @@ fn is_minus_one_of(hi_expr: &Expr, divisor: &Expr) -> bool {
 pub(super) fn is_narrowable_elem_ty(ty: &Ty) -> bool {
     matches!(
         ty,
-        Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _)
+        Ty::Array { .. }
+            | Ty::List(_)
+            | Ty::ListView(_, _)
+            | Ty::Keyed(_, _)
+            | Ty::Map(..)
+            | Ty::HashMap(..)
     )
 }
 

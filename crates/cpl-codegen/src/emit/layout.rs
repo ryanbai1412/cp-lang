@@ -137,6 +137,11 @@ impl<'p> Emitter<'p> {
 
     pub fn ty_for_loc(&self, ty: &Ty, loc: cpl_ir::ElemLoc) -> String {
         if let Some(k) = self.fixed_array_len(loc) {
+            if let (Ty::Array { elem, .. }, Some(l)) = (ty, self.elem_layout(loc)) {
+                if let Some(cell) = self.narrow_cell(l, elem) {
+                    return format!("std::array<{cell}, {k}>");
+                }
+            }
             return self.fixed_array_cpp(ty, k);
         }
         let cpp = self.ty_with_elem_layout(ty, self.elem_layout(loc));
@@ -170,7 +175,7 @@ impl<'p> Emitter<'p> {
             }
             match ty {
                 Ty::Array { dims, elem } => {
-                    if let Some(cell) = self.layout_cell(l, elem) {
+                    if let Some(cell) = self.narrow_cell(l, elem) {
                         return if let Some(k) = self.ty_fixed_len(ty) {
                             format!("std::array<{cell}, {k}>")
                         } else if dims.len() == 1 {
@@ -181,22 +186,22 @@ impl<'p> Emitter<'p> {
                     }
                 }
                 Ty::List(elem) => {
-                    if let Some(cell) = self.layout_cell(l, elem) {
+                    if let Some(cell) = self.narrow_cell(l, elem) {
                         return format!("std::vector<{cell}>");
                     }
                 }
                 Ty::ListView(elem, _) => {
-                    if let Some(cell) = self.layout_cell(l, elem) {
+                    if let Some(cell) = self.narrow_cell(l, elem) {
                         return format!("cpl::ListView<{cell}>");
                     }
                 }
                 Ty::Keyed(elem, _) => {
-                    if let Some(cell) = self.layout_cell(l, elem) {
+                    if let Some(cell) = self.narrow_cell(l, elem) {
                         return format!("cpl::Keyed<{cell}>");
                     }
                 }
                 Ty::MutView(elem, _) => {
-                    if let Some(cell) = self.layout_cell(l, elem) {
+                    if let Some(cell) = self.narrow_cell(l, elem) {
                         return format!("cpl::MutView<{cell}>");
                     }
                 }
@@ -220,6 +225,22 @@ impl<'p> Emitter<'p> {
             }
         }
         self.ty(ty)
+    }
+
+    /// The C++ cell of a sequence with layout `l` holding `elem`s; a narrow map cell is a map type.
+    pub(crate) fn narrow_cell(&self, l: &cpl_ir::NarrowLayout, elem: &Ty) -> Option<String> {
+        match l {
+            cpl_ir::NarrowLayout::Seq(inner)
+                if matches!(
+                    elem,
+                    Ty::Map(..) | Ty::HashMap(..) | Ty::Array { .. } | Ty::List(_)
+                ) && self.layout_cell(l, elem).is_none() =>
+            {
+                let cell = self.ty_with_elem_layout(elem, Some(inner));
+                (cell != self.ty(elem)).then_some(cell)
+            }
+            _ => self.layout_cell(l, elem),
+        }
     }
 
     /// The niche field `idx` of struct `sid` is held in when it is a narrowed `?Int` or `??Int`.

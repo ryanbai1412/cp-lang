@@ -72,6 +72,7 @@ CASES = {
     "filter_comp": lambda: ints(4_000_000),  # [.. for x in a if ..] keeping half, then 1 in 1000
     "sort_field": lambda: "",  # sort(by: e => es[e].w) 250k edges, as std kruskal does
     "hash_counter_narrow": lambda: "3375000\n",
+    "hash_array_param": lambda: "1000000\n",  # 4 ranged maps in an array, filled through `mut`
     "sieve": lambda: "10000000\n",  # primality only: no smallest-factor table
     "enum_grid": lambda: "4000\n",  # 16e6 cells: 16 MB at a byte, 64 MB at four
     "max_k": lambda: ints(500_000),  # the 30 largest of 5e5: O(k) beside the array (cf2165c)

@@ -52,8 +52,9 @@ const RANGED_OPS: [(&str, &str, &str); 8] = [
     ("min", "200", "50"),
 ];
 
-/// A map place whose values are `R`, local and as a (narrow) field.
-const RANGED_PLACES: [(&str, &str, &str, &str); 4] = [
+/// A map place whose values are `R`: local, a (narrow) field and an array
+/// element.
+const RANGED_PLACES: [(&str, &str, &str, &str); 5] = [
     (
         "ranged map",
         "",
@@ -77,6 +78,12 @@ const RANGED_PLACES: [(&str, &str, &str, &str); 4] = [
         "",
         "var q{id} = Q([], [])\n    q{id}.h[0] = {s}",
         "q{id}.h[0]",
+    ),
+    (
+        "narrow hash array",
+        "",
+        "var a{id}: [2]HashMap<Int, R> = HashMap()\n    a{id}[1][0] = {s}",
+        "a{id}[1][0]",
     ),
 ];
 
@@ -233,8 +240,9 @@ fn every_int_op_through_every_place_traps_in_interp_and_native() {
 }
 
 /// `min=`, `max=`, `+=` and `*=` on an absent key start it the same way
-/// whatever the value's range, and a start outside the range traps, in the
-/// interpreter and in the native `-DLOCAL` build alike.
+/// whatever the value's range, also through a `mut` param and in an array
+/// element, and a start outside the range traps, in the interpreter and in
+/// the native `-DLOCAL` build alike.
 #[test]
 fn an_absent_key_folds_the_same_whatever_the_value_range() {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("overflow-absent");
@@ -244,11 +252,16 @@ fn an_absent_key_folds_the_same_whatever_the_value_range() {
         let program = format!(
             "let case: Int = read()\nlet v: Int = read()\ntype R = 100..=1000\n\
              struct Q:\n    var h: HashMap<Int, {value}>\n\
+             fn put(mut t: HashMap<Int, {value}>, k: Int, x: Int): t[k] max= x\n\
              var m: Map<Int, {value}> = Map()\nvar h: HashMap<Int, {value}> = HashMap()\nvar q = Q([])\n\
+             var a: [2]HashMap<Int, {value}> = HashMap()\n\
              if case == 0:\n    m[1] min= v\n    h[1] max= v\n    q.h[1] min= v\n    m[2] += v\n    h[2] *= v\n    q.h[2] max= v\n\
-             \x20   print(m[1], h[1], q.h[1], m[2], h[2], q.h[2])\n\
+             \x20   put(mut h, 3, v)\n    a[1][1] min= v\n\
+             \x20   print(m[1], h[1], q.h[1], m[2], h[2], q.h[2], h[3], a[1][1])\n\
              if case == 1: m[1] min= v * 2000\n\
-             if case == 2: q.h[1] max= v * 2000\n"
+             if case == 2: q.h[1] max= v * 2000\n\
+             if case == 3: put(mut a[0], 2, v * 2000)\n\
+             if case == 4: a[1][1] += v * 2000\n"
         );
         let path = dir.join(format!("absent{k}.cp"));
         std::fs::write(&path, &program).unwrap();
@@ -256,7 +269,7 @@ fn an_absent_key_folds_the_same_whatever_the_value_range() {
         let built = cpl_cli::run(&["build", &path, "-o", "-"]);
         assert_eq!(built.code, 0, "{}", built.stderr);
         let binary = native(&built.stdout, &dir, k);
-        for (case, ranged_traps) in [(0, false), (1, true), (2, true)] {
+        for (case, ranged_traps) in [(0, false), (1, true), (2, true), (3, true), (4, true)] {
             let input = format!("{case} 500\n");
             let traps = ranged_traps && value == "R";
             let interp = cpl_cli::run_with_input(&["run", &path], input.as_bytes());
@@ -274,7 +287,7 @@ fn an_absent_key_folds_the_same_whatever_the_value_range() {
                 .unwrap();
             let ran = child.wait_with_output().unwrap();
             let want = if case == 0 {
-                "500 500 500 500 500 500\n"
+                "500 500 500 500 500 500 500 500\n"
             } else {
                 ""
             };

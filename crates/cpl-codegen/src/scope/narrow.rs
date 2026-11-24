@@ -23,6 +23,7 @@ pub(crate) fn is_fresh_list(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Fill(..) => true,
         ExprKind::Tuple(_) if matches!(e.ty, Ty::List(_)) => true,
+        ExprKind::Tuple(items) if items.is_empty() && is_map(&e.ty) => true,
         ExprKind::Builtin(Builtin::ListFilled, _) => true,
         ExprKind::Read(spec) if matches!(spec.as_ref(), cpl_ir::Spec::Array { .. }) => true,
         _ => false,
@@ -77,7 +78,27 @@ pub(super) fn is_narrowable_seq(ty: &Ty) -> bool {
     matches!(
         ty,
         Ty::Array { .. } | Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)
-    )
+    ) || is_map(ty)
+}
+
+fn is_map(ty: &Ty) -> bool {
+    matches!(ty, Ty::Map(..) | Ty::HashMap(..))
+}
+
+/// `[k: v]` builds its map in a temp, `do { let t = []; t[k] = v; give t }`: the
+/// temp is the map it gives.
+fn map_lit_temp(e: &Expr) -> Option<cpl_ir::Slot> {
+    let ExprKind::Do(blk) = &e.kind else {
+        return None;
+    };
+    match (blk.stmts.first(), blk.stmts.last()) {
+        (Some(Stmt::Let(t, Some(v))), Some(Stmt::Give(g)))
+            if is_map(&e.ty) && v.kind == ExprKind::Tuple(Vec::new()) =>
+        {
+            matches!(g.kind, ExprKind::Local(s) if s == *t).then_some(*t)
+        }
+        _ => None,
+    }
 }
 
 pub(super) fn peel_layout(
@@ -165,6 +186,10 @@ pub(crate) fn narrow_elems(
             }
         });
         each_write(body, &mut |how, place| {
+            // Taking a value out leaves it empty, which every layout holds.
+            if let Write::Mutate(Mutation::Take) = how {
+                return;
+            }
             if let Write::Mutate(_) | Write::Sort = how {
                 stored.extend(place_loc(scope, place));
             }
@@ -191,8 +216,12 @@ pub(crate) fn narrow_elems(
                         && !stored.contains(&dst)
                         && !narrow.contains_key(&dst)
                     {
-                        if let Some(w) = expr_loc(scope, val).and_then(|l| narrow.get(&l)).cloned()
-                        {
+                        let taken = match &val.kind {
+                            ExprKind::Mutate(Mutation::Take, place, _) => place_root(scope, place)
+                                .and_then(|(l, d)| peel_layout(narrow.get(&l), d)),
+                            _ => expr_loc(scope, val).and_then(|l| narrow.get(&l)),
+                        };
+                        if let Some(w) = taken.cloned() {
                             narrow.insert(dst, w);
                             grew = true;
                         }
@@ -211,12 +240,16 @@ pub(crate) fn narrow_elems(
                         continue;
                     }
                     let p = ElemLoc::Local(ScopeId::Fn(fid), i);
-                    let layout = match arg {
+                    let root = match arg {
                         // A recursive fn forwarding its own param agrees with every other call.
                         Arg::Value(v) if expr_loc(scope, v) == Some(p) => continue,
-                        Arg::Value(v) => expr_loc(scope, v).and_then(|l| narrow.get(&l)).cloned(),
-                        Arg::Mut(_) => None,
+                        Arg::Mut(q) if place_loc(scope, q) == Some(p) => continue,
+                        Arg::Value(v) => expr_root(scope, v),
+                        Arg::Mut(q) => place_root(scope, q),
                     };
+                    let layout = root
+                        .and_then(|(l, d)| peel_layout(narrow.get(&l), d))
+                        .cloned();
                     match passed.get(&p) {
                         Some(seen) if *seen != layout => {
                             passed.insert(p, None);
@@ -268,6 +301,7 @@ pub(crate) fn narrow_elems(
                 _ => None,
             },
             ExprKind::Call(fid, _) => Some(ElemLoc::FnRet(*fid)),
+            ExprKind::Mutate(Mutation::Take, place, _) => place_loc(scope, place),
             ExprKind::Builtin(
                 Builtin::ListSlice
                 | Builtin::KeySlice
@@ -328,6 +362,20 @@ pub(crate) fn narrow_elems(
             narrow.remove(&ElemLoc::Local(ScopeId::Fn(fid), i));
         }
     }
+    for &(scope, body) in &scopes {
+        crate::walk::deep_stmts(body, &mut |stmt| {
+            let (dst, val) = match stmt {
+                Stmt::Let(slot, Some(val)) => (Some(ElemLoc::Local(scope, *slot)), val),
+                Stmt::Assign(place, cpl_ir::AssignOp::Set, val) => (place_loc(scope, place), val),
+                _ => return,
+            };
+            if let (Some(l), Some(t)) =
+                (dst.and_then(|d| narrow.get(&d)).cloned(), map_lit_temp(val))
+            {
+                narrow.entry(ElemLoc::Local(scope, t)).or_insert(l);
+            }
+        });
+    }
     if narrow.is_empty() {
         return narrow;
     }
@@ -374,6 +422,7 @@ pub(crate) fn narrow_elems(
                 _ => None,
             },
             ExprKind::Call(fid, _) => Some((ElemLoc::FnRet(*fid), 0)),
+            ExprKind::Mutate(Mutation::Take, place, _) => place_root(scope, place),
             ExprKind::Index(base, _) => {
                 let (loc, d) = expr_root(scope, base)?;
                 Some((loc, d + 1))
@@ -500,6 +549,19 @@ pub(crate) fn narrow_elems(
         changed: &mut bool,
     ) {
         match &e.kind {
+            // A map method converts each entry it reads or writes.
+            ExprKind::Builtin(_, args) if args.first().is_some_and(|a| is_map(&a.ty)) => {
+                check_nested_base(program, scope, &args[0], narrow, changed);
+                for a in &args[1..] {
+                    check_val(program, scope, a, narrow, changed);
+                }
+            }
+            ExprKind::Mutate(_, place, args) if is_map(&place.ty) => {
+                check_place_nested(program, scope, place, narrow, changed);
+                for a in args {
+                    check_val(program, scope, a, narrow, changed);
+                }
+            }
             ExprKind::Index(base, indices) if is_narrowable_seq(&base.ty) => {
                 // Element read on a narrowed sequence is safe (leaf Int/Tuple widens on read;
                 // nested sequence stays narrow only if its consumer is also compatible).
@@ -1066,116 +1128,5 @@ pub(crate) fn narrow_elems(
             break;
         }
     }
-    keep_map_fields(program, &mut narrow);
     narrow
-}
-
-/// A map field keeps narrow entries only when it starts as a fresh empty map and every read goes
-/// through an index or a map method, which convert each entry; any other flow keeps it wide.
-fn keep_map_fields(
-    program: &Program,
-    narrow: &mut BTreeMap<cpl_ir::ElemLoc, cpl_ir::NarrowLayout>,
-) {
-    use cpl_ir::{Arg, ElemLoc, NarrowLayout};
-    narrow
-        .retain(|loc, l| !matches!(l, NarrowLayout::Map(..)) || matches!(loc, ElemLoc::Field(..)));
-    if !narrow.values().any(|l| matches!(l, NarrowLayout::Map(..))) {
-        return;
-    }
-    fn field_of(e: &Expr) -> Option<(usize, usize)> {
-        match (&e.kind, matches!(e.ty, Ty::Map(..) | Ty::HashMap(..))) {
-            (ExprKind::Field(base, f), true) => match base.ty {
-                Ty::Struct(s) => Some((s, *f)),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-    fn place_field(p: &Place) -> Option<(usize, usize)> {
-        match &p.kind {
-            PlaceKind::Field(base, f) => match base.ty {
-                Ty::Struct(s) => Some((s, *f)),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-    let empty = |e: &Expr| {
-        matches!(&e.kind, ExprKind::Tuple(items) if items.is_empty())
-            && matches!(e.ty, Ty::Map(..) | Ty::HashMap(..))
-    };
-    let mut wide = BTreeSet::new();
-    let mut copies: Vec<((usize, usize), (usize, usize))> = Vec::new();
-    let bodies = [&program.setup, &program.main]
-        .into_iter()
-        .chain(program.fns.iter().map(|f| &f.body))
-        .chain(program.closures.iter().map(|c| &c.body));
-    for body in bodies {
-        crate::walk::deep_stmts(body, &mut |stmt| match stmt {
-            Stmt::Let(_, Some(v)) | Stmt::Return(Some(v)) | Stmt::Give(v) => {
-                wide.extend(field_of(v))
-            }
-            Stmt::Assign(place, op, v) => match (place_field(place), op) {
-                (Some(_), cpl_ir::AssignOp::Set) if empty(v) => {}
-                (Some(dst), cpl_ir::AssignOp::Set) if field_of(v).is_some() => {
-                    copies.extend(field_of(v).map(|src| (dst, src)));
-                }
-                (dst, _) => {
-                    wide.extend(field_of(v));
-                    wide.extend(dst);
-                }
-            },
-            _ => {}
-        });
-        crate::walk::deep_exprs(body, &mut |e| {
-            match &e.kind {
-                ExprKind::Tuple(items) if let Ty::Struct(s) = e.ty => {
-                    for (f, item) in items.iter().enumerate() {
-                        if !empty(item) {
-                            wide.insert((s, f));
-                        }
-                    }
-                }
-                ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                    for arg in args {
-                        if let Arg::Mut(p) = arg {
-                            wide.extend(place_field(p));
-                        }
-                    }
-                }
-                _ => {}
-            }
-            let through = matches!(e.kind, ExprKind::Index(..) | ExprKind::Builtin(..));
-            let mut first = true;
-            crate::walk::children(e, &mut |c| {
-                if !(first && through) {
-                    wide.extend(field_of(c));
-                }
-                first = false;
-            });
-        });
-    }
-    // `a.m = b.m` keeps both narrow only when they hold the same layout.
-    let layout = |n: &BTreeMap<ElemLoc, NarrowLayout>, (s, f): (usize, usize)| {
-        n.get(&ElemLoc::Field(s, f)).cloned()
-    };
-    loop {
-        let before = wide.len();
-        for &(dst, src) in &copies {
-            if wide.contains(&dst)
-                || wide.contains(&src)
-                || layout(narrow, dst) != layout(narrow, src)
-            {
-                wide.insert(dst);
-                wide.insert(src);
-            }
-        }
-        if wide.len() == before {
-            break;
-        }
-    }
-    narrow.retain(|loc, l| match (loc, l) {
-        (ElemLoc::Field(s, f), NarrowLayout::Map(..)) => !wide.contains(&(*s, *f)),
-        _ => true,
-    });
 }
