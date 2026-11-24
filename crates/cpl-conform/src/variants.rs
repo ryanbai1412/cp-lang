@@ -27,8 +27,45 @@ fn ident_at(s: &str) -> Option<&str> {
     (!name.is_empty() && !name.starts_with(|c: char| c.is_ascii_digit())).then_some(name)
 }
 
-/// Every probe for `text`, in program order.
+/// How a probe prints a var, `{}` standing for it: the first form that checks.
+/// `Bool` and `?T` are not `Show`, so their state prints through `yes` and `??`.
+const SHOWN: [&str; 7] = [
+    "{}",
+    "yes({})",
+    "[yes(cpl_x) for cpl_x in {}]",
+    "[cpl_x ?? -1 for cpl_x in {}]",
+    "[yes(cpl_x.is_some_and(_ => true)) for cpl_x in {}]",
+    "yes({}.is_some_and(_ => true))",
+    "{}.len",
+];
+
+/// The top-level `var`s of `text`, in declaration order.
+fn top_vars(text: &str) -> Vec<String> {
+    let mut vars: Vec<String> = Vec::new();
+    for v in text
+        .lines()
+        .filter_map(|l| l.strip_prefix("var ").and_then(ident_at))
+    {
+        if !vars.iter().any(|x| x == v) {
+            vars.push(v.to_string());
+        }
+    }
+    vars
+}
+
+/// Every probe for `text`, in program order, printing each var as itself.
 pub fn probes(text: &str) -> Vec<Probe> {
+    probes_shown(text, &[])
+}
+
+/// Every probe for `text`, printing the `k`th var through `shown[k]` (itself when absent).
+fn probes_shown(text: &str, shown: &[&str]) -> Vec<Probe> {
+    let show = |k: usize, name: &str| {
+        format!(
+            "print({})",
+            shown.get(k).unwrap_or(&"{}").replace("{}", name)
+        )
+    };
     let lines: Vec<&str> = text.lines().collect();
     let top = |l: &str| !l.is_empty() && !l.starts_with([' ', '\t']) && !l.starts_with("//");
     let mut vars: Vec<String> = Vec::new();
@@ -42,9 +79,9 @@ pub fn probes(text: &str) -> Vec<Probe> {
             && !line.starts_with("else")
             && !line.starts_with("elif");
         if in_loop && resumes {
-            out.extend(vars.iter().map(|v| Probe {
+            out.extend(vars.iter().enumerate().map(|(k, v)| Probe {
                 at: Some(i),
-                lines: vec![format!("print({v})")],
+                lines: vec![show(k, v)],
             }));
         }
         in_loop = line.starts_with("for ") || line.starts_with("while ");
@@ -60,46 +97,46 @@ pub fn probes(text: &str) -> Vec<Probe> {
             lines: ls.to_vec(),
         };
         let p = format!("cpl_probe{k}");
-        out.push(end(&[format!("print({v})")]));
+        out.push(end(&[show(k, v)]));
         // Plain values: a write through `mut`, a capture, a place, a copy.
         out.push(end(&[
             format!("fn {p}_bump(mut x: Int): x += 1"),
             format!("{p}_bump(mut {v})"),
-            format!("print({v})"),
+            show(k, v),
         ]));
         out.push(end(&[
             format!("let {p}_inc = () => {v} += 2"),
             format!("{p}_inc()"),
             format!("{p}_inc()"),
-            format!("print({v})"),
+            show(k, v),
         ]));
         out.push(end(&[
             format!("let {p}_place = mut {v}"),
             format!("{p}_place += 5"),
-            format!("print({v})"),
+            show(k, v),
         ]));
         out.push(end(&[
             format!("var {p}_copy = {v}"),
             format!("{p}_copy += 3"),
-            format!("print({v})"),
-            format!("print({p}_copy)"),
+            show(k, v),
+            show(k, &format!("{p}_copy")),
         ]));
         // Sequences: the same writes as an in-place reverse.
         out.push(end(&[
             format!("fn {p}_rev<S: IndexedMut>(mut xs: S): xs.reverse()"),
             format!("{p}_rev(mut {v})"),
-            format!("print({v})"),
+            show(k, v),
         ]));
         out.push(end(&[
             format!("let {p}_flip = () => {v}.reverse()"),
             format!("{p}_flip()"),
-            format!("print({v})"),
+            show(k, v),
         ]));
         out.push(end(&[
             format!("var {p}_dup = {v}.clone()"),
             format!("{p}_dup.reverse()"),
-            format!("print({v})"),
-            format!("print({p}_dup)"),
+            show(k, v),
+            show(k, &format!("{p}_dup")),
         ]));
         // Containers: clearing a copy leaves the original's size.
         out.push(end(&[
@@ -177,7 +214,18 @@ fn error_lines(db: &mut Database, path: &str, text: &str) -> Option<Vec<usize>> 
 /// The variant of `text` with every probe that checks, and how many probes it kept;
 /// `None` when no probe survives.
 pub fn build(db: &mut Database, path: &str, text: &str) -> Option<(String, usize)> {
-    let probes = probes(text);
+    let sep = if text.ends_with('\n') { "" } else { "\n" };
+    let shown: Vec<&str> = top_vars(text)
+        .iter()
+        .map(|v| {
+            let checks = |s: &&str| {
+                let print = format!("{text}{sep}print({})\n", s.replace("{}", v));
+                error_lines(db, path, &print).is_none()
+            };
+            SHOWN.iter().copied().find(checks).unwrap_or("{}")
+        })
+        .collect();
+    let probes = probes_shown(text, &shown);
     let mut keep = vec![true; probes.len()];
     // Drop the probes the errors point at; one pass per layer of errors.
     for _ in 0..8 {
