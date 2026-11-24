@@ -287,3 +287,35 @@ impl super::Uses {
         !Runs::of_expr(e).opaque() && !stores.calls.iter().any(writes) && !stored.contains(&root.1)
     }
 }
+
+/// What evaluating an expression touches ([`cpl_ir::effects::Access`]), to
+/// tell when the order two pieces of code run in can be seen.
+pub(crate) type Touch = cpl_ir::effects::Access;
+
+impl crate::emit::Emitter<'_> {
+    /// What evaluating `e` reads, writes and prints.
+    pub fn touch(&self, e: &Expr) -> Touch {
+        let target = |home, callee: &Expr| self.skippable_target(home, callee);
+        let table = &self.uses.table;
+        table.access(self.program, self.touch_home(), &target, e)
+    }
+
+    /// What running `block` reads, writes and prints.
+    pub(crate) fn block_touch(&self, block: &Block) -> Touch {
+        let target = |home, callee: &Expr| self.skippable_target(home, callee);
+        let table = &self.uses.table;
+        table.block_access(self.program, self.touch_home(), &target, block)
+    }
+
+    fn touch_home(&self) -> Option<cpl_ir::FnId> {
+        self.closure_id.map_or(self.fn_id, |_| None)
+    }
+
+    /// The closure a fn value is, when it is one and calling it can be
+    /// seen through.
+    fn skippable_target(&self, home: Option<cpl_ir::FnId>, callee: &Expr) -> Option<usize> {
+        crate::devirt::skippable(callee)
+            .then(|| self.devirt.target(home, callee))
+            .flatten()
+    }
+}

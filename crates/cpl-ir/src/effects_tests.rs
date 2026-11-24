@@ -74,3 +74,19 @@ fn a_closure_has_the_effects_of_its_body() {
         .expect("the closure reads `total`");
     assert!(reads_global.writes.is_empty() && !reads_global.io);
 }
+
+#[test]
+fn a_block_touches_what_its_calls_touch_and_an_unseen_fn_value_is_opaque() {
+    let (program, table) = table(SOURCE, true);
+    let body = |name: &str| {
+        let f = program.fns.iter().position(|f| f.name == name).expect(name);
+        table.block_access(&program, Some(f), &|_, _| None, &program.fns[f].body)
+    };
+    let twice = body("add_twice");
+    assert!(twice.writes.iter().any(|&(global, _)| global), "{twice:?}");
+    assert!(!twice.io && !twice.opaque, "{twice:?}");
+    assert!(body("show").io);
+    let apply = body("apply");
+    assert!(apply.opaque && apply.conflicts(&twice), "{apply:?}");
+    assert!(!body("double").conflicts(&twice));
+}

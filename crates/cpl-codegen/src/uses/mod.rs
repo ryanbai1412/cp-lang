@@ -51,7 +51,7 @@ pub(crate) const KEPT: &str = "a closure that may be kept captures it";
 #[derive(Default)]
 pub(crate) struct Uses {
     bindings: BTreeMap<(Home, usize), Use>,
-    effects: Vec<Effects>,
+    pub(crate) table: cpl_ir::effects::Table,
     /// The `let`s that read their source for the last time, so may move
     /// it: those a statement runs once at its source's last read
     /// ([`dying_lets`]), and those of fns that read a global for the last
@@ -63,12 +63,9 @@ impl Uses {
     pub(crate) fn of(program: &Program, devirt: &crate::devirt::Devirt, traps: bool) -> Uses {
         let target = |home: Option<FnId>, callee: &Expr| devirt.target(home, callee);
         let table = cpl_ir::effects::Table::with_targets(program, traps, &target);
-        let effects = (0..program.fns.len())
-            .map(|f| table.effects(f).clone())
-            .collect();
         let mut uses = Uses {
             bindings: BTreeMap::new(),
-            effects,
+            table,
             dying: dying_global_lets(program),
         };
         let bodies = [&program.setup, &program.main]
@@ -187,7 +184,7 @@ impl Uses {
 
     /// What calling fn `f` can do.
     pub(crate) fn effects(&self, f: FnId) -> &Effects {
-        &self.effects[f]
+        self.table.effects(f)
     }
 }
 

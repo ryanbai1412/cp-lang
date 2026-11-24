@@ -60,44 +60,7 @@ impl Code {
     }
 }
 
-/// What evaluating an expression touches, to tell when the order two
-/// operands run in can be seen.
-#[derive(Default, Debug)]
-pub(crate) struct Touch {
-    /// Reads input or writes output.
-    pub io: bool,
-    /// Calls a fn value it can't see into, which may read or write
-    /// anything it captured.
-    pub opaque: bool,
-    pub reads: BTreeSet<(bool, usize)>,
-    pub writes: BTreeSet<(bool, usize)>,
-    pub reads_domain: BTreeSet<usize>,
-    pub writes_domain: BTreeSet<usize>,
-}
-
-impl Touch {
-    /// True when running `self` before `later` can differ from after.
-    pub fn conflicts(&self, later: &Touch) -> bool {
-        let effects =
-            |t: &Touch| t.io || t.opaque || !t.writes.is_empty() || !t.writes_domain.is_empty();
-        (self.io && later.io)
-            || (self.opaque && effects(later))
-            || (later.opaque && effects(self))
-            || self
-                .writes
-                .iter()
-                .any(|v| later.reads.contains(v) || later.writes.contains(v))
-            || later.writes.iter().any(|v| self.reads.contains(v))
-            || self
-                .writes_domain
-                .iter()
-                .any(|d| later.reads_domain.contains(d) || later.writes_domain.contains(d))
-            || later
-                .writes_domain
-                .iter()
-                .any(|d| self.reads_domain.contains(d))
-    }
-}
+pub(crate) use crate::uses::effects::Touch;
 
 pub(crate) use cpl_ir::pushed::FnSummary;
 

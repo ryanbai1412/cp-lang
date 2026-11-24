@@ -3,7 +3,7 @@
 //! majorizes: taken only when the two loops' effects cannot be told apart
 //! from running them one after the other.
 
-use crate::emit::{Emitter, Touch};
+use crate::emit::Emitter;
 use crate::uses::effects::{trap_free_block, writes_own};
 use crate::walk;
 use cpl_ir::{Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, Stmt, Ty};
@@ -53,58 +53,6 @@ impl<'p> Emitter<'p> {
         self.indent -= 1;
         self.line(out, "}");
         true
-    }
-
-    fn merge_touch(&self, t: &mut Touch, e: &Expr) {
-        let et = self.touch(e);
-        t.reads.extend(et.reads);
-        t.writes.extend(et.writes);
-        t.reads_domain.extend(et.reads_domain);
-        t.writes_domain.extend(et.writes_domain);
-        t.io |= et.io;
-    }
-
-    pub(crate) fn block_touch(&self, block: &Block) -> Touch {
-        let mut t = Touch::default();
-        walk::deep_stmts(block, &mut |stmt| match stmt {
-            Stmt::Let(slot, init) => {
-                t.writes.insert((false, *slot));
-                if let Some(e) = init {
-                    self.merge_touch(&mut t, e);
-                }
-            }
-            Stmt::Assign(place, _, val) => {
-                t.writes.insert(walk::root(place));
-                walk::place_exprs(place, &mut |e| self.merge_touch(&mut t, e));
-                self.merge_touch(&mut t, val);
-            }
-            Stmt::Expr(e) | Stmt::Give(e) => self.merge_touch(&mut t, e),
-            Stmt::Return(Some(e)) => self.merge_touch(&mut t, e),
-            Stmt::If(c, ..) | Stmt::While(_, c, _) => self.merge_touch(&mut t, c),
-            Stmt::For(_, s, it, _) => {
-                t.writes.insert((false, *s));
-                iter_exprs(it, &mut |e| self.merge_touch(&mut t, e));
-            }
-            Stmt::DefDomain { id, lo, len } => {
-                t.writes_domain.insert(*id);
-                self.merge_touch(&mut t, lo);
-                self.merge_touch(&mut t, len);
-            }
-            Stmt::DefDomainFromVal { id, val } => {
-                t.writes_domain.insert(*id);
-                self.merge_touch(&mut t, val);
-            }
-            Stmt::Assert { cond, message, .. } => {
-                t.io = true;
-                self.merge_touch(&mut t, cond);
-                if let Some(m) = message {
-                    self.merge_touch(&mut t, m);
-                }
-            }
-            Stmt::Trap(..) => t.io = true,
-            Stmt::Return(None) | Stmt::Break(_) | Stmt::Continue(_) => {}
-        });
-        t
     }
 
     #[allow(clippy::too_many_arguments)]

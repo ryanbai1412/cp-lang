@@ -5,7 +5,7 @@
 use crate::pushed::{summarize, FnSummary};
 use crate::walk::{self, Effects as Stores};
 use crate::{
-    Arg, BinOp, Block, Cast, ClosureId, CmpOp, Dim, Expr, ExprKind, FnId, Iter, Mutation,
+    Arg, BinOp, Block, Builtin, Cast, ClosureId, CmpOp, Dim, Expr, ExprKind, FnId, Iter, Mutation,
     PlaceKind, Program, Stmt, Ty, UnOp,
 };
 use std::collections::BTreeSet;
@@ -333,3 +333,184 @@ pub fn known_where(e: &Expr, is_none: &dyn Fn(&Expr) -> bool) -> Option<bool> {
 #[cfg(test)]
 #[path = "effects_tests.rs"]
 mod tests;
+
+/// What running an expression or block may touch, through the fns it
+/// calls: the variables it reads and writes, by `(global, index)`, the
+/// domains it reads and sizes, and whether it does I/O or runs code that
+/// is not seen. Locals of the code itself count as written where bound.
+#[derive(Clone, Default, Debug, PartialEq)]
+pub struct Access {
+    /// Reads input, writes output, sizes a domain or may stop the run.
+    pub io: bool,
+    /// Calls a fn value it can't see into, which may read or write
+    /// anything it captured.
+    pub opaque: bool,
+    pub reads: BTreeSet<(bool, usize)>,
+    pub writes: BTreeSet<(bool, usize)>,
+    pub reads_domain: BTreeSet<usize>,
+    pub writes_domain: BTreeSet<usize>,
+}
+
+impl Access {
+    /// True when running `self` before `later` can differ from after.
+    pub fn conflicts(&self, later: &Access) -> bool {
+        let effects =
+            |t: &Access| t.io || t.opaque || !t.writes.is_empty() || !t.writes_domain.is_empty();
+        (self.io && later.io)
+            || (self.opaque && effects(later))
+            || (later.opaque && effects(self))
+            || self
+                .writes
+                .iter()
+                .any(|v| later.reads.contains(v) || later.writes.contains(v))
+            || later.writes.iter().any(|v| self.reads.contains(v))
+            || self
+                .writes_domain
+                .iter()
+                .any(|d| later.reads_domain.contains(d) || later.writes_domain.contains(d))
+            || later
+                .writes_domain
+                .iter()
+                .any(|d| self.reads_domain.contains(d))
+    }
+
+    /// Adds what `other` touches.
+    pub fn merge(&mut self, other: Access) {
+        self.io |= other.io;
+        self.opaque |= other.opaque;
+        self.reads.extend(other.reads);
+        self.writes.extend(other.writes);
+        self.reads_domain.extend(other.reads_domain);
+        self.writes_domain.extend(other.writes_domain);
+    }
+}
+
+impl Table {
+    /// What evaluating `e` in `home` touches. A fn value `target` names
+    /// as one closure that captures nothing, takes nothing `mut` and calls
+    /// no fn value counts as the globals that closure touches; any other
+    /// is opaque.
+    pub fn access(
+        &self,
+        program: &Program,
+        home: Option<FnId>,
+        target: Target,
+        e: &Expr,
+    ) -> Access {
+        let mut touch = Access::default();
+        let mut_args = |args: &[Arg], touch: &mut Access| {
+            for arg in args {
+                if let Arg::Mut(place) = arg {
+                    touch.writes.insert(walk::root(place));
+                }
+            }
+        };
+        walk::deep_expr(e, &mut |inner| match &inner.kind {
+            ExprKind::Local(slot) => {
+                touch.reads.insert((false, *slot));
+            }
+            ExprKind::Global(id) => {
+                touch.reads.insert((true, *id));
+            }
+            ExprKind::Read(_)
+            | ExprKind::Parse(..)
+            | ExprKind::Print(..)
+            | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => {
+                touch.io = true
+            }
+            ExprKind::DomainLen(d)
+            | ExprKind::DomainLo(d)
+            | ExprKind::Cast(Cast::Label(d) | Cast::FromLabel(d) | Cast::FromOrd(d), _) => {
+                touch.reads_domain.insert(*d);
+            }
+            ExprKind::CallExpr(callee, args) => {
+                match self.closure_access(program, target(home, callee)) {
+                    Some(t) => touch.merge(t),
+                    None => {
+                        touch.io = true;
+                        touch.opaque = true;
+                    }
+                }
+                mut_args(args, &mut touch);
+            }
+            ExprKind::Call(id, args) => {
+                let summary = &self.summaries[*id];
+                touch.io |= summary.io;
+                touch.reads.extend(summary.reads.iter().map(|g| (true, *g)));
+                touch
+                    .writes
+                    .extend(summary.writes.iter().map(|g| (true, *g)));
+                mut_args(args, &mut touch);
+            }
+            ExprKind::MutSlice(place, _, _)
+            | ExprKind::Mutate(_, place, _)
+            | ExprKind::Sort(place, _, _) => {
+                touch.writes.insert(walk::root(place));
+            }
+            ExprKind::Do(block) => walk::deep_stmts(block, &mut |stmt| match stmt {
+                Stmt::Assign(place, ..) => {
+                    touch.writes.insert(walk::root(place));
+                }
+                Stmt::Let(slot, _) | Stmt::For(_, slot, ..) => {
+                    touch.writes.insert((false, *slot));
+                }
+                Stmt::DefDomain { id, .. } => {
+                    touch.writes_domain.insert(*id);
+                    touch.io = true;
+                }
+                Stmt::Assert { .. } | Stmt::Trap(..) => touch.io = true,
+                _ => {}
+            }),
+            _ => {}
+        });
+        touch
+    }
+
+    /// What running `block` in `home` touches: [`Table::access`] of each
+    /// expression it runs, and the variables and domains it binds or sets.
+    pub fn block_access(
+        &self,
+        program: &Program,
+        home: Option<FnId>,
+        target: Target,
+        block: &Block,
+    ) -> Access {
+        let mut t = Access::default();
+        walk::deep_stmts(block, &mut |stmt| {
+            walk::stmt_exprs(stmt, &mut |e| {
+                t.merge(self.access(program, home, target, e))
+            });
+            match stmt {
+                Stmt::Let(slot, _) | Stmt::For(_, slot, ..) => {
+                    t.writes.insert((false, *slot));
+                }
+                Stmt::Assign(place, ..) => {
+                    t.writes.insert(walk::root(place));
+                }
+                Stmt::DefDomain { id, .. } | Stmt::DefDomainFromVal { id, .. } => {
+                    t.writes_domain.insert(*id);
+                }
+                Stmt::Assert { .. } | Stmt::Trap(..) => t.io = true,
+                _ => {}
+            }
+        });
+        t
+    }
+
+    /// The globals closure `cid` touches when called, when it captures
+    /// nothing, takes nothing `mut` and calls no fn value.
+    fn closure_access(&self, program: &Program, cid: Option<ClosureId>) -> Option<Access> {
+        let c = &program.closures[cid?];
+        let mut values = false;
+        walk::deep_exprs(&c.body, &mut |e| {
+            values |= matches!(e.kind, ExprKind::CallExpr(..))
+        });
+        if values || !c.captures.is_empty() || !c.muts.is_empty() {
+            return None;
+        }
+        let mut t = self.block_access(program, None, &|_, _| None, &c.body);
+        t.reads.retain(|&(global, _)| global);
+        t.writes.retain(|&(global, _)| global);
+        Some(t)
+    }
+}
