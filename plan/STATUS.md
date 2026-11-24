@@ -97,7 +97,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | blind_skill_eval | 20/20 pass, 12/20 first attempt (16/20 without compile fixes), 0 workarounds, 3 lint kept (research/skill-eval/v3/REPORT.md) | 20/20 first-attempt pass, 0 workarounds, 0 non-idiomatic lint flags; then 20/20 on an unseen set |
 | skill_check | ok on main, 50 files, 76 cp blocks verified | on main, in the fast gate, 0 drift, every cp block checks |
 | ports_check_v03 | 289/305 (corpus/sets/v03.txt has 308 entries; cf2066f checks but stays out for the stored-range P0) | 305/305 v0.3 re-ports (as spec.cp or migrated port.cp) |
-| dreams_check_v03 | 260/305 (2026-11-23, on 2f88f73a1) | tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md |
+| dreams_check_v03 | 265/305 (2026-11-23, on d605fcbce) | tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md |
 | ports_judge_proven | 275/305 tracked ports (277 entries in corpus/sets/v03.txt) pass every_v03_port_checks; 276 of the 277 were also validated against orig.cpp on samples and/or 30 generated cases (interactive ones through interactor.py); ucup5s02f has no statement, gen or tests yet | 305/305 tracked ports compile with every judge's flags and pass their tests under the profile |
 | corpus_suite | 99/100 pass (1 error: noi09p4, a product-domain graph gap in std.graph) (2026-11-23, on 2ee04a2ba) | 100/100 hill-climb spec.cp pass; untested 0 (every problem has tests) |
 | port_lint_warnings | 21 warnings over the 275 v0.3 ports after cpl lint --fix (L0414 13, L0101 4, L0203 3, L0412 1); 5 are false positives, filed with lint-fmt | 0 false positives on the re-ported corpus (lint-fmt's FP gate) |
@@ -316,8 +316,8 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 | complete | 32 | 22 | 4 | 6 | 0 | 0 | 4 |
 | play | 12 | 7 | 5 | 0 | 0 | 1 | 1 |
 | seq | 67 | 35 | 16 | 15 | 0 | 4 | 21 |
-| stress | 34 | 24 | 8 | 2 | 0 | 1 | 4 |
-| all | 145 | 88 | 33 | 23 | 0 | 6 | 30 |
+| stress | 34 | 24 | 9 | 1 | 0 | 1 | 4 |
+| all | 145 | 88 | 34 | 22 | 0 | 6 | 30 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3160 (1093 passing). Rules: 605.
+Cases: 3162 (1093 passing). Rules: 605.
 
 ## Summary per chapter
 
@@ -26,7 +26,7 @@ Cases: 3160 (1093 passing). Rules: 605.
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rbundle (bundle.md): 5 rules, 5 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rbundle (bundle.md): 5 rules, 7 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rjudge (judge-profiles.md): 8 rules, 11 cases; 0 uncovered, 4 happy-path only, 0 negative only
@@ -696,7 +696,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rbundle.2 [1+ 1-]: Stripped: tests, alts, generators, checkers, interactors, samples, `debug(...)`, `@local` ...
 - Rbundle.6 [1+ 0-]: Libraries are inlined from the content-addressed store by pin, so a rebuild is byte-identi...
 - Rbundle.3 [1+ 0-]: Size is checked against the profile; `--size` attributes bytes to header, runtime, types, ...
-- Rbundle.5 [1+ 0-]: `@cpp("...", includes:)` items and `extern fn` judge functions are emitted verbatim or as ...
+- Rbundle.5 [2+ 1-]: `@cpp("...", includes:)` items and `extern fn` judge functions are emitted verbatim or as ...
 
 ### Rcli: cli.md
 
@@ -808,7 +808,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0407 Duplicate enum variant tag: 1 case(s)
 - E0408 Assign into a range: 2 case(s)
 - E0409 Fn can end without a value: 2 case(s)
-- E0501 Unsupported construct in backend: 9 case(s)
+- E0501 Unsupported construct in backend: 10 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 11 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
