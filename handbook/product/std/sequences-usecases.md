@@ -74,9 +74,9 @@ Evidence: `(0.0..10.0).bsearch(..)` is E0302: a range's ends can't be `F64`.
 
 ### seq/U30: is it sorted, a permutation, a subsequence
 Need: check a precondition or the answer itself.
-Design: `a.is_sorted()`, `a.is_permutation()`, `a.is_subsequence(b)`.
-Milestone: M1-differentiating. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u30-is-sorted-perm-subseq.cp`; `[2, 0, 1].is_permutation()` is E0203: the std fn takes two sequences, not `self`.
+Design: `a.is_sorted()`, `a.is_permutation(b)` (same multiset; `p.is_permutation(p.keys)` for a permutation of its keys), `a.is_subsequence(b)`.
+Milestone: M1-differentiating. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u30-is-sorted-perm-subseq.cp`.
 
 ### seq/U31: compare two sequences
 Need: lexicographic comparison of answers, or the first position where two differ.
@@ -185,8 +185,8 @@ Evidence: program `spec/conformance/std-seq/seq-u37-suffix-folds.cp`; `suffix_fo
 ### seq/U38: fold of everything but one position
 Need: product of all others, or best excluding `i`.
 Design: `a.prefix_excl(op)`, or `pre[i.l]` combined with `suf[i.r]`.
-Milestone: M1-differentiating. Status: gap
-Evidence: `[2, 3, 4].prefix_excl(*)` is E0203: the std fn takes `op` first, not `self`.
+Milestone: M1-differentiating. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u38-prefix-excl-method.cp`; it still needs `use std.prefix.{prefix_excl}`.
 
 ### seq/U39: a scan of a scan
 Need: running max of two prefix sums.
@@ -335,8 +335,8 @@ Evidence: program `spec/conformance/std-seq/seq-u54-merge-sorted.cp`, which also
 ### seq/U55: union, intersection, difference of sorted lists
 Need: common elements of two sorted lists.
 Design: `a.sorted_union(b)`, `sorted_intersect`, `sorted_diff`.
-Milestone: M1-differentiating. Status: gap
-Evidence: E0203: the std fns take `(a, b)`, not `self`.
+Milestone: M1-differentiating. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u55-sorted-set-ops-methods.cp`.
 
 ## Building, combining and editing
 
@@ -438,7 +438,7 @@ Evidence: program `spec/conformance/std-seq/seq-u24-separator.cp`.
 Need: the call you know for arrays also works on a list, a slice, a `Str`, a range or a generator.
 Design: every sequence fn takes `self`, so `a.f(..)` works whatever `a` is.
 Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u25-one-api-every-shape.cp`; U30, U38 and U55 fail because the std fn has no `self`.
+Evidence: program `spec/conformance/std-seq/seq-u25-one-api-every-shape.cp`; U30, U38 and U55 now pass as methods.
 
 ### seq/U62: every call states cost, laziness and empty input
 Need: know before calling whether it is \(O(n)\), lazy, or traps on empty.

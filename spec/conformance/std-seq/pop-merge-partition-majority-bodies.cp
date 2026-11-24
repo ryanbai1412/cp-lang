@@ -9,7 +9,7 @@ var s = [1, 4, 5]
 print(yes(s.pop_while(x => x > 3) == [5, 4] and s == [1]))
 var t = [1, 5]
 print(yes(t.pop_if(x => x > 3) == Some(5)), yes(t.pop_if(x => x > 3) == None))
-print(yes(sorted_union([1, 3], [2, 3]) == [1, 2, 3]), yes(sorted_intersect([1, 2, 2, 3], [2, 2, 4]) == [2, 2]), yes(sorted_diff([1, 2, 2, 3], [2]) == [1, 2, 3]))
+print(yes([1, 3].sorted_union([2, 3]) == [1, 2, 3]), yes([1, 2, 2, 3].sorted_intersect([2, 2, 4]) == [2, 2]), yes([1, 2, 2, 3].sorted_diff([2]) == [1, 2, 3]))
 print(yes([5, 1, 4, 2].min_k(2).sorted() == [1, 2]), yes([5, 1, 4, 2].max_k(2).sorted() == [4, 5]), [5, 1].min_k(7).len)
 print(yes([1, 2, 1].min_count() == Some((val: 1, count: 2))), yes([3, 1, 3].max_count() == Some((val: 3, count: 2))))
 print(yes([2, 1, 2].majority() == Some((val: 2, count: 2))), yes([1, 2].majority() == None))

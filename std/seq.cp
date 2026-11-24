@@ -2110,57 +2110,57 @@ pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range
     let a = (lo..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
     D.cuts.nth(lo)..D.cuts.nth(a)
 
-/// \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory. Sorted deduplicated union of two sorted sequences.
+/// \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory. Sorted deduplicated union of two sorted sequences.
 ///
-/// cost: \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
 /// empty: the other input, deduplicated
 /// ties: one copy of each value
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
-/// example: `sorted_union([1, 3], [2, 3]) == [1, 2, 3]`
-pub fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
+/// example: `[1, 3].sorted_union([2, 3]) == [1, 2, 3]`
+pub fn sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
     var out: List<T> = []
     var (i, j) = (0, 0)
-    while i < a.len or j < b.len:
-        let x = if j == b.len or (i < a.len and a.nth(i) < b.nth(j)): a.nth(i) else: b.nth(j)
+    while i < self.len or j < b.len:
+        let x = if j == b.len or (i < self.len and self.nth(i) < b.nth(j)): self.nth(i) else: b.nth(j)
         if out.len == 0 or out.last! != x: out.push(x)
-        if i < a.len and a.nth(i) == x: i += 1
+        if i < self.len and self.nth(i) == x: i += 1
         else: j += 1
     out
 
 /// The values in both of two sorted sequences, merged in one pass.
 ///
-/// cost: \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
 /// empty: `[]`
-/// ties: each value kept min(count in `a`, count in `b`) times
+/// ties: each value kept min(count in `self`, count in `b`) times
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
-/// example: `sorted_intersect([1, 2, 2, 3], [2, 2, 4]) == [2, 2]`
-pub fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
+/// example: `[1, 2, 2, 3].sorted_intersect([2, 2, 4]) == [2, 2]`
+pub fn sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
     var out: List<T> = []
     var (i, j) = (0, 0)
-    while i < a.len and j < b.len:
-        if a.nth(i) < b.nth(j): i += 1
-        elif b.nth(j) < a.nth(i): j += 1
+    while i < self.len and j < b.len:
+        if self.nth(i) < b.nth(j): i += 1
+        elif b.nth(j) < self.nth(i): j += 1
         else:
-            out.push(a.nth(i))
+            out.push(self.nth(i))
             i += 1
             j += 1
     out
 
-/// \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory. Sorted elements in `a` not in `b`.
+/// \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory. Sorted elements in `self` not in `b`.
 ///
-/// cost: \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
-/// empty: `a`, copied, when `b` is empty
-/// ties: each value kept (count in `a` − count in `b`) times, at least 0
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
+/// empty: `self`, copied, when `b` is empty
+/// ties: each value kept (count in `self` − count in `b`) times, at least 0
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
-/// example: `sorted_diff([1, 2, 2, 3], [2]) == [1, 2, 3]`
-pub fn sorted_diff<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
+/// example: `[1, 2, 2, 3].sorted_diff([2]) == [1, 2, 3]`
+pub fn sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
     var out: List<T> = []
     var j = 0
-    for i in 0..a.len:
-        let x = a.nth(i)
+    for i in 0..self.len:
+        let x = self.nth(i)
         while j < b.len and b.nth(j) < x: j += 1
         if j < b.len and b.nth(j) == x: j += 1
         else: out.push(x)
@@ -2253,16 +2253,17 @@ pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K):
             self.swap_idx(i, j)
             pos.swap(i, j)
 
-/// \(O(n)\) expected, \(O(n)\) memory. Whether `a` and `b` have the same multiset of elements.
+/// \(O(n)\) expected, \(O(n)\) memory. Whether `self` and `b` hold the same multiset of elements; `p.is_permutation(p.keys)` asks whether `p` is a permutation of its own keys.
 ///
 /// cost: \(O(n)\) expected, \(O(n)\) memory
 /// empty: `true` when both are empty
 /// traps: never
-/// example: `is_permutation([1, 2, 2], [2, 1, 2]) == true`
-pub fn is_permutation<A: Seq, B: Seq, T>(a: A, b: B) -> Bool:
+/// example: `[1, 2, 2].is_permutation([2, 1, 2]) == true`
+/// example: `[2, 0, 1].is_permutation(0..3) == true`
+pub fn is_permutation<A: Seq, B: Seq, T>(self: A, b: B) -> Bool:
     var left = HashMap<T, Int>()
     var n = 0
-    for x in a:
+    for x in self:
         let c = left.get(x)
         left[x] = if c == None: 1 else: c! + 1
         n += 1

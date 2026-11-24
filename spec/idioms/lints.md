@@ -431,7 +431,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine |
 |---|---|---|---|---|---|
 | manual_cyclic_prefix_sum | duplicate array `a ++ a` or split-wrap query for circular range sums | `pref.cyclic_sum(l, r)` | fix? | #1 | ty |
-| manual_prefix_excl_fold | build both `pref[i]` and `suff[i]` arrays just to combine all-except-`i` | `prefix_excl(op, xs)` | fix? | #1 | loop |
+| manual_prefix_excl_fold | build both `pref[i]` and `suff[i]` arrays just to combine all-except-`i` | `xs.prefix_excl(op)` | fix? | #1 | loop |
 | manual_prefix_fold_monoid | manual `pref[i] = op(pref[i-1], a[i])` for non-sum monoid (e.g. `gcd`, `min`, `max`) | `prefix_fold(op, a)` | fix | #1 | loop |
 | manual_fill_prefix | incremental prefix-sum table appended online during DP | `FillPrefix` | warn | #1 | loop |
 

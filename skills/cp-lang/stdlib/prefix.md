@@ -127,7 +127,7 @@ Fields: `d: [D.cuts]T`, `e: [D.cuts]T`.
 - `fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>` — \(O(n)\) calls of `f`; \(O(n)\) space; \(O(n)\) calls of `f`.; traps: never (beyond what `f` traps on); see `fold` for range reads
 - `fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T` — \(O(n)\) calls of `op`; \(O(n)\) space; Prefix monoid folds of `a`, indexed by `Cut<D>`: `p[b]` is the fold of `..b`, with `p[D.cuts.nth(0)] == m.id`.; traps: never (beyond what `op` traps on)
 - `fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T` — \(O(n)\) calls of `op`; \(O(n)\) space; Suffix monoid folds of `a`, indexed by `Cut<D>`: `s[b]` is the fold of `b..`, with `s[D.cuts.nth(D.count)] == m.id`.; traps: never (beyond what `op` traps on)
-- `fn prefix_excl<D, T, M>(op: M, a: [D]T) -> [D]T` — \(O(\lvert D \rvert)\) calls of `op`; \(O(\lvert D \rvert)\) space; \(O(\lvert D \rvert)\).; traps: never (beyond what `op` traps on)
+- `fn prefix_excl<D, T, M>(self: [D]T, op: M) -> [D]T` — \(O(\lvert D \rvert)\) calls of `op`; \(O(\lvert D \rvert)\) space; \(O(\lvert D \rvert)\).; traps: never (beyond what `op` traps on)
 
 ## Example
 

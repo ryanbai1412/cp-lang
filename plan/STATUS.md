@@ -314,10 +314,13 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 | Area | Use cases | Supported | Partial | Gap | Claimed without evidence | M1 baseline gaps | M1 readiness gaps |
 |---|---|---|---|---|---|---|---|
 | complete | 32 | 29 | 3 | 0 | 0 | 0 | 1 |
+| fix | 10 | 9 | 0 | 1 | 0 | 0 | 0 |
+| fmt | 14 | 13 | 0 | 1 | 0 | 0 | 0 |
+| lint | 20 | 16 | 3 | 1 | 0 | 0 | 2 |
 | play | 12 | 7 | 5 | 0 | 0 | 1 | 1 |
-| seq | 67 | 41 | 10 | 15 | 1 | 3 | 15 |
+| seq | 67 | 44 | 9 | 13 | 1 | 3 | 15 |
 | stress | 34 | 28 | 6 | 0 | 0 | 1 | 2 |
-| all | 145 | 105 | 24 | 15 | 1 | 5 | 19 |
+| all | 189 | 146 | 26 | 16 | 1 | 5 | 21 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 

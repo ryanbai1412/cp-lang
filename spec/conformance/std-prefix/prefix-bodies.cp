@@ -30,7 +30,7 @@ print(a, b, s.current)
 var t = SweepAdd<E, Int>()
 t.add(E(1)..=E(2), 5)
 print(t.advance(E(0)), t.advance(E(1)))
-print(prefix_excl(*, [2, 3, 4])[1], prefix_excl(+, [5])[0])
+print([2, 3, 4].prefix_excl(*)[1], [5].prefix_excl(+)[0])
 domain R = 0..2
 domain C = 0..3
 let q = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c))

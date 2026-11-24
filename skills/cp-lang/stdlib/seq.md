@@ -275,13 +275,13 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>` — \(O(1)\); traps: when `lo > hi`
 - `fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end; \(O(\log n)\).; traps: when `ok` is true at the start and false at the end; any other `ok` that is not
 - `fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>` — \(O(\log n)\); traps: never; unsorted input gives an unspecified range
-- `fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
-- `fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory; The values in both of two sorted sequences, merged in one pass.
-- `fn sorted_diff<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
+- `fn sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
+- `fn sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory; The values in both of two sorted sequences, merged in one pass.
+- `fn sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
 - `fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>` — \(O(N \log k)\), \(O(N)\) memory
 - `fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x)` — \(O(n)\) passes over 8-bit digits of the key, \(O(n)\) memory; \(O(n)\), \(O(n)\) memory.
 - `fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory; Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their
-- `fn is_permutation<A: Seq, B: Seq, T>(a: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
+- `fn is_permutation<A: Seq, B: Seq, T>(self: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
 - `fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\)
 - `fn perm_rank<V>(self: [V]V) -> Int` — \(O(n \log n)\), \(O(n)\) memory; traps: when `|V| > 20` or `p` is not a permutation
 - `fn perm_unrank<V>(rank: Int) -> [V]V` — \(O(n \log n)\), \(O(n)\) memory; traps: when `rank` is not in `0..|V|!`
