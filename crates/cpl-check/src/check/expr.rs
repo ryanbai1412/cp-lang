@@ -3409,7 +3409,6 @@ impl<'a> Checker<'a> {
         false
     }
 
-    /// Reports with `message(self, got, want)` unless `got` fits `want`.
     /// A list literal written where a 1D array is wanted is that array's
     /// cells, also inside a tuple literal or as the value of a `match` or
     /// `if` arm: `([p[1], p[0]], [q, r, s])` is a `([2]Site, [3]Site)`.
@@ -3475,6 +3474,7 @@ impl<'a> Checker<'a> {
                         .is_some_and(|e| self.literal_shape_fits(e, got, want))
                 })
             }
+            (_, _, Ty::Optional(inner)) => self.literal_shape_fits(at, got, inner),
             _ => false,
         }
     }
