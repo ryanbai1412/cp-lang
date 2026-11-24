@@ -501,3 +501,28 @@ fn sorted_before_another_read_or_inside_a_loop_copies() {
         assert!(!out.contains("std::move(es)"), "{tail}: {out}");
     }
 }
+
+#[test]
+fn an_entry_a_store_overwrites_is_moved_into_the_fn_that_makes_it() {
+    let moved = cpp(concat!(
+        "var h = Map<Int, List<Int>>()\n",
+        "for v in 0..3:\n",
+        "    h.update(v % 2, [], l => l + [v])\n",
+        "print(h.len)\n",
+    ));
+    assert!(
+        moved.contains("cpl::map_move_or(self, "),
+        "`update` moves the entry into `f`, not a copy: {moved}"
+    );
+    let copied = body(concat!(
+        "var h = Map<Int, List<Int>>()\n",
+        "h[1] = [1]\n",
+        "for v in 0..3:\n",
+        "    h[v] = (h.get(v) ?? []) + h[1]\n",
+        "print(h.len)\n",
+    ));
+    assert!(
+        !copied.contains("map_move_or"),
+        "a value that reads the map keeps its copy: {copied}"
+    );
+}

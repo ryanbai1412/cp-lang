@@ -625,6 +625,11 @@ impl<'p> Emitter<'p> {
             return Code::primary(row);
         }
         match &e.kind {
+            ExprKind::Binary(BinOp::Coalesce, ..)
+                if self.moved_entry.remove(&(e as *const _ as usize)) =>
+            {
+                self.moved_entry_code(e)
+            }
             // `debug(...)` is for local runs: the judge's C++ has none of it.
             ExprKind::Unit | ExprKind::Error | ExprKind::Debug(..) => Code::primary("(void)0"),
             ExprKind::Int(v) => int_literal(*v),

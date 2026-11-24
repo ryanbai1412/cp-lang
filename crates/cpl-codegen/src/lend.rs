@@ -635,6 +635,7 @@ impl Emitter<'_> {
     /// entry is moved out instead (`cpl::map_move_or`) and the store
     /// puts it back.
     pub(crate) fn mark_moved_entry(&mut self, place: &cpl_ir::Place, op: AssignOp, value: &Expr) {
+        self.mark_overwritten_entry(place, op, value);
         let (AssignOp::Set, PlaceKind::Index(base, keys), ExprKind::Do(block)) =
             (op, &place.kind, &value.kind)
         else {
@@ -671,6 +672,57 @@ impl Emitter<'_> {
             && self.expr_elem_layout(&of[0]).is_none()
         {
             self.moved_entry.insert(copy as *const Expr as usize);
+        }
+    }
+
+    /// `m[k] = f(m.get(k) ?? d)`: the store overwrites the entry its value
+    /// reads, so that read may move the entry out instead of copying it
+    /// when nothing else in the value reaches `m`: no other read, no store,
+    /// and no code that may write it. A `mut` parameter is such a map even
+    /// under a call of an unknown fn value, as mutation XOR access leaves
+    /// that fn no other name for it; anything else asks [`Uses::leaves`].
+    fn mark_overwritten_entry(&mut self, place: &cpl_ir::Place, op: AssignOp, value: &Expr) {
+        let (AssignOp::Set, PlaceKind::Index(base, keys)) = (op, &place.kind) else {
+            return;
+        };
+        let ([key], PlaceKind::Local(_) | PlaceKind::Global(_)) = (keys.as_slice(), &base.kind)
+        else {
+            return;
+        };
+        let root = walk::root(base);
+        let (mut found, mut mentions) = (None, 0);
+        walk::deep_expr(value, &mut |e| match &e.kind {
+            ExprKind::Local(s) if root == (false, *s) => mentions += 1,
+            ExprKind::Global(g) if root == (true, *g) => mentions += 1,
+            ExprKind::Binary(BinOp::Coalesce, got, _) if !e.ty.is_scalar() => {
+                if let Some((map, got_key)) = entry_read(got) {
+                    if matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_))
+                        && walk::path_root(map) == Some(root)
+                        && got.ty != e.ty
+                        && (same_path(got_key, key) || self.key_temp_of(key, got_key))
+                    {
+                        found = Some(e as *const Expr as usize);
+                    }
+                }
+            }
+            _ => {}
+        });
+        let Some(at) = found else {
+            return;
+        };
+        let stores = Stores::of_expr(value);
+        let stored = match root.0 {
+            true => stores.globals.contains(&root.1),
+            false => stores.locals.contains(&root.1),
+        };
+        let exclusive = !root.0
+            && self.closure_id.is_none()
+            && self
+                .fn_id
+                .and_then(|id| self.program.fns[id].params.get(root.1))
+                .is_some_and(|p| p.mutable);
+        if mentions == 1 && !stored && (exclusive || self.uses.leaves(value, root)) {
+            self.moved_entry.insert(at);
         }
     }
 
