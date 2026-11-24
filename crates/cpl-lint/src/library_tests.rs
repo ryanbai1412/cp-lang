@@ -570,13 +570,11 @@ fn a_no_fix_finding_ends_before_its_statement_hole() {
 /// Rule: R06.4.9.
 #[test]
 fn std_lints_are_read_from_std_outline() {
-    let std = crate::library::std_lints();
-    assert!(
-        std.iter().any(|(m, d)| m == "std.prefix"
-            && d.name == "prefix_totals_list"
-            && d.fn_name == "scan"),
-        "{std:?}"
-    );
+    let analysis = crate::analyze_alone("print(1)\n").unwrap();
+    let std = crate::library::collect(&analysis);
+    assert!(std.iter().any(|d| d.module == "std.prefix"
+        && d.decl.name == "prefix_totals_list"
+        && d.decl.fn_name == "scan"));
     let src = "let xs = [3, 1]\nvar p = [0]\nfor x in xs:\n    p.push(p.last! + x)\nprint(p)\n";
     let found = crate::lint(src, &crate::Config::default());
     assert!(
