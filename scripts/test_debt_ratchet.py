@@ -329,6 +329,26 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 1}, ref="HEAD"),
                              ["lint_std_names: reached 0 on HEAD; a counter at 0 is never raised"])
 
+    def test_site_rederived_and_browser_lsp_gaps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "web/lib/a.ts", "\n".join([
+                "if (t === 'Int') {}", "const e = 'E0308';", "  hoverProvider: { uses: [] },",
+                "readFileSync('spec/lints/x/lint.toml');", "// spec/lints is read by cpl", "if (k === 'Foo') {}", ""]))
+            self._write(root, "web/lib/a.test.ts", "if (t === 'Int') {}\n")
+            self._write(root, "web/content/generated/b.js", "const e = 'E0308';\n")
+            self._write(root, "crates/cpl-lsp/src/server.rs", "\n".join(["use a;",
+                "fn capabilities() -> Value {", '    ("hoverProvider", true.into()),',
+                '    ("renameProvider", obj([("prepareProvider", true.into())])),', "}", ""]))
+            self._write(root, "web/components/editor/intelligence.ts", 'ask("textDocument/hover");\n')
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.site_rederived(root), [
+                "web/lib/a.ts:1 type Int", "web/lib/a.ts:2 code E0308", "web/lib/a.ts:3 capability hoverProvider",
+                "web/lib/a.ts:4 lint source"])
+            self.assertEqual(dr.browser_lsp_gaps(root), ["renameProvider"])
+        self.assertNotIn("hoverProvider", dr.browser_lsp_gaps(dr.ROOT))
+
     def test_every_list_row_names_a_counter(self) -> None:
         for rel, (counter, owner, plan) in dr.LISTS.items():
             self.assertTrue(counter is None and plan.startswith("data:") or counter in dr.COUNTERS, rel)

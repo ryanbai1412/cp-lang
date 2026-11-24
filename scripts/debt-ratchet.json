@@ -170,5 +170,7 @@
   "stress_hand_json": 0,
   "helper_env_vars": 4,
   "trace_engine_refs": 11,
-  "corpus_known": 326
+  "corpus_known": 326,
+  "site_rederived": 0,
+  "browser_lsp_gaps": 17
 }

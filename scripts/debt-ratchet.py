@@ -391,7 +391,55 @@ def consumer_rederived(root: Path) -> list[str]:
                     continue
                 out += [f"{rel}:{i} type {a or b}" for a, b in TYPE_CMP_RE.findall(code) if (a or b) in types]
                 out += [f"{rel}:{i} code {c}" for c in ECODE_RE.findall(code)]
+    return out + site_rederived(root, types)
+
+
+WEB_SOURCE_RE = re.compile(r"^web/(?!public/|tests/|content/generated/).*(?<!\.test)\.(?:ts|tsx|mjs|js)$")
+WEB_TYPE_CMP_RE = re.compile(r"""[=!]==?\s*['"]([A-Z]\w*)['"]""")
+WEB_ECODE_RE = re.compile(r"""['"`](E\d{4})\b""")
+WEB_CAPABILITY_RE = re.compile(r"""^\s*['"]?([a-z]\w*Provider)['"]?\s*:""")
+WEB_LINT_SOURCE_RE = re.compile(r"spec/(?:checker-)?lints\b|lint\.toml")
+
+
+def site_rederived(root: Path, types: set[str] | None = None) -> list[str]:
+    """web/ sources that re-derive tool data instead of asking the tool: text compared
+    against a type name, a checker error code, a hand table of language-server
+    capabilities, or a read of the lint TOML that `cpl lint --list --json` serves."""
+    if types is None:
+        types = set(CORE_TYPES)
+        for p in sorted((root / "std").glob("*.cp")):
+            types.update(re.findall(r"^\s*pub\s+(?:struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
+    out = []
+    for rel in _git(root, "ls-files", "web"):
+        if not WEB_SOURCE_RE.match(rel) or not (root / rel).is_file():
+            continue
+        for i, line in enumerate(_lines(root / rel), 1):
+            code = line.strip()
+            if code.startswith(("//", "*", "/*")):
+                continue
+            out += [f"{rel}:{i} type {t}" for t in WEB_TYPE_CMP_RE.findall(code) if t in types]
+            out += [f"{rel}:{i} code {c}" for c in WEB_ECODE_RE.findall(code)]
+            out += [f"{rel}:{i} capability {c}" for c in WEB_CAPABILITY_RE.findall(line)]
+            out += [f"{rel}:{i} lint source"] if WEB_LINT_SOURCE_RE.search(code) else []
     return out
+
+
+LSP_NESTED_KEYS = {"prepareProvider", "resolveProvider"}
+LSP_METHOD_RE = re.compile(r'"(?:textDocument|workspace)/(\w+)"')
+
+
+def browser_lsp_gaps(root: Path) -> list[str]:
+    """Capabilities cpl-lsp advertises (`capabilities()` in server.rs) that the browser
+    editor never asks for: `textDocument/fooBar` asks for `fooBarProvider`."""
+    try:
+        server = (root / "crates/cpl-lsp/src/server.rs").read_text(encoding="utf-8")
+        editor = (root / "web/components/editor/intelligence.ts").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    body = server.partition("\nfn capabilities()")[2].partition("\n}\n")[0]
+    advertised = set(re.findall(r'"([a-z]\w*Provider)"', body)) - LSP_NESTED_KEYS
+    used = {m + "Provider" for m in LSP_METHOD_RE.findall(editor)}
+    return sorted(advertised - used)
 
 
 def _crate_edges(root: Path, kind: str = "dependencies") -> set[tuple[str, str]]:
@@ -1337,6 +1385,7 @@ HARD_ZERO = frozenset({
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers",
     "measure_broken", "mono_unguarded",
+    "site_rederived",
     "unrun_script_tests",
     "permits",
     "plan_delta_lines",
@@ -1363,6 +1412,8 @@ COUNTERS = {
     "dup_fn_bodies": ("copied fn bodies across files", dup_fn_bodies, True),
     "near_dup_fns": ("near-identical fns across crates", near_dup_fns, True),
     "consumer_rederived": ("tool sites re-deriving checker facts", consumer_rederived, True),
+    "site_rederived": ("web/ sources re-deriving tool data", site_rederived, True),
+    "browser_lsp_gaps": ("language-server capabilities the browser editor never asks for", browser_lsp_gaps, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("v0.2 corpus port.cp files", v02_port_files, True),
