@@ -85,6 +85,8 @@ pub enum Ties = First | Last
 @lint(chmin_chmax_if, from: "if x >= e: x = e", to: "x min= e", holes: "x, e")
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self:\n    if a[i] < a[j]:\n        j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] < a[j]:\n    j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
+@lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = min(x, y)", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
+@lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y < x:\n        x = y", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
 pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -111,6 +113,8 @@ pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.Firs
 @lint(chmin_chmax_if, from: "if x <= e: x = e", to: "x max= e", holes: "x, e")
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self:\n    if a[i] > a[j]:\n        j = i", to: "var j = self.max(by: i => a[i])!", holes: "a")
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] > a[j]:\n    j = i", to: "var j = self.max(by: i => a[i])!", holes: "a")
+@lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = max(x, y)", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
+@lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y > x:\n        x = y", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
 pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -271,6 +275,8 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// ties: `[(2, 'a'), (2, 'b')].rfind(p => p.0 == 2) == Some((2, 'b'))`
 /// traps: never (beyond what `p` traps on)
 /// example: `[1, 4, 2, 5].rfind(x => x % 2 == 0) == Some(2)`
+@lint(sentinel_scalar, from: "var x = -1\nfor i in self:\n    if c:\n        x = i", to: "let x = self.rfind(i => c)", holes: "c")
+@lint(sentinel_scalar, from: "var x: Int = -1\nfor i in self:\n    if c:\n        x = i", to: "let x: ?Int = self.rfind(i => c)", holes: "c")
 pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
     for x in self.rev:
         if p(x): return Some(x)

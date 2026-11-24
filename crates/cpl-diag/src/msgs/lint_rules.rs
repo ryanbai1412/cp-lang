@@ -74,7 +74,6 @@ super::msgs! {
     REPEATED_LITERAL = "L0506", "`{}` is written {} {}; it is first on line {}";
     REVERSED_RANGE_LITERAL = "L0303", "`{}` is empty for every input, so this loop never runs: `{}` is always above `{}`";
     RUNS_BY_HAND = "L0558", "`{}` counts runs of equal values by hand";
-    SENTINEL_SCALAR = "L0536", "`{}` starts at `{}` to mean \"nothing yet\"";
     SENTINEL_TABLE = "L0530", "`{}` is filled with `{}` to mean \"not set\"";
     SHADOWS_TOP_LEVEL = "L0203", "this {} hides the top-level `{}`";
     SLIDING_MIN_BY_HAND = "L0566", "`{}` is a monotone deque kept by hand for the {} of each window";
