@@ -19,11 +19,16 @@ let ends = read<[Wire](a: Seg, b: Seg)>()
 let lo = [Wire] w => Int(ends[w].a)
 let hi = [Wire] w => Int(ends[w].b) + (if ends[w].b < ends[w].a: n else: 0)
 
-// Whether the arcs `on`, each repeated one lap either way, cover segments lo..=hi.
+// Whether the arcs `on`, each repeated one lap either way, cover segments lo..=hi; only the laps
+// that reach into lo..=hi are sorted.
 // O(s log s) in the number of arcs, never O(n), so the per-top checks stay O(m log m) in total.
 fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
     var upto = part.lo - 1
-    for (l, h) in [(lo[w] + s, hi[w] + s) for w in on for s in [-n, 0, n]].sorted():
+    let laps = [
+        (lo[w] + s, hi[w] + s) for w in on for s in [-n, 0, n]
+        if lo[w] + s <= part.hi and hi[w] + s >= part.lo
+    ]
+    for (l, h) in laps.sorted():
         if upto >= part.hi:
             break
         if l > upto + 1:
@@ -50,15 +55,16 @@ fn ring(dir: [Wire]Bool, d: Bool) -> Bool:
 var holder: [Wire]?Wire = None
 var reach: ?(end: Int, by: Wire) = None
 let order = Wire.collect().sorted(by: w => 4 * n * lo[w] - hi[w])  // by start, longest first
-for c in [(start: lo[w] + s, end: hi[w] + s, w:) for s in [0, n] for w in order]:
-    match reach:
-        Some(r) if c.end <= r.end and r.by != c.w => holder[c.w] = holder[c.w] ?? Some(r.by)
-        _ => reach = Some((end: c.end, by: c.w))
+for s in [0, n]:
+    for w in order:
+        match reach:
+            Some(r) if hi[w] + s <= r.end and r.by != w => holder[w] = holder[w] ?? Some(r.by)
+            _ => reach = Some((end: hi[w] + s, by: w))
 let top = [Wire] w =>
     var u = w
     while let h = holder[u]: u = h
     u
-let tops = Wire.filter(w => holder[w] == None).collect().sorted(by: w => lo[w])
+let tops = order.filter(w => holder[w] == None).collect()  // no two tops share a start
 domain T = [tops.len]
 var rank: [Wire]?T = None
 for t in T:
