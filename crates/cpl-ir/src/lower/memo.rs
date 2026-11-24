@@ -106,16 +106,7 @@ fn into_cell(table: &str, decl: &ast::FnDecl) -> ast::Expr {
 }
 
 fn read(place: &Place) -> Expr {
-    let kind = match &place.kind {
-        PlaceKind::Local(slot) => ExprKind::Local(*slot),
-        PlaceKind::Global(id) => ExprKind::Global(*id),
-        _ => unreachable!("a cache variable is a local or a global"),
-    };
-    Expr {
-        kind,
-        ty: place.ty.clone(),
-        span: place.span,
-    }
+    super::stmt::place_to_expr(place)
 }
 
 fn set(place: &Place, value: Expr) -> Stmt {
@@ -141,20 +132,10 @@ impl<'a> Lowerer<'a> {
     /// A variable of the cache.
     fn memo_var(&mut self, memo: &mut Memo, tag: &str, ty: Ty) -> Place {
         let name = format!("__memo{}_{tag}", memo.id);
-        let kind = match memo.home {
-            MemoHome::Global => {
-                self.globals.push(Global {
-                    name,
-                    ty: ty.clone(),
-                    span: Span::default(),
-                });
-                PlaceKind::Global(self.globals.len() - 1)
-            }
-            MemoHome::Outer => {
-                let outer = self
-                    .outer_cxs
-                    .last_mut()
-                    .expect("a nested fn has an enclosing one");
+        // Kept in the declaring block when there is one to capture from,
+        // else at file level.
+        let declared = match memo.home {
+            MemoHome::Outer if self.cx.is_closure => self.outer_cxs.last_mut().map(|outer| {
                 let slot = outer.locals.len();
                 outer.locals.push(Local {
                     name: name.clone(),
@@ -164,7 +145,19 @@ impl<'a> Lowerer<'a> {
                 outer.scopes.top_mut().insert(name.clone(), slot);
                 outer.mut_slots.insert(slot);
                 memo.lets.push(Stmt::Let(slot, None));
-                PlaceKind::Local(self.capture_from_outer(&name).expect("just declared"))
+            }),
+            _ => None,
+        };
+        let captured = declared.and_then(|()| self.capture_from_outer(&name));
+        let kind = match captured {
+            Some(slot) => PlaceKind::Local(slot),
+            None => {
+                self.globals.push(Global {
+                    name,
+                    ty: ty.clone(),
+                    span: Span::default(),
+                });
+                PlaceKind::Global(self.globals.len() - 1)
             }
         };
         Place {
@@ -319,10 +312,9 @@ impl<'a> Lowerer<'a> {
                 true
             }
             Spec::Plain(Ty::Struct(sid)) | Spec::Fields(Ty::Struct(sid), _)
-                if self.structs[*sid].index_domain.is_some()
+                if let Some(d) = self.structs[*sid].index_domain
                     && self.structs[*sid].methods.contains_key("ord") =>
             {
-                let d = self.structs[*sid].index_domain.unwrap();
                 let ord = self.structs[*sid].methods["ord"];
                 self.ensure_sig(ord, None);
                 let raw = self.mk(ExprKind::Call(ord, vec![Arg::Value(value)]), Ty::Int, span);
@@ -362,10 +354,12 @@ impl<'a> Lowerer<'a> {
                 };
                 let payload = self.mk_unwrap(value.clone(), false, (**payload_ty).clone(), span);
                 let at = memo.parts.len();
-                if !self.memo_parts(memo, payload, inner) || memo.parts.len() != at + 1 {
+                if !self.memo_parts(memo, payload, inner) {
                     return false;
                 }
-                let part = memo.parts.pop().expect("one part was just added");
+                let Some(part) = memo.parts.pop().filter(|_| memo.parts.len() == at) else {
+                    return false;
+                };
                 let mut some = self.int_add(part.ord.clone(), 1);
                 if part.ranged {
                     // Below the range is still outside the table, not `none`.
@@ -535,18 +529,18 @@ impl<'a> Lowerer<'a> {
             };
             // One wide `Int`: cells for its smallest values only, made
             // as they are reached.
-            let lazy = !proven
-                && matches!(
-                    &memo.parts[..],
-                    [Part {
-                        ranged: true,
-                        len: Expr {
-                            kind: ExprKind::Local(_) | ExprKind::Global(_),
-                            ..
-                        },
-                        ..
-                    }]
-                );
+            let lazy = match &memo.parts[..] {
+                [Part {
+                    ranged: true,
+                    len: Expr { kind, .. },
+                    ..
+                }] if !proven => match kind {
+                    ExprKind::Local(slot) => Some(PlaceKind::Local(*slot)),
+                    ExprKind::Global(id) => Some(PlaceKind::Global(*id)),
+                    _ => None,
+                },
+                _ => None,
+            };
             for part in &memo.parts {
                 let grown =
                     self.memo_bin(BinOp::Mul, self.local(cells, span), part.len.clone(), span);
@@ -572,12 +566,7 @@ impl<'a> Lowerer<'a> {
                 let fits = self.memo_cmp(CmpOp::Le, part.len.clone(), room, span);
                 let fits = self.memo_bin(BinOp::And, some, fits, span);
                 let fits = self.memo_bin(BinOp::And, read(flat), fits, span);
-                let wide = if lazy {
-                    let kind = match &part.len.kind {
-                        ExprKind::Local(slot) => PlaceKind::Local(*slot),
-                        ExprKind::Global(id) => PlaceKind::Global(*id),
-                        _ => unreachable!("checked above"),
-                    };
+                let wide = if let Some(kind) = lazy.clone() {
                     let len = Place {
                         kind,
                         ty: Ty::Int,
@@ -644,7 +633,7 @@ impl<'a> Lowerer<'a> {
                         self.raw_lists.push(id);
                     }
                 }
-                if !lazy {
+                if lazy.is_none() {
                     self.memo_fast = Some(MemoFast {
                         inside: self.memo_bin(BinOp::And, read(&ready), inside.clone(), span),
                         index: index.clone(),
@@ -663,7 +652,7 @@ impl<'a> Lowerer<'a> {
                 lw.mk_index(read(of), vec![lw.local(at, span)], ty, span)
             };
             let mut found = vec![Stmt::Let(at, Some(index))];
-            if lazy {
+            if lazy.is_some() {
                 let have = |lw: &Self| lw.mk_builtin(Builtin::Len, [read(&seen)], Ty::Int, span);
                 let short = self.memo_cmp(CmpOp::Ge, self.local(at, span), have(self), span);
                 let twice = self.memo_bin(BinOp::Mul, have(self), self.int_lit(2, span), span);
