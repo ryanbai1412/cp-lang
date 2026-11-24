@@ -1672,6 +1672,21 @@ fn c_type(s: &str) -> Option<CType> {
         _ => {}
     }
     let (head, args) = s.strip_suffix('>')?.split_once('<')?;
+    // C++'s `priority_queue` pops the largest; `greater` makes it the smallest.
+    if head.trim() == "priority_queue" {
+        let parts = split_top(args);
+        let elem = c_type(parts.first()?)?;
+        let zero = match parts.as_slice() {
+            [_] => "Heap(by: desc)",
+            [_, _, g] if g.starts_with("greater") => "Heap()",
+            _ => return None,
+        };
+        return Some(CType {
+            ty: format!("Heap<{}>", elem.ty),
+            zero: Some(zero.into()),
+            elem: None,
+        });
+    }
     let args: Vec<CType> = split_top(args)
         .into_iter()
         .map(c_type)

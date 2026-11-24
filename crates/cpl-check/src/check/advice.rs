@@ -200,6 +200,19 @@ impl Checker<'_> {
             .is_some_and(|a| a.contains(".."));
         let folds = ["sum", "query", "range_sum", "range_query"].contains(&name.text.as_str());
         let fold_for = folds && range_arg && has("fold");
+        // C++'s `pq.top()`: a heap's top is its `peek`, never the `pop` it's spelled like.
+        let top = name.text == "top" && has("peek") && after.starts_with("()");
+        let peek_getter = |getters: &[String]| getters.iter().any(|g| g == "peek");
+        let peek = match self.type_def(&owner).as_deref() {
+            Some(Def::Struct { getters, .. }) if peek_getter(getters) => "peek!",
+            _ if (self.env.impls(&owner).into_iter()).any(
+                |(_, def)| matches!(&*def, Def::Impl { getters, .. } if peek_getter(getters)),
+            ) =>
+            {
+                "peek!"
+            }
+            _ => "peek()!",
+        };
         let known = field_names
             .iter()
             .chain(methods.iter().map(|(m, _)| m))
@@ -241,6 +254,13 @@ impl Checker<'_> {
             _ if empty_by_len => {
                 diag.help = Some(format!("a {base_ty} is empty when its `len` is 0"));
                 diag.fix("write `len == 0`".to_string(), name.span, "len == 0");
+            }
+            _ if top => {
+                diag.help = Some(format!(
+                    "`{base_ty}` shows its top with `peek`, `None` when empty"
+                ));
+                let at = Span::new(name.span.start, name.span.end + 2);
+                diag.fix(format!("write `{peek}`"), at, peek);
             }
             _ if fold_for => {
                 diag.help = Some(format!("a {base_ty} combines a range with `fold`"));

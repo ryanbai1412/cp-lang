@@ -1430,7 +1430,10 @@ fn drop_fix_declared(diags: &mut Vec<Diagnostic>) {
                 .map(|n| format!("no `{}` in scope", n.trim()))
         })
         .collect();
-    diags.retain(|d| d.code != codes::UNRESOLVED_NAME || !declared.contains(&d.message));
+    let echo = |d: &Diagnostic| {
+        (declared.iter()).any(|m| d.message == *m || d.message.starts_with(&format!("{m},")))
+    };
+    diags.retain(|d| d.code != codes::UNRESOLVED_NAME || !echo(d));
 }
 
 pub(crate) fn declare_on_first_assignment(
