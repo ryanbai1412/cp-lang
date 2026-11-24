@@ -122,6 +122,7 @@ impl Checker<'_> {
         if bindings.is_empty() {
             return;
         }
+        self.settle_recorded(call, bindings);
         let mut named: Vec<(&String, &Ty)> = bindings.iter().collect();
         named.sort_by(|a, b| a.0.cmp(b.0));
         let bound: Vec<(String, Ty)> = (named.into_iter())
@@ -129,6 +130,21 @@ impl Checker<'_> {
             .collect();
         self.exprs.instantiations.retain(|(at, _)| *at != call.span);
         self.exprs.instantiations.push((call.span, bound));
+    }
+
+    /// The types recorded inside `call` before its bindings were known, such
+    /// as a lambda param's `T`, as the call binds them. A name the code here
+    /// declares itself stays its own.
+    fn settle_recorded(&mut self, call: &Expr, bindings: &Bindings) {
+        if bindings.iter().any(|(name, _)| self.generics.contains(name)) {
+            return;
+        }
+        let from = self.call_types_from.min(self.exprs.types.len());
+        for (at, ty) in &mut self.exprs.types[from..] {
+            if call.span.start <= at.start && at.end <= call.span.end && ty.mentions_param() {
+                *ty = ty.subst(bindings);
+            }
+        }
     }
 
     /// The name a call is made through and what kind of thing it names.

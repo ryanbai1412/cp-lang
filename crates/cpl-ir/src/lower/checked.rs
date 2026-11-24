@@ -10,11 +10,38 @@ impl<'a> Lowerer<'a> {
     /// structs by name.
     pub(in crate::lower) fn checked_ty(&mut self, e: &ast::Expr) -> Option<Ty> {
         let facts = std::sync::Arc::clone(self.mods[self.cur_mod].facts());
-        let written = written(facts.type_of(e.span.shift(self.offset))?, e.span)?;
+        let checked = facts.type_of(e.span.shift(self.offset))?;
+        if let Checked::Pos(name) = checked {
+            if let Some(d) = self.inline_product_named(name, e.span) {
+                return Some(Ty::Pos(d));
+            }
+        }
+        let written = written(checked, e.span)?;
         let diags = self.diags.len();
         let ty = self.resolve_ty(&written);
         self.diags.truncate(diags);
         (ty != Ty::Error).then_some(ty)
+    }
+}
+
+impl Lowerer<'_> {
+    /// The inline product domain a checker's `(R, C)` names.
+    fn inline_product_named(&mut self, name: &str, at: Span) -> Option<DomainId> {
+        let inner = name.strip_prefix('(')?.strip_suffix(')')?;
+        if inner.contains(['(', ')']) {
+            return None;
+        }
+        let items = (inner.split(", "))
+            .map(|n| ast::Expr {
+                kind: ast::ExprKind::Name(n.to_string()),
+                span: at,
+            })
+            .collect();
+        let tuple = ast::Expr {
+            kind: ast::ExprKind::Tuple(items),
+            span: at,
+        };
+        self.intern_inline_product(&tuple, at)
     }
 }
 
