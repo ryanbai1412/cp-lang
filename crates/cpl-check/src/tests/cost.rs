@@ -180,7 +180,7 @@ fn a_domains_nth_at_and_wrap_and_a_positions_offset_cost_o1() {
     };
     assert_eq!(
         hover(&mut db, "nth").as_deref(),
-        Some("nth: fn(x: Int) -> V\ncost: O(1)")
+        Some("nth: (x: Int) -> V\ncost: O(1)")
     );
     for name in ["at(", "wrap", "offset"] {
         let text = hover(&mut db, name).unwrap();

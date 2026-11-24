@@ -659,9 +659,16 @@ fn with_generics(name: &str, generics: &[String]) -> String {
 }
 
 fn fn_text(name: &str, ty: &Ty) -> String {
-    match ty.to_string().strip_prefix("fn") {
-        Some(rest) => format!("fn {name}{rest}"),
-        None => format!("{name}: {ty}"),
+    match ty {
+        Ty::Fn { ret, .. } => {
+            let sig = ty.to_string();
+            let sig = match **ret {
+                Ty::Unit => sig.strip_suffix(" -> ()").unwrap_or(&sig),
+                _ => &sig,
+            };
+            format!("fn {name}{sig}")
+        }
+        _ => format!("{name}: {ty}"),
     }
 }
 

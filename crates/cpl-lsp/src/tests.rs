@@ -682,7 +682,7 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         .at(&["result", "contents", "value"])
         .as_str()
         .unwrap();
-    assert!(text.starts_with("```cp\nchoose: fn(n: Int, k: Int) -> Mod<"));
+    assert!(text.starts_with("```cp\nchoose: (n: Int, k: Int) -> Mod<"));
     let doc = text.split_once("```\n\n").unwrap().1;
     assert!(
         doc.starts_with(

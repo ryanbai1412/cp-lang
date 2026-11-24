@@ -10,7 +10,7 @@ walk(from: Int, steps: Int = 1; back: Bool = false) -> Int
 active: back: Bool = false
 
 == signatureHelp @ 5:50
-reach(while: fn(a: Int, b: Int) -> Bool; cyclic: Bool = false) -> List<Int>
+reach(while: (a: Int, b: Int) -> Bool; cyclic: Bool = false) -> List<Int>
 active: cyclic: Bool = false
 
 == signatureHelp @ 8:12

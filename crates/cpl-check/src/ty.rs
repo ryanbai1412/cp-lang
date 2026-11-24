@@ -869,7 +869,7 @@ impl fmt::Display for Ty {
                 Ok(())
             }
             Ty::Fn { params, ret } => {
-                f.write_str("fn(")?;
+                f.write_str("(")?;
                 for (i, p) in params.iter().enumerate() {
                     if i > 0 {
                         f.write_str(", ")?;
@@ -886,11 +886,7 @@ impl fmt::Display for Ty {
                         write!(f, "{}: {}", p.name, p.ty)?;
                     }
                 }
-                f.write_str(")")?;
-                if **ret != Ty::Unit {
-                    write!(f, " -> {ret}")?;
-                }
-                Ok(())
+                write!(f, ") -> {ret}")
             }
             Ty::Const(v) => write!(f, "{v}"),
             Ty::Unknown => f.write_str("_"),

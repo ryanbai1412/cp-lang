@@ -312,7 +312,7 @@ fn prefixes(bit: Fenwick<V, Int>)
 
 == hover @ 128:20
 ```cp
-fold: fn(r: Range<V>) -> Int
+fold: (r: Range<V>) -> Int
 cost: O(log |V|)
 ```
 
