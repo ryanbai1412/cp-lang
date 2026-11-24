@@ -9358,7 +9358,21 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 629. (reserved, unknown)
 
-## 631. (reserved, content)
+## 631. Codegen's copy fact, not a header, says which spec copies are required (idioms, 2026-11-24)
+
+- **Call.** A copy is required only when codegen's own copy fact marks it `kept`: the name is changed or given away while what it copies is still read (read again later in the block, a global a fn or closure reads, a caller's parameter, or a name bound by reference). `cpl explain` gives that reason and `--json` its `kept` flag; `spec_avoidable_copies` (hard zero) counts each case's `// copies:` header less its kept copies, replacing decision 606's shrink-only `spec_required_copies`. `read_only_copies` proves the fact: it rewrites each copy in the judge C++ to a move and to a borrow and requires the output to change exactly for the kept ones.
+- **Kept today (7).** Each is the copy a C++ solution makes too: one deep copy of the same value, `T name = place;`, so it costs what the hand-written equivalent does. The contestant sees each in `cpl explain` (its reason) and `--json` (`kept: true`). All are in `spec/conformance/core-05/`:
+  - `global-copied-by-a-fn-called-in-a-loop.cp` 7:16 `var room = base`: `bump` runs each loop turn, so a move empties `base` for the next turn and a borrow carries `room[0] += k` into it (output `4 5 6` changes).
+  - `global-copied-by-a-fn-a-closure-calls-twice.cp` 7:14 `var xs = base`: the second `grow()` sees the first's push (borrow) or an empty `base` (move).
+  - `global-copied-by-a-recursive-fn.cp` 7:14 `var xs = base`: each nested `take` sees the outer call's push or an emptied `base`.
+  - `global-read-by-another-fn-after-the-copy.cp` 7:14 `var xs = base`: `total()` reads `base` after `build` pushes 9, so its sum changes.
+  - `map-entry-var-copies.cp` 8:13 `var w = v`: `print(w, m[k])` reads the entry after `w.push(3)`, so it shows the push (borrow) or nothing (move).
+  - `param-field-let-then-same-field-read.cp` 8:15 `var acc = m.xs`: `m.xs.len` is read after `acc.push(m.n)`, so the result changes.
+  - `copies-in-two-fns-stay-apart.cp` 6:13 `let a = xs`, returned: the caller prints `base` after `first(base)`, so a move empties it.
+  None is kept for want of an analysis: the move/borrow rewrite changes what the program prints, so the language's value semantics need the second value.
+- **Enforced.** The proof test is in `read_only_copies`, whose `copies` slice `scripts/land.sh` runs for any change to `crates/cpl-codegen`, `crates/cpl-cli/src/explain.rs`, `std/` or `spec/conformance/`, so a kept copy that stops being observable, or an avoidable one codegen starts marking kept, turns that land red.
+- **Why.** A hand-kept list of required copies drifts from codegen, and decision 606's count kept 4 avoidable copies as required. One fact gives explain, the counter and codegen one answer, and the rewrite test catches the fact when it is wrong either way.
+- **Reverse.** Count `// copies:` headers over spec/conformance again as `spec_required_copies`, shrink-only.
 
 ## 633. `@aka(..)` states other languages' names for a fn (compiler, 2026-11-24)
 

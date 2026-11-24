@@ -363,7 +363,9 @@ fn explain_names_each_copy_and_why_it_owns_its_value() {
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let report = crate::explain::report("t.cp", source, &program);
     assert!(
-        report.contains("[copy] 4:15  rows[0] -> the name is changed later"),
+        report.contains(
+            "[copy] 4:15  rows[0] -> the name is changed while what it copies is still read"
+        ),
         "{report}"
     );
     assert!(

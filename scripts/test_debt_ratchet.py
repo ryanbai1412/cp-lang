@@ -1765,7 +1765,8 @@ class DebtRatchetTest(unittest.TestCase):
             port.write_text("// copies: 1\nprint(1)\n")
             (root / f"{PKGS}/cf1/notes.md").write_text("// copies: 5\n")
             self.assertEqual(dr.cpp_deep_copies(root), [f"{PKGS}/cf1/port.cp 0"])
-            self.assertEqual(len(dr.spec_required_copies(root)), 2)
+            with mock.patch.object(dr, "_kept_copies", return_value={"spec/conformance/core-05/a.cp": 1}):
+                self.assertEqual(dr.spec_avoidable_copies(root), ["spec/conformance/core-05/a.cp 1"])
             self.assertEqual(len(dr.cpp_std_functions(root)), 1)
             self.assertEqual(len(dr.cpp_sunk_copies(root)), 2)
 

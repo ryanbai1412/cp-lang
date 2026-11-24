@@ -269,6 +269,7 @@ impl crate::emit::Emitter<'_> {
             tested: false,
             lendable: false,
             whole,
+            read_after: BTreeSet::new(),
         }
     }
 }
