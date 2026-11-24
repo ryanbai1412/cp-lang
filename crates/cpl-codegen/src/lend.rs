@@ -1220,7 +1220,7 @@ impl Emitter<'_> {
                 | ExprKind::Index(..)
         );
         let written = arg.span.start >= e.span.start && arg.span.end < e.span.end;
-        if place && written && holds_heap(self.program, &arg.ty) {
+        if place && (written || self.in_library()) && holds_heap(self.program, &arg.ty) {
             self.note_copy(e.span, why, None);
         }
     }

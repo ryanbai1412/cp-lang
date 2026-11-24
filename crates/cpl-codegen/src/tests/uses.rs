@@ -297,3 +297,14 @@ fn a_list_sorted_by_a_key_at_its_last_use_lists_no_copy() {
     let source = "let n: 2..=10 = read()\nlet xs: [n](t: Int, x: Int) = read()\nprint(xs.sorted(by: o => o.t).first!.x)\n";
     assert_eq!(copy_reasons(source), [] as [&str; 0]);
 }
+
+#[test]
+fn a_clone_written_in_a_library_fn_is_listed_at_its_fn() {
+    let src = "use std.seq.{inversions}\nlet xs = [3, 1, 2]\nprint(inversions(xs))\n";
+    assert!(super::cpp(src).contains("std::vector<ll> tmp = std::vector<ll>(cur);"));
+    let whats: Vec<String> = crate::explain_copies(&lower(src))
+        .into_iter()
+        .map(|(_, what, _)| what)
+        .collect();
+    assert_eq!(whats, ["a read in inversions"]);
+}
