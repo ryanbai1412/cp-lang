@@ -52,7 +52,10 @@ ccc22s4
 ccc23s4
 ccc23s5
 cco16p3
+cco21p2
 cco21p3
+cco21p4
+cco21p5
 cco22p5
 cco23p5
 cco24p1

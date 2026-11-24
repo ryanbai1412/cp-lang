@@ -1,5 +1,10 @@
 # Friction report: cco21p2
 
+The port types the digits as `[d](-m..=m)` and replaces the old fixed 100-round loop with a
+search that stops when 0 is reached or the frontier empties (the visited set makes it
+finite), and prints with `none: "IMPOSSIBLE"`. The search itself stays hand-written:
+
+
 ## `bfs` over `Int` states does not check
 - **Where:** the dream's `bfs(peel, from: [x], until: 0, hashed: true)` and `p.arcs(0)`; `spec.cp` hand-writes the level-by-level search with a `HashMap<Int, Int>` of back digits and walks it back by hand.
 - **What felt wrong:** E0302 "`bfs` (`std.graph`) needs a domain for `V`, and `Int` is not one", with or without `hashed: true`. spec/lib/graphs-trees.md says storage follows the vertex type (any hashable `V` gives hash maps); std/graph.cp says `hashed: true` selects them and that an unbounded `V` without it is an error naming `hashed: true`. Neither runs: `bfs` builds dense `[V]?Int` tables. Repro: `fn halve(x: Int) = [x / 2]; print(bfs(halve, from: [10], until: 0)[0])`.
@@ -17,5 +22,6 @@
 - **Severity:** low.
 
 ## Measurements
+- Port (v0.3): `cpl stress` agrees with the old port and the accepted C++ (4543410) on 30 cases each; the widest max shape (gen.py 100 100000) takes 10.6 s against the C++'s 9.3 s (1.14x), the other three max shapes under 0.02 s, all with the C++'s output.
 - Source bytes: spec.cp 1770, AC C++ 1928. Emitted C++ 16869 bytes.
 - K = 2, D = 5001, Q = 5 at |n| = 1e18 (gen.py 100 100000, the widest search): spec native 11.0 s, AC C++ 9.45 s, same output; the official tests lack this shape (both exceed the limit). Other statement-max shapes (K = 1e6, D = K, missing residues): both under 0.02 s.

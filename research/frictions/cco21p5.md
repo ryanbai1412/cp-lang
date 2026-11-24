@@ -17,7 +17,46 @@
   range methods return cuts (compiler worklog, 2026-11-23).
 - **Severity:** low (the pointer is O(n) and reads like the editorial).
 
+## A search over a range of cuts types its closure as positions
+
+- **Where:** `port.cp`, `next`: the first cut from `i.r` on with no earlier neighbour before `i`.
+- **What felt wrong:** `(i.r..=end).first_true(c => later[c].is_none_or(e => e >= i))` is E0301
+  "indexed by `Town.cuts`, but the index is a `Town`": the range is `Range<Town.cuts>` but the
+  closure parameter is typed as a town. The port searches the cut ordinals as `Int` and converts
+  back with `Town.cuts(k)`.
+- **Goal it hurts:** express (a round trip through `Int` for a search that is about cuts).
+- **Ideal code:** `let next = (i.r..=end).first_true(c => later[c].is_none_or(e => e >= i))!`.
+- **Repro:** `domain T = 1..=5; let later: [T.cuts]Int = [T.cuts] c => Int(c);
+  let r: Range<T.cuts> = T(2).r..=T.cuts.last!; print(Int(r.first_true(c => later[c] >= 3)!))`
+  is E0301; sent to Core.
+- **Severity:** medium.
+
+## `min` as a function value loses the None-is-identity rule
+
+- **Where:** `port.cp`, the SegTree monoid over `?Int` minimums.
+- **What felt wrong:** `Monoid<?Int>(None, min)` checks, but its `op(None, Some(3))` is `None`,
+  while a direct `min(None, Some(3))` is `Some(3)`; the tree then answers `None` for every fold.
+  The port writes the lambda `(x, y) => min(x, y)`, which keeps the rule.
+- **Goal it hurts:** correct (a silent wrong answer), coherence (two meanings for one name).
+- **Ideal code:** `over: Monoid<?Int>(None, min)`.
+- **Repro:** `let a: ?Int = None; let b: ?Int = Some(3);
+  print(min(a, b) ?? -1, Monoid<?Int>(None, min).op(a, b) ?? -1)` prints `3 -1`; sent to Core.
+- **Severity:** high (wrong answer with no diagnostic).
+
+## An open range from a cut reads as the pieces after it
+
+- **Where:** `port.cp`, `best.fold(next..=end)` and `best.apply(v.r..=end, 1)`.
+- **What felt wrong:** on a SegTree indexed by `Town.cuts`, `best.fold(next..)` from the last cut
+  folded nothing: the open form is read as the towns after the cut, not the cuts from it on. The
+  port spells the closed range with `end = Town.cuts.last!`.
+- **Goal it hurts:** express, correct (the open form checks and silently drops the last cut).
+- **Ideal code:** `best.fold(next..)`.
+- **Severity:** medium.
+
 ## Measurements
 
 Largest generated input (n = 80,691, m = 151,508): accepted C++ 0.04 s, interpreter 3.1 s; both
 print 59233.
+
+Current port: 30 generated cases agree with the old port and 30 with the accepted C++; the
+`--max` input (n = m = 2e5) matches the accepted C++, port 0.11 s against 0.07 s.

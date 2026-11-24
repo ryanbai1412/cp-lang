@@ -3,42 +3,41 @@
 //   For each of Q <= 5 numbers n (|n| <= 1e18) print, on one line and space-separated, digits
 //   most significant first whose base-K value is n (any such; 0 needs at least one digit), or
 //   IMPOSSIBLE.
-// Solution: The last digit b of x must be congruent to x mod K, and the other digits then
+// Solution: the last digit b of x must be congruent to x mod K, and the other digits then
 //   spell (x - b) / K. Bucket the digits by residue and search that graph breadth first from x
-//   to 0, recording for each number reached the digit that led to it (a map); the numbers
-//   shrink to |y| <= M / (K - 1) + 1 within about 60 steps and 100 rounds suffice. Walking back
-//   from 0 reads the digits, most significant first.
+//   until 0 is reached by at least one digit, recording for each number the digit that led to
+//   it (a map, the numbers are unbounded). The numbers shrink to |y| <= M / (K - 1) + 1 within
+//   about 60 steps, so the search is finite. Walking back from 0 reads the digits, most
+//   significant first.
 // original: corpus/submissions/4543410.cpp
 let (k, q, d, m): (2..=1e6, 1..=5, 1..=5001, 1..=2500) = read()
-domain Digit = 0..d
 domain Residue = 0..k
-let digits: [Digit](-m..=m) = read()
-var ending: [Residue]List<Int> = [Residue] _ => []  // the digits by residue
-for i in Digit: ending[Residue(digits[i] % k)].push(digits[i])
+let digits: [d](-m..=m) = read()
+var ending: [Residue]List<Int> = []
+for b in digits: ending[Residue(b % k)].push(b)
 
 fn spell(x: Int) -> ?List<Int>:
-    var via = HashMap<Int, Int>()  // via[y]: a digit b with y * k + b reached
+    var via = HashMap<Int, Int>()  // via[y] = b: y * k + b was reached
     var frontier = [x]
-    for _ in 0..100:
+    while not frontier.is_empty and 0 not in via:
         var next: List<Int> = []
-        for a in frontier:
-            for b in ending[Residue(a % k)]:
-                let rest = (a - b) / k
+        for y in frontier:
+            for b in ending[Residue(y % k)]:
+                let rest = (y - b) / k
                 if rest not in via:
                     via[rest] = b
                     next.push(rest)
-        if 0 in via:
-            var (u, out): (Int, List<Int>) = (0, [])
-            while true:
-                let b = via[u]
-                out.push(b)
-                u = u * k + b
-                if u == x: return out
         frontier = next
+    if 0 not in via: return None
+    var out: List<Int> = []
+    var y = 0
+    while true:
+        let b = via[y]
+        out.push(b)
+        y = y * k + b
+        if y == x: return out
     None
 
 for _ in 0..q:
     let x: -1e18..=1e18 = read()
-    if let out = spell(x):
-        print(out)
-    else: print("IMPOSSIBLE")
+    print(spell(x), none: "IMPOSSIBLE")
