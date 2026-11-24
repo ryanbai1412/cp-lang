@@ -2544,13 +2544,15 @@ EDITOR_GLUE = frozenset({
     "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp.kt",
     "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp4ij.kt",
     "editors/zed/src/lib.rs", "editors/neovim/ftdetect/cp.vim", "editors/neovim/ftplugin/cp.vim",
+    "editors/neovim/plugin/cplang.lua",
 })
 EDITOR_SOURCE_RE = re.compile(r"^editors/(?!tree-sitter-cp/)(?!.*(?:/tests?/|/scripts/|smoke|\.test\.)).*\.(?:ts|js|kt|rs|lua|el|vim)$")
 EDITOR_COMMENT = ("//", "/*", "*", "#", ";", "--", '"')
 # In an `EDITOR_GLUE` file a line is client wiring unless it decides or computes:
 # a branch, a loop, a condition, or a search or transform of data (strings blanked).
 EDITOR_DECIDES_RE = re.compile(r"\b(?:if|else|for|while|switch|case|catch|when)\b|\?\?|&&|\|\||\s\?\s"
-                               r"|\.(?:map|filter|find|flatMap|sort|reduce|split|replace|match|test|some|every|includes)\(")
+                               r"|\.(?:map|filter|find|flatMap|sort|reduce|split|replace|match|test|some|every|includes)\("
+                               r"|\b(?:and|or|not|elseif)\b|\bvim\.(?:tbl_\w+|split|startswith)\(|:(?:match|gsub|find|sub)\(")
 EDITOR_STRING_RE = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`")
 
 

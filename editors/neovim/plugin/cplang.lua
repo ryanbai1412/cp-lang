@@ -6,20 +6,28 @@
 vim.filetype.add({ extension = { cp = 'cp' } })
 local function cpl() return vim.g.cpl_path or 'cpl' end
 
--- `cpl <args>` in a terminal split. `cpl stress` and `cpl locate` report as JSON instead, whose
--- `view` is drawn as is: its panel in the split, its diagnostic (the first wrong call) on that
--- line of the file until the next run, and the panel's b:cpl_exit its exit code.
+-- What this buffer's `cpl lsp` answers to `method`, or nil when it isn't attached.
+local function ask(method, params)
+    for _, reply in pairs(vim.lsp.buf_request_sync(0, method, params, 2000) or {}) do
+        if reply.result ~= nil then return reply.result end
+    end
+end
+
+-- `cpl <args>` as the server's `cpl/command` spells it, in a terminal split; when it says
+-- `view` (`cpl stress`, `cpl locate`) the JSON report's `view` is drawn as is: its panel in
+-- the split, its diagnostic (the first wrong call) on that line of the file until the next
+-- run, and the panel's b:cpl_exit its exit code.
 local wrong_call = vim.api.nvim_create_namespace('cpl_divergence')
-local function run_in_terminal(args)
+local function run_in_terminal(arguments, file)
     local source = vim.api.nvim_get_current_buf()
+    local run = ask('cpl/command', { arguments = arguments, file = file }) or { argv = arguments }
     vim.diagnostic.reset(wrong_call, source)
     vim.cmd('botright new')
-    local cmd = vim.list_extend({ cpl() }, args)
-    if args[1] ~= 'stress' and args[1] ~= 'locate' then return vim.fn.termopen(cmd) end
+    local cmd = vim.list_extend({ cpl() }, run.argv)
+    if not run.view then return vim.fn.termopen(cmd) end
     local panel = vim.api.nvim_get_current_buf()
     vim.bo[panel].buftype = 'nofile'
     vim.api.nvim_buf_set_lines(panel, 0, -1, false, { table.concat(cmd, ' ') .. ' ...' })
-    vim.list_extend(cmd, args[1] == 'stress' and { '--format', 'json' } or { '--json' })
     vim.system(cmd, { text = true }, vim.schedule_wrap(function(r)
         local ok, report = pcall(vim.json.decode, r.stdout or '')
         local view = ok and type(report) == 'table' and report.view or { panel = (r.stdout or '') .. (r.stderr or '') }
@@ -42,25 +50,14 @@ vim.lsp.commands['cpl.exec'] = function(command)
     run_in_terminal(command.arguments or {})
 end
 
--- `:Cpl test`, `:Cpl stress`, `:Cpl submit`...: `cpl <command> <this file> [args]` in a terminal
--- split; bare `:Cpl` runs `test`. Tab completes the command names `cpl --help --json` lists.
-local commands
+-- `:Cpl test`, `:Cpl stress`, `:Cpl submit`...: `cpl <command> <this file> [args]`; bare `:Cpl`
+-- runs `test`. Tab completes the command names the server's `cpl/commands` gives.
 vim.api.nvim_create_user_command('Cpl', function(opts)
-    local args = #opts.fargs > 0 and vim.deepcopy(opts.fargs) or { 'test' }
-    local file = vim.api.nvim_buf_get_name(0)
-    if vim.bo.filetype == 'cp' and file ~= '' then table.insert(args, 2, file) end
-    run_in_terminal(args)
+    run_in_terminal(opts.fargs, vim.api.nvim_buf_get_name(0))
 end, {
     nargs = '*',
     desc = 'run cpl on this file',
-    complete = function(lead, line)
-        if line:match('^%S+%s+%S*$') == nil then return {} end
-        if commands == nil then
-            local ok, help = pcall(vim.json.decode, vim.fn.system({ cpl(), '--help', '--json' }))
-            commands = ok and vim.tbl_map(function(c) return c.name end, help.commands or {}) or {}
-        end
-        return vim.tbl_filter(function(name) return vim.startswith(name, lead) end, commands)
-    end,
+    complete = function(_, line) return ask('cpl/commands', { line = line }) or {} end,
 })
 
 vim.api.nvim_create_autocmd('FileType', {
@@ -133,7 +130,7 @@ vim.api.nvim_create_autocmd('FileType', {
             { type = 'cp', request = 'launch', name = 'Debug this file', program = '${file}', stopOnEntry = true },
             {
                 type = 'cp', request = 'launch', name = 'Debug on an input file', program = '${file}',
-                input = function() return vim.fn.input('Input file: ', vim.fn.expand('%:p') .. '.tests/', 'file') end,
+                input = function() return vim.fn.input('Input file: ', vim.fn.expand('%:p:h') .. '/', 'file') end,
             },
         }
     end,
