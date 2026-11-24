@@ -10,8 +10,6 @@
 // Bounds: n: 1..=500_000; q: 1..=50_000; a: 0..=2 ** 30 - 1; c: 0..2 ** 30
 // copies: 1
 
-use std.seq.{argmax}
-
 const BITS = 30
 
 @!multitest
