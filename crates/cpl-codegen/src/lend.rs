@@ -1327,7 +1327,7 @@ impl Emitter<'_> {
                 return None;
             }
             let text = self.expr(inner).text;
-            let text = self.moved_if(true, text);
+            let text = self.moved_if(true, &inner.ty, text);
             return Some(format!("{}({text})", self.ty(&value.ty)));
         }
         let ExprKind::Local(slot) = inner.kind else {
@@ -1361,7 +1361,11 @@ impl Emitter<'_> {
             !matches!(c, Copied::Let(span, why, _) | Copied::Library(span, _, why)
                 if *span == inner.span && *why == SOME_COPY)
         });
-        Some(format!("{}(std::move({}))", self.ty(ty), self.names[slot]))
+        Some(format!(
+            "{}({})",
+            self.ty(ty),
+            self.move_of(&inner.ty, &self.names[slot])
+        ))
     }
 
     /// Records the copy `.to_str()` / `.to_list()` makes of the view `e`
@@ -1808,7 +1812,7 @@ impl Emitter<'_> {
     /// `std::move(text)` when `item` is one of the literal's taken items.
     pub(crate) fn taken_item(&self, item: &Expr, text: String) -> String {
         match self.taken_items.contains(&(item as *const Expr)) {
-            true => format!("std::move({text})"),
+            true => self.move_of(&item.ty, &text),
             false => text,
         }
     }
@@ -1834,10 +1838,21 @@ impl Emitter<'_> {
     }
 
     /// `std::move(text)` when `dies`.
-    pub(crate) fn moved_if(&self, dies: bool, text: String) -> String {
+    pub(crate) fn moved_if(&self, dies: bool, ty: &Ty, text: String) -> String {
         match dies && !text.starts_with("std::move(") {
-            true => format!("std::move({text})"),
+            true => self.move_of(ty, &text),
             false => text,
+        }
+    }
+
+    /// `std::move(text)` for a `ty` value, the one place the C++ moves one. A
+    /// value that holds no heap (an int, `std::tuple<int, int>`, `OptInt`, a
+    /// niche optional) is its bytes, so it is named, not moved: the move only
+    /// copies, and newer g++ rejects one from a `const T&` (-Wredundant-move).
+    pub(crate) fn move_of(&self, ty: &Ty, text: &str) -> String {
+        match holds_heap(self.program, ty) || matches!(ty, Ty::Fn(..)) {
+            true => format!("std::move({text})"),
+            false => text.to_string(),
         }
     }
 
@@ -1923,8 +1938,8 @@ impl Emitter<'_> {
         // A `const T&` name cannot be moved from; `std::move` of it only copies.
         let lent =
             path_of(init).is_some_and(|((global, s), _)| !global && self.ref_bound.contains(&s));
-        match taken && !lent && !init.ty.is_scalar() && !text.starts_with("std::move(") {
-            true => format!("std::move({text})"),
+        match taken && !lent && !text.starts_with("std::move(") {
+            true => self.move_of(&init.ty, &text),
             false => text,
         }
     }

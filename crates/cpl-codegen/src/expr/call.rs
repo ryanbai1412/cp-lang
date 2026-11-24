@@ -209,7 +209,7 @@ impl<'p> Emitter<'p> {
                             && !this.sunk[id].contains(&slot);
                         let dies = last_use || this.called_moves.contains(&(value as *const Expr));
                         if dies && !by_ref && this.moves_in(id, slot, value, args, &code.text) {
-                            texts.push(format!("std::move({})", code.text));
+                            texts.push(this.move_of(&value.ty, &code.text));
                             continue;
                         }
                         let shared = match crate::lend::given_root(value, &this.lent_roots) {

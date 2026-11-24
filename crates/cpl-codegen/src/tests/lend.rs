@@ -1519,3 +1519,65 @@ fn a_loop_over_a_list_of_main_nothing_reads_after_moves_its_elements_out() {
     );
     assert!(!read_after.contains("std::move(x)"), "{read_after}");
 }
+
+#[test]
+fn a_value_that_holds_no_heap_is_named_not_moved() {
+    let out = cpp(concat!(
+        "struct H: xs: List<Int>\n",
+        "domain P = 0..10\n",
+        "fn mk(n: Int) -> ((Int, Int), ?Int, ?P, H):\n",
+        "    let a = (n, n + 1)\n",
+        "    let o: ?Int = Some(n)\n",
+        "    let d: ?P = P.all.find(p => p.ord == n)\n",
+        "    let h = H([n, n])\n",
+        "    (a, o, d, h)\n",
+        "let (a, o, d, h) = mk(read())\n",
+        "print(a.0, o!, d!.ord, h.xs.len)\n",
+    ));
+    // `std::tuple<ll, ll>`, `cpl::OptInt` and the niche `cpl::OptPos` are named; `H` moves.
+    assert!(out.contains("{a_2, o_2, d_2, std::move(h_2)}"), "{out}");
+}
+
+/// Every move the C++ makes asks `Emitter::move_of`, so a value that holds no
+/// heap is never moved: no other line of codegen spells `std::move(`.
+#[test]
+fn only_move_of_spells_a_move() {
+    fn walk(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            let name = path.file_name().unwrap().to_string_lossy().into_owned();
+            if path.is_dir() {
+                if name != "tests" && name != "runtime" {
+                    walk(&path, out);
+                }
+            } else if name.ends_with(".rs")
+                && !name.ends_with("tests.rs")
+                && !["cpp_counts.rs", "compact.rs"].contains(&name.as_str())
+            {
+                out.push(path);
+            }
+        }
+    }
+    let mut files = Vec::new();
+    walk(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+        &mut files,
+    );
+    let mut spelled = Vec::new();
+    for file in files {
+        let text = std::fs::read_to_string(&file).unwrap();
+        for (i, line) in text.lines().enumerate() {
+            let code = line.trim_start();
+            if !code.starts_with("//")
+                && code.contains("std::move(")
+                && !code.contains("starts_with(\"std::move(\")")
+            {
+                spelled.push(format!("{}:{}: {code}", file.display(), i + 1));
+            }
+        }
+    }
+    assert!(
+        spelled.len() == 1 && spelled[0].contains("lend.rs"),
+        "a move goes through `Emitter::move_of`: {spelled:#?}"
+    );
+}
