@@ -137,7 +137,13 @@ impl Checker<'_> {
         let TypeKind::Named { name, .. } = &tr.kind else {
             return;
         };
-        let Some(Def::Trait { supers, .. }) = self.global(&name.text).as_deref().cloned() else {
+        // An alias has no impl of its own: that is E0501, not a missing supertrait.
+        let Some(Def::Trait {
+            supers,
+            alias: false,
+            ..
+        }) = self.global(&name.text).as_deref().cloned()
+        else {
             return;
         };
         let outer = self.param_bounds.len();
