@@ -606,17 +606,18 @@ impl Database {
                     continue;
                 }
                 let mut prev_dot = false;
-                for tok in &lexed.tokens[range.tokens.0..range.tokens.1] {
+                let tokens = &lexed.tokens[range.tokens.0..range.tokens.1];
+                if walks::some_walk_needs_seq(tokens) {
+                    // std.seq is where `contains` and those `Seq` impls live.
+                    dot_ident_tokens.insert("contains");
+                }
+                for tok in tokens {
                     if tok.kind == cpl_syntax::TokenKind::Ident {
                         let s = &text[tok.span.start as usize..tok.span.end as usize];
                         ident_tokens.insert(s);
                         if prev_dot {
                             dot_ident_tokens.insert(s);
                         }
-                    } else if tok.kind == cpl_syntax::TokenKind::In {
-                        // `for x in s` walks a std type by the `Seq` impl std.seq gives it, so
-                        // an `in` loads std.seq (by its `contains`) and those impls with it.
-                        dot_ident_tokens.insert("contains");
                     } else if tok.kind == cpl_syntax::TokenKind::Str {
                         let s = &text[tok.span.start as usize..tok.span.end as usize];
                         if s.contains('{') {
@@ -1868,6 +1869,7 @@ fn declare_with_var(
 
 mod cycles;
 mod top_level;
+mod walks;
 use top_level::{padded_array, rewalk_kind, view_rereads, wide_array};
 mod arity;
 mod env;
