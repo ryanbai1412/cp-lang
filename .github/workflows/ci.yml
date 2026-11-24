@@ -118,7 +118,7 @@ jobs:
         # the step's own timeout cancels the job and skips them.
         # vmstat samples memory, swap and CPU every 20 s for the step below.
         run: |
-          vmstat -t -S M 20 > "$RUNNER_TEMP/vmstat.log" 2>&1 &
+          stdbuf -oL vmstat -t -S M 20 > "$RUNNER_TEMP/vmstat.log" 2>&1 &
           timeout 680 just check || { s=$?; [ "$s" != 124 ] \
             || echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; exit "$s"; }
       - name: Memory, swap and CPU during the gate (MB; si/so swapping, wa I/O wait)
