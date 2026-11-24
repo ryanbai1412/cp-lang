@@ -1,0 +1,27 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "2\n4 15\nbuiltin_clz\nbuiltin_ctz\njinkela\nOrzTourist\nbuiltin_clz MengXin QiuZhu\nbuiltin_ctz builtin_clz louxia\njinkela builtin_ctz louxia\nbuiltin_ctz builtin_clz loushang\nbuiltin_clz BieMoZheng YaoXueShu\nOrzTourist builtin_clz louxia\nOrzTourist OrzTourist louxia\nbuiltin_clz Iam Angry!\nbuiltin_clz builtin_clz loushang\nbuiltin_clz builtin_clz louxia\nbuiltin_clz builtin_clz loushang\nbuiltin_clz builtin_clz louxia\nbuiltin_ctz Xue Shu\njinkela Xue Shu\nOrzTourist Xue Shu\n1 9\nbuiltin_clz\nbuiltin_clz builtin_clz loushang\nbuiltin_clz builtin_clz loushang\nbuiltin_clz builtin_clz louxia\nbuiltin_clz builtin_clz Loushang\nbuiltin_clz builtin_clz LOUSHANG\nbuiltin_clz Builtin_clz loushang\nbuiltin_clz loushang louxia\nbuiltin_clz builtin_clz builtin_clz\nbuiltin_clz loushang builtin_clz\n"
+
+[[case]]
+seed = 1
+size = 5
+
+[[case]]
+seed = 2
+size = 12
+
+[[case]]
+seed = 3
+size = 16
+
+[[case]]
+seed = 4
+size = 1000
+
+[[case]]
+seed = 5
+size = 77777
+
+[[case]]
+args = ["--max"]
