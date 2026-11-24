@@ -13,6 +13,12 @@ one commit are grouped. For each culprit it reverts it on top of bad and
 reruns its tests; --push-reverts pushes a revert that makes them pass to
 `culprit/revert-<sha>`. A test that passes at bad is reported flaky, one
 that fails at good as already failing.
+
+Before any bisect it names each failing test's suspects in seconds: the
+newest commits in good..bad that touch the test's file (else its crate),
+with their lanes. A shard red for one test still routes every other test
+it hides, and the report is saved after each test, so a bisect cut by the
+job's timeout keeps what it found.
 """
 
 import argparse
@@ -113,9 +119,44 @@ def try_revert(sha, tests, bad, cwd, push):
     return result
 
 
-def find(good, bad, tests, push=False, in_place=False):
-    report = {"good": good, "bad": bad, "culprits": [], "flaky": [],
-              "already_failing": [], "unbisected": []}
+def source_of(test, cwd):
+    """The tracked file defining `test`: its integration-test source, or the
+    crate file with its `fn`; None when not found."""
+    binary, name = test
+    crate, _, target = binary.partition("::")
+    if target:
+        path = f"crates/{crate}/tests/{target}.rs"
+        if git("ls-files", path, cwd=cwd):
+            return path
+    fn = name.split("::")[-1]
+    hits = git("grep", "-l", "-E", rf"fn {re.escape(fn)}\b", "--", f"crates/{crate}", cwd=cwd, check=False)
+    return hits.splitlines()[0] if hits else None
+
+
+def triage(good, bad, tests, cwd, keep=3):
+    """Each test's suspects: the newest `keep` commits in good..bad touching
+    its file, else its crate, each with its lane."""
+    out = []
+    for test in tests:
+        path = source_of(test, cwd)
+        crate = f"crates/{test[0].split('::')[0]}"
+        shas = []
+        for where in [p for p in (path, crate) if p]:
+            shas = git("log", "--format=%H", f"-{keep}", f"{good}..{bad}", "--", where, cwd=cwd).split()
+            if shas:
+                break
+        suspects = []
+        for sha in shas:
+            subject, domain = describe(sha, cwd)
+            suspects.append({"sha": sha, "subject": subject, "domain": domain})
+        out.append({"test": " ".join(test), "file": path, "suspects": suspects})
+    return out
+
+
+def find(good, bad, tests, push=False, in_place=False, report=None, save=lambda r: None):
+    report = report or {"good": good, "bad": bad}
+    for key in ("culprits", "flaky", "already_failing", "unbisected"):
+        report.setdefault(key, [])
     if in_place:
         wt, home = ROOT, git("rev-parse", "HEAD", cwd=ROOT)
     else:
@@ -127,6 +168,7 @@ def find(good, bad, tests, push=False, in_place=False):
         for test in tests:
             name = " ".join(test)
             git("checkout", "-q", "--detach", bad, cwd=wt)
+            save(report)
             if run_tests([test], wt) != "fail":
                 report["flaky"].append(name)
                 continue
@@ -150,6 +192,7 @@ def find(good, bad, tests, push=False, in_place=False):
                 "sha": sha, "subject": subject, "domain": domain,
                 "tests": [" ".join(t) for t in its],
                 "revert": try_revert(sha, its, bad, wt, push)})
+            save(report)
     finally:
         if in_place:
             git("checkout", "-q", "--detach", home, cwd=ROOT, check=False)
@@ -168,8 +211,12 @@ def explains(sha, test, cwd):
 
 
 def summary(report):
-    lines = [f"culprits in {report['good'][:9]}..{report['bad'][:9]}:"]
-    for c in report["culprits"]:
+    lines = [f"suspects per failing test in {report['good'][:9]}..{report['bad'][:9]}:"]
+    for t in report.get("triage", []):
+        who = ", ".join(f"{s['sha'][:9]} ({s['domain'] or 'no domain'})" for s in t["suspects"])
+        lines.append(f"- {t['test']} [{t['file'] or 'file not found'}]: {who or 'no commit touches it'}")
+    lines.append(f"culprits in {report['good'][:9]}..{report['bad'][:9]}:")
+    for c in report.get("culprits", []):
         rv = c["revert"]
         state = ("revert conflicts" if not rv["clean"] else
                  f"revert passes, on {rv['branch']}" if rv.get("branch") else
@@ -178,21 +225,29 @@ def summary(report):
                      f"{len(c['tests'])} test(s), {state}")
         lines += [f"    {t}" for t in c["tests"]]
     for key in ("flaky", "already_failing", "unbisected"):
-        if report[key]:
+        if report.get(key):
             lines.append(f"{key.replace('_', ' ')}: " + ", ".join(report[key]))
     return "\n".join(lines)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--good", required=True)
-    ap.add_argument("--bad", required=True)
+    ap.add_argument("--good")
+    ap.add_argument("--bad")
+    ap.add_argument("--summary", metavar="JSON", help="print a saved report's summary")
+    ap.add_argument("--triage-only", action="store_true", help="name suspects; bisect nothing")
     ap.add_argument("--from-log")
     ap.add_argument("--json")
     ap.add_argument("--push-reverts", action="store_true")
     ap.add_argument("--in-place", action="store_true", help="bisect this clean checkout, not a worktree")
     ap.add_argument("tests", nargs="*", help="`binary_id name`, e.g. 'cpl-cli::diagnostics golden'")
     args = ap.parse_args()
+    if args.summary:
+        with open(args.summary) as f:
+            print(summary(json.load(f)))
+        return
+    if not (args.good and args.bad):
+        ap.error("--good and --bad are required")
     tests = [tuple(t.split(None, 1)) for t in args.tests]
     if args.from_log:
         with open(args.from_log, errors="replace") as f:
@@ -204,10 +259,18 @@ def main():
     ROOT = git("rev-parse", "--show-toplevel", cwd=os.getcwd())
     good = git("rev-parse", args.good, cwd=ROOT)
     bad = git("rev-parse", args.bad, cwd=ROOT)
-    report = find(good, bad, tests, args.push_reverts, args.in_place)
-    if args.json:
-        with open(args.json, "w") as f:
-            json.dump(report, f, indent=2)
+    def save(report):
+        if args.json:
+            with open(args.json, "w") as f:
+                json.dump(report, f, indent=2)
+
+    report = {"good": good, "bad": bad, "triage": triage(good, bad, tests, ROOT)}
+    save(report)
+    print(summary(report), flush=True)
+    if args.triage_only:
+        return
+    report = find(good, bad, tests, args.push_reverts, args.in_place, report, save)
+    save(report)
     print(summary(report))
 
 

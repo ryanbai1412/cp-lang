@@ -1,9 +1,11 @@
 import os
+import subprocess
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from culprit import failing_tests, nextest_cmd, summary  # noqa: E402
+from culprit import failing_tests, nextest_cmd, source_of, summary, triage
 
 LOG = """\
 2026-11-23T17:15:19.6Z        FAIL [   0.878s] (28/34) cpl-cli::runtime_errors wide_range_overflow_traps
@@ -33,6 +35,37 @@ class CulpritTest(unittest.TestCase):
                                                                    "branch": "culprit/revert-ccccccccc"}}]})
         self.assertIn("ccccccccc (compiler) check: s: 1 test(s), revert passes, on culprit/revert-ccccccccc", text)
         self.assertIn("flaky: x y", text)
+
+
+    def test_names_each_tests_suspects_before_any_bisect(self):
+        with tempfile.TemporaryDirectory() as root:
+            def run(*args):
+                return subprocess.run(args, cwd=root, check=True, capture_output=True, text=True).stdout.strip()
+
+            def commit(path, text, msg):
+                full = os.path.join(root, path)
+                os.makedirs(os.path.dirname(full), exist_ok=True)
+                with open(full, "w") as f:
+                    f.write(text)
+                run("git", "add", path)
+                run("git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", msg)
+                return run("git", "rev-parse", "HEAD")
+
+            run("git", "init", "-q")
+            good = commit("crates/a/tests/it.rs", "#[test]\nfn hidden() {}\n", "a: start\n\nDomain: tools")
+            near = commit("crates/a/tests/it.rs", "#[test]\nfn hidden() { 1; }\n", "a: touch it\n\nDomain: perf")
+            commit("crates/a/src/lib.rs", "mod t { #[test]\nfn unit() {} }\n", "a: add unit\n\nDomain: compiler")
+            bad = commit("crates/b/src/lib.rs", "", "b: elsewhere\n\nDomain: site")
+            self.assertEqual(source_of(("a::it", "hidden"), root), "crates/a/tests/it.rs")
+            self.assertEqual(source_of(("a", "t::unit"), root), "crates/a/src/lib.rs")
+            self.assertIsNone(source_of(("a", "gone"), root))
+            got = triage(good, bad, [("a::it", "hidden"), ("a", "gone")], root)
+            self.assertEqual([s["sha"] for s in got[0]["suspects"]], [near])
+            self.assertEqual(got[0]["suspects"][0]["domain"], "perf")
+            self.assertEqual([s["domain"] for s in got[1]["suspects"]], ["compiler", "perf"])
+            text = summary({"good": good, "bad": bad, "triage": got})
+            self.assertIn(f"- a::it hidden [crates/a/tests/it.rs]: {near[:9]} (perf)", text)
+            self.assertIn("- a gone [file not found]:", text)
 
 
 if __name__ == "__main__":

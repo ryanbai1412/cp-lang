@@ -58,6 +58,8 @@ jobs:
           tools: cargo-nextest@0.9.152
       - name: Bisect
         if: steps.range.outputs.fails != '0'
+        # Below the job's 30: the summary and statuses still post what it found.
+        timeout-minutes: 25
         run: |
           git config user.name "cpl culprit"
           git config user.email "culprit@users.noreply.github.com"
@@ -65,7 +67,11 @@ jobs:
           uv run --quiet python scripts/culprit.py --in-place --push-reverts --good "${{ steps.range.outputs.good }}" \
               --bad "$BAD" --from-log "$RUNNER_TEMP/failed.log" --json "$RUNNER_TEMP/culprit.json" \
               | tee "$RUNNER_TEMP/culprit.txt"
-          { echo '```'; cat "$RUNNER_TEMP/culprit.txt"; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
+      - name: Summary
+        if: ${{ !cancelled() && steps.range.outputs.fails != '0' }}
+        run: |
+          [ -s "$RUNNER_TEMP/culprit.json" ] || exit 0
+          { echo '```'; uv run --quiet python scripts/culprit.py --summary "$RUNNER_TEMP/culprit.json"; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
       - name: Mark each culprit commit
         if: ${{ !cancelled() && steps.range.outputs.fails != '0' }}
         run: |
