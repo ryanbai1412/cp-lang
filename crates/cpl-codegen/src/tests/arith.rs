@@ -148,3 +148,17 @@ fn a_guarded_step_of_a_global_counter_does_not_branch() {
     assert!(cpp.contains("distinct -= ("), "{cpp}");
     assert!(!cpp.contains("distinct += 1;"), "{cpp}");
 }
+
+#[test]
+fn a_ranged_param_divides_with_cpps_own_operator() {
+    let cpp = cpp(concat!(
+        "fn step(x: 0..=1000, m: 1..=1000) -> Int:\n",
+        "    (x * 3 + 1) % m\n",
+        "let n: Int = read()\n",
+        "print(step(n, 7))\n",
+    ));
+    assert!(cpp.contains("cpl::imul(x, 3), 1) % m;"), "{cpp}");
+    assert!(!cpp.contains("cpl::emod("), "{cpp}");
+    // Every call checks its argument into the range the body relies on.
+    assert!(cpp.contains("step(cpl::check_range(n, 0, 1000,"), "{cpp}");
+}

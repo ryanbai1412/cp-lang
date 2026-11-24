@@ -1523,9 +1523,12 @@ impl<'a> Lowerer<'a> {
                             .params
                             .get(at)
                             .and_then(|p| p.ty.as_ref());
-                        lowered.push(Arg::Value(
-                            self.expect_declared(&arg.value, &param.ty, declared),
-                        ));
+                        let value = self.expect_declared(&arg.value, &param.ty, declared);
+                        let value = match declared.and_then(|t| self.const_param_range(id, t)) {
+                            Some(b) => self.check_range(value, &b, arg.value.span),
+                            None => value,
+                        };
+                        lowered.push(Arg::Value(value));
                     }
                 }
                 None => match param.default {

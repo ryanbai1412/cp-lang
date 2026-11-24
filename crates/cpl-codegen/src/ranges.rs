@@ -63,6 +63,9 @@ pub(crate) struct Facts<'p> {
     u32_fields: BTreeSet<(usize, usize)>,
     /// Each domain's lower-bound expression, when defined once at top level.
     domain_lo: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
+    /// Ranged params: every call checks its argument into the range, and
+    /// every store to the param is checked too (R04.4.24).
+    param_ranges: BTreeMap<Var, &'p Spec>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -86,6 +89,9 @@ impl<'p> Facts<'p> {
                 let v = (Some(id), false, slot);
                 *facts.stores.entry(v).or_default() += 2;
                 facts.tainted.insert(v);
+                if let Some(range) = &f.params[slot].range {
+                    facts.param_ranges.insert(v, range);
+                }
             }
             facts.block(Some(id), &f.body);
         }
@@ -574,6 +580,9 @@ impl<'p> Facts<'p> {
                     ExprKind::Global(id) => (None, true, *id),
                     _ => return None,
                 };
+                if let Some(range) = self.param_ranges.get(&v) {
+                    return Some(range);
+                }
                 if !self.stable(v) {
                     return None;
                 }

@@ -3540,7 +3540,10 @@ impl<'a> Lowerer<'a> {
                 cx.mut_slots.insert(0);
             }
             cx.receiver = Some((0, owner));
-            params.push(ParamDef { mutable });
+            params.push(ParamDef {
+                mutable,
+                range: None,
+            });
         }
         for param in &self.sigs[id].params {
             let slot = cx.locals.len();
@@ -3554,6 +3557,7 @@ impl<'a> Lowerer<'a> {
             });
             params.push(ParamDef {
                 mutable: param.mutable,
+                range: None,
             });
         }
         for ast_p in &decl.params {
@@ -3592,7 +3596,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
-        self.bind_param_facts(decl);
+        self.bind_param_facts(decl, &mut params);
         let mut out = Vec::new();
 
         // If this is a constructor/static method of a struct with owned domains (e.g. `Rooted<V>.Pre`),

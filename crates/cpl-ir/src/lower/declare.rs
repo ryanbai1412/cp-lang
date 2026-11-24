@@ -181,12 +181,15 @@ impl<'a> Lowerer<'a> {
 
     /// What a fn's params keep known in its body: the range of a ranged
     /// param, and that a param given a reversed view walks backwards.
-    pub(super) fn bind_param_facts(&mut self, decl: &ast::FnDecl) {
+    pub(super) fn bind_param_facts(&mut self, decl: &ast::FnDecl, params: &mut [ParamDef]) {
         for p in &decl.params {
             let Some(&slot) = self.cx.scopes[0].get(&p.name.text) else {
                 continue;
             };
             if let Some(rinfo) = p.ty.as_ref().and_then(|t| self.range_info_from_ast(t)) {
+                if let Some(param) = params.get_mut(slot) {
+                    param.range = rinfo.spec();
+                }
                 self.cx.local_ranges.insert(slot, rinfo);
             }
             let declared_rev = matches!(p.ty.as_ref().map(|t| &t.kind),

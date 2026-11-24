@@ -1198,6 +1198,9 @@ pub struct Function {
 #[derive(Clone, PartialEq, Debug)]
 pub struct ParamDef {
     pub mutable: bool,
+    /// The declared range of a ranged `Int` param (`x: 0..=1e9`), a
+    /// [`Spec::Int`]: every call checks its argument into it (R04.4.24).
+    pub range: Option<Spec>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

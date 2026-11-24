@@ -95,6 +95,16 @@ fn expr_limits(e: &Expr) -> Option<(i64, i64)> {
 }
 
 impl RangeInfo {
+    /// A scalar range as the [`Spec::Int`] the IR carries.
+    pub(super) fn spec(&self) -> Option<Spec> {
+        let b = self.scalar()?;
+        Some(Spec::Int {
+            lo: b.lo.clone().map(Box::new),
+            hi: b.hi.clone().map(Box::new),
+            text: b.text.clone(),
+        })
+    }
+
     pub(super) fn scalar(&self) -> Option<&RangeBounds> {
         match self {
             RangeInfo::Scalar(b) => Some(b),
@@ -405,6 +415,25 @@ impl<'a> Lowerer<'a> {
         } else {
             info
         }
+    }
+
+    /// The range of fn `id`'s param declared `ty`, read in `id`'s own
+    /// module, when its ends are constants and so mean the same at the call.
+    pub(super) fn const_param_range(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeBounds> {
+        let saved_m = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
+        let saved_off = std::mem::replace(&mut self.offset, self.sigs[id].offset);
+        let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
+        let saved_diags = self.diags.len();
+        let info = self.range_info_from_ast(ty);
+        let had_err = self.diags.len() > saved_diags;
+        self.diags.truncate(saved_diags);
+        self.gen_env = saved_env;
+        self.cur_mod = saved_m;
+        self.offset = saved_off;
+        let b = info.filter(|_| !had_err)?.scalar()?.clone();
+        let fixed =
+            (b.lo.is_none() || b.lo_const.is_some()) && (b.hi.is_none() || b.hi_const.is_some());
+        fixed.then_some(b)
     }
 
     /// Records `RangeInfo` for every binding introduced by `pat`.
