@@ -456,9 +456,6 @@ impl<'p> Emitter<'p> {
             None => parts.push("cpl::put_line();".to_string()),
         }
         marked.iter().for_each(|m| _ = self.read_in_place.remove(m));
-        if self.program.interactive {
-            parts.push("cpl::flush(); fflush(stdout);".to_string());
-        }
         out.push_str(&format!("{}{}\n", pad(self.indent), parts.join(" ")));
     }
 
