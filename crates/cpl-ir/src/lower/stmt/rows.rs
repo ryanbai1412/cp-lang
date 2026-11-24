@@ -117,12 +117,7 @@ impl<'a> Lowerer<'a> {
             );
             return None;
         }
-        let slot_ty = |dim: Dim| match dim {
-            Dim::Pos(d) => Ty::Pos(d),
-            Dim::Bound(d) => Ty::Bound(d),
-            Dim::Enum(e) => Ty::Enum(e),
-            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-        };
+        let slot_ty = |dim: Dim| dim.index_ty();
         let changed = asked.then(|| {
             let changed = self.temp(Ty::Bool);
             out.push_let(changed, self.mk(ExprKind::Bool(false), Ty::Bool, span));
@@ -354,12 +349,7 @@ impl<'a> Lowerer<'a> {
             }
             return;
         }
-        let index_ty = |dim: Dim| match dim {
-            Dim::Pos(d) => Ty::Pos(d),
-            Dim::Bound(d) => Ty::Bound(d),
-            Dim::Enum(e) => Ty::Enum(e),
-            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-        };
+        let index_ty = |dim: Dim| dim.index_ty();
         let (at, from_at) = (
             self.temp(index_ty(dims[axis])),
             self.temp(index_ty(from_dims[from_axis])),
@@ -491,12 +481,7 @@ impl<'a> Lowerer<'a> {
         let Some((dims, elem)) = Self::axes_of(&place.ty) else {
             return;
         };
-        let at = self.temp(match dims[axis] {
-            Dim::Pos(d) => Ty::Pos(d),
-            Dim::Bound(d) => Ty::Bound(d),
-            Dim::Enum(e) => Ty::Enum(e),
-            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-        });
+        let at = self.temp(dims[axis].index_ty());
         let cell = self.axis_cell(&place.ty, indices, at, span);
         let cell: Vec<Expr> = cell
             .into_iter()

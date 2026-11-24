@@ -217,10 +217,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                     let elems: Vec<Ty> = tys.iter().map(|t| self.element_ty(t)).collect();
-                    return Some(Ty::Named {
-                        name: "Zip".into(),
-                        args: vec![Ty::Tuple(elems)],
-                    });
+                    return Some(Ty::named1("Zip", Ty::Tuple(elems)));
                 }
                 None
             }

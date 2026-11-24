@@ -23,7 +23,7 @@ impl<'a> Checker<'a> {
         let mut cell = row;
         for _ in 1..index.len() {
             match cell {
-                Ty::Named { name, args } if name == "List" && args.len() == 1 => cell = &args[0],
+                t if let Some(e) = t.named_arg("List") => cell = e,
                 _ => return false,
             }
         }
@@ -237,8 +237,7 @@ impl<'a> Checker<'a> {
             }
             (Ty::Array { elem, .. }, _) => {
                 let mut cell = &**elem;
-                let scalar = !matches!(init_ty, Ty::Array { .. })
-                    && !matches!(init_ty, Ty::Named { name, .. } if name == "List");
+                let scalar = !matches!(init_ty, Ty::Array { .. }) && !init_ty.is_named("List");
                 loop {
                     if self.fits(init_ty, cell) {
                         return true;
@@ -1404,10 +1403,12 @@ impl<'a> Checker<'a> {
                 if matches!(op, AssignOp::Max | AssignOp::Min) {
                     self.row_keep(target, &target_ty, value, &value_ty);
                 }
-                let row = |ty: &Ty| {
-                    matches!(ty, Ty::Array { .. })
-                        || matches!(ty, Ty::Named { name, .. } if name == "List")
+                let (target_ty, value_ty) = if part {
+                    (self.as_row(&target_ty), self.as_row(&value_ty))
+                } else {
+                    (target_ty, value_ty)
                 };
+                let row = |ty: &Ty| matches!(ty, Ty::Array { .. }) || ty.is_named("List");
                 let target_ty =
                     if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
                         self.element_ty(&target_ty)
@@ -1551,8 +1552,7 @@ impl<'a> Checker<'a> {
                 let iter_ty = self.infer(iter);
                 self.iterating_range = prev_iterating;
                 let elem = self.walk_elem_ty(iter, &iter_ty);
-                let steerable = matches!(&iter_ty, Ty::Named { name, .. } if name == "Gen")
-                    && matches!(&elem, Ty::Named { .. });
+                let steerable = iter_ty.is_named("Gen") && matches!(&elem, Ty::Named { .. });
                 self.push_scope();
                 self.drop_facts_written(body, Some(pat));
                 self.bind_whole(pat, &elem, steerable, "for");

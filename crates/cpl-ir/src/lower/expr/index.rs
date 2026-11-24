@@ -150,12 +150,7 @@ impl<'a> Lowerer<'a> {
                 let mut out = Vec::new();
                 let mut axes = self.whole_axes.clone().into_iter();
                 for (dim, index) in dims.iter().zip(indices) {
-                    let want = match dim {
-                        Dim::Pos(d) => Ty::Pos(*d),
-                        Dim::Bound(d) => Ty::Bound(*d),
-                        Dim::Enum(e) => Ty::Enum(*e),
-                        Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-                    };
+                    let want = dim.index_ty();
                     if let Some(slot) = is_whole(index).then(|| axes.next()).flatten() {
                         out.push(self.mk(ExprKind::Local(slot), want, index.span));
                         continue;

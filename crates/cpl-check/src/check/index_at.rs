@@ -90,7 +90,7 @@ impl Checker<'_> {
         let takes_cut = methods.iter().any(|(m, ty)| {
             m == method
                 && matches!(ty, Ty::Fn { params, .. } if params.last().is_some_and(|p|
-                    matches!(&p.ty, Ty::Named { name, .. } if name == "Cut")))
+                    p.ty.is_named("Cut")))
         });
         if takes_cut && matches!(self.infer_quietly(index), Ty::Pos(_)) {
             return None;

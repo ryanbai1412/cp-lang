@@ -263,6 +263,19 @@ impl<'a> Checker<'a> {
         if self.cut_range_not_piece(&base_ty, indices, &index_tys) {
             return Ty::Error;
         }
+        // `w[k]` on any `Indexed<K, T>`, `Slice<S>` included, reads it as
+        // the `[K]T` it is (R07.4.5): keys checked like an array's.
+        let ranged = matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range");
+        let base_ty = match &base_ty {
+            // A slice of a slice cuts the same source by its keys.
+            t if let Some(src) = t.slice_source().filter(|_| ranged) => src.clone(),
+            Ty::Named { name, .. }
+                if !ranged && !matches!(name.as_str(), "List" | "Map" | "Range") =>
+            {
+                self.as_row(&base_ty)
+            }
+            _ => base_ty,
+        };
         match &base_ty {
             // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
             // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.
@@ -577,9 +590,12 @@ impl<'a> Checker<'a> {
                 }
                 if slice {
                     // A slice is its array seen through a range: lent,
-                    // and indexed by the same positions.
+                    // and indexed by the same positions. One key gives
+                    // std's `Slice` (R07.4.17); a block stays a grid view.
                     self.note_view(expr, "slice");
-                    if kept.len() == index.len() {
+                    if kept.len() == index.len() && index.len() == 1 {
+                        Ty::slice_of(base_ty.clone())
+                    } else if kept.len() == index.len() {
                         base_ty.clone()
                     } else {
                         Ty::Array {
@@ -592,21 +608,18 @@ impl<'a> Checker<'a> {
                 }
             }
             // `s[0..5]`: O(1) read-only slice view into a string.
-            Ty::Str if matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
-            {
+            Ty::Str if ranged => {
                 self.note_readonly_view(expr, "slice");
-                Ty::Str
+                Ty::slice_of(Ty::Str)
             }
             // `xs[0..5]`: O(1) slice view into a list (mutable when the root is a `var`).
-            ty if matches!(ty, Ty::Named { name, .. } if name == "List")
-                && matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
-            {
+            ty if ranged && ty.is_named("List") => {
                 self.note_view(expr, "slice");
-                ty.clone()
+                Ty::slice_of(ty.clone())
             }
-            Ty::Named { name, args } if name == "List" && args.len() == 1 => {
+            t if let Some(e) = t.named_arg("List") => {
                 self.list_index_by_position(base, indices, &index_tys);
-                args[0].clone()
+                e.clone()
             }
             Ty::Named { name, .. } if matches!(name.as_str(), "Filter" | "Rev") => {
                 self.report(
@@ -624,7 +637,7 @@ impl<'a> Checker<'a> {
                 );
                 Ty::Error
             }
-            Ty::Named { name, args } if name == "Range" && args.len() == 1 => args[0].clone(),
+            t if let Some(e) = t.named_arg("Range") => e.clone(),
             Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
             Ty::Str => Ty::Char,
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Char | Ty::Fn { .. }) => {

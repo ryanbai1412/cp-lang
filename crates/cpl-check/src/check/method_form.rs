@@ -283,6 +283,12 @@ impl Checker<'_> {
         }
         match self.member_ty(expr, name, base) {
             Ty::Unknown if !self.in_call_callee => self.getter_fn_read(expr).unwrap_or(Ty::Unknown),
+            // `s.items` on a `Keyed` impl: the trait's fn is what std's `@get items` calls,
+            // so a read names the getter, as the engines run it.
+            Ty::Fn { params, ret } if !self.in_call_callee && params.is_empty() => {
+                let ty = Ty::Fn { params, ret };
+                self.getter_fn_read(expr).unwrap_or(ty)
+            }
             ty => ty,
         }
     }
@@ -360,6 +366,7 @@ impl Checker<'_> {
                 .collect();
             return traits.iter().all(|t| self.implements_trait(base, t));
         }
+        let base = &self.narrowed(base, &first.ty);
         let same_shape = match (&first.ty, base) {
             (Ty::Record(takes), Ty::Record(on)) => {
                 takes.len() == on.len() && takes.iter().zip(on).all(|(a, b)| a.0 == b.0)
@@ -610,8 +617,10 @@ impl Checker<'_> {
         let builtin = super::call::catalog_owner(base)
             .is_some_and(|owner| crate::builtins::builtin_member(owner, name).is_some());
         if let Some(first) = params.first().filter(|_| !builtin) {
-            first.ty.unify(base, &mut bindings);
+            let base = self.narrowed(base, &first.ty);
+            first.ty.unify(&base, &mut bindings);
         }
+        self.bind_written_bound_args(bound_args, &mut bindings);
         let generics = Self::bound_bindable(generics, params, ret);
         self.bind_bound_params(&generics, (bounds, bound_args), &mut bindings);
         let ty = Ty::Fn {
@@ -748,7 +757,13 @@ impl<'a> Checker<'a> {
         if name.text == "split" && base_ty == Ty::Str && self.split_on_str(args) {
             return Some(Ty::Error);
         }
-        if self.declares_member(&base_ty, &name.text) {
+        // A getter read past a trait's fn of the name (`s.items` on `Keyed`) calls the getter.
+        let read = call.span == callee.span && args.is_empty();
+        if self.declares_member(&base_ty, &name.text)
+            && !(read
+                && matches!(self.pick_method(&base_ty, &name.text),
+                Pick::One(_, def) if matches!(&*def, Def::Fn { getter: true, .. })))
+        {
             return None;
         }
         let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
@@ -946,6 +961,7 @@ impl Checker<'_> {
                 traits.push(t);
             }
         }
+        self.drop_implied(&mut traits);
         Some(traits)
     }
 

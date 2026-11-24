@@ -20,7 +20,7 @@ impl Checker<'_> {
 /// Python's `a.index(x)` on a list: a value's first position is
 /// `a.find(x)`, `None` when it isn't there, so `a.find(x)!`.
 pub(crate) fn index_of(src: &str, base: Span, name: &Name, ty: &Ty) -> Option<(String, Fix)> {
-    let list = matches!(ty, Ty::Named { name, .. } if name == "List");
+    let list = ty.is_named("List");
     if name.text != "index" || !list {
         return None;
     }

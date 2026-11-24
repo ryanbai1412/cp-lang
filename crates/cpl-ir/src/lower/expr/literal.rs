@@ -233,12 +233,7 @@ impl<'a> Lowerer<'a> {
                     );
                     return self.err_expr(span);
                 }
-                let index_ty = match dims[0] {
-                    Dim::Bound(d) => Ty::Bound(d),
-                    Dim::Pos(d) => Ty::Pos(d),
-                    Dim::Enum(e) => Ty::Enum(e),
-                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-                };
+                let index_ty = dims[0].index_ty();
                 let values: Vec<Expr> = items.iter().map(|item| self.expr_as(item, elem)).collect();
                 let ty = ty.clone();
                 let elem = (**elem).clone();

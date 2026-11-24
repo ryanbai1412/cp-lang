@@ -173,12 +173,7 @@ impl<'a> Lowerer<'a> {
             };
             for (i, part) in parts.into_iter().enumerate() {
                 let dim = *dims.get(out.len())?;
-                let want = match dim {
-                    Dim::Pos(d) => Ty::Pos(d),
-                    Dim::Bound(d) => Ty::Bound(d),
-                    Dim::Enum(e) => Ty::Enum(e),
-                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-                };
+                let want = dim.index_ty();
                 let field = self.mk_field(value.clone(), i, part, index.span);
                 let at = self.coerce(field, &want, index.span);
                 out.push(match dim {
