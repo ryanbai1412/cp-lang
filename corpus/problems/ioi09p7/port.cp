@@ -6,40 +6,30 @@
 // Solution: lay the tree out in preorder and list each region's preorder positions. A
 //   region with more than sqrt(N) members is big: one sweep, counting each node's ancestors
 //   in it, answers it against every r2 at once and is cached. A small r1 walks its members
-//   and counts r2's positions inside each subtree range by binary search, memoized per
+//   and counts r2's positions inside each subtree range (a SortedSet range), memoized per
 //   (r1, r2): O(N sqrt N + Q sqrt N log N).
 // original: corpus/submissions/5032754.cpp
 // Bounds: n, q: 1..=2e5; r: 1..=25000; head: 1..=r; b: 1..=n; h, r1, r2: 1..=r
+
 
 let (n, r, q): (1..=2e5, 1..=25000, 1..=2e5) = read()
 domain V = 1..=n
 domain Region = 1..=r
 
-var home: [V]Region = [V] _ => Region.first!
-var boss: [V]?V = None
 let head: Region = read()
-home[V.first!] = head
-for v in V:
-    if v == V.first!: continue
+var home: [V]Region = [V] _ => head
+var boss: [V]?V = None
+for v in V.all.drop(1):
     let (b, h): (V, Region) = read()
-    boss[v] = b
+    boss[v] = Some(b)
     home[v] = h
 let t = Rooted.from_parents(boss)
 
 var members: [Region]List<V> = [Region] _ => []
-// spots[x]: preorder positions of the employees of region x, increasing
-var spots: [Region]List<Int> = [Region] _ => []
-for v in t.at:
+var spots: [Region]SortedSet<t.Pre> = [Region] _ => SortedSet()
+for v in V:
     members[home[v]].push(v)
-    spots[home[v]].push(t.pos(v).ord)
-
-// how many employees of region x sit at preorder positions < p
-// WISH TR4: `(0..w.len).first_true(i => w[i] >= p)` is on the cheat sheet
-// but not in the interpreter prelude, and the real want is one call:
-// `spots[x].count_in(t.sub(a))` on a sorted `List<Pre>`.
-fn before(x: Region, p: Int) -> Int:
-    let lo = (0..spots[x].len).first_true(mid => spots[x][mid] >= p) ?? spots[x].len
-    lo
+    spots[home[v]].add(t.pos(v))
 
 // pairs topped by the big region x, for every lower region at once
 fn sweep(x: Region) -> [Region]Int:
@@ -52,19 +42,12 @@ fn sweep(x: Region) -> [Region]Int:
     pairs
 
 var big: [Region]?[Region]Int = [Region] _ => None
-var seen: Map<(Region, Region), Int> = Map()
-
+var small: Map<(Region, Region), Int> = Map()
 for _ in 0..q:
     let (r1, r2): (Region, Region) = read()
-    var ans = 0
     if members[r1].len * members[r1].len > n:
         big[r1] ??= sweep(r1)
-        ans = big[r1]![r2]
-    elif let hit = seen.get((r1, r2)):
-        ans = hit
+        print(big[r1]![r2])
     else:
-        for a in members[r1]:
-            let (lo, hi) = t.sub(a).ends
-            ans += before(r2, hi) - before(r2, lo)
-        seen[(r1, r2)] = ans
-    print(ans)
+        small[(r1, r2)] ??= sum(spots[r2].range(t.sub(a)).len for a in members[r1])
+        print(small[(r1, r2)])

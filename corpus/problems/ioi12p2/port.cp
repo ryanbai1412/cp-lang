@@ -6,7 +6,7 @@
 //   means its rings, two or more means none. The first ring to reach degree 3 and its three
 //   neighbours are the only candidates; for each keep a DSU and degrees of the graph without it,
 //   replaying all links so far and then each new one, and count the candidates whose graph has
-//   no degree > 2 and no cycle. O((n + calls) alpha(n)), five layers of n.
+//   no degree > 2 and no cycle. O((n + calls) alpha(n)): std Dsu for the whole graph and one per candidate.
 // limits: 2500 ms, 256 MB
 // original: corpus/submissions/4689474.cpp (grader functions Init / Link / CountCritical)
 // stdin: n and the number of calls, then one call per line: "u v" for
@@ -14,78 +14,57 @@
 // Bounds: n: 1..=1000000; calls: 0..=1000000
 let n: 1..=1000000 = read()
 let calls: 0..=1000000 = read()
+domain Ring = 0..n
+domain Cand = 0..4  // the hub, then its three neighbours
 
-// Layer 0 is the whole graph. Once some ring has three links, only it and
-// its three neighbours can be critical; layer k = 1..4 is the graph without
-// candidate k - 1, and the candidate survives while that graph is all chains.
-var up: [0..5 * n]Int = -1  // union-find: -size at a root
-var deg: [0..5 * n]Int = 0
-var adj: List<List<Int>> = [[] for _ in 0..n]
-var links: List<Int> = []
-var cand: List<Int> = []
-var chains: List<Bool> = [true, true, true, true]
+// While every ring has at most two links, `whole` tracks the cycles.
+var whole = Dsu<Ring>()
+var deg: [Ring]Int = 0
+var adj: [Ring]List<Ring> = []
+var links: List<(Ring, Ring)> = []
 var cycles = 0
 var cycle_len = 0
 
-fn find(x: Int) -> Int:
-    var r = x
-    while up[r] >= 0: r = up[r]
-    var y = x
-    while up[y] >= 0:
-        let next = up[y]
-        up[y] = r
-        y = next
-    r
+// Once a ring (the hub) has three links, only it and its neighbours can be
+// critical: candidate k survives while the graph without it is all chains.
+var hub: ?Ring = None
+var without: [Cand]Dsu<Ring> = [Cand] _ => Dsu()
+var deg_without: [Cand, Ring]Int = 0
+var chains: [Cand]Bool = true
 
-// joins u and v in one layer; false when they were already connected
-fn unite(layer: Int, u: Int, v: Int) -> Bool:
-    var a = find(layer * n + u)
-    var b = find(layer * n + v)
-    if a == b: return false
-    if up[a] > up[b]:
-        swap(mut a, mut b)
-    up[a] += up[b]
-    up[b] = a
-    true
+fn cand(h: Ring, k: Cand) -> Ring = if let i = k.prev: adj[h][i.ord] else: h
 
-fn link_without(k: Int, u: Int, v: Int):
-    if u == cand[k] or v == cand[k]: return
-    let layer = k + 1
-    deg[layer * n + u] += 1
-    deg[layer * n + v] += 1
-    if deg[layer * n + u] > 2 or deg[layer * n + v] > 2: chains[k] = false
-    if not unite(layer, u, v): chains[k] = false
+fn link_without(h: Ring, k: Cand, u: Ring, v: Ring):
+    let c = cand(h, k)
+    if u == c or v == c: return
+    for x in [u, v]: deg_without[k, x] += 1
+    if deg_without[k, u] > 2 or deg_without[k, v] > 2 or not without[k].unite(u, v):
+        chains[k] = false
 
-fn link(u: Int, v: Int):
-    links.push(u)
-    links.push(v)
-    if cand.len > 0:
-        for k in 0..4: link_without(k, u, v)
+fn link(u: Ring, v: Ring):
+    links.push((u, v))
+    if let h = hub:
+        for k in Cand: link_without(h, k, u, v)
         return
-    adj[u].push(v)
-    adj[v].push(u)
-    deg[u] += 1
-    deg[v] += 1
+    for (a, b) in [(u, v), (v, u)]:
+        adj[a].push(b)
+        deg[a] += 1
     if deg[u] == 3 or deg[v] == 3:
-        let hub = if deg[u] == 3: u else: v
-        cand.push(hub)
-        for x in adj[hub]: cand.push(x)
-        for k in 0..4:
-            for e in 0..links.len / 2: link_without(k, links[2 * e], links[2 * e + 1])
-    elif not unite(0, u, v):
-        // all degrees are at most 2, so this component just became a cycle
+        let h = if deg[u] == 3: u else: v
+        hub = Some(h)
+        for k in Cand:
+            for (a, b) in links: link_without(h, k, a, b)
+    elif not whole.unite(u, v):
         cycles += 1
-        let root = find(u)
-        cycle_len = -up[root]
+        cycle_len = whole.size(u)
 
 fn count_critical() -> Int:
-    if cand.len > 0: return count(chains[k] for k in 0..4)
+    if hub != None: return count(chains[k] for k in Cand)
     if cycles == 0: return n
     if cycles == 1: return cycle_len
     0
 
 for _ in 0..calls:
-    let u: Int = read()
-    let v: Int = read()
+    let (u, v): (-1..=n - 1, -1..=n - 1) = read()
     if u == -1: print(count_critical())
-    else: link(u, v)
+    else: link(Ring(u), Ring(v))
