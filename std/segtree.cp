@@ -1091,10 +1091,15 @@ pub struct WaveletMatrix<D>:
     bits: Int
     n: Int
     zs: List<Int>
-    cnt: List<Int>
+    // Level `l`'s bits packed 64 to a word, with the count of ones before each word, so a
+    // query's rank lookups touch a few hot words instead of a full Int per position.
+    words: List<U64>
+    before: List<Int>
     zsum: List<Int>
 
-    fn ones(self, l: Int, i: Int) -> Int = cnt[l * (n + 1) + i]
+    fn ones(self, l: Int, i: Int) -> Int:
+        let at = l * (n / 64 + 1) + i / 64
+        before[at] + popcount(words[at] & ((U64(1) << (i % 64)) - U64(1)))
 
     fn below(self, lo0: Int, hi0: Int, x: Int) -> Int:
         if x <= 0: return 0
@@ -1130,23 +1135,26 @@ pub struct WaveletMatrix<D>:
             bits,
             n,
             [],
-            List.filled(bits * (n + 1), 0),
+            List.filled(bits * (n / 64 + 1), U64(0)),
+            List.filled(bits * (n / 64 + 1), 0),
             List.filled(bits * (n + 1), 0),
         )
         for l in 0..bits:
             let b = bits - 1 - l
             let base = l * (n + 1)
+            let wbase = l * (n / 64 + 1)
             var (zero, one): (List<Int>, List<Int>) = ([], [])
             for i in 0..n:
                 let v = cur[i]
                 if v.bit(b):
-                    w.cnt[base + i + 1] = w.cnt[base + i] + 1
+                    w.words[wbase + i / 64] |= U64(1) << (i % 64)
                     w.zsum[base + i + 1] = w.zsum[base + i]
                     one.push(v)
                 else:
-                    w.cnt[base + i + 1] = w.cnt[base + i]
                     w.zsum[base + i + 1] = w.zsum[base + i] + v
                     zero.push(v)
+            for k in 1..n / 64 + 1:
+                w.before[wbase + k] = w.before[wbase + k - 1] + popcount(w.words[wbase + k - 1])
             w.zs.push(zero.len)
             for v in one: zero.push(v)
             cur = zero

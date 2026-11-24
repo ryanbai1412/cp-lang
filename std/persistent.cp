@@ -332,13 +332,14 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
                 nl = mid
         Some(D.nth(nl))
 
+struct KthNode(left: 0..=2_000_000_000, right: 0..=2_000_000_000, cnt: 0..=2_000_000_000)
+
 /// Static range k-th smallest and range rank queries over `[D]T`.
 /// Built in \(O(n \log n)\) using prefix versions of a persistent count tree; queries run in \(O(\log n)\).
 pub struct RangeKth<D, T>:
     vals: List<T>
-    left: List<0..=2_000_000_000>
-    right: List<0..=2_000_000_000>
-    cnt: List<0..=2_000_000_000>
+    // One list of nodes, so a query step reads one cache line per version, not three.
+    nodes: List<KthNode>
     roots: List<0..=2_000_000_000>
 
     /// Build the static structure over `a`: one persistent count tree over the sorted distinct values
@@ -352,14 +353,12 @@ pub struct RangeKth<D, T>:
     pub fn new(a: [D]T) -> RangeKth<D, T>:
         let vals = deduped(sorted([a[i] for i in D]))
         let m = vals.len
-        var rk = RangeKth(vals, [0], [0], [0], [0])
+        var rk = RangeKth(vals, [KthNode(0, 0, 0)], [0])
         if m == 0:
             for _ in 0..D.count: rk.roots.push(0)
             return rk
         let nodes = 1 + D.count * (bit_width(m - 1) + 1)
-        rk.left.reserve(nodes)
-        rk.right.reserve(nodes)
-        rk.cnt.reserve(nodes)
+        rk.nodes.reserve(nodes)
         rk.roots.reserve(D.count + 1)
         for i in D:
             let prev = rk.roots.last!
@@ -388,23 +387,21 @@ pub struct RangeKth<D, T>:
 
     fn inc(mut self, root: Int, m: Int, pos: Int) -> Int:
         unchecked:
-            let new_root = cnt.len
+            let new_root = nodes.len
             var (u, nl, nr) = (root, 0, m)
             while true:
-                let id = cnt.len
-                let lu = left[u]
-                let ru = right[u]
-                left.push(lu)
-                right.push(ru)
-                cnt.push(cnt[u] + 1)
-                if nr - nl == 1: break
+                let next = nodes.len + 1
+                let (lu, ru, c) = (nodes[u].left, nodes[u].right, nodes[u].cnt + 1)
+                if nr - nl == 1:
+                    nodes.push(KthNode(lu, ru, c))
+                    break
                 let mid = (nl + nr) / 2
                 if pos < mid:
-                    left[id] = id + 1
+                    nodes.push(KthNode(next, ru, c))
                     u = lu
                     nr = mid
                 else:
-                    right[id] = id + 1
+                    nodes.push(KthNode(lu, next, c))
                     u = ru
                     nl = mid
             return new_root
@@ -424,24 +421,24 @@ pub struct RangeKth<D, T>:
             var (u, v, nl, nr, rem) = (roots[lo], roots[hi], 0, vals.len, k)
             while nr - nl > 1:
                 let mid = (nl + nr) / 2
-                let left_cnt = cnt[left[v]] - cnt[left[u]]
+                let left_cnt = nodes[nodes[v].left].cnt - nodes[nodes[u].left].cnt
                 if rem < left_cnt:
-                    u = left[u]
-                    v = left[v]
+                    u = nodes[u].left
+                    v = nodes[v].left
                     nr = mid
                 else:
                     rem -= left_cnt
-                    u = right[u]
-                    v = right[v]
+                    u = nodes[u].right
+                    v = nodes[v].right
                     nl = mid
             return vals[nl]
 
     fn count_prefix(self, u: Int, v: Int, nl: Int, nr: Int, limit: Int) -> Int:
         if limit <= nl or (u == 0 and v == 0): return 0
-        if nr <= limit: return cnt[v] - cnt[u]
+        if nr <= limit: return nodes[v].cnt - nodes[u].cnt
         let mid = (nl + nr) / 2
-        let lc = self.count_prefix(left[u], left[v], nl, mid, limit)
-        let rc = self.count_prefix(right[u], right[v], mid, nr, limit)
+        let lc = self.count_prefix(nodes[u].left, nodes[v].left, nl, mid, limit)
+        let rc = self.count_prefix(nodes[u].right, nodes[v].right, mid, nr, limit)
         lc + rc
 
     /// The number of elements of `a` over `r` that are at most `x`.
