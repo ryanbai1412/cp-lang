@@ -9,9 +9,16 @@ use std::path::{Path, PathBuf};
 /// Where the packages live, relative to the repository root.
 pub const PACKAGES: &str = "corpus/problems";
 
-/// The repository root.
+/// The repository root: the nearest directory above the working directory that
+/// holds the packages, else the checkout this crate was built in. Worktrees that
+/// share a target dir share this crate's artifact, so the build path alone can
+/// name a deleted worktree (`every_corpus_tests_toml_reads` read 0 files).
 pub fn root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+    let built = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    std::env::current_dir()
+        .ok()
+        .and_then(|cwd| cwd.ancestors().find(|d| d.join(PACKAGES).is_dir()).map(Path::to_path_buf))
+        .unwrap_or(built)
 }
 
 /// Every package directory under `root`, sorted by id.
@@ -45,6 +52,11 @@ pub fn package(root: &Path, id: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn root_holds_the_packages() {
+        assert!(root().join(PACKAGES).is_dir(), "{}", root().display());
+    }
 
     #[test]
     fn lists_packages_and_their_files_sorted_by_id() {
