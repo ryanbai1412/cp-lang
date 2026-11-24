@@ -3248,30 +3248,44 @@ def main(argv: list[str] | None = None) -> int:
     if args.ratchet.is_file():
         max_lines = int(json.loads(args.ratchet.read_text(encoding="utf-8")).get("max_rs_lines", max_lines))
 
+    def offenders(name: str) -> list[str]:
+        if name == "rs_over_cap":
+            return [f"{k} {v}" for k, v in rs_over_cap(args.root, max_lines).items()]
+        return COUNTERS[name][1](args.root)
+
     if args.zero:
-        left = {n: len(fn(args.root)) for n, (_, fn, gated) in COUNTERS.items() if gated}
-        left = {"rs_over_cap": len(rs_over_cap(args.root, max_lines)), **left}
+        left, failed = {}, 0
+        for n in ["rs_over_cap", *(n for n, (_, _, gated) in COUNTERS.items() if gated)]:
+            try:
+                left[n] = len(offenders(n))
+            except MeasureError as e:
+                print(f"debt-ratchet: {n} ERROR {e}")
+                failed += 1
         left = {n: c for n, c in left.items() if c}
         for n, c in left.items():
             print(f"debt-ratchet: {n} {c} (target 0; `--list {n}` shows them)")
         print(f"debt-ratchet: {len(left)} counter(s) above 0" if left else "debt-ratchet: every counter at 0")
-        return 1 if left else 0
+        return 1 if left or failed else 0
 
     if args.show is not None or args.list:
         names = [args.list] if args.list else (args.show or ["rs_over_cap", *COUNTERS])
+        unknown = [n for n in names if n != "rs_over_cap" and n not in COUNTERS]
+        if unknown:
+            print(f"debt-ratchet: unknown counter {unknown[0]}; one of rs_over_cap, {', '.join(COUNTERS)}",
+                  file=sys.stderr)
+            return 2
+        failed = 0
         for name in names:
-            if name == "rs_over_cap":
-                items = [f"{k} {v}" for k, v in rs_over_cap(args.root, max_lines).items()]
-            elif name in COUNTERS:
-                items = COUNTERS[name][1](args.root)
-            else:
-                print(f"debt-ratchet: unknown counter {name}; one of rs_over_cap, {', '.join(COUNTERS)}",
-                      file=sys.stderr)
-                return 2
+            try:
+                items = offenders(name)
+            except MeasureError as e:
+                print(f"{name} ERROR {e}")
+                failed += 1
+                continue
             print(f"{name} {len(items)}")
             if args.list:
                 print("\n".join(f"  {x}" for x in items))
-        return 0
+        return 1 if failed else 0
 
     if args.update is not None:
         data = measure(args.root, max_lines)

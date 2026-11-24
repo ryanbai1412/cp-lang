@@ -1,3 +1,5 @@
+import contextlib
+import io
 import importlib.util
 import json
 import os
@@ -1204,6 +1206,24 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--show", "rust_ignore", "--root", str(root)]), 0)
             self.assertEqual(dr.main(["--list", "stdlib_todo", "--root", str(root)]), 0)
             self.assertEqual(dr.main(["--list", "nope", "--root", str(root)]), 2)
+
+    def test_a_counter_that_cannot_measure_is_one_error_line_and_the_rest_still_print(self) -> None:
+        def stale(_root):
+            raise dr.MeasureError("cpl: target/debug/cpl is stale: run cargo build -p cpl-cli")
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._make_repo(root)
+            label, _, gated = dr.COUNTERS["corpus_fmt_dirty"]
+            with mock.patch.dict(dr.COUNTERS, {"corpus_fmt_dirty": (label, stale, gated)}):
+                for flags in (["--show", "corpus_fmt_dirty", "rust_ignore"], ["--zero"]):
+                    out = io.StringIO()
+                    with contextlib.redirect_stdout(out):
+                        self.assertEqual(dr.main([*flags, "--root", str(root)]), 1)
+                    self.assertIn("corpus_fmt_dirty ERROR cpl: target/debug/cpl is stale: run cargo build -p cpl-cli",
+                                  out.getvalue())
+                    self.assertNotIn("Traceback", out.getvalue())
+                    if flags[0] == "--show":
+                        self.assertRegex(out.getvalue(), r"\nrust_ignore \d+\n")
 
     def test_std_gaps_counts_each_open_line(self):
         with tempfile.TemporaryDirectory() as d:
