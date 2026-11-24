@@ -27,6 +27,18 @@ let d = (0..n).count(i => s[i] != t[i])
 print(step.pow(k)[Off.first!, Off(d)] / comb.choose(n, d))
 ```
 
+## 1.33x slower than the accepted C++ at --max
+- **Where:** `pow(step, k, op: Monoid(one, mul))`, n = 128.
+- **What felt wrong:** port 0.12 s against the accepted C++'s 0.09 s (the measurement below),
+  over the 1.1x line (idiomatic-code/R10). Not profiled.
+- **Goal it hurts:** performance.
+- **Ideal code:** the port as written.
+- **General fix:** profile the `[Off, Off]Z` product (a fresh table per `mul`, `Mod` arithmetic
+  in `sum`) against the C++'s triple loop; fix it in how `[D, D]T` tables and `Mod` sums are
+  emitted, so every matrix-power port gains.
+- **Severity:** low (well under the 1000 ms limit).
+- **Owner:** perf. Repro: `gen.py --max | port` against `orig.cpp`.
+
 ## Measurements
 
 - Tokens: port 340, original 1108

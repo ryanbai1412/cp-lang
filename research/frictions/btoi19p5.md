@@ -13,3 +13,6 @@ let best = [t, t.rev].map_indexed((u, flip) => longest(u, flip)).max(by: b => b.
 `prefix_matches` needs an `Indexed`, so the reversed strings are copied with `List(u.rev)` on
 every cut; a reversed view that is itself `Indexed` would drop the copies. The flipped answer
 maps its start in reversed t back by hand.
+
+Run (c8a46b201): `prefix_matches(t.rev, s.rev)` on two `Str`s under `cpl run` gives
+`` error[E0606]: `Rev<Str>` does not implement `Indexed` required by `prefix_matches` ``.

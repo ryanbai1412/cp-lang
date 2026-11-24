@@ -12,3 +12,6 @@ print(Paid.find(p => p >= work and variety[p] >= Some(n * k)).map(p => p - work)
 `?Int` values have no order, so the reachable-set test reads `(variety[p] ?? 0) >= n * k`
 (a reachable set's variety is at least 0 and n * k is at least 1). std has no 0/1 knapsack
 that keeps the best value per exact weight.
+
+Run (c8a46b201): `let a: ?Int = Some(3); print(a >= Some(2))` under `cpl run` gives
+`` error[E0308]: `a` is an ?Int: optional values can't be ordered with `>=` ``.
