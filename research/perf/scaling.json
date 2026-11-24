@@ -15121,10 +15121,10 @@
    "ok": true
   },
   "bench/scaling/seq_rank.cp::seq.perm_rank": {
-   "cost": "n \\log n",
-   "documented": 7.45,
+   "cost": "n",
+   "documented": 4.0,
    "fn": "seq.perm_rank",
-   "measured": 2.11,
+   "measured": 1.6,
    "n": 5,
    "ok": true
   },
@@ -15132,7 +15132,7 @@
    "cost": "n \\log n",
    "documented": 7.45,
    "fn": "seq.perm_unrank",
-   "measured": 2.72,
+   "measured": 3.1,
    "n": 5,
    "ok": true
   },

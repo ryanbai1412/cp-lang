@@ -14,7 +14,7 @@
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.algebra.{Monoid}
-use std.math.{abs}
+use std.math.{abs, popcount, bit}
 use std.prefix.{Prefix}
 use std.range.{Len, RingRange, ends, first_true, last_true}
 use std.rand.{shuffle}
@@ -2667,71 +2667,56 @@ pub fn is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool:
 
 // --- Permutations, combinatorics, subsequences, and monotone-stack trees ---
 
-/// \(O(n \log n)\), \(O(n)\) memory. Lexicographic rank of permutation `p` in `0..|V|!` (`|V| <= 20`).
+/// \(O(n)\), \(O(1)\) memory. Lexicographic rank of permutation `p` in `0..|V|!` (`|V| <= 20`).
 ///
-/// cost: \(O(n \log n)\), \(O(n)\) memory
+/// cost: \(O(n)\), \(O(1)\) memory
 /// empty: `domain V = 0..0; let p: [V]V = []; perm_rank(p) == 0`
 /// traps: when `|V| > 20` or `p` is not a permutation
 /// example: `perm_rank([1, 0, 2]) == 2`
 /// trap: `perm_rank([0, 0, 1])`
 pub fn perm_rank<V>(self: [V]V) -> Int:
     let n = V.count
-    var seen: [V]Bool = false
-    for v in V:
-        assert not seen[self[v]], "not a permutation: {self[v]} appears twice"
-        seen[self[v]] = true
-    var bit: List<Int> = List.filled(n + 1, 0)
-    var rank = 0
-    var fact = 1
+    var (seen, rank, fact) = (0, 0, 1)
     for k in (0..n).rev:
         let v = self[V.nth(k)].ord
-        var (j, smaller) = (v, 0)
-        while j > 0:
-            smaller += bit[j]
-            j -= j & -j
-        rank += smaller * fact
+        assert not seen.bit(v), "not a permutation: {self[V.nth(k)]} appears twice"
+        rank += popcount(seen & ((1 << v) - 1)) * fact
         fact *= n - k
-        j = v + 1
-        while j <= n:
-            bit[j] += 1
-            j += j & -j
+        seen |= 1 << v
     rank
 
-/// \(O(n \log n)\), \(O(n)\) memory. The `rank`-th lexicographic permutation of `V` (`0 <= rank < |V|!`).
+/// \(O(n \log n)\), \(O(1)\) memory beyond the result. The `rank`-th lexicographic permutation of `V` (`0 <= rank < |V|!`).
 ///
-/// cost: \(O(n \log n)\), \(O(n)\) memory
+/// cost: \(O(n \log n)\), \(O(1)\) memory beyond the result
 /// empty: `domain V = 0..0; perm_unrank<V>(0) == []`
 /// order: keyed by `V`
 /// traps: when `rank` is not in `0..|V|!`
 /// example: `domain V = 0..3; perm_unrank<V>(2) == [1, 0, 2]`
 pub fn perm_unrank<V>(rank: Int) -> [V]V:
     let n = V.count
-    var digits: List<Int> = List.filled(n, 0)
-    var r = rank
-    for k in 1..=n:
-        digits[n - k] = r % k
-        r /= k
-    assert r == 0, "`rank` is at least |V|!"
-    var bit: List<Int> = List.filled(n + 1, 0)
-    for j in 1..=n:
-        bit[j] += 1
-        if j + (j & -j) <= n: bit[j + (j & -j)] += bit[j]
-    var top = 1
-    while top * 2 <= n: top *= 2
+    var fact = 1
+    for k in 1..n: fact *= k
+    let total = if n == 0: 1 else: fact * n
+    assert rank in 0..total, "`rank` is not in 0..|V|!"
+    var (r, free) = (rank, (1 << n) - 1)
     var out: [V]V = [V] v => v
     for k in 0..n:
-        var (pos, need, step) = (0, digits[k] + 1, top)
-        while step > 0:
-            if pos + step <= n and bit[pos + step] < need:
-                pos += step
-                need -= bit[pos]
-            step /= 2
-        out[V.nth(k)] = V.nth(pos)
-        var j = pos + 1
-        while j <= n:
-            bit[j] -= 1
-            j += j & -j
+        let need = r / fact + 1
+        r %= fact
+        if k + 1 < n: fact /= n - 1 - k
+        let v = (0..n).first_true(x => popcount(free & ((2 << x) - 1)) >= need)!
+        out[V.nth(k)] = V.nth(v)
+        free ^= 1 << v
     out
+
+@test
+fn perm_rank_and_unrank_round_trip_at_twenty():
+    domain V = 0..20
+    let last: [V]V = [V] v => V.nth(19 - v.ord)
+    assert last.perm_rank() == 2432902008176639999
+    assert perm_unrank<V>(2432902008176639999) == last
+    for r in [0, 1, 7, 123456789, 2432902008176639998]:
+        assert perm_unrank<V>(r).perm_rank() == r
 
 /// \(O(n)\), \(O(n)\) memory. Sign/parity of permutation `p` (`+1` even, `-1` odd).
 ///
