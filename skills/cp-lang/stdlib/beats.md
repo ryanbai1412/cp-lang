@@ -2,7 +2,7 @@
 
 # std.beats
 
-Segment Tree Beats (Ji Driver) for range chmin, chmax, add, sum, min, and max.   Maintains exact `min`, second `min`, `max`, second `max`, and `sum` on every node. Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
+Segment Tree Beats (Ji Driver) for range chmin, chmax, add, sum, min, and max.   Maintains `sum`, `min` and `max` on every node, and from the first `chmin` or `chmax` on also the second `min` and `max` and their counts, which only those two need. A node whose `min` equals its `max` is constant and hands that value to its children, so `assign` and a `chdiv` that flattens a node are one tag each. Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
 
 In prelude (no `use` needed): `BeatsSegTree`.
 
@@ -10,18 +10,18 @@ In prelude (no `use` needed): `BeatsSegTree`.
 
 Segment Tree Beats over a domain `D` of `Int` values.
 
-Fields: `s: List<Int>`, `mx1: List<Int>`, `mx2: List<Int>`, `mx_c: List<Int>`, `mn1: List<Int>`, `mn2: List<Int>`, `mn_c: List<Int>`, `lz_add: List<Int>`, `n: Len`.
+Fields: `s: List<Int>`, `mx1: List<Int>`, `mn1: List<Int>`, `lz_add: List<Int>`, `n: Len`.
 
-- `fn new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D>` — \(O(\lvert D \rvert)\); A Segment Tree Beats over `D` holding the values of `a`, or `fill` at every position, or zero everywhere when neither is given.; traps: when both `a` and `fill` are given
-- `fn chmin(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`; Replace every `a[i]` in `r` with `min(a[i], x)`.; traps: when a non-empty `r` reaches outside `D`
-- `fn chmax(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`; Replace every `a[i]` in `r` with `max(a[i], x)`; the mirror of `chmin`.; traps: when a non-empty `r` reaches outside `D`
+- `fn new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D>` — \(O(\lvert D \rvert)\); \(2 \cdot \mathrm{bit\_ceil}(\lvert D \rvert)\) nodes of four `Int`s, eight; A Segment Tree Beats over `D` holding the values of `a`, or `fill` at every position, or zero everywhere when neither is given.; traps: when both `a` and `fill` are given
+- `fn chmin(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`;; Replace every `a[i]` in `r` with `min(a[i], x)`.; traps: when a non-empty `r` reaches outside `D`
+- `fn chmax(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`;; Replace every `a[i]` in `r` with `max(a[i], x)`; the mirror of `chmin`.; traps: when a non-empty `r` reaches outside `D`
 - `fn add(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\); Add `x` to every `a[i]` in `r`.; traps: when a non-empty `r` reaches outside `D` (overflow wraps in release, traps in debug)
 - `fn sum(self, r: Range<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum of the current values in `r`.; traps: when a non-empty `r` reaches outside `D`
 - `fn min_val(self, r: Range<D>) -> ?Int` — \(O(\log \lvert D \rvert)\); The least current value in `r`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
 - `fn max_val(self, r: Range<D>) -> ?Int` — \(O(\log \lvert D \rvert)\); The greatest current value in `r`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
 - `fn get(self, i: D) -> Int` — \(O(\log \lvert D \rvert)\); The current value at position `i`.; traps: when `i` is outside `D`
 - `fn set(mut self, i: D, x: Int)` — \(O(\log \lvert D \rvert)\); Assign `a[i] = x`, replacing whatever earlier updates left there.; traps: when `i` is outside `D`
-- `fn assign(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; Overwrite every position in `r` with `x`.; traps: when a non-empty `r` reaches outside `D`
+- `fn assign(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\); Overwrite every position in `r` with `x`.; traps: when a non-empty `r` reaches outside `D`
 - `fn chdiv(mut self, r: Range<D>, d: Int)` — \(O(\log \lvert D \rvert \log V)\) amortized; Replace every `a[i]` in `r` with `a[i] / d`, rounding toward negative infinity.; traps: when `d <= 0`, or a non-empty `r` reaches outside `D`
 - `fn chmod(mut self, r: Range<D>, m: Int)` — \(O(\log \lvert D \rvert \log V)\) amortized; Replace every `a[i]` in `r` with `a[i] mod m`, the remainder in `0..m` (floored, so negative values map into `0..m` too).; traps: when `m <= 0`, or a non-empty `r` reaches outside `D`
 - `@get fn all_sum(self) -> Int` — \(O(1)\); The sum of every current value in `D`.
