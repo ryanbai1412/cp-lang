@@ -26,6 +26,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
+#[path = "support/shards.rs"]
+mod shards;
+
 const BUDGET: Duration = Duration::from_millis(100);
 const SAMPLES: usize = 9;
 const LARGEST_PORTS: usize = 3;
@@ -126,11 +129,13 @@ fn every_std_module_program() -> String {
     src
 }
 
-#[test]
-fn every_command_starts_cold_in_under_100_ms() {
+const SHARDS: usize = 8;
+
+/// Each command's `--help`, the front-end commands and `build` on the
+/// largest ports, and `cpl test` on the largest ports with cases, each with
+/// whether its time is asserted. `build` writes to `out`.
+fn runs(out: &str) -> Vec<(Vec<String>, bool)> {
     let optimized = !cfg!(debug_assertions);
-    let out = std::env::temp_dir().join(format!("cpl-cold-start-{}.cpp", std::process::id()));
-    let out = out.to_str().unwrap();
     let mut runs: Vec<(Vec<String>, bool)> = commands()
         .into_iter()
         .map(|c| (vec![c, "--help".to_string()], true))
@@ -144,15 +149,37 @@ fn every_command_starts_cold_in_under_100_ms() {
             optimized,
         ));
     }
+    for port in largest_ports(true) {
+        runs.push((vec!["test".into(), port], optimized));
+    }
+    runs
+}
+
+/// A run's command line up to its output file, which picks its shard.
+fn key(args: &[String]) -> String {
+    args.iter()
+        .take_while(|a| *a != "-o")
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn keys() -> Vec<String> {
+    runs("a.cpp").iter().map(|(args, _)| key(args)).collect()
+}
+
+fn every_command_starts_cold_in_under_100_ms(k: usize) {
+    let out = std::env::temp_dir().join(format!("cpl-cold-start-{}.cpp", std::process::id()));
+    let out = out.to_str().unwrap();
+    let runs = shards::mine(runs(out), |(args, _)| key(args), k, SHARDS);
     // `cpl test` compiles the C++ once per source; the start that counts is
     // the next run, against the cache, which is every run while you iterate.
-    for port in largest_ports(true) {
+    for (args, _) in runs.iter().filter(|(args, _)| args[0] == "test") {
         Command::new(cpl())
-            .args(["test", &port])
+            .args(args)
             .current_dir(root())
             .output()
             .unwrap();
-        runs.push((vec!["test".into(), port], optimized));
     }
     let mut over = Vec::new();
     for (args, asserted) in &runs {
@@ -176,6 +203,22 @@ fn every_command_starts_cold_in_under_100_ms() {
         over.join("\n")
     );
 }
+
+shards::shard_tests!(
+    every_command_starts_cold_in_under_100_ms,
+    keys(),
+    the_cold_start_shards_cover_every_run,
+    [
+        every_command_starts_cold_in_under_100_ms_0 = 0,
+        every_command_starts_cold_in_under_100_ms_1 = 1,
+        every_command_starts_cold_in_under_100_ms_2 = 2,
+        every_command_starts_cold_in_under_100_ms_3 = 3,
+        every_command_starts_cold_in_under_100_ms_4 = 4,
+        every_command_starts_cold_in_under_100_ms_5 = 5,
+        every_command_starts_cold_in_under_100_ms_6 = 6,
+        every_command_starts_cold_in_under_100_ms_7 = 7,
+    ]
+);
 
 #[test]
 fn every_std_module_loads_within_the_front_end_budget() {
