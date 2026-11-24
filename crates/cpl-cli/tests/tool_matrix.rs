@@ -3,8 +3,7 @@
 //! A feature isn't done until it works in every tool, and a tool's suite can
 //! only show that for forms its programs contain. This walks the programs
 //! each suite runs, collects the statement and expression forms they use,
-//! and compares the forms no suite program uses with `tool-gaps.txt`.
-//! `skip_lists` counts that file, so gaps only go down.
+//! and fails on any form some suite uses that another tool's suite does not.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -125,27 +124,11 @@ fn every_syntax_form_reaches_every_tools_suite() {
                 .map(move |f| format!("{tool} {f}"))
         })
         .collect();
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/tool-gaps.txt");
-    let listed: BTreeSet<String> = std::fs::read_to_string(&path)
-        .unwrap_or_default()
-        .lines()
-        .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
-        .map(str::to_string)
-        .collect();
-    let new: Vec<_> = gaps.difference(&listed).collect();
-    let closed: Vec<_> = listed.difference(&gaps).collect();
     assert!(
-        new.is_empty() && closed.is_empty(),
-        "tool-gaps.txt is out of date.\n\
-         New gaps (add a program using the form to that tool's suite):\n  {}\n\
-         Closed gaps (delete the line):\n  {}",
-        new.iter()
-            .map(|s| s.as_str())
-            .collect::<Vec<_>>()
-            .join("\n  "),
-        closed
-            .iter()
-            .map(|s| s.as_str())
+        gaps.is_empty(),
+        "Forms a tool's suite never uses (add a program using the form to that tool's suite):\n  {}",
+        gaps.iter()
+            .map(String::as_str)
             .collect::<Vec<_>>()
             .join("\n  "),
     );

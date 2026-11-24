@@ -2637,7 +2637,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "corpus/sets/sketches.txt": (None, "idioms", "data: a corpus set"),
     "corpus/sets/v03.txt": (None, "idioms", "data: a corpus set"),
     "crates/cpl-cli/tests/std-check-errors.txt": ("known_lists", "stdlib", "kept empty"),
-    "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "close each gap"),
+    "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "deleted: tool_matrix.rs fails on any gap"),
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
     "crates/cpl-conform/silent_unknowns.txt": ("silent_unknowns", "core", "deleted: the checker types every expression or reports why not"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
