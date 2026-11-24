@@ -12,8 +12,6 @@
 //   which always holds a point within [1/2, 1] of the five anchors. O(m) per test.
 // Bounds: p, q: 1..=10_000; m: 3..=28_285
 
-use std.geometry.Vec
-
 @!multitest
 let (p, q, m): (1..=10_000, 1..=10_000, 3..=28_285) = read()
 let t = Vec(F64(p), F64(q))
