@@ -402,3 +402,27 @@ fn each_write_in_and_each_tuple_in_stay_inside_one_statement() {
     assert_eq!(writes.iter().sum::<usize>(), 1, "only the push: {writes:?}");
     assert_eq!(tuples.iter().sum::<usize>(), 2, "the pair: {tuples:?}");
 }
+
+#[test]
+fn each_write_hands_back_places_that_outlive_the_walk() {
+    use crate::uses::places::{each_write, Write};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var t: List<Int> = []\n",
+        "    var k = 0\n",
+        "    t.push(n)\n",
+        "    k = t.len\n",
+        "    k\n",
+        "print(f(3))\n",
+    ));
+    let mut places: Vec<(bool, &cpl_ir::Place)> = Vec::new();
+    each_write(&program.fns[0].body, &mut |how, place| {
+        places.push((matches!(how, Write::Store), place));
+    });
+    let stores = places.iter().filter(|(store, _)| *store).count();
+    assert_eq!(
+        (places.len(), stores),
+        (2, 1),
+        "the push and the store to k"
+    );
+}

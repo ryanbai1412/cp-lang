@@ -8,7 +8,10 @@
 //! passes a variable, not a temporary, for those. Any other field owns its
 //! value, as before.
 
-use crate::uses::places::{each_closure, each_put, each_tuple_in, each_write_in, Put, Write};
+use crate::uses::places::{
+    each_built, each_closure, each_put, each_tuple_in, each_write, each_write_in, Put, Write,
+};
+use crate::uses::split::{each_sink, each_value, Sink};
 use crate::walk;
 use cpl_ir::{
     Arg, Block, Expr, ExprKind, FnId, Function, Place, PlaceKind, Program, ScopeId, Stmt, StructId,
@@ -391,34 +394,29 @@ impl Scan<'_> {
         let mut made = Vec::new();
         let mut main_lets = BTreeMap::new();
         for body in [&program.setup, &program.main] {
-            walk::deep_stmts(body, &mut |stmt| {
-                if let Stmt::Let(t, Some(init)) = stmt {
-                    main_lets.insert(*t, init);
+            each_sink(body, &mut |sink| {
+                if let Sink::Let(t, Some(init)) = sink {
+                    main_lets.insert(t, init);
                 }
             });
         }
         for (scope, body) in bodies(program) {
             let lets = matches!(scope, ScopeId::Main).then_some(&main_lets);
-            walk::deep_stmts(body, &mut |stmt| {
-                if let Stmt::Assign(place, _, value) = stmt {
+            each_sink(body, &mut |sink| {
+                if let Sink::Store(place, value) = sink {
                     let global = matches!(place.kind, PlaceKind::Global(_));
                     if !(global && self.global_only(value, lets)) {
                         writes.push(place);
                     }
                 }
             });
-            walk::deep_exprs(body, &mut |e| {
-                nested(&e.ty, true, &mut inside);
-                match &e.kind {
-                    ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => writes.push(place),
-                    ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                        writes.extend(args.iter().filter_map(|a| match a {
-                            Arg::Mut(place) => Some(place),
-                            Arg::Value(_) => None,
-                        }))
-                    }
-                    _ => {}
+            each_write(body, &mut |how, place| {
+                if let Write::Mutate(_) | Write::Sort | Write::Mut = how {
+                    writes.push(place);
                 }
+            });
+            each_value(body, &mut |e| {
+                nested(&e.ty, true, &mut inside);
                 if let Ty::Struct(s) = e.ty {
                     made.push((scope, s, e));
                 }
@@ -486,8 +484,8 @@ impl Scan<'_> {
                 };
                 let mut found = BTreeSet::new();
                 let mut bad = false;
-                walk::deep_stmts(&f.body, &mut |stmt| {
-                    if let Stmt::Return(Some(v)) = stmt {
+                each_sink(&f.body, &mut |sink| {
+                    if let Sink::Return(v) = sink {
                         match self.points_into(f, v, 0) {
                             Some(set) => found.extend(set),
                             None => bad = true,
@@ -520,10 +518,8 @@ pub(crate) fn lent_fields(
 ) -> LentFields {
     let mut built = BTreeSet::new();
     for (_, body) in bodies(program) {
-        walk::deep_exprs(body, &mut |e| {
-            if let (ExprKind::Tuple(_), Ty::Struct(s)) = (&e.kind, &e.ty) {
-                built.insert(*s);
-            }
+        each_built(body, &mut |s, _| {
+            built.insert(s);
         });
     }
     let fields = program
@@ -559,7 +555,7 @@ pub(crate) fn lent_fields(
         return out;
     }
     for (scope, body) in bodies(program) {
-        walk::deep_exprs(body, &mut |e| {
+        each_value(body, &mut |e| {
             let Ty::Struct(s) = e.ty else {
                 return;
             };

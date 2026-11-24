@@ -196,7 +196,16 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "lent-fields",
         "lent_fields.rs",
-        Uses(&["each_closure", "each_tuple_in", "each_write_in", "each_put"]),
+        Uses(&[
+            "each_closure",
+            "each_tuple_in",
+            "each_write_in",
+            "each_put",
+            "each_sink",
+            "each_write",
+            "each_value",
+            "each_built",
+        ]),
         "a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it",
     ),
     pass(

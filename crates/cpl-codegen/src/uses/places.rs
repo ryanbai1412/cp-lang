@@ -42,14 +42,14 @@ pub(crate) enum Write<'a> {
 
 /// Every place `block` writes, at any depth, and how: each target a write
 /// could change.
-pub(crate) fn each_write(block: &Block, f: &mut dyn FnMut(Write, &Place)) {
+pub(crate) fn each_write<'p>(block: &'p Block, f: &mut dyn FnMut(Write<'p>, &'p Place)) {
     for stmt in &block.stmts {
         each_write_in(stmt, f);
     }
 }
 
 /// [`each_write`] for one statement and everything under it.
-pub(crate) fn each_write_in(stmt: &Stmt, f: &mut dyn FnMut(Write, &Place)) {
+pub(crate) fn each_write_in<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(Write<'p>, &'p Place)) {
     stores_in(stmt, &mut |target| f(Write::Store, target));
     stmt_deep_exprs(stmt, &mut |e| match &e.kind {
         ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
@@ -66,7 +66,7 @@ pub(crate) fn each_write_in(stmt: &Stmt, f: &mut dyn FnMut(Write, &Place)) {
     });
 }
 
-fn stores_in(stmt: &Stmt, f: &mut dyn FnMut(&Place)) {
+fn stores_in<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Place)) {
     if let Stmt::Assign(target, ..) = stmt {
         f(target);
     }
