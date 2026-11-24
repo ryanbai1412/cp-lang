@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3349 (1093 passing). Rules: 614.
+Cases: 3357 (1093 passing). Rules: 614.
 
 ## Summary per chapter
 
@@ -18,8 +18,8 @@ Cases: 3349 (1093 passing). Rules: 614.
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 250 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 26 rules, 122 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 95 rules, 238 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 26 rules, 123 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 95 rules, 239 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -446,7 +446,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.4.4 [1+ 0-]: `@cache` on a struct field: compiler-safe interior mutability with an author promise of lo...
 - R06.4.8 [1+ 1-]: `@droppable`: the result may be dropped without the unused-result lint. Dropping a non-uni...
 - R06.4.9 [1+ 6-]: `@lint(name, from: "<code>", to: "<code>")` on a `pub fn`: a lint the library declares, so...
-- R06.4.10 [1+ 0-]: An idiom whose fix is one library call is declared this way beside the fn it teaches, not ...
+- R06.4.10 [2+ 0-]: An idiom whose fix is one library call is declared this way beside the fn it teaches, not ...
 - R06.5.1 [4+ 1-]: Top-level bindings above `@!multitest` are shared by every test case; everything below is ...
 
 ### R07: 07-sequences.md
@@ -531,7 +531,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
 - R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [5+ 4-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
-- R07.4.16 [1+ 1-]: **One spelling for suffix and all-but-one folds.** A suffix fold is `a.rev.scan(op)` and t...
+- R07.4.16 [1+ 2-]: **One spelling for suffix and all-but-one folds.** A suffix fold is `a.rev.scan(op)` and t...
 - R07.11.1 [5+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [2+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
 - R07.11.3 [4+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>`, each list in walk order | \(O(n)\) expected
@@ -782,7 +782,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 Mixed comparison chain: 2 case(s)
 - E0112 `let ... else` block falls through: 1 case(s)
-- E0201 Unresolved name: 11 case(s)
+- E0201 Unresolved name: 12 case(s)
 - E0202 Duplicate definition: 4 case(s)
 - E0203 Unknown field or method: 18 case(s)
 - E0204 Unknown type: 4 case(s)
