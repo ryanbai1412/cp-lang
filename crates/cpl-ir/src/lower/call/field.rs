@@ -974,10 +974,6 @@ impl<'a> Lowerer<'a> {
                         "a list is indexed by `Int` from 0: write `0..xs.len`; \
                          an array `[D]T` has `.indices`, the positions of `D`",
                     ),
-                    (Ty::Tuple(parts), _) => self.help(format!(
-                        "the parts of a tuple have numbers, not names: `.0` to `.{}`",
-                        parts.len().saturating_sub(1)
-                    )),
                     _ => {}
                 }
                 self.err_expr(span)

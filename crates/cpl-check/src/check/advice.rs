@@ -278,6 +278,10 @@ impl Checker<'_> {
                 diag.fix(habits::UNKNOWN_MEMBER_8.say(&[]), name.span, "fold");
             }
             Some(s) => diag.suggest(name.span, s),
+            None if matches!(base_ty, Ty::Tuple(_)) => {
+                let Ty::Tuple(parts) = base_ty else { return };
+                diag.help = Some(habits::TUPLE_PARTS.say(&[&parts.len().saturating_sub(1)]));
+            }
             None if !field_names.is_empty() => {
                 let fields = super::expr::list_names(&field_names);
                 diag.help = Some(habits::UNKNOWN_MEMBER_9.say(&[&fields]));

@@ -699,6 +699,12 @@ pub static UNKNOWN_MEMBER_9: Habit = shape(
     "its fields are {}",
     "the fields listed are choices, not one edit",
 );
+pub static TUPLE_PARTS: Habit = shape(
+    "tuple_parts",
+    codes::UNKNOWN_FIELD,
+    "the parts of a tuple have numbers, not names: `.0` to `.{}`",
+    "which part was meant is the writer's choice",
+);
 pub static WITHOUT: Habit = shape("without", codes::TYPE_MISMATCH, "add `-> {}`", "");
 pub static LITERAL: Habit = shape("literal", codes::VALUE_NAME_CASE, "make it a `const`", "");
 pub static INDEX_OF: Habit = shape(
@@ -900,6 +906,7 @@ pub static SHAPES: &[&Habit] = &[
     &UNKNOWN_MEMBER_7,
     &UNKNOWN_MEMBER_8,
     &UNKNOWN_MEMBER_9,
+    &TUPLE_PARTS,
     &WITHOUT,
     &LITERAL,
     &INDEX_OF,
