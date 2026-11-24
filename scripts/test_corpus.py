@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import types
+import tomllib
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -76,10 +77,9 @@ class ProblemsTest(Corpus):
         self.assertEqual([p.id for p in corpus.problems(ids=["p3", "p1"])], ["p1", "p3"])
         self.assertEqual([p.id for p in corpus.problems(sets=["small"], ids=["p1"])], [])
 
-    def test_case_inputs_come_from_tests_toml(self):
-        d = self.package("p1", gen_py=GEN, tests_toml='[[case]]\ninput = "1 2"\n\n[[case]]\nseed = 7\nsize = 4\n')
-        pkg = corpus.Package.at(d)
-        self.assertEqual([pkg.case_input(c) for c in pkg.cases()], ["1 2\n", "1\n7\n"])
+    def test_gen_input_runs_gen_py_and_ends_the_input_with_a_newline(self):
+        d = self.package("p1", gen_py=GEN)
+        self.assertEqual(corpus.Package.at(d).gen_input([7, 4]), "1\n7\n")
 
     def test_accepted_cpp_builds_with_the_judges_gxx(self):
         src = self.root / "judged.cpp"
@@ -96,8 +96,6 @@ class ProblemsTest(Corpus):
     def test_a_gen_that_fails_at_a_small_size_is_a_finding(self):
         gen = "import random, sys\nprint(random.randint(1, int(sys.argv[2]) - 1))\n"
         pkg = corpus.Package.at(self.package("p", gen_py=gen, tests_toml="[[case]]\nseed = 1\nsize = 0\n"))
-        found = corpus.check_package(pkg, corpus.Context("cpl", run=False))
-        self.assertIn("size-below-1 p 1", found)
         self.assertIn("gen-fails p size=1", corpus.check_package(pkg, corpus.Context("cpl", run=True)))
 
     def test_a_gxx_older_than_14_is_not_the_reference(self):
@@ -298,6 +296,19 @@ class LsTest(Corpus):
 class CheckTestsTest(Corpus):
     """tests mode runs the port on the cases tests.toml makes, never on a missing tests/."""
 
+    def test_a_package_without_a_port_still_runs_its_reference_on_every_case(self):
+        d = self.package("q", tests_toml="", checker_py="")
+        made = mock.Mock()
+        ctx = mock.Mock(cpl="cpl")
+        with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
+                mock.patch.object(corpus, "make_cases", made), \
+                mock.patch.object(corpus, "cpl_cases", mock.Mock(side_effect=AssertionError("no port to test"))):
+            self.assertEqual(corpus.check_tests(corpus.Package.at(d), ctx), [])
+        made.assert_called_once()
+        with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
+                mock.patch.object(corpus, "make_cases", mock.Mock(side_effect=corpus.ReferenceFails("03", "runs past 20 s"))):
+            self.assertEqual(corpus.check_tests(corpus.Package.at(d), ctx), ["reference-fails q 03"])
+
     def run_tests(self, cases):
         d = self.package("p", port_cp="print(1)\n", tests_toml="", checker_py="")
         calls = []
@@ -339,37 +350,42 @@ class MakeTest(Corpus):
                 mock.patch("concurrent.futures.ProcessPoolExecutor", lambda *a, **k: mock.MagicMock(
                     __enter__=lambda s: type("P", (), {"map": staticmethod(lambda f, js: [f(j) for j in js])})(),
                     __exit__=lambda *a: False)):
-            corpus.make(type("A", (), {"ids": [], "set": None, "out": None, "j": 1, "changed": "staged"}))
+            corpus.make(type("A", (), {"ids": [], "set": None, "out": None, "j": 1, "changed": "staged", "cpl": None}))
         self.assertEqual(made, ["p2"])
 
     def test_makes_every_package_in_worker_processes(self):
         for pid in ("p1", "p2", "p3"):
             self.package(pid, port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "%s"\n' % pid)
         out = self.root / "out"
-        args = mock.Mock(set=None, ids=[], out=str(out), j=2, changed=None)
-        self.assertEqual(corpus.make(args), 0)
-        self.assertEqual([(out / pid / "01.in").read_text() for pid in ("p1", "p2", "p3")], ["p1\n", "p2\n", "p3\n"])
+        args = mock.Mock(set=None, ids=[], out=str(out), j=2, changed=None, cpl="my-cpl")
 
-    def test_concurrent_makes_of_one_package_both_succeed(self):
-        import concurrent.futures, multiprocessing
-        self.package("p", port_cp="", interactor_py="", tests_toml="".join(f'[[case]]\ninput = "{i}"\n\n' for i in range(200)))
-        out = str(self.root / "out")
-        with concurrent.futures.ProcessPoolExecutor(4, mp_context=multiprocessing.get_context("fork")) as pool:
-            self.assertEqual(list(pool.map(corpus.make_one, [("p", out)] * 8)), [None] * 8)
-        self.assertEqual(len(list((self.root / "out" / "p").glob("*.in"))), 200)
+        def make_cases(pkg, out, cpl):
+            Path(out, pkg.id).mkdir(parents=True)
+            Path(out, pkg.id, "cpl").write_text(cpl)
+        with mock.patch.object(corpus, "make_cases", make_cases):
+            self.assertEqual(corpus.make(args), 0)
+        self.assertEqual([(out / pid / "cpl").read_text() for pid in ("p1", "p2", "p3")], ["my-cpl"] * 3)
 
-    def test_a_failed_make_keeps_the_last_cases_whole(self):
-        d = self.package("p", port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "a"\n')
-        out = self.root / "out"
-        corpus.make_cases(next(corpus.problems()), str(out))
-        (d / "tests.toml").write_text('[[case]]\ninput = "b"\n\n[[case]]\ninput = "c"\n')
-        pkg = next(corpus.problems())
-        with mock.patch.object(corpus.Package, "case_input", side_effect=["b\n", RuntimeError("gen.py fails")]):
-            with self.assertRaises(RuntimeError):
-                corpus.make_cases(pkg, str(out))
-        self.assertEqual(sorted(f.name for f in out.iterdir() if not f.name.endswith(".lock")), ["p"])
-        self.assertEqual(sorted(f.name for f in (out / "p").iterdir()), [".stamp", "01.in"])
-        self.assertEqual((out / "p" / "01.in").read_text(), "a\n")
+    def test_make_cases_is_cpl_test_make_and_names_a_failing_case(self):
+        pkg = corpus.Package.at(self.package("p", tests_toml='[[case]]\ninput = "1"\n'))
+        calls = []
+
+        def run(argv, **kw):
+            calls.append(argv)
+            return mock.Mock(returncode=1, stderr="cpl: p: accepted C++ exits 3 on case 02\n")
+        with mock.patch.object(corpus.subprocess, "run", run), self.assertRaises(corpus.ReferenceFails) as e:
+            corpus.make_cases(pkg, "out", "my-cpl")
+        self.assertEqual(calls, [["my-cpl", "test", "--make", str(pkg.dir), "--tests", os.path.join("out", "p")]])
+        self.assertEqual(e.exception.case, "02")
+
+    def test_a_reference_past_its_budget_fails_the_case_it_ran_on(self):
+        pkg = corpus.Package.at(self.package("p", tests_toml='[[case]]\ninput = "1"\n'))
+        failed = mock.Mock(returncode=1, stderr="cpl: p: accepted C++ runs past 20 s on case 03\n")
+        with mock.patch.object(corpus.subprocess, "run", lambda argv, **kw: failed), \
+                self.assertRaises(corpus.ReferenceFails) as e:
+            corpus.make_cases(pkg, "out", "my-cpl")
+        self.assertEqual((e.exception.case, str(e.exception)), ("03", "accepted C++ runs past 20 s on case 03"))
+
 
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
@@ -556,7 +572,8 @@ class StaticModesTest(Corpus):
         outs = {"a": lambda: b"yes", "b": lambda: next(flips), "c": lambda: b"yes"}
         ctx = self.ctx("")
         ctx.run = True
-        with mock.patch.object(corpus, "accepted_cpps", return_value=refs), \
+        with mock.patch.object(corpus, "accepted_cpps", return_value=refs), mock.patch.object(corpus, "make_cases"), \
+                mock.patch.object(corpus, "generated", return_value=[mock.Mock(read_bytes=lambda: b"1\n")]), \
                 mock.patch.object(corpus, "built", side_effect=lambda src: src.stem), \
                 mock.patch.object(corpus, "run_out", side_effect=lambda e, d: outs[e]()):
             self.assertEqual(corpus.check_package(pkg, ctx), [])
@@ -576,7 +593,7 @@ class SeedTest(Corpus):
         (self.dir / "tests" / "2.in").write_text("x" * (corpus.INLINE + 1))
         corpus.seed(type("A", (), {"ids": ["p1"]}))
         self.assertFalse((self.dir / "tests").exists())
-        cases = corpus.Package.at(self.dir).cases()
+        cases = tomllib.loads((self.dir / "tests.toml").read_text())["case"]
         self.assertEqual(cases[0], {"input": "tiny\n"})
         self.assertEqual(cases[1], {"seed": 2, "size": 16})
         self.assertEqual([c["size"] for c in cases[2:]], list(corpus.STRESS_SIZES))
@@ -587,27 +604,6 @@ class SeedTest(Corpus):
         (d / "tests" / "1.in").write_text("x" * (corpus.INLINE + 1))
         self.assertEqual(corpus.seed(type("A", (), {"ids": ["p2"]})), 1)
         self.assertTrue((d / "tests").exists())
-
-    def test_stamp_follows_the_list_and_generator(self):
-        (self.dir / "tests.toml").write_text("[[case]]\nseed = 1\nsize = 4\n")
-        first = corpus.stamp(corpus.Package.at(self.dir), None)
-        (self.dir / "tests.toml").write_text("[[case]]\nseed = 2\nsize = 4\n")
-        second = corpus.stamp(corpus.Package.at(self.dir), None)
-        self.assertNotEqual(first, second)
-        (self.dir / "gen.py").write_text("print(2)\n")
-        self.assertNotEqual(second, corpus.stamp(corpus.Package.at(self.dir), None))
-
-    def test_make_writes_inputs_and_reference_answers(self):
-        d = self.package("p3", gen_py=GEN, orig_cpp=ECHO_CPP, tests_toml='[[case]]\ninput = "1 5"\n\n[[case]]\nseed = 7\nsize = 1\n')
-        corpus.make_cases(corpus.Package.at(d), str(self.root / "out"))
-        out = self.root / "out" / "p3"
-        self.assertEqual([(out / f"0{i}.ans").read_text() for i in (1, 2)], ["5\n", "7\n"])
-
-    def test_make_marks_the_max_cases(self):
-        gen = "import sys\nprint(9 if sys.argv[1] == '--max' else sys.argv[1])\n"
-        d = self.package("p4", gen_py=gen, orig_cpp=ECHO_CPP, tests_toml='[[case]]\nseed = 7\nsize = 1\n\n[[case]]\nargs = ["--max"]\n')
-        corpus.make_cases(corpus.Package.at(d), str(self.root / "out"))
-        self.assertEqual(sorted(p.name for p in (self.root / "out" / "p4").glob("*.max")), ["02.max"])
 
 
 class NativeTest(Corpus):
@@ -819,9 +815,9 @@ class VerifyCplTest(Corpus):
 class GenTimeoutTest(unittest.TestCase):
     def test_a_max_generator_gets_the_briefs_60_seconds(self):
         pkg = mock.Mock()
-        pkg.case_input.return_value = "1\n"
+        pkg.gen_input.return_value = "1\n"
         corpus.gen_out(pkg, ["--max"])
-        self.assertEqual(pkg.case_input.call_args.kwargs["timeout"], 60)
+        self.assertEqual(pkg.gen_input.call_args.kwargs["timeout"], 60)
 
 
 class GraderTest(Corpus):

@@ -129,6 +129,9 @@ vars! {
     NO_PCH = "CPL_NO_PCH";
     /// The VM prints its op counts on exit; `json` prints them as JSON.
     VM_STATS = "CPL_VM_STATS";
+    /// `0`: making a package's cases never fetches a g++ 14 with
+    /// `scripts/gxx14.sh` when none is on `PATH`.
+    GXX_FETCH = "CPL_GXX_FETCH";
 }
 
 #[cfg(test)]

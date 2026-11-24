@@ -5,6 +5,7 @@ pub mod bench;
 pub mod corpus_bench;
 pub mod fetch;
 pub mod new;
+pub mod package;
 pub mod problem;
 pub mod test;
 pub mod watch;

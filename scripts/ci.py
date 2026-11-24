@@ -558,7 +558,7 @@ class Tail:
         if sel.get("audit") == "1":
             self.step("staged corpus packages pass every mode (scripts/corpus.py verify --changed staged)")
             self._cargo_build("cpl-cli")
-            if self.call([sys.executable, "scripts/corpus.py", "make", "--changed", "staged"], stdout=subprocess.DEVNULL):
+            if self.call([sys.executable, "scripts/corpus.py", "make", "--changed", "staged", "--cpl", self.cpl], stdout=subprocess.DEVNULL):
                 raise Failed("scripts/corpus.py make --changed staged failed; rerun it to see which package")
             if self.call([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--skip", "dream,header,package", "--cpl", self.cpl]):
                 raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
@@ -730,7 +730,7 @@ class Tail:
             # Seeded problems (problem-packages/R9) read their cases from
             # target/corpus-tests/; only the corpus suite reads them.
             if {"all", "corpus"} & set(suites):
-                if self.call([sys.executable, "scripts/corpus.py", "make"], stdout=subprocess.DEVNULL):
+                if self.call([sys.executable, "scripts/corpus.py", "make", "--cpl", self.cpl], stdout=subprocess.DEVNULL):
                     raise Failed("scripts/corpus.py make failed; rerun it to see which package")
             # CI keeps main's last green run in $CPL_CONFORM_PREV, so a case newer than
             # research/scoreboard.json still can't regress unseen (ci.yml).

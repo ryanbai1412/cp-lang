@@ -25,7 +25,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, functools, hashlib, importlib.util, inspect, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
+import argparse, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -94,17 +94,11 @@ class Package:
         named = tomllib.loads(toml.read_text()).get("judge", {}).get("judge") if toml.is_file() else None
         return named or "codeforces"
 
-    def cases(self):
-        """tests.toml's `[[case]]` tables: `input` (a statement sample), `seed` and `size`, or `args`."""
-        return tomllib.loads(self.tests.read_text()).get("case", []) if self.tests else []
-
-    def case_input(self, case, timeout=60):
-        if "input" in case:
-            text = case["input"]
-        else:
-            argv = [str(a) for a in case["args"]] if "args" in case else [str(case["seed"]), str(case["size"])]
-            text = subprocess.run([sys.executable, str(self.gen), *argv], capture_output=True, text=True,
-                                  timeout=timeout, check=True).stdout
+    def gen_input(self, argv, timeout=60):
+        """What gen.py prints for `argv`: `seed size`, or `--max`. A tests.toml's cases are
+        made by `cpl test --make` alone (make_cases)."""
+        text = subprocess.run([sys.executable, str(self.gen), *map(str, argv)], capture_output=True, text=True,
+                              timeout=timeout, check=True).stdout
         return text if text.endswith("\n") else text + "\n"
 
 
@@ -194,12 +188,13 @@ def judge_stack():
 STRESS_SIZES = (4, 8, 16, 32)
 
 
-def stress_inputs(pkg):
-    """tests.toml's cases, else gen.py at small sizes: what a solution must agree on."""
+def stress_inputs(pkg, cpl=None):
+    """The cases tests.toml makes, else gen.py at small sizes: what a solution must agree on."""
     if pkg.tests:
-        return [pkg.case_input(c) for c in pkg.cases()]
+        make_cases(pkg, cpl=cpl)
+        return [p.read_text() for p in generated(pkg)]
     if pkg.gen:
-        return [pkg.case_input({"seed": i, "size": s}) for i, s in enumerate(STRESS_SIZES * 2, 1)]
+        return [pkg.gen_input([i, s]) for i, s in enumerate(STRESS_SIZES * 2, 1)]
     return []
 
 
@@ -255,7 +250,7 @@ def judged(pkg, source, inputs, cpl):
 def dream_stress(pkg, cpl):
     """Does dream.cp agree with the accepted C++ on the package's inputs?"""
     try:
-        ok, n = judged(pkg, pkg.dream, stress_inputs(pkg), cpl)
+        ok, n = judged(pkg, pkg.dream, stress_inputs(pkg, cpl), cpl)
     except (RuntimeError, subprocess.SubprocessError, OSError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
     return {"ok": ok, "cases": n, "sha": blob_sha(pkg.dream)}
@@ -657,11 +652,9 @@ def check_package(pkg, ctx):
         found.append(f"interactor-no-gen {pkg.id} -")
     if pkg.dir.joinpath("tests").exists():
         found.append(f"committed-tests {pkg.id} -")
-    # gen.py SEED SIZE takes any size >= 1: tests.toml may grow a case down to 1.
-    found += [f"size-below-1 {pkg.id} {i}" for i, c in enumerate(pkg.cases(), 1) if "size" in c and c["size"] < 1]
     for size in range(1, 6) if pkg.gen and ctx.run else ():
         try:
-            pkg.case_input({"seed": 1, "size": size})
+            pkg.gen_input([1, size])
         except (subprocess.SubprocessError, OSError):
             found.append(f"gen-fails {pkg.id} size={size}")
             break
@@ -684,8 +677,13 @@ def check_package(pkg, ctx):
             return found + [f"no-reference {pkg.id} -"]
         if ctx.run and not pkg.checker:
             exes = [e for e in map(built, srcs) if e]
-            for i, case in enumerate(pkg.cases(), 1) if len(exes) > 1 else ():
-                data = pkg.case_input(case).encode()
+            if len(exes) > 1:
+                try:
+                    make_cases(pkg, cpl=ctx.cpl)
+                except ReferenceFails as e:
+                    return found + [f"reference-fails {pkg.id} {e.case}"]
+            for i, inp in enumerate(generated(pkg), 1) if len(exes) > 1 else ():
+                data = inp.read_bytes()
                 outs = {e: run_out(e, data) for e in exes}
                 if None in outs.values():
                     found.append(f"reference-fails {pkg.id} {i}")
@@ -724,16 +722,19 @@ def check_tests(pkg, ctx):
     """`cpl test port.cp` passes every case `make` writes from tests.toml, judged
     like the judge would: answers from the accepted C++, or the checker or
     interactor, at the package's limits (problem-packages/R8)."""
-    if not pkg.port or not pkg.tests or not ctx.runs(pkg):
+    if not pkg.tests or not ctx.runs(pkg):
         return []
     if not pkg.interactor and pkg.reference() is None:
         return [f"no-reference {pkg.id} -"]
     try:
-        make_cases(pkg)
+        make_cases(pkg, cpl=ctx.cpl)
     except ReferenceFails as e:
         return [f"reference-fails {pkg.id} {e.case}"]
     except (RuntimeError, subprocess.SubprocessError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
+    # Without a port, making the cases has run the reference on every one: that is the check.
+    if not pkg.port:
+        return []
     cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg, pkg.port), *package_limits(pkg))
     if isinstance(cases, str):
         return [f"{cases} {pkg.id} -"]
@@ -777,7 +778,7 @@ def rejects(cmd, data):
 def gen_out(pkg, args):
     try:
         timeout = MAX_GEN_TIMEOUT if "--max" in args else TIMEOUT
-        return pkg.case_input({"args": list(args)}, timeout=timeout).encode()
+        return pkg.gen_input(list(args), timeout=timeout).encode()
     except (subprocess.SubprocessError, OSError):
         return None
 
@@ -1113,70 +1114,40 @@ OUT = os.path.join(ROOT, "target", "corpus-tests")
 INLINE = 200
 
 
-def stamp(pkg, ref):
-    """What a package's generated cases depend on, `made` itself included; `make` skips one
-    whose stamp is unchanged."""
-    h = hashlib.sha256(inspect.getsource(made).encode())
-    for f in (pkg.tests, pkg.gen, ref):
-        if f:
-            h.update(Path(f).read_bytes())
-    return h.hexdigest()
-
-
 class ReferenceFails(RuntimeError):
-    """The accepted C++ crashes on a case tests.toml makes: the case or the reference is wrong."""
-    def __init__(self, case, code):
-        super().__init__(f"accepted C++ exits {code} on case {case}")
+    """The accepted C++ crashes on a case tests.toml makes, or runs past its time budget:
+    the case or the reference is wrong."""
+    def __init__(self, case, why):
+        super().__init__(f"accepted C++ {why} on case {case}")
         self.case = case
 
 
-def make_cases(pkg, out=OUT):
-    """Write <out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++
-    (an interactive package's NN.in is the interactor's hidden data, with no answer),
-    and an empty NN.max beside each `args = ["--max"]` case."""
-    ref = None if pkg.interactor else pkg.reference()
-    if not pkg.interactor and ref is None:
-        raise RuntimeError("no accepted C++ to make answers")
-    tests = os.path.join(out, pkg.id)
-    os.makedirs(out, exist_ok=True)
-    # One make of a package at a time, so concurrent makers (nextest runs each
-    # test in its own process) wait for the first and then find it made.
-    with open(os.path.join(out, f".{pkg.id}.lock"), "w") as lock:
-        import fcntl  # POSIX only; `ls` and the walkers run on Windows too
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        made(pkg, ref, tests, out)
+REFERENCE_FAILS = re.compile(r"accepted C\+\+ (exits .+?|runs past \d+ s) on case (\d+)")
 
 
-def made(pkg, ref, tests, out):
-    key = os.path.join(tests, ".stamp")
-    if os.path.exists(key) and open(key).read() == stamp(pkg, ref):
-        return
-    exe = binary(ref) if ref else None
-    # Made aside and renamed in, so a test reading the cases never sees half of them.
-    aside = tempfile.mkdtemp(prefix=f".{pkg.id}.", dir=out)
-    try:
-        for i, case in enumerate(pkg.cases(), 1):
-            text = pkg.case_input(case)
-            Path(aside, f"{i:02}.in").write_text(text)
-            if "--max" in case.get("args", []):
-                Path(aside, f"{i:02}.max").touch()
-            if exe:
-                r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=TIMEOUT, preexec_fn=judge_stack)
-                if r.returncode:
-                    raise ReferenceFails(f"{i:02}", r.returncode)
-                Path(aside, f"{i:02}.ans").write_text(r.stdout)
-        Path(aside, ".stamp").write_text(stamp(pkg, ref))
-        shutil.rmtree(tests, ignore_errors=True)
-        os.rename(aside, tests)
-    finally:
-        shutil.rmtree(aside, ignore_errors=True)
+def default_cpl():
+    """The cpl corpus.py runs: $CPL, else the release build."""
+    return os.environ.get("CPL") or os.path.join(ROOT, "target", "release", "cpl")
+
+
+def make_cases(pkg, out=OUT, cpl=None):
+    """<out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++ (an interactive
+    package's NN.in is the interactor's hidden data, with no answer), and an empty NN.max
+    beside each `args = ["--max"]` case: `cpl test --make`, the one expansion `cpl test` reads."""
+    r = subprocess.run([cpl or default_cpl(), "test", "--make", str(pkg.dir), "--tests", os.path.join(out, pkg.id)],
+                       cwd=ROOT, capture_output=True, text=True)
+    if r.returncode:
+        if m := REFERENCE_FAILS.search(r.stderr):
+            raise ReferenceFails(m.group(2), m.group(1))
+        lines = r.stderr.strip().splitlines()
+        raise RuntimeError(lines[-1] if lines else f"cpl test --make exits {r.returncode}")
 
 
 def make_one(job):
     """Make one package's cases in a worker process: its id and error, or None."""
-    pid, out = job
+    pid, out, cpl = job
     try:
-        make_cases(next(problems(ids=[pid])), out)
+        make_cases(next(problems(ids=[pid])), out, cpl)
     except (RuntimeError, subprocess.SubprocessError, OSError) as e:
         return f"{pid}: {e!s:.160}"
     return None
@@ -1184,7 +1155,7 @@ def make_one(job):
 
 def make(args):
     """Make the cases of every package with a tests.toml, -j at a time. Processes,
-    not threads: make_cases runs the accepted C++ with a preexec_fn."""
+    each a `cpl test --make`."""
     import concurrent.futures, multiprocessing
     ids = list(args.ids)
     if getattr(args, "changed", None):
@@ -1192,7 +1163,7 @@ def make(args):
         if not ids:
             return 0
     wanted = [p for p in problems(sets=args.set or None, ids=ids or None) if p.tests]
-    jobs = [(p.id, args.out or OUT) for p in wanted]
+    jobs = [(p.id, args.out or OUT, args.cpl) for p in wanted]
     with concurrent.futures.ProcessPoolExecutor(max(1, args.j), mp_context=multiprocessing.get_context("fork")) as pool:
         failed = [f for f in pool.map(make_one, jobs) if f]
     for f in failed:
@@ -1215,7 +1186,7 @@ def seed_toml(pkg, inputs):
         size = 4
         while size < 1 << 20:
             try:
-                if len(pkg.case_input({"seed": n, "size": size * 2}, timeout=TIMEOUT)) > len(text):
+                if len(pkg.gen_input([n, size * 2], timeout=TIMEOUT)) > len(text):
                     break
             except subprocess.SubprocessError:
                 break
@@ -1450,7 +1421,7 @@ def main(mode):
 
 def gaps(args):
     """What the dreams need: `cpl check` errors on every dream.cp, filed by gap."""
-    cpl = args.cpl or os.environ.get("CPL") or os.path.join(ROOT, "target", "release", "cpl")
+    cpl = args.cpl or default_cpl()
     paths = [os.path.abspath(p) for p in args.paths] or [str(p.dream) for p in problems() if p.dream]
     r = report(cpl, paths)
     if args.json:
@@ -1488,6 +1459,7 @@ def cli(argv):
     m.add_argument("--set", action="append")
     m.add_argument("--changed", metavar="BASE", help="only packages changed since BASE (a commit, or `staged`)")
     m.add_argument("--out")
+    m.add_argument("--cpl")
     m.add_argument("-j", type=int, default=os.cpu_count() or 4)
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")

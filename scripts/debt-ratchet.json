@@ -59,6 +59,7 @@
     "cpl-contest -> cpl-codegen",
     "cpl-contest -> cpl-config",
     "cpl-contest -> cpl-diag",
+    "cpl-contest -> cpl-env",
     "cpl-contest -> cpl-ir",
     "cpl-contest -> cpl-json",
     "cpl-contest -> cpl-judge",

@@ -31,10 +31,14 @@ folder). A contest folder (`cpl fetch <contest page>`) runs each problem in it
 with cases, then says how many pass. A case is N.in with an optional N.out or
 N.ans; without one, the output is shown instead of judged. A checker.py or
 interactor.py in the cases folder (or beside a sibling tests/) judges each case,
-and a grader.cpp there is linked in as --grader links it.
+and a grader.cpp there is linked in as --grader links it. A corpus package's
+cases are made first from its tests.toml, into target/corpus-tests/<id>/.
 
 options:
   --tests DIR        read cases from DIR instead of <problem>.tests/
+  --make             make the cases the package <problem>'s tests.toml lists,
+                     into --tests DIR (else target/corpus-tests/<id>/), and
+                     run nothing
   --case NAME        run only the case NAME (`2` for 2.in)
   --add FILE         add FILE (`-`: standard input) as the next numbered case,
                      then run it; with --expect OUT, OUT is its answer
@@ -407,6 +411,31 @@ fn args_without(args: Vec<String>, file: &str) -> Vec<String> {
     rest
 }
 
+/// `cpl test --make`: makes the cases of `package` (or of the package a
+/// file is in) into `out`, else its `target/corpus-tests/<id>/`.
+fn make_cases(
+    package: &Path,
+    out: Option<&str>,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> u8 {
+    let package = match package.is_dir() {
+        true => package,
+        false => package.parent().unwrap_or(Path::new(".")),
+    };
+    let out = out.map_or_else(|| crate::package::cases_dir(package), PathBuf::from);
+    match crate::package::make(package, &out) {
+        Ok(()) => {
+            let _ = writeln!(stdout, "{}", out.display());
+            0
+        }
+        Err(message) => {
+            let _ = writeln!(stderr, "cpl: {message}");
+            1
+        }
+    }
+}
+
 /// Runs `cpl test`. Returns the exit code: 0 when every case passed.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
     if args.iter().any(|arg| arg == "-h" || arg == "--help") {
@@ -418,7 +447,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         "test",
         args,
         &[VALUED, &["--format", "--case", "--add", "--expect"]].concat(),
-        &[],
+        &["--make"],
     )
     .and_then(|args| {
         let json = match args.value("--format") {
@@ -429,6 +458,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let file = args.file("test")?.to_string();
         Ok((args, file, json))
     });
+    if let Ok((args, file, _)) = &parsed {
+        if args.has("--make") {
+            return make_cases(Path::new(file), args.value("--tests"), stdout, stderr);
+        }
+    }
     let (args, source, json) = match parsed {
         Ok((args, file, json)) if Path::new(&file).is_dir() => {
             if args.value("--case").is_some() || args.value("--add").is_some() {
@@ -454,6 +488,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let result = std::fs::read_to_string(&source)
         .map_err(|e| format!("can't read {}: {e}", source.display()))
         .and_then(|src| {
+            if args.value("--tests").is_none() {
+                if let Some(package) = source.parent().filter(|p| p.join("tests.toml").is_file()) {
+                    crate::package::make(package, &crate::package::cases_dir(package))?;
+                }
+            }
             let dir = args
                 .value("--tests")
                 .map(PathBuf::from)

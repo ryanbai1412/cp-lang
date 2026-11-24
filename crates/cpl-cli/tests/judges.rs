@@ -802,6 +802,61 @@ fn a_native_profile_builds_with_the_judges_flags_on_the_judges_stack() {
 }
 
 #[test]
+fn cpl_test_runs_a_package_whose_cases_are_only_a_tests_toml() {
+    let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("tests-toml-package");
+    let _ = std::fs::remove_dir_all(&root);
+    let package = root.join("corpus/problems/p");
+    std::fs::create_dir_all(&package).unwrap();
+    std::fs::write(
+        package.join("tests.toml"),
+        "[[case]]\ninput = \"3\"\n\n[[case]]\ninput = \"20\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        package.join("orig.cpp"),
+        "#include <cstdio>\nint main(){long long n;scanf(\"%lld\",&n);printf(\"%lld\\n\",2*n);}\n",
+    )
+    .unwrap();
+    let port = package.join("port.cp");
+    std::fs::write(&port, "let n: Int = read()\nprint(2 * n)\n").unwrap();
+    let out = cpl_cli::run(&["test", port.to_str().unwrap()]);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.code, 0, "{stdout}{}", out.stderr);
+    assert!(stdout.contains("2/2"), "{stdout}");
+    assert_eq!(
+        std::fs::read_to_string(root.join("target/corpus-tests/p/02.ans")).unwrap(),
+        "40\n"
+    );
+}
+
+#[test]
+fn a_reference_past_its_time_budget_fails_naming_the_case() {
+    let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("tests-toml-slow-reference");
+    let _ = std::fs::remove_dir_all(&root);
+    let package = root.join("corpus/problems/slow");
+    std::fs::create_dir_all(&package).unwrap();
+    std::fs::write(
+        package.join("tests.toml"),
+        "[[case]]\ninput = \"1\"\n\n[[case]]\ninput = \"2\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        package.join("orig.cpp"),
+        "#include <cstdio>\nint main(){int n;scanf(\"%d\",&n);volatile long long x=0;\
+         while(n==2)x++;printf(\"%d\\n\",n);}\n",
+    )
+    .unwrap();
+    let out = cpl_contest::package::cases_dir(&package);
+    let failed =
+        cpl_contest::package::make_within(&package, &out, std::time::Duration::from_secs(1))
+            .unwrap_err();
+    assert!(
+        failed.contains("accepted C++ runs past 1 s on case 02"),
+        "{failed}"
+    );
+}
+
+#[test]
 fn submit_builds_for_the_judge_then_runs_the_cases_on_that_build() {
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-submit");
     let _ = std::fs::remove_dir_all(&scratch);
