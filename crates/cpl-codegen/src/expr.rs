@@ -838,6 +838,16 @@ impl<'p> Emitter<'p> {
                 let pos = self.expr(&args[0]);
                 Code::new(format!("{} + 1", pos.at(ADD)), ADD)
             }
+            ExprKind::Unwrap(value, true)
+                if matches!(&value.kind, ExprKind::Builtin(Builtin::PosPrev, args)
+                    if self.facts.prev_exists(self.facts_home(), &args[0])) =>
+            {
+                let ExprKind::Builtin(_, args) = &value.kind else {
+                    unreachable!()
+                };
+                let pos = self.expr(&args[0]);
+                Code::new(format!("{} - 1", pos.at(ADD)), ADD)
+            }
             ExprKind::Unwrap(value, true) => {
                 self.need("have");
                 let code = self.expr(value);

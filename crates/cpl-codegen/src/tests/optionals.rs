@@ -291,3 +291,15 @@ fn next_of_a_position_short_of_a_position_end_is_one_add() {
     // domain's length, so their `next` keeps its check.
     assert_eq!(cpp.matches("cpl::next_pos(r_").count(), 2, "{cpp}");
 }
+
+#[test]
+fn prev_of_a_position_past_a_loop_start_is_one_sub() {
+    let cpp = cpp(
+        "let n: 2..=9 = read()\ndomain I = 0..n\nvar a: [I]Int = 0\nfor i in I:\n    a[i] = read()\nvar s = 0\n\
+         for i in I:\n    for j in i.after:\n        s += a[j.prev!]\n\
+         for j in I.first!..I.last!:\n    print(j.prev ?? j)\nprint(s)\n",
+    );
+    assert!(cpp.contains("a[j - 1]"), "{cpp}");
+    // A loop from the first position reaches a `j` with no `prev`.
+    assert_eq!(cpp.matches("cpl::prev_pos(j").count(), 1, "{cpp}");
+}

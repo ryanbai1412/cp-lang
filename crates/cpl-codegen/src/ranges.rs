@@ -382,7 +382,14 @@ impl<'p> Facts<'p> {
                                 self.expr(fn_id, step);
                             }
                         }
-                        Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(fn_id, e),
+                        Iter::RangeVal(e, rev) => {
+                            if let (false, ExprKind::Range { lo, hi }) = (rev, &e.kind) {
+                                self.loop_lo.insert(v, lo);
+                                self.loop_hi.insert(v, (hi, false));
+                            }
+                            self.expr(fn_id, e);
+                        }
+                        Iter::Seq(e, _) => self.expr(fn_id, e),
                         Iter::TreeRange {
                             container, lo, hi, ..
                         } => {
@@ -854,6 +861,19 @@ impl<'p> Facts<'p> {
             hi = inner;
         }
         hi.ty == Ty::Pos(*d)
+    }
+
+    /// True when `e` is a position of a loop whose first value is past the
+    /// domain's first position, so `v.prev` always exists.
+    pub fn prev_exists(&self, fn_id: Option<usize>, e: &Expr) -> bool {
+        let (ExprKind::Local(slot), Ty::Pos(_)) = (&e.kind, &e.ty) else {
+            return false;
+        };
+        let v = self.local(fn_id, *slot);
+        match (self.stores(v), self.loop_lo.get(&v)) {
+            (1, Some(lo)) => matches!(self.sign_at(v.0, lo, 0), Sign::Positive),
+            _ => false,
+        }
     }
 
     /// A loop variable's first value.
