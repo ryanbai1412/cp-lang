@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3475 (3427 passing). Rules: 616.
+Cases: 3476 (3427 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -1201,6 +1201,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-06/code-after-a-sometimes-leaving-statement-runs.cp
 - core-07/in-on-a-list-fixes-to-contains.cp
 - core-07/list-literal-of-range-is-one-element.cp
+- core-07/yielded-closure-in-struct-field-writes-generator-local.cp
 - core-07/yielded-closure-in-struct-writes-generator-local.cp
 - core-07/yielded-closure-writes-generator-local.cp
 - core-08/has-bound-generic-impl.cp
