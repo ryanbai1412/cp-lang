@@ -6,11 +6,15 @@
   {"id": "3591487", "language": "CPP17", "result": "WA", "time": 0.002356828, "memory_kb": 1528.0, "file": "corpus/submissions/3591487.cpp"},
   {"id": "3591492", "language": "CPP17", "result": "WA", "time": 0.049995798, "memory_kb": 1524.0, "file": "corpus/submissions/3591492.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc20c5p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus (all three are WA). orig.cpp is the official editorial's shifted Thue-Morse colouring, which has no ugly rectangle; checker.py rejects any output with one, and agrees with a direct brute-force search on 400 random small grids."
 }
