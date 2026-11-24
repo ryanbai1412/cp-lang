@@ -989,6 +989,8 @@ impl fmt::Display for Ty {
                 }
                 write!(f, "..{base} without ({}))", removed.join(", "))
             }
+            // A list's positions, `D` in `[D]T` filled by a list, are `Int`s (R07.3.5).
+            Ty::Named { name, args } if args.is_empty() && name == "List" => f.write_str("Int"),
             Ty::Named { name, args } => {
                 f.write_str(crate::prelude::written_name(name))?;
                 if !args.is_empty() {
