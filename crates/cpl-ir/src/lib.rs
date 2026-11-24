@@ -27,6 +27,7 @@ pub mod sites;
 pub mod stress_target;
 pub mod walk;
 
+pub use cpl_check::interval;
 pub use cpl_rt::{Prim, Scalar};
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
 /// Every diagnostic the front end has for a file: the checker's, and when

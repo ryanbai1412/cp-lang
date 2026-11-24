@@ -921,64 +921,8 @@ impl<'f> Bounds<'f> {
 
     /// The values `a op b` can take.
     pub(crate) fn combine(op: BinOp, a: Interval, b: Interval) -> Option<Interval> {
-        match op {
-            BinOp::Add => Some(Interval {
-                lo: a.lo.checked_add(b.lo)?,
-                hi: a.hi.checked_add(b.hi)?,
-            }),
-            BinOp::Sub => Some(Interval {
-                lo: a.lo.checked_sub(b.hi)?,
-                hi: a.hi.checked_sub(b.lo)?,
-            }),
-            BinOp::Mul => {
-                let corners = [
-                    a.lo.checked_mul(b.lo)?,
-                    a.lo.checked_mul(b.hi)?,
-                    a.hi.checked_mul(b.lo)?,
-                    a.hi.checked_mul(b.hi)?,
-                ];
-                Some(Interval {
-                    lo: *corners.iter().min()?,
-                    hi: *corners.iter().max()?,
-                })
-            }
-            BinOp::Div if b.lo > 0 => {
-                let corners = [
-                    a.lo.checked_div_euclid(b.lo)?,
-                    a.lo.checked_div_euclid(b.hi)?,
-                    a.hi.checked_div_euclid(b.lo)?,
-                    a.hi.checked_div_euclid(b.hi)?,
-                ];
-                Some(Interval {
-                    lo: *corners.iter().min()?,
-                    hi: *corners.iter().max()?,
-                })
-            }
-            BinOp::Rem if b.lo > 0 => Some(if a.lo >= 0 && a.hi < b.lo {
-                a
-            } else {
-                let hi = b.hi - 1;
-                Interval {
-                    lo: 0,
-                    hi: if a.lo >= 0 { hi.min(a.hi) } else { hi },
-                }
-            }),
-            BinOp::Pow if b.lo == b.hi && b.lo >= 0 => {
-                let k = u32::try_from(b.lo).ok()?;
-                let (lo, hi) = (a.lo.checked_pow(k)?, a.hi.checked_pow(k)?);
-                Some(if k % 2 == 1 || a.lo >= 0 {
-                    Interval { lo, hi }
-                } else if a.hi <= 0 {
-                    Interval { lo: hi, hi: lo }
-                } else {
-                    Interval {
-                        lo: 0,
-                        hi: lo.max(hi),
-                    }
-                })
-            }
-            _ => None,
-        }
+        let (lo, hi) = cpl_check::interval::combine(op, (a.lo, a.hi), (b.lo, b.hi))?;
+        Some(Interval { lo, hi })
     }
 
     /// From here on `name` is a fn of the program's own, not the prelude's.

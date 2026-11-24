@@ -9321,7 +9321,12 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 621. (reserved, compiler)
 
-## 622. (reserved, unknown)
+## 622. Lint's bounds and codegen's Facts share one interval table; the two analyses stay, as logged debt (perf, 2026-11-24)
+
+- **Call.** `cpl_check::interval` is the one table for what `a op b` can be (`combine`) and whether a range is an `Int` (`in_int`, which leaves out `Int.MIN`, `?Int`'s niche). Lint's `Bounds::combine`, its L0306 overflow test, codegen's `Facts::fits_bounds` and the checker's own `bounds` and `const_range` all read it, so lint no longer passes a value at `Int.MIN` that the C++ traps on. Facts stays in cpl-codegen. Lint's AST intervals stay too, as debt.
+- **Why.** Core asked for ranges.rs and span.rs to move into cpl-ir as the one Facts source, but only if the move was net <=0 on `cpl_ir` and `cpl.wasm`. The named A/B ruled that out. `cpl.wasm` has no codegen, so the move adds 18.0 KB gzipped to `cpl_ir`, which is already over its budget (461.2 against 445.8 KB). The duplicates it would delete (lint `bounds.rs`, 15.1 KB, and checker `Overflow`, 0.2 KB) are outside `cpl_ir`, so `cpl.wasm` still grows at least 2.7 KB. On top of that, Facts would need to gain lint's two-name differences, loop counts, pushed sizes and witnesses. Facts also needs a lowered program, which would silence L0306 on files that do not type-check. Sharing only the table, and deleting the checker's own copies of it, is net -1,299 bytes gzipped on `cpl.wasm` (`cpl_ir` -33, `cpl_check` -32, `cpl_lint` -504).
+- **Debt.** Two range analyses remain. A corpus test pins that every op lint proves in range, Facts also proves, so they cannot disagree in the direction that matters. Pay the debt down by moving Facts into the IR once `cpl_ir` has room.
+- **Reverse.** Give lint and codegen separate interval arithmetic again.
 
 ## 623. (reserved, compiler)
 

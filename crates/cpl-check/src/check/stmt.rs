@@ -50,20 +50,8 @@ impl<'a> Checker<'a> {
             },
             ExprKind::Binary { op, lhs, rhs, .. } => {
                 let (a, b) = (self.const_range(lhs)?, self.const_range(rhs)?);
-                match op {
-                    BinOp::Add => Some((a.0.checked_add(b.0)?, a.1.checked_add(b.1)?)),
-                    BinOp::Sub => Some((a.0.checked_sub(b.1)?, a.1.checked_sub(b.0)?)),
-                    BinOp::Mul => {
-                        let c = [
-                            a.0.checked_mul(b.0)?,
-                            a.0.checked_mul(b.1)?,
-                            a.1.checked_mul(b.0)?,
-                            a.1.checked_mul(b.1)?,
-                        ];
-                        Some((*c.iter().min()?, *c.iter().max()?))
-                    }
-                    _ => None,
-                }
+                (matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul))
+                    .then(|| crate::interval::combine(*op, a, b))?
             }
             _ => None,
         }
@@ -905,20 +893,9 @@ impl<'a> Checker<'a> {
                 {
                     Ty::Int
                 } else if declared.is_none() && !*mutable && init_ty.as_ref() == Some(&Ty::Int) {
-                    if let Some(init_expr) = init {
-                        let (lo, hi) = self.bounds(init_expr);
-                        if let (Some(l), Some(h)) = (lo, hi) {
-                            Ty::Range {
-                                lo: Some(l),
-                                hi: Some(h),
-                                text: format!("{l}..={h}"),
-                            }
-                        } else {
-                            Ty::Int
-                        }
-                    } else {
-                        Ty::Int
-                    }
+                    (init.as_ref())
+                        .and_then(|init| self.bounded(init))
+                        .unwrap_or(Ty::Int)
                 } else {
                     declared.or(init_ty.clone()).unwrap_or(Ty::Error)
                 };

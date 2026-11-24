@@ -736,16 +736,7 @@ impl<'a> Checker<'a> {
                         if *mutable && matches!(inferred, Ty::Range { .. }) {
                             Ty::Int
                         } else if !*mutable && inferred == Ty::Int {
-                            let (lo, hi) = self.bounds(init);
-                            if let (Some(l), Some(h)) = (lo, hi) {
-                                Ty::Range {
-                                    lo: Some(l),
-                                    hi: Some(h),
-                                    text: format!("{l}..={h}"),
-                                }
-                            } else {
-                                inferred
-                            }
+                            self.bounded(init).unwrap_or(inferred)
                         } else {
                             inferred
                         }

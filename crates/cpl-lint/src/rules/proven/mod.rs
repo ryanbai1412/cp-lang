@@ -432,8 +432,7 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
                     .filter(shown)
                     .filter(|_| !bounds.reads_len(expr))
                 {
-                    let int = i64::MAX as i128;
-                    let leaves = v.lo < -int - 1 || v.hi > int;
+                    let leaves = !cpl_check::interval::in_int((v.lo, v.hi));
                     out.exprs.push(crate::ProvenExpr {
                         op: (base + op_span.start, base + op_span.end),
                         expr: (base + expr.span.start, base + expr.span.end),

@@ -21,6 +21,7 @@ mod def;
 mod facts;
 mod fx;
 mod hover;
+pub mod interval;
 mod labels;
 mod modules;
 mod multitest;

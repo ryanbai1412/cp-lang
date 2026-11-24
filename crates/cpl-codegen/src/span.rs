@@ -164,17 +164,10 @@ impl Facts<'_> {
                 i128::from(self.upper_bound(fn_id, e, 1)?),
             ))
         };
-        let (Some((a, b)), Some((c, d))) = (bounds(l), bounds(r)) else {
-            return false;
-        };
-        let corners = match op {
-            BinOp::Add => [a + c, b + d, a + c, b + d],
-            BinOp::Sub => [a - d, b - c, a - d, b - c],
-            BinOp::Mul => [a * c, a * d, b * c, b * d],
-            _ => return false,
-        };
-        let int = i128::from(i64::MIN) + 1..=i128::from(i64::MAX);
-        corners.iter().all(|x| int.contains(x))
+        matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul)
+            && (bounds(l).zip(bounds(r)))
+                .and_then(|(a, b)| cpl_ir::interval::combine(op, a, b))
+                .is_some_and(cpl_ir::interval::in_int)
     }
 
     /// `e`'s bounds as `k * n + c`, for a count `n` taken to be positive.
