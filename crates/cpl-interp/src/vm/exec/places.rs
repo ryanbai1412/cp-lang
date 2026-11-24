@@ -264,20 +264,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     return bug(span, "expected the sort keys");
                 };
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_to_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
-                self.show_lent()?;
+                self.hand_to_user(chunk, regs_i, regs_v)?;
                 let order =
                     self.keyed_order(by.len(), &|i| by.get_unchecked_val(i), key_ty, desc, span);
-                self.hide_lent()?;
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                self.take_from_user(chunk, regs_i, regs_v)?;
                 let sorted = permute_seq(seq, order?, span)?;
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
@@ -431,33 +422,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         cpl_diag::msgs::interp::KEY_NOT_IN_MAP_M.at(&[&key]),
                     );
                 }
-            }
-            Op::SetMapMutPlace {
-                dst,
-                path,
-                val_v,
-                is_remove,
-            } => {
-                let arg = regs_v[val_v as usize].clone();
-                let pp = &chunk.places[path as usize];
-                let keys = place_keys(pp, regs_v);
-                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
-                let ok = match (is_remove, target) {
-                    (false, Value::Set(items)) => {
-                        Rc::make_mut(items).insert(arg, &mut tree_only(spans[cur_pc]))?
-                    }
-                    (true, Value::Set(items)) => {
-                        Rc::make_mut(items).remove(&arg, &mut tree_only(spans[cur_pc]))?
-                    }
-                    (true, Value::Map(entries)) => Rc::make_mut(entries)
-                        .remove(&arg, &mut tree_only(spans[cur_pc]))?
-                        .is_some(),
-                    _ => {
-                        return bug(spans[cur_pc], "this value can't be changed that way");
-                    }
-                };
-                regs_i[dst as usize] = i64::from(ok);
             }
             Op::MapPlaceAssign {
                 path,
@@ -1394,12 +1358,28 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let (arg, arg2) = (arg(0), arg(1));
                 let program = self.program;
                 let pp = &chunk.places[path as usize];
-                let keys = place_keys(pp, regs_v);
-                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let span = spans[cur_pc];
-                regs_v[dst as usize] =
-                    with_place_cell(root, &pp.steps, regs_i, &keys, span, |cell| {
-                        let cmp = &mut tree_only(span);
+                let mut keys = place_keys(pp, regs_v);
+                strip_place_keys(place, &mut keys, program);
+                // User code orders the keys with the frame's locals on the
+                // stack and the root held out, so no entry is copied.
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                let mut held = std::mem::replace(root, Value::Moved);
+                let mut shown = false;
+                let got = with_place_cell_by(
+                    &mut held,
+                    &pp.steps,
+                    regs_i,
+                    &keys,
+                    span,
+                    &mut |t: &cpl_ir::Ty, a: &Value, b: &Value| {
+                        if !shown {
+                            self.hand_to_user(chunk, regs_i, regs_v)?;
+                            shown = true;
+                        }
+                        self.less_ty_val(t, a, b, span)
+                    },
+                    |cell| {
                         crate::mutation::mutate_cell(
                             *op,
                             cell,
@@ -1407,9 +1387,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             (arg, arg2),
                             program,
                             span,
-                            cmp,
+                            &mut tree_only(span),
                         )
-                    })?;
+                    },
+                );
+                let back = if shown {
+                    self.take_from_user(chunk, regs_i, regs_v)
+                } else {
+                    Ok(())
+                };
+                *place_root_mut(pp.root, regs_v, &mut self.globals) = held;
+                back?;
+                regs_v[dst as usize] = got?;
             }
             Op::Step { idx } => {
                 self.step_event(chunk.steps[idx as usize]);
@@ -1426,14 +1415,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         *held = Value::Unit;
                     }
                 }
-                sync_to_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
                 let stmt = chunk.fallback_stmts[idx as usize];
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
                 let hosts = !chunk.fed_bodies.is_empty();
@@ -1441,14 +1422,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.fed_hosts
                         .push((self.base, chunk as *const Chunk<'p> as *const ()));
                 }
-                self.show_lent()?;
+                self.hand_to_user(chunk, regs_i, regs_v)?;
                 let flow = self.stmt(stmt);
-                self.hide_lent()?;
                 if hosts {
                     self.fed_hosts.pop();
                 }
                 self.leave_fallback(outer);
-                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                self.take_from_user(chunk, regs_i, regs_v)?;
                 let flow = flow?;
                 match flow {
                     Flow::Next => {}
@@ -1463,19 +1443,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     || expr_tag(chunk.fallback_exprs[idx as usize], program),
                     in_loop,
                 );
-                sync_to_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
                 let expr = chunk.fallback_exprs[idx as usize];
-                self.show_lent()?;
+                self.hand_to_user(chunk, regs_i, regs_v)?;
                 let val = self.eval(expr);
-                self.hide_lent()?;
-                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                self.take_from_user(chunk, regs_i, regs_v)?;
                 let val = val?;
                 regs_i[dst as usize] = ScalarKind::unbox_val(&val);
             }
@@ -1485,19 +1456,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     || expr_tag(chunk.fallback_exprs[idx as usize], program),
                     in_loop,
                 );
-                sync_to_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
                 let expr = chunk.fallback_exprs[idx as usize];
-                self.show_lent()?;
+                self.hand_to_user(chunk, regs_i, regs_v)?;
                 let val = self.eval(expr);
-                self.hide_lent()?;
-                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
+                self.take_from_user(chunk, regs_i, regs_v)?;
                 let val = val?;
                 regs_v[dst as usize] = val;
             }

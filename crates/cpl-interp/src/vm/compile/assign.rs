@@ -1014,8 +1014,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
-    fn keyed_map(&self, ty: &Ty) -> bool {
-        matches!(ty, Ty::Map(k, _) | Ty::HashMap(k, _) if !crate::value::ty_has_cached(k, self.program) && !crate::value::keys::user_ordered(k, self.program))
+    /// A map whose entries a path step walks to: with `any_keys`, also one
+    /// keyed by a user `Ord` or cached fields, for an op that searches with
+    /// `Interp::cmp_ty_val`.
+    fn keyed_map(&self, ty: &Ty, any_keys: bool) -> bool {
+        matches!(ty, Ty::Map(k, _) | Ty::HashMap(k, _) if any_keys || (!crate::value::ty_has_cached(k, self.program) && !crate::value::keys::user_ordered(k, self.program)))
     }
 
     /// A path to `place`, through map entries too. A path that ends at a
@@ -1027,18 +1030,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
         place: &'p Place,
         key_leaf: bool,
     ) -> Option<u16> {
-        self.place_path_rooted(place, key_leaf, None)
+        self.place_path_rooted(place, key_leaf, None, false)
     }
 
-    /// The path to `place`, from `boxed_root` when its local is boxed there.
+    /// The path to `place`, from `boxed_root` when its local is boxed there;
+    /// with `any_keys`, through entries of any [`Self::keyed_map`].
     pub(super) fn place_path_rooted(
         &mut self,
         place: &'p Place,
         key_leaf: bool,
         boxed_root: Option<u16>,
+        any_keys: bool,
     ) -> Option<u16> {
         if let PlaceKind::Index(base, indices) = &place.kind {
-            if !key_leaf && indices.len() == 1 && self.keyed_map(&base.ty) {
+            if !key_leaf && indices.len() == 1 && self.keyed_map(&base.ty, any_keys) {
                 return None;
             }
         }
@@ -1056,7 +1061,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     cur = base;
                 }
                 PlaceKind::Index(base, indices)
-                    if indices.len() == 1 && self.keyed_map(&base.ty) =>
+                    if indices.len() == 1 && self.keyed_map(&base.ty, any_keys) =>
                 {
                     chain.push(cur);
                     cur = base;
@@ -1095,7 +1100,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let mut keys = Vec::new();
         for p in chain.into_iter().rev() {
             match &p.kind {
-                PlaceKind::Index(base, indices) if self.keyed_map(&base.ty) => {
+                PlaceKind::Index(base, indices) if self.keyed_map(&base.ty, any_keys) => {
                     steps.push(PlaceStep::Key(keys.len() as u16));
                     keys.push(self.compile_expr_v(&indices[0]));
                 }

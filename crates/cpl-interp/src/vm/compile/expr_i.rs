@@ -4,7 +4,7 @@ use super::{Compiler, GiveTarget, ModSuperOp};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use cpl_ir::Prim;
-use cpl_ir::{Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Mutation, Stmt, Ty, UnOp};
+use cpl_ir::{Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Stmt, Ty, UnOp};
 
 impl<'p, 'f> Compiler<'p, 'f> {
     fn is_small_tuple_local(&self, e: &Expr) -> bool {
@@ -782,44 +782,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::ClearV { reg: src_v }, span);
                 }
                 dst
-            }
-            ExprKind::Mutate(m @ (Mutation::Insert | Mutation::Remove), place, args)
-                if args.len() == 1
-                    && !crate::value::ty_has_cached(&args[0].ty, self.program)
-                    && !crate::value::keys::user_ordered(&args[0].ty, self.program)
-                    && ((matches!(m, Mutation::Insert)
-                        && matches!(place.ty, Ty::Set(_) | Ty::HashSet(_)))
-                        || (matches!(m, Mutation::Remove)
-                            && matches!(
-                                place.ty,
-                                Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
-                            ))) =>
-            {
-                let saved_ops = self.ops.len();
-                let saved_spans = self.spans.len();
-                let saved_places = self.places.len();
-                if let Some(path) = self.compile_place_path_to(place, true) {
-                    let val_v = self.compile_expr_v(&args[0]);
-                    let dst = self.alloc_i();
-                    self.emit(
-                        Op::SetMapMutPlace {
-                            dst,
-                            path,
-                            val_v,
-                            is_remove: matches!(m, Mutation::Remove),
-                        },
-                        span,
-                    );
-                    if val_v >= self.num_local_v {
-                        self.emit(Op::ClearV { reg: val_v }, span);
-                    }
-                    dst
-                } else {
-                    self.ops.truncate(saved_ops);
-                    self.spans.truncate(saved_spans);
-                    self.places.truncate(saved_places);
-                    self.emit_fallback_expr_i(expr)
-                }
             }
             ExprKind::Index(base, indices)
                 if let Ty::Map(kty, _) | Ty::HashMap(kty, _) = &base.ty
