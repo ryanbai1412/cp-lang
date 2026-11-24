@@ -2,8 +2,8 @@ $ cpl judge j.cp j.in j.wrong
 exit 3
 -- stdout
 -- stderr
-assertion failed: got == n
-error[R0401]: assertion failed: got == n
+assertion failed: got == n: got = 5, n = 4
+error[R0401]: assertion failed: got == n: got = 5, n = 4
   --> j.cp:8:5
   |
 8 |     assert got == n
