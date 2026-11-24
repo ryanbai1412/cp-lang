@@ -58,43 +58,68 @@ fn programs() -> Vec<(String, String)> {
     out
 }
 
+/// Errors whose primary span is inside std, as `error ...\n  --> std/...`.
+fn inside_std(files: &[std::path::PathBuf]) -> Vec<String> {
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("check")
+        .args(files)
+        .env("NO_COLOR", "1")
+        .output()
+        .unwrap();
+    let text =
+        String::from_utf8_lossy(&out.stderr).into_owned() + &String::from_utf8_lossy(&out.stdout);
+    let mut inside = Vec::new();
+    let mut lines = text.lines().peekable();
+    while let Some(line) = lines.next() {
+        if !line.starts_with("error") {
+            continue;
+        }
+        if let Some(at) = lines
+            .peek()
+            .and_then(|l| l.trim_start().strip_prefix("--> "))
+        {
+            if at.starts_with("std/") || at.contains("/std/") {
+                inside.push(format!("{line}\n  {at}"));
+            }
+        }
+    }
+    inside
+}
+
+/// Programs per `cpl check`: one process loads std once for the whole batch,
+/// so a batch costs about what one program does on its own.
+const BATCH: usize = 40;
+
 #[test]
 fn no_error_on_a_std_call_points_into_std() {
     let programs = programs();
     assert!(programs.len() > 1000, "only {} programs", programs.len());
     let dir = tempfile_dir();
+    let files: Vec<_> = programs
+        .iter()
+        .map(|(name, src)| {
+            let file = dir.join(format!("{name}.cp"));
+            fs::write(&file, src).unwrap();
+            file
+        })
+        .collect();
+    let batches: Vec<_> = files.chunks(BATCH).zip(programs.chunks(BATCH)).collect();
+    let next = std::sync::atomic::AtomicUsize::new(0);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let chunks: Vec<_> = programs.chunks(programs.len().div_ceil(threads)).collect();
     let inside: Vec<String> = std::thread::scope(|s| {
-        let handles: Vec<_> = chunks
-            .into_iter()
-            .map(|chunk| {
-                let dir = &dir;
-                s.spawn(move || {
+        let handles: Vec<_> = (0..threads)
+            .map(|_| {
+                s.spawn(|| {
                     let mut inside = Vec::new();
-                    for (name, src) in chunk {
-                        let file = dir.join(format!("{name}.cp"));
-                        fs::write(&file, src).unwrap();
-                        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-                            .arg("check")
-                            .arg(&file)
-                            .env("NO_COLOR", "1")
-                            .output()
-                            .unwrap();
-                        let text = String::from_utf8_lossy(&out.stderr).into_owned()
-                            + &String::from_utf8_lossy(&out.stdout);
-                        let mut lines = text.lines().peekable();
-                        while let Some(line) = lines.next() {
-                            if !line.starts_with("error") {
-                                continue;
-                            }
-                            if let Some(at) = lines
-                                .peek()
-                                .and_then(|l| l.trim_start().strip_prefix("--> "))
-                            {
-                                if at.starts_with("std/") || at.contains("/std/") {
-                                    inside.push(format!("{name}: {line}\n  {at}\n{src}"));
-                                }
+                    while let Some((files, programs)) =
+                        batches.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                    {
+                        if inside_std(files).is_empty() {
+                            continue;
+                        }
+                        for (file, (name, src)) in files.iter().zip(programs.iter()) {
+                            for at in inside_std(std::slice::from_ref(file)) {
+                                inside.push(format!("{name}: {at}\n{src}"));
                             }
                         }
                     }
