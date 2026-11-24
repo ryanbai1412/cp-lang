@@ -10,7 +10,9 @@ Enforces std-api/R14 (handbook/guidelines/std-api-checklist.md) for handbook/dom
   key       a pub std fn `f<T>(x: T)` returning a std type with an `Ord` impl (`desc`), passed as `by:`
   op        an operation value the checker knows (`is_op_text` in crates/cpl-check), passed as `op:`
 
-A source is a view applied to a base list (Ints, a Str, optionals, lists). Each consumer
+A source is a view applied to a base list (Ints, a Str, optionals, lists, ranges, arcs,
+vertices), on the longest prefix whose source length, counted by the interpreter, the consumer's
+`cost:` line walks within WORK. Each consumer
 takes each source in each of its sequence slots whose trait the source has, with each key for
 its `by:` and each op for its `op:`. The brute force is the same call on the source
 materialized: `List(src)`, keeping keys (`.keyed(keys:)` for `Keyed`, `.rekey(src.keys)` for
@@ -18,10 +20,12 @@ materialized: `List(src)`, keeping keys (`.keyed(keys:)` for `Keyed`, `.rekey(sr
 the same result as the brute force under `cpl run` and `cpl run --release`. A consumer with no
 case fails too, so a new std fn can't go unexercised.
 
-  scripts/std-compose.py [--cpl PATH] [--list] [--only REGEX]
+  scripts/std-compose.py [--cpl PATH] [--list] [--only REGEX] [--shard K/N] [--jobs N]
 """
 import argparse
+import hashlib
 import json
+import math
 import os
 import re
 import resource
@@ -33,16 +37,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TRAITS = ["Seq", "Bidir", "Keyed", "Positional", "Indexed", "Sized"]
-BASES = {  # tried in order; a case whose brute force outgrows LIMITS moves on to the next that checks
-    "xs": "[3, 1, 4, 1, 5, 2]",
-    "cs": '"abcab"',
-    "os": "[Some(3), None, Some(1), Some(4)]",
-    "ls": "[[3, 1], [], [4]]",
-    "x2": "[3, 1]",
-    "c2": '"ab"',
-    "o2": "[Some(3), None]",
-    "l2": "[[3, 1], []]",
+KINDS = {  # base sequences by kind, tried in order; a case takes the longest prefix its cost allows
+    "xs": ["3", "1", "4", "1", "5", "2"],
+    "cs": ["a", "b", "c", "a", "b"],
+    "os": ["Some(3)", "None", "Some(1)", "Some(4)"],
+    "ls": ["[3, 1]", "[]", "[4]"],
+    "rs": ["0..5", "1..3", "4..8", "2..6"],
+    "es": ["(u: Vx(0), v: Vx(2))", "(u: Vx(0), v: Vx(1))", "(u: Vx(2), v: Vx(3))"],
+    "vs": ["Vx(0)", "Vx(2)", "Vx(1)"],
 }
+BASES = {f"{k}{n}": '"' + "".join(es[:n]) + '"' if k == "cs" else f"[{', '.join(es[:n])}]"
+         for k, es in KINDS.items() for n in range(len(es), 1, -1)}
+WORLD = ["domain Vx = 0..4", "let gr: [Vx]List<Vx> = [[1, 2], [3], [3], []]"]  # what the bases name
+BOUND_ARGS = {"Next": "gr"}  # argument for a parameter whose type is a generic with this bound
+WORK = 10 ** 4  # items a case's view and consumer may walk, by their `cost:` lines
+CACHE = ROOT / "target" / "std-compose"  # built case programs, by the hash of their C++
 LIMITS = (4 << 30, 300)  # bytes of memory and seconds for one run of a case program
 PRED = 'x => "{x}".len % 2 == 1'
 KEY = 'x => "{x}".len'
@@ -127,6 +136,7 @@ def std_index(cpl, root):
             f = parse(x["signature"])
             src = lines[x["line"] - 1] if x["line"] <= len(lines) else ""
             f["get"], f["where"] = src.lstrip().startswith("@get"), f"{mod['path']}:{x['line']}"
+            f["cost"] = x.get("cost")
             fns.append(f)
     consumers = [f for f in fns if any(slot_trait(f, p) for p in f["params"])
                  and not any(p["variadic"] for p in f["params"])]
@@ -154,8 +164,16 @@ def fill(f, slots, elem, extra):
     for p in f["params"]:
         if p["name"] in args or p["default"] or p["name"] in extra:
             continue
+        bound = re.match(r"\w*", f["gens"].get(p["ty"], "")).group(0)
+        if bound in BOUND_ARGS:
+            args[p["name"]] = BOUND_ARGS[bound]
+            continue
         if p["ty"] in f["gens"] and not slot_trait(f, p):
             args[p["name"]] = elem
+            continue
+        to = re.fullmatch(r"\w+ -> (\w+)", p["ty"])
+        if to and f["gens"].get(to.group(1), "").startswith("Seq"):
+            args[p["name"]] = "x => [x, x]"
             continue
         arg = next((a for pat, a in ARGS.items() if re.fullmatch(pat, p["ty"])), None)
         if arg is None:
@@ -165,13 +183,74 @@ def fill(f, slots, elem, extra):
 
 
 def normal(f, expr, is_view):
+    """The forms `f`'s result `expr` compares in, by `==`, tried in order: its value, or a view
+    walked into a `List`; else its `Show` text."""
     ret = f["ret"]
     if ret.startswith("(domain"):
-        return f"List(({expr}).1)"
+        return [f"List(({expr}).1)", f'"{{({expr}).1}}"']
     if is_view(ret):
         inner = ret[len("yields "):] if ret.startswith("yields ") else ""
-        return f"List(({expr}).map(q => List(q)))" if re.search(r"\bS\b", inner) else f"List({expr})"
-    return expr
+        return [f"List(({expr}).map(q => List(q)))" if re.search(r"\bS\b", inner) else f"List({expr})"]
+    return [expr, f'"{{{expr}}}"']
+
+
+def growth(cost):
+    """How many items a fn walks or yields for `n` in, read off its `cost:` line."""
+    c = cost or ""
+    if "per permutation" in c:
+        return math.factorial
+    if re.search(r"per (combination|subsequence)|2\^", c):
+        return lambda n: 2 ** n
+    if re.search(r"n\^2|per pair|\\cdot", c):
+        return lambda n: n * n
+    return lambda n: n
+
+
+def size(kind, consumer, count=lambda n: n):
+    """The longest prefix of base `kind` whose source, `count(n)` items long on `n` of them, `consumer`
+    walks within WORK by its `cost:` line."""
+    for n in range(len(KINDS[kind]), 2, -1):
+        if growth(consumer and consumer.get("cost"))(count(n)) <= WORK:
+            return n
+    return 2
+
+
+def at(expr, kind, n):
+    """`expr` with its base placeholder `@kind` made the prefix of `n` items."""
+    return expr.replace(f"@{kind}", f"{kind}{n}")
+
+
+def based(x, n):
+    """Candidate `x` on the prefix of `n` items of its base."""
+    k = x["kind"]
+    return {**x, "base": f"{k}{n}", **{f: at(x[f], k, n) for f in ("src", "lazy", "brute")}}
+
+
+def counts(cpl, exprs, chunk=200):
+    """{expr: items it yields} by the interpreter, for each of `exprs` that checks and runs."""
+    ok = check(cpl, {f"c{i}": f"({e}).count()" for i, e in enumerate(exprs)})
+    todo = [e for i, e in enumerate(exprs) if ok[f"c{i}"]]
+
+    def one(part):
+        lines = header() + ["let start = read<Int>()"]
+        lines += [f"fn c{j}() -> Int = ({e}).count()" for j, e in enumerate(part)]
+        lines += [f'if start <= {j}: print("{j} {{c{j}()}}")' for j in range(len(part))]
+        out, start = {}, 0
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "count.cp"
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            while start < len(part):
+                seen, _ = run([cpl, "run", str(path)], start, 0)
+                out.update({part[j]: int(v) for j, v in seen.items() if v.isdigit()})
+                start = next((j for j in range(start, len(part)) if j not in seen), len(part)) + 1
+        return out
+
+    print(f"std-compose: counting {len(todo)} sources", file=sys.stderr, flush=True)
+    found = {}
+    with ThreadPoolExecutor(os.cpu_count()) as pool:
+        for part in pool.map(one, [todo[i:i + chunk] for i in range(0, len(todo), chunk)]):
+            found.update(part)
+    return found
 
 
 def materialized(src, trait):
@@ -184,7 +263,8 @@ def materialized(src, trait):
 
 def cases(consumers, views, keys, ops, is_view):
     """Candidate cases by unit, each unit a pair to cover: view into consumer slot, key or op into
-    consumer, view with key or op. A unit's candidates go base by base; its first that checks is its case."""
+    consumer, view with key or op. A unit's candidates go kind by kind, on a base placeholder `@kind` that
+    main sizes by the consumer's cost; its first that checks is its case."""
     def source(v, b):
         if v is None:
             return b
@@ -200,19 +280,21 @@ def cases(consumers, views, keys, ops, is_view):
             out = [{**v, "op": o} for v in out for o in ops]
         return out
 
-    def case(b, c, p, v, extra):
+    def case(k, c, p, v, extra):
+        b = f"@{k}"
         src = source(v, b)
         if src is None:
-            return None
+            return []
         trait = slot_trait(c, p)
         others = {q["name"]: b for q in c["params"] if slot_trait(c, q) and q is not p}
         lazy = fill(c, {**others, p["name"]: src}, f"List({src})[0]", extra)
         if lazy is None:
-            return None
+            return []
         lazy_src = v is not None and is_view(v["ret"])  # else `src` is a value with nothing to materialize
         brute = {**lazy, p["name"]: materialized(src, trait)} if lazy_src else lazy
-        return {"base": b, "consumer": c["name"], "where": c["where"], "trait": trait, "src": src,
-                "lazy": normal(c, call(c, lazy), is_view), "brute": normal(c, call(c, brute), is_view)}
+        return [{"kind": k, "consumer": c["name"], "cost": c.get("cost"), "where": c["where"], "trait": trait,
+                 "src": src, "view": lazy_src, "lazy": lz, "brute": bf} for lz, bf in zip(normal(c, call(c, lazy), is_view),
+                                                            normal(c, call(c, brute), is_view))]
 
     units = {}
     for c in consumers:
@@ -220,22 +302,22 @@ def cases(consumers, views, keys, ops, is_view):
         for p in slots:
             for v in [None, *views]:
                 units[("view", c["name"], p["name"], v and v["name"])] = [
-                    (b, c, p, v, vs[0]) for b in BASES]
+                    (k, c, p, v, vs[0]) for k in KINDS]
         for x in vs[1:]:
-            units[("variant", c["name"], str(x))] = [(b, c, slots[0], None, x) for b in BASES]
+            units[("variant", c["name"], str(x))] = [(k, c, slots[0], None, x) for k in KINDS]
     for v in views:
         for x in [{"by": k} for k in keys] + [{"op": o} for o in ops]:
             units[("with", v["name"], str(x))] = [
-                (b, c, p, v, {**variants(c)[0], **x}) for b in BASES for c in consumers
+                (k, c, p, v, {**variants(c)[0], **x}) for k in KINDS for c in consumers
                 if all(any(q["name"] == k for q in c["params"]) for k in x)
                 for p in c["params"] if slot_trait(c, p)]
-    return {u: [y for y in (case(*x) for x in xs) if y] for u, xs in units.items()}
+    return {u: [y for x in xs for y in case(*x)] for u, xs in units.items()}
 
 
 def header():
     uses = ", ".join(TRAITS)
     mods = sorted(f.stem for f in (ROOT / "std").glob("*.cp"))
-    lines = [f"use std.{m}.*" for m in mods] + [f"use std.seq.{{{uses}}}", "use std.algebra.{desc}"]
+    lines = [f"use std.{m}.*" for m in mods] + [f"use std.seq.{{{uses}}}", "use std.algebra.{desc}"] + WORLD
     lines += [f"let {n} = {e}" for n, e in BASES.items()]
     lines += [f"fn need_{t.lower()}<S: {t}>(s: S) = ()" for t in TRAITS]
     return lines
@@ -308,11 +390,19 @@ def generic_flags(cpl):
 def engines(cpl, path):
     """{engine: argv} that run `path`: the interpreter, and the C++ `cpl run --release` builds, built here
     once with judge `generic`'s compile line and the release build's checks however long the C++ is."""
-    cpp, exe = path.with_suffix(".cpp"), path.with_suffix(".bin")
+    cpp = path.with_suffix(".cpp")
     env = {**os.environ, "CPL_STD_DIR": str(ROOT / "std")}
     subprocess.run([cpl, "build", str(path), "--full", "--checks", "traps", "-o", str(cpp)],
                    capture_output=True, check=True, env=env)
-    r = subprocess.run([*generic_flags(cpl), "-o", str(exe), str(cpp)], capture_output=True, text=True)
+    flags = generic_flags(cpl)
+    exe = CACHE / f"{hashlib.sha256(cpp.read_bytes() + ' '.join(flags).encode()).hexdigest()[:32]}.bin"
+    if exe.exists():
+        return {"interp": [cpl, "run", str(path)], "native": [str(exe)]}, None
+    CACHE.mkdir(parents=True, exist_ok=True)
+    part = path.with_suffix(".bin")
+    r = subprocess.run([*flags, "-o", str(part), str(cpp)], capture_output=True, text=True)
+    if not r.returncode:
+        os.replace(part, exe)
     if r.returncode:
         keep = Path(tempfile.mkdtemp(prefix="std-compose-"))
         for f in (path, cpp):
@@ -344,22 +434,33 @@ def main():
     ap.add_argument("--cpl", default=str(ROOT / "target/release/cpl"))
     ap.add_argument("--list", action="store_true", help="print the cases and stop")
     ap.add_argument("--only", help="keep the cases whose consumer or source matches this regex")
+    ap.add_argument("--shard", default="0/1", help="K/N: run the K-th of N equal shards, by consumer (or view)")
+    ap.add_argument("--jobs", type=int, default=os.cpu_count(), help="case programs run at once")
     a = ap.parse_args()
     consumers, views, keys, ops, is_view = std_index(a.cpl, ROOT)
     units = cases(consumers, views, keys, ops, is_view)
+    k, n = map(int, a.shard.split("/"))
+    mine = lambda name: int(hashlib.sha256(name.encode()).hexdigest(), 16) % n == k
+    units = {u: xs for u, xs in units.items() if mine(u[1])}
     if a.only:
         units = {u: xs for u, xs in units.items() if any(re.search(a.only, str(p)) for p in u)}
-    srcs = sorted({x["src"] for xs in units.values() for x in xs})
-    traits = check(a.cpl, {f"t{i}_{t}": f"need_{t.lower()}({s})" for i, s in enumerate(srcs) for t in TRAITS})
-    has = {s: {t for t in TRAITS if traits[f"t{i}_{t}"]} for i, s in enumerate(srcs)}
+    srcs = sorted({(x["src"], x["kind"]) for xs in units.values() for x in xs})
+    traits = check(a.cpl, {f"t{i}_{t}": f"need_{t.lower()}({at(s, k, len(KINDS[k]))})"
+                           for i, (s, k) in enumerate(srcs) for t in TRAITS})
+    has = {s: {t for t in TRAITS if traits[f"t{i}_{t}"]} for i, (s, k) in enumerate(srcs)}
     units = {u: [x for x in xs if x["trait"] in has[x["src"]]] for u, xs in units.items()}
+    # A view's length on n items is counted, not guessed: a view can yield n!, n^2 or 2n items.
+    viewed = {(x["src"], x["kind"]) for xs in units.values() for x in xs if x["view"]}
+    yields = counts(a.cpl, sorted({at(s, k, n) for s, k in viewed for n in range(len(KINDS[k]), 2, -1)}))
+    units = {u: [based(x, size(x["kind"], x, lambda n, x=x: yields.get(at(x["src"], x["kind"], n), n)
+                                     if x["view"] else n)) for x in xs] for u, xs in units.items()}
     tried, good = set(), set()
 
     def pick(want):
-        """{unit: its first case that checks} over `want` ({unit: candidates}), probing base by base."""
+        """{unit: its first case that checks} over `want` ({unit: candidates}), probing kind by kind."""
         found = {}
-        for b in BASES:
-            todo = {u: [x for x in xs if x["base"] == b] for u, xs in want.items() if u not in found}
+        for k in KINDS:
+            todo = {u: [x for x in xs if x["kind"] == k] for u, xs in want.items() if u not in found}
             probe = sorted({x["brute"] for xs in todo.values() for x in xs} - tried)
             ok = check(a.cpl, {f"e{i}": f"{e} == {e}" for i, e in enumerate(probe)})
             good.update(e for i, e in enumerate(probe) if ok[f"e{i}"])
@@ -378,11 +479,11 @@ def main():
             print(f"{c['lazy']}  vs  {c['brute']}")
         return 0
     failed = [f"{c['where']}: `{c['name']}` has no case: no source checks in its sequence slots"
-              for c in consumers if not a.only and c["name"] not in {x["consumer"] for x in found.values()}]
+              for c in consumers if not a.only and mine(c["name"]) and c["name"] not in {x["consumer"] for x in found.values()}]
 
     def chunk_run(todo):
-        """(findings, cases run, lazy forms whose brute force outgrew LIMITS) for the cases `todo`."""
-        out, heavy, retry, n = [], set(), {}, 0
+        """(findings, cases run) for the cases `todo`."""
+        out, retry, n = [], {}, 0
         whole = len(todo)
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "pairs.cp"
@@ -395,71 +496,59 @@ def main():
                 if not bad:
                     break
                 if None in bad:
-                    return [(None, f"the pairs program fails to check outside its cases: {r.stdout[-2000:]}")], 0, heavy
+                    return [f"the pairs program fails to check outside its cases: {r.stdout[-2000:]}"], 0
                 # One error per failing instantiation lands on some site of it; a blamed case is judged alone.
                 blamed = {i for k, i in bad}
                 alone = check(a.cpl, {f"{k}{i}": f"{todo[i][x]} == {todo[i][y]}" for i in blamed
                                       for k, x, y in (("l", "lazy", "brute"), ("a", "lazy", "lazy"), ("b", "brute", "brute"))})
                 for i in sorted(blamed):
                     if not alone[f"b{i}"]:
-                        out.append((todo[i]["lazy"], f"{todo[i]['where']}: the brute force stops checking: {todo[i]['brute']}"))
+                        out.append(f"{todo[i]['where']}: the brute force stops checking: {todo[i]['brute']}")
                     elif not (alone[f"l{i}"] and alone[f"a{i}"]):
-                        out.append((todo[i]["lazy"], f"{todo[i]['where']}: the lazy form fails to check where its"
-                                    f" brute force checks: {todo[i]['lazy']}"))
+                        out.append(f"{todo[i]['where']}: the lazy form fails to check where its"
+                                   f" brute force checks: {todo[i]['lazy']}")
                     else:
                         retry[i] = todo[i]
                 todo = {i: c for i, c in todo.items() if i not in blamed}
             cs = list(todo.values())
             n = len(cs)
             argvs, broken = engines(a.cpl, path) if cs else ({}, None)
-            out += [(None, broken)] if broken else []
+            out += [broken] if broken else []
             for name, argv in argvs.items():
                 start = 0
                 while start < len(cs):
                     seen, r = run(argv, start, 0)
-                    out += [(cs[j]["lazy"], f"{name}: {cs[j]['lazy']} differs from {cs[j]['brute']}")
-                            for j, v in seen.items() if v != "ok"]
+                    out += [f"{name}: {cs[j]['lazy']} differs from {cs[j]['brute']}" for j, v in seen.items() if v != "ok"]
                     stop = next((j for j in range(start, len(cs)) if j not in seen), None)
                     if stop is None:
                         break
                     brute, rb = run(argv, stop, 2)
+                    lazy, rl = run(argv, stop, 1)
                     if not brute and outgrew(rb):
-                        heavy.add(cs[stop]["lazy"])
-                        start = stop + 1
-                        continue
-                    lazy, _ = run(argv, stop, 1)
-                    if bool(lazy) != bool(brute):
-                        out.append((cs[stop]["lazy"], f"{name}: {cs[stop]['lazy']} {'fails to run' if brute else 'runs'}"
-                                    f" where {cs[stop]['brute']} {'runs' if brute else 'fails to run'}:"
-                                    f" {r.stderr.strip()[-1500:]}"))
+                        out.append(f"{name}: {cs[stop]['brute']}, on the base its cost sizes ({cs[stop]['base']}),"
+                                   f" outgrows {LIMITS[0] >> 30} GiB or {LIMITS[1]} s")
+                    elif bool(lazy) != bool(brute):
+                        out.append(f"{name}: {cs[stop]['lazy']} {'fails to run' if brute else 'runs'}"
+                                   f" where {cs[stop]['brute']} {'runs' if brute else 'fails to run'}:"
+                                   f" {(rl if brute else rb).stderr.strip()[-1500:]}")
                     start = stop + 1
         if whole == 1 and retry:
-            return out + [(c["lazy"], f"{c['where']}: checks alone but not in the pairs program: {c['lazy']}")
-                          for c in retry.values()], n, heavy
+            return out + [f"{c['where']}: checks alone but not in the pairs program: {c['lazy']}"
+                          for c in retry.values()], n
         parts = [retry] if len(retry) < whole else [dict(list(retry.items())[:whole // 2]), dict(list(retry.items())[whole // 2:])]
         for part in parts:
             if part:
-                o, m, h = chunk_run(part)
-                out, n, heavy = out + o, n + m, heavy | h
-        return out, n, heavy
+                o, m = chunk_run(part)
+                out, n = out + o, n + m
+        return out, n
 
-    total, want = 0, units
-    while found:
-        cases_ = list({x["lazy"]: x for x in found.values()}.values())
-        print(f"std-compose: running {len(cases_)} cases on both engines", file=sys.stderr, flush=True)
-        heavy = set()
-        with ThreadPoolExecutor(os.cpu_count()) as pool:
-            for out, n, h in pool.map(chunk_run, [dict(enumerate(cases_[k:k + 100], k))
-                                                  for k in range(0, len(cases_), 100)]):
-                heavy |= h
-                failed += [msg for lazy, msg in out if lazy not in h]
-                total += n - len(h)
-        order = list(BASES)
-        want = {u: [x for x in want[u] if order.index(x["base"]) > order.index(c["base"])]
-                for u, c in found.items() if c["lazy"] in heavy}
-        failed += [f"{found[u]['where']}: {found[u]['lazy']} outgrows {LIMITS[0] >> 30} GiB or {LIMITS[1]} s"
-                   " on every base whose brute force checks" for u, xs in want.items() if not xs]
-        found = pick({u: xs for u, xs in want.items() if xs})
+    cases_ = list({x["lazy"]: x for x in found.values()}.values())
+    print(f"std-compose: running {len(cases_)} cases on both engines", file=sys.stderr, flush=True)
+    total = 0
+    with ThreadPoolExecutor(a.jobs) as pool:
+        for out, n in pool.map(chunk_run, [dict(enumerate(cases_[k:k + 100], k)) for k in range(0, len(cases_), 100)]):
+            failed += out
+            total += n
     print(f"std-compose: {total} cases ran on both engines")
     print("\n".join(failed) if failed else "std-compose: every pair agrees on both engines")
     return 1 if failed else 0

@@ -58,7 +58,35 @@ class StdComposeTest(unittest.TestCase):
         self.assertIn(("view", "total", "self", "rev"), units)
         self.assertIn(("view", "total", "self", None), units)
         lazy = {x["lazy"]: x["brute"] for x in units[("view", "total", "self", "rev")]}
-        self.assertEqual(lazy["((xs).rev).total()"], "(List((xs).rev)).total()")
+        self.assertEqual(lazy["((@xs).rev).total()"], "(List((@xs).rev)).total()")
+        self.assertIn("(@rs).total()", {x["lazy"] for x in units[("view", "total", "self", None)]})
+        x = next(x for x in units[("view", "total", "self", "rev")] if x["kind"] == "xs")
+        self.assertEqual(MOD.based(x, 4)["lazy"], "((xs4).rev).total()")
+        self.assertEqual(MOD.based(x, 4)["base"], "xs4")
+
+    def test_size_reads_the_cost_lines(self):
+        perms = {**fn("pub fn permutations<S: Indexed, T>(self: S) -> yields List<T>"),
+                 "cost": "\\(O(k)\\) per permutation"}
+        total = fn("pub fn total<S: Seq<T>, T>(self: S) -> T")
+        self.assertEqual(MOD.size("xs", total), 6)
+        self.assertEqual(MOD.size("xs", perms), 6)
+        self.assertEqual(MOD.size("xs", total, MOD.math.factorial), 6)
+        self.assertEqual(MOD.size("xs", perms, MOD.math.factorial), 3)
+        pairs = {**total, "cost": "\\(O(n^2)\\) to walk, \\(O(1)\\) per pair"}
+        self.assertEqual(MOD.size("xs", pairs, MOD.math.factorial), 4)
+        self.assertEqual(MOD.size("xs", perms, lambda n: 2 * n), 3)
+
+    def test_fill_passes_graphs_and_seq_returning_fns(self):
+        reach = fn("pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V")
+        self.assertEqual(MOD.fill(reach, {"from": "vs3"}, "0", {})["g"], "gr")
+        fm = fn("pub fn flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V")
+        self.assertEqual(MOD.fill(fm, {"self": "xs6"}, "0", {})["f"], "x => [x, x]")
+
+    def test_normal_falls_back_to_show(self):
+        sa = fn("pub fn suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>")
+        self.assertEqual(MOD.normal(sa, "e", lambda r: False), ["e", '"{e}"'])
+        cmp = fn("pub fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>)")
+        self.assertEqual(MOD.normal(cmp, "e", lambda r: False)[1], '"{(e).1}"')
 
 
 if __name__ == "__main__":
