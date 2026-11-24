@@ -2965,6 +2965,7 @@ HARD_ZERO = frozenset({
     "std_types_shown_empty",
     "prelude_gaps",
     "json_outside_cpl_json", "rust_ignore", "dream_unverified", "trace_engine_refs", "lsp_string_types", "known_lists", "skip_lists",
+    "interp_max_over_20s",
     "edit_engines",
     "web_hand_copied",
     "corpus_no_tests", "cpp_optional_copies",
