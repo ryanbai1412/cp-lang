@@ -600,6 +600,25 @@ class SeedTest(Corpus):
         self.assertEqual(sorted(p.name for p in (self.root / "out" / "p4").glob("*.max")), ["02.max"])
 
 
+class NativeTest(Corpus):
+    """`native` builds the port for the judge its package's cp.toml names, as `cpl test` does."""
+
+    def judge_built(self, d):
+        seen = []
+        ctx = types.SimpleNamespace(cpl="cpl", natives={})
+        with mock.patch.object(corpus.subprocess, "run", lambda cmd, **kw: seen.append(cmd) or types.SimpleNamespace(returncode=1)):
+            self.assertEqual(corpus.native(corpus.Package.at(d), ctx), (None, 0))
+        return seen[0][seen[0].index("--judge") + 1]
+
+    def test_the_packages_judge_reaches_the_build(self):
+        toml = '[judge]\njudge = "noi"\n\n[judge.noi]\nextends = "generic"\nisa = "avx2"\n'
+        self.assertEqual(self.judge_built(self.package("p1", port_cp="", cp_toml=toml)), "noi")
+
+    def test_a_package_without_one_builds_for_codeforces(self):
+        self.assertEqual(self.judge_built(self.package("p2", port_cp="")), "codeforces")
+        self.assertEqual(self.judge_built(self.package("p3", port_cp="", cp_toml="[libs]\n")), "codeforces")
+
+
 class AtMax(unittest.TestCase):
     """`at_max` on scripted runs: the checked C++ first, then three judge runs, then three accepted runs."""
 

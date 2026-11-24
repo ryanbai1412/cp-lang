@@ -87,6 +87,13 @@ class Package:
                 return Path(ROOT, f)
         return None
 
+    def judge(self):
+        """The judge the package's cp.toml names (`[judge] judge = ...`), else `codeforces`: what
+        `cpl test` and the real judge build the port for."""
+        toml = self.dir / "cp.toml"
+        named = tomllib.loads(toml.read_text()).get("judge", {}).get("judge") if toml.is_file() else None
+        return named or "codeforces"
+
     def cases(self):
         """tests.toml's `[[case]]` tables: `input` (a statement sample), `seed` and `size`, or `args`."""
         return tomllib.loads(self.tests.read_text()).get("case", []) if self.tests else []
@@ -737,12 +744,12 @@ def check_tests(pkg, ctx):
 
 
 def native(pkg, ctx):
-    """The port's Codeforces C++ built with g++ -O2 (cached): (exe, bytes), or (None, 0)."""
+    """The port's C++ for its package's judge, built with g++ -O2 (cached): (exe, bytes), or (None, 0)."""
     if pkg.id in ctx.natives:
         return ctx.natives[pkg.id]
     with tempfile.TemporaryDirectory() as tmp:
         cpp = os.path.join(tmp, f"{pkg.id}.cpp")
-        r = subprocess.run([ctx.cpl, "build", "--judge", "codeforces", str(pkg.port), "-o", cpp], capture_output=True)
+        r = subprocess.run([ctx.cpl, "build", "--judge", pkg.judge(), str(pkg.port), "-o", cpp], capture_output=True)
         got = (None, 0) if r.returncode else (built(cpp), os.path.getsize(cpp))
     ctx.natives[pkg.id] = got
     return got
