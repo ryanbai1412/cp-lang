@@ -1021,3 +1021,16 @@ print(hi.cut(0), hi.cut(n - 1))
     let main = &out[out.find("void solve()").unwrap()..];
     assert!(!main.contains("to_list("), "{main}");
 }
+
+#[test]
+fn monoid_of_plus_builds_its_monoid_as_one_constant() {
+    let cpp = cpp(concat!(
+        "domain D = 0..4\n",
+        "var st = SegTree(+, a: [D] i => i.ord)\n",
+        "print(st.all())\n",
+    ));
+    let at = cpp.find("_of_Op_Add").unwrap_or_else(|| panic!("{cpp}"));
+    let body = &cpp[at..at + cpp[at..].find("\n}").unwrap_or(0)];
+    assert!(!body.contains(" t0 = "), "{body}");
+    assert!(body.contains("return Monoid_Int"), "{body}");
+}
