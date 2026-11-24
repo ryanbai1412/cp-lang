@@ -1142,7 +1142,14 @@ impl<'a> Checker<'a> {
                 self.type_hover(name);
                 self.owned(&name.text, &body.stmts);
                 self.own_fns_scope(&name.text, &body.stmts);
+                // A default body is written for the trait's own `type Fold = ?T` (decision 469).
+                let defaults: Vec<(String, Ty)> = super::assoc::declared(&body.stmts)
+                    .into_iter()
+                    .filter_map(|(n, _, d)| d.map(|d| (n, self.quietly(|c| c.resolve_type(d)))))
+                    .collect();
+                let outer_assoc = std::mem::replace(&mut self.self_assoc, defaults);
                 self.methods(&body.stmts, &self_ty);
+                self.self_assoc = outer_assoc;
                 self.pop_scope();
                 self.param_bounds.truncate(outer_bounds);
                 self.leave_body(scope);
