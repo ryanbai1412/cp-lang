@@ -22,7 +22,8 @@ list over the threshold at 4n but not at n is handed back to the OS on
 each free and faulted in again on each call, a cost of the allocator's
 size class, not of the fn.
 The documented growth is the `cost:` formula evaluated at 4n over n, every
-symbol but the fixed ones standing for n (`C(n, k)` is the binomial); a cost written ``as `fn` ``
+symbol but the fixed ones standing for n (`C(n, k)` is the binomial,
+`\\mathit{popcount}(m)` the bits set in m); a cost written ``as `fn` ``
 reads that fn's. A callback the fn calls is written on its own line, out
 of the timed one, and marked `// within: <fn>`: a profile charges a
 callback's time to its own line, which counts to the fn's time but not
@@ -103,7 +104,7 @@ def big_o(cost):
     return m.group(1) if m else None
 
 
-BUILTINS = ("lg", "sqrt", "min", "max", "C", "ceil")
+BUILTINS = ("lg", "sqrt", "min", "max", "C", "ceil", "popcount")
 
 
 def _arg(f, i):
@@ -179,6 +180,7 @@ def growth(formula, fixed=(), k=4.0, n=float(N), let=None):
     let = {s: python(e) for s, e in (let or {}).items()}
     env = {"__builtins__": {}, "lg": lambda v: math.log2(max(v, 2.0)),
            "sqrt": math.sqrt, "min": min, "max": max, "ceil": math.ceil,
+           "popcount": lambda v: bin(int(v)).count("1"),
            "C": lambda a, b: math.exp(math.lgamma(a + 1) - math.lgamma(b + 1) - math.lgamma(a - b + 1))}
 
     def at(x, f, inner=False):
@@ -283,12 +285,23 @@ def overrides(text, default):
     return out
 
 
+def unread_marks(text):
+    """The line numbers of `// timed` and `// within:` marks neither reader parses (two fns
+    on one mark, say), which would otherwise time nothing and pass silently."""
+    return [i for i, line in enumerate(text.splitlines(), 1)
+            if (re.search(r"//\s*timed\b", line) and not TIMED.search(line))
+            or (re.search(r"//\s*within:", line) and not WITHIN.search(line))]
+
+
+WITHIN = re.compile(r"//\s*within:\s*([\w.]+)\s*$")
+
+
 def within_lines(text):
     """fn -> the line numbers marked `// within: fn`: the body of a callback the fn calls, whose
     time is the fn's and whose hits are not."""
     groups = {}
     for i, line in enumerate(text.splitlines(), 1):
-        m = re.search(r"//\s*within:\s*(\S+)\s*$", line)
+        m = WITHIN.search(line)
         if m:
             groups.setdefault(m.group(1), set()).add(i)
     return groups
@@ -305,6 +318,9 @@ def run_case(cpl, case, costs, tmp):
     head = header(text)
     rel = os.path.relpath(case, ROOT)
     groups = timed_lines(text, head.get("scaling"))
+    if bad := unread_marks(text):
+        return [(f"{rel}::", {"fn": None, "ok": False,
+                              "why": f"lines {bad} hold a mark that names no single fn; give each fn its own line"})]
     if not groups:
         return [(f"{rel}::", {"fn": None, "ok": False, "why": "no line is marked `// timed`"})]
     n = int(head.get("n", N))
