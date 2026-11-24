@@ -1547,7 +1547,8 @@
         "core-10/show-impl-enum.cp": "pass",
         "core-10/show-impl-struct.cp": "pass",
         "core-10/spec-block-multitest-sieve.cp": "pass",
-        "core-10/test-position-stored-above-multitest.cp": "fail",
+        "core-10/test-position-kept-below-multitest.cp": "pass",
+        "core-10/test-position-stored-above-multitest.cp": "pass",
         "core-10/token-read-skips-blank-lines.cp": "pass",
         "core-10/top-level-return.cp": "pass",
         "core-10/tree-edges-over-edge-domain.cp": "pass",
@@ -3585,13 +3586,6 @@
           ]
         },
         {
-          "cause": "wanted E0805; got no diagnostic",
-          "count": 1,
-          "examples": [
-            "core-10/test-position-stored-above-multitest.cp"
-          ]
-        },
-        {
           "cause": "wanted Ok; got E0302: expected `\u003cid>`, found `\u003cid>`",
           "count": 1,
           "examples": [
@@ -3607,11 +3601,11 @@
         }
       ],
       "counts": {
-        "fail": 15,
-        "pass": 3492
+        "fail": 14,
+        "pass": 3494
       },
-      "passed": 3492,
-      "total": 3507
+      "passed": 3494,
+      "total": 3508
     },
     "corpus": {
       "cases": {
