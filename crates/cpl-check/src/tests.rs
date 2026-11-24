@@ -1891,7 +1891,8 @@ fn a_use_goes_to_the_module_its_path_names_and_each_name_it_imports() {
 fn a_member_hides_a_fn_only_when_it_is_a_different_definition() {
     // R08.1.4: the catalog's `List.first_gt` row is std.seq's own fn, so a call there reaches that
     // fn; the same fn in any other module is hidden by it.
-    let src = "pub fn first_gt(self: List<Int>, t: Int) -> ?Int = None\nlet a = [1, 2].first_gt(1)\n";
+    let src =
+        "pub fn first_gt(self: List<Int>, t: Int) -> ?Int = None\nlet a = [1, 2].first_gt(1)\n";
     let hides = |path: &str| {
         let mut db = Database::new();
         db.set_file(path, src);

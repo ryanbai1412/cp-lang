@@ -71,7 +71,10 @@ impl Ord for Frac:
   shape that a member of the receiver's type always wins over is never
   called; that call is E0701, naming the member (`fn sum(self: List<Int>)`
   beside `List.sum`), with help to rename the fn or call it as a plain
-  fn. To give a type its own cost, override the trait method instead
+  fn. The error belongs to the module that declares the fn: a file that
+  imports it calls the member with no error, and a fn a catalog member
+  stands for (std's own `first_gt` behind `List.first_gt`) hides nothing.
+  To give a type its own cost, override the trait method instead
   (decision 486). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,

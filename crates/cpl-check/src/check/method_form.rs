@@ -595,10 +595,11 @@ impl Checker<'_> {
     /// Records which candidate `base.name` calls, when its receiver says.
     pub(super) fn note_method(&mut self, base: &Ty, name: &ast::Name) {
         // Beside a built-in member of the name, the call's arguments pick
-        // (`method_form_call`): `xs.fold(+)` is the built-in's.
+        // (`method_form_call`): `xs.fold(+)` is the built-in's. A member the
+        // type declares is found before any extension fn (R08.1.4).
         let builtin = super::call::catalog_owner(base)
             .is_some_and(|owner| crate::builtins::builtin_member(owner, &name.text).is_some());
-        if builtin {
+        if builtin || self.declares_member(base, &name.text) {
             return;
         }
         if let Pick::One(key, _) = self.pick_method(base, &name.text) {
