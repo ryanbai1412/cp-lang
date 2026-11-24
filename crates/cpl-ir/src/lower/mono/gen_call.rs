@@ -5,6 +5,20 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
+    /// A left-out `op: M = NoOp()` binds `M` to its default's type.
+    #[inline(never)]
+    pub(crate) fn bind_default(
+        &mut self,
+        name: &str,
+        default: &'a ast::Expr,
+        at: (ModId, u32),
+        env: &mut GenEnv,
+    ) {
+        if let Some(t) = self.probe_default(default, at, env) {
+            env.insert(name.to_string(), GenArg::Ty(t));
+        }
+    }
+
     /// A left-out `op: M = NoOp()`: its default's type, read where the template is.
     #[inline(never)]
     pub(crate) fn probe_default(
@@ -137,10 +151,7 @@ impl<'a> Lowerer<'a> {
                     && !matches!(default.kind, ast::ExprKind::Lambda { .. })
                 {
                     // An omitted `op: M = NoOp()` binds `M` before the bounds, so `M.Fold` resolves.
-                    if let Some(dty) = self.probe_default(default, (tpl_mod, tpl_offset), &inferred)
-                    {
-                        inferred.insert(name.text.clone(), GenArg::Ty(dty));
-                    }
+                    self.bind_default(&name.text, default, (tpl_mod, tpl_offset), &mut inferred);
                 }
             }
             let (Some(pty), Some(arg)) = (&param.ty, arg) else {
