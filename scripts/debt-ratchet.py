@@ -2890,6 +2890,12 @@ def main(argv: list[str] | None = None) -> int:
             for n in args.update:
                 base[keys.get(n, n)] = data[keys.get(n, n)]
             data = base
+        # A stale local baseline must not carry main's tightening back up.
+        bumps = unexplained_bumps(args.root, data, os.environ.get("CPL_RATCHET_BASE") or "origin/main")
+        if bumps:
+            print("debt-ratchet: refusing to write a baseline above origin/main (pull first, or remove the debt):\n  "
+                  + "\n  ".join(bumps), file=sys.stderr)
+            return 1
         raised = [n for n in sorted(HARD_ZERO) if int(data.get(n, 0)) > 0]
         raised += [n for n, floor in sorted(HARD_FLOOR.items()) if int(data.get(n, 0)) > floor]
         if raised:
@@ -2954,6 +2960,8 @@ def main(argv: list[str] | None = None) -> int:
         names = " ".join(improved(actual, baseline))
         print(f"debt-ratchet: {len(notes)} item(s) improved; tighten with "
               f"`uv run --quiet python scripts/debt-ratchet.py --update {names}`")
+    if errors and notes:
+        print(f"debt-ratchet: FAILED on the {len(errors)} ERROR line(s) above, not on the improvements", file=sys.stderr)
     return 1 if errors else 0
 
 

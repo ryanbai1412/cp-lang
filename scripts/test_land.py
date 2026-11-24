@@ -27,8 +27,9 @@ class LandTest(unittest.TestCase):
         git(self.tmp, "init", "-q", "--bare", "-b", "main", str(remote))
         seed = self.clone("seed")
         (seed / "scripts").mkdir()
-        for name in ("land.sh", "retry.sh", "ratchet_merge.py"):
+        for name in ("land.sh", "retry.sh", "ratchet_merge.py", "gen.py"):
             shutil.copy(HERE / name, seed / "scripts" / name)
+        (seed / "gen.toml").write_text('[[gen]]\nname = "widths"\nfiles = ["spec/conformance/widths/*.cp"]\n')
         # A regen.sh that dirties a file the rebase never saw: land must not run it.
         (seed / "scripts" / "regen.sh").write_text("#!/bin/sh\necho x >> other.txt\necho other.txt\n")
         (seed / "scripts" / "regen.sh").chmod(0o755)
@@ -74,6 +75,32 @@ class LandTest(unittest.TestCase):
         self.assertEqual((ours / GEN).read_text(), "main's\n")
         self.assertFalse((ours / "other.txt").exists())
         self.assertEqual(git(ours, "status", "--porcelain"), "")
+        self.assertIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
+    def test_a_conflict_in_a_hand_written_case_stops_instead_of_taking_mains(self):
+        case = "spec/conformance/core-01/x.cp"
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        for repo, text in ((theirs, "main's\n"), (ours, "mine\n")):
+            (repo / case).parent.mkdir(parents=True)
+            (repo / case).write_text(text)
+            self.commit(repo, text)
+            if repo == theirs:
+                git(theirs, "push", "-q", "origin", "HEAD:main")
+        r = self.land(ours)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn(f"rebase conflict in {case}", r.stderr)
+
+    def test_a_checkout_behind_main_lands_with_mains_land_sh(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        land = theirs / "scripts" / "land.sh"
+        land.write_text(land.read_text().replace('t0=$(date +%s)\n', 't0=$(date +%s)\necho "land: main\'s copy" >&2\n', 1))
+        self.commit(theirs, "land")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "src.txt").write_text("source\n")
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stderr.count("land: main's copy"), 1, r.stderr)
         self.assertIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
 
     def test_a_ratchet_conflict_keeps_both_sides_tightening(self):

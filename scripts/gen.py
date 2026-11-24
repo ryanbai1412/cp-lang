@@ -66,6 +66,12 @@ def diff_check(entry):
 def main(argv):
     check, ci = "--check" in argv, "--ci" in argv
     only = argv[argv.index("--only") + 1] if "--only" in argv else None
+    if "--owns" in argv:
+        # Paths no gen.toml entry writes, e.g. a land rebase conflict that is someone's hand-written file.
+        mine = {p.relative_to(ROOT).as_posix() for e in entries() for p in owned(e)}
+        others = [p for p in argv[argv.index("--owns") + 1:] if p not in mine]
+        print("\n".join(others))
+        return 1 if others else 0
     if "--list" in argv:
         for e in entries():
             print(f"{e['name']:13} {e['tier']:10} {' '.join(e['files'])}")

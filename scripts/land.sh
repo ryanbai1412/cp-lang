@@ -19,14 +19,24 @@ remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
 t0=$(date +%s)
 git fetch -q "$remote" main
+# A checkout behind main lands with main's land.sh, so a fix to landing reaches
+# every lane at once instead of after its next rebase.
+if [ -z "${CPL_LAND_MAIN:-}" ] && git cat-file -e FETCH_HEAD:scripts/land.sh 2>/dev/null &&
+    ! git show FETCH_HEAD:scripts/land.sh | cmp -s - scripts/land.sh; then
+    dir="$(git rev-parse --git-common-dir)/cpl-land-main"
+    mkdir -p "$dir"
+    for f in land.sh retry.sh; do git show "FETCH_HEAD:scripts/$f" >"$dir/$f"; done
+    CPL_LAND_MAIN=1 exec bash "$dir/land.sh" "$@"
+fi
 for c in $(git rev-list "FETCH_HEAD..HEAD"); do
     git log -1 --format='%(trailers:key=Domain,valueonly)' "$c" | grep -q . ||
         { echo "land: $(git log -1 --format='%h %s' "$c") has no Domain: trailer" >&2; exit 1; }
 done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
-# A conflict only in generated files is resolved by taking main's copy; CI's
-# regen job regenerates it on the pushed tip. Any other conflict stops here.
-generated='^(spec/conformance/|skills/|pnpm-lock\.yaml$)'
+# A conflict only in generated files (a gen.toml entry's, or pnpm-lock.yaml) is
+# resolved by taking main's copy; CI's regen job regenerates it on the pushed
+# tip. Any other conflict stops here: taking main's side of a hand-written file
+# drops this commit's change to it.
 ratchet=scripts/debt-ratchet.json index=corpus/index.json
 rebasing() { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; }
 pull() {
@@ -58,7 +68,8 @@ pull() {
                 continue
             fi
         fi
-        if [ -z "$conflicts" ] || printf '%s\n' "$conflicts" | grep -qvE "$generated"; then
+        hand=$(printf '%s\n' $conflicts | grep -vx 'pnpm-lock\.yaml' || :)
+        if [ -z "$conflicts" ] || { [ -n "$hand" ] && ! uv run --quiet python scripts/gen.py --owns $hand >/dev/null; }; then
             echo "land: rebase conflict in $(echo $conflicts); resolve it and run land.sh again" >&2
             return 1
         fi

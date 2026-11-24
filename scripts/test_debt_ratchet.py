@@ -985,6 +985,26 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--check", "--root", str(root), "--ratchet", str(ratchet)]), 0)
 
 
+    def test_update_refuses_to_raise_a_baseline_above_main(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
+                                            env=dr._git_env())
+            git("init", "-q")
+            (root / "scripts").mkdir()
+            (root / "scripts/debt-ratchet.py").write_text(Path(dr.__file__).read_text(encoding="utf-8"))
+            ratchet = root / "scripts/debt-ratchet.json"
+            ratchet.write_text(json.dumps({"skip_lists": 5, "rs_file_size_allowlist": {}}))
+            git("add", ".")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+            args = ["--update", "skip_lists", "--root", str(root), "--ratchet", str(ratchet)]
+            for count, code in ((7, 1), (4, 0)):
+                with mock.patch.object(dr, "measure", return_value={"skip_lists": count,
+                                                                      "rs_file_size_allowlist": {}}), \
+                        mock.patch.dict(os.environ, {"CPL_RATCHET_BASE": "HEAD"}):
+                    self.assertEqual(dr.main(args), code)
+                self.assertEqual(json.loads(ratchet.read_text())["skip_lists"], 5 if code else 4)
+
     def test_debt_already_on_main_is_not_this_changes_error(self):
         base = {"near_dup_fns": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
         main = {"near_dup_fns": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
