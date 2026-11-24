@@ -444,7 +444,7 @@ Evidence: program `spec/conformance/std-seq/seq-u25-one-api-every-shape.cp`; U30
 Need: know before calling whether it is \(O(n)\), lazy, or traps on empty.
 Design: each std fn's doc has `cost:`, `empty:` and `traps:` lines, checked by `std-docs-lint.py`.
 Milestone: M1-critical. Status: supported
-Evidence: `scripts/std-docs-lint.py --max 0`: 0 findings.
+Evidence: `scripts/std-docs-lint.py`, run as `--max 0` in check.sh: 0 findings.
 
 ### seq/U64: sequence features we don't build
 Need: shuffling, parallel sorts, Python slices with negative steps.

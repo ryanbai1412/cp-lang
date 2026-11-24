@@ -318,9 +318,9 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 | fmt | 14 | 13 | 0 | 1 | 0 | 0 | 0 |
 | lint | 20 | 16 | 3 | 1 | 0 | 0 | 2 |
 | play | 12 | 7 | 5 | 0 | 0 | 1 | 1 |
-| seq | 67 | 51 | 8 | 7 | 1 | 2 | 11 |
+| seq | 67 | 52 | 8 | 6 | 0 | 2 | 10 |
 | stress | 34 | 28 | 6 | 0 | 0 | 1 | 2 |
-| all | 189 | 153 | 25 | 10 | 1 | 4 | 17 |
+| all | 189 | 154 | 25 | 9 | 0 | 4 | 16 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 
