@@ -1,5 +1,6 @@
 // Source: Codeforces 2180H2 (Bug Is Feature, Conditional Version),
 //   https://codeforces.com/contest/2180/problem/H2
+// limits: 2000 ms, 256 MB
 // Problem: n series (sum n <= 2e5) of a < b < c <= l <= r <= 1e18, a, b, c an arithmetic
 //   progression; series i is one game per x in [l, r]: raise one of a, b, c so they stay an
 //   AP (any order) with common difference not decreasing and none above x. All games are

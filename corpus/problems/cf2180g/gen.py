@@ -1,5 +1,26 @@
 #!/usr/bin/env python3
 import random, sys
+if sys.argv[1] == "--max":
+    # 40 inserts make L = 2^40 - 1, then erases alternate with queries for the rest
+    rng = random.Random(1)
+    q, p = 10**6, 10**9 + 7
+    out, L = [], 0
+    for i in range(q):
+        op = 2 if i < 40 else (3 if i % 2 or i == q - 1 else 1)
+        if op == 1:
+            L -= 1
+            out.append("1")
+        elif op == 2:
+            L = 2 * L + 1
+            out.append(f"2 {rng.randint(1, 10**9)}")
+        else:
+            assert L % p
+            out.append("3")
+    print(1)
+    print(q)
+    print("\n".join(out))
+    sys.exit()
+
 rng = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 t = rng.randint(1, 3)

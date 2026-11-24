@@ -1,5 +1,6 @@
 // Source: Codeforces 2187B (Shortest Statement Ever),
 //   https://codeforces.com/contest/2187/problem/B
+// limits: 2000 ms, 256 MB
 // Problem: given x, y < 2^30, print p, q >= 0 with p & q = 0 minimising |x - p| + |y - q| (any
 //   optimal pair). t <= 1e4 tests. Multitest.
 // Solution: guess the signs of p - x and q - y (four cases); with them fixed the objective is

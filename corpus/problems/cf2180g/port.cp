@@ -1,4 +1,5 @@
 // Source: Codeforces 2180G (Balance), https://codeforces.com/contest/2180/problem/G
+// limits: 2000 ms, 256 MB
 // Problem: an array starts empty; q <= 1e6 queries (multitest, sum q <= 1e6): 1 erases the
 //   middle element, 2 x inserts x before, between and after all elements (L -> 2L + 1), 3
 //   prints the sum over all 2^L - 1 non-empty subsequences b of (1 b_1 + ... + m b_m) / m,

@@ -138,18 +138,12 @@ no-max cf2180b -
 no-max cf2180c -
 no-max cf2180d -
 no-max cf2180e -
-no-max cf2180g -
-no-max cf2180h1 -
-no-max cf2180h2 -
 no-max cf2183a -
 no-max cf2183b -
 no-max cf2183c -
 no-max cf2183d1 -
-no-max cf2183d2 -
 no-max cf2183h -
 no-max cf2187a -
-no-max cf2187b -
-no-max cf2187c -
 no-max cf2187e -
 no-max cf2187f1 -
 no-max cf2187f2 -
@@ -158,7 +152,6 @@ no-max cf2201a1 -
 no-max cf2201a2 -
 no-max cf2201b -
 no-max cf2201c -
-no-max cf2201e -
 no-max cf2201f1 -
 no-max cf2201f2 -
 no-max cf2207a -

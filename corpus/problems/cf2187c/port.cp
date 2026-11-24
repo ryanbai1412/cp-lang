@@ -1,4 +1,5 @@
 // Source: Codeforces 2187C (Jerry and Tom), https://codeforces.com/contest/2187/problem/C
+// limits: 3000 ms, 256 MB
 // Problem: a DAG on 1..n with edges u -> u + 1 and m extra edges u -> v (no two crossing).
 //   Jerry must move each turn, Tom may move or wait; Tom wins on meeting, Jerry on reaching
 //   n. f(x, y) = Tom's minimum number of moves to force a win from (x, y), 0 if he can't.

@@ -1,4 +1,5 @@
 // Source: Codeforces 2180H1, https://codeforces.com/contest/2180/problem/H1
+// limits: 2000 ms, 256 MB
 // Problem: multitest; n <= 2e5 series (sum n <= 2e5) of an AP a < b < c <= l <= r <= 1e18.
 //   Series i is one game per x in [l, r]: raise one of a, b, c so they stay an AP (any order),
 //   all <= x. Bug moves first in the sum of all games and whoever cannot move loses. Print Bug
