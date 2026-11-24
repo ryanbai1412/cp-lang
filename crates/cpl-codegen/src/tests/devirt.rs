@@ -298,3 +298,18 @@ go(read<Int>())
         "a capturing 1-ary closure can't be a function pointer:\n{out}"
     );
 }
+
+#[test]
+fn a_local_read_only_as_a_direct_callee_is_not_declared() {
+    let out = cpp(include_str!(
+        "../../../cpl-cli/tests/programs/operator_value_default.cp"
+    ));
+    assert!(
+        !out.contains("& f = cpl::have(self.act)"),
+        "`f.apply(..)` calls its closure directly, so `f` is never read; only `act!` is checked:\n{out}"
+    );
+    assert!(
+        out.contains("cpl::have(self.act);"),
+        "the `act!` check stays:\n{out}"
+    );
+}

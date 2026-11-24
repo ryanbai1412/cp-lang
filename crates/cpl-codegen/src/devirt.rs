@@ -101,6 +101,9 @@ pub(crate) struct Devirt<'p> {
     unread_fields: BTreeSet<(usize, usize)>,
     unbuilt: BTreeSet<usize>,
     dead_locals: BTreeSet<(Option<FnId>, usize)>,
+    /// Locals never read whose one `let` may trap or have an effect:
+    /// the value is still computed, as a statement, but not bound.
+    unread_lets: BTreeSet<(Option<FnId>, usize)>,
     /// What fn field `(fn, index)` of every struct `fn` returns holds.
     returned: BTreeMap<(FnId, usize), Held>,
     /// Locals bound once and never written again: `let x = f(...)` of a
@@ -136,6 +139,7 @@ impl<'p> Devirt<'p> {
             unread_fields: BTreeSet::new(),
             unbuilt: crate::built::unbuilt(program, None),
             dead_locals: BTreeSet::new(),
+            unread_lets: BTreeSet::new(),
             returned: BTreeMap::new(),
             made_by: made_by(program),
             same,
@@ -622,11 +626,14 @@ impl<'p> Devirt<'p> {
         let mut feeds: BTreeSet<*const Expr> = BTreeSet::new();
         let mut pushes: BTreeSet<*const Expr> = BTreeSet::new();
         let mut dropped: BTreeSet<*const Expr> = BTreeSet::new();
+        let mut effectful: BTreeSet<usize> = BTreeSet::new();
+        let mut written: BTreeSet<usize> = BTreeSet::new();
         let dead = |s: &Self, slot: usize| s.dead_locals.contains(&(home, slot));
         for block in blocks {
             walk::deep_stmts(block, &mut |stmt| match stmt {
                 Stmt::Expr(e) => {
                     if let Some(slot) = self.skippable_push(e) {
+                        written.insert(slot);
                         pushes.insert(e as *const Expr);
                         if dead(self, slot) {
                             walk::deep_expr(e, &mut |inner| {
@@ -637,12 +644,19 @@ impl<'p> Devirt<'p> {
                 }
                 Stmt::Let(slot, init) => {
                     *lets.entry(*slot).or_default() += 1;
-                    if init.as_ref().is_some_and(|e| !self.skippable_value(e)) {
-                        live.insert(*slot);
+                    if let Some(e) = init.as_ref().filter(|e| !self.skippable_value(e)) {
+                        if matches!(e.kind, ExprKind::Closure(_)) {
+                            live.insert(*slot);
+                        } else {
+                            effectful.insert(*slot);
+                        }
                     }
                 }
                 Stmt::Assign(place, op, value) => {
                     let root = walk::root(place);
+                    if let (false, slot) = root {
+                        written.insert(slot);
+                    }
                     if let (false, slot) = root {
                         if !self.skippable_store(place, *op) {
                             live.insert(slot);
@@ -668,7 +682,13 @@ impl<'p> Devirt<'p> {
             walk::deep_exprs(block, &mut |e| {
                 if let ExprKind::CallExpr(callee, _) = &e.kind {
                     if skippable(callee) && self.target(home, callee).is_some() {
-                        feeds.insert(&**callee as *const Expr);
+                        // The call is direct, so no part of the path is read.
+                        let mut path: &Expr = callee;
+                        feeds.insert(path as *const Expr);
+                        while let ExprKind::Field(base, _) = &path.kind {
+                            path = base;
+                            feeds.insert(path as *const Expr);
+                        }
                     }
                 }
                 if let (ExprKind::Tuple(items), Ty::Struct(s)) = (&e.kind, &e.ty) {
@@ -725,8 +745,13 @@ impl<'p> Devirt<'p> {
             .map(|(slot, _)| slot)
             .chain((0..params.len()).filter(|&slot| !params[slot]));
         for slot in candidates.collect::<Vec<_>>() {
-            if !live.contains(&slot) && self.dead_locals.insert((home, slot)) {
-                found = true;
+            if live.contains(&slot) {
+                continue;
+            }
+            if !effectful.contains(&slot) {
+                found |= self.dead_locals.insert((home, slot));
+            } else if slot >= params.len() && !written.contains(&slot) {
+                self.unread_lets.insert((home, slot));
             }
         }
         found
@@ -1081,6 +1106,11 @@ impl<'p> Devirt<'p> {
 
     pub fn dead_local(&self, home: Option<FnId>, slot: usize) -> bool {
         self.dead_locals.contains(&(home, slot))
+    }
+
+    /// Whether `let slot = v` only computes `v`: nothing reads `slot`.
+    pub fn unread_let(&self, home: Option<FnId>, slot: usize) -> bool {
+        self.unread_lets.contains(&(home, slot))
     }
 
     /// Whether `place` is part of a dropped field.
