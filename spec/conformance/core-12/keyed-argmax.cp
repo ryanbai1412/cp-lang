@@ -1,4 +1,5 @@
 // expect: ok, output "1 8"
+// gap: compiler 2026-11-24T05Z
 // rule: 12.4.2
 fn evens(n: Int) -> yields Int:
     for i in 0..n:

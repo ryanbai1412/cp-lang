@@ -1,4 +1,5 @@
 // expect: exit 3
+// gap: compiler 2026-11-24T05Z
 // input: "30\n"
 // rule: 09.4.5
 // tool: run --release

@@ -2,7 +2,9 @@
 """The one entry for every spec and conformance gate: `spec-gate.py <gate> [args]`.
 
 `spec-gate.py --list` names them. Each gate lives in `scripts/specgate/`
-and has a test in `scripts/test_spec_gate.py`.
+and has a test in `scripts/test_spec_gate.py`. The gap gates enforce
+`handbook/guidelines/conformance-checklist.md#conformance-r3-a-known-gap-fails-for-the-reason-it-names`
+(conformance/R3).
 """
 from __future__ import annotations
 
@@ -13,7 +15,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-GATES = ["markers"]
+GATES = ["gap-age", "gaps", "markers", "subset"]
 
 
 def load(name: str):

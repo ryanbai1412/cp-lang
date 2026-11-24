@@ -73,8 +73,9 @@ SUITE_TIMEOUT = 900
 
 def known_gaps():
     """Known-gap cases fail or flake by design, so a revert that only breaks one proves nothing."""
-    text = (ROOT / "spec" / "SUBSET.md").read_text()
-    return set(re.findall(r"^- ([\w./-]+\.cp):", text, re.MULTILINE))
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from specgate.gaps import all_gaps
+    return set(all_gaps())
 
 
 def broken(base, got):

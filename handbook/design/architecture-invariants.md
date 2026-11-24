@@ -64,7 +64,7 @@ Factory owns it.
 | Judges and targets | One judge/target table that drives the emitter | Core | to build: `judge_tables` |
 | Codegen optimizations | Every optimization reads the effects/Uses table | Core, with Factory | to build: `opt_without_uses` |
 | Site | Generated from the tools | Factory | `gen.py --check` |
-| Known gaps | A gap is a `// gap:` line in its case file, with `spec/SUBSET.md` generated from them | Content | `skip_lists`; to build: a gap-age gate (48 h) |
+| Known gaps | A gap is a `// gap:` line in its case file, with `spec/SUBSET.md` generated from them | Content | `skip_lists`; `spec-gate.py gaps` and `gap-age` (48 h) |
 | Decisions | One number each, reserved with `next-decision.py --reserve` | Content | `decision_dup_numbers` |
 
 ## Designed later

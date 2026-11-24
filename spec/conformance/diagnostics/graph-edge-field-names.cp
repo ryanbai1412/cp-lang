@@ -1,4 +1,5 @@
 // expect: E0203
+// gap: diagnostics 2026-11-24T05Z
 // rule: 02.4.1
 let (n, m): (1..=10, 1..=10) = read()
 domain V = 1..=n

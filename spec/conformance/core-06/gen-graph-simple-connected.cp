@@ -1,4 +1,5 @@
 // expect: ok
+// gap: stdlib 2026-11-24T05Z
 // rule: 06.4.3
 // tool: stress --seed 1 --cases 50
 // has: "cases agree"

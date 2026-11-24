@@ -1,4 +1,5 @@
 // expect: ok
+// gap: compiler 2026-11-24T05Z
 // rule: 05.3.5
 // tool: explain
 // lacks: "[copy]"

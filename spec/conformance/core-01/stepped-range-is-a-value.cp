@@ -1,4 +1,5 @@
 // expect: ok, output "7 5 3 1\n3 2 8\n2 5 8"
+// gap: compiler 2026-11-24T05Z
 // rule: 01.8.4
 // A stepped range is a range value: it reverses and has O(1) len/first/last (rebuild round 15 H-STEP-RANGE).
 print((1..=7 by 2).rev)

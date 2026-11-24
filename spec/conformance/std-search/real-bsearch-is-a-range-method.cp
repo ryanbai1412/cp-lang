@@ -1,4 +1,5 @@
 // expect: ok
+// gap: stdlib 2026-11-24T05Z
 // rule: search-dp
 // output: "3.0000000000\n4.0000000000\n"
 // Real searches are the integer ones on a Range<F64>, with a step count.

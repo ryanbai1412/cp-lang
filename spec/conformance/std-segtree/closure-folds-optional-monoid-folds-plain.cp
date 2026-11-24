@@ -1,4 +1,5 @@
 // expect: ok, output "1 -1 9 0"
+// gap: compiler 2026-11-24T05Z
 // rule: 08.1.9 std.segtree.SegTree.all
 // A closure op has no identity, so its SegTree folds to `?T` and an empty range is `None`; `+` has one, so its folds stay `Int` (decision 456).
 domain V = 0..4

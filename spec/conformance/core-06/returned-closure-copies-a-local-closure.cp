@@ -1,4 +1,5 @@
 // expect: ok, output "7 7 8"
+// gap: compiler 2026-11-24T05Z
 // rule: 05.10.1
 // `inner` captures only a copied `Int`, so it is an owned value and a plain `let`; the returned closure copies it in (decision 471).
 fn mk(n: Int) -> (Int -> Int):

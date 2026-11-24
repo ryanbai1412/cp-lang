@@ -28,13 +28,15 @@ both sides of a boundary, empty and one-element inputs.
 
 ### conformance/R3. A known gap fails for the reason it names
 
-A case listed in `spec/SUBSET.md` as a known gap is expected to fail, so a
+A case with a `// gap: <owner> <YYYY-MM-DDTHHZ>` line (decision 515) is a
+known gap and is expected to fail, so a
 mistake in the case itself (a wrong `// <- here` line, a stale API) hides until the
-implementation catches up. Before you list a gap, check that the failure is
-the bug named in the gap line. Enforced by `scripts/conformance-gaps.py`
+implementation catches up. Before you open a gap, check that the failure is
+the bug the case is about. Enforced by `scripts/conformance-gaps.py`
 (the case's own code at another line, or a printed `?T` without `!`) and by
-`scripts/conformance-subset.py --check` (each gap names an owner, and a gap
-that starts passing must be dropped).
+`scripts/spec-gate.py gaps` (every failing case has a gap line, and a gap
+that starts passing must be dropped) and `gap-age` (no gap past 48 h, none
+re-dated).
 
 ### conformance/R4. Every fixed bug lands with a case that fails without the fix
 

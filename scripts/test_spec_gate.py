@@ -57,6 +57,7 @@ def run(name: str, *argv: str):
 class GateListTest(unittest.TestCase):
     def test_every_gate_has_a_test_here(self):
         tested = {n[len("test_"):].replace("_", "-") for n in dir(GatesTest) if n.startswith("test_")}
+        tested |= {t.split("-rejects")[0] for t in tested}
         self.assertEqual(set(GATE.GATES) - tested, set())
 
 
@@ -69,6 +70,54 @@ class GatesTest(unittest.TestCase):
             self.assertEqual(t.read("spec/conformance/c/a.cp"),
                              "// expect: E0601 (checked)\n// rule: 05.1\n// a note\nlet a = 1 // <- here\r\nf(a)\n")
             self.assertEqual(run("markers"), [])
+
+    def test_gaps(self):
+        import json
+        files = {"spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T05Z\nx\n",
+                 "spec/conformance/c/g.cp": "// expect: ok\nx\n",
+                 "spec/conformance/c/h.cp": "// expect: ok\n// gap: compiler it is hard\nx\n"}
+        with Tree(files) as t:
+            board = t.root / "board.json"
+            board.write_text(json.dumps({"suites": {"conformance": {"cases": {
+                "c/f.cp": "fail", "c/g.cp": "fail", "c/h.cp": "fail"}}}}))
+            got = {p.where: p.what for p in run("gaps", "--board", str(board))}
+            self.assertEqual(set(got), {"c/g.cp", "c/h.cp"})
+            self.assertIn("no reason text", got["c/h.cp"])
+            board.write_text(json.dumps({"suites": {"conformance": {"cases": {"c/f.cp": "pass"}}}}))
+            self.assertIn("passes", {p.where: p.what for p in run("gaps", "--board", str(board))}["c/f.cp"])
+
+    def test_gap_age(self):
+        files = {"spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T05Z\nx\n",
+                 "spec/conformance/c/o.cp": "// expect: ok\n// gap: wizard 2026-11-24T05Z\nx\n"}
+        with Tree(files):
+            self.assertEqual([p.where for p in run("gap-age", "--now", "2026-11-26T05Z")], ["c/o.cp"])
+            late = run("gap-age", "--now", "2026-11-26T06Z")
+            self.assertIn("49 h old", {p.where: p.what for p in late}["c/f.cp"])
+            self.assertIn("future", {p.where: p.what for p in run("gap-age", "--now", "2026-11-24T03Z")}["c/f.cp"])
+
+    def test_gap_age_rejects_a_later_time(self):
+        with Tree({"spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T09Z\nx\n"}):
+            with mock.patch("specgate.gap_age.head_text",
+                            return_value="// expect: ok\n// gap: compiler 2026-11-24T05Z\nx\n"):
+                got = run("gap-age", "--now", "2026-11-24T10Z", "--staged")
+            self.assertEqual(len(got), 1)
+            self.assertIn("keep the original", got[0].what)
+
+    def test_subset(self):
+        from specgate import subset
+        files = {"spec/core/01-x.md": "# 1. Lexing\n\n## 1.5 Literals\n\nA rule (R01.5.1).\n",
+                 "spec/core/02-y.md": "## 2.1 Types\n\nA rule (R02.1.1).\n",
+                 "spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T05Z\n// rule: 01.5.1\nx\n",
+                 "spec/SUBSET.md": "| R02.1 | 2.1 Types | documented | later |\n"}
+        with Tree(files) as t, mock.patch.object(subset, "SUBSET", t.root / "spec/SUBSET.md"), \
+                mock.patch.object(subset, "SPEC", t.root / "spec"):
+            self.assertEqual([p.what for p in run("subset")][-1][:8], "is stale")
+            self.assertEqual(run("subset", "--write"), [])
+            text = t.read("spec/SUBSET.md")
+            self.assertIn("| R01.5 | 1.5 Literals | supported | 1 known gap |", text)
+            self.assertIn("| R02.1 | 2.1 Types | documented | later |", text)
+            self.assertIn("- c/f.cp: compiler 2026-11-24T05Z", text)
+            self.assertEqual(run("subset"), [])
 
 
 if __name__ == "__main__":

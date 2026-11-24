@@ -1,4 +1,5 @@
 // expect: ok, output "10 9 7 4 0"
+// gap: stdlib 2026-11-24T05Z
 // rule: 07.1.6 07.4.14
 // A scan over `a.rev` keeps `a`'s cuts and stores at each the fold of everything right of it, the first one walked landing on the last cut.
 domain V = 1..=4

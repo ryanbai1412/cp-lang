@@ -643,6 +643,10 @@ step "conformance coverage: COVERAGE.md current, no new rule gaps"
 uv run scripts/conformance-coverage.py --check ||
     derived "rule coverage gate failed; see above, then rerun: uv run scripts/conformance-coverage.py"
 
+step "conformance gaps: SUBSET.md generated, no gap past 48 h (scripts/spec-gate.py subset, gap-age)"
+uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"
+uv run --quiet python scripts/spec-gate.py gap-age --staged || fail "a conformance gap is past 48 h or re-dated; make the case pass"
+
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
 uv run scripts/conformance-widths.py --check || fail "spec/conformance/widths/ is stale; run scripts/conformance-widths.py"
@@ -766,6 +770,10 @@ if [ "$mode" = full ]; then
     uv run scripts/explain-copies.py --check --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
     uv run scripts/tool-vocab.py || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
     uv run scripts/conformance-flakes.py --runs 2 --check || fail "a conformance case changed verdict between runs; see above"
+    step "conformance gaps: every failing case has a // gap: line, every gap case fails (scripts/spec-gate.py gaps)"
+    "$target/debug/cpl-conform" conformance --write --scoreboard "$target/gaps-board.json" >/dev/null 2>&1 || true
+    uv run --quiet python scripts/spec-gate.py gaps --board "$target/gaps-board.json" \
+        || fail "a failing case has no // gap: line or a gap case passes; see above"
 
     step "cargo test: every port compiled with every judge profile's flags"
     cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags
