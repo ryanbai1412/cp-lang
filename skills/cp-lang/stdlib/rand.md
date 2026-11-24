@@ -4,7 +4,11 @@
 
 Random numbers from a seed: the same seed gives the same numbers in `cpl run` and in the built C++. `Rng(seed)` is a splitmix64 stream: \(O(1)\) per draw.
 
-In prelude (no `use` needed): `shuffle`.
+In prelude (no `use` needed): `Random`, `shuffle`.
+
+## `trait Random`
+
+A type `gen<T>(..)` draws: `gen<T>(args)` is `T.gen(args)`, so a user type with `impl Random` is drawn like a std one, and an impl may take named options (R06.4.3).
 
 ## `struct Rng(s: U64)`
 

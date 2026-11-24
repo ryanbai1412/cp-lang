@@ -216,7 +216,7 @@ Fields: `k: Int,`.
 - `fn distinct<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(n)\) extra space; Distinct values of `self` in first-seen order (optionally keyed by `by:`).
 - `fn partition<S: Seq<T>, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>)` — \(O(n)\); The values of `self` that `keep` holds for, then the ones it does not, each in the order they came.
 - `fn select<S: IndexedMut, T, K>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)` — \(O(n)\) expected, \(O(n \log n)\) worst case, \(O(1)\) extra space; traps: when `k` is not in `0..self.len`
-- `fn merge_sorted<A: Indexed, B: Indexed, T, K>(self: A, b: B, by: T -> K = x => x) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory; traps: never; unsorted inputs give an unspecified interleaving
+- `fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K>(self: A, b: B, by: T -> K = x => x) -> yields T` — \(O(1)\) per step and \(O(1)\) memory, so a whole walk is \(O(\lvert a \rvert + \lvert b \rvert)\); `.collect()` keeps it as a `List`; \(O(1)\) per step, \(O(1)\) memory.; traps: never; unsorted inputs give an unspecified interleaving
 - `fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>` — \(O(1)\) per window; traps: when `k < 1`
 - `fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>` — \(O(1)\) per chunk; traps: when `k < 1`
 - `@get fn adjacent<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives `(10, 20)` then `(20, 30)`.
