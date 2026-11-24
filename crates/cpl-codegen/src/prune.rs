@@ -254,7 +254,8 @@ fn bodies(program: &Program) -> impl Iterator<Item = (Option<FnId>, &Block)> {
 }
 
 /// Optional parameters that every call passes a literal `None`, or a
-/// parameter of its own fn that is one of them, and the fn never stores to.
+/// parameter of its own fn that is one of them, and the fn never stores to;
+/// a fn nothing calls passes on `None` for each of its own.
 /// Starts from every such parameter and drops the ones a call passes
 /// something else, until the guess holds.
 fn none_params(program: &Program) -> BTreeSet<(FnId, Slot)> {
@@ -285,9 +286,15 @@ fn none_params(program: &Program) -> BTreeSet<(FnId, Slot)> {
         .chain(&program.judge_fns)
         .copied()
         .collect();
+    let uncalled = program.fns.iter().enumerate().flat_map(|(id, f)| {
+        (0..f.params.len())
+            .filter(move |&s| f.locals.get(s).is_some_and(|l| matches!(l.ty, Ty::Opt(_))))
+            .map(move |s| (id, s))
+    });
     let mut known: BTreeSet<(FnId, Slot)> = passes
         .iter()
         .map(|&(id, slot, _)| (id, slot))
+        .chain(uncalled)
         .filter(|&(id, slot)| {
             let f = &program.fns[id];
             !outside.contains(&id)

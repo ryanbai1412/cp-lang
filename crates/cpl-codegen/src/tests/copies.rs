@@ -17,7 +17,7 @@ print(n, say(\"short\"))
     );
     let solve = out.split("void solve()").nth(1).expect("solve() emitted");
     assert!(
-        solve.contains("say(cpl_str0)"),
+        solve.contains("cpl_str0.size()"),
         "the call reads the static:\n{solve}"
     );
     assert!(
@@ -671,6 +671,23 @@ fn a_param_dead_after_its_sink_moves_past_a_closure_that_does_not_hold_it() {
         out.matches("all = std::move(a").count(),
         1,
         "join's param moves; held's, which a closure made first holds, is copied:\n{out}"
+    );
+}
+
+#[test]
+fn a_dead_param_moves_through_a_fn_that_only_copies_it() {
+    let out = cpp(concat!(
+        "fn dup(xs: List<Int>) -> List<Int> = copy(xs)\n",
+        "fn grow(a: List<Int>) -> Int:\n",
+        "    var all = dup(a)\n",
+        "    all.push(1)\n",
+        "    all.len\n",
+        "let n: Int = read()\n",
+        "print(grow([n]))\n",
+    ));
+    assert!(
+        out.contains("all = std::move(a"),
+        "the forwarder runs as its copy:\n{out}"
     );
 }
 

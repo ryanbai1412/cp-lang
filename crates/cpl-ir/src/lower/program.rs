@@ -1,6 +1,7 @@
 //! The program's entry points: `main`, `@!multitest`, a `@test` fn, an
 //! `@alt` or `@check` fn run as the program, and gathering the result.
 
+use super::forward;
 use super::*;
 use cpl_diag::msgs;
 
@@ -101,6 +102,11 @@ impl Lowerer<'_> {
             lw.size_library_domains(&mut c.body, false, &c.locals);
         }
         (lw.main_body, lw.setup_body, lw.bodies, lw.closures) = (main, setup, bodies, closures);
+        forward::inline_forwarders(
+            &mut lw.bodies,
+            [&mut lw.main_body, &mut lw.setup_body],
+            &mut lw.closures,
+        );
         // A mistake in the user's code often breaks the library code it asks
         // for as well. The user's own mistake is the one to show.
         if lw.diags.iter().any(|d| !lw.in_library.contains(&d.message)) {

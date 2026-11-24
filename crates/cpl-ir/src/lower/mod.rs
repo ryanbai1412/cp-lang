@@ -28,6 +28,7 @@ mod float_fn;
 mod fn_impl;
 mod fn_value;
 mod foreign;
+mod forward;
 mod fresh;
 mod function;
 mod hoist;
