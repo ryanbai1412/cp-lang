@@ -469,7 +469,8 @@ jobs:
           # unformatted, crate by crate (lanes never run `cargo fmt --all`).
           crates=$( { git diff --name-only -- crates; cargo fmt --all --check -- -l 2>/dev/null | sed "s|^$PWD/||"; } | cut -d/ -f2 | sort -u)
           for c in $crates; do cargo fmt -p "$c" || echo "::warning::cargo fmt -p $c failed; the fmt gate says why"; done
-          changed="$changed$(git diff --name-only -- crates)"
+          # One path a line: `$(...)` drops $changed's last newline.
+          changed=$(printf '%s\n' "$changed" "$(git diff --name-only -- crates)" | sed '/^$/d')
           # The gate only warns on stale generated files on main, so a
           # generator that fails must turn this job red.
           failed() { ! grep -q 'regen: failed' "$RUNNER_TEMP/regen.err" || { echo "::error::a generator failed; see above"; exit 1; }; }
