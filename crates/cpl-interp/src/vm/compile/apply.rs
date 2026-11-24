@@ -202,10 +202,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return None;
         };
         if let Ty::Set(k) | Ty::HashSet(k) | Ty::Map(k, _) | Ty::HashMap(k, _) = &place.ty {
-            let ordered = matches!(place.ty, Ty::Set(_) | Ty::Map(..));
             if matches!(op, Mutation::Insert | Mutation::Remove)
-                && (!owned(k, self.program)
-                    || ordered && crate::value::keys::user_ordered(k, self.program))
+                && (!owned(k, self.program) || crate::value::keys::user_ordered(k, self.program))
             {
                 return None;
             }

@@ -723,10 +723,8 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
             ListViewVal::whole(Rc::new(crate::value::Cells::from(Vec::new())), false),
         )),
         Ty::MutView(..) => Value::Unit,
-        Ty::Map(k, _) => Value::Map(Rc::new(KeyMap::of(k, program))),
-        Ty::HashMap(..) => Value::Map(Rc::default()),
-        Ty::Set(k) => Value::Set(Rc::new(KeySet::of(k, program))),
-        Ty::HashSet(_) => Value::Set(Rc::default()),
+        Ty::Map(k, _) | Ty::HashMap(k, _) => Value::Map(Rc::new(KeyMap::of(k, program))),
+        Ty::Set(k) | Ty::HashSet(k) => Value::Set(Rc::new(KeySet::of(k, program))),
     }
 }
 
