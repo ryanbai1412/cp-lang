@@ -416,6 +416,11 @@ fn unprovided(parts: &[String]) -> Option<String> {
         .map(|module| module.join("/"))
 }
 
+/// Whether `parts` names a std module the host has not given yet.
+pub(crate) fn unloaded(parts: &[String]) -> bool {
+    unprovided(parts).is_some()
+}
+
 /// What a check reads of a std module the compiler knows and has not been
 /// given, `parts` or the one before its last name: its outline, path and
 /// how many of `parts` name it. Its signatures and doc lines answer hover

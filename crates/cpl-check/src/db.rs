@@ -686,6 +686,43 @@ impl Database {
                         .iter()
                         .any(|d| d.code == codes::UNRESOLVED_MODULE)
                 });
+                // A std module the host has not given yet: the name stays
+                // imported from its outline, and the wait is reported where
+                // the file first uses it, as for a `use` of it.
+                let parts: Vec<String> = module.iter().map(|n| n.text.clone()).collect();
+                let waiting = !diags.is_empty()
+                    && crate::modules::unloaded(&parts)
+                    && diags.iter().all(|d| d.code == codes::UNRESOLVED_MODULE);
+                if waiting {
+                    let first_use = ranges.iter().enumerate().find_map(|(index, range)| {
+                        lexed.tokens[range.tokens.0..range.tokens.1]
+                            .iter()
+                            .find(|tok| {
+                                tok.kind == cpl_syntax::TokenKind::Ident
+                                    && text[tok.span.start as usize..tok.span.end as usize]
+                                        == name.text
+                            })
+                            .map(|tok| {
+                                let base = range.span.start;
+                                (index, Span::new(tok.span.start - base, tok.span.end - base))
+                            })
+                    });
+                    let reported = import_diags
+                        .iter()
+                        .any(|(_, d)| d.message == diags[0].message);
+                    if let (Some((index, span)), false) = (first_use, reported) {
+                        let mut diag = diags.swap_remove(0);
+                        diag.span = span;
+                        import_diags.push((index, diag));
+                    }
+                    if let Some(bare) = bare {
+                        scope.imports.insert(name.text.clone(), bare);
+                    }
+                    if let Some(import) = scope.imports.remove(&name.text) {
+                        scope.imports.insert(key.clone(), import);
+                    }
+                    continue;
+                }
                 let import = scope.imports.remove(&name.text);
                 if cycled || !diags.is_empty() {
                     self.cycle_hits = hits_before;
