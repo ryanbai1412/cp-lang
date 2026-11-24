@@ -35,7 +35,8 @@ fn position(src: &str, offset: usize) -> Value {
 /// The values every built-in row's `example` is written against, as in
 /// `crates/cpl-cli/tests/builtin_catalog.rs`.
 const FIXTURE: &str = "var xs = [3, 1, 2]\nvar s = \"hello\"\nvar m = Map<Int, Int>()\nm[1] = 10\nm[5] = 50\n\
-                       var st = Set<Int>()\nst.insert(4)\nst.insert(9)\nvar a: [0..3]Int = 0\na[1] = 7\n";
+                       var st = Set<Int>()\nst.insert(4)\nst.insert(9)\nvar a: [0..3]Int = 0\na[1] = 7\n\
+                       var hm = HashMap<Int, Int>()\nhm[1] = 10\nhm[5] = 50\nvar hs = HashSet<Int>()\nhs.insert(4)\nhs.insert(9)\n";
 
 const STD_URI: &str = "file:///std_items/a.cp";
 const BUILTIN_URI: &str = "file:///std_items/builtin.cp";
