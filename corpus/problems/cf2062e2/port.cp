@@ -6,7 +6,7 @@
 //   Multitest, sum n <= 4e5.
 // Solution: u wins iff some heavier node lies outside sub(u) and every heavier reply x outside it
 //   strands Cirno. With above(x) = nodes heavier than x outside sub(x) and g(x) their lca, x
-//   strands her iff above(x) is empty or g(x) is in sub(u). Sweep weights downward: a SortedSet of
+//   strands her iff above(x) is empty or g(x) is in sub(u). Sweep weights downward: a Fenwick of
 //   heavier preorder positions gives g(x) (lca of the first and last outside sub(x)); Fenwicks
 //   over preorder mark x, g(x) and lca(x, g(x)) so inclusion-exclusion counts dangerous replies
 //   with both outside sub(u). O(n log n).
@@ -21,12 +21,14 @@ domain W = 1..=n
 let w: [V]W = read()
 let t = Rooted.new(Graph.undirected(read<[0..n - 1](V, V)>()), V.first!)
 
-var heavier = SortedSet<t.Pre>()
+var heavier = Fenwick<t.Pre, Int>.new()
+var heavy_total = 0
 fn above_lca(x: V) -> ?V:
     let r = t.sub(x)
-    let (before, after) = (heavier.range(..r.l), heavier.range(r.r..))
-    let lo = (before.first ?? after.first) ?? return None
-    let hi = (after.last ?? before.last)!
+    let (before, upto) = (heavier.fold(..r.l), heavier.fold(..r.r))
+    if before + heavy_total - upto == 0: return None
+    let lo = heavier.first_ge(if before > 0: 1 else: upto + 1)!.left!
+    let hi = heavier.first_ge(if upto < heavy_total: heavy_total else: before)!.left!
     Some(t.lca(t.at[lo], t.at[hi]))
 
 var marks = [Mark] _ => Fenwick<t.Pre, Int>.new()
@@ -40,7 +42,7 @@ for weight in W.rev:
     for u in bucket:
         let r = t.sub(u)
         let in_sub = marks[Mark.Reply].fold(r)
-        let replies = heavier.len - heavier.range(r).len
+        let replies = heavy_total - heavier.fold(r)
         let fatal = dangerous - in_sub - inside(Mark.Target, u) + inside(Mark.Meet, u)
         if replies > 0 and fatal == 0:
             winners.push(u)
@@ -51,7 +53,8 @@ for weight in W.rev:
             marks[Mark.Target].add(t.pos(g), 1)
             marks[Mark.Meet].add(t.pos(t.lca(x, g)), 1)
     for v in bucket:
-        heavier.add(t.pos(v))
+        heavier.add(t.pos(v), 1)
+        heavy_total += 1
 
 winners.sort()
 print(winners.len, winners)

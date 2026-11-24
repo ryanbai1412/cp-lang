@@ -8,7 +8,7 @@
 //   shortest path crosses exactly the tree edges between its ends' runs. So an edge with w
 //   blocks on one side is crossed by w * (N - w) pairs; do the same with the axes swapped:
 //   O(N log N) for the sort and the run map.
-// original: proto/ports/scout_batch_17/harness/ioi12p4_main.cpp (wraps corpus/submissions/4951048.cpp)
+// original: corpus/problems/ioi12p4/orig.cpp (corpus/submissions/4951048.cpp with a main)
 // Bounds: n: 1..=1e5
 let n: 1..=1e5 = read()
 domain Block = 0..n
