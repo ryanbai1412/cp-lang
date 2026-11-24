@@ -15,7 +15,7 @@ fn score(b: List<Int>) -> Int:
         seen[x] = true
         while m < n and seen[m]: m += 1
         f.push(m)
-    return f.sorted(desc: true)[k - 1]
+    return f.sorted(by: desc)[k - 1]
 
 var b = [x for x in a]
 var best = score(b)
