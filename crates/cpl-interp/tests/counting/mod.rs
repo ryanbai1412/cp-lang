@@ -4,6 +4,8 @@
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+/// Hands each call to `System` unchanged, which
+/// `the_counting_allocator_hands_each_call_to_the_system_one` checks.
 struct Counting;
 
 static IN_USE: AtomicUsize = AtomicUsize::new(0);
@@ -39,4 +41,18 @@ pub fn usage() -> (usize, usize) {
         IN_USE.load(Ordering::Relaxed),
         CALLS.load(Ordering::Relaxed),
     )
+}
+
+/// What `Counting` hands back holds what was written through every grow,
+/// and once freed the count is back where it was.
+#[test]
+fn the_counting_allocator_hands_each_call_to_the_system_one() {
+    let (before, calls) = usage();
+    let mut v: Vec<u64> = (0..1000).collect();
+    assert!(usage().0 >= before + 8000);
+    v.extend(1000..100_000);
+    assert!(v.iter().copied().eq(0..100_000));
+    drop(v);
+    assert_eq!(usage().0, before);
+    assert!(usage().1 > calls);
 }
