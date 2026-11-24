@@ -60,4 +60,9 @@ impl Show for Pair<V>:
 /// order: keyed by `(V, V)`, row-major
 /// traps: never
 /// example: `domain V = 0..3; let d: [Pair<V>]Int = [5, 6, 7]; let m = d.symmetric(diag: 0); m[2, 1] == 7 and m[0, 2] == 6 and m[1, 1] == 0`
-pub fn symmetric<V, T>(self: [Pair<V>]T, diag: T) -> [V, V]T = todo
+pub fn symmetric<V, T>(self: [Pair<V>]T, diag: T) -> [V, V]T:
+    var m: [V, V]T = diag
+    for u in V:
+        for v in V:
+            if u != v: m[u, v] = self[Pair<V>.new(u, v)]
+    m
