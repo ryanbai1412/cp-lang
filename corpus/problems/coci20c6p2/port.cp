@@ -6,7 +6,7 @@
 // Solution: give each word an id on first sight (a hash map) and build the weighted digraph;
 //   run Dijkstra from a for each query: O(q (n + m) log n).
 // original: corpus/submissions/4188022.cpp
-// Bounds: n, m: 1..=1000
+// Bounds: n, m: 1..=1000; time: 1..=1e9; q: 1..=1000
 use std.marks.{Interner}
 
 let (n, m): (1..=1000, 1..=1000) = read()
