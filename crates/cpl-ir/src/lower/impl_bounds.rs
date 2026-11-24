@@ -75,4 +75,60 @@ impl<'a> Lowerer<'a> {
             _ => None,
         }
     }
+
+    /// What a value of `ty` is keyed by: a built-in sequence's key, or the key the `items`
+    /// of a struct's `impl Keyed` yields.
+    pub(super) fn seq_key_of(&mut self, ty: &Ty) -> Option<Dim> {
+        if let Some(k) = ty.seq_key() {
+            return Some(k);
+        }
+        let Ty::Struct(sid) = ty else {
+            return None;
+        };
+        let f = *self.structs[*sid].methods.get("items")?;
+        if !self.sigs[f].params.is_empty() {
+            return None;
+        }
+        self.queue_fn(f);
+        let Ty::List(pair) = self.ret_of(f, Span::default()) else {
+            return None;
+        };
+        match &*pair {
+            Ty::Tuple(parts) if parts.len() == 2 => match parts[0] {
+                Ty::Pos(d) => Some(Dim::Pos(d)),
+                Ty::Int => Some(Dim::Int),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// A struct value with an `impl Seq` and no `Show` of its own, as the list its `iter`
+    /// walks: any `Seq` prints as a sequence (R10.3.1).
+    pub(super) fn walked_struct(&mut self, value: Expr) -> Expr {
+        let Ty::Struct(sid) = value.ty else {
+            return value;
+        };
+        if self.structs[sid].def.show_fn.is_some() || !self.implements(&value.ty, "Seq") {
+            return value;
+        }
+        let Some(&f) = self.structs[sid].methods.get("iter") else {
+            return value;
+        };
+        if !self.sigs[f].params.is_empty() {
+            return value;
+        }
+        self.queue_fn(f);
+        match self.ret_of(f, Span::default()) {
+            ret @ Ty::List(_) => {
+                let span = value.span;
+                Expr {
+                    kind: ExprKind::Call(f, vec![Arg::Value(value)]),
+                    ty: ret,
+                    span,
+                }
+            }
+            _ => value,
+        }
+    }
 }

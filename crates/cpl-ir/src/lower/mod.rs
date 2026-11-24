@@ -1837,6 +1837,14 @@ impl<'a> Lowerer<'a> {
                 _ => None,
             }
         };
+        // A fn giving a struct with an `impl Seq` (a view) yields what that walks.
+        let fn_walk = match t {
+            Ty::Fn(_, ret) => {
+                let ret = (**ret).clone();
+                self.seq_elem_of(&ret)
+            }
+            _ => None,
+        };
         for tr in &self.traits {
             for m in &tr.methods {
                 let Some(ret_ast) = &m.ret else { continue };
@@ -1880,7 +1888,7 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                         Ty::Fn(_, ret) => {
-                            if let Some(arc) = unwrap_seq(ret) {
+                            if let Some(arc) = unwrap_seq(ret).or_else(|| fn_walk.clone()) {
                                 return Some(arc);
                             }
                         }
@@ -1890,9 +1898,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         if item == "Item" {
-            if let Some(elem) = unwrap_seq(t) {
-                return Some(elem);
-            }
+            return unwrap_seq(t).or_else(|| self.seq_elem_of(t));
         }
         None
     }
@@ -4673,6 +4679,15 @@ impl<'a> Lowerer<'a> {
                 ty: want.clone(),
                 ..e
             });
+        }
+        // A sequence view where a walked sequence is wanted gives what it walks.
+        if matches!(want, Ty::List(_)) && matches!(e.ty, Ty::Struct(_)) {
+            let walked = self.walked_struct(e);
+            return if matches!(walked.ty, Ty::List(_)) {
+                self.try_coerce(walked, want)
+            } else {
+                Err(walked)
+            };
         }
         match (want, &e.ty) {
             // §124: integer literal / arithmetic to `D.bounds`.

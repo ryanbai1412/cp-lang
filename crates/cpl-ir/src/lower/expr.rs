@@ -2551,6 +2551,8 @@ impl<'a> Lowerer<'a> {
             } else {
                 self.expr(e, None)
             };
+            // A view compares by what it walks, and its walk is the next operand's hint.
+            let value = self.walked_struct(value);
             operands.push((value, e.span));
         }
         if rest.len() == 1 {

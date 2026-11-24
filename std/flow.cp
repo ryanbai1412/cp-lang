@@ -7,7 +7,7 @@
 //! over the caller's domains: a matching is `[L]?R`, a bounded flow is `[E]Int`.
 use std.graph.{Next}
 use std.heap.{MinHeap}
-use std.seq.{collect, next_permutation}
+use std.seq.{collect, filter, map, next_permutation}
 use std.math.{bit}
 
 /// A handle to one arc of a `FlowGraph`. Handles from `add` stay valid as arcs are added.

@@ -142,7 +142,10 @@ impl<'a> Lowerer<'a> {
                 }
                 values = values
                     .into_iter()
-                    .map(|(value, at)| (self.in_base(value, at), at))
+                    .map(|(value, at)| {
+                        let value = self.in_base(value, at);
+                        (self.walked_struct(value), at)
+                    })
                     .collect();
                 // A range is a `Seq`: it prints its elements (R10.3.1).
                 let ranged = values.iter().any(|(v, _)| matches!(v.ty, Ty::Range(_)));
@@ -848,6 +851,11 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(in crate::lower) fn convert(&mut self, to: &str, value: Expr, span: Span) -> Expr {
+        let value = if to == "Str" {
+            self.walked_struct(value)
+        } else {
+            value
+        };
         let from = value.ty.clone();
         let (cast, ty) = match (to, &from) {
             (_, Ty::Error) => return value,
@@ -1781,6 +1789,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let value = self.in_base(value, span);
+        let value = self.walked_struct(value);
         let value = match value.ty {
             Ty::Pos(d) if self.product_domains.contains_key(&d) => {
                 self.product_parts(d, value, span)

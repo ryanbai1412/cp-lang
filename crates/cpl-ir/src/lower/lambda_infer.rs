@@ -269,7 +269,7 @@ impl<'a> Lowerer<'a> {
         else {
             return;
         };
-        if fparams.len() != lparams.len() {
+        if fparams.len() != lparams.len() && fparams.len() != 1 {
             return;
         }
         let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
@@ -293,6 +293,13 @@ impl<'a> Lowerer<'a> {
         self.gen_env = saved_env;
         if p_tys.len() != fparams.len() {
             return;
+        }
+        // `(l, r) => ..` over a pair element takes the pair apart.
+        if lparams.len() != p_tys.len() {
+            match p_tys.pop() {
+                Some(Ty::Tuple(parts)) if parts.len() == lparams.len() => p_tys = parts,
+                _ => return,
+            }
         }
         if let Some(ret_ty) = self.probe_lambda_ret(lparams, &p_tys, lbody) {
             self.unify_ast_ty(fret, &ret_ty, tpl_mod, gen_names, inferred);

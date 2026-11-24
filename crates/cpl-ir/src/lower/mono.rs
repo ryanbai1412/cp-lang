@@ -1756,10 +1756,11 @@ impl<'a> Lowerer<'a> {
                         if matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut"))
                 });
                 match inferred.get(&b.name.text) {
-                    Some(GenArg::Ty(t)) if keyed => t.seq_key(),
+                    Some(GenArg::Ty(t)) if keyed => Some(t.clone()),
                     _ => None,
                 }
             });
+            let key = key.and_then(|t| self.seq_key_of(&t));
             match key {
                 Some(Dim::Pos(d)) => {
                     inferred.insert("D".to_string(), GenArg::Domain(d));
@@ -1777,7 +1778,7 @@ impl<'a> Lowerer<'a> {
             let (key, elem) = match inferred.get(&b.name.text) {
                 Some(GenArg::Ty(seq)) => {
                     let seq = seq.clone();
-                    (seq.seq_key(), self.seq_elem_of(&seq))
+                    (self.seq_key_of(&seq), self.seq_elem_of(&seq))
                 }
                 Some(GenArg::Domain(d)) => (None, Some(Ty::Pos(*d))),
                 _ => continue,
