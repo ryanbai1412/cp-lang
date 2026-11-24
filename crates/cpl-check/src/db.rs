@@ -682,6 +682,7 @@ impl Database {
                             && uses(&name.text))
                 } else {
                     uses(&name.text)
+                        || crate::prelude::core_traits_name(&name.text, &uses)
                         || (!is_std_path(path)
                             && crate::prelude::built_on()
                                 .iter()

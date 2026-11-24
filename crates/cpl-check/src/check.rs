@@ -8,7 +8,7 @@
 pub(crate) mod advice;
 mod foreign;
 pub(crate) use foreign::declare_on_first_assignment;
-mod alias;
+pub(crate) mod alias;
 mod arms;
 mod array_dims;
 mod assoc;

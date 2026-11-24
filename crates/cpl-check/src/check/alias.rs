@@ -70,7 +70,7 @@ impl<'a> Checker<'a> {
 }
 
 /// Every type name written in `ty`, arguments included.
-fn type_names(ty: &ast::Type, f: &mut impl FnMut(&ast::Name)) {
+pub(crate) fn type_names(ty: &ast::Type, f: &mut impl FnMut(&ast::Name)) {
     use ast::TypeKind as K;
     match &ty.kind {
         K::Named { name, args } => {

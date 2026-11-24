@@ -835,24 +835,49 @@ pub fn ty(name: &str) -> Option<Ty> {
 /// The declaration in `core_traits.cp` of a core trait std has no source
 /// for: its type parameters and its body (R08.1.5).
 pub fn core_trait_decl(name: &str) -> Option<(&'static [ast::Name], &'static [ast::Stmt])> {
+    core_traits()
+        .find(|(n, ..)| n.text == name)
+        .map(|(_, generics, body)| (generics, body))
+}
+
+/// Every trait `core_traits.cp` declares: its name, type parameters and body.
+fn core_traits() -> impl Iterator<
+    Item = (
+        &'static ast::Name,
+        &'static [ast::Name],
+        &'static [ast::Stmt],
+    ),
+> {
     static FILE: OnceLock<cpl_syntax::ParsedFile> = OnceLock::new();
     let file = FILE.get_or_init(|| cpl_syntax::parse_file(include_str!("core_traits.cp")));
-    for (_, item) in &file.items {
-        for stmt in &item.stmts {
-            if let ast::StmtKind::Trait {
-                name: n,
-                generics,
-                body,
-                ..
-            } = &stmt.kind
-            {
-                if n.text == name {
-                    return Some((generics.as_slice(), body.stmts.as_slice()));
-                }
+    let stmts = file.items.iter().flat_map(|(_, item)| &item.stmts);
+    stmts.filter_map(|stmt| match &stmt.kind {
+        ast::StmtKind::Trait {
+            name,
+            generics,
+            body,
+            ..
+        } => Some((name, generics.as_slice(), body.stmts.as_slice())),
+        _ => None,
+    })
+}
+
+/// Whether a core trait the file `uses` declares a fn whose signature names
+/// `ty`: `impl Ord for P` with a bare `fn cmp(a, b)` returns the `Ordering`
+/// `core_traits.cp` declares, so the program gets `Ordering` as if it named it.
+pub fn core_traits_name(ty: &str, uses: &dyn Fn(&str) -> bool) -> bool {
+    let mut found = false;
+    for (_, _, body) in core_traits().filter(|(name, ..)| uses(&name.text)) {
+        for s in body {
+            if let ast::StmtKind::Fn(f) = &s.kind {
+                let tys = f.params.iter().filter_map(|p| p.ty.as_ref()).chain(&f.ret);
+                tys.for_each(|t| {
+                    crate::check::alias::type_names(t, &mut |n| found |= n.text == ty)
+                });
             }
         }
     }
-    None
+    found
 }
 
 /// Core trait `name`'s fn `method` and the trait's generics.
