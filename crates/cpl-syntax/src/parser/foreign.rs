@@ -1265,8 +1265,14 @@ impl<'a> Parser<'a> {
         )
         .with_help("loop over a range: `for i in 0..n:`");
         let (name, range) = counted(&parts);
+        // `for (..) x`, C's one-line body: the fix adds the `:` too.
+        let colon = match self.tokens.get(end).map(|t| t.kind) {
+            Some(T::Colon | T::Newline | T::LBrace) => "",
+            _ => ":",
+        };
         if let (Some(name), Some(range)) = (name, range) {
-            diag = diag.with_fix("loop over the range", whole, format!("{name} in {range}"));
+            let ours = format!("{name} in {range}{colon}");
+            diag = diag.with_fix("loop over the range", whole, ours);
         }
         self.recovered(diag);
         self.pos = end;

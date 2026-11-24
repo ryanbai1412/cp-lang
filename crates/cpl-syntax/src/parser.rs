@@ -396,7 +396,12 @@ impl<'a> Parser<'a> {
     fn with_insert_fix(&self, diag: Diagnostic, at: Span, text: &str) -> Diagnostic {
         let glued = self.text();
         if self.at_line_end() || glued.len() <= text.len() || !glued.starts_with(text) {
-            return diag.with_fix(format!("insert `{text}`"), Span::point(at.start), text);
+            // `if (c) x`: the `:` goes right after the header.
+            let at = match self.pos.checked_sub(1) {
+                Some(i) if text == ":" && !self.at_line_end() => self.rel(self.tokens[i].span).end,
+                _ => at.start,
+            };
+            return diag.with_fix(format!("insert `{text}`"), Span::point(at), text);
         }
         let rest = &glued[text.len()..];
         let with = match rest.chars().all(|c| text.contains(c)) {

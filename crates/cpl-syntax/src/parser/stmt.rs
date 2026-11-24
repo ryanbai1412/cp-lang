@@ -1184,7 +1184,10 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        let body = self.colon_block("the `for` header");
+        let body = match c_style && !matches!(self.peek(), T::Colon | T::Newline | T::LBrace) {
+            true => self.block("the `for` header"),
+            false => self.colon_block("the `for` header"),
+        };
         let mut out_stmt: Option<StmtKind> = None;
         for (idx, (pat, iter, filter)) in clauses.into_iter().enumerate().rev() {
             let mut inner_body = if let Some(prev) = out_stmt.take() {
