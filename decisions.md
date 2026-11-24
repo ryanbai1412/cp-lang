@@ -8870,4 +8870,7 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** The table listed 66 of 161 names, so 95 privileged names had no class and nothing stopped a new one. Now a new string-matched name fails the ratchet unless it gets an intrinsic row, which needs a line here. `std_shadowed` excludes floor names, so it falls from 81 to 62 by this reclassification alone, not by moved bodies.
 - **Reverse.** Drop `ir_builtin_derived` from `scripts/debt-ratchet.py` and the added intrinsic rows from the floor table.
 
-## 536. (reserved, factory)
+## 536. `cpp_deep_copies` is 34, the count main measures (factory, 2026-11-24)
+
+- **Call.** The `cpp_deep_copies` bound (read_only_copies and `scripts/debt-ratchet.json`) is 34, not 31. 6525aa9fc lowered it from 35 to 31, but that tree and its parent 4698e6f19 both measure 34 in clean worktrees (`cargo nextest run -p cpl-cli --test read_only_copies`), so main was red from the commit that set it. A correction, not a weakening; the 3 copies go to perf, and a bound only drops to what a clean worktree of main measures.
+- **Reverse.** Set the bound back to 31 once those 3 copies are gone.
