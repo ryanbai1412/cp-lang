@@ -382,3 +382,15 @@ fn a_sort_in_the_elements_own_order_is_std_sort() {
         "{out}"
     );
 }
+
+#[test]
+fn a_struct_only_tested_against_none_gets_no_tie() {
+    let out = cpp(concat!(
+        "struct P(a: Int)\n",
+        "let n: Int = read()\n",
+        "var p: ?P = None\n",
+        "if n > 0: p = Some(P(a: n))\n",
+        "print(if p != None: 1 else: 0)\n",
+    ));
+    assert!(!out.contains("cpl_tie"), "{out}");
+}
