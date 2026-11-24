@@ -627,3 +627,37 @@ fn a_bare_indexed_bound_gives_t_the_element_and_runs_takes_it() {
         "{rows:?}"
     );
 }
+
+#[test]
+fn a_some_literal_is_an_optional_at_a_let_a_list_and_a_bound() {
+    let errors = |src: &str| {
+        let mut db = Database::new();
+        db.set_file("main.cp", src);
+        let a = db.analyze("main.cp").unwrap();
+        assert!(a.silent_unknowns().is_empty(), "{:?}", a.silent_unknowns());
+        a.diagnostics
+            .iter()
+            .map(|d| d.message.clone())
+            .collect::<Vec<_>>()
+    };
+    let e = errors("let a: Int = Some(3)\nprint(a)\n");
+    assert!(e.iter().any(|m| m.contains("is an ?Int")), "{e:?}");
+
+    let list = "let os = [Some(3), None]\nprint(os.len)\n";
+    assert!(errors(list).is_empty());
+    let mut db = Database::new();
+    db.set_file("main.cp", list);
+    let hover = db.hover("main.cp", 4).map(|h| h.text);
+    assert!(
+        hover
+            .as_deref()
+            .is_some_and(|h| h.contains("os: List<?Int>")),
+        "{hover:?}"
+    );
+
+    let e = errors("trait Small:\n    fn small(self) -> Bool\nfn need<S: Small>(s: S) -> Bool = s.small()\nlet os = [Some(3), None]\nprint(yes(need(os.even)))\n");
+    assert!(
+        e.iter().any(|m| m.contains("does not implement `Small`")),
+        "{e:?}"
+    );
+}
