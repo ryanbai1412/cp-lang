@@ -7,75 +7,50 @@
 //   avoiding the hub while both are smaller than the small set. A group that reaches that size
 //   holds it (a BFS patch from inside it); the hub with everything else stays connected and
 //   fits the middle set (a BFS patch from the hub). No such group: all zeros. O((n + m) α(n)).
-// original: proto/ports/scout_batch_9/harness/ioi19p2.cpp
-// checker: proto/ports/scout_batch_9/harness/ioi19p2_check.cpp
-let n: 3..=1e5 = read()
-let m: n - 1..=2e5 = read()
+// original: corpus/submissions/5661848.cpp (grader function find_split)
+// checker: corpus/problems/ioi19p2/checker.py
+let n: 3..=100_000 = read()
+let m: n - 1..=200_000 = read()
 let a: 1..=n - 2 = read()
-let b: 1..=n - 2 = read()
-assert a + b < n  // and the third part is the rest
+let b: 1..=n - 1 - a = read()
 domain Spot = 0..n
 domain Link = 0..m
-
-// generator: a bushy tree, then extra links that mostly lead to spot 0, so
-// that some maps cannot be split
-fn bushy() -> [Link](u: Spot, v: Spot):
-    [Link] l => (
-        if l.idx < n - 1: (
-            Spot(rand(0, l.idx) / 3),
-            Spot(l.idx + 1),
-        ) elif rand(0, 3) > 0: (Spot.first!, Spot(rand(0, n - 1))) else: (
-            Spot(rand(0, n - 1)),
-            Spot(rand(0, n - 1)),
-        )
-    )
-
-let links: [Link](u: Spot, v: Spot) = read(gen: bushy)
+let links: [Link](u: Spot, v: Spot) = read()
 let land = Graph.undirected(links)
 
-// Make the two smaller parts connected; the largest takes what is left.
-let by_size = [(a, 1), (b, 2), (n - a - b, 3)].sorted()
-let (small, small_part) = by_size[0]
-let (mid, mid_part) = by_size[1]
-let (_, big_part) = by_size[2]
+// make the two smaller parts connected; the largest takes what is left
+var by_size = [(size: a, part: 1), (size: b, part: 2), (size: n - a - b, part: 3)]
+by_size.sort()
+let (small, mid, big) = (by_size[0], by_size[1], by_size[2])
 
-// Take any spanning tree and its hub: the spot whose removal leaves no
-// branch with more than half of the spots.
+// group the hub's branches, and merge groups along any link for as long as both are too small
+// to hold the small part
 let tree = Rooted(land, Spot.first!)
-var hub = Spot.first!
-for v in Spot:
-    if 2 * (n - tree.size(v)) <= n and all(2 * tree.size(c) <= n for c in tree.children(v)): hub = v
-
-// Group the branches around the hub, and merge groups along any link for
-// as long as both are too small to hold the small part. A group that gets
-// big enough holds it, and everything else still hangs together through
-// the hub and has room for the middle part.
+let hub = tree.centroid()
 var group = Dsu<Spot>()
 for v in Spot:
     if let p = tree.parent(v) and v != hub and p != hub: group.unite(v, p)
 for (u, v) in links:
-    if u != hub and v != hub and group.size(u) < small and group.size(v) < small: group.unite(u, v)
-var seed: ?Spot = None
-for v in Spot:
-    if v != hub and group.size(v) >= small: seed = v
+    if u != hub and v != hub and group.size(u) < small.size and group.size(v) < small.size:
+        group.unite(u, v)
 
-// Mark `count` spots as `part`: a connected patch grown outwards from
-// `from`, staying on from's side of the split.
-var part: [Spot]Int = 0
-fn claim(from: Spot, side: Spot, count: Int, mark: Int):
-    var patch = [from]
+// a group big enough holds the small part; everything else hangs together through the hub and
+// has room for the middle part. Each part is a patch grown outwards, staying on its side.
+var part: [Spot]?Int = None
+fn claim(from: Spot, seed: Spot, count: Int, mark: Int):
+    let inside = group.same(from, seed)
     part[from] = mark
-    var i = 0
-    while i < patch.len:
-        for (w, _) in land[patch[i]]:
-            if patch.len < count and part[w] == 0 and group.same(w, side) == group.same(from, side):
+    var (queue, taken) = (Deque.of([from]), 1)
+    while let v = queue.pop_front():
+        for (w, _) in land[v]:
+            if taken < count and part[w].is_none and group.same(w, seed) == inside:
                 part[w] = mark
-                patch.push(w)
-        i += 1
+                taken += 1
+                queue.push(w)
 
-if let s = seed:
-    claim(s, s, small, small_part)
-    claim(hub, s, mid, mid_part)
-    for v in Spot:
-        if part[v] == 0: part[v] = big_part
-print(part)
+if let s = Spot.find(v => v != hub and group.size(v) >= small.size):
+    claim(s, s, small.size, small.part)
+    claim(hub, s, mid.size, mid.part)
+    print([Spot] v => part[v] ?? big.part)
+else:
+    print([Spot] _ => 0)
