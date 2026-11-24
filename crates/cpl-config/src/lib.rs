@@ -137,6 +137,30 @@ pub const SCHEMA: &[Table] = &[
             "a library name: `\"path\"` or `{ path = \"path\" }`, relative to this file or `~/`",
         )],
     },
+    Table {
+        name: "limits",
+        reader: "cpl-contest",
+        doc: "A problem's limits, under its own `// limits:` line.",
+        keys: &[
+            ("time_ms", "the time limit in milliseconds"),
+            ("memory_mb", "the memory limit in megabytes"),
+        ],
+    },
+    Table {
+        name: "judge",
+        reader: "cpl-judge",
+        doc: "The judge profile a build targets, under `--judge` and `// judge:`.",
+        keys: &[("judge", "a profile's name in quotes")],
+    },
+    Table {
+        name: "judge.*",
+        reader: "cpl-judge",
+        doc: "Changes to a judge profile; one that isn't built in says what it `extends`.",
+        keys: &[
+            ("extends", "the built-in profile it starts from"),
+            ("*", "a profile key (spec/tools/judge-profiles.md)"),
+        ],
+    },
 ];
 
 #[cfg(test)]

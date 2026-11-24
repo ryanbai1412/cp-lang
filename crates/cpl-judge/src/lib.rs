@@ -567,9 +567,9 @@ fn project(path: &Path) -> Option<(std::path::PathBuf, String)> {
     } else {
         start
     };
-    start.ancestors().find_map(|dir| {
-        let file = dir.join("cp.toml");
-        std::fs::read_to_string(&file).ok().map(|text| (file, text))
+    let read = &mut |f: &Path| std::fs::read_to_string(f).ok();
+    cpl_config::find_map(start, read, |dir, text| {
+        Some((dir.join(cpl_config::FILE), text.to_string()))
     })
 }
 
@@ -595,7 +595,7 @@ impl Config {
         let mut config = Config::default();
         let mut table: Option<Option<String>> = None;
         for (at, line) in text.lines().enumerate() {
-            let line = strip_comment(line).trim();
+            let line = cpl_config::strip_comment(line).trim();
             if line.is_empty() {
                 continue;
             }
@@ -759,18 +759,6 @@ fn apply(profile: &mut Profile, key: &str, value: &Value) {
         ("memory_mb", Value::Int(mb)) => profile.memory_mb = *mb,
         _ => {}
     }
-}
-
-fn strip_comment(line: &str) -> &str {
-    let mut quoted = false;
-    for (at, c) in line.char_indices() {
-        match c {
-            '"' => quoted = !quoted,
-            '#' if !quoted => return &line[..at],
-            _ => {}
-        }
-    }
-    line
 }
 
 fn parse_value(text: &str) -> Result<Value, String> {

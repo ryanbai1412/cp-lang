@@ -85,6 +85,7 @@ version = "0.3.0"
 dependencies = [
  "cpl-check",
  "cpl-codegen",
+ "cpl-config",
  "cpl-diag",
  "cpl-ir",
  "cpl-json",
@@ -158,6 +159,7 @@ version = "0.3.0"
 name = "cpl-judge"
 version = "0.3.0"
 dependencies = [
+ "cpl-config",
  "cpl-env",
 ]
 
@@ -182,6 +184,7 @@ name = "cpl-lsp"
 version = "0.3.0"
 dependencies = [
  "cpl-check",
+ "cpl-config",
  "cpl-corpus",
  "cpl-diag",
  "cpl-doc",

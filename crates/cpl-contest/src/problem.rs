@@ -51,13 +51,12 @@ impl Limits {
             },
             Err(_) => Limits::default(),
         };
-        let mut dir = source.parent();
-        while let Some(parent) = dir {
-            if let Ok(text) = std::fs::read_to_string(parent.join("cp.toml")) {
-                limits.apply_toml(&text);
-                break;
-            }
-            dir = parent.parent();
+        let read = &mut |f: &Path| std::fs::read_to_string(f).ok();
+        if let Some(text) = source
+            .parent()
+            .and_then(|dir| cpl_config::find_map(dir, read, |_, text| Some(text.to_string())))
+        {
+            limits.apply_toml(&text);
         }
         if let Some(line) = src
             .lines()
@@ -81,13 +80,9 @@ impl Limits {
 
     /// Reads `time_ms` and `memory_mb` from the `[limits]` table.
     fn apply_toml(&mut self, text: &str) {
-        let mut in_limits = false;
-        for line in text.lines() {
-            let line = line.split('#').next().unwrap_or("").trim();
-            if line.starts_with('[') {
-                in_limits = line == "[limits]";
-            } else if let (true, Some((key, value))) = (in_limits, line.split_once('=')) {
-                match (key.trim(), value.trim().parse::<u64>()) {
+        for line in cpl_config::table(text, "limits") {
+            if let Some((key, value)) = line.pair {
+                match (key, value.parse::<u64>()) {
                     ("time_ms", Ok(n)) => self.time = Duration::from_millis(n),
                     ("memory_mb", Ok(n)) => self.memory_kb = n * 1024,
                     _ => {}
