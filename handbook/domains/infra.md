@@ -128,7 +128,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| CI answers fast | main run minutes, push to result p50 | Sharded gate, restored `target/`, `ci-mtime.sh`, C++ cache; non-blocking reports in `ci-slow.yml` | GitHub run times; **missing**: a budget that fails when a run exceeds 3 min |
+| CI answers fast | main run minutes, push to result p50 | Sharded gate, restored build cache, `scripts/ci-mtime.sh`, C++ cache; non-blocking reports in `.github/workflows/ci-slow.yml` | GitHub run times; **missing**: a budget that fails when a run exceeds 3 min |
 | A hung job can't block the queue | job minutes over its cap | [ci/R28](../guidelines/ci-checklist.md#cir28): every job has `timeout-minutes` | `scripts/test_workflows.py` |
 | Every main commit has a result | commits on main with no `ci/covered` status | [ci/R10](../guidelines/ci-checklist.md#cir10): `scripts/commit_status.py`, `.github/workflows/commit-status.yml` | built; first production run pending |
 | CI results match a local run | reds that don't reproduce on a fresh `origin/main` build | Pinned toolchains, hermetic std path, deterministic tests | ci/R34, `scripts/test_wall_clock.py` |
