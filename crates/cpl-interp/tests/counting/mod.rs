@@ -50,11 +50,6 @@ pub fn usage() -> (isize, usize) {
     (IN_USE.with(Cell::get), CALLS.with(Cell::get))
 }
 
-/// The stack a run on a test's own thread may fill.
-pub const TEST_THREAD: cpl_interp::Limits = cpl_interp::Limits {
-    stack_bytes: 1 << 20,
-};
-
 /// What `Counting` hands back holds what was written through every grow,
 /// once freed the count is back where it was, and a thread allocating
 /// beside it does not move it.

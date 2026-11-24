@@ -435,7 +435,9 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             &program,
             cpl_interp::Io::fixed(b""),
             &mut out,
-            counting::TEST_THREAD,
+            cpl_interp::Limits {
+                stack_bytes: 1 << 20,
+            },
             Some(config),
         );
         let rec = observed.recording.unwrap();
