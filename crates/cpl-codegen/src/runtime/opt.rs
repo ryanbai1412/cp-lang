@@ -112,6 +112,7 @@ template <auto M> struct OptField {
     S raw = empty();
     static S empty() { S s{}; s.*M = NONE; return s; }
     OptField() = default;
+    OptField(std::nullptr_t) {}
     explicit OptField(const S& x) : raw(x) {}
     explicit OptField(const std::optional<S>& o) : raw(o ? *o : empty()) {}
     bool has_value() const { return raw.*M != NONE; }

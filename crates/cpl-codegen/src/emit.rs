@@ -632,6 +632,12 @@ impl<'p> Emitter<'p> {
                 self.need_ty(v);
             }
             Ty::Fn(args, ret) => {
+                // A field of a closure that captures nothing is still a `cpl::Bound`.
+                if !crate::names::fn_pointer(self.program, args, ret)
+                    && crate::names::fn_bound(self.program, args, ret).is_some()
+                {
+                    self.need("bound");
+                }
                 for a in args {
                     self.need_ty(a);
                 }

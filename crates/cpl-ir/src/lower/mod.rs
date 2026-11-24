@@ -635,6 +635,8 @@ struct Lowerer<'a> {
     path_to_mod: HashMap<String, ModId>,
     /// The module `std.mod`, when the program uses it.
     std_mod: Option<ModId>,
+    /// The range an associated type last resolved to, for `M.Fold` as a generic argument.
+    assoc_range: Option<GenArg>,
     /// The module `std.prefix`, when the program uses `prefix(...)`.
     mod_syms: Vec<HashMap<String, Sym>>,
     /// Each inline `mod`: the module it sits in and its body.
@@ -846,6 +848,7 @@ impl<'a> Lowerer<'a> {
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
             std_mod: None,
+            assoc_range: None,
             mod_syms: Vec::new(),
             inline_mods: HashMap::new(),
             cur_mod: 0,
