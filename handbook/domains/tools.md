@@ -174,7 +174,7 @@ their front ends.
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | The editor reports what `cpl check` and `cpl lint` report | files where they differ | differential over every conformance case, `spec.cp` port and example; rule `commands/R10` | `crates/cpl-cli/tests/lsp_parity.rs` |
-| Diagnostics after a sequence of edits equal a fresh open | edit sequences where they differ | metamorphic: replay real edits, compare with opening the final text | `missing` |
+| Diagnostics after a sequence of edits equal a fresh open | edit sequences where they differ | metamorphic: replay real edits, compare with opening the final text | `crates/cpl-lsp/tests/edit_replay.rs` |
 | The server never fails internally on half-typed code | internal errors | fuzz: real ports cut, spliced and garbled, then every request; rule `commands/R12` | `crates/cpl-lsp/tests/fuzz.rs` |
 | Answers arrive within the latency budget | p95 per request at 500 and 5,000 lines, per OS | generated large files, release build; rule `commands/R13` | `crates/cpl-lsp/tests/latency.rs`; CI `lsp latency` job |
 | Completion offers what the contestant types next | recall: share of identifiers, replayed token by token over the corpus, offered after `.`, after `(` and in scope, including after a call such as `runs(xs).` | generated replay; rule `commands/R14` | `crates/cpl-lsp/tests/completion_replay.rs` |
