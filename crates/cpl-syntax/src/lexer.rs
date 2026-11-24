@@ -10,7 +10,7 @@
 //! `close_unclosed`), so one typo stays one diagnostic.
 
 use crate::token::{Token, TokenKind};
-use cpl_diag::{codes, Diagnostic, Span};
+use cpl_diag::{Diagnostic, Span};
 
 /// The tokens of one file, and what was wrong with its layout.
 #[derive(Debug, Clone, Default)]
@@ -1126,17 +1126,10 @@ impl<'a> Lexer<'a> {
                 let span = Span::new(start as u32, self.pos as u32);
                 let theirs = &self.src[start..self.pos];
                 self.out.diagnostics.push(
-                    Diagnostic::error(
-                        codes::UNKNOWN_CHAR,
-                        span,
-                        format!("CP Lang compares with `{ours}`, not `{theirs}`"),
-                    )
-                    .with_help(format!("`{ours}` already compares type and value"))
-                    .with_fix(
-                        format!("replace `{theirs}` with `{ours}`"),
-                        span,
-                        ours,
-                    ),
+                    cpl_diag::msgs::lexer::STRICT_EQUALITY
+                        .error(span, &[&ours, &theirs])
+                        .with_help(format!("`{ours}` already compares type and value"))
+                        .with_fix(format!("replace `{theirs}` with `{ours}`"), span, ours),
                 );
                 self.push(kind, start);
                 return;

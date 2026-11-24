@@ -13,6 +13,8 @@ super::msgs! {
     /// The opening delimiter.
     NEVER_CLOSED = UNCLOSED_DELIMITER, "this `{}` is never closed";
     FLOAT_NEEDS_LEADING_DIGIT = BAD_NUMBER, "`{}` isn't a number: a float needs a digit before the point";
+    /// Ours (`==`), then theirs (`===`).
+    STRICT_EQUALITY = UNKNOWN_CHAR, "CP Lang compares with `{}`, not `{}`";
     CONCAT_PLUS_PLUS = UNKNOWN_CHAR, "CP Lang concatenates with `+`";
     UNUSED_CHAR = UNKNOWN_CHAR, "`{}` isn't used in CP Lang";
     /// The literal, then its suffix.
