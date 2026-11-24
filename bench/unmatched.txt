@@ -1,5 +1,0 @@
-# Corpus pairs whose port and orig.cpp use different algorithms, so their
-# time ratio says nothing about codegen. v03_perf_bench.py still times them
-# but reports them as `unmatched` and leaves them out of p50/max.
-# One per line: problem id, then why. Remove a line once the pair matches.
-cf1284e  port: per centre, sort the other n-1 points by angle and sweep, n sorts of n; orig: one sort of all n^2/2 pair directions and a rotating-line sweep swapping neighbours

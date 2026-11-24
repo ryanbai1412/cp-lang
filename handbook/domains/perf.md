@@ -88,7 +88,7 @@ Owns:
   files kept in tools' crate) and every harness under `bench/`.
 - The perf set: matched C++ references (`orig.cpp`, `_ref.cpp`), tuned
   variants (`perf.cp` beside `port.cp`) and their accounting
-  (`bench/unmatched.txt`, `bench/oversize.txt`).
+  (`bench/oversize.txt`).
 - The codegen sections of `cpl explain` (copies, closures, dropped fields).
 - Ratchets on the generated C++: `deep_copies` and `std_functions` in
   `crates/cpl-cli/tests/read_only_copies.rs`.
@@ -142,7 +142,7 @@ numbers live in `plan/domains/perf/metrics.toml`. Journeys are from
 | Each expression runs once (J5, J6) | calls evaluated more often than written | `crates/cpl-cli/tests/parity/view_receiver_runs_once.cp`; conformance `core-07` view cases ([performance/R9](../guidelines/performance-checklist.md)) | partial: no generated suite |
 | Idiomatic code is as fast as matched C++ (J8, J9) | p50, p95, max runtime ratio on the perf set | `bench/v03_perf_bench.py` ([performance/R5](../guidelines/performance-checklist.md)) | measured, not gated |
 | Tuned code matches the best C++ | `runtime_tuned_max`, `memory_tuned_max`; outliers over 1.1x on either left | `bench/v03_perf_bench.py` (`tuned max` line); `perf.cp` per outlier ([performance/R6](../guidelines/performance-checklist.md)) | measured, not gated |
-| Comparisons are fair | perf-set pairs with an unmatched algorithm; pairs skipped | matched references; `bench/unmatched.txt` lists each skip with its reason ([performance/R1](../guidelines/performance-checklist.md), [R4](../guidelines/performance-checklist.md)) | process: reviewed per reference |
+| Comparisons are fair | perf-set pairs with an unmatched algorithm; pairs skipped | matched references, every pair in p50/max (no exemption list; `bench_lists` counts any) ([performance/R1](../guidelines/performance-checklist.md), [R4](../guidelines/performance-checklist.md)) | process: reviewed per reference |
 | Abstractions are free | zero-cost pairs within 1.05x of hand-written C++ and of the direct `.cp` | `cpl bench --zero-cost bench/zero-cost` (7 pairs) ([performance/R7](../guidelines/performance-checklist.md)) | measured, not gated |
 | No hidden copies (J8) | deep copies of containers in generated C++ over corpus and conformance | `crates/cpl-cli/tests/read_only_copies.rs` (`deep_copies`, shrink-only); `crates/cpl-codegen/src/copy_tests.rs` ([performance/R12](../guidelines/performance-checklist.md)) | enforced |
 | No hidden indirect calls | `std::function` in generated C++ | `read_only_copies.rs` (`std_functions`, shrink-only); `crates/cpl-codegen/src/devirt_tests.rs` ([performance/R13](../guidelines/performance-checklist.md)) | enforced |

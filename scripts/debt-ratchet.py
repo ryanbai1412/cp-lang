@@ -767,7 +767,7 @@ def skip_lists(root: Path) -> list[str]:
 
 def bench_lists(root: Path) -> list[str]:
     """Entries in tracked `bench/**/*.txt` files: every such file exempts programs from a bench
-    gate (oversize, unmatched), so the bench gates hold only once there are none."""
+    gate (oversize), so the bench gates hold only once there are none."""
     found = []
     for rel in _git(root, "ls-files", "bench/*.txt"):
         found += [rel] * sum(1 for l in _lines(root / rel) if l.strip() and not l.lstrip().startswith("#"))
@@ -1230,7 +1230,6 @@ def module_loaders(root: Path) -> list[str]:
 # goes away. A new list without a row here fails `unregistered_lists`.
 LISTS: dict[str, tuple[str | None, str, str]] = {
     "bench/oversize.txt": ("bench_lists", "perf", "shrink inputs or give the bench a size cap"),
-    "bench/unmatched.txt": ("bench_lists", "perf", "match each port's output"),
     "corpus/audit-known.txt": ("known_lists", "idioms", "fix each audited port"),
     "corpus/differential-known.txt": ("known_lists", "idioms", "fix each differing port"),
     "corpus/generators-known.txt": ("known_lists", "idioms", "write each generator"),

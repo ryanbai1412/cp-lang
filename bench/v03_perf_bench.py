@@ -361,18 +361,6 @@ def scaled_gen_inputs(gen, cache_dir):
     return outs[-2:]
 
 
-def load_unmatched():
-    """Pairs listed in bench/unmatched.txt: id -> why port and orig differ in algorithm."""
-    out = {}
-    with open(os.path.join(ROOT, "bench", "unmatched.txt")) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#"):
-                pid, _, why = line.partition(" ")
-                out[pid] = why.strip()
-    return out
-
-
 def collect_items(suites, only, cache_dir):
     items = []
     if "dryrun" in suites:
@@ -486,16 +474,7 @@ def percentile(sorted_vals, q):
 def summarize(rows, min_ms):
     measured = [r for r in rows if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= min_ms]
     ratios = sorted(r["ratio"] for r in measured)
-    # An unmatched pair's tuned variant may be the original's algorithm, written in the
-    # language: it counts toward the tuned bar, though the idiomatic port does not.
-    rewritten = [
-        r for r in rows
-        if r.get("status") == "unmatched" and r.get("tuned_ratio") and max(r["port_ms"], r["orig_ms"]) >= min_ms
-    ]
-    tuned = sorted(
-        [min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) for r in measured]
-        + [r["tuned_ratio"] for r in rewritten]
-    )
+    tuned = sorted(min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) for r in measured)
     return {
         "total_ok": sum(1 for r in rows if r.get("status") == "ok"),
         "measured_ge_min_ms": len(measured),
@@ -507,7 +486,7 @@ def summarize(rows, min_ms):
         "gt_1_5": sum(1 for x in ratios if x > 1.5),
         "tuned_max": round(tuned[-1], 3) if tuned else 0.0,
         "tuned_gt_1_1": sum(1 for x in tuned if x > TUNED_BAR),
-        "tuned_variants": sum(1 for r in measured if r.get("tuned_ratio")) + len(rewritten),
+        "tuned_variants": sum(1 for r in measured if r.get("tuned_ratio")),
         **resource_summary([r for r in rows if r.get("status") == "ok"]),
     }
 
@@ -615,7 +594,6 @@ def main():
             built.append(res)
 
     rows = []
-    unmatched = load_unmatched()
     # Per process: two benches sharing a cache must not compare each other's output.
     out_p = os.path.join(args.cache, f"out_p.{os.getpid()}.txt")
     out_o = os.path.join(args.cache, f"out_o.{os.getpid()}.txt")
@@ -672,13 +650,11 @@ def main():
                     tuned.update(tuned_rss_kb=rss_t, tuned_rss_ratio=round(rss_t / rss_o, 3))
         elif b.get("tuned_error"):
             tuned = {"tuned_error": b["tuned_error"]}
-        why = unmatched.get(b["name"]) if b["suite"] == "corpus" else None
         rows.append(
             {
                 "suite": b["suite"],
                 "name": b["name"],
-                "status": "unmatched" if why else "ok",
-                **({"reason": why} if why else {}),
+                "status": "ok",
                 "port_ms": round(med_p, 2),
                 "orig_ms": round(med_o, 2),
                 "ratio": round(ratio, 3),

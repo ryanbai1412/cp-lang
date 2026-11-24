@@ -17,8 +17,8 @@ complexity and data layout.
 Reason: otherwise the ratio measures the algorithm, not the language.
 Example: a segment-tree port is timed against a segment-tree `orig.cpp`,
 not a Fenwick one.
-Enforced by: review of each reference; unmatched pairs listed in
-`bench/unmatched.txt`.
+Enforced by: review of each reference; every pair counts in the bench's
+p50/max, with no list to exempt one (`bench_lists` in `scripts/debt-ratchet.py`).
 
 **performance/R2.** Time the C++ that `cpl build` emits, built with the
 judge profile's compiler and flags, on inputs at the stated maximum plus a
@@ -38,8 +38,7 @@ Enforced by: `bench/v03_perf_bench.py`.
 **performance/R4.** Every pair is built and timed, or listed with its
 reason.
 Reason: silently dropped rows hide the worst cases.
-Example: a port that fails `cpl build` is a bug or a row in
-`bench/unmatched.txt`.
+Example: a port that fails `cpl build` is a bug to fix, not a skipped row.
 Enforced by: `bench/v03_perf_bench.py` build/run/skip counts;
 `bench/sizes.py --check` fails on a bench program that stops building
 unless `bench/unbuilt.txt` lists it with why.
