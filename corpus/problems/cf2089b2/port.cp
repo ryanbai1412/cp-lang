@@ -9,7 +9,7 @@
 //   stack); a unit eaten d = step + 1 - deposit's step rounds later counts at distance d. The k
 //   decrements delete the farthest units, so the answer is the largest d whose suffix count
 //   d..=n exceeds k (0 if none). O(n).
-// Bounds: n: 1..=200_000; k: 0..=1_000_000_000_000_000
+// Bounds: n: 1..=200_000; k: 0..=1_000_000_000_000_000; a, b: 1..=1e9
 
 struct Deposit:
     amount: Int
@@ -19,8 +19,8 @@ struct Deposit:
 let n: 1..=200_000 = read()
 let k: 0..=1_000_000_000_000_000 = read()
 domain I = 0..n
-let a: [I]Int = read()
-let b: [I]Int = read()
+let a: [I]1..=1e9 = read()
+let b: [I]1..=1e9 = read()
 
 let pref = prefix([I] i => a[i] - b[i])
 let cut = ([I] i => pref.prefix(i.r)).argmin()!
