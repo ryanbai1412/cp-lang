@@ -293,7 +293,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "main-lend",
         "main_lend.rs",
-        Uses(&["effects"]),
+        Uses(&["effects", "each_variable", "each_part_base", "each_loop"]),
         "a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list",
     ),
     pass(

@@ -4,7 +4,6 @@
 //! declaring the variable up front and copying into it (R05.3.5).
 
 use crate::emit::Emitter;
-use crate::walk;
 use cpl_ir::{AssignOp, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
 
 impl Emitter<'_> {
@@ -75,23 +74,10 @@ fn reads_global_whole(stmts: &[Stmt], root: usize) -> bool {
     };
     let global = |e: &Expr| matches!(e.kind, ExprKind::Global(g) if g == root);
     let (mut uses, mut parts) = (0, 0);
-    walk::deep_exprs(&block, &mut |e| match &e.kind {
-        ExprKind::Global(g) if *g == root => uses += 1,
-        ExprKind::Index(base, _)
-        | ExprKind::Field(base, _)
-        | ExprKind::Payload(base, ..)
-        | ExprKind::IsVariant(base, _)
-            if global(base) =>
-        {
-            parts += 1
-        }
-        ExprKind::Builtin(cpl_ir::Builtin::Len, args) if args.len() == 1 && global(&args[0]) => {
-            parts += 1
-        }
-        _ => {}
-    });
-    walk::deep_stmts(&block, &mut |stmt| {
-        if let Stmt::For(_, _, cpl_ir::Iter::Seq(seq, _), _) = stmt {
+    crate::uses::places::each_variable(&block, &mut |v| uses += usize::from(v == (true, root)));
+    crate::uses::places::each_part_base(&block, &mut |base| parts += usize::from(global(base)));
+    crate::uses::loops::each_loop(&block, &mut |_, head| {
+        if let crate::uses::loops::Loop::For(_, cpl_ir::Iter::Seq(seq, _)) = head {
             parts += usize::from(global(seq));
         }
     });
