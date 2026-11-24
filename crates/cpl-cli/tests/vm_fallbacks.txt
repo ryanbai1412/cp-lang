@@ -3,7 +3,6 @@ expr:Call(SortedBag_Int.drain)
 expr:Read
 traced stmt:Expr(Mutate)
 traced stmt:For(Seq)
-untraced fn:SortedSet_Int.each(feeding)
 untraced stmt:Expr(Call)
 untraced stmt:Expr(Mutate)
 untraced stmt:For(Seq)
