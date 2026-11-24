@@ -34,7 +34,7 @@ bounds and matches an accepted C++ at full statement size.
 - cf2152b: **fixed** the code never prints -1, though the statement allows it; the header says so
 - coci12c1p4: **fixed** (assert dropped; 40/40 vs accepted C++, which divides by zero on the other 20)  `assert marbles.sum() > kids` rejects valid inputs where there are no more marbles than children (answer 1). The binary search alone would handle them.
 
-## Read bounds differ from the statement (86)
+## Read bounds differ from the statement (83)
 
 - wtf26d: **fixed** port declares n in 1..=200_000 but the statement allows N <= 1e6 (sum N <= 1e6)
 - agc079c: **fixed** port declares n in 1..=2e5 but the statement allows N <= 250000
@@ -74,7 +74,6 @@ bounds and matches an accepted C++ at full statement size.
 - cf2178g: **fixed** port declares n as 1..=200_000, but the statement allows n up to 5e5 (sum of n <= 5e5)
 - noip02p4: **fixed** statement allows k <= 4, but the port only handles k <= 3 (the header says so); not on DMOJ, cited as Luogu P1034 without a URL
 - noi23p2: **fixed** port reads the test count as 1..=10 but the statement (Luogu copy) allows t <= 15; the Solution's description of the bitmask DP comes from reading the code, not the editorial
-- ucup4s25b, ucup5s03a: Source gives qoj.ac/... without  because qoj.ac is not in scripts/public-hosts.txt and check.sh rejects http(s) links to unlisted hosts
 - sac22cc4p4: **fixed** port caps n <= 2e5 and B, T <= 1e9 (a 'runnable subset'), below the statement's n <= 1e6 and T <= 2e9; kept as a note line
 - tle17c5p6: **fixed** port declares n, m <= 1000 while the statement has n <= 1e5, m <= 2e5
 - ceoi09p3: **fixed** DMOJ page not reachable; statement read from the Luogu mirror P5975, whose bounds (A <= 2e6, coordinates <= 1e5) are wider than the port's types (A, x <= 3e5), so the port may reject that judge's valid input
@@ -97,7 +96,6 @@ bounds and matches an accepted C++ at full statement size.
 - cco09p4: **fixed** reads n as 1..=1000, but the statement allows N <= 10000; it also splits the bottles with two fit() passes (about 3 queries per element per level), so expected queries at N = 1e4 are about 5.5e5, above the 5e5 limit
 - ucup5s06g: **fixed** read bounds (n, m <= 5e5) are wider than the statement's (n <= 1e5, m <= 2e5); harmless
 - cco18p4: **fixed** reads `k: 1..=100` but the statement allows K <= 170, so the K = 170 subtask would trap on input; and Row.find / Col.find scan linearly (std: O(visited)), asking up to R + C questions with R, C <= 1e7, far over the K budget (spec.cp uses ternary_min instead)
-- noip10p2: **noted** (left as is, reason in the idioms worklog) the DMOJ API returns 404 for noip10p2 (not public), so I read the statement on Luogu P1541; Source links dmoj.ca/problem/noip10p2 because the land hook rejects the luogu.com.cn host
 - cco16p4: **fixed** code declares g: 1..=100 but statement allows G <= 10000
 - cco24p1: **fixed** the port types v_i and c_i as 1..=1e9 but the statement allows 0 <= v_i, c_i <= 1e9, so valid inputs with a zero treasure or a zero-cost route would be rejected by validation
 - cf2255b: **fixed** port reads n: 1..=200_000 but the statement allows n up to 1e6 (sum), so valid large tests would be rejected
@@ -115,7 +113,6 @@ bounds and matches an accepted C++ at full statement size.
 - aac4p2: **fixed** (queries read as 0..=1e9; 60/60 vs accepted C++, sample 2 now passes)  the statement allows t = 0 (sample 2 has query 0, expected -1), but the port reads each query as 1..=1e9, so it would reject sample 2
 - coci25c3p2: **fixed** not on DMOJ (dmoj.ca/problem/coci25c3p2 says no such problem). The statement is COCI 2025/26 Round 3 task Festival, in hsin.hr/coci/archive/2025_2026/contest3_tasks.pdf, and the code matches it. hsin.hr is not in scripts/public-hosts.txt and the pre-commit hook rejected the link, so Source names the archive without a URL. coci25c3p5 on main already carries that hsin.hr link
 - nccc10s2: **fixed** the code reads n: 1..=1000, but the statement allows N <= 10^4 ballots, so valid large inputs would be rejected (code not changed)
-- noip06p1, noip10p1, noip10p3: not on DMOJ ('No such problem'). The statements come from Luogu P1063/P1540/P1525, cited without a URL because pre-commit rejects luogu.com.cn (not in scripts/public-hosts.txt)
 - cf2261c: **fixed** port bounds n to 1..=200_000 but the statement allows n <= 1e6 (sum n <= 1e6), so max-size valid inputs would be rejected
 - modinv: **fixed** the statement allows N, M up to 1e19 (u64) and N = 0; the port reads x in 1..=1e18 and m <= 1e18, a caveat its kept top comment already notes
 - nccc9s3: **fixed** the statement says n <= 1e5 but the port declares n in 1..=1_000_000 (looser, harmless)
@@ -151,7 +148,7 @@ bounds and matches an accepted C++ at full statement size.
 - cf2261b: the old title 'Adjacent Bitwise OR Raise' replaced; real problem is 'What's the Capital of France?'
 - cf2222d: the old title 'Prefix-Sum Descending Ranks' is replaced; the real problem is 'Permutation Construction'
 
-## Statement read from a mirror or Source URL constrained by the public-host rule (25)
+## Statement read from a mirror or Source URL constrained by the public-host rule (28)
 
 - iati21a13: DMOJ code iati21a13 now returns 'No such problem'; statement taken from the official IATI 2021 PDF (Senior Day 1 Task 3 News), Source link left on DMOJ because infos.infosbg.com is not an allowed public host
 - egoi22p4: DMOJ code egoi22p4 returns 'No such problem'; statement from the official EGOI 2022 PDF, Source links oj.uz EGOI22_tourists
@@ -178,6 +175,9 @@ bounds and matches an accepted C++ at full statement size.
 - noip04p1: not publicly listed on DMOJ (API 404) though corpus has a 2022 DMOJ AC on it; Source cites dmoj.ca/problem/noip04p1, statement read from Luogu P1089 (NOIP 2004 Senior P1, Jinjin's Savings Plan)
 - noip00p1: DMOJ page is gone, so the statement came from Luogu P1017, which wants '<n>=<digits>(base<r>)' and |n| <= 37336; the port (like its accepted DMOJ submission) prints only the digits, reads x in -32768..=32767, and prints an empty line for x = 0
 - noip09p2: dmoj.ca/problem/noip09p2 is not public ('No such problem'). I read the statement as NOIP 2009 P2 Hankson on Luogu P1072, but the header cites the DMOJ URL because luogu.com.cn is not in scripts/public-hosts.txt.
+- ucup4s25b, ucup5s03a: Source gives qoj.ac/... without  because qoj.ac is not in scripts/public-hosts.txt and check.sh rejects http(s) links to unlisted hosts
+- noip10p2: **noted** (left as is, reason in the idioms worklog) the DMOJ API returns 404 for noip10p2 (not public), so I read the statement on Luogu P1541; Source links dmoj.ca/problem/noip10p2 because the land hook rejects the luogu.com.cn host
+- noip06p1, noip10p1, noip10p3: not on DMOJ ('No such problem'). The statements come from Luogu P1063/P1540/P1525, cited without a URL because pre-commit rejects luogu.com.cn (not in scripts/public-hosts.txt)
 
 ## Unproven step the header takes from the code (41)
 
