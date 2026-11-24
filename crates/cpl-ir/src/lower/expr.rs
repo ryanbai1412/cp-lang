@@ -849,27 +849,6 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    pub(super) fn do_expr(
-        &mut self,
-        hint: Option<&Ty>,
-        span: Span,
-        body: impl FnOnce(&mut Self, &mut Vec<Stmt>),
-    ) -> Expr {
-        self.cx.dos.push(DoFrame {
-            ty: hint.cloned(),
-            loops: self.cx.loops.len(),
-            open: false,
-        });
-        let mut out = Vec::new();
-        body(self, &mut out);
-        let frame = self.cx.dos.pop().expect("pushed above");
-        self.mk(
-            ExprKind::Do(Block { stmts: out }),
-            frame.ty.unwrap_or(Ty::Error),
-            span,
-        )
-    }
-
     /// A `match` or `if` that is the whole value of a statement and has
     /// an arm that leaves (`Skip => continue`): its arms run as statements
     /// ahead of the statement, each storing its value, so the arm that

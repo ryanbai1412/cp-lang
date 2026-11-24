@@ -19,6 +19,7 @@ mod consts;
 mod contains;
 mod declare;
 mod declared_keys;
+mod do_block;
 mod domain_impl;
 mod expr;
 mod float_fn;
