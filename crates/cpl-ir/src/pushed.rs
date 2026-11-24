@@ -78,7 +78,7 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
         summary.yields_fns = f
             .locals
             .iter()
-            .any(|local| local.name == "__yields" && local.ty.has_fn());
+            .any(|local| local.name == "__yields" && local.ty.has_fn(program));
     }
     loop {
         let before = summaries.clone();
@@ -269,7 +269,7 @@ fn yields_lent_closures(program: &Program) -> BTreeMap<usize, String> {
         if !f
             .locals
             .iter()
-            .any(|l| l.name == "__yields" && l.ty.has_fn())
+            .any(|l| l.name == "__yields" && l.ty.has_fn(program))
         {
             continue;
         }

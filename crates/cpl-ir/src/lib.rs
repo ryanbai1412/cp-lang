@@ -240,8 +240,17 @@ impl Ty {
         }
     }
 
-    /// True when some part is a fn value.
-    pub fn has_fn(&self) -> bool {
+    /// True when some part is a fn value, also inside a struct's fields or
+    /// an enum's variants.
+    pub fn has_fn(&self, program: &Program) -> bool {
+        self.has_fn_in(program, &mut Vec::new())
+    }
+
+    /// `seen` holds the structs and enums being walked, as in `comparable_in`.
+    fn has_fn_in(&self, program: &Program, seen: &mut Vec<(bool, usize)>) -> bool {
+        let any = |ts: Vec<&Ty>, seen: &mut Vec<(bool, usize)>| {
+            ts.into_iter().any(|t| t.has_fn_in(program, seen))
+        };
         match self {
             Ty::Fn(..) => true,
             Ty::Range(t)
@@ -252,11 +261,32 @@ impl Ty {
             | Ty::MutView(t, _)
             | Ty::Set(t)
             | Ty::HashSet(t)
-            | Ty::Mut(t) => t.has_fn(),
-            Ty::Array { elem, .. } => elem.has_fn(),
-            Ty::Tuple(ts) => ts.iter().any(Ty::has_fn),
-            Ty::Record(fs) => fs.iter().any(|(_, t)| t.has_fn()),
-            Ty::Map(k, v) | Ty::HashMap(k, v) => k.has_fn() || v.has_fn(),
+            | Ty::Mut(t) => t.has_fn_in(program, seen),
+            Ty::Array { elem, .. } => elem.has_fn_in(program, seen),
+            Ty::Tuple(ts) => any(ts.iter().collect(), seen),
+            Ty::Record(fs) => any(fs.iter().map(|(_, t)| t).collect(), seen),
+            Ty::Map(k, v) | Ty::HashMap(k, v) => any(vec![k, v], seen),
+            Ty::Struct(id) | Ty::Enum(id) => {
+                let key = (matches!(self, Ty::Enum(_)), *id);
+                if seen.contains(&key) {
+                    return false;
+                }
+                seen.push(key);
+                let found = match self {
+                    Ty::Struct(_) => any(
+                        program.structs[*id].fields.iter().map(|(_, t)| t).collect(),
+                        seen,
+                    ),
+                    _ => any(
+                        (program.enums[*id].variants.iter())
+                            .flat_map(|(_, fs)| fs.iter())
+                            .collect(),
+                        seen,
+                    ),
+                };
+                seen.pop();
+                found
+            }
             _ => false,
         }
     }
