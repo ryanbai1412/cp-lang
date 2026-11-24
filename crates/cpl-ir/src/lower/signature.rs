@@ -101,13 +101,6 @@ impl<'a> Lowerer<'a> {
 
     /// `B.Item` for `B` bound to `t`: the `type Item = ..` of an impl for `t`.
     pub(in crate::lower) fn assoc_type(&mut self, t: &Ty, item: &str) -> Option<Ty> {
-        if item == "Arc" {
-            if let Ty::Array { elem, .. } = t {
-                if let Ty::List(arc) = &**elem {
-                    return Some((**arc).clone());
-                }
-            }
-        }
         for idx in 0..self.impls.len() {
             let (m, offset, target, body) = (
                 self.impls[idx].mod_id,
