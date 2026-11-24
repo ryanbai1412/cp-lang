@@ -1020,9 +1020,24 @@ pub struct SortedBag<K>:
         let d = self.below_in(n, h, wide) - self.below_in(n, h, narrow)
         if d > 0: d else: 0
 
-    fn ge(self, a: K, inc: Bool) -> Int = self.first_where(k => if inc: not (k < a) else: a < k)
+    fn ge(self, a: K, inc: Bool) -> Int = self.bound(a, not inc, false)
 
-    fn le(self, b: K, inc: Bool) -> Int = self.last_where(k => if inc: not (b < k) else: k < b)
+    fn le(self, b: K, inc: Bool) -> Int = self.bound(b, inc, true)
+
+    // The slot of the first key `> x` (`>= x` unless `upper`), or with `back` the last key before
+    // it, or -1: `first_where` and `last_where` by comparison, so a range makes no closure.
+    fn bound(self, x: K, upper: Bool, back: Bool) -> Int:
+        if root < 0: return -1
+        var n = root
+        for _ in 0..height: n = self.kid(n, self.at(n, 1, x, upper) - 1)
+        let p = self.at(n, 0, x, upper)
+        let s = if back:
+            if p > 0: n * BAG_B + p - 1 else: self.step(n * BAG_B, true)
+        else:
+            if p < self.fill(n): n * BAG_B + p else: self.step(n * BAG_B + p - 1, false)
+        if s < 0: return -1
+        let k = keys[s]
+        return if (if upper: x < k else: not (k < x)) != back: s else: -1
 
     // The slot of key `k`, or -1.
     fn find(self, k: K) -> Int:
@@ -1804,14 +1819,9 @@ pub struct AugSortedBag<K, T>:
     // `c` copies of `v` folded together, by doubling.
     fn times(self, v: T, c: Int) -> T:
         if c == 1: return v
-        var out = id
-        var p = v
-        var k = c
-        while k > 0:
-            if k % 2 == 1: out = op(out, p)
-            k /= 2
-            if k > 0: p = op(p, p)
-        out
+        let h = self.times(v, c / 2)
+        let d = op(h, h)
+        if c % 2 == 1: op(d, v) else: d
 
     // The fold of entry `j` of node `n` at height `h`: a child's fold, or `leaf(k)` per copy.
     fn part(self, n: Int, h: Int, j: Int) -> T:
@@ -1819,11 +1829,15 @@ pub struct AugSortedBag<K, T>:
         unchecked:
             return if h > 0: agg[bag.kid(n, j)] else: self.times(leaf(bag.keys[s]), bag.ws[s])
 
-    fn node_fold(self, n: Int, h: Int) -> T:
-        var acc = id
-        unchecked:
-            for j in 0..bag.fill(n): acc = op(acc, self.part(n, h, j))
+    // The fold of entries `a..b` of node `n` at height `h`; it starts from the first entry, so
+    // only an empty span reads `id`.
+    fn fold_of(self, n: Int, h: Int, a: Int, b: Int) -> T:
+        if a >= b: return id
+        var acc = self.part(n, h, a)
+        for j in a + 1..b: acc = op(acc, self.part(n, h, j))
         acc
+
+    fn node_fold(self, n: Int, h: Int) -> T = self.fold_of(n, h, 0, bag.fill(n))
 
     fn route(self, n: Int, x: K) -> Int = bag.at(n, 1, x, true) - 1
 
@@ -1857,29 +1871,20 @@ pub struct AugSortedBag<K, T>:
         while agg.len < bag.meta.len / 4: agg.push(id)
         if bag.root >= 0: self.refold_at(bag.root, bag.height, x, wide)
 
-    // The fold of the keys `< x` (`<= x` with `le`) under node `n0` at height `h0`.
-    fn prefix(self, n0: Int, h0: Int, x: K, le: Bool) -> T:
-        var acc = id
-        var n = n0
-        unchecked:
-            for h in (1..=h0).rev:
-                let i = self.route(n, x)
-                for j in 0..i: acc = op(acc, self.part(n, h, j))
-                n = bag.kid(n, i)
-            for j in 0..bag.at(n, 0, x, le): acc = op(acc, self.part(n, 0, j))
-        acc
+    // The fold of the keys `< x` (`<= x` with `le`) under node `n` at height `h`.
+    fn prefix(self, n: Int, h: Int, x: K, le: Bool) -> T:
+        if h == 0: return self.fold_of(n, 0, 0, bag.at(n, 0, x, le))
+        let i = self.route(n, x)
+        let below = self.prefix(bag.kid(n, i), h - 1, x, le)
+        return if i == 0: below else: op(self.fold_of(n, h, 0, i), below)
 
-    // The fold of the keys `>= x` (`> x` with `gt`) under node `n0` at height `h0`.
-    fn suffix(self, n0: Int, h0: Int, x: K, gt: Bool) -> T:
-        var acc = id
-        var n = n0
-        unchecked:
-            for h in (1..=h0).rev:
-                let i = self.route(n, x)
-                for j in (i + 1..bag.fill(n)).rev: acc = op(self.part(n, h, j), acc)
-                n = bag.kid(n, i)
-            for j in (bag.at(n, 0, x, gt)..bag.fill(n)).rev: acc = op(self.part(n, 0, j), acc)
-        acc
+    // The fold of the keys `>= x` (`> x` with `gt`) under node `n` at height `h`.
+    fn suffix(self, n: Int, h: Int, x: K, gt: Bool) -> T:
+        let f = bag.fill(n)
+        if h == 0: return self.fold_of(n, 0, bag.at(n, 0, x, gt), f)
+        let i = self.route(n, x)
+        let below = self.suffix(bag.kid(n, i), h - 1, x, gt)
+        return if i + 1 >= f: below else: op(below, self.fold_of(n, h, i + 1, f))
 
     /// Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
     ///
@@ -2070,16 +2075,11 @@ pub struct AugSortedBag<K, T>:
                 let j = self.route(n, hi)
                 if i != j:
                     var acc = self.suffix(bag.kid(n, i), h - 1, lo, false)
-                    for k in i + 1..j: acc = op(acc, self.part(n, h, k))
+                    if j > i + 1: acc = op(acc, self.fold_of(n, h, i + 1, j))
                     return op(acc, self.prefix(bag.kid(n, j), h - 1, hi, false))
                 n = bag.kid(n, i)
                 h -= 1
-            var acc = id
-            for k in bag.at(n, 0, lo, false)..bag.at(n, 0, hi, false): acc = op(
-                acc,
-                self.part(n, 0, k),
-            )
-            return acc
+            return self.fold_of(n, 0, bag.at(n, 0, lo, false), bag.at(n, 0, hi, false))
 
     /// Yield all elements in ascending order.
     ///

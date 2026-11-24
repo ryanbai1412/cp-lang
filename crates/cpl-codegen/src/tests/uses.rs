@@ -266,10 +266,7 @@ fn each_copy_a_library_call_makes_is_listed_at_its_fn() {
         whats,
         [
             "a read in AugSortedBag.fold_between",
-            "a read in AugSortedBag.fold_between",
-            "a read in AugSortedBag.fold_from",
-            "a read in AugSortedBag.fold_upto",
-            "a read in AugSortedBag.sub"
+            "a read in AugSortedBag.fold_of"
         ]
     );
 }
