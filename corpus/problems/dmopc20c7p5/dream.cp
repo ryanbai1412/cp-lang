@@ -1,36 +1,21 @@
-// DMOPC '20 C7 P5 (dream): items with costs, pairs (u, v, w) paying w when both
-// u and v are bought. Maximize reward minus cost. Project selection: a pair is
-// profit w, an item is profit -cost, and buying a pair needs both its items, so
-// the answer is the maximum closure of the needs graph.
-// Needs sum domains: `Item + Pair` is one index space whose elements are
-// either an item or a pair, so no hand offsets like `n + e`.
-with io(base: 1)
+// DMOPC '20 C7 P5 (dream): cities with fees, roads (u, v, toll) earning toll when both cities
+// are paid. Maximize tolls minus fees. Project selection: a road is profit toll, a city is
+// profit -fee, and taking a road needs both its cities, so the answer is the maximum closure of
+// the needs graph. Cities and roads share one index space, roads after the cities.
+let (n, m) = read<(1..=500, 0..=500)>()
+domain City = 1..=n
+domain Road = 0..m
+let fee: [City]0..=1e9 = read()
+let roads: [Road](u: City, v: City, toll: 0..=1e9) = read()
 
-domain Item = read()
-domain Pair = read()
-let cost: [Item]Int = read()
-let pairs: [Pair](u: Item, v: Item, w: Int) = read()
+domain Choice = 0..n + m
+fn city(c: City) -> Choice = Choice(c.ord)
+fn road(r: Road) -> Choice = Choice(n + r.ord)
 
-domain Node = Item + Pair
-let profit = [Node] x => match x:
-    Item(i) => -cost[i]
-    Pair(p) => pairs[p].w
-var unlocks: [Item]List<Node> = []
-for p in Pair:
-    for i in [pairs[p].u, pairs[p].v]:
-        unlocks[i].push(Node(p))
-fn before(x: Node) -> List<Node> = match x:
-    Item(i) => unlocks[i]
-    Pair(p) => []
-print(max_closure(before: before, profit: x => profit[x]).value)
-
-// The same cut as an explicit network, for models that are not a closure:
-//
-//     domain Net = Item + Pair + labels(S, T)
-//     var net = FlowGraph<Net>()
-//     for i in Item: net.add(Net(i), Net.T, cost[i])
-//     for p in Pair:
-//         net.add(Net.S, Net(p), pairs[p].w)
-//         net.add(Net(p), Net(pairs[p].u), cap: none)
-//         net.add(Net(p), Net(pairs[p].v), cap: none)
-//     print(sum(pairs[p].w for p in Pair) - net.max_flow(Net.S, Net.T))
+var profit: [Choice]Int = 0
+var needed_by: [Choice]List<Choice> = []
+for c in City: profit[city(c)] = -fee[c]
+for (r, (u, v, toll)) in roads.items:
+    profit[road(r)] = toll
+    for c in [u, v]: needed_by[city(c)].push(road(r))
+print(max_closure(needed_by, profit: x => profit[x]).value)
