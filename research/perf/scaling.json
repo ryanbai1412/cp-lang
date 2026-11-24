@@ -2156,7 +2156,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.all",
-   "measured": 3.93,
+   "measured": 4.2,
    "n": 16384,
    "ok": true
   },
@@ -2164,7 +2164,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.any",
-   "measured": 4.05,
+   "measured": 4.17,
    "n": 16384,
    "ok": true
   },
@@ -2172,7 +2172,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.clone",
-   "measured": 7.57,
+   "measured": 6.83,
    "n": 16384,
    "ok": true
   },
@@ -2180,7 +2180,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.contains",
-   "measured": 4.38,
+   "measured": 4.18,
    "n": 16384,
    "ok": true
   },
@@ -2188,7 +2188,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.count",
-   "measured": 4.09,
+   "measured": 3.79,
    "n": 16384,
    "ok": true
   },
@@ -2196,7 +2196,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.cut_after",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2212,7 +2212,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.fill",
-   "measured": 4.27,
+   "measured": 4.19,
    "n": 16384,
    "ok": true
   },
@@ -2220,7 +2220,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.filter",
-   "measured": 4.1,
+   "measured": 4.17,
    "n": 16384,
    "ok": true
   },
@@ -2228,7 +2228,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.find",
-   "measured": 4.03,
+   "measured": 4.32,
    "n": 16384,
    "ok": true
   },
@@ -2236,7 +2236,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.first_ge",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -2244,7 +2244,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.first_gt",
-   "measured": 1.04,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2252,7 +2252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.get",
-   "measured": 1.03,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2260,7 +2260,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.insert",
-   "measured": 4.68,
+   "measured": 4.78,
    "n": 16384,
    "ok": true
   },
@@ -2276,7 +2276,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.last_lt",
-   "measured": 1.04,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2284,7 +2284,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.map",
-   "measured": 4.13,
+   "measured": 4.18,
    "n": 16384,
    "ok": true
   },
@@ -2292,7 +2292,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.max",
-   "measured": 3.97,
+   "measured": 4.08,
    "n": 16384,
    "ok": true
   },
@@ -2300,7 +2300,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.min",
-   "measured": 4.05,
+   "measured": 4.1,
    "n": 16384,
    "ok": true
   },
@@ -2308,7 +2308,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.pop",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2316,7 +2316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.push",
-   "measured": 1.03,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2324,7 +2324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.push_id",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2332,7 +2332,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reach",
-   "measured": 4.07,
+   "measured": 4.2,
    "n": 16384,
    "ok": true
   },
@@ -2340,15 +2340,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.remove",
-   "measured": 3.92,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/builtin_list.cp::builtin.List.reserve": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "builtin.List.reserve",
-   "measured": 6.64,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -2356,7 +2348,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reverse",
-   "measured": 3.94,
+   "measured": 4.2,
    "n": 16384,
    "ok": true
   },
@@ -2364,7 +2356,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reversed",
-   "measured": 4.2,
+   "measured": 4.15,
    "n": 16384,
    "ok": true
   },
@@ -2372,7 +2364,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.List.sort",
-   "measured": 5.05,
+   "measured": 4.68,
    "n": 16384,
    "ok": true
   },
@@ -2380,7 +2372,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.List.sorted",
-   "measured": 5.04,
+   "measured": 4.76,
    "n": 16384,
    "ok": true
   },
@@ -2388,7 +2380,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.sum",
-   "measured": 4.21,
+   "measured": 4.14,
    "n": 16384,
    "ok": true
   },
@@ -2396,7 +2388,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.swap",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2404,8 +2396,16 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.to_list",
-   "measured": 4.05,
+   "measured": 4.26,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list_reserve.cp::builtin.List.reserve": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.reserve",
+   "measured": 2.23,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/builtin_map.cp::builtin.Map.clear": {

@@ -44,9 +44,6 @@ for r in 0..1024:
     if xs.any(big): s += 1 // timed: builtin.List.any
     s += xs.find(n) ?? 0 // timed: builtin.List.find
     s += ys.reach(while: up).len // timed: builtin.List.reach
-    var g = xs.clone()
-    g.reserve(2 * n) // timed: builtin.List.reserve
-    s += g.len
 for r in 0..32:
     var c = xs.clone()
     c.sort() // timed: builtin.List.sort
