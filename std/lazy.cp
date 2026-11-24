@@ -1085,10 +1085,10 @@ pub struct Rope<D, T>:
 /// Tags come from an `Action<T, F>` whose `apply(f, x, span)` acts on each element independently
 /// (it is a homomorphism of the fold, as every `Action` is), so a tag and a reversal commute.
 pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
-    lc: List<Int>
-    rc: List<Int>
-    pri: List<Int>
-    sz: List<Int>
+    lc: List<0..=2_147_483_647>
+    rc: List<0..=2_147_483_647>
+    pri: List<0..=2_147_483_647>
+    sz: List<0..=2_147_483_647>
     val: List<T>
     fwd: List<T>
     bwd: List<T>
