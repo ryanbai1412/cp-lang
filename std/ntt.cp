@@ -199,7 +199,7 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
             if let k0 = at:
                 let k = if cyclic and k0 >= 0: k0 % na else: k0
                 if 0 <= k < n_out:
-                    out[k] = out[k] + a[i] * b[j]
+                    out[k] += a[i] * b[j]
     out
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
@@ -561,7 +561,7 @@ pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false):
         var n_t = T.one
         var m = n
         while m > 1:
-            n_t = n_t + n_t
+            n_t += n_t
             m >>= 1
         let inv_n = T.one / n_t
         unchecked:

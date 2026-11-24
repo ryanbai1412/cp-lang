@@ -29,9 +29,9 @@ pub struct Fenwick<D, T: Add + Sub>:
         if let init = a:
             for i in D:
                 let p = i.ord + 1
-                t[p] = t[p] + init[i]
+                t[p] += init[i]
                 let q = p + (p & -p)
-                if q <= D.count: t[q] = t[q] + t[p]
+                if q <= D.count: t[q] += t[p]
         Fenwick(t)
 
     /// Add `x` to the value at position `i`: `a[i] += x`.
@@ -59,7 +59,7 @@ pub struct Fenwick<D, T: Add + Sub>:
         var p = b.ord
         var acc = T.zero
         while p > 0:
-            acc = acc + t[p]
+            acc += t[p]
             p -= p & -p
         acc
 
@@ -213,7 +213,7 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
         while p > 0:
             var q = c
             while q > 0:
-                acc = acc + t[p * (C.count + 1) + q]
+                acc += t[p * (C.count + 1) + q]
                 q -= q & -q
             p -= p & -p
         acc
@@ -317,7 +317,7 @@ pub struct DualFenwick<D, T: Add + Sub>:
         var p = i.ord + 1
         var acc = T.zero
         while p > 0:
-            acc = acc + t[p]
+            acc += t[p]
             p -= p & -p
         acc
 
@@ -429,7 +429,7 @@ pub struct XorFenwick<D, T>:
                 let p = i.ord + 1
                 t[p] ^= init[i]
                 let q = p + (p & -p)
-                if q <= D.count: t[q] = t[q] ^ t[p]
+                if q <= D.count: t[q] ^= t[p]
         XorFenwick(t)
 
     /// Xor `x` into the value at position `i`: `a[i] ^= x`.
@@ -453,7 +453,7 @@ pub struct XorFenwick<D, T>:
         var p = b.ord
         var acc = T.zero
         while p > 0:
-            acc = acc ^ t[p]
+            acc ^= t[p]
             p -= p & -p
         acc
 
@@ -548,7 +548,7 @@ pub struct SparseFenwick2D<T: Add + Sub>:
         while i > 0:
             var j = lower_bound(ys[i], y)
             while j > 0:
-                acc = acc + ft[i][j]
+                acc += ft[i][j]
                 j -= j & -j
             i -= i & -i
         acc
