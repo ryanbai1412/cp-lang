@@ -2,7 +2,7 @@
 
 [[case]]
 seed = 1
-size = 8
+size = 5
 
 [[case]]
 seed = 2
@@ -10,27 +10,19 @@ size = 8
 
 [[case]]
 seed = 3
-size = 8
+size = 16
 
 [[case]]
 seed = 4
-size = 8
+size = 32
 
 [[case]]
 seed = 5
-size = 8
+size = 300
 
 [[case]]
 seed = 6
-size = 8
-
-[[case]]
-seed = 7
-size = 64
-
-[[case]]
-seed = 8
-size = 64
+size = 3000
 
 [[case]]
 args = ["--max"]
