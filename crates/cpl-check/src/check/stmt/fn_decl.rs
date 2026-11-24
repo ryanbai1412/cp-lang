@@ -149,6 +149,11 @@ impl<'a> Checker<'a> {
         local: bool,
         memo: Option<(Span, bool)>,
     ) {
+        let decl = match self_ty {
+            None => self.trait_params_generic(f),
+            Some(_) => std::borrow::Cow::Borrowed(f),
+        };
+        let f = &*decl;
         if let Some(lends) = &f.lends {
             let mut returned = Vec::new();
             match &f.body {

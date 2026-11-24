@@ -913,6 +913,8 @@ impl<'a> Checker<'a> {
                 )]
             }
             S::Fn(f) => {
+                let decl = self.trait_params_generic(f);
+                let f = &*decl;
                 let ty = self.fn_sig(f, None);
                 let mut out = Vec::new();
                 // `@memo(into: dp)`: the answers, indexed by the arguments,

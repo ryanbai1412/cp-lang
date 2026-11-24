@@ -2,9 +2,7 @@
 // rule: 08.1.1
 // Generic domain `V` is inferred from row bounds on static methods and from
 // trait-typed parameters over domain-indexed tables without defaulting to Int.
-trait Adj<V>:
-    fn out(self, u: V) -> List<V>
-
+use std.graph.{Next}
 struct Net<V>:
     n: Int
 
@@ -13,10 +11,10 @@ struct Net<V>:
 
     pub fn count(self, v: V) -> Int = n + v.ord
 
-fn deg_of<V>(g: Adj<V>) -> [V]Int:
+fn deg_of<V>(g: Next<V>) -> [V]Int:
     var out: [V]Int = [V] _ => 0
     for v in V:
-        out[v] = g[v].len
+        out[v] = g.out(v).count()
     out
 
 domain V = 0..3

@@ -44,6 +44,7 @@ mod spelling;
 mod steps;
 mod stmt;
 mod storage;
+mod trait_params;
 mod tuple_bound;
 mod variant;
 mod views;
