@@ -688,7 +688,7 @@ exec {shutil.which("git")} "$@"
         (ours / "scripts" / "spec-gate.py").write_text(
             "import sys, pathlib\nsys.exit(1 if 'Bad' in pathlib.Path('std/a.cp').read_text() else 0)\n")
         (ours / "scripts" / "affected.py").write_text(
-            "print('spec/conformance/c.cp')\n")
+            "print('spec/conformance/c.cp')\nprint('corpus/p.cp')\n")
         (ours / "scripts" / "conform_staged.py").write_text(
             "import sys\nprint('cases', *sys.argv[1:], file=sys.stderr)\n")
         (ours / "spec" / "conformance").mkdir(parents=True, exist_ok=True)
@@ -706,6 +706,36 @@ exec {shutil.which("git")} "$@"
         r = self.land(ours)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertRegex(r.stderr, r"cases --base [0-9a-f]{40} --build spec/conformance/c.cp")
+        self.assertRegex(r.stderr, r"cases --base [0-9a-f]{40} --check corpus/p.cp")
+
+    def test_a_fetch_mid_land_leaves_the_std_diff_on_the_pinned_base(self):
+        # VM-expr's interp-only series ran the std signature callers: a fetch in its
+        # worktree mid-land moved FETCH_HEAD past main's newer std commits.
+        ours, theirs = self.clone("ours"), self.clone("theirs")
+        (ours / "scripts" / "affected.py").write_text(
+            "import os, subprocess, sys\n"
+            "if sys.argv[1] == '--build-slices':\n"
+            f"    t = {str(theirs)!r}\n"
+            "    subprocess.run(['git', 'pull', '-q', 'origin', 'main'], cwd=t, check=True)\n"
+            "    os.makedirs(t + '/std', exist_ok=True)\n"
+            "    open(t + '/std/b.cp', 'w').write('pub fn g(x: Int):\\n')\n"
+            "    subprocess.run(['git', 'add', '-A'], cwd=t, check=True)\n"
+            "    subprocess.run(['git', 'commit', '-q', '--no-verify', '-m', 'std', '-m', 'Domain: infra'],\n"
+            "                   cwd=t, check=True)\n"
+            "    subprocess.run(['git', 'push', '-q', 'origin', 'HEAD:main'], cwd=t, check=True)\n"
+            "    subprocess.run(['git', 'fetch', '-q', 'origin', 'main'], check=True)\n"
+            "elif sys.argv[1] == '--sig-callers':\n"
+            "    print('corpus/p.cp')\n")
+        (ours / "scripts" / "conform_staged.py").write_text(
+            "import sys\nprint('cases', *sys.argv[1:], file=sys.stderr)\n")
+        self.commit(ours, "an interp-only change")
+        (ours / ".git" / "cpl-pending-slices").write_text("x\n")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("touched-path slices", r.stderr)
+        self.assertNotIn("changed std signature", r.stderr)
+        git(ours, "fetch", "-q")
+        self.assertIn("std/b.cp", git(ours, "ls-tree", "-r", "--name-only", "origin/main"))
 
     def test_pending_cases_refuse_uncommitted_compiler_changes(self):
         ours = self.clone("ours")

@@ -4,6 +4,7 @@
     scripts/conform_staged.py CPL_CONFORM CASE...
     scripts/conform_staged.py --build CASE...   build cpl-cli and cpl-conform first (land.sh)
     scripts/conform_staged.py --base REV [--build] ...   a case failing at REV too is main's
+    scripts/conform_staged.py --base REV --check PROGRAM...   `cpl check` them, same rule (land.sh)
 
 A staged case that fails blocks the commit unless HEAD's
 research/scoreboard.json already records it as failing: no new failing case,
@@ -15,6 +16,8 @@ run again at REV (new_reds.py's scratch worktree and target, cached per base
 tree): failing there too, it is printed as "pre-existing red, owner <lane>"
 and logged for the culprit finder, and doesn't refuse (f33d10f7 was refused
 for a case red on main). A base that doesn't build, or lacks the case, refuses.
+`--check` holds corpus programs calling a changed std signature to the same
+rule with `cpl check` (VM-expr was refused for noi09p4/spec.cp, red on main).
 """
 import json
 import os
@@ -95,10 +98,70 @@ def base_verdicts(cases, base, run=subprocess.run):
     return {c: cache[f"conform:{c}"] for c in cases}
 
 
-def owner(case, base):
+def base_checks(programs, base, run=subprocess.run):
+    """{program: 'fail' | 'pass' | 'absent' | 'unbuilt'} for `cpl check` of `programs` at `base`."""
+    import new_reds
+    common = Path(new_reds.git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=ROOT))
+    cache_file = common / "cpl-base-tests" / f"{new_reds.git('rev-parse', base + '^{tree}', cwd=ROOT)}.json"
+    cache = json.loads(cache_file.read_text()) if cache_file.is_file() else {}
+    todo = [p for p in programs if f"check:{p}" not in cache]
+    if todo:
+        wt = new_reds.base_checkout(common, base)
+        target = Path(os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target")))
+        env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
+        print(f"conform_staged: checking {len(todo)} failing program(s) at the base {base[:9]}", file=sys.stderr)
+        if run(["cargo", "build", "-q", "-p", "cpl-cli"], cwd=wt, env=env).returncode:
+            return {p: cache.get(f"check:{p}", "unbuilt") for p in programs}
+        for p in todo:
+            if not (wt / p).is_file():
+                cache[f"check:{p}"] = "absent"
+                continue
+            r = run([str(target / "debug" / "cpl"), "check", p], cwd=wt, env=env, capture_output=True, text=True)
+            cache[f"check:{p}"] = "fail" if r.returncode else "pass"
+        cache_file.parent.mkdir(exist_ok=True)
+        cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+    return {p: cache[f"check:{p}"] for p in programs}
+
+
+def check_programs(programs, base, run=subprocess.run):
+    """`cpl check` each program at the tip; 1 if one fails that checks at `base`."""
+    if run(["cargo", "build", "-q", "-p", "cpl-cli"], cwd=ROOT).returncode:
+        return 1
+    target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
+    cpl = str((target if target.is_absolute() else ROOT / target) / "debug" / "cpl")
+    failing = []
+    for p in programs:
+        if not (ROOT / p).is_file():
+            continue
+        r = run([cpl, "check", p], cwd=ROOT, capture_output=True, text=True)
+        if r.returncode:
+            sys.stderr.write(r.stdout + r.stderr)
+            failing.append(p)
+    if not failing:
+        return 0
+    rev = subprocess.run(["git", "rev-parse", base], cwd=ROOT, capture_output=True, text=True).stdout.strip() or base
+    at = base_checks(failing, rev, run)
+    common = Path(subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT,
+                                 capture_output=True, text=True).stdout.strip() or ROOT / ".git")
+    new = []
+    with open(common / "cpl-preexisting-reds.log", "a") as log:
+        for p in failing:
+            if at[p] != "fail":
+                print(f"conform_staged: NEW red: {p} checks at the base {rev[:9]} ({at[p]}) and fails with "
+                      "this change; update it in this change", file=sys.stderr)
+                new.append(p)
+                continue
+            who = owner(p, rev, path=p)
+            print(f"conform_staged: pre-existing red, owner {who}: {p} fails cpl check at the base {rev[:9]} "
+                  "too; main's culprit job routes it, not refusing", file=sys.stderr)
+            log.write(f"{rev} {who} check:{p}\n")
+    return 1 if new else 0
+
+
+def owner(case, base, path=None):
     from culprit import describe
     import new_reds
-    sha = new_reds.git("log", "-1", "--format=%H", base, "--", PREFIX + case, cwd=ROOT, check=False)
+    sha = new_reds.git("log", "-1", "--format=%H", base, "--", path or PREFIX + case, cwd=ROOT, check=False)
     return (describe(sha, str(ROOT))[1] if sha else "") or "unknown"
 
 
@@ -106,6 +169,8 @@ def main(argv, run=subprocess.run):
     base = None
     if argv[:1] == ["--base"]:
         base, argv = argv[1], argv[2:]
+    if argv[:1] == ["--check"] and base:
+        return check_programs(argv[1:], base, run)
     if argv[:1] == ["--build"]:
         if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=ROOT).returncode:
             return 1

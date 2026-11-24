@@ -132,6 +132,10 @@ reexec_if_land_changed() {
         exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
 }
 pull || exit 1
+# The main this land rebased onto, pinned: FETCH_HEAD moves with any fetch in this
+# worktree meanwhile, and diffing against a newer main reads its std commits as this
+# change's (VM-expr's interp-only series ran the std signature callers).
+main_base=$(git rev-parse FETCH_HEAD)
 reexec_if_land_changed
 # The hook ran the commit tier on the old base; a rebase past a change to the
 # gates themselves (scripts/, the hooks, gen.toml, the justfile) reruns it on the
@@ -140,8 +144,8 @@ reexec_if_land_changed
 gate_paths="scripts .githooks gen.toml justfile"
 rechecked=
 recheck() {
-    moved=$(git diff --name-only "$checked" FETCH_HEAD -- $gate_paths)
-    checked=$(git rev-parse FETCH_HEAD)
+    moved=$(git diff --name-only "$checked" "$main_base" -- $gate_paths)
+    checked=$main_base
     [ -n "$moved" ] && [ -x .githooks/pre-commit ] || return 0
     # Once per land: rerunning on every lost push race livelocks landing while
     # main keeps changing scripts/; CI gates the tip that lands.
@@ -151,7 +155,7 @@ recheck() {
     tip=$(git rev-parse HEAD)
     prev=$(trap -p EXIT)
     trap 'git reset -q --soft "$tip"' EXIT
-    git reset -q --soft FETCH_HEAD
+    git reset -q --soft "$main_base"
     # No cpl is handed over: the rebase rewrote main's crate files, and the commit tier
     # rebuilds target/debug/cpl before the corpus audit and the ratchet run it.
     set +e
@@ -166,7 +170,7 @@ recheck() {
 # commit whose hook failed left nothing new, and pushing the regeneration
 # alone would ship generated files without their source.
 failed_log="$(git rev-parse --git-common-dir)/cpl-commit-failed.log"
-if [ -z "$(git rev-list FETCH_HEAD..HEAD)" ]; then
+if [ -z "$(git rev-list $main_base..HEAD)" ]; then
     echo "land: nothing to land: HEAD is already on main (did the commit or its hook fail?)" >&2
     [ ! -s "$failed_log" ] || { echo "land: the last failed pre-commit ended:" >&2; tail -15 "$failed_log" >&2; }
     exit 1
@@ -180,7 +184,7 @@ if [ -s "$pending" ]; then
     slices=$(sort -u "$pending" | tr '\n' ' ' | sed 's/ $//')
     echo "land: running the touched-path slices the hook's cut skipped: $slices" >&2
     { uv run --quiet python scripts/affected.py --build-slices $slices >&2 &&
-        uv run --quiet python scripts/affected.py --run-slices --base "$(git rev-parse FETCH_HEAD)" $slices >&2; } ||
+        uv run --quiet python scripts/affected.py --run-slices --base "$main_base" $slices >&2; } ||
         { echo "land: a touched-path slice fails at the rebased tip; fix it and land again: uv run scripts/affected.py --run-slices $slices" >&2; exit 1; }
     rm -f "$pending"
 fi
@@ -201,7 +205,7 @@ run_pending_steps() {
     tip=$(git rev-parse HEAD)
     prev=$(trap -p EXIT)
     trap 'git reset -q --soft "$tip"' EXIT
-    git reset -q --soft FETCH_HEAD
+    git reset -q --soft "$main_base"
     set +e
     uv run --quiet python scripts/ci.py commit --only "$steps" >&2
     rc=$?
@@ -215,7 +219,7 @@ run_pending_steps
 # landed a case without the codegen fix its author had left unstaged.
 # Checks too quick to leave to a hook a cut may have skipped (7e3ff18e1 landed
 # a std trait with no traits.toml case while its hook was cut).
-std_changed=$(git diff --name-only FETCH_HEAD HEAD -- 'std/*.cp' spec/conformance/traits.toml)
+std_changed=$(git diff --name-only "$main_base" HEAD -- 'std/*.cp' spec/conformance/traits.toml)
 if [ -n "$std_changed" ] && [ -f scripts/spec-gate.py ]; then
     uv run --quiet python scripts/spec-gate.py traits >&2 ||
         { echo "land: a std trait impl has no spec/conformance/traits.toml case; write it, then: scripts/spec-gate.py traits --write" >&2; exit 1; }
@@ -225,7 +229,7 @@ pending_cases="$(git rev-parse --git-dir)/cpl-pending-cases"
 # it (8f1685382 changed splice and three cases went red on main).
 sig_callers=
 if [ -n "$std_changed" ] && [ -f scripts/affected.py ]; then
-    sig_callers=$(uv run --quiet python scripts/affected.py --sig-callers FETCH_HEAD)
+    sig_callers=$(uv run --quiet python scripts/affected.py --sig-callers "$main_base")
     printf '%s\n' $sig_callers | grep '^spec/conformance/' >>"$pending_cases" || :
 fi
 if [ -s "$pending_cases" ]; then
@@ -234,7 +238,7 @@ if [ -s "$pending_cases" ]; then
         git diff --quiet HEAD -- crates std Cargo.toml Cargo.lock ||
             { echo "land: uncommitted changes under crates/ or std/ would be tested in place of what lands; commit or stash them, then land again" >&2; exit 1; }
         echo "land: running the staged conformance cases the hook's cut skipped: $cases" >&2
-        uv run --quiet python scripts/conform_staged.py --base "$(git rev-parse FETCH_HEAD)" --build $cases >&2 ||
+        uv run --quiet python scripts/conform_staged.py --base "$main_base" --build $cases >&2 ||
             { echo "land: a staged conformance case fails at the rebased tip; fix it and land again: uv run scripts/conform_staged.py --build $cases" >&2; exit 1; }
     fi
     rm -f "$pending_cases"
@@ -242,12 +246,10 @@ fi
 sig_programs=$(printf '%s\n' $sig_callers | grep -v '^spec/conformance/' | tr '\n' ' ' | sed 's/ $//') || :
 if [ -n "$sig_programs" ]; then
     echo "land: cpl check of the corpus programs that call a changed std signature: $sig_programs" >&2
-    cargo build -q -p cpl-cli && for f in $sig_programs; do
-        "${CARGO_TARGET_DIR:-target}/debug/cpl" check "$f" >&2 ||
-            { echo "land: $f no longer checks against the changed std signature; update it in this change" >&2; exit 1; }
-    done
+    uv run --quiet python scripts/conform_staged.py --base "$main_base" --check $sig_programs >&2 ||
+        { echo "land: a corpus program no longer checks against the changed std signature (above); update it in this change" >&2; exit 1; }
 fi
-changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
+changed=$(git diff --name-only --diff-filter=ACMR "$main_base" HEAD)
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
 # started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook
 # was cut before its wasm check and grew cpl_lsp 544 B gz past its budget. Held to
@@ -257,16 +259,16 @@ wasm_touched=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*|\1|p' |
 if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
     if ! wasm=$(scripts/wasm-warm.sh --current $wasm_touched); then
         echo "land: no current wasm build; CI checks it" >&2
-    elif ! scripts/wasm-warm.sh --parent FETCH_HEAD $wasm_touched >/dev/null; then
+    elif ! scripts/wasm-warm.sh --parent "$main_base" $wasm_touched >/dev/null; then
         echo "land: no wasm sizes of main's tip to compare with; CI checks it" >&2
     else
-        scripts/wasm-warm.sh --check "$wasm" FETCH_HEAD $wasm_touched >&2 ||
+        scripts/wasm-warm.sh --check "$wasm" "$main_base" $wasm_touched >&2 ||
             { echo "land: a cpl.wasm crate grew past main while over its budget, or crossed its budget (above), touched here or not; cut it at its source and land again" >&2; exit 1; }
     fi
 fi
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
-    product=$(git diff --stat "$(cat "$seen")" FETCH_HEAD -- AGENTS.md handbook plan/product)
+    product=$(git diff --stat "$(cat "$seen")" "$main_base" -- AGENTS.md handbook plan/product)
     [ -z "$product" ] || printf 'land: product direction or the handbook changed since your last land; read it:\n%s\n' "$product"
 fi
 if [ -n "$changed" ]; then
@@ -280,7 +282,7 @@ fi
     { uv run --quiet python scripts/debt-ratchet.py --check >&2; exit 1; }
 # A decision number is taken once it is on main (decision 505): a heading
 # main never had, even as a `--reserve` stub, would collide with another lane.
-[ ! -f scripts/specgate/decisions.py ] || uv run --quiet python scripts/spec-gate.py decisions --check-landing FETCH_HEAD || exit 1
+[ ! -f scripts/specgate/decisions.py ] || uv run --quiet python scripts/spec-gate.py decisions --check-landing "$main_base" || exit 1
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
@@ -447,7 +449,7 @@ trap 'drop_lock; dequeue' EXIT
 reruns_due() {
     [ -n "$users" ] && return 0
     [ -z "$rechecked" ] && [ -x .githooks/pre-commit ] &&
-        [ -n "$(git diff --name-only "$checked" FETCH_HEAD -- $gate_paths)" ] && return 0
+        [ -n "$(git diff --name-only "$checked" "$main_base" -- $gate_paths)" ] && return 0
     [ -s "$pending_steps" ] && [ "$steps_runs" -lt 1 ]
 }
 try=0
@@ -457,6 +459,7 @@ push() {
     git fetch -q "$remote" main
     if ! git merge-base --is-ancestor FETCH_HEAD HEAD; then
         pull || exit 1
+        main_base=$(git rev-parse FETCH_HEAD)
         # A lane that waited for the lock always finds main moved by its holder. With
         # no rerun due, the rebase is all that's left: do it holding the lock, or the
         # lanes that push meanwhile win the race again (compiler's 1899 s, try 4).

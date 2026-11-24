@@ -82,3 +82,31 @@ class AtBase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Check(unittest.TestCase):
+    """`--check`: a corpus program failing `cpl check` refuses only if it checks at the base."""
+
+    def _main(self, at_base):
+        run = lambda argv, **_: subprocess.CompletedProcess(argv, 1 if "check" in argv else 0, "", "E0301")
+        prog = "corpus/problems/noi09p4/spec.cp"
+        with mock.patch.object(conform_staged, "base_checks", lambda ps, rev, run: {p: at_base for p in ps}), \
+             mock.patch.object(conform_staged, "owner", lambda c, rev, path=None: "compiler"), \
+             mock.patch("builtins.open", mock.mock_open()) as opened, \
+             mock.patch("sys.stderr") as err:
+            code = conform_staged.main(["--base", "HEAD", "--check", prog], run=run)
+        said = "".join(c.args[0] for c in err.write.call_args_list)
+        return code, opened, said
+
+    def test_a_program_red_at_the_base_too_is_mains_and_is_logged(self):
+        code, opened, said = self._main("fail")
+        self.assertEqual(code, 0)
+        self.assertIn("pre-existing red, owner compiler", said)
+        self.assertIn("check:corpus/problems/noi09p4/spec.cp", "".join(
+            c.args[0] for c in opened().write.call_args_list))
+
+    def test_a_program_that_checks_at_the_base_refuses(self):
+        for at in ("pass", "unbuilt", "absent"):
+            code, _, said = self._main(at)
+            self.assertEqual(code, 1, at)
+            self.assertIn("NEW red", said)
