@@ -3,9 +3,8 @@
 //! the interpreter's peak memory stays under the problem's limit (its
 //! `// limits:` line, else its judge's).
 
-use std::io::Write;
+use cpl_stress::program::Program;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::time::Duration;
 
 /// How many problems, largest input first, the gate runs.
@@ -36,13 +35,14 @@ fn largest_inputs(root: &Path) -> Vec<(String, PathBuf)> {
     let mut found = Vec::new();
     let problems = std::fs::read_dir(root.join("corpus/problems")).expect("corpus/problems");
     for problem in problems.flatten() {
-        let dir = problem.path();
-        let Ok(tests) = std::fs::read_dir(dir.join("tests")) else {
-            continue;
-        };
-        if !dir.join("spec.cp").exists() {
+        let spec = problem.path().join("spec.cp");
+        if !spec.exists() {
             continue;
         }
+        // tests.toml cases are what `scripts/corpus.py make` wrote under target/.
+        let Ok(tests) = std::fs::read_dir(cpl_contest::problem::find_tests_dir(&spec)) else {
+            continue;
+        };
         let largest = tests
             .flatten()
             .map(|t| t.path())
@@ -62,41 +62,23 @@ fn largest_inputs(root: &Path) -> Vec<(String, PathBuf)> {
         .collect()
 }
 
-/// The high-water mark of a running process, in kilobytes.
-fn high_water_kb(pid: u32) -> Option<u64> {
-    let status = std::fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
-    let line = status.lines().find(|l| l.starts_with("VmHWM:"))?;
-    line.split_whitespace().nth(1)?.parse().ok()
-}
-
-/// Runs `cpl run spec < input` and returns its peak memory, sampled until it
-/// exits, so a lower bound on the true peak.
+/// Runs `cpl run spec < input` under the stress runner, the one place that
+/// samples a child's high-water mark, and returns its peak memory.
 fn peak_kb(spec: &Path, input: &Path) -> u64 {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg("run")
-        .arg(spec)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
+    let cpl = env!("CARGO_BIN_EXE_cpl");
+    let spec_arg = spec.display().to_string();
+    let input = std::fs::read_to_string(input).expect("read input");
+    let out = Program::command("cpl", &[cpl, "run", &spec_arg])
+        .run(&input, Duration::from_secs(300))
         .expect("spawn cpl");
-    let bytes = std::fs::read(input).expect("read input");
-    let mut stdin = child.stdin.take().unwrap();
-    let writer = std::thread::spawn(move || stdin.write_all(&bytes));
-    let mut peak = 0;
-    while child.try_wait().expect("wait cpl").is_none() {
-        peak = peak.max(high_water_kb(child.id()).unwrap_or(0));
-        std::thread::sleep(Duration::from_millis(2));
-    }
-    let _ = writer.join();
-    let out = child.wait_with_output().expect("wait cpl");
     assert!(
-        out.status.success(),
-        "`cpl run {}` failed: {}",
+        out.ok(),
+        "`cpl run {}` failed ({:?}): {}",
         spec.display(),
-        String::from_utf8_lossy(&out.stderr)
+        out.exit,
+        out.stderr
     );
-    peak
+    out.peak_kb.expect("Linux reports a high-water mark")
 }
 
 /// The run on the `rank`th largest input, one test each so nextest spreads
