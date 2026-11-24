@@ -491,10 +491,7 @@ impl Lowerer<'_> {
             narrow_elems: lw.narrow_elems,
         };
         let escapes = crate::pushed::escaping_yields(&program);
-        if !escapes.is_empty() {
-            return Err(escapes);
-        }
-        Ok(program)
+        escapes.is_empty().then_some(program).ok_or(escapes)
     }
 }
 

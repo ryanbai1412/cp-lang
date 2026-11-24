@@ -549,3 +549,5 @@ mod splice_tests;
 mod tests;
 #[cfg(test)]
 mod walk_tests;
+#[cfg(test)]
+mod width_tests;
