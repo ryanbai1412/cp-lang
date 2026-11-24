@@ -8826,7 +8826,12 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** A second database in a tool is a second front end that can disagree with the checker; the Phase 2 plan makes the checker the single source of type and resolution facts.
 - **Reverse.** Make `Database::new` public again and drop `own_databases` from `HARD_ZERO`.
 
-## 525. (reserved, content)
+## 525. Std names come only from the lexicon (stdlib, 2026-11-24)
+
+- **Call.** `[D]T.partition_point(ok)` becomes `a.bsearch(ok, last:)`, the element form of `Range.bsearch`, keeping its wrong-way trap. `Graph.has(u, v)` becomes `contains`; the adjacency list's free `has(u, v)` goes as a twin of `g[u].contains(v)`, which `cpl fix` writes for `g.has(u, v)` and `g.contains(u, v)` on a list of lists; `LazyTreap.append(other)` becomes `splice_back` (LinkedList's word), `XorFenwick.flip(i, x)` becomes `add` (Fenwick's word), and 2-SAT's `Lit.flip` becomes `l.neg`. `cpl fix` rewrites each old name. New lexicon rows cover the cut search `bsearch`, positional `insert(i, x)`, `splice_back`/`splice_front`, `back` (opposite direction, matching partner), component `size(v)`, math `shift`, `T.empty` and `neg`. `scripts/std-api-lint.py` R1 fails a public std fn named by a "Not" word that no row uses.
+- **Why.** std-api/R1: one idea, one word, so a contestant guesses the next type's calls from the last one.
+- **Reverse.** Restore the old names and drop R1 from the lint.
+
 
 ## 526. One Mat elimination for every field; F64 states its `eps:` at the call (stdlib, 2026-11-24)
 
@@ -8861,32 +8866,3 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
 ## 528. (reserved, infra)
 
-## 523. The sequence traits are declared in std before the checker reads them (stdlib, 2026-11-24)
-
-- **Call.** `std/seq.cp` declares `Seq<T>` (with `type Taken = Gen<T>`), `Keyed<D, T>`, `Sized`, `Bidir<T>` and `Indexed<D, T>` (with `type Taken = Slice<Self>`) as decision 509 asks. `std_shadowed` and `prelude_privilege` each go up by 5, and `consumer_rederived` by 5 (the LSP completion's type list), because the checker still answers these five names itself. They fall back when compiler (d) switches the checker to read the declarations. `Gen<T>` is declared in the same change as that switch: a std `struct Gen<T>()` today hides the built-in generator methods (`take`, `argmax`, `sort`).
-- **Why.** A shared interface lands before its consumers. The counters now show shadowing that was there but hidden: the built-ins existed with no std declaration to shadow.
-- **Reverse.** Delete the five traits; the counters go back down.
-
-## 524. One `cpl_check::Session` is the only front end (compiler, 2026-11-24)
-
-- **Call.** A tool gets checker answers from a `cpl_check::Session` (or `cpl_check::open(path, text)` for one file once). `Database::new`/`with_loader` are `pub(crate)`, so nothing outside `cpl-check` builds an analysis; `SessionOptions` (std source, `[libs]` loader, edition and package version stubs) is how every host chooses module resolution. Every edit moves the session to a new `Revision`; an analysis, its `Facts` and its diagnostics are built at most once per revision. The `own_databases` debt-ratchet counter is a hard gate at 0.
-- **Why.** A second database in a tool is a second front end that can disagree with the checker; the Phase 2 plan makes the checker the single source of type and resolution facts.
-- **Reverse.** Make `Database::new` public again and drop `own_databases` from `HARD_ZERO`.
-
-## 525. Std names come only from the lexicon (stdlib, 2026-11-24)
-
-- **Call.** `[D]T.partition_point(ok)` becomes `a.bsearch(ok, last:)`, the element form of `Range.bsearch`, keeping its wrong-way trap. `Graph.has(u, v)` becomes `contains`; the adjacency list's free `has(u, v)` goes as a twin of `g[u].contains(v)`, which `cpl fix` writes for `g.has(u, v)` and `g.contains(u, v)` on a list of lists; `LazyTreap.append(other)` becomes `splice_back` (LinkedList's word), `XorFenwick.flip(i, x)` becomes `add` (Fenwick's word), and 2-SAT's `Lit.flip` becomes `l.neg`. `cpl fix` rewrites each old name. New lexicon rows cover the cut search `bsearch`, positional `insert(i, x)`, `splice_back`/`splice_front`, `back` (opposite direction, matching partner), component `size(v)`, math `shift`, `T.empty` and `neg`. `scripts/std-api-lint.py` R1 fails a public std fn named by a "Not" word that no row uses.
-- **Why.** std-api/R1: one idea, one word, so a contestant guesses the next type's calls from the last one.
-- **Reverse.** Restore the old names and drop R1 from the lint.
-
-## 526. One Mat elimination for every field; F64 states its `eps:` at the call (stdlib, 2026-11-24)
-
-- **Call.** `det_real`, `rank_real`, `solve_real` and `inverse_real` are gone. `Mat<T>.det`, `rank`, `solve`, `solve_space` and `inverse` take `eps: ?T = None`. When `T: Ord` (`F64`) the pivot is the largest `abs` entry of its column and `|x| <= eps` counts as zero; otherwise (`Mod<P>`) the pivot is the first entry `!= T.zero`. `eps` defaults to exact zero, so a float caller writes `m.rank(eps: 1e-9)`.
-- **Why.** "Coherent stdlib": two spellings did one job, and the `_real` free fns duplicated four elimination bodies. The `if T: Ord` branch is visible in the source, so there is no hidden `F64` specialization. A tolerance the caller writes is a cost the caller sees, where the old silent `1e-9` default was not.
-- **Reverse.** Restore the four `_real` free fns from before this entry and drop the `eps:` parameter.
-
-## 527. A failing case is a plain failing expectation the scoreboard records (spec, 2026-11-24)
-
-- **Call.** A conformance case that fails today carries no marker: no `// gap:` line, no xfail or known-fail text. `research/scoreboard.json` (written by `cpl-conform conformance --write`) records its result, `conformance_failing` and `conformance_wrong_output` count the board raw, and `conform_staged.py` blocks a staged case that fails unless HEAD's board already records it failing. `xfail_markers` (which still counts `^// gap:`) is `HARD_ZERO`. A case for a rule not met yet keeps its full expectation; the owner's fix turns it green and the board drops it. Supersedes decision 515.
-- **Why.** A gap line was a second record of what the board already measures: it had to be added, aged and deleted by hand, and its count could only say "marked", not "failing". With the board as the only record there is nothing to rename and nothing to keep in sync.
-- **Reverse.** Put `// gap:` lines back, make `conform_staged.py` require one on a failing case, and drop `xfail_markers` from `HARD_ZERO`.

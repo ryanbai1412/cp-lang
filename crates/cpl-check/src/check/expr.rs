@@ -267,9 +267,6 @@ impl<'a> Checker<'a> {
                 self.infer(walk)
             }
             ExprKind::Call { callee, args } => {
-                if let Some(ty) = self.adjacency_contains(expr, callee, args) {
-                    return ty;
-                }
                 if let ExprKind::Field { base, .. } = &callee.kind {
                     self.method_call_on_param(base);
                 }
