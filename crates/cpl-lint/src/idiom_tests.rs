@@ -621,10 +621,7 @@ fn loop_reduction_keeps_a_widening_call_in_a_typed_lambda() {
 #[test]
 fn sort_desc_by_negation_wraps_the_key_in_desc() {
     let src = "let ps = [(1, 2), (3, 4)]\nprint(ps.sorted(by: p => -p.1))\n";
-    assert_eq!(
-        only(src).help.as_deref(),
-        Some("write `by: p => desc(p.1)`; `desc` reverses the order, and negating the key overflows on the smallest value")
-    );
+    assert_eq!(only(src).message, "write `ps.sorted(by: p => desc(p.1))`");
     assert_eq!(
         fixed(src),
         "let ps = [(1, 2), (3, 4)]\nprint(ps.sorted(by: p => desc(p.1)))\n"

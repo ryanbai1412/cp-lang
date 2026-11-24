@@ -211,6 +211,8 @@ impl Show for Desc<T>:
 /// traps: never
 /// example: `[3, 1, 2].max(by: x => desc(x)) == Some(1)`
 /// example: `(desc(3) < desc(5)) == false`
+@lint(sort_desc_by_negation, from: "xs.sorted(by: k => -x)", to: "xs.sorted(by: k => desc(x))", holes: "xs")
+@lint(sort_desc_by_negation, from: "xs.sort(by: k => -x)", to: "xs.sort(by: k => desc(x))", holes: "xs")
 pub fn desc<T>(x: T) -> Desc<T> = Desc(x)
 
 /// A folded value that can be read from the other end. A fold along a tree path walks some

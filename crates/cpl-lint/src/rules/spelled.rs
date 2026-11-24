@@ -1,5 +1,4 @@
-//! C++ spellings that CP Lang names: a bit test (`manual_bit_test`), a
-//! descending sort by a negated key (`sort_desc_by_negation`), the last
+//! C++ spellings that CP Lang names: a bit test (`manual_bit_test`), the last
 //! element by `len - 1` (`last_via_len`), the `i < j` pair loop
 //! (`manual_pair_loop`), the `% 10` / `/= 10` digit loop
 //! (`manual_digit_loop`), a hand-written fast power or Euclid
@@ -12,7 +11,7 @@ use crate::std_fn;
 use crate::walk::{unparen, walk_expr, walk_stmt, Visitor};
 use crate::{
     File, Finding, Lint, HAND_ROLLED_GCD, HAND_ROLLED_POW, LAST_VIA_LEN, MANUAL_BIT_TEST,
-    MANUAL_DIGIT_LOOP, MANUAL_PAIR_LOOP, MANUAL_STARTS_WITH, SORT_DESC_BY_NEGATION,
+    MANUAL_DIGIT_LOOP, MANUAL_PAIR_LOOP, MANUAL_STARTS_WITH,
 };
 use cpl_diag::msgs::{lint_rules, Msg};
 use cpl_diag::{Fix, Span};
@@ -374,50 +373,6 @@ fn squares(stmt: &Stmt) -> bool {
 }
 
 impl Spelled<'_> {
-    fn sort_desc(&mut self, expr: &Expr) {
-        let ExprKind::Call { callee, args } = &expr.kind else {
-            return;
-        };
-        let ExprKind::Field { name: method, .. } = &callee.kind else {
-            return;
-        };
-        let at = expr.span.shift(self.base);
-        if !is_std(self.facts, at, std_fn::SORT) && !is_std(self.facts, at, std_fn::SORTED) {
-            return;
-        }
-        for arg in args {
-            let Some(name) = arg.name.as_ref().filter(|n| n.text == "by") else {
-                continue;
-            };
-            let ExprKind::Lambda { params, body, .. } = &arg.value.kind else {
-                continue;
-            };
-            let [param] = params.as_slice() else {
-                continue;
-            };
-            let ExprKind::Unary {
-                op: UnOp::Neg,
-                expr: negated,
-            } = &unparen(body).kind
-            else {
-                continue;
-            };
-            let span = Span::new(name.span.start, arg.value.span.end);
-            let key = format!("{} => desc({})", self.text_pat(param), self.text(negated));
-            let help = format!(
-                "write `by: {key}`; `desc` reverses the order, and negating the key overflows on the smallest value"
-            );
-            let fix = Some((span, format!("by: {key}")));
-            self.push(
-                &SORT_DESC_BY_NEGATION,
-                span,
-                (&lint_rules::SORT_DESC_BY_NEGATION, &[&method.text], help),
-                None,
-                fix,
-            );
-        }
-    }
-
     fn text_pat(&self, p: &Pattern) -> &str {
         p.span.shift(self.base).text(self.src)
     }
@@ -742,7 +697,6 @@ impl Visitor for Spelled<'_> {
 
     fn expr(&mut self, expr: &Expr) {
         self.bit_test(expr);
-        self.sort_desc(expr);
         self.last_via_len(expr);
         self.prefix_test(expr);
     }

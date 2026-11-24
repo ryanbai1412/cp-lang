@@ -99,7 +99,6 @@ super::msgs! {
     SLIDING_MIN_BY_HAND = "L0566", "`{}` is a monotone deque kept by hand for the {} of each window";
     SLIDING_SUM_BY_HAND = "L0590", "`{}` kept as the sum of the last `{}` elements of `{}` by hand";
     SMALL_TO_LARGE_BY_HAND = "L0568", "`{}` is merged into `{}` smaller-into-larger by hand";
-    SORT_DESC_BY_NEGATION = "L0541", "`.{}` sorts descending by negating the key";
     SORT_FOR_EXTREME = "L0572", "this sorts a copy of the list to read one element: it is `{}`";
     SPLIT_RANGE_CHECK = "L0551", "a range check written as {} comparisons";
     STALE_ENTRY_SKIP = "L0553", "`{}` is checked against the best distance of `{}` to skip a stale heap entry";
