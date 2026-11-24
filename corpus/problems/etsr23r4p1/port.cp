@@ -5,6 +5,7 @@
 //   2-cycle opens at its smaller position. Each longer cycle has two phases; try every choice of
 //   phases, in the order of the reference, and keep the first whose prefix sums stay
 //   non-negative: O(2^m n) for m cycles longer than 2.
+// Bounds: n: 1..=1e5; p: 1..=n
 // original: corpus/submissions/5521420.cpp
 // The statement is not public: n is the reference's int, and the phase search is fast only when
 // few cycles are longer than 2.

@@ -10,6 +10,7 @@
 //   knights of gaps s..e-1, so he wins v iff r beats their maximum; carry win counts from
 //   the root down to the leaves. O((n + c) log n).
 // input: n c r, the n - 1 ranks in order, then c lines `s e` (0-based)
+// Bounds: n: 1..=1e5; c, r, rank: 0..n
 // original: corpus/submissions/4848321.cpp (the grader function GetBestPosition)
 
 let n: 1..=1e5 = read()

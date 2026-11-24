@@ -10,6 +10,7 @@
 //   best middle column is monotone (opt[i][j-1] <= k <= opt[i+1][j]) and a product is O(C^2).
 //   A change rebuilds one block and its O(log R) ancestors; an escape reads the root.
 // limits: 9000 ms, 256 MB
+// Bounds: r: 1..=5000; c: 1..=200; events: 1..=2e5 + 500
 // original: corpus/submissions/4722412.cpp (orig.cpp enables its sample grader)
 const BLOCK = 20
 type Wombats = 0..=1000
