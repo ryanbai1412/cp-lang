@@ -777,6 +777,16 @@ pub struct SortedBag<K>:
 
     fn kix(self, n: Int) -> Int = meta[4 * n + 3]
 
+    // Node `b` (or the end, -1) follows `a`; a leaf followed by nothing is the tail.
+    fn link(mut self, a: Int, b: Int, inner: Bool):
+        meta[4 * a + 1] = b
+        if b >= 0: meta[4 * b + 2] = a
+        elif not inner: tail = a
+
+    fn release(mut self, n: Int):
+        meta[4 * n + 1] = free
+        free = n
+
     fn weight(self, n: Int) -> Int = slot_sum(ws, n * BAG_B, self.fill(n))
 
     // The first `i` in `a..` the fill of `n` whose key fails `go`; the keys passing `go` form a prefix.
@@ -819,11 +829,8 @@ pub struct SortedBag<K>:
         for i in h..BAG_B: self.mv(n, i, m, i - h, inner)
         meta[4 * n] = h
         meta[4 * m] = BAG_B - h
-        meta[4 * m + 1] = self.nxt(n)
-        meta[4 * m + 2] = n
-        if self.nxt(n) >= 0: meta[4 * (self.nxt(n)) + 2] = m
-        meta[4 * n + 1] = m
-        if not inner and tail == n: tail = m
+        self.link(m, self.nxt(n), inner)
+        self.link(n, m, inner)
         let (_, s) = if p <= h: self.room(n, inner, p, x) else: self.room(m, inner, p - h, x)
         return (m, s)
 
@@ -895,27 +902,29 @@ pub struct SortedBag<K>:
         let x = self.kid(n, a)
         let y = self.kid(n, a + 1)
         let s = n * BAG_B + a
-        if self.fill(x) + self.fill(y) <= BAG_B:
-            for j in 0..self.fill(y): self.mv(y, j, x, self.fill(x) + j, inner)
-            meta[4 * x] += self.fill(y)
+        var fx = self.fill(x)
+        var fy = self.fill(y)
+        if fx + fy <= BAG_B:
+            for j in 0..fy: self.mv(y, j, x, fx + j, inner)
+            meta[4 * x] = fx + fy
             ws[s] += ws[s + 1]
-            meta[4 * x + 1] = self.nxt(y)
-            if self.nxt(y) >= 0: meta[4 * (self.nxt(y)) + 2] = x
-            if not inner and tail == y: tail = x
-            meta[4 * y + 1] = free
-            free = y
+            self.link(x, self.nxt(y), inner)
+            self.release(y)
             self.drop(n, a + 1, true)
             return
-        while self.fill(x) + 1 < self.fill(y) or self.fill(y) + 1 < self.fill(x):
-            let l = self.fill(x) > self.fill(y)
+        while fx + 1 < fy or fy + 1 < fx:
+            let l = fx > fy
             let a = if l: x else: y
             let b = if l: y else: x
-            let p = if l: self.fill(x) - 1 else: 0
-            let q = if l: 0 else: self.fill(x)
+            let p = if l: fx - 1 else: 0
+            let q = if l: 0 else: fx
             let k = keys[a * BAG_B + p]
             let _ = self.room(b, inner, q, k)
             self.mv(a, p, b, q, inner)
             self.drop(a, p, inner)
+            let d = if l: 1 else: -1
+            fx -= d
+            fy += d
         ws[s] = self.weight(x)
         ws[s + 1] = self.weight(y)
         keys[s + 1] = keys[y * BAG_B]
@@ -948,8 +957,7 @@ pub struct SortedBag<K>:
         total -= rem
         self.changed(BAG_REMOVE)
         while height > 0 and self.fill(root) == 1:
-            meta[4 * root + 1] = free
-            free = root
+            self.release(root)
             root = self.kid(root, 0)
             height -= 1
         if self.fill(root) == 0:
