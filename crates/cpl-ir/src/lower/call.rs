@@ -777,6 +777,9 @@ impl<'a> Lowerer<'a> {
             if let Some(fn_id) = self.structs[*id].methods.get(method).copied() {
                 return self.method_call(fn_id, Some((base, value)), args, span);
             }
+            if let Some(fn_id) = self.open_impl_method(*id, method) {
+                return self.method_call(fn_id, Some((base, value)), args, span);
+            }
             if let Some(gfid) = self.structs[*id].gen_methods.get(method).copied() {
                 let is_mut = self.gen_fns[gfid]
                     .decl

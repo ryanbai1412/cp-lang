@@ -63,6 +63,7 @@ impl<'a> Lowerer<'a> {
             trait_methods: HashMap::new(),
             op_methods: Vec::new(),
             gen_methods: HashMap::new(),
+            open_impls: Vec::new(),
             getters: HashSet::new(),
             projections: HashMap::new(),
             consts: HashMap::new(),
@@ -342,6 +343,10 @@ impl<'a> Lowerer<'a> {
                 }
             }
             if !ok || !self.bind_impl_bounds(self.impls[idx].bounds, imp_mod, &mut env) {
+                continue;
+            }
+            if !self.open_impl_params(idx, &env).is_empty() {
+                self.structs[sid].open_impls.push(idx);
                 continue;
             }
 

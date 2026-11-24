@@ -47,7 +47,11 @@ impl<'a> Lowerer<'a> {
                     "Seq" | "Bidir" | "Sized" | "Positional" => (None, args.first()),
                     "Keyed" | "Indexed" | "IndexedMut" => (args.first(), args.get(1)),
                     _ => {
-                        if let Some(given) = self.impl_trait_args(&seq, trait_name) {
+                        let known = self.known_trait_args(args, m, env);
+                        if let Some((given, opened)) =
+                            self.impl_trait_args(&seq, trait_name, &known)
+                        {
+                            env.extend(opened);
                             for (arg, ty) in args.iter().zip(&given) {
                                 self.unify_ast_ty(arg, ty, m, &open, env);
                             }
@@ -77,7 +81,45 @@ impl<'a> Lowerer<'a> {
 
     /// The args `ty`'s impl of the trait `name` gives it: `Arr<E>`, with
     /// `impl<D: Domain> Versioned<D, Int> for Arr<D>`, gives `[E, Int]`.
-    pub(super) fn impl_trait_args(&mut self, ty: &Ty, name: &str) -> Option<Vec<Ty>> {
+    /// The bound's args that `env` already fixes: `T` in `A: Acts<T, F>` once `xs` gave it.
+    fn known_trait_args(&mut self, args: &[ast::Type], m: ModId, env: &GenEnv) -> Vec<Option<Ty>> {
+        args.iter()
+            .map(|a| {
+                let fixed = self.impl_params(m, a).iter().all(|n| env.contains_key(n));
+                fixed.then(|| {
+                    let saved = (
+                        std::mem::replace(&mut self.cur_mod, m),
+                        std::mem::replace(&mut self.gen_env, env.clone()),
+                    );
+                    let ty = self.resolve_ty(a);
+                    (self.cur_mod, self.gen_env) = saved;
+                    ty
+                })
+            })
+            .collect()
+    }
+
+    /// An impl's params its target leaves open, named only in its trait's
+    /// args: `T` in `impl<T> Acts<T, T> for Plus`.
+    pub(super) fn open_impl_params(&self, idx: usize, env: &GenEnv) -> Vec<String> {
+        let m = self.impls[idx].mod_id;
+        let mut out: Vec<String> = Vec::new();
+        for t in &self.impls[idx].trait_args {
+            for n in self.impl_params(m, t) {
+                if n != "Self" && !env.contains_key(&n) && !out.contains(&n) {
+                    out.push(n);
+                }
+            }
+        }
+        out
+    }
+
+    pub(super) fn impl_trait_args(
+        &mut self,
+        ty: &Ty,
+        name: &str,
+        known: &[Option<Ty>],
+    ) -> Option<(Vec<Ty>, GenEnv)> {
         let Ty::Struct(sid) = *ty else {
             return None;
         };
@@ -120,6 +162,19 @@ impl<'a> Lowerer<'a> {
                 }
             }
             let trait_args = self.impls[idx].trait_args.clone();
+            let open = self.open_impl_params(idx, &env);
+            for (t, k) in trait_args.iter().zip(known) {
+                if let Some(k) = k {
+                    self.unify_ast_ty(t, k, m, &open, &mut env);
+                }
+            }
+            if open.iter().any(|n| !env.contains_key(n)) {
+                return None;
+            }
+            let opened: GenEnv = open
+                .iter()
+                .map(|n| (format!("impl{idx}.{n}"), env[n].clone()))
+                .collect();
             let saved = (
                 std::mem::replace(&mut self.cur_mod, m),
                 std::mem::replace(&mut self.offset, offset),
@@ -127,7 +182,49 @@ impl<'a> Lowerer<'a> {
             );
             let out = trait_args.iter().map(|t| self.resolve_ty(t)).collect();
             (self.cur_mod, self.offset, self.gen_env) = saved;
-            return Some(out);
+            return Some((out, opened));
+        }
+        None
+    }
+
+    /// `act.tag0()` on a `Plus` the enclosing fn bound as `A: Acts<T, F>`:
+    /// the method of `impl<T> Acts<T, T> for Plus` at the `T` that bound solved.
+    pub(super) fn open_impl_method(&mut self, sid: StructId, method: &str) -> Option<FnId> {
+        for idx in self.structs[sid].open_impls.clone() {
+            let imp = &self.impls[idx];
+            let (m, offset, body, trait_name) =
+                (imp.mod_id, imp.offset, imp.body, imp.trait_name.clone());
+            let Some(f) = body.stmts.iter().find_map(|s| match &s.kind {
+                ast::StmtKind::Fn(f) if f.name.text == method => Some(f),
+                _ => None,
+            }) else {
+                continue;
+            };
+            let mut env = self.structs[sid].env.clone();
+            let open = self.open_impl_params(idx, &env);
+            let args: Option<Vec<GenArg>> = open
+                .iter()
+                .map(|n| self.gen_env.get(&format!("impl{idx}.{n}")).cloned())
+                .collect();
+            let Some(args) = args else { continue };
+            let key = (sid, idx, method.to_string(), args.clone());
+            if let Some(&id) = self.open_impl_fns.get(&key) {
+                return Some(id);
+            }
+            env.extend(open.into_iter().zip(args));
+            let fn_id = self.declare_fn_in(f, m, offset, Some(sid), env.clone());
+            self.open_impl_fns.insert(key, fn_id);
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, offset),
+                std::mem::replace(&mut self.gen_env, env),
+                self.self_struct.replace(sid),
+            );
+            let first = self.impls[idx].trait_args.first().copied();
+            let rhs = first.map(|t| self.resolve_ty(t));
+            self.resolve_fn_sig_with(fn_id, trait_name.as_deref(), rhs.as_ref(), None);
+            (self.cur_mod, self.offset, self.gen_env, self.self_struct) = saved;
+            return Some(fn_id);
         }
         None
     }

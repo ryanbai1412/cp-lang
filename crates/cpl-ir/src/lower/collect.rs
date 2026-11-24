@@ -38,6 +38,7 @@ impl<'a> Lowerer<'a> {
                         trait_methods: HashMap::new(),
                         op_methods: Vec::new(),
                         gen_methods: HashMap::new(),
+                        open_impls: Vec::new(),
                         getters: HashSet::new(),
                         projections: HashMap::new(),
                         consts: HashMap::new(),

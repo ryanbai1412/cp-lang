@@ -37,6 +37,15 @@ impl<'a> Lowerer<'a> {
         for (p, a) in decl.generics.iter().zip(&args) {
             env.insert(p.text.clone(), a.clone());
         }
+        // `A: Acts<T, F>` with `A = Plus`: the body's `act.tag0()` needs
+        // the `T` that solving the bound gave `impl<T> Acts<T, T> for Plus`.
+        let mut solved = env.clone();
+        self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut solved);
+        env.extend(
+            solved
+                .into_iter()
+                .filter(|(k, _)| k.starts_with("impl") && k.contains('.')),
+        );
         // `S: Indexed<K, T>` with `S` keyed by `Int`: a `[K]T` it returns
         // starts at `S`'s first key, not at 0 (R04b.5.3).
         for bound in &decl.bounds {
