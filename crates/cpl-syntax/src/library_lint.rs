@@ -3,9 +3,7 @@
 //! fn's parameter names are the holes. The checker reports the declarations
 //! it cannot use (E0505); `cpl-lint` matches the rest.
 
-use crate::ast::{
-    BinOp, EnumDecl, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, StructDecl, TypeKind,
-};
+use crate::ast::{BinOp, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, TypeKind};
 use crate::token::{Token, TokenKind};
 use crate::ParsedItem;
 use cpl_diag::{msgs, Diagnostic, Span};
@@ -264,15 +262,6 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
             decorator: span,
             item: stmt.span.shift(offset),
         });
-    }
-    if let StmtKind::Struct(StructDecl { methods, .. }) | StmtKind::Enum(EnumDecl { methods, .. }) =
-        &stmt.kind
-    {
-        for m in methods {
-            let (more, errs) = declared(m, offset);
-            lints.extend(more);
-            errors.extend(errs);
-        }
     }
     (lints, errors)
 }
