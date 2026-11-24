@@ -11,6 +11,7 @@ mod emit;
 mod expr;
 mod flat;
 mod fold;
+mod frame;
 mod fuse;
 mod globals;
 mod inline;

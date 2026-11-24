@@ -171,6 +171,10 @@ pub(crate) struct Emitter<'p> {
     pub lends_result: bool,
     /// The fns that return `const T&`, each with the parameter whose place it lends.
     pub lent_roots: BTreeMap<cpl_ir::FnId, usize>,
+    /// The current fn's cold tail branches (see [`crate::frame`]), and its
+    /// C++ return type for the lambda each is emitted as.
+    pub cold: BTreeMap<crate::frame::At, crate::frame::Inputs>,
+    pub cold_ret: String,
     /// The `let`s the `Do` block being written as a lambda owns: they
     /// move into what it gives.
     pub give_owned: Option<BTreeSet<usize>>,
@@ -337,6 +341,8 @@ impl<'p> Emitter<'p> {
             give_ref: false,
             lends_result: false,
             lent_roots: BTreeMap::new(),
+            cold: BTreeMap::new(),
+            cold_ret: String::new(),
             give_owned: None,
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
@@ -624,6 +630,28 @@ impl<'p> Emitter<'p> {
     }
 
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
+    /// A recursive fn's cold tail branches, and the return type they keep.
+    fn cold_branches(
+        &mut self,
+        id: usize,
+        f: &Function,
+        lends: bool,
+    ) -> BTreeMap<crate::frame::At, crate::frame::Inputs> {
+        if lends || !self.devirt.recursive_fns.contains(&id) || self.devirt.returns_lambda(id) {
+            return BTreeMap::new();
+        }
+        self.cold_ret =
+            self.ty_with_elem_layout(&f.ret, self.elem_layout(cpl_ir::ElemLoc::FnRet(id)));
+        let scalar = |s: usize| f.locals[s].ty.is_scalar();
+        let present = |s: usize| f.locals[s].ty != Ty::Unit && !self.devirt.dead_local(Some(id), s);
+        crate::frame::cold_suffixes(&crate::frame::Fn {
+            program: self.program,
+            id,
+            scalar: &scalar,
+            present: &present,
+        })
+    }
+
     /// The fn's C++ signature, and the parameter whose place it lends
     /// when it returns `const T&`.
     fn signature(&self, f: &Function) -> (String, Option<usize>) {
@@ -1023,6 +1051,7 @@ impl<'p> Emitter<'p> {
             if let Some(slot) = root {
                 self.lent_roots.insert(id, slot);
             }
+            self.cold = self.cold_branches(id, f, root.is_some());
             let hook = program.is_hook(id);
             protos.push(Proto {
                 name: fn_name(&f.name),

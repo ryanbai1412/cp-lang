@@ -1095,3 +1095,58 @@ print(yes(d.unite(V.nth(a), V.nth(a + 1))), d.get(V.nth(a)))
         "{out}"
     );
 }
+
+fn fn_text(cpp: &str, head: &str) -> String {
+    let start = cpp
+        .find(head)
+        .unwrap_or_else(|| panic!("no `{head}`:\n{cpp}"));
+    let len = cpp[start..].find("\n}\n").expect("the fn ends");
+    cpp[start..start + len].to_string()
+}
+
+#[test]
+fn a_recursive_fns_branch_past_its_last_call_has_its_own_frame() {
+    let out = cpp(concat!(
+        "fn ends(n: Int) -> List<Int>:\n",
+        "    if n == 0: return [1]\n",
+        "    var res = ends(n - 1)\n",
+        "    res.push(0)\n",
+        "    if n % 2 == 0:\n",
+        "        for i in 1..res.len: res[i] += res[i - 1]\n",
+        "        res\n",
+        "    else:\n",
+        "        let w = n + 1\n",
+        "        res.map(e => e * w)\n",
+        "fn sum_to(n: Int) -> Int:\n",
+        "    if n == 0: return 0\n",
+        "    var s = 0\n",
+        "    for i in 0..n: s += i\n",
+        "    s + sum_to(n - 1)\n",
+        "fn flat(n: Int) -> List<Int> = [i * 2 for i in 0..n]\n",
+        "print(ends(5).sum(), sum_to(6), flat(3).len)\n",
+    ));
+    let ends = fn_text(&out, "std::vector<ll> ends(ll n) {");
+    assert_eq!(
+        ends.matches("__attribute__((noinline))").count(),
+        1,
+        "{ends}"
+    );
+    let (inline, cold) = ends.split_once("__attribute__((noinline))").unwrap();
+    assert!(
+        inline.contains("ends(cpl::isub(n, 1))") && !cold.contains("ends("),
+        "{ends}"
+    );
+    assert!(
+        cold.contains("ll w = ") && !inline.contains("ll w = "),
+        "{ends}"
+    );
+    assert!(
+        inline.contains("return res;"),
+        "the branch returning `res` stays inline:\n{ends}"
+    );
+    assert!(
+        !fn_text(&out, "ll sum_to(ll n) {").contains("noinline"),
+        "a loop before the recursive call runs on every frame anyway:\n{out}"
+    );
+    assert!(!fn_text(&out, "flat(ll n) {").contains("noinline"), "{out}");
+}
