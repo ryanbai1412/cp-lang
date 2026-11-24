@@ -186,7 +186,7 @@ In order of what a user would feel:
   the suite stays independent of the compiler.
 - Each rule id is defined once, where `(Rnn.n.n)` ends its sentence. A case
   cites it as `// rule: nn.n.n`, without the `R`.
-- A case expecting a code marks the line it points at with `// <- here`; no case counts lines (decision 473).
+- A case expecting a code marks the line it points at with `// <- here`; no case counts lines (decision 506).
 - A new case that fails today is recorded as known-failing. A passing case
   that starts failing blocks the land.
 - Normative rules live only in `spec/`. The handbook explains them and

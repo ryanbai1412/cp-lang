@@ -430,7 +430,7 @@ fn rendered_at(rendered: &str, line: usize) -> bool {
 }
 
 /// The marker that ends the line a `// expect: CODE` diagnostic or trap
-/// points at (decision 473): the case says where, so no line count can drift
+/// points at (decision 506): the case says where, so no line count can drift
 /// when a header line comes or goes.
 pub const HERE: &str = "// <- here";
 
@@ -491,7 +491,7 @@ pub fn parse_header(text: &str) -> Result<Expect, String> {
     let parts: Vec<&str> = spec.split_whitespace().collect();
     if parts.get(1) == Some(&"at") {
         return Err(format!(
-            "`// expect: {spec}`: `at N` is gone (decision 473); write `// expect: {}` and end the line it points at with `{HERE}`",
+            "`// expect: {spec}`: `at N` is gone (decision 506); write `// expect: {}` and end the line it points at with `{HERE}`",
             parts[0]
         ));
     }

@@ -15,7 +15,7 @@ expectation:
 
 A code names no line number: the line the diagnostic or trap points at
 ends with the marker `// <- here`, and exactly one line carries it
-(decision 473). Header lines can come and go without moving it. A failing
+(decision 506). Header lines can come and go without moving it. A failing
 case names the line its diagnostic is on; `scripts/spec-gate.py markers
 --fix` rewrites an old `at N` case. A second header line `// rule: 05.4.2 05.4.3`
 names the numbered rules (`(R05.4.2)` in `spec/core`) the case tests,

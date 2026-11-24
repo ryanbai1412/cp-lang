@@ -1,4 +1,4 @@
-"""A diagnostic case marks the line its diagnostic points at (decision 473).
+"""A diagnostic case marks the line its diagnostic points at (decision 506).
 
 `// expect: E0601` plus a program line ending in `// <- here`; `--fix`
 rewrites an old `// expect: E0601 at N` case, where N counted from the first
