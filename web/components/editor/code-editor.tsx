@@ -54,10 +54,20 @@ const shift = (d: Diagnostic, by: number): Diagnostic =>
         fixes: d.fixes.map((f) => ({ ...f, edits: f.edits.map((e) => ({ ...e, start: e.start + by, end: e.end + by })) })),
       };
 
-export function toCmDiagnostics(diagnostics: Diagnostic[], length: number): CmDiagnostic[] {
+// An empty span (`expected a value after +` at the end of a line) would mark
+// nothing to hover, so it covers the character after it, or before it at a line end.
+function span(d: Diagnostic, text: string): { from: number; to: number } {
+  const from = Math.min(d.start, text.length);
+  const to = Math.min(Math.max(d.end, d.start), text.length);
+  if (from < to) return { from, to };
+  if (from < text.length && text[from] !== '\n') return { from, to: from + 1 };
+  if (from > 0 && text[from - 1] !== '\n') return { from: from - 1, to: from };
+  return { from, to };
+}
+
+export function toCmDiagnostics(diagnostics: Diagnostic[], text: string): CmDiagnostic[] {
   return diagnostics.map((d) => ({
-    from: Math.min(d.start, length),
-    to: Math.min(Math.max(d.end, d.start), length),
+    ...span(d, text),
     severity: d.severity === 'note' ? 'info' : d.severity,
     source: d.code,
     message: [d.message, d.help ? `help: ${d.help}` : null].filter(Boolean).join('\n'),
@@ -95,7 +105,7 @@ const checkLinter = (onLoad: boolean, prefix = '') => linter(
       const lints = outcome.ok ? (await cpl.lint(source)).diagnostics : [];
       return toCmDiagnostics(
         [...outcome.diagnostics, ...lints].map((d) => shift(d, -head.length)).filter((d) => d.start >= 0),
-        shown.length,
+        shown,
       );
     } catch {
       return [];
