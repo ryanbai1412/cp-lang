@@ -937,3 +937,54 @@ fn a_getter_on_a_struct_with_a_cache_lends_its_field_and_its_filled_cache() {
         "{early}"
     );
 }
+
+#[test]
+fn a_let_inside_a_capturing_local_fn_lends_like_one_in_a_fn() {
+    let out = cpp(concat!(
+        "fn build(m: 1..=100) -> List<Int>:\n",
+        "    fn attempt(seed: Int) -> List<Int>:\n",
+        "        var h: [0..m]?Int = None\n",
+        "        h[seed % m] = Some(seed)\n",
+        "        h.map(v => v ?? 1)\n",
+        "    attempt(m)\n",
+        "print(build(read()))\n",
+    ));
+    assert!(!out.contains("std::vector<cpl::OptInt> c0_1 = h;"), "{out}");
+    assert!(
+        out.contains("const std::vector<cpl::OptInt>& c0_1 = h;"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_max_by_candidate_moves_into_the_best_and_its_key_lends() {
+    let out = cpp(concat!(
+        "fn attempt(seed: Int) -> List<Int>:\n",
+        "    var h: [0..5]?Int = None\n",
+        "    h[seed % 5] = Some(seed)\n",
+        "    h.map(v => v ?? 1)\n",
+        "print((0..4).map(attempt).map(h => (h.sum(), h)).max(by: p => p.0)!.1)\n",
+    ));
+    assert!(
+        out.contains("const std::tuple<ll, std::vector<ll>>& p = "),
+        "{out}"
+    );
+    assert!(out.contains(">>>(std::move("), "{out}");
+}
+
+#[test]
+fn a_capture_passed_later_by_const_ref_is_lent_to_the_closure() {
+    let out = cpp(concat!(
+        "domain C = 0..4\n",
+        "let p: [C]Int = read()\n",
+        "fn pick(k: Int) -> List<Int>:\n",
+        "    let (mult, plain) = C.partition(c => p[c] > 1)\n",
+        "    let plain = plain.sorted(by: c => p[c])\n",
+        "    fn total(i: Int) -> Int = i + plain.len\n",
+        "    (mult + plain.take(total(k) - k)).map(c => c.ord)\n",
+        "print(pick(read()))\n",
+    ));
+    assert!(out.contains("auto total = [&"), "{out}");
+    assert!(out.contains("std::array<ll, 4> p{};"), "{out}");
+    assert!(!out.contains("p.assign("), "{out}");
+}

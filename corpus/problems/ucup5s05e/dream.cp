@@ -17,7 +17,6 @@
 //   input point `s` off both diagonals (`off_diagonal`) forms a strict triangle
 //   with two hull corners; if no such `s` exists, all points lie on the two
 //   diagonals and the 4 hull corners are the unique minimal enclosing polygon.
-// optional_copies: 1
 
 const WINDOW = 5
 

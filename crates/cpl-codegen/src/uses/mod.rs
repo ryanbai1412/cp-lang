@@ -289,7 +289,6 @@ pub(crate) const SOURCE_MAY_CHANGE: &str = "what it reads may change while the n
 pub(crate) const SOURCE_READ_WHOLE: &str =
     "what it reads is read whole, so may move, while the name lives";
 /// Why a `let` the table finds no change for still copies.
-pub(crate) const IN_CLOSURE: &str = "a `let` inside a closure owns its value";
 pub(crate) const NAME_MOVED: &str = "the name is moved later, so it owns its value";
 /// Why a `.clone()` of a place copies: it asks for a second value.
 pub(crate) const CLONED: &str = "written `.clone()`, so it is a second value";
@@ -319,13 +318,12 @@ impl crate::emit::Emitter<'_> {
     }
 
     /// Whether the `let` of `slot` can be a reference to the place `init`
-    /// names instead of a copy of it: it is a heap value outside a closure,
-    /// and nothing changes either for as long as the name lives
+    /// names instead of a copy of it: it is a heap value and nothing changes
+    /// either for as long as the name lives
     /// ([`Emitter::source_change`]). `tail` is what the statements after the
     /// `let` in its block do; without one the whole fn is held to that.
     pub(crate) fn lends(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
-        self.closure_id.is_none()
-            && !init.ty.is_scalar()
+        !init.ty.is_scalar()
             && !matches!(init.ty, Ty::Fn(..))
             && !self.spent.contains(&slot)
             && match init.kind {
@@ -354,8 +352,7 @@ impl crate::emit::Emitter<'_> {
         value: &Ty,
         tail: Option<&Tail>,
     ) -> bool {
-        self.closure_id.is_none()
-            && !value.is_scalar()
+        !value.is_scalar()
             && matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_))
             && !self.spent.contains(&slot)
             && self.source_stays(slot, map, tail)
@@ -370,9 +367,6 @@ impl crate::emit::Emitter<'_> {
         tail: Option<&Tail>,
         whole: bool,
     ) -> &'static str {
-        if self.closure_id.is_some() {
-            return IN_CLOSURE;
-        }
         if let Some(why) = self.source_change(slot, init, tail) {
             return why;
         }

@@ -185,6 +185,8 @@ pub(crate) struct Emitter<'p> {
     pub moves_last: bool,
     /// Each `if` branch being written and the locals dead once it ends.
     pub branch_dead: Vec<(*const Block, BTreeSet<usize>)>,
+    /// Each `for` body and its variable ([`crate::lend::loop_vars`]).
+    pub loop_vars: BTreeMap<*const Block, usize>,
     /// Items of the struct or tuple a `let` builds that read a place the
     /// next statements set before reading it (`let out = T(xs); xs = []`):
     /// each is moved in, not copied.
@@ -340,6 +342,7 @@ impl<'p> Emitter<'p> {
             moved_entry: BTreeSet::new(),
             moves_last: false,
             branch_dead: Vec::new(),
+            loop_vars: crate::lend::loop_vars(program),
             taken_items: BTreeSet::new(),
             pushed_moves: Vec::new(),
             pushers: BTreeMap::new(),

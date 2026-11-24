@@ -17,6 +17,8 @@ pub(crate) struct FusedPush {
     /// Shared, not copied, by each `push` it runs at: a profile counts the
     /// body's statements by address.
     pub body: std::rc::Rc<Block>,
+    /// The consumer loop's variable, a new value each `push`.
+    pub slot: Option<usize>,
     /// Hands each element to this callback instead (`crate::sink`).
     pub sink: Option<String>,
 }
@@ -51,7 +53,15 @@ impl<'p> Emitter<'p> {
         for line in &consumer.first {
             self.line(out, line);
         }
+        // The body is a copy of the loop's, so its variable is told apart
+        // by this copy's address while it is written.
+        let key = std::rc::Rc::as_ptr(&consumer.body);
+        let held = consumer.slot.and_then(|v| self.loop_vars.insert(key, v));
         self.block(&consumer.body, out);
+        match held {
+            Some(v) => self.loop_vars.insert(key, v),
+            None => self.loop_vars.remove(&key),
+        };
         self.indent -= 1;
         self.line(out, "}");
         true
@@ -125,6 +135,7 @@ impl<'p> Emitter<'p> {
                 cpp: cpp.to_string(),
                 first: first.to_vec(),
                 body: std::rc::Rc::new(outer_body.clone()),
+                slot: Some(outer_slot),
                 sink: None,
             },
         ));

@@ -270,8 +270,16 @@ impl<'a> Lowerer<'a> {
             span: at,
         };
         let mut inner = Vec::new();
-        let x_slot = self.temp(elem_ty.clone());
-        inner.push(Stmt::Let(x_slot, Some(value)));
+        // A value already in a temporary is the candidate itself, so it can
+        // move into the best when taken.
+        let x_slot = match value.kind {
+            ExprKind::Local(s) if self.cx.locals[s].name.is_empty() => s,
+            _ => {
+                let s = self.temp(elem_ty.clone());
+                inner.push(Stmt::Let(s, Some(value)));
+                s
+            }
+        };
         let Some(key_expr) = self.apply_key(key_ast, local(x_slot, &elem_ty), &mut inner, span)
         else {
             self.close_loops(frames, Vec::new());

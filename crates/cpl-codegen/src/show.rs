@@ -384,6 +384,7 @@ impl<'p> Emitter<'p> {
                     cpp: String::new(),
                     first: Vec::new(),
                     body: std::rc::Rc::new(cpl_ir::Block { stmts: Vec::new() }),
+                    slot: None,
                     sink: Some(put),
                 },
             ));
