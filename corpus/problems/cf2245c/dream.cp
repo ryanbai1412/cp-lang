@@ -24,4 +24,4 @@ if want >= 1 << b:
 if want > 0: tail.push(want)
 tail.push(0)
 print("YES")
-print([i for i in (0..n).rev if i not in tail] + tail.rev)
+print([i for i in (0..n).rev if not tail.contains(i)] + tail.rev)
