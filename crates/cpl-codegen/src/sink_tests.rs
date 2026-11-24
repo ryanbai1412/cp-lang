@@ -165,3 +165,45 @@ fn a_closure_reading_a_var_keeps_the_list() {
     let solve = &cpp[cpp.find("void solve()").unwrap()..];
     assert!(!solve.contains("cpl_sink_"), "{solve}");
 }
+
+const TAKE_EVENS: &str = concat!(
+    "fn take_evens(mut xs: List<Int>) -> List<Int>:\n",
+    "    var out: List<Int> = []\n",
+    "    while let x = xs.pop():\n",
+    "        if x % 2 == 0: out.push(x)\n",
+    "    out\n",
+    "let n: 1..=1000 = read()\n",
+    "var xs = [i for i in 0..n]\n",
+);
+
+#[test]
+fn the_len_of_a_list_a_fn_only_pushes_to_counts_with_no_list() {
+    let cpp = cpp(&format!(
+        "{TAKE_EVENS}print(take_evens(mut xs).len, xs.len)\n"
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(solve.contains("cpl_each_take_evens(xs, "), "{solve}");
+    assert!(!solve.contains("take_evens(xs).size()"), "{solve}");
+}
+
+#[test]
+fn a_loop_that_may_stop_early_runs_a_list_fn_to_its_end() {
+    let cpp = cpp(&format!(
+        "{TAKE_EVENS}for x in take_evens(mut xs): break\nprint(xs.len)\n"
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(!solve.contains("cpl_each_take_evens"), "{solve}");
+}
+
+#[test]
+fn the_len_of_a_list_a_fn_starts_with_values_keeps_the_list() {
+    let cpp = cpp(concat!(
+        "fn halves(n: Int) -> List<Int>:\n",
+        "    var out = [i for i in 0..n]\n",
+        "    out.push(n)\n",
+        "    out\n",
+        "let n: 1..=1000 = read()\n",
+        "print(halves(n).len)\n",
+    ));
+    assert!(!cpp.contains("cpl_each_halves"), "{cpp}");
+}

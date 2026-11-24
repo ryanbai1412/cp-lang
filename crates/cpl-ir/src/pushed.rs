@@ -113,8 +113,13 @@ impl FnSummary {
 /// of the body, in both back ends alike. It must not change an argument
 /// other than through a `mut` parameter, size a domain or call a fn value
 /// that writes a variable it captured by reference.
+///
+/// A fn returning a list it only makes, pushes to and returns is one too,
+/// but it runs to its end whatever takes its values: only a reducer that
+/// takes every value is fed by it, never a loop that may stop early.
 fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
-    let acc = f.locals.iter().position(|local| local.name == "__yields")?;
+    let yields = f.locals.iter().position(|local| local.name == "__yields");
+    let acc = yields.or_else(|| returned_list(f))?;
     if acc < f.params.len() || summary.sizes || (!summary.yields_fns && summary.opaque) {
         return None;
     }
@@ -132,12 +137,48 @@ fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
         Stmt::Return(_) => odd = true,
         _ => {}
     });
-    let (mut named, mut filled) = (0, 0);
+    let mut empty = false;
+    let (mut named, mut filled, mut stored) = (0, 0, 0);
+    let at_acc = |place: &crate::Place| walk::root(place) == (false, acc);
+    walk::deep_stmts(&f.body, &mut |stmt| match stmt {
+        Stmt::Let(slot, Some(init)) if *slot == acc => {
+            empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
+        }
+        Stmt::Assign(place, ..) => stored += usize::from(at_acc(place)),
+        _ => {}
+    });
     walk::deep_exprs(&f.body, &mut |e| {
         named += usize::from(is_acc(e));
         filled += usize::from(fills(e));
+        match &e.kind {
+            ExprKind::Mutate(_, place, _)
+            | ExprKind::MutSlice(place, ..)
+            | ExprKind::Sort(place, ..) => stored += usize::from(at_acc(place)),
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                stored += args
+                    .iter()
+                    .filter(|a| matches!(a, Arg::Mut(place) if at_acc(place)))
+                    .count()
+            }
+            _ => {}
+        }
     });
-    (!odd && lets == 1 && named == returns && filled == pushes).then_some(acc)
+    // A list it starts with values in, or changes past pushing, is not what it yields.
+    (!odd && lets == 1 && empty && named == returns && filled == pushes && stored == filled)
+        .then_some(acc)
+}
+
+/// The local a fn returns when it is a list it made itself.
+fn returned_list(f: &Function) -> Option<usize> {
+    let mut acc = None;
+    walk::deep_stmts(&f.body, &mut |stmt| {
+        if let Stmt::Return(Some(e)) = stmt {
+            if let ExprKind::Local(slot) = e.kind {
+                acc = acc.or(Some(slot));
+            }
+        }
+    });
+    acc.filter(|&slot| slot >= f.params.len() && matches!(f.locals[slot].ty, crate::Ty::List(_)))
 }
 
 /// The summaries of a program's fns and its `yields` fns that can feed a
@@ -146,6 +187,8 @@ fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
 pub struct Feeds {
     pub summaries: Vec<FnSummary>,
     pub pushers: BTreeMap<usize, usize>,
+    /// The pushers that are not `yields` fns: they run to their end.
+    pub eager: BTreeSet<usize>,
 }
 
 impl Feeds {
@@ -160,12 +203,20 @@ impl Feeds {
         let summaries = summarize(program);
         // Inserted in key order: collecting a BTreeMap sorts, a copy of std's stable sort.
         let mut pushers = BTreeMap::new();
-        for id in 0..program.fns.len() {
-            if let Some(p) = pusher(&program.fns[id], &summaries[id]) {
+        let mut eager = BTreeSet::new();
+        for (id, f) in program.fns.iter().enumerate() {
+            if let Some(p) = pusher(f, &summaries[id]) {
                 pushers.insert(id, p);
+                if f.locals[p].name != "__yields" {
+                    eager.insert(id);
+                }
             }
         }
-        Feeds { summaries, pushers }
+        Feeds {
+            summaries,
+            pushers,
+            eager,
+        }
     }
 
     /// Keeps the fns some loop is fed by, and `also`: only they get the form that feeds.
@@ -186,6 +237,39 @@ impl Feeds {
             });
         }
         self.pushers.retain(|id, _| fed.contains(id));
+        self.eager.retain(|id| fed.contains(id));
+    }
+
+    /// The pushers whose values a `.len` only counts: the count is taken
+    /// as they are made, with no list.
+    pub fn counted(&self, program: &Program) -> BTreeSet<usize> {
+        let mut counted = BTreeSet::new();
+        let bodies = [&program.main, &program.setup]
+            .into_iter()
+            .chain(program.fns.iter().map(|f| &f.body))
+            .chain(program.closures.iter().map(|c| &c.body));
+        for body in bodies {
+            walk::deep_exprs(body, &mut |e| {
+                if let Some(callee) = self.counts(e) {
+                    counted.insert(callee);
+                }
+            });
+        }
+        counted
+    }
+
+    /// The pusher `e` takes the length of, `f(..).len`.
+    pub fn counts(&self, e: &Expr) -> Option<usize> {
+        match &e.kind {
+            ExprKind::Builtin(crate::Builtin::Len, of) => match of.as_slice() {
+                [Expr {
+                    kind: ExprKind::Call(callee, _),
+                    ..
+                }] if self.pushers.contains_key(callee) => Some(*callee),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     /// The fn and the slot of its list when the loop `id` over `seq`
@@ -196,6 +280,9 @@ impl Feeds {
             return None;
         };
         let acc = *self.pushers.get(callee)?;
+        if self.eager.contains(callee) {
+            return None;
+        }
         // The body must not change what the fn is still reading or
         // changing: a global it touches, or a list handed to it.
         let summary = &self.summaries[*callee];

@@ -876,6 +876,9 @@ impl<'p> Emitter<'p> {
             {
                 self.moved_entry_code(&args[0])
             }
+            ExprKind::Builtin(Builtin::Len, args) if matches!(&args[0].kind, ExprKind::Call(f, _) if self.pushers.contains_key(f)) => {
+                self.count_pushed(&args[0])
+            }
             ExprKind::Builtin(op, args) => {
                 let operands: Vec<&Expr> = args.iter().collect();
                 if matches!(op, Builtin::ListConcat | Builtin::Copy) {

@@ -294,6 +294,27 @@ impl Emitter<'_> {
         )))
     }
 
+    /// `f(..).len` of a fn with a callback form: counts the values as it
+    /// makes them, with no list.
+    pub(crate) fn count_pushed(&mut self, call: &Expr) -> Code {
+        let text = self.expr(call).text;
+        let ExprKind::Call(callee, _) = &call.kind else {
+            return Code::new(format!("(ll){text}.size()"), crate::emit::UNARY);
+        };
+        let name = crate::names::fn_name(&self.program.fns[*callee].name);
+        let inner = (text.strip_prefix("::prog::").unwrap_or(&text))
+            .strip_prefix(&format!("{name}("))
+            .and_then(|rest| rest.strip_suffix(')'));
+        let Some(inner) = inner else {
+            return Code::new(format!("(ll){text}.size()"), crate::emit::UNARY);
+        };
+        let sep = if inner.is_empty() { "" } else { ", " };
+        let n = self.temp();
+        Code::primary(format!(
+            "[&]() -> ll {{ ll {n} = 0; cpl_each_{name}({inner}{sep}[&](auto&&) -> int {{ ++{n}; return 0; }}); return {n}; }}()"
+        ))
+    }
+
     /// In a sink variant, the call handing the sunk list on: it hands on the callback.
     fn forward_sink_call(&mut self, id: usize, slot: usize, args: &[Arg]) -> Option<Code> {
         if !other_args_ok(self.program, &self.devirt, &self.sink_pure, id, slot, args) {

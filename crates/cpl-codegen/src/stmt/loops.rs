@@ -65,10 +65,12 @@ impl<'p> Emitter<'p> {
         let feeds = cpl_ir::pushed::Feeds {
             summaries: std::mem::take(&mut self.summaries),
             pushers: std::mem::take(&mut self.pushers),
+            eager: std::mem::take(&mut self.eager),
         };
         let fed = feeds.feeds(id, seq, body);
         self.summaries = feeds.summaries;
         self.pushers = feeds.pushers;
+        self.eager = feeds.eager;
         if fed.is_none() {
             return false;
         }

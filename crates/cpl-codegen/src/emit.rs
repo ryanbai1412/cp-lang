@@ -175,6 +175,8 @@ pub(crate) struct Emitter<'p> {
     /// each is moved in, not copied.
     pub taken_items: BTreeSet<*const Expr>,
     pub pushers: BTreeMap<usize, usize>,
+    /// The pushers that run to their end, never feeding a loop.
+    pub eager: BTreeSet<usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
     /// The loops over a `yields` fn being written as its callback, innermost last.
@@ -297,6 +299,7 @@ impl<'p> Emitter<'p> {
             moves_last: false,
             taken_items: BTreeSet::new(),
             pushers: BTreeMap::new(),
+            eager: BTreeSet::new(),
             sinks: BTreeMap::new(),
             sink_pure: BTreeSet::new(),
             sinking: None,
@@ -316,7 +319,9 @@ impl<'p> Emitter<'p> {
         let mut feeds = cpl_ir::pushed::Feeds::candidates(program);
         let checks = emitter.target.checks != crate::Checks::None;
         let sinks = crate::sink::sinks(program, &emitter.devirt, &feeds.pushers, checks);
-        feeds.keep_fed(program, &sinks.producers);
+        let mut also = sinks.producers.clone();
+        also.extend(feeds.counted(program));
+        feeds.keep_fed(program, &also);
         emitter.sinks = sinks.fns;
         emitter.sink_pure = sinks.pure;
         emitter.summaries = feeds.summaries;
@@ -326,6 +331,7 @@ impl<'p> Emitter<'p> {
             emitter.target.checks != crate::Checks::None,
         );
         emitter.pushers = feeds.pushers;
+        emitter.eager = feeds.eager;
         emitter
     }
 
