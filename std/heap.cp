@@ -1029,26 +1029,26 @@ pub struct MeldHeaps<T>:
         while let x = self.pop(mut h): out.push(x)
         out
 
-    // Copy the nodes of `h`, a heap of pool `from`, into this pool, breadth first: the heap shape
-    // and pending offsets are kept, so the copy is a heap here. Costs \(O(\mathit{h.len})\).
+    // Copy the nodes of `h`, a heap of pool `from`, into this pool, root first (preorder): the heap
+    // shape and pending offsets are kept, so the copy is a heap here. Each stacked node carries
+    // the new index of its parent and which side it hangs on, and links itself in when it lands.
+    // Costs \(O(\mathit{h.len})\).
     fn adopt(mut self, from: MeldHeaps<T>, h: Meld<T>) -> Meld<T>:
         from.check(h)
         if h._root < 0: return Meld()
         let base = _nodes.len
         if from._adds.len > 0 and _adds.len == 0: _adds = [None for _ in 0..base]
-        var order = [h._root]
-        var i = 0
-        while i < order.len:
-            var n = from._nodes[order[i]]
-            if n.l >= 0:
-                order.push(n.l)
-                n.l = base + order.len - 1
-            if n.r >= 0:
-                order.push(n.r)
-                n.r = base + order.len - 1
+        var todo = [(h._root, -1, true)]
+        while let (s, up, left) = todo.pop():
+            let n = from._nodes[s]
+            let at = _nodes.len
+            if up >= 0:
+                if left: _nodes[up].l = at
+                else: _nodes[up].r = at
+            if n.r >= 0: todo.push((n.r, at, false))
+            if n.l >= 0: todo.push((n.l, at, true))
             _nodes.push(n)
-            if _adds.len > 0: _adds.push(if from._adds.len > 0: from._adds[order[i]] else: None)
-            i += 1
+            if _adds.len > 0: _adds.push(if from._adds.len > 0: from._adds[s] else: None)
         self.seal(base, h._len)
 
     // Drop every node; every earlier handle into the pool goes stale.
