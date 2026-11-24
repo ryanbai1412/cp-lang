@@ -5,94 +5,62 @@
 //   x3 = x1 + x2 and deletes x1, x2. n, q, total length, sum of m <= 5e5; values <= n + q.
 // Solution: a strict majority must win every bit, so per store keep how many values have each of
 //   20 bits set: the per-bit majority over the picked stores is the only candidate, checked
-//   against per-(store, value) counts in one HashMap. Sequences are back-linked nodes, so push
-//   and pop are O(20); a join moves the smaller store's counts into the larger (small to large),
+//   against a `Counter` per store. Each sequence is a `Deque`, so push and pop are O(20); a join
+//   moves the smaller store's values and counts into the larger (small to large),
 //   O((n + q) log) in all, and a query costs O(20 m).
-// original: corpus/submissions/4800882.cpp (20 random probes; this port is exact)
-// Sequences are back-linked nodes in flat lists and all counts share one
-// HashMap keyed by store * 2^20 + value: the prototype has no Deque, no
-// struct arena, no way to walk a HashMap, and `m[(s, x)] += 1` on a tuple key
-// emits C++ that does not compile.
 // Bounds: n, q: 1..=5e5; len: 0..=5e5; x, y, z: 1..=n + q; kind: 1..=4; m: 1..=5e5
-let n: 1..=5e5 = read()
-let q: 1..=5e5 = read()
-const BITS = 20  // values are at most n + q < 2^20
+// original: corpus/submissions/4800882.cpp (20 random probes; this port is exact)
+let (n, q): (1..=5e5, 1..=5e5) = read()
+domain Store = 0..n
+domain Label = 1..=n + q
+domain Bit = 0..20  // values are at most 1e6 < 2^20
 
-var val: List<Int> = []     // node -> value
-var before: List<Int> = []  // node -> the node in front of it, or -1
-var head: [0..n]Int = -1
-var tail: [0..n]Int = -1
-var size: [0..n]Int = 0
-var ones: [0..n, 0..BITS]Int = 0  // how many values of the store have bit b set
-var count = HashMap<Int, Int>()   // key(store, value) -> copies
-fn key(s: Int, x: Int) -> Int: s << BITS | x
-var store: [1..=n + q]Int = 0  // sequence label -> store
+var items = [Store] _ => Deque<Int>()
+var counts = [Store] _ => Counter<Int>()
+var ones: [Store, Bit]Int = 0  // how many values of the store have bit b set
+var store: [Label]Store = Store.first!  // sequence label -> store
 
-fn push(s: Int, x: Int):
-    val.push(x)
-    before.push(tail[s])
-    if size[s] == 0: head[s] = val.len - 1
-    tail[s] = val.len - 1
-    size[s] += 1
-    count[key(s, x)] += 1
-    for b in 0..BITS: ones[s, b] += x >> b & 1
+fn push(s: Store, x: Int):
+    items[s].push(x)
+    counts[s].add(x, 1)
+    for b in Bit: ones[s, b] += x >> b.ord & 1
 
-for s in 0..n:
-    store[s + 1] = s
+for s in Store:
+    store[Label.nth(s.ord)] = s
     let len: 0..=5e5 = read()
-    for _ in 0..len:
-        let x: 1..=1e6 = read()
-        push(s, x)
+    repeat len: push(s, read<1..=1e6>())
 
-for _ in 0..q:
+repeat q:
     let kind: 1..=4 = read()
     if kind == 1:
-        let x: 1..=n + q = read()
-        let y: 1..=1e6 = read()
+        let (x, y): (Label, 1..=1e6) = read()
         push(store[x], y)
     elif kind == 2:
-        let x: 1..=n + q = read()
-        let s = store[x]
-        let y = val[tail[s]]
-        tail[s] = before[tail[s]]
-        size[s] -= 1
-        count[key(s, y)] -= 1
-        for b in 0..BITS: ones[s, b] -= y >> b & 1
+        let s = store[read<Label>()]
+        let y = items[s].pop()!
+        counts[s].add(y, -1)
+        for b in Bit: ones[s, b] -= y >> b.ord & 1
     elif kind == 3:
         let m: 1..=5e5 = read()
-        var picked: List<Int> = []
-        for _ in 0..m:
-            let x: 1..=n + q = read()
-            picked.push(store[x])
-        var total = 0
-        for s in picked: total += size[s]
+        let picked = [store[x] for x in read<[m]Label>()]
+        let total = sum(items[s].len for s in picked)
         // each bit of a strict majority value is the majority of that bit
-        var guess = 0
-        for b in 0..BITS:
-            var set = 0
-            for s in picked: set += ones[s, b]
-            if 2 * set > total: guess |= 1 << b
-        var copies = 0
-        for s in picked: copies += count.get(key(s, guess)) ?? 0
+        let guess = sum(1 << b.ord for b in Bit if 2 * sum(ones[s, b] for s in picked) > total)
+        let copies = sum(counts[s].get(guess) for s in picked)
         print(if 2 * copies > total: guess else: -1)
     else:
-        let x: 1..=n + q = read()
-        let y: 1..=n + q = read()
-        let z: 1..=n + q = read()
+        let (x, y, z): (Label, Label, Label) = read()
         let (front, back) = (store[x], store[y])
-        // the smaller side's counts move into the larger store
-        let (small, big) = if size[front] < size[back]: (front, back) else: (back, front)
-        var node = tail[small]
-        for _ in 0..size[small]:
-            count[key(big, val[node])] += 1
-            node = before[node]
-        for b in 0..BITS: ones[big, b] += ones[small, b]
-        let (first, last) = (
-            if size[front] > 0: head[front] else: head[back],
-            if size[back] > 0: tail[back] else: tail[front],
-        )
-        if size[front] > 0 and size[back] > 0: before[head[back]] = tail[front]
-        size[big] += size[small]
-        head[big] = first
-        tail[big] = last
-        store[z] = big
+        // the smaller side's values and counts move into the larger store
+        if items[front].len >= items[back].len:
+            let moved = items[back].take()
+            for v in moved.each(): items[front].push(v)
+            counts[front].absorb(mut counts[back])
+            for b in Bit: ones[front, b] += ones[back, b]
+            store[z] = front
+        else:
+            var moved = items[front].take()
+            while let v = moved.pop(): items[back].push_front(v)
+            counts[back].absorb(mut counts[front])
+            for b in Bit: ones[back, b] += ones[front, b]
+            store[z] = back
