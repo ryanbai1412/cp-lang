@@ -64,22 +64,23 @@ function stdText(module: string): Promise<string> {
 export async function provideStd(w: Worker, source: string | undefined) {
   if (source === undefined || !w.stdNeeded || !w.provideStd) return;
   for (let need = await w.stdNeeded(source); need.length; need = await w.stdNeeded(source)) {
-    await Promise.all(
-      need.map(async (module) => {
-        let text: string;
-        try {
-          text = await stdText(module);
-        } catch (error) {
-          throw Object.assign(
-            new Error(`cpl: can't load std.${module}: ${(error as Error).message}; check the connection and try again`),
-            { kind: 'load' },
-          );
-        }
-        const given = await w.provideStd!(module, text);
-        if ('error' in given) throw Object.assign(new Error(given.error), { kind: 'bug' });
-      }),
+    await Promise.all(need.map((module) => giveStd(w, module)));
+  }
+}
+
+async function giveStd(w: Worker, module: string) {
+  if (!w.provideStd) return;
+  let text: string;
+  try {
+    text = await stdText(module);
+  } catch (error) {
+    throw Object.assign(
+      new Error(`cpl: can't load std.${module}: ${(error as Error).message}; check the connection and try again`),
+      { kind: 'load' },
     );
   }
+  const given = await w.provideStd(module, text);
+  if ('error' in given) throw Object.assign(new Error(given.error), { kind: 'bug' });
 }
 
 async function call<T>(f: (w: Worker) => Promise<T>, source?: string): Promise<T> {
@@ -101,6 +102,20 @@ async function call<T>(f: (w: Worker) => Promise<T>, source?: string): Promise<T
   }
 }
 
+/** Runs each task after the previous one settles, so they reach the worker in call order. */
+export function inOrder() {
+  let last: Promise<unknown> = Promise.resolve();
+  return <T>(task: () => Promise<T>): Promise<T> => {
+    const result = last.then(task);
+    last = result.catch(() => {});
+    return result;
+  };
+}
+
+// A didChange waits on stdNeeded first, so without this a request sent just
+// after it could overtake it and be answered against the old text.
+const lspInOrder = inOrder();
+
 /** The whole text an LSP notification opens or changes a document to. */
 export function documentText(message: object): string | undefined {
   const params = (message as { params?: { textDocument?: { text?: string }; contentChanges?: { text?: string }[] } }).params;
@@ -116,5 +131,7 @@ export const cpl = {
   sample: (src: string, options?: SampleOptions) => call((w) => w.sample(src, options), src),
   build: (src: string) => call((w) => w.build(src), src),
   explain: (src: string) => call((w) => w.explain(src), src),
-  lsp: (message: object) => call((w) => w.lsp(message), documentText(message)),
+  /** Fetches std module `module` and gives it to the compiler, e.g. before resolving its docs. */
+  provideStd: (module: string) => call((w) => giveStd(w, module)),
+  lsp: (message: object) => lspInOrder(() => call((w) => w.lsp(message), documentText(message))),
 };

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { documentText, provideStd } from './cpl';
+import { documentText, inOrder, provideStd } from './cpl';
 
 const texts: Record<string, string> = { sparse: 'sparse text', math: 'math text' };
 
@@ -53,5 +53,22 @@ describe('lazy std', () => {
     expect(documentText({ params: { textDocument: { uri: 'a', text: 'x' } } })).toBe('x');
     expect(documentText({ params: { textDocument: { uri: 'a' }, contentChanges: [{ text: 'y' }] } })).toBe('y');
     expect(documentText({ params: { position: {} } })).toBeUndefined();
+  });
+});
+
+describe('inOrder', () => {
+  it('starts each task only after the one before it settles, failed or not', async () => {
+    const queue = inOrder();
+    const log: string[] = [];
+    const task = (name: string, ms: number, fail = false) => () =>
+      new Promise<string>((done, reject) => {
+        log.push(`start ${name}`);
+        setTimeout(() => (log.push(`end ${name}`), fail ? reject(new Error(name)) : done(name)), ms);
+      });
+    const didChange = queue(task('didChange', 20, true));
+    const request = queue(task('signatureHelp', 0));
+    await expect(didChange).rejects.toThrow('didChange');
+    expect(await request).toBe('signatureHelp');
+    expect(log).toEqual(['start didChange', 'end didChange', 'start signatureHelp', 'end signatureHelp']);
   });
 });
