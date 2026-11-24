@@ -7,7 +7,7 @@
 //   has the same k low bits and more than k bits. So insert each x's low bits, lowest
 //   first, into a binary trie, each x node owning a binary trie over y holding the colour
 //   sums. A query walks r's bits down the x trie and, at every node on that path with a
-//   column, walks c's bits down the column's y trie adding the colour sums: O(60) per stroke, O(60^2) per query.
+//   column, walks c's bits down the column's y trie summing its colours in place: O(60) per stroke, O(60^2) per query.
 // Bounds: n, q: 1..=2e5; strokes.x, strokes.y, queries.r, queries.c: 1..=1e18; strokes.v: 1..=1e4
 use std.strings.{Trie}
 
@@ -29,6 +29,17 @@ struct Column:
     ys: Trie<Bit>
     colour: List<Int>  // the colour sum at each ys node
 
+// The colour summed over the nodes of col's trie that c's low bits walk through, root first.
+fn colour_along(col: Column, c: Coord) -> Int:
+    var at = col.ys.root
+    var total = col.colour[at]
+    for i in 0..bit_width(c) - 1:
+        if let next = col.ys.step(at, Bit(c >> i & 1)):
+            at = next
+            total += col.colour[at]
+        else: break
+    total
+
 let (n, q): (1..=2e5, 1..=2e5) = read()
 let strokes: [n](x: Coord, y: Coord, v: 1..=1e4) = read()
 let queries: [q](r: Coord, c: Coord) = read()
@@ -49,6 +60,5 @@ for s in strokes:
 for qu in queries:
     var total = 0
     for o in walk(xs, qu.r):
-        if let k = column_at.get(o):
-            total += sum(cols[k].colour[p] for p in walk(cols[k].ys, qu.c))
+        if let k = column_at.get(o): total += colour_along(cols[k], qu.c)
     print(total)
