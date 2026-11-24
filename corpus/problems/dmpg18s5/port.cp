@@ -25,9 +25,9 @@ fn block(p: Pos) -> Block = Block((p.label - 1) / SIDE)
 fn first(b: Block) -> Pos = Pos(b.label * SIDE + 1)
 fn last(b: Block) -> Pos = Pos(min(n, (b.label + 1) * SIDE))
 
-var count: [Block, Val]0..=SIDE = 0  // how many of the block's values each divisor divides
+var count: [Val, Block]0..=SIDE = 0  // how many of the block's values each divisor divides
 fn shift(p: Pos, by: Int):
-    for d in divisors[a[p]]: count[block(p), d] += by
+    for d in divisors[a[p]]: count[d, block(p)] += by
 for p in Pos: shift(p, 1)
 
 fn scan(lo: Pos, hi: Pos, x: Val) -> Int = (lo..=hi).count(p => a[p].label % x.label == 0)
@@ -41,7 +41,7 @@ for _ in 0..q:
         let (bl, br) = (block(l), block(r))
         if bl == br: print(scan(l, r, x))
         else:
-            let inside = sum(count[Block(b), x] for b in bl.label + 1..br.label)
+            let inside = sum(count[x, Block(b)] for b in bl.label + 1..br.label)
             print(scan(l, last(bl), x) + inside + scan(first(br), r, x))
     else:
         let p: Pos = read()
