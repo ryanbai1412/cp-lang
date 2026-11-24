@@ -8863,3 +8863,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `a.window_fold(k, op) -> yields T` yields one fold per length-`k` window, using `Window(op)`'s strategy: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, and any other op keeps two stacks. `windows(k).fold(op)` is not added. `zip`/`zip_exact` will take any `Seq` and walk both in lockstep (4.4), with the pairs keyed by the first argument when it is `Indexed`, and `Rev` of an `Indexed` becomes `Indexed` with reversed keys. `Filtered` stays non-`Indexed`.
 - **Why.** `.fold` on a sequence already means "fold every element", so a second meaning on windows would break one-name-one-meaning. Three module docs taught a `windows(k).fold` that never existed.
 - **Reverse.** Drop `window_fold` from `std/window.cp` and the prelude.
+
+## 535. (reserved, core)
