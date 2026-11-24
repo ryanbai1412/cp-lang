@@ -1178,7 +1178,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()
             || self.inline_ret.is_some()
-            || Self::block_has_outer_loop_jump(body, id)
+            || (self.feed_acc.is_some() && Self::block_has_outer_loop_jump(body, id))
         {
             return false;
         }
@@ -1186,6 +1186,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return false;
         };
         let var_loc = self.slot_loc(slot);
+        let escape = self.alloc_i();
+        self.emit(
+            Op::ConstImmI {
+                dst: escape,
+                val: 0,
+            },
+            seq_expr.span,
+        );
         let spec_idx = self.feed_calls.len() as u16;
         self.feed_calls.push(FeedCallSpec {
             fn_id,
@@ -1202,6 +1210,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
         let body_pc = self.ops.len();
         self.feed_calls[spec_idx as usize].body_pc = body_pc;
+        let first_jump = self.jumps.len();
+        let first_give = self.give_targets.last_mut().map(|t| t.exits_mut().len());
         let lt = self.loop_body(id, None, &body.stmts);
         let next_pc = self.ops.len() as u32;
         for c in lt.continues {
@@ -1213,8 +1223,53 @@ impl<'p, 'f> Compiler<'p, 'f> {
             self.patch(b, break_pc);
         }
         self.emit(Op::FeedBodyBreak, Span::default());
+        // A jump out of the loop, to a loop further out or a `do`'s end,
+        // ends the fed fn as a `break` does, then goes on after the call.
+        let jumps: Vec<LoopJump> = self.jumps.drain(first_jump..).collect();
+        let gives = match (first_give, self.give_targets.last_mut()) {
+            (Some(n), Some(t)) => t.exits_mut().split_off(n),
+            _ => Vec::new(),
+        };
+        let escapes = (jumps.iter().map(|j| j.pc)).chain(gives.iter().copied());
+        for (k, pc) in (1..).zip(escapes.collect::<Vec<_>>()) {
+            let stub = self.ops.len() as u32;
+            self.patch(pc, stub);
+            self.emit(
+                Op::ConstImmI {
+                    dst: escape,
+                    val: k,
+                },
+                Span::default(),
+            );
+            let j = self.emit(Op::Jmp { target: 0 }, Span::default());
+            self.patch(j, break_pc);
+        }
         let after_pc = self.ops.len() as u32;
         self.patch(j_after, after_pc);
+        let mut k = 0;
+        let mut dispatch = |c: &mut Self| {
+            k += 1;
+            let r = c.alloc_i();
+            c.emit(Op::ConstImmI { dst: r, val: k }, Span::default());
+            c.emit(
+                Op::JmpEqI {
+                    a: escape,
+                    b: r,
+                    target: 0,
+                },
+                Span::default(),
+            )
+        };
+        for j in jumps {
+            let pc = dispatch(self);
+            self.jumps.push(LoopJump { pc, ..j });
+        }
+        for _ in gives {
+            let pc = dispatch(self);
+            if let Some(t) = self.give_targets.last_mut() {
+                t.exits_mut().push(pc);
+            }
+        }
         true
     }
 
