@@ -484,21 +484,20 @@ impl<'p> Emitter<'p> {
                 let effects = Touch::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
-                let untouched_by_body =
-                    |seq: &Expr| match walk::path_root(crate::uses::in_place(seq)) {
-                        Some((false, local)) => {
-                            !effects.writes.contains(&(false, local))
-                                || fields_untouched(crate::uses::in_place(seq), body)
-                        }
-                        Some((true, global)) => {
-                            !effects.writes.contains(&(true, global))
-                                && !effects
-                                    .calls
-                                    .iter()
-                                    .any(|f| self.uses.effects(*f).writes.contains(&global))
-                        }
-                        None => false,
-                    };
+                let untouched_by_body = |seq: &Expr| match held_root(crate::uses::in_place(seq)) {
+                    Some((false, local)) => {
+                        !effects.writes.contains(&(false, local))
+                            || fields_untouched(crate::uses::in_place(seq), body)
+                    }
+                    Some((true, global)) => {
+                        !effects.writes.contains(&(true, global))
+                            && !effects
+                                .calls
+                                .iter()
+                                .any(|f| self.uses.effects(*f).writes.contains(&global))
+                    }
+                    None => false,
+                };
                 let untouched = untouched_by_body(seq);
                 let lent = self.lent_coalesce(seq).filter(|(from, _)| match from {
                     crate::lend::Lender::Get(m, _) => untouched_by_body(m),
@@ -645,5 +644,17 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+    }
+}
+
+/// The variable a loop source is a place in, whatever its indices: they
+/// run once, before the loop binds the place, so only the variable must
+/// stay unchanged (`for d in divisors[a[p]]`).
+fn held_root(e: &Expr) -> Option<(bool, usize)> {
+    match &e.kind {
+        ExprKind::Local(slot) => Some((false, *slot)),
+        ExprKind::Global(id) => Some((true, *id)),
+        ExprKind::Field(base, _) | ExprKind::Index(base, _) => held_root(base),
+        _ => None,
     }
 }

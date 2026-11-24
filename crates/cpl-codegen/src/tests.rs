@@ -147,6 +147,17 @@ fn extend_borrows_its_source_and_push_takes_a_dying_local() {
 }
 
 #[test]
+fn a_loop_over_a_global_the_fn_never_writes_walks_it_in_place() {
+    let cpp = cpp(
+        "domain Val = 0..100\nvar divisors: [Val]List<Val> = [Val] _ => []\nvar a: [Val]Val = [Val] v => v\nvar hits: [Val]Int = [Val] _ => 0\nfn touch(p: Val):\n    for d in divisors[a[p]]:\n        hits[d] += 1\nfor v in Val:\n    divisors[v].push(v)\n    touch(v)\nprint(hits[Val(1)])\n",
+    );
+    let touch = &cpp[cpp.find("inline void touch").unwrap()..];
+    let touch = &touch[..touch.find("\n}\n").unwrap()];
+    assert!(touch.contains(": divisors[a[p]])"), "{touch}");
+    assert!(!touch.contains("std::vector"), "{touch}");
+}
+
+#[test]
 fn list_insert_and_remove_move_the_tail_once() {
     let body = body("var a = [1, 3]\na.insert(1, 2)\nlet y = a.remove(0)\nprint(a, y)\n");
     assert!(body.contains("cpl::list_insert(a, "), "{body}");
