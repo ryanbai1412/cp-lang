@@ -228,39 +228,55 @@ fn self_heads(std: Std) -> std::collections::HashMap<String, Vec<Option<String>>
     heads
 }
 
-/// The top-level std methods that do work and need nothing but `self`:
-/// every `pub fn name(self: S, ..)` of that name gives the rest defaults and
-/// is not `@get`, so reading one without `()` hides work (R07.1.7).
-pub fn work_methods() -> &'static std::collections::HashSet<String> {
-    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| work_methods_in(crate::modules::std_index()))
-}
-
-fn work_methods_in(std: Std) -> std::collections::HashSet<String> {
-    let mut work = std::collections::HashSet::new();
-    let mut other = std::collections::HashSet::new();
-    for (_, text) in std {
-        if !text.contains("self:") {
+/// Whether `name` is a top-level std method that does work and needs
+/// nothing but `self`: every `pub fn name(self: S, ..)` gives the rest
+/// defaults and is not `@get`, so reading one without `()` hides work
+/// (R07.1.7). Only the modules that declare a fn `name` are parsed, each
+/// once, so a check pays for the modules its file reads.
+pub fn is_work_method(name: &str) -> bool {
+    static MODULES: OnceLock<Vec<OnceLock<SelfMethods>>> = OnceLock::new();
+    let std = crate::modules::std_index();
+    let modules = MODULES.get_or_init(|| std.iter().map(|_| OnceLock::new()).collect());
+    let mut work = false;
+    for ((_, text), parsed) in std.iter().zip(modules) {
+        if !text.contains(&format!("fn {name}")) || !text.contains("self:") {
             continue;
         }
-        for (_, item) in cpl_syntax::parse_file(text).items {
-            for stmt in &item.stmts {
-                let ast::StmtKind::Fn(f) = &stmt.kind else {
-                    continue;
-                };
-                if !stmt.public || !f.params.first().is_some_and(|p| p.name.text == "self") {
-                    continue;
-                }
-                let getter = stmt.decorators.iter().any(|d| d.name.text == "get");
-                match !getter && f.params[1..].iter().all(|p| p.default.is_some()) {
-                    true => work.insert(f.name.text.clone()),
-                    false => other.insert(f.name.text.clone()),
-                };
+        let parsed = parsed.get_or_init(|| self_methods_in(text));
+        if parsed.other.contains(name) {
+            return false;
+        }
+        work |= parsed.work.contains(name);
+    }
+    work
+}
+
+/// A module's `pub fn name(self, ..)` names: `work` when the fn is no
+/// getter and gives every other parameter a default.
+#[derive(Default)]
+struct SelfMethods {
+    work: std::collections::HashSet<String>,
+    other: std::collections::HashSet<String>,
+}
+
+fn self_methods_in(text: &str) -> SelfMethods {
+    let mut found = SelfMethods::default();
+    for (_, item) in cpl_syntax::parse_file(text).items {
+        for stmt in &item.stmts {
+            let ast::StmtKind::Fn(f) = &stmt.kind else {
+                continue;
+            };
+            if !stmt.public || !f.params.first().is_some_and(|p| p.name.text == "self") {
+                continue;
             }
+            let getter = stmt.decorators.iter().any(|d| d.name.text == "get");
+            match !getter && f.params[1..].iter().all(|p| p.default.is_some()) {
+                true => found.work.insert(f.name.text.clone()),
+                false => found.other.insert(f.name.text.clone()),
+            };
         }
     }
-    work.retain(|n| !other.contains(n));
-    work
+    found
 }
 
 /// The top-level std methods that are only ever `@get`: every
@@ -858,9 +874,20 @@ mod tests {
         );
         assert_eq!(receiver_method_names(files), receiver_method_names(index));
         assert_eq!(self_heads(files), self_heads(index));
-        assert_eq!(work_methods_in(files), work_methods_in(index));
+        let work = |std: Std| -> Vec<(Vec<String>, Vec<String>)> {
+            let sorted = |set: &std::collections::HashSet<String>| {
+                let mut v: Vec<String> = set.iter().cloned().collect();
+                v.sort();
+                v
+            };
+            std.iter()
+                .map(|(_, text)| self_methods_in(text))
+                .map(|m| (sorted(&m.work), sorted(&m.other)))
+                .collect()
+        };
+        assert_eq!(work(files), work(index));
         assert_eq!(methods_in(files), methods_in(index));
-        assert!(!work_methods_in(index).is_empty());
+        assert!(is_work_method("sum") && !is_work_method("rev"));
         let types = files
             .iter()
             .flat_map(|(_, t)| t.lines())

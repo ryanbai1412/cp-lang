@@ -130,7 +130,7 @@ fn checkout(path: &Path) -> Option<std::path::PathBuf> {
 }
 
 /// Whether `modules()` reads std from disk rather than the built-in copy.
-pub(crate) fn std_from_disk() -> bool {
+pub fn std_from_disk() -> bool {
     !std::ptr::eq(modules(), BUNDLED)
 }
 

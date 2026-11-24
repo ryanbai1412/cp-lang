@@ -43,8 +43,8 @@ pub use facts::{CallFact, Callee, CalleeKind, ExprFacts, Facts};
 pub use hover::{Definition, Hover, Representation, Symbol};
 pub use modules::{
     bundled_std, carry_only_embedded_std, configured_libraries, dev_std_problem, file_path,
-    home_dir, provide_std, std_calls, std_needed, std_needed_with, std_outline, take_std_needs,
-    FsLoader, Loader,
+    home_dir, provide_std, std_calls, std_from_disk, std_needed, std_needed_with, std_outline,
+    take_std_needs, FsLoader, Loader,
 };
 pub use prelude::{
     import_edit, method_key, method_module, methods as std_methods, set_domain, std_module,

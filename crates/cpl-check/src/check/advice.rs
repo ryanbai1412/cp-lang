@@ -61,7 +61,7 @@ impl Checker<'_> {
                 params.is_empty() && !matches!(**ret, Ty::Unit | Ty::Unknown | Ty::Error)
             }
             // `r.sum` on a type std's `fn sum(self: S, ..)` reaches.
-            Ty::Unknown => crate::prelude::work_methods().contains(&name.text),
+            Ty::Unknown => crate::prelude::is_work_method(&name.text),
             _ => false,
         };
         if !does_work {
