@@ -663,3 +663,24 @@ fn a_narrow_cell_holds_its_width_in_bytes() {
         assert_eq!(IntWidth::cpp_bytes(cell), bytes, "{cell}");
     }
 }
+
+#[test]
+fn a_range_bounded_by_products_of_capped_lets_narrows_as_explain_sizes_it() {
+    let out = cpp("let n0: 1..=15_000 = read()
+let n = n0 + 1
+let m = n * (n + 1) / 2
+var t: [0..m]0..=2 * n = 0
+var h: [0..n]-(n / 2)..n - 1 = 0
+t[m - 1] = 2 * n
+h[0] = -(n / 2)
+print(t[m - 1], h[0])
+");
+    assert!(
+        out.contains("std::vector<uint16_t> t;"),
+        "`0..=2 * n` with `n <= 15001` fits 16 bits:\n{out}"
+    );
+    assert!(
+        out.contains("std::vector<int16_t> h;"),
+        "`-(n / 2)..n - 1` fits 16 signed bits:\n{out}"
+    );
+}

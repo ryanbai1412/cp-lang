@@ -435,6 +435,9 @@ impl<'a> Lowerer<'a> {
         else {
             return None;
         };
+        if let Some(proved) = self.checked_range(ty) {
+            return Some(proved);
+        }
         let (lo_min, _) = self.range_bound_limits(lo)?;
         let (_, hi_raw) = self.range_bound_limits(hi)?;
         let hi_max = if *inclusive {
@@ -566,6 +569,9 @@ impl<'a> Lowerer<'a> {
                     .as_ref()
                     .and_then(|e| self.bound_limits(e))
                     .map(|l| l.1);
+                let proved = self.checked_range(ty);
+                let lo_min = lo_min.or(proved.map(|p| p.0));
+                let hi_max = hi_max.or(proved.map(|p| p.1));
                 Some(RangeInfo::Scalar(RangeBounds {
                     lo: lo_expr,
                     hi: hi_expr,
