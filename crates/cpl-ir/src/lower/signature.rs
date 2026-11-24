@@ -689,12 +689,11 @@ impl<'a> Lowerer<'a> {
             None => f.ret.as_ref(),
         }?;
         let mut env = self.gen_env.clone();
-        env.insert("Self".into(), GenArg::Ty(owner.clone()));
-        for (k, g) in generics.into_iter().enumerate() {
-            env.insert(
-                g.into(),
-                GenArg::Ty(trait_args.get(k).unwrap_or(owner).clone()),
-            );
+        let mut names = generics;
+        names.insert(0, "Self");
+        for (k, g) in names.into_iter().enumerate() {
+            let arg = k.checked_sub(1).and_then(|k| trait_args.get(k));
+            env.insert(g.into(), GenArg::Ty(arg.unwrap_or(owner).clone()));
         }
         let saved_env = std::mem::replace(&mut self.gen_env, env);
         let saved_place = place.map(|(m, o)| {

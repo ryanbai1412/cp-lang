@@ -25,7 +25,7 @@ use crate::ty::{Param, Ty};
 /// takes it from (`std.mod`, `Mod`). The compiler has no list of its own.
 pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static NAMES: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
-    lazy(&NAMES, || {
+    NAMES.get_or_init(|| {
         // A `CPL_STD_DIR` without a prelude gives programs no prelude names.
         let Some(text) = crate::modules::bundled_std(&["prelude".to_string()]) else {
             return Vec::new();
@@ -390,7 +390,7 @@ fn getter_methods_in(std: Std) -> crate::fx::HashSet<String> {
 /// the prelude's list. A name two modules give is there once for each.
 pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static METHODS: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
-    lazy(&METHODS, || methods_in(crate::modules::std_index()))
+    METHODS.get_or_init(|| methods_in(crate::modules::std_index()))
 }
 
 fn methods_in(std: Std) -> Vec<(Vec<ast::Name>, ast::Name)> {
@@ -836,9 +836,7 @@ pub fn ty(name: &str) -> Option<Ty> {
 /// for: its type parameters and its body (R08.1.5).
 pub fn core_trait_decl(name: &str) -> Option<(&'static [ast::Name], &'static [ast::Stmt])> {
     static FILE: OnceLock<cpl_syntax::ParsedFile> = OnceLock::new();
-    let file = lazy(&FILE, || {
-        cpl_syntax::parse_file(include_str!("core_traits.cp"))
-    });
+    let file = FILE.get_or_init(|| cpl_syntax::parse_file(include_str!("core_traits.cp")));
     for (_, item) in &file.items {
         for stmt in &item.stmts {
             if let ast::StmtKind::Trait {
