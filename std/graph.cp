@@ -3415,12 +3415,12 @@ pub struct Functional<V>:
     _cyc: List<Int>
     _pos: List<Int>
     _cycles: List<List<Int>>
-    _up: List<List<Int>>
+    _jump: List<Int>
 
     /// The functional graph `v -> next[v]` (every vertex has one out-arc), with its cycles,
-    /// tails and binary-lifting tables built.
+    /// tails and one jump pointer per vertex (`O(n)` memory, `O(log n)` walks).
     ///
-    /// cost: \(O(n \log n)\)
+    /// cost: \(O(n)\)
     /// empty: an empty `V` gives an empty graph
     /// traps: never
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
@@ -3432,6 +3432,7 @@ pub struct Functional<V>:
         var cyc = List.filled(n, -1)
         var pos = List.filled(n, 0)
         var cycles: List<List<Int>> = []
+        var jump = List(0..n)
         var state = List.filled(n, 0)
         for s in 0..n:
             if state[s] != 0: continue
@@ -3462,11 +3463,10 @@ pub struct Functional<V>:
                 depth[u] = depth[nx[u]] + 1
                 cyc[u] = cyc[nx[u]]
                 state[u] = 2
-        var up: List<List<Int>> = [nx]
-        while (1 << up.len) <= n:
-            let prev = up[up.len - 1].clone()
-            up.push([prev[prev[i]] for i in 0..n])
-        Functional(next.clone(), nx, root, depth, cyc, pos, cycles, up)
+                let p = nx[u]
+                let j = jump[p]
+                jump[u] = if depth[p] - depth[j] == depth[j] - depth[jump[j]]: jump[j] else: p
+        Functional(next.clone(), nx, root, depth, cyc, pos, cycles, jump)
 
     /// Does `v` lie on a cycle?
     ///
@@ -3497,7 +3497,7 @@ pub struct Functional<V>:
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
     pub fn cycle_len(self, v: V) -> Int = _cycles[_cyc[v.ord]].len
 
-    /// The vertex `k` steps after `v`, by binary lifting: `after(v, 0) == v`. Never `None`,
+    /// The vertex `k` steps after `v`, by jump pointers: `after(v, 0) == v`. Never `None`,
     /// unlike `Rooted.ancestor`, since every vertex has an out-arc.
     ///
     /// cost: \(O(\log k)\)
@@ -3521,11 +3521,10 @@ pub struct Functional<V>:
     pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V:
         if pred(v): return Some(v)
         var x = v.ord
-        var k = _up.len
-        while k > 0:
-            k -= 1
-            let y = _up[k][x]
-            if not pred(V.nth(y)): x = y
+        while _depth[x] > 0:
+            if not pred(V.nth(_jump[x])): x = _jump[x]
+            elif not pred(V.nth(_nx[x])): x = _nx[x]
+            else: break
         let c = V.nth(_nx[x])
         if pred(c): Some(c) else: None
 
@@ -3547,9 +3546,10 @@ pub struct Functional<V>:
         if self.lift(x, d) == y: Some(d) else: None
 
     fn lift(self, x: Int, k: Int) -> Int:
+        let t = _depth[x] - k
         var y = x
-        for b in 0.._up.len:
-            if (k >> b) & 1 == 1: y = _up[b][y]
+        while _depth[y] > t:
+            y = if _depth[_jump[y]] >= t: _jump[y] else: _nx[y]
         y
 
     /// Every cycle once, each in walk order from its smallest vertex.
