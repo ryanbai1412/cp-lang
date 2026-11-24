@@ -431,24 +431,6 @@ export function sampleStatusLabel(status: SampleStatusOverlay, max: number): str
     return `${icon} ${clip(status.label, max)}`;
 }
 
-/** What the trace viewer in a webview tells the editor: the line of the step it shows, or a line clicked. */
-export interface TraceMessage {
-    type: 'step' | 'reveal';
-    /** 1-based. */
-    line: number;
-}
-
-export function parseTraceMessage(message: unknown): TraceMessage | undefined {
-    if (typeof message !== 'object' || message === null) {
-        return undefined;
-    }
-    const { type, line } = message as { type?: unknown; line?: unknown };
-    if ((type !== 'step' && type !== 'reveal') || typeof line !== 'number' || !Number.isInteger(line) || line < 1) {
-        return undefined;
-    }
-    return { type, line };
-}
-
 /** What `cpl submit <file> --json` reports. */
 export interface SubmitReport {
     ready: boolean;

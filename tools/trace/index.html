@@ -731,12 +731,14 @@ const TraceCore = (() => {
   }
   // Inside an editor's webview the editor follows the shown step: `post`
   // carries {type: "step", line} when the step's line changes and
-  // {type: "reveal", line} when a source line is clicked.
+  // {type: "reveal", line} when a source line is clicked, `line` 0-based as
+  // every line an editor reads is; a step with no source line posts nothing.
   function editorLink(post) {
     let shown = null;
+    const real = line => Number.isInteger(line) && line >= 1;
     return {
-      step(line) { if (line !== shown) { shown = line; post({type:"step", line}); } },
-      reveal(line) { post({type:"reveal", line}); },
+      step(line) { if (real(line) && line !== shown) { shown = line; post({type:"step", line:line - 1}); } },
+      reveal(line) { if (real(line)) post({type:"reveal", line:line - 1}); },
     };
   }
   // A step in source terms, the same as the DAP's: its line and which visit
