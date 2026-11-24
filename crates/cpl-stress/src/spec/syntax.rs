@@ -732,7 +732,7 @@ pub(super) fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_ir::Pr
     if analysis.diagnostics.iter().any(is_error) {
         return None;
     }
-    cpl_ir::lower_gen_read(&analysis, &cpl_check::OwnFacts, func, line).ok()
+    cpl_ir::lower_gen_read(&analysis, &db.facts_source(), func, line).ok()
 }
 
 /// The type a `let` that reads gives its value, and the `none` of a

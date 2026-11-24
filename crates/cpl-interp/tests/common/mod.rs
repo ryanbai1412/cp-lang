@@ -10,5 +10,5 @@ pub fn program(source: &str) -> cpl_ir::Program {
         "{:?}",
         analysis.diagnostics
     );
-    cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers")
+    cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers")
 }

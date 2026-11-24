@@ -41,9 +41,14 @@ impl<'a> Lowerer<'a> {
     /// Whether a lone index names a whole cell of a grid: a tuple or a
     /// product position. Lowered once to see its type; nothing is kept.
     pub(in crate::lower) fn indexes_whole_grid(&mut self, index: &ast::Expr) -> bool {
-        match self.checked_ty(index) {
-            Some(Ty::Tuple(_) | Ty::Record(_)) => true,
-            Some(Ty::Pos(p)) => self.product_grid(p).is_some(),
+        // An unknown fact is no fact: the probe decides (`ir_reinfer`).
+        let ty = match self.checked_ty(index) {
+            Some(ty) => ty,
+            None => self.probe_expr(index, None).ty,
+        };
+        match ty {
+            Ty::Tuple(_) | Ty::Record(_) => true,
+            Ty::Pos(p) => self.product_grid(p).is_some(),
             _ => false,
         }
     }

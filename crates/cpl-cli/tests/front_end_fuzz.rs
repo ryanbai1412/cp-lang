@@ -141,7 +141,7 @@ fn front_end(db: &mut cpl_check::Session, path: &str, src: &str) -> Vec<String> 
     db.set_file(path, src);
     let analysis = db.analyze(path).expect("the file was just set");
     let lints = cpl_lint::lint(src, &cpl_lint::Config::default());
-    cpl_ir::check(&analysis, &cpl_check::OwnFacts)
+    cpl_ir::check(&analysis, &db.facts_source())
         .iter()
         .chain(&lints)
         .map(|d| {
@@ -602,7 +602,7 @@ fn a_planted_mistake_gives_one_error() {
     let errors = |db: &mut cpl_check::Session, name: &str, src: &str| {
         db.set_file(name, src);
         let analysis = db.analyze(name).expect("the file was just set");
-        cpl_ir::check(&analysis, &cpl_check::OwnFacts)
+        cpl_ir::check(&analysis, &db.facts_source())
             .into_iter()
             .filter(|d| d.severity == cpl_diag::Severity::Error)
             .collect::<Vec<_>>()

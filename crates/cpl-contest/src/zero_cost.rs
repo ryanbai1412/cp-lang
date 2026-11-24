@@ -74,7 +74,7 @@ pub fn emit_cpp(path: &Path) -> Result<String, String> {
             .collect();
         return Err(format!("{}: {}", path.shown(), msgs.join("; ")));
     }
-    let ir = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).map_err(|diags| {
+    let ir = cpl_ir::lower(&analysis, &db.facts_source()).map_err(|diags| {
         let msgs: Vec<String> = diags.into_iter().map(|d| d.message).collect();
         format!("{}: {}", path.shown(), msgs.join("; "))
     })?;

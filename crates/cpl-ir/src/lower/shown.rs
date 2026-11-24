@@ -61,7 +61,7 @@ mod tests {
         let mut session = cpl_check::Session::new();
         session.set_file("t.cp", source);
         let analysis = session.analysis("t.cp").expect("set");
-        match crate::lower(&analysis, &cpl_check::OwnFacts) {
+        match crate::lower(&analysis, &session.facts_source()) {
             Ok(_) => Vec::new(),
             Err(diags) => diags.into_iter().map(|d| d.message).collect(),
         }

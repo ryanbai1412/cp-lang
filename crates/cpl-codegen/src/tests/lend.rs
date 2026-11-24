@@ -361,7 +361,7 @@ fn explain_names_each_copy_and_why_it_owns_its_value() {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program =
-        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
     let report = crate::explain::report("t.cp", source, &program);
     assert!(
         report.contains("[copy] 4:15  rows[0] -> the name is changed later"),
@@ -1340,7 +1340,7 @@ fn a_bool_element_lent_mut_shows_its_write_back() {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program =
-        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
     let report = crate::explain::report("t.cp", source, &program);
     assert!(
         report.contains("[written back] 3:10  tags[1] -> "),

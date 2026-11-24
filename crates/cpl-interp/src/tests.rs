@@ -17,7 +17,7 @@ fn outcome(source: &str, input: &str) -> (String, Option<String>) {
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let mut out = Vec::new();
     let failure = run(&program, input.as_bytes(), &mut out).err().map(|trap| {
         let at = &source[trap.span.start as usize..trap.span.end as usize];
@@ -143,7 +143,7 @@ fn recursion_without_end_is_reported_not_crashed() {
         "fn f(n: Int) -> Int:\n    f(n + 1) + 1\nprint(f(0))\n",
     );
     let program =
-        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
     let limits = Limits {
         stack_bytes: 48 << 20,
     };
@@ -201,7 +201,7 @@ fn vm_frames_hold_their_widest_statement_not_every_temporary() {
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     let wide = compiled.fns[0]
@@ -346,7 +346,7 @@ print(s.first!, s.last!, r[2], sum(r), prod(r), yes(is_sorted(r)))
         let mut db = cpl_check::Session::new();
         db.set_file("t.cp", src);
         let analysis = db.analyze("t.cp").expect("the file was just set");
-        let diags = cpl_ir::lower(&analysis, &cpl_check::OwnFacts)
+        let diags = cpl_ir::lower(&analysis, &db.facts_source())
             .expect_err("bound violation must fail lowering");
         assert!(
             diags.iter().any(|d| d.message.contains(want)),
@@ -576,7 +576,7 @@ print(heap_order([5, 3, 8, 1, 9, 2]), calls)
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     for (cid, def) in program.closures.iter().enumerate() {
@@ -621,7 +621,7 @@ print(by_second(xs))
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     let mut seen = 0;
@@ -683,7 +683,7 @@ print(cuts, rcuts, yes(b != None), yes(n == None), yes(b == None), max(xs[0], xs
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     let ops: Vec<String> = compiled
@@ -726,7 +726,7 @@ print(big.a)
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     let join = program.fns.iter().position(|f| f.name == "join").unwrap();
@@ -775,7 +775,7 @@ print(gtot, local_driver(2), glob[0])
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     let has_loop_fallback = |chunk: &crate::vm::Chunk<'_>| {
@@ -1371,7 +1371,7 @@ print(x, a[0])
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true, false);
     let in_loop =
@@ -1554,7 +1554,7 @@ fn only_a_closure_made_off_the_vm_syncs_the_whole_frame_around_calls() {
             "{:?}",
             analysis.diagnostics
         );
-        let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+        let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
         let feeds = cpl_ir::pushed::Feeds::of(&program);
         let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
         let chunk = match name {
@@ -1694,7 +1694,7 @@ fn at_checks(source: &str, checks: cpl_ir::checks::Checks) -> (String, Option<St
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program =
-        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
     let mut out = Vec::new();
     let io = crate::Io::fixed(b"").at(checks);
     let failure = crate::run_with(&program, io, &mut out)

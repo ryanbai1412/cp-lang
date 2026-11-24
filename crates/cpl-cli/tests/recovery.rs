@@ -31,12 +31,12 @@ fn root() -> PathBuf {
 /// a port are checked once rather than once per broken copy, the way the
 /// editor sees a stream of edits.
 fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
-    let analysis = with_db(|db| {
+    let mut out: Vec<Diagnostic> = with_db(|db| {
         db.set_file(path, src);
-        db.analyze(path).expect("the file was just set")
-    });
-    let mut out: Vec<Diagnostic> = cpl_ir::check(&analysis, &cpl_check::OwnFacts)
-        .into_iter()
+        let analysis = db.analyze(path).expect("the file was just set");
+        cpl_ir::check(&analysis, &db.facts_source())
+    })
+    .into_iter()
         .filter(|d| d.severity == Severity::Error)
         .collect();
     out.sort_by_key(|d| d.span.start);

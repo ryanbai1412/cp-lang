@@ -66,7 +66,7 @@ fn a_build_without_traps_sinks_a_consumer_that_divides() {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program =
-        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
     let target = crate::Target {
         checks: crate::Checks::None,
         ..crate::Target::default()
@@ -84,7 +84,7 @@ fn explain_names_a_sunk_reduction() {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program =
-        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
     let report = crate::explain::report("t.cp", source, &program);
     assert!(report.contains("[sunk] 2:7  sum(..)"), "{report}");
 }

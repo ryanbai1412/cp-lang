@@ -932,7 +932,7 @@ fn an_extension_is_offered_exactly_where_the_checker_takes_its_receiver() {
             session.set_file("/w/a.cp", src.as_str());
             let analysis = session.analysis("/w/a.cp").unwrap();
             let accepted = (analysis.diagnostics.iter())
-                .chain(&cpl_ir::reported(&analysis, &cpl_check::OwnFacts))
+                .chain(&cpl_ir::reported(&analysis, &session.facts_source()))
                 .all(|d| d.severity != cpl_diag::Severity::Error);
             assert_eq!(offered, accepted, "{recv}.{name}");
             taken += usize::from(accepted);

@@ -12,8 +12,8 @@ impl<'a> Lowerer<'a> {
         let at = e.span.shift(self.offset);
         let facts = self.checked_facts(at);
         let checked = facts.type_of(at)?;
-        if let Checked::Pos(name) = checked {
-            if let Some(d) = self.inline_product_named(name, e.span) {
+        if let Some(name) = product_name(checked) {
+            if let Some(d) = self.inline_product_named(&name, e.span) {
                 return Some(Ty::Pos(d));
             }
         }
@@ -89,6 +89,22 @@ impl Lowerer<'_> {
             span: at,
         };
         self.intern_inline_product(&tuple, at)
+    }
+}
+
+/// The product domain a checked position names: `(R, C)` itself, or a
+/// tuple of positions, which is that product's position viewed by parts.
+fn product_name(ty: &Checked) -> Option<String> {
+    match ty {
+        Checked::Pos(name) => Some(name.clone()),
+        Checked::Tuple(ts) if ts.len() > 1 => {
+            let parts = ts.iter().map(|t| match t {
+                Checked::Pos(n) if !n.contains(['(', ')']) => Some(n.as_str()),
+                _ => None,
+            });
+            Some(format!("({})", parts.collect::<Option<Vec<_>>>()?.join(", ")))
+        }
+        _ => None,
     }
 }
 

@@ -66,7 +66,7 @@ mod tests {
         let mut db = cpl_check::Session::new();
         db.set_file("t.cp", source);
         let program =
-            cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+            cpl_ir::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
         let target = crate::Target {
             checks,
             ..crate::Target::default()
@@ -105,7 +105,7 @@ mod tests {
         let mut db = cpl_check::Session::new();
         db.set_file("t.cp", source);
         let program =
-            cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+            cpl_ir::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
         let target = crate::Target {
             checks: Checks::None,
             ..crate::Target::default()

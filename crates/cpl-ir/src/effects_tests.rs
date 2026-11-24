@@ -4,7 +4,7 @@ fn table(source: &str, traps: bool) -> (Program, Table) {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program =
-        crate::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
+        crate::lower(&db.analyze("t.cp").expect("set"), &db.facts_source()).expect("lowers");
     let table = Table::of(&program, traps);
     (program, table)
 }

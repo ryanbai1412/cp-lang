@@ -216,7 +216,7 @@ fn a_plain_sort_is_unstable_only_where_equal_means_the_same() {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source.as_str());
     let analysis = db.analyze("t.cp").expect("the file was just set");
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let (profiled, _) = crate::emit_profiled(&program, "t.cp", &crate::Target::default(), "t.prof");
     assert!(
         profiled.contains("cpl::sort_seq(xs.begin()"),
@@ -326,7 +326,7 @@ fn a_sort_by_negated_or_desc_cells_compares_in_place_unstably() {
     ] {
         db.set_file("t.cp", source.as_str());
         let analysis = db.analyze("t.cp").expect("the file was just set");
-        let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
+        let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
         let (profiled, _) =
             crate::emit_profiled(&program, "t.cp", &crate::Target::default(), "t.prof");
         assert!(profiled.contains(kept), "{profiled}");

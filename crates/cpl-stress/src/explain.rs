@@ -66,13 +66,13 @@ pub fn trap_report_in(
     brute: bool,
     stack_limit: Option<u32>,
 ) -> Option<Trapped> {
-    let (name, analysis) = analyzed(path, text)?;
+    let (name, analysis, mut db) = analyzed(path, text)?;
     let text = text.to_string();
     let program = match brute {
-        false => cpl_ir::lower(&analysis, &cpl_check::OwnFacts).ok()?,
+        false => cpl_ir::lower(&analysis, &db.facts_source()).ok()?,
         true => cpl_ir::lower_brute(
             &analysis,
-            &cpl_check::OwnFacts,
+            &db.facts_source(),
             &cpl_ir::brute(&analysis)?.0,
         )
         .ok()?,
@@ -134,9 +134,9 @@ pub fn checker_trap_in(
     got: &str,
     stack_limit: Option<u32>,
 ) -> Option<Trapped> {
-    let (name, analysis) = analyzed(path, text)?;
+    let (name, analysis, mut db) = analyzed(path, text)?;
     let (checker, _) = cpl_ir::checker(&analysis)?;
-    let program = cpl_ir::lower_checker(&analysis, &cpl_check::OwnFacts, &checker).ok()?;
+    let program = cpl_ir::lower_checker(&analysis, &db.facts_source(), &checker).ok()?;
     let mut printed = Some(got.as_bytes().to_vec());
     let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()))
         .until(cpl_interp::Stop::after(LIMIT));
@@ -163,8 +163,8 @@ pub fn checker_trap_in(
 /// interactive, traps or is still running after [`LIMIT`].
 pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
-    let (_, analysis) = analyzed(path, &text)?;
-    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).ok()?;
+    let (_, analysis, mut db) = analyzed(path, &text)?;
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).ok()?;
     if program.interactive {
         return None;
     }
@@ -176,7 +176,10 @@ pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
 
 /// The `.cp` file at `path`, read as `text`, analyzed under its shown name;
 /// `None` when it is not CP Lang or has an error.
-fn analyzed(path: &Path, text: &str) -> Option<(String, std::sync::Arc<cpl_check::Analysis>)> {
+fn analyzed(
+    path: &Path,
+    text: &str,
+) -> Option<(String, std::sync::Arc<cpl_check::Analysis>, cpl_check::Session)> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }
@@ -185,5 +188,5 @@ fn analyzed(path: &Path, text: &str) -> Option<(String, std::sync::Arc<cpl_check
     db.set_file(&name, text);
     let analysis = db.analyze(&name)?;
     let failed = (analysis.diagnostics.iter()).any(|d| d.severity == cpl_diag::Severity::Error);
-    (!failed).then_some((name, analysis))
+    (!failed).then_some((name, analysis, db))
 }

@@ -139,6 +139,12 @@ impl<'a> Checker<'a> {
                         });
                 }
             }
+            (Ty::Pos(_), Ty::Tuple(wants)) => {
+                if let Some(parts) = self.position_factors(got) {
+                    return parts.len() == wants.len()
+                        && parts.iter().zip(wants).all(|(g, w)| self.fits(g, w));
+                }
+            }
             (Ty::Tuple(a), Ty::Tuple(b)) if a.len() == b.len() => {
                 return a.iter().zip(b).all(|(g, w)| self.fits(g, w));
             }

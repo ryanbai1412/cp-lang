@@ -150,7 +150,7 @@ impl Stress {
         if native.is_none() {
             let analysis = (analysis.as_deref())
                 .ok_or_else(|| Unbuilt::Said(format!("could not analyze {name}")))?;
-            let diagnostics = cpl_ir::check(analysis, &cpl_check::OwnFacts);
+            let diagnostics = cpl_ir::check(analysis, &db.facts_source());
             if diagnostics.iter().any(|d| d.severity == Severity::Error) {
                 let lines = cpl_diag::LineIndex::new(source);
                 return Err(Unbuilt::Rendered(
@@ -182,13 +182,13 @@ impl Stress {
         if let (Some(analysis), false) = (analysis, external_judge) {
             if let Some((checker_fn, _)) = cpl_ir::checker(analysis) {
                 checker = Some(lowered(
-                    cpl_ir::lower_checker(analysis, &cpl_check::OwnFacts, &checker_fn),
+                    cpl_ir::lower_checker(analysis, &db.facts_source(), &checker_fn),
                     name,
                     source,
                 )?);
             } else if let Some(judge) = cpl_ir::interactor(analysis) {
                 interactor = Some(lowered(
-                    cpl_ir::lower_judge(analysis, &cpl_check::OwnFacts, &judge),
+                    cpl_ir::lower_judge(analysis, &db.facts_source(), &judge),
                     name,
                     source,
                 )?);
@@ -218,13 +218,13 @@ impl Stress {
             None => {
                 let analysis = analyzed()?;
                 let fast = lowered(
-                    cpl_ir::lower_sampling_laws(analysis, &cpl_check::OwnFacts),
+                    cpl_ir::lower_sampling_laws(analysis, &db.facts_source()),
                     name,
                     source,
                 )?;
                 let brute = match (&own_brute, &part_brute) {
                     (Some((brute_fn, _)), _) => Some(lowered(
-                        cpl_ir::lower_brute(analysis, &cpl_check::OwnFacts, brute_fn),
+                        cpl_ir::lower_brute(analysis, &db.facts_source(), brute_fn),
                         name,
                         source,
                     )?),
@@ -235,7 +235,7 @@ impl Stress {
                             Unbuilt::Said(format!("could not analyze part brute of {name}"))
                         })?;
                         Some(lowered(
-                            cpl_ir::lower(&swapped_analysis, &cpl_check::OwnFacts),
+                            cpl_ir::lower(&swapped_analysis, &db.facts_source()),
                             &bname,
                             swapped,
                         )?)
@@ -316,7 +316,7 @@ impl Stress {
             (None, Some((gen_fn, _)), None) => {
                 let analysis = analyzed()?;
                 let program = lowered(
-                    cpl_ir::lower_gen(analysis, &cpl_check::OwnFacts, gen_fn, size),
+                    cpl_ir::lower_gen(analysis, &db.facts_source(), gen_fn, size),
                     name,
                     source,
                 )?;
