@@ -419,9 +419,12 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([1, 4, 6]).first_true(x => x >= 3) == Some(4)`
     /// example: `SortedBag.of([1, 4, 6]).first_true(x => x > 9) == None`
     pub fn first_true(self, ok: K -> Bool) -> ?K:
-        let s = self.first_where(ok)
-        unchecked:
-            return if s >= 0: keys[s] else: None
+        if root < 0: return None
+        var n = root
+        for _ in 0..height: n = self.kid(n, self.pos(n, 1, k => not ok(k)) - 1)
+        let p = self.pos(n, 0, k => not ok(k))
+        let s = if p < self.fill(n): n * BAG_B + p else: self.step(n * BAG_B + p - 1, false)
+        unchecked: return if s >= 0 and ok(keys[s]): keys[s] else: None
 
     /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `None`.
     /// Checks monotonicity at the boundary. \(O(\log n)\) expected.
@@ -433,9 +436,12 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([1, 4, 6]).last_true(x => x <= 5) == Some(4)`
     /// example: `SortedBag.of([1, 4, 6]).last_true(x => x < 1) == None`
     pub fn last_true(self, ok: K -> Bool) -> ?K:
-        let s = self.last_where(ok)
-        unchecked:
-            return if s >= 0: keys[s] else: None
+        if root < 0: return None
+        var n = root
+        for _ in 0..height: n = self.kid(n, self.pos(n, 1, ok) - 1)
+        let p = self.pos(n, 0, ok)
+        let s = if p > 0: n * BAG_B + p - 1 else: self.step(n * BAG_B, true)
+        unchecked: return if s >= 0 and ok(keys[s]): keys[s] else: None
 
     /// Remove and return the maximal run of elements strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest element (ascending)
@@ -975,28 +981,6 @@ pub struct SortedBag<K>:
         if p + 1 < self.fill(l): return s + 1
         return if self.nxt(l) >= 0: self.nxt(l) * BAG_B else: -1
 
-    // The slot of the first key passing monotone `ok` (false, then true), or -1.
-    fn first_where(self, ok: K -> Bool) -> Int:
-        if root < 0: return -1
-        var n = root
-        for _ in 0..height: n = self.kid(n, self.pos(n, 1, k => not ok(k)) - 1)
-        let p = self.pos(n, 0, k => not ok(k))
-        let s = if p < self.fill(n): n * BAG_B + p else: self.step(n * BAG_B + p - 1, false)
-        if s < 0: return -1
-        let k = keys[s]
-        return if ok(k): s else: -1
-
-    // The slot of the last key passing monotone `ok` (true, then false), or -1.
-    fn last_where(self, ok: K -> Bool) -> Int:
-        if root < 0: return -1
-        var n = root
-        for _ in 0..height: n = self.kid(n, self.pos(n, 1, ok) - 1)
-        let p = self.pos(n, 0, ok)
-        let s = if p > 0: n * BAG_B + p - 1 else: self.step(n * BAG_B, true)
-        if s < 0: return -1
-        let k = keys[s]
-        return if ok(k): s else: -1
-
     // Elements whose key passes monotone `ok` (true, then false).
     fn below(self, ok: K -> Bool) -> Int = if root < 0: 0 else: self.below_in(root, height, ok)
 
@@ -1028,7 +1012,7 @@ pub struct SortedBag<K>:
     fn le(self, b: K, inc: Bool) -> Int = self.bound(b, inc, true)
 
     // The slot of the first key `> x` (`>= x` unless `upper`), or with `back` the last key before
-    // it, or -1: `first_where` and `last_where` by comparison, so a range makes no closure.
+    // it, or -1: `first_true` and `last_true` by comparison, so a range makes no closure.
     fn bound(self, x: K, upper: Bool, back: Bool) -> Int:
         if root < 0: return -1
         var n = root
