@@ -400,3 +400,36 @@ fn a_broken_helper_is_blamed_with_its_trap_not_the_solution() {
     assert!(out.contains("index outside"), "{out}");
     assert!(saved(&path).is_empty(), "{out}");
 }
+
+/// `--time` stops starting cases when the budget ends and reports as usual
+/// (`stress/U32`).
+#[test]
+fn stress_runs_for_the_time_it_is_given() {
+    let path = scratch("time-budget");
+    std::fs::write(
+        &path,
+        "let n: 1..=5 = read()\nprint(n * 2)\n\n@alt(program)\nfn slow():\n    let n: 1..=5 = read()\n    print(n + n)\n",
+    )
+    .unwrap();
+    let started = std::time::Instant::now();
+    let (code, out) = cpl(&[
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--time".as_ref(),
+        "1s".as_ref(),
+    ]);
+    assert_eq!(code, Some(0), "{out}");
+    assert!(out.contains(" cases agree in 1s"), "{out}");
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(120),
+        "{out}"
+    );
+    let (code, out) = cpl(&[
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--time".as_ref(),
+        "1h".as_ref(),
+    ]);
+    assert_ne!(code, Some(0), "{out}");
+    assert!(out.contains("`--time` is a duration like `30s`"), "{out}");
+}

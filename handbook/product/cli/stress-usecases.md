@@ -188,9 +188,9 @@ Evidence: gap
 
 ### stress/U32: stress for as long as I can spare
 Need: stop on a wall-clock budget that fits a contest, not only after N cases.
-Design: `--time 10s` runs cases until the budget ends, then reports as usual.
-Milestone: M1-differentiating. Status: gap
-Evidence: gap
+Design: `--time 10s` runs cases until the budget ends, then reports as usual: `2400 cases agree in 10s`.
+Milestone: M1-differentiating. Status: supported (with `--cases` too, whichever comes first; shrinking a failure is not counted)
+Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`stress_runs_for_the_time_it_is_given`)
 
 ### stress/U33: helper warnings stay out of the way
 Need: a lint warning in the brute or interactor never reaches the report or the judged stderr.

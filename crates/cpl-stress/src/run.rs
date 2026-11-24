@@ -54,6 +54,9 @@ pub struct Options {
     /// Cases saved before, by seed (`<file>.tests/stress-<seed>.in`). They
     /// run first, and one that still fails is reported as it is.
     pub saved: Vec<(u64, String)>,
+    /// No new case starts once this much wall-clock time has passed
+    /// (`--time`); shrinking a failure is not counted.
+    pub budget: Option<Duration>,
 }
 
 impl Default for Options {
@@ -66,6 +69,7 @@ impl Default for Options {
             jobs: std::thread::available_parallelism().map_or(1, |n| n.get()),
             shrink_budget: 2000,
             saved: Vec::new(),
+            budget: None,
         }
     }
 }
@@ -228,6 +232,9 @@ pub fn stress_with(
         }
     }
     let saved = options.saved.len();
+    let deadline = options
+        .budget
+        .map(|budget| std::time::Instant::now() + budget);
     let size_arg = options.size.to_string();
     // The ranges cases are drawn from: the program's own, narrowed where
     // a guessed one let through numbers the program stops on.
@@ -295,7 +302,7 @@ pub fn stress_with(
             options.jobs.max(1)
         };
         let round = done;
-        while done < options.cases {
+        while done < options.cases && !deadline.is_some_and(|at| std::time::Instant::now() >= at) {
             // The first case of a round runs alone: when it stops the
             // program the ranges are narrowed, and its neighbours, made from
             // the ranges it refutes, would only have been waited for.
@@ -443,7 +450,7 @@ pub fn stress_with(
             done += batch.len();
         }
         return Ok(Report {
-            cases: options.cases,
+            cases: done.min(options.cases),
             skipped,
             failure: None,
             discarded,

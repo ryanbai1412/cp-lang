@@ -30,6 +30,8 @@ options:
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
   --cases N          how many cases to run (default 1000)
+  --time T           stop starting cases after T (`30s`, `500ms`, `2m`); with
+                     no --cases, run cases until then
   --size N           the largest size (n, q) a case uses (default 8)
   --seed N           the first seed (default 1)
   --time-limit MS    per run, in milliseconds (default 5000)
@@ -96,6 +98,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "--checker",
             "--interactor",
             "--cases",
+            "--time",
             "--size",
             "--max-size",
             "--seed",
@@ -114,6 +117,12 @@ fn parse(args: &[String]) -> Result<Args, String> {
     let mut options = Options::default();
     if let Some(n) = raw.number("--cases")? {
         options.cases = n as usize;
+    }
+    if let Some(text) = raw.value("--time") {
+        options.budget = Some(budget(text)?);
+        if raw.value("--cases").is_none() {
+            options.cases = usize::MAX;
+        }
     }
     if let Some(n) = raw.number("--size")?.or(raw.number("--max-size")?) {
         options.size = i128::from(n.max(1));
@@ -845,6 +854,13 @@ pub fn run_with(
             n => format!(" ({n} seeds made no valid case)"),
         };
         let ran = report.cases - report.skipped;
+        let skipped = match args.options.budget {
+            Some(budget) if report.cases < args.options.cases => match budget.as_millis() {
+                ms if ms % 1000 == 0 => format!("{skipped} in {}s", ms / 1000),
+                ms => format!("{skipped} in {ms}ms"),
+            },
+            _ => skipped,
+        };
         let again = match report.saved {
             0 => String::new(),
             1 => "the saved case passes; ".to_string(),
@@ -1070,6 +1086,22 @@ pub fn run_with(
 }
 
 /// The cases `cpl stress` saved for `file` before, by seed.
+/// `--time`'s value: `30s`, `500ms`, `2m`, or seconds alone.
+fn budget(text: &str) -> Result<Duration, String> {
+    let (number, unit) = text.split_at(
+        text.find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(text.len()),
+    );
+    let bad = || format!("`--time` is a duration like `30s`, `500ms` or `2m`, not `{text}`");
+    let number: u64 = number.parse().map_err(|_| bad())?;
+    match unit {
+        "ms" => Ok(Duration::from_millis(number)),
+        "" | "s" => Ok(Duration::from_secs(number)),
+        "m" => Ok(Duration::from_secs(number * 60)),
+        _ => Err(bad()),
+    }
+}
+
 fn saved_cases(file: &Path) -> Vec<(u64, String)> {
     let Ok(dir) = std::fs::read_dir(file.with_extension("tests")) else {
         return Vec::new();
