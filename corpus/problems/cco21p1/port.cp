@@ -4,54 +4,37 @@
 //   the least number of adjacent swaps that sort the array by the current target order.
 // Solution: the answer is the inversion count under the target order; swapping adjacent values
 //   x, y in the order only flips the pairs made of one x and one y. With b(x, y) the pairs with
-//   an x before a y, the count changes by 2 b(x, y) - |x| |y|. b comes from the positions
-//   lists, binary-searching each element of the shorter list in the longer one, memoised per
-//   pair in a Map. Initial count by a Fenwick tree; O(n sqrt(q) log n) over distinct pairs.
+//   an x before a y, the count changes by 2 b(x, y) - |x| |y|. b comes from each value's
+//   positions (std `buckets`), binary-searching each position of the shorter list in the
+//   longer one, memoised per pair. Initial count by std `inversions`. O(n sqrt(q) log n).
 // original: corpus/submissions/4538969.cpp
-// Bounds: a: 1..=k
-
-let (n, k, q): (Int, Int, Int) = read()
+// Bounds: n: 1..=1e5; k: 2..=1e5; q: 1..=1e6; a: 1..=k; swaps: 1..k
+let (n, k, q): (1..=1e5, 2..=1e5, 1..=1e6) = read()
 domain Pos = 1..=n
 domain Val = 1..=k
+domain Slot = 1..k  // swap entries j and j + 1 of the order
 domain Query = 0..q
 let a: [Pos]Val = read()
-let swaps: [Query]Int = read()
+let swaps: [Query]Slot = read()
 
-var occ: [Val]List<Int> = [Val] _ => []
-for i in Pos: occ[a[i]].push(i.ord)
+let at = a.buckets()  // each value's positions, ascending
+var known = Map<(Val, Val), Int>()
 
-fn count_before(xs: List<Int>, ys: List<Int>) -> Int:
-    if xs.len <= ys.len:
-        var cnt = 0
-        for p in xs:
-            let lo = ys.first_ge(p) ?? ys.len
-            cnt += ys.len - lo
-        cnt
-    else:
-        xs.len * ys.len - count_before(ys, xs)
+// pairs with an x before a y
+fn before(x: Val, y: Val) -> Int:
+    if x > y: return at[x].len * at[y].len - before(y, x)
+    if let b = known.get((x, y)): return b
+    let (xs, ys) = (at[x], at[y])
+    let b = if xs.len <= ys.len: sum(ys.len - (ys.first_gt(p) ?? ys.len) for p in xs)
+        else: sum(xs.first_gt(p) ?? xs.len for p in ys)
+    known[(x, y)] = b
+    b
 
-var bit = Fenwick<Val, Int>.new()
-var inv = 0
-for i in Pos:
-    if a[i] < Val.last!:
-        inv += bit.fold(a[i].r..Val.last!.r)
-    bit.add(a[i], 1)
-
+var inv = a.inversions()
 var order = [Val] v => v
-var cache = Map<Int, Int>()
-for qi in Query:
-    let j = Val(swaps[qi])
-    let j1 = Val(swaps[qi] + 1)
-    let (x, y) = (order[j], order[j1])
-    let (lo, hi) = if x.ord < y.ord: (x, y) else: (y, x)
-    let key = lo.ord * k + hi.ord
-    var before_lo_hi = 0
-    if let val = cache.get(key):
-        before_lo_hi = val
-    else:
-        before_lo_hi = count_before(occ[lo], occ[hi])
-        cache[key] = before_lo_hi
-    let before_xy = if x.ord < y.ord: before_lo_hi else: occ[x].len * occ[y].len - before_lo_hi
-    inv += 2 * before_xy - occ[x].len * occ[y].len
-    order.swap(j, j1)
+for s in swaps:
+    let j = Val(Int(s))
+    let (x, y) = (order[j], order[j.next!])
+    inv += 2 * before(x, y) - at[x].len * at[y].len
+    order.swap(j, j.next!)
     print(inv)
