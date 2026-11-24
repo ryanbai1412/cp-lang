@@ -87,6 +87,11 @@ impl<'a> Lowerer<'a> {
                 lw.stmt(s, out);
             }
             let target_place = lw.place(lend_place_ast);
+            // `m.at(r, c) += x` names the lent slot twice; its index is worked out once.
+            let target_place = match op {
+                ast::AssignOp::Set => target_place,
+                _ => lw.settle_indexes(target_place, out),
+            };
             let val_expr = lw.local(rhs_slot, rhs.span);
             let coerced = lw.coerce(val_expr, &target_place.ty, rhs.span);
             lw.emit_assign_place(target_place, op, coerced, span, out);

@@ -1311,3 +1311,29 @@ fn a_bool_element_lent_mut_shows_its_write_back() {
         "{report}"
     );
 }
+
+#[test]
+fn a_compound_assign_through_a_lent_slot_works_its_index_out_once() {
+    for (ty, one) in [("Int", "5"), ("Z", "Z(5)")] {
+        let body = body(&format!(
+            concat!(
+                "type Z = Mod<7>\n",
+                "struct Grid:\n",
+                "    w: Int\n",
+                "    cells: List<{ty}>\n",
+                "    fn cell(self, r: Int, c: Int) -> Int:\n",
+                "        assert 0 <= c < w, \"column {{c}} is outside 0..{{w}}\"\n",
+                "        r * w + c\n",
+                "    pub fn at(mut self, r: Int, c: Int) -> lends mut {ty}:\n",
+                "        lend mut cells[self.cell(r, c)]\n",
+                "var g = Grid(3, List.filled(9, {ty}(0)))\n",
+                "let (r, c): (Int, Int) = read()\n",
+                "g.at(r, c) += {one}\n",
+                "print(g.cells[0])\n",
+            ),
+            ty = ty,
+            one = one,
+        ));
+        assert_eq!(body.matches("Grid_cell(").count(), 1, "{ty}: {body}");
+    }
+}
