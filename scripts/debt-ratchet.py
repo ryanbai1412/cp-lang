@@ -1825,6 +1825,8 @@ RETRY_FETCHES = {
     "apt": r"(timeout \d+ )?sudo apt-get install ",
     "curl": r"(timeout \d+ )?(sh -c ['\"])?curl(_page)? ",
     "npm": r"(timeout \d+ )?npm install ",
+    "brew": r"brew install ",
+    "choco": r"choco install ",
     "gh api": r"gh api ",
     "gh release": r"gh release view ",
     "gh run": r"gh run view ",
