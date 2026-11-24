@@ -9,16 +9,16 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 
 | Domain | Metrics | Unchecked rows | Open questions |
 |---|---|---|---|
-| [compiler](domains/compiler/README.md) | 15 | 1 | 2 |
-| [debugger](domains/debugger/README.md) | 19 | 11 | 0 |
+| [compiler](domains/compiler/README.md) | 15 | 0 | 2 |
+| [debugger](domains/debugger/README.md) | 19 | 7 | 0 |
 | [diagnostics](domains/diagnostics/README.md) | 20 | 0 | 0 |
-| [idioms](domains/idioms/README.md) | 13 | 1 | 3 |
+| [idioms](domains/idioms/README.md) | 13 | 3 | 3 |
 | [infra](domains/infra/README.md) | 15 | 0 | 0 |
 | [lint-fmt](domains/lint-fmt/README.md) | 20 | 0 | 0 |
 | [perf](domains/perf/README.md) | 19 | 3 | 0 |
 | [site](domains/site/README.md) | 17 | 0 | 3 |
 | [spec](domains/spec/README.md) | 21 | 0 | 0 |
-| [stdlib](domains/stdlib/README.md) | 19 | 24 | 6 |
+| [stdlib](domains/stdlib/README.md) | 19 | 15 | 6 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
 | [tools](domains/tools/README.md) | 18 | 11 | 0 |
 
@@ -332,7 +332,8 @@ Process costing more than 10% of a change is skipped with a trailer
 
 | Day | Lane | Skipped |
 |---|---|---|
-| 2026-11-24 | compiler | 1 |
+| 2026-11-24 | infra | 3 |
+| 2026-11-24 | compiler | 2 |
 | 2026-11-23 | perf | 1 |
 | 2026-11-23 | debugger | 1 |
 
