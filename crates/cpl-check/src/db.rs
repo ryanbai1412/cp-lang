@@ -1510,7 +1510,11 @@ impl Database {
             );
             scope.has_imports = had_imports;
             let import = scope.imports.remove(name);
-            if !diags.is_empty() {
+            // A std module the host has not given yet is read as its
+            // outline: its one diagnostic says so, and the import stands.
+            let parts: Vec<String> = module.iter().map(|n| n.text.clone()).collect();
+            let outline = import.is_some() && crate::modules::unloaded(&parts);
+            if !diags.is_empty() && !outline {
                 self.cycle_hits = hits;
                 scope.modules.truncate(modules);
                 scope.imports.retain(|_, i| i.module < modules);
