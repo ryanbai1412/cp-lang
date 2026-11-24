@@ -343,9 +343,14 @@ impl<'a> Checker<'a> {
             root_name(e).is_some_and(|root| root == "self" || fields.iter().any(|f| f == root))
         };
         // `SortedRange(self, ..)`: a view built around `self` lends `self`.
-        let built_on_self = matches!(&place.kind, ExprKind::Call { callee, args }
-            if matches!(callee.kind, ExprKind::Name(_)) && args.iter().any(|a| reaches(&a.value)));
-        if !reaches(place) && !built_on_self {
+        let lends_self = |e: &Expr| {
+            reaches(e)
+                || matches!(&e.kind, ExprKind::Call { callee, args }
+                    if matches!(callee.kind, ExprKind::Name(_)) && args.iter().any(|a| reaches(&a.value)))
+        };
+        let mut foreign = Vec::new();
+        super::foreign_lends(place, &lends_self, &mut foreign);
+        for place in foreign {
             let message = format!(
                 "a projection may only lend part of `self`; `{}` is not reached through a field",
                 show(place)

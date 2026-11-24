@@ -141,6 +141,49 @@ pub enum Flow {
     LentVar(String),
 }
 
+/// The arms of `e` that lend something other than what `lends_self` accepts: the lend
+/// sources of `if`/`match` arms join, `Some(x)` lends what `x` lends, and `None` lends nothing.
+fn foreign_lends<'e>(e: &'e Expr, lends_self: &dyn Fn(&Expr) -> bool, out: &mut Vec<&'e Expr>) {
+    let tail = |block: &'e ast::Block, out: &mut Vec<&'e Expr>| {
+        if let Some(Stmt {
+            kind: StmtKind::Expr(e),
+            ..
+        }) = block.stmts.last()
+        {
+            foreign_lends(e, lends_self, out);
+        }
+    };
+    let e = unparen(e);
+    match &e.kind {
+        ExprKind::None => {}
+        ExprKind::Call { callee, args }
+            if matches!(&unparen(callee).kind, ExprKind::Name(n) if n == "some" || n == "Some")
+                && args.len() == 1 =>
+        {
+            foreign_lends(&args[0].value, lends_self, out);
+        }
+        ExprKind::If {
+            branches,
+            otherwise,
+        } => {
+            for (_, block) in branches {
+                tail(block, out);
+            }
+            if let Some(block) = otherwise {
+                tail(block, out);
+            }
+        }
+        ExprKind::Match { arms, .. } => {
+            for arm in arms {
+                tail(&arm.body, out);
+            }
+        }
+        ExprKind::Block(block) => tail(block, out),
+        _ if lends_self(e) => {}
+        _ => out.push(e),
+    }
+}
+
 /// A call that may return a lent value: any method may be a projection
 /// (`b.cur(i)`), and a lowercase fn may be `lends`; the replay asks the types.
 fn call_may_lend(e: &Expr) -> bool {
@@ -1502,7 +1545,11 @@ impl<'a> Checker<'a> {
                             .and_then(|m| m.projections.into_iter().find(|p| p.name == name.text)),
                         _ => None,
                     };
-                    let ty = self.quietly(|c| c.infer(e));
+                    let ty = match self.quietly(|c| c.infer(e)) {
+                        // `lends ?T` lends what its `Some` holds.
+                        Ty::Optional(inner) => *inner,
+                        ty => ty,
+                    };
                     let is_struct = matches!(&ty, Ty::Named { name, .. }
                         if matches!(self.type_def(name).as_deref(), Some(Def::Struct { .. })));
                     if let Some(projection) =
