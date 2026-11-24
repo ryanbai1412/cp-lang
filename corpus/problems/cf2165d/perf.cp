@@ -5,13 +5,13 @@
 @!multitest
 let n: 1..=1_000_000 = read()
 let vals: [0..n]1..=2 * n = read()
-var by_val: [0..=2 * n]List<Int> = []
+var by_val: [0..=2 * n]List<0..n> = []
 for (i, v) in vals.items: by_val[v].push(i)
 
 var ans = n
 for flip in 0..2:
-    var carried: List<Int> = []
-    var unmatched: List<Int> = []
+    var carried: List<0..n> = []
+    var unmatched: List<0..n> = []
     carried.reserve(n)
     unmatched.reserve(n)
     for v in 0..=2 * n:
