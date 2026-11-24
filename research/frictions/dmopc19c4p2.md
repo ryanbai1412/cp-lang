@@ -29,5 +29,4 @@ gen.py --max (n = 15): port and accepted C++ both under 0.01 s.
 
 ## Dream
 
-The port, with `let marble: Cell = read()`, `let goal: Cell = read()` and
-`let empty: [2]Cell = read()`.
+Fixed by Core in 50ed27f43; the port now reads `let marble: Cell = read()` and `let empty: [2]Cell = read()` and is the dream.

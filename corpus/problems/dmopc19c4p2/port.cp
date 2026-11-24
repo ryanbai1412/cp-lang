@@ -11,9 +11,9 @@ domain Row = 1..=n
 domain Col = 1..=n
 domain Cell = (Row, Col)
 domain State = (marble: Cell, hole: Cell)
-let marble = Cell(read<(Row, Col)>())
-let goal = Cell(read<(Row, Col)>())
-let empty = [Cell(read<(Row, Col)>()) for _ in 0..2]
+let marble: Cell = read()
+let goal: Cell = read()
+let empty: [2]Cell = read()
 let hole = if marble == empty[0]: empty[1] else: empty[0]
 fn moves(s: State) -> yields State:
     for h in s.hole.adj4:
