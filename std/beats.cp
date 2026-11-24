@@ -35,7 +35,7 @@ pub struct BeatsSegTree<D>:
     /// and its count, the same for the minimum, and the sum.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty `D` builds a tree whose sums are zero and whose extrema are `None`
+    /// empty: `BeatsSegTree<0..0>().all_sum == 0 and BeatsSegTree<0..0>().all_max == None`
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: when both `a` and `fill` are given
     /// example: `BeatsSegTree([5, 1, 4]).all_sum == 10`
@@ -159,7 +159,7 @@ pub struct BeatsSegTree<D>:
     /// exceeds `x` and whose second maximum does not, where the update is a tag.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`
-    /// empty: changes nothing
+    /// empty: `var t = BeatsSegTree([5, 1, 4]); t.chmin(1..1, 0); t.all_sum == 10`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..3, 3); t.all_sum == 7`
     pub fn chmin(mut self, r: Range<D>, x: Int):
@@ -181,7 +181,7 @@ pub struct BeatsSegTree<D>:
     /// Replace every `a[i]` in `r` with `max(a[i], x)`; the mirror of `chmin`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`
-    /// empty: changes nothing
+    /// empty: `var t = BeatsSegTree([5, 1, 4]); t.chmax(1..1, 9); t.all_sum == 10`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmax(0..2, 2); t.all_sum == 11`
     pub fn chmax(mut self, r: Range<D>, x: Int):
@@ -203,7 +203,7 @@ pub struct BeatsSegTree<D>:
     /// Add `x` to every `a[i]` in `r`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: changes nothing
+    /// empty: `var t = BeatsSegTree([5, 1, 4]); t.add(1..1, 9); t.all_sum == 10`
     /// traps: when a non-empty `r` reaches outside `D` (overflow wraps in release, traps in debug)
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.add(1..3, 10); t.sum(0..3) == 30`
     pub fn add(mut self, r: Range<D>, x: Int):
@@ -252,7 +252,7 @@ pub struct BeatsSegTree<D>:
     /// pushing them, so a query never changes the tree.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: zero
+    /// empty: `BeatsSegTree([5, 1, 4]).sum(2..2) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `BeatsSegTree([5, 1, 4]).sum(1..3) == 5`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..3, 2); t.sum(0..2) == 3`
@@ -263,10 +263,11 @@ pub struct BeatsSegTree<D>:
         self.read(1, self.root_view(), 0, n, lo, hi, 0)
 
     /// The least current value in `r`, or `None` when `r` is empty.
+    /// It returns a value, so equal candidates are indistinguishable.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: `None`
-    /// ties: returns a value, so equal candidates are indistinguishable
+    /// empty: `BeatsSegTree([5, 1, 4]).min_val(1..1) == None`
+    /// ties: `BeatsSegTree([3, 1, 1]).min_val(0..3) == Some(1)`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `BeatsSegTree([5, 1, 4]).min_val(0..3) == Some(1)`
     /// example: `BeatsSegTree([5, 1, 4]).min_val(2..2) == None`
@@ -276,10 +277,11 @@ pub struct BeatsSegTree<D>:
         self.read(1, self.root_view(), 0, n, lo, hi, 1)
 
     /// The greatest current value in `r`, or `None` when `r` is empty.
+    /// It returns a value, so equal candidates are indistinguishable.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: `None`
-    /// ties: returns a value, so equal candidates are indistinguishable
+    /// empty: `BeatsSegTree([5, 1, 4]).max_val(1..1) == None`
+    /// ties: `BeatsSegTree([4, 4, 1]).max_val(0..3) == Some(4)`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..1, 2); t.max_val(0..3) == Some(4)`
     pub fn max_val(self, r: Range<D>) -> ?Int:
@@ -321,7 +323,7 @@ pub struct BeatsSegTree<D>:
     /// Overwrite every position in `r` with `x`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) amortized
-    /// empty: changes nothing
+    /// empty: `var t = BeatsSegTree([5, 1, 4]); t.assign(1..1, 0); t.all_sum == 10`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.assign(0..2, 0); t.all_sum == 4`
     pub fn assign(mut self, r: Range<D>, x: Int):
@@ -334,7 +336,7 @@ pub struct BeatsSegTree<D>:
     /// divided \(O(\log V)\) times before it settles, for values of magnitude at most `V`.
     ///
     /// cost: \(O(\log \lvert D \rvert \log V)\) amortized
-    /// empty: changes nothing
+    /// empty: `var t = BeatsSegTree([5, 1, 4]); t.chdiv(1..1, 2); t.all_sum == 10`
     /// traps: when `d <= 0`, or a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chdiv(0..3, 2); t.all_sum == 4`
     /// example: `var t = BeatsSegTree([-3]); t.chdiv(0..1, 2); t.get(0) == -2`
@@ -348,7 +350,7 @@ pub struct BeatsSegTree<D>:
     /// negative values map into `0..m` too). Nodes whose maximum is below `m` are skipped.
     ///
     /// cost: \(O(\log \lvert D \rvert \log V)\) amortized
-    /// empty: changes nothing
+    /// empty: `var t = BeatsSegTree([5, 1, 4]); t.chmod(1..1, 3); t.all_sum == 10`
     /// traps: when `m <= 0`, or a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmod(0..3, 3); t.all_sum == 4`
     pub fn chmod(mut self, r: Range<D>, m: Int):
@@ -360,27 +362,29 @@ pub struct BeatsSegTree<D>:
     /// The sum of every current value in `D`.
     ///
     /// cost: \(O(1)\)
-    /// empty: zero on an empty domain
+    /// empty: `BeatsSegTree<0..0>().all_sum == 0`
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_sum == 10`
     @get pub fn all_sum(self) -> Int:
         if n == 0: 0 else: s[1]
 
     /// The least current value in `D`, or `None` when `D` is empty.
+    /// It returns a value, so equal candidates are indistinguishable.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
-    /// ties: returns a value, so equal candidates are indistinguishable
+    /// empty: `BeatsSegTree<0..0>().all_min == None`
+    /// ties: `BeatsSegTree([3, 1, 1]).all_min == Some(1)`
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_min == Some(1)`
     @get pub fn all_min(self) -> ?Int:
         if n == 0: None else: Some(mn1[1])
 
     /// The greatest current value in `D`, or `None` when `D` is empty.
+    /// It returns a value, so equal candidates are indistinguishable.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
-    /// ties: returns a value, so equal candidates are indistinguishable
+    /// empty: `BeatsSegTree<0..0>().all_max == None`
+    /// ties: `BeatsSegTree([5, 5, 1]).all_max == Some(5)`
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_max == Some(5)`
     @get pub fn all_max(self) -> ?Int:
@@ -409,7 +413,7 @@ pub struct HistoricBeatsSegTree<D>:
     /// makes one new version of the whole array.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty `D` builds a tree whose sums are zero and whose maxima are `None`
+    /// empty: `var t = HistoricBeatsSegTree<0..0>(); t.hist_sum(0..0) == 0 and t.hist_max(0..0) == None`
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: when both `a` and `fill` are given
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.hist_sum(0..2) == 3`
@@ -606,23 +610,26 @@ pub struct HistoricBeatsSegTree<D>:
         if lo < hi: self.upd(1, 0, n, lo, hi, op, x)
 
     /// Replace every `a[i]` in `r` with `min(a[i], x)`, then record a new version.
+    /// An empty `r` changes no value but still records a version.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`
-    /// empty: changes no value but still records a version
+    /// empty: `var t = HistoricBeatsSegTree([1, 2]); t.chmin(1..1, 0); t.sum(0..2) == 3 and t.hist_sum(0..2) == 6`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([5, 1]); t.chmin(0..2, 2); t.sum(0..2) == 3 and t.hist_max(0..1) == Some(5)`
     pub fn chmin(mut self, r: Range<D>, x: Int) = self.update(r, 0, x)
     /// Replace every `a[i]` in `r` with `max(a[i], x)`, then record a new version.
+    /// An empty `r` changes no value but still records a version.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`
-    /// empty: changes no value but still records a version
+    /// empty: `var t = HistoricBeatsSegTree([1, 2]); t.chmax(1..1, 9); t.sum(0..2) == 3 and t.hist_sum(0..2) == 6`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([5, 1]); t.chmax(0..2, 3); t.sum(0..2) == 8`
     pub fn chmax(mut self, r: Range<D>, x: Int) = self.update(r, 1, x)
     /// Add `x` to every `a[i]` in `r`, then record a new version.
+    /// An empty `r` changes no value but still records a version.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: changes no value but still records a version
+    /// empty: `var t = HistoricBeatsSegTree([1, 2]); t.add(1..1, 9); t.sum(0..2) == 3 and t.hist_sum(0..2) == 6`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.sum(0..2) == 6`
     pub fn add(mut self, r: Range<D>, x: Int) = self.update(r, 2, x)
@@ -645,24 +652,26 @@ pub struct HistoricBeatsSegTree<D>:
     /// The sum of the current values in `r`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: zero
+    /// empty: `var t = HistoricBeatsSegTree([1, 2]); t.sum(1..1) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.sum(0..2) == 3`
     pub fn sum(mut self, r: Range<D>) -> Int = self.query(r, 0) ?? 0
     /// The greatest current value in `r`, or `None` when `r` is empty.
+    /// It returns a value, so equal candidates are indistinguishable.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: `None`
-    /// ties: returns a value, so equal candidates are indistinguishable
+    /// empty: `var t = HistoricBeatsSegTree([1, 2]); t.max_val(1..1) == None`
+    /// ties: `var t = HistoricBeatsSegTree([2, 2]); t.max_val(0..2) == Some(2)`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..2, 5); t.add(0..2, -10); t.max_val(0..1) == Some(-4)`
     pub fn max_val(mut self, r: Range<D>) -> ?Int = self.query(r, 2)
     /// The greatest value any position in `r` has held in any version, the initial one included;
     /// `None` when `r` is empty.
+    /// It returns a value, so equal candidates are indistinguishable.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: `None`
-    /// ties: returns a value, so equal candidates are indistinguishable
+    /// empty: `var t = HistoricBeatsSegTree([1, 2]); t.hist_max(2..2) == None`
+    /// ties: `var t = HistoricBeatsSegTree([2, 2]); t.hist_max(0..2) == Some(2)`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..2, 5); t.add(0..2, -10); t.hist_max(0..1) == Some(6)`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.hist_max(1..1) == None`
@@ -671,7 +680,7 @@ pub struct HistoricBeatsSegTree<D>:
     /// the initial array plus the array after each update call.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: zero
+    /// empty: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.hist_sum(1..1) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.hist_sum(0..2) == 9`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.hist_sum(1..2) == 4`

@@ -427,7 +427,7 @@ pub struct LazyTreap<T, F>(
     /// by `k + 1`); `before(x, y)` orders value insertion (default never, so `insert` appends).
     ///
     /// cost: \(O(1)\)
-    /// empty: the new treap is empty
+    /// empty: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).to_list() == []`
     /// traps: never
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).len == 0`
     pub fn new(
@@ -578,7 +578,7 @@ pub struct LazyTreap<T, F>(
     /// elements equal to it.
     ///
     /// cost: \(O(\log n)\) expected
-    /// ties: after every equal element
+    /// ties: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f, before: (x, y) => x / 10 < y / 10); t.insert(12); t.insert(11); t.to_list() == [12, 11]`
     /// traps: when the treap already holds `2^31 - 1` elements
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f, before: (x, y) => x < y); t.insert(3); t.insert(1); t.insert(2); t.to_list() == [1, 2, 3]`
     pub fn insert(mut self, x: T):
@@ -612,7 +612,7 @@ pub struct LazyTreap<T, F>(
     /// Apply tag `f` to every element, as one tag on the root; ranks `k` count from the first element.
     ///
     /// cost: \(O(1)\)
-    /// empty: changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.apply_all(10); t.to_list() == []`
     /// traps: never
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply_all(10); t.to_list() == [11, 12]`
     pub fn apply_all(mut self, f: F):
@@ -621,7 +621,7 @@ pub struct LazyTreap<T, F>(
     /// Apply tag `f` to the elements at positions `lo..hi`; ranks `k` count from position `lo`.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: `lo == hi` changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.apply_range(1, 1, 5); t.to_list() == [1]`
     /// traps: when `lo < 0`, `hi > len` or `lo > hi`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(0); t.push(0); t.push(0); t.apply_range(1, 3, 5); t.to_list() == [0, 5, 5]`
     pub fn apply_range(mut self, lo: Int, hi: Int, f: F):
@@ -635,7 +635,7 @@ pub struct LazyTreap<T, F>(
     /// Apply tag `f` to the elements at the positions of `r`; `apply_range` with a range.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.apply(1..1, 10); t.to_list() == [1]`
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply(1..2, 10); t.to_list() == [1, 12]`
     pub fn apply(mut self, r: Range<Int>, f: F):
@@ -645,7 +645,7 @@ pub struct LazyTreap<T, F>(
     /// on the elements they reached; a later tag sees the new order.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.reverse(1..1); t.to_list() == [1, 2]`
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.reverse(0..2); t.to_list() == [2, 1, 3]`
     pub fn reverse(mut self, r: Range<Int>):
@@ -672,7 +672,7 @@ pub struct LazyTreap<T, F>(
     /// Remove the elements at positions `r`; later elements move down by `r.len`.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.erase_range(1..1); t.to_list() == [1, 2]`
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.erase_range(0..2); t.to_list() == [3]`
     pub fn erase_range(mut self, r: Range<Int>):
@@ -710,7 +710,7 @@ pub struct LazyTreap<T, F>(
     /// treaps must use the same functions; `self`'s are kept.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: an empty `other` changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); t.splice_back(mut u); t.to_list() == [1]`
     /// traps: when the total reaches `2^31` elements
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.splice_back(mut u); t.to_list() == [1, 5] and u.is_empty`
     pub fn splice_back(mut self, mut other: LazyTreap<T, F>):
@@ -775,7 +775,7 @@ pub struct LazyTreap<T, F>(
     /// tags, so the tree is unchanged.
     ///
     /// cost: \(O(k + \log n)\)
-    /// empty: `[]` when `k == 0` or the treap is empty
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); let e = t.take(2); t.push(1); e == [] and t.take(0) == []`
     /// order: sequence order
     /// traps: when `k < 0`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.take(2) == [1, 2]`
@@ -788,7 +788,7 @@ pub struct LazyTreap<T, F>(
     /// Every element in order, with pending tags applied; `take(len)`.
     ///
     /// cost: \(O(n)\)
-    /// empty: `[]`
+    /// empty: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).to_list() == []`
     /// order: sequence order
     /// traps: never
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).to_list() == []`
@@ -899,7 +899,7 @@ pub struct Rope<D, T>:
     /// not positions.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty `D` builds an empty rope
+    /// empty: `var r = Rope<0..0, Int>(fill: 7); r.to_array() == []`
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: when neither or both of `a` and `fill` are given
     /// example: `var t = Rope([1, 2, 3]); t.to_array() == [1, 2, 3]`
@@ -942,7 +942,7 @@ pub struct Rope<D, T>:
     /// no `merge` was given. Stored lazily on the covering nodes.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var r = Rope([1, 2, 3]); r.apply(1..1, 7); r.to_array() == [1, 2, 3]`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var r = Rope([1, 2, 3], merge: (t, x) => t + x); r.apply(1..3, 10); r.to_array() == [1, 12, 13]`
     /// example: `var r = Rope([1, 2, 3]); r.apply(0..2, 7); r.to_array() == [7, 7, 3]`
@@ -957,7 +957,7 @@ pub struct Rope<D, T>:
     /// Reverse the order of the values at positions `r`; pending tags stay with their values.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var r = Rope([1, 2, 3]); r.reverse(1..1); r.to_array() == [1, 2, 3]`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..3); r.get(0) == 3`
     pub fn reverse(mut self, r: Range<D>):
@@ -997,7 +997,7 @@ pub struct Rope<D, T>:
     /// good), so a query that would otherwise merge tags costs only the walk.
     ///
     /// cost: \(O(\log n)\) expected calls of `f`
-    /// empty: `None` when `f` gives `None` on every piece
+    /// empty: `var r = Rope([1, 2]); r.query_path(1, (mut x) => if x > 5: Some(x) else: None) == None`
     /// order: the value at `i` first, then pending tags from the deepest up to the root
     /// traps: when `i` is outside `D`
     /// example: `var r = Rope([1, 2], merge: (t, x) => t + x); r.apply(0..2, 10); r.query_path(1, (mut x) => if x > 5: Some(x) else: None) == Some(10)`
@@ -1015,7 +1015,7 @@ pub struct Rope<D, T>:
     /// The current values in position order, with every pending tag merged in.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty array for an empty `D`
+    /// empty: `var r = Rope<0..0, Int>(fill: 7); r.to_array() == []`
     /// order: position order of `D`
     /// traps: never
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..2); r.to_array() == [2, 1, 3]`
