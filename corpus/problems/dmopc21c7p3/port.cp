@@ -12,22 +12,22 @@
 // original: corpus/submissions/4453037.cpp
 // forward adjacency as linked lists: head[u] -> edge, nxt[edge]
 // DFS colours over what the lit lamps reach: 1 = on the stack, 2 = done
-// Bounds: n: 1..=1e6; m: 0..=1e6; up: 0..=1; links.from, links.to: 1..=n
+// Bounds: n: 1..=1e6; m: 0..=1e6; up: 0..=1; links.u, links.v: 1..=n
 
 let n: 1..=1e6 = read()
 let m: 0..=1e6 = read()
 domain Figure = 1..=n
 let up: [Figure]0..=1 = read()
-let links: [m](from: Figure, to: Figure) = read()
+let links: [m](u: Figure, v: Figure) = read()
 
 // fed[v]: the XOR of `up` over v's in-links, the flips v gets from figures above it
 var fed: [Figure]0..=1 = 0
-for w in links: fed[w.to] ^= up[w.from]
+for w in links: fed[w.v] ^= up[w.u]
 
 let g = Graph.directed(links)
 var lit_reach: [Figure]Bool = false
 for v in reachable(g, [v for v in Figure if up[v] == 1]): lit_reach[v] = true
-let live = Graph.directed([(w.from, w.to) for w in links if lit_reach[w.from]])
+let live = Graph.directed([(w.u, w.v) for w in links if lit_reach[w.u]])
 
 if topo(live) == None: print(-1)
 else: print(len([v for v in Figure if fed[v] != up[v]]))
