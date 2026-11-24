@@ -89,7 +89,7 @@ mod tests {
     fn every_trap_is_in_the_runtime() {
         for (trap, _) in TRAPS {
             assert!(
-                crate::runtime::PIECES.iter().any(|p| p.code.contains(trap)),
+                crate::runtime::pieces().any(|p| p.code.contains(trap)),
                 "no piece has {trap}"
             );
         }

@@ -210,8 +210,7 @@ fn numbered(name: &str) -> bool {
 fn runtime_names() -> &'static BTreeSet<&'static str> {
     static NAMES: std::sync::OnceLock<BTreeSet<&'static str>> = std::sync::OnceLock::new();
     NAMES.get_or_init(|| {
-        crate::runtime::PIECES
-            .iter()
+        crate::runtime::pieces()
             .flat_map(|p| crate::runtime::shake::defined(p.code))
             .filter(|name| !FOUND_BY_NAME.contains(name))
             .collect()

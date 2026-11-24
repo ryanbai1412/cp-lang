@@ -2,7 +2,7 @@
 
 use crate::names::{cty, dom_ident, fn_name, global_ident, ident, is_plain_enum, judge_ty, Niches};
 use crate::ranges::Facts;
-use crate::runtime::PIECES;
+use crate::runtime::pieces;
 use crate::walk;
 use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, OrdHook, Program, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
@@ -327,7 +327,7 @@ impl<'p> Emitter<'p> {
 
     pub fn need(&mut self, piece: &'static str) {
         if self.used.insert(piece) {
-            if let Some(found) = PIECES.iter().find(|p| p.name == piece) {
+            if let Some(found) = pieces().find(|p| p.name == piece) {
                 for dep in found.needs {
                     self.need(dep);
                 }
@@ -1536,7 +1536,7 @@ impl<'p> Emitter<'p> {
                 self.need(piece);
             }
         }
-        for piece in PIECES {
+        for piece in pieces() {
             if self.used.contains(piece.name) {
                 let mut code = self.piece_code(piece);
                 if self.target.checks == crate::Checks::None {

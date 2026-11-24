@@ -65,3 +65,22 @@ fn a_narrow_range_len_needs_no_overflow_check() {
         "{out}"
     );
 }
+
+#[test]
+fn every_runtime_piece_comes_after_the_pieces_it_needs() {
+    let mut seen = std::collections::BTreeSet::new();
+    for piece in crate::runtime::pieces() {
+        for need in piece.needs {
+            assert!(
+                seen.contains(need),
+                "{} needs {need}, which comes later or is missing",
+                piece.name
+            );
+        }
+        assert!(
+            seen.insert(piece.name),
+            "two pieces are named {}",
+            piece.name
+        );
+    }
+}
