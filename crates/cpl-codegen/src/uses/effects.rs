@@ -272,3 +272,18 @@ impl Tail {
         }
     }
 }
+
+impl super::Uses {
+    /// Whether running `e` leaves the variable `root` as it was: it runs
+    /// no fn value or closure, stores nothing into `root`, and calls no fn
+    /// that writes it.
+    pub(crate) fn leaves(&self, e: &Expr, root: (bool, usize)) -> bool {
+        let stores = Stores::of_expr(e);
+        let writes = |f: &usize| root.0 && self.effects(*f).writes.contains(&root.1);
+        let stored = match root.0 {
+            true => &stores.globals,
+            false => &stores.locals,
+        };
+        !Runs::of_expr(e).opaque() && !stores.calls.iter().any(writes) && !stored.contains(&root.1)
+    }
+}

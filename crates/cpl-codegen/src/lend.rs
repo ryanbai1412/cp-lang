@@ -41,6 +41,19 @@ pub(crate) struct Tail {
     pub(crate) whole: std::collections::BTreeSet<usize>,
 }
 
+/// The map and key of `m.get(k)`: the one read whose found value is an
+/// entry the C++ can point into (`cpl::map_lend`) instead of copying, so
+/// every lending and moving choice about map entries starts here.
+pub(crate) fn entry_read(e: &Expr) -> Option<(&Expr, &Expr)> {
+    match &e.kind {
+        ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) => match args.as_slice() {
+            [map, key] => Some((map, key)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 /// Locals `block` reads whole, not only through an index, field, variant
 /// payload or tag, length or the elements a `for` walks.
 pub(crate) fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
@@ -276,28 +289,13 @@ impl<'p> Emitter<'p> {
         callee: Option<usize>,
         muts: &[(bool, usize)],
     ) -> Vec<usize> {
-        let leaves = |this: &Self, e: &Expr, root: (bool, usize)| {
-            let effects = Stores::of_expr(e);
-            let opaque = Runs::of_expr(e).opaque();
-            let writes = |f: &usize| root.0 && this.uses.effects(*f).writes.contains(&root.1);
-            !opaque
-                && !effects.calls.iter().any(writes)
-                && !if root.0 {
-                    &effects.globals
-                } else {
-                    &effects.locals
-                }
-                .contains(&root.1)
-        };
         let mut marked = Vec::new();
         for &value in operands {
             let ExprKind::Binary(BinOp::Coalesce, got, _) = &value.kind else {
                 continue;
             };
-            let ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) = &got.kind else {
-                continue;
-            };
-            let Some(root) = args.first().and_then(crate::stmt::place_root) else {
+            let Some(root) = entry_read(got).and_then(|(map, _)| crate::stmt::place_root(map))
+            else {
                 continue;
             };
             let callee_writes =
@@ -306,7 +304,7 @@ impl<'p> Emitter<'p> {
                 || got.ty == value.ty
                 || muts.contains(&root)
                 || callee_writes
-                || !operands.iter().all(|e| leaves(self, e, root))
+                || !operands.iter().all(|e| self.uses.leaves(e, root))
             {
                 continue;
             }
@@ -326,12 +324,7 @@ impl<'p> Emitter<'p> {
         init: &'e Expr,
         tail: Option<&Tail>,
     ) -> Option<[&'e Expr; 2]> {
-        let ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) = &init.kind else {
-            return None;
-        };
-        let [map, key] = args.as_slice() else {
-            return None;
-        };
+        let (map, key) = entry_read(init)?;
         let value_ty = match &map.ty {
             Ty::Map(_, v) | Ty::HashMap(_, v) => v,
             _ => return None,
@@ -362,10 +355,7 @@ impl<'p> Emitter<'p> {
         let ExprKind::Binary(BinOp::Coalesce, got, default) = &init.kind else {
             return false;
         };
-        let ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) = &got.kind else {
-            return false;
-        };
-        let [map, key] = args.as_slice() else {
+        let Some((map, key)) = entry_read(got) else {
             return false;
         };
         let plain = matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_));
@@ -592,17 +582,14 @@ impl<'p> Emitter<'p> {
             ExprKind::Local(s) if self.lent.contains(s) && got.ty != seq.ty => {
                 Some((Lender::Named(got), &**default))
             }
-            ExprKind::Builtin(cpl_ir::Builtin::MapGet, args)
-                if self.closure_id.is_none()
+            _ => {
+                let (map, key) = entry_read(got)?;
+                (self.closure_id.is_none()
                     && !seq.ty.is_scalar()
                     && got.ty != seq.ty
-                    && args
-                        .first()
-                        .is_some_and(|m| crate::stmt::place_root(m).is_some()) =>
-            {
-                Some((Lender::Get(&args[0], &args[1]), &**default))
+                    && crate::stmt::place_root(map).is_some())
+                .then_some((Lender::Get(map, key), &**default))
             }
-            _ => None,
         }
     }
 
@@ -682,7 +669,7 @@ impl Emitter<'_> {
         let Some(ExprKind::Binary(BinOp::Coalesce, got, d)) = of.first().map(|e| &e.kind) else {
             return;
         };
-        let ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) = &got.kind else {
+        let Some((map, got_key)) = entry_read(got) else {
             return;
         };
         let rest_ok = rest.iter().all(|s| match s {
@@ -690,9 +677,9 @@ impl Emitter<'_> {
             _ => false,
         });
         if matches!(copy.ty, Ty::List(_))
-            && matches!(args[0].kind, ExprKind::Local(_) | ExprKind::Global(_))
-            && walk::path_root(&args[0]) == Some(root)
-            && (same_path(&args[1], key) || self.key_temp_of(key, &args[1]))
+            && matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_))
+            && walk::path_root(map) == Some(root)
+            && (same_path(got_key, key) || self.key_temp_of(key, got_key))
             && !may_touch(key, root)
             && !may_touch(d, root)
             && rest_ok
