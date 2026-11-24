@@ -540,12 +540,19 @@ impl<'a> Parser<'a> {
         mut item: impl FnMut(&mut Self) -> R,
     ) -> Vec<R> {
         let mut out = Vec::new();
+        self.comma_items(close, what, &mut |p| out.push(item(p)));
+        out
+    }
+
+    /// The loop of [`Self::comma_list`], once for every item type: `item` parses one item
+    /// and keeps it.
+    fn comma_items(&mut self, close: TokenKind, what: &str, item: &mut dyn FnMut(&mut Self)) {
         loop {
             if self.at(close) || self.at_line_end() {
                 break;
             }
             let before = self.pos;
-            out.push(item(self));
+            item(self);
             if self.eat(T::Comma) {
                 continue;
             }
@@ -554,7 +561,6 @@ impl<'a> Parser<'a> {
             }
         }
         self.close_list(close, what);
-        out
     }
 
     /// After an item of a `comma_list` that a `,` or `close` doesn't follow: report it, skip
