@@ -195,6 +195,8 @@ super::msgs! {
     TYPE_MISMATCH_OPEN_RANGE_END = TYPE_MISMATCH, "an open range counts from 0 or to the end of a domain, so its end is an `Int` or a domain value, not `{}`";
     TYPE_MISMATCH_TYPE_ARGS_WITHOUT_PARAMS = TYPE_MISMATCH,
         "`{}` has no type parameters, so it takes no type arguments";
+    TYPE_MISMATCH_DIM_START = TYPE_MISMATCH,
+        "an array dimension counts its cells from a number, not from `{}`";
     TYPE_MISMATCH_FULL_RANGE = TYPE_MISMATCH, "`..` takes its domain from its place, so it stands only as an index or an argument";
     TYPE_MISMATCH_A_RANGE_OF_F64 = TYPE_MISMATCH, "a range of `F64`s has no elements to walk";
     UNKNOWN_FIELD_HAS_NO_MEMBER = UNKNOWN_FIELD, "{} has no member `{}`";

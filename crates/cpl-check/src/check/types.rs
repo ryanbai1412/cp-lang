@@ -82,6 +82,9 @@ impl<'a> Checker<'a> {
                 self.named_type(&name.text, name.span, args)
             }
             TypeKind::Array { index, elem } => {
+                for dim in index {
+                    self.dim_starts_at_a_number(dim);
+                }
                 let index = index.iter().map(|i| self.resolve_type(i)).collect();
                 Ty::Array {
                     index: self.flat_index(index),

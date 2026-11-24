@@ -10,6 +10,7 @@ mod foreign;
 pub(crate) use foreign::declare_on_first_assignment;
 mod alias;
 mod arms;
+mod array_dims;
 mod assoc;
 mod bound_args;
 mod bounded_str;

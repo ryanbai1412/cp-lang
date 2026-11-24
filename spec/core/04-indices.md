@@ -134,7 +134,9 @@ operator (`*`, `%`, `^`, `k - v`) takes `Int(v)` first, as `Int(v) % 4`. A
 position compares with positions of its domain and with integer literals
 (`v < 3`); against an `Int` variable it is `Int(v) <= r`. Getting back into
 the domain is explicit (`v.next`, `V(x)`) (decision 379). (R04.3.3) Arrays over an anonymous range
-(`[0..=n]Int`) take any `Int`, checked, so ordinary DP tables stay plain.
+(`[0..=n]Int`) take any `Int`, checked, so ordinary DP tables stay plain. Such a range counts its cells from a
+number (`[1..=n]`, `[-5..5]`); one starting at a value, `[n..4]Int`, is
+E0302: name it as a domain, `domain D = n..4`, then `[D]Int`. (R04.3.4)
 
 ## Ranges
 

@@ -712,10 +712,8 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 };
                 let Some(first) = first else {
-                    self.unsupported(
-                        lo.span,
-                        "an array dimension that starts at anything but a number",
-                    );
+                    let start = self.source(lo.span).to_string();
+                    self.report(lo.span, msgs::check::TYPE_MISMATCH_DIM_START, &[&start]);
                     self.help("name the range: `domain D = lo..=hi`, then `[D]T`");
                     return None;
                 };
