@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3706 (3598 passing). Rules: 617.
+Cases: 3707 (3598 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1097,7 +1097,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **deque** (42/42 named by a case)
 - **derive** (6/6 named by a case)
 - **dp** (45/45 named by a case)
-- **dsu** (64/64 named by a case)
+- **dsu** (69/69 named by a case)
 - **fenwick** (42/42 named by a case)
 - **flow** (66/67 named by a case)
   - uncovered: `Matroid`
@@ -1140,7 +1140,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2433 of 2468 std items are named by a case.
+2438 of 2473 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
