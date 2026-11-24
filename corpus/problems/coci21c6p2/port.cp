@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 6 (Zemljiste), https://dmoj.ca/problem/coci21c6p2
+// limits: 2000 ms, 512 MB
 // Problem: an r x s grid (r, s <= 500) of prices c <= 1e9, and a, b <= 1e9. A non-empty
 //   subrectangle with total m costs |m - a| + |m - b|; print the smallest cost.
 // Solution: the cost falls until min(a, b), is flat up to max(a, b), then rises, so with

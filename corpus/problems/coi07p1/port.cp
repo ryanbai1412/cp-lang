@@ -1,4 +1,5 @@
 // Source: COI 2007 #1 (Glasnici), https://dmoj.ca/problem/coi07p1
+// limits: 600 ms, 32 MB
 // Problem: n <= 1e5 messengers at sorted positions D <= 1e9 on a line; each runs at speed
 //   <= 1 and hears a shouting messenger within distance K (real, <= 1e6). Only the first
 //   knows the news at time 0. Print the least time until all know it, +-0.001.
