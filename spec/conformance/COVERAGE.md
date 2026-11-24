@@ -22,7 +22,7 @@ Cases: 3673 (3599 passing). Rules: 617.
 - R07 (07-sequences.md): 97 rules, 258 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 20 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 20 rules, 122 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 33 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -618,7 +618,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R10: 10-io.md
 
 - R10.3.7 [1+ 2-]: `?T` is not a `Seq`: `for v in x` on a `?Int` is E0302 naming `if let`. A sequence prints ...
-- R10.1.1 [15+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
+- R10.1.1 [16+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [7+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
