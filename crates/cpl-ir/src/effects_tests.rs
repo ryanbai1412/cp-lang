@@ -111,3 +111,26 @@ fn a_closure_made_counts_as_run_and_its_captures_as_the_outer_variables() {
     );
     assert!(!t.opaque && t.calls.len() == 1, "{t:?}");
 }
+
+#[test]
+fn code_by_itself_names_its_calls_and_keeps_binds_apart_from_stores() {
+    let (program, _) = table(SOURCE, true);
+    let f = program
+        .fns
+        .iter()
+        .position(|f| f.name == "add_twice")
+        .expect("add_twice");
+    let own = Access::of_block(&program.fns[f].body);
+    assert_eq!(own.calls.len(), 1, "{own:?}");
+    assert!(
+        own.writes.is_empty() && own.calls_code() && !own.unnamed(),
+        "{own:?}"
+    );
+    let apply = program
+        .fns
+        .iter()
+        .position(|f| f.name == "apply")
+        .expect("apply");
+    let own = Access::of_block(&program.fns[apply].body);
+    assert!(own.values && own.opaque && own.unnamed(), "{own:?}");
+}

@@ -5,7 +5,7 @@
 //! every use is in sight of the one statement that declares it, the
 //! declaration stays there; otherwise it moves to the top of the fn.
 
-use crate::uses::effects::Runs;
+use crate::uses::effects::Touch;
 use crate::walk;
 use cpl_ir::{
     Arg, Block, Builtin, CmpOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty,
@@ -186,7 +186,7 @@ impl Scopes {
 /// of its fields, each field at most once, and those are its only uses.
 pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> {
     let mut reads: BTreeMap<usize, usize> = BTreeMap::new();
-    let mut barred = crate::uses::effects::Stores::of_block(body).locals;
+    let mut barred = Touch::of_block(body).stored_locals();
     walk::deep_exprs(body, &mut |e| match &e.kind {
         ExprKind::Local(slot) => *reads.entry(*slot).or_default() += 1,
         ExprKind::Closure(id) => {
@@ -244,8 +244,8 @@ pub(crate) fn start_guard(slot: usize, body: &Block) -> Option<(&Expr, &Block)> 
     let (ExprKind::Local(v), ExprKind::Local(bound)) = (&v.kind, &e.kind) else {
         return None;
     };
-    let opaque = Runs::of_block(body).opaque();
-    let set = crate::uses::effects::Stores::of_block(body).locals;
+    let opaque = Touch::of_block(body).unnamed();
+    let set = Touch::of_block(body).stored_locals();
     (*v == slot && *bound != slot && otherwise.stmts.is_empty() && !opaque && !set.contains(bound))
         .then_some((e, then))
 }
@@ -264,14 +264,14 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
     let mut todo = vec![id];
     while let Some(f) = todo.pop() {
         let body = f.map_or(body, |f| &program.fns[f].body);
-        if Runs::of_block(body).opaque() {
+        if Touch::of_block(body).unnamed() {
             return BTreeSet::new();
         }
         // Nothing calls the top-level code.
         if id.is_none() {
             break;
         }
-        for callee in crate::uses::effects::Stores::of_block(body).calls {
+        for callee in Touch::of_block(body).calls {
             if Some(callee) == id {
                 return BTreeSet::new();
             }

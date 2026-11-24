@@ -8,7 +8,7 @@
 //! a struct field every construction fills with `None` or copies from the
 //! same field, so `if let f = self.lt` goes when no `Heap` ever gets an `lt`.
 
-use crate::uses::effects::{known_where, Stores};
+use crate::uses::effects::{known_where, Touch};
 use crate::walk::{deep_exprs, deep_stmts, path_root};
 use cpl_ir::{Arg, Block, Expr, ExprKind, FnId, Place, PlaceKind};
 use cpl_ir::{Program, Slot, Stmt, Ty};
@@ -35,15 +35,15 @@ pub(crate) fn prune(program: &mut Program, asserts: bool) {
 /// `assert floyd_warshall(mut d)` closes `d` in every build.
 fn keep_stores_of_asserts(program: &mut Program) {
     let mut storing = BTreeSet::new();
-    let effects: Vec<Stores> = program
+    let effects: Vec<Touch> = program
         .fns
         .iter()
-        .map(|f| Stores::of_block(&f.body))
+        .map(|f| Touch::of_block(&f.body))
         .collect();
     loop {
         let before = storing.len();
         for (id, e) in effects.iter().enumerate() {
-            if !e.globals.is_empty() || e.calls.iter().any(|c| storing.contains(c)) {
+            if e.writes.iter().any(|w| w.0) || e.calls.iter().any(|c| storing.contains(c)) {
                 storing.insert(id);
             }
         }
@@ -52,8 +52,8 @@ fn keep_stores_of_asserts(program: &mut Program) {
         }
     }
     let stores = |cond: &Expr| {
-        let e = Stores::of_expr(cond);
-        !e.locals.is_empty() || !e.globals.is_empty() || e.calls.iter().any(|c| storing.contains(c))
+        let e = Touch::of_expr(cond);
+        !e.writes.is_empty() || e.calls.iter().any(|c| storing.contains(c))
     };
     fn visit(b: &mut Block, stores: &dyn Fn(&Expr) -> bool) {
         for stmt in &mut b.stmts {
@@ -206,7 +206,7 @@ fn captured(program: &Program, body: &Block) -> BTreeSet<Slot> {
 
 /// The slots `body` stores to, or lends to a closure by reference.
 fn written(program: &Program, body: &Block) -> BTreeSet<Slot> {
-    let mut out = Stores::of_block(body).locals;
+    let mut out = Touch::of_block(body).stored_locals();
     deep_exprs(body, &mut |e| {
         if let ExprKind::Closure(cid) = e.kind {
             let caps = &program.closures[cid].captures;

@@ -4,7 +4,7 @@ use crate::emit::{pad, Emitter, Pushed, ADD, PRIMARY, REL};
 use crate::expr::string_literal;
 use crate::lend::Hold;
 use crate::names::{dom_ident, fn_name};
-use crate::uses::effects::{is_cheap_pure_key, writes_nothing, Runs, Stores};
+use crate::uses::effects::{is_cheap_pure_key, writes_nothing, Touch};
 use crate::walk;
 use cpl_ir::{
     AssignOp, BinOp, Block, Builtin, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind,
@@ -663,13 +663,14 @@ impl<'p> Emitter<'p> {
                 hi,
                 rev,
             } => {
-                let effects = Stores::of_block(body);
+                let effects = Touch::of_block(body);
                 let untouched = match walk::path_root(container) {
                     Some((false, local)) => {
-                        !effects.locals.contains(&local) || fields_untouched(container, body)
+                        !effects.writes.contains(&(false, local))
+                            || fields_untouched(container, body)
                     }
                     Some((true, global)) => {
-                        !effects.globals.contains(&global)
+                        !effects.writes.contains(&(true, global))
                             && !effects
                                 .calls
                                 .iter()
@@ -756,17 +757,17 @@ impl<'p> Emitter<'p> {
             Iter::Seq(seq, rev) => {
                 let inlined = self.inline_list_call(seq);
                 let seq = inlined.as_ref().unwrap_or(seq);
-                let effects = Stores::of_block(body);
+                let effects = Touch::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
                 let untouched_by_body =
                     |seq: &Expr| match walk::path_root(crate::uses::in_place(seq)) {
                         Some((false, local)) => {
-                            !effects.locals.contains(&local)
+                            !effects.writes.contains(&(false, local))
                                 || fields_untouched(crate::uses::in_place(seq), body)
                         }
                         Some((true, global)) => {
-                            !effects.globals.contains(&global)
+                            !effects.writes.contains(&(true, global))
                                 && !effects
                                     .calls
                                     .iter()
@@ -1673,7 +1674,7 @@ fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
         ExprKind::Global(id) if root.0 && *id == root.1 => alias = true,
         _ => {}
     });
-    alias || Runs::of_expr(e).calls()
+    alias || Touch::of_expr(e).calls_code()
 }
 
 /// The variable a place reads from, looking through the unchecked unwrap
@@ -1702,7 +1703,7 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
     if !matches!(map.ty, Ty::Map(..) | Ty::HashMap(..)) || !plain(map) || !plain(key) {
         return None;
     }
-    let (mut reads, mut quiet) = (false, Runs::of_block(then).quiet());
+    let (mut reads, mut quiet) = (false, Touch::of_block(then).quiet());
     walk::deep_exprs(then, &mut |e| match &e.kind {
         ExprKind::Index(base, at)
             if base.kind == map.kind && at.len() == 1 && at[0].kind == key.kind =>

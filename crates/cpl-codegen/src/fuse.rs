@@ -87,18 +87,15 @@ impl<'p> Emitter<'p> {
         let outer_body = &outer_body;
         let mut inner_touch = self.block_touch(inner_body);
         iter_exprs(inner_iter, &mut |e| {
-            let et = self.touch(e);
-            inner_touch.reads.extend(et.reads);
-            inner_touch.writes.extend(et.writes);
-            inner_touch.reads_domain.extend(et.reads_domain);
-            inner_touch.writes_domain.extend(et.writes_domain);
-            inner_touch.io |= et.io;
+            inner_touch.merge(self.touch(e));
         });
         inner_touch.reads.remove(&(false, *vec_slot));
         inner_touch.writes.remove(&(false, *vec_slot));
+        inner_touch.binds.remove(vec_slot);
         let mut outer_touch = self.block_touch(outer_body);
         outer_touch.reads.remove(&(false, outer_slot));
         outer_touch.writes.remove(&(false, outer_slot));
+        outer_touch.binds.remove(&outer_slot);
         if inner_touch.io || outer_touch.io || inner_touch.conflicts(&outer_touch) {
             return false;
         }

@@ -7,7 +7,6 @@ use crate::emit::{
 use crate::names::{
     cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_bitset_ty, is_plain_enum,
 };
-use crate::uses::effects::Runs;
 use crate::walk;
 const FLOAT_DIGITS: &str = "10";
 
@@ -294,7 +293,7 @@ impl<'p> Emitter<'p> {
         let mut plain = true;
         walk::place_exprs(place, &mut |e| {
             let touch = self.touch(e);
-            plain &= !touch.io && touch.writes.is_empty();
+            plain &= !touch.io && touch.writes.is_empty() && touch.binds.is_empty();
         });
         plain
     }
@@ -1206,8 +1205,8 @@ impl<'p> Emitter<'p> {
                 }
                 let impure_args = has_index(place)
                     && args.iter().any(|a| {
-                        let runs = Runs::of_expr(a);
-                        runs.calls() || runs.mutates
+                        let t = crate::emit::Touch::of_expr(a);
+                        t.calls_code() || t.mutates
                     });
                 let narrow_elem = self.place_elem_layout(place).cloned();
                 let emit_mutate = |this: &mut Self, p: String, arg: String, arg2: String| -> Code {
@@ -1410,10 +1409,9 @@ impl<'p> Emitter<'p> {
                     if let Some(value) = value {
                         let touch = this.touch(value);
                         let code = this.expr(value);
-                        let calls = !crate::uses::effects::Stores::of_expr(value)
-                            .calls
-                            .is_empty();
-                        if touch.io || !touch.writes.is_empty() || calls {
+                        let calls = !touch.calls.is_empty();
+                        if touch.io || !touch.writes.is_empty() || !touch.binds.is_empty() || calls
+                        {
                             let name = this.temp();
                             out.push_str(&format!(
                                 "{}{} {name} = {};\n",

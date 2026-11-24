@@ -4,7 +4,7 @@
 //! temporary alive as long as the view.
 
 use crate::emit::{Code, Emitter, COND};
-use crate::uses::effects::{may_touch, Runs, Stores};
+use crate::uses::effects::{may_touch, Touch};
 use crate::walk;
 use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
 
@@ -110,7 +110,7 @@ pub(crate) fn copied_at_test(slot: usize, rest: &[Stmt]) -> bool {
     let later = Block {
         stmts: [&then.stmts[copies..], &otherwise.stmts, after].concat(),
     };
-    let mut seen = Runs::of_block(&later).closures;
+    let mut seen = Touch::of_block(&later).closures;
     walk::deep_exprs(&later, &mut |e| seen |= local(e));
     !seen
 }
@@ -728,11 +728,7 @@ impl Emitter<'_> {
         let Some(at) = found else {
             return;
         };
-        let stores = Stores::of_expr(value);
-        let stored = match root.0 {
-            true => stores.globals.contains(&root.1),
-            false => stores.locals.contains(&root.1),
-        };
+        let stored = Touch::of_expr(value).writes.contains(&root);
         let exclusive = !root.0
             && self.closure_id.is_none()
             && self
@@ -1154,7 +1150,7 @@ fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
     let block = Block {
         stmts: vec![stmt.clone()],
     };
-    let opaque = Runs::of_block(&block).code();
+    let opaque = Touch::of_block(&block).code();
     let (mut uses, mut elsewhere) = (0usize, 0usize);
     walk::deep_exprs(&block, &mut |e| match &e.kind {
         ExprKind::Local(s) if (false, *s) == *root => uses += 1,

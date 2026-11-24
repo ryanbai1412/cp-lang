@@ -14,7 +14,7 @@ use crate::walk;
 use cpl_ir::{
     Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty,
 };
-use effects::{Runs, Stores};
+use effects::Touch;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) use effects::Effects;
@@ -110,7 +110,7 @@ impl Uses {
         let mut escapes = BTreeMap::new();
         mutated.extend(muts.iter().copied());
         for block in blocks {
-            mutated.extend(Stores::of_block(block).locals);
+            mutated.extend(Touch::of_block(block).stored_locals());
             moved.extend(crate::lend::whole_reads(block));
             let mut called = BTreeSet::new();
             walk::deep_stmts(block, &mut |stmt| match stmt {
@@ -212,7 +212,7 @@ fn mentions(program: &Program, stmts: &[Stmt], slot: usize) -> Mentions {
         stmts: stmts.to_vec(),
     };
     let mut m = Mentions {
-        any: Stores::of_block(&block).locals.contains(&slot),
+        any: Touch::of_block(&block).stored_locals().contains(&slot),
         kept: false,
     };
     let reads = |e: &Expr| {
@@ -546,16 +546,16 @@ fn place_dies(program: &Program, block: &Block, k: usize, init: &Expr) -> bool {
         _ => {}
     });
     declared
-        && !Runs::of_block(block).closures
+        && !Touch::of_block(block).closures
         && reads == apart
-        && !Stores::of_block(&rest).locals.contains(&slot)
+        && !Touch::of_block(&rest).stored_locals().contains(&slot)
 }
 
 /// Value parameters whose one read copies them into a local the body
 /// changes, `var l = limbs`: taken by value, the copy moves in instead, and
 /// a caller at its last use moves its own value in.
 pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
-    let stored = Stores::of_block(&f.body).locals;
+    let stored = Touch::of_block(&f.body).stored_locals();
     let mut reads = vec![0usize; f.params.len()];
     walk::deep_exprs(&f.body, &mut |e| {
         if let ExprKind::Local(s) = e.kind {
@@ -687,11 +687,7 @@ fn dies_in(
     let count = |b: &Block| {
         let mut n = 0;
         walk::deep_exprs(b, &mut |e| n += usize::from(reads_whole(e, src)));
-        let stored = Stores::of_block(b);
-        n + usize::from(match src {
-            (false, s) => stored.locals.contains(&s),
-            (true, g) => stored.globals.contains(&g),
-        })
+        n + usize::from(Touch::of_block(b).writes.contains(&src))
     };
     let rest = Block {
         stmts: block.stmts[k + 1..].to_vec(),

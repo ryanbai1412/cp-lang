@@ -5,7 +5,7 @@
 //! checked on the way to it, so every check that is skipped would pass.
 
 use crate::emit::Emitter;
-use crate::uses::effects::Runs;
+use crate::uses::effects::Touch;
 use cpl_ir::walk::{deep_exprs, deep_stmts};
 use cpl_ir::{Arg, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
 
@@ -130,7 +130,7 @@ impl<'p> Emitter<'p> {
             Stmt::DefDomain { .. } | Stmt::DefDomainFromVal { .. } => sizes = true,
             _ => {}
         });
-        let values = Runs::of_block(body).opaque();
+        let values = Touch::of_block(body).unnamed();
         let mut calls = Vec::new();
         deep_exprs(body, &mut |e| match &e.kind {
             ExprKind::Index(base, _) => {
@@ -157,7 +157,7 @@ impl<'p> Emitter<'p> {
         if sizes || values || uses.is_empty() {
             return Vec::new();
         }
-        let effects = crate::uses::effects::Stores::of_block(body);
+        let effects = Touch::of_block(body);
         let params = self.fn_id.map_or(0, |f| self.program.fns[f].params.len());
         let summaries = &self.summaries;
         let call_ok = |root: (bool, usize)| {
@@ -169,8 +169,10 @@ impl<'p> Emitter<'p> {
         };
         let kept = |row: &Row| {
             let fixed = row.at.iter().all(|k| match k {
-                Key::Local(slot) => !declared.contains(slot) && !effects.locals.contains(slot),
-                Key::Global(id) => !effects.globals.contains(id) && call_ok((true, *id)),
+                Key::Local(slot) => {
+                    !declared.contains(slot) && !effects.writes.contains(&(false, *slot))
+                }
+                Key::Global(id) => !effects.writes.contains(&(true, *id)) && call_ok((true, *id)),
                 Key::Int(_) => true,
             });
             let local = !row.root.0;

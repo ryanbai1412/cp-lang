@@ -1,6 +1,6 @@
 //! The one door from codegen to what code can do. Every pass that asks
 //! whether code can write, trap, call or be skipped asks here, and every
-//! answer comes from [`cpl_ir::effects`] or the stores [`Stores`] finds;
+//! answer comes from [`cpl_ir::effects`] or the stores [`Touch::of_block`] finds;
 //! `scripts/debt-ratchet.py` (`codegen_effect_guesses`) rejects a purity or
 //! effects helper anywhere else in codegen.
 
@@ -14,68 +14,6 @@ use crate::walk;
 
 pub(crate) use cpl_ir::effects::{in_domain, known_where, pure_path, trap_free_stmts, Effects};
 /// The locals and globals code assigns and the fns it calls by name.
-pub(crate) use cpl_ir::walk::Effects as Stores;
-
-/// The kinds of code an expression or block runs, read from its syntax:
-/// what a pass needs to know before it reorders, skips or lends across it.
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub(crate) struct Runs {
-    /// Calls a fn by name.
-    pub(crate) fns: bool,
-    /// Calls a fn value.
-    pub(crate) values: bool,
-    /// Makes a closure, which may later run with its captures.
-    pub(crate) closures: bool,
-    /// Changes a container in place.
-    pub(crate) mutates: bool,
-    /// Prints.
-    pub(crate) prints: bool,
-}
-
-impl Runs {
-    fn add(&mut self, e: &Expr) {
-        match e.kind {
-            ExprKind::Call(..) => self.fns = true,
-            ExprKind::CallExpr(..) => self.values = true,
-            ExprKind::Closure(_) => self.closures = true,
-            ExprKind::Mutate(..) => self.mutates = true,
-            ExprKind::Print(..) => self.prints = true,
-            _ => {}
-        }
-    }
-
-    pub(crate) fn of_expr(e: &Expr) -> Runs {
-        let mut runs = Runs::default();
-        walk::deep_expr(e, &mut |x| runs.add(x));
-        runs
-    }
-
-    pub(crate) fn of_block(b: &Block) -> Runs {
-        let mut runs = Runs::default();
-        walk::deep_exprs(b, &mut |x| runs.add(x));
-        runs
-    }
-
-    /// Calls a fn, by name or as a value.
-    pub(crate) fn calls(&self) -> bool {
-        self.fns || self.values
-    }
-
-    /// Runs code this pass cannot see from here: a call or a closure.
-    pub(crate) fn code(&self) -> bool {
-        self.calls() || self.closures
-    }
-
-    /// Runs code whose target is not named: a fn value or a closure.
-    pub(crate) fn opaque(&self) -> bool {
-        self.values || self.closures
-    }
-
-    /// Runs no code and changes no container.
-    pub(crate) fn quiet(&self) -> bool {
-        !self.code() && !self.mutates
-    }
-}
 
 /// [`cpl_ir::effects::pure_fns`], knowing the closures `devirt` resolves.
 pub(crate) fn pure_fns(program: &Program, devirt: &Devirt, traps: bool) -> BTreeSet<usize> {
@@ -119,7 +57,7 @@ pub(crate) fn trap_free_block(block: &Block, vec: usize, traps: bool) -> bool {
 }
 
 pub(crate) fn writes_nothing(e: &Expr) -> bool {
-    Runs::of_expr(e).quiet()
+    Touch::of_expr(e).quiet()
 }
 
 /// True when a `sort(by:)` key expression is pure, trap-free, and O(1), so comparing
@@ -172,7 +110,7 @@ pub(crate) fn closure_writes(program: &cpl_ir::Program, id: Option<usize>, root:
         walk::deep_exprs(&c.body, &mut |e| {
             nested |= matches!(e.kind, ExprKind::Closure(_))
         });
-        let stores = Stores::of_block(&c.body).locals;
+        let stores = Touch::of_block(&c.body).stored_locals();
         c.captures.iter().any(|cap| {
             !cap.is_global && cap.outer == root && (nested || stores.contains(&cap.inner))
         })
@@ -193,7 +131,7 @@ pub(crate) fn may_touch(e: &Expr, root: (bool, usize)) -> bool {
             _ => false,
         }
     });
-    hit || Runs::of_expr(e).code()
+    hit || Touch::of_expr(e).code()
 }
 
 impl crate::emit::Emitter<'_> {

@@ -335,39 +335,94 @@ pub fn known_where(e: &Expr, is_none: &dyn Fn(&Expr) -> bool) -> Option<bool> {
 mod tests;
 
 /// What running an expression or block may touch, through the fns it
-/// calls: the variables it reads and writes, by `(global, index)`, the
-/// domains it reads and sizes, and whether it does I/O or runs code that
-/// is not seen. Locals of the code itself count as written where bound.
+/// calls: the variables it stores to and reads, by `(global, index)`, the
+/// locals it binds, the domains it reads and sizes, and whether it does
+/// I/O or runs code that is not seen.
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct Access {
     /// Reads input, writes output, sizes a domain or may stop the run.
     pub io: bool,
-    /// Calls a fn value it can't see into, which may read or write
-    /// anything it captured.
+    /// Runs code it can't see into: a fn value, or a closure, that may
+    /// read or write anything it captured.
     pub opaque: bool,
     /// Calls a fn value, seen into or not.
     pub values: bool,
+    /// Makes a closure, which may later run with its captures.
+    pub closures: bool,
+    /// Changes a container in place.
+    pub mutates: bool,
     /// The fns of the program it calls by name.
     pub calls: BTreeSet<FnId>,
     pub reads: BTreeSet<(bool, usize)>,
+    /// What it stores to, sets in place or passes `mut`.
     pub writes: BTreeSet<(bool, usize)>,
+    /// The locals its `let`s and loops bind.
+    pub binds: BTreeSet<usize>,
     pub reads_domain: BTreeSet<usize>,
     pub writes_domain: BTreeSet<usize>,
 }
 
 impl Access {
+    /// What `e` does itself: a call by name is in `calls`, not followed,
+    /// and a fn value called or a closure made is opaque.
+    pub fn of_expr(e: &Expr) -> Access {
+        Reader::syntax().expr(e)
+    }
+
+    /// [`Access::of_expr`] of a block.
+    pub fn of_block(block: &Block) -> Access {
+        Reader::syntax().block(block)
+    }
+
+    /// Calls a fn, by name or as a value.
+    pub fn calls_code(&self) -> bool {
+        self.values || !self.calls.is_empty()
+    }
+
+    /// Runs code other than its own: a call, or a closure it makes.
+    pub fn code(&self) -> bool {
+        self.calls_code() || self.closures
+    }
+
+    /// Runs code whose target is not named: a fn value or a closure.
+    pub fn unnamed(&self) -> bool {
+        self.values || self.closures
+    }
+
+    /// Runs no code and changes no container.
+    pub fn quiet(&self) -> bool {
+        !self.code() && !self.mutates
+    }
+
+    /// The locals it stores to.
+    pub fn stored_locals(&self) -> BTreeSet<usize> {
+        self.writes.iter().filter(|w| !w.0).map(|w| w.1).collect()
+    }
+
+    /// Whether it stores to or binds variable `v`.
+    pub fn sets(&self, v: (bool, usize)) -> bool {
+        self.writes.contains(&v) || (!v.0 && self.binds.contains(&v.1))
+    }
+
     /// True when running `self` before `later` can differ from after.
     pub fn conflicts(&self, later: &Access) -> bool {
-        let effects =
-            |t: &Access| t.io || t.opaque || !t.writes.is_empty() || !t.writes_domain.is_empty();
+        let effects = |t: &Access| {
+            t.io || t.opaque
+                || !t.writes.is_empty()
+                || !t.binds.is_empty()
+                || !t.writes_domain.is_empty()
+        };
+        let sets_read = |a: &Access, b: &Access| {
+            a.writes.iter().any(|v| b.reads.contains(v))
+                || a.binds.iter().any(|&l| b.reads.contains(&(false, l)))
+        };
         (self.io && later.io)
             || (self.opaque && effects(later))
             || (later.opaque && effects(self))
-            || self
-                .writes
-                .iter()
-                .any(|v| later.reads.contains(v) || later.writes.contains(v))
-            || later.writes.iter().any(|v| self.reads.contains(v))
+            || sets_read(self, later)
+            || sets_read(later, self)
+            || self.writes.iter().any(|&v| later.sets(v))
+            || self.binds.iter().any(|&l| later.sets((false, l)))
             || self
                 .writes_domain
                 .iter()
@@ -394,9 +449,12 @@ impl Access {
         self.io |= other.io;
         self.opaque |= other.opaque;
         self.values |= other.values;
+        self.closures |= other.closures;
+        self.mutates |= other.mutates;
         self.calls.extend(other.calls);
         self.reads.extend(other.reads);
         self.writes.extend(other.writes);
+        self.binds.extend(other.binds);
         self.reads_domain.extend(other.reads_domain);
         self.writes_domain.extend(other.writes_domain);
     }
@@ -414,6 +472,63 @@ impl Table {
         target: Target,
         e: &Expr,
     ) -> Access {
+        Reader {
+            seen: Some((self, program)),
+            home,
+            target,
+        }
+        .expr(e)
+    }
+
+    /// What running `block` in `home` touches: [`Table::access`] of each
+    /// expression it runs, and the variables and domains it binds or sets.
+    pub fn block_access(
+        &self,
+        program: &Program,
+        home: Option<FnId>,
+        target: Target,
+        block: &Block,
+    ) -> Access {
+        Reader {
+            seen: Some((self, program)),
+            home,
+            target,
+        }
+        .block(block)
+    }
+
+    /// What calling closure `cid` touches, in the code that made it: a
+    /// capture counts as the variable it captures, and a `mut` parameter
+    /// as the place the call passes. None when it calls a fn value: what
+    /// that touches is not seen.
+    pub fn closure_access(&self, program: &Program, cid: ClosureId) -> Option<Access> {
+        Reader {
+            seen: Some((self, program)),
+            home: None,
+            target: &|_, _| None,
+        }
+        .closure(cid)
+    }
+}
+
+/// Reads what code touches: through the fns and closures it reaches when
+/// `seen` has the table, or only the code itself when not.
+struct Reader<'a> {
+    seen: Option<(&'a Table, &'a Program)>,
+    home: Option<FnId>,
+    target: Target<'a>,
+}
+
+impl Reader<'_> {
+    fn syntax() -> Reader<'static> {
+        Reader {
+            seen: None,
+            home: None,
+            target: &|_, _| None,
+        }
+    }
+
+    fn expr(&self, e: &Expr) -> Access {
         let mut touch = Access::default();
         let mut_args = |args: &[Arg], touch: &mut Access| {
             for arg in args {
@@ -442,23 +557,31 @@ impl Table {
             }
             ExprKind::CallExpr(callee, args) => {
                 touch.values = true;
-                touch.run(target(home, callee).and_then(|c| self.closure_access(program, c)));
+                let cid = self.seen.and((self.target)(self.home, callee));
+                touch.run(cid.and_then(|c| self.closure(c)));
                 mut_args(args, &mut touch);
             }
-            ExprKind::Closure(c) => touch.run(self.closure_access(program, *c)),
+            ExprKind::Closure(c) => {
+                touch.closures = true;
+                touch.run(self.closure(*c));
+            }
             ExprKind::Call(id, args) => {
                 touch.calls.insert(*id);
-                let summary = &self.summaries[*id];
-                touch.io |= summary.io;
-                touch.reads.extend(summary.reads.iter().map(|g| (true, *g)));
-                touch
-                    .writes
-                    .extend(summary.writes.iter().map(|g| (true, *g)));
+                if let Some((table, _)) = self.seen {
+                    let summary = &table.summaries[*id];
+                    touch.io |= summary.io;
+                    touch.reads.extend(summary.reads.iter().map(|g| (true, *g)));
+                    touch
+                        .writes
+                        .extend(summary.writes.iter().map(|g| (true, *g)));
+                }
                 mut_args(args, &mut touch);
             }
-            ExprKind::MutSlice(place, _, _)
-            | ExprKind::Mutate(_, place, _)
-            | ExprKind::Sort(place, _, _) => {
+            ExprKind::Mutate(_, place, _) => {
+                touch.mutates = true;
+                touch.writes.insert(walk::root(place));
+            }
+            ExprKind::MutSlice(place, _, _) | ExprKind::Sort(place, _, _) => {
                 touch.writes.insert(walk::root(place));
             }
             ExprKind::Do(block) => walk::deep_stmts(block, &mut |stmt| match stmt {
@@ -466,7 +589,7 @@ impl Table {
                     touch.writes.insert(walk::root(place));
                 }
                 Stmt::Let(slot, _) | Stmt::For(_, slot, ..) => {
-                    touch.writes.insert((false, *slot));
+                    touch.binds.insert(*slot);
                 }
                 Stmt::DefDomain { id, .. } => {
                     touch.writes_domain.insert(*id);
@@ -480,23 +603,13 @@ impl Table {
         touch
     }
 
-    /// What running `block` in `home` touches: [`Table::access`] of each
-    /// expression it runs, and the variables and domains it binds or sets.
-    pub fn block_access(
-        &self,
-        program: &Program,
-        home: Option<FnId>,
-        target: Target,
-        block: &Block,
-    ) -> Access {
+    fn block(&self, block: &Block) -> Access {
         let mut t = Access::default();
         walk::deep_stmts(block, &mut |stmt| {
-            walk::stmt_exprs(stmt, &mut |e| {
-                t.merge(self.access(program, home, target, e))
-            });
+            walk::stmt_exprs(stmt, &mut |e| t.merge(self.expr(e)));
             match stmt {
                 Stmt::Let(slot, _) | Stmt::For(_, slot, ..) => {
-                    t.writes.insert((false, *slot));
+                    t.binds.insert(*slot);
                 }
                 Stmt::Assign(place, ..) => {
                     t.writes.insert(walk::root(place));
@@ -511,13 +624,15 @@ impl Table {
         t
     }
 
-    /// What calling closure `cid` touches, in the code that made it: a
-    /// capture counts as the variable it captures, and a `mut` parameter
-    /// as the place the call passes. None when it calls a fn value: what
-    /// that touches is not seen.
-    pub fn closure_access(&self, program: &Program, cid: ClosureId) -> Option<Access> {
+    fn closure(&self, cid: ClosureId) -> Option<Access> {
+        let (_, program) = self.seen?;
         let c = &program.closures[cid];
-        let inner = self.block_access(program, None, &|_, _| None, &c.body);
+        let inner = Reader {
+            seen: self.seen,
+            home: None,
+            target: &|_, _| None,
+        }
+        .block(&c.body);
         if inner.opaque {
             return None;
         }
@@ -532,6 +647,7 @@ impl Table {
         Some(Access {
             reads: inner.reads.iter().filter_map(outer).collect(),
             writes: inner.writes.iter().filter_map(outer).collect(),
+            binds: BTreeSet::new(),
             ..inner
         })
     }

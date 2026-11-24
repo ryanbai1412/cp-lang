@@ -7,7 +7,7 @@
 //! be assigned to each other. Anything that is not on the short list of
 //! uses that can't see the order keeps the tree.
 
-use crate::uses::effects::Runs;
+use crate::uses::effects::Touch;
 use crate::walk;
 use cpl_ir::{
     Block, Builtin, Expr, ExprKind, Iter, Mutation, PlaceKind, Program, SortBy, Stmt, Ty, UnOp,
@@ -223,8 +223,8 @@ fn simple_scalar_let(s: &Stmt) -> bool {
 /// `body` changes nothing but pushes onto the local `acc`, calls nothing
 /// and never leaves early.
 fn pushes_only_onto(body: &Block, acc: usize) -> bool {
-    let runs = Runs::of_block(body);
-    let mut ok = !runs.code() && !runs.prints;
+    let t = Touch::of_block(body);
+    let mut ok = !t.code() && !t.io;
     walk::deep_exprs(body, &mut |e| match &e.kind {
         ExprKind::Mutate(Mutation::Push, place, _) => {
             ok &= matches!(place.kind, PlaceKind::Local(s) if s == acc);
