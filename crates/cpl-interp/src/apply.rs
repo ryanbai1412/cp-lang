@@ -293,6 +293,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let [l, r] = operand_values(vals, span)?;
                 binary(*op, l, r, span)?
             }
+            ExprKind::Mutate(op, place, args) => {
+                let mut indices = vals;
+                let arg_vals = indices.split_off(place::index_count(place));
+                return self.mutated(*op, place, args, indices, arg_vals, span);
+            }
             _ => return bug(span, "no shared evaluation for this expression"),
         })
     }

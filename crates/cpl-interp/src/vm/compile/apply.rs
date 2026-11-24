@@ -4,9 +4,9 @@
 
 use super::Compiler;
 use crate::apply::{applies, operands};
-use crate::vm::helpers::quiet;
+use crate::vm::helpers::{place_indices, quiet};
 use crate::vm::ir::*;
-use cpl_ir::{Dim, Expr, ExprKind, Mutation, Program, Ty};
+use cpl_ir::{Dim, Expr, ExprKind, Mutation, Place, Program, Ty};
 
 /// Whether comparing values of `ty` never runs user code (a struct's `eq`
 /// or `lt`), so the frame can stay in registers.
@@ -78,6 +78,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             _ => false,
         };
+        Some(self.emit_apply_v(expr, regs, sync))
+    }
+
+    /// `Op::ApplyV` of `expr` to `regs` into a fresh value register.
+    fn emit_apply_v(&mut self, expr: &'p Expr, regs: Vec<u16>, sync: bool) -> u16 {
         self.applies_sync |= sync;
         let idx = self.applies.len() as u32;
         self.applies.push(ApplySpec {
@@ -91,7 +96,24 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::ClearV { reg: r }, expr.span);
             }
         }
-        Some(dst)
+        dst
+    }
+
+    /// The pop `expr` of `place` (`pop`, `pop_first`, `pop_last`, which
+    /// compare nothing) into a fresh value register: by `Op::MutatePlace`
+    /// when the VM can walk to the place, else by `Interp::mutated` on the
+    /// frame, which resolves any place.
+    pub(super) fn compile_pop_v(&mut self, expr: &'p Expr, place: &'p Place) -> u16 {
+        if let Some(dst) = self.try_compile_mutate_place(expr) {
+            return dst;
+        }
+        let mut indices = Vec::new();
+        place_indices(place, &mut indices);
+        let regs = indices
+            .into_iter()
+            .map(|x| self.compile_expr_v(x))
+            .collect();
+        self.emit_apply_v(expr, regs, true)
     }
 
     /// The mutation `expr` into a fresh value register by

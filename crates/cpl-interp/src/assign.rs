@@ -359,6 +359,20 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         for a in args {
             arg_vals.push(self.eval(a)?);
         }
+        self.mutated(op, place, args, indices, arg_vals, span)
+    }
+
+    /// The mutation `op` of `place`, given the values of its indices and
+    /// arguments, outermost index first.
+    pub(crate) fn mutated(
+        &mut self,
+        op: Mutation,
+        place: &'p Place,
+        args: &'p [Expr],
+        indices: Vec<Value>,
+        mut arg_vals: Vec<Value>,
+        span: Span,
+    ) -> Res<Value> {
         // A `yield` of a fn that feeds a loop: the body runs on the value.
         if let (PlaceKind::Local(slot), Some(fed)) = (&place.kind, self.fed_loops.last()) {
             if fed.callee == self.base && fed.acc == *slot {

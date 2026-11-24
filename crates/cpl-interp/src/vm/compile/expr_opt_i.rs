@@ -277,139 +277,79 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
                     ) =>
             {
-                let saved_ops = self.ops.len();
-                let saved_spans = self.spans.len();
-                let saved_places = self.places.len();
-                if let Some(path) = self.compile_place_path(place) {
-                    let tmp_v = self.alloc_v();
-                    self.emit(
-                        Op::SetMapPopEndPlace {
-                            dst: tmp_v,
-                            path,
-                            is_last: matches!(m, Mutation::PopLast),
-                        },
-                        span,
-                    );
-                    let dst_val = self.alloc_i();
-                    let dst_some = self.alloc_i();
-                    self.emit(
-                        Op::UnboxOptI {
-                            dst_val,
-                            dst_some,
-                            src_v: tmp_v,
-                        },
-                        span,
-                    );
-                    self.emit(Op::ClearV { reg: tmp_v }, span);
-                    (dst_val, dst_some)
-                } else {
-                    self.ops.truncate(saved_ops);
-                    self.spans.truncate(saved_spans);
-                    self.places.truncate(saved_places);
-                    let src_v = self.emit_fallback_expr_v(expr);
-                    let dst_val = self.alloc_i();
-                    let dst_some = self.alloc_i();
-                    self.emit(
-                        Op::UnboxOptI {
-                            dst_val,
-                            dst_some,
-                            src_v,
-                        },
-                        span,
-                    );
-                    (dst_val, dst_some)
-                }
+                let saved = (self.ops.len(), self.spans.len(), self.places.len());
+                let src_v = match self.compile_place_path(place) {
+                    Some(path) => {
+                        let dst = self.alloc_v();
+                        let is_last = matches!(m, Mutation::PopLast);
+                        self.emit(Op::SetMapPopEndPlace { dst, path, is_last }, span);
+                        dst
+                    }
+                    None => {
+                        self.ops.truncate(saved.0);
+                        self.spans.truncate(saved.1);
+                        self.places.truncate(saved.2);
+                        self.compile_pop_v(expr, place)
+                    }
+                };
+                let (dst_val, dst_some) = (self.alloc_i(), self.alloc_i());
+                let unbox = Op::UnboxOptI {
+                    dst_val,
+                    dst_some,
+                    src_v,
+                };
+                self.emit(unbox, span);
+                self.emit(Op::ClearV { reg: src_v }, span);
+                (dst_val, dst_some)
             }
             ExprKind::Mutate(Mutation::Pop, place, args)
                 if args.is_empty() && matches!(place.ty, Ty::List(_)) =>
             {
-                match &place.kind {
-                    PlaceKind::Local(slot) => {
-                        if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
-                            let dst_val = self.alloc_i();
-                            let dst_some = self.alloc_i();
-                            self.emit(
-                                Op::ListPopOptIL {
-                                    dst_val,
-                                    dst_some,
-                                    list_v,
-                                },
-                                span,
-                            );
-                            (dst_val, dst_some)
-                        } else {
-                            let src_v = self.emit_fallback_expr_v(expr);
-                            let dst_val = self.alloc_i();
-                            let dst_some = self.alloc_i();
-                            self.emit(
-                                Op::UnboxOptI {
-                                    dst_val,
-                                    dst_some,
-                                    src_v,
-                                },
-                                span,
-                            );
-                            (dst_val, dst_some)
-                        }
-                    }
-                    PlaceKind::Global(gid) => {
-                        let dst_val = self.alloc_i();
-                        let dst_some = self.alloc_i();
-                        self.emit(
-                            Op::ListPopOptIG {
+                let (dst_val, dst_some) = (self.alloc_i(), self.alloc_i());
+                let op = match &place.kind {
+                    PlaceKind::Local(slot) => match self.slot_loc(*slot) {
+                        SlotLoc::V(list_v) => Some(Op::ListPopOptIL {
+                            dst_val,
+                            dst_some,
+                            list_v,
+                        }),
+                        _ => None,
+                    },
+                    PlaceKind::Global(gid) => Some(Op::ListPopOptIG {
+                        dst_val,
+                        dst_some,
+                        gid: *gid as u16,
+                    }),
+                    PlaceKind::Field(obj, field) => match obj.kind {
+                        PlaceKind::Local(slot) => match self.slot_loc(slot) {
+                            SlotLoc::V(obj_v) => Some(Op::ListPopFieldOptIL {
                                 dst_val,
                                 dst_some,
-                                gid: *gid as u16,
-                            },
-                            span,
-                        );
-                        (dst_val, dst_some)
+                                obj_v,
+                                field: *field as u16,
+                            }),
+                            _ => None,
+                        },
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                match op {
+                    Some(op) => {
+                        self.emit(op, span);
                     }
-                    PlaceKind::Field(obj_place, field) => {
-                        if let PlaceKind::Local(slot) = obj_place.kind {
-                            if let SlotLoc::V(obj_v) = self.slot_loc(slot) {
-                                let dst_val = self.alloc_i();
-                                let dst_some = self.alloc_i();
-                                self.emit(
-                                    Op::ListPopFieldOptIL {
-                                        dst_val,
-                                        dst_some,
-                                        obj_v,
-                                        field: *field as u16,
-                                    },
-                                    span,
-                                );
-                                return (dst_val, dst_some);
-                            }
-                        }
-                        let src_v = self.emit_fallback_expr_v(expr);
-                        let dst_val = self.alloc_i();
-                        let dst_some = self.alloc_i();
-                        self.emit(
-                            Op::UnboxOptI {
-                                dst_val,
-                                dst_some,
-                                src_v,
-                            },
-                            span,
-                        );
-                        (dst_val, dst_some)
-                    }
-                    _ => {
-                        let src_v = self.emit_fallback_expr_v(expr);
-                        let dst_val = self.alloc_i();
-                        let dst_some = self.alloc_i();
-                        self.emit(
-                            Op::UnboxOptI {
-                                dst_val,
-                                dst_some,
-                                src_v,
-                            },
-                            span,
-                        );
-                        (dst_val, dst_some)
+                    None => {
+                        let src_v = self.compile_pop_v(expr, place);
+                        let unbox = Op::UnboxOptI {
+                            dst_val,
+                            dst_some,
+                            src_v,
+                        };
+                        self.emit(unbox, span);
+                        self.emit(Op::ClearV { reg: src_v }, span);
                     }
                 }
+                (dst_val, dst_some)
             }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
@@ -445,49 +385,38 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         }
                         (dst_val, dst_some)
                     }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            let dst_val = self.alloc_i();
-                            let dst_some = self.alloc_i();
-                            if indices.len() == 2 {
-                                let r_j = self.compile_expr_i(&indices[1]);
-                                self.emit(
-                                    Op::LoadLArr2OptI {
-                                        dst_val,
-                                        dst_some,
-                                        arr_v,
-                                        r_i,
-                                        r_j,
-                                    },
-                                    span,
-                                );
-                            } else {
-                                self.emit(
-                                    Op::LoadLArr1OptI {
-                                        dst_val,
-                                        dst_some,
-                                        arr_v,
-                                        r_i,
-                                    },
-                                    span,
-                                );
-                            }
-                            (dst_val, dst_some)
-                        } else {
-                            let src_v = self.emit_fallback_expr_v(expr);
-                            let dst_val = self.alloc_i();
-                            let dst_some = self.alloc_i();
+                    ExprKind::Local(_) => {
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst_val = self.alloc_i();
+                        let dst_some = self.alloc_i();
+                        if indices.len() == 2 {
+                            let r_j = self.compile_expr_i(&indices[1]);
                             self.emit(
-                                Op::UnboxOptI {
+                                Op::LoadLArr2OptI {
                                     dst_val,
                                     dst_some,
-                                    src_v,
+                                    arr_v,
+                                    r_i,
+                                    r_j,
                                 },
                                 span,
                             );
-                            (dst_val, dst_some)
+                        } else {
+                            self.emit(
+                                Op::LoadLArr1OptI {
+                                    dst_val,
+                                    dst_some,
+                                    arr_v,
+                                    r_i,
+                                },
+                                span,
+                            );
                         }
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
+                        (dst_val, dst_some)
                     }
                     ExprKind::Index(outer, outer_indices)
                         if indices.len() == 1
