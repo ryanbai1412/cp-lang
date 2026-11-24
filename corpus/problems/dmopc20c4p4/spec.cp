@@ -1,7 +1,7 @@
 // dmopc20c4p4: after each prefix, the fewest adjacent swaps that make it valid. A value equal to
 // the current run length extends the run; a larger one waits on a stack and is pulled back
 // (paying its distance) once the run must grow past what is waiting.
-let n = read<1..=500_000>()
+let n = read<1..=2_000_000>()
 var run = 0
 var cost = 0
 var waiting: List<Int> = []
