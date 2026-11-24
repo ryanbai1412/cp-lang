@@ -726,6 +726,8 @@ struct Lowerer<'a> {
     closures: Vec<ClosureDef>,
     queued_fns: Vec<FnId>,
     queued_set: HashSet<FnId>,
+    /// Instance methods whose signature is read on first use, quietly.
+    quiet_sigs: HashSet<FnId>,
     preamble_stmts: Vec<Stmt>,
     /// The top-level fns marked `@memo`.
     memo_fns: HashSet<FnId>,
@@ -864,6 +866,7 @@ impl<'a> Lowerer<'a> {
             closures: Vec::new(),
             queued_fns: Vec::new(),
             queued_set: HashSet::new(),
+            quiet_sigs: HashSet::new(),
             preamble_stmts: Vec::new(),
             memo_fns: HashSet::new(),
             grader_wrappers: Vec::new(),
@@ -1297,12 +1300,14 @@ impl<'a> Lowerer<'a> {
     /// Whether a struct is a number: it has a `zero`, a `one` and a
     /// `new(x: Int)`, so an `Int` is made into it where it is wanted.
     /// `Mod<P>` is one, and so is any struct written the same way.
-    pub(super) fn is_number(&self, sid: StructId) -> bool {
-        let info = &self.structs[sid];
-        let made_from_int = info.methods.get("new").is_some_and(
-            |&new_fn| matches!(self.sigs[new_fn].params.as_slice(), [only] if only.ty == Ty::Int),
+    pub(super) fn is_number(&mut self, sid: StructId) -> bool {
+        let made_from_int = self.own_method(sid, "new").is_some_and(
+            |new_fn| matches!(self.sigs[new_fn].params.as_slice(), [only] if only.ty == Ty::Int),
         );
-        made_from_int && ["zero", "one"].iter().all(|c| info.consts.contains_key(*c))
+        made_from_int
+            && ["zero", "one"]
+                .iter()
+                .all(|c| self.structs[sid].consts.contains_key(*c))
     }
 
     /// Resolves a domain or type alias pointing to a domain (e.g. `type Group = Subset<Rabbit>`).

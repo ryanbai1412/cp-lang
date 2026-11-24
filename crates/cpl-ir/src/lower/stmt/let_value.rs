@@ -506,7 +506,7 @@ impl<'a> Lowerer<'a> {
         }
         if let Ty::Struct(sid) = &want {
             if matches!(&init.kind, ast::ExprKind::List(items) if items.is_empty()) {
-                if let Some(&new_fn) = self.structs[*sid].methods.get("new") {
+                if let Some(new_fn) = self.own_method(*sid, "new") {
                     if self.sigs[new_fn].params.is_empty() {
                         return Some(self.method_call(new_fn, None, &[], init.span));
                     }

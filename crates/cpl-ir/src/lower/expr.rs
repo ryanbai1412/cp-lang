@@ -269,7 +269,7 @@ impl<'a> Lowerer<'a> {
                             value: idx.clone(),
                         })
                         .collect();
-                    if let Some(&fn_id) = self.structs[sid].methods.get("get") {
+                    if let Some(fn_id) = self.own_method(sid, "get") {
                         return self.method_call(fn_id, Some((base, base_expr)), &ast_args, span);
                     }
                     if let Some(&gfn_id) = self.structs[sid].gen_methods.get("get") {

@@ -645,7 +645,7 @@ impl<'a> Lowerer<'a> {
         let Some(sid) = self.instantiate_bitset(id, span) else {
             return self.err_expr(span);
         };
-        let Some(&full_fn) = self.structs[sid].methods.get("full") else {
+        let Some(full_fn) = self.own_method(sid, "full") else {
             return self.err_expr(span);
         };
         self.queue_fn(full_fn);
@@ -1624,7 +1624,7 @@ impl Lowerer<'_> {
         span: Span,
     ) -> Option<(FnId, Ty)> {
         let f = ["each", "iter"].into_iter().find_map(|m| {
-            let f = *self.structs[sid].methods.get(m)?;
+            let f = self.own_method(sid, m)?;
             self.sigs[f].params.is_empty().then_some(f)
         })?;
         self.queue_fn(f);

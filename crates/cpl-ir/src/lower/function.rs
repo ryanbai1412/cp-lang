@@ -28,6 +28,7 @@ impl<'a> Lowerer<'a> {
         if self.sigs[id].state != State::Pending {
             return;
         }
+        self.ensure_sig(id, None);
         // Skip uncalled `@test` fns in non-test runs unless explicitly referenced.
         self.sigs[id].state = State::InProgress;
         let dom_start = self.domains.len();

@@ -995,7 +995,7 @@ impl<'a> Lowerer<'a> {
                 )
             });
         if !inside_self {
-            if let Some(&new_fn) = self.structs[id].methods.get("new") {
+            if let Some(new_fn) = self.own_method(id, "new") {
                 return self.user_call(new_fn, None, args, span);
             }
             if let Some(&new_gfn) = self.structs[id].gen_methods.get("new") {

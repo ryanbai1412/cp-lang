@@ -381,7 +381,7 @@ impl<'a> Lowerer<'a> {
                 if !inferred.contains_key(g) && g == "A" {
                     let arc_ty = inferred.values().find_map(|ga| match ga {
                         GenArg::Ty(Ty::Struct(sid)) => {
-                            let out_fn = self.structs[*sid].methods.get("out").copied()?;
+                            let out_fn = self.own_method(*sid, "out")?;
                             if let Some(Ty::List(elem)) = self.sigs[out_fn].ret.clone() {
                                 Some((*elem).clone())
                             } else {

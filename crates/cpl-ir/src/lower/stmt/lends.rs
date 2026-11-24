@@ -49,7 +49,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let span = Span::new(base.span.start, index.span.end + 1);
-        let at = self.structs[sid].methods.get("at").copied();
+        let at = self.own_method(sid, "at");
         if let Some(f) = at {
             if !self.ensure_sig(f, Some(span)) {
                 return None;

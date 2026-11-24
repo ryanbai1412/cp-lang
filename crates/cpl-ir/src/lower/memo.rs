@@ -338,6 +338,7 @@ impl<'a> Lowerer<'a> {
             {
                 let d = self.structs[*sid].index_domain.unwrap();
                 let ord = self.structs[*sid].methods["ord"];
+                self.ensure_sig(ord, None);
                 let raw = self.mk(ExprKind::Call(ord, vec![Arg::Value(value)]), Ty::Int, span);
                 let pos = self.cast(Cast::FromOrd(d), raw, Ty::Pos(d));
                 let ord = self.mk(ExprKind::Cast(Cast::Ord, Box::new(pos)), Ty::Int, span);

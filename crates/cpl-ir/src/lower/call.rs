@@ -130,7 +130,7 @@ impl<'a> Lowerer<'a> {
             final_args.push(arg);
         }
         let sid = self.instantiate_struct(gid, final_args);
-        if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+        if let Some(fn_id) = self.own_method(sid, &name.text) {
             return self.method_call(fn_id, None, args, span);
         }
         if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
@@ -269,7 +269,7 @@ impl<'a> Lowerer<'a> {
                     if let Some(sid) = self.instantiate_bitset(dom, span) {
                         let base_expr = self.expr(base, Some(&Ty::Struct(sid)));
                         let bs = self.coerce(base_expr, &Ty::Struct(sid), base.span);
-                        if let Some(&without_fn) = self.structs[sid].methods.get("without") {
+                        if let Some(without_fn) = self.own_method(sid, "without") {
                             self.queue_fn(without_fn);
                             let v = self.expect(&args[0].value, &Ty::Pos(dom));
                             return self.mk(
@@ -508,7 +508,7 @@ impl<'a> Lowerer<'a> {
                         return self.gen_struct_static(gid, seed, name, args, hint, span);
                     }
                     let sid = self.instantiate_struct(gid, gargs);
-                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+                    if let Some(fn_id) = self.own_method(sid, &name.text) {
                         return self.method_call(fn_id, None, args, span);
                     }
                     if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
@@ -571,7 +571,7 @@ impl<'a> Lowerer<'a> {
                 };
             }
             Some(Sym::Struct(id)) => {
-                if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
+                if let Some(fn_id) = self.own_method(id, &name.text) {
                     let call = self.method_call(fn_id, None, args, span);
                     return match self.structs[id].index_domain {
                         Some(d) if name.text == "nth" => self.checked_nth(d, call, span),
@@ -597,7 +597,7 @@ impl<'a> Lowerer<'a> {
             Some(Sym::Alias(aid)) => {
                 let resolved = self.in_alias(aid, |lw, ty| lw.resolve_ty(ty));
                 if let Ty::Struct(id) = resolved {
-                    if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
+                    if let Some(fn_id) = self.own_method(id, &name.text) {
                         return self.method_call(fn_id, None, args, span);
                     }
                     if let Some(&gfid) = self.structs[id].gen_methods.get(&name.text) {
@@ -787,7 +787,7 @@ impl<'a> Lowerer<'a> {
                     );
                 }
             }
-            if let Some(fn_id) = self.structs[*id].methods.get(method).copied() {
+            if let Some(fn_id) = self.own_method(*id, method) {
                 return self.method_call(fn_id, Some((base, value)), args, span);
             }
             if let Some(fn_id) = self.open_impl_method(*id, method) {

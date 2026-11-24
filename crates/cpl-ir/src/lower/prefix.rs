@@ -64,7 +64,7 @@ impl<'a> Lowerer<'a> {
             let list = Ty::List(Box::new(elem_ty.clone()));
             let src = self.coerce(src, &list, span);
             let sid = self.instantiate_struct(gid, vec![GenArg::Ty(elem_ty)]);
-            let Some(&fn_id) = self.structs[sid].methods.get("new") else {
+            let Some(fn_id) = self.own_method(sid, "new") else {
                 self.unsupported(span, "`Prefix` has no `new` constructor");
                 return self.err_expr(span);
             };
@@ -103,7 +103,7 @@ impl<'a> Lowerer<'a> {
         let mut gargs: Vec<GenArg> = doms.into_iter().map(GenArg::Domain).collect();
         gargs.push(GenArg::Ty(elem_ty));
         let sid = self.instantiate_struct(gid, gargs);
-        let Some(&fn_id) = self.structs[sid].methods.get("new") else {
+        let Some(fn_id) = self.own_method(sid, "new") else {
             self.unsupported(span, "`Prefix` has no `new` constructor");
             return self.err_expr(span);
         };
@@ -134,7 +134,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         let sid = self.instantiate_struct(gid, gargs);
-        let Some(&fn_id) = self.structs[sid].methods.get("new") else {
+        let Some(fn_id) = self.own_method(sid, "new") else {
             self.unsupported(span, "this 2-D shape has no `new` constructor");
             return self.err_expr(span);
         };

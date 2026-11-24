@@ -424,14 +424,14 @@ impl<'a> Lowerer<'a> {
 
     /// A struct's fields as they are read from input: with their ranges.
     pub(in crate::lower) fn struct_spec(&mut self, id: StructId) -> Spec {
-        if let Some(&fn_id) = self.structs[id].methods.get("read") {
+        if let Some(fn_id) = self.own_method(id, "read") {
             if self.sigs[fn_id].params.is_empty() {
                 let call = self.method_call(fn_id, None, &[], Span::default());
                 return Spec::Call(Box::new(call));
             }
         }
         if self.structs[id].def.fields.len() == 1 {
-            if let Some(&fn_id) = self.structs[id].methods.get("new") {
+            if let Some(fn_id) = self.own_method(id, "new") {
                 // A defaulted parameter (`new(cap: Int = 0)`) is a setting,
                 // not the value the struct is built from.
                 let sig = &self.sigs[fn_id];
