@@ -8960,3 +8960,5 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** If a file-notification crate is admitted, replace `files.rs`'s poll with it and drop it from `SLEEP_OWNERS`.
 
 ## 558. (reserved, content)
+
+## 560. (reserved, unknown)
