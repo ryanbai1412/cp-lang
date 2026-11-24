@@ -360,6 +360,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
         }
+        // A view may name a global.
+        let shown_next = place.root_global().is_some() || view.is_some();
         let sorted = match (view, dims) {
             (Some(mv), _) => {
                 for (k, item) in items_vec.into_iter().enumerate() {
@@ -382,7 +384,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             *self.resolve(place, &mut indices.iter())? = sorted;
         }
         // Not a step of its own, as before: the next step shows it.
-        if let (Some(_), Some(tracer)) = (place.root_global(), self.tracer.as_mut()) {
+        if let (true, Some(tracer)) = (shown_next, self.tracer.as_mut()) {
             tracer.on(crate::observe::Event::GlobalsMayChange);
         }
         Ok(Value::Unit)

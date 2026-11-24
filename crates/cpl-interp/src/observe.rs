@@ -395,11 +395,9 @@ impl<O: Observer> Interp<'_, '_, O> {
                     at: span,
                 });
             }),
-            _ => {
-                if let Some(slot) = place.root_local() {
-                    self.trace_local(slot, span);
-                }
-            }
+            Some(_) => {}
+            // A local's step, or the next one's for a view's global.
+            None => self.trace_change(place, &[]),
         }
         self.trace_assigned(place);
     }
