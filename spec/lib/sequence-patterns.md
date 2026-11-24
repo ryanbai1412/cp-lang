@@ -47,7 +47,7 @@ positions. Each works on any `Indexed` (`[D]T`, `List`, `Str`, a slice).
 | `a.chunks(k)` | consecutive length-`k` pieces; the last may be shorter | \(O(n)\) |
 | `a.runs(by: key)` | maximal pieces of equal `key` | \(O(n)\) |
 | `a.runs(link: (x, y) => Bool)` | maximal pieces where every adjacent pair links | \(O(n)\) |
-| `a.split(sep: p)` | pieces between elements where `p` holds (separators excluded; empty pieces kept) | \(O(n)\) |
+| `a.split(sep: p)` | pieces between elements equal to `p`, or where the predicate `p` holds, through `Sep<T>` (separators excluded; empty pieces kept) | \(O(n)\) |
 | `a.maximal(state, ok:)` | for each right end, the longest piece ending there that is `ok` | \(O(n)\) amortized |
 | `a.minimal(state, ok:)` | for each right end, the shortest piece ending there that is `ok`, or none | \(O(n)\) amortized |
 | `a.maximal(state, ok:, anchor: Anchor.Start)` | the same keyed by left end: the longest piece starting at each position | \(O(n)\) amortized |
@@ -62,7 +62,7 @@ positions. Each works on any `Indexed` (`[D]T`, `List`, `Str`, a slice).
 s.runs()                              // "aabccc" -> "aa", "b", "ccc"
 a.runs(link: (x, y) => x < y)         // strictly increasing runs
 a.runs(link: (x, y) => y - x <= d)    // gaps of at most d
-line.split(sep: c => c == ' ')        // words, as pieces of line
+line.split(sep: ' ')                  // words, as pieces of line
 ```
 
 `runs(by:)` is `runs(link: (x, y) => key(x) == key(y))`; it stays as its

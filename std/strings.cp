@@ -214,30 +214,6 @@ pub fn trim_end(self: Str) -> Str:
     while n > 0 and self[n - 1].is_space: n -= 1
     Str([self[j] for j in 0..n])
 
-/// The pieces of `self` between occurrences of `sep`, as new strings.
-///
-/// Every `sep` is a cut, so `k` separators give `k + 1` pieces; adjacent, leading and
-/// trailing separators give empty pieces. Use `split_whitespace` to drop empty pieces.
-///
-/// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `[""]`, one empty piece
-/// order: left to right; a new `List`, keyed from 0
-/// traps: never
-/// example: `"a,b,,c".split(',') == ["a", "b", "", "c"]`
-/// example: `"a,".split(',') == ["a", ""]`
-/// example: `"".split(',') == [""]`
-pub fn split(self: Str, sep: Char) -> List<Str>:
-    var out: List<Str> = []
-    var cur: List<Char> = []
-    for c in self:
-        if c == sep:
-            out.push(Str(cur))
-            cur = []
-        else:
-            cur.push(c)
-    out.push(Str(cur))
-    out
-
 /// `self` cut at the first `sep` into `(before, after)`, neither holding that `sep`; `None`
 /// when `sep` does not occur. Later separators stay in `after`.
 ///

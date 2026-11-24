@@ -1,2 +1,2 @@
 // expect: ok, output "3 1"
-print(",a,".split(',').len, "".split(',').len)
+print(",a,".split(',').count(), "".split(',').count())

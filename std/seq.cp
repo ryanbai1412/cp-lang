@@ -3342,17 +3342,39 @@ fn scan_prod_and_rotate_method_syntax():
     let (a, b) = self
     (b, a)
 
-/// Pieces between elements where `sep` holds; separators excluded, empty pieces kept.
+/// What `split(sep:)` cuts at: an element equal to a value, or one where a predicate holds
+/// (decision 456).
+pub trait Sep<T>:
+    fn is_sep(self, x: T) -> Bool
+
+/// A predicate cuts where it holds.
+impl<T> Sep<T> for T -> Bool:
+    fn is_sep(self, x: T) -> Bool = self(x)
+
+/// A character cuts where an equal character stands.
+impl Sep<Char> for Char:
+    fn is_sep(self, x: Char) -> Bool = x == self
+
+/// An integer cuts where an equal integer stands.
+impl Sep<Int> for Int:
+    fn is_sep(self, x: Int) -> Bool = x == self
+
+/// Pieces between separators: elements equal to `sep`, or where the predicate `sep` holds.
+/// Separators are excluded and empty pieces kept, so `k` separators give `k + 1` pieces. On a
+/// `Str` each piece is a view that prints and compares as a string; `Str(p)` copies it.
 ///
 /// cost: \(O(n)\)
 /// empty: yields one empty piece
 /// order: left to right; each piece keeps the keys of `self`
 /// traps: never
 /// example: `[p.len for p in [1, 0, 0, 2].split(x => x == 0)] == [1, 0, 1]`
-pub fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S>:
+/// example: `[p.len for p in [1, 0, 0, 2].split(0)] == [1, 0, 1]`
+/// example: `[Str(p) for p in "a,b,,c".split(',')] == ["a", "b", "", "c"]`
+/// example: `"".split(',').count() == 1`
+pub fn split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>:
     var i = 0
     for j in 0..self.len:
-        if sep(self.nth(j)):
+        if sep.is_sep(self.nth(j)):
             yield piece(self, i, j)
             i = j + 1
     yield piece(self, i, self.len)
