@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "5691063", "language": "CPP17", "result": "RTE", "time": 12.989956268, "memory_kb": 208432.0, "file": "corpus/submissions/5691063.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi17p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission. orig.cpp was written for the corpus (backward greedy for the longest span, dropping the cheapest units for shorter ones) and matches an exhaustive day-by-day brute on 250 random cases."
 }
