@@ -384,7 +384,7 @@ fn a_library_lint_is_published_with_its_quick_fix() {
         .unwrap_or_else(|| panic!("no square_by_hand in {diagnostics:?}"));
     let (title, fixed) = quick_fixed(&mut server, &uri, &original, square);
     assert!(title.contains("sq"), "{title}");
-    assert!(fixed.contains("let d2 = sq(xa - xb)\n"), "{fixed}");
+    assert!(fixed.contains("let d2 = geo.sq(xa - xb)\n"), "{fixed}");
 }
 
 /// A lint the checker finds (L0605) follows `with lint(...)` and

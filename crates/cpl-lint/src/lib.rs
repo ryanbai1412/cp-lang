@@ -46,7 +46,9 @@ pub(crate) use checker::{checked, checker_lints};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
 pub use session::Session;
-pub use typed::{apply_lint_fixes, lint_analysis, refine_with_analysis};
+pub use typed::{
+    apply_lint_fixes, apply_lint_fixes_where, lint_analysis, refine_with_analysis, Errors,
+};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
 use cpl_syntax::ast::{Block, ExprKind, Stmt, StmtKind};
@@ -917,7 +919,13 @@ pub(crate) fn fix_at(
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<fix>.cp".to_string());
-    fix_in(&mut cpl_check::Session::new(), &key, src, config)
+    fix_in(
+        &mut cpl_check::Session::new(),
+        &key,
+        src,
+        config,
+        &cpl_ir::check,
+    )
 }
 
 /// [`fix`] on the file `key` in a warm `db`, leaving `db` holding the result.
@@ -926,13 +934,14 @@ pub fn fix_in(
     key: &str,
     src: &str,
     config: &Config,
+    check: &Errors,
 ) -> (String, usize) {
     let (src, total) = fix_removed_syntax(src);
     if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
         return (src, total);
     }
     let (src, checked) = fix_checked_removed_syntax_in(db, key, &src);
-    let (src, linted) = apply_lint_fixes(db, key, src, config);
+    let (src, linted) = apply_lint_fixes(db, key, src, config, check);
     (src, total + checked + linted)
 }
 

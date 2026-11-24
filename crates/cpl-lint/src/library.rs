@@ -26,19 +26,27 @@ pub(crate) struct Declared {
     /// Names `from` binds itself (lambda parameters, loop and `let`/`var`
     /// variables).
     bound: Vec<String>,
+    /// The module's public names `to` uses, each as the linted file spells
+    /// it (`sq` -> `geo.sq` under `use mylib.geo`).
+    spell: Vec<(String, String)>,
 }
 
 /// The usable `@lint` declarations of `analysis`'s file and every module it uses.
 pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
     let mut out = Vec::new();
-    let mut add = |a: &Analysis, module: &str| {
+    let mut add = |a: &Analysis, module: &str, spell: &dyn Fn(&str) -> Option<String>| {
         for item in &a.items {
             for stmt in &item.syntax.parsed.stmts {
                 for decl in library_lint::declared(stmt, item.offset).0 {
                     let Some((from, ends)) = library_lint::run(&decl.from) else {
                         continue;
                     };
+                    let spell = (library_lint::tokens(&decl.to).iter())
+                        .map(|t| &decl.to[t.span.start as usize..t.span.end as usize])
+                        .filter_map(|w| Some((w.to_string(), spell(w)?)))
+                        .collect();
                     out.push(Declared {
+                        spell,
                         lint: intern(&decl.name),
                         bound: bound_names(&from),
                         decl,
@@ -50,9 +58,26 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
             }
         }
     };
-    add(analysis, "");
-    for m in analysis.modules() {
-        add(&m.analysis, &m.name);
+    add(analysis, "", &|_| None);
+    for (i, m) in analysis.modules().iter().enumerate() {
+        let public = |w: &str| {
+            (m.analysis.items.iter())
+                .flat_map(|item| &item.syntax.decls)
+                .any(|d| d.public && d.name == w)
+        };
+        let spell = |w: &str| {
+            if !public(w) {
+                return None;
+            }
+            if let Some((local, _)) =
+                (analysis.imports().iter()).find(|(_, imp)| imp.module == i && imp.name == w)
+            {
+                return (local != w).then(|| local.clone());
+            }
+            let (alias, _) = analysis.aliases().iter().find(|(_, &at)| at == i)?;
+            Some(format!("{alias}.{w}"))
+        };
+        add(&m.analysis, &m.name, &spell);
     }
     out
 }
@@ -255,7 +280,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                     ))
                 })
                 .collect();
-            let fix = fill(&d.decl.to, &got, &names);
+            let fix = fill(&d.decl.to, &got, &names, &d.spell);
             let from = if d.module.is_empty() {
                 "this file".to_string()
             } else {
@@ -378,7 +403,12 @@ fn pure(kinds: &[K]) -> bool {
 
 /// `to` with each hole replaced by what it matched, in brackets where the
 /// code around it would otherwise bind tighter.
-fn fill(to: &str, got: &HashMap<&str, &str>, names: &[(String, String)]) -> String {
+fn fill(
+    to: &str,
+    got: &HashMap<&str, &str>,
+    names: &[(String, String)],
+    spell: &[(String, String)],
+) -> String {
     let toks = library_lint::tokens(to);
     let mut out = String::new();
     let mut last = 0;
@@ -400,6 +430,11 @@ fn fill(to: &str, got: &HashMap<&str, &str>, names: &[(String, String)]) -> Stri
             }
         } else if let Some((_, user)) = names.iter().find(|(n, _)| n == word) {
             user.clone()
+        } else if let Some((_, spelled)) = (spell.iter())
+            .find(|(n, _)| n == word)
+            .filter(|_| i == 0 || toks[i - 1].kind != K::Dot)
+        {
+            spelled.clone()
         } else {
             continue;
         };

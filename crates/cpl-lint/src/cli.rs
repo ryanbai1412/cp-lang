@@ -1,8 +1,8 @@
 //! `cpl lint`.
 
 use crate::{
-    apply_fixes, checked_analysis, fix_checked_removed_syntax_in, fix_removed_syntax, is_taste,
-    lint_analysis, Config, LINTS,
+    apply_lint_fixes_where, checked_analysis, fix_checked_removed_syntax_in, fix_removed_syntax,
+    is_taste, lint_analysis, Config, LINTS,
 };
 use cpl_diag::{Diagnostic, Severity};
 use std::collections::BTreeMap;
@@ -60,7 +60,7 @@ pub type Json = dyn Fn(&[FileReport]) -> String;
 
 /// The errors `cpl check` reports for a file's text, so `cpl lint` shows
 /// the same list: `cpl-lint` cannot lower to IR, so `cpl-cli` hands it in.
-pub type Errors = dyn Fn(&cpl_check::Analysis) -> Vec<Diagnostic>;
+pub use crate::Errors;
 
 /// `--save`: writes a test case from each diagnostic's witness and returns
 /// what to tell the user; `cpl-cli` hands it in, as the input generator is
@@ -81,10 +81,8 @@ pub fn run_with(
     check: Option<&Errors>,
     save: Option<&Save>,
 ) -> u8 {
-    let reported_of = |analysis: &cpl_check::Analysis| match check {
-        Some(check) => check(analysis),
-        None => analysis.diagnostics.clone(),
-    };
+    let checker_only = |analysis: &cpl_check::Analysis| analysis.diagnostics.clone();
+    let reported_of: &Errors = check.unwrap_or(&checker_only);
     // One database for the run, as the editor keeps one: std and shared
     // modules are checked once, and every step below reads the same analysis.
     let mut db = cpl_check::Session::new();
@@ -222,20 +220,14 @@ pub fn run_with(
         let mut diagnostics = lint_analysis(&analysis, &config);
         diagnostics.retain(keep);
         if fix {
-            // A fix can uncover another, and two that overlap take two
-            // rounds; a file has finitely many of either.
-            loop {
-                let (text, applied) = apply_fixes(&src, &diagnostics);
-                if applied == 0 {
-                    break;
-                }
-                fixed += applied;
-                src = text;
-                db.set_file(&key, src.as_str());
-                analysis = db.analyze(&key).expect("the file was just set");
-                diagnostics = lint_analysis(&analysis, &config);
-                diagnostics.retain(keep);
-            }
+            let (text, applied) =
+                apply_lint_fixes_where(&mut db, &key, src, &config, reported_of, &keep);
+            fixed += applied;
+            src = text;
+            db.set_file(&key, src.as_str());
+            analysis = db.analyze(&key).expect("the file was just set");
+            diagnostics = lint_analysis(&analysis, &config);
+            diagnostics.retain(keep);
             if let Err(e) = std::fs::write(file, &src) {
                 let _ = writeln!(stderr, "error: can't write {name}: {e}");
                 failed += 1;

@@ -218,23 +218,43 @@ fn plain_type(ty: Option<&Ty>) -> bool {
     ty.is_some_and(|ty| !ty.has_vague() && !matches!(ty, Ty::Optional(_)))
 }
 
+/// What `cpl check` reports for an analysis. `cpl-lint` can't lower to IR,
+/// so the caller hands it in (`cpl_ir::check`), and a fix is judged by the
+/// errors `cpl check` would show, lowering's included.
+pub type Errors = dyn Fn(&cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic>;
+
 /// `text` with the lint fixes `cpl lint --fix` would make under `config`,
 /// and how many; each round lints the analysis `db` has, so a clean file is
-/// checked once. `cpl fix` and the playground's `fix` share it. A round is
-/// re-checked: a fix that would add a checker error is not applied.
+/// checked once. `cpl fix`, `cpl lint --fix` and the playground share it. A
+/// round is re-checked: a fix after which `check` reports an error the text
+/// lacked is not applied.
 pub fn apply_lint_fixes(
+    db: &mut cpl_check::Session,
+    path: &str,
+    text: String,
+    config: &crate::Config,
+    check: &Errors,
+) -> (String, usize) {
+    apply_lint_fixes_where(db, path, text, config, check, &|_| true)
+}
+
+/// [`apply_lint_fixes`] with only the findings `keep` takes.
+pub fn apply_lint_fixes_where(
     db: &mut cpl_check::Session,
     path: &str,
     mut text: String,
     config: &crate::Config,
+    check: &Errors,
+    keep: &dyn Fn(&cpl_diag::Diagnostic) -> bool,
 ) -> (String, usize) {
     let mut applied = 0;
     for _ in 0..8 {
         db.set_file(path, text.as_str());
         let analysis = db.analyze(path).expect("the file was just set");
-        let findings = lint_analysis(&analysis, config);
-        let errors = error_codes(&analysis.diagnostics);
-        let (next, n) = safe_fixes(db, path, &text, &findings, &errors);
+        let mut findings = lint_analysis(&analysis, config);
+        findings.retain(|d| keep(d));
+        let errors = error_codes(&check(&analysis));
+        let (next, n) = safe_fixes(db, path, &text, &findings, &errors, check);
         if n == 0 {
             break;
         }
@@ -257,13 +277,19 @@ fn error_codes(diagnostics: &[cpl_diag::Diagnostic]) -> Vec<&'static str> {
 }
 
 /// Whether `text` as `path` has no checker error beyond `errors`.
-fn adds_no_error(db: &mut cpl_check::Database, path: &str, text: &str, errors: &[&str]) -> bool {
+fn adds_no_error(
+    db: &mut cpl_check::Database,
+    path: &str,
+    text: &str,
+    errors: &[&str],
+    check: &Errors,
+) -> bool {
     db.set_file(path, text);
     let Some(analysis) = db.analyze(path) else {
         return false;
     };
     let mut left = errors.to_vec();
-    for code in error_codes(&analysis.diagnostics) {
+    for code in error_codes(&check(&analysis)) {
         match left.iter().position(|c| *c == code) {
             Some(at) => {
                 left.remove(at);
@@ -283,9 +309,10 @@ pub(crate) fn safe_fixes(
     text: &str,
     findings: &[cpl_diag::Diagnostic],
     errors: &[&str],
+    check: &Errors,
 ) -> (String, usize) {
     let (all, n) = crate::apply_fixes(text, findings);
-    if n == 0 || adds_no_error(db, path, &all, errors) {
+    if n == 0 || adds_no_error(db, path, &all, errors, check) {
         return (all, n);
     }
     let safe: Vec<_> = findings
@@ -293,12 +320,12 @@ pub(crate) fn safe_fixes(
         .filter(|f| !f.fixes.is_empty())
         .filter(|f| {
             let (alone, n) = crate::apply_fixes(text, std::slice::from_ref(*f));
-            n > 0 && adds_no_error(db, path, &alone, errors)
+            n > 0 && adds_no_error(db, path, &alone, errors, check)
         })
         .cloned()
         .collect();
     let (kept, n) = crate::apply_fixes(text, &safe);
-    if n == 0 || adds_no_error(db, path, &kept, errors) {
+    if n == 0 || adds_no_error(db, path, &kept, errors, check) {
         return (kept, n);
     }
     crate::apply_fixes(text, &safe[..1])

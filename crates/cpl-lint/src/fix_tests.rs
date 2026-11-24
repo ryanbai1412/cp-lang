@@ -89,9 +89,40 @@ fn a_fix_that_would_add_a_checker_error_is_not_applied() {
     let good = finding(at(8, 9), "2");
     let bad = finding(at(16, 17), "y");
     let mut db = cpl_check::Session::new();
-    let (out, n) =
-        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad.clone(), good.clone()], &[]);
+    let (out, n) = crate::typed::safe_fixes(
+        &mut db,
+        "<t>.cp",
+        text,
+        &[bad.clone(), good.clone()],
+        &[],
+        &cpl_ir::check,
+    );
     assert_eq!((out.as_str(), n), ("let x = 2\nprint(x)\n", 1));
-    let (out, n) = crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad], &[]);
+    let (out, n) = crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad], &[], &cpl_ir::check);
     assert_eq!((out.as_str(), n), (text, 0));
+}
+
+#[test]
+fn a_fix_that_lowering_rejects_is_not_applied() {
+    // noi15p3: an `s.any(..)` rewrite the checker took but lowering
+    // rejected. The fix gate asks the complete check it is given.
+    let text = "let x = 1\nprint(x)\n";
+    let span = Span { start: 8, end: 9 };
+    let finding =
+        Diagnostic::warning(crate::LOOP_REDUCTION.code, span, "test").with_fix("fix", span, "2");
+    let lowering_rejects_2 = move |a: &cpl_check::Analysis| {
+        let mut out = a.diagnostics.clone();
+        if a.text.contains("= 2") {
+            out.push(Diagnostic::error(Code("E0302"), span, "lowering"));
+        }
+        out
+    };
+    let mut db = cpl_check::Session::new();
+    let findings = [finding];
+    let (out, n) =
+        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &findings, &[], &lowering_rejects_2);
+    assert_eq!((out.as_str(), n), (text, 0));
+    let (out, n) =
+        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &findings, &[], &cpl_ir::check);
+    assert_eq!((out.as_str(), n), ("let x = 2\nprint(x)\n", 1));
 }

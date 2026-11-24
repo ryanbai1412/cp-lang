@@ -31,7 +31,7 @@ fn a_library_lint_fires_and_fixes_in_a_program_using_the_library() {
         "{report}"
     );
     assert!(
-        report.contains("write `sq(xa - xb)`") && report.contains("write `sq(xa)`"),
+        report.contains("write `geo.sq(xa - xb)`") && report.contains("write `geo.sq(xa)`"),
         "{report}"
     );
     assert!(
@@ -45,7 +45,7 @@ fn a_library_lint_fires_and_fixes_in_a_program_using_the_library() {
     );
     let fixed = std::fs::read_to_string(&main).unwrap();
     assert!(
-        fixed.contains("let d2 = sq(xa - xb)\n") && fixed.contains("let f = sq(xa) + 1\n"),
+        fixed.contains("let d2 = geo.sq(xa - xb)\n") && fixed.contains("let f = geo.sq(xa) + 1\n"),
         "{fixed}"
     );
     assert!(
