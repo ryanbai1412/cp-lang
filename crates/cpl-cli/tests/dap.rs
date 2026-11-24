@@ -875,6 +875,11 @@ fn reverse_continue_stops_at_an_edit_before_the_recorded_window() {
 /// A session on `src` launched with `launch` arguments after `program`,
 /// stopped where `configurationDone` leaves it.
 fn launched(name: &str, src: &str, launch: &str) -> (DapClient, PathBuf) {
+    launched_at(name, src, launch, &[])
+}
+
+/// [`launched`] with breakpoints on `lines`, set before the run starts.
+fn launched_at(name: &str, src: &str, launch: &str, lines: &[usize]) -> (DapClient, PathBuf) {
     let path = write_temp(name, src);
     let p = path.to_str().unwrap().replace('\\', "\\\\");
     let mut dap = DapClient::spawn();
@@ -883,6 +888,15 @@ fn launched(name: &str, src: &str, launch: &str) -> (DapClient, PathBuf) {
     dap.send("launch", Some(&format!("{{\"program\":\"{p}\",{launch}}}")));
     let reply = dap.recv_until("\"command\":\"launch\"");
     assert!(reply.contains("\"success\":true"), "{reply}");
+    let lines: Vec<String> = lines.iter().map(|l| format!("{{\"line\":{l}}}")).collect();
+    dap.send(
+        "setBreakpoints",
+        Some(&format!(
+            "{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[{}]}}",
+            lines.join(",")
+        )),
+    );
+    let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
     dap.send("configurationDone", None);
     let _ = dap.recv_until("\"event\":\"stopped\"");
     (dap, path)
@@ -984,6 +998,122 @@ fn restart_onto_a_line_the_edit_removed_stays_near_in_any_window() {
             assert!(note.contains("kept your place: line "), "{note}");
         }
     }
+}
+
+const RECURSIVE: &str = "\
+fn f(k: Int) -> Int:
+    if k == 0:
+        let base = 0
+        return base
+    let r = f(k - 1)
+    let out = r + k
+    out
+print(f(3))
+print(f(1))
+";
+
+fn replay(dap: &mut DapClient, args: &str) -> String {
+    dap.send("replayCall", Some(args));
+    let reply = dap.recv_until("\"command\":\"replayCall\"");
+    assert!(reply.contains("\"success\":true"), "{reply}");
+    reply
+}
+
+#[test]
+fn replay_call_picks_the_innermost_open_call_or_the_frame_named() {
+    let (mut dap, _) = launched_at("replay_pick", RECURSIVE, "\"stopOnEntry\":false", &[3]);
+    let two_out = replay(&mut dap, "{\"frameId\":2}");
+    assert!(two_out.contains("\"call\":\"f(k: 1)\""), "{two_out}");
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"reason\":\"breakpoint\"");
+    // In `f(1)`'s `f(0)`: the sixth call of `f`, not the first chain's deeper one.
+    let open = replay(&mut dap, "{\"fn\":\"f\"}");
+    assert!(
+        open.contains("\"call\":\"f(k: 0)\"") && open.contains("\"ordinal\":6"),
+        "{open}"
+    );
+    dap.finish();
+}
+
+#[test]
+fn replay_call_just_after_a_return_picks_the_caller() {
+    let (mut dap, _) = launched_at("replay_return", RECURSIVE, "\"stopOnEntry\":false", &[6]);
+    let caller = replay(&mut dap, "{\"fn\":\"f\"}");
+    assert!(
+        caller.contains("\"call\":\"f(k: 1)\"") && caller.contains("\"ordinal\":3"),
+        "{caller}"
+    );
+    dap.finish();
+}
+
+#[test]
+fn replay_call_names_the_step_its_call_entered_at() {
+    let (mut dap, _) = launched_at("replay_entry", RECURSIVE, "\"stopOnEntry\":false", &[9]);
+    // Before `print(f(1))` no `f` is open: the latest to end is `f(1)`'s `f(0)`.
+    let latest = replay(&mut dap, "{\"fn\":\"f\"}");
+    assert!(
+        latest.contains("\"call\":\"f(k: 0)\"")
+            && latest.contains("\"ordinal\":6")
+            && latest.contains("\"entry\":9"),
+        "{latest}"
+    );
+    dap.finish();
+}
+
+#[test]
+fn debug_lines_reach_the_console_and_an_unchanged_finished_run_is_the_same() {
+    let path = write_temp("debug_console", "let x = 3\ndebug(x)\nprint(x)\n");
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send(
+        "launch",
+        Some(&format!("{{\"program\":\"{p}\",\"stopOnEntry\":true}}")),
+    );
+    let console = dap.recv_until("\"category\":\"console\"");
+    assert!(console.contains("x = 3"), "{console}");
+    let _ = dap.recv_until("\"command\":\"launch\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("re-ran");
+    assert!(
+        note.contains("re-ran: every value and every print is the same as before"),
+        "{note}"
+    );
+    dap.finish();
+}
+
+#[test]
+fn restart_past_the_first_window_finds_the_edit_on_screen_and_continue_stops_there() {
+    let source = |step: i64| {
+        format!(
+            "let n: Int = read()\nvar i = 0\nwhile i < n:\n    i += 1\nvar s = 0\ns += 1\ns += {step}\nprint(s + i)\n"
+        )
+    };
+    let (mut dap, path) = launched_at(
+        "late_edit",
+        &source(1),
+        "\"stopOnEntry\":false,\"recordSteps\":1000,\"inputText\":\"3000\\n\"",
+        &[5],
+    );
+    std::fs::write(&path, source(2)).unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("re-ran");
+    assert!(
+        note.contains("re-ran: first change at line 7: `s` = 3 (before the edit: 2)"),
+        "the edit after the cursor, far past the first window: {note}"
+    );
+    let kept = dap.recv_until("\"event\":\"stopped\"");
+    assert!(kept.contains("kept your place: line 5"), "{kept}");
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let stop = dap.recv_until("\"event\":\"stopped\"");
+    assert!(stop.contains("\"reason\":\"divergence\""), "{stop}");
+    dap.send("stackTrace", Some("{\"threadId\":1}"));
+    let frame = dap.recv_until("\"command\":\"stackTrace\"");
+    assert!(frame.contains("\"line\":7"), "{frame}");
+    dap.finish();
 }
 
 #[test]

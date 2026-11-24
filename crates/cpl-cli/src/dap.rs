@@ -548,11 +548,11 @@ impl Session {
                 // On a long run the place counts visits from the window's first step.
                 let (at, base) = (self.base + self.cursor, self.base);
                 let place = self.recording.place(self.cursor);
-                let before = std::mem::take(&mut self.recording);
+                let mut seen = std::mem::take(&mut self.recording);
                 let (pager, config) = (self.pager.take(), self.config.clone());
                 let was_stopped = self.stopped;
                 if let Err(msg) = self.record(writer)? {
-                    (self.recording, self.base, self.pager) = (before, base, pager);
+                    (self.recording, self.base, self.pager) = (seen, base, pager);
                     self.stopped = was_stopped;
                     let msg = format!("{msg}\nkept the last good recording");
                     self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
@@ -567,7 +567,7 @@ impl Session {
                         };
                         pager.window(first).recording.unwrap_or_default()
                     }
-                    _ => before,
+                    _ => std::mem::take(&mut seen),
                 };
                 // Two runs longer than what is kept, or a run the time limit
                 // cut, compare over what both keep.
@@ -581,6 +581,18 @@ impl Session {
                 if base == 0 {
                     self.cursor = place.map_or(0, |p| self.recording.find(p, at));
                 } else if self.goto(base) {
+                    // Past the first window, what was on screen is compared too.
+                    self.change = self.change.take().or_else(|| {
+                        let n = seen.len().min(self.recording.len());
+                        let change = match seen.truncated && self.recording.truncated {
+                            true => first_change_in(&seen, 0..n, &self.recording, 0..n),
+                            false => first_change(&seen, &self.recording),
+                        };
+                        change.map(|c| Change {
+                            step: base + c.step,
+                            ..c
+                        })
+                    });
                     self.cursor = place.map_or(0, |p| self.recording.find(p, at - base));
                 } else {
                     self.cursor = self.recording.len().saturating_sub(1);
