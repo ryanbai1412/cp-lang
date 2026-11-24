@@ -130,7 +130,6 @@ pub(super) struct Compiler<'p, 'f> {
     pub(in crate::vm) feed_acc: Option<usize>,
     /// The small tuple shape this body returns in registers (`RetSmallTuple`).
     pub(in crate::vm) tuple_ret: Option<(u8, [crate::value::SmallFieldKind; 5])>,
-    pub(in crate::vm) allow_fed_loops: bool,
     inline_slots: Option<Vec<SlotLoc>>,
     inline_ret: Option<(u16, Vec<usize>)>,
     /// The first of the `INLINE_V_REGS` local registers an inlined body's
@@ -258,7 +257,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             cur_fn,
             feed_acc: None,
             tuple_ret: None,
-            allow_fed_loops: true,
             inline_slots: None,
             inline_ret: None,
             inline_v,

@@ -594,8 +594,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// The list the fed loop `id` is fed into, when this traced chunk can
     /// run its body.
     fn fed_acc(&self, id: LoopId, seq: &'p Expr, body: &'p Block) -> Option<usize> {
-        let ok = self.allow_fed_loops
-            && self.feed_acc.is_none()
+        let ok = self.feed_acc.is_none()
             && self.inline_slots.is_none()
             && self.inline_ret.is_none()
             && (self.give_targets.is_empty() || !cpl_ir::walk::has_give(&body.stmts))
@@ -1318,8 +1317,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if let Iter::Seq(seq_expr, rev) = iter {
             // Inside a fed fn, the body's yields feed on out; one that may
             // stop the loop early has no such form.
-            let fed_here =
-                self.allow_fed_loops && (self.feed_acc.is_none() || !cpl_ir::pushed::escapes(body));
+            let fed_here = self.feed_acc.is_none() || !cpl_ir::pushed::escapes(body);
             if !*rev && fed_here {
                 if let Some((fn_id, _acc_slot)) = self.feeds.feeds(id, seq_expr, body) {
                     return self.try_compile_for_fed(stmt, id, slot, fn_id, seq_expr, body);
