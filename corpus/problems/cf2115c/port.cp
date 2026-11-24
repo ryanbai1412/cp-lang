@@ -22,36 +22,30 @@ let singles = hp.sum() - n * hp.min()!
 let slack = m - shines - singles
 if slack < 0: return print(0.0)
 
-// Both edges of the (k, s) region are diagonals of a DP over rounds left:
-// the chance from entry i is read after slack + i rounds.
-fn diagonal<T>(size: Int, var dp: T, step: T -> T, at: (T, Int) -> F64) -> List<F64>:
-    var out: List<F64> = []
-    for r in 0..=slack + size:
-        if r >= slack: out.push(at(dp, r - slack))
-        dp = step(dp)
-    out
-
 // lv[s, k]: chance from (s, k < n) with r rounds left. A miss at k = 0 either
-// starts a new layer, (s - 1, n - 1), or waits for a shine, (s, 0).
-fn round(lv: [0..=shines, 0..n]F64) -> [0..=shines, 0..n]F64 =
-    [0..=shines, 0..n] (s, k) => p * lv[max(s - 1, 0), k] + (1.0 - p) * miss(lv, s, k)
-fn miss(lv: [0..=shines, 0..n]F64, s: 0..=shines, k: 0..n) -> F64 =
-    if k > 0: lv[s, k - 1]
-    elif s > 0: max(lv[s - 1, n - 1], lv[s, 0])
-    else: 1.0
-var lv0: [0..=shines, 0..n]F64 = 0.0
-lv0[0, 0] = 1.0
-let level = diagonal(shines, lv0, round, (lv, s) => lv[s, 0])
+// starts a new layer, (s - 1, n - 1), or waits for a shine, (s, 0). Entry s of the
+// level edge is read after slack + s rounds. Each round reads only cells it has not
+// yet rewritten when it walks s and k down.
+var lv: [0..=shines, 0..n]F64 = 0.0
+lv[0, 0] = 1.0
+var level: List<F64> = []
+for r in 0..=slack + shines:
+    if r >= slack: level.push(lv[r - slack, 0])
+    for s in (0..=shines).rev:
+        for k in (0..n).rev:
+            let miss =
+                if k > 0: lv[s, k - 1]
+                elif s > 0: max(lv[s - 1, n - 1], lv[s, 0])
+                else: 1.0
+            lv[s, k] = p * lv[max(s - 1, 0), k] + (1.0 - p) * miss
 
 // fl[k]: with no shine needed, the chance of k misses in r rounds.
-var fl0: [0..=singles]F64 = 0.0
-fl0[0] = 1.0
-let flat = diagonal(
-    singles,
-    fl0,
-    fl => [0..=singles] k => p * fl[k] + (1.0 - p) * fl[max(k - 1, 0)],
-    (fl, k) => fl[k],
-)
+var fl: [0..=singles]F64 = 0.0
+fl[0] = 1.0
+var flat: List<F64> = []
+for r in 0..=slack + singles:
+    if r >= slack: flat.push(fl[r - slack])
+    for k in (0..=singles).rev: fl[k] = p * fl[k] + (1.0 - p) * fl[max(k - 1, 0)]
 
 @memo
 fn win(k: 0..=singles, s: 0..=shines) -> F64 =
