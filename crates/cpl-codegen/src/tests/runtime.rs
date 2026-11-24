@@ -127,3 +127,15 @@ fn a_zero_filled_table_comes_from_calloc() {
         cpp("let n: 1..=9_000_000 = read()\nvar t: [n]?Int = None\nt[0] = n\nprint(t[0] ?? 0)\n");
     assert!(!opts.contains("zeros<"), "{opts}");
 }
+
+#[test]
+fn a_sort_by_holds_half_a_buffer_and_no_sorted_copy() {
+    // Keys, a u32 order and n/2 buffer cells; the permutation is applied in place.
+    let out = cpp(
+        "fn f(x: Int) -> Int: (x * 37) % 11\nvar xs = [5, 3, 9, 1]\nxs.sort(by: f)\nprint(xs)\n",
+    );
+    assert!(out.contains("cpl::sort_by("), "{out}");
+    assert!(out.contains("std::vector<V> buf(b, b + n / 2)"), "{out}");
+    assert!(out.contains("std::vector<uint32_t> order"), "{out}");
+    assert!(!out.contains("std::vector<T> sorted"), "{out}");
+}

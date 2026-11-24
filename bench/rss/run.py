@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Peak RSS of I/O-bound and zero-filled programs: each bench/rss/X.cp, built by `cpl build`,
+"""Peak RSS of I/O-bound, zero-filled and sorting programs: each bench/rss/X.cp, built by `cpl build`,
 against the matched X_hand.cpp (scanf/printf) on the same generated input,
 both with g++ -std=c++17 -O2, measured by scripts/corpus.py's launcher.
 
@@ -21,9 +21,9 @@ from corpus import launcher  # noqa: E402
 BOUND_KB = 2048
 
 
-def ints(n):
-    """`n`, then n numbers in 0..=1e9, about 9.5 bytes each."""
-    body = " ".join(str(i * 7919 % 1_000_000_007 % 1_000_000_001) for i in range(n))
+def ints(n, per=1):
+    """`n`, then n * `per` numbers in 0..=1e9, about 9.5 bytes each."""
+    body = " ".join(str(i * 7919 % 1_000_000_007 % 1_000_000_001) for i in range(n * per))
     return f"{n}\n{body}\n"
 
 
@@ -42,6 +42,8 @@ CASES = {
     "print_list_sep": lambda: "10000000\n",
     "floor": lambda: "5\n",
     "zero_fill": lambda: "5\n",  # 160 MB of cells, one touched
+    "sort_records": lambda: ints(1_000_000, 2),  # sort(by:) a field of 1e6 (Int, Int)
+    "sort_pairs": lambda: ints(400_000, 2),  # sort() 4e5 (Int, Int)
 }
 
 

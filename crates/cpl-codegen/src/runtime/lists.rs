@@ -177,10 +177,11 @@ template <class T, size_t K, class U> bool has(const std::array<T, K>& v, const 
         name: "sorted",
         needs: &[],
         code: "\
-// The interpreter's merge sort, so `cpl profile` counts the same comparisons natively.
-// Each level merges from one array into the other, so no level copies back.
-template <class S, class D, class L> void merge_sort(S src, D dst, size_t lo, size_t hi, L& lt) { if (hi - lo <= 7) { for (size_t i = lo + 1; i < hi; i++) { auto x = std::move(dst[i]); size_t j = i; for (; j > lo && lt(x, dst[j - 1]); j--) dst[j] = std::move(dst[j - 1]); dst[j] = std::move(x); } return; } size_t m = lo + (hi - lo) / 2; merge_sort(dst, src, m, hi, lt); merge_sort(dst, src, lo, m, lt); auto i = src + lo, im = src + m, j = im, jm = src + hi; auto k = dst + lo; for (; i != im && j != jm; ++k) { if (lt(*j, *i)) { *k = std::move(*j); ++j; } else { *k = std::move(*i); ++i; } } std::move(j, jm, std::move(i, im, k)); }
-template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; std::vector<V> buf(b, e); merge_sort(buf.begin(), b, 0, buf.size(), lt); }
+// The interpreter's merge sort, so `cpl profile` counts the same comparisons natively:
+// runs of 7 by insertion, then the right half and the left, merged through `buf`, which
+// holds the left half (n/2 cells, as in libstdc++'s stable_sort).
+template <class It, class B, class L> void merge_sort(It b, size_t lo, size_t hi, B buf, L& lt) { if (hi - lo <= 7) { for (size_t i = lo + 1; i < hi; i++) { auto x = std::move(b[i]); size_t j = i; for (; j > lo && lt(x, b[j - 1]); j--) b[j] = std::move(b[j - 1]); b[j] = std::move(x); } return; } size_t m = lo + (hi - lo) / 2; merge_sort(b, m, hi, buf, lt); merge_sort(b, lo, m, buf, lt); auto i = buf, im = std::move(b + lo, b + m, buf); auto j = b + m, jm = b + hi, k = b + lo; for (; i != im && j != jm; ++k) { if (lt(*j, *i)) { *k = std::move(*j); ++j; } else { *k = std::move(*i); ++i; } } std::move(i, im, k); }
+template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; size_t n = e - b; std::vector<V> buf(b, b + n / 2); merge_sort(b, 0, n, buf.begin(), lt); }
 template <class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
 template <class T> std::vector<T> sorted(std::vector<T> v) { sort_seq(v.begin(), v.end()); return v; }
 template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
@@ -288,13 +289,19 @@ template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
     std::vector<K> keys;
     keys.reserve(seq.size());
     for (const auto& x : seq) keys.push_back(key(x));
-    std::vector<size_t> order(keys.size());
+    // No list in memory holds 2^32 cells.
+    std::vector<uint32_t> order(keys.size());
     for (size_t i = 0; i < order.size(); i++) order[i] = i;
-    stable_sort_lt(order.begin(), order.end(), [&](size_t a, size_t b) { return desc ? keys[b] < keys[a] : keys[a] < keys[b]; });
-    std::vector<T> sorted;
-    sorted.reserve(order.size());
-    for (size_t i : order) sorted.push_back(std::move(seq[i]));
-    std::move(sorted.begin(), sorted.end(), seq.begin());
+    stable_sort_lt(order.begin(), order.end(), [&](uint32_t a, uint32_t b) { return desc ? keys[b] < keys[a] : keys[a] < keys[b]; });
+    // seq[j] takes the old seq[order[j]], one cycle of the permutation at a time.
+    for (size_t i = 0; i < order.size(); i++) {
+        if (order[i] == i) continue;
+        T x = std::move(seq[i]);
+        size_t j = i;
+        for (size_t k; (k = order[j]) != i; j = k) { seq[j] = std::move(seq[k]); order[j] = j; }
+        seq[j] = std::move(x);
+        order[j] = j;
+    }
     }
 }
 ",
