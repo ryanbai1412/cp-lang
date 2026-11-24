@@ -2,7 +2,7 @@
  "problem": "ioi25_obstacles",
  "source": "ioi",
  "submissions": [],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
   "dream": [
    "corpus/gold/ioi25_obstacles.cp",
