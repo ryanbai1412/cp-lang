@@ -11,12 +11,12 @@ Cold review against the friction's `## Dream`. The interval DP is the header's r
 
 ## Owed rewrites
 
-- The friction's two claims (`sorted()` loses the table type; `[0] + [p.y for p in pts]` fails) quote a type pair but no command; add the `cpl run` lines.
+- Line 18 as `compress([0] + [p.y for p in pts])`; it builds now.
 
 ## Language gaps
 
 - `read<[P]Pt>().sorted()` returns a `List`, so the port sorts a `var` table in place (lines 16-17): in the friction.
-- `[0] + [p.y for p in pts]` fails, so line 18 writes `.map(...).collect()`: in the friction.
+- `[0] + [p.y for p in pts]`: fixed (fresh run in the friction).
 
 ## Dream notes
 

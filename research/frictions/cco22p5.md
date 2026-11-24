@@ -46,3 +46,24 @@ fn alone(rollback: Bool) -> Net = Net(Dsu<House>.new(rollback), [House] h => [h]
 Measured: `cpl stress` agrees with the accepted C++ (4801885) on 30 cases (size 10) and 40
 cases (size 40); on the `--max` case (N = A = B = 2e5) the outputs match, 0.34 s against
 the C++'s 0.94 s.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+domain House = 1..=3
+var dsu = Dsu<House>.new(true)
+let m: Mark = dsu.mark()
+print(1)
+```
+
+```text
+error[E0204]: no type or domain named `Mark`
+  --> probe.cp:3:8
+3 | let m: Mark = dsu.mark()
+  |        ^^^^
+  = help: `Mark` is in the standard library: add `use std.dsu.{Mark}`
+```
+
+**Status:** open.

@@ -26,3 +26,19 @@ for r in 0..k:
 ## Measurements
 
 Max case (n = 1e6, k = 1000): port 0.02 s, accepted C++ 0.12 s, same output.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+let steps = [1, -1, 1]
+let off = steps.scan(+)
+print(off.min()!, off.max()!)
+```
+
+```text
+0 1
+```
+
+**Status:** fixed for the prefix claim: a `Prefix` now has `min` and `max`. The `adjacent` E0302 above stands.

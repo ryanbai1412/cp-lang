@@ -24,3 +24,22 @@ The existing `dream.cp` is the target. Two gaps remain.
 
 Measured: `cpl stress` agrees with the old port and with the accepted C++ (5324109) on 30
 cases each.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+let n: 1..=5 = read()
+let odds: [n](a: 1.0..=1000.0, b: 1.0..=1000.0) = read()
+print(odds[0].a)
+```
+
+```text
+error[E0302]: expected `Int`, found `F64`
+  --> probe.cp:2:18
+2 | let odds: [n](a: 1.0..=1000.0, b: 1.0..=1000.0) = read()
+  |                  ^^^
+```
+
+**Status:** open.

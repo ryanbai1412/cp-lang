@@ -11,7 +11,6 @@ Cold review against the friction's `## Dream`. The two DPs are the header's (lin
 
 ## Owed rewrites
 
-- Quote the `cpl run` of the dream's `S.between(l, r)` line in the friction (R11).
 
 ## Language gaps
 

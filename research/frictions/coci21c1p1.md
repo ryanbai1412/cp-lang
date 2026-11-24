@@ -24,3 +24,22 @@ The existing `dream.cp` is the target; the port follows it.
 
 Measured: `cpl stress` agrees with the old port and with the accepted C++ (4080824) on 30
 cases each.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+domain Player = 1..=8
+let (team, member) = Player.split(4)
+print(1)
+```
+
+```text
+error[E0302]: a `List<Range<Player>>` can't be taken apart into 2 names
+  --> probe.cp:2:5
+2 | let (team, member) = Player.split(4)
+  |     ^^^^^^^^^^^^^^
+```
+
+**Status:** open: `Player.split(4)` gives the blocks as ranges, not a `(team, member)` pair.

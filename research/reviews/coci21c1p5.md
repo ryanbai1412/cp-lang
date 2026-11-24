@@ -13,7 +13,6 @@ Cold review against `dream.cp`; the port is the dream with a `Level` domain and 
 ## Owed rewrites
 
 - One push branch: test `chain.last` against `at` with `is_some_and` for the two throw-away cases, then a single `else: chain.push(at); used[h] += 1`.
-- The list-to-table friction quotes no run of `on_level.into([Level])` (R11); add it.
 
 ## Language gaps
 

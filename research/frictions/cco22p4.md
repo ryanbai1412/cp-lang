@@ -27,3 +27,26 @@ fn ways(u: Node, k: Arrive) -> Z:
 
 Max case (N = K = 4000, deep tree, balls mostly near the root): port 0.04 s / 81 MB, accepted
 C++ 0.06 s / 129 MB, same output.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+let n: 1..=5 = read()
+domain Arrive = 0..=n
+@memo(array)
+fn ways(k: Arrive) -> Int = k.ord
+print(ways(Arrive(n + 1)))
+```
+
+```text
+error[R0102]: 4 is not in `Arrive`, which is 0..=3
+  --> probe.cp:5:12
+5 | print(ways(Arrive(n + 1)))
+  |            ^^^^^^^^^^^^^
+  = note: locals: n = 3
+  = help: the value is outside the domain: check it with `if x in 0..=3:` first, or give the variable the domain's range
+```
+
+**Status:** open: forming the key out of the domain traps, so the guard has to come before `Arrive(k)`.

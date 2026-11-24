@@ -11,12 +11,12 @@ Cold review against the friction's `## Dream`. The header (lines 6-10, restated 
 
 ## Owed rewrites
 
-- None.
+- `I.sorted(by: rank)` without `.collect()` (line 32).
 
 ## Language gaps
 
 - A table built from (key, value) pairs: in the friction.
-- `sorted` on a domain without `.collect()`: in the friction.
+- `sorted` on a domain: fixed (fresh run in the friction).
 
 ## Dream notes
 

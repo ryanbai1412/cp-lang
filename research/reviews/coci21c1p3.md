@@ -12,13 +12,13 @@ Cold review. There is no `dream.cp` and the friction has no `## Dream` (only `##
 
 ## Owed rewrites
 
+- `Rooted(Graph.undirected([edges[e] for e in E if e != cut]), a)`-style tree in place of the `x.e != cut` closure (line 24).
 - Add a `## Dream` to the friction.
 - Unite in the loop body: `for e in E: if not joined.unite(edges[e].u, edges[e].v): extra = e`.
-- The `## Gap` (`Graph.undirected` takes only a `[_]_` array) quotes no run; add the `cpl run` of `Graph.undirected([edges[e] for e in E if e != cut])` (R11).
 
 ## Language gaps
 
-- `Graph.undirected` over a filtered edge list: in the friction.
+- `Graph.undirected` over a filtered edge list: fixed (fresh run in the friction).
 
 ## Dream notes
 

@@ -13,7 +13,6 @@ Cold review against the friction's `## Dream`. The header's two-pointer argument
 ## Owed rewrites
 
 - Make line 4 agree with the Bounds line.
-- The friction's "repro sent to Core" quotes no run; add the `cpl run` of the dream's `reachable(...)` line (R11).
 
 ## Language gaps
 

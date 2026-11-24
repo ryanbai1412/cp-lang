@@ -33,3 +33,36 @@ print(cost + least_above(Col, from_left) + least_above(Col.rev, from_right))
 
 Max case (1e6 random heights up to 1e9, limit 5 s): port 3.15 s / 351 MB, accepted C++
 2.58 s / 232 MB, same output.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+var seen = SortedSet<Int>()
+seen.add(3)
+print(seen.first_gt(1)!)
+```
+
+```text
+error[E0203]: `SortedSet.first_gt` was replaced by `range(1 + 1..).first`
+  --> probe.cp:3:7
+3 | print(seen.first_gt(1)!)
+  |       ^^^^^^^^^^^^^^^^
+  = help: write `range(1 + 1..).first` (or run `cpl fix` to migrate)
+```
+
+**Status:** not a gap: std spells a set successor `range(x + 1..).first` by design, as the port does.
+
+```cp
+let n: 1..=5 = read()
+domain Col = 0..n
+fn walk(order: Seq<Col>) -> Int = order.count()
+print(walk(Col) + walk(Col.rev))
+```
+
+```text
+6
+```
+
+**Status:** fixed: a function takes `Seq<Col>` and is passed `Col` or `Col.rev`, so `least_above` needs no `.collect()`.

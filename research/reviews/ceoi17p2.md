@@ -11,7 +11,6 @@ Cold review against `dream.cp`; the port is the dream with renamed variables. So
 
 ## Owed rewrites
 
-- The `F64` range friction quotes no run; add the `cpl run` of `let odds: [n](a: 1.0..=1000.0, b: 1.0..=1000.0) = read()`.
 
 ## Language gaps
 

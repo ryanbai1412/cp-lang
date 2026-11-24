@@ -12,12 +12,13 @@ Cold review against the friction's `## Dream`. The relabel so T starts with `'0'
 
 ## Owed rewrites
 
+- Read `s: Str<..=2e5>` and `t: Str<1..=3>` (lines 11-12); both build now.
 - Derive the formulas and the `g == 3` greedy choice in the header.
 - The window friction is stale: line 17 already compares `x == p` without `Str(x)`; update or drop it.
 
 ## Language gaps
 
-- Length-bounded `Str` reads (lines 11-12): in the friction, without a `cpl run` repro (R11).
+- Length-bounded `Str` reads: fixed (fresh run in the friction).
 
 ## Dream notes
 

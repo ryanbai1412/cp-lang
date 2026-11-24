@@ -25,3 +25,31 @@ let hits = w.windows(p.len).count(p)
 
 Max case (|S| = 2e5, T = "000", zeros at the feasible limit): port 0.01 s, accepted C++ 0.01 s,
 same output.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+let s: Str<..=2e5> = read()
+let t: Str<1..=3> = read()
+print(s.len + t.len)
+```
+
+```text
+5
+```
+
+**Status:** fixed: `Str<..=2e5>` and `Str<1..=3>` are read types now.
+
+```cp
+let s: Str = read()
+let t: Str = read()
+print(s.windows(t.len).count(w => w == t))
+```
+
+```text
+3
+```
+
+**Status:** fixed: a window compares with a `Str` directly (the port already writes `x == p`).

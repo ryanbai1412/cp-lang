@@ -11,7 +11,6 @@ Cold review against the friction's `## Dream`. The `Need(smaller, larger)` recur
 
 ## Owed rewrites
 
-- Quote the `cpl run` of the dream's `parse(..., grammar: ...)` line in the friction (R11).
 
 ## Language gaps
 

@@ -12,11 +12,12 @@ Cold review against the friction's `## Dream`. Each residue class steps the wind
 
 ## Owed rewrites
 
+- `off.min()!`/`off.max()!` with the leading 0 in place of `seen` (lines 23-24); a `Prefix` has them now.
 - Fix the header wording of lines 7-8 to "width > 1: none; width 1: forced; width 0: free".
 
 ## Language gaps
 
-- `Prefix` is not iterable and has no `minmax` (lines 22-24): in the friction.
+- `Prefix` `min`/`max`: fixed (fresh run in the friction).
 - `adjacent` on a table does not feed pairs to `map` (E0302, quoted): in the friction; the workaround is line 21.
 
 ## Dream notes

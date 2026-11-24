@@ -11,11 +11,11 @@ Cold review against the friction's `## Dream`. The port is the header's rule: co
 
 ## Owed rewrites
 
-- None.
+- The dream's gather (`[Row, Col] (r, c) => ...` over the cell, `up`, `left`, `up?.left`) in place of the nested `if let` scatter (lines 15-22).
 
 ## Language gaps
 
-- Optional grid neighbours (`(r, c).up?.left`): in the friction.
+- Optional grid neighbours: fixed (fresh run in the friction).
 
 ## Dream notes
 

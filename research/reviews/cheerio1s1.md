@@ -11,11 +11,11 @@ Cold review against the friction's `## Dream`. The port is the header's walk: ad
 
 ## Owed rewrites
 
-- None.
+- Walk `for (prev, l) in lights.with_prev` and drop `pos` (lines 14, 16-17).
 
 ## Language gaps
 
-- A pairwise walk over `[0] + positions` (`lights.with_prev`) instead of carrying `pos`: in the friction.
+- `with_prev`: fixed (fresh run in the friction).
 
 ## Dream notes
 

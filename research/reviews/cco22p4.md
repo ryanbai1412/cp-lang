@@ -12,11 +12,11 @@ Cold review against the port and the friction's `## Dream`. Children are `?Node`
 
 ## Owed rewrites
 
-- The memo friction quotes no run; add one. Note the dream as written still needs the guard before `Arrive(k)` is formed, since `a + h` can exceed `n`; the general fix is a memo that accepts an out-of-domain key with a guard, which the friction should say.
+- Note the dream as written still needs the guard before `Arrive(k)` is formed, since `a + h` can exceed `n`; the general fix is a memo that accepts an out-of-domain key with a guard, which the friction should say.
 
 ## Language gaps
 
-- Guarded `@memo(array)` over a domain key (line 31): in the friction, without a repro.
+- Guarded `@memo(array)` over a domain key (line 31): in the friction, with a fresh run (R0102).
 
 ## Dream notes
 

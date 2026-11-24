@@ -11,7 +11,6 @@ Cold review against the friction's `## Dream`. The header (lines 6-10) reduces t
 
 ## Owed rewrites
 
-- Quote the `cpl run` of the dream's `factorisations(n, min_factor: 2)` line in the friction (R11).
 
 ## Language gaps
 

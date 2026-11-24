@@ -26,3 +26,24 @@ fn count(i: Len, sign: Int):
 ## Measurements
 
 Max case (N = Q = 2e5, counts up to 1e9): port 0.11 s, accepted C++ 0.19 s, same output.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+struct Run:
+    made, singles: Int
+fn join(a: Run, b: Run) -> Run = Run(a.made + b.made, a.singles + b.singles)
+domain Len = 0..4
+var have: [Len]Int = 0
+var runs = SegTree<Len, Run>.of(Monoid(Run(0, 0), join), i => Run(0, have[i] % 2))
+have[Len.first!] = 1
+print(runs.all.singles)
+```
+
+```text
+0
+```
+
+**Status:** open: `SegTree.of(monoid, leaf)` reads each leaf once; after `have` changes the root still says 0, so `refresh` stays.

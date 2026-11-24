@@ -12,13 +12,14 @@ Cold review against the friction's `## Dream`; 3 because the 1.22x slowdown is m
 
 ## Owed rewrites
 
+- `least_above(order: Seq<Col>, ...)` called with `Col` and `Col.rev` (line 57), dropping both `.collect()` copies.
 - Add a performance friction for the 1.22x with a profile (the two `Col.collect()` copies on line 57 and the per-ask `SortedSet.range` are the candidates).
 
 ## Language gaps
 
 - `Level.adjacent` fails in the backends (E0501): in the friction.
-- `SortedSet.first_gt`: in the friction.
-- A walk-over-a-domain parameter type, so line 57 needs no `.collect()`: in the friction.
+- `SortedSet.first_gt`: not a gap; std spells it `range(x + 1..).first` (fresh run in the friction).
+- A walk over a domain as a parameter: fixed, `Seq<Col>` takes `Col` (fresh run in the friction).
 
 ## Dream notes
 

@@ -7,7 +7,7 @@ Cold review against the friction's `## Dream`. It reads as the editorial: `Run(m
 
 ## Checklist failures
 
-- R11: the derived-leaf friction (`refresh`, lines 29, 34-35) names a general fix but quotes no run.
+- None beyond the reported gap (fresh run in the friction).
 
 ## Owed rewrites
 

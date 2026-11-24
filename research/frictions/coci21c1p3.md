@@ -9,3 +9,23 @@ Rethought. The v0.2 port built the tree's adjacency by hand during the DSU pass,
 ## Measurements
 
 gen.py --max: port 0.22 s, accepted C++ 0.24 s, same output.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+let n: 1..=5 = read()
+domain V = 1..=n
+domain E = 0..n
+let edges: [E](u: V, v: V) = read()
+let cut = E.first!
+let g = Graph.undirected([edges[e] for e in E if e != cut])
+print(g.out(V.first!).count())
+```
+
+```text
+1
+```
+
+**Status:** fixed: `Graph.undirected` takes a filtered edge list; the port's `Rooted` adjacency closure can use it.

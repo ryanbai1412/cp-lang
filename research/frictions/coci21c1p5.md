@@ -29,3 +29,23 @@ The existing `dream.cp` is the target; the port matches it except for the two li
 Measured: `cpl stress` with `checker.py` agrees with the accepted C++ (4086660) on 30 cases
 (size 10) and 60 cases (size 60); `checker.py` accepts the port's `--max` output (n = 1e6),
 0.16 s against the C++'s 0.27 s.
+
+## Fresh runs
+
+`cpl run` on a release build of main cae8efb22.
+
+```cp
+var on_level: List<List<Int>> = [[1], [2, 3]]
+domain Level = 0..on_level.len
+let level: [Level]List<Int> = on_level.into([Level])
+print(level[Level.first!])
+```
+
+```text
+error[E0203]: a `List<List<Int>>` has no method `into`
+  --> probe.cp:3:40
+3 | let level: [Level]List<Int> = on_level.into([Level])
+  |                                        ^^^^
+```
+
+**Status:** open.
