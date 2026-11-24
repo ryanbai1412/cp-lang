@@ -16,10 +16,7 @@ type Used = Subset<Colour>
 let colour: [V]Colour = read()
 let edges: [m](u: V, v: V) = read()
 
-var adj: [V]List<V> = []
-for (u, v) in edges:
-    adj[u].push(v)
-    adj[v].push(u)
+let road = Graph.undirected(edges, keep: a => a.to)
 
 // ways[s, v]: paths ending at v whose colours are exactly the set s.
 // A subset comes after all its own subsets, so one pass in order fills it.
@@ -28,5 +25,5 @@ for s in Used:
     for v in V:
         if colour[v] in s:
             let rest = s.without(colour[v])
-            ways[s, v] = if rest == Used.empty: 1 else: sum(ways[rest, u] for u in adj[v])
+            ways[s, v] = if rest == Used.empty: 1 else: sum(ways[rest, u] for u in road.out(v))
 print(sum(ways[s, v] for s in Used for v in V if s.len >= 2))
