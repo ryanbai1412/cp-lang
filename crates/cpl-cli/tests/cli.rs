@@ -1386,10 +1386,10 @@ fn what_cpl_run_cannot_do_is_an_error_in_cpl_check_that_says_what_to_write() {
         "domain E = 0..3\nlet w: [E]Int = [E] e => 3 - e.ord\nvar order = E.all\nsort(mut order, by: e => w[e])\nprint(order)\n",
     );
     assert!(
-        sort.contains("`sort` orders a list or an array, not a `Range<E>`"),
+        sort.contains("`Range<E>` does not implement `IndexedMut` required by `sort`"),
         "{sort}"
     );
-    assert!(sort.contains("`sorted(r, by: ..)`"), "{sort}");
+    assert!(sort.contains("`sorted` gives a new `List`"), "{sort}");
 }
 
 #[test]

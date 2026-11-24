@@ -285,6 +285,19 @@ fn a_tuple_with_a_closure_bound_part_by_part_is_never_built() {
 }
 
 #[test]
+fn a_users_small_sorting_fn_is_inlined_so_its_sort_is_seen_in_place() {
+    let src = "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]0..=99 = read()\nvar ord = a.collect()\n\
+               fn ascending(mut xs: List<0..=99>):\n    xs.sort()\n\
+               ascending(mut ord)\nprint(ord[0])\n";
+    let out = cpp(src);
+    assert!(
+        out.contains("sort_seq<true>(ord.begin(), ord.end())"),
+        "{out}"
+    );
+    assert!(!out.contains("ascending(ord)"), "{out}");
+}
+
+#[test]
 fn a_sort_by_negated_or_desc_cells_compares_in_place_unstably() {
     let src = |table: &str, list: &str, key: &str| {
         format!(

@@ -14,10 +14,10 @@ use crate::devirt::{skippable, Devirt};
 use crate::uses::effects::{trap_free_block, writes_own, Touch};
 use crate::uses::loops::{each_loop, stmt_count, Loop};
 use cpl_ir::{
-    Arg, Block, ClosureDef, ClosureId, Expr, ExprKind, FnId, Iter, Local, LoopId, Place, PlaceKind,
-    Program, Slot, Stmt, Ty,
+    Arg, Block, Builtin, ClosureDef, ClosureId, Expr, ExprKind, FnId, Function, Iter, Local,
+    LoopId, Mutation, Place, PlaceKind, Program, Slot, SortBy, Stmt, Ty,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Statements a spliced body may have, at any depth.
 const MAX_STMTS: usize = 12;
@@ -130,6 +130,7 @@ pub(crate) fn splice(program: &mut Program, traps: bool, fns: bool) {
             let mut ren = Ren {
                 map: Vec::with_capacity(c_locals.len()),
                 consts: Vec::with_capacity(params),
+                frozen: Vec::new(),
                 loops: BTreeMap::new(),
                 next: next_loop,
             };
@@ -275,6 +276,8 @@ struct Ren {
     map: Vec<Slot>,
     /// Parameters given a constant, which takes their place.
     consts: Vec<Option<Expr>>,
+    /// Per parameter of an inlined fn: whether it is a value nothing may write.
+    frozen: Vec<bool>,
     loops: BTreeMap<LoopId, LoopId>,
     next: LoopId,
 }
@@ -326,9 +329,23 @@ impl Ren {
     fn place(&mut self, p: &mut Place) -> bool {
         match &mut p.kind {
             PlaceKind::Local(s) => {
-                let ok = self.consts.get(*s).is_none_or(Option::is_none);
-                *s = self.map[*s];
-                ok
+                if self.frozen.get(*s) == Some(&true) {
+                    return false;
+                }
+                match self.consts.get(*s).cloned().flatten() {
+                    Some(Expr {
+                        kind: ExprKind::Global(g),
+                        ..
+                    }) if !self.frozen.is_empty() => {
+                        p.kind = PlaceKind::Global(g);
+                        true
+                    }
+                    Some(_) => false,
+                    None => {
+                        *s = self.map[*s];
+                        true
+                    }
+                }
             }
             PlaceKind::Global(_) => true,
             PlaceKind::Field(base, _) | PlaceKind::Some(base) => self.place(base),
@@ -353,6 +370,8 @@ impl Ren {
             | ExprKind::DomainVal(_) => true,
             ExprKind::Local(s) => {
                 match self.consts.get(*s).cloned().flatten() {
+                    // Inlined, a parameter is its argument, where it was written.
+                    Some(value) if !self.frozen.is_empty() => *e = value,
                     Some(value) => e.kind = value.kind,
                     None => *s = self.map[*s],
                 }
@@ -387,7 +406,587 @@ impl Ren {
                 self.place(place) && args.iter_mut().all(|a| self.expr(a))
             }
             ExprKind::Do(b) => self.block(b),
+            ExprKind::CallExpr(f, args) => {
+                self.expr(f)
+                    && args.iter_mut().all(|arg| match arg {
+                        Arg::Value(v) => self.expr(v),
+                        Arg::Mut(p) => self.place(p),
+                    })
+            }
+            ExprKind::Sort(place, by, desc) => {
+                self.place(place)
+                    && match by {
+                        SortBy::Natural => true,
+                        SortBy::Key(slot, key) => {
+                            *slot = self.map[*slot];
+                            self.expr(key)
+                        }
+                        SortBy::Fn { func, .. } => self.expr(func),
+                    }
+                    && desc.as_mut().is_none_or(|d| self.expr(d))
+            }
+            // Inlined, a fn's closures capture only globals (`inlinable`).
+            ExprKind::Closure(_) => !self.frozen.is_empty(),
             _ => false,
         }
     }
+}
+
+/// Statements, at any depth, of a fn a call may run in place.
+const MAX_INLINED: usize = 6;
+
+/// A call to a small non-recursive fn, std or user alike, whose arguments
+/// are variables, constants or closures runs the fn's body in place, so the
+/// analyses after it see what the fn does: `xs.sort(by: k)` is a sort of
+/// `xs` by `k`, and `sorted` the copy it sorts.
+pub(crate) fn inline_small(program: &mut Program) {
+    let recursive = crate::devirt::recursive_fns(program);
+    let bodies: BTreeMap<FnId, Function> = (program.fns.iter().enumerate())
+        .filter(|(id, f)| !recursive.contains(id) && inlinable(f, &program.closures))
+        .map(|(id, f)| (id, f.clone()))
+        .collect();
+    if bodies.is_empty() {
+        return;
+    }
+    let seeds = sorting(&bodies);
+    if seeds.is_empty() {
+        return;
+    }
+    let keys: Vec<Option<KeyFn>> = program.closures.iter().map(key_fn).collect();
+    let turners = turners(program);
+    let mut next = max_loop(program) + 1;
+    let mut run = |body: &mut Block, locals: &mut Vec<Local>| {
+        inline_in(body, locals, &bodies, Some(&seeds), &mut next, 3);
+        each_expr_mut(body, &mut |e| {
+            simplify(e, &keys, &turners, locals, &mut next)
+        });
+        cpl_ir::walk::blocks_mut(body, &mut flatten);
+    };
+    run(&mut program.main, &mut program.main_locals);
+    run(&mut program.setup, &mut program.main_locals);
+    for f in &mut program.fns {
+        run(&mut f.body, &mut f.locals);
+    }
+    for c in &mut program.closures {
+        run(&mut c.body, &mut c.locals);
+    }
+}
+
+/// The fns that sort a place in place, themselves or through one another.
+/// Only calls to them are run in place: their sort is what the analyses
+/// after want to see; other calls stay, so a fn's C++ stays its own.
+fn sorting(bodies: &BTreeMap<FnId, Function>) -> BTreeSet<FnId> {
+    let mut seeds = BTreeSet::new();
+    loop {
+        let before = seeds.len();
+        for (id, f) in bodies {
+            let mut sorts = false;
+            cpl_ir::walk::deep_exprs(&f.body, &mut |e| {
+                sorts |= match e.kind {
+                    ExprKind::Sort(..) => true,
+                    ExprKind::Call(g, _) => seeds.contains(&g),
+                    _ => false,
+                };
+            });
+            if sorts {
+                seeds.insert(*id);
+            }
+        }
+        if seeds.len() == before {
+            return seeds;
+        }
+    }
+}
+
+/// Runs in place each call in `body` to a fn of `only` (any inlinable fn
+/// when `None`), and inside what it runs, any inlinable fn.
+fn inline_in(
+    body: &mut Block,
+    locals: &mut Vec<Local>,
+    bodies: &BTreeMap<FnId, Function>,
+    only: Option<&BTreeSet<FnId>>,
+    next: &mut LoopId,
+    depth: usize,
+) {
+    if depth == 0 {
+        return;
+    }
+    each_expr_mut(body, &mut |e| {
+        let ExprKind::Call(f, args) = &e.kind else {
+            return;
+        };
+        if only.is_some_and(|s| !s.contains(f)) {
+            return;
+        }
+        let Some(g) = bodies.get(f) else {
+            return;
+        };
+        let mark = (locals.len(), *next);
+        if let Some(mut b) = inlined(g, args, e.span, locals, next) {
+            inline_in(&mut b, locals, bodies, None, next, depth - 1);
+            if read_globals(args).any(|gid| may_write(&b, gid)) {
+                locals.truncate(mark.0);
+                *next = mark.1;
+            } else {
+                e.kind = ExprKind::Do(b);
+            }
+        }
+    });
+}
+
+fn read_globals(args: &[Arg]) -> impl Iterator<Item = cpl_ir::GlobalId> + '_ {
+    args.iter().filter_map(|a| match a {
+        Arg::Value(Expr {
+            kind: ExprKind::Global(g),
+            ..
+        }) => Some(*g),
+        _ => None,
+    })
+}
+
+/// Whether running `b` may write global `g`: a call it still makes may.
+fn may_write(b: &Block, g: cpl_ir::GlobalId) -> bool {
+    let at = |p: &Place| cpl_ir::walk::root(p) == (true, g);
+    let mut writes = false;
+    cpl_ir::walk::deep_exprs(b, &mut |e| {
+        writes |= match &e.kind {
+            ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, _, _) => at(p),
+            ExprKind::Call(..) | ExprKind::CallExpr(..) => true,
+            _ => false,
+        };
+    });
+    cpl_ir::walk::deep_stmts(b, &mut |s| {
+        writes |= matches!(s, Stmt::Assign(p, _, _) if at(p))
+    });
+    writes
+}
+
+fn inlinable(f: &Function, closures: &[ClosureDef]) -> bool {
+    let returns_last = matches!(f.body.stmts.last(), Some(Stmt::Return(_)));
+    let mut returns = 0;
+    cpl_ir::walk::deep_stmts(&f.body, &mut |s| {
+        returns += matches!(s, Stmt::Return(_)) as usize
+    });
+    let mut captures_local = false;
+    cpl_ir::walk::deep_exprs(&f.body, &mut |e| {
+        // A closure that captures a local of `f` would capture another's once run in place.
+        captures_local |= matches!(e.kind, ExprKind::Closure(c)
+            if closures[c].captures.iter().any(|cap| !cap.is_global));
+    });
+    returns == returns_last as usize
+        && !captures_local
+        && stmt_count(&f.body) <= MAX_INLINED
+        && !f.locals.iter().any(|l| l.name == "__yields")
+}
+
+/// The body of `g` run with `args`, its locals moved into `locals`.
+fn inlined(
+    g: &Function,
+    args: &[Arg],
+    at: cpl_diag::Span,
+    locals: &mut Vec<Local>,
+    next: &mut LoopId,
+) -> Option<Block> {
+    let params = g.params.len();
+    if args.len() != params {
+        return None;
+    }
+    let mut uses = vec![0usize; params];
+    cpl_ir::walk::deep_exprs(&g.body, &mut |e| {
+        if let ExprKind::Local(s) = e.kind {
+            if s < params {
+                uses[s] += 1;
+            }
+        }
+    });
+    let mut ren = Ren {
+        map: Vec::with_capacity(g.locals.len()),
+        consts: Vec::with_capacity(params),
+        frozen: g.params.iter().map(|p| !p.mutable).collect(),
+        loops: BTreeMap::new(),
+        next: *next,
+    };
+    let (mut muts, mut values, mut temps) = (Vec::new(), Vec::new(), Vec::new());
+    for (p, arg) in args.iter().enumerate() {
+        let (slot, value) = match arg {
+            Arg::Mut(Place {
+                kind: PlaceKind::Local(s),
+                ..
+            }) => {
+                muts.push(*s);
+                (*s, None)
+            }
+            Arg::Mut(Place {
+                kind: PlaceKind::Global(gid),
+                ty,
+                span,
+            }) => {
+                let global = Expr {
+                    kind: ExprKind::Global(*gid),
+                    ty: ty.clone(),
+                    span: *span,
+                };
+                (0, Some(global))
+            }
+            Arg::Value(v) => match v.kind {
+                ExprKind::Local(s) => {
+                    values.push(s);
+                    (s, Some(v.clone()))
+                }
+                ExprKind::Unit
+                | ExprKind::Int(_)
+                | ExprKind::Bool(_)
+                | ExprKind::Char(_)
+                | ExprKind::Global(_) => (0, Some(v.clone())),
+                ExprKind::Closure(_) if uses[p] <= 1 => (0, Some(v.clone())),
+                // Any other value is worked out first, into a local of its own.
+                _ => {
+                    temps.push((p, v));
+                    (usize::MAX, None)
+                }
+            },
+            Arg::Mut(_) => return None,
+        };
+        ren.map.push(slot);
+        ren.consts.push(value);
+    }
+    if values.iter().any(|s| muts.contains(s)) {
+        return None;
+    }
+    if temps.iter().any(|(_, v)| writes_any(v, &values)) {
+        return None;
+    }
+    let base = locals.len();
+    ren.map
+        .extend((params..g.locals.len()).map(|i| base + i - params));
+    let first_temp = base + g.locals.len() - params;
+    for (k, (p, _)) in temps.iter().enumerate() {
+        ren.map[*p] = first_temp + k;
+    }
+    // What the body does is reported at the call running it, the args at their own spans.
+    let mut block = g.body.clone();
+    each_expr_mut(&mut block, &mut |e| e.span = at);
+    match block.stmts.pop() {
+        Some(Stmt::Return(Some(e))) => block.stmts.push(Stmt::Give(e)),
+        Some(Stmt::Return(None)) | None => {}
+        Some(last) => block.stmts.push(last),
+    }
+    if !ren.block(&mut block) {
+        return None;
+    }
+    *next = ren.next;
+    locals.extend(g.locals[params..].iter().cloned());
+    let lets = temps.iter().enumerate().map(|(k, (p, v))| {
+        locals.push(Local {
+            ty: v.ty.clone(),
+            ..g.locals[*p].clone()
+        });
+        Stmt::Let(first_temp + k, Some((*v).clone()))
+    });
+    block.stmts.splice(0..0, lets.collect::<Vec<_>>());
+    Some(block)
+}
+
+/// Whether working out `v` may write one of the variables `slots`.
+fn writes_any(v: &Expr, slots: &[Slot]) -> bool {
+    let at = |p: &Place| matches!(cpl_ir::walk::root(p), (false, s) if slots.contains(&s));
+    let mut writes = false;
+    cpl_ir::walk::deep_expr(v, &mut |e| {
+        writes |= match &e.kind {
+            ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, _, _) => at(p),
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                args.iter().any(|a| matches!(a, Arg::Mut(p) if at(p)))
+            }
+            _ => false,
+        };
+    });
+    if let ExprKind::Do(b) = &v.kind {
+        cpl_ir::walk::deep_stmts(b, &mut |s| {
+            writes |= matches!(s, Stmt::Assign(p, _, _) if at(p))
+        });
+    }
+    writes
+}
+
+/// A closure of one parameter that gives an expression of it and of what it
+/// captures: a sort key.
+struct KeyFn {
+    param: Slot,
+    local: Local,
+    tys: Vec<Ty>,
+    captures: Vec<cpl_ir::Capture>,
+    body: Expr,
+}
+
+fn key_fn(c: &ClosureDef) -> Option<KeyFn> {
+    let ([param], [Stmt::Return(Some(body)) | Stmt::Expr(body)]) =
+        (c.params.as_slice(), c.body.stmts.as_slice())
+    else {
+        return None;
+    };
+    (c.muts.is_empty() && c.locals.len() == 1 + c.captures.len()).then(|| KeyFn {
+        param: *param,
+        local: c.locals[*param].clone(),
+        tys: c.locals.iter().map(|l| l.ty.clone()).collect(),
+        captures: c.captures.clone(),
+        body: body.clone(),
+    })
+}
+
+/// `k` as a key read in place: its parameter a new local of the host.
+fn keyed(k: &KeyFn, locals: &mut Vec<Local>, next: &mut LoopId) -> Option<SortBy> {
+    let slot = locals.len();
+    let mut ren = Ren {
+        map: vec![slot; k.tys.len()],
+        consts: vec![None; k.tys.len()],
+        frozen: Vec::new(),
+        loops: BTreeMap::new(),
+        next: *next,
+    };
+    for cap in &k.captures {
+        if cap.is_global {
+            let ty = k.tys[cap.inner].clone();
+            ren.consts[cap.inner] = Some(Expr {
+                kind: ExprKind::Global(cap.outer),
+                ty,
+                span: k.body.span,
+            });
+        } else {
+            ren.map[cap.inner] = cap.outer;
+        }
+    }
+    let mut body = k.body.clone();
+    if !ren.expr(&mut body) {
+        return None;
+    }
+    *next = ren.next;
+    locals.push(k.local.clone());
+    Some(SortBy::Key(slot, Box::new(body)))
+}
+
+/// Rewrites what an inlined body leaves into the forms the analyses know:
+/// a sort by the identity is the natural sort, by a closure its key, a list built by pushing each
+/// item of an indexed value is its copy, and a sorted copy is `sorted`.
+fn simplify(
+    e: &mut Expr,
+    keys: &[Option<KeyFn>],
+    turners: &BTreeSet<FnId>,
+    locals: &mut Vec<Local>,
+    next: &mut LoopId,
+) {
+    if let ExprKind::Sort(_, by, desc) = &mut e.kind {
+        if let SortBy::Fn {
+            func,
+            is_order: false,
+        } = by
+        {
+            if let ExprKind::Closure(c) = func.kind {
+                if let Some(k) = &keys[c] {
+                    if is_local(&k.body, k.param) {
+                        *by = SortBy::Natural;
+                    } else if let Some(key) = keyed(k, locals, next) {
+                        *by = key;
+                    }
+                }
+            }
+        }
+        if let (SortBy::Key(_, key), None) = (&mut *by, &*desc) {
+            if let ExprKind::Call(f, args) = &key.kind {
+                if let (true, [Arg::Value(inner)]) = (turners.contains(f), args.as_slice()) {
+                    let span = key.span;
+                    **key = inner.clone();
+                    *desc = Some(Box::new(Expr {
+                        kind: ExprKind::Bool(true),
+                        ty: Ty::Bool,
+                        span,
+                    }));
+                }
+            }
+        }
+        return;
+    }
+    let kind = std::mem::replace(&mut e.kind, ExprKind::Unit);
+    e.kind = match kind {
+        ExprKind::Do(b) => match (b.stmts.as_slice(), &e.ty) {
+            ([Stmt::Expr(only)], Ty::Unit) => only.kind.clone(),
+            _ => match forward(b) {
+                b => match copied(&b).or_else(|| given(&b)).or_else(|| sorted(&b)) {
+                    Some(k) => k,
+                    None => ExprKind::Do(b),
+                },
+            },
+        },
+        k => k,
+    };
+}
+
+/// The fns that wrap their one parameter in a one-field struct ordered
+/// backwards (`desc`): a key through one is the inner key, sorted descending.
+fn turners(program: &Program) -> BTreeSet<FnId> {
+    let field =
+        |e: &Expr, slot: Slot| matches!(&e.kind, ExprKind::Field(x, 0) if is_local(x, slot));
+    let backwards = |sid: usize| {
+        let def = &program.structs[sid];
+        let Some(cpl_ir::OrdHook::Lt(lt)) = def.ord else {
+            return false;
+        };
+        def.fields.len() == 1
+            && matches!(program.fns[lt].body.stmts.as_slice(),
+                [Stmt::Return(Some(Expr { kind: ExprKind::Cmp(cpl_ir::CmpOp::Lt, b, a), .. }))]
+                    if field(b, 1) && field(a, 0))
+    };
+    (program.fns.iter().enumerate())
+        .filter(
+            |(_, f)| match (f.params.len(), &f.ret, f.body.stmts.as_slice()) {
+                (
+                    1,
+                    Ty::Struct(sid),
+                    [Stmt::Return(Some(Expr {
+                        kind: ExprKind::Tuple(xs),
+                        ..
+                    }))],
+                ) => matches!(xs.as_slice(), [x] if is_local(x, 0)) && backwards(*sid),
+                _ => false,
+            },
+        )
+        .map(|(id, _)| id)
+        .collect()
+}
+
+/// A value worked out into a local the next statement only copies or turns
+/// into a list is that statement's own operand: a copy of a fresh value is the value.
+fn forward(mut b: Block) -> Block {
+    let mut i = 0;
+    while i + 1 < b.stmts.len() {
+        let fresh = match (&b.stmts[i], &b.stmts[i + 1]) {
+            (Stmt::Let(t, Some(_)), Stmt::Let(_, Some(Expr { kind: ExprKind::Builtin(op, src), .. })))
+                if matches!(op, Builtin::Copy | Builtin::ToList | Builtin::ArrayToList)
+                    && matches!(src.as_slice(), [x] if is_local(x, *t)) =>
+            {
+                let mut reads = 0;
+                cpl_ir::walk::deep_exprs(&b, &mut |e| reads += is_local(e, *t) as usize);
+                reads == 1
+            }
+            _ => false,
+        };
+        if fresh {
+            let Stmt::Let(_, Some(value)) = b.stmts.remove(i) else {
+                unreachable!()
+            };
+            if let Stmt::Let(_, Some(init)) = &mut b.stmts[i] {
+                match &mut init.kind {
+                    ExprKind::Builtin(Builtin::Copy, _) => *init = value,
+                    ExprKind::Builtin(_, src) => src[0] = value,
+                    _ => {}
+                }
+            }
+        }
+        i += 1;
+    }
+    b
+}
+
+fn is_local(e: &Expr, slot: Slot) -> bool {
+    matches!(e.kind, ExprKind::Local(s) if s == slot)
+}
+
+fn copied(b: &Block) -> Option<ExprKind> {
+    let [Stmt::Let(acc, Some(empty)), Stmt::For(_, item, Iter::Seq(src, false), body), Stmt::Give(out)] =
+        b.stmts.as_slice()
+    else {
+        return None;
+    };
+    let [Stmt::Expr(Expr {
+        kind: ExprKind::Mutate(Mutation::Push, place, pushed),
+        ..
+    })] = body.stmts.as_slice()
+    else {
+        return None;
+    };
+    let pushes_item = matches!(place.kind, PlaceKind::Local(s) if s == *acc)
+        && matches!(pushed.as_slice(), [x] if is_local(x, *item));
+    if !(matches!(&empty.kind, ExprKind::Tuple(v) if v.is_empty())
+        && pushes_item
+        && is_local(out, *acc))
+    {
+        return None;
+    }
+    let op = match src.ty {
+        Ty::List(_) => Builtin::Copy,
+        Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..) => Builtin::ToList,
+        Ty::Array { .. } => Builtin::ArrayToList,
+        _ => return None,
+    };
+    Some(ExprKind::Builtin(op, vec![src.clone()]))
+}
+
+fn given(b: &Block) -> Option<ExprKind> {
+    match b.stmts.as_slice() {
+        [Stmt::Let(v, Some(init)), Stmt::Give(out)] if is_local(out, *v) => Some(init.kind.clone()),
+        _ => None,
+    }
+}
+
+fn sorted(b: &Block) -> Option<ExprKind> {
+    let [Stmt::Let(v, Some(init)), Stmt::Expr(Expr {
+        kind: ExprKind::Sort(place, SortBy::Natural, None),
+        ..
+    }), Stmt::Give(out)] = b.stmts.as_slice()
+    else {
+        return None;
+    };
+    if !(matches!(place.kind, PlaceKind::Local(s) if s == *v) && is_local(out, *v)) {
+        return None;
+    }
+    match &init.kind {
+        ExprKind::Builtin(Builtin::Copy, src) => {
+            Some(ExprKind::Builtin(Builtin::Sorted, src.clone()))
+        }
+        ExprKind::Local(_) | ExprKind::Global(_) => None,
+        _ => Some(ExprKind::Builtin(Builtin::Sorted, vec![init.clone()])),
+    }
+}
+
+/// A statement that is a unit `Do` giving nothing is its statements.
+fn flatten(b: &mut Block) {
+    if !b.stmts.iter().any(|s| {
+        matches!(
+            s,
+            Stmt::Expr(Expr {
+                kind: ExprKind::Do(_),
+                ty: Ty::Unit,
+                ..
+            })
+        )
+    }) {
+        return;
+    }
+    let stmts = std::mem::take(&mut b.stmts);
+    for s in stmts {
+        match s {
+            Stmt::Expr(Expr {
+                kind: ExprKind::Do(inner),
+                ty: Ty::Unit,
+                ..
+            }) if !inner.stmts.iter().any(|s| matches!(s, Stmt::Give(_))) => {
+                b.stmts.extend(inner.stmts)
+            }
+            s => b.stmts.push(s),
+        }
+    }
+}
+
+fn each_expr_mut(b: &mut Block, f: &mut dyn FnMut(&mut Expr)) {
+    for stmt in &mut b.stmts {
+        cpl_ir::walk::stmt_exprs_mut(stmt, &mut |e| expr_mut(e, f));
+        cpl_ir::walk::stmt_blocks_mut(stmt, &mut |inner| each_expr_mut(inner, f));
+    }
+}
+
+fn expr_mut(e: &mut Expr, f: &mut dyn FnMut(&mut Expr)) {
+    if let ExprKind::Do(b) = &mut e.kind {
+        each_expr_mut(b, f);
+    }
+    cpl_ir::walk::children_mut(e, &mut |c| expr_mut(c, f));
+    f(e);
 }

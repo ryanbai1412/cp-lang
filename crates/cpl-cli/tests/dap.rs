@@ -592,7 +592,7 @@ fn dap_replays_one_call_with_the_edited_fn() {
         );
         let sorted = source
             .lines()
-            .position(|l| l.trim() == "var free_at = 0")
+            .position(|l| l.trim().starts_with("sort(mut order"))
             .unwrap()
             + 1;
         assert!(

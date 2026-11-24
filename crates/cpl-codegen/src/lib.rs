@@ -227,6 +227,7 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
 /// a profile counts each call, so its build keeps them.
 fn prepared_with(program: &cpl_ir::Program, target: &Target, inline: bool) -> cpl_ir::Program {
     let mut program = program.clone();
+    splice::inline_small(&mut program);
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     (program.wide_domains, program.fixed_lens) = width::domain_sizes(&program);
     prune::prune(

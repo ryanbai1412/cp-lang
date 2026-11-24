@@ -23,5 +23,5 @@
 {"id":22,"line":13,"label":"for (a, b) in ring.cyclic_pairs():","stage":"main","values":{"stdout":["24"],"poly":[{"x":0,"y":0},{"x":4,"y":0},{"x":4,"y":3},{"x":0,"y":3}],"area":24,"ring":[3,1,4,1,5],"best":5},"locals":{"u":{"x":0,"y":3},"v":{"x":0,"y":0},"a":1,"b":4},"frames":[{"fn":"cyclic_pairs","line":13},{"fn":"main","line":13}]},
 {"id":23,"line":13,"label":"for (a, b) in ring.cyclic_pairs():","stage":"main","values":{"stdout":["24"],"poly":[{"x":0,"y":0},{"x":4,"y":0},{"x":4,"y":3},{"x":0,"y":3}],"area":24,"ring":[3,1,4,1,5],"best":5},"locals":{"u":{"x":0,"y":3},"v":{"x":0,"y":0},"a":4,"b":4},"frames":[{"fn":"cyclic_pairs","line":13},{"fn":"main","line":13}]},
 {"id":24,"line":13,"label":"for (a, b) in ring.cyclic_pairs():","stage":"main","values":{"stdout":["24"],"poly":[{"x":0,"y":0},{"x":4,"y":0},{"x":4,"y":3},{"x":0,"y":3}],"area":24,"ring":[3,1,4,1,5],"best":5},"locals":{"u":{"x":0,"y":3},"v":{"x":0,"y":0},"a":4,"b":1},"frames":[{"fn":"cyclic_pairs","line":13},{"fn":"main","line":13}]},
-... 21 more lines, 7972 bytes, fnv64 9d8f4056618152e2
+... 23 more lines, 8744 bytes, fnv64 08505da85a01a653
 stderr:

@@ -20,5 +20,5 @@
 {"id":19,"line":34,"label":"for t in 0..3 if t != s: bags[s, t].add((val(t, i) - val(s, i), i))","stage":"test case 1","values":{"stdout":[],"n":2,"k":2,"l":2,"a":[44,12],"b":[7,38],"bags":[["","",""],["","",""],["","",""],["12 1 44 0","7 0 38 1","51 0"]],"own":"","sz":[0,0,0,2],"cap":[0,0,2],"flow":0},"locals":{"s":3,"i":1,"t":1},"frames":[{"fn":"insert_state","line":34},{"fn":"main","line":48}]},
 {"id":20,"line":34,"label":"for t in 0..3 if t != s: bags[s, t].add((val(t, i) - val(s, i), i))","stage":"test case 1","values":{"stdout":[],"n":2,"k":2,"l":2,"a":[44,12],"b":[7,38],"bags":[["","",""],["","",""],["","",""],["12 1 44 0","7 0 38 1","51 0"]],"own":"","sz":[0,0,0,2],"cap":[0,0,2],"flow":0},"locals":{"s":3,"i":1,"t":2},"frames":[{"fn":"insert_state","line":34},{"fn":"main","line":48}]},
 {"id":21,"line":34,"label":"for t in 0..3 if t != s: bags[s, t].add((val(t, i) - val(s, i), i))","stage":"test case 1","values":{"stdout":[],"n":2,"k":2,"l":2,"a":[44,12],"b":[7,38],"bags":[["","",""],["","",""],["","",""],["12 1 44 0","7 0 38 1","50 1 51 0"]],"own":"","sz":[0,0,0,2],"cap":[0,0,2],"flow":0},"locals":{"s":3,"i":1,"t":2},"frames":[{"fn":"insert_state","line":34},{"fn":"main","line":48}]},
-... 1000 more lines, 538032 bytes, fnv64 cc9377f9f5b98439
+... 1000 more lines, 537747 bytes, fnv64 e4d6eefb9810d035
 stderr:

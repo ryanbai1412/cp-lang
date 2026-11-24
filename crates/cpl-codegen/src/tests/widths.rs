@@ -629,7 +629,8 @@ fn a_joined_list_sorted_by_a_key_keeps_its_narrow_cells_and_is_moved() {
     );
     assert!(narrow.contains("= std::move(links);"), "{narrow}");
     assert!(
-        narrow.contains("[&](const std::tuple<ll, int>& l) -> ll"),
+        narrow.contains("[&](const std::tuple<ll, int>& l")
+            && narrow.contains(") -> ll { return std::get<0>(l"),
         "{narrow}"
     );
     let wide = cpp(&src("Int"));

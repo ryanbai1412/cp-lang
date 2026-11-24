@@ -54,16 +54,16 @@ fn a_fixed_fn_replays_the_failing_call_alone() {
         "case.in",
         "--step",
     ];
-    let (code, out, err) = cpl(&dir, &[&replay[..], &["13"]].concat());
+    let (code, out, err) = cpl(&dir, &[&replay[..], &["14"]].concat());
     assert_eq!(code, 0, "{err}");
     assert!(
-        out.contains("call 2 of `most_watched()`, steps 13-23"),
+        out.contains("call 2 of `most_watched()`, steps 14-25"),
         "{out}"
     );
     assert!(out.contains("returns 2 (before the edit: 1)"), "{out}");
     assert!(
         out.contains(
-            "first change: step 17 line 12: `order` = [2, 1, 3] (before the edit: [1, 2, 3])"
+            "first change: step 18 line 11: `order` = [2, 1, 3] (before the edit: [1, 2, 3])"
         ),
         "{out}"
     );

@@ -1276,7 +1276,7 @@ fn is_hook_fn(program: &Program, id: FnId) -> bool {
     program.is_hook(id)
 }
 
-fn recursive_fns(program: &Program) -> BTreeSet<FnId> {
+pub(crate) fn recursive_fns(program: &Program) -> BTreeSet<FnId> {
     let n = program.fns.len();
     let mut adj: Vec<BTreeSet<FnId>> = vec![BTreeSet::new(); n];
     for (id, f) in program.fns.iter().enumerate() {
