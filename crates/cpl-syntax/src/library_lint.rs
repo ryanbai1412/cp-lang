@@ -314,9 +314,10 @@ fn scalar(p: &crate::ast::Param) -> Option<String> {
     }
 }
 
-/// Whether `to` calls nothing and writes only operators that `f`'s
-/// one-expression body writes: the lint teaches the operator `f` is
-/// defined by (`self % d` on `divmod`, whose body is `(self / d, self % d)`).
+/// Whether `to` calls nothing and writes no operator that `f`'s
+/// one-expression body does not: the lint teaches the core form `f` is
+/// defined by (`self % d` on `divmod`, whose body is `(self / d, self % d)`;
+/// `while let w = e, w > y` on `is_some_and`, whose body is `if let`).
 fn writes_body_ops(f: &FnDecl, to: &str, to_toks: &[(TokenKind, String)]) -> bool {
     struct Ops(Vec<BinOp>);
     impl crate::visit::Visitor for Ops {
@@ -339,7 +340,7 @@ fn writes_body_ops(f: &FnDecl, to: &str, to_toks: &[(TokenKind, String)]) -> boo
             crate::visit::walk_stmt(s, &mut used);
         }
     }
-    !calls && !used.0.is_empty() && used.0.iter().all(|op| have.0.contains(op))
+    !calls && used.0.iter().all(|op| have.0.contains(op))
 }
 
 /// Whether `to` uses `f` as its compound assignment, `p f= e` (`min=`,
@@ -649,5 +650,14 @@ mod tests {
         for bad in [other, call] {
             assert_eq!(errors(bad).len(), 1, "{bad}: {:?}", errors(bad));
         }
+    }
+
+    #[test]
+    fn to_may_write_a_let_condition_but_no_operator_the_body_lacks() {
+        let fun = "pub fn some_and(self: ?Int, p: Int -> Bool) -> Bool = if let Some(v) = self: p(v) else: false\n";
+        let let_cond = format!("@lint(test_then_unwrap, from: \"if (self ?? c) > y:\\n    let w = self!\\n    body\", to: \"if let w = self, w > y:\\n    body\", holes: \"c, y, body\")\n{fun}");
+        assert!(errors(&let_cond).is_empty(), "{:?}", errors(&let_cond));
+        let op = let_cond.replace("w > y:", "w + 1 > y:");
+        assert_eq!(errors(&op).len(), 1, "{:?}", errors(&op));
     }
 }

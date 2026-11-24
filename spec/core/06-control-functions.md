@@ -227,9 +227,10 @@ library or by this spec:
   a member or an index, never whole (`print(m)`), and the file with the fix
   checks as before. `to` calls the fn by name, as
   a method or getter (`xs.f`), as its compound assignment (`x max= e`,
-  R01.6.4), or calls nothing and writes only operators the fn's
-  one-expression body writes (`self % d` on `divmod`, whose body is
-  `(self / d, self % d)`). On a fn that documents a compiler built-in,
+  R01.6.4), or calls nothing and writes no operator the fn's
+  one-expression body does not (`self % d` on `divmod`, whose body is
+  `(self / d, self % d)`; `while let w = e, w > y` on `is_some_and`, whose
+  body is `if let`). On a fn that documents a compiler built-in,
   `builtin: "filled"` lets `to` call that built-in in its place
   (`[n, m].filled(c)` on a grid fn), since std cannot declare it. Or `from` calls the fn and `to` does not:
   the lint drops a needless call (`let x = s.last!` then `s.pop()` is
