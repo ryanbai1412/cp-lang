@@ -1345,6 +1345,17 @@ print(p)
 """
 out = "4 nodes"
 
+[case."Show/SeqFold/show"]
+rule = "std.lazy SeqFold prints its element count"
+code = """
+use std.lazy.{SeqFold}
+var s = SeqFold<Int>(+, [1, 2, 3])
+print(s)
+s.push(4)
+print(s)
+"""
+out = "3 elements\n4 elements"
+
 [case."Show/Dsu/show"]
 rule = "std.dsu Dsu prints each vertex's root in V order, without compressing paths"
 code = """

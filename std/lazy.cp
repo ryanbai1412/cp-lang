@@ -1,4 +1,4 @@
-//! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
+//! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `SeqFold`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
 use std.algebra.{Action, MaxCount, MinCount, Monoid, add, affine, assign}
 use std.rand.Rng
 use std.segtree.{SegTree}
@@ -1024,6 +1024,208 @@ pub struct Rope<D, T>:
         var k = 0
         self.emit(root, mut out, mut k)
         out
+
+/// A sequence of `T` that folds any run with a monoid, under lazy range tags and range reversal:
+/// an implicit treap whose nodes keep each subtree's fold in both directions, so `reverse` is a
+/// swap of the two even when `op` does not commute. Positions are 0-based.
+///
+/// Tags come from an `Action<T, F>` whose `apply(f, x, span)` acts on each element independently
+/// (it is a homomorphism of the fold, as every `Action` is), so a tag and a reversal commute.
+pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
+    lc: List<Int>
+    rc: List<Int>
+    pri: List<Int>
+    sz: List<Int>
+    val: List<T>
+    fwd: List<T>
+    bwd: List<T>
+    tag: List<?F>
+    rev: List<Bool>
+    var root: Int
+    rng: Rng
+
+    /// The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a
+    /// `Monoid(id, op)`, which need not commute. `act:` adds range tags (`apply`), such as
+    /// `flip_action(op)` or an `Action` of your own over the same monoid.
+    ///
+    /// cost: \(O(n \log n)\) expected
+    /// empty: `SeqFold<Str>(Monoid("", (a, b) => a + b), []).total == ""`
+    /// traps: never
+    /// example: `SeqFold<Int>(+, [1, 2, 3]).total == 6`
+    /// example: `SeqFold<Int>(+).total == 0`
+    pub fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>:
+        let m = Monoid<T>.of(op)
+        var s = SeqFold<T, F>(m, act, [0], [0], [0], [0], [m.id], [m.id], [m.id], [None], [false], 0, Rng(48))
+        for x in xs: s.push(x)
+        s
+
+    /// The number of elements.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `SeqFold<Int>(+).len == 0`
+    /// traps: never
+    /// example: `SeqFold<Int>(+, [4, 5]).len == 2`
+    @get pub fn len(self) -> Int = sz[root]
+
+    /// The fold of every element in order, with every tag and reversal applied.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `SeqFold<Int>(min).total == Int.MAX`
+    /// traps: never
+    /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b", "c"]); s.reverse(0..2); s.total == "bac"`
+    @get pub fn total(self) -> T = fwd[root]
+
+    /// Append `x` at the end.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: never
+    /// example: `var s = SeqFold<Int>(max); s.push(3); s.push(7); s.total == 7`
+    pub fn push(mut self, x: T):
+        root = self.join(root, self.leaf(x))
+
+    /// Insert `x` so that it becomes the element at position `pos`; `pos == len` appends.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `pos < 0` or `pos > len`
+    /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "c"]); s.insert_at(1, "b"); s.total == "abc"`
+    pub fn insert_at(mut self, pos: Int, x: T):
+        assert 0 <= pos <= self.len, "`insert_at` position out of range"
+        let (a, b) = self.cut(root, pos)
+        root = self.join(self.join(a, self.leaf(x)), b)
+
+    /// The element at position `pos`, with every tag and reversal applied.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `pos < 0` or `pos >= len`
+    /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); s.reverse(0..3); s.get(0) == 3`
+    pub fn get(mut self, pos: Int) -> T:
+        assert 0 <= pos < self.len, "`get` position out of range"
+        self.fold(pos..pos + 1)
+
+    /// The fold of the elements at positions `r`, in order. Splits and rejoins the treap, so it
+    /// takes `mut self`; the sequence is unchanged.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// empty: `var s = SeqFold<Int>(+, [1, 2]); s.fold(1..1) == 0`
+    /// traps: when a non-empty `r` reaches outside `0..len`
+    /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b", "c", "d"]); s.fold(1..3) == "bc"`
+    pub fn fold(mut self, r: Range<Int>) -> T:
+        let (lo, hi) = (r.start, r.start + r.len)
+        if lo == hi: return m.id
+        assert 0 <= lo <= hi <= self.len, "`fold` out of range"
+        let (a, bc) = self.cut(root, lo)
+        let (b, c) = self.cut(bc, hi - lo)
+        let out = fwd[b]
+        root = self.join(self.join(a, b), c)
+        out
+
+    /// Apply tag `f` to every element at positions `r`.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// empty: `var s = SeqFold<Int, Int>(+, [1, 2], act: Action<Int, Int>.of(add, +)); s.apply(1..1, 10); s.total == 3`
+    /// traps: when the sequence was built without `act:`, or a non-empty `r` reaches outside `0..len`
+    /// example: `var s = SeqFold<Int, Int>(+, [1, 2, 3], act: Action<Int, Int>.of(add, +)); s.apply(1..3, 10); s.total == 26`
+    pub fn apply(mut self, r: Range<Int>, f: F):
+        assert act != None, "`apply` needs a sequence built with `act:`"
+        let (lo, hi) = (r.start, r.start + r.len)
+        if lo == hi: return
+        assert 0 <= lo <= hi <= self.len, "`apply` out of range"
+        let (a, bc) = self.cut(root, lo)
+        let (b, c) = self.cut(bc, hi - lo)
+        self.put(b, f)
+        root = self.join(self.join(a, b), c)
+
+    /// Reverse the order of the elements at positions `r`.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// empty: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b"]); s.reverse(1..1); s.total == "ab"`
+    /// traps: when a non-empty `r` reaches outside `0..len`
+    /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b", "c", "d"]); s.reverse(1..4); s.total == "adcb"`
+    pub fn reverse(mut self, r: Range<Int>):
+        let (lo, hi) = (r.start, r.start + r.len)
+        if lo == hi: return
+        assert 0 <= lo <= hi <= self.len, "`reverse` out of range"
+        let (a, bc) = self.cut(root, lo)
+        let (b, c) = self.cut(bc, hi - lo)
+        self.flip(b)
+        root = self.join(self.join(a, b), c)
+
+    fn leaf(mut self, x: T) -> Int:
+        lc.push(0)
+        rc.push(0)
+        pri.push(Int(rng.next() >> 33))
+        sz.push(1)
+        val.push(x)
+        fwd.push(x)
+        bwd.push(x)
+        tag.push(None)
+        rev.push(false)
+        lc.len - 1
+
+    // Node 0 is the empty subtree: size 0, folds the identity, and never takes a tag or a flip.
+    fn put(mut self, u: Int, f: F):
+        if u == 0: return
+        let a = act!
+        val[u] = a.apply(f, val[u], 1)
+        fwd[u] = a.apply(f, fwd[u], sz[u])
+        bwd[u] = a.apply(f, bwd[u], sz[u])
+        tag[u] = if let old = tag[u]: Some(a.compose(f, old)) else: Some(f)
+
+    fn flip(mut self, u: Int):
+        if u == 0: return
+        rev[u] = not rev[u]
+        let t = fwd[u]
+        fwd[u] = bwd[u]
+        bwd[u] = t
+
+    fn down(mut self, u: Int):
+        if rev[u]:
+            let t = lc[u]
+            lc[u] = rc[u]
+            rc[u] = t
+            self.flip(lc[u])
+            self.flip(rc[u])
+            rev[u] = false
+        if let f = tag[u]:
+            self.put(lc[u], f)
+            self.put(rc[u], f)
+            tag[u] = None
+
+    fn pull(mut self, u: Int):
+        let (a, b) = (lc[u], rc[u])
+        sz[u] = 1 + sz[a] + sz[b]
+        fwd[u] = m.op(m.op(fwd[a], val[u]), fwd[b])
+        bwd[u] = m.op(m.op(bwd[b], val[u]), bwd[a])
+
+    fn cut(mut self, u: Int, k: Int) -> (Int, Int):
+        if u == 0: return (0, 0)
+        self.down(u)
+        let ls = sz[lc[u]]
+        if k <= ls:
+            let (a, b) = self.cut(lc[u], k)
+            lc[u] = b
+            self.pull(u)
+            return (a, u)
+        let (a, b) = self.cut(rc[u], k - ls - 1)
+        rc[u] = a
+        self.pull(u)
+        (u, b)
+
+    fn join(mut self, a: Int, b: Int) -> Int:
+        if a == 0: return b
+        if b == 0: return a
+        if pri[a] < pri[b]:
+            self.down(a)
+            rc[a] = self.join(rc[a], b)
+            self.pull(a)
+            return a
+        self.down(b)
+        lc[b] = self.join(a, lc[b])
+        self.pull(b)
+        b
+
+impl Show for SeqFold<T, F>:
+    fn show(s) = "{s.len} elements"
 
 @test
 fn lazy_treap_slope_trick_and_implicit_ops_match_brute():
