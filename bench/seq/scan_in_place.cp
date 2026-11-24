@@ -10,7 +10,7 @@ for r in 0..400:
     let lo = v.scan(min)
     for i in 0..n: v[i] = lo.prefix(i + 1)
     acc += v[n - 1 - r]
-    let hi = v.rev.scan(max)
+    let hi = [x for x in v.rev].scan(max)
     for i in 0..n: v[i] = hi.prefix(n - i)
     acc += v[r]
     v[r] = r - 1000
