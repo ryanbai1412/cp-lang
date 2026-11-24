@@ -368,7 +368,7 @@ fn a_long_token_reads_whole_in_a_native_build() {
         (7, b'\t'),
         (8, b'\r'),
         (65_536, 0x0c),
-        (9, b'\r'),
+        (9, 0x0b),
         (131_075, b'\n'),
     ]
     .into_iter()
