@@ -259,7 +259,7 @@
   "string_keyed_maps": 0,
   "tools_tests_over_30s": 6,
   "ports_over_bar": 205,
-  "perf_twins_stale": 5,
+  "perf_twins_stale": 4,
   "unreferenced_scripts": 0,
   "explain_copy_mismatches": 5,
   "corpus_max_short": 12,
