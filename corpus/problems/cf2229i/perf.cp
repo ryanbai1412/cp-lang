@@ -1,6 +1,7 @@
 // Tuned: port.cp with every DP row as plain Int and NONE = -2^62 for no way, as orig.cpp's
 // -INF vectors, not ?Int: the split's inner max is one add and one max per term, unchecked. Each
-// row is built and split in place in down[v] and up[v], with no copy of either.
+// row is built and split in place in down[v] and up[v], with no copy of either, and the
+// children join by a plain unchecked max-plus loop, as orig.cpp's conv_vecs.
 // Source: Codeforces 2229I (The Endians), https://codeforces.com/contest/2229/problem/I
 // limits: 2000 ms, 1024 MB
 // Problem: a tree of n <= 4000 nodes (sum n <= 4000, multitest) with weights w_i <= 1e9, and
@@ -30,12 +31,19 @@ let kids: [V]List<V> = [V] u => t.children(u).sorted(by: c => t.size(c))
 const NONE = -(1 << 62)  // no way; sums with it stay below NONE / 2 and clamp back
 
 fn split(f: List<Int>, b: List<Int>) -> List<Int>:
-    var res: List<Int> = [NONE for _ in 0..f.len - b.len + 1]
+    var res: List<Int> = List.filled(f.len - b.len + 1, NONE)
     for i in 0..res.len:
         var best = NONE
         unchecked:
             for j in 0..b.len: best max= f[i + j] + b[j]
         res[i] = if best < NONE / 2: NONE else: best
+    res
+
+fn join(f: List<Int>, b: List<Int>) -> List<Int>:
+    var res: List<Int> = List.filled(f.len + b.len - 1, NONE)
+    for i in 0..f.len:
+        unchecked:
+            for j in 0..b.len: res[i + j] max= f[i] + b[j]
     res
 
 var down: [V]List<Int> = []
@@ -44,7 +52,7 @@ for v in t.at.rev:
     down[v] = [0]
     for c in kids[v]:
         joined_before[v].push(down[v].clone())
-        down[v] = convolve(down[v], down[c], over: Semiring(max, +), shape: Curved.Neither)
+        down[v] = join(down[v], down[c])
     down[v].push(0)
     unchecked:
         for i in (1..down[v].len).rev: down[v][i] max= down[v][i - 1] + w[v] * i
