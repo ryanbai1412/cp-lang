@@ -3,6 +3,7 @@
 //! `Seq`; a bound on any trait, `S: Versioned<D, T>`, binds `D` and `T` from
 //! `S`'s impl of it.
 
+use super::signature::ranged_name;
 use super::*;
 
 /// A trait's args read off one impl, with the impl's params bound.
@@ -280,27 +281,20 @@ impl<'a> Lowerer<'a> {
         }
         let trait_args = self.impls[idx].trait_args.clone();
         let open = self.open_impl_params(idx, &env);
-        for (t, k) in trait_args.iter().zip(known) {
+        for (i, (t, k)) in trait_args.iter().zip(known).enumerate() {
             if let Some(k) = k {
                 self.unify_ast_ty(t, k, m, &open, &mut env);
+            }
+            // `A: Acts<T, F>` with `T = -10..=10`: the impl's `T` is that range.
+            let given = ranged.and_then(|(args, outer)| ranged_name(outer, args.get(i)?));
+            if let (ast::TypeKind::Named { name, .. }, Some(g)) = (&t.kind, given) {
+                if open.contains(&name.text) {
+                    env.insert(name.text.clone(), g);
+                }
             }
         }
         if open.iter().any(|n| !env.contains_key(n)) {
             return Some(None);
-        }
-        // `A: Acts<T, F>` with `T = -10..=10`: the impl's `T` is that range.
-        for (i, t) in trait_args.iter().enumerate() {
-            let Some((args, outer)) = ranged else { break };
-            let (ast::TypeKind::Named { name, .. }, Some(ast::TypeKind::Named { name: given, .. })) =
-                (&t.kind, args.get(i).map(|a| &a.kind))
-            else {
-                continue;
-            };
-            if let Some(g @ GenArg::Range(..)) = outer.get(&given.text) {
-                if open.contains(&name.text) {
-                    env.insert(name.text.clone(), g.clone());
-                }
-            }
         }
         let opened: GenEnv = open
             .iter()
