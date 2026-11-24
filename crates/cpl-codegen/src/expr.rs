@@ -1,5 +1,6 @@
 //! Expressions as C++.
 
+use crate::devirt::{Join, Pick};
 use crate::emit::{
     order_fn, pad, Code, Emitter, Touch, ADD, AND, BIT, COND, EQ, MUL, OR, PRIMARY, REL, SHIFT,
     UNARY,
@@ -961,8 +962,8 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::If(cond, then, otherwise) => {
                 let c = self.expr(cond);
-                if let Some(leaves) = self.devirt.join_leaves(e) {
-                    return self.pick(e, &leaves, c);
+                if let Some(join) = self.devirt.join_leaves(e) {
+                    return self.pick(&join, c);
                 }
                 let a = self.expr(then);
                 let b = self.expr(otherwise);
@@ -1000,9 +1001,9 @@ impl<'p> Emitter<'p> {
                 if let Some(place) = gives_its_place(block, &e.ty) {
                     return self.expr(place);
                 }
-                if let Some(leaves) = self.devirt.join_leaves(e) {
-                    let index = self.join_index(e, &leaves);
-                    return self.pick(e, &leaves, index);
+                if let Some(join) = self.devirt.join_leaves(e) {
+                    let index = self.join_index(&join.pick, &join.leaves);
+                    return self.pick(&join, index);
                 }
                 let ret = if let Some(k) = self.expr_fixed_len(e) {
                     self.fixed_array_cpp(&e.ty, k)
@@ -1547,10 +1548,11 @@ impl Emitter<'_> {
     /// `match` of closures (see [`crate::devirt::Devirt::join_leaves`])
     /// keeps each in its own type, builds and calls the one `index` names. For an `if`, `c` is
     /// its condition, already written.
-    fn pick(&mut self, e: &Expr, leaves: &[&Expr], c: Code) -> Code {
+    fn pick(&mut self, join: &Join, c: Code) -> Code {
         self.need("pick");
-        let index = match &e.kind {
-            ExprKind::If(_, a, b) => {
+        let leaves = &join.leaves;
+        let index = match &join.pick {
+            Pick::If(_, a, b) => {
                 let a = self.join_index(a, leaves);
                 let b = self.join_index(b, leaves);
                 format!("{} ? {} : {}", c.at(COND + 1), a.text, b.text)
@@ -1566,13 +1568,11 @@ impl Emitter<'_> {
         Code::primary(format!("cpl::pick({})", args.join(", ")))
     }
 
-    /// The index into `leaves` that join `e` picks, as an int expression.
-    fn join_index(&mut self, e: &Expr, leaves: &[&Expr]) -> Code {
-        if let Some(k) = leaves.iter().position(|leaf| std::ptr::eq(*leaf, e)) {
-            return Code::primary(k.to_string());
-        }
-        match &e.kind {
-            ExprKind::If(cond, a, b) => {
+    /// The index into `leaves` that `pick` names, as an int expression.
+    fn join_index(&mut self, pick: &Pick, leaves: &[&Expr]) -> Code {
+        match pick {
+            Pick::Leaf(k) => Code::primary(k.to_string()),
+            Pick::If(cond, a, b) => {
                 let c = self.expr(cond);
                 let a = self.join_index(a, leaves);
                 let b = self.join_index(b, leaves);
@@ -1582,7 +1582,7 @@ impl Emitter<'_> {
                     narrow: false,
                 }
             }
-            ExprKind::Do(block) => {
+            Pick::Do(block) => {
                 let indices: BTreeMap<usize, usize> = leaves
                     .iter()
                     .enumerate()
@@ -1597,9 +1597,6 @@ impl Emitter<'_> {
                 self.give_owned = give_owned;
                 code
             }
-            _ => crate::invariant::broken_invariant(
-                "join_leaves gives only ifs, dos and their leaves",
-            ),
         }
     }
 }

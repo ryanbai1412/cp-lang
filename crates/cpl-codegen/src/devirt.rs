@@ -120,6 +120,21 @@ pub(crate) enum Held {
     Many,
 }
 
+/// A value `if` or `match` of closures (see [`Devirt::join_leaves`]): the
+/// closures it picks between, in order, and how it picks one.
+pub(crate) struct Join<'e> {
+    pub leaves: Vec<&'e Expr>,
+    pub pick: Pick<'e>,
+}
+
+/// How a [`Join`] picks: leaf `k`, an `if` between two picks, or a `do`
+/// (a `match`) whose gives are all leaves.
+pub(crate) enum Pick<'e> {
+    Leaf(usize),
+    If(&'e Expr, Box<Pick<'e>>, Box<Pick<'e>>),
+    Do(&'e Block),
+}
+
 pub(crate) struct Devirt<'p> {
     program: &'p Program,
     held: BTreeMap<Home, Held>,
@@ -482,10 +497,10 @@ impl<'p> Devirt<'p> {
     /// order: closure literals and fn locals, none naming a local a branch
     /// binds; only the picked one is built, and called (`cpl::pick`).
     /// `None` when a branch is any other value or there is only one.
-    pub fn join_leaves<'e>(&self, e: &'e Expr) -> Option<Vec<&'e Expr>> {
-        let mut out = Vec::new();
-        self.join_into(e, &BTreeSet::new(), &mut out)?;
-        (out.len() > 1).then_some(out)
+    pub fn join_leaves<'e>(&self, e: &'e Expr) -> Option<Join<'e>> {
+        let mut leaves = Vec::new();
+        let pick = self.join_into(e, &BTreeSet::new(), &mut leaves)?;
+        (leaves.len() > 1).then_some(Join { leaves, pick })
     }
 
     fn join_into<'e>(
@@ -493,11 +508,12 @@ impl<'p> Devirt<'p> {
         e: &'e Expr,
         bound: &BTreeSet<usize>,
         out: &mut Vec<&'e Expr>,
-    ) -> Option<()> {
+    ) -> Option<Pick<'e>> {
         match &e.kind {
-            ExprKind::If(_, a, b) if matches!(e.ty, Ty::Fn(..)) => {
-                self.join_branch(a, bound, out)?;
-                self.join_branch(b, bound, out)
+            ExprKind::If(cond, a, b) if matches!(e.ty, Ty::Fn(..)) => {
+                let a = self.join_branch(a, bound, out)?;
+                let b = self.join_branch(b, bound, out)?;
+                Some(Pick::If(cond, Box::new(a), Box::new(b)))
             }
             ExprKind::Do(block) if matches!(e.ty, Ty::Fn(..)) => {
                 let mut bound = bound.clone();
@@ -509,7 +525,7 @@ impl<'p> Devirt<'p> {
                     }
                     out.push(give);
                 }
-                Some(())
+                Some(Pick::Do(block))
             }
             _ => None,
         }
@@ -520,10 +536,10 @@ impl<'p> Devirt<'p> {
         e: &'e Expr,
         bound: &BTreeSet<usize>,
         out: &mut Vec<&'e Expr>,
-    ) -> Option<()> {
+    ) -> Option<Pick<'e>> {
         if self.join_leaf(e, bound) {
             out.push(e);
-            return Some(());
+            return Some(Pick::Leaf(out.len() - 1));
         }
         self.join_into(e, bound, out)
     }
@@ -552,8 +568,8 @@ impl<'p> Devirt<'p> {
             return self.bound_once(home, slot, n);
         }
         self.bound_once(home, slot, n)
-            && self.join_leaves(init).is_some_and(|leaves| {
-                leaves.iter().all(|leaf| match leaf.kind {
+            && self.join_leaves(init).is_some_and(|join| {
+                join.leaves.iter().all(|leaf| match leaf.kind {
                     ExprKind::Closure(cid) => self.local_auto(slot, cid),
                     ExprKind::Local(src) => src != slot,
                     _ => false,

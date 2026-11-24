@@ -1113,3 +1113,25 @@ fn a_fed_tuple_binds_part_by_part_and_is_never_built() {
     assert!(!out.contains("std::tuple<"), "{out}");
     assert!(!out.contains("std::get<"), "{out}");
 }
+
+#[test]
+fn an_if_with_a_match_branch_of_closures_picks_through_both() {
+    let out = cpp(concat!(
+        "let m: Int = read()\n",
+        "enum K = A | B\n",
+        "fn go(k: K, flip: Bool) -> Int:\n",
+        "    let f = if flip:\n",
+        "        (t: Int) => t + m\n",
+        "    else:\n",
+        "        match k:\n",
+        "            A => (t: Int) => t * m\n",
+        "            B => (t: Int) => t - m\n",
+        "    f(3)\n",
+        "print(go(K.A, true), go(K.B, false))\n",
+    ));
+    assert!(out.contains("auto f = cpl::pick("), "{out}");
+    assert!(
+        out.contains("return 0;\n    } else if (k == K::A) {\n      return 1;"),
+        "{out}"
+    );
+}
