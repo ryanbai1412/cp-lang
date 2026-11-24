@@ -1004,3 +1004,27 @@ print(hi.cut(0), hi.cut(n - 1))
     let main = &out[out.find("void solve()").unwrap()..];
     assert!(!main.contains("to_list("), "{main}");
 }
+
+#[test]
+fn a_part_of_a_dying_payload_moves_into_its_optional() {
+    let out = cpp(concat!(
+        "struct P:\n    c: List<Int>\n",
+        "fn f(n: Int) -> ?P = if n > 0: Some(P([n])) else: None\n",
+        "fn g(n: Int) -> ?List<Int> = f(n).map(s => s.c)\n",
+        "print((g(read()) ?? []).len)\n",
+    ));
+    assert!(out.contains("std::optional<std::vector<ll>>(std::move(s.c))"), "{out}");
+    assert_eq!(crate::cpp_counts::optional_copies(&out), 0, "{out}");
+}
+
+#[test]
+fn a_part_of_a_dying_payload_moves_into_its_optional_in_main() {
+    let out = cpp(concat!(
+        "struct P:\n    c: List<Int>\n",
+        "fn f(n: Int) -> ?P = if n > 0: Some(P([n])) else: None\n",
+        "let n: Int = read()\n",
+        "print((f(n).map(s => s.c) ?? []).len)\n",
+    ));
+    assert!(out.contains("(std::move(s.c))"), "{out}");
+    assert_eq!(crate::cpp_counts::optional_copies(&out), 0, "{out}");
+}

@@ -311,6 +311,11 @@ impl<'p> Emitter<'p> {
             if last && std::ptr::eq(value, whole) {
                 if let Some(text) = self.some_moved(inner, &value.ty) {
                     v.text = text;
+                } else if matches!(inner.kind, ExprKind::Field(..) | ExprKind::Index(..))
+                    && self.returned_item_dies(std::slice::from_ref(&**inner), 0)
+                {
+                    let part = self.expr(inner).text;
+                    v.text = format!("{}({})", self.ty(&value.ty), self.moved_if(true, part));
                 }
             }
         }

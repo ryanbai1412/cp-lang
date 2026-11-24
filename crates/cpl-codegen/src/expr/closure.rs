@@ -292,6 +292,9 @@ impl<'p> Emitter<'p> {
 
         // Save enclosing emitter state and emit body.
         let saved_closure = self.closure_id.replace(cid);
+        let saved_given = std::mem::replace(&mut self.given_parts, crate::emit::given_part_roots(&def.body));
+        let saved_ref_bound = std::mem::take(&mut self.ref_bound);
+        let saved_mut_bound = std::mem::take(&mut self.mut_bound);
         let saved_names = std::mem::replace(&mut self.names, inner_names);
         let saved_hoisted = std::mem::replace(&mut self.hoisted, inner_hoisted);
         let saved_in_setup = std::mem::replace(&mut self.in_setup, false);
@@ -363,6 +366,9 @@ impl<'p> Emitter<'p> {
 
         // Restore enclosing emitter state.
         self.closure_id = saved_closure;
+        self.given_parts = saved_given;
+        self.ref_bound = saved_ref_bound;
+        self.mut_bound = saved_mut_bound;
         self.names = saved_names;
         self.hoisted = saved_hoisted;
         self.in_setup = saved_in_setup;

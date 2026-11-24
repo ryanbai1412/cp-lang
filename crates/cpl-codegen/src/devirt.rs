@@ -285,15 +285,7 @@ impl<'p> Devirt<'p> {
     /// them `auto`, the closure's own type.
     fn main_auto_globals(&self) -> BTreeSet<usize> {
         let program = self.program;
-        let mut elsewhere = BTreeSet::new();
-        crate::globals::touched(&program.setup, &mut elsewhere);
-        for f in &program.fns {
-            crate::globals::touched(&f.body, &mut elsewhere);
-        }
-        for c in &program.closures {
-            elsewhere.extend(c.captures.iter().filter(|c| c.is_global).map(|c| c.outer));
-            crate::globals::touched(&c.body, &mut elsewhere);
-        }
+        let elsewhere = crate::globals::shared(program, |_| true);
         let mut sets: BTreeMap<usize, usize> = BTreeMap::new();
         each_put(&program.main, &mut |put, _| {
             if let Put::Store(place, _) = put {

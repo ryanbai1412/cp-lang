@@ -1105,11 +1105,8 @@ impl<'p> Emitter<'p> {
                     // there. A copy would cost the whole list. One a return
                     // gives a part of, on a local the fn owns, may move it out.
                     let owner = crate::lend::bound_root(init).filter(|&src| {
-                        self.closure_id.is_none()
-                            && self
-                                .fn_id
-                                .is_some_and(|id| src >= self.program.fns[id].params.len())
-                            && !self.ref_bound.contains(&src)
+                        self.owns_local(src)
+                            && (!self.ref_bound.contains(&src) || self.mut_bound.contains(&src))
                     });
                     if owner.is_some() && self.given_parts.contains(slot) {
                         self.line(out, &format!("{cpp}& {name} = {text};"));

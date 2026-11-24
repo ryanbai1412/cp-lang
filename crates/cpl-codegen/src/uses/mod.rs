@@ -722,6 +722,10 @@ pub(crate) fn last_read(
                 return walk::root(place) != (false, slot)
                     && dead_after(program, block, k, slot, outer);
             }
+            if let Some(slot) = crate::lend::given_part_root(value) {
+                return walk::root(place) != (false, slot)
+                    && dead_after(program, block, k, slot, outer);
+            }
         }
     }
     if let Stmt::Let(bound, Some(init)) = &block.stmts[k] {

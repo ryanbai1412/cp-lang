@@ -279,6 +279,8 @@ pub(crate) struct Emitter<'p> {
     pub ref_bound: BTreeSet<usize>,
     /// Locals a `return` gives a part of (`return Some(p.x0)`, `return t.b`).
     pub given_parts: BTreeSet<usize>,
+    /// Globals a fn, closure or `setup` reads: `main` does not own them.
+    pub shared_globals: BTreeSet<usize>,
     /// Of `ref_bound`, those bound as `T&` to a local the fn owns, so a
     /// return may move a part out of it.
     pub mut_bound: BTreeSet<usize>,
@@ -404,6 +406,7 @@ impl<'p> Emitter<'p> {
             blank_next: false,
             ref_bound: BTreeSet::new(),
             given_parts: BTreeSet::new(),
+            shared_globals: BTreeSet::new(),
             mut_bound: BTreeSet::new(),
             opened: BTreeMap::new(),
             into: BTreeSet::new(),
@@ -676,16 +679,9 @@ impl<'p> Emitter<'p> {
         self.lent.clear();
         self.ref_bound.clear();
         self.mut_bound.clear();
-        self.given_parts.clear();
         self.break_targets.clear();
         self.continue_targets.clear();
-        each_sink(body, &mut |sink| {
-            if let Sink::Return(e) = sink {
-                if let Some(root) = crate::lend::given_part_root(e) {
-                    self.given_parts.insert(root);
-                }
-            }
-        });
+        self.given_parts = given_part_roots(body);
         (self.break_targets, self.continue_targets) = labeled_jumps(body);
     }
 
@@ -1136,21 +1132,8 @@ impl<'p> Emitter<'p> {
         }
         let has_tie = needs_tie && types.contains("cpl_tie");
 
-        let mut shared_globals: BTreeSet<usize> = BTreeSet::new();
-        crate::globals::touched(&program.setup, &mut shared_globals);
-        for (id, f) in program.fns.iter().enumerate() {
-            if reachable.contains(&id) {
-                crate::globals::touched(&f.body, &mut shared_globals);
-            }
-        }
-        for c in &program.closures {
-            for cap in &c.captures {
-                if cap.is_global {
-                    shared_globals.insert(cap.outer);
-                }
-            }
-            crate::globals::touched(&c.body, &mut shared_globals);
-        }
+        let shared_globals = crate::globals::shared(program, |id| reachable.contains(&id));
+        self.shared_globals = shared_globals.clone();
         let mut read_in_main: std::collections::HashSet<usize> = std::collections::HashSet::new();
         each_write(&program.main, &mut |how, place| {
             let direct =
@@ -1935,4 +1918,31 @@ fn less_variant(program: &Program, cmp: cpl_ir::FnId) -> String {
         ident(&def.name),
         ident(less.map_or("Less", |v| v.0.as_str()))
     )
+}
+
+/// The locals whose parts `body` gives out by `return` or `x = Some(part)`,
+/// and the names they were bound from.
+pub(crate) fn given_part_roots(body: &Block) -> BTreeSet<usize> {
+    let mut given = BTreeSet::new();
+    each_sink(body, &mut |sink| {
+        if let Sink::Return(e) | Sink::Store(_, cpl_ir::AssignOp::Set, e) = sink {
+            given.extend(crate::lend::given_part_root(e));
+        }
+    });
+    loop {
+        let mut found = Vec::new();
+        each_sink(body, &mut |sink| {
+            if let Sink::Let(slot, Some(init)) = sink {
+                if let ExprKind::Local(src) = init.kind {
+                    if given.contains(&slot) && !given.contains(&src) {
+                        found.push(src);
+                    }
+                }
+            }
+        });
+        if found.is_empty() {
+            return given;
+        }
+        given.extend(found);
+    }
 }

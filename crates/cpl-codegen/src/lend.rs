@@ -1819,8 +1819,9 @@ impl Emitter<'_> {
         let Some(slot) = owned_root(item) else {
             return false;
         };
-        let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
-        (slot >= params || self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot)))
+        let sunk = self.closure_id.is_none()
+            && self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot));
+        (self.owns_local(slot) || sunk)
             && (!self.ref_bound.contains(&slot) || self.mut_bound.contains(&slot))
             && !item.ty.is_scalar()
             && !matches!(item.ty, Ty::Fn(..))
@@ -1829,6 +1830,21 @@ impl Emitter<'_> {
                     && crate::uses::mentions_any(self.program, other, slot)
                     && !crate::uses::reads_apart(other, slot, &field_prefix(item))
             })
+    }
+
+    /// Whether `slot` is a local the fn or closure being written declares,
+    /// not a param or a capture.
+    pub(crate) fn owns_local(&self, slot: usize) -> bool {
+        match self.closure_id {
+            Some(cid) => {
+                let def = &self.program.closures[cid];
+                slot >= def.params.len() + def.captures.len()
+            }
+            None => match self.fn_id {
+                Some(id) => slot >= self.program.fns[id].params.len(),
+                None => !self.shared_globals.contains(&slot),
+            },
+        }
     }
 
     /// `std::move(text)` when `dies`.
