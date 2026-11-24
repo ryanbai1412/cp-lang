@@ -45,7 +45,8 @@ for v in t.at.rev:
         joined_before[v].push(f.clone())
         f = convolve(f, down[c], over: Semiring(max, +), shape: Curved.Neither)
     f.push(0)
-    for i in (1..f.len).rev: f[i] max= f[i - 1] + w[v] * i
+    unchecked:
+        for i in (1..f.len).rev: f[i] max= f[i - 1] + w[v] * i
     down[v] = f
 
 var ans: [V]Int = 0
