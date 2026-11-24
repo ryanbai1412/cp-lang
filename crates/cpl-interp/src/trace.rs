@@ -559,7 +559,12 @@ impl Tracer {
         {
             self.stopping_at = Some(self.open.len());
         }
-        let kept = self.last_steps.is_none() && self.skip == 0 && self.rec.calls.len() < MAX_STEPS;
+        // A call the trace steps over is not the user's: like its steps, it
+        // stays out of the record, so std bodies can't crowd out user calls.
+        let kept = self.last_steps.is_none()
+            && self.skip == 0
+            && !self.over_library()
+            && self.rec.calls.len() < MAX_STEPS;
         self.open.push(kept.then_some(self.rec.calls.len()));
         if kept {
             self.rec.calls.push(Call {
@@ -593,10 +598,8 @@ impl Tracer {
 
     pub fn enter_fn(&mut self, name: &str) {
         self.touch_all();
-        let pos =
-            !self.include_fns.is_empty() && self.include_fns.iter().any(|p| glob_match(p, name));
-        let neg =
-            !self.exclude_fns.is_empty() && self.exclude_fns.iter().any(|p| glob_match(p, name));
+        let pos = self.include_fns.iter().any(|p| glob_match(p, name));
+        let neg = self.exclude_fns.iter().any(|p| glob_match(p, name));
         if pos {
             self.pos_inside += 1;
         }
@@ -634,7 +637,7 @@ impl Tracer {
 
     /// Inside a call the trace steps over.
     pub(crate) fn over_library(&self) -> bool {
-        self.over.last().copied().unwrap_or(false)
+        self.over.last() == Some(&true)
     }
 
     /// A call the trace stepped over took a `mut` argument: the step at

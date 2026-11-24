@@ -408,6 +408,29 @@ for i in 1..=3:
     }
 
     #[test]
+    fn a_std_fn_called_past_the_call_cap_leaves_the_users_calls_recorded() {
+        const MANY: &str = "\
+domain Amount = 0..=25000
+fn steps(c: Int) -> Int:
+    var n = 0
+    for a in Amount:
+        if let b = a.back(c): n += 1
+    n
+print(steps(1))
+print(steps(2))
+";
+        let (recorded, trap) = run(&program(MANY), b"", config(MANY));
+        assert!(trap.is_none());
+        let calls: Vec<_> = (recorded.calls.iter())
+            .map(|c| (c.name.as_str(), c.ordinal, c.returned.as_deref()))
+            .collect();
+        assert_eq!(
+            calls,
+            [("steps", 1, Some("25000")), ("steps", 2, Some("24999"))]
+        );
+    }
+
+    #[test]
     fn an_edited_call_runs_to_its_return_and_names_its_first_change() {
         let edit = RUN.replace(
             "    total += i\n",
