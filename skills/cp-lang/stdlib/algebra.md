@@ -68,6 +68,7 @@ Fields: `has: Bool,`, `total: Int,`, `pre: Int,`, `pre_end: Cut<D>,`, `suf: Int,
 - `fn of(v: T) -> MinCount<T>` — \(O(1)\); The summary of the single element `v`: value `v`, count 1.
 - `fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T>` — \(O(1)\); The smaller value with its count; on equal values, the value with both counts summed.
 - `fn monoid() -> Monoid<MinCount<T>>` — \(O(1)\); `Monoid(id, MinCount.join)` with identity value the far end of `T` (as `Monoid.of(min)`) and count 0, for `SegTree` and `fold`.
+- `@get fn zero() -> MinCount<T>` — \(O(1)\); The empty fold, `+`'s identity: the far end of `T` (as `Monoid.of(min)`) with count 0.
 
 ## `struct MaxCount<T>(pub val: T, pub count: Int)`
 
@@ -76,6 +77,7 @@ Fields: `has: Bool,`, `total: Int,`, `pre: Int,`, `pre_end: Cut<D>,`, `suf: Int,
 - `fn of(v: T) -> MaxCount<T>` — \(O(1)\); The summary of the single element `v`: value `v`, count 1.
 - `fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T>` — \(O(1)\); The larger value with its count; on equal values, the value with both counts summed.
 - `fn monoid() -> Monoid<MaxCount<T>>` — \(O(1)\); `Monoid(id, MaxCount.join)` with identity value the low end of `T` (as `Monoid.of(max)`) and count 0, for `SegTree` and `fold`.
+- `@get fn zero() -> MaxCount<T>` — \(O(1)\); The empty fold, `+`'s identity: the low end of `T` (as `Monoid.of(max)`) with count 0.
 
 ## `struct Affine<T: Mul>(pub a: T, pub b: T)`
 

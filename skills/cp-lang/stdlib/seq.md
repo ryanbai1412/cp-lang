@@ -221,8 +221,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the last element or `None`; \(O(\log n)\) calls to `ok`.; traps: when `ok` is false at the start and true at the end; any other `ok` that is not
 - `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end of `r`; The cut where `ok` flips: false then true along `r` by default, true then false with `last: true`.; traps: when `ok` flips the other way (true then false by default, false then true with
 - `@get fn ends<D>(self: Range<D>) -> (Int, Int)` — \(O(1)\); The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.; traps: when the range is written backwards
-- `fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); First index in sorted `self` with `by(self[i]) > target`, or `None`.; traps: never; unsorted input gives an unspecified key
-- `fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); Last index in sorted `self` with `by(self[i]) < target`, or `None`.; traps: never; unsorted input gives an unspecified key
+- `fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); First index in sorted `self` with `by(self[i]) > target`, or `None`.; traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
+- `fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); Last index in sorted `self` with `by(self[i]) < target`, or `None`.; traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 - `fn inverse<I, V>(self: [I]V) -> [V]I` — \(O(\lvert I \rvert)\); Inverse of bijection `self: [I]V`: `inv[self[i]] == i` for all `i in I`.; traps: when `self` is not a bijection
 - `fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C` — \(O(\lvert A \rvert)\); Function composition: `compose(f, g)[a] == g[f[a]]`.
 - `fn perm_cycles<V>(self: [V]V) -> List<List<V>>` — \(O(\lvert V \rvert)\); Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.; traps: when `p` is not a permutation
@@ -276,8 +276,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn adjacent_diff<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), \(O(n)\) memory
 - `fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>` — \(O(1)\); traps: when `lo > hi`
 - `fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end; \(O(\log n)\).; traps: when `ok` is true at the start and false at the end; any other `ok` that is not
-- `fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>` — \(O(\log n)\); traps: never; unsorted input gives an unspecified range
-- `fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int` — \(O(\log n)\); traps: never; unsorted input gives an unspecified count
+- `fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>` — \(O(\log n)\); traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
+- `fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int` — \(O(\log n)\); traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 - `fn sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
 - `fn sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory; The values in both of two sorted sequences, merged in one pass.
 - `fn sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
