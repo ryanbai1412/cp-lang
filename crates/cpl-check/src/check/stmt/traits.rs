@@ -256,9 +256,11 @@ impl<'a> Checker<'a> {
             let (tr, tg) = (self.quote(trait_ty.span), self.quote(target.span));
             let names = super::expr::list_names(&stale);
             let args: [&dyn std::fmt::Display; 4] = [&tr, &tg, &assoc.text, &names];
-            if let Some(diag) =
-                self.report(&cpl_diag::msgs::check::ASSOC_CHOICE_NEEDS_FNS, assoc.span, &args)
-            {
+            if let Some(diag) = self.report(
+                &cpl_diag::msgs::check::ASSOC_CHOICE_NEEDS_FNS,
+                assoc.span,
+                &args,
+            ) {
                 diag.help = Some(format!(
                     "the trait's default {} written for its own `Self.{}`; write {} in this impl too",
                     if stale.len() == 1 { "body is" } else { "bodies are" },
