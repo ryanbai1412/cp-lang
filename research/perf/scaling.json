@@ -1912,6 +1912,166 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.connected": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.EulerTourTree.connected",
+   "measured": 1.27,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.cut": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.EulerTourTree.cut",
+   "measured": 1.23,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.fold_sub": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.EulerTourTree.fold_sub",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.fold_tree": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.EulerTourTree.fold_tree",
+   "measured": 1.28,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.EulerTourTree.get",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.len": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.EulerTourTree.len",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.link": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.EulerTourTree.link",
+   "measured": 1.24,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.EulerTourTree.new",
+   "measured": 4.21,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.EulerTourTree.set": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.EulerTourTree.set",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.apply_sub": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.apply_sub",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.apply_tree": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.apply_tree",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.connected": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.connected",
+   "measured": 1.27,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.cut": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.cut",
+   "measured": 1.24,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.fold_sub": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.fold_sub",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.fold_tree": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.fold_tree",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.get": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.get",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.len": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.len",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.link": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.link",
+   "measured": 1.21,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.LazyEulerTourTree.new",
+   "measured": 4.17,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/euler_tour.cp::tree.LazyEulerTourTree.set": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyEulerTourTree.set",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
   "bench/scaling/flow.cp::flow.Arc.rev": {
    "cost": "1",
    "documented": 1.0,
@@ -3094,6 +3254,390 @@
    "fn": "heap.Settle.settled",
    "measured": 1.09,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.JumpTree.add",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.ancestor": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.JumpTree.ancestor",
+   "measured": 1.1,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.depth": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.JumpTree.depth",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.dist": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.JumpTree.dist",
+   "measured": 1.08,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.jump": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.JumpTree.jump",
+   "measured": 1.1,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.jump_while": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.JumpTree.jump_while",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.lca": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.JumpTree.lca",
+   "measured": 1.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.JumpTree.new",
+   "measured": 5.26,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.parent": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.JumpTree.parent",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.JumpTree.root_of": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.JumpTree.root_of",
+   "measured": 1.17,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.ancestor": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Lift.ancestor",
+   "measured": 1.04,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.climb": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Lift.climb",
+   "measured": 1.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.climb_while": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Lift.climb_while",
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.depth": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Lift.depth",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.fold": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Lift.fold",
+   "measured": 1.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.lca": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.Lift.lca",
+   "measured": 1.24,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.new": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "tree.Lift.new",
+   "measured": 4.41,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.of": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "tree.Lift.of",
+   "measured": 4.09,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/jump_lift.cp::tree.Lift.parent": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Lift.parent",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.access": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.access",
+   "measured": 1.21,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.apply_path": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.apply_path",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.connected": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.connected",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.cut": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.cut",
+   "measured": 1.2,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.dist": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.dist",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.fold_path": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.fold_path",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.get": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.get",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.jump": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.jump",
+   "measured": 1.07,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.lca": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.lca",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.link": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.link",
+   "measured": 1.17,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.make_root": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.make_root",
+   "measured": 1.2,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.LazyLinkCut.new",
+   "measured": 4.81,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.root_of": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.root_of",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LazyLinkCut.set": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LazyLinkCut.set",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.access": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.access",
+   "measured": 1.19,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.connected": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.connected",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.cut": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.cut",
+   "measured": 1.18,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.dist": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.dist",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.fold_path": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.fold_path",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.LinkCut.get",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.jump": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.jump",
+   "measured": 1.06,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.lca": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.lca",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.link": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.link",
+   "measured": 1.16,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.make_root": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.make_root",
+   "measured": 1.21,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.LinkCut.new",
+   "measured": 5.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.root_of": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.root_of",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.LinkCut.set": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.LinkCut.set",
+   "measured": 0.98,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.PreferredPaths.access": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.PreferredPaths.access",
+   "measured": 1.2,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/link_cut.cp::tree.PreferredPaths.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.PreferredPaths.new",
+   "measured": 3.93,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/mat.cp::matrix.Mat.adjugate": {
@@ -5760,6 +6304,214 @@
    "n": 98304,
    "ok": true
   },
+  "bench/scaling/tree_misc.cp::tree.Centroids.ancestors": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Centroids.ancestors",
+   "measured": 1.16,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.Centroids.depth": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Centroids.depth",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.Centroids.new": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "tree.Centroids.new",
+   "measured": 4.72,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.Centroids.parent": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Centroids.parent",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.Centroids.piece": {
+   "cost": "\\mathit{size}(c)",
+   "documented": 4.0,
+   "fn": "tree.Centroids.piece",
+   "measured": 4.35,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.KruskalTree.bottleneck": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.KruskalTree.bottleneck",
+   "measured": 1.54,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.KruskalTree.reach": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.KruskalTree.reach",
+   "measured": 1.2,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.KruskalTree.top": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "tree.KruskalTree.top",
+   "measured": 1.29,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.KruskalTree.tree": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.KruskalTree.tree",
+   "measured": 4.48,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.KruskalTree.up": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.KruskalTree.up",
+   "measured": 4.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.LcaTable.dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.LcaTable.dist",
+   "measured": 1.08,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.LcaTable.lca": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.LcaTable.lca",
+   "measured": 1.34,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.LcaTable.new": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "tree.LcaTable.new",
+   "measured": 4.49,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.PermTree.leaf": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.PermTree.leaf",
+   "measured": 1.04,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.PermTree.left": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.PermTree.left",
+   "measured": 1.04,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.PermTree.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.PermTree.new",
+   "measured": 4.32,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.PermTree.node": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.PermTree.node",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.PermTree.right": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.PermTree.right",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.PermTree.span": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.PermTree.span",
+   "measured": 1.04,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.PermTree.vals": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.PermTree.vals",
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.cartesian_tree": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.cartesian_tree",
+   "measured": 2.75,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.dfs_tree": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "tree.dfs_tree",
+   "measured": 4.27,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.from_prufer": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.from_prufer",
+   "measured": 6.27,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.kruskal_tree": {
+   "cost": "m \\log m",
+   "documented": 4.73,
+   "fn": "tree.kruskal_tree",
+   "measured": 4.6,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.prufer": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "tree.prufer",
+   "measured": 4.08,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/tree_misc.cp::tree.spanning_tree": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "tree.spanning_tree",
+   "measured": 4.17,
+   "n": 2048,
+   "ok": true
+  },
   "bench/scaling/window.cp::window.Sweep.move": {
    "cost": "\\lvert \\mathit{dl} \\rvert + \\lvert \\mathit{dr} \\rvert",
    "documented": 4.0,
@@ -7076,6 +7828,8 @@
   "prefix.SweepAdd.new",
   "prefix.prefix_fold",
   "prefix.scan",
+  "range.RingRange.each",
+  "range.RingRange.is_empty",
   "segtree.DynamicOrderTree.count_in",
   "segtree.DynamicOrderTree.count_lt",
   "segtree.DynamicOrderTree.get",
@@ -7138,6 +7892,8 @@
   "seq.Compressed.first_gt",
   "seq.Compressed.get",
   "seq.Compressed.index_of",
+  "seq.Compressed.is_empty",
+  "seq.Compressed.items",
   "seq.Compressed.last_le",
   "seq.Compressed.last_lt",
   "seq.Compressed.len",
@@ -7148,6 +7904,7 @@
   "seq.Mapped.src",
   "seq.MonoStack.clear",
   "seq.MonoStack.is_empty",
+  "seq.MonoStack.items",
   "seq.MonoStack.len",
   "seq.MonoStack.mark",
   "seq.MonoStack.push",
@@ -7155,6 +7912,7 @@
   "seq.MonoStack.undo_to",
   "seq.OnlineLis.clear",
   "seq.OnlineLis.is_empty",
+  "seq.OnlineLis.items",
   "seq.OnlineLis.len",
   "seq.OnlineLis.mark",
   "seq.OnlineLis.push",
@@ -7175,17 +7933,22 @@
   "seq.Ring.span",
   "seq.Ring.step",
   "seq.Ring.windows",
+  "seq.RingSlice.each",
   "seq.RingSlice.end",
+  "seq.RingSlice.is_empty",
   "seq.RingSlice.keys",
   "seq.RingSlice.len",
   "seq.RingSlice.range",
   "seq.RingSlice.start",
   "seq.Slice.is_empty",
+  "seq.Slice.items",
   "seq.Slice.keys",
   "seq.Slice.len",
   "seq.StepKeys.contains",
   "seq.StepKeys.len",
   "seq.Stepped.at",
+  "seq.Stepped.each",
+  "seq.Stepped.is_empty",
   "seq.Stepped.keys",
   "seq.Stepped.len",
   "seq.Stepped.nth",
@@ -7574,100 +8337,6 @@
   "timetree.TimeTree.walk",
   "timetree.cdq",
   "timetree.offline_over",
-  "tree.Centroids.ancestors",
-  "tree.Centroids.depth",
-  "tree.Centroids.new",
-  "tree.Centroids.parent",
-  "tree.Centroids.piece",
-  "tree.EulerTourTree.connected",
-  "tree.EulerTourTree.cut",
-  "tree.EulerTourTree.fold_sub",
-  "tree.EulerTourTree.fold_tree",
-  "tree.EulerTourTree.get",
-  "tree.EulerTourTree.len",
-  "tree.EulerTourTree.link",
-  "tree.EulerTourTree.new",
-  "tree.EulerTourTree.set",
-  "tree.JumpTree.add",
-  "tree.JumpTree.ancestor",
-  "tree.JumpTree.depth",
-  "tree.JumpTree.dist",
-  "tree.JumpTree.jump",
-  "tree.JumpTree.jump_while",
-  "tree.JumpTree.lca",
-  "tree.JumpTree.new",
-  "tree.JumpTree.parent",
-  "tree.JumpTree.root_of",
-  "tree.KruskalTree.bottleneck",
-  "tree.KruskalTree.reach",
-  "tree.KruskalTree.top",
-  "tree.KruskalTree.tree",
-  "tree.KruskalTree.up",
-  "tree.LazyEulerTourTree.apply_sub",
-  "tree.LazyEulerTourTree.apply_tree",
-  "tree.LazyEulerTourTree.connected",
-  "tree.LazyEulerTourTree.cut",
-  "tree.LazyEulerTourTree.fold_sub",
-  "tree.LazyEulerTourTree.fold_tree",
-  "tree.LazyEulerTourTree.get",
-  "tree.LazyEulerTourTree.len",
-  "tree.LazyEulerTourTree.link",
-  "tree.LazyEulerTourTree.new",
-  "tree.LazyEulerTourTree.set",
-  "tree.LazyLinkCut.access",
-  "tree.LazyLinkCut.apply_path",
-  "tree.LazyLinkCut.connected",
-  "tree.LazyLinkCut.cut",
-  "tree.LazyLinkCut.dist",
-  "tree.LazyLinkCut.fold_path",
-  "tree.LazyLinkCut.get",
-  "tree.LazyLinkCut.jump",
-  "tree.LazyLinkCut.lca",
-  "tree.LazyLinkCut.link",
-  "tree.LazyLinkCut.make_root",
-  "tree.LazyLinkCut.new",
-  "tree.LazyLinkCut.root_of",
-  "tree.LazyLinkCut.set",
-  "tree.LcaTable.dist",
-  "tree.LcaTable.lca",
-  "tree.LcaTable.new",
-  "tree.Lift.ancestor",
-  "tree.Lift.climb",
-  "tree.Lift.climb_while",
-  "tree.Lift.depth",
-  "tree.Lift.fold",
-  "tree.Lift.lca",
-  "tree.Lift.new",
-  "tree.Lift.of",
-  "tree.Lift.parent",
-  "tree.LinkCut.access",
-  "tree.LinkCut.connected",
-  "tree.LinkCut.cut",
-  "tree.LinkCut.dist",
-  "tree.LinkCut.fold_path",
-  "tree.LinkCut.get",
-  "tree.LinkCut.jump",
-  "tree.LinkCut.lca",
-  "tree.LinkCut.link",
-  "tree.LinkCut.make_root",
-  "tree.LinkCut.new",
-  "tree.LinkCut.root_of",
-  "tree.LinkCut.set",
-  "tree.PermTree.leaf",
-  "tree.PermTree.left",
-  "tree.PermTree.new",
-  "tree.PermTree.node",
-  "tree.PermTree.right",
-  "tree.PermTree.span",
-  "tree.PermTree.vals",
-  "tree.PreferredPaths.access",
-  "tree.PreferredPaths.new",
-  "tree.cartesian_tree",
-  "tree.dfs_tree",
-  "tree.from_prufer",
-  "tree.kruskal_tree",
-  "tree.prufer",
-  "tree.spanning_tree",
   "window.window_fold"
  ]
 }

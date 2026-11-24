@@ -1270,7 +1270,7 @@ pub struct Centroids<V>:
     /// neighbour of `c` on the way to `v` (`c` itself for `v == c`). Pairs in different branches are
     /// exactly the paths whose highest centroid is `c`.
     ///
-    /// cost: \(O(\text{size of the piece})\)
+    /// cost: \(O(\mathit{size}(c))\), the size of the piece
     /// empty: never empty; it starts with `(v: c, dist: 0, branch: c)`
     /// order: breadth-first from `c`, neighbours in the order `next` lists them
     /// traps: never
@@ -3938,7 +3938,7 @@ pub struct KruskalTree<V, N, W>:
     /// The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds. The roots, one per
     /// component, are in increasing node order.
     ///
-    /// cost: \(O(1)\); built with the tree
+    /// cost: \(O(n)\); builds the `Rooted` on every read, so bind it once: `let t = kt.tree`
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.tree.parent(kt.leaf[1]) == kt.tree.parent(kt.leaf[2]) and kt.tree.size(kt.leaf[0]) == 1`
     @get pub fn tree(self) -> Rooted<N, _, _> = Rooted.from_parents(lift.up)

@@ -202,7 +202,7 @@
   "conformance_wrong_output": 1,
   "rust_idiom_lints": 77,
   "scaling_mismatches": 0,
-  "std_fns_unscaled": 1523,
+  "std_fns_unscaled": 1440,
   "std_types_shown_empty": 84,
   "edge_labels_unrun": 1090,
   "std_model_gaps": 679
