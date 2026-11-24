@@ -1040,9 +1040,11 @@ fn run_release(
     let limit = (args.time_limit).unwrap_or(std::time::Duration::from_secs(86_400));
     // Standard input goes to the build as it arrives, so a judge on the
     // other end of a pipe can answer what it prints.
+    // Input handed in by a caller (`run_with_input`) is not this process's
+    // stdin, so the build gets it whole.
     let ran = match input {
-        Input::Whole(input) => program.run(&String::from_utf8_lossy(&input), limit),
-        Input::Live(_) => program.run_live(stdout, limit),
+        Input::Live(_) if !INPUT_GIVEN.get() => program.run_live(stdout, limit),
+        input => program.run(&String::from_utf8_lossy(&input.whole()), limit),
     };
     let outcome = match ran {
         Ok(outcome) => outcome,
