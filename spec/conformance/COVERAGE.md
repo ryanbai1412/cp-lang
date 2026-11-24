@@ -7,13 +7,13 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3357 (1093 passing). Rules: 614.
+Cases: 3360 (1093 passing). Rules: 615.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 184 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 193 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -48,7 +48,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 |---|---|---|---|---|---|
 | R01 | 57 | 57 (100%) | 32 | 32 (100%) | 57 (100%) |
 | R02 | 53 | 53 (100%) | 30 | 30 (100%) | 53 (100%) |
-| R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
+| R03 | 25 | 25 (100%) | 14 | 14 (100%) | 25 (100%) |
 | R04 | 73 | 73 (100%) | 18 | 18 (100%) | 73 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 2 | 2 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 614 | 610 (99%) | 254 | 246 (96%) | 604 (98%) |
+| all | 615 | 611 (99%) | 255 | 247 (96%) | 605 (98%) |
 
 ## Rules
 
@@ -210,6 +210,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.2.6 [1+ 0-]: **Otherwise a tag byte** beside the largest payload, rounded up to alignment: when no fiel...
 - R03.2.7 [2+ 1-]: `[V]?T` is `[V]T` with spares wherever `T` has one: the distance array `[V]?Int` is 8 byte...
 - R03.2.8 [1+ 0-]: Storage order is chosen to minimize padding (largest alignment first, then declaration ord...
+- R03.2.9 [1+ 2-]: A struct or enum stores its fields inline, so no field may hold the type itself by value: ...
 - R03.3.1 [1+ 0-]: **Testing `None` is one compare** with the fixed pattern.
 - R03.3.2 [1+ 0-]: **`max=` on `?Int` is branch-free**: `INT64_MIN` is below every `Int`, so `None` is alread...
 - R03.3.3 [1+ 1-]: **Producing a spare value is an overflow.** `Int` arithmetic that lands on `INT64_MIN` tra...
@@ -812,6 +813,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0319 Generic fn recursion at a growing type: 1 case(s)
 - E0320 Int index into a cut table: 2 case(s)
 - E0321 negative_literal_index *(0.3)*: **no case**
+- E0322 Field that stores its own type: 2 case(s)
 - E0401 Assignment to immutable `let` binding: 5 case(s)
 - E0402 Missing `mut` at call site: 4 case(s)
 - E0403 `mut` of an immutable binding: 5 case(s)
@@ -994,7 +996,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-87 of 226 testable codes have no negative case.
+87 of 227 testable codes have no negative case.
 
 ## Spec code blocks
 
