@@ -2,8 +2,7 @@ import * as os from 'node:os';
 // The language client: starts `cpl lsp` and hands the editor's requests to
 // it. Diagnostics, hover, go-to-definition, references, rename, the outline,
 // quick fixes, completion, signature help and inlay hints all come from the
-// server's capabilities. `completion.ts` and `inlayHints.ts` fill in only
-// while no server is running or one advertises neither provider.
+// server's capabilities.
 
 import * as vscode from 'vscode';
 import {
@@ -13,9 +12,7 @@ import {
     ServerOptions,
     State,
 } from 'vscode-languageclient/node';
-import { inAttribute, registerDecoratorCompletion, registerFallbackCompletion } from './completion';
 import { installHint, RESTRICTED, resolveServer } from './cpl';
-import { registerFallbackInlayHints } from './inlayHints';
 
 export const SELECTOR = [
     { language: 'cp', scheme: 'file' },
@@ -38,9 +35,6 @@ export function serverBinary(): string | undefined {
 
 export class CpClient implements vscode.Disposable {
     private client: LanguageClient | undefined;
-    private readonly decorators = registerDecoratorCompletion(SELECTOR);
-    private fallbackCompletion: vscode.Disposable | undefined;
-    private fallbackInlayHints: vscode.Disposable | undefined;
     private readonly status: vscode.LanguageStatusItem;
     private warnedMissing = false;
     /** The `cpl` the server runs, shown in the status and the output. */
@@ -57,7 +51,6 @@ export class CpClient implements vscode.Disposable {
         const binary = serverBinary();
         if (!binary) {
             this.missingBinary();
-            this.ensureFallbacks({ completion: true, inlayHints: true });
             return;
         }
         this.binary = binary;
@@ -75,11 +68,6 @@ export class CpClient implements vscode.Disposable {
             outputChannel: this.output,
             revealOutputChannelOn: RevealOutputChannelOn.Never,
             middleware: {
-                // After `@` the decorators provider answers alone.
-                provideCompletionItem: (document, position, context, token, next) =>
-                    inAttribute(document.lineAt(position.line).text.slice(0, position.character))
-                        ? undefined
-                        : next(document, position, context, token),
                 // `cp.inlayHints.enabled` turns off the server's hints too.
                 provideInlayHints: (document, range, token, next) =>
                     vscode.workspace.getConfiguration('cp').get<boolean>('inlayHints.enabled', true)
@@ -103,7 +91,6 @@ export class CpClient implements vscode.Disposable {
                     vscode.LanguageStatusSeverity.Warning,
                     'Language server stopped — click Restart',
                 );
-                this.ensureFallbacks({ completion: true, inlayHints: true });
             }
         });
         try {
@@ -111,24 +98,14 @@ export class CpClient implements vscode.Disposable {
         } catch (error) {
             this.setStatus('cpl: failed to start', vscode.LanguageStatusSeverity.Error, binary);
             this.output.appendLine(`could not start \`${binary} ${args.join(' ')}\`: ${error}`);
-            this.ensureFallbacks({ completion: true, inlayHints: true });
             return;
         }
         const info = client.initializeResult?.serverInfo;
-        const caps = client.initializeResult?.capabilities;
-        const fallbacks = [!caps?.completionProvider && 'completion', !caps?.inlayHintProvider && 'inlay hints'].filter(
-            (x): x is string => Boolean(x),
-        );
-        const detail = fallbacks.length > 0 ? `${binary} (local fallback: ${fallbacks.join(', ')})` : binary;
         this.setStatus(
             info ? `${info.name} ${info.version ?? ''}`.trim() : 'cpl',
             vscode.LanguageStatusSeverity.Information,
-            detail,
+            binary,
         );
-        this.ensureFallbacks({
-            completion: !caps?.completionProvider,
-            inlayHints: !caps?.inlayHintProvider,
-        });
     }
 
     /** Sends `method` to the running server as the editor would, for tests and other extensions. */
@@ -140,7 +117,6 @@ export class CpClient implements vscode.Disposable {
     }
 
     async stop(): Promise<void> {
-        this.disposeFallbacks();
         const client = this.client;
         this.client = undefined;
         try {
@@ -162,30 +138,7 @@ export class CpClient implements vscode.Disposable {
 
     dispose(): void {
         void this.stop();
-        this.decorators.dispose();
         this.status.dispose();
-    }
-
-    private ensureFallbacks(need: { completion: boolean; inlayHints: boolean }): void {
-        if (need.completion && !this.fallbackCompletion) {
-            this.fallbackCompletion = registerFallbackCompletion(SELECTOR);
-        } else if (!need.completion && this.fallbackCompletion) {
-            this.fallbackCompletion.dispose();
-            this.fallbackCompletion = undefined;
-        }
-        if (need.inlayHints && !this.fallbackInlayHints) {
-            this.fallbackInlayHints = registerFallbackInlayHints(SELECTOR);
-        } else if (!need.inlayHints && this.fallbackInlayHints) {
-            this.fallbackInlayHints.dispose();
-            this.fallbackInlayHints = undefined;
-        }
-    }
-
-    private disposeFallbacks(): void {
-        this.fallbackCompletion?.dispose();
-        this.fallbackCompletion = undefined;
-        this.fallbackInlayHints?.dispose();
-        this.fallbackInlayHints = undefined;
     }
 
     private setStatus(text: string, severity: vscode.LanguageStatusSeverity, detail?: string): void {
@@ -203,7 +156,7 @@ export class CpClient implements vscode.Disposable {
             arguments: ['cp.server.path'],
         };
         this.setStatus('cpl: not found', vscode.LanguageStatusSeverity.Error, `\`${configured}\` is not on PATH`);
-        // Highlighting, snippets and fallback completion/inlay hints still work without the server.
+        // Highlighting and snippets still work without the server.
         if (this.warnedMissing) {
             return;
         }

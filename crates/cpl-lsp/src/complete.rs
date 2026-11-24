@@ -218,6 +218,12 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
     if let Some(path) = line.trim_start().strip_prefix("use ") {
         return use_completion(cursor, std, path, word);
     }
+    if head.ends_with("@!") {
+        return DIRECTIVES
+            .iter()
+            .map(|(name, detail)| item_json(&plain(name, Kind::Keyword, (*detail).into(), ""), 0))
+            .collect();
+    }
     if head.ends_with('@') {
         return DECORATORS
             .iter()
@@ -229,7 +235,7 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
     }
     match trigger {
         Some('(' | ',') => return argument_names(cursor, std, offset),
-        Some('{') => return Vec::new(),
+        Some('{' | '@' | '!') => return Vec::new(),
         _ => {}
     }
     let expected = expected_type(cursor, std, offset - word.len());
@@ -294,6 +300,18 @@ const DECORATORS: &[(&str, &str)] = &[
     (
         "lint",
         "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint",
+    ),
+];
+
+/// The file-level directives, `@!name`, in force from their line down.
+const DIRECTIVES: &[(&str, &str)] = &[
+    (
+        "multitest",
+        "file directive: loop over t test cases below, with fresh scope",
+    ),
+    (
+        "interactive",
+        "file directive: every print is flushed, for an interactive judge",
     ),
 ];
 

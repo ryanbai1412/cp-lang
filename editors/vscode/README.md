@@ -96,7 +96,6 @@ The extension launches `cpl lsp` over stdio (`cp.server.path`, default `cpl`, se
 - **From `cpl lsp`:** live diagnostics with error codes and related spans, hover types, go-to-definition, find-references (Shift+F12), rename (F2, refused for library names), document outline symbols and diagnostic quick fixes.
 - **Completion and signature help from `cpl lsp`:** `xs.` lists the receiver's fields, `@get` properties (shown as properties, so `q.len` never gets parentheses) and methods, even on a half-typed line; bare names list locals, this file's declarations, imports and prelude exports with signatures and `///` docs; `use std.` lists modules. Typing `(` or `,` shows the parameter names, types and the argument being typed.
 - **Inlay hints from `cpl lsp`:** the inferred type after each unannotated `let`/`var`/loop variable, and parameter names before literal arguments (`steps: 3`). `cp.inlayHints.enabled` turns them off.
-- **Fallback completion and inlay hints:** when `cpl lsp` does not advertise `completionProvider` or `inlayHintProvider` (or before `cpl` is built), the extension supplies 0.2.2 keyword/type/decorator completions and inferred type inlay hints (`cp.inlayHints.enabled`, default `true`) for unannotated container bindings (`SegTree<V, Int>`, `LazySegTree<V, Int>`, `Rooted<V>`, `Rng`, `compress(...)`) and declared `domain` loops (`for v in V:`). As soon as `cpl lsp` advertises its own provider, the fallback automatically steps aside so hints never duplicate.
 
 ## Running, live values, stress testing, and traces
 
@@ -117,7 +116,7 @@ fn slow():
 Sample discovery checks scratch files `i1`/`o1`, `<stem>.tests/*.in` (with `*.out`, the cases `cpl test` runs) and `<stem>.samples/*.in`.
 
 - **Run on a Sample / Run on All Samples (`cp.runSample`, `cp.runAllSamples`):** runs `cpl run <file> --format json` (automatically falling back to plain `cpl run <file>` if the installed `cpl` binary does not accept `--format json` yet), diffs stdout with judge whitespace normalization, shows inline pass/fail verdict badges, and highlights runtime traps inline and in the Problems panel (`cpl (runtime)` diagnostics) with cancellable progress.
-- **Testing panel:** every problem with a `<stem>.tests/` folder shows in VS Code's Testing view, one item per case. Running a problem or a case runs `cpl test <file> --format json` (`--case N` for one case); a wrong answer opens as a diff of the expected and the actual output, and a crash, time or memory limit shows `cpl`'s reason.
+- **Test lens:** the server's `Test` lens above a file with `<stem>.tests/` cases runs `cpl test <file>` through `cpl.exec`; each case reports its outcome and `cpl`'s message.
 - **Live Sample Values (`cp.toggleLiveValues` / `cp.liveValues.enabled`):** re-runs on save against `cp.liveValues.input` (or the first sample) and renders top-level values as end-of-line virtual decorations with full values on hover.
 - **Stress Test (`cp.stress`):** runs `cpl stress <file> --format json` (plus any extra flags in `cp.stress.args`, such as `["--cases", "1000", "--size", "10"]`). Accepts both `"status": "ok"` and `"status": "pass"`, formats counterexamples in the output channel, and paints virtual decorations on line 0 and any differing stages.
 - **Trace a Sample (`cp.trace`):** runs `cpl run <file> --trace [part] --format html` and opens self-contained HTML traces in a side-by-side VS Code webview.
@@ -154,7 +153,7 @@ Every setting the extension reads; `crates/cpl-cli/tests/vscode_sync.rs` checks 
 | `cp.server.args` | `["lsp"]` | Arguments that start the language server. The server speaks LSP on stdio. |
 | `cp.trace.server` | `"off"` | Log the messages between VS Code and the language server. |
 | `cp.codeLens.enabled` | `true` | Show Run, Stress and Trace lenses above the file, its samples and its `@alt`/`@check`/`@interactor` functions. |
-| `cp.inlayHints.enabled` | `true` | Show inferred type inlay hints for unannotated bindings and domain loops when `cpl lsp` does not provide its own. |
+| `cp.inlayHints.enabled` | `true` | Show the language server's inlay hints: inferred types, proven ranges and domain loops. |
 | `cp.liveValues.enabled` | `false` | After each save, run the file on ``cp.liveValues.input`` and show the value of each top-level `let` at the end of its line. |
 | `cp.liveValues.input` | `""` | The sample live values are computed on, such as `i1` or `1`. Empty means the file's first sample. |
 | `cp.liveValues.maxLength` | `60` | Longest value shown inline before it is cut; the full value is in the hover. |
@@ -166,8 +165,8 @@ Every setting the extension reads; `crates/cpl-cli/tests/vscode_sync.rs` checks 
 ## Layout and tests
 
 - `syntaxes/cp.tmLanguage.in.json` (the grammar; `scripts/language-data.js` fills in the std names as `syntaxes/cp.tmLanguage.json` at compile time, not committed), `language-configuration.json`, `snippets/cp.json` — grammar, indentation/bracket config, and contest snippets.
-- `src/languageData.ts`, `src/inlayHintsCore.ts`, `src/samples.ts`, `src/results.ts`, `src/cpl.ts` — pure Node-testable modules (no `vscode` import).
-- `src/extension.ts`, `src/client.ts`, `src/completion.ts`, `src/inlayHints.ts`, `src/lenses.ts`, `src/overlays.ts`, `src/runner.ts` — VS Code wiring.
+- `src/languageData.ts`, `src/samples.ts`, `src/results.ts`, `src/cpl.ts` — pure Node-testable modules (no `vscode` import).
+- `src/extension.ts`, `src/client.ts`, `src/lenses.ts`, `src/overlays.ts`, `src/runner.ts` — VS Code wiring.
 - `test/grammar/*.cp` — `vscode-tmgrammar-test` scope assertions (including `test/grammar/v2_2.cp`).
-- `test/unit/*.test.ts` — grammar/0.2.2 table parity, corpus tokenization across `proto/`, `stdlib/`, and `examples/local-lib/`, snippet validation, inlay hints, sample/lens planning, stress/run JSON parsing, and real `cpl lsp` stdio protocol checks.
+- `test/unit/*.test.ts` — grammar/0.2.2 table parity, corpus tokenization across `proto/`, `stdlib/`, and `examples/local-lib/`, snippet validation, sample/lens planning, stress/run JSON parsing, and real `cpl lsp` stdio protocol checks.
 - `test/integration/suite.ts` — end-to-end VS Code extension host suite.

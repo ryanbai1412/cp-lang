@@ -269,7 +269,9 @@ fn the_server_advertises_completion_and_signature_help() {
             Value::from("."),
             Value::from("("),
             Value::from(","),
-            Value::from("{")
+            Value::from("{"),
+            Value::from("@"),
+            Value::from("!")
         ]
     );
     assert_eq!(
@@ -771,4 +773,46 @@ fn signature_help_highlights_a_named_option_written_first() {
     assert_eq!(params[active as usize], "before: ?Int = none");
     let (_, active, params) = signature("var s = Set<Int>()\nprint(s.drain(while: |))\n");
     assert_eq!(params[active as usize], "while: (Int) -> Bool");
+}
+
+#[test]
+fn completion_after_an_at_sign_offers_decorators_and_after_at_bang_directives() {
+    let decorators = completions("@|\nfn f() -> Int = 1\n");
+    for name in ["memo", "alt", "test", "check", "interactor", "grader"] {
+        assert!(labels(&decorators).contains(&name), "{decorators:?}");
+    }
+    assert!(!labels(&decorators).contains(&"domain"), "{decorators:?}");
+    let directives = completions("@!|\nlet n: Int = read()\n");
+    assert_eq!(labels(&directives), ["multitest", "interactive"]);
+    // `!` and `@` trigger completion only where an attribute name goes.
+    let context = obj([(
+        "context",
+        obj([("triggerKind", 2.into()), ("triggerCharacter", "!".into())]),
+    )]);
+    let not_equal = ask_at_with("textDocument/completion", "let b = 1 !|\n", context);
+    assert!(
+        not_equal
+            .at(&["items"])
+            .as_array()
+            .unwrap_or(&[])
+            .is_empty(),
+        "{not_equal:?}"
+    );
+}
+
+#[test]
+fn inlay_hints_name_the_domain_a_loop_runs_over() {
+    let (mut server, _) = open("let n = 3\ndomain V = 1..=n\nfor v in V:\n    print(v)\n");
+    let reply = server.handle(&request(
+        9,
+        "textDocument/inlayHint",
+        obj([("textDocument", doc())]),
+    ));
+    let hints = reply[0].at(&["result"]).as_array().unwrap_or(&[]).to_vec();
+    let loop_hint = hints
+        .iter()
+        .find(|hint| hint.at(&["position", "line"]).as_u32() == Some(2))
+        .unwrap_or_else(|| panic!("no hint on the loop: {hints:?}"));
+    assert_eq!(loop_hint.at(&["position", "character"]).as_u32(), Some(5));
+    assert_eq!(loop_hint.at(&["label"]).as_str(), Some(": V"));
 }

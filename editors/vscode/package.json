@@ -298,7 +298,7 @@
         "cp.inlayHints.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Show inferred type inlay hints for unannotated bindings and domain loops when `cpl lsp` does not provide its own."
+          "description": "Show the language server's inlay hints: inferred types, proven ranges and domain loops."
         },
         "cp.liveValues.enabled": {
           "type": "boolean",

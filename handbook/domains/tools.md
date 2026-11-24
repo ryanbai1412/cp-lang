@@ -187,7 +187,7 @@ their front ends.
 | Every lint and error fix is a code action, and fix-all equals `cpl fix` | fixes offered as code actions; fix cases matching `cpl fix` | differential plus fuzz; rule `commands/R10` | `crates/cpl-wasm/tests/parity.rs` (`fix_all_matches_cpl_fix`), `crates/cpl-lsp/tests/fuzz.rs`; one action per fix, generated: `missing` |
 | Formatting in the editor equals `cpl fmt` | files where they differ | differential over every conformance case; rule `commands/R10` | `crates/cpl-lsp/tests/format_parity.rs` |
 | Highlighting agrees with the parser | tokens the grammars classify differently from `cpl-syntax` | generated diff | `crates/cpl-cli/tests/vscode_sync.rs`, `editors/smoke.sh` (keywords), `editors/vscode/test/grammar/`; tree-sitter and TextMate against the parser on the corpus: `missing` |
-| Inlay hints are right and can be turned off | hints matching the checker's types and ranges | hand-written suite | `editors/vscode/test/unit/inlayHints.test.ts` |
+| Inlay hints are right and can be turned off | hints matching the checker's types and ranges | hand-written suite | `crates/cpl-lsp/src/tests.rs` |
 | `cpl explain` and hover agree on storage | ports where they state the same bytes | differential; rule `commands/R10` | `crates/cpl-lsp/tests/explain_hover.rs` |
 
 ### Running and testing (J6)

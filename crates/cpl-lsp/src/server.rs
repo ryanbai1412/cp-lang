@@ -1072,7 +1072,15 @@ fn capabilities() -> Value {
                     obj([
                         (
                             "triggerCharacters",
-                            vec![".".into(), "(".into(), ",".into(), "{".into()].into(),
+                            vec![
+                                ".".into(),
+                                "(".into(),
+                                ",".into(),
+                                "{".into(),
+                                "@".into(),
+                                "!".into(),
+                            ]
+                            .into(),
                         ),
                         ("resolveProvider", true.into()),
                     ]),

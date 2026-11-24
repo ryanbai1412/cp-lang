@@ -346,12 +346,12 @@ const tests: [string, () => Promise<void>][] = [
             };
             const decorators = await labels(document.lineCount - 2, 1);
             assert.ok(
-                decorators.includes('@memo') &&
-                    decorators.includes('@alt') &&
-                    decorators.includes('@grader') &&
-                    decorators.includes('@check') &&
-                    decorators.includes('@interactor') &&
-                    decorators.includes('@law'),
+                decorators.includes('memo') &&
+                    decorators.includes('alt') &&
+                    decorators.includes('grader') &&
+                    decorators.includes('check') &&
+                    decorators.includes('interactor') &&
+                    decorators.includes('laws'),
                 decorators.join(', '),
             );
             assert.ok(!decorators.includes('domain'));
@@ -367,7 +367,7 @@ const tests: [string, () => Promise<void>][] = [
         },
     ],
     [
-        'inlay hints annotate declared domain loops without duplicating server capabilities',
+        'inlay hints from the server annotate declared domain loops',
         async () => {
             const document = await open('d.cp');
             const range = new vscode.Range(0, 0, document.lineCount - 1, 0);
