@@ -117,6 +117,12 @@ class DebtRatchetTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {"CPL": str(root / "missing")}):
                 self.assertEqual(dr.corpus_fmt_dirty(root), ["target/debug/cpl: not built; run `cargo build -p cpl-cli`"])
 
+    def test_a_package_without_a_statement_sample_fails_the_ratchet(self) -> None:
+        self.assertIn("corpus_no_statement", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"corpus_no_statement": 1}, {"corpus_no_statement": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
     def test_corpus_no_max_counts_packages_without_a_max_mode(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -1039,8 +1045,8 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertTrue(any("cpl-diag -> cpl-json" in n for n in notes))
 
     def test_evaluate_counters_and_edges(self) -> None:
-        baseline = {"near_dup_fns": 3, "dup_fn_bodies": 9, "crate_edges": ["a -> b", "a -> c"]}
-        actual = {"near_dup_fns": 4, "dup_fn_bodies": 9, "crate_edges": ["a -> b", "a -> d"]}
+        baseline = {"near_dup_fns": 3, "skip_lists": 9, "crate_edges": ["a -> b", "a -> c"]}
+        actual = {"near_dup_fns": 4, "skip_lists": 9, "crate_edges": ["a -> b", "a -> d"]}
         errs, _, notes = dr.evaluate(actual, baseline)
         self.assertEqual(len(errs), 2)
         self.assertIn("near-identical", errs[0])
