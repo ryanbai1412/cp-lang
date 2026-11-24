@@ -6,7 +6,7 @@ use super::Compiler;
 use crate::apply::{applies, operands};
 use crate::vm::helpers::quiet;
 use crate::vm::ir::*;
-use cpl_ir::{Dim, Expr, ExprKind, Program, Ty};
+use cpl_ir::{Dim, Expr, ExprKind, Mutation, Program, Ty};
 
 /// Whether comparing values of `ty` never runs user code (a struct's `eq`
 /// or `lt`), so the frame can stay in registers.
@@ -34,8 +34,8 @@ fn plain(ty: &Ty) -> bool {
     }
 }
 
-/// Whether a value of `ty` is owned data with no fn in it: a mutation of it
-/// (`crate::mutation::mutate_cell`) runs no user code and holds no frame.
+/// Whether a value of `ty` is owned data with no fn in it: comparing it in
+/// a set or map (`crate::mutation::mutate_cell`) runs no user code.
 fn owned(ty: &Ty, program: &Program) -> bool {
     match ty {
         Ty::Struct(_) | Ty::Enum(_) => !ty.has_fn(program),
@@ -95,19 +95,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     /// The mutation `expr` into a fresh value register by
-    /// `Op::MutatePlace`, when the VM can walk to its place and the values
-    /// are [`owned`].
+    /// `Op::MutatePlace`, when the VM can walk to its place.
     pub(super) fn try_compile_mutate_place(&mut self, expr: &'p Expr) -> Option<u16> {
-        let ExprKind::Mutate(_, place, args) = &expr.kind else {
+        let ExprKind::Mutate(op, place, args) = &expr.kind else {
             return None;
         };
-        let program = self.program;
-        if !owned(&place.ty, program) || !args.iter().all(|a| owned(&a.ty, program)) {
-            return None;
-        }
-        if matches!(&place.ty, cpl_ir::Ty::Set(k) | cpl_ir::Ty::Map(k, _) if crate::value::keys::user_ordered(k, program))
-        {
-            return None;
+        if let Ty::Set(k) | Ty::HashSet(k) | Ty::Map(k, _) | Ty::HashMap(k, _) = &place.ty {
+            let ordered = matches!(place.ty, Ty::Set(_) | Ty::Map(..));
+            if matches!(op, Mutation::Insert | Mutation::Remove)
+                && (!owned(k, self.program)
+                    || ordered && crate::value::keys::user_ordered(k, self.program))
+            {
+                return None;
+            }
         }
         let saved = (self.ops.len(), self.spans.len(), self.places.len());
         let Some(path) = self.compile_place_path_to(place, true) else {
