@@ -8,6 +8,8 @@
   doc says it is "not a sentinel" (the eertree's odd-root length `-1`).
 - R6 (#r6-options-are-named-arguments-with-defaults): a public fn `f_by`,
   `f_key` or `f_with` beside a public `f`: a variant where an option belongs.
+- R11 (#r11-one-form-per-operation): a top-level public fn whose first
+  parameter's type also has a public method of that name: both forms.
 
 Shrink-only: `--max` in scripts/check.sh is today's count.
 
@@ -23,6 +25,31 @@ SENTINEL = re.compile(r"`-1`|`-?INF`|\bINF\b|`len` (?:when|if)|`n` (?:when|if) (
 ORDERING = re.compile(r"^(cmp|compare)$|_sign$")
 VARIANT = re.compile(r"_(by|key|with)$")
 WORDS = {"starts_with", "ends_with"}
+OWNER = re.compile(r"^(?:pub\s+)?(?:struct|enum|trait|impl(?:<[^>]*>)?)\s+(?:[\w<>, ]+\s+for\s+)?(\w+)")
+PUB_FN = re.compile(r"^(\s*)(?:@\w+(?:\([^)]*\))?\s+)*pub\s+fn\s+(\w+)\s*(?:<[^>]*>)?\(\s*(?:\w+\s*:\s*(?:mut\s+|lent\s+)?(\w+))?")
+
+
+def both_forms(texts):
+    """std-api/R11: an operation that is both a free fn and a method of its first parameter's type."""
+    methods, free = {}, []
+    for rel, text in texts:
+        owner = None
+        for line_no, line in enumerate(text.split("\n"), 1):
+            o = OWNER.match(line)
+            if o:
+                owner = o.group(1)
+                continue
+            m = PUB_FN.match(line)
+            if not m:
+                continue
+            if m.group(1):
+                methods.setdefault(owner, set()).add(m.group(2))
+            elif m.group(3):
+                free.append((rel, line_no, m.group(2), m.group(3)))
+    for rel, line_no, name, ty in free:
+        if name in methods.get(ty, ()):
+            yield (f"{rel}:{line_no}: std-api/R11: `{name}` is both a free fn and a method of `{ty}`; "
+                   "keep one form")
 
 
 def findings():
@@ -41,6 +68,7 @@ def findings():
             v = VARIANT.search(name)
             if v and name[: v.start()] in names and name not in WORDS:
                 yield f"{rel}:{line}: std-api/R6: `{name}` is a variant; make the option a named argument"
+    yield from both_forms((os.path.relpath(p, ROOT), open(p).read()) for p in paths)
 
 
 def main():

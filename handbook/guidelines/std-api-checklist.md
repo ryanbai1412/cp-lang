@@ -135,7 +135,7 @@ A fold, sort or query of one value is a method; math on two or more values and g
 
 - **Why:** two spellings double what a reader must recognise.
 - **Example:** `xs.sum()`, `xs.sorted(by: k)`; `min(a, b)`, `gcd(a, b)`, `zip(a, b)`.
-- **Enforced by:** lint `L0509` (`free_fold`) rewrites the free form of folds; `missing` (API-consistency lint for the rest).
+- **Enforced by:** lint `L0509` (`free_fold`) rewrites the free form of folds; `scripts/std-api-lint.py` fails an operation that is both a free fn and a method of its first parameter's type.
 
 ### R12. Every container meets the common traits
 

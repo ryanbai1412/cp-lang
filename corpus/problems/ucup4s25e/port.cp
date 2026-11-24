@@ -41,7 +41,7 @@ hull.reverse()
 
 fn answer(v: Int) -> Int:
     let dir = Pt(v, 1)
-    hull[hull_extreme(hull, dir)].dot(dir)
+    dot(hull[hull_extreme(hull, dir)], dir)
 
 let qs: [0..q]Int = read()
 print([answer(v) for v in qs])

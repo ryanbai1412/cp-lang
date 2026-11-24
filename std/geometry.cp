@@ -102,30 +102,12 @@ pub struct Pt(pub x: Int, pub y: Int):
     /// example: `Pt(1, 2).to_vec == Vec(1.0, 2.0)`
     @get pub fn to_vec(self) -> Vec = Vec(F64(x), F64(y))
 
-    /// The dot product `x * o.x + y * o.y`, in `Int`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: when the result or a product overflows `Int`
-    /// example: `Pt(1, 2).dot(Pt(3, 4)) == 11`
-    /// example: `Pt(1, 0).dot(Pt(0, 1)) == 0`
-    pub fn dot(self, o: Pt) -> Int = x * o.x + y * o.y
-
     /// The exact dot product `x * o.x + y * o.y`, computed in `I128`.
     ///
     /// cost: \(O(1)\)
     /// traps: when the sum overflows `I128` (only when every coordinate is near `Int.MIN`)
     /// example: `Pt(1, 2).dot128(Pt(3, 4)) == 11`
     pub fn dot128(self, o: Pt) -> I128 = I128(x) * I128(o.x) + I128(y) * I128(o.y)
-
-    /// The 2D cross product `x * o.y - y * o.x`, in `Int`: positive when `o` is counter-clockwise
-    /// from `self`, negative when clockwise, 0 when parallel.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: when the result or a product overflows `Int`
-    /// example: `Pt(1, 0).cross(Pt(0, 1)) == 1`
-    /// example: `Pt(1, 2).cross(Pt(3, 4)) == -2`
-    /// example: `Pt(1, 2).cross(Pt(2, 4)) == 0`
-    pub fn cross(self, o: Pt) -> Int = x * o.y - y * o.x
 
     /// The exact 2D cross product `x * o.y - y * o.x`, computed in `I128`.
     ///
@@ -3706,14 +3688,14 @@ pub fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) ->
 /// example: `sphere_dist(Vec3(1.0, 0.0, 0.0), Vec3(-3.0, 0.0, 0.0), r: 2.0) == 2.0 * PI`
 pub fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64 = r * atan2(a.cross(b).len, a.dot(b))
 
-/// The dot product `a.x * b.x + a.y * b.y`, the free form of `a.dot(b)`.
+/// The dot product `a.x * b.x + a.y * b.y`.
 ///
 /// cost: \(O(1)\)
 /// traps: overflow when a product leaves `Int`; use `dot128` style `I128` maths for coordinates past about 3e9
 /// example: `dot(Pt(1, 2), Pt(3, 4)) == 11`
 pub fn dot(a: Pt, b: Pt) -> Int = a.x * b.x + a.y * b.y
 
-/// The cross product `a.x * b.y - a.y * b.x`, the free form of `a.cross(b)`: positive when
+/// The cross product `a.x * b.y - a.y * b.x`: positive when
 /// `b` is counter-clockwise from `a`.
 ///
 /// cost: \(O(1)\)

@@ -37,4 +37,4 @@ let best = solve_dc(0, n + 1)
 let hull = upper_hull([Pt(i + 1, y) for (i, v) in best.items if let y = v]).rev.collect()   // CCW for hull_extreme
 
 let qs: [0..q]Int = read()
-print([hull[hull_extreme(hull, d)].dot(d) for d in qs.map(v => Pt(v, 1))])
+print([dot(hull[hull_extreme(hull, d)], d) for d in qs.map(v => Pt(v, 1))])

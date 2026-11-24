@@ -18,7 +18,7 @@ type Airport = (City, Corner)
 // the corner opposite the right angle at p is q + r - p
 let corner = [Airport] ((c, k)) => do:
     let (a, b, c3, _) = city[c]
-    let (p, q, r) = [(a, b, c3), (b, c3, a), (c3, a, b)].find(((p, q, r)) => (q - p).dot(r - p) == 0)!
+    let (p, q, r) = [(a, b, c3), (b, c3, a), (c3, a, b)].find(((p, q, r)) => dot(q - p, r - p) == 0)!
     [a, b, c3, q + r - p][k.ord]
 
 fn price(u: Airport, v: Airport) -> F64 =

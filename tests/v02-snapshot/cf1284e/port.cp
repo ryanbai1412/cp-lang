@@ -16,7 +16,7 @@ let pts: [V]Pt = read()
 
 fn missing(c: V) -> Int:
     let rays = [pts[v] - pts[c] for v in V if v != c].sorted(by: ByAngle)
-    let ahead = rays.reach(while: (r, s) => r.cross(s) > 0, cyclic: true)
+    let ahead = rays.reach(while: (r, s) => cross(r, s) > 0, cyclic: true)
     sum(choose(k, 3) for k in ahead)
 
 print(n * choose(n - 1, 4) - sum(missing(c) for c in V))

@@ -213,7 +213,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Names follow one lexicon (`first_ge`, `count`, `len`, `try_`, `_at`) | signatures that break `guidelines/std-api.md` | rule `std-api/R1`; `missing` (API-consistency lint over `cpl doc --format json std`, shrink-only) |
 | Searches and min/max return `?T`, never a sentinel | fns returning `-1`, `n` or `INF` for "none" | rule `std-api/R4`; `scripts/std-api-lint.py` (in `scripts/check.sh`, shrink-only) |
 | Options are named arguments (`by:`), never `_by` variants | `_by`/`_key` names, positional options | rule `std-api/R6`; `scripts/std-api-lint.py` (in `scripts/check.sh`, shrink-only) |
-| One form per operation: method or free fn, not both by accident | operations reachable both ways without a documented reason | rule `std-api/R11`; `missing` (same lint) |
+| One form per operation: method or free fn, not both by accident | operations reachable both ways without a documented reason | rule `std-api/R11`; `scripts/std-api-lint.py` (an operation both a free fn and a method of its first parameter's type) |
 | Same argument order across neighbours | neighbour pairs with swapped order | rule `std-api/R8`; `missing` (same lint) |
 | Keys and indices keep their index space (positions, cuts, vertices, edges) | fns that take or return a bare `Int` where a domain exists | rule `std-api/R9`; `missing` (same lint) |
 | Every container has the common traits (`Show`, `Eq`, `Seq`, `len`, `is_empty`) | (type, expected trait) pairs missing | rule `std-api/R12`; `scripts/std-trait-matrix.py` (in `scripts/check.sh`, shrink-only) |

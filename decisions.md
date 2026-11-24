@@ -8807,4 +8807,8 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** Fields are stored inline (decision 519 keeps nodes in a pool the caller holds), so `l: ?N` would make every `N` hold another `N`: `cpl build` overflowed the compiler's stack and the C++ it emitted did not compile. A pointer-boxed `?N` would be a hidden allocation per node.
 - **Reverse.** Box a self-holding field behind a pointer and drop E0322.
 
-## 521. (reserved, content)
+## 521. `dot` and `cross` on `Pt` are free fns only (stdlib, 2026-11-24)
+
+- **Call.** `std.geometry` drops the `Pt.dot` and `Pt.cross` methods; `dot(a, b)` and `cross(a, b)` stay and join the prelude. `scripts/std-api-lint.py` fails any operation that is both a free fn and a method of its first parameter's type.
+- **Why.** std-api/R11: math on two values is a free fn, like `gcd` and `max`; two spellings double what a reader must recognise.
+- **Reverse.** Restore the two methods and drop the R11 rule from the lint.

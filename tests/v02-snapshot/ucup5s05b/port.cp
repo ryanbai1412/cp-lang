@@ -64,9 +64,9 @@ fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
             cur += dir * len
             left -= len
             let v = fold_pt(cur, m)
-            let at = u.dot(normal) + c
+            let at = dot(u, normal) + c
             let step = signs(v - u)
-            let slope = step.dot(normal)
+            let slope = dot(step, normal)
             if slope == 0:
                 if at == 0: spans.push((min(u.x, v.x), max(u.x, v.x) + 1))
             elif at % slope == 0:

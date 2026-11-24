@@ -24,9 +24,7 @@ spec/lib/geometry.md: closest_pair
 spec/lib/geometry.md: closest_pair2
 spec/lib/geometry.md: convex_hull
 spec/lib/geometry.md: convex_hull_idx
-spec/lib/geometry.md: cross
 spec/lib/geometry.md: diameter2
-spec/lib/geometry.md: dot
 spec/lib/geometry.md: half_plane_intersect
 spec/lib/geometry.md: hull_extreme
 spec/lib/geometry.md: hull_tangents

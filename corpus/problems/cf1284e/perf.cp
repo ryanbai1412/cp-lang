@@ -11,10 +11,10 @@ use std.math.choose
 struct Dir(d: Pt)
 
 impl Ord for Dir:
-    fn lt(a, b) = a.d.cross(b.d) > 0
+    fn lt(a, b) = cross(a.d, b.d) > 0
 
 impl Eq for Dir:
-    fn eq(a, b) = a.d.cross(b.d) == 0
+    fn eq(a, b) = cross(a.d, b.d) == 0
 
 let n: 5..=2500 = read()
 let pts = read<[0..n]Pt>().sorted(by: p => (p.x, p.y))

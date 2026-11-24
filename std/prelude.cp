@@ -40,7 +40,7 @@ use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
 use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph, max_closure}
-use std.geometry.{ByAngle, Location, Pt, locate, turn}
+use std.geometry.{ByAngle, Location, Pt, cross, dot, locate, turn}
 use std.ntt.{Curved, convolve}
 use std.graph.{
     Functional,

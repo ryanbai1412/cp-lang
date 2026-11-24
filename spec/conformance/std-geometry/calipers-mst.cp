@@ -71,8 +71,8 @@ for _ in 0..80:
             var neg = false
             var cuts: List<Int> = []
             for k in 0..m:
-                let s1 = d.cross(h[k] - a)
-                let s2 = d.cross(h[(k + 1) % m] - a)
+                let s1 = cross(d, h[k] - a)
+                let s2 = cross(d, h[(k + 1) % m] - a)
                 if s1 > 0: pos = true
                 if s1 < 0: neg = true
                 if (s1 > 0 and s2 <= 0) or (s1 < 0 and s2 >= 0): cuts.push(k)

@@ -4,7 +4,7 @@
 
 Plane and 3D geometry on exact integer points (`Pt`, `Pt3`) and careful floating-point vectors (`Vec`). Exact predicates compute cross and dot signs in `I128` so integer geometry is the default overflow-free path:  - `|x|, |y| <= 1e9` (e.g. `Pt<-1e9..=1e9>`): differences in `[-2e9, 2e9]`; single-vector `dot`/`cross` <= `2e18` fit `Int`, `turn`/`cross128`/`dot128` <= `8e18` fit `I128` with 19 orders of magnitude to spare, and `any_segments_meet` sweep comparisons <= `1.6e28` fit `I128`. - `|x|, |y| <= 2e18`: `turn`/`cross128`/`dot128`/`dist2_128` <= `8e36` fit `I128`. - 3D `|x|, |y|, |z| <= 1e9`: `cross3` components <= `8e18` fit `Int` (or `I128` up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
-In prelude (no `use` needed): `ByAngle`, `Location`, `Pt`, `locate`, `turn`.
+In prelude (no `use` needed): `ByAngle`, `Location`, `Pt`, `cross`, `dot`, `locate`, `turn`.
 
 ## Types & Constants
 
@@ -22,9 +22,7 @@ In prelude (no `use` needed): `ByAngle`, `Location`, `Pt`, `locate`, `turn`.
 - `@get fn angle(self) -> F64` — \(O(1)\); The polar angle `atan2(y, x)` in `(-pi, pi]`; 0 for the zero vector.
 - `fn unit_dir(self) -> Pt` — \(O(\log \max(\lvert x \rvert, \lvert y \rvert))\); The reduced integer direction `(x / g, y / g)` with `g = gcd(\|x\|, \|y\|)`; `Pt(0, 0)` for the zero vector.
 - `@get fn to_vec(self) -> Vec` — \(O(1)\); `self` as a floating-point `Vec(F64(x), F64(y))`: the explicit way across.
-- `fn dot(self, o: Pt) -> Int` — \(O(1)\); The dot product `x * o.x + y * o.y`, in `Int`.; traps: when the result or a product overflows `Int`
 - `fn dot128(self, o: Pt) -> I128` — \(O(1)\); The exact dot product `x * o.x + y * o.y`, computed in `I128`.; traps: when the sum overflows `I128` (only when every coordinate is near `Int.MIN`)
-- `fn cross(self, o: Pt) -> Int` — \(O(1)\); The 2D cross product `x * o.y - y * o.x`, in `Int`: positive when `o` is counter-clockwise from `self`, negative when clockwise, 0 when parallel.; traps: when the result or a product overflows `Int`
 - `fn cross128(self, o: Pt) -> I128` — \(O(1)\); The exact 2D cross product `x * o.y - y * o.x`, computed in `I128`.; traps: when the difference overflows `I128` (only for coordinates near `Int.MIN`)
 - `fn dist2(self, o: Pt) -> Int` — \(O(1)\); The squared Euclidean distance from `self` to `o`, in `Int`.; traps: when the result overflows `Int`
 - `fn dist2_128(self, o: Pt) -> I128` — \(O(1)\); The exact squared Euclidean distance from `self` to `o`, computed in `I128`.; traps: when the result overflows `I128` (coordinates beyond about `4e18` apart)
@@ -228,8 +226,8 @@ Fields: `xs: List<Int>`, `ys: List<Int>`, `ids: List<Int>`, `nxt: List<Int>`, `l
 - `fn polyhedron_volume6(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> I128` — \(O(\lvert \mathit{faces} \rvert)\); Six times the signed volume of the closed triangulated surface `faces` over `pts`: the sum of `pts[a].dot128(pts[b].cross(pts[c]))` over faces, computed in `I128`.; traps: when a face index is out of range
 - `fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) -> ?Vec3` — \(O(1)\); The point where the infinite line through `a` and `b` meets `plane`, or `None` when `\|plane.n.dot(b - a)\| <= eps` (parallel, including lying in the plane, or `a == b`).
 - `fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64` — \(O(1)\); The great-circle distance between the directions of `a` and `b` on a sphere of radius `r`: `r * atan2(a.cross(b).len, a.dot(b))`.
-- `fn dot(a: Pt, b: Pt) -> Int` — \(O(1)\); The dot product `a.x * b.x + a.y * b.y`, the free form of `a.dot(b)`.; traps: overflow when a product leaves `Int`; use `dot128` style `I128` maths for coordinates past about 3e9
-- `fn cross(a: Pt, b: Pt) -> Int` — \(O(1)\); The cross product `a.x * b.y - a.y * b.x`, the free form of `a.cross(b)`: positive when `b` is counter-clockwise from `a`.; traps: overflow when a product leaves `Int`
+- `fn dot(a: Pt, b: Pt) -> Int` — \(O(1)\); The dot product `a.x * b.x + a.y * b.y`.; traps: overflow when a product leaves `Int`; use `dot128` style `I128` maths for coordinates past about 3e9
+- `fn cross(a: Pt, b: Pt) -> Int` — \(O(1)\); The cross product `a.x * b.y - a.y * b.x`: positive when `b` is counter-clockwise from `a`.; traps: overflow when a product leaves `Int`
 
 ## Example
 
