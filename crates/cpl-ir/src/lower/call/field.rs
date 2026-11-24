@@ -722,57 +722,6 @@ impl<'a> Lowerer<'a> {
                 self.cells_of_grid(value, span)
             }
             (
-                Ty::List(_)
-                | Ty::ListView(_, _)
-                | Ty::Keyed(_, _)
-                | Ty::MutView(..)
-                | Ty::Array { .. }
-                | Ty::Str
-                | Ty::StrView,
-                "items",
-            ) if self.items_of(&value, span).is_some() => {
-                let pair = |items: &Items| Ty::Tuple(vec![items.index.clone(), items.elem.clone()]);
-                let held_ty = value.ty.clone();
-                let Some(shape) = self.items_of(&value, span) else {
-                    unreachable!("checked above")
-                };
-                let list_ty = Ty::List(Box::new(pair(&shape)));
-                self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
-                    let held = lw.temp(held_ty);
-                    out.push(Stmt::Let(held, Some(value)));
-                    let seq = lw.local(held, span);
-                    let items = lw.items_of(&seq, span).expect("the same type");
-                    let acc = lw.temp(list_ty.clone());
-                    out.push(Stmt::Let(
-                        acc,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
-                    ));
-                    let k = lw.temp(Ty::Int);
-                    let (at, cell) = lw.item_at(&items, k, span);
-                    let both = lw.mk(ExprKind::Tuple(vec![at, cell]), pair(&items), span);
-                    let place = Place {
-                        kind: PlaceKind::Local(acc),
-                        ty: list_ty.clone(),
-                        span: lw.span(span),
-                    };
-                    let push = lw.mk(
-                        ExprKind::Mutate(Mutation::Push, Box::new(place), vec![both]),
-                        Ty::Unit,
-                        span,
-                    );
-                    let lid = lw.fresh_loop();
-                    out.push(Stmt::For(
-                        lid,
-                        k,
-                        items.range(),
-                        Block {
-                            stmts: vec![Stmt::Expr(push)],
-                        },
-                    ));
-                    out.push(Stmt::Give(lw.local(acc, span)));
-                })
-            }
-            (
                 Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _),
                 "first",
             ) => {

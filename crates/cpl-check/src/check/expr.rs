@@ -2194,33 +2194,24 @@ impl<'a> Checker<'a> {
                 return Ty::rev_of(base_ty);
             }
         }
-        // `xs.items`: each element with its index (an `I` for `[I]T`, else `Int`).
+        // `m.items` on a map: each key with its value; a grid's cells with their `(r, c)`.
+        // A sequence's `items` is std's `Items` view.
         if name.text == "items" {
             let pair = match &base_ty {
-                Ty::Named { name: list, args } if list == "List" && args.len() == 1 => {
-                    Some((Ty::Int, args[0].clone()))
-                }
-                Ty::Str => Some((Ty::Int, Ty::Char)),
                 Ty::Named { name: map, args }
                     if matches!(map.as_str(), "Map" | "HashMap") && args.len() == 2 =>
                 {
                     Some((args[0].clone(), args[1].clone()))
                 }
-                Ty::Array { index, elem } => {
-                    let mut at: Vec<Ty> = index
+                Ty::Array { index, elem } if index.len() > 1 => {
+                    let at: Vec<Ty> = index
                         .iter()
                         .map(|axis| match axis {
                             Ty::Pos(domain) => Ty::Pos(domain.clone()),
                             _ => Ty::Int,
                         })
                         .collect();
-                    // `((r, c), x)` for a grid; one index stands alone.
-                    let at = if at.len() == 1 {
-                        at.remove(0)
-                    } else {
-                        Ty::Tuple(at)
-                    };
-                    Some((at, (**elem).clone()))
+                    Some((Ty::Tuple(at), (**elem).clone()))
                 }
                 _ => None,
             };
