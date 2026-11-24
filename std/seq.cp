@@ -181,7 +181,7 @@ pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool:
 /// traps: never (beyond what `p` traps on)
 /// example: `[1, 2, 3, 4].filter(x => x % 2 == 0).collect() == [2, 4]`
 /// example: `[5, 6, 7].filter(x => x > 5).items.collect() == [(1, 6), (2, 7)]`
-pub fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S> = todo
+pub fn filter<S: Seq<T>, T>(self: S, p: T -> Bool) -> Filtered<S, T> = Filtered(self, p)
 
 /// \(O(1)\) to make. A view giving `f(x)` for each element. Indexed when `self` is, with the same
 /// keys: `a.map(f)[i]` is `f(a[i])`, calling `f` on every read (`collect()` once to cache).
@@ -192,7 +192,7 @@ pub fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S> = todo
 /// traps: never (beyond what `f` traps on)
 /// example: `[1, 2, 3].map(x => x * x).collect() == [1, 4, 9]`
 /// example: `domain V = 1..=3; let a: [V]Int = [4, 5, 6]; a.map(x => -x)[V(2)] == -5`
-pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
+pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self, f)
 
 /// \(O(1)\). A view walking `self` backwards. Keys survive: `.items` and `.keys` give source keys,
 /// only the walk order changes, so `a.rev[i]` is a compile error and `a.rev.nth(0)` is the last
@@ -212,7 +212,7 @@ pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
 /// order: source order
 /// traps: never
 /// example: `[5, 6][1..].items.collect() == [(1, 6)]`
-@get pub fn items<S: Keyed, K, T>(self: S) -> Items<S> = todo
+@get pub fn items<S: Keyed<K, T>, K, T>(self: S) -> Items<S> = Items(self)
 
 /// \(O(1)\). The first element, `None` when empty. For the first element satisfying a predicate,
 /// use `find(p)`; for its key, `keys.find(p)`.
@@ -1305,22 +1305,60 @@ pub trait Indexed<D, T>: Keyed<D, T> + Sized + Bidir<T>:
 
 /// \(O(1)\) to make. The view `s.filter(p)`: walks `s`, skipping elements that fail `p`, with
 /// `s`'s keys. A lent value (R07.1.5).
-pub struct Filtered<S>():
+pub struct Filtered<S, T>(
     /// \(O(1)\). The source sequence this view filters.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `let a = [1, 2]; a.filter(x => x > 1).src == a`
-    @get pub fn src(self) -> S = todo
+    pub src: S,
+    p: T -> Bool,
+)
+
+impl Seq<T> for Filtered<S: Seq<T>, T>:
+    fn iter(self) -> yields T:
+        for x in src:
+            if p(x): yield x
+
+impl Keyed<D, T> for Filtered<S: Keyed<D, T>, T>:
+    fn items(self) -> yields (D, T):
+        for (k, x) in src.items:
+            if p(x): yield (k, x)
+
+impl Bidir<T> for Filtered<S: Bidir<T>, T>:
+    fn iter_rev(self) -> yields T:
+        for x in src.rev:
+            if p(x): yield x
 
 /// \(O(1)\) to make. The view `s.map(f)`: `f` of each element, with `s`'s keys; Indexed when `s` is.
-pub struct Mapped<S, U>():
+pub struct Mapped<S, T, U>(
     /// \(O(1)\). The source sequence this view maps.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `let a = [1, 2]; a.map(x => x * 2).src == a`
-    @get pub fn src(self) -> S = todo
+    pub src: S,
+    f: T -> U,
+)
+
+impl Seq<U> for Mapped<S: Seq<T>, T, U>:
+    fn iter(self) -> yields U:
+        for x in src: yield f(x)
+
+impl Keyed<D, U> for Mapped<S: Keyed<D, T>, T, U>:
+    fn items(self) -> yields (D, U):
+        for (k, x) in src.items: yield (k, f(x))
+
+impl Sized for Mapped<S: Sized, T, U>:
+    @get fn len(self) -> Int = src.len
+
+impl Bidir<U> for Mapped<S: Bidir<T>, T, U>:
+    fn iter_rev(self) -> yields U:
+        for x in src.rev: yield f(x)
+
+impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
+    fn at(self, i: D) -> U = f(src.at(i))
+    @get fn keys(self) -> Range<D> = src.keys
 
 /// \(O(1)\) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
 pub struct Rev<S>():
@@ -1379,13 +1417,21 @@ pub struct Rev<S>():
     pub fn drop_last(self, k: Int = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
 
 /// \(O(1)\) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
-pub struct Items<S>():
+pub struct Items<S>(
     /// \(O(1)\). The source sequence whose items this view walks.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `let a = [1, 2]; a.items.src == a`
-    @get pub fn src(self) -> S = todo
+    pub src: S,
+)
+
+impl Seq<(D, T)> for Items<S: Keyed<D, T>>:
+    fn iter(self) -> yields (D, T):
+        for (k, x) in src.items: yield (k, x)
+
+impl Sized for Items<S: Sized>:
+    @get fn len(self) -> Int = src.len
 
 /// \(O(1)\) to make. `s[r]`: a borrowed view of `s` over the range `r`. Every slice keeps its
 /// source's keys: `a[l..=r][i]` is `a[i]` and `i` must lie in `l..=r`; for a `List` or `Str`,

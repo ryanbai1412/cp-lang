@@ -89,7 +89,11 @@ fn item_name(header: &str) -> String {
         let end = after.find([':', '=']).unwrap_or(after.len());
         return after[..end].trim().to_string();
     }
-    if let Some((_keyword, after)) = rest.split_once(' ') {
+    if let Some((first, after)) = rest.split_once(' ') {
+        // A field, `src: S,`, names itself; other headers lead with a keyword.
+        if let Some(field) = first.strip_suffix(':') {
+            return field.to_string();
+        }
         rest = after.trim_start();
     }
     let end = rest
@@ -304,4 +308,18 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
         (ex.id.clone(), outcome)
     });
     SuiteReport::from_outcomes(outcomes)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_field_doc_example_is_named_by_the_field() {
+        let text =
+            "pub struct View<S, T>(\n    /// example: `1 == 1`\n    pub src: S,\n    p: T,\n)\n";
+        let ids: Vec<_> = super::doc_examples("seq.cp", text)
+            .into_iter()
+            .map(|(id, _, _)| id)
+            .collect();
+        assert_eq!(ids, ["seq.cp#View.src:1"]);
+    }
 }
