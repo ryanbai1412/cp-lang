@@ -34,7 +34,17 @@ def fixed_cost(n, seed):
     return "\n".join(rows) + "\n"
 
 
+def parents(t, n, seed):
+    rng = random.Random(seed)
+    rows = [str(t)]
+    for _ in range(t):
+        rows.append(str(n))
+        rows.append(" ".join(str(rng.randint(1, i - 1)) for i in range(2, n + 1)))
+    return "\n".join(rows) + "\n"
+
+
 BENCHES = {
+    "from_parents": lambda: parents(2000, 1000, 5),
     "bfs": lambda: graph(10**6, 2 * 10**6, None, 1),
     "bfs01": lambda: graph(10**6, 2 * 10**6, lambda r: r.randint(0, 1), 2),
     "dijkstra": lambda: graph(5 * 10**5, 2 * 10**6, lambda r: r.randint(1, 10**9), 3),

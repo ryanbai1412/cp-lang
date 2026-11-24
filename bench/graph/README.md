@@ -11,6 +11,10 @@ the script checks the outputs agree and reports best-of-N wall time.
 | bfs01 | 0.320 | 0.202 | 1.58x |
 | dijkstra | 0.412 | 0.350 | 1.18x |
 | fixed_cost | 0.178 | 0.165 | 1.08x |
+| from_parents | 0.109 | 0.094 | 1.16x |
+
+`from_parents` is 2000 trees of 1000 vertices from parent arrays (cf2138c1); a per-vertex child
+list made it 1.94x before its children became compressed rows.
 
 The gap is not in the search loops. Two codegen limits cost most of it:
 
