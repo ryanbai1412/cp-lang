@@ -204,12 +204,12 @@ std/beats.cp: BeatsSegTree.chdiv(mut self, r: Range<D>, d: Int)
 std/beats.cp: BeatsSegTree.chmax(mut self, r: Range<D>, x: Int)
 std/beats.cp: BeatsSegTree.chmin(mut self, r: Range<D>, x: Int)
 std/beats.cp: BeatsSegTree.chmod(mut self, r: Range<D>, m: Int)
-std/beats.cp: BeatsSegTree.get(mut self, i: D) -> Int
-std/beats.cp: BeatsSegTree.max_val(mut self, r: Range<D>) -> ?Int
-std/beats.cp: BeatsSegTree.min_val(mut self, r: Range<D>) -> ?Int
+std/beats.cp: BeatsSegTree.get(self, i: D) -> Int
+std/beats.cp: BeatsSegTree.max_val(self, r: Range<D>) -> ?Int
+std/beats.cp: BeatsSegTree.min_val(self, r: Range<D>) -> ?Int
 std/beats.cp: BeatsSegTree.new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D>
 std/beats.cp: BeatsSegTree.set(mut self, i: D, x: Int)
-std/beats.cp: BeatsSegTree.sum(mut self, r: Range<D>) -> Int
+std/beats.cp: BeatsSegTree.sum(self, r: Range<D>) -> Int
 std/beats.cp: HistoricBeatsSegTree.add(mut self, r: Range<D>, x: Int)
 std/beats.cp: HistoricBeatsSegTree.chmax(mut self, r: Range<D>, x: Int)
 std/beats.cp: HistoricBeatsSegTree.chmin(mut self, r: Range<D>, x: Int)
@@ -1420,7 +1420,9 @@ std/rand.cp: Rng.pick<S: Indexed, T>(mut self, xs: S) -> ?T
 std/rand.cp: Rng.sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>
 std/rand.cp: Rng.shuffle<S: IndexedMut>(mut self, mut a: S)
 std/range.cp: RingRange.contains(self, i: D) -> Bool
+std/range.cp: RingRange.each(self) -> yields D
 std/range.cp: RingRange.end(self) -> D
+std/range.cp: RingRange.is_empty(self) -> Bool
 std/range.cp: RingRange.keys(self) -> yields D
 std/range.cp: RingRange.len(self) -> Int
 std/range.cp: RingRange.start(self) -> D
@@ -1507,6 +1509,8 @@ std/seq.cp: Compressed.first_ge(self, val: T) -> ?D
 std/seq.cp: Compressed.first_gt(self, val: T) -> ?D
 std/seq.cp: Compressed.get(self, i: D) -> T
 std/seq.cp: Compressed.index_of(self, val: T) -> D
+std/seq.cp: Compressed.is_empty(self) -> Bool
+std/seq.cp: Compressed.items(self) -> yields (D, T)
 std/seq.cp: Compressed.last_le(self, val: T) -> ?D
 std/seq.cp: Compressed.last_lt(self, val: T) -> ?D
 std/seq.cp: Compressed.len(self) -> Int
@@ -1514,6 +1518,7 @@ std/seq.cp: Compressed.slice(self, r: Range<D>) -> List<T>
 std/seq.cp: Compressed.try_index_of(self, val: T) -> ?D
 std/seq.cp: MonoStack.clear(mut self)
 std/seq.cp: MonoStack.is_empty(self) -> Bool
+std/seq.cp: MonoStack.items(self) -> yields (D, T)
 std/seq.cp: MonoStack.len(self) -> Int
 std/seq.cp: MonoStack.mark(self) -> Int
 std/seq.cp: MonoStack.push(mut self, i: D, x: T) -> ?D
@@ -1521,6 +1526,7 @@ std/seq.cp: MonoStack.top(self) -> ?(index: D, val: T)
 std/seq.cp: MonoStack.undo_to(mut self, m: Int)
 std/seq.cp: OnlineLis.clear(mut self)
 std/seq.cp: OnlineLis.is_empty(self) -> Bool
+std/seq.cp: OnlineLis.items(self) -> yields (Int, T)
 std/seq.cp: OnlineLis.len(self) -> Int
 std/seq.cp: OnlineLis.mark(self) -> Int
 std/seq.cp: OnlineLis.push(mut self, x: T) -> Int
@@ -1541,17 +1547,22 @@ std/seq.cp: Ring.prev(self, i: D) -> D
 std/seq.cp: Ring.span(self, start: D, len: Int) -> RingRange<D>
 std/seq.cp: Ring.step(self, i: D, d: Int) -> D
 std/seq.cp: Ring.windows(self, k: Int) -> yields RingSlice<D, T>
+std/seq.cp: RingSlice.each(self) -> yields D
 std/seq.cp: RingSlice.end(self) -> D
+std/seq.cp: RingSlice.is_empty(self) -> Bool
 std/seq.cp: RingSlice.keys(self) -> yields D
 std/seq.cp: RingSlice.len(self) -> Int
 std/seq.cp: RingSlice.range(self) -> RingRange<D>
 std/seq.cp: RingSlice.start(self) -> D
 std/seq.cp: Slice.is_empty(self) -> Bool
+std/seq.cp: Slice.items<K, T>(self) -> yields (K, T)
 std/seq.cp: Slice.keys<K>(self) -> Range<K>
 std/seq.cp: Slice.len(self) -> Int
 std/seq.cp: StepKeys.contains<K>(self, i: K) -> Bool
 std/seq.cp: StepKeys.len(self) -> Int
 std/seq.cp: Stepped.at<K>(self, i: K) -> T
+std/seq.cp: Stepped.each(self) -> yields T
+std/seq.cp: Stepped.is_empty(self) -> Bool
 std/seq.cp: Stepped.keys(self) -> StepKeys
 std/seq.cp: Stepped.len(self) -> Int
 std/seq.cp: Stepped.nth(self, j: Int) -> T

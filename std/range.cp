@@ -170,6 +170,23 @@ pub struct RingRange<D>():
     /// example: `[1, 2, 3].ring.span(2, 2).len == 2`
     @get pub fn len(self) -> Int = n
 
+    /// Whether the span covers no position.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `not [1, 2, 3].ring.span(2, 2).is_empty`
+    @get pub fn is_empty(self) -> Bool = n == 0
+
+    /// \(O(\mathit{len})\). Visit the span's positions. Same walk as `keys`.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2, 3].ring.span(1, 0).each().collect() == []`
+    /// order: ring order from `start`, wrapping past the last position
+    /// traps: never
+    /// example: `[1, 2, 3].ring.span(2, 2).each().collect() == [2, 0]`
+    pub fn each(self) -> yields D:
+        for k in self.keys: yield k
+
     /// \(O(1)\). The first position.
     ///
     /// cost: \(O(1)\)
@@ -201,3 +218,11 @@ pub struct RingRange<D>():
     pub fn contains(self, i: D) -> Bool:
         if n == 0: return false
         (i.ord - at!.ord + D.count) % D.count < n
+
+impl Show for RingRange<D>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

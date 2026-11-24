@@ -861,6 +861,23 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `compress([5, 5, 7]).1.len == 2`
     @get pub fn len(self) -> Int = vals.len
 
+    /// Whether no value was compressed.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `let e: List<Int> = []; compress(e).1.is_empty and not compress([4]).1.is_empty`
+    @get pub fn is_empty(self) -> Bool = vals.len == 0
+
+    /// \(O(\mathit{len})\). Visit every compressed index with its value.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `let e: List<Int> = []; compress(e).1.items.collect() == []`
+    /// order: increasing index, so increasing value
+    /// traps: never
+    /// example: `let (domain C, xs) = compress([30, 10, 30]); [v for (_, v) in xs.items] == [10, 30]`
+    @get pub fn items(self) -> yields (D, T):
+        for i in D: yield (i, vals[i])
+
     /// The index of `val`, which must be one of the compressed values.
     ///
     /// cost: \(O(\log n)\)
@@ -1487,6 +1504,17 @@ pub struct Slice<S>():
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = todo
 
+    /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
+    /// same elements without the keys.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2][2..].items.collect() == []`
+    /// order: increasing key
+    /// traps: never
+    /// example: `[5, 6, 7][1..].items.collect() == [(1, 6), (2, 7)]`
+    @get pub fn items<K, T>(self) -> yields (K, T):
+        for k in self.keys: yield (k, self.at(k))
+
 /// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0`). Consuming a view
 /// from the front is `w = w.drop(1)`.
 ///
@@ -1597,6 +1625,23 @@ pub struct Stepped<S, T>(pub src: S, pub k: Int, pub from: Int = 0):
     /// traps: never
     /// example: `[3, 1, 2, 4, 5].step(2).len == 3`
     @get pub fn len(self) -> Int = if from >= src.len: 0 else: (src.len - from + k - 1) / k
+
+    /// Whether the stepped view has no elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `[1, 2][2..].step(2).is_empty and not [1].step(3).is_empty`
+    @get pub fn is_empty(self) -> Bool = self.len == 0
+
+    /// \(O(\mathit{len})\). Visit the elements `src.nth(from)`, `src.nth(from + k)`, ...
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2][2..].step(2).each().collect() == []`
+    /// order: increasing position in `src`
+    /// traps: never
+    /// example: `[3, 1, 2, 4, 5].step(2).each().collect() == [3, 2, 5]`
+    pub fn each(self) -> yields T:
+        for j in 0..self.len: yield self.nth(j)
 
     /// \(O(1)\). The element `j` steps into the walk: `src`'s element `from + j * k`.
     ///
@@ -2672,6 +2717,19 @@ pub struct OnlineLis<T>(strict: Bool = true):
     /// traps: never
     /// example: `OnlineLis<Int>().is_empty == true`
     @get pub fn is_empty(self) -> Bool = vals.len == 0
+
+    /// \(O(\mathit{len})\). Visit one longest increasing subsequence as `(push index, value)`
+    /// pairs: the one `reconstruct` returns, with its values.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `OnlineLis<Int>().items.collect() == []`
+    /// ties: `var t = OnlineLis<Int>(); for x in [1, 3, 2]: t.push(x); t.items.collect() == [(0, 1), (2, 2)]`
+    /// order: increasing push index
+    /// traps: never
+    /// example: `var t = OnlineLis<Int>(); for x in [3, 1, 2]: t.push(x); t.items.collect() == [(1, 1), (2, 2)]`
+    @get pub fn items(self) -> yields (Int, T):
+        for i in self.reconstruct(): yield (i, vals[i])
+
     /// \(O(1)\). Reset all state.
     ///
     /// cost: \(O(1)\)
@@ -2781,6 +2839,17 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
     /// traps: never
     /// example: `MonoStack<Int, Int>().is_empty == true`
     @get pub fn is_empty(self) -> Bool = idx.len == 0
+
+    /// \(O(\mathit{len})\). Visit the kept `(index, val)` entries, bottom of the stack first.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `MonoStack<Int, Int>().items.collect() == []`
+    /// order: push order, bottom to top
+    /// traps: never
+    /// example: `var s = MonoStack<Int, Int>(); s.push(0, 5); s.push(1, 3); s.push(2, 4); s.items.collect() == [(0, 5), (2, 4)]`
+    @get pub fn items(self) -> yields (D, T):
+        for j in 0..idx.len: yield (idx[j], vals[j])
+
     /// \(O(1)\). Empty the stack and rollback log.
     ///
     /// cost: \(O(1)\)
@@ -3619,6 +3688,24 @@ pub struct RingSlice<D, T>():
     /// example: `[w.len for w in [1, 2, 3].ring.windows(2)] == [2, 2, 2]`
     @get pub fn len(self) -> Int = rr.len
 
+    /// Whether the window covers no position.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `not [1, 2, 3].ring.windows(2).first!.is_empty`
+    @get pub fn is_empty(self) -> Bool = rr.len == 0
+
+    /// \(O(\mathit{len})\). Visit the window's positions in the source; read its elements as
+    /// `a[k]`. Same walk as `keys`.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2, 3].ring.windows(0).all(w => w.each().collect() == [])`
+    /// order: ring order from `start`, wrapping past the last position
+    /// traps: never
+    /// example: `[1, 2, 3].ring.windows(2).last!.each().collect() == [2, 0]`
+    pub fn each(self) -> yields D:
+        for k in rr.keys: yield k
+
     /// \(O(1)\). The first position.
     ///
     /// cost: \(O(1)\)
@@ -3813,3 +3900,75 @@ fn gen_perm<V>() -> Perm<V>:
     var p: [V]V = [V] v => v
     shuffle(mut p)
     p
+
+@test
+fn views_and_trackers_walk_and_show():
+    let a = [5, 6, 7, 8]
+    assert a[1..3].items.collect() == [(1, 6), (2, 7)]
+    assert "{a[1..3]}" == "6 7"
+    let st = a.step(2)
+    assert st.each().collect() == [5, 7] and not st.is_empty
+    assert "{st}" == "5 7"
+    assert a[4..].step(2).is_empty
+    let (domain C, xs) = compress([30, 10, 30])
+    assert [v for (_, v) in xs.items] == [10, 30] and "{xs}" == "10 30"
+    var t = OnlineLis<Int>()
+    for x in [3, 1, 2]: t.push(x)
+    assert "{t}" == "1 2"
+    var s = MonoStack<Int, Int>()
+    s.push(0, 5)
+    s.push(1, 3)
+    s.push(2, 4)
+    assert s.items.collect() == [(0, 5), (2, 4)] and "{s}" == "0=5, 2=4"
+    let w = [1, 2, 3].ring.windows(2).last!
+    assert w.each().collect() == [2, 0] and "{w}" == "2 0" and not w.is_empty
+    let r = [1, 2, 3].ring.span(2, 2)
+    assert r.each().collect() == [2, 0] and "{r}" == "2 0" and not r.is_empty
+
+impl Show for Slice<S>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Stepped<S, T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Compressed<D, T>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for OnlineLis<T>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for MonoStack<D, T>:
+    fn show(v):
+        var out = ""
+        for (i, x) in v.items:
+            if not out.is_empty: out += ", "
+            out += "{i}={x}"
+        out
+
+impl Show for RingSlice<D, T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

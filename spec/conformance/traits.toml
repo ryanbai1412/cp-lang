@@ -1608,3 +1608,55 @@ let h = MaxHeap.of([1, 3, 2])
 print("{h}", h.len)
 """
 out = "3 2 1 3"
+
+[case."Show/Slice/show"]
+code = """
+let a = [5, 6, 7, 8]
+print(a[1..3])
+"""
+out = "6 7"
+
+[case."Show/Stepped/show"]
+code = """
+print([3, 1, 2, 4, 5].step(2))
+"""
+out = "3 2 5"
+
+[case."Show/Compressed/show"]
+code = """
+let (domain C, xs) = compress([30, 10, 30])
+print(xs)
+"""
+out = "10 30"
+
+[case."Show/OnlineLis/show"]
+code = """
+use std.seq.{OnlineLis}
+var t = OnlineLis<Int>()
+for x in [3, 1, 2]: t.push(x)
+print(t)
+"""
+out = "1 2"
+
+[case."Show/MonoStack/show"]
+code = """
+use std.seq.{MonoStack}
+var s = MonoStack<Int, Int>()
+s.push(0, 5)
+s.push(1, 3)
+s.push(2, 4)
+print(s)
+"""
+out = "0=5, 2=4"
+
+[case."Show/RingSlice/show"]
+code = """
+print([1, 2, 3].ring.windows(2).last!)
+"""
+out = "2 0"
+
+[case."Show/RingRange/show"]
+code = """
+print([1, 2, 3].ring.span(2, 2))
+"""
+out = "2 0"
