@@ -17,6 +17,7 @@
 //!
 //! Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt.
 //! Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
+use std.range.{Len}
 use std.algebra.{Monoid, Semiring}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
@@ -3572,13 +3573,13 @@ pub fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
 /// \(O(n)\) build: the functional graph `v -> next[v]` (every vertex one out-arc).
 pub struct Functional<V>:
     pub next: [V]V
-    _nx: List<Int>
-    _root: List<Int>
-    _depth: List<Int>
-    _cyc: List<Int>
-    _pos: List<Int>
-    _cycles: List<List<Int>>
-    _jump: List<Int>
+    _root: List<Len>
+    _depth: List<Len>
+    _cyc: List<Len>
+    _pos: List<Len>
+    _ring: List<Len>
+    _cstart: List<Len>
+    _jump: List<Len>
 
     /// The functional graph `v -> next[v]` (every vertex has one out-arc), with its cycles,
     /// tails and one jump pointer per vertex (`O(n)` memory, `O(log n)` walks).
@@ -3589,47 +3590,46 @@ pub struct Functional<V>:
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
     pub fn new(next: [V]V) -> Functional<V>:
         let n = V.count
-        let nx = [next[V.nth(i)].ord for i in 0..n]
-        var root = List.filled(n, -1)
-        var depth = List.filled(n, 0)
-        var cyc = List.filled(n, -1)
-        var pos = List.filled(n, 0)
-        var cycles: List<List<Int>> = []
-        var jump = List(0..n)
-        var state = List.filled(n, 0)
+        var root: List<Len> = List.filled(n, 0)
+        var depth: List<Len> = List.filled(n, 0)
+        var cyc: List<Len> = List.filled(n, 0)
+        var pos: List<Len> = List.filled(n, 0)
+        var ring: List<Len> = []
+        var cstart: List<Len> = [0]
+        var jump: List<Len> = (0..n).collect()
+        var state: List<0..3> = List.filled(n, 0)
         for s in 0..n:
             if state[s] != 0: continue
-            var path: List<Int> = []
+            var path: List<Len> = []
             var x = s
             while state[x] == 0:
                 state[x] = 1
                 path.push(x)
-                x = nx[x]
+                x = next[V.nth(x)].ord
             if state[x] == 1:
-                var c: List<Int> = []
                 var y = x
                 while true:
-                    cyc[y] = cycles.len
-                    pos[y] = c.len
+                    cyc[y] = cstart.len - 1
+                    pos[y] = ring.len - cstart.last!
                     root[y] = y
                     state[y] = 2
-                    c.push(y)
-                    y = nx[y]
+                    ring.push(y)
+                    y = next[V.nth(y)].ord
                     if y == x: break
-                cycles.push(c)
+                cstart.push(ring.len)
             var k = path.len
             while k > 0:
                 k -= 1
                 let u = path[k]
                 if state[u] == 2 and root[u] == u: continue
-                root[u] = root[nx[u]]
-                depth[u] = depth[nx[u]] + 1
-                cyc[u] = cyc[nx[u]]
+                let p = next[V.nth(u)].ord
+                root[u] = root[p]
+                depth[u] = depth[p] + 1
+                cyc[u] = cyc[p]
                 state[u] = 2
-                let p = nx[u]
                 let j = jump[p]
                 jump[u] = if depth[p] - depth[j] == depth[j] - depth[jump[j]]: jump[j] else: p
-        Functional(next.clone(), nx, root, depth, cyc, pos, cycles, jump)
+        Functional(next.clone(), root, depth, cyc, pos, ring, cstart, jump)
 
     /// Does `v` lie on a cycle?
     ///
@@ -3658,7 +3658,7 @@ pub struct Functional<V>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
-    pub fn cycle_len(self, v: V) -> Int = _cycles[_cyc[v.ord]].len
+    pub fn cycle_len(self, v: V) -> Int = _cstart[_cyc[v.ord] + 1] - _cstart[_cyc[v.ord]]
 
     /// The vertex `k` steps after `v`, by jump pointers: `after(v, 0) == v`. Never `None`,
     /// unlike `Rooted.ancestor`, since every vertex has an out-arc.
@@ -3671,8 +3671,9 @@ pub struct Functional<V>:
         let x = v.ord
         if k < _depth[x]: return V.nth(self.lift(x, k))
         let r = _root[x]
-        let c = _cycles[_cyc[r]]
-        V.nth(c[(_pos[r] + (k - _depth[x]) % c.len) % c.len])
+        let base = _cstart[_cyc[r]]
+        let len = _cstart[_cyc[r] + 1] - base
+        V.nth(_ring[base + (_pos[r] + (k - _depth[x]) % len) % len])
 
     /// The first vertex `u` on the walk from `v`, `v` included, with `pred(u)`, or `None` if
     /// None appears. `pred` must be monotone along every walk (once true, true onward).
@@ -3686,9 +3687,9 @@ pub struct Functional<V>:
         var x = v.ord
         while _depth[x] > 0:
             if not pred(V.nth(_jump[x])): x = _jump[x]
-            elif not pred(V.nth(_nx[x])): x = _nx[x]
+            elif not pred(V.nth(next[V.nth(x)].ord)): x = next[V.nth(x)].ord
             else: break
-        let c = V.nth(_nx[x])
+        let c = V.nth(next[V.nth(x)].ord)
         if pred(c): Some(c) else: None
 
     /// The fewest steps from `a` to `b`, or `None` if the walk from `a` never reaches `b`;
@@ -3702,7 +3703,7 @@ pub struct Functional<V>:
         let y = b.ord
         if _cyc[x] != _cyc[y]: return None
         if _depth[y] == 0:
-            let len = _cycles[_cyc[y]].len
+            let len = _cstart[_cyc[y] + 1] - _cstart[_cyc[y]]
             return Some(_depth[x] + (_pos[y] - _pos[_root[x]]) % len)
         if _depth[x] < _depth[y]: return None
         let d = _depth[x] - _depth[y]
@@ -3712,7 +3713,7 @@ pub struct Functional<V>:
         let t = _depth[x] - k
         var y = x
         while _depth[y] > t:
-            y = if _depth[_jump[y]] >= t: _jump[y] else: _nx[y]
+            y = if _depth[_jump[y]] >= t: _jump[y] else: next[V.nth(y)].ord
         y
 
     /// Every cycle once, each in walk order from its smallest vertex.
@@ -3723,16 +3724,16 @@ pub struct Functional<V>:
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycles() == [[0, 1, 2]]`
     /// example: `domain V = 0..3; let nx: [V]V = [0, 2, 1]; Functional(nx).cycles() == [[0], [1, 2]]`
     pub fn cycles(self) -> List<List<V>>:
-        var done = List.filled(_cycles.len, false)
+        var done = List.filled(_cstart.len - 1, false)
         var out: List<List<V>> = []
-        for i in 0.._nx.len:
+        for i in 0..V.count:
             if _depth[i] != 0 or done[_cyc[i]]: continue
             done[_cyc[i]] = true
-            var c: List<V> = [V.nth(i)]
-            var y = _nx[i]
-            while y != i:
-                c.push(V.nth(y))
-                y = _nx[y]
+            var c: List<V> = List.filled(self.cycle_len(V.nth(i)), V.nth(i))
+            var y = i
+            for t in 0..c.len:
+                c[t] = V.nth(y)
+                y = next[V.nth(y)].ord
             out.push(c)
         out
 
