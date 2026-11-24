@@ -12,6 +12,7 @@ let wire = Wire()
 let (n, m) = read<(2..=2e5, 1..=4e5)>()
 domain V = 1..=n
 let edges = read<[m](u: V, v: V)>()
+let _maria_seed = read<Int>()
 let g = Graph.undirected(edges)
 let home = V.first!
 let friend = V.mask(g[home])
