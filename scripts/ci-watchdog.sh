@@ -30,10 +30,12 @@ else
 fi
 # The site is behind when a commit whose site jobs passed isn't live and the
 # live commit is over 2 h old.
-deployable=$("$here/site-deployable.sh" 2>/dev/null || true)
+deployable=$("$here/site-deployable.sh") || problems+=("scripts/site-deployable.sh failed; the log says why")
 if [ -n "$deployable" ]; then
-    live=$(curl -fsSL https://cp-lang.org/version.json 2>/dev/null | jq -r '.commit // empty' || true)
-    live_at=$([ -n "$live" ] && gh api "repos/$repo/commits/$live" --jq .commit.committer.date 2>/dev/null || true)
+    live=$(fetch_optional https://cp-lang.org/version.json | jq -r '.commit // empty') ||
+        problems+=("cp-lang.org/version.json won't download")
+    live_at=""
+    [ -z "$live" ] || live_at=$(retry gh api "repos/$repo/commits/$live" --jq .commit.committer.date)
     site_age=$(age "$live_at")
     [ "$site_age" -le 7200 ] ||
         problems+=("cp-lang.org serves ${live:-nothing} from $((site_age / 60)) min ago; ${deployable:0:9} passed its site jobs")

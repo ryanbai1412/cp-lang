@@ -9,6 +9,7 @@
 # release run then builds every target and smoke-tests the archives and
 # installers before publishing. Stable still needs a fully green run.
 set -euo pipefail
+. "$(dirname "$0")/../retry.sh"
 repo=${GITHUB_REPOSITORY:?}
 shipping='(gate \(conform:|cli \(|acceptance solutions stay AC)'
 runs=$(gh run list -R "$repo" --workflow ci.yml --branch main --event push -L 80 \
@@ -22,12 +23,12 @@ jobs_of() {
     printf '%s\n' "$j"
 }
 green() { grep -P '^success\t' <<<"$1" | cut -f2 || [ $? = 1 ]; }
-edge=$(curl -fsSL "https://github.com/$repo/releases/download/edge/latest.json" 2>/dev/null | jq -r '.commit // empty' || true)
+edge=$(fetch_optional "https://github.com/$repo/releases/download/edge/latest.json" | jq -r '.commit // empty')
 must="" base_id=""
 if [ -n "$edge" ]; then
     while read -r id sha; do
         [ -n "$id" ] || continue
-        rel=$(gh api "repos/$repo/compare/$sha...$edge" --jq .status 2>/dev/null || true)
+        rel=$(retry gh api "repos/$repo/compare/$sha...$edge" --jq .status)
         [ "$rel" = identical ] || [ "$rel" = ahead ] || continue
         base=$(jobs_of "$id")
         [ -n "$base" ] || continue

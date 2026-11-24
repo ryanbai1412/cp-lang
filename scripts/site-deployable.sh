@@ -5,10 +5,12 @@
 # Actions it also writes `since=<the run's updated_at>` to $GITHUB_OUTPUT, for
 # site.yml's `live site is current` step.
 set -euo pipefail
+. "$(dirname "$0")/retry.sh"
 repo=${GITHUB_REPOSITORY:?}
-version=$(curl -fsSL https://cp-lang.org/version.json 2>/dev/null || true)
-live=$(jq -r '.commit // empty' <<<"$version" 2>/dev/null || true)
-built=$(jq -r '.built // empty' <<<"$version" 2>/dev/null || true)
+version=$(fetch_optional https://cp-lang.org/version.json)
+version=${version:-'{}'}
+live=$(jq -r '.commit // empty' <<<"$version")
+built=$(jq -r '.built // empty' <<<"$version")
 gh run list -R "$repo" --workflow ci.yml --branch main --event push -L 60 \
     --json databaseId,headSha,status,conclusion,updatedAt \
     --jq '.[] | select(.status == "in_progress" or (.status == "completed" and .conclusion != "cancelled")) | "\(.databaseId) \(.headSha) \(.updatedAt)"' |
@@ -25,7 +27,7 @@ while read -r id sha updated; do
     grep -q '^success site browser tests' <<<"$jobs" || continue
     ! grep -v '^success ' <<<"$jobs" | grep -q ' site browser tests' || continue
     if [ -n "$live" ]; then
-        rel=$(gh api "repos/$repo/compare/$sha...$live" --jq .status 2>/dev/null || true)
+        rel=$(retry gh api "repos/$repo/compare/$sha...$live" --jq .status)
         if [ "$rel" = identical ] || [ "$rel" = ahead ]; then
             echo "site-deployable: the live site ($live) already has $sha" >&2; exit 0
         fi

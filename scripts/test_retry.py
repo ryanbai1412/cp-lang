@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -63,6 +65,37 @@ class RetrySh(unittest.TestCase):
         r = self.run_sh("RETRY_TRIES=2 retry false")
         self.assertEqual(r.returncode, 1)
         self.assertIn("gave up after 2 tries: false", r.stderr)
+
+    def fetch_optional(self, code: str) -> subprocess.CompletedProcess[str]:
+        bin_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: [p.unlink() for p in bin_dir.iterdir()] and None or bin_dir.rmdir())
+        (bin_dir / "curl").write_text(FAKE_CURL)
+        (bin_dir / "curl").chmod(0o755)
+        env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}", FAKE_CODE=code)
+        return subprocess.run(["bash", "-c", f'. "{HERE}/retry.sh"; RETRY_WAIT=0 fetch_optional https://cp-lang.org/version.json'],
+                              capture_output=True, text=True, env=env)
+
+    def test_fetch_optional_prints_a_found_body(self) -> None:
+        r = self.fetch_optional("200")
+        self.assertEqual((r.returncode, r.stdout), (0, "body"), r.stderr)
+
+    def test_fetch_optional_prints_nothing_for_a_missing_file(self) -> None:
+        r = self.fetch_optional("404")
+        self.assertEqual((r.returncode, r.stdout), (0, ""), r.stderr)
+
+    def test_fetch_optional_fails_on_a_server_error(self) -> None:
+        r = self.fetch_optional("500")
+        self.assertEqual((r.returncode, r.stdout), (1, ""))
+        self.assertIn("HTTP 500 from https://cp-lang.org/version.json", r.stderr)
+        self.assertIn("gave up after 3 tries", r.stderr)
+
+
+FAKE_CURL = """#!/bin/sh
+out=/dev/stdout w=
+while [ $# -gt 0 ]; do case $1 in -o) out=$2; shift ;; -w) w=1; shift ;; esac; shift; done
+printf body >"$out"
+[ -z "$w" ] || printf %s "$FAKE_CODE"
+"""
 
 
 if __name__ == "__main__":

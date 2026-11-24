@@ -152,9 +152,12 @@ case "$1 $2" in
   *) exit 2 ;;
 esac
 """
-SHIP_CURL = """#!/bin/sh
-[ -f "$FAKE_CI/edge" ] || exit 22
-printf '{"commit":"%s"}' "$(cat "$FAKE_CI/edge")"
+CURL_ARGS = """#!/bin/sh
+out=/dev/stdout w=
+while [ $# -gt 0 ]; do case $1 in -o) out=$2; shift ;; -w) w=1; shift ;; esac; shift; done
+"""
+SHIP_CURL = CURL_ARGS + """if [ -f "$FAKE_CI/edge" ]; then printf '{"commit":"%s"}' "$(cat "$FAKE_CI/edge")" >"$out"; code=200; else code=404; fi
+[ -z "$w" ] || printf %s "$code"
 """
 SHIPPING = ["gate (conform:diff@1/2)", "cli (windows-latest)", "acceptance solutions stay AC (1/1)"]
 
@@ -240,15 +243,16 @@ case "$1 $2" in
   "api repos/o/r/commits/"*) cat "$FAKE_CI/live-at" ;;
   "api repos/o/r/compare/"*) echo behind ;;
   "release view") cat "$FAKE_CI/shipped" ;;
-  "run list") cat "$FAKE_CI/runs" 2>/dev/null ;;
+  "run list") [ ! -f "$FAKE_CI/runs" ] || cat "$FAKE_CI/runs" ;;
   "run view") printf 'success site build\\nsuccess site browser tests\\n' ;;
   "issue list") [ ! -f "$FAKE_CI/open" ] || cat "$FAKE_CI/open" ;;
   "issue "*) ;;
   *) exit 2 ;;
 esac
 """
-WATCH_CURL = """#!/bin/sh
-printf '{"commit":"live1"}'
+WATCH_CURL = CURL_ARGS + """if [ -f "$FAKE_CI/site-down" ]; then code=503; else printf '{"commit":"live1"}' >"$out"; code=200; fi
+[ -n "$w" ] || [ "$code" = 200 ] || exit 22
+[ -z "$w" ] || printf %s "$code"
 """
 
 
@@ -277,7 +281,7 @@ class WatchdogTest(unittest.TestCase):
         (self.ci / "live-at").write_text(at(live))
         if deployable:
             (self.ci / "runs").write_text("7 new1\n")
-        env = dict(os.environ, GITHUB_REPOSITORY="o/r", FAKE_CI=str(self.ci),
+        env = dict(os.environ, GITHUB_REPOSITORY="o/r", FAKE_CI=str(self.ci), RETRY_WAIT="0",
                    PATH=f"{self.ci / 'bin'}:{os.environ['PATH']}")
         subprocess.run([str(ROOT / "scripts/ci-watchdog.sh")], env=env, capture_output=True, text=True, check=True)
         return [c for c in (self.ci / "calls").read_text().splitlines() if c.startswith("issue ") and "list" not in c]
@@ -297,6 +301,11 @@ class WatchdogTest(unittest.TestCase):
 
     def test_an_old_live_site_with_nothing_newer_to_deploy_is_fine(self):
         self.assertEqual(self.watch(live=150), [])
+
+    def test_an_unreachable_site_opens_the_issue(self):
+        (self.ci / "site-down").write_text("")
+        self.assertTrue(any("issue create" in c for c in self.watch(deployable=True)))
+        self.assertIn("site-deployable.sh failed", (self.ci / "calls").read_text())
 
     def test_recovery_closes_the_open_issue(self):
         (self.ci / "open").write_text("12\n")
