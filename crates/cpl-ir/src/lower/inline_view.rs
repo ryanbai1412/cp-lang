@@ -98,12 +98,13 @@ fn fold_fn(
     else {
         return None;
     };
-    let to: Vec<usize> = (items.iter())
-        .map(|e| match e.kind {
-            ExprKind::Local(j) if j < m && make.locals[j].ty == e.ty => Some(j),
-            _ => None,
-        })
-        .collect::<Option<_>>()?;
+    let mut to = Vec::new();
+    for e in items {
+        match e.kind {
+            ExprKind::Local(j) if j < m && make.locals[j].ty == e.ty => to.push(j),
+            _ => return None,
+        }
+    }
     let one_param = matches!(walk.params.as_slice(), [p] if !p.mutable && !p.fills_cache);
     if !one_param
         || make.locals.len() != m
@@ -137,8 +138,9 @@ fn fold_fn(
         span: Span::default(),
     };
     let mut map = vec![Sub::Expr(unit)];
-    map.extend((1..fresh).map(|s| Sub::Slot(s - 1 + m)));
-    map.extend((0..m).map(Sub::Slot));
+    for s in (m..fresh + m - 1).chain(0..m) {
+        map.push(Sub::Slot(s));
+    }
     let mut remap = Remap {
         map: &map,
         loops: HashMap::new(),
@@ -151,18 +153,12 @@ fn fold_fn(
     let Some(Stmt::Give(v)) = body.stmts.pop().filter(|_| remap.ok) else {
         return None;
     };
-    body.stmts = pre
-        .iter()
-        .cloned()
-        .chain(body.stmts)
-        .chain([Stmt::Return(Some(v))])
-        .collect();
-    let locals = make
-        .locals
-        .iter()
-        .chain(&walk.locals[1..])
-        .cloned()
-        .collect();
+    let mut stmts = pre.to_vec();
+    stmts.append(&mut body.stmts);
+    stmts.push(Stmt::Return(Some(v)));
+    body.stmts = stmts;
+    let mut locals = make.locals.clone();
+    locals.extend_from_slice(&walk.locals[1..]);
     Some(Function {
         params: make.params.clone(),
         locals,
