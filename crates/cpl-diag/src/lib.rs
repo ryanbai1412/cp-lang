@@ -114,11 +114,17 @@ pub fn sort_by_key<T>(v: &mut [T], key: impl Fn(&T) -> u64) {
 }
 
 /// The indices of `keys`, sorted by key and then by index, so that equal keys keep their
-/// order.
+/// order. Each key is split into its high and low halves so the sort is std's
+/// `sort_unstable` of `(u32, u32, u32)`, which cpl.wasm already has from cpl-check, and so
+/// adds no code to `core`.
 fn sorted_order(keys: Vec<u64>) -> Vec<u32> {
-    let mut at: Vec<(u64, u32)> = keys.into_iter().zip(0..).collect();
+    let mut at: Vec<(u32, u32, u32)> = keys
+        .into_iter()
+        .zip(0..)
+        .map(|(k, i)| ((k >> 32) as u32, k as u32, i))
+        .collect();
     at.sort_unstable();
-    at.into_iter().map(|(_, i)| i).collect()
+    at.into_iter().map(|(_, _, i)| i).collect()
 }
 
 /// Puts the element at `order[i]` at `i`, one cycle at a time.
