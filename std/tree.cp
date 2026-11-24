@@ -33,8 +33,10 @@ use std.math.{bit}
 pub fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _> = Rooted.new(self, V.first!)
 
 /// The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the
-/// edges it uses. The search takes arcs in input order and descends at once (recursive order,
-/// run without recursion). On an undirected graph every edge with `tree_edge[e] == false`
+/// edges it uses.
+///
+/// The search takes arcs in input order and descends at once (recursive order, run without
+/// recursion). On an undirected graph every edge with `tree_edge[e] == false`
 /// then joins a vertex to one of its ancestors in `tree`, which is what bridges, cut vertices
 /// and back-edge DPs need. `tree` is a forest over all of `V`: each vertex outside the
 /// component is a root of its own.
@@ -564,10 +566,11 @@ pub struct Rooted<V, Pre>:
         out
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
-    /// The enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: `Enter(v, via:)` when
-    /// entering `v` and `Exit(v, via:)` when leaving its subtree, `via` the parent (`None` at a
-    /// root, and a tree has no `Again`), children in `t.Pre` order, each tree of a forest
-    /// in turn. Iterative, so deep trees are safe.
+    /// The enter/exit Euler tour, as the `Visit` events of `std.graph.dfs`.
+    ///
+    /// `Enter(v, via:)` comes when entering `v` and `Exit(v, via:)` when leaving its subtree, with
+    /// `via` the parent (`None` at a root; a tree has no `Again`). Children come in `t.Pre` order,
+    /// each tree of a forest in turn. Iterative, so deep trees are safe.
     ///
     /// cost: \(O(1)\) to make, \(O(n)\) to walk
     /// empty: never empty
@@ -743,8 +746,9 @@ pub struct Rooted<V, Pre>:
             return Some(at[Pre.nth(i)])
         None
 
-    /// The path from `a` to `b` as \(O(\log n)\) heavy-chain ranges of `t.Pre`, in path order. A
-    /// `rising` range is walked from its high end to its low end. With `edges`, the highest vertex
+    /// The path from `a` to `b` as \(O(\log n)\) heavy-chain ranges of `t.Pre`, in path order.
+    ///
+    /// A `rising` range is walked from its high end to its low end. With `edges`, the highest vertex
     /// of the path is left out: for a value per edge, stored at the edge's lower end.
     ///
     /// cost: \(O(\log n)\) ranges
@@ -986,7 +990,9 @@ pub struct Rooted<V, Pre>:
         ab
 
     /// The farthest pair among two vertex sets' farthest pairs, which is the farthest pair of
-    /// their union; `None` is the identity. As an operation value,
+    /// their union.
+    ///
+    /// `None` is the identity. As an operation value,
     /// `SegTree(op: (x, y) => t.farthest(x, y), id: None)` keeps the diameter of any range of
     /// vertices under changes.
     ///
@@ -1064,7 +1070,9 @@ pub struct Rooted<V, Pre>:
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The closed Euler walk: 2n - 1 visits from the root back to it, each pair of neighbours
-    /// joined by a tree edge, children in `t.Pre` order. `by:` reorders each vertex's children
+    /// joined by a tree edge, children in `t.Pre` order.
+    ///
+    /// `by:` reorders each vertex's children
     /// by a key, stably, so `by: c => c in deep` walks the children in `deep` last. A walk that
     /// visits every vertex of a connected graph is `Rooted(g, root: r).euler_tour()`. A forest
     /// walks only the first tree.
@@ -1969,8 +1977,9 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
             k += 1
         Lift(op, identity, up, dep, jmp, val)
 
-    /// Lifting over any partial successor function, such as "the next interval a greedy picks":
-    /// `Lift.of(i => first_from(iv[i].r))`. `None` ends a chain; the links must form a forest.
+    /// Lifting over any partial successor function, such as "the next interval a greedy picks".
+    ///
+    /// For example `Lift.of(i => first_from(iv[i].r))`. `None` ends a chain; the links must form a forest.
     /// Edge values are `()`, so `climb` and `ancestor` are what it is for.
     ///
     /// cost: \(O(n \log n)\) time and memory, n calls of `next`
@@ -1982,8 +1991,10 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
             if let p = next(v): par[v] = Some((p, ()))
         Lift.new(par, (a, b) => a, ())
 
-    /// Climbs from `v` while the next vertex up satisfies `ok`, which must hold on a prefix of
-    /// every root path: how many edges were climbed and where it stopped. Greedy "jump while the
+    /// Climbs from `v` while the next vertex up satisfies `ok`, returning how many edges were
+    /// climbed and where it stopped.
+    ///
+    /// `ok` must hold on a prefix of every root path. Greedy "jump while the
     /// next one still fits" counts are `Lift.of(next).climb(v, ok).steps`.
     ///
     /// cost: \(O(\log n)\) calls of `ok`
@@ -2119,7 +2130,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
             [],
         )
 
-    pub fn top(self, x: V) -> Bool:
+    fn top(self, x: V) -> Bool:
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
     fn turn(mut self, x: V):
@@ -2182,8 +2193,12 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
                 if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
             self.rotate(x)
 
-    // Makes root -> x the preferred path with x at the root of its splay tree; returns the
-    // last vertex where the walk joined the old preferred path (the lca with the previous access).
+    /// Makes the path from the root to `x` preferred, with `x` at the root of its splay tree.
+    ///
+    /// It returns the last vertex where the walk joined the old preferred path: the lca of `x`
+    /// with the previously accessed vertex.
+    ///
+    /// cost: amortized \(O(\log n)\)
     pub fn access(mut self, x: V) -> V:
         var last: ?V = None
         var joined = x
@@ -2348,7 +2363,8 @@ pub struct PreferredPaths<V>:
     pub fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V> =
         PreferredPaths([V] _ => None, [V] _ => None, [V] v => t.parent(v), [V] v => v, [])
 
-    /// Makes the path from the root to `v` one preferred path, yielding each switch bottom-up:
+    /// Makes the path from the root to `v` one preferred path, yielding each switch bottom-up.
+    ///
     /// `gained` is the top vertex of the path just joined to its parent, `lost` the top vertex of
     /// the path that parent stopped preferring, if any. The first switch may be the cut below
     /// `v` (`gained: None`), so the switches account for every path that changed.
@@ -2373,7 +2389,7 @@ pub struct PreferredPaths<V>:
             y = pa[u]
         self.splay(v)
 
-    pub fn top(self, x: V) -> Bool:
+    fn top(self, x: V) -> Bool:
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
     fn pull(mut self, x: V):
@@ -2444,7 +2460,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
             [],
         )
 
-    pub fn top(self, x: V) -> Bool:
+    fn top(self, x: V) -> Bool:
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
     fn turn(mut self, x: V):
@@ -2516,6 +2532,12 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
                 if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
             self.rotate(x)
 
+    /// Makes the path from the root to `x` preferred, with `x` at the root of its splay tree.
+    ///
+    /// It returns the last vertex where the walk joined the old preferred path: the lca of `x`
+    /// with the previously accessed vertex.
+    ///
+    /// cost: amortized \(O(\log n)\)
     pub fn access(mut self, x: V) -> V:
         var last: ?V = None
         var joined = x
@@ -3399,7 +3421,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
                 if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
             self.rotate(x)
 
-    // The first node of `x`'s sequence, splayed to the root: one name per tree.
+    /// The first node of `x`'s sequence, splayed to the root: one name per tree.
     pub fn first(mut self, x: Int) -> Int:
         self.splay(x)
         var y = x
@@ -3438,7 +3460,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
         self.pull(x)
         r
 
-    // Rotates `x`'s tour so that it starts at `x`.
+    /// Rotates `x`'s tour so that it starts at `x`.
     pub fn reroot(mut self, x: Int):
         self.splay(x)
         let l = self.cut_left(x)
@@ -3669,7 +3691,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
                 if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
             self.rotate(x)
 
-    // The first node of `x`'s sequence, splayed to the root: one name per tree.
+    /// The first node of `x`'s sequence, splayed to the root: one name per tree.
     pub fn first(mut self, x: Int) -> Int:
         self.splay(x)
         var y = x
@@ -3712,7 +3734,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
         self.pull(x)
         r
 
-    // Rotates `x`'s tour so that it starts at `x`.
+    /// Rotates `x`'s tour so that it starts at `x`.
     pub fn reroot(mut self, x: Int):
         self.splay(x)
         let l = self.cut_left(x)
@@ -3941,8 +3963,9 @@ pub struct KruskalTree<V, N, W>:
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.reach(0, 4) == kt.leaf[0] and kt.w[kt.reach(1, 4)] == Some(3) and kt.w[kt.reach(1, 5)] == Some(5)`
     pub fn reach(self, v: V, limit: W) -> N = lift.climb(leaf[v], ok: x => w[x]! <= limit).at
 
-    /// The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`,
-    /// which gets the edge's key in the list given to `kruskal_tree`
+    /// The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`.
+    ///
+    /// `ok` gets the edge's key in the list given to `kruskal_tree`
     /// (`kt.top(v, ok: e => roads[e].alt > p)`). `ok` must hold on a prefix of the merge order.
     ///
     /// cost: \(O(\log n)\) calls of `ok`
@@ -3951,8 +3974,10 @@ pub struct KruskalTree<V, N, W>:
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.w[kt.top(1, e => es[e].w < 5)] == Some(3) and kt.top(0, e => false) == kt.leaf[0]`
     pub fn top<E>(self, v: V, ok: E -> Bool) -> N = lift.climb(leaf[v], x => ok(E.nth(edge[x]))).at
 
-    /// For every node, `op` folded over the `leaf` values of the leaves under it: the least walk
-    /// home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`. Each node
+    /// For every node, `op` folded over the `leaf` values of the leaves under it.
+    ///
+    /// For example, the least walk home from any vertex a subtree reaches is
+    /// `kt.up(min, leaf: v => home[v]!)`. Each node
     /// folds its two children, the lower node first, so `op` should commute unless that order
     /// is the one wanted.
     ///
