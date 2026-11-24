@@ -4030,7 +4030,6 @@
         "ceoi18p1": "pass",
         "ceoi19pp1": "pass",
         "cheerio1s3": "pass",
-        "cmt21r2ztr": "pass",
         "coci20c6p3": "pass",
         "coci21c1p1": "pass",
         "coci21c2p4": "pass",
@@ -4103,31 +4102,24 @@
       },
       "causes": [
         {
-          "cause": "E0204: `\u003cid>` (`\u003cid>`) does not work on the types it was given here: `\u003cid>` is not a type `\u003cid>` knows",
+          "cause": "E0301: this is indexed by `\u003cid>`, but the index is a `\u003cid>`",
           "count": 1,
           "examples": [
             "noi09p4"
-          ]
-        },
-        {
-          "cause": "R0202: integer overflow: range `\u003cid>` span does not fit in an `\u003cid>` (64 bits)",
-          "count": 1,
-          "examples": [
-            "dmopc21c9p1"
           ]
         }
       ],
       "counts": {
         "error": 1,
-        "pass": 99
+        "pass": 98
       },
       "interp_max_over_20s": [
-        "cco19p5",
+        "cco04p4",
         "cco24p1",
         "noi10p2"
       ],
-      "passed": 99,
-      "total": 100
+      "passed": 98,
+      "total": 99
     },
     "diff": {
       "cases": {
