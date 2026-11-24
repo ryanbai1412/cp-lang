@@ -28,6 +28,7 @@ dependencies = [
  "cpl-check",
  "cpl-codegen",
  "cpl-contest",
+ "cpl-corpus",
  "cpl-diag",
  "cpl-doc",
  "cpl-fmt",
@@ -57,6 +58,7 @@ version = "0.3.0"
 dependencies = [
  "cpl-check",
  "cpl-codegen",
+ "cpl-corpus",
  "cpl-diag",
  "cpl-fmt",
  "cpl-interp",
@@ -82,6 +84,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-corpus"
+version = "0.3.0"
+
+[[package]]
 name = "cpl-diag"
 version = "0.3.0"
 dependencies = [
@@ -102,6 +108,7 @@ dependencies = [
 name = "cpl-fmt"
 version = "0.3.0"
 dependencies = [
+ "cpl-corpus",
  "cpl-diag",
  "cpl-syntax",
 ]
@@ -138,6 +145,7 @@ name = "cpl-lint"
 version = "0.3.0"
 dependencies = [
  "cpl-check",
+ "cpl-corpus",
  "cpl-diag",
  "cpl-fmt",
  "cpl-ir",
@@ -151,6 +159,7 @@ name = "cpl-lsp"
 version = "0.3.0"
 dependencies = [
  "cpl-check",
+ "cpl-corpus",
  "cpl-diag",
  "cpl-doc",
  "cpl-fmt",

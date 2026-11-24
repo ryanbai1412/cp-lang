@@ -33,12 +33,7 @@ fn repo_root() -> PathBuf {
 /// Each problem's largest test input, for the problems with the largest.
 fn largest_inputs(root: &Path) -> Vec<(String, PathBuf)> {
     let mut found = Vec::new();
-    let problems = std::fs::read_dir(root.join("corpus/problems")).expect("corpus/problems");
-    for problem in problems.flatten() {
-        let spec = problem.path().join("spec.cp");
-        if !spec.exists() {
-            continue;
-        }
+    for spec in cpl_corpus::files(root, "spec.cp") {
         // tests.toml cases are what `scripts/corpus.py make` wrote under target/.
         let Ok(tests) = std::fs::read_dir(cpl_contest::problem::find_tests_dir(&spec)) else {
             continue;
@@ -50,7 +45,13 @@ fn largest_inputs(root: &Path) -> Vec<(String, PathBuf)> {
             .filter_map(|p| Some((std::fs::metadata(&p).ok()?.len(), p)))
             .max_by(|a, b| a.0.cmp(&b.0).then_with(|| b.1.cmp(&a.1)));
         if let Some((size, input)) = largest {
-            let name = problem.file_name().to_string_lossy().into_owned();
+            let name = spec
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .into_owned();
             found.push((size, name, input));
         }
     }
@@ -89,7 +90,7 @@ fn largest_input_fits_the_judges_memory(rank: usize) {
     let inputs = largest_inputs(&root);
     assert_eq!(inputs.len(), PROBLEMS, "fewer corpus problems with inputs");
     let (name, input) = &inputs[rank];
-    let spec = root.join("corpus/problems").join(name).join("spec.cp");
+    let spec = cpl_corpus::package(&root, name).join("spec.cp");
     let src = std::fs::read_to_string(&spec).expect("read spec");
     let limit = cpl_contest::problem::Limits::of(&spec, &src).memory_kb;
     let peak = peak_kb(&spec, input);

@@ -47,7 +47,7 @@ const SPEC_PORTS: &[&str] = &[
 fn ports() -> Vec<PathBuf> {
     let mut ports: Vec<PathBuf> = SPEC_PORTS
         .iter()
-        .map(|id| root().join(format!("corpus/problems/{id}/spec.cp")))
+        .map(|id| cpl_corpus::package(&root(), id).join("spec.cp"))
         .chain(v03_ports())
         .collect();
     ports.sort();
@@ -285,7 +285,7 @@ fn v03_ports() -> Vec<PathBuf> {
         .lines()
         .map(str::trim)
         .filter(|id| !id.is_empty() && !id.starts_with('#'))
-        .map(|id| root().join(format!("corpus/problems/{id}/port.cp")))
+        .map(|id| cpl_corpus::package(&root(), id).join("port.cp"))
         .collect()
 }
 
@@ -313,7 +313,7 @@ fn passing_corpus_ports() -> Vec<PathBuf> {
         .lines()
         .filter_map(|line| line.trim().trim_end_matches(',').split_once(": "))
         .filter(|(_, status)| *status == "\"pass\"")
-        .map(|(id, _)| root().join(format!("corpus/problems/{}/spec.cp", id.trim_matches('"'))))
+        .map(|(id, _)| cpl_corpus::package(&root(), id.trim_matches('"')).join("spec.cp"))
         .collect()
 }
 

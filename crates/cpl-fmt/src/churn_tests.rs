@@ -11,12 +11,9 @@ mod corpus_programs;
 fn sources() -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut files = Vec::new();
-    for entry in std::fs::read_dir(root.join("corpus/problems"))
-        .unwrap()
-        .flatten()
-    {
+    for dir in cpl_corpus::packages(&root) {
         for name in ["port.cp", "spec.cp"] {
-            files.push(entry.path().join(name));
+            files.push(dir.join(name));
         }
     }
     files.extend(corpus_programs::v02_snapshot_ports(&root));

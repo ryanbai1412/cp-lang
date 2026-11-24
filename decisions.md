@@ -8914,3 +8914,8 @@ Reserved for call 5, which landed as decision 519.
 ## 549. (reserved, infra)
 
 ## 550. (reserved, content)
+## 549. One Rust corpus walker crate, `cpl-corpus` (infra, 2026-11-24)
+
+- **Call.** Rust code lists the problem packages only through `cpl_corpus::{packages, files, package}`, a dependency-free crate every tool and test can reach. `scripts/corpus.py` stays the walker for everything else; `corpus_walkers` counts any other file that lists `corpus/problems` itself.
+- **Why.** Twenty Rust suites each had their own `read_dir("corpus/problems")`, so a layout change (generated tests, a moved package) had to be made twenty times. No existing crate sits below `cpl-check`, `cpl-fmt`, `cpl-lint` and `cpl-conform` without a cycle, so the walker gets its own leaf crate.
+- **Reverse.** If a Rust tool can run `scripts/corpus.py ls` everywhere it runs, read that listing and delete the crate.

@@ -20,32 +20,16 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<CorpusProblem> {
 
 /// Problems with a `file` (`spec.cp`, `port.cp`) program; `spec_path` is that file.
 pub fn discover_file(root: &Path, filter: Option<&str>, file: &str) -> Vec<CorpusProblem> {
-    let dir = root.join("corpus").join("problems");
-    let Ok(entries) = std::fs::read_dir(&dir) else {
-        return Vec::new();
-    };
-    let mut ids: Vec<String> = entries
-        .flatten()
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            let spec_path = e.path().join(file);
-            if spec_path.is_file() {
-                if let Some(f) = filter {
-                    if !name.contains(f) {
-                        return None;
-                    }
-                }
-                Some(name)
-            } else {
-                None
-            }
-        })
+    let mut ids: Vec<String> = cpl_corpus::files(root, file)
+        .iter()
+        .filter_map(|p| Some(p.parent()?.file_name()?.to_string_lossy().into_owned()))
+        .filter(|name| filter.is_none_or(|f| name.contains(f)))
         .collect();
     ids.sort();
 
     ids.into_iter()
         .map(|id| {
-            let prob_dir = dir.join(&id);
+            let prob_dir = cpl_corpus::package(root, &id);
             let spec_path = prob_dir.join(file);
             let tests = runner::walk_files(&tests_dir(root, &prob_dir, &id), "in")
                 .into_iter()

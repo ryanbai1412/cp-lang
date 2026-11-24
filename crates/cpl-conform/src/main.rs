@@ -11,7 +11,7 @@ usage: cpl-conform [conformance|corpus|docs|spec-blocks|diff|rewrites|all]... [o
 
 suites:
   conformance     spec/conformance/**/*.cp cases
-  corpus          corpus/problems/<id>/spec.cp on tests/*.in vs *.ans
+  corpus          each corpus problem's spec.cp on its tests' .in vs .ans
   docs            /// example: lines in std/*.cp
   spec-blocks     fenced cp blocks in spec/core, spec/lib, spec/tools and handbook/language
   diff            interpreter vs g++ -O2 -std=c++17 differential, with

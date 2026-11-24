@@ -164,12 +164,7 @@ struct Broken {
 /// the same way on every run.
 fn broken_ports(edits: &'static [(&'static str, Edit)]) -> Vec<Broken> {
     // Every `spec.cp` in the corpus that checks clean is a base.
-    let mut paths: Vec<PathBuf> = std::fs::read_dir(root().join("corpus/problems"))
-        .unwrap()
-        .flatten()
-        .map(|e| e.path().join("spec.cp"))
-        .filter(|p| p.exists())
-        .collect();
+    let mut paths: Vec<PathBuf> = cpl_corpus::files(&root(), "spec.cp");
     paths.sort();
     let mut out = Vec::new();
     for path in paths {

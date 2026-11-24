@@ -1795,8 +1795,11 @@ def _names_corpus_set(line: str) -> bool:
     return bool(re.search(r"[\"']problems[\"']", line)) or "corpus/problems" in ONE_PROBLEM_RE.sub("", line)
 
 
+# A comment can name the corpus but can't walk it.
+COMMENT_RE = re.compile(r"\s*(?://|#(?!!)|\*)")
+
 # The walker, its test's fixture corpus, and this detector and its test.
-CORPUS_OWN = {"scripts/corpus.py", "scripts/test_corpus.py", "scripts/debt-ratchet.py", "scripts/test_debt_ratchet.py"}
+CORPUS_OWN = {"scripts/corpus.py", "crates/cpl-corpus/src/lib.rs", "scripts/test_corpus.py", "scripts/debt-ratchet.py", "scripts/test_debt_ratchet.py"}
 
 
 def corpus_walkers(root: Path) -> list[str]:
@@ -1808,7 +1811,7 @@ def corpus_walkers(root: Path) -> list[str]:
             continue
         lines = _lines(root / rel)
         for i, line in enumerate(lines):
-            if _names_corpus_set(line):
+            if _names_corpus_set(line) and not COMMENT_RE.match(line):
                 if any(WALK_RE.search(l) and not GIT_CHANGED_RE.search(l) for l in lines[max(0, i - 3):i + 4]):
                     found.append(rel)
                     break

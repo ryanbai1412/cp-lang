@@ -450,14 +450,7 @@ fn lints_the_whole_corpus() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut seen = 0;
     let mut files = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(root.join("corpus/problems")) {
-        for entry in entries.flatten() {
-            let port = entry.path().join("port.cp");
-            if port.exists() {
-                files.push(port);
-            }
-        }
-    }
+    files.extend(cpl_corpus::files(&root, "port.cp"));
     for dir in [
         "crates/cpl-cli/tests/cases/ok",
         "crates/cpl-cli/tests/cases/lend",

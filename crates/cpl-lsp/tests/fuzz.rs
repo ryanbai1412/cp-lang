@@ -188,10 +188,10 @@ fn requests(src: &str, rng: &mut Rng) -> Vec<(&'static str, Value)> {
 
 #[test]
 fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
-    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
+    let repo = cpl_corpus::root();
     let mut files = Vec::new();
-    for author in std::fs::read_dir(&ports).unwrap().flatten() {
-        let Ok(entries) = std::fs::read_dir(author.path()) else {
+    for dir in cpl_corpus::packages(&repo) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
             continue;
         };
         for file in entries.flatten() {
@@ -200,7 +200,7 @@ fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
             }
         }
     }
-    files.extend(corpus_programs::v02_snapshot_ports(&ports.join("../..")));
+    files.extend(corpus_programs::v02_snapshot_ports(&repo));
     files.sort();
     let ports = port_count().min(files.len());
     let step = (files.len() / ports).max(1);

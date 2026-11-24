@@ -5,7 +5,7 @@
 | Kind | Domain charter |
 | Owner | infra |
 | Status | Active |
-| Describes | `.github/`, `scripts/check.sh`, `scripts/land.sh`, `.githooks/`, `scripts/release/`, `web/public/install.{sh,ps1}` |
+| Describes | `.github/`, `crates/cpl-corpus/`, `scripts/check.sh`, `scripts/land.sh`, `.githooks/`, `scripts/release/`, `web/public/install.{sh,ps1}` |
 
 Infra is the machinery between a commit and a user: landing a commit on
 main, the checks that run on it, and the releases and installers that put

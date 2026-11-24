@@ -25,7 +25,7 @@ and memory with the problem's limits.
 
 options:
   --zero-cost        run the zero-cost pairs (abstract.cp against direct.cp)
-  --corpus           benchmark corpus/problems/* against the original C++
+  --corpus           benchmark every corpus problem against the original C++
                      (p50/p95 + perf.cp)
   --fast PROG        run this instead of building the problem
   --time-limit MS    default: the problem's `// limits:` line, or 2000

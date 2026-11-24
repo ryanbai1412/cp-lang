@@ -57,10 +57,9 @@ fn programs() -> Vec<String> {
         &mut paths,
     );
     // A port runs on its tests; one with none has nothing to compare.
-    for dir in std::fs::read_dir(r.join("corpus/problems")).unwrap() {
-        let dir = dir.unwrap().path();
-        if dir.join("port.cp").exists() && !port_inputs(&dir).is_empty() {
-            paths.push(dir.join("port.cp"));
+    for port in cpl_corpus::files(&r, "port.cp") {
+        if !port_inputs(port.parent().unwrap()).is_empty() {
+            paths.push(port);
         }
     }
     for port in corpus_programs::v02_snapshot_ports(&r) {
