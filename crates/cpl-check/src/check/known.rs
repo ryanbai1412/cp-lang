@@ -186,25 +186,6 @@ impl<'a> Checker<'a> {
                 }
                 None
             }
-            ("span", [Ty::Pos(a), Ty::Pos(b)]) => {
-                let (a, b) = (
-                    a.strip_suffix(".cuts").unwrap_or(a),
-                    b.strip_suffix(".cuts").unwrap_or(b),
-                );
-                if a != b {
-                    let message = format!(
-                        "span of {} and {}",
-                        Ty::Pos(a.into()).with_article(),
-                        Ty::Pos(b.into()).with_article()
-                    );
-                    self.error(codes::WRONG_DOMAIN, call.span, message);
-                    return Some(Ty::Error);
-                }
-                Some(Ty::Named {
-                    name: "Range".into(),
-                    args: vec![Ty::Pos(a.into())],
-                })
-            }
             // `max(e for x in s)` is the free form of `s.map(x => e).max()` (R01.10.1).
             ("max" | "min", [over])
                 if args[0].value.is_generator() && args[0].name.is_none() && !args[0].mutable =>

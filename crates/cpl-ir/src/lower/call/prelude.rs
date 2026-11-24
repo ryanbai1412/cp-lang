@@ -600,7 +600,6 @@ impl<'a> Lowerer<'a> {
                 self.arg_extreme(name == "argmax", &args[0].value, span)
             }
             "runs" => self.lower_runs(args, span),
-            "span" => self.lower_span(args, span),
             "counts" => self.lower_counts(args, span),
             "prefix" => self.lower_prefix(args, span),
             "List" => {

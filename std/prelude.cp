@@ -160,6 +160,7 @@ use std.seq.{
     rotated_left,
     rotated_right,
     runs,
+    span,
     take_while,
     tally,
     windows,

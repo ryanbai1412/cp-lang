@@ -1383,18 +1383,14 @@ fn a_range_or_span_stays_in_one_domain() {
         "range between I and J"
     );
     assert_eq!(
-        msg("print(span(I.first!, J.last!).len)\n"),
-        "span of an I and a J"
-    );
-    assert_eq!(
         msg("for i in I: print(sum(a[..=i.r]))\n"),
         "`..=i.r` is a closed range of cuts, which names no piece"
     );
     for body in [
         "print(sum(a[I.first!..=I.last!]))\n",
         "for i in I: print(sum(a[..i.r]), sum(a[i.l..]))\n",
-        "print(span(I.last!, I.first!).len)\n",
-        "for i in I: print(span(i.l, I.last!).len)\n",
+        "print(span(I.first!.l, I.last!.r).len)\n",
+        "for i in I: print(span(i.l, I.last!.r).len)\n",
     ] {
         let src = format!("{head}{body}");
         assert!(codes(&src).is_empty(), "{src}: {:?}", check(&src));

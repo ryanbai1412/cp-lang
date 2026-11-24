@@ -962,3 +962,13 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   a run from it finishes the setup then reads the test count and runs the cases
   (`run_after_setup`, moved with `run_cases` to `cases.rs`).
 - Regression: cpl-interp checkpoint `a_checkpoint_before_input_is_taken_above_multitest`.
+
+### Content item 15 (2026-11-23): `span` runs its std body
+
+- `span(lo, hi)` lowered to the built-in `lower_span` and had its own checker arm, so std's
+  body in `std/seq.cp` (it traps unless `lo <= hi`) never ran. Both are deleted, and the std
+  prelude imports `span` from `std.seq`, like the other prelude functions.
+- A cut or position of one domain passed where another's is wanted is E0301 in the IR's
+  type mismatch too, as the checker and `compare_mismatch` already have it.
+  std-seq/span-rejects-cuts-of-two-domains is unchanged.
+- The checker unit's span checks pass cuts: the std `span` takes cuts only (decision 124).

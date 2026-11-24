@@ -327,7 +327,14 @@ impl<'a> Lowerer<'a> {
     /// A one-character string where a `Char` or a `Char` test is wanted:
     /// `'a'`, or `c => c == 'a'`; a statement where a value is wanted.
     pub(super) fn type_mismatch(&mut self, span: Span, want: &Ty, found: &Ty, message: String) {
-        self.error(codes::TYPE_MISMATCH, span, message);
+        // A position or cut of one domain where another's is wanted is the wrong domain.
+        let code = match (want, found) {
+            (Ty::Pos(a), Ty::Pos(b)) | (Ty::Bound(a), Ty::Bound(b)) if a != b => {
+                codes::WRONG_DOMAIN
+            }
+            _ => codes::TYPE_MISMATCH,
+        };
+        self.error(code, span, message);
         let text = self.source(span);
         if matches!(found, Ty::Unit) && !text.contains('\n') {
             if let Some(last) = self
