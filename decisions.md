@@ -9133,3 +9133,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** `std/lazy.cp` adds `LazyForest<T, F>`: many `LazyTreap` sequences over one shared node list, named by `ForestSeq` handles from `seq()` and `split_at`. `split_at(s, k)` and `append(s, other)` relink roots in \(O(\log n)\) expected and copy no node; `push`/`apply`/`reverse`/`get`/`to_list` take the handle. A handle with an id its forest never issued traps; a handle is only meaningful to the forest that made it (one from another forest whose id is in range names that forest's sequence of the same id). Nodes are not freed, so memory is \(O(\text{pushes})\). `LazyTreap.split_at`/`splice_back` keep their value semantics (each treap owns its nodes, so the smaller side is copied) and their docs point at the forest.
 - **Why.** Two values can't share a node list, so returning or absorbing a treap must copy; the shared pool is how C++ solutions get \(O(\log n)\) split/merge, and it closes the GAPS line on `LazyTreap.split_at`/`append`.
 - **Reverse.** Drop `LazyForest`/`ForestSeq`; put the GAPS line back.
+
+## 599. (reserved, content)
