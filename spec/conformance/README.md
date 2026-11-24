@@ -54,10 +54,13 @@ A `// copies: N` header line states how many deep copies the case's
 judge C++ makes (none without the line; `N` above 0, at most one line).
 `crates/cpl-cli/tests/read_only_copies.rs` builds every case and every
 corpus program and fails, naming the file, on any whose C++ makes a
-different number; `scripts/debt-ratchet.py` sums the case lines as the
-shrink-only `spec_required_copies` counter (corpus programs have the
-hard-zero `cpp_deep_copies`), so a copy is only added by writing it down
-where it happens.
+different number. Codegen marks each copy a move or a borrow in its place
+would show `kept` (`cpl explain --json`), and the same test proves the
+mark by rewriting the copy both ways and running it. `scripts/debt-ratchet.py`
+counts the copies past a case's kept ones as the hard-zero
+`spec_avoidable_copies` (corpus programs have the hard-zero
+`cpp_deep_copies`), so a copy is only added by writing it down where it
+happens, and only kept if a program could see it gone.
 
 A word holding `{case}` or `{dir}` takes the copy's path or the scratch
 directory there, and the copy is not passed first:

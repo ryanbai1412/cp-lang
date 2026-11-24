@@ -219,7 +219,11 @@ pub(crate) fn explain_file(
                     .str(site)
                     .key("lowering")
                     .str(lowering);
-                w.key("detail").str(detail).end();
+                w.key("detail").str(detail);
+                if *lowering == "copy" {
+                    w.key("kept").bool(cpl_codegen::explain::kept_copy(detail));
+                }
+                w.end();
             }
             w.end();
         });
