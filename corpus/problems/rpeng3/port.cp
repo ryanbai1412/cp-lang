@@ -1,5 +1,6 @@
 // Source: IOI 2009 Day 2 (Salesman), https://dmoj.ca/problem/rpeng3
 //   (not public on DMOJ; statement from the official IOI 2009 task)
+// limits: 3000 ms, 64 MB
 // Problem: N <= 5e5 fairs, each a day 1 <= T <= 5e5, a location 1 <= L <= 500001 (distinct, never
 //   home) and a gain 1 <= M <= 4000. A metre upstream (towards smaller L) costs U, downstream D,
 //   1 <= D <= U <= 10. Start and end at home 1 <= S <= 500001; fairs go in day order, same-day

@@ -1,5 +1,16 @@
 import sys, random
 # seed size: N <= size (capped at 5e5), locations distinct in 1..=500001 and never home, 1 <= D <= U <= 10
+# --max: N = 5e5 fairs filling every location but home, U = 10 > D = 1, days mixing one-fair days
+# with crowded ones (every fair a SegTree fold and update, every crowded day a full sweep).
+if sys.argv[1] == "--max":
+    r, n = random.Random(0), 500000
+    home = 250001
+    locs = [x for x in range(1, 500002) if x != home]
+    r.shuffle(locs)
+    days = [r.randint(1, 500000) if i % 2 else r.randint(1, 50) for i in range(n)]
+    print(n, 10, 1, home)
+    print("\n".join(f"{t} {x} {r.randint(1, 4000)}" for t, x in zip(days, locs)))
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 big = S >= 500000
 n = 500000 if big else r.randint(1, S)

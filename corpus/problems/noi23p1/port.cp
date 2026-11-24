@@ -1,4 +1,5 @@
 // Source: NOI 2023 Day 1 Square Coloring, https://dmoj.ca/problem/noi23p1
+// limits: 1000 ms, 512 MB
 // Problem: a grid of n columns and m rows (n, m <= 1e9), q <= 1e5 strokes painting the cells of a horizontal,
 //   vertical or diagonal (x and y both rising) segment black; at most 5 strokes are diagonal.
 //   Print the number of black cells. The first input number is the test id.

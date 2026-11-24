@@ -1,5 +1,16 @@
 import sys, random
 # seed size: n, m <= size (capped at 1e9), q <= 1e5; at most 5 diagonal strokes
+# --max: n = m = 1e9, q = 1e5: 5 full diagonals, then distinct long horizontal and vertical strokes
+# (every pair crosses, the most for the sweep), a few overlapping on a line to merge.
+if sys.argv[1] == "--max":
+    r, N, q = random.Random(0), 10**9, 10**5
+    out = ["0", f"{N} {N} {q}"]
+    for d in range(5):
+        x = r.randint(1, 1000); out.append(f"3 {x} 1 {N} {N - x + 1}")
+    ys = r.sample(range(1, N + 1), (q - 5) // 2); xs = r.sample(range(1, N + 1), q - 5 - len(ys))
+    rows = [f"1 {r.randint(1, 1000)} {y} {N - r.randint(0, 1000)} {y}" for y in ys]
+    rows += [f"2 {x} {r.randint(1, 1000)} {x} {N - r.randint(0, 1000)}" for x in xs]
+    r.shuffle(rows); print("\n".join(out + rows)); sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 big = S > 1000
 n = min(S, 10**9) if big and r.random() < 0.7 else r.randint(1, min(S, 10**9))
