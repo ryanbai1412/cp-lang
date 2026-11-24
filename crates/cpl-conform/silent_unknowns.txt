@@ -715,7 +715,6 @@
 6 corpus/problems/noi02p3/dream.cp
 10 corpus/problems/noi02p3/port.cp
 10 corpus/problems/noi02p3/spec.cp
-2 corpus/problems/noi02p4/perf.cp
 2 corpus/problems/noi02p4/port.cp
 8 corpus/problems/noi03p1/port.cp
 1 corpus/problems/noi03p2/port.cp
