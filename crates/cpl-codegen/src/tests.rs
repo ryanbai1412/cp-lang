@@ -232,6 +232,19 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     assert!(cpp.contains("struct CpHash"), "{cpp}");
     assert!(cpp.contains("splitmix64"), "{cpp}");
     assert!(cpp.contains("steady_clock"), "{cpp}");
+    // The salt is read once at start-up, and an integer key is one multiply by it.
+    assert!(
+        cpp.contains("static uint64_t salt() { return hash_salt; }"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("return (size_t)((uint64_t)x * (salt() | 1));"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("(uint8_t)(0x80 | ((h >> 32) & 0x7f))"),
+        "{cpp}"
+    );
     // Fingerprinted slots at a load of at most 3/4, sized exactly, freeing the old table as a rehash walks it.
     // A load of 2/3 measured no faster on bench/containers/hash_reserve_probe and slower on
     // hash_str_grow and hash_antihash, which grow 1.4x the memory.
