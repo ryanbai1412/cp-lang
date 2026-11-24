@@ -27,7 +27,14 @@ pub(crate) fn sinks(program: &Program, devirt: &Devirt, traps: bool) -> BTreeMap
             };
             if let Some(slot) = sink_param(program, devirt, &pure, traps, *fid) {
                 if sinkable_args(program, devirt, *fid, slot, args) {
-                    found.insert(*fid, slot);
+                    let (mut f, mut s) = (*fid, slot);
+                    found.insert(f, s);
+                    while let Some((g, k, _)) = forwards(program, f, s) {
+                        if found.insert(g, k).is_some() {
+                            break;
+                        }
+                        (f, s) = (g, k);
+                    }
                 }
             }
         });
@@ -46,6 +53,20 @@ fn sink_param(
     traps: bool,
     fid: usize,
 ) -> Option<usize> {
+    sink_param_within(program, devirt, pure, traps, fid, FORWARDS)
+}
+
+/// How many fns a list may be handed on through, `sum` to `fold` and the like.
+const FORWARDS: usize = 4;
+
+fn sink_param_within(
+    program: &Program,
+    devirt: &Devirt,
+    pure: &BTreeSet<usize>,
+    traps: bool,
+    fid: usize,
+    depth: usize,
+) -> Option<usize> {
     let f = &program.fns[fid];
     if f.params.iter().any(|p| p.mutable)
         || program.judge_fns.contains(&fid)
@@ -59,7 +80,13 @@ fn sink_param(
             matches!(s, Stmt::For(_, _, Iter::Seq(seq, false), _)
                 if matches!(seq.kind, ExprKind::Local(l) if l == slot))
         });
-        let Some(at) = at else { return false };
+        let Some(at) = at else {
+            return depth > 0
+                && forwards(program, fid, slot).is_some_and(|(g, k, args)| {
+                    sink_param_within(program, devirt, pure, traps, g, depth - 1) == Some(k)
+                        && other_args_ok(program, devirt, g, k, args)
+                });
+        };
         let Stmt::For(_, _, _, body) = &f.body.stmts[at] else {
             return false;
         };
@@ -104,8 +131,40 @@ fn sinkable_args(
     slot: usize,
     args: &[Arg],
 ) -> bool {
+    matches!(args.get(slot), Some(Arg::Value(v)) if producer(v).is_some())
+        && other_args_ok(program, devirt, fid, slot, args)
+}
+
+/// `fn f(.., xs, ..) = g(.., xs, ..)`, its body only handing the list parameter `slot` on
+/// whole: `g`, the slot it takes `xs` in, and the arguments of that call.
+fn forwards(program: &Program, fid: usize, slot: usize) -> Option<(usize, usize, &[Arg])> {
+    let f = &program.fns[fid];
+    let [Stmt::Return(Some(e)) | Stmt::Expr(e)] = f.body.stmts.as_slice() else {
+        return None;
+    };
+    let ExprKind::Call(g, args) = &e.kind else {
+        return None;
+    };
+    let mut uses = 0;
+    walk::deep_exprs(&f.body, &mut |e| {
+        uses += usize::from(matches!(e.kind, ExprKind::Local(l) if l == slot));
+    });
+    let k = args.iter().position(
+        |a| matches!(a, Arg::Value(v) if matches!(v.kind, ExprKind::Local(l) if l == slot)),
+    )?;
+    (uses == 1 && program.fns[*g].ret == f.ret).then_some((*g, k, args.as_slice()))
+}
+
+/// Every argument but the list in `slot` is a constant or a pure closure.
+fn other_args_ok(
+    program: &Program,
+    devirt: &Devirt,
+    fid: usize,
+    slot: usize,
+    args: &[Arg],
+) -> bool {
     args.iter().enumerate().all(|(s, arg)| match arg {
-        Arg::Value(v) if s == slot => producer(v).is_some(),
+        _ if s == slot => true,
         Arg::Value(v) => {
             matches!(
                 v.kind,
@@ -125,6 +184,9 @@ impl Emitter<'_> {
         let Some(Arg::Value(seq)) = args.get(slot) else {
             return None;
         };
+        if matches!(seq.kind, ExprKind::Local(l) if self.sinking == Some(l)) {
+            return self.forward_sink_call(id, slot, args);
+        }
         let p = producer(seq)?;
         if self.hoisted.contains(p.vec)
             || !sinkable_args(self.program, &self.devirt, id, slot, args)
@@ -158,6 +220,29 @@ impl Emitter<'_> {
                 self.indent -= 1;
                 let close = crate::emit::pad(self.indent);
                 texts.push(format!("[&](auto&& {put}) {{\n{body}{close}}}"));
+            } else if self.devirt.param_elidable(id, s) && self.devirt.skippable_value(v) {
+                texts.push("false".to_string());
+            } else if self.program.fns[id].locals[s].ty != Ty::Unit {
+                texts.push(self.expr(v).text);
+            }
+        }
+        let name = crate::names::fn_name(&self.program.fns[id].name);
+        Some(Code::primary(format!(
+            "cpl_sink_{name}({})",
+            texts.join(", ")
+        )))
+    }
+
+    /// In a sink variant, the call handing the sunk list on: it hands on the callback.
+    fn forward_sink_call(&mut self, id: usize, slot: usize, args: &[Arg]) -> Option<Code> {
+        if !other_args_ok(self.program, &self.devirt, id, slot, args) {
+            return None;
+        }
+        let mut texts = Vec::with_capacity(args.len());
+        for (s, arg) in args.iter().enumerate() {
+            let Arg::Value(v) = arg else { return None };
+            if s == slot {
+                texts.push("cpl_g".to_string());
             } else if self.devirt.param_elidable(id, s) && self.devirt.skippable_value(v) {
                 texts.push("false".to_string());
             } else if self.program.fns[id].locals[s].ty != Ty::Unit {

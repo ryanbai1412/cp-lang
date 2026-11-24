@@ -119,3 +119,17 @@ fn a_sum_whose_of_may_trap_keeps_the_list_only_at_that_call() {
     assert_eq!(solve.matches("push_back").count(), 1, "{solve}");
     assert!(solve.contains("cpl_sink_"), "{solve}");
 }
+
+#[test]
+fn a_reducer_that_hands_its_list_on_builds_no_list() {
+    let cpp = cpp(concat!(
+        "fn total(xs: List<Int>) -> Int = xs.fold((acc, x) => acc ^ x, 0)\n",
+        "fn twice(xs: List<Int>) -> Int = total(xs)\n",
+        "let n: 1..=1000 = read()\n",
+        "print(twice([i * j for i in 0..n for j in i..n if (i + j) % 3 == 0]))\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(solve.contains("cpl_sink_"), "{solve}");
+    assert!(!solve.contains("push_back"), "{solve}");
+    assert!(cpp.contains("(cpl_g"), "{cpp}");
+}
