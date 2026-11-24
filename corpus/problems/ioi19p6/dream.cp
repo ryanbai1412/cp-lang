@@ -20,8 +20,11 @@ fn cut(w: Walk, at: B) -> List<Walk>:
         return [w]
     let left = (l..=at).last_true(b => tall.fold(b..=at) >= w.y)!
     let right = (at..=r).first_true(b => tall.fold(at..=b) >= w.y)!
-    [(span: l..=left, y: w.y), (span: left..=right, y: w.y), (span: right..=r, y: w.y)]
-        .filter(p => p.span.len > 1).collect()
+    [
+        (span: l..=left, y: w.y),
+        (span: left..=right, y: w.y),
+        (span: right..=r, y: w.y),
+    ].filter(p => p.span.len > 1).collect()
 
 let walks = [q for w in raw for p in cut((span: w.l..=w.r, y: w.y), s) for q in cut(p, g)]
 

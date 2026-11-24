@@ -31,7 +31,10 @@ fn construct_network():
 
     // one OR wire per diagonal, in diagonal order
     fn lines(key: (R, C) -> Int) -> List<Int>:
-        let by_line = [(r, c) for r in R for c in C].group(by: rc => key(rc.0, rc.1), of: rc => wire(rc.0, rc.1))
+        let by_line = [(r, c) for r in R for c in C].group(
+            by: rc => key(rc.0, rc.1),
+            of: rc => wire(rc.0, rc.1),
+        )
         [add_or(by_line[d]) for d in by_line.keys.collect().sorted()]
 
     fn gap_exactly(ls: List<Int>, d: Int) -> Int =
@@ -60,5 +63,6 @@ while true:
         on.push(match g.op:
             And: g.ins.all(i => on[i])
             Or: g.ins.any(i => on[i])
-            Not: not on[g.ins[0]])
+            Not: not on[g.ins[0]]
+        )
     print(Int(on.last!))

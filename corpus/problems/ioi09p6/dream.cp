@@ -11,7 +11,12 @@ let bee = bfs(p => p.adj4.filter(q => field[q] in "GM"), from: P.filter(p => fie
 
 fn safe(w: Int) -> Bool:
     let ahead = (p: P, steps: Int) => bee[p].is_none_or(b => w + steps / s < b)
-    let walk = bfs(p => p.adj4.filter(q => field[q] in "GD"), from: [start], until: home, enter: ahead)
+    let walk = bfs(
+        p => p.adj4.filter(q => field[q] in "GD"),
+        from: [start],
+        until: home,
+        enter: ahead,
+    )
     ahead(start, 0) and walk.reached(home)
 
 print((0..n * n).last_true(safe) ?? -1)

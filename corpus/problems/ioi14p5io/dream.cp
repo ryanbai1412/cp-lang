@@ -17,7 +17,10 @@ for (k, j) in joins.items.rev:
     let either = max(b.free, b.taken)
     best[j.host] = match j.how:
         IAmYourFriend => (free: a.free + either, taken: a.taken + b.free)
-        MyFriendsAreYourFriends => (free: a.free + b.free, taken: max(a.taken + either, a.free + b.taken))
+        MyFriendsAreYourFriends => (
+            free: a.free + b.free,
+            taken: max(a.taken + either, a.free + b.taken),
+        )
         WeAreYourFriends => (free: a.free + b.free, taken: max(a.taken + b.free, a.free + b.taken))
 let root = best[P.first!]
 print(max(root.free, root.taken))
