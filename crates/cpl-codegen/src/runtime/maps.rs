@@ -136,15 +136,24 @@ inline uint64_t mulhi(uint64_t a, uint64_t b) {
 // of the hash) and the entry, built only in a full slot, so a probe reads an entry only when the
 // fingerprint matches. The load stays at most 7/8 and `reserve` sizes exactly. An entry's home grows
 // with its hash, so a rehash walks the old table in the new one's order and frees it as it goes.
+// A fresh odd seed per table, so two tables put the same keys in unrelated orders: draining one
+// into another in slot order would otherwise insert in home order and pile up one probe run.
+// The seeds run from a fixed start, so a program's output does not change from run to run.
+inline uint64_t table_seed() {
+    static uint64_t c = 0x2545f4914f6cdd1dULL;
+    uint64_t x = c += 0x9e3779b97f4a7c15ULL;
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL; x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+    return (x ^ (x >> 31)) | 1;
+}
 template <class E, class K, class KeyOf, class H> struct HashTable {
-    uint8_t* st = nullptr; E* e = nullptr; size_t cap = 0, n = 0;
+    uint8_t* st = nullptr; E* e = nullptr; size_t cap = 0, n = 0; uint64_t seed = table_seed();
     HashTable() = default;
     HashTable(const HashTable& o) { copy(o); }
     HashTable(HashTable&& o) noexcept { steal(o); }
     HashTable& operator=(const HashTable& o) { if (this != &o) { drop(); copy(o); } return *this; }
     HashTable& operator=(HashTable&& o) noexcept { if (this != &o) { drop(); steal(o); } return *this; }
     ~HashTable() { drop(); }
-    void steal(HashTable& o) { st = o.st; e = o.e; cap = o.cap; n = o.n; o.st = nullptr; o.e = nullptr; o.cap = o.n = 0; }
+    void steal(HashTable& o) { st = o.st; e = o.e; cap = o.cap; n = o.n; seed = o.seed; o.st = nullptr; o.e = nullptr; o.cap = o.n = 0; }
     void alloc(size_t c) {
         st = (uint8_t*)calloc(c, 1); e = (E*)calloc(c, sizeof(E));
         if (!st || !e) fail(\"out of memory\");
@@ -152,7 +161,7 @@ template <class E, class K, class KeyOf, class H> struct HashTable {
     }
     void copy(const HashTable& o) {
         if (!o.cap) return;
-        alloc(o.cap);
+        seed = o.seed; alloc(o.cap);
         for (size_t i = 0; i < cap; ++i) if (o.st[i]) { new (e + i) E(o.e[i]); st[i] = o.st[i]; }
         n = o.n;
     }
@@ -168,8 +177,9 @@ template <class E, class K, class KeyOf, class H> struct HashTable {
         for (size_t i = 0; i < cap; ++i) if (st[i]) kill(i);
         n = 0;
     }
-    // The salted hash, mixed again so a 32-bit size_t still fills the top bits the home is taken from.
-    uint64_t hash(const K& k) const { return (uint64_t)H{}(k) * 0x9e3779b97f4a7c15ULL; }
+    // The salted hash keyed by the table's seed, mixed again so a 32-bit size_t still fills the top
+    // bits the home is taken from.
+    uint64_t hash(const K& k) const { return ((uint64_t)H{}(k) ^ seed) * 0x9e3779b97f4a7c15ULL; }
     static uint8_t fp(uint64_t h) { return (uint8_t)(0x80 | (h & 0x7f)); }
     size_t home(uint64_t h) const { return (size_t)mulhi(h, cap); }
     size_t next(size_t i) const { return i + 1 == cap ? 0 : i + 1; }
@@ -182,7 +192,7 @@ template <class E, class K, class KeyOf, class H> struct HashTable {
     }
     // Rehashes into c slots, walking the old slots in order and freeing each page once it is moved out.
     void grow(size_t c) {
-        HashTable t; t.alloc(c);
+        HashTable t; t.seed = seed; t.alloc(c);
         const size_t chunk = 1 << 14; size_t done = 0;
         for (size_t i = 0; i < cap; ++i) {
             if (st[i]) { t.put(std::move(e[i])); kill(i); }
