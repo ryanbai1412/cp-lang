@@ -27,39 +27,46 @@ fn strips(b: Block) -> Range<Strip> = Strip.nth(b.ord * size)..=Strip.nth(
     min(Strip.len, (b.ord + 1) * size) - 1
 )
 
-var tint: [Strip]Int = 0
+let tall: [Strip]Int = [Strip] s => height(s)
 var pending: [Block]Int = 0
-var order: [Block]List<Strip> = [Block] b => strips(b).collect()  // by tint, darkest first
-var upto: [Block]List<Int> = [Block] _ => []                      // running heights along order
+var rows: [Block]List<(strip: Strip, tint: Int)> = [Block] b => [
+    (strip: s, tint: 0) for s in strips(b)
+]
+var upto: [Block]List<Int> = [Block] b => [0 for _ in strips(b)]  // running heights along rows, darkest first
 var shade: [Block]Int = 0                                         // height at or over need
 var shaded = 0
 
 fn heights(b: Block):
-    var (total, rows) = (0, List<Int>())
-    for s in order[b]:
-        total += height(s)
-        rows.push(total)
-    upto[b] = rows
+    var total = 0
+    for (i, r) in rows[b].items:
+        total += tall[r.strip]
+        upto[b][i] = total
 
 fn measure(b: Block):
-    let lit = (0..order[b].len).first_true(
-        i => tint[order[b][i]] + pending[b] < need
-    ) ?? order[b].len
+    let lit = (0..rows[b].len).first_true(i => rows[b][i].tint + pending[b] < need) ?? rows[b].len
     shaded -= shade[b]
     shade[b] = if lit == 0: 0 else: upto[b][lit - 1]
     shaded += shade[b]
 
+fn touch(b: Block, lo: Int, hi: Int, t: Int):
+    let (from, to) = (max(lo, strips(b).first!.ord), min(hi, strips(b).last!.ord + 1))
+    if to - from == strips(b).len:
+        pending[b] += t
+    else:
+        let (hit, rest) = rows[b].partition(r => from <= r.strip.ord and r.strip.ord < to)
+        let lifted = [(strip: r.strip, tint: r.tint + t) for r in hit]
+        rows[b] = lifted.merge_sorted(rest, by: r => -r.tint).collect()
+        heights(b)
+    measure(b)
+
 fn add(lo: Int, hi: Int, t: Int):
-    for b in Block.nth(lo / size)..=Block.nth((hi - 1) / size):
-        let (from, to) = (max(lo, strips(b).first!.ord), min(hi, strips(b).last!.ord + 1))
-        if to - from == strips(b).len:
-            pending[b] += t
-        else:
-            for s in from..to: tint[Strip.nth(s)] += t
-            let (hit, rest) = order[b].partition(s => from <= s.ord and s.ord < to)
-            order[b] = hit.merge_sorted(rest, by: s => -tint[s]).collect()
-            heights(b)
+    let (first, last) = (Block.nth(lo / size), Block.nth((hi - 1) / size))
+    touch(first, lo, hi, t)
+    if first == last: return
+    for b in first.next!..last:
+        pending[b] += t
         measure(b)
+    touch(last, lo, hi, t)
 
 for b in Block: heights(b)
 var events = [
