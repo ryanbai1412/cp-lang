@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3441 (3389 passing). Rules: 616.
+Cases: 3443 (3389 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 3441 (3389 passing). Rules: 616.
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 96 rules, 251 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 31 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 31 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -567,7 +567,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
 - R08.2.10 [1+ 1-]: A generic fn may not reach itself, directly or mutually, at a type that grows on every cal...
 - R08.2.4 [3+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
-- R08.2.5 [4+ 1-]: Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static ca...
+- R08.2.5 [4+ 3-]: Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static ca...
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
 - R08.2.8 [1+ 0-]: Return-type dispatch: a call may be resolved by its expected type (`read<T>()`).
 - R08.2.9 [7+ 0-]: **Conditional code** on a bound: `if T: Commutative: ... else: ...` chooses at compile tim...
@@ -795,7 +795,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
 - E0302 Type mismatch: 64 case(s)
-- E0303 Wrong number of arguments: 18 case(s)
+- E0303 Wrong number of arguments: 20 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
