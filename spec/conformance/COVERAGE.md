@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3699 (3597 passing). Rules: 617.
+Cases: 3700 (3597 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 3699 (3597 passing). Rules: 617.
 - R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 198 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 28 rules, 79 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 97 rules, 262 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -345,7 +345,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.3 [4+ 1-]: **Combining two sequences pairs them by walk order, never by key.** This covers `==`, `<`,...
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
-- R04b.1.7 [6+ 3-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
+- R04b.1.7 [7+ 3-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
 - R04b.1.8 [1+ 1-]: , so `a.sorted().rev[0]` is an error whose fix is `.nth(0)`.
 - R04b.1.9 [2+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [3+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
@@ -366,7 +366,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.5.6 [1+ 0-]: | `Palindromes.longest_at(i)` | `i: Int` | `i: K`
 - R04b.5.7 [1+ 0-]: | `period`, `borders`, `common_prefix_len`, `overlap` | `Int` lengths | unchanged
 - R04b.5.8 [1+ 1-]: | `seq.cp` | `nth_element` | renamed `select(k)`, so `nth` means one thing
-- R04b.5.9 [3+ 0-]: | `seq.cp` | none | `nth`, `rebase`, `rekey` added
+- R04b.5.9 [4+ 0-]: | `seq.cp` | none | `nth`, `rebase`, `rekey` added
 
 ### R05: 05-ownership.md
 
