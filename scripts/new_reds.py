@@ -22,6 +22,7 @@ names (a build error) refuses as before.
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -30,8 +31,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from culprit import describe, failing_tests, source_of
 
 
-def git(*args, cwd=None, check=True):
-    return subprocess.run(["git", *args], cwd=cwd, check=check, text=True, capture_output=True).stdout.strip()
+# What git exports to a hook to name the repo it runs for: a pre-commit hook gets the
+# relative GIT_INDEX_FILE=.git/index, which in the base worktree (where .git is a file)
+# fails every checkout with "index.lock: Not a directory".
+REPO_ENV = ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE", "GIT_PREFIX", "GIT_COMMON_DIR")
+
+
+def base_env(env=None):
+    """`env` (default os.environ) for a run in the base worktree: no hook repo variables."""
+    return {k: v for k, v in (os.environ if env is None else env).items() if k not in REPO_ENV}
+
+
+def git(*args, cwd=None, check=True, code=False):
+    env = base_env() if cwd is not None else None
+    done = subprocess.run(["git", *args], cwd=cwd, env=env, check=check, text=True, capture_output=True)
+    return done.returncode if code else done.stdout.strip()
 
 
 def tee(cmd, cwd=None, env=None):
@@ -56,19 +70,26 @@ def only(cmd, tests):
 
 
 def base_checkout(common, base):
+    """The scratch base worktree at `base`, rebuilt when it can't check out (slice 3's
+    `git checkout -f --detach` failed in it, and no base comparison ran)."""
     wt = common / "cpl-base-wt"
-    if (wt / ".git").exists():
-        git("checkout", "-q", "-f", "--detach", base, cwd=wt)
-    else:
-        git("worktree", "prune")
-        git("worktree", "add", "-q", "-f", "--detach", str(wt), base)
+    if (wt / ".git").exists() and not git("checkout", "-q", "-f", "--detach", base, cwd=wt, check=False, code=True):
+        return wt
+    if wt.exists():
+        print(f"new-reds: rebuilding the base worktree {wt}", file=sys.stderr)
+        target = wt / "target"
+        if target.is_symlink():
+            target.unlink()
+        shutil.rmtree(wt, ignore_errors=True)
+    git("worktree", "prune", cwd=common)
+    git("worktree", "add", "-q", "-f", "--detach", str(wt), base, cwd=common)
     return wt
 
 
 def at_base(cmd, tests, base, common):
     """{test: 'fail' | 'pass' | 'unbuilt'} for `tests` at `base`."""
     wt = base_checkout(common, base)
-    env = {**os.environ, "CARGO_TARGET_DIR": os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))}
+    env = {**base_env(), "CARGO_TARGET_DIR": os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))}
     print(f"new-reds: rerunning {len(tests)} failing test(s) at the base {base[:9]}", file=sys.stderr)
     code, out = tee(only(cmd, tests), cwd=wt, env=env)
     failed = set(failing_tests(out))

@@ -1003,3 +1003,51 @@ class CheckTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BaseCheckoutTest(unittest.TestCase):
+    def test_a_base_worktree_that_cannot_check_out_is_rebuilt(self) -> None:
+        import new_reds
+        repo = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        g = lambda *a, cwd=repo: subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+        g("init", "-q")
+        (repo / "f").write_text("1\n")
+        g("add", "f")
+        g("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "one")
+        common = repo / ".git"
+        wt = common / "cpl-base-wt"
+        wt.mkdir()
+        (wt / ".git").write_text("gitdir: /nonexistent\n")
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(new_reds.base_checkout(common, g("rev-parse", "HEAD")), wt)
+        self.assertIn("rebuilding the base worktree", err.getvalue())
+        self.assertEqual((wt / "f").read_text(), "1\n")
+        self.assertEqual(new_reds.base_checkout(common, g("rev-parse", "HEAD")), wt)
+
+    def test_the_base_worktree_checks_out_from_a_real_pre_commit_hook(self) -> None:
+        # Slice 3: git hands a pre-commit hook GIT_INDEX_FILE=.git/index, and in the base
+        # worktree, whose .git is a file, every checkout failed with "Not a directory".
+        import new_reds
+        repo = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        g = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=repo,
+                                      check=True, capture_output=True, text=True).stdout.strip()
+        g("init", "-q")
+        g("commit", "-q", "--allow-empty", "-m", "one")
+        new_reds.base_checkout(repo / ".git", g("rev-parse", "HEAD"))
+        g("commit", "-q", "--allow-empty", "-m", "two")
+        hook = repo / ".git" / "hooks" / "pre-commit"
+        hook.write_text(
+            f"#!{sys.executable}\nimport pathlib, subprocess, sys\n"
+            f"sys.path.insert(0, {str(Path(new_reds.__file__).parent)!r})\n"
+            "import new_reds\n"
+            "h = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()\n"
+            "wt = new_reds.base_checkout(pathlib.Path('.git').absolute(), h)\n"
+            "pathlib.Path('.git/base-head').write_text(new_reds.git('rev-parse', 'HEAD', cwd=wt))\n")
+        hook.chmod(0o755)
+        (repo / "f").write_text("x\n")
+        g("add", "f")
+        done = subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "three"],
+                              cwd=repo, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertNotIn("rebuilding", done.stderr)
+        self.assertEqual((repo / ".git" / "base-head").read_text().strip(), g("rev-parse", "HEAD~1"))
