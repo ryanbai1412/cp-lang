@@ -664,6 +664,42 @@ def why_written_twice(root: Path) -> list[str]:
     return found
 
 
+SCOREBOARD = "research/scoreboard.json"
+
+
+def _conformance_board(root: Path) -> dict | None:
+    p = root / SCOREBOARD
+    if not p.is_file():
+        return None
+    return json.loads(p.read_text()).get("suites", {}).get("conformance")
+
+
+def conformance_failing(root: Path) -> list[str]:
+    """Conformance cases research/scoreboard.json records as not passing.
+
+    `cpl-conform conformance --write` writes the board; the ratchet only reads it, so
+    land.sh never runs the suite. A missing board counts, so the gate can't pass blind."""
+    board = _conformance_board(root)
+    if board is None:
+        return [f"{SCOREBOARD}: no conformance suite; run `cpl-conform conformance --write`"]
+    return [f"{c}: {v}" for c, v in sorted(board.get("cases", {}).items()) if v != "pass"]
+
+
+def conformance_wrong_output(root: Path) -> list[str]:
+    """Conformance cases research/scoreboard.json records as printing the wrong output.
+
+    The board keeps five examples per cause, so the rest are counted by number."""
+    board = _conformance_board(root)
+    if board is None:
+        return [f"{SCOREBOARD}: no conformance suite; run `cpl-conform conformance --write`"]
+    for entry in board.get("causes", []):
+        if entry.get("cause") == "wrong output":
+            named = list(entry.get("examples", []))
+            n = max(int(entry.get("count", 0)), len(named))
+            return named + [f"wrong output {i + 1} of {n} (unnamed in {SCOREBOARD})" for i in range(len(named), n)]
+    return []
+
+
 def plan_delta_lines(root: Path) -> list[str]:
     """Lines of working notes under plan/domains/*/delta, plus each such directory on disk:
     findings become conformance cases, history goes under research/design-history/."""
@@ -1628,6 +1664,9 @@ COUNTERS = {
     "plan_delta_lines": ("lines of notes under plan/domains/*/delta", plan_delta_lines, True),
     "why_written_twice": ("reasoning written in two homes, or rationale under spec/", why_written_twice, True),
     "authority_drift": ("authority sentence missing from a home, or contradicted", authority_drift, True),
+    "conformance_failing": ("conformance cases not passing in research/scoreboard.json (Content)", conformance_failing, True),
+    "conformance_wrong_output": ("conformance cases with wrong output in research/scoreboard.json (Content)",
+                                 conformance_wrong_output, True),
     "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
     "own_databases": ("Database::new() outside tests and cpl-check", own_databases, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),

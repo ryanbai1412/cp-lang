@@ -561,6 +561,30 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(found), 3, found)
             self.assertIn("authority_drift", dr.HARD_ZERO)
 
+    def test_conformance_counters_read_the_scoreboard(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(len(dr.conformance_failing(root)), 1)
+            self.assertEqual(len(dr.conformance_wrong_output(root)), 1)
+            board = {"schema_version": 2, "suites": {"conformance": {
+                "total": 9, "passed": 1,
+                "cases": {"a.cp": "pass", "b.cp": "fail", "c.cp": "bad", "d.cp": "timeout"}
+                | {f"w{i}.cp": "fail" for i in range(5)},
+                "causes": [{"cause": "wrong output", "count": 6, "examples": [f"w{i}.cp" for i in range(5)]},
+                           {"cause": "E0302: x", "count": 1, "examples": ["b.cp"]}]}}}
+            self._write(root, dr.SCOREBOARD, json.dumps(board))
+            failing = dr.conformance_failing(root)
+            self.assertEqual(len(failing), 8, failing)
+            self.assertIn("c.cp: bad", failing)
+            wrong = dr.conformance_wrong_output(root)
+            self.assertEqual(len(wrong), 6, wrong)
+            self.assertEqual(wrong[0], "w0.cp")
+            board["suites"]["conformance"]["cases"] = {"a.cp": "pass"}
+            board["suites"]["conformance"]["causes"] = []
+            self._write(root, dr.SCOREBOARD, json.dumps(board))
+            self.assertEqual(dr.conformance_failing(root), [])
+            self.assertEqual(dr.conformance_wrong_output(root), [])
+
     def test_why_written_twice_counts_copied_reasoning_and_spec_rationale(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
