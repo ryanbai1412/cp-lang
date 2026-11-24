@@ -196,6 +196,7 @@ impl<'a> Lowerer<'a> {
                     GenArg::Ty(t) => t,
                     GenArg::Domain(d) => Ty::Pos(d),
                     GenArg::Int(_) | GenArg::RuntimeInt(_) | GenArg::Range(_, _) => Ty::Int,
+                    GenArg::OptRange(_, _) => Ty::Opt(Box::new(Ty::Int)),
                     GenArg::Op(_) => Ty::Unit,
                 });
             }

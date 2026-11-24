@@ -29,6 +29,13 @@ pub(super) enum RangeInfo {
 }
 
 impl RangeBounds {
+    /// `??lo..hi` inside an `int32_t`: two values below the range are the two `none`s.
+    pub(super) fn narrow_opt_opt_layout(&self) -> Option<NarrowLayout> {
+        let (lo_min, hi_max) = self.limits()?;
+        (lo_min > i64::from(i32::MIN) + 1 && hi_max <= i64::from(i32::MAX))
+            .then_some(NarrowLayout::OptOptI32)
+    }
+
     pub(super) fn narrow_opt_layout(&self) -> Option<NarrowLayout> {
         let (lo_min, hi_max) = self.limits()?;
         (lo_min > i64::from(i32::MIN) && hi_max <= i64::from(i32::MAX))
@@ -182,6 +189,12 @@ impl RangeInfo {
             (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::Int => {
                 inner.scalar()?.narrow_opt_layout()
             }
+            (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::Opt(Box::new(Ty::Int)) => {
+                match inner.as_ref() {
+                    RangeInfo::Opt(held) => held.scalar()?.narrow_opt_opt_layout(),
+                    _ => None,
+                }
+            }
             (RangeInfo::Tuple(items), Ty::Tuple(ts))
                 if !ts.is_empty() && items.len() == ts.len() =>
             {
@@ -321,7 +334,13 @@ impl<'a> Lowerer<'a> {
     /// The ends of a range type known while lowering, through a local alias.
     fn static_range_limits(&self, ty: &ast::Type) -> Option<(i64, i64)> {
         // `type Sign = -1..=1`: a field of the alias narrows as its range would.
-        if let ast::TypeKind::Named { .. } = &ty.kind {
+        if let ast::TypeKind::Named { name, args } = &ty.kind {
+            // A generic parameter bound to a range keeps its bounds in the instance.
+            if let (true, Some(GenArg::Range(Some(lo), Some(hi)))) =
+                (args.is_empty(), self.gen_env.get(&name.text))
+            {
+                return Some((*lo, *hi));
+            }
             return self
                 .local_alias_target(ty)
                 .and_then(|aliased| self.static_range_limits(aliased));
@@ -344,6 +363,22 @@ impl<'a> Lowerer<'a> {
         Some((lo_min, hi_max))
     }
 
+    /// The ends of the range a `?range` type holds: an alias of one, or a
+    /// generic parameter bound to one.
+    fn static_opt_range_limits(&self, ty: &ast::Type) -> Option<(i64, i64)> {
+        match &ty.kind {
+            ast::TypeKind::Optional(inner) => self.static_range_limits(inner),
+            ast::TypeKind::Named { name, args } if args.is_empty() => {
+                if let Some(GenArg::OptRange(Some(lo), Some(hi))) = self.gen_env.get(&name.text) {
+                    return Some((*lo, *hi));
+                }
+                self.local_alias_target(ty)
+                    .and_then(|aliased| self.static_opt_range_limits(aliased))
+            }
+            _ => None,
+        }
+    }
+
     /// The ranged `Int`, `?Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.
     pub(super) fn narrow_int_fields(
         &self,
@@ -354,7 +389,13 @@ impl<'a> Lowerer<'a> {
             let width = match &field.ty.kind {
                 ast::TypeKind::Range { .. } => self.narrow_range_width(&field.ty),
                 ast::TypeKind::Named { args, .. } if args.is_empty() => {
-                    self.narrow_range_width(&field.ty)
+                    self.narrow_range_width(&field.ty).or_else(|| {
+                        (self.static_opt_range_limits(&field.ty))
+                            .filter(|&(lo, hi)| {
+                                lo > i64::from(i32::MIN) && hi <= i64::from(i32::MAX)
+                            })
+                            .map(|_| IntWidth::I32)
+                    })
                 }
                 ast::TypeKind::Array { index, elem } if index.len() == 1 => {
                     self.narrow_range_width(elem)
@@ -364,9 +405,15 @@ impl<'a> Lowerer<'a> {
                 {
                     self.narrow_range_width(&args[0])
                 }
-                // `?lo..hi` inside an `int32_t` above INT32_MIN, which is `none`.
+                // `?lo..hi` inside an `int32_t` above INT32_MIN, which is `none`;
+                // `??lo..hi` above INT32_MIN + 1, the inner `none`.
                 ast::TypeKind::Optional(inner) => (self.static_range_limits(inner))
                     .filter(|&(lo, hi)| lo > i64::from(i32::MIN) && hi <= i64::from(i32::MAX))
+                    .or_else(|| {
+                        self.static_opt_range_limits(inner).filter(|&(lo, hi)| {
+                            lo > i64::from(i32::MIN) + 1 && hi <= i64::from(i32::MAX)
+                        })
+                    })
                     .map(|_| IntWidth::I32),
                 _ => None,
             };
@@ -431,6 +478,10 @@ impl<'a> Lowerer<'a> {
                 if args.is_empty() {
                     if let Some(GenArg::Range(lo, hi)) = self.gen_env.get(&name.text).cloned() {
                         return Some(RangeInfo::Scalar(self.const_bounds(lo, hi, ty.span)));
+                    }
+                    if let Some(GenArg::OptRange(lo, hi)) = self.gen_env.get(&name.text).cloned() {
+                        let held = RangeInfo::Scalar(self.const_bounds(lo, hi, ty.span));
+                        return Some(RangeInfo::Opt(Box::new(held)));
                     }
                     if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
                         return self.in_alias(aid, |lw, ty| lw.range_info_from_ast(ty));

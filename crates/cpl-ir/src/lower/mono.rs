@@ -46,6 +46,8 @@ pub(super) enum GenArg {
     RuntimeInt(GlobalId),
     Op(BareOp),
     Range(Option<i64>, Option<i64>),
+    /// `?lo..hi`: an optional of a range, so a field `List<?F>` keeps `F`'s bounds.
+    OptRange(Option<i64>, Option<i64>),
 }
 
 pub(super) type GenEnv = HashMap<String, GenArg>;
@@ -252,6 +254,7 @@ impl<'a> Lowerer<'a> {
             GenArg::RuntimeInt(gid) => format!("RI{gid}"),
             GenArg::Op(op) => format!("Op_{op:?}"),
             GenArg::Range(lo, hi) => format!("R{:?}_{:?}", lo, hi),
+            GenArg::OptRange(lo, hi) => format!("OR{:?}_{:?}", lo, hi),
         }
     }
 

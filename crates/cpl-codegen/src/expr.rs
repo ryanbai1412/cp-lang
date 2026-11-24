@@ -642,6 +642,9 @@ impl<'p> Emitter<'p> {
                         Some(cpl_ir::NarrowLayout::OptI32) => {
                             Code::primary(format!("cpl::OptInt({})", code.text))
                         }
+                        Some(cpl_ir::NarrowLayout::OptOptI32) => {
+                            Code::primary(format!("std::optional<cpl::OptInt>({})", code.text))
+                        }
                         Some(cpl_ir::NarrowLayout::Tuple(_)) => {
                             let wide = wide_elem_ty.as_deref().unwrap_or("auto");
                             Code::primary(format!("{wide}({})", code.text))

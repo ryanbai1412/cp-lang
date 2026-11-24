@@ -1345,6 +1345,9 @@ pub enum NarrowLayout {
     Seq(Box<NarrowLayout>),
     /// Leaf element is a `?lo..hi` inside `int32_t` above `INT32_MIN`, which is `none`.
     OptI32,
+    /// Leaf element is a `??lo..hi` inside `int32_t`: `INT32_MIN` is the outer `none` and
+    /// `INT32_MIN + 1` the inner one, both below the range.
+    OptOptI32,
 }
 
 impl NarrowLayout {
@@ -1353,6 +1356,9 @@ impl NarrowLayout {
         match (self, elem_ty) {
             (NarrowLayout::Int(w), Ty::Int) => Some(w.cpp().to_string()),
             (NarrowLayout::OptI32, Ty::Opt(t)) if **t == Ty::Int => Some("cpl::OptI32".to_string()),
+            (NarrowLayout::OptOptI32, Ty::Opt(t)) if **t == Ty::Opt(Box::new(Ty::Int)) => {
+                Some("cpl::OptOptI32".to_string())
+            }
             (NarrowLayout::Tuple(ws), Ty::Tuple(ts)) if ws.len() == ts.len() => {
                 let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
                 Some(format!("std::tuple<{}>", parts.join(", ")))

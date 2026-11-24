@@ -16,7 +16,10 @@ impl<'a> Lowerer<'a> {
         let Some(Sym::Alias(aid)) = self.get_sym(name) else {
             return None;
         };
-        let range = matches!(self.aliases[aid].1.kind, ast::TypeKind::Range { .. });
+        let range = matches!(
+            self.aliases[aid].1.kind,
+            ast::TypeKind::Range { .. } | ast::TypeKind::Optional(_)
+        );
         range.then(|| self.in_alias(aid, |lw, ty| lw.resolve_gen_arg(ty)))
     }
 

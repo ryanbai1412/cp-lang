@@ -109,7 +109,7 @@ pub(crate) struct Emitter<'p> {
     pub copies: Vec<crate::lend::Copied>,
     /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
     /// the file names, as bits.
-    pub niche_types: std::cell::Cell<u8>,
+    pub niche_types: std::cell::Cell<u16>,
     /// Runtime pieces the program uses, by name.
     pub used: BTreeSet<&'static str>,
     /// Names taken at the top level of the file.
@@ -430,6 +430,7 @@ impl<'p> Emitter<'p> {
             "cpl::OptField",
             "cpl::OptI32",
             "cpl::Unit",
+            "cpl::OptOptI32",
         ]
         .iter()
         .enumerate()
@@ -1329,6 +1330,7 @@ impl<'p> Emitter<'p> {
             "niche_field",
             "niche_i32",
             "unit",
+            "niche_opt_opt_i32",
         ]
         .into_iter()
         .enumerate()

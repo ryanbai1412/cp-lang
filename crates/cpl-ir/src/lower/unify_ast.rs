@@ -180,6 +180,15 @@ impl<'a> Lowerer<'a> {
                                             }
                                         }
                                     }
+                                    GenArg::OptRange(lo, hi) => {
+                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
+                                        {
+                                            if a.is_empty() && gen_names.contains(&n.text) {
+                                                env.entry(n.text.clone())
+                                                    .or_insert(GenArg::OptRange(*lo, *hi));
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

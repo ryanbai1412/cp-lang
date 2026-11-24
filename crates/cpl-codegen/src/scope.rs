@@ -14,7 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) mod narrow;
 
-pub(crate) use narrow::{is_opt_int, narrow_elems, narrow_ints};
+pub(crate) use narrow::{narrow_elems, narrow_ints, opt_int_niche};
 
 #[derive(Default)]
 struct Scopes {
