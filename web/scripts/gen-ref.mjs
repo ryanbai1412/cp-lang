@@ -131,6 +131,9 @@ function programs(e, module, shared) {
   const setup = [...(module === 'builtin' ? [] : [`use std.${module}.*`]), ...(ownsShared ? shared : [])].join('\n');
   const own = e.setup.slice(ownsShared ? shared.length : 0);
   // An `example:` that is prose, not code, runs nothing and is listed.
+  const claim = e.value ? `assert(${e.expr} == ${e.value})` : `assert(${e.expr})`;
+  // One tagged `(traps R0001)` or `(error E0309)` must stop with that code.
+  if (e.code !== null && e.expect) return { e, setup, own, bodies: [[...own, claim].join('\n')] };
   const bodies = e.code === null ? [] : [[...own, `print(${e.expr})`]];
   if (e.code === null);
   else if (e.value) bodies.push([...own, `assert(${e.expr} == ${e.value})`]);
@@ -138,14 +141,17 @@ function programs(e, module, shared) {
   return { e, setup, own, bodies: bodies.map((b) => b.join('\n')) };
 }
 
-// What runAll runs: the program, then its stated stdin after a NUL.
-const runKey = (setup, body, stdin) => `${setup}\n${body}\n${stdin ? `\0${stdin}` : ''}`;
+// What runAll runs: the program, then its stated stdin after a NUL, then the code
+// it must stop with after another.
+const runKey = (setup, body, stdin, expect) =>
+  `${setup}\n${body}\n${stdin || expect ? `\0${stdin ?? ''}` : ''}${expect ? `\0${expect}` : ''}`;
 
 function renderExample(example, module, shared, ran, failing, at) {
   const { e, setup, own, bodies } = programs(example, module, shared);
-  const body = bodies.find((b) => ran.get(runKey(setup, b, e.stdin)));
+  const body = bodies.find((b) => ran.get(runKey(setup, b, e.stdin, e.expect)));
   const result = e.value ? ['', `Result: \`${e.value}\``] : [];
   const input = e.stdin ? ` input="${e.stdin.replace(/\n/g, '\\n')}"` : '';
+  if (body && e.expect) return [`\`\`\`cp rejects=${e.expect}${input}`, setup, body, '```', `Stops with \`${e.expect}\``, ''];
   if (body) return [`\`\`\`cp run compact${input}`, setup, '//---', body, '```', ...result, ''];
   failing.push(`${at}: ${e.text}`);
   if (e.code === null) return [e.text, ''];
@@ -273,15 +279,17 @@ async function runAll(sources) {
   const one = (src, i) =>
     new Promise((done) => {
       const file = join(dir, `${i % 16}.cp`);
-      const [program, stdin = ''] = src.split('\0');
+      const [program, stdin = '', expect] = src.split('\0');
       writeFileSync(file, program);
-      const p = spawn(cpl, ['run', file], { stdio: ['pipe', 'ignore', 'ignore'] });
+      const p = spawn(cpl, ['run', file], { stdio: ['pipe', 'ignore', expect ? 'pipe' : 'ignore'] });
+      let stderr = '';
+      p.stderr?.on('data', (d) => (stderr += d));
       p.stdin.on('error', () => {});
       p.stdin.end(stdin);
       const timer = setTimeout(() => p.kill(), 10_000);
       p.on('close', (code) => {
         clearTimeout(timer);
-        cache[key(src)] = code === 0;
+        cache[key(src)] = expect ? code !== 0 && stderr.includes(`[${expect}]`) : code === 0;
         done();
       });
     });
@@ -348,7 +356,7 @@ const tries = [];
 const collect = (item, module, parentDoc, shared) => {
   for (const e of ownDoc(item, parentDoc).examples) {
     const { e: ex, setup, bodies } = programs(e, module, shared);
-    tries.push(bodies.map((b) => runKey(setup, b, ex.stdin)));
+    tries.push(bodies.map((b) => runKey(setup, b, ex.stdin, ex.expect)));
   }
   const memberShared = item.members?.length ? commonSetup(memberExamples(item)) : [];
   for (const m of item.members ?? []) collect(m, module, item.doc, memberShared);
@@ -356,7 +364,7 @@ const collect = (item, module, parentDoc, shared) => {
 for (const m of modules) {
   for (const e of m.examples ?? []) {
     const { e: ex, setup, bodies } = programs(e, m.name, []);
-    tries.push(bodies.map((b) => runKey(setup, b, ex.stdin)));
+    tries.push(bodies.map((b) => runKey(setup, b, ex.stdin, ex.expect)));
   }
   for (const i of m.items) collect(i, m.name, '', []);
 }
