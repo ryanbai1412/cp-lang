@@ -85,11 +85,11 @@ impl<'p> Facts<'p> {
         facts.block(None, &program.main);
         for (id, f) in program.fns.iter().enumerate() {
             // A parameter's value comes from each caller: unknown.
-            for slot in 0..f.params.len() {
+            for (slot, param) in f.params.iter().enumerate() {
                 let v = (Some(id), false, slot);
                 *facts.stores.entry(v).or_default() += 2;
                 facts.tainted.insert(v);
-                if let Some(range) = &f.params[slot].range {
+                if let Some(range) = &param.range {
                     facts.param_ranges.insert(v, range);
                 }
             }
