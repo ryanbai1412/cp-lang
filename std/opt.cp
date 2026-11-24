@@ -33,3 +33,21 @@ pub fn and_then<T, U>(self: ?T, f: T -> ?U) -> ?U:
 pub fn is_none_or<T>(self: ?T, p: T -> Bool) -> Bool:
     if let Some(v) = self: return p(v)
     true
+
+/// Whether there is a value.
+///
+/// cost: \(O(1)\)
+/// example: `Some(4).is_some == true`
+/// example: `let n: ?Int = None; n.is_some == false`
+pub fn is_some<T>(self: ?T) -> Bool:
+    if let Some(_) = self: return true
+    false
+
+/// Whether there is no value.
+///
+/// cost: \(O(1)\)
+/// example: `Some(4).is_none == false`
+/// example: `let n: ?Int = None; n.is_none == true`
+pub fn is_none<T>(self: ?T) -> Bool:
+    if let Some(_) = self: return false
+    true

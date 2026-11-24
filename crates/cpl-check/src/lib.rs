@@ -40,7 +40,7 @@ pub use builtins::{
     foreign_str_fn, is_member, list_end_help, needs_order, optional_member, prelude_names,
     split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind, PreludeKind,
     Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, ITERATOR_POSITION_HELP,
-    OPTIONAL_MEMBERS, POS_MEMBERS, RANGE_MEMBERS,
+    OPTIONAL_MEMBERS, OPTIONAL_UNWRAP_HELP, POS_MEMBERS, RANGE_MEMBERS,
 };
 pub use check::{closest, GlobalRef, HoverEntry, Resolved, TypedIndex};
 pub use db::{

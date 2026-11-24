@@ -3,6 +3,8 @@
 // model: is_some_and
 // model: is_none_or
 // model: and_then
+// model: is_some
+// model: is_none
 // The optional methods against `if let`: seeded random `?Int` values and thresholds, with each
 // method compared to the plain match it abbreviates. Reads `seed n`; prints the first op that differs.
 use std.rand.{Rng}
@@ -23,6 +25,8 @@ for k in 0..n:
     if v.is_some_and(x => x > t) != some_and: bad = "op {k}: is_some_and({v ?? 99}, > {t})"
     elif v.is_none_or(x => x > t) != none_or: bad = "op {k}: is_none_or({v ?? 99}, > {t})"
     elif v.and_then(x => if x % 2 == 0: Some(x * t) else: None) != then: bad = "op {k}: and_then({v ?? 99})"
+    elif v.is_some != (v != None): bad = "op {k}: is_some({v ?? 99})"
+    elif v.is_none != (v == None): bad = "op {k}: is_none({v ?? 99})"
     if bad != "":
         break
 print(if bad == "": "ok" else: bad)

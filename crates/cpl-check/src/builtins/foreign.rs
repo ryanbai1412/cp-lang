@@ -37,6 +37,10 @@ pub fn foreign_own(name: &str) -> &'static [&'static str] {
     }
 }
 
+/// `x.unwrap()` or `x.expect(..)` on an optional.
+pub const OPTIONAL_UNWRAP_HELP: &str =
+    "`x!` unwraps an optional, trapping on `None` at this place (R02.4.2)";
+
 /// C++'s `a.begin() + i` or `a.end()` standing for a position in a list.
 pub const ITERATOR_POSITION_HELP: &str =
     "CP Lang has no iterators: a position is its index, so `a.begin() + i` is `i` and `a.end()` is `a.len`";

@@ -42,7 +42,7 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
             else:
                 frames.pop()
                 if not frames.is_empty:
-                    let p = frames.last.0
+                    let p = frames.last!.0
                     low[p] min= low[u]
                 if low[u] == tin[u]!:
                     while true:

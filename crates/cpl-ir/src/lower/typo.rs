@@ -280,10 +280,7 @@ impl<'a> Lowerer<'a> {
             return;
         }
         let (help, new) = match (ty, method) {
-            (Ty::Opt(_), "unwrap" | "expect") => (
-                "`x!` unwraps an optional, trapping on `None` at this place (R02.4.2)",
-                "!",
-            ),
+            (Ty::Opt(_), "unwrap" | "expect") => (cpl_check::OPTIONAL_UNWRAP_HELP, "!"),
             (_, "unwrap") => ("this is not an optional, so there is nothing to unwrap", ""),
             (Ty::Str | Ty::List(_), _) if cpl_check::foreign_iter_call(method) => {
                 ("a list or string is iterated as it is: `for x in xs`", "")

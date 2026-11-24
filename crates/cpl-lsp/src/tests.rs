@@ -1814,7 +1814,11 @@ fn a_code_lens_shows_the_memory_the_arrays_take_against_the_judge_limit() {
 #[test]
 fn every_member_completion_type_checks_when_inserted() {
     for (prefix, receiver, must) in [
-        ("let x: ?Int = Some(3)\n", "x", &["map", "filter"][..]),
+        (
+            "let x: ?Int = Some(3)\n",
+            "x",
+            &["map", "filter", "is_some", "is_none"][..],
+        ),
         (
             "use std.bag.{SortedBag}\nlet b = SortedBag<Int>.new()\n",
             "b.range(0..5)",

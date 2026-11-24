@@ -167,7 +167,7 @@ fn a_number_made_into_a_position_or_a_modular_number_costs_o1() {
 #[test]
 fn a_domains_nth_at_and_wrap_and_a_positions_offset_cost_o1() {
     let src = "domain V = 0..10\nfn f(i: Int, v: V) -> Int:\n    let a = V.nth(i)\n    let b = V.at(i)\n    \
-               let c = V.wrap(i)\n    let d = v.offset(2)\n    a.ord + b.ord + c.ord + d!.ord\n";
+               let c = V.wrap(i)\n    let d = v.offset(2)\n    a.ord + b!.ord + c.ord + d!.ord\n";
     let mut db = Database::new();
     db.set_file("a.cp", src);
     assert!(db
