@@ -12,4 +12,4 @@ let n: 1..=1e6 = read()
 let k: 1..=n = read()
 let s: Str = read()
 
-print([w.len for w in s.split('1')].max_k(k).sum())
+print([w.len for w in s.split('1') if not w.is_empty].sorted(by: desc).take(k).sum())
