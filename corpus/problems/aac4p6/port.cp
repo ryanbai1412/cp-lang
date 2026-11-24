@@ -1,4 +1,5 @@
 // Source: An Animal Contest 4 P6 (Cozy Cottages), https://dmoj.ca/problem/aac4p6
+// limits: 500 ms, 256 MB
 // Problem: N <= 1e6 cottages on a circle with a_i <= 1e9 elves. Each of K <= 1e9 hours every
 //   non-empty cottage sends exactly one elf to the next cottage, all at once. Print the final
 //   counts.

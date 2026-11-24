@@ -1,4 +1,5 @@
 // Source: COCI 2021/22 Round 4 (Parkovi), https://dmoj.ca/problem/coci21c4p4
+// limits: 3000 ms, 512 MB
 // Problem: a tree on n <= 2e5 towns, road lengths <= 1e9. Build exactly k parks in distinct
 //   towns minimising the largest distance from a town to its nearest park; print that distance,
 //   then the k towns.

@@ -7,6 +7,18 @@ k is 1, n, or random in 1..=n. Labels and edge order are shuffled except on the 
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # n = 2e5 on a path with shuffled labels, roads near 1e9 (radius search over the full
+    # 2e14 range, depth 2e5), k = 1000
+    rng = random.Random(1)
+    n, k = 200_000, 1000
+    lab = list(range(1, n + 1)); rng.shuffle(lab)
+    es = [(lab[i - 1], lab[i], rng.randint(10**9 - 1000, 10**9)) for i in range(1, n)]
+    rng.shuffle(es)
+    print(n, k)
+    print("\n".join(f"{u} {v} {w}" for u, v, w in es))
+    sys.exit()
+
 rng = random.Random(int(sys.argv[1]))
 S = max(1, min(int(sys.argv[2]) if len(sys.argv) > 2 else 8, 200_000))
 n = S if rng.random() < 0.3 else rng.randint(1, S)

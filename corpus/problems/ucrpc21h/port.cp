@@ -1,4 +1,5 @@
 // Source: UCRPC Fall 2021 H (Fetch Quest), https://dmoj.ca/problem/ucrpc21h
+// limits: 5000 ms, 256 MB
 // Problem: a graph of n vertices and m weighted edges; every vertex but 0 holds a crystal.
 //   Four players start at 0 and each carries one crystal at a time back to 0. Print the
 //   least time to bring every crystal to 0 if it is at most 600, else "Impossible!".

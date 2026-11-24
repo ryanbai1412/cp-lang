@@ -1,4 +1,5 @@
 // Source: NOIP 2022 P4 (Match), https://dmoj.ca/problem/noip22p4
+// limits: 3000 ms, 1024 MB
 // Problem: permutations a and b of 1..n and Q queries (l, r), n, Q <= 2.5e5 (the first line also
 //   has a test id). For each query print the sum over all l <= p <= q <= r of
 //   max(a[p..=q]) * max(b[p..=q]), mod 2^64 (test id T in 0..=25; T = 0 on samples).

@@ -1,4 +1,5 @@
 // Source: NOI 2002 P3 (The Greedy Kuzuryu), https://dmoj.ca/problem/noi02p3
+// limits: 1000 ms, 16 MB
 // Problem: a tree of n <= 300 fruits, branch costs c <= 1e5, is split among m >= 2 heads, each
 //   eating at least one fruit; the big head eats exactly k fruits, fruit 1 among them. A branch
 //   whose two ends one head eats costs c. Print the minimum total cost, or -1 if impossible.

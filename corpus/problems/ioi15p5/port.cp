@@ -1,4 +1,5 @@
 // Source: IOI 2015 Day 2 P2 (Sorting), https://dmoj.ca/problem/ioi15p5
+// limits: 4000 ms, 256 MB
 // Problem: a permutation S of 0..n-1 (n <= 2e5) and Ermek's m <= 6e5 planned swaps (X[i], Y[i]).
 //   Each round Ermek makes his next swap, then Aizhan swaps any two positions; she stops once S
 //   is sorted. Print the least number of rounds R that sorts S, then Aizhan's R swaps.

@@ -1,4 +1,5 @@
 // Source: IOI 2005, Mountains, https://dmoj.ca/problem/ioi05p2
+// limits: 1400 ms, 256 MB
 // Problem: a track of 1 <= n <= 1e9 rails with slopes d_i, all 0 at first, then up to 1e5
 //   commands ending in E: "I a b D" sets d_a..=d_b to D (|D| <= 1e9); "Q h" (0 <= h <= 1e9)
 //   prints how many rails a car starting at height 0 passes before the track would rise above h

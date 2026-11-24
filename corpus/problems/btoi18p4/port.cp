@@ -1,4 +1,5 @@
 // Source: BOI 2018 P4 (Alternating Current), https://dmoj.ca/problem/btoi18p4
+// limits: 1000 ms, 1024 MB
 // Problem: a circle of n <= 1e5 segments and m <= 1e5 wires, each covering a cyclic range a..b.
 //   Direct each wire (0 or 1) so every segment is covered by wires of both directions; print
 //   the m digits, or "impossible".
