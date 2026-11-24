@@ -84,11 +84,21 @@ jobs:
           path: target/conform-prev.json
           key: conform-prev-${{ matrix.part }}-${{ github.run_id }}
           restore-keys: conform-prev-${{ matrix.part }}-
+      # debt-ratchet.py fails a baseline raised above the tip main had before
+      # this push (on main, HEAD is origin/main).
+      - name: Fetch the tip before this push
+        id: before
+        if: matrix.part == 'checks' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if git fetch -q --depth=1 origin "${{ github.event.before }}"; then
+            echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Fast gate
         # A hung test holds main's only run slot; a shard takes about 5 min.
         timeout-minutes: 12
         env:
           CPL_GATE_PART: ${{ matrix.part }}
+          CPL_RATCHET_BASE: ${{ steps.before.outputs.sha }}
           CPL_CONFORM_PREV: ${{ startsWith(matrix.part, 'conform:') && 'target/conform-prev.json' || '' }}
           CPL_DERIVED_HEALED: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '' }}
         # The shell timeout fails the step and leaves the cache saves below to run;

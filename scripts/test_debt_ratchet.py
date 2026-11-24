@@ -1001,23 +1001,49 @@ class DebtRatchetTest(unittest.TestCase):
                         "| Storage | intrinsic | `len` `at` `nth` |\n| Derived | move | `sum` `find` |\n")
             self.assertEqual(dr.ir_builtin_derived(root), ["find", "sum"])
 
-    def test_a_raised_baseline_needs_a_decision_naming_it(self) -> None:
+    def test_a_raised_baseline_fails_unless_its_measure_changed(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
                                             env=dr._git_env())
             git("init", "-q")
             (root / "scripts").mkdir()
-            (root / "scripts/debt-ratchet.json").write_text(json.dumps({"lint_std_names": 5}))
+            script = Path(dr.__file__).read_text(encoding="utf-8")
+            (root / "scripts/debt-ratchet.py").write_text(script)
+            (root / "scripts/debt-ratchet.json").write_text(
+                json.dumps({"lint_std_names": 5, "max_rs_lines": 2000, "rs_file_size_allowlist": {"a.rs": 2100}}))
             (root / "decisions.md").write_text("# Decisions\n")
             git("add", ".")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
-            raised = {"lint_std_names": 6}
-            self.assertEqual(len(dr.unexplained_bumps(root, raised, ref="HEAD")), 1)
             self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 4}, ref="HEAD"), [])
             with open(root / "decisions.md", "a") as f:
                 f.write("## 9. lint_std_names grows by one for X (2026-11-23)\n")
-            self.assertEqual(dr.unexplained_bumps(root, raised, ref="HEAD"), [])
+            for raised in ({"lint_std_names": 6}, {"max_rs_lines": 2400},
+                           {"rs_file_size_allowlist": {"a.rs": 2101}}):
+                self.assertEqual(len(dr.unexplained_bumps(root, raised, ref="HEAD")), 1, raised)
+            fn = dr.COUNTERS["lint_std_names"][1].__name__
+            at = script.index(f"def {fn}(")
+            (root / "scripts/debt-ratchet.py").write_text(script[:at] + script[at:].replace("\n", "\n    # counts more\n", 1))
+            self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 6}, ref="HEAD"), [])
+            self.assertEqual(len(dr.unexplained_bumps(root, {"max_rs_lines": 2400}, ref="HEAD")), 1)
+
+    def test_a_copy_bound_rises_only_with_its_counter(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
+                                            env=dr._git_env())
+            git("init", "-q")
+            counts = root / "crates/cpl-cli/tests/support/cpp_counts.rs"
+            counts.parent.mkdir(parents=True)
+            counts.write_text("fn count() {}\n")
+            (root / "scripts").mkdir()
+            (root / "scripts/debt-ratchet.py").write_text(Path(dr.__file__).read_text(encoding="utf-8"))
+            (root / "scripts/debt-ratchet.json").write_text(json.dumps({"cpp_std_functions": 70}))
+            git("add", ".")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+            self.assertEqual(len(dr.unexplained_bumps(root, {"cpp_std_functions": 84}, ref="HEAD")), 1)
+            counts.write_text("fn count() { /* a new pattern */ }\n")
+            self.assertEqual(dr.unexplained_bumps(root, {"cpp_std_functions": 84}, ref="HEAD"), [])
 
     def test_near_dup_fns_pairs_near_copies_across_crates(self) -> None:
         with tempfile.TemporaryDirectory() as d:

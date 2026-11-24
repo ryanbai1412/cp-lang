@@ -2,9 +2,10 @@
 """Tech-debt ratchet: architecture counts that may only go down.
 
 Every count below is measured from the tree and compared with
-`scripts/debt-ratchet.json`. A count above its baseline fails the gate; the
-only way past is `--update` in the same commit plus a `decisions.md` line
-saying why. Lower counts pass and print a hint to tighten the baseline.
+`scripts/debt-ratchet.json`. A count above its baseline fails the gate, and
+a baseline above main's fails too unless the same change rewrites the code
+that measures it (`unexplained_bumps`): new debt is removed, never admitted.
+Lower counts pass and print a hint to tighten the baseline.
 Why these ratchets exist: handbook/process/quality.md#accountability.
 
   rs_file_size_allowlist  `.rs` files under `crates/` over `max_rs_lines` (2000);
@@ -28,6 +29,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import difflib
 import fnmatch
 import functools
@@ -2269,33 +2271,82 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
     return errors, warnings, notes
 
 
-def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> list[str]:
-    """Baseline entries raised above `ref`'s without a decisions.md line naming them.
+# Files besides this script that define what a counter counts. The bound a
+# counter reads (read_only_copies.rs) is not one: raising it is the bump.
+MEASURED_BY = {
+    "cpp_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+    "cpp_optional_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+    "cpp_std_functions": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+}
 
-    A bump is a decision: the added decisions.md lines must name the counter
-    (e.g. `ir_builtin_names`) or the allowlisted file.
+
+def _measuring_code(text: str, fn: str) -> str:
+    """The source of `fn` in `text` and of every top-level def or constant it reaches."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return text
+    defs: dict[str, ast.AST] = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            defs[node.name] = node
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            for t in node.targets if isinstance(node, ast.Assign) else [node.target]:
+                if isinstance(t, ast.Name):
+                    defs[t.id] = node
+    seen, todo = set(), [fn]
+    while todo:
+        name = todo.pop()
+        if name in seen or name not in defs:
+            continue
+        seen.add(name)
+        todo += [n.id for n in ast.walk(defs[name]) if isinstance(n, ast.Name)]
+    return "\n".join(ast.get_source_segment(text, defs[n]) or "" for n in sorted(seen))
+
+
+def remeasured(root: Path, base: str, name: str) -> bool:
+    """Whether the code that measures `name` differs between `base` and the tree."""
+    fn = {"rs_file_size_allowlist": "rs_over_cap", "rs_near_cap": "rs_near_cap"}.get(name)
+    fn = fn or (COUNTERS[name][1].__name__ if name in COUNTERS else None)
+    if fn is None:
+        return False
+    script = root / "scripts/debt-ratchet.py"
+    now = script.read_text(encoding="utf-8") if script.is_file() else ""
+    then = "\n".join(_git(root, "show", f"{base}:scripts/debt-ratchet.py"))
+    if _measuring_code(now, fn) != _measuring_code(then, fn):
+        return True
+    paths = MEASURED_BY.get(name, ())
+    return bool(paths) and bool(_git(root, "diff", "--name-only", base, "--", *paths))
+
+
+def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> list[str]:
+    """Baseline entries raised above `ref`'s.
+
+    A raise passes only when the same change rewrites the code that measures
+    that entry (a new definition of the count, re-measured); never on a
+    decisions.md line or a Skipped: trailer. New debt is removed, not admitted.
     """
     shown = _git(root, "show", f"{ref}:scripts/debt-ratchet.json")
     if not shown:
         return []
     old = json.loads("\n".join(shown))
-    raised = [n for n, (_, _, g) in COUNTERS.items()
-              if g and n in old and int(baseline.get(n, 0)) > int(old[n])]
+    raised = [(n, n) for n, v in baseline.items()
+              if n in old and isinstance(v, int) and isinstance(old[n], int) and v > old[n]]
     old_allow = old.get("rs_file_size_allowlist", {})
-    raised += [rel for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
+    raised += [(rel, "rs_file_size_allowlist") for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
                if cap > old_allow.get(rel, 0)]
     if "rs_near_cap" in old and set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow):
-        raised.append("rs_near_cap")
-    zero = [n for n in raised if n in COUNTERS and int(old.get(n, 1)) == 0]
+        raised.append(("rs_near_cap", "rs_near_cap"))
+    zero = [n for n, _ in raised if n in COUNTERS and int(old.get(n, 1)) == 0]
     if zero:
         return [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
     if not raised:
         return []
     base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
-    added = "\n".join(l for l in _git(root, "diff", base, "--", "decisions.md")
-                      if l.startswith("+") and not l.startswith("+++"))
-    return [f"{n}: baseline raised above {ref} without a decisions.md line naming it "
-            f"(a bump is a decision; add one, or remove the debt)" for n in raised if n not in added]
+    return [f"{n}: baseline raised above {ref} ({old.get(n, old_allow.get(n))} -> "
+            f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); remove the new debt "
+            f"instead (only a change to the code that measures it may re-measure it)"
+            for n, key in raised if not remeasured(root, base, key)]
 
 
 def inherited_baseline(baseline: dict, upstream: dict) -> dict:
@@ -2413,7 +2464,8 @@ def main(argv: list[str] | None = None) -> int:
     baseline = json.loads(args.ratchet.read_text(encoding="utf-8"))
     actual = measure(args.root, max_lines)
     errors, warnings, notes = evaluate(actual, baseline)
-    errors += unexplained_bumps(args.root, baseline)
+    # On main, HEAD is origin/main: CI names the tip it last saw instead.
+    bumps = unexplained_bumps(args.root, baseline, os.environ.get("CPL_RATCHET_BASE") or "origin/main")
     if errors:
         try:
             upstream = measure_upstream(args.root, max_lines)
@@ -2427,6 +2479,7 @@ def main(argv: list[str] | None = None) -> int:
             warnings += [f"already on main, not from this change (infra fixes it): {e}"
                          for e in errors if e not in mine]
             errors = mine
+    errors += bumps
 
     # Name the last commits to touch a grown file, so its owner is pinged
     # rather than whoever pushes next.
@@ -2449,7 +2502,7 @@ def main(argv: list[str] | None = None) -> int:
         f"(allowlist {len(baseline.get('rs_file_size_allowlist', {}))}), {counts}"
     )
     if errors:
-        print("debt-ratchet: a deliberate increase needs `--update` in the same commit and a decisions.md line",
+        print("debt-ratchet: remove the new debt; a baseline rises only with a change to the code that measures it",
               file=sys.stderr)
     if notes:
         names = " ".join(improved(actual, baseline))
