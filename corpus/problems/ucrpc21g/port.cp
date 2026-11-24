@@ -1,4 +1,5 @@
 // Source: UCRPC F21 G (Snack Attack), https://dmoj.ca/problem/ucrpc21g
+// limits: 1000 ms, 256 MB
 // Problem: an n x n grid (n <= 100), a start cell, p <= 1000 popcorn and b <= 1000 boulder drops
 //   (cell, time 1..=100). Each second stay or move to a side neighbour; being on a cell when
 //   popcorn drops there gains one each, a boulder leaves floor(h/2) of the h held. Print the

@@ -1,4 +1,5 @@
 // Source: NOIP 2020 P2 (String Matching), https://dmoj.ca/problem/noip20p2
+// limits: 1000 ms, 512 MB
 // Problem: for a lowercase string S (|S| <= 2^20), count the ways to write S = (AB)^i C with
 //   A, B, C non-empty and i >= 1, where F(A) <= F(C) and F(X) is the number of letters occurring
 //   an odd number of times in X. Multitest (T <= 5).

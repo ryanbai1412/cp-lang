@@ -1,4 +1,5 @@
 // Source: NOIP 2022 P3, Barracks, https://dmoj.ca/problem/noip22p3
+// limits: 1000 ms, 512 MB
 // Problem: a connected simple graph, n <= 5e5 cities and m <= 1e6 roads. Choose a non-empty set
 //   of barracks cities and a set of guarded roads so that cutting any one unguarded road keeps
 //   all barracks connected. Count the choices mod 1e9+7.

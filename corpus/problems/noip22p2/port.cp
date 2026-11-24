@@ -1,4 +1,5 @@
 // Source: NOIP 2022 Meow Meow (Cards and Stacks), https://dmoj.ca/problem/noip22p2
+// limits: 1000 ms, 512 MB
 // Problem: T tests, total m <= 2e6: n <= 300 empty stacks and a deck of m cards with k <= 2n - 1
 //   patterns, each appearing an even number of times. Moves: put the top deck card on
 //   a stack (two equal cards on top cancel), or cancel two equal bottom cards of two stacks. Print

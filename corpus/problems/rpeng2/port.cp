@@ -1,4 +1,5 @@
 // Source: RPENG 2, which is IOI 1998 Polygon, https://dmoj.ca/problem/ioi98p6
+// limits: 1000 ms, 32 MB
 // Problem: a polygon of N <= 50 integer vertices whose edges are + ('t') or * ('x'). Remove one
 //   edge, then repeatedly merge two neighbours by their edge's operation. Print the best final
 //   value, then every edge (increasing) whose removal can reach it.

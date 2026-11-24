@@ -1,4 +1,5 @@
 // Source: SAC '22 Code Challenge 1 P3 (That Pool), https://dmoj.ca/problem/sac22cc1p3
+// limits: 1000 ms, 256 MB
 // Problem: an N x M grid (N, M, Q <= 100) of 'X' heads, 'W' blood and '.' empty. Action 1
 //   drops every X one row (overwriting the cell below; off the bottom it vanishes), then blood
 //   alternates: every W moves to the leftmost cell it can reach in its row, then every W with

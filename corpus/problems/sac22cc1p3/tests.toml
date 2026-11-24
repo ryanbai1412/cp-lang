@@ -1,36 +1,43 @@
 # The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
 
 [[case]]
-seed = 1
-size = 8
+input = "2 9\nWWXX.XWWW\nXXX...XXX\n4\n1\n2\n1\n2\n"
 
 [[case]]
-seed = 2
-size = 8
+input = "6 3\n...\nWW.\nWWW\nXWX\nWWX\nWXX\n2\n1\n2\n"
 
 [[case]]
-seed = 3
-size = 8
+input = "5 5\n.....\nWWWX.\nWXWW.\nWWWWW\nWXWWW\n6\n1\n2\n1\n2\n1\n2\n"
 
 [[case]]
-seed = 4
-size = 8
+input = "2 3\nW..\nXXW\n2\n1\n2\n"
 
 [[case]]
-seed = 5
-size = 8
+input = "6 6\nX.....\nX...XW\n..XXXX\nX.XXXX\nX.XXXX\nX.XXXX\n4\n1\n2\n1\n2\n"
 
 [[case]]
 seed = 6
-size = 8
+size = 5
 
 [[case]]
 seed = 7
-size = 64
+size = 8
 
 [[case]]
 seed = 8
-size = 64
+size = 16
+
+[[case]]
+seed = 9
+size = 32
+
+[[case]]
+seed = 10
+size = 300
+
+[[case]]
+seed = 11
+size = 3000
 
 [[case]]
 args = ["--max"]

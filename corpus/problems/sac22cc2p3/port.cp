@@ -1,4 +1,5 @@
 // Source: SAC '22 Code Challenge 2 P3 (Rating Choices), https://dmoj.ca/problem/sac22cc2p3
+// limits: 1000 ms, 256 MB
 // Problem: N <= 19 contests and rating R <= 1e9. A binary decision tree: each of the 2^N - 1
 //   lines `u a b w` says that at node u you either take the contest (go to a, gain w) or skip
 //   it (go to b). Starting at node 1, print the highest rating reachable at a leaf.

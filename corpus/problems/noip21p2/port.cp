@@ -1,4 +1,5 @@
 // Source: NOIP 2021 P2 (Sequence), https://dmoj.ca/problem/noip21p2
+// limits: 1000 ms, 512 MB
 // Problem: n <= 30, m <= 100, k <= n and weights v_0..v_m. Over all arrays a of n values in
 //   0..=m with at most k one bits in 2^a_1 + ... + 2^a_n, sum v_a_1 * ... * v_a_n mod 998244353.
 // Solution: add bits 0..=m in order. dp[used, carry, ones]: weighted ways to give `used` of the
