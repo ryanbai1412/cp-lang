@@ -169,6 +169,10 @@ pub(crate) struct Emitter<'p> {
     pub const_globals: BTreeSet<usize>,
     /// What follows the `let` being written, in its block.
     pub tail: Option<crate::lend::Tail>,
+    /// The variables read after the statement being written in each block
+    /// around it, a loop's own reads counting as after: for the home
+    /// `(closure_id, fn_id)` it was found in.
+    pub after_outer: (Option<Home>, BTreeSet<(bool, usize)>),
     /// Local lists kept in one buffer for the whole run: see [`crate::scope::reused`].
     pub reused: BTreeSet<usize>,
     /// The `yields` fns that also exist as `cpl_each_f(args, body)`, with
@@ -362,6 +366,32 @@ impl<'p> Emitter<'p> {
         for (f, p) in crate::uses::sinks::unmovable_sinks(program, &sunk) {
             sunk[f].remove(&p);
         }
+        let last: Vec<BTreeSet<usize>> = (program.fns.iter())
+            .map(|f| crate::uses::copied_last(program, f))
+            .collect();
+        let held = crate::uses::sinks::held_args(program, &last);
+        for (f, params) in last.iter().enumerate() {
+            for &p in params {
+                if !held.contains(&(f, p)) && !lent_fields.by_ref.contains(&(f, p)) {
+                    sunk[f].insert(p);
+                }
+            }
+        }
+        loop {
+            let handed = crate::uses::sinks::forwarded(program, &sunk);
+            let held = crate::uses::sinks::held_args(program, &handed);
+            let mut grew = false;
+            for (f, params) in handed.iter().enumerate() {
+                for &p in params {
+                    if !held.contains(&(f, p)) && !lent_fields.by_ref.contains(&(f, p)) {
+                        grew |= sunk[f].insert(p);
+                    }
+                }
+            }
+            if !grew {
+                break;
+            }
+        }
         let mut emitter = Emitter {
             program,
             facts,
@@ -403,6 +433,7 @@ impl<'p> Emitter<'p> {
             memo_pairs: BTreeMap::new(),
             const_globals: BTreeSet::new(),
             tail: None,
+            after_outer: Default::default(),
             in_setup: false,
             spent: BTreeSet::new(),
             lent: BTreeSet::new(),
@@ -973,7 +1004,7 @@ impl<'p> Emitter<'p> {
                     }
                 }
                 ExprKind::Local(slot) => {
-                    return (!std::ptr::eq(at, e) && by_ref.contains(slot)).then_some(*slot)
+                    return (!std::ptr::eq(at, e) && by_ref.contains(slot)).then_some(*slot);
                 }
                 _ => return None,
             };
@@ -1925,6 +1956,9 @@ pub(crate) fn order_fn(program: &Program, hook: OrdHook) -> String {
         OrdHook::Cmp(_) => "operator<".to_string(),
     }
 }
+
+/// A body's home: `(closure_id, fn_id)`, both `None` in `main`.
+pub type Home = (Option<usize>, Option<usize>);
 
 /// `Ordering::Less` as the C++ spells the enum `cmp` returns.
 fn less_variant(program: &Program, cmp: cpl_ir::FnId) -> String {
