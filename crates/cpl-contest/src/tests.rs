@@ -1189,6 +1189,45 @@ fn a_problems_interactor_py_judges_each_case_once() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
+/// The time limit is the solution's own time: an interactor that is slow
+/// to start (Python on Windows, here a second of waiting before it reads)
+/// does not make a quick solution TLE.
+#[test]
+fn a_slow_starting_interactor_does_not_spend_the_solutions_time() {
+    let python = cpl_stress::program::python();
+    let ran = std::process::Command::new(&python[0])
+        .args(&python[1..])
+        .arg("--version")
+        .stdin(std::process::Stdio::null())
+        .output();
+    if !ran.is_ok_and(|out| out.status.success()) {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("cpl-slow-interactor-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("tests")).unwrap();
+    std::fs::write(dir.join("tests/1.in"), "7\n").unwrap();
+    std::fs::write(
+        dir.join("interactor.py"),
+        "import sys, time\nsecret = int(open(sys.argv[1]).read())\n\
+         ready = time.monotonic() + 1.0\nwhile time.monotonic() < ready:\n    pass\n\
+         kind, g = input().split()\nprint(secret - int(g), flush=True)\n\
+         kind, x = input().split()\nsys.exit(0 if int(x) == secret else 'wrong answer ' + x)\n",
+    )
+    .unwrap();
+    let port = dir.join("port.cp");
+    let port = port.to_str().unwrap();
+    std::fs::write(
+        port,
+        "let diff: -2e9..=2e9 = ask(\"guess\", -50)\nprint(\"answer\", diff - 50)\n",
+    )
+    .unwrap();
+    let (code, out, err) = cli(test::run, &[port, "--time-limit", "300"]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.ends_with("  1/1 passed\n"), "{out}");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
 /// `cpl run` traps on an overflow (R0202); a local build of the same file
 /// must trap too, in `cpl test` and in stress's solution, brute and generator.
 #[test]

@@ -509,6 +509,8 @@ fn stacks() -> Option<&'static (String, String)> {
         .as_ref()
 }
 
+const SHELL: &str = "/bin/sh";
+
 /// The `ulimit -s` programs started from here get: the hard cap.
 fn current_stack() -> Option<String> {
     stacks().map(|(_, hard)| hard.clone())
@@ -518,7 +520,7 @@ fn current_stack() -> Option<String> {
 /// process's own is below the hard cap.
 fn raised_stack() -> Option<&'static str> {
     stacks()
-        .filter(|(soft, hard)| soft != hard)
+        .filter(|(soft, hard)| soft != hard && Path::new(SHELL).is_file())
         .map(|(_, hard)| hard.as_str())
 }
 
@@ -763,7 +765,8 @@ impl Program {
     pub(crate) fn to_command(&self) -> Command {
         let mut command = match raised_stack() {
             Some(stack) => {
-                let mut command = Command::new("sh");
+                // By its path: a program may run with no `PATH` at all.
+                let mut command = Command::new(SHELL);
                 command
                     .args(["-c", "ulimit -s \"$0\" 2>/dev/null; exec \"$@\"", stack])
                     .args(&self.argv);

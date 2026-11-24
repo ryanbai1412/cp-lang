@@ -147,7 +147,7 @@
   "lint_type_syntax": 26,
   "idioms_evidenced_unlinted": 13,
   "bench_lists": 0,
-  "unwrap_input": 721,
+  "unwrap_input": 718,
   "unsupported_sites": 43,
   "lsp_string_types": 16,
   "lint_post_filters": 0,
