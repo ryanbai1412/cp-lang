@@ -11,7 +11,7 @@ In prelude (no `use` needed): `Dir4`, `Dir8`, `adj4`, `adj8`, `ray`, `step`.
 One of the four directions up, right, down, left (clockwise, rows growing downwards).
 
 - `fn all() -> List<Dir4>` — \(O(1)\); All four directions, clockwise from up.
-- `fn from(letters: Str, ch: Char) -> ?Dir4` — \(O(1)\); The direction a letter stands for, given the letters for up, right, down and left in that; traps: `letters.len != 4`
+- `fn from(letters: Str, ch: Char) -> ?Dir4` — \(O(1)\); The direction a letter stands for, given the letters for up, right, down and left in that order: `Dir4.from("URDL", ch)`, `Dir4.from("NESW", ch)`.; traps: `letters.len != 4`
 - `@get fn cw(self) -> Dir4` — \(O(1)\); A quarter turn clockwise: up to right, right to down, down to left, left to up.
 - `@get fn ccw(self) -> Dir4` — \(O(1)\); A quarter turn counter-clockwise, the inverse of `cw`.
 - `@get fn back(self) -> Dir4` — \(O(1)\); The opposite direction, a half turn: its delta is the negated delta.
