@@ -1325,31 +1325,23 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
     let sa = sa_obj.sa
     let lcp = sa_obj.lcp
     var out: List<SuffixTreeEdge> = []
-    var st_depth: List<Int> = []
-    var st_start: List<Int> = []
-    var st_sum: List<Int> = []
-    for i in 0..n:
-        let leaf_d = n - sa[i]
-        if st_depth.is_empty or st_depth.last! < leaf_d:
-            st_depth.push(leaf_d)
-            st_start.push(i)
-            st_sum.push(0)
-        let h = if i + 1 < n: lcp[i] else: 0
-        while not st_depth.is_empty and st_depth.last! > h:
-            let d = st_depth.pop()!
-            let start = st_start.pop()!
-            let csum = st_sum.pop()!
-            let top_d = if st_depth.is_empty: 0 else: st_depth.last!
-            let parent_d = if top_d > h: top_d else: h
-            let elen = d - parent_d
-            let bottom = csum + elen
-            out.push(SuffixTreeEdge(csum, bottom, parent_d, elen, start..(i + 1)))
-            if not st_depth.is_empty and st_depth.last! == parent_d:
-                st_sum[st_sum.len - 1] += bottom
-            elif parent_d > 0:
-                st_depth.push(parent_d)
-                st_start.push(start)
-                st_sum.push(bottom)
+    // open nodes from the root down: string depth, first leaf rank, edge lengths below
+    var st: List<(d: Int, start: Int, sum: Int)> = []
+    unchecked:
+        for i in 0..n:
+            let leaf_d = n - sa[i]
+            if st.is_empty or st.last!.d < leaf_d: st.push((d: leaf_d, start: i, sum: 0))
+            let h = if i + 1 < n: lcp[i] else: 0
+            while not st.is_empty and st.last!.d > h:
+                let top = st.pop()!
+                let parent_d = max(if st.is_empty: 0 else: st.last!.d, h)
+                let elen = top.d - parent_d
+                let bottom = top.sum + elen
+                out.push(SuffixTreeEdge(top.sum, bottom, parent_d, elen, top.start..(i + 1)))
+                if not st.is_empty and st.last!.d == parent_d:
+                    let up = st.pop()!
+                    st.push((d: parent_d, start: up.start, sum: up.sum + bottom))
+                elif parent_d > 0: st.push((d: parent_d, start: top.start, sum: bottom))
     out
 
 /// Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)` is a
