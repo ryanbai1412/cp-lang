@@ -61,17 +61,19 @@ impl<'p> Emitter<'p> {
                         };
                         global_ref_aliases.push(format!("{constant}auto& {inner} = {gname};"));
                     } else {
-                        self.note_capture_copy(cid, heap, &self.program.globals[cap.outer].name);
+                        let name = &self.program.globals[cap.outer].name;
+                        self.note_capture_copy(cid, heap, name, crate::lend::KEPT);
                         cap_parts.push(format!("{inner} = {gname}"));
                     }
                 } else {
                     let outer = &self.names[cap.outer];
-                    if cap.by_ref || (borrow_immutable && non_scalar) {
+                    let owns = self.capture_owns.get(&(cid, cap.outer)).copied();
+                    if cap.by_ref || (borrow_immutable && non_scalar && owns.is_none()) {
                         cap_parts.push(format!("&{inner} = {outer}"));
                     } else {
                         cap_parts.push(format!("{inner} = {outer}"));
                         let name = self.locals()[cap.outer].name.clone();
-                        self.note_capture_copy(cid, heap, &name);
+                        self.note_capture_copy(cid, heap, &name, owns.unwrap_or(crate::lend::KEPT));
                     }
                 }
             }

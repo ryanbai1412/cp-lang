@@ -238,22 +238,31 @@ impl<'p> Emitter<'p> {
         code
     }
 
-    /// Marks a `let f = closure` that may borrow its captures (see
-    /// [`Emitter::named_closure_borrows`]).
+    /// Marks a `let f = closure` that may borrow its captures, and records
+    /// why each capture that may not owns its copy (see
+    /// [`Emitter::named_closure_owners`]).
     pub(crate) fn borrow_if_named_closure(&mut self, slot: usize, init: Option<&Expr>) {
         if let Some(ExprKind::Closure(cid)) = init.map(|e| &e.kind) {
-            if self.named_closure_borrows(slot, *cid) {
+            if let Some(owners) = self.named_closure_owners(slot, *cid) {
                 self.borrow_closures.insert(*cid);
+                for (outer, why) in owners {
+                    self.capture_owns.insert((*cid, outer), why);
+                }
             }
         }
     }
 
-    /// Whether the `let f = closure` of `slot` may borrow its immutable heap
-    /// captures: it is only ever called, and nothing in its fn changes a
-    /// captured variable or reads it whole (which could move it away).
-    pub(crate) fn named_closure_borrows(&self, slot: usize, cid: usize) -> bool {
+    /// Whether the `let f = closure` of `slot` may borrow its heap captures:
+    /// it is only ever called. Then gives the captures that still own a
+    /// copy, each with its reason: one its fn changes, or reads whole (which
+    /// could move it away).
+    pub(crate) fn named_closure_owners(
+        &self,
+        slot: usize,
+        cid: usize,
+    ) -> Option<Vec<(usize, &'static str)>> {
         if self.closure_id.is_some() {
-            return false;
+            return None;
         }
         let program = self.program;
         let blocks: Vec<&Block> = match self.fn_id {
@@ -263,18 +272,29 @@ impl<'p> Emitter<'p> {
         if self.facts.stores((self.fn_id, false, slot)) > 1
             || !blocks.iter().all(|b| only_called(program, b, slot, 3))
         {
-            return false;
+            return None;
         }
         let home = self
             .fn_id
             .map_or(crate::uses::Home::Top, crate::uses::Home::Fn);
         let sunk = self.fn_id.map(|id| &self.sunk[id]);
         let def = &program.closures[cid];
-        def.captures.iter().filter(|c| !c.is_global).all(|c| {
-            let o = c.outer;
-            let found = self.uses.of_binding(home, o);
-            !found.mutated && !found.moved && sunk.is_none_or(|s| !s.contains(&o))
-        })
+        let owners = def
+            .captures
+            .iter()
+            .filter(|c| !c.is_global)
+            .filter_map(|c| {
+                let o = c.outer;
+                let found = self.uses.of_binding(home, o);
+                if found.mutated {
+                    Some((o, CAPTURE_SET))
+                } else if found.moved || sunk.is_some_and(|s| s.contains(&o)) {
+                    Some((o, CAPTURE_MOVED))
+                } else {
+                    None
+                }
+            });
+        Some(owners.collect())
     }
 
     /// Marks each `m.get(k) ?? d` among `operands` to be written
@@ -849,7 +869,10 @@ fn rooted_in_a_name(e: &Expr) -> bool {
     }
 }
 
-const KEPT: &str = "the closure may be kept (stored, returned or passed where it is kept), so it owns what it reads";
+const CAPTURE_SET: &str =
+    "the captured name is changed while the closure may still run, so it owns a copy";
+const CAPTURE_MOVED: &str = "the captured name is moved later, so the closure owns a copy";
+pub(crate) const KEPT: &str = "the closure may be kept (stored, returned or passed where it is kept), so it owns what it reads";
 
 impl Emitter<'_> {
     /// Records the copy naming operand `e` before a later one runs makes,
@@ -935,10 +958,16 @@ impl Emitter<'_> {
     }
 
     /// Records a closure capturing the heap value `name` by value.
-    pub(crate) fn note_capture_copy(&mut self, cid: usize, heap: bool, name: &str) {
+    pub(crate) fn note_capture_copy(
+        &mut self,
+        cid: usize,
+        heap: bool,
+        name: &str,
+        why: &'static str,
+    ) {
         if heap {
             self.copies
-                .push(Copied::Capture(cid, name.to_string(), KEPT));
+                .push(Copied::Capture(cid, name.to_string(), why));
         }
     }
 }

@@ -526,3 +526,24 @@ fn an_entry_a_store_overwrites_is_moved_into_the_fn_that_makes_it() {
         "a value that reads the map keeps its copy: {copied}"
     );
 }
+
+#[test]
+fn a_named_closure_borrows_each_capture_nothing_changes() {
+    let out = cpp(concat!(
+        "let n: Int = read()\n",
+        "var door = [0 for i in 0..3]\n",
+        "for d in 0..3:\n",
+        "    let free = [i for i in 0..n if i != d]\n",
+        "    fn opens(k: Int) -> Bool = free[..k].len + door[0] > 2\n",
+        "    door[0] = d\n",
+        "    print(yes(opens(d)))\n",
+    ));
+    assert!(
+        out.contains("&free"),
+        "`free` never changes, so it is borrowed: {out}"
+    );
+    assert!(
+        !out.contains("&door"),
+        "`door` changes, so it is copied: {out}"
+    );
+}

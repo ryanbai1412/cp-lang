@@ -124,6 +124,9 @@ pub(crate) struct Emitter<'p> {
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
+    /// Why each capture of a borrowing closure that may not borrow owns
+    /// its copy, by (closure, captured slot).
+    pub capture_owns: std::collections::BTreeMap<(usize, usize), &'static str>,
     /// Each non-scalar value the C++ copies, for `cpl explain`.
     pub copies: Vec<crate::lend::Copied>,
     /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
@@ -265,6 +268,7 @@ impl<'p> Emitter<'p> {
             direct: BTreeSet::new(),
             written: Default::default(),
             borrow_closures: BTreeSet::new(),
+            capture_owns: Default::default(),
             copies: Vec::new(),
             niche_types: std::cell::Cell::new(0),
             used: BTreeSet::new(),
