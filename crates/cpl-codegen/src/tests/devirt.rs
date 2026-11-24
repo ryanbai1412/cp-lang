@@ -127,6 +127,32 @@ fn explain_lists_no_fn_field_of_a_struct_the_file_omits() {
 }
 
 #[test]
+fn explain_lists_a_fn_that_returns_a_closure() {
+    let src = concat!(
+        "fn adder(n: Int) -> (Int -> Int):\n",
+        "    (k: Int) => k * n + 1\n",
+        "print(adder(read::<Int>())(2))\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let out = crate::emit(&program, "t.cp", None);
+    let explained = crate::explain_closures(&program);
+    let listed = explained.iter().any(|e| {
+        e.site == "fn adder result"
+            && matches!(
+                e.mode,
+                crate::devirt::ClosureMode::DynamicStdFunction { .. }
+            )
+    });
+    assert_eq!(
+        listed,
+        out.contains("std::function<"),
+        "{explained:?}\n{out}"
+    );
+}
+
+#[test]
 fn a_struct_built_with_several_closures_splits_per_closure() {
     let out = cpp(concat!(
         "let k = read::<Int>()\n",

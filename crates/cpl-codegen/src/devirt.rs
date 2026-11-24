@@ -1728,6 +1728,15 @@ pub fn explain_closures(
             out.push(ClosureLowering { site, mode });
         }
 
+        if matches!(f.ret, Ty::Fn(..)) {
+            out.push(ClosureLowering {
+                site: format!("fn {} result", f.name),
+                mode: ClosureMode::DynamicStdFunction {
+                    reason: "fn returning a closure".to_string(),
+                },
+            });
+        }
+
         explain_locals_in_block(
             &devirt,
             Some(fid),
