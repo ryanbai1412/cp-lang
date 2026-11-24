@@ -5,6 +5,7 @@ mod lends;
 mod slice_place;
 
 use super::*;
+use crate::walk::{find_pos_domain_in_ty, given};
 
 /// What writing through `x!` says when `x` is `none`; reading it says so too.
 const NO_VALUE: &str = "`!` on `None`: there is no value here";
@@ -3515,7 +3516,7 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 // Identify the callee's existential domain id(s) if any field is `Ty::DomainVal`.
-                let callee_doms: Vec<DomainId> = match &value.kind {
+                let callee_doms: Vec<DomainId> = match &given(&value).kind {
                     ExprKind::Call(fn_id, _) => self.sigs[*fn_id]
                         .new_domain_slots
                         .iter()
@@ -3635,17 +3636,23 @@ impl<'a> Lowerer<'a> {
                 if changed {
                     let new_sid = self.instantiate_struct(gid, new_args);
                     let new_fields = self.structs[new_sid].def.fields.clone();
+                    let old_fields = self.structs[old_sid].def.fields.clone();
                     let span = expr.span;
                     let held = self.hold(expr, out);
-                    let values = new_fields
-                        .into_iter()
-                        .enumerate()
-                        .map(|(fi, (_, fty))| Expr {
+                    // By name: each instance keeps only the fields it uses, and a
+                    // field's own type (a nested struct over `from`) needs the remap too.
+                    let mut values = Vec::with_capacity(new_fields.len());
+                    for (name, _) in &new_fields {
+                        let Some(fi) = old_fields.iter().position(|(n, _)| n == name) else {
+                            continue;
+                        };
+                        let field = Expr {
                             kind: ExprKind::Field(Box::new(held.clone()), fi),
-                            ty: fty,
+                            ty: old_fields[fi].1.clone(),
                             span,
-                        })
-                        .collect();
+                        };
+                        values.push(self.remap_domain_in_expr(field, from, to, out));
+                    }
                     return Expr {
                         kind: ExprKind::Tuple(values),
                         ty: Ty::Struct(new_sid),
@@ -5947,23 +5954,6 @@ pub(super) fn is_read_call(e: &ast::Expr) -> bool {
                 })
         }
         _ => false,
-    }
-}
-
-fn find_pos_domain_in_ty(ty: &Ty) -> Option<DomainId> {
-    match ty {
-        Ty::Pos(d) | Ty::Bound(d) => Some(*d),
-        Ty::Array { dims, elem } => dims
-            .iter()
-            .find_map(|dim| match dim {
-                Dim::Pos(d) | Dim::Bound(d) | Dim::Sym(d) => Some(*d),
-                Dim::Enum(_) | Dim::Int | Dim::IntFrom(_) => None,
-            })
-            .or_else(|| find_pos_domain_in_ty(elem)),
-        Ty::List(elem) | Ty::Opt(elem) | Ty::Range(elem) => find_pos_domain_in_ty(elem),
-        Ty::Tuple(ts) => ts.iter().find_map(find_pos_domain_in_ty),
-        Ty::Record(fs) => fs.iter().find_map(|(_, t)| find_pos_domain_in_ty(t)),
-        _ => None,
     }
 }
 

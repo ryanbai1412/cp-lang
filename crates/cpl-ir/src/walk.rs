@@ -1,7 +1,7 @@
 //! Walking the direct sub-expressions of an expression.
 
 use crate::{Arg, Block, DimSpec, Expr, ExprKind, FmtPiece, Iter, Place, PlaceKind, Spec, Stmt};
-use crate::{Builtin, Local, Slot, Ty};
+use crate::{Builtin, Dim, DomainId, Local, Slot, Ty};
 use std::collections::BTreeSet;
 
 macro_rules! walkers {
@@ -495,4 +495,41 @@ pub fn inside_list(
         _ => {}
     });
     kept.then_some((list, slot))
+}
+
+/// What `e` gives: the value at the end of a `Do` block that prepares a call's arguments.
+pub(crate) fn given(e: &Expr) -> &Expr {
+    let ExprKind::Do(Block { stmts }) = &e.kind else {
+        return e;
+    };
+    let Some(Stmt::Give(inner)) = stmts.last() else {
+        return e;
+    };
+    if let ExprKind::Local(slot) = inner.kind {
+        let held = stmts.iter().rev().find_map(|stmt| match stmt {
+            Stmt::Let(s, Some(value)) if *s == slot => Some(value),
+            _ => None,
+        });
+        if let Some(value) = held {
+            return given(value);
+        }
+    }
+    given(inner)
+}
+
+pub(crate) fn find_pos_domain_in_ty(ty: &Ty) -> Option<DomainId> {
+    match ty {
+        Ty::Pos(d) | Ty::Bound(d) => Some(*d),
+        Ty::Array { dims, elem } => dims
+            .iter()
+            .find_map(|dim| match dim {
+                Dim::Pos(d) | Dim::Bound(d) | Dim::Sym(d) => Some(*d),
+                Dim::Enum(_) | Dim::Int | Dim::IntFrom(_) => None,
+            })
+            .or_else(|| find_pos_domain_in_ty(elem)),
+        Ty::List(elem) | Ty::Opt(elem) | Ty::Range(elem) => find_pos_domain_in_ty(elem),
+        Ty::Tuple(ts) => ts.iter().find_map(find_pos_domain_in_ty),
+        Ty::Record(fs) => fs.iter().find_map(|(_, t)| find_pos_domain_in_ty(t)),
+        _ => None,
+    }
 }
