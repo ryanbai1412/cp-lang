@@ -66,23 +66,57 @@ def std_costs(cpl):
 
 
 def costs_of(doc):
-    """`module.Owner.fn` -> its `cost:` text, from `cpl doc --format json`'s output."""
+    """`module.Owner.fn` -> its `cost:` text, from `cpl doc --format json`'s output. A struct
+    declared more than once under one name (`Prefix` over a domain, a grid and a list) names
+    its fns with its generics, `prefix.Prefix<R,C,T>.new`, so each declaration's cost is its own."""
     costs = {}
+    shapes = {}
+
+    def bare(it, prefix):
+        # an impl's owner is named without its generics: `Complement<V, G>` is `Complement`
+        return f"{prefix}.{re.sub(r'<.*', '', it['name'])}"
+
+    def count(items, prefix):
+        for it in items:
+            if it.get("kind") == "struct":
+                shapes.setdefault(bare(it, prefix), set()).add(generics(it.get("signature") or ""))
 
     def walk(items, prefix):
         for it in items:
-            # an impl's owner is named without its generics: `Complement<V, G>` is `Complement`
-            name = f"{prefix}.{re.sub(r'<.*', '', it['name'])}"
+            name = bare(it, prefix)
+            if it.get("kind") == "struct" and len(shapes.get(name, ())) > 1:
+                name += f"<{','.join(generics(it['signature']))}>"
             cost = (it.get("facts") or {}).get("cost")
             if cost:
                 costs[name] = cost
             walk(it.get("members") or [], name)
 
     for m in doc["modules"]:
+        count(m["items"], m["name"])
+    for m in doc["modules"]:
         walk(m["items"], m["name"])
     for name, cost in costs.items():
         costs[name] = alias(name, cost, costs)
     return costs
+
+
+def generics(signature):
+    """The generic parameters of `pub struct Diff<R, C, T: Add + Sub>(...)`, bounds dropped:
+    ("R", "C", "T")."""
+    m = re.match(r"\s*(?:pub\s+)?struct\s+\w+\s*<", signature)
+    if not m:
+        return ()
+    depth, part, parts = 1, "", []
+    for ch in signature[m.end():]:
+        depth += (ch == "<") - (ch == ">")
+        if depth == 0 or (depth == 1 and ch == ","):
+            parts.append(part)
+            part = ""
+            if depth == 0:
+                break
+        else:
+            part += ch
+    return tuple(q.split(":")[0].strip() for q in parts if q.strip())
 
 
 def alias(name, cost, costs):
@@ -249,7 +283,7 @@ def per_hit(cpl, case, sizes, groups, tmp, within=None, floor=MIN_NS, lines=0):
     return best, short
 
 
-TIMED = re.compile(r"//\s*timed(?::\s*([\w.]+))?((?:\s*\[[^\]]*\])*)\s*$")
+TIMED = re.compile(r"//\s*timed(?::\s*([\w.<>,]+))?((?:\s*\[[^\]]*\])*)\s*$")
 
 
 def timed_lines(text, default):
@@ -293,7 +327,7 @@ def unread_marks(text):
             or (re.search(r"//\s*within:", line) and not WITHIN.search(line))]
 
 
-WITHIN = re.compile(r"//\s*within:\s*([\w.]+)\s*$")
+WITHIN = re.compile(r"//\s*within:\s*([\w.<>,]+)\s*$")
 
 
 def within_lines(text):

@@ -11996,7 +11996,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.ArithDiff.add",
-   "measured": 1.11,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -12004,7 +12004,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.ArithDiff.add_arith",
-   "measured": 1.1,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -12012,7 +12012,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "prefix.ArithDiff.finish",
-   "measured": 4.92,
+   "measured": 4.17,
    "n": 16384,
    "ok": true
   },
@@ -12020,175 +12020,231 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "prefix.ArithDiff.new",
-   "measured": 4.74,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Diff.add": {
+  "bench/scaling/prefix.cp::prefix.Diff<D,T>.add": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Diff.add",
-   "measured": 0.93,
+   "fn": "prefix.Diff<D,T>.add",
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Diff.finish": {
+  "bench/scaling/prefix.cp::prefix.Diff<D,T>.finish": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
-   "fn": "prefix.Diff.finish",
-   "measured": 3.87,
+   "fn": "prefix.Diff<D,T>.finish",
+   "measured": 3.8,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Diff.new": {
+  "bench/scaling/prefix.cp::prefix.Diff<D,T>.new": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
-   "fn": "prefix.Diff.new",
-   "measured": 4.85,
+   "fn": "prefix.Diff<D,T>.new",
+   "measured": 4.12,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.at": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.at": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.at",
-   "measured": 1.09,
+   "fn": "prefix.FillPrefix<D,T>.at",
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.cut": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.cut": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.cut",
-   "measured": 1.11,
+   "fn": "prefix.FillPrefix<D,T>.cut",
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.fold": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.fold": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.fold",
-   "measured": 1.09,
+   "fn": "prefix.FillPrefix<D,T>.fold",
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.prefix": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.prefix": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.prefix",
-   "measured": 1.1,
+   "fn": "prefix.FillPrefix<D,T>.prefix",
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.set": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.set": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.set",
-   "measured": 1.11,
+   "fn": "prefix.FillPrefix<D,T>.set",
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.all": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<T>.cut": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.all",
-   "measured": 1.09,
+   "fn": "prefix.FillPrefix<T>.cut",
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.at": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<T>.fold": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.at",
-   "measured": 1.11,
+   "fn": "prefix.FillPrefix<T>.fold",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.cut": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<T>.set": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.cut",
-   "measured": 1.1,
+   "fn": "prefix.FillPrefix<T>.set",
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.cyclic_sum": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.all": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.cyclic_sum",
-   "measured": 1.1,
+   "fn": "prefix.Prefix<D,T>.all",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.filling": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<D,T>.at",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.cut": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<D,T>.cut",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.cyclic_sum": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<D,T>.cyclic_sum",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.filling": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
-   "fn": "prefix.Prefix.filling",
-   "measured": 4.7,
+   "fn": "prefix.Prefix<D,T>.filling",
+   "measured": 4.15,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.first_ge": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.first_ge": {
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
-   "fn": "prefix.Prefix.first_ge",
-   "measured": 1.18,
+   "fn": "prefix.Prefix<D,T>.first_ge",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.first_gt": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.first_gt": {
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
-   "fn": "prefix.Prefix.first_gt",
-   "measured": 1.13,
+   "fn": "prefix.Prefix<D,T>.first_gt",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.fold": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.fold": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.fold",
-   "measured": 1.11,
+   "fn": "prefix.Prefix<D,T>.fold",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.new": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.new": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
-   "fn": "prefix.Prefix.new",
-   "measured": 4.03,
+   "fn": "prefix.Prefix<D,T>.new",
+   "measured": 4.39,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.of_rev_scan": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.of_rev_scan": {
    "cost": "n",
    "documented": 4.0,
-   "fn": "prefix.Prefix.of_rev_scan",
-   "measured": 4.71,
+   "fn": "prefix.Prefix<D,T>.of_rev_scan",
+   "measured": 4.64,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.prefix": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.prefix": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.prefix",
-   "measured": 1.12,
+   "fn": "prefix.Prefix<D,T>.prefix",
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.suffix": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.suffix": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.suffix",
-   "measured": 1.12,
+   "fn": "prefix.Prefix<D,T>.suffix",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.through": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.through": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.through",
-   "measured": 1.11,
+   "fn": "prefix.Prefix<D,T>.through",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<T>.cut": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<T>.cut",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<T>.filling": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "prefix.Prefix<T>.filling",
+   "measured": 4.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<T>.fold": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<T>.fold",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<T>.new": {
+   "cost": "a.\\mathit{len}",
+   "documented": 4.0,
+   "fn": "prefix.Prefix<T>.new",
+   "measured": 4.39,
    "n": 16384,
    "ok": true
   },
@@ -12196,7 +12252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.SweepAdd.add",
-   "measured": 1.1,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -12204,7 +12260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.SweepAdd.advance",
-   "measured": 1.1,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -12212,7 +12268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.SweepAdd.current",
-   "measured": 1.09,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -12220,7 +12276,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "prefix.SweepAdd.new",
-   "measured": 4.5,
+   "measured": 3.98,
    "n": 16384,
    "ok": true
   },
@@ -12228,7 +12284,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "prefix.prefix_fold",
-   "measured": 3.95,
+   "measured": 4.26,
    "n": 16384,
    "ok": true
   },
@@ -12236,8 +12292,88 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "prefix.scan",
-   "measured": 5.87,
+   "measured": 3.9,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Diff<R,C,T>.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Diff<R,C,T>.add",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Diff<R,C,T>.finish": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Diff<R,C,T>.finish",
+   "measured": 4.22,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Diff<R,C,T>.new": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Diff<R,C,T>.new",
+   "measured": 4.06,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.FillPrefix<R,C,T>.fold": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix<R,C,T>.fold",
+   "measured": 1.1,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.FillPrefix<R,C,T>.prefix": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix<R,C,T>.prefix",
+   "measured": 1.15,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.FillPrefix<R,C,T>.set": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix<R,C,T>.set",
+   "measured": 1.07,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Prefix<R,C,T>.filling": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Prefix<R,C,T>.filling",
+   "measured": 4.5,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Prefix<R,C,T>.fold": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<R,C,T>.fold",
+   "measured": 1.07,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Prefix<R,C,T>.new": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Prefix<R,C,T>.new",
+   "measured": 4.3,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Prefix<R,C,T>.prefix": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<R,C,T>.prefix",
+   "measured": 1.05,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/rand.cp::rand.Rng.chance": {
