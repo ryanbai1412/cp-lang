@@ -12,7 +12,7 @@ let b: Str<1..=3000> = read()
 domain I = 0..=a.len
 domain J = 0..=b.len
 
-var common: [I, J]Int = 0
+var common: [I, J]0..=3000 = 0
 for i in I.rev:
     for j in J.rev:
         if let i1 = i.next and let j1 = j.next:
