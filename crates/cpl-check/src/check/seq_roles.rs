@@ -33,13 +33,14 @@ impl Checker<'_> {
             return None;
         }
         seen.push(name.to_string());
-        let Some(Def::Trait {
+        let def = self.type_def(name)?;
+        let Def::Trait {
             generics,
             supers,
             super_args,
             methods,
             ..
-        }) = self.type_def(name).as_deref().cloned()
+        } = &*def
         else {
             return None;
         };
@@ -58,7 +59,7 @@ impl Checker<'_> {
             _ => None,
         });
         yielded.or_else(|| {
-            supers.iter().zip(&super_args).find_map(|(sup, args)| {
+            supers.iter().zip(super_args).find_map(|(sup, args)| {
                 let theirs = self.elem_role(sup, seen)?;
                 args.get(theirs).and_then(param)
             })
