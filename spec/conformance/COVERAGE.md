@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3147 (1093 passing). Rules: 603.
+Cases: 3153 (1093 passing). Rules: 605.
 
 ## Summary per chapter
 
@@ -17,11 +17,11 @@ Cases: 3147 (1093 passing). Rules: 603.
 - R04 (04-indices.md): 73 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 49 rules, 228 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 50 rules, 230 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 91 rules, 220 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 28 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -52,11 +52,11 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04 | 73 | 73 (100%) | 18 | 18 (100%) | 73 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
-| R05 | 49 | 49 (100%) | 25 | 25 (100%) | 49 (100%) |
+| R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 25 | 25 (100%) | 17 | 17 (100%) | 25 (100%) |
 | R07 | 91 | 91 (100%) | 27 | 27 (100%) | 91 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
-| R09 | 27 | 27 (100%) | 15 | 15 (100%) | 27 (100%) |
+| R09 | 28 | 28 (100%) | 16 | 16 (100%) | 28 (100%) |
 | R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 603 | 599 (99%) | 244 | 236 (96%) | 593 (98%) |
+| all | 605 | 601 (99%) | 246 | 238 (96%) | 595 (98%) |
 
 ## Rules
 
@@ -379,6 +379,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.4.1 [1+ 1-]: **R4. Parameters are lent.** `fn f(xs: List<Int>)` reads the caller's list, with no copy a...
 - R05.4.2 [1+ 1-]: A method call resolves to the receiver type's own method first, so a type's own non-`mut` ...
 - R05.4.3 [1+ 0-]: A `mut` parameter is a place: the callee may assign it whole (`xs = List()`), which replac...
+- R05.4.5 [1+ 1-]: An optional `mut` parameter, `seen: ?mut [V]Bool = None`, takes a `mut x` (`x: [V]Bool`) o...
 - R05.4.4 [1+ 1-]: **Generated constructors move.** `S(a, b)` and struct literals take their arguments by val...
 - R05.5.1 [1+ 1-]: **R5. A fn returns an owned value, unless it is declared `lends`.** Returning moves, and i...
 - R05.5.2 [1+ 1-]: **Custom constructors follow R5 too.** A static-fn constructor is a fn, so its parameters ...
@@ -592,6 +593,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.3.7 [3+ 2-]: | `assert c` | n/a | trap with the message | skipped
 - R09.3.8 [2+ 1-]: | `@cache` cold-mode check | n/a | stress compares cold and cached runs | none
 - R09.3.9 [2+ 0-]: | `law` promises | n/a | stress samples them | none
+- R09.3.10 [1+ 2-]: An `assert` whose whole condition is a key test, `assert i in s.keys`, is a `bounds` check...
 - R09.4.2 [1+ 0-]: `with checks(...: off)` removes a check in checked builds too, for a hot loop whose stress...
 - R09.4.3 [1+ 1-]: `unchecked:` is the greppable escape: a statement block with every check off in every buil...
 - R09.4.4 [1+ 3-]: Lints are contexts: `with lint(name: allow)` silences one in a scope, and is the only in-c...
@@ -798,7 +800,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0316 Field bound from input: 1 case(s)
 - E0317 Getter needs defaults: 1 case(s)
 - E0401 Assignment to immutable `let` binding: 5 case(s)
-- E0402 Missing `mut` at call site: 3 case(s)
+- E0402 Missing `mut` at call site: 4 case(s)
 - E0403 `mut` of an immutable binding: 5 case(s)
 - E0404 top_level_var_in_fn *(retired)*: exempt (retired)
 - E0405 Assigning a fixed field: 1 case(s)
@@ -965,13 +967,13 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 12 case(s)
-- R0101 Index out of range: 31 case(s)
+- R0101 Index out of range: 32 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 84 case(s)
+- R0401 Assertion failed: 85 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
@@ -1005,14 +1007,15 @@ prepends it.
   - line 100: `let z = z_function(s[l..])`
   - line 114: `for (i, x) in a[l..=r].items:`
   - line 171: `let t = s[l..r].rebase`
-- 05-ownership.md: 56 blocks, 47 with a case, 2 spec-only, 7 neither
+- 05-ownership.md: 56 blocks, 46 with a case, 2 spec-only, 8 neither
   - line 105: `var xs = [1, 2]`
-  - line 173: `struct Holder: xs: List<Int>`
-  - line 525: `let d = build_dsu(edges)`
-  - line 647: `var xs = [1, 2]`
-  - line 656: `var xs = [1, 2]`
-  - line 862: `var xs = [3, 1, 2]`
-  - line 968: `var xs = [1, 2]`
+  - line 180: `struct Holder: xs: List<Int>`
+  - line 532: `let d = build_dsu(edges)`
+  - line 654: `var xs = [1, 2]`
+  - line 663: `var xs = [1, 2]`
+  - line 869: `var xs = [3, 1, 2]`
+  - line 908: `var seen: [V]Bool = false`
+  - line 975: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
   - line 226: `fn divisors(n: Int) -> yields Int:`
@@ -1021,7 +1024,7 @@ prepends it.
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-17 of 109 blocks have neither a case nor a spec-only reason.
+18 of 109 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 
