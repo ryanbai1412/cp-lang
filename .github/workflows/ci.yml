@@ -508,9 +508,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/setup-rust
         with:
-          tool: just
+          target: release
+      # The package mode makes each package's cases with `cpl test --make`.
+      - name: Build cpl
+        run: cargo build --profile ci --bin cpl
       - name: Cache hour
         id: hour
         run: echo "hour=$(date -u +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
@@ -526,7 +529,7 @@ jobs:
         # The step's own timeout leaves g++ running into the save below, whose
         # tar then fails ("file changed as we read it") and the cache never
         # warms; `timeout` ends the whole process group first.
-        run: timeout 660 just corpus-verify --only package -j "$(nproc)"
+        run: timeout 660 just corpus-verify --only package --cpl target/ci/cpl -j "$(nproc)"
       - uses: actions/cache/save@v4
         if: always()
         with:

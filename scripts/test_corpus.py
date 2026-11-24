@@ -873,6 +873,15 @@ class VerifyCplTest(Corpus):
             corpus.verify(args)
         self.assertIn("cargo build --release -p cpl-cli", str(e.exception))
 
+    def test_the_package_mode_needs_a_cpl_too(self):
+        # package makes the cases with `cpl test --make` to check the seeds and references.
+        d = self.package("p1", gen_py=GEN)
+        args = argparse.Namespace(ids=["p1"], cpl=str(self.root / "no-cpl"), only="package")
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
+                mock.patch.object(corpus, "require_cpl", REQUIRE_CPL), self.assertRaises(SystemExit) as e:
+            corpus.verify(args)
+        self.assertIn("cargo build --release -p cpl-cli", str(e.exception))
+
 
 class StaleCplTest(unittest.TestCase):
     """A `cpl` under target/ older than a source it is built from is stale."""

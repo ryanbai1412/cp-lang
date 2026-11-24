@@ -1326,7 +1326,7 @@ def verify(args):
     bad = [m for m in modes if m not in CHECKS]
     if bad:
         sys.exit(f"corpus: no mode {', '.join(bad)}; modes: {', '.join(MODES)}")
-    if not opt("no_run") and set(modes) - {"header", "package"}:
+    if not opt("no_run") and set(modes) - {"header"}:
         require_cpl(cpl)
     ctx = Context(cpl, run=not opt("no_run"), check=bool(opt("check")), named=() if opt("changed") else ids)
     try:
