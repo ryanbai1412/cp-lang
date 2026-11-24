@@ -110,7 +110,10 @@ impl Database {
         if total <= u128::from(judge.memory_mb) << 20 {
             return;
         }
-        sized.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        // Largest first; `value_sizes` gave them by name, and the sort is stable.
+        cpl_diag::sort_by_key(&mut sized, |(_, bytes)| {
+            !u64::try_from(*bytes).unwrap_or(u64::MAX)
+        });
         let arrays: Vec<String> = sized
             .iter()
             .filter(|(name, _)| {
