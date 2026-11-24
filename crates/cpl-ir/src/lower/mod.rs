@@ -13,6 +13,7 @@ mod call;
 mod capture;
 mod collect;
 mod comprehension;
+mod contains;
 mod declare;
 mod declared_keys;
 mod expr;

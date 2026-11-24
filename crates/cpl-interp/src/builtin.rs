@@ -910,11 +910,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Builtin::RangeLo => match first {
                 Value::Range(lo, _) => Value::Int(lo),
                 Value::Range128(lo, _) => Value::I128(lo),
+                Value::RangeF(lo, _) => Value::Float(lo),
                 _ => Value::Int(0),
             },
             Builtin::RangeHi => match first {
                 Value::Range(_, hi) => Value::Int(hi),
                 Value::Range128(_, hi) => Value::I128(hi),
+                Value::RangeF(_, hi) => Value::Float(hi),
                 _ => Value::Int(0),
             },
             Builtin::RangeSum => {

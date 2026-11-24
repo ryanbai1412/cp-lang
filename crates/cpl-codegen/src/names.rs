@@ -248,6 +248,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         Ty::Range(inner) => match **inner {
             Ty::Pos(_) | Ty::Bound(_) => "cpl::Range<int>".into(),
             Ty::I128 => "cpl::Range<__int128>".into(),
+            Ty::Float => "cpl::Range<double>".into(),
             _ => "cpl::Range<ll>".into(),
         },
         Ty::DomainVal => "cpl::DomainVal".into(),

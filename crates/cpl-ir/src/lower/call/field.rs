@@ -459,7 +459,10 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::Range(inner), "start" | "l") => {
                 let inner = (**inner).clone();
-                let res_ty = if inner == Ty::I128 { Ty::I128 } else { Ty::Int };
+                let res_ty = match inner {
+                    Ty::I128 | Ty::Float => inner.clone(),
+                    _ => Ty::Int,
+                };
                 let lo = builtin(self, Builtin::RangeLo, vec![value], res_ty);
                 match inner {
                     Ty::Pos(d) | Ty::Bound(d) => self.cast(Cast::Trust, lo, Ty::Bound(d)),
@@ -468,7 +471,10 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::Range(inner), "end" | "r") => {
                 let inner = (**inner).clone();
-                let res_ty = if inner == Ty::I128 { Ty::I128 } else { Ty::Int };
+                let res_ty = match inner {
+                    Ty::I128 | Ty::Float => inner.clone(),
+                    _ => Ty::Int,
+                };
                 let hi = builtin(self, Builtin::RangeHi, vec![value], res_ty);
                 match inner {
                     Ty::Pos(d) | Ty::Bound(d) => self.cast(Cast::Trust, hi, Ty::Bound(d)),

@@ -13,6 +13,16 @@ pub(super) const CORE_DOMAIN_ONLY: [&str; 10] = [
 impl Checker<'_> {
     /// What `for x in iter` binds `x` to: a type's values, or the elements of a value.
     pub(crate) fn walk_elem_ty(&mut self, iter: &Expr, iter_ty: &Ty) -> Ty {
+        if matches!(iter_ty, Ty::Named { name, args } if name == "Range" && args.as_slice() == [Ty::Float])
+        {
+            let message = "a range of `F64`s is an interval with no elements to walk".to_string();
+            if let Some(diag) = self.error(codes::TYPE_MISMATCH, iter.span, message) {
+                diag.help = Some(
+                    "search it with `.bsearch(ok, steps:)`, `.peak` or `.valley`, or walk an `Int` range and scale".into(),
+                );
+            }
+            return Ty::Error;
+        }
         match self.library_domain_walk(iter) {
             Some(ty) => ty,
             None => self.element_ty(iter_ty),

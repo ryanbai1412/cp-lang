@@ -2070,10 +2070,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::Closure(*cid, Rc::new(caps))
             }
             ExprKind::Range { lo, hi } => {
-                if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
-                    let lo = self.eval(lo)?.i128();
-                    let hi = self.eval(hi)?.i128();
-                    Value::Range128(lo, hi)
+                if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::Float) {
+                    Value::RangeF(self.eval(lo)?.float(), self.eval(hi)?.float())
+                } else if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
+                    Value::Range128(self.eval(lo)?.i128(), self.eval(hi)?.i128())
                 } else {
                     let lo = self.eval(lo)?.int();
                     let hi = self.eval(hi)?.int();
@@ -3821,7 +3821,7 @@ fn seq_noun(seq: &Value) -> &'static str {
     match seq {
         Value::Str(_) | Value::StrView(_) => "string",
         Value::Array(_) => "array",
-        Value::Range(..) | Value::Range128(..) => "range",
+        Value::Range(..) | Value::Range128(..) | Value::RangeF(..) => "range",
         _ => "list",
     }
 }

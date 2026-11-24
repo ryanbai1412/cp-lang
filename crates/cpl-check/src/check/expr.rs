@@ -209,11 +209,10 @@ impl<'a> Checker<'a> {
                     // Two boundaries enclose positions (`l.l..r.r` is a range of `V`),
                     // except when the enclosing context explicitly expects `Range<V.cuts>`.
                     (Some((bd, base)), _, _, _) | (_, Some((bd, base)), _, _) => {
-                        let spec = true;
                         let both_cuts =
                             bounds_domain(&lo_ty).is_some() && bounds_domain(&hi_ty).is_some();
                         if self.expected_bounds_range
-                            || (spec && (*inclusive || !self.expected_piece))
+                            || (*inclusive || !self.expected_piece)
                             || (self.iterating_range && both_cuts && !*inclusive)
                         {
                             Ty::Pos(bd)
@@ -250,6 +249,7 @@ impl<'a> Checker<'a> {
                     {
                         Ty::Int
                     }
+                    (_, _, Some(Ty::Float), Some(Ty::Float)) => Ty::Float, // an interval (decision 419)
                     _ => Ty::Unknown,
                 };
                 self.range_ends(expr, hi.as_deref(), *inclusive, &lo_ty, &hi_ty);
@@ -2229,7 +2229,7 @@ impl<'a> Checker<'a> {
                                 Ty::Pos(format!("{d}.cuts"))
                             }
                         }
-                        Some(Ty::I128) => Ty::I128,
+                        Some(t @ (Ty::I128 | Ty::Float)) => t.clone(),
                         Some(Ty::Int | Ty::Range { .. }) => Ty::Int,
                         // `Range<D>` over a generic `D`: an endpoint is a `D`.
                         Some(param @ Ty::Param(_)) => param.clone(),

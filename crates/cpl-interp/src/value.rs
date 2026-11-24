@@ -196,6 +196,8 @@ pub(crate) enum Value {
     Range(i64, i64),
     /// A half-open 128-bit integer range `(lo, hi)`.
     Range128(i128, i128),
+    /// An interval of reals `(lo, hi)`: searched, never walked.
+    RangeF(f64, f64),
     /// A runtime domain handle `(lo, len)`.
     DomainVal(i64, i64),
     /// A closure value referencing `Program::closures[id]` with captured environment.
@@ -1049,6 +1051,7 @@ impl Value {
             Value::I128(_) => 17,
             Value::U64(_) => 18,
             Value::Range128(..) => 19,
+            Value::RangeF(..) => 20,
         }
     }
 }
@@ -1074,6 +1077,9 @@ impl Ord for Value {
             (Value::Opt(a), Value::Opt(b)) => a.cmp(b),
             (Value::Range(a1, a2), Value::Range(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
             (Value::Range128(a1, a2), Value::Range128(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
+            (Value::RangeF(a1, a2), Value::RangeF(b1, b2)) => {
+                a1.total_cmp(b1).then_with(|| a2.total_cmp(b2))
+            }
             (Value::DomainVal(a1, a2), Value::DomainVal(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
             (Value::Closure(a, _), Value::Closure(b, _)) => a.cmp(b),
             (Value::Tuple(a), Value::Tuple(b)) => a.cmp(b),
