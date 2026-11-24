@@ -8892,3 +8892,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `a.partition_point(p)` (C++, Rust: the first position where `p` turns false) gets a machine-applicable fix to `a.bsearch(x => not (...))` (or `x => not p(x)` for a named test), not only "did you mean `bsearch`?". `habit_matchers` goes from 123 to 124 for its matcher in `check/advice.rs`; it moves into the generated habit table with the other foreign-name rows (owner: diagnostics).
 - **Why.** The two tests have opposite polarity, so a rename alone is a silent wrong answer; ports and `regress.py`'s `cpl fix` migration had to rewrite it by hand (cf2285D).
 - **Reverse.** Drop the matcher; the help goes back to naming `bsearch`.
+
+## 543. (reserved, unknown)
