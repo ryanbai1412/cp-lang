@@ -817,7 +817,7 @@ impl Server {
                                             Some((lo, hi))
                                                 if entry.keyword == "let"
                                                     && lo != hi
-                                                    && ty_text == "Int" =>
+                                                    && entry.ty == cpl_check::Ty::Int =>
                                             {
                                                 format!(": Int in {lo}..={hi}")
                                             }

@@ -856,6 +856,27 @@ fn inlay_hints_show_the_types_that_are_not_written() {
 }
 
 #[test]
+fn inlay_hints_read_an_alias_of_int_as_the_checkers_int() {
+    let (mut server, _) = open(
+        "type Score = Int\nlet n: 1..=200000 = read()\nlet area = n * n + n\nlet s: Score = area\nlet t = s * s\nprint(t)\n",
+    );
+    let reply = server.handle(&request(
+        9,
+        "textDocument/inlayHint",
+        obj([("textDocument", doc())]),
+    ));
+    let shown: Vec<String> = reply[0]
+        .at(&["result"])
+        .as_array()
+        .unwrap_or(&[])
+        .iter()
+        .map(|hint| hint.at(&["label"]).as_str().unwrap().to_string())
+        .collect();
+    // `t` is a `Score`, which the checker reads as `Int`.
+    assert_eq!(shown, [": 2..=40000200000", ": Int"], "{shown:?}");
+}
+
+#[test]
 fn inlay_hints_skip_names_in_a_typed_tuple() {
     let (mut server, _) = open("let (m, k): (Int, Int) = (1, 2)\nlet (a, b) = (m, k)\nfor (i, x) in [(0, a)]:\n    print(i + x + b)\n");
     let reply = server.handle(&request(
