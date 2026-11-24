@@ -77,6 +77,7 @@ pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style, chains: bool) -> S
             },
             chains,
             pending: None,
+            tail: 0,
             at_line_start: true,
             prev: None,
         };
@@ -359,6 +360,9 @@ struct Emitter<'a, 'b> {
     chains: bool,
     /// A trailing comment waiting for the comma that may follow its token.
     pending: Option<&'b str>,
+    /// Columns written right after the sequence being laid out, on its
+    /// last line: the trailing comma `broken` adds.
+    tail: usize,
     at_line_start: bool,
     prev: Option<usize>,
 }
@@ -546,7 +550,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
         let forced = nodes.iter().position(|n| self.must_break(n));
         if forced.is_none() {
             let mut prev = if self.at_line_start { None } else { self.prev };
-            if self.column() + self.flat_width(nodes, &mut prev) <= self.width {
+            if self.column() + self.flat_width(nodes, &mut prev) + self.tail <= self.width {
                 return self.flat(nodes);
             }
         }
@@ -589,11 +593,13 @@ impl<'a, 'b> Emitter<'a, 'b> {
             }
             return;
         };
+        let tail = std::mem::take(&mut self.tail);
         self.seq(&nodes[..pivot], indent);
         let Node::Group { open, items, close } = &nodes[pivot] else {
             unreachable!()
         };
         self.broken(*open, items, *close, indent);
+        self.tail = tail;
         self.seq(&nodes[pivot + 1..], indent);
     }
 
@@ -623,6 +629,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
         let outer_cont = self.cont;
         let cont = indent + self.hang;
         let mut start = 0;
+        let tail = std::mem::take(&mut self.tail);
         for &(_, cut) in ops.iter().filter(|(p, _)| *p == loosest) {
             self.seq(&nodes[start..=cut], if start == 0 { indent } else { cont });
             self.flush_pending();
@@ -630,6 +637,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
             self.cont = cont;
             start = cut + 1;
         }
+        self.tail = tail;
         self.seq(&nodes[start..], cont);
         self.cont = outer_cont;
         true
@@ -648,10 +656,13 @@ impl<'a, 'b> Emitter<'a, 'b> {
         for (n, element) in elements.iter().enumerate() {
             self.flush_pending();
             self.start_line(inner, false);
-            self.seq(element, inner);
             let ends_with_comma =
                 matches!(element.last(), Some(Node::Tok(i)) if self.toks[*i].kind == K::Comma);
-            if n + 1 == elements.len() && wants_comma && !ends_with_comma {
+            let adds_comma = n + 1 == elements.len() && wants_comma && !ends_with_comma;
+            self.tail = adds_comma as usize;
+            self.seq(element, inner);
+            self.tail = 0;
+            if adds_comma {
                 self.out.last_mut().unwrap().code.push(',');
             }
         }

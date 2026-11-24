@@ -938,6 +938,15 @@ fn spacing_by_role_from_misspaced_input() {
 /// assignment after an index, an open range before a word operator, a
 /// record's braces and a negative argument. Rule: `lints/R22`.
 #[test]
+fn counts_the_added_trailing_comma_against_the_width() {
+    // cf2183h: the `solve:` line fit at 100 columns, then got its comma.
+    let src = "print(aliens(k, solve: (pen: I128) => monge_path([0] + (st..=n).collect(), cost: (j, i) => cost(j, i) + pen)))\n";
+    let once = fmt(src);
+    assert_eq!(fmt(&once), once);
+    assert!(once.lines().all(|l| l.len() <= 100), "{once}");
+}
+
+#[test]
 fn spaces_each_role_as_written() {
     for (src, want) in [
         (
