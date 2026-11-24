@@ -263,6 +263,7 @@ pub struct SortedBag<K>:
     /// empty: `var b = SortedBag<Int>(); b.pop_first() == None`
     /// traps: never
     /// example: `var b = SortedBag.of([3, 1, 1]); b.pop_first() == Some(1) and b.count(1) == 1`
+    @lint(pop_min_loop, from: "let x = self.first!\nself.remove(x)", to: "let x = self.pop_first()!")
     pub fn pop_first(mut self) -> ?K:
         let x = self.first
         if x == None: return None
@@ -310,6 +311,7 @@ pub struct SortedBag<K>:
     /// empty: `var b = SortedBag<Int>(); b.pop_last() == None`
     /// traps: never
     /// example: `var b = SortedBag.of([3, 3, 1]); b.pop_last() == Some(3) and b.to_list() == [1, 3]`
+    @lint(pop_min_loop, from: "let x = self.last!\nself.remove(x)", to: "let x = self.pop_last()!")
     pub fn pop_last(mut self) -> ?K:
         let x = self.last
         if x == None: return None
@@ -1236,6 +1238,7 @@ pub struct SortedSet<K>:
     /// empty: `var s = SortedSet<Int>(); s.pop_first() == None`
     /// traps: never
     /// example: `var s = SortedSet.of([4, 1]); s.pop_first() == Some(1) and s.to_list() == [4]`
+    @lint(pop_min_loop, from: "let x = self.first!\nself.remove(x)", to: "let x = self.pop_first()!")
     pub fn pop_first(mut self) -> ?K = bag.pop_first()
 
     /// Remove and return the largest key, or `None`.
@@ -1244,6 +1247,7 @@ pub struct SortedSet<K>:
     /// empty: `var s = SortedSet<Int>(); s.pop_last() == None`
     /// traps: never
     /// example: `var s = SortedSet.of([4, 1]); s.pop_last() == Some(4) and s.to_list() == [1]`
+    @lint(pop_min_loop, from: "let x = self.last!\nself.remove(x)", to: "let x = self.pop_last()!")
     pub fn pop_last(mut self) -> ?K = bag.pop_last()
 
     /// Number of keys strictly less than `k`.

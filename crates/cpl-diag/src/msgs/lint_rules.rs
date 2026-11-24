@@ -64,7 +64,6 @@ super::msgs! {
     NEVER_TRUE_BOUNDS_CHECK = "L0307", "`{}` never holds: the declared bounds here rule it out, so what it guards never runs";
     NOOP_MOD_REDUCE = "L0308", "`{}` is `{}`: the declared bounds already put `{}` below the modulus and at least 0";
     PALINDROME_BY_HAND = "L0583", "`{}[{}]` against `{}[{} - 1 - {}]` tests whether `{}` is a palindrome";
-    POP_MIN_LOOP = "L0576", "`{}.{}!` then `{}.remove({})` is `{}`";
     POSITION_ARITHMETIC = "L0101", "`{}` builds a `{}` from a 0-based count";
     POSITION_ARITHMETIC_2 = "L0101", "`{}` builds a `{}` from a position";
     QUERY_INDEX_SHIFT = "L0577", "`{}` is read as `{}` and shifted back with `{} - 1` to index";

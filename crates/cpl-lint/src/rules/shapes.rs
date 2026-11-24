@@ -95,11 +95,3 @@ pub(crate) fn is_ident(s: &str) -> bool {
 pub(crate) fn mentions(text: &str, word: &str) -> bool {
     text.split(|c: char| !ident_char(c)).any(|w| w == word)
 }
-
-/// The name a plain name pattern binds.
-pub(crate) fn pattern_name(p: &cpl_syntax::ast::Pattern) -> Option<&str> {
-    match &p.kind {
-        cpl_syntax::ast::PatternKind::Name(n) => Some(n.as_str()),
-        _ => None,
-    }
-}
