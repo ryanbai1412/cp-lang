@@ -1113,7 +1113,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **heap** (108/108 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
-- **lazy** (41/41 named by a case)
+- **lazy** (43/43 named by a case)
 - **marks** (50/50 named by a case)
 - **math** (83/83 named by a case)
 - **matrix** (60/60 named by a case)
@@ -1147,10 +1147,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **timetree** (11/11 named by a case)
 - **tree** (161/176 named by a case)
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
-- **window** (21/22 named by a case)
+- **window** (23/24 named by a case)
   - uncovered: `Undo`
 
-2331 of 2440 std items are named by a case.
+2335 of 2444 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

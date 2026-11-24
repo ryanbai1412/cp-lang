@@ -116,7 +116,7 @@ Fields: `ls: List<Int>`, `rs: List<Int>`, `sm: List<Z>`, `tag: List<Z>`.
 - `fn get(self, t: MergeTree<D>, x: D) -> Z` — \(O(\log \lvert D \rvert)\); The value of `t` at `x`.
 - `fn total(self, t: MergeTree<D>) -> Z` — \(O(1)\); The sum of every value of `t`.
 - `fn scale(mut self, t: MergeTree<D>, k: Z)` — \(O(1)\); Multiplies every value of `t` by `k`.
-- `fn merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D>` — \(O(\log \lvert D \rvert)\) amortized per `set`, over a sequence of merges whose results; The tree holding `leaf(a[x], b[x], pre_a, pre_b)` at each position `x`, where `pre_a` and `pre_b` are the sums of `a` and `b` over the positions before `x`, plus the `pre_a:` and `pre_b:` arguments (0 by default).
+- `fn merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D>` — \(O(\log \lvert D \rvert)\) amortized per `set`, over a sequence of merges whose results; The tree holding `leaf(a[x], b[x], pre_a, pre_b)` at each position `x`; it uses up `a` and `b`.
 
 ## Example
 

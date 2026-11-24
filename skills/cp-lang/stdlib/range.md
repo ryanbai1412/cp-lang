@@ -4,7 +4,7 @@
 
 Ranges of positions: boundary cuts, halving, binary search and the cyclic `RingRange`. Nothing here imports another std module, so `seq`, `prefix` and every other module can use it.
 
-Import: `use std.range.{...}`.
+In prelude (no `use` needed): `RingRange`.
 
 ## `struct RingRange<D>()`
 

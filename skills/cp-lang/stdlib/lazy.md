@@ -39,6 +39,8 @@ Fields: `lc: List<Int>`, `rc: List<Int>`, `pri: List<Int>`, `sz: List<Int>`, `va
 
 - `fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>` — \(O(n \log n)\) expected; The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a `Monoid(id, op)`, which need not commute.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the sequence has no elements.
+- `@get fn items(self) -> yields T` — \(O(n)\) to make, \(O(1)\) per step; Each element in position order, with every tag and reversal applied; the treap is unchanged.
 - `@get fn total(self) -> T` — \(O(1)\); The fold of every element in order, with every tag and reversal applied.
 - `fn push(mut self, x: T)` — \(O(\log n)\) expected; Append `x` at the end.
 - `fn insert_at(mut self, pos: Int, x: T)` — \(O(\log n)\) expected; Insert `x` so that it becomes the element at position `pos`; `pos == len` appends.; traps: when `pos < 0` or `pos > len`

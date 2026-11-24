@@ -4,7 +4,7 @@
 
 The DP toolkit: the structures and optimizations a DP calls by name (CHT, SOS; a 0/1 knapsack over sums is `Bitset.shift_or`).  A minimum or maximum of lines (the convex hull trick) is a `LiChao`; a layer whose optimal split moves right is `dnc_layer` (over `monotone_minima`); an interval DP with monotone splits is `knuth`; "exactly `k` pieces" over a convex cost is `aliens`. Meet in the middle starts from `subset_sums`; sums over subsets and supersets of masks are `std.ntt`'s `sos(mut f, over: Sub | Sup = Sub, inverse:)`. The recurrence itself stays in your code, and a memoized recursion is `@memo`. Each optimization names the law it needs; `std.spec` checks it on small inputs (`monge_break`, `dnc_break`, `knuth_break`, `convexity_break`). A sliding-window optimum is `a.window_fold(k, op)` or `std.window.Window(op)`.
 
-In prelude (no `use` needed): `LiChao`, `Line`, `LineContainer`, `MonotoneHull`, `aliens`, `backtrack`, `knuth`, `monge_path`, `monotone_minima`, `smawk`.
+In prelude (no `use` needed): `LiChao`, `Line`, `LineContainer`, `MonotoneHull`, `Step`, `aliens`, `backtrack`, `knuth`, `monge_path`, `monotone_minima`, `smawk`.
 
 ## `struct Line(pub k: Int, pub m: Int)`
 
