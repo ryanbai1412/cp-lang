@@ -1442,6 +1442,27 @@ fn a_value_that_holds_no_heap_is_named_not_moved() {
     assert!(out.contains("{a_2, o_2, d_2, std::move(h_2)}"), "{out}");
 }
 
+/// parity/try_inside_expr.cp: an `?Int` let-else'd out of a loop's `const&`
+/// element, and a `?Int` loop result, are named, not moved (`-Wredundant-move`).
+#[test]
+fn an_opt_int_let_else_or_loop_result_is_named_not_moved() {
+    let out = cpp(concat!(
+        "fn g(xs: List<?Int>) -> ?Int:\n",
+        "    var s = 0\n",
+        "    for x in xs:\n",
+        "        let y = x else: return None\n",
+        "        s += 1 + y\n",
+        "    Some(s)\n",
+        "fn best(xs: List<?Int>) -> ?Int:\n",
+        "    var b = 0\n",
+        "    for i in 0..xs.len: b max= i + xs[i]?\n",
+        "    Some(b)\n",
+        "print(g([Some(1), None]) ?? -1, best([Some(1), Some(5)]) ?? -1)\n",
+    ));
+    let user = &out[out.find("inline cpl::OptInt g(").unwrap()..];
+    assert!(!user.contains("std::move("), "{user}");
+}
+
 /// Every move the C++ makes asks `Emitter::move_of`, so a value that holds no
 /// heap is never moved: no other line of codegen spells `std::move(`.
 #[test]
