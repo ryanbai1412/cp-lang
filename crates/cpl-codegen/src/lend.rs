@@ -4,7 +4,8 @@
 //! temporary alive as long as the view.
 
 use crate::emit::{Code, Emitter, COND};
-use crate::walk::{self, Effects};
+use crate::uses::effects::{may_touch, Runs, Stores};
+use crate::walk;
 use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
 
 /// A container argument that is no place: a temporary C++ destroys at the
@@ -24,7 +25,7 @@ pub(crate) fn lending_if(init: &Expr) -> Option<[&Expr; 2]> {
 /// What the statements after a `let` in its block can do, for
 /// [`Emitter::lends`].
 pub(crate) struct Tail {
-    pub(crate) effects: Effects,
+    pub(crate) effects: Stores,
     /// A call of a fn of the program.
     pub(crate) calls: bool,
     /// A call through a fn value, or a closure: code whose stores are not
@@ -38,57 +39,6 @@ pub(crate) struct Tail {
     /// Locals read whole, not only through an index, field or length: the
     /// C++ may move them, so nothing may hold a reference into them.
     pub(crate) whole: std::collections::BTreeSet<usize>,
-}
-
-impl Tail {
-    pub(crate) fn of(program: &cpl_ir::Program, stmts: &[Stmt]) -> Tail {
-        let block = Block {
-            stmts: stmts.to_vec(),
-        };
-        let (mut calls, mut opaque, mut closures) = (false, false, Vec::new());
-        let mut whole = whole_reads(&block);
-        let mut effects = Effects::of_block(&block);
-        // A local the block binds to a closure and never sets again calls
-        // that closure, whose effects are counted below.
-        let mut bound = std::collections::BTreeSet::new();
-        walk::deep_stmts(&block, &mut |stmt| {
-            if let Stmt::Let(
-                s,
-                Some(Expr {
-                    kind: ExprKind::Closure(_),
-                    ..
-                }),
-            ) = stmt
-            {
-                bound.insert(*s);
-            }
-        });
-        bound.retain(|s| !effects.locals.contains(s));
-        walk::deep_exprs(&block, &mut |e| match &e.kind {
-            ExprKind::Call(..) => calls = true,
-            ExprKind::CallExpr(callee, _) => {
-                calls = true;
-                opaque |= !matches!(callee.kind, ExprKind::Local(s) if bound.contains(&s));
-            }
-            ExprKind::Closure(id) => closures.push(*id),
-            _ => {}
-        });
-        for &id in &closures {
-            let caps = program.closures[id].captures.iter();
-            whole.extend(caps.filter(|c| !c.is_global).map(|c| c.outer));
-        }
-        for id in closures {
-            opaque |= !closure_effects(&program.closures[id], &mut effects, &mut calls);
-        }
-        Tail {
-            effects,
-            calls,
-            opaque,
-            tested: false,
-            lendable: false,
-            whole,
-        }
-    }
 }
 
 /// Locals `block` reads whole, not only through an index, field, variant
@@ -131,56 +81,6 @@ pub(crate) fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
     uses.into_iter().collect()
 }
 
-/// Adds what running closure `c` can change to `effects`, with its
-/// by-reference captures as the caller's variables. False when that is not
-/// known: it calls a fn value, makes a closure, or takes `mut` parameters.
-fn closure_effects(c: &cpl_ir::ClosureDef, effects: &mut Effects, calls: &mut bool) -> bool {
-    let mut known = c.muts.is_empty();
-    walk::deep_exprs(&c.body, &mut |e| {
-        known &= !matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_))
-    });
-    let inner = Effects::of_block(&c.body);
-    for cap in c
-        .captures
-        .iter()
-        .filter(|cap| inner.locals.contains(&cap.inner))
-    {
-        match cap.is_global {
-            true => effects.globals.insert(cap.outer),
-            false => effects.locals.insert(cap.outer),
-        };
-    }
-    *calls |= !inner.calls.is_empty();
-    effects.globals.extend(inner.globals);
-    effects.calls.extend(inner.calls);
-    known
-}
-
-/// Whether a closure of fn `id` can write its local `root`: the only way
-/// code reached through a fn value changes a caller's local.
-pub(crate) fn closure_writes(program: &cpl_ir::Program, id: Option<usize>, root: usize) -> bool {
-    let Some(id) = id else {
-        return true;
-    };
-    let mut pending = Vec::new();
-    walk::deep_exprs(&program.fns[id].body, &mut |e| {
-        if let ExprKind::Closure(c) = e.kind {
-            pending.push(c);
-        }
-    });
-    pending.into_iter().any(|c| {
-        let c = &program.closures[c];
-        let mut nested = false;
-        walk::deep_exprs(&c.body, &mut |e| {
-            nested |= matches!(e.kind, ExprKind::Closure(_))
-        });
-        let stores = Effects::of_block(&c.body).locals;
-        c.captures.iter().any(|cap| {
-            !cap.is_global && cap.outer == root && (nested || stores.contains(&cap.inner))
-        })
-    })
-}
-
 /// Whether the temporary `slot` an `if let` tests is read only by that test
 /// and by copies of a scalar or a fn at the top of its branch: `t0.has_value()`,
 /// then `f = *t0`. A reference into a place is dead before anything else runs,
@@ -201,10 +101,8 @@ pub(crate) fn copied_at_test(slot: usize, rest: &[Stmt]) -> bool {
     let later = Block {
         stmts: [&then.stmts[copies..], &otherwise.stmts, after].concat(),
     };
-    let mut seen = false;
-    walk::deep_exprs(&later, &mut |e| {
-        seen |= local(e) || matches!(e.kind, ExprKind::Closure(_))
-    });
+    let mut seen = Runs::of_block(&later).closures;
+    walk::deep_exprs(&later, &mut |e| seen |= local(e));
     !seen
 }
 
@@ -379,11 +277,8 @@ impl<'p> Emitter<'p> {
         muts: &[(bool, usize)],
     ) -> Vec<usize> {
         let leaves = |this: &Self, e: &Expr, root: (bool, usize)| {
-            let effects = Effects::of_expr(e);
-            let mut opaque = false;
-            walk::deep_expr(e, &mut |x| {
-                opaque |= matches!(x.kind, ExprKind::Closure(_) | ExprKind::CallExpr(..))
-            });
+            let effects = Stores::of_expr(e);
+            let opaque = Runs::of_expr(e).opaque();
             let writes = |f: &usize| root.0 && this.uses.effects(*f).writes.contains(&root.1);
             !opaque
                 && !effects.calls.iter().any(writes)
@@ -760,24 +655,6 @@ fn same_path(a: &Expr, b: &Expr) -> bool {
         }
         _ => false,
     }
-}
-
-/// Whether running `e` may read or write the variable `root`: anything
-/// that calls code counts.
-fn may_touch(e: &Expr, root: (bool, usize)) -> bool {
-    let mut hit = false;
-    walk::deep_expr(e, &mut |x| {
-        hit |= match &x.kind {
-            ExprKind::Local(s) => !root.0 && *s == root.1,
-            ExprKind::Global(g) => root.0 && *g == root.1,
-            ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, ..) | ExprKind::MutSlice(p, ..) => {
-                walk::root(p) == root
-            }
-            ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => true,
-            _ => false,
-        }
-    });
-    hit
 }
 
 impl Emitter<'_> {
@@ -1187,7 +1064,8 @@ fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
     let block = Block {
         stmts: vec![stmt.clone()],
     };
-    let (mut uses, mut elsewhere, mut opaque) = (0usize, 0usize, false);
+    let opaque = Runs::of_block(&block).code();
+    let (mut uses, mut elsewhere) = (0usize, 0usize);
     walk::deep_exprs(&block, &mut |e| match &e.kind {
         ExprKind::Local(s) if (false, *s) == *root => uses += 1,
         ExprKind::Global(g) if (true, *g) == *root => uses += 1,
@@ -1195,7 +1073,6 @@ fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
             elsewhere +=
                 usize::from(path_of(base).is_some_and(|(r, fs)| r == *root && fs.is_empty()));
         }
-        ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => opaque = true,
         _ => {}
     });
     let stored = match stmt {

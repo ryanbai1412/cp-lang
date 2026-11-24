@@ -20,7 +20,7 @@ list of lists:
 1. **Read the facts.** The emitter takes the lowered `cpl_ir::Program` and
    the compiler's effect table (`cpl_ir::effects`: what each fn and closure
    can write, print or trap on). It never reads syntax or re-derives types.
-2. **Decide each value once.** `uses.rs` builds the Uses table: for every
+2. **Decide each value once.** `uses/` builds the Uses table: for every
    heap binding, element, parameter, capture and loop binding, whether it is
    mutated, moved, escapes, or its source can change while it lives. A
    binding with no reason to be owned is a `const&`; one whose next use is
@@ -67,7 +67,7 @@ list of lists:
 | `lib.rs` | Public API (`emit`, `emit_for`, `emit_within_for`, `emit_profiled`, `sizes`, `Target`, `Part`) and fitting a source limit |
 | `emit.rs`, `emit/` | The `Emitter`: the whole file, types and layouts, globals, fn order, `main`; `emit/text.rs` the header, inline hints, ahead declarations and dropped list forms |
 | `expr.rs`, `stmt.rs`, `show.rs` | Expressions, statements and loops, printing and reading values |
-| `uses.rs` | The Uses table: lend, move or copy for every non-scalar binding |
+| `uses/` | The Uses table: lend, move or copy for every non-scalar binding; `uses/effects.rs` is codegen's one door to `cpl_ir::effects` and to what code runs (`Runs`, `Stores`), and `codegen_effect_guesses` in `scripts/debt-ratchet.py` (at 0) rejects an effects or purity helper anywhere else |
 | `lend.rs` | Branches of a `let` that name a place and are read in place |
 | `devirt.rs`, `splice.rs` | Direct calls through fn values with one known closure; splicing it into its loop |
 | `fuse.rs`, `sink.rs`, `inline.rs`, `presize.rs` | Loop fusion, reduction sinking, loops over list-literal fns, comprehension reserve |
@@ -87,7 +87,7 @@ client:
   whether a call writes outside its own locals, does I/O, can trap under
   the build's profile, or calls a fn value it cannot pin down. A bottom-up
   fixpoint; recursion and unknown callees count as effectful.
-- **Uses** (`uses.rs`, owned by perf): per binding, the reason it must be
+- **Uses** (`uses/`, owned by perf): per binding, the reason it must be
   owned, if any, and the closures each fn-valued home can hold.
 - **One decision:** lend by default, copy only for a reason Uses names (and
   `cpl explain` prints), move when the next use is an overwrite. A rewrite

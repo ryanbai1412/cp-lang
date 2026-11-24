@@ -5,6 +5,7 @@
 //! checked on the way to it, so every check that is skipped would pass.
 
 use crate::emit::Emitter;
+use crate::uses::effects::Runs;
 use cpl_ir::walk::{deep_exprs, deep_stmts};
 use cpl_ir::{Arg, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
 
@@ -129,7 +130,7 @@ impl<'p> Emitter<'p> {
             Stmt::DefDomain { .. } | Stmt::DefDomainFromVal { .. } => sizes = true,
             _ => {}
         });
-        let mut values = false;
+        let values = Runs::of_block(body).opaque();
         let mut calls = Vec::new();
         deep_exprs(body, &mut |e| match &e.kind {
             ExprKind::Index(base, _) => {
@@ -145,20 +146,18 @@ impl<'p> Emitter<'p> {
                 }));
             }
             ExprKind::CallExpr(_, args) => {
-                values = true;
                 stores.extend(args.iter().filter_map(|a| match a {
                     Arg::Mut(p) => Some(p),
                     Arg::Value(_) => None,
                 }));
             }
-            ExprKind::Closure(_) => values = true,
             ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => stores.push(place),
             _ => {}
         });
         if sizes || values || uses.is_empty() {
             return Vec::new();
         }
-        let effects = cpl_ir::walk::Effects::of_block(body);
+        let effects = crate::uses::effects::Stores::of_block(body);
         let params = self.fn_id.map_or(0, |f| self.program.fns[f].params.len());
         let summaries = &self.summaries;
         let call_ok = |root: (bool, usize)| {

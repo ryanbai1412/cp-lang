@@ -4,8 +4,8 @@
 //! from running them one after the other.
 
 use crate::emit::{Emitter, Touch};
+use crate::uses::effects::{trap_free_block, writes_own};
 use crate::walk;
-pub(crate) use cpl_ir::effects::trap_free_stmts;
 use cpl_ir::{Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, Stmt, Ty};
 
 /// The consumer loop fused onto a producer's `push`.
@@ -384,28 +384,4 @@ fn retarget_breaks(b: &mut Block, outer: LoopId, inner: LoopId, depth: usize) ->
         }
     }
     Some(stops)
-}
-
-/// True when `block` assigns only locals it declares.
-fn writes_own(block: &Block) -> bool {
-    let mut own = std::collections::BTreeSet::new();
-    walk::deep_stmts(block, &mut |stmt| {
-        if let Stmt::Let(s, _) | Stmt::For(_, s, ..) = stmt {
-            own.insert(*s);
-        }
-    });
-    let mut ok = true;
-    walk::deep_stmts(block, &mut |stmt| {
-        if let Stmt::Assign(place, ..) = stmt {
-            ok &= matches!(place.kind, PlaceKind::Local(s) if own.contains(&s));
-        }
-    });
-    ok
-}
-
-/// True when running `block` can neither trap, stop early nor loop forever,
-/// so where it runs relative to other effect-free code cannot be seen.
-/// Pushes onto `vec` count as nothing; the fused consumer is checked apart.
-fn trap_free_block(block: &Block, vec: usize, traps: bool) -> bool {
-    trap_free_stmts(&block.stmts, vec, traps, &|_| false)
 }

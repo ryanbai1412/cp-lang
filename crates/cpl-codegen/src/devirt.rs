@@ -11,8 +11,7 @@
 //! A call through such a field or parameter is emitted as a direct call
 //! of the closure, which the C++ compiler then inlines.
 
-pub(crate) use cpl_ir::effects::in_domain;
-use cpl_ir::effects::pure_path;
+use crate::uses::effects::{in_domain, pure_path, safe_place};
 use std::collections::{BTreeMap, BTreeSet};
 
 use cpl_ir::{
@@ -1425,17 +1424,6 @@ fn place_fields(place: &cpl_ir::Place, out: &mut BTreeSet<(usize, usize)>) {
             place_fields(base, out);
         }
         PlaceKind::Index(base, _) | PlaceKind::Some(base) => place_fields(base, out),
-    }
-}
-
-/// A variable, its fields, and cells of its domain-indexed arrays at
-/// positions held in variables: naming it runs nothing and cannot trap.
-fn safe_place(place: &cpl_ir::Place) -> bool {
-    match &place.kind {
-        PlaceKind::Local(_) | PlaceKind::Global(_) => true,
-        PlaceKind::Field(base, _) => safe_place(base),
-        PlaceKind::Index(base, idxs) => in_domain(&base.ty, idxs) && safe_place(base),
-        PlaceKind::Some(_) => false,
     }
 }
 

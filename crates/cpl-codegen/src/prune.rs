@@ -8,7 +8,8 @@
 //! a struct field every construction fills with `None` or copies from the
 //! same field, so `if let f = self.lt` goes when no `Heap` ever gets an `lt`.
 
-use crate::walk::{deep_exprs, deep_stmts, path_root, Effects};
+use crate::uses::effects::{known_where, Stores};
+use crate::walk::{deep_exprs, deep_stmts, path_root};
 use cpl_ir::{Arg, Block, Expr, ExprKind, FnId, Place, PlaceKind};
 use cpl_ir::{Program, Slot, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
@@ -34,10 +35,10 @@ pub(crate) fn prune(program: &mut Program, asserts: bool) {
 /// `assert floyd_warshall(mut d)` closes `d` in every build.
 fn keep_stores_of_asserts(program: &mut Program) {
     let mut storing = BTreeSet::new();
-    let effects: Vec<Effects> = program
+    let effects: Vec<Stores> = program
         .fns
         .iter()
-        .map(|f| Effects::of_block(&f.body))
+        .map(|f| Stores::of_block(&f.body))
         .collect();
     loop {
         let before = storing.len();
@@ -51,7 +52,7 @@ fn keep_stores_of_asserts(program: &mut Program) {
         }
     }
     let stores = |cond: &Expr| {
-        let e = Effects::of_expr(cond);
+        let e = Stores::of_expr(cond);
         !e.locals.is_empty() || !e.globals.is_empty() || e.calls.iter().any(|c| storing.contains(c))
     };
     fn visit(b: &mut Block, stores: &dyn Fn(&Expr) -> bool) {
@@ -205,7 +206,7 @@ fn captured(program: &Program, body: &Block) -> BTreeSet<Slot> {
 
 /// The slots `body` stores to, or lends to a closure by reference.
 fn written(program: &Program, body: &Block) -> BTreeSet<Slot> {
-    let mut out = Effects::of_block(body).locals;
+    let mut out = Stores::of_block(body).locals;
     deep_exprs(body, &mut |e| {
         if let ExprKind::Closure(cid) = e.kind {
             let caps = &program.closures[cid].captures;
@@ -334,7 +335,7 @@ pub(crate) fn known(e: &Expr) -> Option<bool> {
 }
 
 fn known_in(e: &Expr, cx: Option<&Cx>) -> Option<bool> {
-    cpl_ir::effects::known_where(e, &|x| cx.is_some_and(|cx| cx.is_none(x)))
+    known_where(e, &|x| cx.is_some_and(|cx| cx.is_none(x)))
 }
 
 fn block(b: &mut Block, asserts: bool, cx: &mut Cx) {

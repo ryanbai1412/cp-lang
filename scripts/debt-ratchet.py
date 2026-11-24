@@ -574,6 +574,43 @@ def cpp_std_functions(root: Path) -> list[str]:
     return _copy_baseline(root, "std_functions")
 
 
+_RUNS_CODE = re.compile(r"ExprKind::(Call|CallExpr)\(\.\.\)|ExprKind::Closure\(_\)")
+_EFFECTS_DIRECT = re.compile(r"cpl_ir::effects|walk::Effects\b|walk::\{[^}]*\bEffects\b")
+_PURITY_FN = re.compile(r"\bfn ([a-z_]*_)?(pure|impure|trap_free|effects?|writes_(nothing|own)|may_touch|"
+                        r"safe_place|quiet|runs_nothing|side_effects?)(_[a-z_]*)?\b")
+_FLAG_SET = re.compile(r"[|&]=|= (true|false)\b")
+
+
+def codegen_effect_guesses(root: Path) -> list[str]:
+    """Codegen deciding what code can do outside the Uses table (crates/cpl-codegen/src/uses/):
+    reaching cpl_ir::effects or walk::Effects directly, defining a purity helper, or a walk that
+    flags any call or closure as "may do anything"."""
+    out = []
+    src = root / "crates/cpl-codegen/src"
+    for p in _rs_files(root, "crates/cpl-codegen/src", tests=False):
+        rel = _rel(root, p)
+        if p.is_relative_to(src / "uses") or p.name.endswith("_tests.rs"):
+            continue
+        lines = _lines(p)
+        for i, line in enumerate(lines):
+            if line.lstrip().startswith("//"):
+                continue
+            if _EFFECTS_DIRECT.search(line) or _PURITY_FN.search(line):
+                out.append(f"{rel}:{i + 1}")
+                continue
+            if not re.search(r"\bdeep_(expr|exprs|stmts)\(", line) or line.rstrip().endswith(");"):
+                continue
+            indent, body = len(line) - len(line.lstrip()), [line]
+            for nxt in lines[i + 1:]:
+                body.append(nxt)
+                if nxt.strip().startswith("})") and len(nxt) - len(nxt.lstrip()) <= indent:
+                    break
+            if any(_RUNS_CODE.search(b) and _FLAG_SET.search(" ".join(body[k:k + 4]))
+                   for k, b in enumerate(body)):
+                out.append(f"{rel}:{i + 1}")
+    return out
+
+
 def stale_arch_paths(root: Path) -> list[str]:
     """Backticked repo paths in ARCHITECTURE docs that do not exist.
 
@@ -1161,6 +1198,7 @@ COUNTERS = {
     "own_databases": ("Database::new() outside tests and cpl-check", own_databases, True),
     "cpp_deep_copies": ("deep copies in the corpus C++ (read_only_copies)", cpp_deep_copies, True),
     "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
+    "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, False),
     "crate_edges": ("shipped crate edges", crate_edges, False),

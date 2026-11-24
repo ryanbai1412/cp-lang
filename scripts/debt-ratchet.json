@@ -114,6 +114,7 @@
   "own_databases": 29,
   "cpp_deep_copies": 37,
   "cpp_std_functions": 144,
+  "codegen_effect_guesses": 0,
   "near_dup_fns": 9,
   "consumer_rederived": 60,
   "rs_near_cap": [

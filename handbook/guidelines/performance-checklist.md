@@ -94,8 +94,9 @@ proven fact: `cpl_ir::effects` says the call is pure, or the Uses table says
 the difference can't be observed.
 Reason: "probably pure" is how R9 gets broken.
 Example: materializing a mapped `let` requires `effects(f).pure()`.
-Enforced by: `crates/cpl-codegen/src/uses.rs` and `cpl_ir::effects` as the
-only gates; review.
+Enforced by: `crates/cpl-codegen/src/uses/` and `cpl_ir::effects` as the
+only gates; `codegen_effect_guesses` in `scripts/debt-ratchet.py` (at 0)
+rejects an effects or purity helper elsewhere in codegen; review.
 
 **performance/R11.** The program that motivated an optimization or a fix
 lands as a parity case, with an effect counter when evaluation count

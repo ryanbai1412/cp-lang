@@ -7,14 +7,17 @@
 //! past that statement (a `let` built from it, a closure capturing it, a
 //! block's value) keeps it live to the end of the block.
 
+pub(crate) mod effects;
+
 use crate::lend::{copied_at_test, Tail};
-use crate::walk::{self, Effects as Stores};
+use crate::walk;
 use cpl_ir::{
     Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty,
 };
+use effects::Stores;
 use std::collections::{BTreeMap, BTreeSet};
 
-pub(crate) use cpl_ir::effects::Effects;
+pub(crate) use effects::Effects;
 
 /// Where a binding lives: top-level code (setup and main), a fn or a closure.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -398,8 +401,7 @@ impl crate::emit::Emitter<'_> {
                 SOURCE_CALLED,
             ));
         };
-        if tail.opaque
-            && !(named_local && !crate::lend::closure_writes(self.program, self.fn_id, root))
+        if tail.opaque && !(named_local && !effects::closure_writes(self.program, self.fn_id, root))
         {
             return Some(SOURCE_CALLED);
         }
@@ -516,7 +518,7 @@ fn field_dies(block: &Block, k: usize, init: &Expr) -> bool {
 /// changes, `var l = limbs`: taken by value, the copy moves in instead, and
 /// a caller at its last use moves its own value in.
 pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
-    let stored = walk::Effects::of_block(&f.body).locals;
+    let stored = Stores::of_block(&f.body).locals;
     let mut reads = vec![0usize; f.params.len()];
     walk::deep_exprs(&f.body, &mut |e| {
         if let ExprKind::Local(s) = e.kind {

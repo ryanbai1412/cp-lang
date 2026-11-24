@@ -12,7 +12,8 @@ use cpl_ir::{Arg, Expr, ExprKind, Iter, Program, Stmt, Ty};
 
 use crate::devirt::Devirt;
 use crate::emit::{Code, Emitter};
-use crate::fuse::{producer, trap_free_stmts, FusedPush};
+use crate::fuse::{producer, FusedPush};
+use crate::uses::effects::{pure_call, pure_fns, trap_free_stmts};
 use crate::walk;
 
 /// Each fn called with an inline list it can sink, and that list parameter.
@@ -82,23 +83,6 @@ fn sink_param(
             && trap_free_stmts(&f.body.stmts[..at], usize::MAX, traps, &call_ok)
             && trap_free_stmts(&body.stmts, usize::MAX, traps, &call_ok)
     })
-}
-
-/// [`cpl_ir::effects::pure_fns`], knowing the closures `devirt` resolves.
-pub(crate) fn pure_fns(program: &Program, devirt: &Devirt, traps: bool) -> BTreeSet<usize> {
-    cpl_ir::effects::pure_fns(program, traps, &|home, callee| devirt.target(home, callee))
-}
-
-fn pure_call(
-    program: &Program,
-    devirt: &Devirt,
-    pure: &BTreeSet<usize>,
-    home: Option<usize>,
-    traps: bool,
-    e: &Expr,
-) -> bool {
-    let target = |h: Option<usize>, callee: &Expr| devirt.target(h, callee);
-    cpl_ir::effects::pure_call(program, &target, pure, home, traps, e)
 }
 
 /// The list argument is a producer and every other argument a constant,

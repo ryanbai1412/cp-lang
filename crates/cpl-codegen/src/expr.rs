@@ -7,6 +7,7 @@ use crate::emit::{
 use crate::names::{
     cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_bitset_ty, is_plain_enum,
 };
+use crate::uses::effects::Runs;
 use crate::walk;
 const FLOAT_DIGITS: &str = "10";
 
@@ -203,11 +204,7 @@ impl<'p> Emitter<'p> {
         let home = self.closure_id.map_or(self.fn_id, |_| None);
         let cid = self.devirt.target(home, callee)?;
         let c = &self.program.closures[cid];
-        let mut calls = false;
-        walk::deep_exprs(&c.body, &mut |e| {
-            calls |= matches!(e.kind, ExprKind::CallExpr(..))
-        });
-        if calls
+        if Runs::of_block(&c.body).values
             || !c.captures.is_empty()
             || !c.muts.is_empty()
             || !crate::devirt::skippable(callee)
@@ -1295,16 +1292,8 @@ impl<'p> Emitter<'p> {
                 }
                 let impure_args = has_index(place)
                     && args.iter().any(|a| {
-                        let mut impure = false;
-                        crate::walk::deep_expr(a, &mut |sub| {
-                            if matches!(
-                                sub.kind,
-                                ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Mutate(..)
-                            ) {
-                                impure = true;
-                            }
-                        });
-                        impure
+                        let runs = Runs::of_expr(a);
+                        runs.calls() || runs.mutates
                     });
                 let narrow_elem = self.place_elem_layout(place).cloned();
                 let emit_mutate = |this: &mut Self, p: String, arg: String, arg2: String| -> Code {
@@ -1507,7 +1496,9 @@ impl<'p> Emitter<'p> {
                     if let Some(value) = value {
                         let touch = this.touch(value);
                         let code = this.expr(value);
-                        let calls = !crate::walk::Effects::of_expr(value).calls.is_empty();
+                        let calls = !crate::uses::effects::Stores::of_expr(value)
+                            .calls
+                            .is_empty();
                         if touch.io || !touch.writes.is_empty() || calls {
                             let name = this.temp();
                             out.push_str(&format!(

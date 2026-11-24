@@ -531,6 +531,29 @@ class DebtRatchetTest(unittest.TestCase):
             (tests / "vm_fallbacks.txt").write_text("# header\np untraced expr:Read\np traced stmt:Return\n")
             self.assertEqual(len(dr.vm_fallbacks(root)), 2)
 
+    def test_codegen_effect_guesses(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "crates/cpl-codegen/src"
+            (src / "uses").mkdir(parents=True)
+            (src / "uses/effects.rs").write_text("use cpl_ir::effects::pure_path;\nfn pure_fns() {}\n")
+            (src / "a_tests.rs").write_text("use cpl_ir::effects::pure_path;\n")
+            (src / "lend.rs").write_text(
+                "use cpl_ir::effects::pure_path;\n"
+                "// cpl_ir::effects in a comment\n"
+                "fn writes_nothing(e: &Expr) -> bool {\n"
+                "    walk::deep_expr(e, &mut |x| {\n"
+                "        hit |= matches!(x.kind, ExprKind::CallExpr(..))\n"
+                "    });\n"
+                "    walk::deep_exprs(b, &mut |x| match &x.kind {\n"
+                "        ExprKind::Closure(c) => found |= c == 1,\n"
+                "        _ => {}\n"
+                "    });\n"
+                "}\n")
+            self.assertEqual(dr.codegen_effect_guesses(root),
+                             ["crates/cpl-codegen/src/lend.rs:1", "crates/cpl-codegen/src/lend.rs:3",
+                              "crates/cpl-codegen/src/lend.rs:4"])
+
     def test_own_databases_and_copy_baselines(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

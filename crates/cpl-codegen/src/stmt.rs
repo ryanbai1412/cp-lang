@@ -4,7 +4,8 @@ use crate::emit::{pad, Emitter, Pushed, ADD, PRIMARY, REL};
 use crate::expr::string_literal;
 use crate::lend::Hold;
 use crate::names::{dom_ident, fn_name};
-use crate::walk::{self, Effects};
+use crate::uses::effects::{is_cheap_pure_key, writes_nothing, Runs, Stores};
+use crate::walk;
 use cpl_ir::{
     AssignOp, BinOp, Block, Builtin, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind,
     SortBy, Spec, Stmt, Ty,
@@ -661,7 +662,7 @@ impl<'p> Emitter<'p> {
                 hi,
                 rev,
             } => {
-                let effects = Effects::of_block(body);
+                let effects = Stores::of_block(body);
                 let untouched = match walk::path_root(container) {
                     Some((false, local)) => {
                         !effects.locals.contains(&local) || fields_untouched(container, body)
@@ -754,7 +755,7 @@ impl<'p> Emitter<'p> {
             Iter::Seq(seq, rev) => {
                 let inlined = self.inline_list_call(seq);
                 let seq = inlined.as_ref().unwrap_or(seq);
-                let effects = Effects::of_block(body);
+                let effects = Stores::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
                 let untouched_by_body =
@@ -1694,10 +1695,9 @@ fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
     walk::deep_expr(e, &mut |sub| match &sub.kind {
         ExprKind::Local(id) if !root.0 && *id == root.1 => alias = true,
         ExprKind::Global(id) if root.0 && *id == root.1 => alias = true,
-        ExprKind::Call(..) | ExprKind::CallExpr(..) => alias = true,
         _ => {}
     });
-    alias
+    alias || Runs::of_expr(e).calls()
 }
 
 /// The variable a place reads from, looking through the unchecked unwrap
@@ -1713,22 +1713,6 @@ pub(crate) fn place_root(e: &Expr) -> Option<(bool, usize)> {
     }
 }
 
-fn writes_nothing(e: &Expr) -> bool {
-    let mut quiet = true;
-    walk::deep_expr(e, &mut |sub| {
-        if matches!(
-            sub.kind,
-            ExprKind::Call(..)
-                | ExprKind::CallExpr(..)
-                | ExprKind::Mutate(..)
-                | ExprKind::Closure(_)
-        ) {
-            quiet = false;
-        }
-    });
-    quiet
-}
-
 /// For `if k in m:` whose body reads `m[k]` and can't change `m` or
 /// `k`: the map and the key. The C++ then finds the entry once.
 fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)> {
@@ -1742,17 +1726,13 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
     if !matches!(map.ty, Ty::Map(..) | Ty::HashMap(..)) || !plain(map) || !plain(key) {
         return None;
     }
-    let (mut reads, mut quiet) = (false, true);
+    let (mut reads, mut quiet) = (false, Runs::of_block(then).quiet());
     walk::deep_exprs(then, &mut |e| match &e.kind {
         ExprKind::Index(base, at)
             if base.kind == map.kind && at.len() == 1 && at[0].kind == key.kind =>
         {
             reads = true
         }
-        ExprKind::Mutate(..)
-        | ExprKind::Call(..)
-        | ExprKind::CallExpr(..)
-        | ExprKind::Closure(_) => quiet = false,
         _ => {}
     });
     walk::deep_stmts(then, &mut |stmt| {
@@ -1790,27 +1770,6 @@ fn sized_ctor<'t>(cpp: &str, text: &'t str) -> Option<&'t str> {
         }
     }
     (depth == 0 && !args.contains('"') && !args.contains('\'')).then_some(args)
-}
-
-/// True when a `sort(by:)` key expression is pure, trap-free, and O(1), so comparing
-/// `kf(a) < kf(b)` in-place is safe and avoids allocating `keys`/`order`/`sorted` buffers.
-fn is_cheap_pure_key(e: &Expr) -> bool {
-    match &e.kind {
-        ExprKind::Unit
-        | ExprKind::Int(_)
-        | ExprKind::Float(_)
-        | ExprKind::Bool(_)
-        | ExprKind::Char(_)
-        | ExprKind::None
-        | ExprKind::Local(_)
-        | ExprKind::Global(_) => true,
-        ExprKind::Some(inner) | ExprKind::Field(inner, _) => is_cheap_pure_key(inner),
-        ExprKind::Unary(cpl_ir::UnOp::Not | cpl_ir::UnOp::BitNot, inner) => {
-            is_cheap_pure_key(inner)
-        }
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(is_cheap_pure_key),
-        _ => false,
-    }
 }
 
 /// The fields `e` names below a local: `self.w` is `(self, [w])`.
