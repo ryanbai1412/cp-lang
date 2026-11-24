@@ -209,7 +209,7 @@ tests for wording.
 | Deterministic: one seed, one result, on every machine | differing cases, shrinks or traces across OSes and runs | property test for jobs; CI on three OSes; saved traces | `crates/cpl-stress/src/tests.rs`, `.github/workflows/debugger-loop.yml`, `crates/cpl-cli/tests/trace_goldens.rs` |
 | Paths, CRLF and missing tools don't break the loop on Windows | loop tests failing on one OS only | CI matrix | `.github/workflows/debugger-loop.yml` |
 | The demos and guide examples keep running | demos that fail to check or run | hand-written suite | `crates/cpl-cli/tests/replay.rs` `every_debugging_demo_checks_clean`, `crates/cpl-cli/tests/trace_browser.rs` |
-| The suites catch real debugger bugs | mutation score of the debugger suites | `missing` | `missing` |
+| The suites catch real debugger bugs | mutation score of the debugger suites | mutation gate: every viable mutant of the DAP adapter fails `crates/cpl-cli/tests/dap.rs`, scheduled in CI | `scripts/mutation-score.py -p cpl-cli -f crates/cpl-cli/src/dap.rs --test dap --min 1.0`, `.github/workflows/ci-slow.yml` |
 | Every escaped bug becomes a test | escaped bugs with no regression test | process: each fix lands with its test | `plan/domains/debugger/worklog.md` |
 | A stranger can debug from the docs alone | planted bugs a cold agent fixes from the docs, in each editor | process: cold-stranger probe | `plan/domains/debugger/PLAN.md` |
 | Handbook and guide text is written for an outsider | context-dependent phrases | lint | `scripts/check-handbook.py` |

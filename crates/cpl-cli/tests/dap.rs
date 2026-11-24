@@ -4,8 +4,10 @@
 
 use std::io::BufReader;
 use std::path::PathBuf;
-use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::{channel, Receiver};
+use std::time::Duration;
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -25,7 +27,7 @@ fn write_temp(name: &str, src: &str) -> PathBuf {
 struct DapClient {
     child: Child,
     stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
+    messages: Receiver<Option<String>>,
     seq: i64,
 }
 
@@ -39,11 +41,19 @@ impl DapClient {
             .spawn()
             .expect("spawn cpl dap");
         let stdin = child.stdin.take().unwrap();
-        let stdout = BufReader::new(child.stdout.take().unwrap());
+        let mut stdout = BufReader::new(child.stdout.take().unwrap());
+        let (sender, messages) = channel();
+        std::thread::spawn(move || loop {
+            let msg = cpl_lsp::transport::read_message(&mut stdout).ok().flatten();
+            let done = msg.is_none();
+            if sender.send(msg).is_err() || done {
+                break;
+            }
+        });
         Self {
             child,
             stdin,
-            stdout,
+            messages,
             seq: 1,
         }
     }
@@ -61,9 +71,12 @@ impl DapClient {
         seq
     }
 
+    /// The adapter's next message; an adapter that never answers fails the
+    /// test after 5 s instead of hanging it.
     fn recv(&mut self) -> String {
-        cpl_lsp::transport::read_message(&mut self.stdout)
-            .unwrap()
+        self.messages
+            .recv_timeout(Duration::from_secs(5))
+            .expect("cpl dap sent nothing for 5 s")
             .expect("unexpected EOF from cpl dap")
     }
 
@@ -80,8 +93,21 @@ impl DapClient {
     fn finish(mut self) {
         self.send("disconnect", None);
         let _ = self.recv_until("\"command\":\"disconnect\"");
+        // The adapter closes its output as it exits; then waiting can't hang.
+        while let Some(_late) = self
+            .messages
+            .recv_timeout(Duration::from_secs(5))
+            .expect("cpl dap still running 5 s after disconnect")
+        {}
         let status = self.child.wait().unwrap();
         assert!(status.success(), "cpl dap exited with {status}");
+    }
+}
+
+impl Drop for DapClient {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
     }
 }
 
@@ -457,6 +483,10 @@ print(best[cap])
         c.contains("\"result\":\"2\""),
         "second hit of line 8 is c = 2: {c}"
     );
+    assert!(
+        c.contains("\"type\":\"") && !c.contains("\"type\":\"\""),
+        "a watch names its type: {c}"
+    );
     let best = eval("best");
     assert!(
         best.contains("\"result\":\"[0, 1, 2]\""),
@@ -647,14 +677,18 @@ print(i / d)
 
 #[test]
 fn a_message_without_a_content_length_ends_the_session_with_exit_1() {
-    let mut client = DapClient::spawn();
     use std::io::Write;
-    client
-        .stdin
-        .write_all(b"Content-Type: x\r\n\r\n{}")
-        .unwrap();
-    drop(client.stdin);
-    let out = client.child.wait_with_output().unwrap();
+    let mut child = Command::new(cpl_bin())
+        .arg("dap")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn cpl dap");
+    let mut stdin = child.stdin.take().unwrap();
+    stdin.write_all(b"Content-Type: x\r\n\r\n{}").unwrap();
+    drop(stdin);
+    let out = child.wait_with_output().unwrap();
     assert_eq!(out.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
@@ -724,6 +758,117 @@ fn threads_scopes_and_next_over_a_call_answer_as_the_protocol_says() {
         stops.push(line(&mut dap));
     }
     assert_eq!(stops, [(1, 4), (1, 5), (1, 6), (1, 7)]);
+    dap.finish();
+}
+
+#[test]
+fn next_and_step_out_inside_a_nested_call_keep_to_its_frame() {
+    let path = write_temp(
+        "nested_next",
+        "fn g(x: Int) -> Int:\n    let y = x + 1\n    let z = y * 2\n    z\nfn f(x: Int) -> Int:\n    let w = g(x)\n    w + 1\nvar a = f(3)\nprint(a)\n",
+    );
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send("launch", Some(&format!("{{\"program\":\"{p}\"}}")));
+    let _ = dap.recv_until("\"command\":\"launch\"");
+    dap.send(
+        "setBreakpoints",
+        Some(&format!(
+            "{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[{{\"line\":2}}]}}"
+        )),
+    );
+    let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let where_ = |dap: &mut DapClient| {
+        dap.send("stackTrace", Some("{\"threadId\":1}"));
+        let reply = dap.recv_until("\"command\":\"stackTrace\"");
+        let stack = cpl_json::parse(&reply).unwrap().at(&["body"]).clone();
+        let frames = stack.at(&["stackFrames"]).as_array().unwrap();
+        (frames.len(), frames[0].at(&["line"]).as_i64().unwrap())
+    };
+    let at_breakpoint = where_(&mut dap);
+    dap.send("next", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let after_next = where_(&mut dap);
+    dap.send("stepOut", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let after_step_out = where_(&mut dap);
+    assert_eq!(at_breakpoint, (3, 2), "stopped inside g, called from f");
+    assert_eq!(after_next, (3, 3), "`next` stays in g's frame");
+    assert_eq!(after_step_out.0, 2, "`stepOut` from g lands in f, not main");
+    dap.finish();
+}
+
+/// Every recording has a step, even of an empty program, so a session
+/// with nothing to show is one that never launched.
+#[test]
+fn configuration_done_without_a_launch_terminates_and_an_empty_program_stops() {
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"command\":\"configurationDone\"");
+    let exited = dap.recv();
+    assert!(exited.contains("\"event\":\"exited\""), "{exited}");
+    let terminated = dap.recv();
+    assert!(
+        terminated.contains("\"event\":\"terminated\""),
+        "{terminated}"
+    );
+    dap.finish();
+
+    let path = write_temp("no_steps", "");
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send(
+        "launch",
+        Some(&format!("{{\"program\":\"{p}\",\"stopOnEntry\":true}}")),
+    );
+    let _ = dap.recv_until("\"command\":\"launch\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"command\":\"configurationDone\"");
+    let next = dap.recv();
+    assert!(next.contains("\"reason\":\"entry\""), "{next}");
+    dap.finish();
+}
+
+#[test]
+fn reverse_continue_stops_at_an_edit_before_the_recorded_window() {
+    let source = |start: i64| {
+        format!(
+            "let n: Int = read()\nvar s = {start}\nvar i = 0\nwhile i < n:\n    i += 1\n    s += 1\nlet d = i - i\nprint(s / d)\n"
+        )
+    };
+    let path = write_temp("edit_before_window", &source(0));
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send(
+        "launch",
+        Some(&format!(
+            "{{\"program\":\"{p}\",\"stopOnEntry\":false,\"recordSteps\":1000,\"inputText\":\"3000\\n\"}}"
+        )),
+    );
+    let _ = dap.recv_until("\"command\":\"launch\"");
+    dap.send("configurationDone", None);
+    let trap = dap.recv_until("\"event\":\"stopped\"");
+    assert!(trap.contains("division by zero"), "{trap}");
+    std::fs::write(&path, source(1)).unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let kept = dap.recv_until("\"event\":\"stopped\"");
+    assert!(kept.contains("kept your place: line 8"), "{kept}");
+    dap.send("reverseContinue", Some("{\"threadId\":1}"));
+    let back = dap.recv_until("\"event\":\"stopped\"");
+    assert!(back.contains("\"reason\":\"divergence\""), "{back}");
+    dap.send("stackTrace", Some("{\"threadId\":1}"));
+    let frame = dap.recv_until("\"command\":\"stackTrace\"");
+    assert!(frame.contains("\"line\":2"), "{frame}");
     dap.finish();
 }
 

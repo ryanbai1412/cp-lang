@@ -279,7 +279,7 @@ impl Session {
             }
             "configurationDone" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
-                if !self.launched || self.recording.is_empty() {
+                if !self.launched {
                     self.send_terminated(writer)?;
                 } else if self.stop_on_entry {
                     self.cursor = 0;
@@ -302,11 +302,10 @@ impl Session {
                 )?;
             }
             "stackTrace" => {
-                let frames = match self.recording.step(self.cursor) {
-                    Some(step) if step.frames.is_empty() => vec![("main".to_string(), step.line)],
-                    Some(step) => step.frames,
-                    None => Vec::new(),
-                };
+                let frames = self
+                    .recording
+                    .step(self.cursor)
+                    .map_or_else(Vec::new, |step| step.frames);
                 let source = obj([
                     ("name", self.source_name.as_str().into()),
                     ("path", self.program_path.as_str().into()),
