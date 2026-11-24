@@ -136,12 +136,17 @@ fn the_prelude_names_are_the_ones_a_file_can_use() {
     assert!(names
         .iter()
         .any(|(name, kind)| *name == "SegTree" && matches!(kind, PreludeKind::Std(_))));
-    for name in ["Interactor", "Subset"] {
-        assert!(
-            names.contains(&(name, PreludeKind::Type)),
-            "`{name}` is a type"
-        );
-    }
+    assert!(
+        names.contains(&("Interactor", PreludeKind::Type)),
+        "`Interactor` is a type"
+    );
+    // std's own struct since 9be132046, listed in std/prelude.cp.
+    assert!(
+        names
+            .iter()
+            .any(|(name, kind)| *name == "Subset" && matches!(kind, PreludeKind::Std(_))),
+        "`Subset` is a std name"
+    );
     // Only what `std/prelude.cp` lists.
     let prelude =
         std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std/prelude.cp"))
