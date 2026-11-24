@@ -10,7 +10,8 @@
 //   door, O(N^2 log N) time.
 // The task is a grader function and the judge supplies `try_combination`; this plays the sample
 // grader: it reads N, each switch's open position and its door, answers each try the way the
-// judge does, and prints `Accepted: q`. dream.cp has the `protocol` form.
+// judge does, and prints `Accepted: q`. The `protocol` form is the dream in
+// research/frictions/ioi13p4.md.
 // original: corpus/submissions/4687973.cpp
 let n: 1..=5000 = read()
 domain Switch = 0..n
@@ -41,6 +42,6 @@ fn explore_cave() -> ([Switch]0..=1, [Switch]Door):
         door[free[k - 1]] = Some(d)
     (open, [Switch] w => door[w]!)
 
-let (open, door) = explore_cave()
-assert open == hidden_open and door == hidden_door
+let (found_open, found_door) = explore_cave()
+assert found_open == hidden_open and found_door == hidden_door
 print("Accepted:", tries)
