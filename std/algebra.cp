@@ -591,6 +591,8 @@ fn bare_operators_bring_their_identity():
     assert Monoid<Int>.of(&).id == -1
     assert Monoid<Int>.of(max).id == Int.MIN and Monoid<Int>.of(min).id == Int.MAX
     assert Monoid<?Int>.of(max).id == None and Monoid<?Int>.of(min).id == None
+    assert Monoid<Bool>.of(or).id == false and Monoid<Bool>.of(and).id == true
+    assert Monoid<Bool>.of(and).op(true, false) == false and Monoid<Bool>.of(or).op(false, true)
     let xs = [-7, -1, 0, 2, 5, 9]
     assert laws_hold(Monoid<Int>.of(+), xs)
     assert laws_hold(Monoid<Int>.of(*), [-2, -1, 0, 1, 3])
