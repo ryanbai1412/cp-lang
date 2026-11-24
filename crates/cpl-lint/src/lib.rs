@@ -140,6 +140,9 @@ pub struct Lint {
     /// Why `cpl lint --fix` (and the editor's quick fix) has no rewrite for
     /// it; `None` when it has one.
     pub no_fix: Option<&'static str>,
+    /// The checker error `trigger` shows because it uses a removed spelling;
+    /// `None` when it passes `cpl check`.
+    pub removed: Option<&'static str>,
     pub explanation: &'static str,
     pub trigger: &'static str,
     pub fix: &'static str,

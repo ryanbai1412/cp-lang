@@ -77,6 +77,7 @@ pub(crate) fn intern(name: &str) -> &'static Lint {
         summary: "declared with `@lint` on a library fn",
         rule: "lints/R17",
         no_fix: None,
+        removed: None,
         explanation: "",
         trigger: "",
         fix: "",

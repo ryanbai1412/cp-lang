@@ -35,8 +35,7 @@ pub(crate) fn checker_errors(src: &str) -> Vec<String> {
     let mut db = cpl_check::Database::new();
     db.set_file("probe.cp", src);
     let analysis = db.analyze("probe.cp").expect("analysis");
-    analysis
-        .diagnostics
+    cpl_ir::reported(&analysis)
         .iter()
         .filter(|d| d.severity == cpl_diag::Severity::Error)
         .map(|d| d.message.clone())

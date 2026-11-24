@@ -175,8 +175,10 @@ Enforced by: `crates/cpl-lint/build.rs` (`check_rule`) fails the build.
 ### R18: The record is complete
 
 Each lint has `lint.toml`, `before.cp` (fires once), `after.cp` (passes
-`cpl check`), `near_miss.cp` and `explain.md`, and a row in the lint table
-of `spec/diagnostics.md`.
+`cpl check`), `near_miss.cp` (passes `cpl check`) and `explain.md`, and a
+row in the lint table of `spec/diagnostics.md`. `before.cp` passes
+`cpl check` too, unless it shows a removed spelling: then `lint.toml`'s
+`removed` names the checker error it gets, and nothing else may fail.
 Reason: the record is the lint's spec and its test.
 Example: `spec/lints/push_loop/`.
 Enforced by: `crates/cpl-lint/build.rs` and `crates/cpl-lint/src/record_tests.rs`.

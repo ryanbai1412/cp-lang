@@ -17,3 +17,4 @@ cpl-prover.workspace = true
 
 [dev-dependencies]
 cpl-fmt.workspace = true
+cpl-ir.workspace = true

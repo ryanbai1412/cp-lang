@@ -239,6 +239,23 @@ fn every_record_after_and_near_miss_pass_cpl_check() {
     }
 }
 
+#[test]
+fn every_record_before_passes_cpl_check_or_names_its_removed_spelling() {
+    for lint in LINTS {
+        let mut db = cpl_check::Database::new();
+        db.set_file("before.cp", lint.trigger);
+        let analysis = db.analyze("before.cp").expect("analysis");
+        let mut codes: Vec<&str> = cpl_ir::reported(&analysis)
+            .iter()
+            .filter(|d| d.severity == cpl_diag::Severity::Error)
+            .map(|d| d.code.0)
+            .collect();
+        codes.dedup();
+        let want: Vec<&str> = lint.removed.into_iter().collect();
+        assert_eq!(codes, want, "{}: before.cp's checker errors", lint.name);
+    }
+}
+
 /// Every `.cp` file under `dir`, recursively, with its text.
 fn sources(dir: &std::path::Path, ext: &str, out: &mut Vec<String>) {
     for entry in std::fs::read_dir(dir).expect("readable dir").flatten() {
