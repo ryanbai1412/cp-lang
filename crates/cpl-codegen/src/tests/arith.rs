@@ -186,3 +186,30 @@ fn a_shift_by_a_proven_amount_has_no_shamt() {
     assert!(out.contains("x = cpl::ishl(x, k & 63);"), "{out}");
     assert_eq!(out.matches("cpl::shamt(").count(), 1, "{out}");
 }
+
+#[test]
+fn a_branch_on_a_const_generic_against_a_named_const_folds() {
+    let out = cpp(concat!(
+        "const Q = 998_244_353\n",
+        "fn root<P>(x: Mod<P>) -> Int:\n",
+        "    if P != Q - 0: return x.v * 7 + 1\n",
+        "    3\n",
+        "print(root(Mod<998_244_353>(5)))\n",
+    ));
+    let root = &out[out.find("inline ll root_").expect("root")..];
+    let root = &root[..root.find("\n}").expect("root's end")];
+    assert!(root.ends_with("return 3;"), "{root}");
+    assert!(!root.contains("if ("), "{root}");
+}
+
+#[test]
+fn ntt_over_the_first_ntt_prime_leaves_primitive_root_out() {
+    let out = cpp(concat!(
+        "use std.ntt.{convolve}\n",
+        "let a = [Mod<998_244_353>(x) for x in [1, 2, 3]]\n",
+        "let b = [Mod<998_244_353>(x) for x in [4, 5]]\n",
+        "print([c.v for c in convolve(a, b)])\n",
+    ));
+    assert!(out.contains("ntt"), "{out}");
+    assert!(!out.contains("primitive_root"), "{out}");
+}

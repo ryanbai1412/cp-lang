@@ -175,7 +175,7 @@ impl<'a> Lowerer<'a> {
                     _ => value,
                 }
             }
-            ast::ExprKind::Compare { first, rest } => self.compare(first, rest, span),
+            ast::ExprKind::Compare { first, rest } => self.settled_compare(first, rest, span),
             ast::ExprKind::Range {
                 lo,
                 hi,
@@ -2448,7 +2448,7 @@ impl<'a> Lowerer<'a> {
 
     /// A comparison. One that tests for `none` reads its names as the
     /// optionals they were declared as.
-    fn compare(&mut self, first: &ast::Expr, rest: &[(CmpOp, ast::Expr)], span: Span) -> Expr {
+    pub(super) fn compare(&mut self, first: &ast::Expr, rest: &consts::Chain, span: Span) -> Expr {
         if !narrow::tests_none(first, rest) {
             return self.compare_sides(first, rest, span);
         }
