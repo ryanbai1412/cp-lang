@@ -1046,13 +1046,13 @@ fn sa_rank_lcp<S: Indexed>(s: S) -> (List<Int>, List<Int>, List<Int>):
             if k > 0: k -= 1
     (sa, rank, lcp)
 
-/// \(O(n)\) SA-IS + Kasai LCP (\(O(n \log n)\) with RMQ). Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries.
+/// \(O(n)\) SA-IS + Kasai LCP + block RMQ. Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries.
 pub struct SuffixArray<T: Ord>:
     pub sa: List<Int>
     rank: List<Int>
     pub lcp: List<Int>
-    rmq: List<Int>
-    bits: Int
+    mask: List<U64>
+    top: List<Int>
     dcum: List<Int>
     src: List<T>
 
@@ -1065,7 +1065,7 @@ pub struct SuffixArray<T: Ord>:
     /// Elements are compared by `Ord`, so a shorter suffix that is a prefix of a longer one
     /// ranks first.
     ///
-    /// cost: \(O(n \log n)\) time and memory (the LCP sparse table; the suffix sort itself is \(O(n)\) for `Str` and small integer alphabets)
+    /// cost: \(O(n)\) time and memory for `Str` and small integer alphabets (SA-IS, Kasai, a block RMQ); other element types add an \(O(n \log n)\) sort to rank them
     /// empty: `let s = SuffixArray(""); (s.len, s.sa, s.lcp) == (0, [], [])`
     /// traps: never
     /// example: `SuffixArray("banana").sa == [5, 3, 1, 0, 4, 2]`
@@ -1073,25 +1073,39 @@ pub struct SuffixArray<T: Ord>:
     pub fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>:
         let n = s.len
         let (sa, rank, lcp) = sa_rank_lcp(s)
-        // Each sparse-table cell packs `lcp[i] << bits | i`, so one `min` picks the
-        // smallest lcp and, among equal ones, the leftmost position.
+        // The block-of-64 RMQ of std.sparse.LinearRmq over `lcp`, leftmost on ties. It is a
+        // second copy because a struct cannot yet name the LinearRmq built over a List (the
+        // List's index domain is unnameable; a Core bug): use LinearRmq once that is fixed.
         let m = lcp.len
-        let bits = bit_width(m)
-        let levels = bits
-        var rmq = List.filled(levels * m, 0)
+        let nb = (m + 63) / 64
+        var mask: List<U64> = List.filled(m, U64(0))
         unchecked:
-            for i in 0..m: rmq[i] = (lcp[i] << bits) | i
-            for b in 1..levels:
-                let step = 1 << (b - 1)
-                for i in 0..m - (1 << b) + 1:
-                    rmq[b * m + i] = min(rmq[(b - 1) * m + i], rmq[(b - 1) * m + i + step])
+            for b in 0..nb:
+                var cur = U64(0)
+                for i in 64 * b..min(64 * b + 64, m):
+                    while cur != U64(0) and lcp[i] < lcp[64 * b + bit_width(cur) - 1]:
+                        cur ^= U64(1) << (bit_width(cur) - 1)
+                    cur |= U64(1) << (i - 64 * b)
+                    mask[i] = cur
+        var top = List.filled(nb * max(bit_width(nb), 1), 0)
+        unchecked:
+            for b in 0..nb:
+                let (lo, hi) = (64 * b, min(64 * b + 64, m) - 1)
+                let at = mask[hi] & ~((U64(1) << (lo - 64 * b)) - U64(1))
+                top[b] = lo + bit_width(at & (~at + U64(1))) - 1
+            var k = 1
+            while (1 << k) <= nb:
+                for b in 0..nb:
+                    let (x, y) = (top[(k - 1) * nb + b], top[(k - 1) * nb + min(b + (1 << (k - 1)), nb - 1)])
+                    top[k * nb + b] = if lcp[y] < lcp[x]: y else: x
+                k += 1
         var dcum = List.filled(n + 1, 0)
         unchecked:
             for r in 0..n:
                 let shared = if r == 0: 0 else: lcp[r - 1]
                 dcum[r + 1] = dcum[r] + (n - sa[r]) - shared
         let src = [s.nth(i) for i in 0..n]
-        SuffixArray(sa, rank, lcp, rmq, bits, dcum, src)
+        SuffixArray(sa, rank, lcp, mask, top, dcum, src)
 
     /// The length `n` of the sequence the suffix array was built over.
     ///
@@ -1128,7 +1142,7 @@ pub struct SuffixArray<T: Ord>:
         assert 0 <= i and i <= n and 0 <= j and j <= n, "`lcp_between(i, j)` needs `0 <= i, j <= len`"
         if i == j: return n - i
         if i == n or j == n: return 0
-        self.packed_min(min(rank[i], rank[j]), max(rank[i], rank[j])) >> bits
+        lcp[self.arg_min(min(rank[i], rank[j]), max(rank[i], rank[j]))]
 
     /// The ranks `lo..hi` of the suffixes that start with `pat`. When there are None it is the
     /// empty range at the rank where `pat` would sort.
@@ -1219,12 +1233,24 @@ pub struct SuffixArray<T: Ord>:
         if m == 0 or self.lcp_between(l1, l2) >= m: return if n1 < n2: -1 elif n1 > n2: 1 else: 0
         if rank[l1] < rank[l2]: -1 else: 1
 
-    fn arg_min(self, lo: Int, hi: Int) -> Int = self.packed_min(lo, hi) & ((1 << bits) - 1)
+    fn in_block(self, l: Int, r: Int) -> Int:
+        let base = l - l % 64
+        let at = mask[r] & ~((U64(1) << (l - base)) - U64(1))
+        base + bit_width(at & (~at + U64(1))) - 1
 
-    fn packed_min(self, lo: Int, hi: Int) -> Int:
-        let b = bit_width(hi - lo) - 1
-        let m = lcp.len
-        min(rmq[b * m + lo], rmq[b * m + hi - (1 << b)])
+    fn earlier_min(self, i: Int, j: Int) -> Int = if lcp[j] < lcp[i]: j else: i
+
+    // The leftmost position of the least `lcp` in `lo..hi` (non-empty).
+    fn arg_min(self, lo: Int, hi: Int) -> Int:
+        let h = hi - 1
+        let (bl, bh) = (lo / 64, h / 64)
+        if bl == bh: return self.in_block(lo, h)
+        var ans = self.in_block(lo, 64 * bl + 63)
+        if bl + 1 < bh:
+            let nb = (lcp.len + 63) / 64
+            let k = bit_width(bh - bl - 1) - 1
+            ans = self.earlier_min(ans, self.earlier_min(top[k * nb + bl + 1], top[k * nb + bh - (1 << k)]))
+        self.earlier_min(ans, self.in_block(64 * bh, h))
 
     /// The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
     ///
@@ -3443,6 +3469,22 @@ fn manacher_and_is_palindrome_match_brute():
                     if r - l > best.r - best.l: best = (l:, r:)
         assert p.count() == total
         assert p.longest() == best
+
+@test
+fn suffix_array_lcp_queries_cross_rmq_blocks():
+    // Long enough that rank ranges span several 64-wide RMQ blocks, with long LCPs.
+    for len in [64, 65, 200, 300]:
+        let s = random_word(len, 2) + [if k % 2 == 0: 'a' else: 'b' for k in 0..120]
+        let n = s.len
+        let sa = SuffixArray(s)
+        for _ in 0..300:
+            let (i, j) = (rand(0, n - 1), rand(0, n - 1))
+            assert sa.lcp_between(i, j) == common_prefix(s, i, j)
+            let (lo, hi) = (min(sa.rank[i], sa.rank[j]), max(sa.rank[i], sa.rank[j]) + 1)
+            if hi - lo >= 2:
+                let least = min(sa.lcp[k] for k in lo..hi - 1)!
+                assert sa.lcp_of_ranks(lo..hi) == least
+                assert sa.split(lo..hi) == (lo + 1..hi).first(k => sa.lcp[k - 1] == least)!
 
 @test
 fn suffix_array_struct_queries_match_brute():

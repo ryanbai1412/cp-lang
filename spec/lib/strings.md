@@ -289,7 +289,7 @@ struct SuffixArray<T: Ord>:
     rank: List<Int>
     lcp: List<Int>
 
-    fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>             // O(n log n) build (SA-IS + Kasai + RMQ)
+    fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>             // O(n) build for Str (SA-IS + Kasai + block RMQ)
     @get fn len(self) -> Int                                        // O(1)
     fn lcp_between(self, i: Int, j: Int) -> Int                     // O(1)
     fn rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>  // O(|pat| log n); rank range lo..hi
