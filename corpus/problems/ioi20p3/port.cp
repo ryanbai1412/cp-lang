@@ -5,9 +5,10 @@
 //   it. Maximise the total over k rounds and print the allocation (round per ticket, or -1).
 // Solution: in each round the n/2 high tickets count + and the low n/2 count -. Start every colour
 //   with its k smallest as -; the j-th upgrade of a colour turns one into its next largest +,
-//   gaining x[c][m-1-j] + x[c][k-1-j], decreasing in j, so sort and take the best n*k/2.
+//   gaining x[c][m-1-j] + x[c][k-1-j], decreasing in j, so a MaxHeap of each colour's next
+//   upgrade hands out the best n*k/2 in order.
 //   Then each round gives its n/2 colours with the most + left their largest unused ticket and the
-//   rest their smallest. O(nk log(nk)).
+//   rest their smallest. O(nk log n).
 // original: corpus/submissions/4724579.cpp (grader function find_maximum)
 // checker: corpus/problems/ioi20p3/checker.py
 // stdin here: n m k, then the n x m ticket values (each row sorted).
@@ -21,25 +22,39 @@ domain Colour = 0..n
 domain Ticket = 0..m
 let x: [Colour, Ticket]0..=1_000_000_000 = read()
 
-// every round pays its n/2 high tickets minus its n/2 low ones. Each colour starts with its
-// k smallest as low; its j-th upgrade turns one into its j-th largest, and the gain falls with
-// j, so the best n*k/2 upgrades over all colours form a valid choice
-let ups = [
-    (gain: x[c, Ticket(m - 1 - j)] + x[c, Ticket(k - 1 - j)], c:) for c in Colour for j in 0..k
-]
-let taken = ups.sorted(by: u => desc(u.gain)).take(n * k / 2).collect()
 var high: [Colour]0..=k = 0
-for u in taken: high[u.c] += 1
-print(taken.sum(of: u => u.gain) - sum(x[c, Ticket(j)] for c in Colour for j in 0..k))
+var pq = MaxHeap<(Int, Colour)>()
+fn offer(c: Colour):
+    if high[c] < k: pq.push((x[c, Ticket(k - 1 - high[c])] + x[c, Ticket(m - 1 - high[c])], c))
+for c in Colour: offer(c)
+var prize = -sum(x[c, Ticket(j)] for c in Colour for j in 0..k)
+for _ in 0..n * k / 2:
+    let (gain, c) = pq.pop()!
+    prize += gain
+    high[c] += 1
+    offer(c)
+print(prize)
 
-// the n/2 colours with the most high tickets left give their largest, the rest their smallest
-var left: [Colour]Deque<Ticket> = [Colour] _ => Deque.of(Ticket.collect())
-var round: [Colour, Ticket]?Int = None
+var low: [Colour]0..=k = [Colour] c => k - high[c]
+var round: [Colour, Ticket]-1..1500 = -1
 for r in 0..k:
-    for (rank, c) in Colour.sort(by: c => desc(high[c])).items:
-        if rank < n / 2:
+    var lows = 0
+    var open: List<Colour> = []
+    for c in Colour:
+        if low[c] == 0:
+            round[c, Ticket(m - high[c])] = r
             high[c] -= 1
-            round[c, left[c].pop()!] = r
+        elif high[c] == 0:
+            low[c] -= 1
+            round[c, Ticket(low[c])] = r
+            lows += 1
+        else: open.push(c)
+    for c in open:
+        if lows < n / 2:
+            low[c] -= 1
+            round[c, Ticket(low[c])] = r
+            lows += 1
         else:
-            round[c, left[c].pop_front()!] = r
-for c in Colour: print([round[c, t] ?? -1 for t in Ticket])
+            round[c, Ticket(m - high[c])] = r
+            high[c] -= 1
+for c in Colour: print([round[c, t] for t in Ticket])
