@@ -15,4 +15,4 @@ An interactive search for a hidden number by depth: each guess fixes the known h
 
 ## Gaps that need the language
 
-- `@!multitest` drops the bound on the test count: research/frictions/dmopc21c2p3.md.
+- `@!multitest` drops the bound on the test count: research/frictions/dmopc21c2p3.md (R11 run: `@!multitest(1..=1000)` is E0107).

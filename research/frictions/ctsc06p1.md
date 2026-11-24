@@ -31,3 +31,13 @@ for _ in 0..read<1..=50>():
     let name = read<List<1..=m>>()
     print("{name.borders(whole: true).sum(of: b => Z(m) ** b):04}")
 ```
+
+R11 run (fresh `cpl run`, `print(borders(s, whole: true))`):
+
+```
+error[E0310]: `borders` has no parameter named `whole`
+  --> b.cp:2:18
+  |
+2 | print(borders(s, whole: true))
+  |                  ^^^^^
+```

@@ -15,3 +15,4 @@ Sort the bosses, then sweep from the tallest: cutting every boss above height a 
 ## Gaps that need the language
 
 - The dream's ternary search is slower than the sweep, so the dream scores lower than the port: research/frictions/dmopc21c2p1.md.
+- The port runs 1.6x the C++ at `--max` (0.18 s against 0.11 s), over R10's 1.1x: perf friction in research/frictions/dmopc21c2p1.md.

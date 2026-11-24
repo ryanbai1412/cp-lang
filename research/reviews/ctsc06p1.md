@@ -13,4 +13,4 @@ Expected waiting time for a name is m to the power of each border length, summed
 
 ## Gaps that need the language
 
-- `borders` excludes the whole sequence: research/frictions/ctsc06p1.md.
+- `borders` excludes the whole sequence: research/frictions/ctsc06p1.md (R11 run: `borders(s, whole: true)` is E0310).

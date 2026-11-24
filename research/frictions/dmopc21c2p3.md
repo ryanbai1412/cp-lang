@@ -21,3 +21,15 @@ let wire = Wire()
 @!multitest(1..=1000)
 let depth: 0..=60 = wire.ask("0")
 ```
+
+R11 run (fresh `cpl check` of the port with `@!multitest(1..=1000)`):
+
+```
+error[E0107]: `@!multitest` takes nothing, or `until_eof`
+  --> d3.cp:12:13
+   |
+12 | @!multitest(1..=1000)
+   |             ^^^^^^^^
+```
+
+- **General fix:** a count range on the marker, `@!multitest(1..=1000)`, checked like a ranged read. **Owner:** compiler.
