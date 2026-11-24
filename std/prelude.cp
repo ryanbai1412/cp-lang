@@ -198,7 +198,6 @@ use std.opt.{and_then, is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}
 use std.range.{RingRange}
 use std.search.{
-    bsearch_real,
     split_best,
     ternary_max,
     ternary_min,

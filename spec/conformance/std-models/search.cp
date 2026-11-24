@@ -1,6 +1,6 @@
 // expect: ok, output "ok"
 // input: "1 300\n"
-// model: bsearch_real
+// model: bsearch
 // model: ternary_max
 // model: ternary_min
 // model: peak
@@ -10,7 +10,7 @@
 // model: dinkelbach
 // model: split_best
 // The answer searches on random monotone, unimodal and ratio instances, each against a scan:
-// bsearch_real against its own halving loop, the discrete ternaries against the first extreme,
+// the real bsearch against its own halving loop, the discrete ternaries against the first extreme,
 // the real ones against the known optimum, parallel_bsearch against prefix sums, dinkelbach
 // against the best ratio, and split_best against the sorted values, on `Int` ranges and on a
 // cuts domain, whose positions have no `+ Int`. Reads `seed n`; prints the
@@ -37,7 +37,7 @@ for k in 0..n:
         let m = (a + b) / 2.0
         if m >= t: b = m else: a = m
     let want: ?F64 = if hi >= t: Some(b) else: None
-    if bsearch_real(lo, hi, x => x >= t, steps:) != want: bad = "op {k}: bsearch_real({lo}, {hi}, >= {t}, steps: {steps})"
+    if (lo..hi).bsearch(x => x >= t, steps:) != want: bad = "op {k}: ({lo}..{hi}).bsearch(>= {t}, steps: {steps})"
     let c = lo + (hi - lo) * rng.float()
     if not near((lo..hi).peak(by: x => -(x - c) * (x - c)), c): bad = "op {k}: peak of a parabola at {c}"
     elif not near((lo..hi).valley(by: x => (x - c) * (x - c)), c): bad = "op {k}: valley of a parabola at {c}"

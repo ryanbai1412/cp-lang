@@ -2812,15 +2812,15 @@
         "std-rand/shuffle-keeps-elements.cp": "pass",
         "std-rand/shuffle-single-and-empty.cp": "pass",
         "std-rand/shuffled-help-names-rng-shuffle.cp": "pass",
-        "std-search/bsearch_real-1.cp": "pass",
-        "std-search/bsearch_real-2.cp": "pass",
         "std-search/dinkelbach-1.cp": "pass",
         "std-search/dinkelbach-2.cp": "pass",
         "std-search/first-last-true-monotone-shapes.cp": "pass",
         "std-search/first-true-call-count.cp": "pass",
         "std-search/parallel_bsearch-1.cp": "pass",
         "std-search/parallel_bsearch-2.cp": "pass",
-        "std-search/real-bsearch-is-a-range-method.cp": "fail",
+        "std-search/real-bsearch-1.cp": "pass",
+        "std-search/real-bsearch-2.cp": "pass",
+        "std-search/real-bsearch-is-a-range-method.cp": "pass",
         "std-search/search-bodies.cp": "pass",
         "std-search/split-best-empty-groups.cp": "pass",
         "std-search/split-best-multi-group.cp": "pass",
@@ -3617,7 +3617,7 @@
       },
       "causes": [
         {
-          "cause": "E0302: `\u003cid>` takes the value out of an optional, but this is a `\u003cid>`",
+          "cause": "E0302: `<id>` takes the value out of an optional, but this is a `<id>`",
           "count": 2,
           "examples": [
             "std-segtree/closure-folds-optional-monoid-folds-plain.cp",
@@ -3625,42 +3625,42 @@
           ]
         },
         {
-          "cause": "E0201: no `\u003cid>` in scope",
+          "cause": "E0201: no `<id>` in scope",
           "count": 1,
           "examples": [
             "core-08/law-calls-trait-method.cp"
           ]
         },
         {
-          "cause": "E0302: `\u003cid>` takes a [_]_ for `\u003cid>`, but `\u003cid>` is a List\u003c(u: V, v: V, w: Int)>",
+          "cause": "E0302: `<id>` takes a [_]_ for `<id>`, but `<id>` is a List<(u: V, v: V, w: Int)>",
           "count": 1,
           "examples": [
             "std-graph/undirected-takes-list-of-records.cp"
           ]
         },
         {
-          "cause": "E0305: a `\u003cid>` can't be indexed",
+          "cause": "E0305: a `<id>` can't be indexed",
           "count": 1,
           "examples": [
             "core-04/rebased-str-indexes-from-zero.cp"
           ]
         },
         {
-          "cause": "E0310: `\u003cid>` has no parameter named `\u003cid>`",
+          "cause": "E0310: `<id>` has no parameter named `<id>`",
           "count": 1,
           "examples": [
             "std-search/real-bsearch-is-a-range-method.cp"
           ]
         },
         {
-          "cause": "E0501: `\u003cid>` and `\u003cid>` can't handle a domain expression that does not produce a range, count, or index space yet",
+          "cause": "E0501: `<id>` and `<id>` can't handle a domain expression that does not produce a range, count, or index space yet",
           "count": 1,
           "examples": [
             "core-04/named-product-domain-runs.cp"
           ]
         },
         {
-          "cause": "E0501: `\u003cid>` and `\u003cid>` can't handle a stepped range kept as a value yet",
+          "cause": "E0501: `<id>` and `<id>` can't handle a stepped range kept as a value yet",
           "count": 1,
           "examples": [
             "core-01/stepped-range-is-a-value.cp"
@@ -3674,7 +3674,7 @@
           ]
         },
         {
-          "cause": "wanted Ok; got E0302: expected `\u003cid>`, found `\u003cid>`",
+          "cause": "wanted Ok; got E0302: expected `<id>`, found `<id>`",
           "count": 1,
           "examples": [
             "core-05/map-entry-index-key-lends.cp"
@@ -3689,10 +3689,10 @@
         }
       ],
       "counts": {
-        "fail": 11,
-        "pass": 3600
+        "fail": 10,
+        "pass": 3601
       },
-      "passed": 3600,
+      "passed": 3601,
       "total": 3611
     },
     "corpus": {
@@ -3800,14 +3800,14 @@
       },
       "causes": [
         {
-          "cause": "E0204: `\u003cid>` (`\u003cid>`) does not work on the types it was given here: `\u003cid>` is not a type `\u003cid>` knows",
+          "cause": "E0204: `<id>` (`<id>`) does not work on the types it was given here: `<id>` is not a type `<id>` knows",
           "count": 1,
           "examples": [
             "noi09p4"
           ]
         },
         {
-          "cause": "R0202: integer overflow: range `\u003cid>` span does not fit in an `\u003cid>` (64 bits)",
+          "cause": "R0202: integer overflow: range `<id>` span does not fit in an `<id>` (64 bits)",
           "count": 1,
           "examples": [
             "dmopc21c9p1"
@@ -5658,8 +5658,6 @@
         "conformance/std-rand/sample-zero-and-all.cp": "pass",
         "conformance/std-rand/shuffle-keeps-elements.cp": "pass",
         "conformance/std-rand/shuffle-single-and-empty.cp": "pass",
-        "conformance/std-search/bsearch_real-1.cp": "pass",
-        "conformance/std-search/bsearch_real-2.cp": "pass",
         "conformance/std-search/dinkelbach-1.cp": "pass",
         "conformance/std-search/dinkelbach-2.cp": "pass",
         "conformance/std-search/first-last-true-monotone-shapes.cp": "pass",
@@ -6470,7 +6468,7 @@
           ]
         },
         {
-          "cause": "mismatch: sample1.in: interp=\"\u003cstr>\" cpp=\"\u003cstr>\"",
+          "cause": "mismatch: sample1.in: interp=\"<str>\" cpp=\"<str>\"",
           "count": 2,
           "examples": [
             "variant/cf2053f",
@@ -6485,14 +6483,14 @@
           ]
         },
         {
-          "cause": "mismatch: gen04.in: interp=\"\u003cstr>\" cpp=\"\u003cstr>\"",
+          "cause": "mismatch: gen04.in: interp=\"<str>\" cpp=\"<str>\"",
           "count": 1,
           "examples": [
             "variant/ucup4s25c"
           ]
         },
         {
-          "cause": "mismatch: interp=\"\u003cstr>\" cpp=\"\u003cstr>\"",
+          "cause": "mismatch: interp=\"<str>\" cpp=\"<str>\"",
           "count": 1,
           "examples": [
             "conformance/std-seq/seq-u11-group-by-key.cp"
@@ -6502,16 +6500,16 @@
       "counts": {
         "cxx_err": 1,
         "error": 2,
-        "pass": 2622,
+        "pass": 2620,
         "skip": 10
       },
-      "passed": 2622,
-      "total": 2635
+      "passed": 2620,
+      "total": 2633
     },
     "docs": {
       "cases": {
-        "algebra.cp#\u003cT> Add for MaxCount\u003cT>:1": "pass",
-        "algebra.cp#\u003cT> Add for MinCount\u003cT>:1": "pass",
+        "algebra.cp#<T> Add for MaxCount<T>:1": "pass",
+        "algebra.cp#<T> Add for MinCount<T>:1": "pass",
         "algebra.cp#Affine.eval:1": "pass",
         "algebra.cp#Affine.id:1": "pass",
         "algebra.cp#Affine.monoid:1": "pass",
@@ -6857,8 +6855,8 @@
         "bag.cp#SortedSet.take:1": "pass",
         "bag.cp#SortedSet.to_list:1": "pass",
         "bag.cp#SortedSet.to_list:empty": "pass",
-        "bag.cp#Track\u003cK> for SortedBag\u003cK>:1": "pass",
-        "bag.cp#Track\u003cK> for SortedBag\u003cK>:empty": "pass",
+        "bag.cp#Track<K> for SortedBag<K>:1": "pass",
+        "bag.cp#Track<K> for SortedBag<K>:empty": "pass",
         "beats.cp#BeatsSegTree.add:1": "pass",
         "beats.cp#BeatsSegTree.add:empty": "pass",
         "beats.cp#BeatsSegTree.assign:1": "pass",
@@ -7667,7 +7665,7 @@
         "graph.cp#IncrementalBridges.same:1": "pass",
         "graph.cp#IncrementalBridges.two_edge_same:1": "pass",
         "graph.cp#Next.out:1": "pass",
-        "graph.cp#Next\u003cV> for Complement\u003cV, G>.out:1": "pass",
+        "graph.cp#Next<V> for Complement<V, G>.out:1": "pass",
         "graph.cp#Only.deg:1": "pass",
         "graph.cp#Only.out:1": "pass",
         "graph.cp#Only.transpose:1": "pass",
@@ -8990,10 +8988,11 @@
         "range.cp#last_true:1": "pass",
         "range.cp#last_true:empty": "pass",
         "range.cp#last_true:ties": "pass",
-        "search.cp#bsearch_real:1": "pass",
-        "search.cp#bsearch_real:2": "pass",
-        "search.cp#bsearch_real:3": "pass",
-        "search.cp#bsearch_real:ties": "pass",
+        "search.cp#bsearch:1": "pass",
+        "search.cp#bsearch:2": "pass",
+        "search.cp#bsearch:3": "pass",
+        "search.cp#bsearch:empty": "pass",
+        "search.cp#bsearch:ties": "pass",
         "search.cp#dinkelbach:1": "pass",
         "search.cp#dinkelbach:2": "pass",
         "search.cp#gallop_first:1": "pass",
@@ -9208,11 +9207,11 @@
         "seq.cp#Rev.take:empty": "pass",
         "seq.cp#Rev.take_last:1": "pass",
         "seq.cp#Rev.take_last:empty": "pass",
-        "seq.cp#Rev\u003c[D]T>.scan:1": "pass",
-        "seq.cp#Rev\u003c[D]T>.scan:2": "pass",
-        "seq.cp#Rev\u003c[D]T>.scan:3": "pass",
-        "seq.cp#Rev\u003c[D]T>.scan:4": "pass",
-        "seq.cp#Rev\u003c[D]T>.scan:empty": "pass",
+        "seq.cp#Rev<[D]T>.scan:1": "pass",
+        "seq.cp#Rev<[D]T>.scan:2": "pass",
+        "seq.cp#Rev<[D]T>.scan:3": "pass",
+        "seq.cp#Rev<[D]T>.scan:4": "pass",
+        "seq.cp#Rev<[D]T>.scan:empty": "pass",
         "seq.cp#Ring.from:1": "pass",
         "seq.cp#Ring.from:empty": "pass",
         "seq.cp#Ring.maximal:1": "pass",
@@ -10187,14 +10186,14 @@
       },
       "causes": [
         {
-          "cause": "E0201: `\u003cid>` (`\u003cid>`) does not work on the types it was given here: no value named `\u003cid>` here",
+          "cause": "E0201: `<id>` (`<id>`) does not work on the types it was given here: no value named `<id>` here",
           "count": 1,
           "examples": [
             "segtree.cp#SegTree.new:4"
           ]
         },
         {
-          "cause": "E0501: orphan `\u003cid>`: neither `\u003cid>` nor `\u003cid>` is defined in this module",
+          "cause": "E0501: orphan `<id>`: neither `<id>` nor `<id>` is defined in this module",
           "count": 1,
           "examples": [
             "algebra.cp#minmax:ties"
@@ -10209,10 +10208,10 @@
         }
       ],
       "counts": {
-        "pass": 3674
+        "pass": 3675
       },
-      "passed": 3674,
-      "total": 3674
+      "passed": 3675,
+      "total": 3675
     },
     "rewrites": {
       "cases": {
@@ -11501,7 +11500,7 @@
       },
       "causes": [
         {
-          "cause": "E0303: `\u003cid>` needs the argument `\u003cid>`",
+          "cause": "E0303: `<id>` needs the argument `<id>`",
           "count": 2,
           "examples": [
             "lib/ops-ranges.md#16:2",
@@ -11509,42 +11508,42 @@
           ]
         },
         {
-          "cause": "E0301: this is indexed by `\u003cid>`, but the index is a `\u003cid>`",
+          "cause": "E0301: this is indexed by `<id>`, but the index is a `<id>`",
           "count": 1,
           "examples": [
             "core/04-indices.md#methods:1"
           ]
         },
         {
-          "cause": "E0302: `\u003cid>` is a variant, but the value matched is a `\u003cid>`",
+          "cause": "E0302: `<id>` is a variant, but the value matched is a `<id>`",
           "count": 1,
           "examples": [
             "lib/flows.md#dmopc-20-c7-p5-project-selection:1"
           ]
         },
         {
-          "cause": "E0302: expected `\u003cid>`, found `\u003cid>`",
+          "cause": "E0302: expected `<id>`, found `<id>`",
           "count": 1,
           "examples": [
             "lib/flows.md#cf863f-f-almost-permutation-convex-costs:1"
           ]
         },
         {
-          "cause": "E0303: `\u003cid>` takes 2 arguments, but 1 was given; use `\u003cid>` on a sequence",
+          "cause": "E0303: `<id>` takes 2 arguments, but 1 was given; use `<id>` on a sequence",
           "count": 1,
           "examples": [
             "lib/ops-ranges.md#orders-make-min-and-max-monoids:1"
           ]
         },
         {
-          "cause": "E0305: a `\u003cid>` can't be indexed",
+          "cause": "E0305: a `<id>` can't be indexed",
           "count": 1,
           "examples": [
             "core/04b-keys.md#contest-code:9"
           ]
         },
         {
-          "cause": "E0606: `\u003cid>` (`\u003cid>`) does not work on the types it was given here: a `\u003cid>` has no `\u003cid>`",
+          "cause": "E0606: `<id>` (`<id>`) does not work on the types it was given here: a `<id>` has no `<id>`",
           "count": 1,
           "examples": [
             "lib/sequence-patterns.md#folding-pieces-the-sliding-fold:1"

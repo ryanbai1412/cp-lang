@@ -2,13 +2,13 @@
 use std.search.{gallop_first}
 let n: Int = read()
 let m = n / 16
-let up = (x: F64) => x >= 0.3 // within: search.bsearch_real
+let up = (x: F64) => x >= 0.3 // within: search.bsearch
 let top = (x: F64) => -(x - 1.0) * (x - 1.0) // within: search.peak
 let pit = (x: F64) => (x - 2.0) * (x - 2.0) // within: search.valley
 var s = 0
 var t = 0.0
 for i in 0..512:
-    if bsearch_real(0.0, 1.0, up, steps: m) != None: s += 1 // timed: search.bsearch_real
+    if (0.0..1.0).bsearch(up, steps: m) != None: s += 1 // timed: search.bsearch
     t += (0.0..4.0).peak(by: top, steps: m) // timed: search.peak
     t += (0.0..4.0).valley(by: pit, steps: m) // timed: search.valley
 for i in 0..2 * n:

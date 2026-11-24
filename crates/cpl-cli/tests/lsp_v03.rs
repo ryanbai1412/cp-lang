@@ -96,20 +96,20 @@ fn every_lsp_feature_works_on_v03() {
     // rename, inlay types.
     let main_uri = "file:///v03/main.cp";
     let main_src = concat!(
-        "use std.heap.{MinMaxHeap}\n",                    // 0
-        "let n: 1..=100 = read()\n",                      // 1
-        "domain V = 0..n\n",                              // 2
-        "fn tally_sum(xs: [V]Int) -> Int:\n",             // 3
-        "    var acc = 0\n",                              // 4
-        "    for v in V:\n",                              // 5
-        "        acc += xs[v]\n",                         // 6
-        "    acc\n",                                      // 7
-        "var h = MinMaxHeap<Int>()\n",                    // 8
-        "h.push(3)\n",                                    // 9
-        "let a: [V]Int = read()\n",                       // 10
-        "let total = tally_sum(a)\n",                     // 11
-        "let p = bsearch_real(0.0, 1.0, x => x > 0.5)\n", // 12
-        "print(total, p)\n",                              // 13
+        "use std.heap.{MinMaxHeap}\n",           // 0
+        "let n: 1..=100 = read()\n",             // 1
+        "domain V = 0..n\n",                     // 2
+        "fn tally_sum(xs: [V]Int) -> Int:\n",    // 3
+        "    var acc = 0\n",                     // 4
+        "    for v in V:\n",                     // 5
+        "        acc += xs[v]\n",                // 6
+        "    acc\n",                             // 7
+        "var h = MinMaxHeap<Int>()\n",           // 8
+        "h.push(3)\n",                           // 9
+        "let a: [V]Int = read()\n",              // 10
+        "let total = tally_sum(a)\n",            // 11
+        "let p = (0.0..1.0).peak(by: x => x)\n", // 12
+        "print(total, p)\n",                     // 13
     );
 
     // Document 2: completion probes (`use std.`, `use std.heap.`, `h.`, `Lazy`).
@@ -166,8 +166,8 @@ fn every_lsp_feature_works_on_v03() {
         msg(
             Some(22),
             "textDocument/definition",
-            doc_pos(main_uri, 12, 10),
-        ), // bsearch_real -> std/search.cp
+            doc_pos(main_uri, 12, 20),
+        ), // peak -> std/search.cp
         // 3. Completion: `use std.`, member `h.`, auto-import `Lazy`
         msg(Some(30), "textDocument/completion", doc_pos(comp_uri, 0, 8)), // use std.
         msg(Some(31), "textDocument/completion", doc_pos(comp_uri, 3, 2)), // h.
@@ -277,7 +277,7 @@ fn every_lsp_feature_works_on_v03() {
     );
     assert!(
         def_uri(22).ends_with("/std/search.cp"),
-        "def bsearch_real: {}",
+        "def peak: {}",
         replies[&22]
     );
 

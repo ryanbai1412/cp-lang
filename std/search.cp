@@ -6,30 +6,6 @@
 //! `first_ge`/`first_gt`/`last_le`/`last_lt`; a search inside a range
 //! structure is its `right_while`/`left_while`.
 
-/// Fixed-iteration binary search on `[lo, hi]` for a monotone `ok` (false then true): the least
-/// `x` with `ok(x)`, to within `(hi - lo) / 2^steps`, or `None` when `not ok(hi)`.
-///
-/// It first calls `ok(hi)`; then `steps` times it tests the midpoint `m` of `[lo, hi]` and keeps
-/// `[lo, m]` when `ok(m)`, else `[m, hi]`. The result is the final `hi`, so `ok` holds there. A
-/// monotone `ok` has one flip.
-///
-/// cost: \(O(\mathit{steps})\) calls of `ok`, exactly `steps + 1`
-/// ties: `bsearch_real(0.0, 8.0, x => x >= 2.0, steps: 2) == Some(2.0)`
-/// traps: when `lo > hi` or `steps < 0`
-/// example: `abs(bsearch_real(0.0, 2.0, x => x * x >= 2.0)! - 1.4142135623730951) <= 1e-9`
-/// example: `bsearch_real(0.0, 8.0, x => x >= 3.0, steps: 3) == Some(3.0)`
-/// example: `bsearch_real(0.0, 1.0, x => x > 2.0) == None`
-pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64:
-    assert lo <= hi and steps >= 0
-    if not ok(hi): return None
-    var a = lo
-    var b = hi
-    for _ in 0..steps:
-        let m = (a + b) / 2.0
-        if ok(m): b = m
-        else: a = m
-    Some(b)
-
 fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     let n = r.len
     if n == 0: return None
@@ -329,6 +305,32 @@ pub fn split_best<G, D, T: Ord>(
         let at = p..=p
         push_entry(g, r.l..at.l, g_idx)
         push_entry(g, at.r..r.r, g_idx)
+
+/// Fixed-iteration binary search on `self` for a monotone `ok` (false then true): the least
+/// `x` with `ok(x)`, to within `(hi - lo) / 2^steps`, or `None` when `not ok(hi)`: the real
+/// `bsearch`, picked by the range's element type (decision 419).
+///
+/// It first calls `ok(hi)`; then `steps` times it tests the midpoint `m` of `[lo, hi]` and keeps
+/// `[lo, m]` when `ok(m)`, else `[m, hi]`. The result is the final `hi`, so `ok` holds there. A
+/// monotone `ok` has one flip.
+///
+/// cost: \(O(\mathit{steps})\) calls of `ok`, exactly `steps + 1`
+/// empty: `(2.0..2.0).bsearch(x => true, steps: 5) == Some(2.0)`
+/// ties: `(0.0..8.0).bsearch(x => x >= 2.0, steps: 2) == Some(2.0)`
+/// traps: when the range is written backwards or `steps < 0`
+/// example: `abs((0.0..2.0).bsearch(x => x * x >= 2.0, steps: 100)! - 1.4142135623730951) <= 1e-9`
+/// example: `(0.0..8.0).bsearch(x => x >= 3.0, steps: 3) == Some(3.0)`
+/// example: `(0.0..1.0).bsearch(x => x > 2.0, steps: 100) == None`
+pub fn bsearch(self: Range<F64>, ok: F64 -> Bool, steps: Int = 100) -> ?F64:
+    assert self.start <= self.end and steps >= 0
+    if not ok(self.end): return None
+    var a = self.start
+    var b = self.end
+    for _ in 0..steps:
+        let m = (a + b) / 2.0
+        if ok(m): b = m
+        else: a = m
+    Some(b)
 
 /// A point of `self` where a continuous unimodal `by` is largest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the maximizer: the real `peak`, picked by the range's
