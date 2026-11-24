@@ -93,7 +93,7 @@ Fields: `vecs: List<Int>`, `from: List<Int>`.
 
 - `fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>` — \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space; The determinant of a sparse `n x n` matrix via Wiedemann's algorithm.; traps: when `n < 0` or a row or column is not in `0..n`
 - `fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>` — \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space; Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in `sparse_det`.; traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
-- `fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>)` — \(O(\mathit{poly}(n, m))\) typical (exponential in the worst case); \(O(\mathit{rows} \cdot \mathit{cols})\) space; Maximize `c .; traps: when `b.len != a.rows` or `c.len != a.cols`
+- `fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>)` — \(O(\mathit{pivots} \cdot \mathit{rows} \cdot \mathit{cols})\) time, the pivots typically \(O(\mathit{rows} + \mathit{cols})\) and exponential in the worst case; \(O(\mathit{rows} \cdot \mathit{cols})\) space; Maximize `c .; traps: when `b.len != a.rows` or `c.len != a.cols`
 
 ## Example
 
