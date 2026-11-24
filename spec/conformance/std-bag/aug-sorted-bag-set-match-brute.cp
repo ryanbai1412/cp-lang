@@ -1,5 +1,4 @@
 // expect: ok, output "0 YES YES\n7 3 2 1 3 YES 1 3\n1 7 6 6 0 1 6\nYES YES\nYES\nYES NO YES YES 2 7 5 YES"
-// copies: 6
 use std.bag.{AugSortedBag, AugSortedSet}
 fn show<T>(o: ?T) -> Str = match o:
     Some(x) => "{x}"
