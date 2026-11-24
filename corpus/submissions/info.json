@@ -16169,39 +16169,6 @@
         "status": "D",
         "time": 0.320841495
     },
-    "4528036": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-04-27T03:46:23+00:00",
-        "language": "CPP17",
-        "memory": 3328.0,
-        "problem": "ctsc06p6",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.03507059
-    },
-    "4528040": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2022-04-27T03:51:22+00:00",
-        "language": "CPP17",
-        "memory": 3632.0,
-        "problem": "ctsc06p6",
-        "result": "RTE",
-        "status": "D",
-        "time": 12.238037811
-    },
-    "4528042": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2022-04-27T03:51:54+00:00",
-        "language": "CPP17",
-        "memory": 3428.0,
-        "problem": "ctsc06p6",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.567773344
-    },
     "4528048": {
         "case_points": 0.0,
         "case_total": 100.0,
@@ -16454,17 +16421,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.982156868
-    },
-    "4529643": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-04-27T22:48:10+00:00",
-        "language": "CPP17",
-        "memory": 3312.0,
-        "problem": "ctsc06p6",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.621881478
     },
     "4529987": {
         "case_points": 50.0,
