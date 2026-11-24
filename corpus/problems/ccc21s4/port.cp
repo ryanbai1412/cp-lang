@@ -4,7 +4,8 @@
 //   the first) are swapped; print that day's least minutes from station 1 to station N.
 // Solution: the best trip rides to some S_i, gets off and walks: (i - 1) + dist(S_i, N), with
 //   dist from one BFS from N over reversed walkways. A min SegTree over route positions
-//   refreshes the two swapped ones each day: O(N + W + D log N).
+//   rewrites the two swapped ones each day: O(N + W + D log N).
+// original: corpus/submissions/4323468.cpp
 
 let n: 3..=2e5 = read()
 let w: 0..=2e5 = read()
@@ -28,9 +29,8 @@ let on_foot = bfs(s => into[s], from: [Station.last!])  // minutes to walk to st
 
 // Ride to a stop, get off and walk. The best stop is kept under the swaps.
 fn arrival(i: Stop) -> ?Int: i.ord + on_foot[line[i]]?
-var fastest = SegTree<Stop, ?Int>.of(min, arrival)
+var fastest = SegTree<Stop, ?Int>(min, [Stop] i => arrival(i))
 for (x, y) in swaps:
     line.swap(x, y)
-    fastest.refresh(x)
-    fastest.refresh(y)
+    for i in [x, y]: fastest[i] = arrival(i)
     print(fastest.all!)
