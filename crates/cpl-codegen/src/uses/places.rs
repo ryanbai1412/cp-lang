@@ -106,3 +106,13 @@ pub(crate) fn each_value_call(block: &Block, f: &mut dyn FnMut(&Expr, &[Arg])) {
         }
     });
 }
+
+/// Every optional `block` tests (`x != None`) or reads through (`x!`), at
+/// any depth: the optional.
+pub(crate) fn each_opened(block: &Block, f: &mut dyn FnMut(&Expr)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::IsSome(x) | ExprKind::Unwrap(x, false) = &e.kind {
+            f(x);
+        }
+    });
+}

@@ -5,8 +5,10 @@
 //! `std::optional`. A local the fn binds to one, as `if let` does, is one
 //! too.
 
+use crate::uses::places::{each_call, each_closure, each_opened, each_put, each_write, Put, Write};
+use crate::uses::read_counts;
 use crate::walk;
-use cpl_ir::{Arg, ExprKind, Program, Stmt, Ty};
+use cpl_ir::{Arg, ExprKind, Program, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
 fn opt_heap(program: &Program, ty: &Ty) -> bool {
@@ -58,62 +60,54 @@ fn misused(program: &Program, id: usize, lent: &[BTreeSet<usize>]) -> BTreeSet<u
         ExprKind::Local(s) if mine.contains(&s) => Some(s),
         _ => None,
     };
-    let mut_root = |arg: &Arg, bad: &mut BTreeSet<usize>| {
-        if let Arg::Mut(place) = arg {
-            bad.insert(walk::root(place).1);
+    for (s, &n) in read_counts(&f.body, f.locals.len()).iter().enumerate() {
+        if n > 0 {
+            uses.insert(s, n);
         }
-    };
-    walk::deep_exprs(&f.body, &mut |e| match &e.kind {
-        ExprKind::Local(s) => *uses.entry(*s).or_default() += 1,
-        ExprKind::IsSome(x) | ExprKind::Unwrap(x, false) => {
-            if let Some(s) = local(x) {
-                *ok.entry(s).or_default() += 1;
-            }
+    }
+    each_opened(&f.body, &mut |x| {
+        if let Some(s) = local(x) {
+            *ok.entry(s).or_default() += 1;
         }
-        ExprKind::Call(g, args) => {
-            for (j, arg) in args.iter().enumerate() {
-                mut_root(arg, &mut bad);
-                if let Arg::Value(v) = arg {
-                    if let Some(s) = local(v) {
-                        if j < program.fns[*g].params.len() && lent[*g].contains(&j) {
-                            *ok.entry(s).or_default() += 1;
-                        }
+    });
+    each_call(&f.body, &mut |g, args| {
+        for (j, arg) in args.iter().enumerate() {
+            if let Arg::Value(v) = arg {
+                if let Some(s) = local(v) {
+                    if j < program.fns[g].params.len() && lent[g].contains(&j) {
+                        *ok.entry(s).or_default() += 1;
                     }
                 }
             }
         }
-        ExprKind::CallExpr(_, args) => args.iter().for_each(|arg| mut_root(arg, &mut bad)),
-        ExprKind::Closure(cid) => bad.extend(
-            program.closures[*cid]
-                .captures
-                .iter()
-                .filter(|c| !c.is_global)
-                .map(|c| c.outer),
-        ),
-        _ => {}
+    });
+    each_write(&f.body, &mut |how, place| {
+        if let Write::Store | Write::Mut = how {
+            bad.insert(walk::root(place).1);
+        }
+    });
+    each_closure(&f.body, &mut |cid| {
+        let caps = program.closures[cid].captures.iter();
+        bad.extend(caps.filter(|c| !c.is_global).map(|c| c.outer));
     });
     let mut lets = BTreeMap::<usize, usize>::new();
     let mut aliases = Vec::new();
-    walk::deep_stmts(&f.body, &mut |stmt| match stmt {
-        Stmt::Let(t, init) => {
-            *lets.entry(*t).or_default() += 1;
-            match init.as_ref().and_then(local) {
-                Some(s) if mine.contains(t) => {
+    each_put(&f.body, &mut |put, init| {
+        if let Put::Let(t) = put {
+            *lets.entry(t).or_default() += 1;
+            match local(init) {
+                Some(s) if mine.contains(&t) => {
                     *ok.entry(s).or_default() += 1;
-                    aliases.push((*t, s));
+                    aliases.push((t, s));
                 }
                 Some(s) => {
                     bad.insert(s);
                 }
                 None => {
-                    bad.insert(*t);
+                    bad.insert(t);
                 }
             }
         }
-        Stmt::Assign(place, ..) => {
-            bad.insert(walk::root(place).1);
-        }
-        _ => {}
     });
     for &s in mine {
         let let_once = s < f.params.len() || lets.get(&s) == Some(&1);

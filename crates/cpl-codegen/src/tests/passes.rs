@@ -360,3 +360,20 @@ fn each_value_call_reports_a_call_of_a_fn_value() {
     });
     assert_eq!(calls, 2, "g is called twice, once inside the other");
 }
+
+#[test]
+fn each_opened_reports_an_optional_an_if_let_tests_and_reads() {
+    let program = lower(concat!(
+        "fn f(a: ?List<Int> = None) -> Int:\n",
+        "    if let b = a: b.len else: 0\n",
+        "print(f([1, 2]) + f())\n",
+    ));
+    let f = program.fns.iter().find(|f| f.name == "f").expect("f");
+    let mut opened = Vec::new();
+    crate::uses::places::each_opened(&f.body, &mut |x| opened.push(x.kind.clone()));
+    assert_eq!(
+        opened.len(),
+        2,
+        "the if let tests its copy of a, then reads through it: {opened:?}"
+    );
+}

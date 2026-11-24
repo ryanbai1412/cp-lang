@@ -205,7 +205,14 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "lent-optional-params",
         "lentopt.rs",
-        Unasked,
+        Uses(&[
+            "read_counts",
+            "each_opened",
+            "each_call",
+            "each_write",
+            "each_closure",
+            "each_put",
+        ]),
         "an_optional_list_a_fn_only_reads_is_lent_not_copied",
     ),
     pass(
