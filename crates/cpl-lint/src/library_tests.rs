@@ -701,3 +701,19 @@ fn a_library_lint_keeps_out_of_the_program_s_fn_of_its_name() {
     );
     assert!(report.contains(":4:"), "{report}");
 }
+
+/// A lint with no fix still reports inside the program's own fn of its fn's
+/// name: advice cannot make that fn call itself (a hand-rolled `find` is
+/// what `Dsu.find` replaces). Rule: R06.4.9.
+#[test]
+fn a_no_fix_lint_reports_in_the_program_s_fn_of_its_name() {
+    let decl = "@lint(bool_ternary_print, from: \"if ok: \\\"YES\\\" else: \\\"NO\\\"\", to: \"word(ok)\")\npub fn word(ok: Bool) -> Str = yes(ok)\n";
+    let src = format!(
+        "{decl}fn word(n: Int) -> Str = if n > 0: \"YES\" else: \"NO\"\nprint(word(read()))\n"
+    );
+    let found: Vec<_> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.message == "write `word(n > 0)`")
+        .collect();
+    assert_eq!(found.len(), 1, "{found:?}");
+}

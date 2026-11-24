@@ -282,8 +282,9 @@ struct Spans {
     pats: Vec<Span>,
     /// The value of each constant expression (`-1`, `10**18`), by its span.
     consts: HashMap<(u32, u32), i128>,
-    /// Every fn the file declares, by name: a library's lint keeps out of
-    /// the program's own fn of its fn's name, whose fix would call itself.
+    /// Every fn the file declares, by name: a library fn's lint with a fix
+    /// keeps out of the program's own fn of its fn's name, which the fix
+    /// would make call itself.
     fns: Vec<(String, Span)>,
 }
 
@@ -535,7 +536,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             let span = Span::new(site[0].start, toks[stop - 1].span.end);
             if (d.module.is_empty() && d.decl.item.contains(span))
                 || taken.iter().any(|t| t.contains(span))
-                || (d.decl.receiver.is_none()
+                || (fixes
+                    && d.decl.receiver.is_none()
                     && (spans.fns.iter()).any(|(f, at)| *f == d.decl.fn_name && at.contains(span)))
             {
                 continue;

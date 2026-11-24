@@ -242,8 +242,10 @@ library or by this spec:
   advice). `from` does not match an assigned place (`xs[i] = v`) or the
   base it indexes, and a hole does not match a bare generator (`x * x
   for x in xs` in `sum(..)`), a fold's argument rather than a value. A
-  library's lint does not match inside the program's own fn of its fn's
-  name (a hand-written `fn starts_with`), whose fix would call itself. The
+  library fn's lint with a fix does not match inside the program's own fn
+  of its name (a hand-written `fn starts_with`), whose fix would call
+  itself; a method's lint, or one with no fix, does (a hand-written `fn
+  find` is `Dsu.find`). The
   finding spans the matched
   tokens (with no fix, those before a statement hole: the statements it
   matched stay, so the findings in them stand) and labels what `to`'s first hole matched, or with none, the first
