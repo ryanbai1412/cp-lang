@@ -61,7 +61,10 @@ macro_rules! walkers {
                     f(base);
                     indices.$iter().for_each(f);
                 }
-                ExprKind::Tuple(items) | ExprKind::Variant(_, items) | ExprKind::Builtin(_, items) => {
+                ExprKind::Tuple(items)
+        | ExprKind::Variant(_, items)
+        | ExprKind::Builtin(_, items)
+        | ExprKind::Intrinsic(_, items) => {
                     items.$iter().for_each(f)
                 }
                 ExprKind::Call(_, args) => {

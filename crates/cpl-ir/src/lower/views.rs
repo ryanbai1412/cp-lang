@@ -157,6 +157,18 @@ impl<'a> Lowerer<'a> {
     /// `id(args)`. When it returns a view, an owned temporary argument (a
     /// `List`, `Str` or array built in the call) gets a slot first, so the
     /// cells the view points into outlive it (`mk(n).take(k)`).
+    /// The primitive `id`'s body names, when it is `@intrinsic("..")`: a call
+    /// of it is the primitive (R12.14.3).
+    pub(super) fn intrinsic_of(&self, id: FnId) -> Option<Prim> {
+        match &self.sigs[id].decl.body {
+            ast::FnBody::Expr(ast::Expr {
+                kind: ast::ExprKind::Intrinsic(name),
+                ..
+            }) => Prim::from_id(name),
+            _ => None,
+        }
+    }
+
     pub(super) fn call_holding_cells(
         &mut self,
         id: FnId,
@@ -164,6 +176,17 @@ impl<'a> Lowerer<'a> {
         ret: Ty,
         span: Span,
     ) -> Expr {
+        if let Some(p) = self.intrinsic_of(id) {
+            let values: Option<Vec<Expr>> = (args.iter())
+                .map(|a| match a {
+                    Arg::Value(e) => Some(e.clone()),
+                    Arg::Mut(_) => None,
+                })
+                .collect();
+            if let Some(values) = values {
+                return self.mk(ExprKind::Intrinsic(p, values), ret, span);
+            }
+        }
         let view = matches!(
             ret,
             Ty::StrView | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)

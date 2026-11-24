@@ -1062,6 +1062,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0210"),
+        title: "Unknown intrinsic",
+        summary: "An `@intrinsic(\"id\")` body names no entry of the intrinsics table, or the fn's signature is not the entry's.",
+        explanation: "`@intrinsic` makes a fn one primitive both engines run. The name must be one of the table's, and the fn must take and give what the entry does; `cpl explain` lists the primitives.",
+        trigger: "fn ones(x: Int) -> Int = @intrinsic(\"no_such\")\nprint(ones(7))\n",
+        fix: "fn ones(x: Int) -> Int = @intrinsic(\"popcount\")\nprint(ones(7))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0405"),
         title: "Assigning a fixed field",
         summary: "A field not declared `var` is assigned.",

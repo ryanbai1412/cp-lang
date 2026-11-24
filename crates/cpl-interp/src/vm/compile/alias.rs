@@ -126,9 +126,10 @@ impl Reach<'_> {
             }
             ExprKind::If(c, t, f) => self.expr(c) || self.expr(t) || self.expr(f),
             ExprKind::Index(b, idxs) => self.expr(b) || idxs.iter().any(|x| self.expr(x)),
-            ExprKind::Tuple(xs) | ExprKind::Variant(_, xs) | ExprKind::Builtin(_, xs) => {
-                xs.iter().any(|x| self.expr(x))
-            }
+            ExprKind::Tuple(xs)
+            | ExprKind::Variant(_, xs)
+            | ExprKind::Builtin(_, xs)
+            | ExprKind::Intrinsic(_, xs) => xs.iter().any(|x| self.expr(x)),
             ExprKind::Do(blk) => self.block(blk),
             ExprKind::Call(fn_id, args) => {
                 args.iter().any(|a| match a {

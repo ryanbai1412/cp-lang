@@ -196,6 +196,22 @@ impl<'a> Lowerer<'a> {
                 };
                 self.stmt(&each, &mut out);
             }
+            ast::FnBody::Expr(ast::Expr {
+                kind: ast::ExprKind::Intrinsic(name),
+                span,
+            }) => {
+                if let Some(p) = Prim::from_id(name) {
+                    let n =
+                        usize::from(self.sigs[id].receiver.is_some()) + self.sigs[id].params.len();
+                    let args = (0..n).map(|slot| self.local(slot, *span)).collect();
+                    let ret = self.cx.ret.clone().unwrap_or(Ty::Unit);
+                    out.push(Stmt::Return(Some(self.mk(
+                        ExprKind::Intrinsic(p, args),
+                        ret,
+                        *span,
+                    ))));
+                }
+            }
             ast::FnBody::Expr(e) if !collect::is_cpp(e) => self.tail(e, Tail::Return, &mut out),
             // The judge's grader, or an `@cpp` body's C++, supplies the
             // body: the signature is all there is.

@@ -178,7 +178,10 @@ pub(super) fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
                 collect_expr_calls(i, out);
             }
         }
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) | ExprKind::Builtin(_, items) => {
+        ExprKind::Tuple(items)
+        | ExprKind::Variant(_, items)
+        | ExprKind::Builtin(_, items)
+        | ExprKind::Intrinsic(_, items) => {
             for i in items {
                 collect_expr_calls(i, out);
             }

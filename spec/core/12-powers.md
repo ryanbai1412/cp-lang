@@ -310,6 +310,22 @@ compiler-side).
 `@cpp("...")` bodies are allowed in any library, with the signature checked
 at the boundary and the C++ included once in the bundle. Status: partial.
 
+`@intrinsic("id")` is the body form with a VM twin: it names one entry of the
+compiler's intrinsics table, which holds that primitive's interpreter
+implementation and C++ snippet. Like `@cpp`, any library may write it.
+
+1. `fn f(params) -> R = @intrinsic("id")` is allowed in any module; `id`
+   must name an entry of the intrinsics table, else E0210. (R12.14.1)
+2. The fn's parameter and result types must be the entry's signature,
+   else E0210 names the entry's signature. (R12.14.2)
+3. A call of such a fn is the primitive itself: both engines run the entry,
+   and the emitted C++ is the entry's snippet inline, with no call of `f`.
+   `f` is still a fn value. (R12.14.3)
+4. A module copied under another name, with the same `@intrinsic` bodies,
+   behaves and emits C++ exactly as the original. (R12.14.4)
+5. The table grows only by a decision entry; `cpl explain` lists each
+   intrinsic a program uses. (R12.14.5)
+
 ## W15. Precomputation (P15)
 
 A top-level `let` is computed once before the first test (`let C =

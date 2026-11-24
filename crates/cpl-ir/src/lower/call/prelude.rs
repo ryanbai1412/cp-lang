@@ -431,9 +431,8 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            "popcount" | "ctz" | "clz" | "bit_width" | "bit_ceil" => {
+            "ctz" | "clz" | "bit_width" | "bit_ceil" => {
                 let op = match name {
-                    "popcount" => Builtin::Popcount,
                     "ctz" => Builtin::Ctz,
                     "clz" => Builtin::Clz,
                     "bit_width" => Builtin::BitWidth,

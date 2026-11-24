@@ -9027,4 +9027,9 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** CP Lang had no end-of-input test a program could write, so `read_all` and `@!multitest(until_eof)` were compiler special cases. `?T` is how the language says "maybe absent"; an end-of-input `None` makes `read_all` a four-line std body and lets a statement's optional trailing token read as `?T`, with no new name. `read<?Int>()` was E0501 before, so no program changes meaning.
 - **Reverse.** Make the plain `?T` read E0501 again and add an `at_eof()` intrinsic for std.
 
-## 573. (reserved, unknown)
+## 573. Std primitives are `@intrinsic("id")` bodies over one table in `cpl-rt` (compiler, 2026-11-24)
+
+- **Call.** A new crate `cpl-rt` holds `Prim` and `TABLE`: per primitive a stable id, its signature, its VM implementation and its C++ snippet. Any library writes `fn f(..) -> R = @intrinsic("id")` (spec R12.14.1-5, W14); the checker checks the signature against the entry, IR lowers every call to `ExprKind::Intrinsic(Prim, args)`, codegen emits the snippet inline and the VM runs the entry. A test pins the table's length; growing it needs a decision. The compiler matches `Prim`, never a std name; the `std_names_outside_rt` ratchet counts the rest. First entries: `popcount`; then the math, bits and float fns, and `sort_by_key`/`sort_by_less` (in-place stable sort, replacing the native `sort`/`sorted` lowering and its two tagged copies). Design: `plan/domains/compiler/intrinsics.md`.
+- **Why.** abs/sqrt/popcount and 18 `backend_std_names` sites were name-matched in cpl-ir, cpl-codegen and cpl-interp, so std could not change a signature without a compiler change and a user library could not do what std does. `@cpp` alone has no interpreter twin; a std-only marker would privilege std.
+- **Reverse.** Fold `@intrinsic` into `@cpp("...", vm: "id")` if a second C++-only use appears; the table and IR form stay.
+

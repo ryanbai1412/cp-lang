@@ -20,6 +20,7 @@ dependencies = [
  "cpl-diag",
  "cpl-env",
  "cpl-judge",
+ "cpl-rt",
  "cpl-syntax",
 ]
 
@@ -148,6 +149,7 @@ version = "0.3.0"
 dependencies = [
  "cpl-check",
  "cpl-diag",
+ "cpl-rt",
  "cpl-syntax",
 ]
 
@@ -200,6 +202,10 @@ dependencies = [
 
 [[package]]
 name = "cpl-prover"
+version = "0.3.0"
+
+[[package]]
+name = "cpl-rt"
 version = "0.3.0"
 
 [[package]]

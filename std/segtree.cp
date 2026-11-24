@@ -1,7 +1,7 @@
 //! Segment tree over a domain, for any associative operation: point or range update, range query.
 use std.algebra.{Action, Monoid}
 use std.bag.{SortedBag}
-use std.math.{gcd, bit}
+use std.math.{gcd, bit, popcount}
 use std.range.{ends, first_true}
 
 type Pos = 0..=2_000_000_000

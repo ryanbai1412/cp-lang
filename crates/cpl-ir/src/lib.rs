@@ -26,6 +26,7 @@ pub mod sites;
 pub mod stress_target;
 pub mod walk;
 
+pub use cpl_rt::{Prim, Scalar};
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
 /// Every diagnostic the front end has for a file: the checker's, and when
 /// it has no error, what lowering rejects. `cpl check`, `cpl run`,
@@ -687,6 +688,9 @@ pub enum ExprKind {
     /// A runtime domain handle `(lo, len)` for `-> (domain C, ...)`.
     DomainVal(DomainId),
     Builtin(Builtin, Vec<Expr>),
+    /// A primitive of the intrinsics table, the body of an `@intrinsic`
+    /// fn (R12.14.3): the VM runs the entry, the C++ is its snippet.
+    Intrinsic(Prim, Vec<Expr>),
     /// O(1) mutable slice view `(place, lo, hi)` into a `List<T>`, 1D `[D]T`, or `MutView<T>`.
     MutSlice(Box<Place>, Box<Expr>, Box<Expr>),
     /// O(1) mutable view `(grid, at, axis)` of a 2D grid's row or column, the cells
@@ -896,7 +900,6 @@ pub enum Builtin {
     SwapInput,
     /// True when only blanks are left on stdin: what `read_all` stops at.
     AtEof,
-    Popcount,
     Ctz,
     Clz,
     BitWidth,

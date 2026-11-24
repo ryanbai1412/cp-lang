@@ -120,7 +120,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 Value::Unit
             }
-            Builtin::Popcount => Value::Int(i64::from(bits64(&first).count_ones())),
             Builtin::Ctz => Value::Int(i64::from(bits64(&first).trailing_zeros())),
             Builtin::Clz => Value::Int(i64::from(bits64(&first).leading_zeros())),
             Builtin::AxisLen => match (&first, values.next()) {

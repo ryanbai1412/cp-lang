@@ -1,6 +1,7 @@
 use super::{Compiler, GiveTarget, ModSuperOp};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
+use cpl_ir::Prim;
 use cpl_ir::{
     Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Mutation, PlaceKind, Stmt, Ty, UnOp,
 };
@@ -647,7 +648,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::BitCeilI { dst, src }, span);
                 dst
             }
-            ExprKind::Builtin(Builtin::Popcount, args)
+            ExprKind::Intrinsic(Prim::Popcount, args)
                 if args.len() == 1 && ScalarKind::of_ty(&args[0].ty, self.program).is_some() =>
             {
                 let src = self.compile_expr_i(&args[0]);

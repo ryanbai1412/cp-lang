@@ -207,9 +207,9 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | Crate | Job |
 |---|---|
 | `cpl-syntax` | operator table, lexer, error-tolerant parser, lossless tree |
-| `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries. Reads the judge's memory limit from `cpl-judge` for E0904; reads `CPL_STD_DIR` with `cpl-env` |
-| `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout |
-| `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place |
+| `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries. Reads the judge's memory limit from `cpl-judge` for E0904; reads `CPL_STD_DIR` with `cpl-env`; checks `@intrinsic` bodies against `cpl-rt` |
+| `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout; lowers an `@intrinsic` call to its `cpl-rt` primitive |
+| `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place (decision 573); depends on nothing |
 | `cpl-interp` | the one interpreter: register VM, event stream, traces, replay, profiler; WASM build; reads `CPL_VM_STATS` with `cpl-env` |
 | `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles |
 | `cpl-diag` | diagnostic model and renderers; its JSON shape is printed with `cpl-json`. `plain` turns doc text's LaTeX math and intra-doc links into terminal text for hover, the CLI and lint (`cpl_doc::plain` re-exports it) |

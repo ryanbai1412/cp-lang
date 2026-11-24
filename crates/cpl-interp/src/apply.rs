@@ -16,9 +16,10 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
         | ExprKind::Cast(_, x)
         | ExprKind::IsVariant(x, _)
         | ExprKind::Payload(x, ..) => vec![x],
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) | ExprKind::Builtin(_, items) => {
-            items.iter().collect()
-        }
+        ExprKind::Tuple(items)
+        | ExprKind::Variant(_, items)
+        | ExprKind::Builtin(_, items)
+        | ExprKind::Intrinsic(_, items) => items.iter().collect(),
         ExprKind::Binary(op, lhs, rhs) if !lazy(*op) => vec![lhs, rhs],
         ExprKind::Read(spec) => spec_exprs(spec).unwrap_or_default(),
         ExprKind::Index(base, indices) => std::iter::once(&**base).chain(indices).collect(),
@@ -66,6 +67,7 @@ pub(crate) fn applies(e: &Expr) -> bool {
     matches!(
         e.kind,
         ExprKind::Builtin(..)
+            | ExprKind::Intrinsic(..)
             | ExprKind::Index(..)
             | ExprKind::Unary(..)
             | ExprKind::Cmp(..)
@@ -246,6 +248,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.read(spec, span, &given)?
             }
             ExprKind::Builtin(op, args) => self.builtin_values(*op, args, e, vals)?,
+            ExprKind::Intrinsic(p, _) => crate::intrinsic(*p, &vals),
             ExprKind::Index(base, _) => self.index_value(&vals[0], &vals[1..], &base.ty, span)?,
             ExprKind::Binary(op, ..) => {
                 let mut vals = vals.into_iter();

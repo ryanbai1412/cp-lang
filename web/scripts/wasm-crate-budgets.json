@@ -15,6 +15,7 @@
   "cpl_judge": 6000,
   "cpl_lint": 159900,
   "cpl_lsp": 68300,
+  "cpl_rt": 500,
   "cpl_syntax": 154000,
   "cpl_wasm": 7400,
   "data (std source, strings)": 212700,

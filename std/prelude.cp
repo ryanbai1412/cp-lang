@@ -172,6 +172,7 @@ use std.math.{
     isqrt,
     lcm,
     phi,
+    popcount,
     pow_mod,
     sign,
     to_str,

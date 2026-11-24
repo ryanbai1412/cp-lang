@@ -353,6 +353,25 @@ def backend_std_names(root: Path) -> list[str]:
             for i, line in enumerate(_lines(p), 1) for m in STD_TYPE_RE.finditer(line)]
 
 
+STD_PUB_NAME_RE = re.compile(r"^pub (?:fn|struct|enum|trait|type) (\w+)")
+NAME_BAN_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
+
+
+def std_names_outside_rt(root: Path) -> list[str]:
+    """Public std names written as string literals in compiler source: the name-ban gate
+    (architecture.md, decision 573). Only cpl-rt may name a primitive."""
+    names = {m.group(1) for rel in _git(root, "ls-files", "std/*.cp")
+             for line in _lines(root / rel) if (m := STD_PUB_NAME_RE.match(line))}
+    hits: set[str] = set()
+    for p in _rs_files(root, *(f"crates/{c}/src" for c in NAME_BAN_CRATES), tests=False):
+        if "test" in p.name:
+            continue
+        for line in _lines(p):
+            if not line.lstrip().startswith("//"):
+                hits.update(n for n in re.findall(r'"(\w+)"', line) if n in names)
+    return sorted(hits)
+
+
 @functools.lru_cache(maxsize=4)
 def _fn_bodies(root: Path) -> tuple:
     return tuple(_walk_fn_bodies(root))
@@ -2432,6 +2451,8 @@ COUNTERS = {
     "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
+    "std_names_outside_rt": ("public std names as string literals in compiler source, outside cpl-rt",
+                             std_names_outside_rt, True),
     "lint_std_names": ("std fn names as string literals in lint rules, not through std_fn", lint_std_names, True),
     "lint_name_matchers": ("lint rule lines matching a call by its written std fn name, not its callee", lint_name_matchers, True),
     "lint_type_syntax": ("lint rule lines reading a written type instead of checker facts", lint_type_syntax, True),

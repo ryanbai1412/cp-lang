@@ -5,7 +5,7 @@
   "rust_ignore": 0,
   "pending_tests": 0,
   "edition_refs": 0,
-  "ir_builtin_names": 146,
+  "ir_builtin_names": 145,
   "ir_builtin_derived": 24,
   "prelude_privilege": 27,
   "backend_std_names": 18,
@@ -22,6 +22,7 @@
     "cpl-check -> cpl-diag",
     "cpl-check -> cpl-env",
     "cpl-check -> cpl-judge",
+    "cpl-check -> cpl-rt",
     "cpl-check -> cpl-syntax",
     "cpl-cli -> cpl-check",
     "cpl-cli -> cpl-codegen",
@@ -79,6 +80,7 @@
     "cpl-interp -> cpl-json",
     "cpl-ir -> cpl-check",
     "cpl-ir -> cpl-diag",
+    "cpl-ir -> cpl-rt",
     "cpl-ir -> cpl-syntax",
     "cpl-judge -> cpl-config",
     "cpl-judge -> cpl-env",
@@ -231,5 +233,6 @@
   "event_models": 14,
   "width_tables": 12,
   "judge_tables": 0,
-  "editor_logic_lines": 3298
+  "editor_logic_lines": 3298,
+  "std_names_outside_rt": 120
 }

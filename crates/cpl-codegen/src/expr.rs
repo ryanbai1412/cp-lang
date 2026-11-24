@@ -947,6 +947,16 @@ impl<'p> Emitter<'p> {
             ExprKind::Builtin(Builtin::Len, args) if matches!(&args[0].kind, ExprKind::Call(f, _) if self.pushers.contains_key(f)) => {
                 self.count_pushed(&args[0])
             }
+            ExprKind::Intrinsic(p, args) => {
+                let operands: Vec<&Expr> = args.iter().collect();
+                self.sequence(&operands, &e.ty, |this, codes| {
+                    if let Some(need) = p.entry().need {
+                        this.need(need);
+                    }
+                    let texts: Vec<String> = codes.into_iter().map(|c| c.text).collect();
+                    Code::new(p.cpp(&texts), crate::emit::UNARY)
+                })
+            }
             ExprKind::Builtin(op, args) => {
                 let operands: Vec<&Expr> = args.iter().collect();
                 if matches!(op, Builtin::ListConcat | Builtin::Copy) {

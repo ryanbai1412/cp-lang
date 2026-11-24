@@ -18,6 +18,7 @@
 // model: to_str
 // model: fixed
 // model: splitmix64
+// model: popcount
 // The plain-Int helpers of std.math against loops: seeded random arguments (mostly small,
 // sometimes near the edges), each fn compared with its obvious brute force. Reads `seed n`;
 // prints the first op that differs.
@@ -81,7 +82,7 @@ let n = read<Int>()
 var rng = Rng(seed0)
 var bad = ""
 for k in 0..n:
-    let op = rng.int(0, 11)
+    let op = rng.int(0, 12)
     let a = rng.int(-60, 60)
     let b = rng.int(-60, 60)
     if op == 0:
@@ -153,6 +154,12 @@ for k in 0..n:
         let x = rng.int(Int.MIN, Int.MAX)
         var r = Rng(x)
         if splitmix64(U64(x)) != r.next(): bad = "op {k}: splitmix64({x})"
+    elif op == 12:
+        let x = if rng.chance(0.5): rng.int(Int.MIN, Int.MAX) else: a
+        var ones = 0
+        for i in 0..64:
+            if x.bit(i): ones += 1
+        if popcount(x) != ones or popcount(U64(x)) != ones: bad = "op {k}: popcount({x})"
     if bad != "":
         break
 print(if bad == "": "ok" else: bad)

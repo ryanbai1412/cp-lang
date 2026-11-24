@@ -1,0 +1,9 @@
+[package]
+name = "cpl-rt"
+description = "The intrinsics table: each primitive's id, signature, cost, VM implementation and C++ snippet."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]

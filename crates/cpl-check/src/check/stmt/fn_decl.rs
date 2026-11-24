@@ -405,7 +405,9 @@ impl<'a> Checker<'a> {
                     c.lend_reset(mark);
                     c.pop_scope();
                 }
-                FnBody::Expr(expr) if !matches!(expr.kind, ExprKind::Cpp(_)) => {
+                FnBody::Expr(expr)
+                    if !matches!(expr.kind, ExprKind::Cpp(_) | ExprKind::Intrinsic(_)) =>
+                {
                     if matches!(expr.kind, ExprKind::If { .. } | ExprKind::Match { .. }) {
                         c.plain_if = Some(expr.span);
                     }
@@ -417,6 +419,10 @@ impl<'a> Checker<'a> {
                     }
                     c.no_escape_return(expr, "returning it");
                 }
+                FnBody::Expr(Expr {
+                    kind: ExprKind::Intrinsic(name),
+                    span,
+                }) => c.intrinsic_body(f, name, *span, ret),
                 // An `@cpp` body is C++: only the signature is checked.
                 FnBody::Expr(_) | FnBody::None => {}
             }

@@ -493,6 +493,9 @@ pub enum ExprKind {
     /// `@cpp("...")`: a fn's body written in C++, which the bundle emits as
     /// written (Rbundle.5).
     Cpp(String),
+    /// `@intrinsic("id")`: a fn's body that is one primitive of the
+    /// intrinsics table, run by both engines (R12.14.1).
+    Intrinsic(String),
     Unary {
         op: UnOp,
         expr: Box<Expr>,

@@ -180,6 +180,8 @@ pub mod codes {
     pub const PRIVATE_NAME: Code = Code("E0207");
     pub const VALUE_NAME_CASE: Code = Code("E0208");
     pub const DEFINITION_CYCLE: Code = Code("E0209");
+    /// `@intrinsic("id")` names no table entry, or not with this signature. (R12.14.1)
+    pub const UNKNOWN_INTRINSIC: Code = Code("E0210");
 
     pub const WRONG_DOMAIN: Code = Code("E0301");
     pub const TYPE_MISMATCH: Code = Code("E0302");

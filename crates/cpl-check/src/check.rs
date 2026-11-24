@@ -639,6 +639,43 @@ impl<'a> Checker<'a> {
         Ty::Error
     }
 
+    /// `fn f(..) = @intrinsic("name")`: `name` is in the table and `f`'s
+    /// signature is its entry's (R12.14.1, R12.14.2). A type parameter
+    /// stands for the entry's types; each call's type is checked as it lowers.
+    pub(super) fn intrinsic_body(
+        &mut self,
+        f: &cpl_syntax::ast::FnDecl,
+        name: &str,
+        at: Span,
+        ret: &Ty,
+    ) {
+        let Some(p) = cpl_rt::Prim::from_id(name) else {
+            let known: Vec<&str> = cpl_rt::TABLE.iter().map(|e| e.id).collect();
+            let message = format!("no intrinsic `{name}`; the table has {}", known.join(", "));
+            self.error(codes::UNKNOWN_INTRINSIC, at, message);
+            return;
+        };
+        let entry = p.entry();
+        let fits = |ty: &Ty, want: &str| match ty {
+            Ty::Named { name, .. } if f.generics.iter().any(|g| &g.text == name) => true,
+            _ => want.split('|').any(|w| w == ty.to_string()),
+        };
+        let params_fit = f.params.len() == entry.params.len()
+            && (f.params.iter().zip(entry.params)).all(|(param, want)| {
+                self.local(&param.name.text)
+                    .is_some_and(|l| fits(&l.ty, want))
+            });
+        if !params_fit || !fits(ret, entry.result) {
+            let message = format!(
+                "`{name}` is `({}) -> {}`; `{}` must have that signature",
+                entry.params.join(", "),
+                entry.result,
+                f.name.text,
+            );
+            self.error(codes::UNKNOWN_INTRINSIC, at, message);
+        }
+    }
+
     fn local(&self, name: &str) -> Option<&Local> {
         self.scopes.iter().rev().find_map(|scope| scope.get(name))
     }

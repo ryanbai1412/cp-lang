@@ -1,6 +1,7 @@
 use super::ir::*;
 use crate::value::Value;
 use cpl_diag::Span;
+use cpl_ir::Prim;
 use cpl_ir::{
     Arg, AssignOp, BinOp, Block, Builtin, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId, Place,
     PlaceKind, Program, Slot, Stmt, Ty, UnOp,
@@ -881,7 +882,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     safe_op && simple_expr(a, f, program) && simple_expr(b, f, program)
                 }
                 ExprKind::Cmp(_, a, b) => simple_expr(a, f, program) && simple_expr(b, f, program),
-                ExprKind::Builtin(Builtin::Popcount | Builtin::Ctz | Builtin::Clz, args) => {
+                ExprKind::Builtin(Builtin::Ctz | Builtin::Clz, args)
+                | ExprKind::Intrinsic(Prim::Popcount, args) => {
                     args.len() == 1 && simple_expr(&args[0], f, program)
                 }
                 ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], f, program),
@@ -1041,9 +1043,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 Self::expr_mentions_slot(b, target)
                     || idxs.iter().any(|i| Self::expr_mentions_slot(i, target))
             }
-            ExprKind::Tuple(es) | ExprKind::Variant(_, es) | ExprKind::Builtin(_, es) => {
-                es.iter().any(|x| Self::expr_mentions_slot(x, target))
-            }
+            ExprKind::Tuple(es)
+            | ExprKind::Variant(_, es)
+            | ExprKind::Builtin(_, es)
+            | ExprKind::Intrinsic(_, es) => es.iter().any(|x| Self::expr_mentions_slot(x, target)),
             ExprKind::Call(_, args) => args.iter().any(|a| match a {
                 Arg::Value(x) => Self::expr_mentions_slot(x, target),
                 Arg::Mut(p) => Self::place_mentions_slot(p, target),

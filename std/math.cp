@@ -422,6 +422,30 @@ pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<
                 pe *= p
     res
 
+/// A 64-bit machine word whose bits `popcount` counts: an `Int` as its two's complement, or a
+/// `U64` as it is.
+pub trait Word:
+    fn word(self) -> U64
+
+impl Word for Int:
+    /// cost: \(O(1)\)
+    /// example: `(-1).word() == U64(0) - U64(1)`
+    fn word(self) -> U64 = U64(self)
+
+impl Word for U64:
+    /// cost: \(O(1)\)
+    /// example: `U64(5).word() == U64(5)`
+    fn word(self) -> U64 = self
+
+/// The number of 1 bits in `x`'s 64-bit word, one `popcnt`: a negative `Int` counts its two's
+/// complement.
+///
+/// cost: \(O(1)\)
+/// example: `popcount(7) == 3`
+/// example: `popcount(-1) == 64`
+/// example: `popcount(U64(11)) == 3`
+pub fn popcount<W: Word>(x: W) -> Int = @intrinsic("popcount")
+
 /// The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.
 ///
 /// cost: \(O(1)\)

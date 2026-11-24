@@ -971,26 +971,31 @@ impl<'a> Parser<'a> {
         matches!(self.peek(), T::In | T::Type | T::Domain | T::Use) && !self.at_line_end()
     }
 
-    /// At `@cpp(`: an expression even at a line's start, not a decorator.
+    /// At `@cpp(` or `@intrinsic(`: an expression even at a line's start,
+    /// not a decorator.
     pub(super) fn at_cpp(&self) -> bool {
-        self.at(T::At)
-            && self.peek_n(2) == T::LParen
-            && (self.tokens.get(self.pos + 1)).is_some_and(|t| t.span.text(self.src) == "cpp")
+        self.at(T::At) && self.peek_n(2) == T::LParen && self.body_marker().is_some()
+    }
+
+    /// `cpp` or `intrinsic` after an `@`: a fn body named by a string.
+    fn body_marker(&self) -> Option<&'a str> {
+        let word = self.tokens.get(self.pos + 1)?.span.text(self.src);
+        matches!(word, "cpp" | "intrinsic").then_some(word)
     }
 
     fn primary(&mut self) -> Expr {
         let start = self.start();
         let kind = match self.peek() {
-            T::At
-                if self.peek_n(1) == T::Ident
-                    && self
-                        .tokens
-                        .get(self.pos + 1)
-                        .is_some_and(|t| t.span.text(self.src) == "cpp") =>
-            {
+            T::At if self.peek_n(1) == T::Ident && self.body_marker().is_some() => {
+                let intrinsic = self.body_marker() == Some("intrinsic");
                 self.bump();
                 self.bump();
-                self.expect(T::LParen, "`(` and the C++ snippet after `@cpp`");
+                let what = if intrinsic {
+                    "the intrinsic's name after `@intrinsic`"
+                } else {
+                    "the C++ snippet after `@cpp`"
+                };
+                self.expect(T::LParen, &format!("`(` and {what}"));
                 let code = if self.at(T::Str) {
                     let raw = self.text();
                     let inner = raw
@@ -1004,12 +1009,19 @@ impl<'a> Parser<'a> {
                     self.error(Diagnostic::error(
                         codes::EXPECTED_EXPR,
                         self.span(),
-                        "expected a string literal in `@cpp(...)`",
+                        format!(
+                            "expected a string literal in `@{}(...)`",
+                            if intrinsic { "intrinsic" } else { "cpp" }
+                        ),
                     ));
                     String::new()
                 };
                 self.expect(T::RParen, "`)`");
-                ExprKind::Cpp(code)
+                if intrinsic {
+                    ExprKind::Intrinsic(code)
+                } else {
+                    ExprKind::Cpp(code)
+                }
             }
             T::Dot if self.peek_n(1) == T::Int => {
                 self.bump();
