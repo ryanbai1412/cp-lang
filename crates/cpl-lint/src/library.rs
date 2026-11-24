@@ -182,7 +182,9 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         .chain(&spans.stmts)
         .filter_map(|s| Some((*by_start.get(&s.start)?, *by_end.get(&s.end)?, *s)))
         .collect();
-    candidates.sort_by_key(|c| (c.0, std::cmp::Reverse(c.1)));
+    cpl_diag::sort_by_key(&mut candidates, |c| {
+        (c.0 as u64) << 32 | (u32::MAX as usize - c.1) as u64
+    });
     candidates.dedup_by_key(|c| (c.0, c.1));
     // A statement's span can run past its last token (a block's newline).
     let tok_range = |s: &Span| {
@@ -215,7 +217,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 let mut runs: Vec<Vec<Span>> = (spans.blocks.iter())
                     .flat_map(|b| b.windows(k).map(<[Span]>::to_vec))
                     .collect();
-                runs.sort_by_key(|r| (r[0].start, r[k - 1].end));
+                cpl_diag::sort_by_key(&mut runs, |r| Span::new(r[0].start, r[k - 1].end).order());
                 runs.dedup();
                 runs
             }

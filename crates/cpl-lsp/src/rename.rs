@@ -84,7 +84,7 @@ pub fn uses_in(db: &mut Session, path: &str, target: &Definition, name: &str) ->
         }
     }
     let imports = spans_of_imports;
-    candidates.sort_by_key(|s| (s.start, s.end));
+    cpl_diag::sort_by_key(&mut candidates, |s| s.order());
     candidates.dedup();
     let names =
         |span: &Span| analysis.text.get(span.start as usize..span.end as usize) == Some(name);
@@ -101,7 +101,9 @@ pub fn uses_in(db: &mut Session, path: &str, target: &Definition, name: &str) ->
     if here && !spans.contains(&target.span) && names(&target.span) {
         spans.push(target.span);
     }
-    spans.sort_by_key(|s| (!here || s.start != target.span.start, s.start));
+    cpl_diag::sort_by_key(&mut spans, |s| {
+        ((!here || s.start != target.span.start) as u64) << 32 | s.start as u64
+    });
     spans.dedup();
     spans
 }

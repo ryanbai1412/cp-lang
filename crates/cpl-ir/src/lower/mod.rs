@@ -400,7 +400,7 @@ impl Lowerer<'_> {
             lw.diags.retain(|d| !in_library.contains(&d.message));
         }
         if !lw.diags.is_empty() {
-            lw.diags.sort_by_key(|d| (d.span.start, d.span.end));
+            cpl_diag::sort_by_key(&mut lw.diags, |d| d.span.order());
             // One error per place, as `Sink::push` keeps for the checker.
             lw.diags.dedup_by(|b, a| {
                 a.span == b.span && (a.code == b.code || a.severity == b.severity)
@@ -440,7 +440,7 @@ impl Lowerer<'_> {
                 f
             })
             .collect();
-        lw.warnings.sort_by_key(|d| (d.span.start, d.span.end));
+        cpl_diag::sort_by_key(&mut lw.warnings, |d| d.span.order());
         lw.warnings.dedup();
         for (&gid, info) in &lw.global_ranges {
             if let Some(g) = lw.globals.get(gid).filter(|g| is_narrowable_elem_ty(&g.ty)) {

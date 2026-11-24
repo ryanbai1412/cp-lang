@@ -77,7 +77,7 @@ pub fn parse_file(src: &str) -> ParsedFile {
         );
         items.push((range.span.start, parsed));
     }
-    diagnostics.sort_by_key(|d| (d.span.start, d.span.end));
+    cpl_diag::sort_by_key(&mut diagnostics, |d| d.span.order());
     ParsedFile { items, diagnostics }
 }
 

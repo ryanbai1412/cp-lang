@@ -1691,7 +1691,7 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
                     .iter()
                     .filter(|s| s.start <= entry.span.start && entry.span.start <= s.end)
                     .collect();
-                around.sort_by_key(|s| s.end - s.start);
+                cpl_diag::sort_by_key(&mut around, |s| (s.end - s.start) as u64);
                 around.get(1).map(|outer| **outer)
             }
             _ => innermost(entry.span.start),

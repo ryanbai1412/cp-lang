@@ -1222,7 +1222,7 @@ fn semantic_tokens(analysis: &cpl_check::Analysis) -> Vec<u32> {
             tokens.push((span, kind, modifiers));
         }
     }
-    tokens.sort_by_key(|(span, ..)| (span.start, span.end));
+    cpl_diag::sort_by_key(&mut tokens, |(span, ..)| span.order());
     tokens.dedup_by_key(|(span, ..)| span.start);
     let (mut line, mut col) = (0, 0);
     let mut data = Vec::with_capacity(tokens.len() * 5);

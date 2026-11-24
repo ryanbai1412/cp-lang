@@ -1636,7 +1636,7 @@ pub(crate) fn rename_values(
             .chain(uses.map(|(s, _)| *s))
             .map(|s| (s, lower.clone()))
             .collect();
-        edits.sort_by_key(|(s, _)| s.start);
+        cpl_diag::sort_by_key(&mut edits, |(s, _)| s.start as u64);
         edits.dedup_by_key(|(s, _)| s.start);
         let title = format!("rename `{old}` to `{lower}` everywhere");
         d.fixes.push(Fix { title, edits });

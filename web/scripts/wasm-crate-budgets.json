@@ -5,7 +5,7 @@
   "compiler_builtins": 8700,
   "core": 71100,
   "cpl_check": 293700,
-  "cpl_diag": 57000,
+  "cpl_diag": 45000,
   "cpl_fmt": 12800,
   "cpl_interp": 233600,
   "cpl_ir": 445800,

@@ -11,7 +11,13 @@ pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
     let mut edits: Vec<(Span, String)> = Vec::new();
     let mut applied = 0;
     let mut fixes: Vec<_> = diagnostics.iter().filter_map(|d| d.fixes.first()).collect();
-    fixes.sort_by_key(|fix| fix.edits.iter().map(|(span, _)| span.start).min());
+    crate::sort_by_key(&mut fixes, |fix| {
+        fix.edits
+            .iter()
+            .map(|(span, _)| span.start as u64 + 1)
+            .min()
+            .unwrap_or(0)
+    });
     for fix in fixes {
         let overlap = |a: &Span, b: &Span| a.start < b.end && b.start < a.end;
         let clashes = fix.edits.iter().enumerate().any(|(i, (span, _))| {
@@ -34,7 +40,7 @@ pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
         applied += 1;
     }
     // An insertion at a replacement's start goes before it.
-    edits.sort_by_key(|(span, _)| (span.start, span.end));
+    crate::sort_by_key(&mut edits, |(span, _)| span.order());
     let mut out = String::with_capacity(src.len());
     let mut at = 0usize;
     for (span, text) in edits {

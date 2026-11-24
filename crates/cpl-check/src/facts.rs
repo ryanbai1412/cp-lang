@@ -128,7 +128,9 @@ impl Facts {
             }
         }
         // By end, then start: `place_type` looks a place up by its end.
-        facts.types.sort_by_key(|(s, _)| (s.end, s.start));
+        cpl_diag::sort_by_key(&mut facts.types, |(s, _)| {
+            (s.end as u64) << 32 | s.start as u64
+        });
         let (mut callees, mut instantiations) = (Vec::new(), Vec::new());
         for &(offset, check) in items {
             add_calls(offset, check, &mut callees, &mut instantiations);
