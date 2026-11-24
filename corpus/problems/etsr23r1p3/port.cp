@@ -1,42 +1,37 @@
-// Runnable port (proto/cp.py lib-run) of etsr23r1p3.cp
+// Source: ETSR 2023 R1 P3, https://dmoj.ca/problem/etsr23r1p3
+// Problem: multitest; a string s over the first m <= 26 letters. Is every ordering of the m
+//   letters a subsequence of s?
+// Solution: latest[S] is the latest cut of s after which every ordering of S still fits. An
+//   ordering that starts with x needs an x before latest[S - x], so latest[S] = the min over x in
+//   S of the last x before latest[S - x], and none if some x has none. The answer is whether
+//   latest[all] exists, O(2^m * m). For m >= 22 the accepted C++ answers NO without the table
+//   (2^22 cuts would not fit; |s| is too short to hold that many orderings).
 // original: corpus/submissions/5494303.cpp
+@!multitest
+let m: 1..=26 = read()
+let s: Str = read()
 
-let tcs: Int = read()
-for _ in 0..tcs:
-    let m: Int = read()
-    let s: Str = read()
-    if m >= 22:
-        print("NO")
-        continue
-    let n = s.len
-    domain Alpha = 0..m
-    domain Pos = 0..=n
-    var prv: [Pos][Alpha]?Int = [Pos] _ => [Alpha] _ => None
-    for i in 0..n:
-        for c in Alpha:
-            prv[Pos(i + 1)][c] = prv[Pos(i)][c]
-        prv[Pos(i + 1)][Alpha(s[i] - 'a')] = i
-
-    let total = 1 << m
-    var dp: List<?Int> = List.filled(total, None)
-    dp[0] = n
-    for mask in 1..total:
-        var best: ?Int = n
-        for j in 0..m:
-            if ((mask >> j) & 1) == 0: continue
-            let prev_opt = dp[mask ^ (1 << j)]
-            if prev_opt == None:
+fn solve() -> Bool:
+    domain Letter = 0..m
+    domain Pos = 0..s.len
+    // before[c][x]: the last x in s before cut c.
+    var before: [Pos.cuts][Letter]?Pos = None
+    for p in Pos:
+        before[p.r] = before[p.l].clone()
+        before[p.r][Letter(s[p.ord] - 'a')] = p
+    var latest: [Subset<Letter>]?Pos.cuts = None
+    latest[Subset<Letter>.empty] = Pos.cuts.last
+    for set in Subset<Letter>:
+        if set.is_empty: continue
+        // Each x in set must be able to start; the min over them, or none when one cannot.
+        var best: ?Pos.cuts = Pos.cuts.last
+        for x in set:
+            if let at = latest[set.without(x)].and_then(c => before[c][x]):
+                best = min(best!, at.l)
+            else:
                 best = None
                 break
-            let hit = prv[Pos(prev_opt!)][Alpha(j)]
-            if hit == None:
-                best = None
-                break
-            if best == None or hit! < best!:
-                best = hit
-        dp[mask] = best
+        latest[set] = best
+    latest[Subset<Letter>.full] != None
 
-    if dp[total - 1] != None:
-        print("YES")
-    else:
-        print("NO")
+print(yes(m < 22 and solve()))
