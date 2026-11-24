@@ -4,7 +4,7 @@
 //! same way in each.
 
 use crate::walk::{self, Effects};
-use crate::{Arg, Block, Expr, ExprKind, Function, Iter, LoopId, Program, Stmt};
+use crate::{Arg, Block, ClosureDef, Expr, ExprKind, Function, Iter, LoopId, Program, Stmt, Ty};
 use cpl_diag::{codes, Diagnostic};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -34,20 +34,34 @@ pub struct FnSummary {
 
 /// What each fn reads, writes and prints, through the fns it calls.
 /// A call through a fn value may run any closure of the program, so it
-/// does what all of them do together: the last summary, at index
-/// `program.fns.len()`, is that union.
+/// does what all of them do together: the summary at index
+/// `program.fns.len()` is that union. A call through a value of a known
+/// fn type runs only a closure of that type (the program is
+/// monomorphized), so each type called through gets the union of those,
+/// after it.
 pub fn summarize(program: &Program) -> Vec<FnSummary> {
-    let direct_of = |body: &Block, by_ref: bool| {
+    let values = program.fns.len();
+    let mut called: Vec<Ty> = Vec::new();
+    let mut direct_of = |body: &Block, by_ref: bool| {
         let effects = Effects::of_block(body);
         let mut summary = FnSummary {
             writes: effects.globals.clone(),
             opaque: by_ref,
             ..FnSummary::default()
         };
-        let mut through = false;
+        let mut through = BTreeSet::new();
         walk::deep_exprs(body, &mut |e| match &e.kind {
             ExprKind::Read(_) | ExprKind::Print(..) => summary.io = true,
-            ExprKind::CallExpr(..) => through = true,
+            ExprKind::CallExpr(callee, _) => {
+                let k = match called.iter().position(|t| *t == callee.ty) {
+                    Some(k) => k,
+                    None => {
+                        called.push(callee.ty.clone());
+                        called.len() - 1
+                    }
+                };
+                through.insert(values + 1 + k);
+            }
             ExprKind::Closure(_) => summary.calls_values = true,
             ExprKind::Global(id) => {
                 summary.reads.insert(*id);
@@ -61,28 +75,46 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
                 summary.sizes = true;
             }
         });
-        summary.calls_values |= through;
+        summary.calls_values |= !through.is_empty();
         (summary, effects.calls, through)
     };
-    let values = program.fns.len();
-    let mut direct: Vec<(FnSummary, BTreeSet<usize>, bool)> = program
+    let mut direct: Vec<Direct> = program
         .fns
         .iter()
         .map(|f| direct_of(&f.body, false))
         .collect();
-    let mut all = (FnSummary::default(), BTreeSet::new(), false);
     let owners = closure_owners(program);
-    for (c, owner) in program.closures.iter().zip(owners) {
-        let by_ref = c.captures.iter().any(|cap| cap.by_ref);
-        let (mut summary, calls, through) = direct_of(&c.body, by_ref);
-        if by_ref {
-            summary.lent_from.insert(owner);
+    let closures: Vec<Direct> = program
+        .closures
+        .iter()
+        .zip(owners)
+        .map(|(c, owner)| {
+            let by_ref = c.captures.iter().any(|cap| cap.by_ref);
+            let (mut summary, calls, through) = direct_of(&c.body, by_ref);
+            if by_ref {
+                summary.lent_from.insert(owner);
+            }
+            (summary, calls, through)
+        })
+        .collect();
+    let union = |of: &dyn Fn(&ClosureDef) -> bool| {
+        let mut all: Direct = Default::default();
+        for (c, (summary, calls, through)) in program.closures.iter().zip(&closures) {
+            if of(c) {
+                all.0.merge(summary);
+                all.1.extend(calls);
+                all.2.extend(through);
+            }
         }
-        all.0.merge(&summary);
-        all.1.extend(calls);
-        all.2 |= through;
+        all
+    };
+    direct.push(union(&|_| true));
+    for ty in &called {
+        direct.push(match ty {
+            Ty::Fn(args, ret) => union(&|c| closure_has_type(c, args, ret)),
+            _ => union(&|_| true),
+        });
     }
-    direct.push(all);
     let mut summaries: Vec<FnSummary> = direct.iter().map(|(s, ..)| s.clone()).collect();
     for (summary, f) in summaries.iter_mut().zip(&program.fns) {
         summary.yields_fns = f
@@ -93,8 +125,7 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
     loop {
         let before = summaries.clone();
         for (id, (_, calls, through)) in direct.iter().enumerate() {
-            let through_values = through.then_some(values);
-            for callee in calls.iter().copied().chain(through_values) {
+            for &callee in calls.iter().chain(through) {
                 let other = before[callee].clone();
                 summaries[id].merge(&other);
             }
@@ -103,6 +134,21 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
             return summaries;
         }
     }
+}
+
+/// A fn's or closure's own effects, the fns it calls and the
+/// [`summarize`] entries of the fn types it calls values of.
+type Direct = (FnSummary, BTreeSet<usize>, BTreeSet<usize>);
+
+/// Whether closure `c` can be a value of fn type `args -> ret`.
+pub fn closure_has_type(c: &ClosureDef, args: &[Ty], ret: &Ty) -> bool {
+    let same = |param: &Ty, arg: &Ty| param == arg || matches!(arg, Ty::Mut(of) if **of == *param);
+    c.ret == *ret
+        && c.params.len() == args.len()
+        && c.params
+            .iter()
+            .zip(args)
+            .all(|(&p, a)| same(&c.locals[p].ty, a))
 }
 
 /// The owner of what the program's top level makes, beside its fns.

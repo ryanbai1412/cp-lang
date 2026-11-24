@@ -199,6 +199,44 @@ fn a_global_read_after_the_fn_that_takes_it_is_copied() {
 }
 
 #[test]
+fn a_read_only_call_on_a_global_a_closure_writes_copies_nothing() {
+    let out = super::cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "domain X = 0..n\n",
+        "var t = SegTree<X, Int>(max, fill: 0)\n",
+        "fn best(at: X) -> Int = t.fold(X.first!..=at)\n",
+        "fn add(at: X):\n",
+        "    t.set(at, best(at) + 1)\n",
+        "let f = (x: X) => add(x)\n",
+        "for x in X: f(x)\n",
+        "print(t.fold(X.first!..=X.last!))\n",
+    ));
+    assert!(
+        !out.contains("(t),"),
+        "`fold` calls only the `Int` op, never `f`, so it can't change `t` and reads it in place:\n{out}"
+    );
+}
+
+#[test]
+fn a_call_that_may_run_a_closure_writing_the_global_copies_it() {
+    let out = super::cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "domain X = 0..n\n",
+        "var t = SegTree<X, Int>(max, fill: 0)\n",
+        "fn bump(a: Int, b: Int) -> Int:\n",
+        "    t.set(X.first!, a)\n",
+        "    max(a, b)\n",
+        "let g = (a: Int, b: Int) => bump(a, b)\n",
+        "fn best(at: X) -> Int = t.fold(X.first!..=at)\n",
+        "print(g(1, 2), best(X.last!))\n",
+    ));
+    assert!(
+        out.contains("(t),"),
+        "`g` has the op's type and writes `t`, so `fold` may change `t` and reads a copy:\n{out}"
+    );
+}
+
+#[test]
 fn binding_a_lent_optional_copies_nothing() {
     let source = "use std.persistent.PersistentSegTree\ndomain N = 0..4\nlet z: [N]Int = [0, 0, 0, 0]\nvar t = PersistentSegTree<N, Int>(+, a: z)\nlet v1 = t.set(t.base, N(1), 1)\nprint(yes(t.diff_kth(v1, t.base, 0) == Some(N(1))))\n";
     assert!(crate::tests::cpp(source).contains("cpl::Lent<"));
