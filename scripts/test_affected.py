@@ -271,6 +271,19 @@ class AffectedTest(unittest.TestCase):
                 mock.patch("sys.stdout", new_callable=io.StringIO):
             self.assertEqual(affected.run_slices(["vm-trace"]), 100)
 
+    def test_a_slice_with_a_base_fails_only_on_the_reds_the_base_lacks(self):
+        ran = []
+        done = subprocess.CompletedProcess([], 0, "", "")
+        with mock.patch.object(affected, "ROOT", "/nonexistent"), \
+                mock.patch.object(affected, "build_slices", lambda names: 0), \
+                mock.patch.object(affected.subprocess, "run", lambda cmd, **k: ran.append(cmd) or done), \
+                mock.patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(affected.main(["--run-slices", "--base", "abc", "vm-trace"]), 0)
+            self.assertEqual(affected.main(["--run-slices", "vm-trace"]), 0)
+        self.assertEqual(ran[0][1:5], ["/nonexistent/scripts/new_reds.py", "--base", "abc", "--"])
+        self.assertEqual(ran[0][5:], ran[1])
+        self.assertEqual(ran[1][:3], ["cargo", "nextest", "run"])
+
     def test_ci_runs_every_slice_and_counts_the_slow_ones_in_its_summary(self):
         out = ("        PASS [  33.800s] (1/2) cpl-cli::vm_fallbacks shrink\n"
                "        PASS [   2.000s] (2/2) cpl-cli::read_only_copies every_program\n")

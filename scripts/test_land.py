@@ -214,7 +214,7 @@ class LandTest(unittest.TestCase):
         ours = self.clone("ours")
         (ours / "scripts" / "affected.py").write_text(
             "import sys\nprint('slices', *sys.argv[1:], file=sys.stderr)\n"
-            "sys.exit(1 if sys.argv[1:] == ['--run-slices', 'copies'] else 0)\n")
+            "sys.exit(1 if sys.argv[1] == '--run-slices' and sys.argv[-1] == 'copies' else 0)\n")
         self.commit(ours, "a slice runner")
         git(ours, "push", "-q", "origin", "HEAD:main")
         for slices, code in (("copies\n", 1), ("vm-trace\nvm-trace\n", 0)):
@@ -224,7 +224,7 @@ class LandTest(unittest.TestCase):
             self.commit(ours, "ours")
             r = self.land(ours)
             self.assertEqual(r.returncode, code, r.stderr)
-            self.assertIn("slices --run-slices " + slices.split()[0], r.stderr)
+            self.assertRegex(r.stderr, r"slices --run-slices --base [0-9a-f]{40} " + slices.split()[0])
             self.assertEqual(pending.exists(), code != 0)
             git(ours, "fetch", "-q")
             self.assertEqual(git(ours, "show", "origin/main:pkg.txt") if code == 0 else

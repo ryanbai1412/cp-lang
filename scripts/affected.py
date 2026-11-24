@@ -6,6 +6,8 @@ Rule: handbook/guidelines/ci-checklist.md#cir3.
     affected.py [--json] --base REV     the paths changed between REV and HEAD
     affected.py --run-slices NAME ...   run touched-path slices; one over 20 s warns its owner
     affected.py --run-slices all        every slice (CI's wall-clock job reports the slow ones)
+    affected.py --run-slices --base REV NAME ...
+                                        fail only on the reds REV doesn't have (land.sh, ci/R40)
 
 A path under a crate selects that crate and, through nextest's `rdeps()`,
 every crate that depends on it. Prose selects nothing. Any path this file
@@ -237,7 +239,7 @@ def build_slices(names):
                           cwd=ROOT).returncode
 
 
-def run_slices(names):
+def run_slices(names, reds_base=None):
     if names == ["all"]:
         names = [s[0] for s in SLICES]
     unknown = [n for n in base(names) if n not in {s[0] for s in SLICES}]
@@ -248,8 +250,11 @@ def run_slices(names):
     built = build_slices(names)
     if built:
         return built
-    run = subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "--status-level", "pass",
-                          "-E", expr], cwd=ROOT, capture_output=True, text=True)
+    cmd = ["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "--status-level", "pass", "-E", expr]
+    # A slice red at the base too is main's, reported with its owner (scripts/new_reds.py).
+    if reds_base:
+        cmd = [sys.executable, os.path.join(ROOT, "scripts", "new_reds.py"), "--base", reds_base, "--", *cmd]
+    run = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     sys.stdout.write(run.stdout + run.stderr)
     owners = {s[0]: s[1] for s in SLICES}
     slow = {n: t for n, t in slice_times(run.stdout + run.stderr, base(names)).items() if t > SLICE_LIMIT_S}
@@ -451,6 +456,8 @@ def changed_since(base):
 def main(argv):
     if argv[:1] == ["--build-slices"]:
         return build_slices(argv[1:])
+    if argv[:2] == ["--run-slices", "--base"] and len(argv) > 2:
+        return run_slices(argv[3:], argv[2])
     if argv[:1] == ["--run-slices"]:
         return run_slices(argv[1:])
     as_json = "--json" in argv
