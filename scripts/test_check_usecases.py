@@ -12,6 +12,10 @@ SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "check-usecase
 SPEC = importlib.util.spec_from_file_location("check_usecases", SCRIPT)
 assert SPEC and SPEC.loader
 MOD = importlib.util.module_from_spec(SPEC)
+# Under a git hook GIT_DIR and friends point at the real repo; the scratch
+# repos below must not see them.
+for _var in [v for v in os.environ if v.startswith("GIT_")]:
+    del os.environ[_var]
 SPEC.loader.exec_module(MOD)
 
 ENTRY = """### {id}: {title}
