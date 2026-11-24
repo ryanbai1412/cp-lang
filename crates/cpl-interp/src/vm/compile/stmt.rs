@@ -1401,12 +1401,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
         rev: bool,
         body: &'p Block,
     ) -> bool {
-        let seq_kind = match &seq_expr.ty {
-            Ty::Array { dims, .. } if dims.len() == 1 => SeqKind::Array,
-            Ty::Array { .. } => SeqKind::List,
-            Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) => SeqKind::List,
-            Ty::Str | Ty::StrView => SeqKind::Str,
-            Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) => SeqKind::List,
+        let slot_loc = self.slot_loc(slot);
+        let reads = match &seq_expr.ty {
+            Ty::Array { dims, .. } if dims.len() == 1 => SeqReads::Elems(SeqKind::Array),
+            Ty::Array { .. } => SeqReads::Elems(SeqKind::List),
+            Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) => SeqReads::Elems(SeqKind::List),
+            Ty::Str | Ty::StrView => match slot_loc {
+                SlotLoc::I(var, _) => SeqReads::Chars(var),
+                _ => return false,
+            },
+            Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) => {
+                SeqReads::Elems(SeqKind::List)
+            }
             _ => return false,
         };
         // A table walks its cells in row-major order.
@@ -1415,62 +1421,51 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Ty::Array { dims, .. } => dims.len() > 1,
             _ => false,
         };
-        let slot_loc = self.slot_loc(slot);
-        match (seq_kind, slot_loc) {
-            (SeqKind::Str, SlotLoc::I(..)) => {}
-            (SeqKind::Str, _) => return false,
-            (_, SlotLoc::I(..) | SlotLoc::V(_) | SlotLoc::SmallTuple { .. }) => {}
-            (_, SlotLoc::OptI { .. }) => {}
-        }
         let r_idx = self.alloc_i();
         let r_len = self.alloc_i();
-        let global_id = match &seq_expr.kind {
-            ExprKind::Global(gid)
-                if !items && matches!(seq_expr.ty, Ty::Array { .. } | Ty::List(_)) =>
-            {
-                Some(*gid as u16)
-            }
-            _ => None,
-        };
-        let local_v = if items {
-            let src = self.compile_expr_v(seq_expr);
-            let dst = self.alloc_v();
-            self.emit(Op::SeqItems { dst, src }, seq_expr.span);
-            Some(dst)
-        } else if global_id.is_none() {
-            Some(self.compile_expr_v(seq_expr))
-        } else {
-            None
-        };
-        match (seq_kind, global_id) {
-            (SeqKind::Array, Some(gid)) => {
-                self.emit(Op::GArrLen { dst: r_len, gid }, seq_expr.span)
-            }
-            (SeqKind::Array, None) => self.emit(
-                Op::LArrLen {
-                    dst: r_len,
-                    arr_v: local_v.unwrap(),
+        let walk = match reads {
+            SeqReads::Chars(var) => SeqWalk::Chars {
+                var,
+                str_v: self.compile_expr_v(seq_expr),
+            },
+            SeqReads::Elems(kind) => SeqWalk::Elems(
+                kind,
+                match &seq_expr.kind {
+                    ExprKind::Global(gid)
+                        if !items && matches!(seq_expr.ty, Ty::Array { .. } | Ty::List(_)) =>
+                    {
+                        SeqHeld::Global(*gid as u16)
+                    }
+                    _ if items => {
+                        let src = self.compile_expr_v(seq_expr);
+                        let dst = self.alloc_v();
+                        self.emit(Op::SeqItems { dst, src }, seq_expr.span);
+                        SeqHeld::Local(dst)
+                    }
+                    _ => SeqHeld::Local(self.compile_expr_v(seq_expr)),
                 },
-                seq_expr.span,
-            ),
-            (SeqKind::List, Some(gid)) => {
-                self.emit(Op::GListLen { dst: r_len, gid }, seq_expr.span)
-            }
-            (SeqKind::List, None) => self.emit(
-                Op::LListLen {
-                    dst: r_len,
-                    list_v: local_v.unwrap(),
-                },
-                seq_expr.span,
-            ),
-            (SeqKind::Str, _) => self.emit(
-                Op::LStrLen {
-                    dst: r_len,
-                    str_v: local_v.unwrap(),
-                },
-                seq_expr.span,
             ),
         };
+        let held = match walk {
+            SeqWalk::Elems(_, held) => held,
+            SeqWalk::Chars { str_v, .. } => SeqHeld::Local(str_v),
+        };
+        let local_v = match held {
+            SeqHeld::Local(v) => Some(v),
+            SeqHeld::Global(_) => None,
+        };
+        let len = match walk {
+            SeqWalk::Elems(SeqKind::Array, SeqHeld::Global(gid)) => Op::GArrLen { dst: r_len, gid },
+            SeqWalk::Elems(SeqKind::Array, SeqHeld::Local(arr_v)) => {
+                Op::LArrLen { dst: r_len, arr_v }
+            }
+            SeqWalk::Elems(SeqKind::List, SeqHeld::Global(gid)) => Op::GListLen { dst: r_len, gid },
+            SeqWalk::Elems(SeqKind::List, SeqHeld::Local(list_v)) => {
+                Op::LListLen { dst: r_len, list_v }
+            }
+            SeqWalk::Chars { str_v, .. } => Op::LStrLen { dst: r_len, str_v },
+        };
+        self.emit(len, seq_expr.span);
         let r_zero = self.alloc_i();
         let j_skip = if rev {
             let r_one = self.alloc_i();
@@ -1510,15 +1505,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
             )
         };
         let body_pc = self.ops.len() as u32;
-        self.emit_seq_load(slot_loc, seq_kind, global_id, local_v, r_idx, seq_expr.span);
-        let own = LoopReg::Seq {
-            id,
-            r_idx,
-            held: match global_id {
-                Some(gid) => SeqHeld::Global(gid),
-                None => SeqHeld::Local(local_v.unwrap()),
-            },
-        };
+        match walk {
+            SeqWalk::Elems(kind, held) => {
+                self.emit_seq_load(slot_loc, kind, held, r_idx, seq_expr.span)
+            }
+            SeqWalk::Chars { var, str_v } => {
+                self.emit(
+                    Op::StrGetI {
+                        dst: var,
+                        str_v,
+                        r_i: r_idx,
+                    },
+                    seq_expr.span,
+                );
+            }
+        }
+        let own = LoopReg::Seq { id, r_idx, held };
         let saved_pinned = self.pinned_v;
         if let Some(lv) = local_v {
             self.pinned_v = self.pinned_v.max(lv + 1);
@@ -1581,4 +1583,20 @@ pub(super) fn cond_writes(cond: &Expr) -> Option<Vec<(&Place, Span)>> {
         _ => {}
     });
     writes
+}
+
+/// What a `for` over a sequence reads each step, before it holds the
+/// sequence.
+#[derive(Clone, Copy)]
+enum SeqReads {
+    Elems(SeqKind),
+    /// The string's chars, into the scalar register `.0`.
+    Chars(u16),
+}
+
+/// What a `for` over a sequence reads each step, and where it holds it.
+#[derive(Clone, Copy)]
+enum SeqWalk {
+    Elems(SeqKind, SeqHeld),
+    Chars { var: u16, str_v: u16 },
 }

@@ -1982,3 +1982,25 @@ print(walk(5), pick(6), pick(2))
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "193 303 101\n");
 }
+
+#[test]
+fn vm_for_walks_each_kind_of_sequence() {
+    let src = "\
+let g = [5, 6, 7]
+fn walk(xs: List<Int>, s: Str) -> Int:
+    var t = 0
+    for x in g: t += x
+    for x in xs: t += x * 10
+    for c in s: t += c.ord
+    var seen: Set<Int> = []
+    seen.insert(3)
+    seen.insert(1)
+    for x in seen: t += x * 1000
+    return t
+
+print(walk([1, 2], \"ab\"))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "4243\n");
+}

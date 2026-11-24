@@ -123,7 +123,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let key = match by {
             SortKey::Slot(slot, key) => {
                 let slot_loc = self.slot_loc(slot);
-                self.emit_seq_load(slot_loc, seq_kind, None, Some(r_seq), r_idx, span);
+                self.emit_seq_load(slot_loc, seq_kind, SeqHeld::Local(r_seq), r_idx, span);
                 if self.traced {
                     self.emit_trace(TracePoint::Declared(slot), span);
                 }
@@ -287,7 +287,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         } else {
             SlotLoc::V(self.alloc_v())
         };
-        self.emit_seq_load(arg, seq_kind, None, Some(r_seq), r_idx, span);
+        self.emit_seq_load(arg, seq_kind, SeqHeld::Local(r_seq), r_idx, span);
         let (ret_mode, dst_i, dst_v) = match key_kind {
             Some(_) => (CallRet::I, self.alloc_i(), 0),
             None => (CallRet::V, 0, self.alloc_v()),
