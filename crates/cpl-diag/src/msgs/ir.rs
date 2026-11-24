@@ -189,7 +189,7 @@ super::msgs! {
     DOES_NOT_SAY_HOW = TYPE_MISMATCH, "`{}` does not say how many decimals an F64 gets";
     TAKES_1_INDEX_BUT = WRONG_ARG_COUNT, "this takes 1 index, but {} were given";
     STEPS_RANGE_NUMBERS_WRITTEN = TYPE_MISMATCH, "`by` steps a range of numbers written out, as in `(lo..hi).rev by 2`";
-    INTERVAL_F64_S_WRITTEN = TYPE_MISMATCH, "an interval of `F64`s is written `lo..hi`, not `..=`";
+    RANGE_F64_S_WRITTEN = TYPE_MISMATCH, "a range of `F64`s is written `lo..hi`, not `..=`";
     CAN_T_APPLIED = BAD_OPERANDS, "`+` can't be applied to a `{}`";
     CAN_T_APPLIED_2 = BAD_OPERANDS, "`-` can't be applied to a `{}`";
     READ_FROM_INPUT_WHICH = UNRESOLVED_NAME, "`{}` is read from the input, which a `@gen` fn is there to make";

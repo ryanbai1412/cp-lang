@@ -1355,7 +1355,7 @@ fn boundaries_sit_on_either_side_of_a_position() {
         .help
         .as_deref()
         .unwrap()
-        .contains("use `.l` / `.r` for the boundaries"));
+        .contains("use `.l` / `.r` for the cuts"));
 }
 
 #[test]

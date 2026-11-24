@@ -517,7 +517,7 @@ impl<'a> Checker<'a> {
                             diag.fixes.push(convert_to(domain, index_expr.span));
                         }
                         diag.help = Some(if boundary {
-                            "a position and the boundaries around it are different indices; use `.l` / `.r` for the boundaries on either side of a position".to_string()
+                            "a position and the cuts around it are different indices; use `.l` / `.r` for the cuts on either side of a position".to_string()
                         } else if got.is_int() {
                             format!(
                                 "convert it with `{want}({index_text})`, or write `{base_text}.raw[{index_text}]` to index by number"

@@ -547,9 +547,10 @@ impl<'a> Checker<'a> {
                 "last_true",
                 "`r.last_true(ok)` gives the last element where `ok` holds, as `?`",
             )),
-            "bounds" if matches!(base_ty, Ty::Domain(_)) => {
-                Some(("cuts", "`D.cuts` is the boundaries of `D`"))
-            }
+            "bounds" if matches!(base_ty, Ty::Domain(_)) => Some((
+                "cuts",
+                "`D.cuts` is the gaps between and around `D`'s positions",
+            )),
             _ => None,
         };
         if let Some((to, help)) = renamed {
@@ -1037,7 +1038,7 @@ impl<'a> Checker<'a> {
                             ret: Box::new(Ty::Optional(Box::new(Ty::Pos(domain.clone())))),
                         };
                     }
-                    // The boundaries on either side of a position.
+                    // The cuts on either side of a position.
                     // R04.2.19: the pieces on either side of a position.
                     "before" | "after" if !domain.ends_with(".cuts") => {
                         return range_of(Ty::Pos(domain.clone()));

@@ -114,7 +114,7 @@ super::msgs! {
     MISSING_IMPL_DOES_NOT_IMPLEMENT = MISSING_IMPL, "`{}` does not implement `{}`";
     WRONG_DOMAIN_IS_AND_IS_POSITIONS = WRONG_DOMAIN, "`{}` is {} and `{}` is {}; positions of different domains can't be compared";
     BAD_OPERANDS_CAN_T_BE_APPLIED = BAD_OPERANDS, "`{}=` can't be applied to {}";
-    WRONG_DOMAIN_ENDS_AT_A_POSITION = WRONG_DOMAIN, "`..=` ends at a position; a range up to the boundary `{}` is written `..`";
+    WRONG_DOMAIN_ENDS_AT_A_POSITION = WRONG_DOMAIN, "`..=` ends at a position; a range up to the cut `{}` is written `..`";
     RANGE_STORE_CONST_IS_OUT_OF_RANGE = RANGE_STORE_CONST, "`{}` is out of range for `{}`";
     TYPE_MISMATCH_HOLDS_ELEMENTS_ONE_PER = TYPE_MISMATCH, "`{}` holds {} elements (one per `{}` variant), found {}";
     RANGE_STORE_CONST_IS_OUTSIDE_WHICH_IS = RANGE_STORE_CONST, "`{}` is outside `{}`, which is {}..={}";
@@ -187,7 +187,7 @@ super::msgs! {
     ASSIGN_TO_LET_IS_CHANGED_BELOW_BUT = ASSIGN_TO_LET, "`{}` is changed below, but `{}` is not a var, so it can only be lent for reading";
     USED_WHILE_LENT_CAN_T_BE_HERE = USED_WHILE_LENT, "`{}` can't be {} here: the `for` loop is going over `{}`, and that lends it for reading until the loop ends";
     USED_WHILE_LENT_CAN_T_BE_HERE_2 = USED_WHILE_LENT, "`{}` can't be {} here: `{}` is {}lent to `{}` until its last use ({})";
-    TYPE_MISMATCH_A_RANGE_OF_F64 = TYPE_MISMATCH, "a range of `F64`s is an interval with no elements to walk";
+    TYPE_MISMATCH_A_RANGE_OF_F64 = TYPE_MISMATCH, "a range of `F64`s has no elements to walk";
     UNKNOWN_FIELD_HAS_NO_MEMBER = UNKNOWN_FIELD, "{} has no member `{}`";
     BAD_INDEX_IMPL_CONST_COUNT_CONST_IS = BAD_INDEX_IMPL, "`const count = {}`: `const` is compile-time only, and `{}` is known only at run time";
     BAD_INDEX_IMPL_COUNT_CAN_T_BE = BAD_INDEX_IMPL, "`count` can't be sized by the var `{}`: it could change after arrays are made";

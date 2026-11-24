@@ -790,7 +790,7 @@ impl<'a> Checker<'a> {
                         ],
                     ) {
                         diag.help = Some(format!(
-                            "a view borrows its source; copy it with `List({init_text})` (R07.2.11)"
+                            "a view is lent from its source; copy it with `List({init_text})` (R07.2.11)"
                         ));
                         if kind == "slice view" {
                             diag.fixes.push(cpl_diag::Fix {

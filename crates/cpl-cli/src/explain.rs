@@ -121,7 +121,7 @@ pub(crate) fn explain_file(
                     ("static_direct", format!("cpl_fn{closure}"))
                 }
                 cpl_codegen::ClosureMode::StaticTemplate => {
-                    ("static_template", "template functor parameter".to_string())
+                    ("static_template", "template parameter".to_string())
                 }
                 cpl_codegen::ClosureMode::StaticLocalAuto => {
                     ("static_local_auto", "local auto lambda".to_string())

@@ -103,7 +103,7 @@ pub fn report_with(
                     static_count += 1;
                     let _ = writeln!(
                         stdout,
-                        "  [static: template] {} -> template functor param (no std::function)",
+                        "  [static: template] {} -> template param (no std::function)",
                         entry.site
                     );
                 }

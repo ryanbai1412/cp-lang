@@ -153,9 +153,9 @@ impl<'a> Lowerer<'a> {
                     span,
                 ),
                 (Ty::Float, Ty::Float) => {
-                    let message = cpl_diag::msgs::ir::INTERVAL_F64_S_WRITTEN.at(&[]);
+                    let message = cpl_diag::msgs::ir::RANGE_F64_S_WRITTEN.at(&[]);
                     self.report_said(span, message);
-                    self.help("a real interval has no last element, so `..` and `..=` are the same set to a search");
+                    self.help("a range of reals has no last element, so `..` and `..=` are the same set to a search");
                     self.err_expr(span)
                 }
                 (Ty::Error, _) | (_, Ty::Error) => self.err_expr(span),

@@ -27,7 +27,7 @@ issue URL.
 options:
   -i, --input <file>  read program input from <file> instead of stdin
   --shrink            minimize the input while the failure still reproduces
-  --last              build the report from the newest ICE crash bundle
+  --last              build the report from the newest ICE bundle
   --json              print one JSON object instead: the report's `path` and
                       `bytes`, the `sections` it includes, the `comparison`
                       of the two runs and the prefilled `issue_url` (`null`
