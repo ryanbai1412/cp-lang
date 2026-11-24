@@ -747,3 +747,20 @@ fn read_loop_reads_the_item_type_from_the_checker() {
     let written = fill("var xs: List<Int> = []").expect("fires on List<Int>");
     assert_eq!(fill("var xs: Row = []").as_deref(), Some(written.as_str()));
 }
+
+/// The grid's cell type is the checker's, so a row alias still reads as a
+/// list of lists and the help names the cell type, not the alias.
+#[test]
+fn nested_list_grid_reads_the_cell_type_from_the_checker() {
+    let help = |decl: &str| {
+        let src =
+            format!("type Row = List<Int>\n{decl} = [[0 for _ in 0..3] for _ in 0..4]\nprint(g)\n");
+        crate::lint(&src, &crate::Config::default())
+            .into_iter()
+            .find(|d| d.code == crate::NESTED_LIST_GRID.code)
+            .and_then(|d| d.help)
+    };
+    let written = help("var g: List<List<Int>>").expect("fires on List<List<Int>>");
+    assert!(written.contains("[4, 3]Int"), "{written}");
+    assert_eq!(help("var g: List<Row>").as_deref(), Some(written.as_str()));
+}

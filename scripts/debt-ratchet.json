@@ -138,7 +138,7 @@
   "cpp_sunk_copies": 8,
   "codegen_effect_guesses": 0,
   "near_dup_fns": 8,
-  "consumer_rederived": 19,
+  "consumer_rederived": 17,
   "rs_near_cap": [],
   "skip_lists": 34,
   "dead_code_allows": 0,
@@ -162,7 +162,7 @@
     "tools": 10
   },
   "written_twice": 0,
-  "lint_type_syntax": 26,
+  "lint_type_syntax": 24,
   "idioms_evidenced_unlinted": 0,
   "bench_lists": 0,
   "unwrap_input": 712,
