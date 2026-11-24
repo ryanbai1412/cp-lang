@@ -182,11 +182,12 @@ pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int>:
 ///
 /// Blocks are as in [`mo_order`](mo_order). A query that lies inside one block is answered on
 /// its own: `m = mark()`, add its positions, answer, `undo(m)`. The other queries of a block go
-/// by increasing end: `reset()` once at the block's first such query, the right part grows from
-/// the block's end with `add`, and each query's left part is added between a `mark()` and the
-/// matching `undo`. Results come back in the original query order.
+/// by increasing end, the right part growing from the block's end with `add`, and each query's
+/// left part is added between a `mark()` and the matching `undo`. Entering a block whose predecessor grew a right part calls `reset()` first,
+/// so in-block queries never see the previous block's positions. Results come back in the
+/// original query order.
 ///
-/// cost: \(O((n + q) \sqrt n)\) calls to `add`, no removals, one `reset` per block
+/// cost: \(O((n + q) \sqrt n)\) calls to `add`, no removals, at most one `reset` per block
 /// empty: `[]`, calling nothing
 /// order: `result[i]` answers `queries[i]`
 /// traps: never; traps raised by the callbacks propagate
