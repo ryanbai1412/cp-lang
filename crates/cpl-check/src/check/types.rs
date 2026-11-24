@@ -863,13 +863,7 @@ impl<'a> Checker<'a> {
                     (Some(ty), _) => self.resolve_type(ty),
                     (None, Some(init)) => {
                         let inferred = self.infer(init);
-                        let rebased = match &pat.kind {
-                            ast::PatternKind::Name(name) => self.rebased(name, init),
-                            _ => None,
-                        };
-                        if let Some(rebased) = rebased {
-                            rebased
-                        } else if *mutable && matches!(inferred, Ty::Range { .. }) {
+                        if *mutable && matches!(inferred, Ty::Range { .. }) {
                             Ty::Int
                         } else if !*mutable && inferred == Ty::Int {
                             let (lo, hi) = self.bounds(init);

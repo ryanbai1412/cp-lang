@@ -1135,23 +1135,6 @@ impl Checker<'_> {}
 
 impl Checker<'_> {}
 
-impl Checker<'_> {
-    /// R04b.1.7: `let t = w.rebase` is `[t.Idx]T`, keyed by a domain of its own.
-    pub(crate) fn rebased(&mut self, name: &str, init: &Expr) -> Option<Ty> {
-        let ExprKind::Field { base, name: field } = &crate::check::lends::unparen(init).kind else {
-            return None;
-        };
-        if field.text != "rebase" {
-            return None;
-        }
-        let elem = self.quietly(|c| c.infer(base)).seq_elem()?;
-        Some(Ty::Array {
-            index: vec![Ty::Pos(format!("{name}.Idx"))],
-            elem: Box::new(elem),
-        })
-    }
-}
-
 fn range_ty(of: Ty) -> Ty {
     Ty::Named {
         name: "Range".into(),

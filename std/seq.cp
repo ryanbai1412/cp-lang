@@ -1386,20 +1386,17 @@ impl Bidir<T> for [D]T:
 impl Seq<T> for Prefix<D, T>:
     fn iter(self) -> yields T:
         for v in D:
-            if self.back: yield self.at(v.l)
-            else: yield self.at(v.r)
+            yield self.through(v)
 
 impl Keyed<D, T> for Prefix<D, T>:
     fn items(self) -> yields (D, T):
         for v in D:
-            if self.back: yield (v, self.at(v.l))
-            else: yield (v, self.at(v.r))
+            yield (v, self.through(v))
 
 impl Bidir<T> for Prefix<D, T>:
     fn iter_rev(self) -> yields T:
         for v in D.rev:
-            if self.back: yield self.at(v.l)
-            else: yield self.at(v.r)
+            yield self.through(v)
 
 /// A sized sequence read in \(O(1)\) by walk position: `s.nth(k)` is the element `k` steps into
 /// the walk. Every `Indexed` is one, and so is the `.rev` of one, which is what `zip`'s later
@@ -1672,34 +1669,33 @@ pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 /// order: same elements, keyed `0..len` by a fresh domain
 /// traps: never
 /// example: `[5, 6, 7][1..].rebase.nth(1) == 7`
-@get pub fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>:
-    domain Idx = 0..self.len
-    Rebased<S, Idx>(self, Idx.all)
+@get pub fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S> = Rebased(self)
 
 /// The view `rebase` returns: `src` keyed by `Idx`, a fresh domain `0..src.len` of its own.
-pub struct Rebased<S, Idx>(pub src: S, idx: Range<Idx>)
+pub struct Rebased<S>(pub src: S):
+    domain Idx = 0..src.len
 
-impl Seq<T> for Rebased<S: Indexed<K, T>, Idx>:
+impl<S: Indexed<K, T>, K, T> Seq<T> for Rebased<S>:
     fn iter(self) -> yields T:
-        for x in src: yield x
+        for x in self.src: yield x
 
-impl Sized for Rebased<S: Sized, Idx>:
-    @get fn len(self) -> Int = src.len
+impl<S: Sized> Sized for Rebased<S>:
+    @get fn len(self) -> Int = self.src.len
 
-impl Keyed<Idx, T> for Rebased<S: Indexed<K, T>, Idx>:
+impl<S: Indexed<K, T>, K, T> Keyed<Idx, T> for Rebased<S>:
     fn items(self) -> yields (Idx, T):
-        for i in idx: yield (i, src.nth(i.ord))
+        for i in Idx.all: yield (i, self.src.nth(i.ord))
 
-impl Bidir<T> for Rebased<S: Indexed<K, T>, Idx>:
+impl<S: Indexed<K, T>, K, T> Bidir<T> for Rebased<S>:
     fn iter_rev(self) -> yields T:
-        for x in src.rev: yield x
+        for x in self.src.rev: yield x
 
-impl Positional<T> for Rebased<S: Indexed<K, T>, Idx>:
-    fn nth(self, k: Int) -> T = src.nth(k)
+impl<S: Indexed<K, T>, K, T> Positional<T> for Rebased<S>:
+    fn nth(self, k: Int) -> T = self.src.nth(k)
 
-impl Indexed<Idx, T> for Rebased<S: Indexed<K, T>, Idx>:
-    fn at(self, i: Idx) -> T = src.nth(i.ord)
-    @get fn keys(self) -> Range<Idx> = idx
+impl<S: Indexed<K, T>, K, T> Indexed<Idx, T> for Rebased<S>:
+    fn at(self, i: Idx) -> T = self.src.nth(i.ord)
+    @get fn keys(self) -> Range<Idx> = Idx.all
 
 /// \(O(1)\). Every `k`-th element of `self`, starting with the first: `[3, 1, 2, 4].step(2)` walks
 /// `3, 2`. Keys survive (R04a.9.3): `a.step(2)[i]` reads `a[i]`, and a key the stride skips traps.

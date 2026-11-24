@@ -237,6 +237,14 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p[D(1)] == 3`
     pub fn at(self, c: Cut<D>) -> T = self.p[c]
 
+    /// The running fold at position `v`: through `v` from the start, or from `v` to the end on a
+    /// suffix table (`a.rev.scan(f)`). It is what walking the table yields at `v`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.through(D(1)) == 3`
+    pub fn through(self, v: D) -> T = if back: self.p[v.l] else: self.p[v.r]
+
     /// The fold of the first `k` positions, whatever `D`'s base: the value at the cut `k`
     /// positions in, the identity at `0` and `all` at `D.count`.
     ///

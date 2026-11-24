@@ -664,11 +664,6 @@ impl<'a> Checker<'a> {
                 if unannotated {
                     init_ty = Some(Ty::Error);
                 }
-                if let (PatternKind::Name(name), Some(init)) = (&pat.kind, init.as_ref()) {
-                    if let Some(rebased) = self.rebased(name, init) {
-                        init_ty = Some(rebased);
-                    }
-                }
                 self.value_case(keyword, pat, init.as_ref(), init_ty.as_ref());
                 if let PatternKind::Name(name) = &pat.kind {
                     let known = match (keyword, &declared, init.as_ref()) {
@@ -1271,8 +1266,14 @@ impl<'a> Checker<'a> {
                                 self.error(codes::ASSIGN_FIXED_FIELD, target.span, message)
                             {
                                 diag.help = Some(match var_at {
-                                    Some(_) => format!("declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`", name.text, name.text),
-                                    None => format!("`var {}` goes on its own line in a block `struct {sname}:`; or rebuild with `{base_text} with {}: ...`", name.text, name.text),
+                                    Some(_) => format!(
+                                        "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",
+                                        name.text, name.text
+                                    ),
+                                    None => format!(
+                                        "`var {}` goes on its own line in a block `struct {sname}:`; or rebuild with `{base_text} with {}: ...`",
+                                        name.text, name.text
+                                    ),
                                 });
                                 if let Some(at) = var_at {
                                     diag.fix(format!("declare `var {}`", name.text), at, "var ");
