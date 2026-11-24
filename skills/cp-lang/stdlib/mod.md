@@ -56,7 +56,7 @@ Fields: `free: List<Int>`.
 
 Fields: `parts: List<PrimePowerComb>`.
 
-- `fn new(m: Int) -> ModComb` — \(O(\text{sum p\_i}^\mathit{e\_i})\); Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per prime power, combined by CRT.; traps: when `m < 1`
+- `fn new(m: Int) -> ModComb` — \(O(\sum_i p_i^{e_i})\) for \(m = \prod_i p_i^{e_i}\); Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per prime power, combined by CRT.; traps: when `m < 1`
 - `fn choose(self, n: Int, k: Int) -> Int` — \(O(\mathit{omega}(m) \log n)\); `C(n, k) mod m`, by CRT over the prime powers of `m`; 0 when `k` is outside `0..=n`.
 
 ## Example
