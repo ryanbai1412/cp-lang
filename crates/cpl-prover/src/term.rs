@@ -47,7 +47,63 @@ pub enum BinOp {
     Coalesce,
 }
 
+/// A binary operator on two integers: arithmetic, bits, or an order.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum IntOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Pow,
+    Shl,
+    Shr,
+    BitAnd,
+    BitOr,
+    Xor,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+}
+
+/// What a binary operator does with its operands.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Operands {
+    Ints(IntOp),
+    And,
+    Or,
+    Coalesce,
+    Eq,
+    Ne,
+}
+
 impl BinOp {
+    pub fn operands(self) -> Operands {
+        match self {
+            BinOp::Add => Operands::Ints(IntOp::Add),
+            BinOp::Sub => Operands::Ints(IntOp::Sub),
+            BinOp::Mul => Operands::Ints(IntOp::Mul),
+            BinOp::Div => Operands::Ints(IntOp::Div),
+            BinOp::Mod => Operands::Ints(IntOp::Mod),
+            BinOp::Pow => Operands::Ints(IntOp::Pow),
+            BinOp::Shl => Operands::Ints(IntOp::Shl),
+            BinOp::Shr => Operands::Ints(IntOp::Shr),
+            BinOp::BitAnd => Operands::Ints(IntOp::BitAnd),
+            BinOp::BitOr => Operands::Ints(IntOp::BitOr),
+            BinOp::Xor => Operands::Ints(IntOp::Xor),
+            BinOp::Lt => Operands::Ints(IntOp::Lt),
+            BinOp::Le => Operands::Ints(IntOp::Le),
+            BinOp::Gt => Operands::Ints(IntOp::Gt),
+            BinOp::Ge => Operands::Ints(IntOp::Ge),
+            BinOp::And => Operands::And,
+            BinOp::Or => Operands::Or,
+            BinOp::Coalesce => Operands::Coalesce,
+            BinOp::Eq => Operands::Eq,
+            BinOp::Ne => Operands::Ne,
+        }
+    }
+
     pub fn symbol(self) -> &'static str {
         match self {
             BinOp::Add => "+",

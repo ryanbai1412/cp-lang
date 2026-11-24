@@ -10,7 +10,7 @@
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
 
-use crate::term::{BinOp, Sort, Term, UnOp, Value, INT_MAX, INT_MIN};
+use crate::term::{BinOp, IntOp, Operands, Sort, Term, UnOp, Value, INT_MAX, INT_MIN};
 
 /// Why an evaluation stopped without a value.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -355,37 +355,37 @@ impl Env {
         scope: &Scope,
         term: &Term,
     ) -> Result<Value, Trap> {
-        match op {
-            BinOp::And => {
+        let op = match op.operands() {
+            Operands::And => {
                 return Ok(Value::Bool(
                     self.truth(lhs, scope)? && self.truth(rhs, scope)?,
                 ))
             }
-            BinOp::Or => {
+            Operands::Or => {
                 return Ok(Value::Bool(
                     self.truth(lhs, scope)? || self.truth(rhs, scope)?,
                 ))
             }
-            BinOp::Coalesce => {
+            Operands::Coalesce => {
                 return match self.value(lhs, scope)? {
                     Value::None => self.value(rhs, scope),
                     v => Ok(v),
                 };
             }
-            BinOp::Eq => {
+            Operands::Eq => {
                 return Ok(Value::Bool(same(
                     &self.value(lhs, scope)?,
                     &self.value(rhs, scope)?,
                 )))
             }
-            BinOp::Ne => {
+            Operands::Ne => {
                 return Ok(Value::Bool(!same(
                     &self.value(lhs, scope)?,
                     &self.value(rhs, scope)?,
                 )))
             }
-            _ => {}
-        }
+            Operands::Ints(op) => op,
+        };
         let (a, b) = (self.int(lhs, scope)?, self.int(rhs, scope)?);
         let int = |v: Option<i128>| v.map(Value::Int).ok_or(Trap::TooLarge);
         let strict = self.strict;
@@ -398,24 +398,23 @@ impl Env {
             v => int(v),
         };
         match op {
-            BinOp::Add => arithmetic(a.checked_add(b)),
-            BinOp::Sub => arithmetic(a.checked_sub(b)),
-            BinOp::Mul => arithmetic(a.checked_mul(b)),
-            BinOp::Div if b == 0 => Err(Trap::DivByZero),
-            BinOp::Mod if b == 0 => Err(Trap::DivByZero),
-            BinOp::Div => int(a.checked_div_euclid(b)),
-            BinOp::Mod => int(a.checked_rem_euclid(b)),
-            BinOp::Pow => arithmetic(power(a, b)?),
-            BinOp::Shl => arithmetic(shift_left(a, b)?),
-            BinOp::Shr => int(Some(shift_right(a, b)?)),
-            BinOp::BitAnd => int(Some(a & b)),
-            BinOp::BitOr => int(Some(a | b)),
-            BinOp::Xor => int(Some(a ^ b)),
-            BinOp::Lt => Ok(Value::Bool(a < b)),
-            BinOp::Le => Ok(Value::Bool(a <= b)),
-            BinOp::Gt => Ok(Value::Bool(a > b)),
-            BinOp::Ge => Ok(Value::Bool(a >= b)),
-            BinOp::And | BinOp::Or | BinOp::Coalesce | BinOp::Eq | BinOp::Ne => unreachable!(),
+            IntOp::Add => arithmetic(a.checked_add(b)),
+            IntOp::Sub => arithmetic(a.checked_sub(b)),
+            IntOp::Mul => arithmetic(a.checked_mul(b)),
+            IntOp::Div if b == 0 => Err(Trap::DivByZero),
+            IntOp::Mod if b == 0 => Err(Trap::DivByZero),
+            IntOp::Div => int(a.checked_div_euclid(b)),
+            IntOp::Mod => int(a.checked_rem_euclid(b)),
+            IntOp::Pow => arithmetic(power(a, b)?),
+            IntOp::Shl => arithmetic(shift_left(a, b)?),
+            IntOp::Shr => int(Some(shift_right(a, b)?)),
+            IntOp::BitAnd => int(Some(a & b)),
+            IntOp::BitOr => int(Some(a | b)),
+            IntOp::Xor => int(Some(a ^ b)),
+            IntOp::Lt => Ok(Value::Bool(a < b)),
+            IntOp::Le => Ok(Value::Bool(a <= b)),
+            IntOp::Gt => Ok(Value::Bool(a > b)),
+            IntOp::Ge => Ok(Value::Bool(a >= b)),
         }
     }
 

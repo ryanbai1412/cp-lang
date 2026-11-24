@@ -21,7 +21,7 @@ use std::rc::Rc;
 use crate::core::{fit, Formula, Lazy, Res};
 use crate::eval::is_builtin;
 use crate::poly::{Mono, Poly, Var};
-use crate::term::{BinOp, Error, Sort, Term, UnOp, INT_MAX, INT_MIN};
+use crate::term::{BinOp, Error, IntOp, Operands, Sort, Term, UnOp, INT_MAX, INT_MIN};
 
 /// A symbolic value: what a term denotes for every input at once.
 #[derive(Clone)]
@@ -472,8 +472,8 @@ impl<'a> Lowerer<'a> {
         scope: &Scope,
         term: &Term,
     ) -> Res<SVal> {
-        match op {
-            BinOp::And => {
+        let op = match op.operands() {
+            Operands::And => {
                 let l = self.lower_bool(lhs, scope)?;
                 if l == Formula::False {
                     return Ok(SVal::Bool(l));
@@ -481,7 +481,7 @@ impl<'a> Lowerer<'a> {
                 let r = self.under(l.clone(), |s| s.lower_bool(rhs, scope))?;
                 return Ok(SVal::Bool(Formula::and([l, r])));
             }
-            BinOp::Or => {
+            Operands::Or => {
                 let l = self.lower_bool(lhs, scope)?;
                 if l == Formula::True {
                     return Ok(SVal::Bool(l));
@@ -489,7 +489,7 @@ impl<'a> Lowerer<'a> {
                 let r = self.under(l.negate()?, |s| s.lower_bool(rhs, scope))?;
                 return Ok(SVal::Bool(Formula::or([l, r])));
             }
-            BinOp::Coalesce => {
+            Operands::Coalesce => {
                 return match self.lower(lhs, scope)? {
                     SVal::NoneLit => self.lower(rhs, scope),
                     SVal::Opt { some, value } => {
@@ -499,7 +499,7 @@ impl<'a> Lowerer<'a> {
                     present => Ok(present),
                 };
             }
-            BinOp::Eq | BinOp::Ne => {
+            Operands::Eq | Operands::Ne => {
                 let (l, r) = (self.lower(lhs, scope)?, self.lower(rhs, scope)?);
                 let equal = self.equal(&l, &r, term)?;
                 return Ok(SVal::Bool(if op == BinOp::Eq {
@@ -508,8 +508,8 @@ impl<'a> Lowerer<'a> {
                     equal.negate()?
                 }));
             }
-            _ => {}
-        }
+            Operands::Ints(op) => op,
+        };
         let (a, b) = (self.lower_int(lhs, scope)?, self.lower_int(rhs, scope)?);
         let arithmetic = |s: &mut Self, value: Poly| -> Res<SVal> {
             s.oblige(
@@ -521,19 +521,19 @@ impl<'a> Lowerer<'a> {
             Ok(SVal::Int(value))
         };
         match op {
-            BinOp::Add => arithmetic(self, fit(a.add(&b))?),
-            BinOp::Sub => arithmetic(self, fit(a.sub(&b))?),
-            BinOp::Mul => arithmetic(self, fit(a.mul(&b))?),
-            BinOp::Div | BinOp::Mod => {
+            IntOp::Add => arithmetic(self, fit(a.add(&b))?),
+            IntOp::Sub => arithmetic(self, fit(a.sub(&b))?),
+            IntOp::Mul => arithmetic(self, fit(a.mul(&b))?),
+            IntOp::Div | IntOp::Mod => {
                 let nonzero = Formula::same(&b, &int(0))?.negate()?;
                 self.oblige(Hazard::DivByZero, nonzero, None, term);
-                Ok(SVal::Int(if op == BinOp::Div {
+                Ok(SVal::Int(if op == IntOp::Div {
                     self.divmod(&a, &b)?.0
                 } else {
                     self.modulo(&a, &b)?
                 }))
             }
-            BinOp::Pow => match (a.as_const(), b.as_const()) {
+            IntOp::Pow => match (a.as_const(), b.as_const()) {
                 (Some(base), Some(exp @ 0..=127)) if base.checked_pow(exp as u32).is_some() => {
                     arithmetic(self, int(base.pow(exp as u32)))
                 }
@@ -549,25 +549,24 @@ impl<'a> Lowerer<'a> {
                     arithmetic(self, value)
                 }
             },
-            BinOp::Shl => match b.as_const() {
+            IntOp::Shl => match b.as_const() {
                 Some(k @ 0..=62) => arithmetic(self, fit(a.scale(1 << k))?),
                 _ => {
                     let value = self.opaque("<<", vec![a, b]);
                     arithmetic(self, value)
                 }
             },
-            BinOp::Shr => match b.as_const() {
+            IntOp::Shr => match b.as_const() {
                 Some(k @ 0..=62) => Ok(SVal::Int(self.divmod(&a, &int(1 << k))?.0)),
                 _ => Ok(SVal::Int(self.opaque(">>", vec![a, b]))),
             },
-            BinOp::BitAnd => Ok(SVal::Int(self.bits(Ac::And, vec![a, b])?)),
-            BinOp::BitOr => Ok(SVal::Int(self.bits(Ac::Or, vec![a, b])?)),
-            BinOp::Xor => Ok(SVal::Int(self.bits(Ac::Xor, vec![a, b])?)),
-            BinOp::Lt => Ok(SVal::Bool(Formula::lt(&a, &b)?)),
-            BinOp::Le => Ok(SVal::Bool(Formula::le(&a, &b)?)),
-            BinOp::Gt => Ok(SVal::Bool(Formula::lt(&b, &a)?)),
-            BinOp::Ge => Ok(SVal::Bool(Formula::le(&b, &a)?)),
-            BinOp::And | BinOp::Or | BinOp::Coalesce | BinOp::Eq | BinOp::Ne => unreachable!(),
+            IntOp::BitAnd => Ok(SVal::Int(self.bits(Ac::And, vec![a, b])?)),
+            IntOp::BitOr => Ok(SVal::Int(self.bits(Ac::Or, vec![a, b])?)),
+            IntOp::Xor => Ok(SVal::Int(self.bits(Ac::Xor, vec![a, b])?)),
+            IntOp::Lt => Ok(SVal::Bool(Formula::lt(&a, &b)?)),
+            IntOp::Le => Ok(SVal::Bool(Formula::le(&a, &b)?)),
+            IntOp::Gt => Ok(SVal::Bool(Formula::lt(&b, &a)?)),
+            IntOp::Ge => Ok(SVal::Bool(Formula::le(&b, &a)?)),
         }
     }
 
