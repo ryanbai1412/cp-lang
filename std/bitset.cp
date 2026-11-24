@@ -1069,7 +1069,7 @@ pub struct XorTrie:
     /// \(O(\mathit{bits})\) per element. Visit every stored value as it reads now, with the
     /// `xor_all` mask applied, one per copy.
     ///
-    /// cost: \(O(\mathit{bits})\) per element
+    /// cost: \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element
     /// empty: `XorTrie(3).each().collect() == []`
     /// order: ascending value, each value repeated by its count
     /// traps: never

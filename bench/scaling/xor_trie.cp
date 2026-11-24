@@ -8,7 +8,9 @@ var t = XorTrie()
 for i in 0..n:
     let x = i * 2654435761 % (1 << 40)
     t.add(x) // timed: bitset.XorTrie.add
-for i in 0..6 * n:
+for r in 0..2:
+    for x in t.each(): acc += x % 7 // timed: bitset.XorTrie.each
+for i in 0..8 * n:
     acc += t.len // timed: bitset.XorTrie.len
     if t.is_empty: acc += 1 // timed: bitset.XorTrie.is_empty
     t.xor_all(i % 8) // timed: bitset.XorTrie.xor_all

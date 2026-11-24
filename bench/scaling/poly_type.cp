@@ -12,7 +12,8 @@ let z = Poly(zc)
 for _ in 0..512:
     acc ^= p.deriv().len // timed: poly.Poly.deriv
     acc ^= p.integral().len // timed: poly.Poly.integral
-    acc ^= p.items.collect().len // timed: poly.Poly.items
+    for _ in 0..2:
+        acc ^= p.items.collect().len // timed: poly.Poly.items
     acc ^= p.eval(Z(3)).v // timed: poly.Poly.eval
 for i in 0..1 << 17:
     acc ^= Poly<Z>.from_int(i).len // timed: poly.Poly.from_int
@@ -35,7 +36,8 @@ for _ in 0..12:
     acc ^= p.sqrt(n)!.len // timed: poly.Poly.sqrt
 for _ in 0..4096:
     acc ^= p.truncated(n / 2).len // timed: poly.Poly.truncated
-    acc ^= Poly.new(c).len // timed: poly.Poly.new
+    for _ in 0..2:
+        acc ^= Poly.new(c).len // timed: poly.Poly.new
 for _ in 0..32:
     acc ^= p.transposed_mul(q).len // timed: poly.Poly.transposed_mul
 for _ in 0..4:

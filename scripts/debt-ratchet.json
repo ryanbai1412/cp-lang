@@ -180,7 +180,7 @@
   "dream_unverified": 8,
   "measure_broken": 0,
   "mono_unguarded": 0,
-  "std_shadowed": 59,
+  "std_shadowed": 58,
   "corpus_walkers": 0,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 0,
@@ -217,11 +217,11 @@
   "conformance_wrong_output": 1,
   "rust_idiom_lints": 77,
   "scaling_mismatches": 0,
-  "std_fns_unscaled": 796,
+  "std_fns_unscaled": 704,
   "std_types_shown_empty": 41,
   "edge_labels_unrun": 0,
   "std_model_gaps": 0,
   "cpp_optional_copies": 9,
   "std_trait_matrix": 0,
-  "corpus_no_tests": 265
+  "corpus_no_tests": 263
 }

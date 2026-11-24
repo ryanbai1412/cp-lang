@@ -3352,6 +3352,718 @@
    "n": 1024,
    "ok": true
   },
+  "bench/scaling/geometry_points.cp::geometry.Circle.area": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Circle.area",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Circle.circumference": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Circle.circumference",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Circle.locate": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Circle.locate",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Circle.through": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Circle.through",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.HalfPlane.from_line": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.HalfPlane.from_line",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.HalfPlane.side": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.HalfPlane.side",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.HalfPlane.through": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.HalfPlane.through",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Plane3.dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Plane3.dist",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Plane3.project": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Plane3.project",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Plane3.through": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Plane3.through",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.angle": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.angle",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.chebyshev": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.chebyshev",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.cross128": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.cross128",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.dist",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.dist2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.dist2",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.dist2_128": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.dist2_128",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.dot128": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.dot128",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.len",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.manhattan": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.manhattan",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.norm2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.norm2",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.norm2_128": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.norm2_128",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.perp": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.perp",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.perp_cw": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.perp_cw",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.to_vec": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt.to_vec",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt.unit_dir": {
+   "cost": "\\log \\max(\\lvert x \\rvert, \\lvert y \\rvert)",
+   "documented": 1.14,
+   "fn": "geometry.Pt.unit_dir",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.chebyshev": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.chebyshev",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.cross": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.cross",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.dist",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.dist2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.dist2",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.dot": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.dot",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.dot128": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.dot128",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.len",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.manhattan": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.manhattan",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.norm2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.norm2",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.norm2_128": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.norm2_128",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Pt3.to_vec3": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Pt3.to_vec3",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Rect.area": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Rect.area",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Rect.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Rect.contains",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Rect.intersect": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Rect.intersect",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Rect.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Rect.is_empty",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.angle": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.angle",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.cross": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.cross",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.dist",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.dist2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.dist2",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.dot": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.dot",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.from_angle": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.from_angle",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.len",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.norm2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.norm2",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.perp": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.perp",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.perp_cw": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.perp_cw",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.rot": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.rot",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec.unit": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec.unit",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec3.cross": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec3.cross",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec3.dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec3.dist",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec3.dist2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec3.dist2",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec3.dot": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec3.dot",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec3.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec3.len",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec3.norm2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec3.norm2",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec3.rot": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec3.rot",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.Vec3.unit": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.Vec3.unit",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.angle_between": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.angle_between",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.angle_less": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.angle_less",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.arg": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.arg",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.circle_circle_area": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.circle_circle_area",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.circle_circle_tangents": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.circle_circle_tangents",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.circle_intersect": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.circle_intersect",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.circle_line_intersect": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.circle_line_intersect",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.circle_tangents": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.circle_tangents",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.circumcenter": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.circumcenter",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.close": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.close",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.cross": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.cross",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.dot": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.dot",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.incenter": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.incenter",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.invert": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.invert",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.line_dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.line_dist",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.line_intersect": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.line_intersect",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.line_plane_intersect": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.line_plane_intersect",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.on_segment": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.on_segment",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.project": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.project",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.ray_hits_segment": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.ray_hits_segment",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.reflect": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.reflect",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.same_dir": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.same_dir",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.seg_dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.seg_dist",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.segment_intersect": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.segment_intersect",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.segments_meet": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.segments_meet",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.sign_eps": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.sign_eps",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.sphere_dist": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.sphere_dist",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.turn": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.turn",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/geometry_points.cp::geometry.turn_eps": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.turn_eps",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/graph.cp::graph.Graph.directed": {
    "cost": "n + m",
    "documented": 4.0,
@@ -7092,7 +7804,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.at",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -7100,7 +7812,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.deg",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -7108,7 +7820,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "poly.Poly.deriv",
-   "measured": 3.83,
+   "measured": 3.89,
    "n": 2048,
    "ok": true
   },
@@ -7116,7 +7828,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "poly.Poly.eval",
-   "measured": 3.93,
+   "measured": 4.03,
    "n": 2048,
    "ok": true
   },
@@ -7124,7 +7836,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.Poly.exp",
-   "measured": 4.27,
+   "measured": 4.44,
    "n": 2048,
    "ok": true
   },
@@ -7132,7 +7844,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.from_int",
-   "measured": 0.99,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
@@ -7140,7 +7852,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "poly.Poly.integral",
-   "measured": 5.82,
+   "measured": 6.2,
    "n": 2048,
    "ok": true
   },
@@ -7148,7 +7860,15 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.Poly.inv",
-   "measured": 4.16,
+   "measured": 4.34,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_type.cp::poly.Poly.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "poly.Poly.is_empty",
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -7156,7 +7876,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.is_zero",
-   "measured": 0.99,
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/poly_type.cp::poly.Poly.items": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "poly.Poly.items",
+   "measured": 4.22,
    "n": 2048,
    "ok": true
   },
@@ -7164,7 +7892,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.len",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -7172,7 +7900,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.Poly.log",
-   "measured": 4.29,
+   "measured": 4.59,
    "n": 2048,
    "ok": true
   },
@@ -7180,7 +7908,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "poly.Poly.new",
-   "measured": 3.82,
+   "measured": 3.71,
    "n": 2048,
    "ok": true
   },
@@ -7188,7 +7916,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.one",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 2048,
    "ok": true
   },
@@ -7196,7 +7924,7 @@
    "cost": "n \\log n \\log k",
    "documented": 4.73,
    "fn": "poly.Poly.pow",
-   "measured": 4.24,
+   "measured": 4.38,
    "n": 2048,
    "ok": true
   },
@@ -7204,7 +7932,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.set",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
@@ -7212,7 +7940,7 @@
    "cost": "n \\log^2 n",
    "documented": 5.59,
    "fn": "poly.Poly.shift",
-   "measured": 4.86,
+   "measured": 4.65,
    "n": 2048,
    "ok": true
   },
@@ -7220,7 +7948,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.Poly.sqrt",
-   "measured": 4.06,
+   "measured": 4.27,
    "n": 2048,
    "ok": true
   },
@@ -7236,7 +7964,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "poly.Poly.truncated",
-   "measured": 4.7,
+   "measured": 4.48,
    "n": 2048,
    "ok": true
   },
@@ -7244,7 +7972,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.x",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -7252,7 +7980,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "poly.Poly.zero",
-   "measured": 0.98,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
@@ -12204,7 +12932,7 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.add",
-   "measured": 1.1,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -12212,7 +12940,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bitset.XorTrie.clear",
-   "measured": 1.04,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -12220,7 +12948,7 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.contains",
-   "measured": 1.36,
+   "measured": 1.33,
    "n": 16384,
    "ok": true
   },
@@ -12228,7 +12956,7 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.count",
-   "measured": 1.16,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -12236,7 +12964,15 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.count_xor_less",
-   "measured": 1.3,
+   "measured": 1.27,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/xor_trie.cp::bitset.XorTrie.each": {
+   "cost": "\\mathit{len} \\cdot \\mathit{bits}",
+   "documented": 4.0,
+   "fn": "bitset.XorTrie.each",
+   "measured": 4.12,
    "n": 16384,
    "ok": true
   },
@@ -12244,7 +12980,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bitset.XorTrie.is_empty",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -12252,7 +12988,7 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.kth_xor",
-   "measured": 1.39,
+   "measured": 1.35,
    "n": 16384,
    "ok": true
   },
@@ -12260,7 +12996,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bitset.XorTrie.len",
-   "measured": 0.97,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -12268,7 +13004,7 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.max_xor",
-   "measured": 1.32,
+   "measured": 1.31,
    "n": 16384,
    "ok": true
   },
@@ -12276,7 +13012,7 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.mex_xor",
-   "measured": 1.14,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -12284,7 +13020,7 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.min_xor",
-   "measured": 1.13,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -12292,7 +13028,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bitset.XorTrie.new",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -12300,7 +13036,7 @@
    "cost": "\\mathit{bits}",
    "documented": 1.0,
    "fn": "bitset.XorTrie.remove",
-   "measured": 1.11,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -12308,7 +13044,7 @@
    "cost": "\\mathit{nodes}",
    "documented": 4.0,
    "fn": "bitset.XorTrie.reserve",
-   "measured": 5.61,
+   "measured": 5.8,
    "n": 16384,
    "ok": true
   },
@@ -12316,7 +13052,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bitset.XorTrie.xor_all",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   }
@@ -12476,7 +13212,6 @@
   "bag.SortedSet.split_at",
   "bag.SortedSet.take",
   "bag.SortedSet.to_list",
-  "bitset.XorTrie.each",
   "builtin.Array.all",
   "builtin.Array.any",
   "builtin.Array.clone",
@@ -12659,13 +13394,6 @@
   "dsu.PersistentDsuWithin.is_empty",
   "dsu.PersistentDsuWithin.items",
   "dsu.PersistentDsuWithin.len",
-  "geometry.Circle.area",
-  "geometry.Circle.circumference",
-  "geometry.Circle.locate",
-  "geometry.Circle.through",
-  "geometry.HalfPlane.from_line",
-  "geometry.HalfPlane.side",
-  "geometry.HalfPlane.through",
   "geometry.OnlineHull.add",
   "geometry.OnlineHull.area2",
   "geometry.OnlineHull.clear",
@@ -12676,9 +13404,6 @@
   "geometry.OnlineHull.locate",
   "geometry.OnlineHull.new",
   "geometry.OnlineHull.vertices",
-  "geometry.Plane3.dist",
-  "geometry.Plane3.project",
-  "geometry.Plane3.through",
   "geometry.PointSet.contains",
   "geometry.PointSet.drain",
   "geometry.PointSet.each",
@@ -12686,72 +13411,12 @@
   "geometry.PointSet.len",
   "geometry.PointSet.of",
   "geometry.PointSet.remove",
-  "geometry.Pt.angle",
-  "geometry.Pt.chebyshev",
-  "geometry.Pt.cross128",
-  "geometry.Pt.dist",
-  "geometry.Pt.dist2",
-  "geometry.Pt.dist2_128",
-  "geometry.Pt.dot128",
-  "geometry.Pt.len",
-  "geometry.Pt.manhattan",
-  "geometry.Pt.norm2",
-  "geometry.Pt.norm2_128",
-  "geometry.Pt.perp",
-  "geometry.Pt.perp_cw",
-  "geometry.Pt.to_vec",
-  "geometry.Pt.unit_dir",
-  "geometry.Pt3.chebyshev",
-  "geometry.Pt3.cross",
-  "geometry.Pt3.dist",
-  "geometry.Pt3.dist2",
-  "geometry.Pt3.dot",
-  "geometry.Pt3.dot128",
-  "geometry.Pt3.len",
-  "geometry.Pt3.manhattan",
-  "geometry.Pt3.norm2",
-  "geometry.Pt3.norm2_128",
-  "geometry.Pt3.to_vec3",
-  "geometry.Rect.area",
-  "geometry.Rect.contains",
-  "geometry.Rect.intersect",
-  "geometry.Rect.is_empty",
-  "geometry.Vec.angle",
-  "geometry.Vec.cross",
-  "geometry.Vec.dist",
-  "geometry.Vec.dist2",
-  "geometry.Vec.dot",
-  "geometry.Vec.from_angle",
-  "geometry.Vec.len",
-  "geometry.Vec.norm2",
-  "geometry.Vec.perp",
-  "geometry.Vec.perp_cw",
-  "geometry.Vec.rot",
-  "geometry.Vec.unit",
-  "geometry.Vec3.cross",
-  "geometry.Vec3.dist",
-  "geometry.Vec3.dist2",
-  "geometry.Vec3.dot",
-  "geometry.Vec3.len",
-  "geometry.Vec3.norm2",
-  "geometry.Vec3.rot",
-  "geometry.Vec3.unit",
-  "geometry.angle_between",
-  "geometry.angle_less",
   "geometry.any_segments_meet",
   "geometry.any_segments_meet_idx",
   "geometry.area2",
   "geometry.area2_128",
-  "geometry.arg",
-  "geometry.circle_circle_area",
-  "geometry.circle_circle_tangents",
-  "geometry.circle_intersect",
-  "geometry.circle_line_intersect",
   "geometry.circle_polygon_area",
-  "geometry.circle_tangents",
   "geometry.circles_union_area",
-  "geometry.circumcenter",
-  "geometry.close",
   "geometry.closest_pair",
   "geometry.closest_pair2",
   "geometry.convex_hull",
@@ -12760,21 +13425,14 @@
   "geometry.convex_hull_idx",
   "geometry.convex_polygon_intersect",
   "geometry.convex_polygons_overlap",
-  "geometry.cross",
   "geometry.delaunay",
   "geometry.diameter2",
-  "geometry.dot",
   "geometry.farthest_pair",
   "geometry.half_plane_intersect",
   "geometry.hull_extreme",
   "geometry.hull_line_intersect",
   "geometry.hull_tangents",
   "geometry.hull_width",
-  "geometry.incenter",
-  "geometry.invert",
-  "geometry.line_dist",
-  "geometry.line_intersect",
-  "geometry.line_plane_intersect",
   "geometry.locate",
   "geometry.locate_convex",
   "geometry.lower_hull",
@@ -12785,7 +13443,6 @@
   "geometry.minkowski_lower",
   "geometry.minkowski_sum",
   "geometry.minkowski_upper",
-  "geometry.on_segment",
   "geometry.pick_boundary",
   "geometry.pick_interior",
   "geometry.planar_faces",
@@ -12796,18 +13453,7 @@
   "geometry.polygon_kernel",
   "geometry.polygon_triangulate",
   "geometry.polyhedron_volume6",
-  "geometry.project",
-  "geometry.ray_hits_segment",
   "geometry.rects_union_area",
-  "geometry.reflect",
-  "geometry.same_dir",
-  "geometry.seg_dist",
-  "geometry.segment_intersect",
-  "geometry.segments_meet",
-  "geometry.sign_eps",
-  "geometry.sphere_dist",
-  "geometry.turn",
-  "geometry.turn_eps",
   "geometry.upper_hull",
   "geometry.upper_hull_idx",
   "geometry.voronoi_cells",
@@ -13014,8 +13660,6 @@
   "persistent.RangeKth.count_lt",
   "persistent.RangeKth.kth",
   "persistent.RangeKth.new",
-  "poly.Poly.is_empty",
-  "poly.Poly.items",
   "prefix.Prefix.of_rev_scan",
   "segtree.DynamicOrderTree.count_in",
   "segtree.DynamicOrderTree.count_lt",
