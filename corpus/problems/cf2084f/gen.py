@@ -2,6 +2,18 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = 5e5; c is a itself with 40% kept, so the greedy fills every position
+    rng = random.Random(1)
+    n = 500_000
+    a = list(range(1, n + 1))
+    rng.shuffle(a)
+    print(1)
+    print(n)
+    print(*a)
+    print(*[x if rng.random() < 0.4 else 0 for x in a])
+    sys.exit()
+
 
 def make_case(rng, n):
     a = list(range(1, n + 1))
