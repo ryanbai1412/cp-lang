@@ -43,11 +43,10 @@ impl<'a> Lowerer<'a> {
                     (Some((prev, _)), _) if matches!(prev.ty, Ty::List(_) | Ty::Array { .. }) => {
                         self.expr(e, Some(&prev.ty))
                     }
-                    (Some((prev, _)), _) if matches!(&prev.ty, Ty::Opt(inner) if matches!(**inner, Ty::List(_) | Ty::Array { .. })) =>
+                    (Some((prev, _)), _)
+                        if let Ty::Opt(inner) = &prev.ty
+                            && matches!(**inner, Ty::List(_) | Ty::Array { .. }) =>
                     {
-                        let Ty::Opt(inner) = &prev.ty else {
-                            unreachable!()
-                        };
                         self.expr(e, Some(inner))
                     }
                     (None, Some(next)) if matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()) =>
@@ -100,10 +99,9 @@ impl<'a> Lowerer<'a> {
             };
             operands.push((value, e.span));
         }
-        if rest.len() == 1 {
-            let (r, r_span) = operands.pop().expect("two operands");
-            let (l, l_span) = operands.pop().expect("two operands");
-            return self.cmp(rest[0].0, l, l_span, r, r_span, span);
+        if let ([(op, _)], [(l, l_span), (r, r_span)]) = (rest, &operands[..]) {
+            let (l, r) = (l.clone(), r.clone());
+            return self.cmp(*op, l, *l_span, r, *r_span, span);
         }
         // `lo <= x < hi`: each operand is evaluated once, left to right, and a
         // false link stops the chain before the next operand is read.
@@ -214,7 +212,7 @@ impl<'a> Lowerer<'a> {
             (bring(self, l), bring(self, r))
         } else {
             let want = match (&l.ty, &r.ty) {
-                (a, b) if a.list_meet(b).is_some() => a.list_meet(b).expect("checked"),
+                (a, b) if let Some(meet) = a.list_meet(b) => meet,
                 (Ty::Float, Ty::Int) | (Ty::Int, Ty::Float) => Ty::Float,
                 (Ty::Int, wide @ (Ty::I128 | Ty::U64)) => wide.clone(),
                 (Ty::Opt(_), _) => l.ty.clone(),
