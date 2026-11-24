@@ -41,7 +41,7 @@ fn build_perm() -> ?[V]Int:
             order.push(u)
         else:
             if is_ext[u]: order.push(u) else: stack.push((u, true))
-            for c in tree.children(u).rev: stack.push((c, false))
+            for c in tree.children(u).collect().rev: stack.push((c, false))
 
     let pos = order.inverse()
     let rank: [V]Int = [V] u => pos[u] + 1
