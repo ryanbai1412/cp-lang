@@ -15,6 +15,10 @@ impl Checker<'_> {
             return;
         };
         let catch_all = &arms[at].pat;
+        // `incr(a, b) =>`, a pattern the parser could not read, only looks like a binding.
+        if self.sink.encloses_poison(catch_all.span) {
+            return;
+        }
         let message = format!(
             "unreachable arm: `{}` above already matches everything",
             self.quote(catch_all.span)
