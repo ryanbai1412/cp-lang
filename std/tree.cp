@@ -161,13 +161,12 @@ pub struct Rooted<V, Pre>:
     fn build(next: Next<V>, roots: List<V>, span: Bool = false) -> Rooted<V, _>:
         var seen: [V]Bool = false
         var par: [V]?V = None
-        var dep: [V]Int = 0
+        var dep: [V]0..=V.count = 0
         var far: [V]Int = 0
         var bfs: List<V> = []
-        var k0: [V]Int = 0
-        var k1: [V]Int = 0
+        var k0: [V]0..=V.count = 0
+        var k1: [V]0..=V.count = 0
         var i = 0
-        var rs: List<V> = []
         var cand = roots.clone()
         if span:
             for v in V: cand.push(v)
@@ -176,7 +175,6 @@ pub struct Rooted<V, Pre>:
                 assert span
                 continue
             seen[r] = true
-            rs.push(r)
             bfs.push(r)
             while i < bfs.len:
                 let u = bfs[i]
@@ -191,41 +189,47 @@ pub struct Rooted<V, Pre>:
                         far[v] = far[u] + arc_len(a)
                         bfs.push(v)
                 k1[u] = bfs.len
-        assert rs.len > 0 and bfs.len == V.count
-        var sz: [V]Int = 1
-        for j in (0..bfs.len).rev:
-            if let p = par[bfs[j]]: sz[p] += sz[bfs[j]]
+        assert bfs.len > 0 and bfs.len == V.count
+        var sz: [V]1..=V.count = 1
         var heavy: [V]?V = None
-        for u in V:
-            var best = 0
-            for j in k0[u]..k1[u]:
-                if sz[bfs[j]] > best:
-                    best = sz[bfs[j]]
-                    heavy[u] = Some(bfs[j])
+        // children come after their parent in `bfs`, so walking it backwards finishes each
+        // subtree before its parent; `>=` keeps the first of equal children, as `next` lists them
+        for j in (0..bfs.len).rev:
+            let c = bfs[j]
+            if let p = par[c]:
+                sz[p] += sz[c]
+                let h = heavy[p]
+                if h == None or sz[c] >= sz[h!]: heavy[p] = Some(c)
+        // heavy-first preorder without a stack: a vertex's heavy child comes right after it, then
+        // its other children's subtrees in `next` order; each root's tree follows the last one
         var top: [V]V = [V] v => v
         var tin: [V]Int = 0
-        var order: List<V> = []
-        var stack: List<V> = []
-        for r in rs:
-            stack.push(r)
-            while let v = stack.pop():
-                tin[v] = order.len
-                order.push(v)
-                if let p = par[v]:
-                    if heavy[p] == Some(v): top[v] = top[p]
-                for j in (k0[v]..k1[v]).rev:
-                    if heavy[v] != Some(bfs[j]): stack.push(bfs[j])
-                if let h = heavy[v]: stack.push(h)
+        var order = List.filled(bfs.len, bfs[0])
+        var after_roots = 0
+        for u in bfs:
+            if par[u] == None:
+                tin[u] = after_roots
+                after_roots += sz[u]
+            order[tin[u]] = u
+            var at = tin[u] + 1
+            if let h = heavy[u]:
+                tin[h] = at
+                top[h] = top[u]
+                at += sz[h]
+            for j in k0[u]..k1[u]:
+                if heavy[u] != Some(bfs[j]):
+                    tin[bfs[j]] = at
+                    at += sz[bfs[j]]
         domain Order = 0..V.count
         Rooted<V, Order>(
-            rs[0],
+            bfs[0],
             par,
-            [V] v => dep[v],
+            dep,
             far,
-            [V] v => sz[v],
+            sz,
             bfs,
-            [V] v => k0[v],
-            [V] v => k1[v],
+            k0,
+            k1,
             heavy,
             top,
             [V] v => Order.nth(tin[v]),
