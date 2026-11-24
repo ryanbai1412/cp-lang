@@ -111,7 +111,20 @@ fn import_creates_the_problem_and_opens_it_in_the_editor() {
         "executeCommandProvider",
         "commands",
     ]);
-    assert_eq!(commands, &Value::from(vec![Value::from("cpl.import")]));
+    assert_eq!(
+        commands,
+        &Value::from(
+            [
+                "cpl.exec",
+                "cpl.command",
+                "cpl.show",
+                "cpl.clear",
+                "cpl.import"
+            ]
+            .map(Value::from)
+            .to_vec()
+        )
+    );
     let listening = screen.wait_for(|m| m.get("id") == Some(&Value::from(2i64)));
     let port = listening.at(&["result", "port"]).as_u64().unwrap() as u16;
     screen.wait_for(|m| m.at(&["method"]).as_str() == Some("window/showMessage"));
