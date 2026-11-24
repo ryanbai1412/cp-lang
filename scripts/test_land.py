@@ -439,6 +439,7 @@ class LandTest(unittest.TestCase):
         r = self.land(repo, CPL_LAND_LOCK_STALE="1", CPL_LAND_LOCK_WAIT="2")
         self.assertNotEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("taking over", r.stderr)
+        self.assertIn("waiting for the land lock (land-lock other 1 unread infra)", r.stderr)
         self.assertIn("no land lock after", r.stderr)
         self.assertTrue(self.lock_on_remote().startswith(held), self.lock_on_remote())
 

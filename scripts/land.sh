@@ -345,7 +345,7 @@ lock_stale=${CPL_LAND_LOCK_STALE:-120}
 lock_wait=${CPL_LAND_LOCK_WAIT:-1200}
 lock_held=""
 take_lock() {
-    local me holder at waited=0
+    local me holder held_by at waited=0
     while :; do
         # Stamped at each try, so a lock is as old as its holder has held it, not
         # as old as the wait for it: otherwise a long wait makes it look stale at once.
@@ -362,7 +362,8 @@ take_lock() {
             continue
         fi
         git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null || :
-        at=$(git log -1 --format=%s "$holder" 2>/dev/null | cut -d' ' -f4)
+        held_by=$(git log -1 --format=%s "$holder" 2>/dev/null) || held_by="$holder, not fetched"
+        at=$(echo "$held_by" | cut -d' ' -f4)
         # A holder this lane can't read (the fetch lost a race, or no stamp) is
         # never stale: it may be live, so wait and look again.
         case "$at" in '' | *[!0-9]*) at=$(date +%s) ;; esac
@@ -372,7 +373,7 @@ take_lock() {
                 { lock_held=$me; return 0; }
             continue
         fi
-        [ "$waited" != 0 ] || echo "land: waiting for the land lock ($(git log -1 --format=%s "$holder"))" >&2
+        [ "$waited" != 0 ] || echo "land: waiting for the land lock ($held_by)" >&2
         [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; return 1; }
         sleep 2
         waited=$((waited + 2))
