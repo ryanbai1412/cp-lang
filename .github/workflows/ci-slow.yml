@@ -100,8 +100,8 @@ jobs:
         run: |
           mapfile -t ids < <(ls corpus/problems/*/dream.cp | cut -d/ -f3 |
             awk -v s=${{ matrix.shard }} '(++n - 1) % 2 == s - 1')
-          uv run --quiet python scripts/corpus.py make --cpl target/ci/cpl "${ids[@]}" >/dev/null
-          uv run --quiet python scripts/corpus.py verify --check --only dream --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
+          just corpus-tests-make --cpl target/ci/cpl "${ids[@]}" >/dev/null
+          just corpus-verify --check --only dream --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
 
   # Coverage of each crate by its own tests and by all (handbook/process/quality.md#how-suites-are-measured).
   coverage:

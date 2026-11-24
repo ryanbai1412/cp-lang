@@ -82,6 +82,10 @@ debugger-loop:
 acceptance *args:
     uv run --quiet python research/acceptance/regress.py {{args}}
 
+# Follow getting-started from a fresh install on this OS (CI: acceptance.yml `install-cli`).
+acceptance-steps os:
+    research/acceptance/ci-steps.sh "{{os}}"
+
 # Run the Rust workspace test suite via cargo-nextest (or cargo test).
 test *args:
     cargo nextest run --workspace {{args}}
