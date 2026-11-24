@@ -1185,11 +1185,109 @@ def _workflow_lines(root: Path) -> Iterator[tuple[str, int, str]]:
                 yield rel, i, line
 
 
-def _grep_all(root: Path, pattern: str) -> list[str]:
-    """`file:line` for every tracked line matching `pattern`, the ratchet and its test aside."""
+def _grep_all(root: Path, pattern: str, *paths: str, flags: tuple[str, ...] = ()) -> list[str]:
+    """`file:line` for every tracked line under `paths` (default all) matching `pattern`,
+    one per match, the ratchet and its test aside."""
     return [":".join(hit.split(":", 2)[:2]) for hit in
-            _git(root, "grep", "-n", "-E", pattern, "--", ".", ":!scripts/debt-ratchet.py",
-                 ":!scripts/test_debt_ratchet.py")]
+            _git(root, "grep", "-n", "-o", *flags, "-E", "-e", pattern, "--", *(paths or (".",)),
+                 ":!scripts/debt-ratchet.py", ":!scripts/test_debt_ratchet.py")]
+
+
+TEST_PATHS = ("crates/*/tests/**", "crates/**/tests.rs", "crates/**/*_tests.rs", "crates/**/tests/**",
+              "scripts/test_*", "bench/test_*", "web/tests/**", "web/**/*.test.*")
+
+
+def allow_attrs(root: Path) -> list[str]:
+    """`#[allow(...)]` and `#![allow(...)]` in crates: a lint silenced instead of answered."""
+    return _grep_all(root, r"#!?\[allow\(", "crates/**/*.rs")
+
+
+def unsafe_blocks(root: Path) -> list[str]:
+    """`unsafe {`, `unsafe fn`, `unsafe impl` in crates."""
+    return _grep_all(root, r"\bunsafe (\{|fn\b|impl\b)", "crates/**/*.rs")
+
+
+def cpl_env_reads(root: Path) -> list[str]:
+    """`var("CPL_…")`/`var_os("CPL_…")` in crates outside the one config module: a second config channel."""
+    return [h for h in _grep_all(root, r"var(_os)?\(\"CPL_", "crates/**/*.rs")
+            if not CONFIG_MODULES or _outside(h, CONFIG_MODULES)]
+
+
+def test_sleeps(root: Path) -> list[str]:
+    """Sleeps in tests: a wait for a race instead of an event."""
+    return _grep_all(root, r"sleep\(|time\.sleep|setTimeout\(|waitForTimeout", *TEST_PATHS)
+
+
+def ci_retries(root: Path) -> list[str]:
+    """`--retry`/`--retries` in workflows, scripts and the justfile: a failure tried again."""
+    return _grep_all(root, r"--retr(y|ies)\b", ".github", "scripts", "justfile")
+
+
+def hardcoded_codes(root: Path) -> list[str]:
+    """String literals naming a checker code (`E0123`) in shipped code outside cpl-check and cpl-diag."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if _outside(rel, ("crates/cpl-check/", "crates/cpl-diag/"))
+            for _ in re.finditer(r'"[^"\n]*\bE\d{4}\b', line)]
+
+
+def xfail_markers(root: Path) -> list[str]:
+    """`xfail`/known-fail/expected-fail markers, `// gap:` lines on failing conformance
+    cases (decision 515), and lines of known-fail lists (web a11y)."""
+    return _grep_all(root, r"xfail|known[-_]fail|expected[-_]fail", flags=("-i",)) + \
+        _grep_all(root, r"^// gap:", "spec/conformance") + _registered_entries(root, "xfail_markers")
+
+
+def todo_fixme(root: Path) -> list[str]:
+    """`TODO`/`FIXME` in std, web and scripts."""
+    return _grep_all(root, r"\b(TODO|FIXME)\b", "std", "web", "scripts")
+
+
+def web_skip_only(root: Path) -> list[str]:
+    """`.skip(`/`.only(` in web tests: a test that doesn't run, or that stops the rest running."""
+    return _grep_all(root, r"\.(skip|only)\(", "web")
+
+
+def ts_ignore(root: Path) -> list[str]:
+    """`@ts-ignore`/`@ts-nocheck` in web: a type error silenced."""
+    return _grep_all(root, r"@ts-(ignore|nocheck)", "web")
+
+
+HABIT_FILES = ("crates/cpl-syntax/src/parser/foreign.rs", "crates/cpl-syntax/src/parser/c_decl.rs",
+               "crates/cpl-check/src/check/advice.rs")
+
+
+def habit_matchers(root: Path) -> list[str]:
+    """`fn` items in hand-written habit matchers: the named files and any crates file named
+    foreign/habit/advice (Consumers; a generated habit table replaces them)."""
+    files = {rel for rel in _git(root, "ls-files", "crates/**/*.rs")
+             if rel in HABIT_FILES or re.search(r"foreign|habit|advice", Path(rel).name)}
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if rel in files and re.match(r"\s*(pub(\([^)]*\))?\s+)?fn\s", line)]
+
+
+FIX_GATE = ("crates/cpl-ir/src/fix.rs", "crates/cpl-lint/src/typed.rs")
+
+
+def unchecked_fix_paths(root: Path) -> list[str]:
+    """Raw fix appliers called outside the one re-checking gate, and the ungated
+    `fn apply_` definitions in cpl-diag/src/fix.rs."""
+    calls = [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+             if rel not in FIX_GATE and rel != "crates/cpl-diag/src/fix.rs"
+             and re.search(r"\b(apply_fixes|apply_error_fixes|apply_lint_fixes)\(", line)
+             and not re.search(r"\bfn\s", line)]
+    defs = [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-diag/src")
+            if rel == "crates/cpl-diag/src/fix.rs" and re.search(r"\bfn apply_", line)]
+    return calls + defs
+
+
+def stress_engines(root: Path) -> list[str]:
+    """Stress-case runners picking a verdict: `fn run_case|stress_source|judge_case`
+    definitions in cpl-stress, plus files besides judge.rs constructing `Verdict::`."""
+    lines = list(_src_lines(root, "crates/cpl-stress/src"))
+    defs = [f"{rel}:{i}" for rel, i, line in lines if re.search(r"\bfn (run_case|stress_source|judge_case)\b", line)]
+    files = sorted({rel for rel, _, line in lines
+                    if "Verdict::" in line and Path(rel).name != "judge.rs"})
+    return defs + [f for f in files if not any(d.startswith(f + ":") for d in defs)]
 
 
 def or_true(root: Path) -> list[str]:
@@ -1364,7 +1462,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "spec/idioms/lints-known.txt": ("idiom_lint_gaps", "idioms", "deleted: idioms-catalog.py fails on any finding"),
     "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "fix each example"),
     "web/scripts/practice-mutants-equivalent.txt": ("known_lists", "site", "data: equivalent mutants"),
-    "web/tests/a11y-known.txt": ("known_lists", "site", "fix each a11y finding"),
+    "web/tests/a11y-known.txt": ("xfail_markers", "site", "fix each a11y finding"),
     "web/tests/completion-known.txt": ("known_lists", "site", "fix each completion miss"),
     "web/tests/search-known.txt": ("known_lists", "site", "fix each search miss"),
 }
@@ -1397,7 +1495,7 @@ HARD_ZERO = frozenset({
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers",
-    "measure_broken", "mono_unguarded",
+    "measure_broken", "mono_unguarded", "ts_ignore",
     "site_rederived",
     "unrun_script_tests",
     "permits",
@@ -1468,6 +1566,19 @@ COUNTERS = {
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
     "corpus_known": ("entries of corpus/*-known.txt (scoreboard K6, Content)", corpus_known, True),
+    "allow_attrs": ("#[allow(...)] in crates (Core, Consumers)", allow_attrs, True),
+    "unsafe_blocks": ("unsafe blocks, fns and impls in crates (Core)", unsafe_blocks, True),
+    "cpl_env_reads": ("CPL_* env reads outside the config module (Consumers)", cpl_env_reads, True),
+    "test_sleeps": ("sleeps in tests (Factory)", test_sleeps, True),
+    "ci_retries": ("--retry/--retries in CI and scripts (Factory)", ci_retries, True),
+    "hardcoded_codes": ("E0xxx literals outside cpl-check and cpl-diag (Consumers)", hardcoded_codes, True),
+    "xfail_markers": ("xfail/known-fail markers and lists (Content)", xfail_markers, True),
+    "todo_fixme": ("TODO/FIXME in std, web and scripts", todo_fixme, True),
+    "web_skip_only": ("web .skip(/.only( (Factory)", web_skip_only, True),
+    "ts_ignore": ("web @ts-ignore (Factory)", ts_ignore, True),
+    "habit_matchers": ("fns in hand-written habit matchers (Consumers)", habit_matchers, True),
+    "unchecked_fix_paths": ("fix appliers outside the re-checking gate (Consumers)", unchecked_fix_paths, True),
+    "stress_engines": ("stress-case runners picking a verdict (Consumers)", stress_engines, True),
     "dream_unverified": ("dream.cp files with no passing stress record", dream_unverified, True),
     "measure_broken": ("plan measure.py scripts with no test", measure_broken, True),
     "mono_unguarded": ("monomorphization with no termination guard", mono_unguarded, True),

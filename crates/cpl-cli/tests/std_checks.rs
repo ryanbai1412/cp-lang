@@ -68,10 +68,6 @@ fn std_errors_never_grow() {
     );
 }
 
-/// `@test` fns in std that fail today because of a gap outside std, each with
-/// its reason. Drop a line when its test passes; the test below says so.
-const KNOWN_FAILING_STD_TESTS: &[(&str, &str)] = &[];
-
 #[test]
 fn std_own_tests_pass() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -124,7 +120,6 @@ fn std_own_tests_pass() {
             .collect()
     });
     let mut problems = Vec::new();
-    let mut failed = Vec::new();
     for (file, out) in &runs {
         let stdout = String::from_utf8_lossy(&out.stdout);
         let fails: Vec<&str> = stdout
@@ -139,21 +134,7 @@ fn std_own_tests_pass() {
             ));
         }
         for line in fails {
-            let name = line.split(": ").next().unwrap_or(line);
-            failed.push(name.to_string());
-            if !KNOWN_FAILING_STD_TESTS
-                .iter()
-                .any(|(known, _)| *known == name)
-            {
-                problems.push(format!("FAIL {line}"));
-            }
-        }
-    }
-    for (known, why) in KNOWN_FAILING_STD_TESTS {
-        if !failed.iter().any(|f| f == known) {
-            problems.push(format!(
-                "{known} now passes ({why}); drop it from KNOWN_FAILING_STD_TESTS"
-            ));
+            problems.push(format!("FAIL {line}"));
         }
     }
     assert!(

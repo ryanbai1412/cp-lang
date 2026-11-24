@@ -328,6 +328,37 @@ class DebtRatchetTest(unittest.TestCase):
                     mock.patch.object(dr, "rs_over_cap", lambda r, m: {}):
                 self.assertEqual(dr.main(["--zero", "--root", str(root)]), 0)
 
+    def test_addendum_five_counters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "crates/a/src/lib.rs", "#[allow(dead_code)]\nunsafe { x() }\n"
+                        'let v = env::var("CPL_X");\nlet c = "see E0123";\n')
+            self._write(root, "crates/a/tests/t.rs", "std::thread::sleep(d);\n")
+            self._write(root, "scripts/ci.sh", "curl --retry 3 x\n")
+            self._write(root, "web/tests/a.test.ts", "it.skip(x)\n// @ts-ignore\n")
+            self._write(root, "std/a.cp", "// TODO x\n")
+            self._write(root, "spec/conformance/c.cp", "// gap: core 2026-11-24\n")
+            self._write(root, "crates/cpl-check/src/check/advice.rs", "fn a() {}\n    pub(crate) fn b() {}\n")
+            self._write(root, "crates/cpl-stress/src/engine.rs", "fn run_case() {}\n")
+            self._write(root, "crates/cpl-stress/src/cli.rs", "Verdict::Ok\n")
+            self._write(root, "crates/cpl-stress/src/judge.rs", "Verdict::Ok\n")
+            self._write(root, "crates/b/src/lib.rs", "cpl_diag::fix::apply_fixes(x);\n// XFAIL\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.allow_attrs(root), ["crates/a/src/lib.rs:1"])
+            self.assertEqual(dr.unsafe_blocks(root), ["crates/a/src/lib.rs:2"])
+            self.assertEqual(dr.cpl_env_reads(root), ["crates/a/src/lib.rs:3"])
+            self.assertEqual(dr.hardcoded_codes(root), ["crates/a/src/lib.rs:4"])
+            self.assertEqual(dr.test_sleeps(root), ["crates/a/tests/t.rs:1"])
+            self.assertEqual(dr.ci_retries(root), ["scripts/ci.sh:1"])
+            self.assertEqual(dr.web_skip_only(root), ["web/tests/a.test.ts:1"])
+            self.assertEqual(dr.ts_ignore(root), ["web/tests/a.test.ts:2"])
+            self.assertEqual(dr.todo_fixme(root), ["std/a.cp:1"])
+            self.assertEqual(dr.xfail_markers(root), ["crates/b/src/lib.rs:2", "spec/conformance/c.cp:1"])
+            self.assertEqual(len(dr.habit_matchers(root)), 2)
+            self.assertEqual(dr.stress_engines(root), ["crates/cpl-stress/src/engine.rs:1", "crates/cpl-stress/src/cli.rs"])
+            self.assertEqual(dr.unchecked_fix_paths(root), ["crates/b/src/lib.rs:1"])
+
     def test_a_counter_at_zero_is_never_raised(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
