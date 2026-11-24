@@ -94,7 +94,7 @@ pub struct TimeTree<E>:
     /// undos match applies in LIFO order. Children are visited left (earlier times) before right.
     ///
     /// cost: \(O(q + m \log q)\) time and memory for `m` scheduled intervals
-    /// empty: `[]` when `q == 0`
+    /// empty: `TimeTree<Int>(0).steps() == []`
     /// order: DFS order; `Query(t)` appears once per `t`, in increasing `t`
     /// traps: never
     /// example: `TimeTree<Int>(2).steps() == [TimeStep.Query(0), TimeStep.Query(1)]`
@@ -118,7 +118,8 @@ pub struct TimeTree<E>:
         mut out: List<R>,
     ):
         unchecked:
-            let snap = mark()
+            var snap: ?M = None
+            if head[u] != -1: snap = Some(mark())
             var e = head[u]
             while e != -1:
                 apply(ev_val[e])
@@ -130,7 +131,7 @@ pub struct TimeTree<E>:
                 self.run_node(2 * u, nl, mid, mark, apply, answer, undo, mut out)
                 if mid < q:
                     self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
-            undo(snap)
+            if let m = snap: undo(m)
 
     /// Walk the same order as `steps` with callbacks instead of a list.
     ///
@@ -140,7 +141,7 @@ pub struct TimeTree<E>:
     /// events call neither.
     ///
     /// cost: \(O(q + m \log q)\) callback calls for `m` scheduled intervals, \(O(\log q)\) extra stack
-    /// empty: `[]` when `q == 0`
+    /// empty: `TimeTree<Int>(0).run(mark: () => 0, apply: e => (), answer: t => t, undo: m => ()) == []`
     /// order: `[answer(0), ..., answer(q - 1)]`, indexed by time
     /// traps: never (callbacks may trap)
     /// example: `TimeTree<Int>(2).run(mark: () => 0, apply: e => (), answer: t => t * 10, undo: m => ()) == [0, 10]`
@@ -160,7 +161,7 @@ pub struct TimeTree<E>:
     /// form. An empty `r` schedules nothing.
     ///
     /// cost: \(O(\log q)\)
-    /// empty: schedules nothing
+    /// empty: `var tt = TimeTree<Str>(2); tt.add_range(1..1, "e"); tt.steps().len == 2`
     /// traps: when a non-empty `r` reaches outside `0..q`
     /// example: `var tt = TimeTree<Str>(3); tt.add_range(1..3, "e"); tt.steps().len == 7`
     pub fn add_range(mut self, r: Range<Int>, ev: E):
@@ -216,7 +217,7 @@ pub struct TimeTree<E>:
 /// pair of events `i < j` in exactly one call, with `i` in `left` and `j` in `right`.
 ///
 /// cost: \(O(n \log n)\) plus the callbacks; each level copies the halves, \(O(n)\) extra memory
-/// empty: makes no calls; neither does a single event
+/// empty: `var calls = 0; cdq(List<Int>(), on_cross: (l, r) => calls += 1); cdq([7], on_cross: (l, r) => calls += 1); calls == 0`
 /// order: halves keep input order; calls go bottom-up, left subproblem before right
 /// traps: never (the callback may trap)
 /// example: `var pairs = 0; cdq([1, 2, 3], on_cross: (l, r) => pairs += l.len * r.len); pairs == 3`
@@ -239,7 +240,7 @@ pub fn cdq<E>(events: List<E>, on_cross: (List<E>, List<E>) -> ()):
 /// with `add_interval` and `run` gives the same calls.
 ///
 /// cost: \(O(q + m \log q)\) callback calls for `m` items
-/// empty: no items: `[answer(0), ..., answer(q - 1)]` with no `mark`, `apply` or `undo` calls
+/// empty: `var calls = 0; let out = offline_over(2, List<Int>(), by: e => (0, 1), mark: () => 0, apply: e => calls += 1, answer: t => t + 1, undo: m => calls += 1); out == [1, 2] and calls == 0`
 /// order: `[answer(0), ..., answer(q - 1)]`, indexed by time
 /// traps: when an item's non-empty interval reaches outside `0..q`
 /// example: `offline_over(2, [], by: e => (0, 1), mark: () => 0, apply: e => (), answer: t => t + 1, undo: m => ()) == [1, 2]`

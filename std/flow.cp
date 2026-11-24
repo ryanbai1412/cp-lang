@@ -111,7 +111,7 @@ pub struct FlowGraph<V>:
     /// less than `limit`, or `limit` is `None`), `min_cut(s)` and `cut_arcs(s)` are valid.
     ///
     /// cost: \(O(V^2 E)\); \(O(E \sqrt V)\) when every capacity is 1
-    /// ties: among maximum flows, the one Dinic finds scanning arcs in `add` order
+    /// ties: `var g = FlowGraph<0..3>(); let a = g.add(0, 1, Some(1)); let b = g.add(0, 1, Some(1)); g.add(1, 2, Some(1)); g.max_flow(0, 2) == 1 and g.flow(a) == 1 and g.flow(b) == 0`
     /// traps: when `s == t` or `limit` is negative
     /// example: `var g = FlowGraph<0..4>(); g.add(0, 1, Some(3)); g.add(0, 2, Some(2)); g.add(1, 2, Some(1)); g.add(1, 3, Some(2)); g.add(2, 3, Some(3)); g.max_flow(0, 3) == 5`
     /// example: `var g = FlowGraph<0..4>(); g.add(0, 1, Some(3)); g.add(0, 2, Some(2)); g.add(1, 2, Some(1)); g.add(1, 3, Some(2)); g.add(2, 3, Some(3)); g.max_flow(0, 3, limit: Some(4)) == 4 and g.max_flow(0, 3) == 1`
@@ -136,7 +136,7 @@ pub struct FlowGraph<V>:
     /// network, after `max_flow(s, t)` (or `push_relabel(s, t)`) ran to completion.
     ///
     /// cost: \(O(V + E)\)
-    /// ties: the smallest source side among minimum cuts (exactly what `s` reaches)
+    /// ties: `var g = FlowGraph<0..3>(); g.add(0, 1, Some(1)); g.add(1, 2, Some(1)); g.max_flow(0, 2); g.min_cut(0) == [true, false, false]`
     /// order: keyed by `V`
     /// traps: when no completed `max_flow` or `push_relabel` from `s` came since the last `add`, `set_cap` or `reset`
     /// example: `var g = FlowGraph<0..3>(); g.add(0, 1, Some(5)); g.add(1, 2, Some(1)); g.max_flow(0, 2); g.min_cut(0) == [true, true, false]`
@@ -178,7 +178,7 @@ pub struct FlowGraph<V>:
     /// Every arc `add` or `add_both` returned, lazily; never a reverse arc. \(O(1)\) to make.
     ///
     /// cost: \(O(E)\) for the whole walk
-    /// empty: yields nothing before the first `add`
+    /// empty: `FlowGraph<0..2>().arcs.count() == 0`
     /// order: the order `add` returned them
     /// traps: never
     /// example: `var g = FlowGraph<0..3>(); let a = g.add(0, 1, Some(1)); let b = g.add(1, 2, Some(1)); g.arcs.collect() == [a, b]`
@@ -188,7 +188,7 @@ pub struct FlowGraph<V>:
     /// The arcs `add` or `add_both` returned whose source is `u`, lazily; never a reverse arc.
     ///
     /// cost: \(O(\deg u)\) for the whole walk
-    /// empty: yields nothing when no added arc leaves `u`
+    /// empty: `var g = FlowGraph<0..2>(); g.add(0, 1, Some(1)); g.out(1).count() == 0`
     /// order: the order `add` returned them
     /// traps: never
     /// example: `var g = FlowGraph<0..3>(); let a = g.add(0, 1, Some(1)); g.add(1, 2, Some(1)); let c = g.add(0, 2, Some(1)); g.out(0).collect() == [a, c]`
@@ -215,7 +215,7 @@ pub struct FlowGraph<V>:
     /// flow, until it reaches `t`; its amount is the least unclaimed flow on the way.
     ///
     /// cost: \(O(P (V + E))\) for P paths
-    /// empty: yields nothing when no flow goes from `s` to `t`
+    /// empty: `var g = FlowGraph<0..2>(); g.add(0, 1, Some(1)); g.paths(0, 1).count() == 0`
     /// order: discovery order, as above
     /// traps: when `s == t`
     /// example: `var g = FlowGraph<0..4>(); let a = g.add(0, 1, Some(1)); let b = g.add(1, 3, Some(1)); let c = g.add(0, 2, Some(1)); let d = g.add(2, 3, Some(1)); g.max_flow(0, 3); g.paths(0, 3).collect() == [(arcs: [a, b], amount: 1), (arcs: [c, d], amount: 1)]`
@@ -459,7 +459,7 @@ pub struct CostFlow<V>:
     /// Every arc `add` returned, lazily; never a reverse arc. \(O(1)\) to make.
     ///
     /// cost: \(O(E)\) for the whole walk
-    /// empty: yields nothing before the first `add`
+    /// empty: `CostFlow<0..2>().arcs.count() == 0`
     /// order: the order `add` returned them
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(1), 0); let b = g.add(1, 0, Some(1), 0); g.arcs.collect() == [a, b]`
@@ -525,8 +525,10 @@ pub struct CostFlow<V>:
     /// residual path, so the cost added is convex in the amount (see `slope`). Costs may be
     /// negative; the first call with a negative residual arc runs Bellman-Ford once.
     ///
+    /// Of equally cheap flows it returns the one the shortest paths find, Dijkstra breaking ties by least vertex.
+    ///
     /// cost: \(O(F E \log V)\) for F augmenting paths, plus \(O(V E)\) once when a residual arc has a negative cost
-    /// ties: among cheapest flows, the one the shortest paths find (Dijkstra breaking ties by least vertex)
+    /// ties: `var g = CostFlow<0..4>(); let a = g.add(0, 1, Some(1), 1); g.add(1, 3, Some(1), 1); let b = g.add(0, 2, Some(1), 1); g.add(2, 3, Some(1), 1); g.min_cost_flow(0, 3, limit: Some(1)); g.flow(a) == 1 and g.flow(b) == 0`
     /// traps: when `s == t`, `limit` is negative, or the residual network has a negative-cost cycle
     /// example: `var g = CostFlow<0..3>(); g.add(0, 1, Some(2), 1); g.add(1, 2, Some(2), 1); g.add(0, 2, Some(1), 5); g.min_cost_flow(0, 2) == (flow: 3, cost: 9)`
     /// example: `var g = CostFlow<0..3>(); g.add(0, 1, Some(2), 1); g.add(1, 2, Some(2), 1); g.add(0, 2, Some(1), 5); g.min_cost_flow(0, 2, limit: Some(2)) == (flow: 2, cost: 4)`
@@ -623,7 +625,7 @@ pub struct CostFlow<V>:
 /// V + 2 vertices and V + E arcs; `take` is the source side of its minimum cut.
 ///
 /// cost: \(O(V^2 (V + E))\), one `max_flow` on V + 2 vertices and V + E arcs, with \(O(V + E)\) calls of `profit`
-/// ties: the smallest optimal closure (contained in every other)
+/// ties: `domain V = 0..2; let before: [V]List<V> = [[1], []]; let p = [-2, 2]; max_closure(before, profit: v => p[v.ord]) == (value: 0, take: [false, false])`
 /// order: `take` keyed by `V`
 /// traps: never
 /// example: `domain V = 0..3; let before: [V]List<V> = [[], [0], []]; let p = [3, -1, -5]; max_closure(before, profit: v => p[v.ord]) == (value: 2, take: [true, true, false])`
@@ -651,8 +653,8 @@ pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, t
 /// order; repeated entries are harmless.
 ///
 /// cost: \(O(E \sqrt V)\) time, \(O(V + E)\) memory
-/// empty: `(size: 0, ...)` with every entry `None` when `L` or every list is empty
-/// ties: the maximum matching Hopcroft-Karp finds in the scan order above
+/// empty: `domain L = 0..2; domain R = 0..1; let adj: [L]List<R> = [[], []]; let none: [0..0]List<R> = []; max_matching(adj) == (size: 0, mate: [None, None], back: [None]) and max_matching(none).back == [None]`
+/// ties: `domain L = 0..2; domain R = 0..2; let adj: [L]List<R> = [[0, 1], [0, 1]]; max_matching(adj).mate == [Some(0), Some(1)]`
 /// traps: never
 /// ```cp
 /// domain L = 0..2
@@ -726,8 +728,8 @@ fn flip_path<L, R>(path: List<L>, end: R, mut mate: [L]?R, mut back: [R]?L):
 /// right vertices inside it; this cover does not depend on which maximum matching is used.
 ///
 /// cost: \(O(E \sqrt V)\)
-/// empty: nothing marked when there are no edges
-/// ties: the König cover above
+/// empty: `domain L = 0..2; domain R = 0..1; let adj: [L]List<R> = [[], []]; min_vertex_cover(adj) == (left: [false, false], right: [false])`
+/// ties: `domain L = 0..1; domain R = 0..1; let adj: [L]List<R> = [[0]]; min_vertex_cover(adj) == (left: [true], right: [false])`
 /// order: `left` keyed by `L`, `right` keyed by `R`
 /// traps: never
 /// ```cp
@@ -769,8 +771,10 @@ fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?La
 /// `total`, the sum of `weight(l, mate[l])`. Needs `L.count <= R.count`; with fewer left vertices
 /// some of `R` stay unused.
 ///
+/// Of equal-total assignments it returns the one the Hungarian algorithm finds adding rows in increasing order and scanning columns in increasing order.
+///
 /// cost: \(O(L^2 R)\) time, \(O(L R)\) calls of `weight`, by the Hungarian algorithm
-/// ties: the assignment the Hungarian algorithm finds adding rows in increasing order and scanning columns in increasing order
+/// ties: `domain L = 0..2; domain R = 0..2; max_weight_matching<L, R>(weight: (_, _) => 1).mate == [0, 1]`
 /// order: `mate` keyed by `L`
 /// traps: when `L.count > R.count`
 /// ```cp
@@ -793,8 +797,10 @@ pub fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L
 /// The minimum-weight assignment: every `l` in `L` gets a distinct `mate[l]` in `R`, minimizing
 /// `total`, the sum of `weight(l, mate[l])`. Needs `L.count <= R.count`.
 ///
+/// Of equal-total assignments it returns the one the Hungarian algorithm finds adding rows in increasing order and scanning columns in increasing order.
+///
 /// cost: \(O(L^2 R)\) time, \(O(L R)\) calls of `weight`, by the Hungarian algorithm
-/// ties: the assignment the Hungarian algorithm finds adding rows in increasing order and scanning columns in increasing order
+/// ties: `domain L = 0..2; domain R = 0..2; min_weight_matching<L, R>(weight: (_, _) => 1).mate == [0, 1]`
 /// order: `mate` keyed by `L`
 /// traps: when `L.count > R.count`
 /// ```cp
@@ -865,7 +871,7 @@ fn hungarian<L, R>(cost: (L, R) -> Int) -> [L]R:
 /// scanning `adj[v]` in list order; that fixes which maximum matching comes back.
 ///
 /// cost: \(O(V³)\)
-/// empty: `size == 0` and every `mate` `None` when there are no edges
+/// empty: `domain V = 0..2; let adj: [V]List<V> = [[], []]; general_matching(adj) == (size: 0, mate: [None, None])`
 /// traps: never
 /// ```cp
 /// domain V = 0..4
@@ -1183,8 +1189,10 @@ struct Blossom:
 ///
 /// Edges with `w <= 0` never help and are ignored; of parallel edges the heaviest counts.
 ///
+/// Of equal-total matchings `mate` is the one the algorithm finds; `total` is exact.
+///
 /// cost: \(O(V³)\) time, \(O(V^2)\) memory, by Edmonds' weighted blossom algorithm with dual labels
-/// ties: the matching the algorithm finds; `total` is exact
+/// ties: `domain E = 0..2; domain V = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 1)]; max_weight_general_matching(es) == (total: 1, mate: [Some(1), Some(0), None])`
 /// traps: never
 /// ```cp
 /// domain E = 0..3
@@ -1271,7 +1279,7 @@ pub fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int:
 /// but `s` and `t`, or `None` when no such flow exists. `value` is the net flow out of `s`.
 ///
 /// cost: \(O(V^2 (V + E))\), two `max_flow`s on V + 2 vertices and E + V + 1 arcs
-/// ties: among maximum flows, the one the two `max_flow`s find
+/// ties: `domain E = 0..3; domain V = 0..3; let es: [E](u: V, v: V, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 0, hi: 1), (u: 0, v: 1, lo: 0, hi: 1), (u: 1, v: 2, lo: 0, hi: 1)]; max_bounded_flow(es, 0, 2) == Some((value: 1, flow: [1, 0, 1]))`
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`, or `s == t`
 /// ```cp
@@ -1298,7 +1306,7 @@ pub fn max_bounded_flow<V, E>(
 /// when no such flow exists.
 ///
 /// cost: as `max_bounded_flow`
-/// ties: among minimum flows, the one the two `max_flow`s find
+/// ties: `domain E = 0..3; domain V = 0..3; let es: [E](u: V, v: V, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 0, hi: 1), (u: 0, v: 1, lo: 0, hi: 1), (u: 1, v: 2, lo: 1, hi: 1)]; min_bounded_flow(es, 0, 2) == Some((value: 1, flow: [1, 0, 1]))`
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`, or `s == t`
 /// ```cp
@@ -1361,7 +1369,7 @@ fn bounded_flow<V, E>(
 /// parent `u`.
 ///
 /// cost: \(O(V \cdot \mathit{flow})\) for flow the cost of one max flow on the network: `V.count - 1` of them, each \(O(V^2 E)\), so \(O(V^3 E)\) worst case
-/// empty: `[]` when `V` has at most one position
+/// empty: `domain E = 0..0; domain V = 0..1; let es: [E](u: V, v: V, w: Int) = []; gomory_hu(es) == []`
 /// order: one edge per vertex but `V.first`, by increasing `u`; `v` is its parent
 /// traps: when some `w` is negative
 /// ```cp
@@ -2046,7 +2054,7 @@ pub struct Matching<L, R>:
 /// most one is used.
 ///
 /// cost: \(O(F E \log V)\), F = matching size
-/// ties: the matching successive shortest paths finds, fewer pairs first
+/// ties: `domain E = 0..3; domain L = 0..2; domain R = 0..2; let es: [E](l: L, r: R, w: Int) = [(l: 0, r: 0, w: 2), (l: 0, r: 1, w: 1), (l: 1, r: 0, w: 1)]; best_matching(es) == Some((total: 2, mate: [Some(0), None], used: [true, false, false]))`
 /// order: `mate` keyed by `L`, `used` keyed by `E`
 /// traps: when `size` is negative, or a weight times `L.count + 1` overflows
 /// ```cp
@@ -2108,8 +2116,10 @@ pub fn best_matching<L, R, E>(
 /// A pair can match only when each lists the other. The result is the stable matching best for
 /// every `l`, which is unique.
 ///
+/// An empty `L` gives `[]`.
+///
 /// cost: \(O(L R)\)
-/// empty: `[]` when `L` is empty; `None` for every `l` whose list is empty
+/// empty: `domain L = 0..2; domain R = 0..1; let pl: [L]List<R> = [[], [0]]; let pr: [R]List<L> = [[1]]; stable_matching(pl, pr) == [None, Some(0)]`
 /// traps: when a preference list names the same vertex twice
 /// ```cp
 /// domain L = 0..2
@@ -2451,7 +2461,7 @@ pub struct ColorMatroid<E, C>:
     /// elements of each colour `c`.
     ///
     /// cost: \(O(E + C)\) to check `limit` and size its arrays; each `rebuild` is \(O(E)\)
-    /// empty: with no elements only the empty set exists and every query is `false`
+    /// empty: `domain C = 0..1; domain E = 0..0; let col: [E]C = []; let lim: [C]Int = [1]; matroid_intersection(ColorMatroid(col, lim), ColorMatroid(col, lim)) == []`
     /// traps: when some `limit[c]` is negative
     /// ```cp
     /// domain C = 0..2
@@ -2484,7 +2494,7 @@ impl Matroid<E> for ColorMatroid<E, C>:
 /// with `CostFlow.cancel_cycles`.
 ///
 /// cost: \(O(V^2 (V + E) + V E \lvert c \rvert)\) for the returned cost `c`: one `circulation`, then one `cancel_cycles` on V vertices and 2E arcs
-/// ties: among cheapest circulations, the one `cancel_cycles` finds
+/// ties: `domain E = 0..2; domain V = 0..2; let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 0, hi: 1, cost: 0), (u: 1, v: 0, lo: 0, hi: 1, cost: 0)]; min_cost_circulation(es) == Some((cost: 0, flow: [0, 0]))`
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`
 /// ```cp
