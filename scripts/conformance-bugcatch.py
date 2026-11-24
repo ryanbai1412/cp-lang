@@ -86,7 +86,8 @@ def broken(base, got):
 
 def run_suite(wt, env, board, runner=None):
     """`runner` is HEAD's cpl-conform: it drives that tree's `cpl` binary
-    through `CPL_CONFORM_CLI`."""
+    through `CPL_CONFORM_CLI`. The suite runs in `wt`, so `board` is made absolute."""
+    board = Path(board).absolute()
     crates = ["-p", "cpl-cli"] if runner else ["-p", "cpl-conform", "-p", "cpl-cli"]
     build = subprocess.run(["cargo", "build", "--release", "-q", *crates], cwd=wt, env=env,
                            capture_output=True, text=True, check=False)

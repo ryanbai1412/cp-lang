@@ -157,7 +157,7 @@
   "continue_on_error": 0,
   "dream_unverified": 421,
   "measure_broken": 0,
-  "mono_unguarded": 1,
+  "mono_unguarded": 0,
   "std_shadowed": 55,
   "corpus_walkers": 49,
   "unregistered_lists": 0,
