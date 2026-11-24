@@ -67,6 +67,7 @@ jobs:
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
           RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
+          . scripts/retry.sh
           go=true
           case "$EVENT" in
             workflow_run)
@@ -78,7 +79,7 @@ jobs:
                 # oldest selects, so two can't each wait for the other.
                 # The release object keeps its first publish time; latest.json's
                 # upload time is when edge last moved.
-                last=$(gh release view edge -R "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.name == "latest.json") | .updatedAt' 2>/dev/null || true)
+                last=$(retry gh release view edge -R "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.name == "latest.json") | .updatedAt')
                 age=$(( $(date +%s) - $(date -d "${last:-1970-01-01T00:00:00Z}" +%s) ))
                 busy=$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --status in_progress \
                   --json databaseId --jq "[.[] | select(.databaseId < $GITHUB_RUN_ID)] | length")
@@ -92,7 +93,7 @@ jobs:
                     echo "edge moved ${age}s ago; waiting $((3600 - age))s, then selecting"
                     sleep $((3600 - age))
                   fi
-                  sha=$(scripts/release/shippable.sh || true)
+                  sha=$(scripts/release/shippable.sh)
                   [ -n "$sha" ] || { echo "no shippable main commit yet; skipping"; sha=$RUN_SHA; go=false; }
                 fi
               fi
@@ -101,9 +102,10 @@ jobs:
               # waiting trigger replaces any older one.
               # Edge's commit is latest.json's: the tag lags when GITHUB_TOKEN
               # can't move it (decision 386).
-              edge=$(curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/edge/latest.json" | jq -r '.commit // empty' 2>/dev/null || true)
+              edge=$(fetch_optional "https://github.com/$GITHUB_REPOSITORY/releases/download/edge/latest.json")
+              edge=$(jq -r '.commit // empty' <<<"${edge:-null}")
               if [ -n "$edge" ]; then
-                rel=$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$edge" --jq .status 2>/dev/null || true)
+                rel=$(retry gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$edge" --jq .status)
                 if [ "$rel" = identical ] || [ "$rel" = ahead ]; then
                   echo "edge ($edge) already includes $sha; skipping"
                   go=false
@@ -125,9 +127,10 @@ jobs:
                 # Hourly: edge ships the newest commit whose shipping jobs
                 # passed (scripts/release/shippable.sh), if edge lacks it.
                 sha=$(scripts/release/shippable.sh)
-                edge=$(curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/edge/latest.json" | jq -r '.commit // empty' 2>/dev/null || true)
+                edge=$(fetch_optional "https://github.com/$GITHUB_REPOSITORY/releases/download/edge/latest.json")
+                edge=$(jq -r '.commit // empty' <<<"${edge:-null}")
                 if [ -n "$sha" ] && [ -n "$edge" ]; then
-                  rel=$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$edge" --jq .status 2>/dev/null || true)
+                  rel=$(retry gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$edge" --jq .status)
                   if [ "$rel" = identical ] || [ "$rel" = ahead ]; then
                     echo "edge ($edge) already includes $sha; skipping"; go=false
                   fi
