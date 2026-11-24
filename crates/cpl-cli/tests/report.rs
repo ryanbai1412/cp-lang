@@ -130,20 +130,20 @@ fn ice_hook_saves_crash_bundle_and_report_last_includes_backtrace() {
     let src_path = dir.join("repro.cp");
     std::fs::write(&src_path, "print(1 + 2)\n").unwrap();
 
-    // 1. Trigger a real panic in the `cpl` binary.
-    let ice = Command::new(cpl_bin())
-        .current_dir(&dir)
-        .env("CPL_CRASH_DIR", &crash_dir)
-        .env("CPL_FORCE_ICE", "1")
-        .args(["check", src_path.to_str().unwrap()])
-        .output()
-        .unwrap();
-
-    assert!(!ice.status.success(), "ICE must exit non-zero");
-    let ice_stderr = String::from_utf8_lossy(&ice.stderr);
-    assert!(
-        ice_stderr.contains("this is a cpl bug: run `cpl report --last`"),
-        "missing ICE hint on stderr:\n{ice_stderr}"
+    // 1. Break an invariant under the hook `cpl` installs, as its `main` does.
+    std::env::set_var(cpl_env::CRASH_DIR.name(), &crash_dir);
+    cpl_cli::set_crash_context(&["check".to_string(), src_path.to_str().unwrap().to_string()]);
+    let said = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let sink = said.clone();
+    cpl_cli::install_ice_hook_saying(move |hint| sink.lock().unwrap().push(hint.to_string()));
+    let ice = std::panic::catch_unwind(|| {
+        cpl_cli::invariant::broken_invariant("the ICE report test breaks this on purpose")
+    });
+    let _ = std::panic::take_hook();
+    assert!(ice.is_err(), "a broken invariant must panic");
+    assert_eq!(
+        *said.lock().unwrap(),
+        ["this is a cpl bug: run `cpl report --last`"]
     );
 
     // 2. Verify crash bundle was saved under CPL_CRASH_DIR/<ts>/.
@@ -181,7 +181,7 @@ fn ice_hook_saves_crash_bundle_and_report_last_includes_backtrace() {
     let md = std::fs::read_to_string(&report_path).unwrap();
     assert!(md.contains("## ICE backtrace"), "{md}");
     assert!(
-        md.contains("no ICE is forced: CPL_FORCE_ICE is unset"),
+        md.contains("broken invariant: the ICE report test breaks this on purpose"),
         "{md}"
     );
     assert!(md.contains("## Source (`repro.cp`)"), "{md}");

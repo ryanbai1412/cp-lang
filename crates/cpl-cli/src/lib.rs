@@ -40,7 +40,7 @@ use build::{build_file, take_judge, BuildOptions};
 use check::{check, fix};
 use unit_tests::{run_unit_tests, should_run_unit_tests};
 
-pub use report::{install_ice_hook, set_crash_context};
+pub use report::{install_ice_hook, install_ice_hook_saying, set_crash_context};
 
 use cpl_diag::Shown;
 use std::io::Write;
