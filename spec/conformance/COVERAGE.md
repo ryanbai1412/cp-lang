@@ -1134,7 +1134,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **range** (15/16 named by a case)
   - uncovered: `RingRange`
 - **search** (11/11 named by a case)
-- **segtree** (57/57 named by a case)
+- **segtree** (66/66 named by a case)
 - **seq** (218/225 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rebased`, `StepKeys`, `SubseqStep`, `Ring`
 - **slope** (39/39 named by a case)
@@ -1150,7 +1150,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (21/22 named by a case)
   - uncovered: `Undo`
 
-2287 of 2399 std items are named by a case.
+2296 of 2408 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

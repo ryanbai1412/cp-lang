@@ -100,6 +100,24 @@ A pool of mergeable sets of positions of `D`, each stored as a sparse binary seg
 - `fn first_ge(self, s: MergeSeg<D>, x: D) -> ?D` — \(O(\log \lvert D \rvert)\); The smallest position of `s` at or after `x`, or `None`.
 - `fn any_in(self, s: MergeSeg<D>, r: Range<D>) -> Bool` — \(O(\log \lvert D \rvert)\); Whether `s` holds a position in `r`.
 
+## `struct MergeTree<D>`
+
+One tree of values in a `MergeTrees<D, Z>` pool: a handle, so copying it is O(1).
+
+## `struct MergeTrees<D, Z: Add + Mul>`
+
+A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
+
+Fields: `ls: List<Int>`, `rs: List<Int>`, `sm: List<Z>`, `tag: List<Z>`.
+
+- `fn new() -> MergeTrees<D, Z>` — \(O(1)\); An empty pool.
+- `fn set(mut self, mut t: MergeTree<D>, x: D, v: Z)` — \(O(\log \lvert D \rvert)\) time and new nodes; Sets position `x` of `t` to `v`.
+- `fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z` — \(O(\log \lvert D \rvert)\); The sum of `t` over the positions in `r`.
+- `fn get(self, t: MergeTree<D>, x: D) -> Z` — \(O(\log \lvert D \rvert)\); The value of `t` at `x`.
+- `fn total(self, t: MergeTree<D>) -> Z` — \(O(1)\); The sum of every value of `t`.
+- `fn scale(mut self, t: MergeTree<D>, k: Z)` — \(O(1)\); Multiplies every value of `t` by `k`.
+- `fn merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D>` — \(O(\log \lvert D \rvert)\) amortized per `set`, over a sequence of merges whose results; The tree holding `leaf(a[x], b[x], pre_a, pre_b)` at each position `x`, where `pre_a` and `pre_b` are the sums of `a` and `b` over the positions before `x`, plus the `pre_a:` and `pre_b:` arguments (0 by default).
+
 ## Example
 
 ```cp
