@@ -216,3 +216,20 @@ fn when_keeps_a_finding_only_where_the_hole_is_proven_in_bounds() {
     let src = "let n: 1..=100 = read()\nlet k: 1..=10 = read()\nlet m: 0..=10 = read()\nlet j: Int = read()\nprint((n + k - 1) / k, (n + 4 - 1) / 4, (n + m - 1) / m, (n + j - 1) / j, (n + 0 - 1) / 0)\n";
     assert_eq!(found(src), ["up(n, k)", "up(n, 4)"]);
 }
+
+/// A run ending in a block is replaced up to its last token, so the fix
+/// keeps the next statement's line and indent. Rule: R06.4.9.
+#[test]
+fn a_run_ending_in_a_block_is_replaced_up_to_its_last_token() {
+    let decl = "@lint(totals, from: \"var p = [0]\\nfor x in xs:\\n    p.push(p.last! + x)\", to: \"let p = totals(xs)\")\npub fn totals(xs: List<Int>) -> Int:\n    xs.len\n";
+    let src = format!("{decl}fn f(a: List<Int>):\n    var s = [0]\n    for v in a:\n        s.push(s.last! + v)\n    print(s.len)\nf([1])\n");
+    let spans: Vec<&str> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "totals")
+        .map(|d| &src[d.fixes[0].edits[0].0.start as usize..d.fixes[0].edits[0].0.end as usize])
+        .collect();
+    assert_eq!(
+        spans,
+        ["var s = [0]\n    for v in a:\n        s.push(s.last! + v)"]
+    );
+}

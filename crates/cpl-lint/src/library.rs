@@ -301,7 +301,12 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         };
         let mut taken: Vec<Span> = Vec::new();
         for site in sites {
-            let span = Span::new(site[0].start, site[site.len() - 1].end);
+            // Up to the last token: a block statement's span runs on to the
+            // next line's indent, which the fix must keep.
+            let Some((_, stop)) = tok_range(&site[site.len() - 1]) else {
+                continue;
+            };
+            let span = Span::new(site[0].start, toks[stop - 1].span.end);
             if (d.module.is_empty() && d.decl.item.contains(span))
                 || taken.iter().any(|t| t.contains(span))
             {

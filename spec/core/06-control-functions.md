@@ -185,7 +185,8 @@ library or by this spec:
   variable, a `fn` it declares and that fn's parameters), which
   match any name consistently. A finding names the lint (`warning[name]`),
   is in the `idiom` group, warns by default, and `with lint(name: allow)`
-  turns it off; its fix is `to` with each hole replaced by what it matched.
+  turns it off; its fix is `to` with each hole replaced by what it matched,
+  written over the matched code up to its last token.
   `holes: "a, b"` names more holes than the fn's parameters (a domain or a
   bound the call no longer needs); `to` may drop one of those only when it
   matched an expression that calls nothing. `when: "b >= 1"` keeps a
