@@ -9,7 +9,7 @@ Cold review against the idiomatic checklist.
 - R3: std `Mat` and `**`, no hand-written squaring loop.
 - R5: `k: 1..=1e18`, `adj: [V, V]0..=1`.
 - R6: passes: `walks.sum()` reads no entry back by `Int` index; `Mat` itself is not keyed by `V`.
-- R10: 0.96x since 88fdf8bab (was 1.17x).
+- R10: 0.87x since 7e3ff18e1 (0.96x after 88fdf8bab, 1.17x before).
 
 ## Checklist failures
 

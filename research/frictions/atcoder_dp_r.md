@@ -49,6 +49,7 @@ print(walks.sum())
   loop it runs 7.3 ms against the AC's 9.8 ms (0.74x, median of 41, same output); fusing the two
   reductions into one `%` (Perf's measurement) reaches parity, 9.8 ms.
 - Severity: low (11 ms against a 2000 ms limit).
-- Fixed: 88fdf8bab writes a residue add of a product as one `%` (0.96x, re-measured here).
-  Lazy reduction (0.74x) stays owed in plan/domains/perf/PLAN.md.
-- Owner: Perf (the lazy residue dot product).
+- Fixed: 88fdf8bab writes a residue add of a product as one `%` (0.96x); 7e3ff18e1 sums a
+  residue matrix product unreduced and reduces once per run: 9.1 ms against the AC's 10.6 ms
+  (0.87x, median CPU of 15 at --max, same output).
+- Owner: Perf (lazy residue product landed in 7e3ff18e1).
