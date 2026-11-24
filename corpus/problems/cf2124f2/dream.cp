@@ -31,8 +31,8 @@ repeat m:
     bads[diag_of(c, val - 1)].push(c)
 for d in Diag: bads[d].sort()
 
-fn next_bad(d: Diag, from: Cut) -> Cut = bads[d].first_ge(from) ?? Cut.last!
-fn wrap_limit(c: Cut) -> Cut = if c < Cut.last: next_bad(diag_of(c, 0), from: c) else: Cut.last
+fn next_bad(d: Diag, from: Cut) -> Cut = if let k = bads[d].first_ge(from): bads[d][k] else: Cut.last!
+fn wrap_limit(c: Cut) -> Cut = if c < Cut.last!: next_bad(diag_of(c, 0), from: c) else: Cut.last!
 
 var dp: [Cut]Z = 0
 dp[Cut.first!] = 1
@@ -44,13 +44,12 @@ for c in Cut:
     let wlim = wrap_limit(c)
     for x0 in 0..n:
         let v = wrap[x0].advance(c)
-        if let t = c + x0, t <= wlim: dp[t] += v
-    if c < Cut.last:
-        for j in c + 2..=wlim:
-            let lim = min(j + (j - c) - 1, wrap_limit(j))
-            overcount.add(j + 1..=lim, dp[c])
+        if let t = c.next(x0), t <= wlim: dp[t] += v
+    if c < Cut.last!:
+        for j in c.after.clip(..=wlim):
+            overcount.add(j.after.take(j - c - 1).clip(..=wrap_limit(j)), dp[c])
         for x0 in 0..n:
-            let j_lim = min(Cut.last - x0, next_bad(diag_of(c, x0), from: c))
-            wrap[x0].add(c + 1..=j_lim, dp[c])
+            let j_lim = min(Cut(n - x0), next_bad(diag_of(c, x0), from: c))
+            wrap[x0].add(c.after.clip(..=j_lim), dp[c])
 
 print(dp[Cut.last!])

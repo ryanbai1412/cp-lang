@@ -32,7 +32,7 @@ fn cyclic_window_sum(ways: [Pos]Z, len: Int) -> [Pos]Z:
     let (full, rem) = len.divmod(n)
     let total = ways.sum()
     let pref = prefix(ways)
-    [Pos] p => total * full + pref.cyclic_sum(p - (rem - 1)..=p)
+    [Pos] p => total * full + pref.cyclic_sum(ways.ring.span(ways.ring.step(p, 1 - rem), rem))
 
 var dp: [0..=k_max, Pos]Z = 0
 for i in 1..=l + k_max:
@@ -54,6 +54,6 @@ for i in 1..=l + k_max:
         if k > 0:
             let c_fake = k * inv_i * p_key
             for p in Pos: next_row[p] += c_fake * dp[k - 1, Pos.wrap(Int(p) - (i - k))]
-        dp[k] = next_row
+        for p in Pos: dp[k, p] = next_row[p]
 
 print([dp[k_max, p] for p in Pos])
