@@ -309,6 +309,10 @@ A std item states the names it replaced, `@was(Prefix1, PrefixN)` above
 naming the new one, with the fix (and a word built on the type, the
 snake-case forms: `prefix_n`). Status: checks
 (`std-prefix/was-diff1-names-diff.cp`).
+A fn states its older names the same way, `@was(bsearch_last)` above
+`pub fn last_true`; a program calling `r.bsearch_last(..)` gets E0503
+naming the fn, with the fix. Status: checks
+(`std-search/last-true-was-bsearch-last.cp`).
 A fn states other languages' names for it, `@aka(upper, toUpperCase)` above
 `pub fn to_upper(self: Str)`; a program calling `s.upper()` on that
 receiver type gets E0203 naming the fn, with the fix. `@aka` is an

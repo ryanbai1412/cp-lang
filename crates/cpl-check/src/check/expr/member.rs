@@ -565,19 +565,11 @@ impl<'a> Checker<'a> {
             return Ty::Error;
         }
         let renamed = match name.text.as_str() {
-            "bsearch_first" => Some((
-                "first_true",
-                "`r.first_true(ok)` gives the first element where `ok` holds, as `?`",
-            )),
-            "bsearch_last" => Some((
-                "last_true",
-                "`r.last_true(ok)` gives the last element where `ok` holds, as `?`",
-            )),
             "bounds" if matches!(base_ty, Ty::Domain(_)) => Some((
                 "cuts",
-                "`D.cuts` is the gaps between and around `D`'s positions",
+                Some("`D.cuts` is the gaps between and around `D`'s positions".to_string()),
             )),
-            _ => None,
+            old => crate::prelude::renamed(old).map(|to| (to, None)),
         };
         if let Some((to, help)) = renamed {
             if let Some(diag) = self.report(
@@ -585,7 +577,7 @@ impl<'a> Checker<'a> {
                 msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0,
                 &[&name.text, &to],
             ) {
-                diag.help = Some(help.to_string());
+                diag.help = help;
                 diag.fixes.push(cpl_diag::Fix {
                     title: format!("use `.{to}`"),
                     edits: vec![(name.span, to.to_string())],

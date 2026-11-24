@@ -92,6 +92,7 @@ pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>:
 /// false-then-true gives an unspecified answer
 /// example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
 /// ties: `(0..5).first_true(x => x >= 2) == Some(2)`
+@was(bsearch_first)
 pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
     let lo = flip_at(self.len, m => ok(self.nth(m)), "`ok` is true at the start and false at the end, but this search wants false then true; for true then false use `last_true`")
     if lo < self.len: Some(self.nth(lo)) else: None
@@ -108,6 +109,7 @@ pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
 /// true-then-false gives an unspecified answer
 /// example: `(0..100).last_true(x => x * x <= 50) == Some(7)`
 /// ties: `(0..5).last_true(x => x <= 2) == Some(2)`
+@was(bsearch_last)
 pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
     let lo = flip_at(self.len, m => not (ok(self.nth(m))), "`ok` is false at the start and true at the end, but `last_true` wants true then false; for false then true use `first_true`")
     if lo > 0: Some(self.nth(lo - 1)) else: None
