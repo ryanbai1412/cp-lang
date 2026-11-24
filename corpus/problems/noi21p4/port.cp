@@ -12,36 +12,44 @@
 // original: corpus/submissions/3861375.cpp
 domain Block = 0..16
 domain Half = 0..1 << 16  // the value of one 16-bit block
-type Word = [Block]Half
+domain Quarter = 0..4     // a word is four 64-bit quarters of four blocks each
+type Word = [Quarter]U64
 
 let (n, m): (1..=4e5, 1..=1.2e5) = read()
 domain W = 0..n
 var (k1, k2): (U64, U64) = read()  // up to 2^64 - 1: too big for an Int
 
 /// The statement's generator: an xorshift on two 64-bit words, of which one bit is used.
-fn next_bit() -> Int:
+fn next_bit() -> U64:
     var (k3, k4) = (k1, k2)
     k1 = k4
     k3 ^= k3 << 23
     k2 = k3 ^ k4 ^ (k3 >> 17) ^ (k4 >> 26)
-    Int((k2 + k4) >> 32 & U64(1))
+    (k2 + k4) >> 32 & U64(1)
 
-fn next_half() -> Half:
-    var v = 0
-    repeat 16: v = v << 1 | next_bit()
-    Half(v)
+fn next_quarter() -> U64:
+    var v = U64(0)
+    repeat 64: v = v << 1 | next_bit()
+    v
 
-let dict: [W]Word = [W] _ => [Block] _ => next_half()
+fn block(q: U64, b: Block) -> Half = Half(Int(q >> (16 * (3 - b.ord % 4)) & U64(0xffff)))
+fn quarter(b: Block) -> Quarter = Quarter(b.ord / 4)
+
+var dict: [W, Quarter]U64 = U64(0)
+for i in W:
+    for c in Quarter: dict[i, c] = next_quarter()
 var sharing: [Block, Half]List<W> = []  // the words with each block value
 for i in W:
-    for b in Block: sharing[b, dict[i][b]].push(i)
+    for b in Block: sharing[b, block(dict[i, quarter(b)], b)].push(i)
 
-fn bits_apart(a: Word, b: Word) -> Int = sum(popcount(a[c].ord ^ b[c].ord) for c in Block)
+fn bits_apart(a: Word, i: W) -> Int = sum(popcount(a[c] ^ dict[i, c]) for c in Quarter)
+
+fn hex(digits: Str) -> U64 = U64(digits[..8].parse_int(base: 16)!) << 32 | U64(digits[8..].parse_int(base: 16)!)
 
 var flip = false
 repeat m:
     let (digits, k): (Str, 0..=15) = read()
-    let mask = if flip: Half.last!.ord else: 0
-    let word: Word = [Block] b => Half(digits[4 * b.ord..4 * b.ord + 4].parse_int(base: 16)! ^ mask)
-    flip = any(bits_apart(word, dict[i]) <= k for b in Block for i in sharing[b, word[b]])
+    let mask = if flip: ~U64(0) else: U64(0)
+    let word: Word = [Quarter] c => hex(digits[16 * c.ord..16 * c.ord + 16]) ^ mask
+    flip = any(bits_apart(word, i) <= k for b in Block for i in sharing[b, block(word[quarter(b)], b)])
     print(if flip: 1 else: 0)
