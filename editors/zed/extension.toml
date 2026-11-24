@@ -10,9 +10,9 @@ repository = "https://github.com/ryanbai1412/cp-lang"
 name = "cpl lsp"
 languages = ["CP Lang"]
 
-# The grammar is editors/tree-sitter-cp at this commit; editors/smoke.sh checks
-# that the commit has it and that it matches the one in the tree.
+# The grammar is editors/tree-sitter-cp at this commit, which
+# scripts/zed-rev.py writes (gen.toml `zed-rev`) and editors/zed/smoke.sh checks.
 [grammars.cp]
 repository = "https://github.com/ryanbai1412/cp-lang"
-rev = "08298f38a34fc73314b90295f10a546fbee3aa57"
+rev = "0a80878fe6688a9e820692ad4f363c82049fbcaa"
 path = "editors/tree-sitter-cp"

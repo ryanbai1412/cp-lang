@@ -157,3 +157,11 @@ inputs = []
 write = ["scripts/spec-gate.py", "ownership", "--write"]
 check = ["scripts/spec-gate.py", "ownership"]
 tier = "pre-commit"
+
+[[gen]]
+name = "zed-rev"
+files = ["editors/zed/extension.toml"]
+inputs = ["editors/tree-sitter-cp/grammar.js", "editors/tree-sitter-cp/src/parser.c"]
+write = ["scripts/zed-rev.py", "--write"]
+check = ["scripts/zed-rev.py", "--check"]
+tier = "ci"
