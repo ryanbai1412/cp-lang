@@ -2,45 +2,29 @@
 
 ## Dream
 
-The statement bounds only the cell count (NM <= 1e6), so the grid is
-`[Row, Col]` with a checked joint bound:
-
 ```cp
-let (n, m): (1..=1e6, 1..=1e6) = read()
-let cells: 1..=1e6 = n * m
-domain Row = 0..n
-domain Col = 0..m
-type Cell = (Row, Col)
-let g: [Row, Col]Char = read()
-
-let touching: [Row, Col]List<Cell> = [Row, Col] p => if g[p] == '#': [q for q in p.adj4 if g[q] == '#'] else: []
-let (Shape, shape) = components(touching)
-domain Node = 0..=Shape.count  // 0 is the floor
-fn node(s: Shape) -> Node = Node(1 + s.ord)
-
-// in each column, every '#' rests `w` empty rows above the next '#' (or the floor) below it
-var rests: List<(u: Node, v: Node, w: Int)> = []
-for c in Col:
-    var (below, top) = (Node(0), n)
-    for r in Row.rev if g[r, c] == '#':
-        rests.push((u: below, v: node(shape[r, c]), w: top - r.ord - 1))
-        (below, top) = (node(shape[r, c]), r.ord)
-domain Rest = 0..rests.len
-let arcs: [Rest](u: Node, v: Node, w: Int) = [Rest] e => rests[e.ord]
-let fall = dijkstra(Graph.directed(arcs), from: [(Node(0), 0)])
-
-var out: [Row, Col]Char = '.'
-for (r, c) in Cell if g[r, c] == '#': out[Row(r.ord + fall[node(shape[r, c])]!), c] = '#'
-for r in Row: print(out[r, ..])
+domain Cell = (Row, Col)
+let (domain Shape, shape) = components([Cell] p => [q for q in p.adj4 if g[q] == '#' == g[p]])
+let fall = dijkstra(Graph.directed(arcs), from: floor)
 ```
 
-## Blocked: a grid's peak ignores the joint cell bound
+## Changes
 
-`[Row, Col]` tables get a static peak of 1e6 * 1e6 cells (E0904, "takes
-1000 GB"), even after `let cells: 1..=1e6 = n * m`. Spec R03.1.1 narrows a
-one-dimensional `domain Val = 1..=nm` from a joint bound, but a product of
-two domains still multiplies their separate bounds. The v0.2 port fails
-`cpl check` for the same reason. The only spelling that checks today is a
-flat `0..cells` domain with hand row/column arithmetic and a hand `adj4`,
-which is what the dream replaces, so the port waits for a fix. Repro sent
-to Core.
+The v0.2 port flattened the grid to `0..n*m` with hand row/column arithmetic, a hand
+union-find and a hand Dijkstra with an `INF` sentinel; it no longer passed `cpl check`
+(E0904 on the 1e6 x 1e6 product). With the joint bound `cells: 1..=1e6 = n * m` the grid is
+`[Row, Col]` over `domain Cell = (Row, Col)`; std `Dsu<Cell>` joins touching '#' cells via
+`adj4`, objects are named by their root cell, and std `dijkstra` runs multi-source from each
+column's lowest '#' (seeded with its height), so there is no floor node.
+
+## Remaining friction
+
+- `components` rejects a table over a product domain (`[Cell]List<Cell>` is not seen as a
+  graph on `Cell`), so the port uses `Dsu` instead of the dream's `components`.
+- `Graph.directed` needs a typed array, so the arc list is copied into `[Rest]`.
+
+## Verification
+
+30 random cases agree with the v0.2 snapshot and 30 with the accepted C++. Corpus tests pass;
+the 1000 x 1000 max runs in 0.10 s. On 1e6 x 1 it matches the accepted C++; on 1 x 1e6 the
+accepted C++ overflows its stack and the port prints the grid unchanged, as it should.
