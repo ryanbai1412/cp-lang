@@ -1,0 +1,30 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"small":{"name":"small","type":"Two","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":14,"label":"let n: 1..=10 = read()","stage":"main","values":{"stdout":[],"n":3},"locals":{},"frames":[{"fn":"main","line":14}]},
+{"id":1,"line":8,"label":"var a = List\u003cInt>()","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[]},"frames":[{"fn":"make","line":8},{"fn":"main","line":15}]},
+{"id":2,"line":9,"label":"var b = List\u003cInt>()","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[],"b":[]},"frames":[{"fn":"make","line":9},{"fn":"main","line":15}]},
+{"id":3,"line":10,"label":"for x in xs:","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[],"b":[],"x":1},"frames":[{"fn":"make","line":10},{"fn":"main","line":15}]},
+{"id":4,"line":11,"label":"a.push(x)","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[1],"b":[],"x":1},"frames":[{"fn":"make","line":11},{"fn":"main","line":15}]},
+{"id":5,"line":12,"label":"b.push(x * x)","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[1],"b":[1],"x":1},"frames":[{"fn":"make","line":12},{"fn":"main","line":15}]},
+{"id":6,"line":10,"label":"for x in xs:","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[1],"b":[1],"x":2},"frames":[{"fn":"make","line":10},{"fn":"main","line":15}]},
+{"id":7,"line":11,"label":"a.push(x)","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[1,2],"b":[1],"x":2},"frames":[{"fn":"make","line":11},{"fn":"main","line":15}]},
+{"id":8,"line":12,"label":"b.push(x * x)","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[1,2],"b":[1,4],"x":2},"frames":[{"fn":"make","line":12},{"fn":"main","line":15}]},
+{"id":9,"line":10,"label":"for x in xs:","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[1,2],"b":[1,4],"x":3},"frames":[{"fn":"make","line":10},{"fn":"main","line":15}]},
+{"id":10,"line":11,"label":"a.push(x)","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[1,2,3],"b":[1,4],"x":3},"frames":[{"fn":"make","line":11},{"fn":"main","line":15}]},
+{"id":11,"line":12,"label":"b.push(x * x)","stage":"main","values":{"stdout":[],"n":3},"locals":{"xs":[1,2,3],"a":[1,2,3],"b":[1,4,9],"x":3},"frames":[{"fn":"make","line":12},{"fn":"main","line":15}]},
+{"id":12,"line":15,"label":"let small = make(read\u003c[n]Int>())","stage":"main","values":{"stdout":[],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{},"frames":[{"fn":"main","line":15}]},
+{"id":13,"line":16,"label":"print → 3 3","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":16}]},
+{"id":14,"line":8,"label":"var a = List\u003cInt>()","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{"xs":[1,5000000000,3],"a":[]},"frames":[{"fn":"make","line":8},{"fn":"main","line":17}]},
+{"id":15,"line":9,"label":"var b = List\u003cInt>()","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{"xs":[1,5000000000,3],"a":[],"b":[]},"frames":[{"fn":"make","line":9},{"fn":"main","line":17}]},
+{"id":16,"line":10,"label":"for x in xs:","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{"xs":[1,5000000000,3],"a":[],"b":[],"x":1},"frames":[{"fn":"make","line":10},{"fn":"main","line":17}]},
+{"id":17,"line":11,"label":"a.push(x)","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{"xs":[1,5000000000,3],"a":[1],"b":[],"x":1},"frames":[{"fn":"make","line":11},{"fn":"main","line":17}]},
+{"id":18,"line":12,"label":"b.push(x * x)","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{"xs":[1,5000000000,3],"a":[1],"b":[1],"x":1},"frames":[{"fn":"make","line":12},{"fn":"main","line":17}]},
+{"id":19,"line":10,"label":"for x in xs:","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{"xs":[1,5000000000,3],"a":[1],"b":[1],"x":5000000000},"frames":[{"fn":"make","line":10},{"fn":"main","line":17}]},
+{"id":20,"line":11,"label":"a.push(x)","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{"xs":[1,5000000000,3],"a":[1,5000000000],"b":[1],"x":5000000000},"frames":[{"fn":"make","line":11},{"fn":"main","line":17}]},
+{"id":21,"line":12,"label":"failed: integer overflow: `5000000000 * 5000000000` does not fit in an `Int` (64 bits)","stage":"main","values":{"stdout":["3 3"],"n":3,"small":{"a":[1,2,3],"b":[1,4,9]}},"locals":{"xs":[1,5000000000,3],"a":[1,5000000000],"b":[1],"x":5000000000},"frames":[{"fn":"make","line":12},{"fn":"main","line":17}]}]}}}
+stderr:
+error[R0202]: integer overflow: `5000000000 * 5000000000` does not fit in an `Int` (64 bits)
+  --> dropped_field_push_traps.cp:12:16
+   |
+12 |         b.push(x * x)
+   |                ^^^^^
+   = note: call stack: make (dropped_field_push_traps.cp:12) <- top level (dropped_field_push_traps.cp:17)
+   = help: if the answer is asked mod P, keep it in `Mod<P>` values; otherwise widen this value to `I128`

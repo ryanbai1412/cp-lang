@@ -98,3 +98,73 @@ print(f(read()))
 ");
     assert!(!out.contains("std::function"), "{out}");
 }
+
+/// The struct `make` returns without `b`.
+const TWO: &str = concat!(
+    "struct Two:\n",
+    "    pub a: List<Int>\n",
+    "    pub b: List<Int>\n",
+    "fn make(n: Int) -> Two:\n",
+    "    var a = List<Int>()\n",
+    "    var b = List<Int>()\n",
+    "    for i in 0..n:\n",
+    "        a.push(i)\n",
+    "        b.push(i * i)\n",
+    "    Two(a:, b:)\n",
+    "let t = make(read())\n",
+    "print(t.a.len)\n",
+);
+
+#[test]
+fn a_list_only_a_dropped_field_holds_is_not_built() {
+    let out = code(TWO);
+    assert!(
+        out.contains("struct Two {\n  std::vector<ll> a;\n};"),
+        "{out}"
+    );
+    assert!(!out.contains("std::vector<ll> b"), "{out}");
+    assert!(
+        !out.contains("b.push_back") && !out.contains("b.reserve"),
+        "{out}"
+    );
+    // `i * i` may overflow, so its check still runs where the push was.
+    assert!(out.contains("(void)(cpl::imul(i, i));"), "{out}");
+}
+
+#[test]
+fn a_dropped_push_whose_value_cannot_trap_leaves_nothing() {
+    let out = code(&TWO.replace("n: Int", "n: 0..=1000"));
+    assert!(!out.contains("std::vector<ll> b"), "{out}");
+    assert!(!out.contains("i * i") && !out.contains("imul"), "{out}");
+}
+
+#[test]
+fn a_dropped_local_that_reads_itself_goes_unless_its_value_may_trap() {
+    let out = code(concat!(
+        "struct R:\n",
+        "    pub a: List<Int>\n",
+        "    pub top: List<Int>\n",
+        "    pub far: List<Int>\n",
+        "fn make(n: 1..=100, w: Int) -> R:\n",
+        "    domain V = 0..n\n",
+        "    var a: List<Int> = []\n",
+        "    var top: [V]V = [V] v => v\n",
+        "    var far: [V]Int = 0\n",
+        "    let u = V.first!\n",
+        "    for v in V:\n",
+        "        a.push(v.ord)\n",
+        "        top[v] = top[u]\n",
+        "        far[v] = far[u] + w\n",
+        "    R(a:, top: [], far: [])\n",
+        "let r = make(read(), read())\n",
+        "print(r.a.len)\n",
+    ));
+    assert!(
+        !out.contains("top[") && !out.contains("& top"),
+        "top only reads itself: {out}"
+    );
+    assert!(
+        out.contains("= cpl::iadd(far[u], w);"),
+        "the sum may overflow: {out}"
+    );
+}

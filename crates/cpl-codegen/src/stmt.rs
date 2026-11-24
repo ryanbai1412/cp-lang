@@ -694,8 +694,17 @@ impl<'p> Emitter<'p> {
                 if self.closure_id.is_none()
                     && self
                         .devirt
-                        .skippable_push(e)
-                        .is_some_and(|slot| self.devirt.dead_local(self.fn_id, slot)) => {}
+                        .local_push(e)
+                        .is_some_and(|(slot, _)| self.devirt.dead_local(self.fn_id, slot)) =>
+            {
+                for item in self
+                    .devirt
+                    .local_push(e)
+                    .map_or(&[][..], |(_, items)| items)
+                {
+                    self.dropped_value(item, out);
+                }
+            }
             // A fn written as `cpl_each_f`: its list is the callback.
             Stmt::Let(slot, _) if self.pushing == Some(*slot) && self.closure_id.is_none() => {}
             Stmt::Expr(Expr {

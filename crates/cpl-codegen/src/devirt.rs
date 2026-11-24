@@ -15,7 +15,8 @@ use crate::uses::effects::{in_domain, pure_path, safe_place};
 use std::collections::{BTreeMap, BTreeSet};
 
 use cpl_ir::{
-    Arg, AssignOp, Block, ClosureId, Expr, ExprKind, FnId, Place, PlaceKind, Program, Stmt, Ty,
+    Arg, AssignOp, Block, ClosureId, Expr, ExprKind, FnId, Iter, Place, PlaceKind, Program, Stmt,
+    Ty,
 };
 
 use crate::emit::Emitter;
@@ -865,6 +866,22 @@ impl<'p> Devirt<'p> {
             ExprKind::Index(base, idxs) => in_domain(&base.ty, idxs) && self.skippable_value(base),
             ExprKind::Tuple(items) => items.iter().all(|item| self.skippable_value(item)),
             ExprKind::Closure(cid) => self.closure_effectively_captureless(*cid),
+            ExprKind::RangeCheck { value, lo, hi, .. } => {
+                let ExprKind::Int(v) = value.kind else {
+                    return false;
+                };
+                let bound = |b: &Option<Box<Expr>>, ok: &dyn Fn(i64) -> bool| match b {
+                    None => true,
+                    Some(b) => match b.kind {
+                        ExprKind::Int(b) => ok(b),
+                        // A domain's count is never below 0.
+                        ExprKind::DomainLen(_) => v <= 0 && ok(0),
+                        _ => false,
+                    },
+                };
+                bound(lo, &|l| l <= v) && bound(hi, &|h| v <= h)
+            }
+            ExprKind::Do(block) => self.skippable_build(block, &mut BTreeSet::new()),
             ExprKind::Fill(dims, value) => {
                 dims.iter().all(|d| match d {
                     cpl_ir::DimSpec::Int(n) | cpl_ir::DimSpec::IntFrom(_, n) => {
@@ -875,6 +892,38 @@ impl<'p> Devirt<'p> {
             }
             _ => pure_path(e),
         }
+    }
+
+    /// A block that only builds values in locals of its own (`[V] v => v`
+    /// fills a fresh array cell by cell over a range), from values that
+    /// run nothing: leaving it out changes nothing.
+    fn skippable_build(&self, block: &Block, own: &mut BTreeSet<usize>) -> bool {
+        block.stmts.iter().all(|stmt| match stmt {
+            Stmt::Let(slot, init) => {
+                own.insert(*slot);
+                init.as_ref().is_none_or(|e| self.skippable_value(e))
+            }
+            Stmt::Assign(place, AssignOp::Set, value) => {
+                matches!(walk::root(place), (false, slot) if own.contains(&slot))
+                    && safe_place(place)
+                    && self.skippable_value(value)
+            }
+            Stmt::For(
+                _,
+                slot,
+                Iter::Range {
+                    lo, hi, step: None, ..
+                },
+                body,
+            ) => {
+                own.insert(*slot);
+                self.skippable_value(lo)
+                    && self.skippable_value(hi)
+                    && self.skippable_build(body, own)
+            }
+            Stmt::Give(value) => self.skippable_value(value),
+            _ => false,
+        })
     }
 
     pub fn unread_field(&self, struct_id: usize, index: usize) -> bool {
@@ -904,14 +953,13 @@ impl<'p> Devirt<'p> {
             && !self.field_elidable(struct_id, index)
     }
 
-    /// `xs.push(v)` onto a local list, with `v` running nothing: left out
-    /// when the list is a dropped local.
-    pub(crate) fn skippable_push(&self, e: &Expr) -> Option<usize> {
+    /// `xs.push(v)` onto a local list: left out when the list is a dropped
+    /// local, with `v` still evaluated unless it runs nothing, so a push of
+    /// `i * i` keeps its overflow check.
+    pub(crate) fn local_push<'e>(&self, e: &'e Expr) -> Option<(usize, &'e [Expr])> {
         match &e.kind {
             ExprKind::Mutate(cpl_ir::Mutation::Push, place, args) => match place.kind {
-                PlaceKind::Local(slot) if args.iter().all(|a| self.skippable_value(a)) => {
-                    Some(slot)
-                }
+                PlaceKind::Local(slot) => Some((slot, args)),
                 _ => None,
             },
             _ => None,
@@ -1370,7 +1418,7 @@ impl Emitter<'_> {
     }
 
     pub(crate) fn dropped_value(&mut self, value: &Expr, out: &mut String) {
-        if !self.devirt.skippable_value(value) {
+        if !self.devirt.skippable_value(value) && !self.trap_free(value) {
             let value = self.flatten(value, out);
             let text = self.expr(value).text;
             self.line(out, &format!("(void)({text});"));

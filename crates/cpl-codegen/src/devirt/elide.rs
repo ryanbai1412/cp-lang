@@ -374,14 +374,15 @@ impl<'p> Devirt<'p> {
         }
     }
 
-    /// One round: a store or push left out reads nothing, so what it alone
-    /// used can go in the next round.
-    pub(super) fn find_dead_locals(
-        &mut self,
+    /// What `blocks` do with their locals when the locals of `assumed` are
+    /// dropped as well as the dead ones: a store or push into a dropped
+    /// local reads nothing but the parts it still evaluates.
+    fn local_uses(
+        &self,
         home: Option<FnId>,
-        params: &[bool],
         blocks: &[&Block],
-    ) -> bool {
+        assumed: &BTreeSet<usize>,
+    ) -> LocalUses {
         let mut lets: BTreeMap<usize, usize> = BTreeMap::new();
         let mut live: BTreeSet<usize> = BTreeSet::new();
         let mut feeds: BTreeSet<*const Expr> = BTreeSet::new();
@@ -389,16 +390,20 @@ impl<'p> Devirt<'p> {
         let mut dropped: BTreeSet<*const Expr> = BTreeSet::new();
         let mut effectful: BTreeSet<usize> = BTreeSet::new();
         let mut written: BTreeSet<usize> = BTreeSet::new();
-        let dead = |s: &Self, slot: usize| s.dead_locals.contains(&(home, slot));
+        let dead = |s: &Self, slot: usize| {
+            assumed.contains(&slot) || s.dead_locals.contains(&(home, slot))
+        };
         for block in blocks {
             each_stmt_expr(block, &mut |e| {
-                if let Some(slot) = self.skippable_push(e) {
+                if let Some((slot, items)) = self.local_push(e) {
                     written.insert(slot);
                     pushes.insert(e as *const Expr);
                     if dead(self, slot) {
-                        each_part(e, &mut |inner| {
-                            dropped.insert(inner as *const Expr);
-                        });
+                        for item in items.iter().filter(|i| self.skippable_value(i)) {
+                            each_part(item, &mut |inner| {
+                                dropped.insert(inner as *const Expr);
+                            });
+                        }
                     }
                 }
             });
@@ -501,6 +506,49 @@ impl<'p> Devirt<'p> {
                 }
             });
         }
+        LocalUses {
+            lets,
+            live,
+            effectful,
+            written,
+        }
+    }
+
+    /// The locals nothing live reads, found as the largest set that only
+    /// stores, pushes and dropped fields of its own members read: `top` of
+    /// `top[h] = top[u]` goes with its stores, though each reads it. A
+    /// store or push whose value might trap or has an effect still
+    /// evaluates it, so what that value reads stays live.
+    pub(super) fn find_dead_locals(
+        &mut self,
+        home: Option<FnId>,
+        params: &[bool],
+        blocks: &[&Block],
+    ) -> bool {
+        let first = self.local_uses(home, blocks, &BTreeSet::new());
+        let candidate = |uses: &LocalUses, slot: usize| !uses.effectful.contains(&slot);
+        let mut assumed: BTreeSet<usize> = first
+            .lets
+            .iter()
+            .filter(|&(&slot, &n)| n == 1 && slot >= params.len())
+            .map(|(&slot, _)| slot)
+            .chain((0..params.len()).filter(|&slot| !params[slot]))
+            .filter(|&slot| candidate(&first, slot) && !self.dead_locals.contains(&(home, slot)))
+            .collect();
+        let uses = loop {
+            let uses = self.local_uses(home, blocks, &assumed);
+            let before = assumed.len();
+            assumed.retain(|slot| !uses.live.contains(slot));
+            if assumed.len() == before {
+                break uses;
+            }
+        };
+        let LocalUses {
+            lets,
+            live,
+            effectful,
+            written,
+        } = uses;
         let mut found = false;
         let candidates = lets
             .into_iter()
@@ -519,4 +567,16 @@ impl<'p> Devirt<'p> {
         }
         found
     }
+}
+
+/// How one body's code uses its locals: see [`Devirt::local_uses`].
+struct LocalUses {
+    /// How many `let`s bind each slot.
+    lets: BTreeMap<usize, usize>,
+    /// Slots read by code that is not left out.
+    live: BTreeSet<usize>,
+    /// Slots whose `let` value might trap or has an effect.
+    effectful: BTreeSet<usize>,
+    /// Slots stored to or pushed onto.
+    written: BTreeSet<usize>,
 }
