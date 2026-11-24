@@ -7,6 +7,7 @@
 //! `name = "<that name>"`, found by walking up from the importing file.
 
 use cpl_diag::{codes, Diagnostic, Span};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 /// Finds and reads modules. The language server and the tests replace the
@@ -23,33 +24,107 @@ pub struct FsLoader;
 
 impl Loader for FsLoader {
     fn load(&self, from: &str, module: &[String]) -> Option<(String, String)> {
-        let (root_name, rest) = module.split_first()?;
-        if rest.is_empty() {
-            return None;
-        }
-        let from = file_path(from);
-        let from = Path::new(&from);
-        let start = from.parent().unwrap_or(Path::new("."));
-        let start = if start.as_os_str().is_empty() {
-            Path::new(".")
-        } else {
-            start
-        };
-        let mut relative = PathBuf::new();
-        for part in rest {
-            relative.push(part);
-        }
-        relative.set_extension("cp");
-        if root_name == "std" {
-            let text = bundled_std(rest)?;
-            return Some((format!("std/{}.cp", rest.join("/")), text.to_string()));
-        }
-        library_root(start, root_name).and_then(|root| {
-            let path = root.join(&relative);
-            let text = std::fs::read_to_string(&path).ok()?;
-            Some((module_key(&path), text))
-        })
+        load_library(&Disk, from, module)
     }
+}
+
+/// The library files a host with no file system gives by path, relative
+/// to the file it checks (`"cp.toml"`, `"kit/m.cp"`): found as `FsLoader`
+/// finds them on disk, through the same `cp.toml` and `lib.toml`.
+pub struct GivenFiles(BTreeMap<String, String>);
+
+impl GivenFiles {
+    pub fn new(files: BTreeMap<String, String>) -> GivenFiles {
+        GivenFiles(
+            files
+                .into_iter()
+                .map(|(path, text)| (given_key(Path::new(&path)), text))
+                .collect(),
+        )
+    }
+}
+
+impl Loader for GivenFiles {
+    fn load(&self, from: &str, module: &[String]) -> Option<(String, String)> {
+        load_library(self, from, module)
+    }
+}
+
+/// Where libraries are read from: the disk, or a host's [`GivenFiles`].
+trait Files {
+    fn read(&self, path: &Path) -> Option<String>;
+    fn is_dir(&self, path: &Path) -> bool;
+    fn canonical(&self, path: &Path) -> PathBuf;
+}
+
+struct Disk;
+
+impl Files for Disk {
+    fn read(&self, path: &Path) -> Option<String> {
+        std::fs::read_to_string(path).ok()
+    }
+    fn is_dir(&self, path: &Path) -> bool {
+        path.is_dir()
+    }
+    fn canonical(&self, path: &Path) -> PathBuf {
+        path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+    }
+}
+
+/// `path` as a key of [`GivenFiles`]: its names joined by `/`, without `.`.
+fn given_key(path: &Path) -> String {
+    let names = path.components().filter_map(|c| match c {
+        std::path::Component::Normal(name) => Some(name.to_string_lossy()),
+        _ => None,
+    });
+    names.collect::<Vec<_>>().join("/")
+}
+
+impl Files for GivenFiles {
+    fn read(&self, path: &Path) -> Option<String> {
+        self.0.get(&given_key(path)).cloned()
+    }
+    fn is_dir(&self, path: &Path) -> bool {
+        let dir = given_key(path);
+        dir.is_empty()
+            || self.0.keys().any(|f| {
+                f.strip_prefix(&dir)
+                    .is_some_and(|rest| rest.starts_with('/'))
+            })
+    }
+    fn canonical(&self, path: &Path) -> PathBuf {
+        PathBuf::from(given_key(path))
+    }
+}
+
+/// The module `module` imported by the file at `from`: std from the build, a library from `files`.
+fn load_library(files: &dyn Files, from: &str, module: &[String]) -> Option<(String, String)> {
+    let (root_name, rest) = module.split_first()?;
+    if rest.is_empty() {
+        return None;
+    }
+    let from = file_path(from);
+    let from = Path::new(&from);
+    let start = from.parent().unwrap_or(Path::new("."));
+    let start = if start.as_os_str().is_empty() {
+        Path::new(".")
+    } else {
+        start
+    };
+    let mut relative = PathBuf::new();
+    for part in rest {
+        relative.push(part);
+    }
+    relative.set_extension("cp");
+    if root_name == "std" {
+        let text = bundled_std(rest)?;
+        return Some((format!("std/{}.cp", rest.join("/")), text.to_string()));
+    }
+    library_root(files, start, root_name).and_then(|root| {
+        let path = root.join(&relative);
+        let text = files.read(&path)?;
+        Some((module_key(&path), text))
+    })
 }
 
 /// A loaded file's path with `/` separators on every OS, so module lookups
@@ -487,18 +562,18 @@ pub fn home_dir() -> Option<PathBuf> {
 /// The folder of the library `name`: the one a `cp.toml` above `start`
 /// gives it under `[libs]`, or else the nearest folder above `start`
 /// whose `lib.toml` names the library.
-fn library_root(start: &Path, name: &str) -> Option<PathBuf> {
-    let start = start.canonicalize().unwrap_or_else(|_| start.to_path_buf());
+fn library_root(files: &dyn Files, start: &Path, name: &str) -> Option<PathBuf> {
+    let start = files.canonical(start);
     let configured = start.ancestors().find_map(|dir| {
-        let config = std::fs::read_to_string(dir.join("cp.toml")).ok()?;
+        let config = files.read(&dir.join("cp.toml"))?;
         let path = configured_library(&config, name)?;
         let path = match path.strip_prefix("~/") {
             Some(below_home) => home_dir()?.join(below_home),
             None => dir.join(path),
         };
-        path.is_dir().then_some(path)
+        files.is_dir(&path).then_some(path)
     });
-    configured.or_else(|| library_manifest_root(&start, name))
+    configured.or_else(|| library_manifest_root(files, &start, name))
 }
 
 /// Every library a `cp.toml` at or above `start` names under `[libs]`,
@@ -524,7 +599,7 @@ pub fn configured_libraries(start: &Path) -> Vec<(String, PathBuf)> {
             if out.iter().any(|(n, _)| n == name) {
                 continue;
             }
-            if let Some(root) = library_root(dir, name) {
+            if let Some(root) = library_root(&Disk, dir, name) {
                 out.push((name.to_string(), root));
             }
         }
@@ -564,9 +639,9 @@ fn configured_library<'a>(config: &'a str, name: &str) -> Option<&'a str> {
     None
 }
 
-fn library_manifest_root(start: &Path, name: &str) -> Option<PathBuf> {
+fn library_manifest_root(files: &dyn Files, start: &Path, name: &str) -> Option<PathBuf> {
     start.ancestors().find_map(|dir| {
-        let manifest = std::fs::read_to_string(dir.join("lib.toml")).ok()?;
+        let manifest = files.read(&dir.join("lib.toml"))?;
         (library_name(&manifest)? == name).then(|| dir.to_path_buf())
     })
 }
@@ -583,6 +658,38 @@ fn library_name(manifest: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn given_files_find_a_library_as_the_disk_does() {
+        let files = [
+            ("./cp.toml", "[libs]\nkit = \"kit\"\n"),
+            ("kit/m.cp", "pub fn g() -> Int = 1\n"),
+            ("other/lib.toml", "name = \"other\"\n"),
+            ("other/x.cp", "pub fn h() -> Int = 2\n"),
+        ];
+        let given = GivenFiles::new(
+            files
+                .iter()
+                .map(|(p, t)| (p.to_string(), t.to_string()))
+                .collect(),
+        );
+        let module = |m: &str| m.split('.').map(str::to_string).collect::<Vec<_>>();
+        let found = given.load("main.cp", &module("kit.m"));
+        assert_eq!(
+            found,
+            Some(("kit/m.cp".into(), "pub fn g() -> Int = 1\n".into()))
+        );
+        let found = given
+            .load("other/y.cp", &module("other.x"))
+            .map(|(path, _)| path);
+        assert_eq!(
+            found.as_deref(),
+            Some("other/x.cp"),
+            "a `lib.toml` names its folder"
+        );
+        assert_eq!(given.load("main.cp", &module("kit.missing")), None);
+        assert_eq!(given.load("main.cp", &module("nope.m")), None);
+    }
 
     /// Asking `std_needed` until it names nothing gives the std modules a
     /// check with all of std loads: for a `use` of each module, and for the
@@ -772,7 +879,7 @@ mod tests {
         let home = std::env::var_os("HOME");
         std::env::remove_var("HOME");
         std::env::set_var("USERPROFILE", &root);
-        let found = library_root(&root.join("contest"), "lib");
+        let found = library_root(&Disk, &root.join("contest"), "lib");
         if let Some(home) = home {
             std::env::set_var("HOME", home);
         }
