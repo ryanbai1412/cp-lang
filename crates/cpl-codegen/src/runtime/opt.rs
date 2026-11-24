@@ -133,6 +133,35 @@ using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;
 ",
     },
     Piece {
+        name: "keep_max_plus",
+        needs: &["niche_int", "iarith"],
+        code: "\
+// `for l in lo..hi: if let w = row[l]: acc[l] max= Some(base + w)`. `none` is the least raw
+// value, so one branch-free pass does it and g++ can vectorise it; every add's overflow goes
+// into one flag, and a pass that overflowed runs again as written, so it traps as written.
+// The flag is a sign bit: an add overflowed when (base ^ s) & (w ^ s) is negative, and it made
+// `none`'s INT64_MIN when (z - 1) & ~z is, z being s ^ INT64_MIN; both stay plain ops g++ vectorises.
+inline void keep_max_plus(OptInt* acc, const OptInt* row, ll base, ll lo, ll hi) {
+    constexpr ll NO = std::numeric_limits<ll>::min();
+    ll* to = &acc[0].raw;
+    const ll* from = &row[0].raw;
+    ll bad = 0;
+    for (ll l = lo; l < hi; l++) {
+        ll w = from[l], s = (ll)((unsigned long long)base + (unsigned long long)w);
+        ll z = s ^ NO;
+        ll made_none = (ll)((unsigned long long)z - 1) & ~z;
+        ll wrapped = (base ^ s) & (w ^ s);
+        ll v = w != NO ? s : NO;
+        bad |= w != NO ? (wrapped | made_none) : 0;
+        to[l] = to[l] > v ? to[l] : v;
+    }
+    if (bad < 0)
+        for (ll l = lo; l < hi; l++)
+            if (row[l]) acc[l] = std::max(acc[l], OptInt(iadd(base, *row[l])));
+}
+",
+    },
+    Piece {
         name: "niche_i32",
         needs: &["niche", "niche_int"],
         code: "\

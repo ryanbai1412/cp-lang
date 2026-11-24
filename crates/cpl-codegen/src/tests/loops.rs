@@ -125,3 +125,27 @@ fn a_callback_loop_that_never_reads_its_item_marks_it_unused() {
         "{out}"
     );
 }
+
+#[test]
+fn a_max_plus_row_is_one_branch_free_pass_on_an_avx2_judge_only() {
+    let program = crate::tests::lower(concat!(
+        "let n: 1..=8 = read()\n",
+        "domain S = 0..n\n",
+        "type Row = [S]?Int\n",
+        "fn keep(acc: Row, row: Row, base: Int) -> Row:\n",
+        "    var c = acc\n",
+        "    for l in S:\n",
+        "        if let w = row[l]: c[l] max= Some(base + w)\n",
+        "    c\n",
+        "let row: Row = [S] s => Some(Int(s))\n",
+        "print(keep(row, row, 3)[S.first!] ?? -1)\n",
+    ));
+    let avx2 = crate::Target {
+        avx2: true,
+        ..crate::Target::default()
+    };
+    let fast = crate::emit_for(&program, "t.cp", None, &avx2);
+    assert!(fast.contains("cpl::keep_max_plus(c.data(), "), "{fast}");
+    let plain = crate::emit_for(&program, "t.cp", None, &crate::Target::default());
+    assert!(!plain.contains("keep_max_plus"), "{plain}");
+}
