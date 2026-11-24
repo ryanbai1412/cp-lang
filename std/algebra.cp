@@ -790,3 +790,13 @@ fn pow_matches_repeated_op():
             aff = Affine.then(aff, Affine(2, 1))
         assert pow(3, k, op: *) == mul and pow(3, k, op: +) == total
         assert pow(Affine(2, 1), k, op: Affine.monoid()).eval(5) == aff.eval(5)
+
+impl Show for Each<Ms>:
+    /// How many ops it combines, as `each of n ops`.
+    ///
+    /// example: `"{each(+, max)}" == "each of 2 ops"`
+    fn show(e):
+        var k = 0
+        for _ in fields(e.ms): k += 1
+        "each of {k} ops"
+

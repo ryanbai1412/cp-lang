@@ -922,13 +922,26 @@ pub struct Rope<D, T>:
                 t = rs[t]
         -1
 
-    fn emit(mut self, t: Int, mut out: [D]T, mut k: Int):
+    // `emit` order without `down`: `acc` is every ancestor's pending tag, newest first merged
+    // in, and `flip` whether the ancestors' pending reversals leave this subtree reversed.
+    fn peek(self, t: Int, acc: ?T, flip: Bool, mut out: [D]T, mut k: Int):
         if t < 0: return
-        self.down(t)
-        self.emit(ls[t], mut out, mut k)
-        out[D.nth(k)] = val[t]
+        var f: ?T = acc
+        if has[t]:
+            if let x = acc:
+                if let m = mg: f = Some(m(x, tg[t]))
+            else:
+                f = Some(tg[t])
+        let r = flip != rv[t]
+        let (a, b) = if r: (rs[t], ls[t]) else: (ls[t], rs[t])
+        self.peek(a, f, r, mut out, mut k)
+        var v = val[t]
+        if let x = f:
+            if let m = mg: v = m(x, v)
+            else: v = x
+        out[D.nth(k)] = v
         k += 1
-        self.emit(rs[t], mut out, mut k)
+        self.peek(b, f, r, mut out, mut k)
 
     /// A rope over `D` holding the values of `a`, or `fill` at every position.
     ///
@@ -1050,17 +1063,19 @@ pub struct Rope<D, T>:
         let t = self.find(i.ord)
         val[t] = x
 
-    /// The current values in position order, with every pending tag merged in.
+    /// The current values in position order, with every pending tag and reversal merged in as it
+    /// walks; it reads the tree and writes nothing back.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: `var r = Rope<0..0, Int>(fill: 7); r.to_array() == []`
+    /// empty: `let r = Rope<0..0, Int>(fill: 7); r.to_array() == []`
     /// order: position order of `D`
     /// traps: never
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..2); r.to_array() == [2, 1, 3]`
-    pub fn to_array(mut self) -> [D]T:
+    /// example: `var r = Rope([1, 2, 3, 4], merge: (t, x) => t + x); r.apply(0..3, 10); r.reverse(1..4); r.apply(2..4, 1); r.to_array() == [11, 4, 14, 13]`
+    pub fn to_array(self) -> [D]T:
         var out = base!
         var k = 0
-        self.emit(root, mut out, mut k)
+        self.peek(root, None, false, mut out, mut k)
         out
 
 /// A sequence of `T` that folds any run with a monoid, under lazy range tags and range reversal:
@@ -1385,3 +1400,27 @@ fn flip_action_toggles_ranges():
     assert st.fold(I(1)..I(5)).now == 2
     st.apply(I(0)..I(3), true)
     assert st.all.now == 2
+
+impl Show for Rope<D, T>:
+    /// The current values in position order, space-separated, read through `to_array` without
+    /// pushing any tag down.
+    ///
+    /// example: `var r = Rope([1, 2, 3]); r.apply(0..2, 7); r.reverse(1..3); "{r}" == "7 3 7"`
+    fn show(r):
+        var out = ""
+        for x in r.to_array():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for LazyTreap<T, F>:
+    /// Every element in sequence order, space-separated, read through `to_list` without pushing
+    /// any tag down.
+    ///
+    /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply_all(5); "{t}" == "6 7"`
+    fn show(t):
+        var out = ""
+        for x in t.to_list():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

@@ -3844,6 +3844,25 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// cost: expected \(O(\log n)\)
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.apply_tree(0, 10); et.get(2) == 13 and et.get(3) == 4`
+    /// Every vertex's value with every pending tag applied as it walks the splay trees; it reads
+    /// the trees and writes nothing back, so no splay moves.
+    ///
+    /// cost: \(O(\lvert V \rvert + \text{links})\)
+    /// traps: never
+    /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(0, 1); et.apply_tree(0, 3); et.to_array() == [3, 3, 0]`
+    pub fn to_array(self) -> [V]T:
+        var out = val
+        var stack: List<(Int, F)> = []
+        for x in 0..lc.len:
+            if pa[x] == None: stack.push((x, act.id))
+        while not stack.is_empty:
+            let (x, f) = stack.pop()!
+            if x < V.count: out[V.nth(x)] = act.apply(f, val[V.nth(x)], 1)
+            let g = act.compose(f, lz[x])
+            if let c = lc[x]: stack.push((c, g))
+            if let c = rc[x]: stack.push((c, g))
+        out
+
     pub fn get(mut self, v: V) -> T:
         self.splay(v.ord)
         val[v]
@@ -4157,4 +4176,16 @@ impl Show for EulerTourTree<V, T>:
         for v in V:
             if not out.is_empty: out += " "
             out += "{t.get(v)}"
+        out
+
+impl Show for LazyEulerTourTree<V, T, F>:
+    /// Every vertex's value, space-separated in vertex order, read through `to_array` without
+    /// pushing any tag down.
+    ///
+    /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(1, 2); et.apply_tree(2, 4); "{et}" == "0 4 4"`
+    fn show(t):
+        var out = ""
+        for x in t.to_array():
+            if not out.is_empty: out += " "
+            out += "{x}"
         out
