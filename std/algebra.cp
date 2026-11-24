@@ -405,10 +405,17 @@ pub struct MinCount<T>(pub val: T, pub count: Int):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `fold(MinCount.monoid(), [MinCount.of(v) for v in [3, 1, 1]]).count == 2`
-    pub fn monoid() -> Monoid<MinCount<T>> = Monoid(
-        MinCount(Monoid<T>.of(min).id, 0),
-        (a, b) => MinCount.join(a, b),
-    )
+    pub fn monoid() -> Monoid<MinCount<T>> = Monoid(MinCount.zero, (a, b) => MinCount.join(a, b))
+
+    /// The empty fold, `+`'s identity: the far end of `T` (as `Monoid.of(min)`) with count 0.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MinCount<Int>.zero.count == 0`
+    @get pub fn zero() -> MinCount<T> = MinCount(Monoid<T>.of(min).id, 0)
+
+impl<T> Add for MinCount<T>:
+    fn add(a, b) = MinCount.join(a, b)
 
 /// \(O(1)\) per merge. Maximum value together with its multiplicity (range add: `SegTree(MaxCount.monoid, a, act: add)`).
 pub struct MaxCount<T>(pub val: T, pub count: Int):
@@ -434,10 +441,17 @@ pub struct MaxCount<T>(pub val: T, pub count: Int):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `fold(MaxCount.monoid(), [MaxCount.of(v) for v in [3, 1, 3]]).count == 2`
-    pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(
-        MaxCount(Monoid<T>.of(max).id, 0),
-        (a, b) => MaxCount.join(a, b),
-    )
+    pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(MaxCount.zero, (a, b) => MaxCount.join(a, b))
+
+    /// The empty fold, `+`'s identity: the low end of `T` (as `Monoid.of(max)`) with count 0.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MaxCount<Int>.zero.count == 0`
+    @get pub fn zero() -> MaxCount<T> = MaxCount(Monoid<T>.of(max).id, 0)
+
+impl<T> Add for MaxCount<T>:
+    fn add(a, b) = MaxCount.join(a, b)
 
 /// \(O(1)\) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).
 pub struct Affine<T: Mul>(pub a: T, pub b: T):
