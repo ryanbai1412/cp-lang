@@ -2635,3 +2635,52 @@ impl Show for Matching<L, R>:
             if not out.is_empty: out += ", "
             out += "{l}-{r}"
         out
+
+impl Show for FlowGraph<V>:
+    /// Every arc as `u->v flow/cap`, space-separated in the order `add` returned them; `no arcs` for none.
+    ///
+    /// example: `var g = FlowGraph<0..3>(); g.add(0, 1, Some(4)); g.add(1, 2, Some(2)); g.max_flow(0, 2); "{g}" == "0->1 2/4 1->2 2/2"`
+    fn show(g):
+        var out = ""
+        for a in g.arcs:
+            if not out.is_empty: out += " "
+            out += "{g.source(a)}->{g.to[a.id]} {g.flow(a)}/{g.cap(a)}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for CostFlow<V>:
+    /// Every arc as `u->v flow/cap @cost`, space-separated in the order `add` returned them; `no arcs` for none.
+    ///
+    /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(3), 5); g.min_cost_flow(0, 1); "{g}" == "0->1 3/3 @5"`
+    fn show(g):
+        var out = ""
+        for a in g.arcs:
+            if not out.is_empty: out += " "
+            out += "{g.source(a)}->{g.to[a.id]} {g.flow(a)}/{g.cap(a)} @{g.cost(a)}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for GraphicMatroid<V, E>:
+    /// Every edge as `u-v`, space-separated in edge order; `no edges` for none.
+    ///
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: V(0), v: V(1)), (u: V(1), v: V(2))]; "{GraphicMatroid(es)}" == "0-1 1-2"`
+    fn show(m):
+        var out = ""
+        for e in E:
+            if not out.is_empty: out += " "
+            out += "{m.edges[e].u}-{m.edges[e].v}"
+        if out.is_empty: return "no edges"
+        out
+
+impl Show for ColorMatroid<E, C>:
+    /// Every color as `c: used/limit`, comma-separated in color order; `no colors` for none.
+    ///
+    /// example: `domain E = 0..3; domain C = 0..2; let col: [E]C = [C(0), C(0), C(1)]; let lim: [C]Int = [1, 2]; var m = ColorMatroid(col, lim); m.rebuild([true, false, true]); "{m}" == "0: 1/1, 1: 1/2"`
+    fn show(m):
+        var out = ""
+        for c in C:
+            if not out.is_empty: out += ", "
+            out += "{c}: {m.used[c]}/{m.limit[c]}"
+        if out.is_empty: return "no colors"
+        out
+

@@ -2583,3 +2583,81 @@ use std.segtree.{WaveletMatrix}
 print(WaveletMatrix([7, 0, 3, 3, 12]))
 """
 out = "7 0 3 3 12"
+
+[case."Show/BeatsSegTree/show"]
+code = """
+use std.beats.{BeatsSegTree}
+var t = BeatsSegTree([2, 9, 4, 6])
+t.chmax(0..4, 3)
+t.add(1..3, 1)
+print(t)
+"""
+out = "3 10 5 6"
+
+[case."Show/ColorMatroid/show"]
+code = """
+use std.flow.{ColorMatroid}
+domain E = 0..4
+domain C = 0..2
+let col: [E]C = [C(1), C(0), C(1), C(1)]
+let lim: [C]Int = [1, 3]
+var m = ColorMatroid(col, lim)
+m.rebuild([true, true, false, true])
+print(m)
+"""
+out = "0: 1/1, 1: 2/3"
+
+[case."Show/CostFlow/show"]
+code = """
+use std.flow.{CostFlow}
+var g = CostFlow<0..3>()
+g.add(0, 1, Some(2), 4)
+g.add(1, 2, Some(1), 1)
+g.min_cost_flow(0, 2)
+print(g)
+"""
+out = "0->1 1/2 @4 1->2 1/1 @1"
+
+[case."Show/EulerTourTree/show"]
+code = """
+use std.tree.{EulerTourTree}
+var t = EulerTourTree<0..4, Int>(+, a: [1, 2, 3, 4])
+t.link(0, 1)
+t.link(1, 2)
+t.set(3, 8)
+print(t)
+"""
+out = "1 2 3 8"
+
+[case."Show/FlowGraph/show"]
+code = """
+use std.flow.{FlowGraph}
+var g = FlowGraph<0..4>()
+g.add(0, 1, Some(3))
+g.add(0, 2, Some(2))
+g.add(1, 3, Some(2))
+g.add(2, 3, Some(5))
+print(g.max_flow(0, 3))
+print(g)
+"""
+out = "4\n0->1 2/3 0->2 2/2 1->3 2/2 2->3 2/5"
+
+[case."Show/GraphicMatroid/show"]
+code = """
+use std.flow.{GraphicMatroid}
+domain V = 0..4
+domain E = 0..3
+let es: [E](u: V, v: V) = [(u: V(0), v: V(2)), (u: V(2), v: V(3)), (u: V(3), v: V(0))]
+print(GraphicMatroid(es))
+"""
+out = "0-2 2-3 3-0"
+
+[case."Show/LiChao/show"]
+code = """
+use std.dp.{LiChao, Line}
+var t = LiChao(max, over: 0..=100)
+print(t)
+t.add(Line(2, 1))
+print(t)
+"""
+out = "no lines\n2 1"

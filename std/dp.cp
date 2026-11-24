@@ -1179,3 +1179,16 @@ impl Show for LineContainer:
             if not out.is_empty: out += ", "
             out += "{l.k}x + {l.m}"
         out
+
+impl Show for LiChao<L, K>:
+    /// Every line it holds, each through its own `Show`, comma-separated in the order they sit in the tree; `no lines` for none.
+    ///
+    /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); "{t}" == "-1 6, 1 0"`
+    fn show(t):
+        var out = ""
+        for l in t.lines:
+            if let x = l:
+                if not out.is_empty: out += ", "
+                out += "{x}"
+        if out.is_empty: return "no lines"
+        out

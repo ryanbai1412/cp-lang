@@ -4126,3 +4126,14 @@ fn gen_rooted<V>(shape: Int) -> Rooted<V, _, _>:
         if shape == 3 and i >= spine: j = rand(0, spine - 1)
         par[label[i]] = Some(label[j])
     Rooted.from_parents(par)
+
+impl Show for EulerTourTree<V, T>:
+    /// Every vertex's value, space-separated in vertex order.
+    ///
+    /// example: `var t = EulerTourTree<0..3, Int>(+, a: [4, 5, 6]); t.link(0, 1); t.set(2, 9); "{t}" == "4 5 9"`
+    fn show(t):
+        var out = ""
+        for v in V:
+            if not out.is_empty: out += " "
+            out += "{t.get(v)}"
+        out

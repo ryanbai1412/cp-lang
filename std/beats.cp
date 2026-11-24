@@ -714,3 +714,14 @@ fn beats_segtree_chmin_chmax_add_matches_brute():
             assert st.max_val(rng) == [ref[i] for i in rng].max()!
     for i in I:
         assert st.get(i) == ref[i]
+
+impl Show for BeatsSegTree<D>:
+    /// Every position's value, space-separated in position order.
+    ///
+    /// example: `var t = BeatsSegTree([5, 1, 7]); t.chmin(0..3, 4); "{t}" == "4 1 4"`
+    fn show(t):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{t.get(i)}"
+        out
