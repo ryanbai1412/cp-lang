@@ -26,7 +26,7 @@ pub fn fold_others<T, M>(xs: List<T>, op: M) -> List<T>:
 /// sorted lists) this is O(log n) rounds instead of a left-leaning chain.
 pub fn fold_balanced<T>(xs: List<T>, id: T, op: (T, T) -> T) -> T:
     if xs.is_empty: return id
-    var level = xs
+    var level = xs.clone()
     while level.len > 1:
         var next: List<T> = []
         var i = 0

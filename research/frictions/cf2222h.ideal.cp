@@ -24,7 +24,7 @@ fn step_freq(b: List<Int>) -> List<Int>:
 
 fn orbit_size(start: List<Int>) -> Int:
     var seen = Map<List<Int>, Int>()
-    var cur = start
+    var cur = start.clone()
     while !seen.contains(cur):
         seen[cur] = seen.len
         cur = step_freq(cur)

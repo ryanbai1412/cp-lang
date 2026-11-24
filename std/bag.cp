@@ -697,13 +697,12 @@ pub struct SortedBag<K>:
     /// cost: \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys
     /// traps: when both are non-empty and `self.last >= other.first`
     /// example: `var a = SortedBag.of([1, 2]); a.join(SortedBag.of([4, 4])); a.to_list() == [1, 2, 4, 4]`
-    pub fn join(mut self, other: SortedBag<K>):
+    pub fn join(mut self, var other: SortedBag<K>):
         if let a = self.last:
             if let b = other.first: assert a <
                 b, "`join` needs every key of `self` below every key of `other`"
-        var o = other
-        if total < o.total: self.swap(mut o)
-        for (k, c) in o.entries(): self.add_many(k, c)
+        if total < other.total: self.swap(mut other)
+        for (k, c) in other.entries(): self.add_many(k, c)
         self.changed(BAG_ADD)
 
     /// Merge all elements of `other` into `self` (small-to-large, emptying `other`).
@@ -1704,16 +1703,15 @@ pub struct SortedMap<K, V>:
     /// cost: as `SortedBag.join` for the keys, plus \(O(m)\) expected to move the `m` values of `other`
     /// traps: when both are non-empty and the last key of `self` is `>=` the first key of `other`
     /// example: `var a: SortedMap<Int, Str> = SortedMap(); a.set(1, "a"); var b: SortedMap<Int, Str> = SortedMap(); b.set(3, "c"); a.join(b); a.len == 2`
-    pub fn join(mut self, other: SortedMap<K, V>):
+    pub fn join(mut self, var other: SortedMap<K, V>):
         if let (a, _) = self.last:
             if let (
                 b,
                 _,
             ) = other.first: assert a <
                 b, "`join` needs every key of `self` below every key of `other`"
-        var o = other
-        if self.len < o.len: self.swap(mut o)
-        for (x, v) in o.items: self.set(x, v)
+        if self.len < other.len: self.swap(mut other)
+        for (x, v) in other.items: self.set(x, v)
 
     /// Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
     ///

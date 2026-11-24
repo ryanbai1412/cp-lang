@@ -162,8 +162,8 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
         return semiring_convolve(a, b, over, shape)
     if same(on, ^) or same(on, |) or same(on, &):
         assert na == nb and na.is_pow2, "a bitwise convolution needs equal power-of-two lengths"
-        var fa = a
-        var fb = b
+        var fa = a.clone()
+        var fb = b.clone()
         if same(on, ^):
             fwht(mut fa)
             fwht(mut fb)
@@ -663,7 +663,7 @@ pub struct SemiRelaxedConvolve<P>:
 /// example: `type Z = Mod<17>; let e: List<Z> = []; convolve_all([[Z(1), Z(1)], e]) == []`
 pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>:
     if polys.is_empty: return [Mod<P>(1)]
-    var layer = polys
+    var layer = polys.clone()
     while layer.len > 1:
         var up = List<List<Mod<P>>>()
         var k = 0

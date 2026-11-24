@@ -557,14 +557,14 @@ fn an_if_let_over_a_fresh_optional_moves_its_payload() {
 fn a_param_dead_after_its_sink_moves_past_a_closure_that_does_not_hold_it() {
     let out = cpp(concat!(
         "fn join(a: List<(Int, Int)>, b: List<(Int, Int)>) -> List<(Int, Int)>:\n",
-        "    var all = a\n",
+        "    var all = a.clone()\n",
         "    for x in b:\n",
         "        if let i = (0..all.len).find(i => all[i].0 == x.0): all[i].1 += x.1\n",
         "        else: all.push(x)\n",
         "    all\n",
         "fn held(a: List<Int>) -> Int:\n",
         "    let g = () => a.len\n",
-        "    var all = a\n",
+        "    var all = a.clone()\n",
         "    all.push(1)\n",
         "    g() + all.len\n",
         "let n: Int = read()\n",
