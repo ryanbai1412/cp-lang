@@ -1076,9 +1076,9 @@ prepends it.
   - line 37: `fn solve():`
   - line 127: `with checks(ranges: on, overflow: on, bounds: on):`
 - 10-io.md: 4 blocks, 1 with a case, 0 spec-only, 3 neither
-  - line 67: `let n: 1..=2e5 = read()`
-  - line 190: `let n: Int = read(base: 1)`
-  - line 198: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
+  - line 68: `let n: 1..=2e5 = read()`
+  - line 191: `let n: Int = read(base: 1)`
+  - line 199: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 0 spec-only, 1 neither
   - line 38: `use std.graph.{dijkstra, Paths}`
 

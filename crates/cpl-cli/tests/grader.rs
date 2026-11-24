@@ -242,3 +242,29 @@ fn a_grader_declaring_a_fn_otherwise_does_not_build() {
     assert!(stderr.contains("ambiguating new declaration"), "{stderr}");
     assert!(stderr.contains("stats"), "{stderr}");
 }
+
+/// `cpl test` of a grader-style program with cases and no grader is an
+/// error that names `--grader`, not the linker's undefined references.
+#[test]
+fn cpl_test_without_a_grader_names_the_flag() {
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join("grader_test_without");
+    std::fs::create_dir_all(out.join("tests")).expect("a scratch dir");
+    let program = out.join("solve.cp");
+    std::fs::write(
+        &program,
+        "extern fn compare(a: Int, b: Int) -> Int\n@grader\nfn solve(n: Int) -> Int = compare(1, n)\n",
+    )
+    .expect("the program is written");
+    std::fs::write(out.join("tests/1.in"), "3\n").expect("a case");
+    std::fs::write(out.join("tests/1.out"), "1\n").expect("an answer");
+    let tested = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("test")
+        .arg(&program)
+        .output()
+        .expect("cpl runs");
+    let stderr = String::from_utf8_lossy(&tested.stderr);
+    assert!(!tested.status.success(), "{stderr}");
+    assert!(stderr.contains("--grader"), "{stderr}");
+    assert!(stderr.contains("compare"), "{stderr}");
+    assert!(!stderr.contains("undefined reference"), "{stderr}");
+}

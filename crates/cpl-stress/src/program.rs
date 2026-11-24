@@ -514,6 +514,18 @@ fn build_linked(
         }
         return interpreted(source, text, part, &host.compiler);
     }
+    if grader.is_none() {
+        let text = std::fs::read(&cpp).unwrap_or_default();
+        if let Some(boundary) = grader_boundary(&text) {
+            let crossing: Vec<&str> = boundary.lines().filter(|l| !l.starts_with('#')).collect();
+            return Err(BuildError(format!(
+                "{} links only with the judge's grader, which supplies or calls `{}`: \
+                 pass `--grader grader.cpp`, or put grader.cpp beside its tests",
+                source.shown(),
+                crossing.join(" ").trim_end_matches(';')
+            )));
+        }
+    }
     let binary = compile_with(&cpp, true, &host.compiler, &host.flags, grader)?;
     let stack = profile.ulimit();
     // Off Unix there is no `ulimit`: the stack is the one it was linked with.
