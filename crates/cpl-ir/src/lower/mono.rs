@@ -1661,6 +1661,15 @@ impl<'a> Lowerer<'a> {
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
                 {
+                    if self.monoid_bare_op(&arg.value).is_some() {
+                        let tpl = (tpl_mod, tpl_offset);
+                        if let Some(m) =
+                            self.monoid_impl_shape(&decl.bounds, &name.text, tpl, &inferred)
+                        {
+                            inferred.insert(name.text.clone(), GenArg::Ty(m));
+                            continue;
+                        }
+                    }
                     if let Some(op) = self.bare_op_for(&decl.bounds, &name.text, &arg.value) {
                         inferred.insert(name.text.clone(), GenArg::Op(op));
                         continue;

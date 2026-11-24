@@ -1483,7 +1483,9 @@ impl<'a> Lowerer<'a> {
                     lowered.push(Arg::Mut(place));
                 }
                 Some(arg) => {
-                    if param.ty == Ty::Unit && self.detect_bare_op(&arg.value).is_some() {
+                    if let Some(monoid) = self.monoid_of_bare_op(&param.ty, arg) {
+                        lowered.push(Arg::Value(monoid));
+                    } else if param.ty == Ty::Unit && self.detect_bare_op(&arg.value).is_some() {
                         lowered.push(Arg::Value(self.mk(
                             ExprKind::Unit,
                             Ty::Unit,

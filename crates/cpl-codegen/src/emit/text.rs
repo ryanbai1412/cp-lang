@@ -127,3 +127,51 @@ pub(super) fn cpp_fn_def<'n>(
         .collect();
     format!("{signature} {{\n{aliases}    {code}\n}}\n")
 }
+
+/// Closes the fn whose definition starts at `def_at`. A param the body
+/// ended up never naming, its only reads being of a field a known closure
+/// stood in for, is `[[maybe_unused]]` so g++ does not warn.
+pub(super) fn close_def(fns: &mut String, def_at: usize, params: &[String]) {
+    fns.push_str("}\n");
+    let def = &fns[def_at..];
+    let Some(open) = def.find(" {\n") else {
+        return;
+    };
+    let (head, body) = def.split_at(open);
+    let Some(list) = head.find('(') else {
+        return;
+    };
+    let mut starts = Vec::new();
+    for name in params.iter().filter(|name| !names(body, name)) {
+        let at = head[list..]
+            .match_indices(name)
+            .map(|(at, _)| list + at)
+            .find(|&at| {
+                let before = head.as_bytes()[at - 1];
+                let after = head.as_bytes().get(at + name.len()).copied();
+                matches!(before, b' ' | b'&') && matches!(after, Some(b',' | b')'))
+            });
+        let Some(at) = at else { continue };
+        let mut depth = 0usize;
+        let mut start = list + 1;
+        for (i, c) in head[..at].char_indices().rev() {
+            match c {
+                ')' | '>' => depth += 1,
+                '(' | '<' if depth > 0 => depth -= 1,
+                '(' | ',' if depth == 0 => {
+                    start = i + 1;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        start += head[start..].len() - head[start..].trim_start().len();
+        if !head[start..].starts_with("[[maybe_unused]]") {
+            starts.push(def_at + start);
+        }
+    }
+    starts.sort_unstable();
+    for at in starts.into_iter().rev() {
+        fns.insert_str(at, "[[maybe_unused]] ");
+    }
+}
