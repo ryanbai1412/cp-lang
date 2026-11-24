@@ -1196,7 +1196,6 @@ print(if a == Some([false, true]): 1 else: 0)
 }
 
 #[test]
-#[ignore = "spec/conformance/core-02/generic-enum-payload-binds-its-type-argument.cp"]
 fn generic_enum_qualified_variant() {
     let src = "\
 enum Boxed<T> = One(T) | Empty
