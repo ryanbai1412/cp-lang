@@ -1433,6 +1433,9 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.opt_without_uses(root),
                              ["crates/cpl-codegen/src/presize.rs: presize asks no Uses query",
                               "crates/cpl-codegen/src/stray.rs: walks IR with no PASSES row"])
+            self.assertEqual(dr.opt_private_walks(root),
+                             ["crates/cpl-codegen/src/fuse.rs:2", "crates/cpl-codegen/src/presize.rs:1",
+                              "crates/cpl-codegen/src/stray.rs:1"])
 
     def test_stress_hand_json_and_helper_env_vars(self) -> None:
         with tempfile.TemporaryDirectory() as d:

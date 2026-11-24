@@ -2700,6 +2700,16 @@ def opt_without_uses(root: Path) -> list[str]:
     return sorted(out)
 
 
+def opt_private_walks(root: Path) -> list[str]:
+    """Each line of codegen outside uses/ that walks IR bodies itself (a `deep_*` call),
+    even in a pass whose PASSES row asks the Uses table: the walk belongs in uses/ as a
+    named query every pass can ask. Folds into `opt_without_uses` once it is 0."""
+    src = root / "crates/cpl-codegen/src"
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-codegen/src")
+            if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses")
+            and (root / rel) != src / "walk.rs"]
+
+
 # Every tracked list file outside test data: the counter that counts its
 # entries (None for a data list that exempts nothing), its owner, and how it
 # goes away. A new list without a row here fails `unregistered_lists`.
@@ -2914,6 +2924,7 @@ COUNTERS = {
     "cpp_sunk_copies": ("`// sunk_copies:` header sum over the corpus (read_only_copies)", cpp_sunk_copies, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "opt_without_uses": ("codegen passes deciding what code does without the Uses table (PASSES)", opt_without_uses, True),
+    "opt_private_walks": ("codegen lines walking IR themselves instead of a named uses/ query", opt_private_walks, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, True),
     "crate_edges": ("shipped crate edges", crate_edges, False),
