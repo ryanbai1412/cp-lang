@@ -29,19 +29,8 @@ use std.seq.{ends, RingRange, first_true}
 /// example: `[3, 1, 4].scan(+).prefix(2) == 4`
 /// example: `[3, 1, 4].scan(+).fold(1..=2) == 5`
 /// example: `[3, 1, 4].scan(+, from: 10).prefix(0) == 10`
-pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>:
-    let m = Monoid<T>.of(f)
-    let sums = same(f, +)
-    var p: [D.cuts]T = from ?? m.id
-    var acc = from ?? m.id
-    var rises = true
-    for (i, x) in self.items:
-        let before = acc
-        acc = m.op(acc, x)
-        if T: Ord:
-            if acc < before: rises = false
-        p[i.r] = acc
-    Prefix<D, T>.of_cuts(p, sums, rises)
+pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T> =
+    Prefix<D, T>.of_scan(self, f, from)
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
@@ -149,7 +138,19 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
     pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
 
-    fn of_cuts(p: [D.cuts]T, sums: Bool, rises: Bool) -> Prefix<D, T> = Prefix(p.clone(), sums, rises)
+    // Builds the table in place, so scan returns it without a copy.
+    fn of_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
+        let m = Monoid<T>.of(f)
+        var p: [D.cuts]T = from ?? m.id
+        var acc = from ?? m.id
+        var rises = true
+        for (i, x) in a.items:
+            let before = acc
+            acc = m.op(acc, x)
+            if T: Ord:
+                if acc < before: rises = false
+            p[i.r] = acc
+        Prefix(p, same(f, +), rises)
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
