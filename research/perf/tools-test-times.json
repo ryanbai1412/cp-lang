@@ -3,11 +3,9 @@
   "limit_s": 30.0,
   "over_limit": {
     "@setup-script:release-cpl release-cpl": 69.8,
-    "cpl-cli::diagnostics every_habit_row_gives_its_help_where_its_mistake_is": 68.0,
-    "cpl-cli::diagnostics real_mistakes_name_the_place_the_rule_and_a_fix": 64.7,
-    "cpl-cli::diagnostics every_golden_fix_names_something_that_exists": 54.0,
     "cpl-lsp::latency lsp_requests_are_under_100_ms": 48.6,
     "cpl-cli::cli build_refuses_cpp_over_64_kb": 38.6,
+    "cpl-cli::diagnostics every_habit_row_gives_its_help_where_its_mistake_is": 30.5,
     "cpl-cli::pinned_release a_port_pinned_to_an_old_release_builds_the_same_cpp": 30.3,
     "cpl-cli::fix_actions every_fix_is_a_code_action_and_fix_all_is_cpl_fix_5": 30.0
   }
