@@ -1,4 +1,5 @@
 // Source: Baltic OI 2018 Love Polygon, https://dmoj.ca/problem/btoi18p1
+// limits: 1000 ms, 1024 MB
 // Problem: n <= 1e5 people (names of at most 10 letters) each love one person, maybe themselves.
 //   Print the fewest love arrows to redirect so that everyone is in a pair of two people loving
 //   each other, or -1 if n is odd.

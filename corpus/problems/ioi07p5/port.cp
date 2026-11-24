@@ -1,4 +1,5 @@
 // Source: IOI 2007 Pairs, https://dmoj.ca/problem/ioi07p5
+// limits: 1800 ms, 150 MB
 // Problem: board type b in 1..=3 (a line, grid or cube with coordinates 1..=m), n <= 1e5
 //   animals, d <= 1e8. Count the pairs of animals at Manhattan distance <= d; m <= 7.5e7,
 //   75000, 75 for b = 1, 2, 3.

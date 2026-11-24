@@ -1,5 +1,6 @@
 // Source: AtCoder ABC476 G (Increasing Popcount),
 //   https://atcoder.jp/contests/abc476/tasks/abc476_g
+// limits: 2000 ms, 1024 MB
 // Problem: given 1 <= L <= R <= 1e18, give each integer i in [L, R] a value A_i so that equal
 //   values at i < j need popcount(i) < popcount(j); print the least possible max A.
 //   Multitest, T <= 1e4.

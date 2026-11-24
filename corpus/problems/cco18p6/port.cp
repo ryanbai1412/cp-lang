@@ -1,4 +1,5 @@
 // Source: CCO 2018 Day 2 P3, Flop Sorting, https://dmoj.ca/problem/cco18p6
+// limits: 1000 ms, 1024 MB
 // Problem: two permutations a and b of 1..=N (N <= 4096). A flop on l..=r swaps the minimum
 //   and maximum of a_l..a_r. Print at most 3e5 flops that turn a into b.
 // Solution: a flop on l..=r swaps its ends when they are its min and max, so a monotone run

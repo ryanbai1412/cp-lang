@@ -1,4 +1,5 @@
 // Source: NOI 2022, Challenge NPC II, https://dmoj.ca/problem/noi22p4
+// limits: 2000 ms, 1024 MB
 // Problem: rooted trees G and H with |H| <= |G| <= |H| + k, k <= 5 (multitest, T <= 500,
 //   |G| <= 1e5, sum |G| <= 5e5; first line C T k). Can deleting nodes of G leave a connected
 //   part containing G's root that is isomorphic to H as a rooted tree? Print Yes or No.

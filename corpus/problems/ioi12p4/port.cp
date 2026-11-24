@@ -1,4 +1,5 @@
 // Source: IOI 2012 Day 2 (Ideal City), https://dmoj.ca/problem/ioi12p4
+// limits: 1000 ms, 256 MB
 // Problem: N <= 1e5 blocks on grid cells (coordinates below 2^31) form an ideal city: the
 //   blocks are connected and so are the empty cells (no holes). The distance of two blocks is
 //   the fewest hops through adjacent blocks. Print the sum over all pairs, modulo 1e9.
@@ -10,7 +11,8 @@
 // original: proto/ports/scout_batch_17/harness/ioi12p4_main.cpp (wraps corpus/submissions/4951048.cpp)
 let n: 1..=1e5 = read()
 domain Block = 0..n
-type At = (x: 0..=2e9, y: 0..=2e9)
+type Coord = 0..=2147483647
+type At = (x: Coord, y: Coord)
 
 // "Connected, no holes" is not a type. This builds one kind of such city:
 // each street x holds one unbroken run of blocks that touches the run before.
