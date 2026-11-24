@@ -26,22 +26,22 @@ struct Phase(start: Int, m: Int, b: Int, k: Int, first: Bool):
 
 fn phase_plan(n: Int) -> List<Phase>:
     for start in 4..n - 3:
-        var plan: List<Phase> = []
+        var phases: List<Phase> = []
         var (m, at) = (start - 1, start - 1)
-        while at < n - 3 and plan.len < 5:
-            let first = plan.is_empty
+        while at < n - 3 and phases.len < 5:
+            let first = phases.is_empty
             let pairs = (b: Int) => if first: b * (b + 1) / 2 else: b * b
             let b = (1..=iroot(8 * (m + 1), 3) + 2).argmin(b => (m + 1).ceil_div(b) + (pairs(b) - 1).ceil_div(4))!
             let k = (pairs(b) - 1).ceil_div(4)
-            plan.push(Phase(at, m, b, k, first))
+            phases.push(Phase(at, m, b, k, first))
             (m, at) = (m.ceil_div(b) + k - 1, at + k)
-        if at == n - 3 and plan.len == 5 and m <= 4: return plan
+        if at == n - 3 and phases.len == 5 and m <= 4: return phases
     assert false, "no start fits five phases"
 
 fn signal(c: Int, from: Int) -> ?(Int, Int) =
     if c > 0: Some((from + (c - 1) / 4, (c - 1) % 4 + 1)) else: None
 fn heard(s: List<0..=4>, window: Range<Int>) -> Int =
-    window.first(j => s[j] != 0).map(j => 4 * (j - window.start) + s[j]) ?? 0
+    window.find(j => s[j] != 0).map(j => 4 * (j - window.start) + s[j]) ?? 0
 
 fn block(xs: List<Int>, x: Int, size: Int) -> List<Int> = xs.drop(x * size).take(size).collect()
 
@@ -88,7 +88,7 @@ var said = 0
 var (p2, q3): (List<Int>, List<Int>) = ([], [])
 
 fn say(options: List<(Int, Int)>, per: Int) -> Int:
-    said = options.keys.first(k => same(options[k], (u, v)))! / per
+    said = options.keys.find(k => same(options[k], (u, v)))! / per
     said
 
 fn send_message(n: Int, at: 1..10_000, parent: 0..10_000) -> 0..=4:
@@ -117,17 +117,17 @@ fn send_message(n: Int, at: 1..10_000, parent: 0..10_000) -> 0..=4:
         _ => say(last1(after2(said, p2, q3, prev: at - 1), at), per: 1)
 
 fn longest_path(s: List<0..=4>) -> (Int, Int):
-    let n = s.len
-    var (p, q): (List<Int>, List<Int>) = ([], [])
+    let sites = s.len
+    var (ps, qs): (List<Int>, List<Int>) = ([], [])
     var next = 0
-    for phase in phase_plan(n):
-        p.extend(next..=phase.start); q.extend(next..=phase.start)
+    for phase in phase_plan(sites):
+        ps.extend(next..=phase.start); qs.extend(next..=phase.start)
         let (x, y) = phase.pairs[heard(s, phase.start..phase.start + phase.k)]
-        (p, q) = (block(p, x, phase.block), block(q, y, phase.block))
+        (ps, qs) = (block(ps, x, phase.block), block(qs, y, phase.block))
         next = phase.start + 1
-    p.extend(next..n - 3); q.extend(next..n - 3)
-    let (p2, q3) = after3(s[n - 3], p.resized(4, fill: 0), q.resized(4, fill: 0), prev: n - 3)
-    last1(after2(s[n - 2], p2, q3, prev: n - 2), n - 1)[s[n - 1]]
+    ps.extend(next..sites - 3); qs.extend(next..sites - 3)
+    let (ps2, qs3) = after3(s[sites - 3], ps.resized(4, fill: 0), qs.resized(4, fill: 0), prev: sites - 3)
+    last1(after2(s[sites - 2], ps2, qs3, prev: sites - 2), sites - 1)[s[sites - 1]]
 
 let n: 10_000..=10_000 = read()
 let parents: [n - 1]0..n = read()
@@ -135,5 +135,5 @@ for i in 1..n: assert parents[i - 1] < i, "P[i] must be below i"
 var s: List<0..=4> = [0]
 for i in 1..n: s.push(send_message(n, i, parents[i - 1]))
 print(s.drop(1))
-let (a, b) = longest_path(s)
-print(a, b)
+let (end1, end2) = longest_path(s)
+print(end1, end2)
