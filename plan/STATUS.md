@@ -13,7 +13,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | [idioms](domains/idioms/README.md) | 13 | 1 | 3 |
 | [infra](domains/infra/README.md) | 15 | 0 | 0 |
 | [lint-fmt](domains/lint-fmt/README.md) | 20 | 0 | 0 |
-| [perf](domains/perf/README.md) | 18 | 3 | 0 |
+| [perf](domains/perf/README.md) | 19 | 3 | 0 |
 | [site](domains/site/README.md) | 17 | 1 | 3 |
 | [spec](domains/spec/README.md) | 21 | 1 | 0 |
 | [stdlib](domains/stdlib/README.md) | 19 | 29 | 6 |
@@ -165,13 +165,14 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | perf set max runtime vs matched C++ | 2.587 idiomatic (cf2147d, tuned 1.028x), tuned max 1.157 (2026-11-23 full `python3 bench/v03_perf_bench.py --suite corpus,bench --jobs 4` on 5d0673826, n=142 >= 10 ms both sides; outliers re-timed alone with `--runs 7 --jobs 1` on e46206cb9) | < 1.5 idiomatic; tuned max <= 1.1 (next metric) |
 | runtime_tuned_max: perf set tuned max vs matched C++ (better of idiomatic and its tuned in-language variant) | 1.157 (cf2066f) with 40 tuned variants timed; full run 1.629 (cf2201e) under a concurrent load, 1.077 alone (2026-11-23 full `python3 bench/v03_perf_bench.py --suite corpus,bench --jobs 4` on 5d0673826, n=142 >= 10 ms both sides; outliers re-timed alone with `--runs 7 --jobs 1` on e46206cb9) | <= 1.1; an outlier that cannot reach it in-language is a logged language gap |
 | perf set outliers over 1.1x after tuning | 0 of the 3 outliers over 1.1x after tuning, re-timed alone on 6ad9177de with `--runs 9-11 --jobs 1`: cf2066f 1.096x, cf2255e2 1.094x, ucup5s05f 0.758x (were 1.157x, 1.127x, 1.112x); 32 over 1.1x idiomatic (2026-11-23 full `python3 bench/v03_perf_bench.py --suite corpus,bench --jobs 4` on 5d0673826, outliers re-timed with `--runs 7 --jobs 1` on e46206cb9) | 0, or each a logged language gap |
+| memory_tuned_max: perf set tuned peak RSS max vs matched C++ (better of idiomatic and its tuned in-language variant) | not measured yet | <= 1.1 (decision 470); an outlier that cannot reach it in-language is a logged language gap |
 | perf set programs over 1.5x idiomatic (tuned bar: none over 1.1x, runtime_tuned_max) | 13 over 1.5x, 32 over 1.1x idiomatic (2026-11-23 full `python3 bench/v03_perf_bench.py --suite corpus,bench --jobs 4` on 5d0673826, n=142 >= 10 ms both sides; outliers re-timed alone with `--runs 7 --jobs 1` on e46206cb9) | 0 |
 | largest emitted C++, v0.3 dry runs (codeforces profile) | 21688 bytes (research/dryrun/v03/p06_labyrinth.cp); 35/35 build (2026-11-22 on 61e3d27c8) | < 32768 bytes |
 | programs over 32 KB, every v0.3 program bench/sizes.py builds | 7, listed in bench/oversize.txt; largest corpus/problems/ucup5s05f/port.cp 43612 bytes; cf2201e/port 47655 -> 38118 once the instances of a generic fn that differ only in types and integers are one C++ template; 180 over 24 KB; 1144 of 1172 programs build (2026-11-23) | 0 (64 KB hard limit: 0) |
 | front end, largest v0.3 dry run | 3 ms | < 500 ms |
 | codegen shape tests | 91 | grows with every optimisation |
 | codegen files over the 2000-line cap | 2 (expr.rs 2900, emit.rs 2233) | 0 |
-| perf set peak RSS vs matched C++ (p50, max) | p50 1.000, max 10.26 (cf2053i1 270 MB vs 26 MB), largest 862 MB (cf2124h, orig 432 MB on the same generated input) (238 ok rows, 2026-11-22) | p50 <= 1.05, max <= 1.5 (memory, not the runtime bars); no program over the judge's 256 MB |
+| perf set peak RSS vs matched C++ (p95, max) | p50 1.000, max 10.26 (cf2053i1 270 MB vs 26 MB), largest 862 MB (cf2124h, orig 432 MB on the same generated input) (238 ok rows, 2026-11-22) | p95 <= 1.5, max <= 2 (decision 470); no program over the judge's 256 MB where the C++ fits |
 | g++ -O2 time on emitted C++ (p50, max) | p50 542 ms, max 1283 ms (238 ok rows, 2026-11-22) | p50 <= 1000 ms, max <= 3000 ms (judge compile limits are ~10 s) |
 | toolchain latency: cpl check on v0.3 dry runs (median, max) | median 24 ms, p90 50 ms, max 55 ms (p11_distances), 5 of 35 over 50 ms, loaded box (2026-11-22 on 9918895f5); run/build/lsp all PASS, stress first case 1 over (p10_matching) | every file under 50 ms (P0 budget); front end < 500 ms |
 

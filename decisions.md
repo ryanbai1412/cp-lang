@@ -8629,3 +8629,9 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Call.** `trait Box: type Item = Int` gives `Item` a default; an impl that leaves it out gets `Int`, and `type Item = T` in the impl overrides it. Only an associated type with no default is E0606 when an impl leaves it out (R08.1.9).
 - **Why.** Lazy `take`/`drop` on a walk-only `Seq` (R07.7.3, seq/U59) need `Seq` to declare `type Taken`, with `Indexed` types choosing a slice and walks a lazy view. Without a default, every user `impl Seq` (core-12/user-seq-gets-folds) would have to name a type it never uses. Operator traits' `Out` already defaults this way (decision 59), and Rust has the same feature (`associated_type_defaults`). The alternative, one `take` per trait chosen by the more specific bound, is overloading by type (R08.5.2).
 - **Reverse.** Drop defaults; every impl writes every associated type, and `Seq`'s `Taken` becomes a required line in each user `impl Seq`.
+
+## 470. Memory bars: p95 1.5x, max 2x; tuned reaches 1.1x on time and memory (perf, 2026-11-24)
+
+- **Call.** Idiomatic peak RSS over the perf set is at most 1.5x matched C++ at p95 and 2x at max (was p50 1.05x, max 1.5x). Every program, tuned in the language (the better of idiomatic and its `perf.cp`), reaches 1.1x on both runtime and peak RSS (`runtime_tuned_max`, new `memory_tuned_max`). Ryan's targets; performance/R5 and R6, principles goal 3 and the perf register carry them.
+- **Why.** A p50 bar says nothing about the tail, where a wide layout costs a judge's memory limit; p95 and max bound it. Memory, like time, must be reachable without C++, so the tuned bar covers both.
+- **Reverse.** Restore p50 <= 1.05x and max <= 1.5x for idiomatic RSS and drop the memory half of the tuned bar.

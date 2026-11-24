@@ -66,6 +66,13 @@ today = "0 of the 3 outliers over 1.1x after tuning, re-timed alone on 6ad9177de
 milestone = "M3"
 
 [[metric]]
+name = "memory_tuned_max: perf set tuned peak RSS max vs matched C++ (better of idiomatic and its tuned in-language variant)"
+command = "same as perf set peak RSS (the `tuned max` figure on the `peak RSS` line)"
+target = "<= 1.1 (decision 470); an outlier that cannot reach it in-language is a logged language gap"
+today = "not measured yet"
+milestone = "M1"
+
+[[metric]]
 name = "perf set programs over 1.5x idiomatic (tuned bar: none over 1.1x, runtime_tuned_max)"
 command = "same as perf set p50"
 target = "0"
@@ -108,9 +115,9 @@ today = "2 (expr.rs 2900, emit.rs 2233)"
 milestone = "M2"
 
 [[metric]]
-name = "perf set peak RSS vs matched C++ (p50, max)"
-command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json  # rss_ratio_p50, rss_ratio_max, rss_max_mb"
-target = "p50 <= 1.05, max <= 1.5 (memory, not the runtime bars); no program over the judge's 256 MB"
+name = "perf set peak RSS vs matched C++ (p95, max)"
+command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json  # rss_ratio_p95, rss_ratio_max, rss_gt_1_5, rss_max_mb"
+target = "p95 <= 1.5, max <= 2 (decision 470); no program over the judge's 256 MB where the C++ fits"
 today = "p50 1.000, max 10.26 (cf2053i1 270 MB vs 26 MB), largest 862 MB (cf2124h, orig 432 MB on the same generated input) (238 ok rows, 2026-11-22)"
 milestone = "M1"
 

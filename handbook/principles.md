@@ -81,8 +81,10 @@ rest. Each has a test; a claim without a passing test is not a claim.
    - Never trapped: a smooth path down to raw arrays, bit tricks and inline
      C++.
    - Test: idiomatic code runs at p50 at most 1.1x matched C++, p95 at most
-     1.2x, max at most 1.5x; tuned in the language (widths, `unchecked:`,
-     layout), max at most 1.1x. The tuned bar is the one that matters most.
+     1.2x, max at most 1.5x, and its peak memory is at p95 at most 1.5x and
+     max at most 2x; tuned in the language (widths, `unchecked:`, layout),
+     every program reaches 1.1x on both time and memory. The tuned bar is
+     the one that matters most.
 4. **Doubt to evidence.** When you are unsure, how fast do you get an answer?
    - Cheap to ask "is this observation true?", "where do two implementations
      first disagree?", "which state first went wrong?".

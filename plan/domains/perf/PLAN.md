@@ -162,7 +162,7 @@ Exit criteria:
 - Perf set, every corpus port with a matched reference: idiomatic p50 <= 1.1x, p95 <= 1.2x, max <= 1.5x, and tuned max <= 1.1x (`runtime_tuned_max`); every gap left is a logged language gap with an owner.
 - Zero-cost pairs 7/7 within 1.05x of hand-written C++: domains, optionals, iterators, operation values (`cpl bench --zero-cost`).
 - Every corpus solution under 32 KB on every judge profile; g++ -O2 time p50 under 1 s.
-- Peak RSS p50 <= 1.05x and max <= 1.5x matched C++.
+- Peak RSS p95 <= 1.5x and max <= 2x matched C++ idiomatic; tuned <= 1.1x on both runtime and peak RSS (`memory_tuned_max`).
 - `cpl explain` names every implicit codegen choice (inline rows, fusion, reduction sinking, check elision); SIMD-friendly loops where g++ can vectorize the matched C++.
 
 Next steps: tuned `perf.cp` for each M1 outlier; `cpl explain` for sinking and fusion; the iterators and optionals zero-cost gaps.

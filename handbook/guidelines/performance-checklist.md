@@ -47,20 +47,23 @@ unless `bench/unbuilt.txt` lists it with why.
 ## Bars
 
 **performance/R5.** Idiomatic runtime over the perf set is at most 1.1x
-matched C++ at p50, 1.2x at p95 and 1.5x at max.
-Reason: the natural program must be fast enough to submit.
-Example: the `p50`, `p95` and `max` lines of `bench/v03_perf_bench.py`.
+matched C++ at p50, 1.2x at p95 and 1.5x at max; idiomatic peak RSS is at
+most 1.5x at p95 and 2x at max.
+Reason: the natural program must be fast and small enough to submit.
+Example: the `p50`, `p95` and `max` lines and the `peak RSS` line of
+`bench/v03_perf_bench.py`.
 Enforced by: `bench/v03_perf_bench.py`, numbers in
 `plan/domains/perf/metrics.toml` (measured, not gated).
 
 **performance/R6.** Each program over 1.1x keeps its idiomatic port and
-gets a tuned `perf.cp` beside it that reaches 1.1x using only the language
+gets a tuned `perf.cp` beside it that reaches 1.1x on both runtime and
+peak RSS using only the language
 (widths, ranges, `unchecked:`, layout, reserving), or a logged gap with an
 owner.
 Reason: a contestant must never need C++ for speed.
 Example: `corpus/problems/cf2084h/perf.cp` uses 32-bit range types and
 reserves its lists, 1.23x down to 0.95x.
-Enforced by: `bench/v03_perf_bench.py` (`tuned max`), gaps in
+Enforced by: `bench/v03_perf_bench.py` (both `tuned max` figures), gaps in
 `plan/domains/perf/PLAN.md`.
 
 **performance/R7.** Each zero-cost pair runs within 1.05x of its
