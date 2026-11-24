@@ -2383,3 +2383,54 @@ let d = Deque.of([3, 1, 4])
 for x in d.rev: print(x)
 """
 out = "4\n1\n3"
+
+[case."Show/PArena/show"]
+code = """
+use std.persistent.{PArena}
+var a = PArena<Int>()
+a.alloc(7)
+a.alloc(3)
+print(a)
+"""
+out = "7 3"
+
+[case."Show/PersistentArray/show"]
+code = """
+use std.persistent.{PersistentArray}
+var p = PersistentArray<0..3, Int>(fill: 7)
+print(p)
+"""
+out = "7 7 7"
+
+[case."Show/PersistentLazySegTree/show"]
+code = """
+use std.persistent.{PersistentLazySegTree}
+var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [3, 1, 2])
+print(t)
+"""
+out = "3 1 2"
+
+[case."Show/PersistentSegTree/show"]
+code = """
+use std.persistent.{PersistentSegTree}
+var t = PersistentSegTree(+, a: [4, 0, 2])
+let v = t.set(t.base, 1, 9)
+print(t, t.get(v, 1))
+"""
+out = "4 0 2 9"
+
+[case."Show/RangeKth/show"]
+code = """
+use std.persistent.{RangeKth}
+print(RangeKth([5, 1, 4, 2, 4]))
+"""
+out = "5 1 4 2 4"
+
+[case."Show/Version/show"]
+code = """
+use std.persistent.{PersistentSegTree}
+var t = PersistentSegTree(+, a: [1, 2, 3])
+let v = t.set(t.base, 1, 9)
+print(t.base, v)
+"""
+out = "version @5 version @8"

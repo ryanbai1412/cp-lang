@@ -935,3 +935,64 @@ impl Show for PMultisetWithin<D>:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Show for PArena<T>:
+    /// The allocated values in allocation order, space-separated.
+    ///
+    /// example: `var a = PArena<Int>(); a.alloc(5); a.alloc(6); "{a}" == "5 6"`
+    fn show(a):
+        var out = ""
+        for x in a._xs:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Version<S>:
+    /// The root node the version names, as `version @root`.
+    ///
+    /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); "{t.base}" == "version @5"`
+    fn show(v) = "version @{v.root}"
+
+impl Show for PersistentSegTree<D, T: Sub>:
+    /// The base version's values in key order, space-separated.
+    ///
+    /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); "{t}" == "1 2 3"`
+    fn show(t):
+        var out = ""
+        for i in 0..D.count:
+            if not out.is_empty: out += " "
+            out += "{t.get(t.base, D(i))}"
+        out
+
+impl Show for PersistentLazySegTree<D, T, F>:
+    /// The base version's values in key order, space-separated.
+    ///
+    /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); "{t}" == "1 2 3"`
+    fn show(t):
+        var out = ""
+        for i in 0..D.count:
+            if not out.is_empty: out += " "
+            out += "{t.get(t.base, D(i))}"
+        out
+
+impl Show for PersistentArray<D, T>:
+    /// The base version's values in key order, space-separated.
+    ///
+    /// example: `var t = PersistentArray(a: [4, 5, 6]); "{t}" == "4 5 6"`
+    fn show(t):
+        var out = ""
+        for i in 0..D.count:
+            if not out.is_empty: out += " "
+            out += "{t.get(t.base, D(i))}"
+        out
+
+impl Show for RangeKth<D, T>:
+    /// The values it was built from, in key order, space-separated.
+    ///
+    /// example: `"{RangeKth([5, 1, 4, 2])}" == "5 1 4 2"`
+    fn show(rk):
+        var out = ""
+        for i in 0..D.count:
+            if not out.is_empty: out += " "
+            out += "{rk.kth(D(i)..=D(i), 0)}"
+        out
