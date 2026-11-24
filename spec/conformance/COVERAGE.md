@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3174 (1093 passing). Rules: 605.
+Cases: 3181 (1093 passing). Rules: 605.
 
 ## Summary per chapter
 
@@ -17,9 +17,9 @@ Cases: 3174 (1093 passing). Rules: 605.
 - R04 (04-indices.md): 73 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 50 rules, 231 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 25 rules, 117 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 91 rules, 220 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 50 rules, 234 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 25 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 91 rules, 221 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 93 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -371,8 +371,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.2.2 [3+ 4-]: **A range type to a wider one** (`1..=5` to `Int`, `0..=9` to `-5..=100`). Free. Arithmeti...
 - R05.8.3 [1+ 2-]: **Grids (F1).** A row keeps the column domain and a column keeps the row domain. On every ...
 - R05.2.1 [2+ 0-]: **R1. Plain values copy.** A value is plain when no part of it lives on the heap: `Int`, `...
-- R05.3.1 [2+ 3-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
-- R05.3.2 [2+ 0-]: `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
+- R05.3.1 [4+ 3-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
+- R05.3.2 [3+ 0-]: `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
 - R05.3.3 [1+ 0-]: A **place** is a variable, a field (`s.f`), an element (`a[i]`), a slice (`a[r]`) or any p...
 - R05.3.4 [1+ 1-]: `let p = mut a[i]` names a place: `p += 1` writes `a[i]`. `p` is a `mut` lend of `a` (R7).
 - R05.3.5 [10+ 11-]: Reading an element or field binds a lend of it, not a copy, when the value is heap (`let r...
@@ -429,7 +429,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.6 [2+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [4+ 1-]: .
 - R06.1.8 [7+ 1-]: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
-- R06.2.1 [5+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
+- R06.2.1 [6+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [2+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
 - R06.2.4 [1+ 1-]: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
@@ -539,7 +539,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.12.6 [1+ 0-]: | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in...
 - R07.12.7 [1+ 0-]: | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rot...
 - R07.12.8 [1+ 0-]: | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ...
-- R07.12.9 [1+ 1-]: | `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)...
+- R07.12.9 [2+ 1-]: | `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)...
 
 ### R08: 08-traits-generics.md
 
@@ -968,7 +968,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 12 case(s)
-- R0101 Index out of range: 33 case(s)
+- R0101 Index out of range: 34 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
@@ -1008,12 +1008,14 @@ prepends it.
   - line 100: `let z = z_function(s[l..])`
   - line 114: `for (i, x) in a[l..=r].items:`
   - line 171: `let t = s[l..r].rebase`
-- 05-ownership.md: 56 blocks, 46 with a case, 2 spec-only, 8 neither
+- 05-ownership.md: 56 blocks, 44 with a case, 2 spec-only, 10 neither
   - line 105: `var xs = [1, 2]`
   - line 180: `struct Holder: xs: List<Int>`
+  - line 308: `let ws = read<[V]Int>()`
   - line 532: `let d = build_dsu(edges)`
   - line 654: `var xs = [1, 2]`
   - line 663: `var xs = [1, 2]`
+  - line 860: `let ws = read<[V]Int>()`
   - line 869: `var xs = [3, 1, 2]`
   - line 908: `var seen: [V]Bool = false`
   - line 975: `var xs = [1, 2]`
@@ -1025,7 +1027,7 @@ prepends it.
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-18 of 109 blocks have neither a case nor a spec-only reason.
+20 of 109 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 
@@ -1078,8 +1080,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (55/55 named by a case)
-- **seq** (221/232 named by a case)
-  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Stepped`, `StepKeys`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
+- **seq** (222/232 named by a case)
+  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `StepKeys`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
@@ -1093,7 +1095,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2250 of 2371 std items are named by a case.
+2251 of 2371 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
