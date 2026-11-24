@@ -48,7 +48,7 @@ fn construct_range(m: 3..=2e5, k: Int) -> List<Int>:
     fn attempt(seed: Int) -> List<Int>:
         var rng = Rng.new(seed)
         let size = isqrt(6 * m)
-        let evens = (-m / 2..3 * m / 2).filter(x => x % 2 == 0)
+        let evens = (-m / 2..3 * m / 2).filter(x => x % 2 == 0).collect()
         let s = rng.sample(rng.int(2 * size / 3, 4 * size / 3), from: evens).sorted()
         var h: [0..m]?Int = None
         for (x, y) in s.pairs() if (x + y) / 2 in 0..m and (y - x) / 2 in 1..m:

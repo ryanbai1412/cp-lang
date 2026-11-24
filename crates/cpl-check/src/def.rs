@@ -137,6 +137,7 @@ pub enum Def {
         bound_args: BoundArgs,
         /// The associated types it chooses, `type Found = ?Int` (R08.1.9).
         assoc: Vec<(String, Ty)>,
+        method_rows: Vec<MethodRows>,
     },
 }
 
@@ -206,9 +207,15 @@ pub struct DomainInfo {
 /// `R: (u: V, v: V, ..)` per type parameter: the fields a record argument must have.
 pub type RowBounds = Vec<(String, Vec<(String, Ty)>)>;
 
-/// A method's name, its row bounds, and its bounds that give a trait arguments
-/// (`S: Indexed<E, R>` as `("S", "Indexed", [E, R])`).
-pub type MethodRows = (String, RowBounds, Vec<(String, String, Vec<Ty>)>);
+/// A method's name, its row bounds, its bounds that give a trait arguments
+/// (`S: Indexed<E, R>` as `("S", "Indexed", [E, R])`), and its trait bounds with
+/// its impl's (`impl<F: Tag> S<F>`).
+pub type MethodRows = (
+    String,
+    RowBounds,
+    Vec<(String, String, Vec<Ty>)>,
+    Vec<(String, String)>,
+);
 
 impl Def {
     /// The type of a variant of enum `of` used as a value.

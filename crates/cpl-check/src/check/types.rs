@@ -994,21 +994,7 @@ impl<'a> Checker<'a> {
                     .collect();
                 let (methods, getters, mutators, selves) =
                     self.method_sigs_and_selves(&s.methods, &self_ty);
-                let method_rows = (s.methods.iter())
-                    .filter_map(|m| match &m.kind {
-                        ast::StmtKind::Fn(f) => {
-                            let decl = self.trait_params_generic(f);
-                            let f = &*decl;
-                            let rows = self.fn_bounds(f).0;
-                            let outer = self.generics.len();
-                            (self.generics).extend(f.generics.iter().map(|g| g.text.clone()));
-                            let through = self.quietly(|c| c.bound_args(&f.bounds));
-                            self.generics.truncate(outer);
-                            Some((f.name.text.clone(), rows, through))
-                        }
-                        _ => None,
-                    })
-                    .collect();
+                let method_rows = self.method_rows(&s.methods, &[]);
                 self.leave_body(body);
                 // `fn new(..)` without `self` says how the struct is built.
                 let ctor = s.methods.iter().find_map(|m| match &m.kind {
@@ -1238,6 +1224,7 @@ impl<'a> Checker<'a> {
                 let outer_assoc = std::mem::replace(&mut self.self_assoc, assoc.clone());
                 let owned = self.owned(&target_name, &body.stmts);
                 let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);
+                let method_rows = self.method_rows(&body.stmts, bounds);
                 self.self_assoc = outer_assoc;
                 self.leave_body(scope);
                 let trait_head = trait_name.as_ref().and_then(trait_impl_key);
@@ -1254,6 +1241,7 @@ impl<'a> Checker<'a> {
                         target: self_ty,
                         bound_args,
                         assoc,
+                        method_rows,
                     },
                 )]
             }

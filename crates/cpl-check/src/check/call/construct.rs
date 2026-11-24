@@ -163,13 +163,12 @@ impl Checker<'_> {
                     }
                     let before = self.sink.len();
                     // `new<A: Acts<T, F>>(.., act: A)`: `F` is what `A`'s impl gives.
-                    let through = (method_rows.iter())
-                        .find(|(m, _, _)| m == "new" && !is_generated_ctor)
-                        .map(|(_, _, through)| through.clone());
+                    let new = (method_rows.iter()).find(|(m, ..)| m == "new" && !is_generated_ctor);
+                    let through = new.map(|r| r.2.clone());
                     let outer = std::mem::replace(&mut self.call_bound_args, through);
                     self.args(callee_text, verb, params, args, call, &mut bindings);
                     let through = std::mem::replace(&mut self.call_bound_args, outer);
-                    if let Some(bounds) = &through {
+                    if let Some((.., bounds)) = new {
                         self.method_bounds_hold(
                             callee_text,
                             (bounds, params),

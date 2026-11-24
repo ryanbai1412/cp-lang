@@ -150,7 +150,9 @@ struct Pair<A, B = Int>: a: A, b: B
 
 - Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as
   a parameter type: `g: WeightedNext<V, W>` means "some type
-  implementing it" (decision 146). (R08.2.1)
+  implementing it" (decision 146). A method's bounds, its own and its
+  impl's (`impl<F: Tag> S<F>`), are checked at each call as a free fn's
+  are: `s.apply(x)` with a `NoTags` for `F` is E0606. (R08.2.1)
 - Generic bodies are checked once against their bounds, at definition;
   errors point at the generic or the call, never inside an
   instantiation. (R08.2.2)

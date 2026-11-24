@@ -41,6 +41,33 @@ impl Checker<'_> {
         (rows, traits, bound_args)
     }
 
+    /// Each method's [`MethodRows`], its trait bounds joined by `outer`, its impl's.
+    pub(super) fn method_rows(
+        &mut self,
+        methods: &[ast::Stmt],
+        outer: &[ast::Bound],
+    ) -> Vec<crate::def::MethodRows> {
+        let mut impl_traits = Vec::new();
+        for b in outer {
+            for t in &b.traits {
+                if let ast::TypeKind::Named { name, .. } = &t.kind {
+                    impl_traits.push((b.name.text.clone(), name.text.clone()));
+                }
+            }
+        }
+        (methods.iter())
+            .filter_map(|m| match &m.kind {
+                ast::StmtKind::Fn(f) => {
+                    let decl = self.trait_params_generic(f);
+                    let (rows, mut traits, through) = self.quietly(|c| c.fn_bounds(&decl));
+                    traits.extend(impl_traits.iter().cloned());
+                    Some((f.name.text.clone(), rows, through, traits))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     /// Puts a fn's bounds in scope for its body; [`Self::leave_bounds`] takes them out.
     pub(crate) fn enter_fn_bounds(&mut self, f: &ast::FnDecl) -> (usize, usize) {
         let outer = (self.param_bounds.len(), self.param_bound_args.len());

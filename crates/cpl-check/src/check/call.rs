@@ -1332,43 +1332,60 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `Graph.directed(flights)`: a static method's row bounds, read off its declared
-    /// parameters, as `rows_hold` checks a free fn's.
-    fn static_rows_hold(
+    /// `Graph.directed(flights)`, `s.apply(f)`: a method's bounds, read off its declared
+    /// parameters and the type it is called on, as a free fn's are.
+    fn method_rows_hold(
         &mut self,
         call: &Expr,
         callee_text: &str,
         base: &Expr,
         method: &str,
         args: &[Arg],
+        bindings: &Bindings,
     ) {
-        let ty_name = match &base.kind {
-            ExprKind::Generic { base, .. } => match &base.kind {
-                ExprKind::Name(n) => n,
-                _ => return,
-            },
-            ExprKind::Name(n) => n,
+        let recv = self.quietly(|c| c.infer(base));
+        let ty_name = match &recv {
+            Ty::TypeName(n) | Ty::Named { name: n, .. } => n.clone(),
             _ => return,
         };
-        if self.local(ty_name).is_some() {
-            return;
+        let impls = self.env.impls(&ty_name).into_iter().map(|(_, d)| d);
+        let mut found = None;
+        for def in self.type_def(&ty_name).into_iter().chain(impls) {
+            let (methods, rows, target) = match &*def {
+                Def::Struct {
+                    generics,
+                    methods,
+                    method_rows,
+                    ..
+                } => (
+                    methods,
+                    method_rows,
+                    Ty::Named {
+                        name: ty_name.clone(),
+                        args: generics.iter().cloned().map(Ty::Param).collect(),
+                    },
+                ),
+                Def::Impl {
+                    methods,
+                    method_rows,
+                    target,
+                    ..
+                } => (methods, method_rows, target.clone()),
+                _ => continue,
+            };
+            if let (Some((_, Ty::Fn { params, .. })), Some(row)) = (
+                methods.iter().find(|m| m.0 == method),
+                rows.iter().find(|r| r.0 == method),
+            ) {
+                found = Some((params.clone(), row.clone(), target));
+                break;
+            }
         }
-        let Some(Def::Struct {
-            methods,
-            method_rows,
-            ..
-        }) = self.type_def(ty_name).as_deref().cloned()
-        else {
+        let Some((params, (_, rows, through, traits), target)) = found else {
             return;
         };
-        let Some((_, rows, through)) = method_rows.into_iter().find(|(m, _, _)| m == method) else {
-            return;
-        };
-        let Some((_, Ty::Fn { params, .. })) = methods.into_iter().find(|(m, _)| m == method)
-        else {
-            return;
-        };
-        let mut bindings = Bindings::default();
+        let mut bindings = bindings.clone();
+        target.unify(&recv, &mut bindings);
         let mut positional = params.iter().filter(|p| !p.named_only);
         for arg in args {
             let param = match &arg.name {
@@ -1390,7 +1407,10 @@ impl<'a> Checker<'a> {
                 held.unify(&elem, &mut bindings);
             }
         }
-        self.method_bounds_hold(callee_text, (&through, &params), &bindings, (args, call));
+        self.method_bounds_hold(method, (&traits, &params), &bindings, (args, call));
+        if !matches!(recv, Ty::TypeName(_)) {
+            return;
+        }
         // A tuple argument (`Graph.directed(pairs)`) is read by another path; only a record
         // can miss a field.
         bindings.retain(|_, t| matches!(t, Ty::Record(_)));
@@ -1432,88 +1452,58 @@ impl<'a> Checker<'a> {
                         self.bare_ops_take_monoid(bound_args, &params, args, &mut bindings);
                     }
                 }
-                if let (Some(fn_name), Some(Def::Fn { bound_args, .. })) =
-                    (callee_name, callee_def.as_deref())
+                if let (
+                    Some(fn_name),
+                    Some(Def::Fn {
+                        bound_args, bounds, ..
+                    }),
+                ) = (callee_name, callee_def.as_deref())
                 {
-                    let bound_args = bound_args.clone();
-                    self.shared_bound_args_agree(fn_name, &bound_args, &bindings, call.span);
+                    self.shared_bound_args_agree(fn_name, bound_args, &bindings, call.span);
+                    let bounds = (bounds.iter())
+                        .flat_map(|(p, ts)| ts.iter().map(move |t| (p.clone(), t.clone())))
+                        .collect::<Vec<_>>();
+                    self.method_bounds_hold(fn_name, (&bounds, &params), &bindings, (args, call));
                 }
-                if let Some(fn_name) = callee_name {
-                    if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
-                        for (param, traits) in bounds {
-                            if let Some(bound_ty) = bindings.get(&param) {
-                                let bound_ty = self.settle(bound_ty);
-                                for trait_name in traits {
-                                    if !self.implements_trait(&bound_ty, &trait_name) {
-                                        let help = self.unmet_bound_help(&bound_ty);
-                                        if let Some(diag) = self.report(
-                                            call.span,
-                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
-                                            &[&bound_ty, &trait_name, &fn_name],
-                                        ) {
-                                            diag.help = help;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if let ExprKind::Name(fname) = &callee.kind {
-                    if let Some(Def::Fn {
+                if let (
+                    ExprKind::Name(_),
+                    Some(Def::Fn {
                         row_bounds,
                         trait_bounds,
                         ..
-                    }) = self.global(fname).as_deref().cloned()
-                    {
-                        for (param, tname) in trait_bounds {
-                            let Some(actual) = bindings.get(&param) else {
-                                continue;
-                            };
-                            let Some(Def::Trait { fields, .. }) =
-                                self.global(&tname).as_deref().cloned()
-                            else {
-                                continue;
-                            };
-                            if fields.is_empty() {
-                                continue;
-                            }
-                            match actual {
-                                Ty::Record(actual_fs) => {
-                                    for (req_name, req_ty) in &fields {
-                                        let found = actual_fs.iter().find(|(n, _)| n == req_name);
-                                        if !matches!(found, Some((_, got_ty)) if self.fits(got_ty, req_ty))
-                                        {
-                                            self.report(
-                                                call.span,
-                                                msgs::check::MISSING_IMPL_RECORD_DOES_NOT_SATISFY,
-                                                &[&actual, &tname, &req_name, &req_ty],
-                                            );
-                                        }
-                                    }
+                    }),
+                ) = (&callee.kind, callee_def.as_deref())
+                {
+                    for (param, tname) in trait_bounds {
+                        let Some(actual) = bindings.get(param) else {
+                            continue;
+                        };
+                        let Some(Def::Trait { fields, .. }) =
+                            self.global(tname).as_deref().cloned()
+                        else {
+                            continue;
+                        };
+                        if fields.is_empty() {
+                            continue;
+                        }
+                        if let Ty::Record(actual_fs) = actual {
+                            for (req_name, req_ty) in &fields {
+                                let found = actual_fs.iter().find(|(n, _)| n == req_name);
+                                if !matches!(found, Some((_, got_ty)) if self.fits(got_ty, req_ty))
+                                {
+                                    self.report(
+                                        call.span,
+                                        msgs::check::MISSING_IMPL_RECORD_DOES_NOT_SATISFY,
+                                        &[&actual, &tname, &req_name, &req_ty],
+                                    );
                                 }
-                                Ty::Named { name: sname, .. } => {
-                                    let has_impl = self.env.impls(sname).iter().any(|(tn, _)| {
-                                        tn.as_deref().and_then(|t| t.split('<').next())
-                                            == Some(tname.as_str())
-                                    });
-                                    if !has_impl {
-                                        self.report(
-                                            call.span,
-                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_STRUCTS,
-                                            &[&sname, &tname, &tname, &sname],
-                                        );
-                                    }
-                                }
-                                _ => {}
                             }
                         }
-                        self.rows_hold(call, &callee_text, args, row_bounds, &bindings);
                     }
+                    self.rows_hold(call, &callee_text, args, row_bounds.clone(), &bindings);
                 }
                 if let ExprKind::Field { base, name } = &callee.kind {
-                    self.static_rows_hold(call, &callee_text, base, &name.text, args);
+                    self.method_rows_hold(call, &callee_text, base, &name.text, args, &bindings);
                 }
                 self.record_instantiation(call, &bindings);
                 self.settle(&ret.fresh_apart(&bindings).subst(&bindings))
