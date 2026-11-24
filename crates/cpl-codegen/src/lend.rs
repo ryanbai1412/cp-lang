@@ -1556,7 +1556,17 @@ impl Emitter<'_> {
             self.taken_items.clear();
         }
         self.pushed_moves = crate::uses::pushed_last_reads(self.program, block, k, outer);
-        self.called_moves = crate::uses::called_last_reads(self.program, block, k, outer);
+        // A fn's params live through its whole body: one dead after a call
+        // there may move into it, if the fn owns it.
+        let params: BTreeSet<usize> = match self.fn_id {
+            Some(id) if std::ptr::eq(block, &self.program.fns[id].body) => {
+                (0..self.program.fns[id].params.len())
+                    .chain(outer.iter().copied())
+                    .collect()
+            }
+            _ => outer.clone(),
+        };
+        self.called_moves = crate::uses::called_last_reads(self.program, block, k, &params);
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
         self.taken_items.clear();

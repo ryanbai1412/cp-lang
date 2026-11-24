@@ -733,3 +733,19 @@ print(f([5]))
     assert!(!out.contains("std::move(one)"), "{out}");
     assert!(out.contains("std::move(q)"), "{out}");
 }
+
+#[test]
+fn a_local_dead_after_a_let_of_a_call_moves_into_its_param() {
+    let out = cpp(concat!(
+        "fn walk<T>(n: Int, acc: T) -> (Int, T):\n",
+        "    if n == 0: return (0, acc)\n",
+        "    let (k, xs) = walk(n - 1, acc)\n",
+        "    (k + 1, xs)\n",
+        "let n: 0..=9 = read()\n",
+        "print(walk(n, [n]).0)\n",
+    ));
+    assert!(
+        out.contains("1), std::move(acc));"),
+        "the param dead after the let moves into the call: {out}"
+    );
+}

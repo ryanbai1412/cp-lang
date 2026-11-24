@@ -708,16 +708,16 @@ pub(crate) fn pushed_last_reads(
         .collect()
 }
 
-/// The arguments of the call statement `k` of `block` is, `f(xs, ..)`, that
-/// are locals named once in it and dead after it: each may move into a
-/// parameter taken by value.
+/// The arguments of the call statement `k` of `block` is, `f(xs, ..)` or
+/// `let r = f(xs, ..)`, that are locals named once in it and dead after it:
+/// each may move into a parameter taken by value.
 pub(crate) fn called_last_reads(
     program: &Program,
     block: &Block,
     k: usize,
     outer: &BTreeSet<usize>,
 ) -> Vec<*const Expr> {
-    let Stmt::Expr(e) = &block.stmts[k] else {
+    let (Stmt::Expr(e) | Stmt::Let(_, Some(e))) = &block.stmts[k] else {
         return Vec::new();
     };
     let ExprKind::Call(_, args) = &e.kind else {
