@@ -23,10 +23,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "none",
- "notes": "orig.cpp is the official model solution (ioi/task-archive 2025/day1/souvenirs/solutions/model_solution/author_solution.cpp) with souvenirs.h inlined and the sample grader's main and transaction (5000-call limit), reading the port's input. It, hazem_full.cpp and badawy_full.cpp print 0 1 ... N-1 on all 54 official tests, so the grader accepts them. The port and dream are stdin forms that simulate transaction; the judge form is `@grader fn buy_souvenirs` with `@grader fn transaction`.",
+ "notes": "orig.cpp is the official model solution (ioi/task-archive 2025/day1/souvenirs/solutions/model_solution/author_solution.cpp) with souvenirs.h inlined and a stdio transaction. interactor.py is the official manager (graders/manager.cpp) over stdio: it sends N and P[0], answers each `? M` with the types bought and the change, rejects M outside [P[N-1], P[0]) or a 5001st transaction, and on `!` accepts iff type i was bought exactly i times. orig.cpp, the port and the dream are accepted on every tests.toml case (the --max case takes 4105 transactions); a solution that skips, adds, over-spends or exceeds the limit is rejected. On the 54 official tests, the model solution, hazem_full.cpp and badawy_full.cpp all buy 0 1 ... N-1.",
  "dream_stress": {
   "ok": true,
   "cases": 12,
-  "sha": "05fe1e2b000888e88b830081f2eefb34fcf77233"
+  "sha": "26ec6a927810648c1449cd38a6477af00043bbd1"
  }
 }

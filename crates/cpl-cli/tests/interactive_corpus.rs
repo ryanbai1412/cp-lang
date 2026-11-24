@@ -121,6 +121,10 @@ fn every_interactive_port_satisfies_its_judge() {
         .iter()
         .partition(|dir| dir.join("interactor.py").exists());
     let unjudged: Vec<String> = unjudged.iter().map(|dir| name_of(dir)).collect();
+    // A package with a judge but no port yet has nothing here to judge.
+    let (judges, portless): (Vec<&PathBuf>, Vec<&PathBuf>) = judges
+        .into_iter()
+        .partition(|dir| dir.join("port.cp").exists());
     let judged = judges.len();
     // Each problem's runs are independent and wait on python and the judge
     // more than on a core, so the problems run side by side.
@@ -153,9 +157,10 @@ fn every_interactive_port_satisfies_its_judge() {
         "interactive problems need an interactor.py to be judged: {unjudged:?}"
     );
     eprintln!(
-        "interactive corpus: {judged} problems judged, {runs} runs, {} failed; {} without a judge",
+        "interactive corpus: {judged} problems judged, {runs} runs, {} failed; {} without a judge, {} without a port",
         failures.len(),
-        unjudged.len()
+        unjudged.len(),
+        portless.len()
     );
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

@@ -6,24 +6,17 @@
 // its first price, which yields an equation for a later type. No type is bought more
 // than its quota, so finish by topping each type up to exactly i.
 //
-// Stdin: N and the hidden prices; `transaction` is the sample grader's, and the
-// program prints how many of each type it bought.
+// Interaction (interactor.py): read N and P[0]; a transaction prints "? M" and reads
+// the k types bought and the change; "!" ends.
 let n = read<2..=100>()
 domain T = [n]
-let p = read<[T]1..=1e15>()
-var got: [T]Int = 0
-var calls = 0
+let p0 = read<1..=1e15>()
 
 fn transaction(m: Int) -> (List<T>, Int):
-    calls += 1
-    assert calls <= 5000 and p[T.last!] <= m < p[T.first!]
-    var change = m
-    var types: List<T> = []
-    for i in T if change >= p[i]:
-        change -= p[i]
-        got[i] += 1
-        types.push(i)
-    (types, change)
+    print("?", m)
+    let k = read<1..=n>()
+    let types: List<T> = read<[k]T>()
+    (types, read<Int>())
 
 struct Eq:
     var types: Bitset<T>
@@ -62,5 +55,5 @@ fn buy_souvenirs(p0: Int):
 
     for i in T: repeat i.ord - bought[i]: transaction(price[i]!)
 
-buy_souvenirs(p[T.first!])
-print(got)
+buy_souvenirs(p0)
+print("!")
