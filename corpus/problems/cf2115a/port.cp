@@ -5,22 +5,37 @@
 //   n <= 5000.
 // Solution: the overall gcd g never changes, so all end at g, and once one element is g each
 //   other takes one operation: if g occurs the answer is n minus its count, else
-//   (m - 1) + (n - 1) with m the fewest elements whose gcd is g. fewest[d] is a shortest path
-//   over values: taking x from d reaches gcd(d, x) with one more element; settle d from
-//   largest to smallest, O(max * distinct values).
+//   (m - 1) + (n - 1) with m the fewest elements whose gcd is g. Divided by g, m is the least k
+//   with a k-tuple of gcd 1, and by Mobius sum_d mu(d) c_d^k counts those, c_d the elements
+//   divisible by d. Each value weighs a random hash mod p, so the count is nonzero mod p
+//   whenever it is truly nonzero (with high probability). O(V log V) per k.
+use std.math.{Sieve}
+use std.rand.{Rng}
+
+const MOD = 998_244_353
+type Z = Mod<MOD>
+const V = 5000
+let mu = Sieve(V).mobius_table()
+var rng = Rng(48)
+
 @!multitest
 let n: 1..=5000 = read()
-type Val = 1..=5000
-let a: [0..n]Val = read()
+let a: [0..n]1..=V = read()
 let g = a.fold(gcd)
 let at_g = a.count(g)
 if at_g > 0: return print(n - at_g)
 
-let values = a.distinct()
-var fewest: [Val]?Int = None
-for x in values: fewest[x] = 1
-for d in (1..=a.max()!).rev:
-    let k = fewest[d] ?? continue
-    for x in values:
-        fewest[gcd(d, x)] min= k + 1
-print(fewest[g]! - 1 + n - 1)
+var mult: [1..=V]Z = 0
+for x in a: mult[x / g] += Z(Int(rng.next() % U64(MOD)))
+for d in 1..=V:
+    for j in (2 * d..=V).step(d): mult[d] += mult[j]
+var tuples = [Z(mu[d]) for d in 1..=V]
+var k = 1
+loop:
+    var count = Z(0)
+    for d in 1..=V:
+        tuples[d - 1] *= mult[d]
+        count += tuples[d - 1]
+    if count != Z(0): break
+    k += 1
+print(k - 1 + n - 1)
