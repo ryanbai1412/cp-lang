@@ -6,39 +6,30 @@
 //   less than the smaller of the cells below and to its right (1e17 past the border). That
 //   leaves the most room for the cells above and to the left, so if this grid fails a final
 //   check (positive, at most 1e18, rows and columns increasing) every filling fails. O(NM).
-// Runnable on proto/cpc today.
 // original: corpus/submissions/4452959.cpp
-let n: 1..=1000 = read()
-let m: 1..=1000 = read()
-domain Row = 0..n
-domain Col = 0..m
-let given: [Row, Col]Int = read()
-const TOP = 100000000000000000  // 1e17: room below for n + m blanks
+
+let n: 1..=1500 = read()
+let m: 1..=1500 = read()
+domain Row = 1..=n
+domain Col = 1..=m
+let given: [Row, Col]0..=1e9 = read()
+const ROOM = 1e17  // past the border: room below it for n + m blanks
+const TOP = 1e18
 
 var a: [Row, Col]Int = 0
-for i in 0..n:
-    let r = Row(n - 1 - i)
-    for j in 0..m:
-        let c = Col(m - 1 - j)
+for r in Row.rev:
+    for c in Col.rev:
         if given[r, c] != 0:
             a[r, c] = given[r, c]
-            continue
-        var v = TOP
-        if let below = Row.at(r + 1): v = a[below, c]
-        if let right = Col.at(c + 1): v min= a[r, right]
-        a[r, c] = v - 1
+        else:
+            var most = ROOM
+            if let q = (r, c).down: most min= a[q]
+            if let q = (r, c).right: most min= a[q]
+            a[r, c] = most - 1
 
-fn valid() -> Bool:
-    for r in Row:
-        for c in Col:
-            if a[r, c] <= 0 or a[r, c] > 1000000000000000000: return false
-            if let right = Col.at(c + 1):
-                if a[r, c] >= a[r, right]: return false
-            if let below = Row.at(r + 1):
-                if a[r, c] >= a[below, c]: return false
-    true
-
-if valid():
-    for r in Row: print(a[r, ..])
-else:
-    print(-1)
+fn below(p: (Row, Col), q: ?(Row, Col)) -> Bool = if let q = q: a[p] < a[q] else: true
+let fits = all(
+    a[r, c] in 1..=TOP and below((r, c), (r, c).down()) and below((r, c), (r, c).right())
+    for r in Row for c in Col
+)
+if fits: print(a) else: print(-1)

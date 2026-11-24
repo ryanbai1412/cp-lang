@@ -402,6 +402,10 @@ dmopc21c5p1
 dmopc21c5p3
 dmopc21c5p4
 dmopc21c6p2
+dmopc21c6p3
+dmopc21c6p4
+dmopc21c7p1
+dmopc21c7p2
 dmopc21c9p4
 dmpg16g2
 egoi23p7
