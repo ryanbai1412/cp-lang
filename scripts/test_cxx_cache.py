@@ -214,5 +214,20 @@ class CxxCacheTest(unittest.TestCase):
         self.assertLessEqual(total, 400)
 
 
+    def test_eviction_leaves_other_tools_builds_in_the_cache_alone(self):
+        self.env["CPL_CXX_CACHE_MAX_BYTES"] = "400"
+        other = os.path.join(self.env["CPL_CXX_CACHE_DIR"], "conform-docs")
+        os.makedirs(other)
+        for name in ("key_1_ThreadId_2_.bin", "key"):
+            with open(os.path.join(other, name), "w") as f:
+                f.write("x" * 1000)
+        for body in ("int a;", "int b;"):
+            self.write(body + " " * 100)
+            self.gxx(self.src, "-o", "x")
+        self.write("int a;" + " " * 100)
+        self.gxx(self.src, "-o", "x")
+        self.assertEqual(sorted(os.listdir(other)), ["key", "key_1_ThreadId_2_.bin"])
+        self.assertEqual(self.compiles(), 2)
+
 if __name__ == "__main__":
     unittest.main()
