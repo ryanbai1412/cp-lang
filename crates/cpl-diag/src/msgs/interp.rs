@@ -67,7 +67,6 @@ super::msgs! {
     INTERNAL_EXPECTED_STRUCT_ELEMENT = RUNTIME, "internal: expected struct element";
     INTERNAL_EXPECTED_STRUCT_TUPLE = RUNTIME, "internal: expected struct/tuple";
     INTERNAL_EXPECTED_TUPLE = RUNTIME, "internal: expected tuple";
-    INTERNAL_EXPECTED_TUPLE_ARRAY = RUNTIME, "internal: expected tuple array";
     INTERNAL_EXPECTED_TUPLE_STRUCT = RUNTIME, "internal: expected tuple/struct";
     INTERNAL_FIELD_VALUE_WITHOUT_FIELDS = RUNTIME, "internal: field of a value without fields";
     INTERNAL_FIRST_LAST = RUNTIME, "internal: `first`/`last` of {}";

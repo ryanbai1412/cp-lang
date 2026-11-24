@@ -1,5 +1,5 @@
 use crate::observe::Observer;
-use crate::value::{Cells, OptVal, TupleVal, Value};
+use crate::value::{OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{trap, Interp, Res};
@@ -128,8 +128,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let Cells::SmallIntTuple { stride, data, .. } = &mut a.data {
-                        let off = idx as usize * (*stride as usize);
+                    if let Some((stride, data)) = a.data.flat_rows_mut() {
+                        let off = idx as usize * stride;
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
                         if better {
@@ -184,8 +184,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let Cells::SmallIntTuple { stride, data, .. } = &mut a.data {
-                        let off = idx as usize * (*stride as usize);
+                    if let Some((stride, data)) = a.data.flat_rows_mut() {
+                        let off = idx as usize * stride;
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
                         if better {
@@ -1079,18 +1079,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     .at(&[&idx, &len]),
                             );
                         }
-                        match &arr.data {
-                            Cells::SmallIntTuple { stride, data, .. } => {
-                                data[idx as usize * (*stride as usize) + field as usize]
-                            }
-                            Cells::Values(vs) => match &vs[idx as usize] {
+                        match arr.data.flat_rows() {
+                            Some((stride, data)) => data[idx as usize * stride + field as usize],
+                            None => match arr.data.get_unchecked_val(idx as usize) {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     ScalarKind::unbox_val(&fs[field as usize])
                                 }
-                                Value::Tuple(TupleVal::OneInt(x)) => *x,
+                                Value::Tuple(TupleVal::OneInt(x)) => x,
                                 _ => 0,
                             },
-                            _ => 0,
                         }
                     }
                     Value::List(list) => {
@@ -1138,11 +1135,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         let a = Rc::make_mut(arr);
-                        match &mut a.data {
-                            Cells::SmallIntTuple { stride, data, .. } => {
-                                data[idx as usize * (*stride as usize) + field as usize] = raw;
-                            }
-                            Cells::Values(vs) => match &mut vs[idx as usize] {
+                        if let Some((stride, data)) = a.data.flat_rows_mut() {
+                            data[idx as usize * stride + field as usize] = raw;
+                        } else {
+                            match &mut a.data.as_mut_values()[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     crate::value::Shared::make_mut(fs)[field as usize] =
                                         kind.box_val(raw);
@@ -1154,12 +1150,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                         cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
                                     )
                                 }
-                            },
-                            _ => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_ARRAY.at(&[]),
-                                )
                             }
                         }
                     }
@@ -1210,18 +1200,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     .at(&[&idx, &len]),
                             );
                         }
-                        match &arr.data {
-                            Cells::SmallIntTuple { stride, data, .. } => {
-                                data[idx as usize * (*stride as usize) + field as usize]
-                            }
-                            Cells::Values(vs) => match &vs[idx as usize] {
+                        match arr.data.flat_rows() {
+                            Some((stride, data)) => data[idx as usize * stride + field as usize],
+                            None => match arr.data.get_unchecked_val(idx as usize) {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     ScalarKind::unbox_val(&fs[field as usize])
                                 }
-                                Value::Tuple(TupleVal::OneInt(x)) => *x,
+                                Value::Tuple(TupleVal::OneInt(x)) => x,
                                 _ => 0,
                             },
-                            _ => 0,
                         }
                     }
                     Value::List(list) => {
@@ -1269,11 +1256,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         let a = Rc::make_mut(arr);
-                        match &mut a.data {
-                            Cells::SmallIntTuple { stride, data, .. } => {
-                                data[idx as usize * (*stride as usize) + field as usize] = raw;
-                            }
-                            Cells::Values(vs) => match &mut vs[idx as usize] {
+                        if let Some((stride, data)) = a.data.flat_rows_mut() {
+                            data[idx as usize * stride + field as usize] = raw;
+                        } else {
+                            match &mut a.data.as_mut_values()[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     crate::value::Shared::make_mut(fs)[field as usize] =
                                         kind.box_val(raw);
@@ -1285,12 +1271,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                         cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
                                     )
                                 }
-                            },
-                            _ => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_ARRAY.at(&[]),
-                                )
                             }
                         }
                     }

@@ -11,6 +11,7 @@ use std::rc::Rc;
 
 mod cells;
 mod recycle;
+mod shape;
 pub(crate) use cells::{Cells, SmallFieldKind};
 pub(crate) use recycle::Shared;
 

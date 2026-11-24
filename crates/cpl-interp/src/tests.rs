@@ -1624,7 +1624,7 @@ fn a_list_of_small_enums_is_packed() {
     let mut asks = Cells::default();
     asks.push(set(3, true));
     asks.push(Value::Enum(0, Rc::new(Vec::new())));
-    assert!(matches!(asks, Cells::SmallEnum { .. }));
+    assert!(matches!(asks, Cells::Rows { stride: 4, .. }));
     assert_eq!(asks.get(0), Some(set(3, true)));
     asks.set(1, set(-4, false));
     assert_eq!(asks.pop(), Some(set(-4, false)));
@@ -1679,7 +1679,7 @@ fn a_list_of_scalars_is_packed() {
     for i in 0..3 {
         pairs.push(Value::tuple(vec![Value::Int(i), Value::Int(-i)]));
     }
-    assert!(matches!(pairs, Cells::SmallIntTuple { stride: 2, .. }));
+    assert!(matches!(pairs, Cells::Rows { stride: 2, .. }));
     assert_eq!(
         pairs.pop(),
         Some(Value::tuple(vec![Value::Int(2), Value::Int(-2)]))
@@ -1743,4 +1743,35 @@ fn a_packed_list_sorts_packed() {
     // A type with an order of its own sorts through it.
     let opt = cpl_ir::Ty::Opt(Box::new(cpl_ir::Ty::Int));
     assert!(crate::sort::sorted_packed(&ints, &opt, false).is_none());
+}
+
+#[test]
+fn a_table_of_optional_nested_tuples_is_packed() {
+    use crate::value::{Cells, OptVal, TupleVal, Value};
+
+    let tuple = |fs: Vec<Value>| Value::Tuple(TupleVal::from_vec(fs));
+    let back = |v: i64, w: i64| {
+        Value::some(tuple(vec![
+            Value::Int(v),
+            tuple(vec![Value::Int(v + 1), Value::Bool(w > 0), Value::Int(w)]),
+        ]))
+    };
+    let mut cells = Cells::filled(4, Value::Opt(OptVal::None));
+    cells.set(2, back(5, -7));
+    assert!(matches!(cells, Cells::Rows { stride: 5, .. }));
+    assert_eq!(cells.get(0), Some(Value::Opt(OptVal::None)));
+    assert_eq!(cells.get(2), Some(back(5, -7)));
+    cells.push(back(1, 3));
+    cells.sort_unstable();
+    let want = vec![
+        Value::Opt(OptVal::None),
+        Value::Opt(OptVal::None),
+        Value::Opt(OptVal::None),
+        back(1, 3),
+        back(5, -7),
+    ];
+    assert_eq!(cells.to_values(), want);
+    cells.set(0, Value::some(Value::Int(1)));
+    assert!(matches!(cells, Cells::Values(_)));
+    assert_eq!(cells.get(4), Some(back(5, -7)));
 }

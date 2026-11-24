@@ -241,7 +241,7 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
             Cells::Bool(v) | Cells::Char(v) => i64::from(*v.get_unchecked(at)),
             Cells::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
             Cells::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
-            Cells::Float(_) | Cells::SmallIntTuple { .. } | Cells::SmallEnum { .. } => 0,
+            Cells::Float(_) | Cells::Rows { .. } => 0,
         }
     }
 }
@@ -273,7 +273,7 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
                 }
             }
             Cells::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
-            Cells::Float(_) | Cells::SmallIntTuple { .. } | Cells::SmallEnum { .. } => {}
+            Cells::Float(_) | Cells::Rows { .. } => {}
         }
     }
 }

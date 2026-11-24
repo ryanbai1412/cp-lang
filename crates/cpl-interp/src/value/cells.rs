@@ -2,11 +2,11 @@
 //! are stored packed, as the emitted C++ stores them, and boxed into a
 //! [`Value`] only when read.
 
-use super::{OptVal, TupleVal, Value};
+use super::{shape, OptVal, TupleVal, Value};
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-/// Kind of each scalar field inside a packed [`Cells::SmallIntTuple`].
+/// Kind of each scalar field inside a packed [`Cells::Rows`] row.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum SmallFieldKind {
     Int,
@@ -27,7 +27,7 @@ impl SmallFieldKind {
         }
     }
 
-    fn of_bits(bits: i64) -> Self {
+    pub(super) fn of_bits(bits: i64) -> Self {
         match bits {
             0 => Self::Int,
             1 => Self::OneIntStruct,
@@ -47,35 +47,11 @@ impl SmallFieldKind {
     }
 }
 
-pub(crate) fn try_unbox_small_tuple(v: &Value) -> Option<(u8, [SmallFieldKind; 4], [i64; 4])> {
-    let Value::Tuple(TupleVal::Boxed(fs)) = v else {
-        return None;
-    };
-    let len = fs.len();
-    if !(2..=4).contains(&len) {
-        return None;
-    }
-    let mut kinds = [SmallFieldKind::Int; 4];
-    let mut vals = [0i64; 4];
-    for (i, f) in fs.iter().enumerate() {
-        let (k, x) = SmallFieldKind::try_unbox(f)?;
-        kinds[i] = k;
-        vals[i] = x;
-    }
-    Some((len as u8, kinds, vals))
-}
-
-#[inline]
-pub(crate) fn box_small_tuple(stride: u8, kinds: &[SmallFieldKind; 4], slice: &[i64]) -> Value {
-    let fs = crate::value::Shared::collect(stride as usize, |i| kinds[i].box_val(slice[i]));
-    Value::Tuple(TupleVal::Boxed(fs))
-}
-
 /// An enum value whose payload is at most three scalar fields, packed as
-/// [`Cells::SmallEnum`] keeps it: its tag, arity and field kinds in the first
+/// a [`Cells::Rows`] row keeps it: its tag, arity and field kinds in the first
 /// word, its fields in the rest.
 #[inline]
-pub(crate) fn try_unbox_small_enum(v: &Value) -> Option<[i64; 4]> {
+pub(super) fn try_unbox_small_enum(v: &Value) -> Option<[i64; 4]> {
     let Value::Enum(tag, payload) = v else {
         return None;
     };
@@ -94,7 +70,7 @@ pub(crate) fn try_unbox_small_enum(v: &Value) -> Option<[i64; 4]> {
 }
 
 #[inline]
-pub(crate) fn box_small_enum(word: &[i64]) -> Value {
+pub(super) fn box_small_enum(word: &[i64]) -> Value {
     let head = word[0];
     let arity = ((head >> 32) & 3) as usize;
     let mut payload = Vec::with_capacity(arity);
@@ -106,7 +82,7 @@ pub(crate) fn box_small_enum(word: &[i64]) -> Value {
 
 /// Typed flat backing storage for array and list cells so primitive ones
 /// (`Int`, `Pos`, `Bound`, 1-field `Int` structs like `Mod<P>`, `Bool`,
-/// `Char`, `Float`, and 2..=4-field scalar tuples/structs) avoid 24-byte
+/// `Char`, `Float`, and tuples, structs and small enums of them) avoid 24-byte
 /// `Value` tagging and `Rc`/`Clone`/`Drop` overhead.
 #[derive(Clone, Debug)]
 pub(crate) enum Cells {
@@ -117,15 +93,11 @@ pub(crate) enum Cells {
     Char(Vec<u8>),
     /// Each float as [`float_key`], so `<` and `==` on cells are the integers'.
     Float(Vec<i64>),
-    SmallIntTuple {
+    /// Rows of one shape of tuples, small enums and an optional over
+    /// scalars, `stride` words each; see [`shape`].
+    Rows {
         stride: u8,
-        kinds: [SmallFieldKind; 4],
-        data: Vec<i64>,
-    },
-    /// Enum values of at most three scalar fields; see [`try_unbox_small_enum`].
-    /// `stride` is always 4, so it shares the tuples' row moves.
-    SmallEnum {
-        stride: u8,
+        shape: u64,
         data: Vec<i64>,
     },
     Values(Vec<Value>),
@@ -163,14 +135,10 @@ impl Cells {
             Value::Bool(_) => Cells::Bool(Vec::new()),
             Value::Char(_) => Cells::Char(Vec::new()),
             Value::Float(_) => Cells::Float(Vec::new()),
-            other => match try_unbox_small_tuple(other) {
-                Some((stride, kinds, _)) => Cells::SmallIntTuple {
+            other => match shape::of(other) {
+                Some((shape, stride)) => Cells::Rows {
                     stride,
-                    kinds,
-                    data: Vec::new(),
-                },
-                None if try_unbox_small_enum(other).is_some() => Cells::SmallEnum {
-                    stride: 4,
+                    shape,
                     data: Vec::new(),
                 },
                 None => return Cells::Values(vec![v]),
@@ -199,9 +167,7 @@ impl Cells {
             Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.len(),
             Cells::OptInt(v) => v.len(),
             Cells::Bool(v) | Cells::Char(v) => v.len(),
-            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
-                data.len() / (*stride as usize)
-            }
+            Cells::Rows { stride, data, .. } => data.len() / (*stride as usize),
             Cells::Values(v) => v.len(),
         }
     }
@@ -237,24 +203,43 @@ impl Cells {
             Cells::Bool(v) => Value::Bool(v[idx] != 0),
             Cells::Char(v) => Value::Char(v[idx]),
             Cells::Float(v) => float_of(v[idx]),
-            Cells::SmallIntTuple {
+            Cells::Rows {
                 stride,
-                kinds,
+                shape,
                 data,
             } => {
                 let s = *stride as usize;
-                let off = idx * s;
-                box_small_tuple(*stride, kinds, &data[off..off + s])
+                shape::unpack(*shape, &data[idx * s..idx * s + s])
             }
-            Cells::SmallEnum { data, .. } => box_small_enum(&data[idx * 4..idx * 4 + 4]),
             Cells::Values(v) => v[idx].clone(),
+        }
+    }
+
+    /// The words of a store of tuples whose fields are a scalar word each,
+    /// and the fields of each row.
+    pub fn flat_rows(&self) -> Option<(usize, &[i64])> {
+        match self {
+            Cells::Rows { shape, data, .. } => Some((shape::flat_len(*shape)?, data)),
+            _ => None,
+        }
+    }
+
+    /// [`Cells::flat_rows`], to write.
+    pub fn flat_rows_mut(&mut self) -> Option<(usize, &mut [i64])> {
+        match self {
+            Cells::Rows { shape, data, .. } => Some((shape::flat_len(*shape)?, data)),
+            _ => None,
         }
     }
 
     #[inline]
     pub fn get_small_tuple(&self, idx: usize, len: usize, out: &mut [i64]) {
         match self {
-            Cells::SmallIntTuple { stride, data, .. } if *stride as usize == len => {
+            Cells::Rows {
+                stride,
+                shape,
+                data,
+            } if *stride as usize == len && shape::flat_len(*shape) == Some(len) => {
                 let off = idx * len;
                 out[..len].copy_from_slice(&data[off..off + len]);
             }
@@ -277,12 +262,12 @@ impl Cells {
         kinds: &[SmallFieldKind; 4],
     ) {
         match &mut *self {
-            Cells::SmallIntTuple { stride, data, .. } if *stride as usize == len => {
+            Cells::Rows { shape, data, .. } if *shape == shape::flat(kinds, len) => {
                 let off = idx * len;
                 data[off..off + len].copy_from_slice(&vals[..len]);
             }
             _ => {
-                let v = box_small_tuple(len as u8, kinds, &vals[..len]);
+                let v = shape::unpack(shape::flat(kinds, len), &vals[..len]);
                 self.set(idx, v);
             }
         }
@@ -299,30 +284,25 @@ impl Cells {
             (Cells::Char(v), Value::Char(c)) => v[idx] = c,
             (Cells::Float(v), Value::Float(f)) => v[idx] = key_of(f),
             (
-                Cells::SmallIntTuple {
+                Cells::Rows {
                     stride,
-                    kinds,
+                    shape,
                     data,
                 },
                 other,
             ) => {
                 let s = *stride as usize;
-                if let Some((st, ks, vals)) = try_unbox_small_tuple(&other) {
-                    if st == *stride && ks[..s] == kinds[..s] {
-                        let off = idx * s;
-                        data[off..off + s].copy_from_slice(&vals[..s]);
-                        return;
-                    }
+                if !shape::pack(*shape, &other, &mut data[idx * s..idx * s + s]) {
+                    self.as_mut_values()[idx] = other;
                 }
-                self.as_mut_values()[idx] = other;
             }
-            (Cells::SmallEnum { data, .. }, other) => match try_unbox_small_enum(&other) {
-                Some(word) => data[idx * 4..idx * 4 + 4].copy_from_slice(&word),
-                None => self.as_mut_values()[idx] = other,
-            },
             (Cells::Values(v), other) => v[idx] = other,
             (_, other) => {
-                self.as_mut_values()[idx] = other;
+                if self.rows_from_nones(&other) {
+                    self.set(idx, other);
+                } else {
+                    self.as_mut_values()[idx] = other;
+                }
             }
         }
     }
@@ -339,7 +319,7 @@ impl Cells {
             Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.reverse(),
             Cells::OptInt(v) => v.reverse(),
             Cells::Bool(v) | Cells::Char(v) => v.reverse(),
-            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
+            Cells::Rows { stride, data, .. } => {
                 let s = *stride as usize;
                 let n = data.len() / s;
                 for i in 0..n / 2 {
@@ -359,7 +339,7 @@ impl Cells {
             Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.swap(i, j),
             Cells::OptInt(v) => v.swap(i, j),
             Cells::Bool(v) | Cells::Char(v) => v.swap(i, j),
-            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
+            Cells::Rows { stride, data, .. } => {
                 let s = *stride as usize;
                 let a = i * s;
                 let b = j * s;
@@ -441,27 +421,49 @@ impl Cells {
             }
             (Cells::Values(v), other) => v.push(other),
             (
-                Cells::SmallIntTuple {
+                Cells::Rows {
                     stride,
-                    kinds,
+                    shape,
                     data,
                 },
                 other,
             ) => {
-                let s = *stride as usize;
-                match try_unbox_small_tuple(&other) {
-                    Some((st, ks, vals)) if st == *stride && ks[..s] == kinds[..s] => {
-                        data.extend_from_slice(&vals[..s]);
-                    }
-                    _ => self.as_mut_values().push(other),
+                let at = data.len();
+                data.resize(at + *stride as usize, 0);
+                if !shape::pack(*shape, &other, &mut data[at..]) {
+                    data.truncate(at);
+                    self.as_mut_values().push(other);
                 }
             }
-            (Cells::SmallEnum { data, .. }, other) => match try_unbox_small_enum(&other) {
-                Some(word) => data.extend_from_slice(&word),
-                None => self.as_mut_values().push(other),
-            },
-            (_, other) => self.as_mut_values().push(other),
+            (_, other) => {
+                if self.rows_from_nones(&other) {
+                    self.push(other);
+                } else {
+                    self.as_mut_values().push(other);
+                }
+            }
         }
+    }
+
+    /// Turns a store of only `None`s into rows of the shape of `like`, an
+    /// optional that a store of optional `Int`s cannot hold.
+    fn rows_from_nones(&mut self, like: &Value) -> bool {
+        let Cells::OptInt(v) = self else {
+            return false;
+        };
+        if !matches!(like, Value::Opt(_)) || v.iter().any(Option::is_some) {
+            return false;
+        }
+        let Some((shape, stride)) = shape::of(like) else {
+            return false;
+        };
+        let data = vec![0; v.len() * stride as usize];
+        *self = Cells::Rows {
+            stride,
+            shape,
+            data,
+        };
+        true
     }
 
     pub fn reserve(&mut self, extra: usize) {
@@ -469,9 +471,7 @@ impl Cells {
             Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.reserve(extra),
             Cells::OptInt(v) => v.reserve(extra),
             Cells::Bool(v) | Cells::Char(v) => v.reserve(extra),
-            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
-                data.reserve(extra * *stride as usize)
-            }
+            Cells::Rows { stride, data, .. } => data.reserve(extra * *stride as usize),
             Cells::Values(v) => v.reserve(extra),
         }
     }
@@ -481,9 +481,7 @@ impl Cells {
             Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.truncate(len),
             Cells::OptInt(v) => v.truncate(len),
             Cells::Bool(v) | Cells::Char(v) => v.truncate(len),
-            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
-                data.truncate(len * *stride as usize)
-            }
+            Cells::Rows { stride, data, .. } => data.truncate(len * *stride as usize),
             Cells::Values(v) => v.truncate(len),
         }
     }
@@ -525,7 +523,7 @@ impl Cells {
             Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => turn(&mut v[at..], 1, up),
             Cells::OptInt(v) => turn(&mut v[at..], 1, up),
             Cells::Bool(v) | Cells::Char(v) => turn(&mut v[at..], 1, up),
-            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
+            Cells::Rows { stride, data, .. } => {
                 let s = *stride as usize;
                 turn(&mut data[at * s..], s, up);
             }
@@ -640,14 +638,14 @@ impl Cells {
             Cells::OptInt(v) => v.sort_unstable(),
             Cells::Bool(v) | Cells::Char(v) => v.sort_unstable(),
             Cells::Values(v) => crate::sort::sort_values(v),
-            Cells::SmallEnum { .. } => {
+            Cells::Rows { shape, .. } if *shape & shape::UNORDERED != 0 => {
                 let mut vals = self.to_values();
                 crate::sort::sort_values(&mut vals);
                 *self = Cells::from_values(vals);
             }
             // Every field kind packs into `i64` in its own order, so a tuple's
             // `<` is its row's.
-            Cells::SmallIntTuple { stride, data, .. } => {
+            Cells::Rows { stride, data, .. } => {
                 let k = *stride as usize;
                 let row = |i: usize| &data[i * k..i * k + k];
                 let Ok(order) =
