@@ -8839,3 +8839,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** A conformance case that fails today carries no marker: no `// gap:` line, no xfail or known-fail text. `research/scoreboard.json` (written by `cpl-conform conformance --write`) records its result, `conformance_failing` and `conformance_wrong_output` count the board raw, and `conform_staged.py` blocks a staged case that fails unless HEAD's board already records it failing. `xfail_markers` (which still counts `^// gap:`) is `HARD_ZERO`. A case for a rule not met yet keeps its full expectation; the owner's fix turns it green and the board drops it. Supersedes decision 515.
 - **Why.** A gap line was a second record of what the board already measures: it had to be added, aged and deleted by hand, and its count could only say "marked", not "failing". With the board as the only record there is nothing to rename and nothing to keep in sync.
 - **Reverse.** Put `// gap:` lines back, make `conform_staged.py` require one on a failing case, and drop `xfail_markers` from `HARD_ZERO`.
+
+## 528. (reserved, infra)
