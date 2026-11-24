@@ -1623,6 +1623,9 @@ impl<'p> Emitter<'p> {
                 let cond = self.expr(cond).text;
                 let report = match text.as_str() {
                     "" => String::new(),
+                    // A library fn is emitted once for all its callers, so
+                    // its `line` names only the first; its note says where.
+                    _ if note.is_some() => format!("{}: ", cpl_ir::assert_head(text)),
                     _ => format!("{} (line {line}): ", cpl_ir::assert_head(text)),
                 };
                 let note = note

@@ -283,6 +283,30 @@ print(divide(a, b))
 }
 
 #[test]
+fn a_trap_in_a_library_fn_points_at_the_call_that_reached_it() {
+    let source = "\
+domain V = 0..4
+let a = Pair<V>.new(V(0), V(1))
+let b = Pair<V>.new(V(1), V(2))
+let c = Pair<V>.new(V(1), V(1))
+";
+    let (code, err) = run_stderr(source, "");
+    assert_eq!(code, 3);
+    assert!(err.contains("--> a.cp:4:9"), "got:\n{err}");
+    assert!(
+        err.contains("note: call stack: Pair.new (a.cp:4) <- top level (a.cp:4)"),
+        "got:\n{err}"
+    );
+    let (code, err) = build_and_run_cpp(source);
+    assert_eq!(code, 3);
+    assert!(
+        err.contains("assertion failed: u != v: `Pair` needs two distinct positions")
+            && !err.contains("(line"),
+        "the C++ names no caller's line, not the first one's; got:\n{err}"
+    );
+}
+
+#[test]
 fn golden_closure_appears_in_call_stack() {
     let source = "\
 let f: fn(Int) -> Int = x => 10 / x

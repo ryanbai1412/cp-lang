@@ -32,6 +32,18 @@ pub(crate) fn call_stack(program: &cpl_ir::Program, frames: &[(&str, Span)]) -> 
     stack
 }
 
+/// Where a trap is shown: one inside library code is shown at the user's
+/// call that reached it. A library fn is lowered once for all its callers,
+/// so its own spans name only the first of them.
+pub(crate) fn user_span(program: &cpl_ir::Program, frames: &[(&str, Span)], span: Span) -> Span {
+    let library = |name: &str| {
+        let id = program.fns.iter().position(|f| f.name == name);
+        id.is_some_and(|id| program.library_fns.get(id).copied().unwrap_or(false))
+    };
+    let run = frames.iter().rev().take_while(|(name, _)| library(name));
+    run.last().map_or(span, |&(_, call)| call)
+}
+
 impl<O: Observer> Interp<'_, '_, O> {
     /// Keeps the locals of the call a trap is leaving, before unwinding drops
     /// them: only the innermost, and only when the run is traced.

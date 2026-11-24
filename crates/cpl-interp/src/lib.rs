@@ -430,6 +430,7 @@ fn run_from<O: Observer>(
     let trap = result.err().map(|mut trap| {
         if trap.call_stack.is_empty() && !interp.call_frames.is_empty() {
             trap.call_stack = unwind::call_stack(interp.program, &interp.call_frames);
+            trap.span = unwind::user_span(interp.program, &interp.call_frames, trap.span);
         }
         if trap.case.is_none() {
             trap.case = interp.current_case;
