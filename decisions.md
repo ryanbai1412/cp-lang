@@ -9064,3 +9064,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** `Char.MIN` is `Char(0)`, `Char.MAX` is `Char(127)`, `Bool.MIN` is `false` and `Bool.MAX` is `true`, read the way `Int.MIN` and a range type's `M.MIN` are, including through a generic `T` bound to them (R02.2.1). `Monoid<T>.of(max)` then has its identity on every bounded ordered type: `Int`, a range type, `Char`, `Bool`. A user `Ord` type has no ends, so `xs.fold(max)` on it stays E0606 and `xs.reduce(max)` is the fold without an identity (decision 550, R07.9.2).
 - **Why.** Making `xs.fold(op)` the only fold routed `max` and `min` through `Monoid.of`, which reads `T.MIN`/`T.MAX`; `Char` and `Bool` had none, so `"abc".fold(max)` broke. Giving them ends keeps one fold with one identity rule instead of a per-type fallback.
 - **Reverse.** Drop the `Char`/`Bool` arm in `cpl-ir` `lower/call/field.rs` and the two table notes in spec/core/02-values-types.md.
+
+## 582. (reserved, content)
