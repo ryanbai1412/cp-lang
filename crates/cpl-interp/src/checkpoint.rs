@@ -1009,7 +1009,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.ckpt.printed = from.printed;
         let Some(chain) = &from.frames else {
             if let Some(tracer) = &mut self.tracer {
-                tracer.begin_cases();
+                tracer.on(crate::observe::Event::BeginCases);
             }
             return self.run_after_setup();
         };
@@ -1025,7 +1025,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some((case, left)) = from.case {
             self.current_case = Some(case);
             if let Some(tracer) = &mut self.tracer {
-                tracer.resume_case(case);
+                tracer.on(crate::observe::Event::ResumeCase(case));
             }
             self.resume_frame(&frames, 0)?;
             return self.run_cases(left, case);
@@ -1112,7 +1112,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
-        let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
+        if let Some(tracer) = self.tracer.as_mut() {
+            tracer.on(crate::observe::Event::EnterFn(&f.name));
+        }
         let feeding = fed.is_some();
         if let Some(fed) = fed {
             self.fed_loops.push(crate::Fed {
@@ -1124,8 +1126,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let mut flow = self.resume_frame(frames, k);
         self.restore_domains(frame.doms);
         self.in_closure = in_closure;
-        if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
-            tracer.leave_fn(entered);
+        if let Some(tracer) = &mut self.tracer {
+            tracer.on(crate::observe::Event::LeaveFn);
         }
         if self.observed() {
             self.traced(|tracer, view| {
@@ -1135,7 +1137,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                     _ => None,
                 };
-                tracer.leave_call(returned);
+                tracer.on(crate::observe::Event::LeaveCall(returned));
             });
             flow = flow.and_then(|flow| self.unstopped(span).map(|()| flow));
         }

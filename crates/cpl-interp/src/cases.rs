@@ -9,7 +9,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let program = self.program;
         self.setup_done();
         if let Some(tracer) = &mut self.tracer {
-            tracer.divider();
+            tracer.on(crate::observe::Event::Divider);
         }
         let left = if program.until_eof {
             None
@@ -50,7 +50,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             // `ask(.., limit: K)` allows `K` queries in each test case.
             self.queries = 0;
             if let Some(tracer) = &mut self.tracer {
-                tracer.start_case(case);
+                tracer.on(crate::observe::Event::StartCase(case));
             }
             self.stack.clear();
             self.stack.resize(program.main_locals.len(), Value::Unit);

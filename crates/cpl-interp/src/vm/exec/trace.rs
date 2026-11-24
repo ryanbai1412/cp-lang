@@ -37,7 +37,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             TracePoint::Sorted => {
                 if let Some(tracer) = self.tracer.as_mut() {
-                    tracer.globals_may_change();
+                    tracer.on(crate::observe::Event::GlobalsMayChange);
                 }
             }
             TracePoint::Cell(place, ref indices)
@@ -255,7 +255,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             raw: &self.trace_raw,
             call_frames: &self.call_frames,
         };
-        (self.tracer.as_mut()).is_some_and(|tracer| tracer.int_write(&write))
+        (self.tracer.as_mut())
+            .is_some_and(|tracer| tracer.on(crate::observe::Event::IntWrite(&write)))
     }
 
     /// A write to a global or a cell of one whose step the tracer takes
@@ -298,10 +299,21 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             read: self.input.cursor(),
         };
         match &place.kind {
-            PlaceKind::Global(id) => tracer.declared(*id, &view, place.span),
+            PlaceKind::Global(id) => {
+                tracer.on(crate::observe::Event::Declared {
+                    id: *id,
+                    view: &view,
+                    at: place.span,
+                });
+            }
             _ => {
                 if let Some(global) = place.root_global() {
-                    tracer.changed(global, &view, place.span, &path);
+                    tracer.on(crate::observe::Event::Changed {
+                        id: global,
+                        view: &view,
+                        at: place.span,
+                        path: &path,
+                    });
                 }
             }
         }

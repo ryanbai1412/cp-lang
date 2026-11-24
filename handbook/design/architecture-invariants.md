@@ -55,7 +55,7 @@ Factory owns it.
 | Configuration | One schema for `cp.toml`, judge profiles, CLI flags and editor settings | Consumers | `config_schemas` |
 | Std documentation | One doc model, produced by the checker, for `cpl doc`, hover, site and completion | Consumers; the site reads it (Factory) | `std_doc_parsers` |
 | Source edits | One lossless tree and edit engine for fmt, `cpl fix`, codemods and migrations; every codemod is a `cpl fix` | Consumers | `codemods_outside_fix`, `edit_engines` |
-| Execution events | One event model on the VM for trace, profiler, debugger and replay | Core, with Consumers | `event_models` (uses of an interpreter event sink beside the `tracer` Observer slot) |
+| Execution events | One event model on the VM for trace, profiler, debugger and replay | Core, with Consumers | `event_models` (uses of an interpreter event sink beside the `tracer` Observer slot, and `Observer` hooks beside `on(Event)`) |
 | Integer widths and overflow | One width table, read by both the interpreter and codegen | Core | `width_tables` (narrow-width match arms outside `cpl_ir::IntWidth`) |
 | Input and output | One I/O contract, tested across the interpreter, the C++ runtime and the browser | Core, with Factory for the browser | to build: an I/O parity suite |
 | Problems | One problem package (`corpus/problems/<id>/`) and one walker, `scripts/corpus.py` `problems()`, used by ports, bench, stress and judge | Content, with Factory for bench | `corpus_walkers` (any other glob of `corpus/problems`), `dream_unverified` (a `dream.cp` without a current `dream_stress` record) |

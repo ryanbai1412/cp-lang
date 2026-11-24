@@ -739,12 +739,17 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-interp/src/lib.rs", "\n".join([
                 "struct Interp<O> {", "    tracer: Option<Box<O>>,", "    profiler: Option<Box<profile::Profiler>>,",
                 "}", "fn f() { self.tracer.take(); }", "fn g() { self.profiler.take(); }", ""]))
+            self._write(root, "crates/cpl-interp/src/observe.rs", "\n".join([
+                "pub(crate) trait Observer {", "    fn on(&mut self, _event: Event) -> bool {", "    }",
+                "    fn keeps_step(&self) -> bool {", "    }", "    fn step(&mut self, _stmt: &Stmt) {}", "}",
+                "fn helper(&mut self) {}", ""]))
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.web_hand_copied(root), ["web/lib/kinds.ts:1"])
             self.assertEqual(dr.diag_text_outside_registry(root), ["crates/a/src/lib.rs:1"])
             self.assertEqual(dr.width_tables(root), ["crates/a/src/lib.rs:2", "crates/a/src/lib.rs:5"])
             self.assertEqual(dr.judge_tables(root), ["crates/a/src/lib.rs:4"])
-            self.assertEqual(dr.event_models(root), ["crates/cpl-interp/src/lib.rs:6"])
+            self.assertEqual(dr.event_models(root), ["crates/cpl-interp/src/observe.rs:6",
+                                                    "crates/cpl-interp/src/lib.rs:6"])
             self.assertEqual(dr.editor_logic_lines(root),
                              ["editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp.kt:2",
                               "editors/vscode/src/extension.ts:2", "editors/vscode/src/extension.ts:4",

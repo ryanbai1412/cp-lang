@@ -2558,18 +2558,35 @@ def trap_text_outside_registry(root: Path) -> list[str]:
 EVENT_SINK_TYPE_RE = re.compile(r"^\s*(?:pub(?:\(crate\))?\s+)?(\w+):\s*Option<[^>]*(?:Profiler|Stats|Recorder|Counter|Observer)\b")
 
 
+OBSERVER_HOOK_RE = re.compile(r"^\s*fn\s+(\w+)\s*\(\s*&mut\s+self\b")
+
+
 def event_models(root: Path) -> list[str]:
-    """Uses of an interpreter field that collects execution events beside the one
-    `tracer: Option<Box<O: Observer>>` slot (a profiler, VM stats, a recorder): trace,
-    profiler, debugger and replay share one event stream."""
+    """A second way for the interpreter to report what a run does. Uses of an interpreter
+    field that collects execution events beside the one `tracer: Option<Box<O: Observer>>`
+    slot (a profiler, VM stats, a recorder), and each `&mut self` hook of `trait Observer`
+    beside `on(Event)` (and `profile`, which takes the result): trace, profiler, debugger
+    and replay hear one typed event stream, `event::Event`."""
+    found: list[str] = []
+    observe = root / "crates/cpl-interp/src/observe.rs"
+    if observe.is_file():
+        inside = False
+        for i, line in enumerate(_lines(observe), 1):
+            if re.match(r"^(?:pub(?:\(crate\))?\s+)?trait Observer\b", line):
+                inside = True
+            elif inside and line.startswith("}"):
+                inside = False
+            elif inside and (m := OBSERVER_HOOK_RE.match(line)) and m.group(1) not in {"on", "profile"}:
+                found.append(f"crates/cpl-interp/src/observe.rs:{i}")
     lib = root / "crates/cpl-interp/src/lib.rs"
     if not lib.is_file():
-        return []
+        return found
     sinks = {m.group(1) for line in _lines(lib) if (m := EVENT_SINK_TYPE_RE.match(line))} - {"tracer"}
     if not sinks:
-        return []
+        return found
     use = re.compile(r"\.(?:%s)\b" % "|".join(sorted(sinks)))
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-interp") if use.search(line)]
+    return found + [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-interp")
+                    if use.search(line)]
 
 
 WIDTH_ARM_RE = re.compile(r'"(?:[IU](?:8|16|32)|u?int(?:8|16|32|64)_t)"\s*(?:=>|\|)')
@@ -2940,7 +2957,7 @@ COUNTERS = {
                                    diag_text_outside_registry, True),
     "trap_text_outside_registry": ("runtime trap messages with inline text outside cpl-diag's registry (Consumers)",
                                    trap_text_outside_registry, True),
-    "event_models": ("interpreter event sinks beside the one Observer slot (Core, Consumers)", event_models, True),
+    "event_models": ("event sinks beside the Observer slot, hooks beside Observer::on (Core, Consumers)", event_models, True),
     "width_tables": ("integer-width match arms outside cpl_ir::IntWidth (Core)", width_tables, True),
     "judge_tables": ("judges named outside cpl-judge's table (Core, Consumers)", judge_tables, True),
     "editor_logic_lines": ("editor code lines beyond LSP-client wiring (Consumers)", editor_logic_lines, True),

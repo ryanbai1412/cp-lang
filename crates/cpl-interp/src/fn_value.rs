@@ -152,7 +152,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let flow = flow?;
         self.call_frames.pop();
         if let Some(tracer) = self.tracer.as_mut() {
-            tracer.globals_may_change();
+            tracer.on(crate::observe::Event::GlobalsMayChange);
         }
         let back = lent
             .iter()

@@ -339,6 +339,9 @@ impl Recording {
 
 pub(crate) struct Tracer {
     lines: LineIndex,
+    /// Each running fn: whether the trace's fn names asked for it, and
+    /// whether they left it out.
+    entered: Vec<(bool, bool)>,
     /// The last span start looked up and its line: a step's span is
     /// looked up more than once.
     last_line: std::cell::Cell<(u32, u32)>,
@@ -452,6 +455,7 @@ impl Tracer {
         }
         let mut tracer = Tracer {
             lines: LineIndex::new(&config.source),
+            entered: Vec::new(),
             last_line: std::cell::Cell::new((u32::MAX, 0)),
             library: (program.fns.iter().zip(&program.library_fns))
                 .filter(|(_, &library)| library)
@@ -583,7 +587,7 @@ impl Tracer {
         }
     }
 
-    pub fn enter_fn(&mut self, name: &str) -> (bool, bool) {
+    pub fn enter_fn(&mut self, name: &str) {
         self.touch_all();
         let pos =
             !self.include_fns.is_empty() && self.include_fns.iter().any(|p| glob_match(p, name));
@@ -596,7 +600,7 @@ impl Tracer {
             self.neg_inside += 1;
         }
         self.over.push(!pos && self.library.contains(name));
-        (pos, neg)
+        self.entered.push((pos, neg));
     }
 
     /// Whether the trace steps over a call of `name`, an imported module's
@@ -628,8 +632,9 @@ impl Tracer {
         self.step(view, span, None, None, None);
     }
 
-    pub fn leave_fn(&mut self, (pos, neg): (bool, bool)) {
+    pub fn leave_fn(&mut self) {
         self.touch_all();
+        let (pos, neg) = self.entered.pop().unwrap_or_default();
         if pos {
             self.pos_inside -= 1;
         }

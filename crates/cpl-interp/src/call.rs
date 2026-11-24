@@ -34,14 +34,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.fed_bodies += 1;
         self.feeding();
         if let Some(tracer) = self.tracer.as_mut() {
-            tracer.enter_fed_body();
+            tracer.on(crate::observe::Event::EnterFedBody);
         }
         let flow = match self.fed_body_vm(id, caller) {
             Some(flow) => flow,
             None => self.block(body),
         };
         if let Some(tracer) = self.tracer.as_mut() {
-            tracer.leave_fed_body();
+            tracer.on(crate::observe::Event::LeaveFedBody);
         }
         self.fed_bodies -= 1;
         let updated = self.stack[caller + slot].clone();
@@ -161,14 +161,19 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
-        let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
+        if let Some(tracer) = self.tracer.as_mut() {
+            tracer.on(crate::observe::Event::EnterFn(&f.name));
+        }
         if self.observed() {
             let params: Vec<&str> = f.locals[..f.params.len()]
                 .iter()
                 .map(|l| l.name.as_str())
                 .collect();
             self.traced(|tracer, view| {
-                tracer.enter_call(&f.name, || trace::args_json(view, &params))
+                tracer.on(crate::observe::Event::EnterCall {
+                    name: &f.name,
+                    args: &|| trace::args_json(view, &params),
+                });
             });
         }
         let feeding = fed.is_some();
@@ -203,8 +208,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         };
         self.restore_domains(dom_mark);
         self.in_closure = in_closure;
-        if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
-            tracer.leave_fn(entered);
+        if let Some(tracer) = &mut self.tracer {
+            tracer.on(crate::observe::Event::LeaveFn);
         }
         if self.observed() {
             self.traced(|tracer, view| {
@@ -214,7 +219,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                     _ => None,
                 };
-                tracer.leave_call(returned);
+                tracer.on(crate::observe::Event::LeaveCall(returned));
             });
             flow = flow.and_then(|flow| self.unstopped(span).map(|()| flow));
         }

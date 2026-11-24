@@ -3,56 +3,36 @@
 //! [`Observer`]: an untraced run with [`Unobserved`], whose hooks compile
 //! away, a watched one with [`crate::watch::Watch`].
 
+pub(crate) use crate::event::Event;
 use crate::trace::{Recording, Tracer, View};
 use crate::Value;
 use crate::{leading_indices, relifetime, trace, Interp};
 use cpl_diag::Span;
 use cpl_ir::{Place, PlaceKind, Stmt};
 
-/// Each hook is a step of the run, seen through a [`View`] of its state.
-/// The defaults ignore it, so an observer implements what it watches.
+/// What an observer hears of a run: each [`Event`], through
+/// [`Observer::on`], and the questions the run asks before it spends work
+/// on an event no one keeps.
 pub(crate) trait Observer {
-    /// False compiles every hook out of the run.
+    /// False compiles every event out of the run.
     const ON: bool = true;
     /// Whether it hears the user's steps: the run is traced.
     fn traces(&self) -> bool {
         true
     }
-    /// Whether it times each [`Observer::step`]: the run is profiled.
+    /// Whether it times each [`Event::Step`]: the run is profiled.
     fn times_steps(&self) -> bool {
         false
     }
-    /// An internal call starts (`on`) or ends: true when the observer
-    /// stops hearing the user's steps itself, false to be taken away
-    /// for the call.
-    fn hush(&mut self, _on: bool) -> bool {
+    /// One event of the run; true when the observer took note of a write
+    /// with no view, or hushes itself for [`Event::Hush`].
+    fn on(&mut self, _event: Event<'_, '_>) -> bool {
         false
     }
-    /// The tree-walker ran `stmt`: what deleting it still has to move.
-    fn walked(&mut self, _stmt: &Stmt) {}
-    /// The VM left what `tag` names to the tree-walker, in a loop when `in_loop`.
-    fn fell_back(&mut self, _tag: impl FnOnce() -> String, _in_loop: bool) {}
     /// Where the run spent its time, once it is over.
     fn profile(&mut self) -> Option<crate::profile::Profile> {
         None
     }
-    /// A user statement (one of [`cpl_ir::sites::user_stmts`]) starts: the
-    /// step a profiler charges time between. Internal calls, such as a
-    /// comparator's strict-weak-order checks, run [`Interp::quietly`] and
-    /// emit no event at all.
-    fn step(&mut self, _stmt: &Stmt) {}
-    /// The run is a multitest; its cases come next.
-    fn begin_cases(&mut self) {}
-    /// The output between two cases.
-    fn divider(&mut self) {}
-    fn start_case(&mut self, _case: u64) {}
-    /// A run from a checkpoint starts inside test case `case`.
-    fn resume_case(&mut self, _case: u64) {}
-    /// A fn is entered: what [`Observer::leave_fn`] gets back.
-    fn enter_fn(&mut self, _name: &str) -> (bool, bool) {
-        (false, false)
-    }
-    fn leave_fn(&mut self, _entered: (bool, bool)) {}
     /// Whether the trace steps over a call of `name` (see
     /// [`Tracer::steps_over`]).
     fn steps_over(&self, _name: &str) -> bool {
@@ -62,21 +42,10 @@ pub(crate) trait Observer {
     fn over_library(&self) -> bool {
         false
     }
-    /// The running `yields` fn feeds its loop's body, until
-    /// [`Observer::leave_fed_body`].
-    fn enter_fed_body(&mut self) {}
-    fn leave_fed_body(&mut self) {}
-    /// A call the trace stepped over, from `span`, took a `mut` argument.
-    fn stepped_over(&mut self, _view: &View, _span: Span) {}
-    /// A fn value ran: any global may have changed, through a capture or a
-    /// `mut` argument.
-    fn globals_may_change(&mut self) {}
-    fn enter_call(&mut self, _name: &str, _args: impl FnOnce() -> String) {}
-    /// Whether [`Observer::leave_call`] wants the returned value.
+    /// Whether [`Event::LeaveCall`] wants the returned value.
     fn keeps_call(&self) -> bool {
         false
     }
-    fn leave_call(&mut self, _returned: Option<String>) {}
     /// The observer has seen enough: the run stops.
     fn stopped(&self) -> bool {
         false
@@ -89,48 +58,6 @@ pub(crate) trait Observer {
     /// costs before the observer sees it (`impl Show` calls) is paid only then.
     fn keeps_step(&self, _depth: usize) -> bool {
         true
-    }
-    /// Global `id`, or a part of it, was written where no step is kept:
-    /// true when the observer has taken note and wants no view.
-    fn quiet_write(&mut self, _place: &Place, _depth: usize) -> bool {
-        false
-    }
-    /// Global `id` was given its first value.
-    fn declared(&mut self, _id: usize, _view: &View, _at: Span) {}
-    /// A cell of global `id`, at `path`, changed.
-    fn changed(&mut self, _id: usize, _view: &View, _at: Span, _path: &[usize]) {}
-    /// Global `id` was mutated in place, by a method call.
-    fn mutated(&mut self, _id: usize, _view: &View, _at: Span) {}
-    /// Local `name` of the running call changed.
-    fn local_changed(&mut self, _view: &View, _at: Span, _name: &str) {}
-    /// [`Observer::local_changed`] at call depth `depth` with no view:
-    /// true when the observer took note and wants none.
-    fn local_changed_unseen(&mut self, _depth: usize, _name: &str) -> bool {
-        false
-    }
-    /// [`Observer::changed`] with no view, as [`Observer::local_changed_unseen`].
-    fn changed_unseen(&mut self, _id: usize, _name: &str, _depth: usize, _path: &[usize]) -> bool {
-        false
-    }
-    /// [`Observer::declared`] with no view, as [`Observer::local_changed_unseen`].
-    fn declared_unseen(
-        &mut self,
-        _id: usize,
-        _name: &str,
-        _unnamed: bool,
-        _depth: usize,
-        _at: Span,
-    ) -> bool {
-        false
-    }
-    fn assigned_local(&mut self, _view: &View, _at: Span, _name: &str) {}
-    fn assigned_global(&mut self, _view: &View, _at: Span, _id: usize) {}
-    fn printed(&mut self, _view: &View, _at: Span, _text: &str) {}
-    fn debugged(&mut self, _view: &View, _at: Span, _name: &str, _text: String, _json: String) {}
-    /// [`Observer::declared`] or [`Observer::changed`] for an `Int` global
-    /// or cell, with no view; false asks for the full view instead.
-    fn int_write(&mut self, _write: &trace::IntWrite) -> bool {
-        false
     }
     /// Steps seen so far, kept or not.
     fn steps(&self) -> usize {
@@ -158,26 +85,60 @@ impl Observer for Unobserved {
 }
 
 impl Observer for Tracer {
+    fn on(&mut self, event: Event<'_, '_>) -> bool {
+        match event {
+            Event::Step(_) | Event::Walked(_) | Event::FellBack { .. } | Event::Hush(_) => {
+                return false
+            }
+            Event::BeginCases => self.case = Some(0),
+            Event::Divider => self.divider(),
+            Event::StartCase(case) => self.start_case(case),
+            Event::ResumeCase(case) => self.case = Some(case),
+            Event::EnterFn(name) => self.enter_fn(name),
+            Event::LeaveFn => self.leave_fn(),
+            Event::EnterFedBody => self.enter_fed_body(),
+            Event::LeaveFedBody => self.leave_fed_body(),
+            Event::SteppedOver { view, at } => self.stepped_over(view, at),
+            Event::GlobalsMayChange => self.touch_all(),
+            Event::EnterCall { name, args } => self.enter_call(name, args),
+            Event::LeaveCall(returned) => self.leave_call(returned),
+            Event::Declared { id, view, at } => self.declared(id, view, at),
+            Event::Changed { id, view, at, path } => self.changed(id, view, at, path),
+            Event::Mutated { id, view, at } => self.mutated(id, view, at),
+            Event::LocalChanged { view, at, name } => self.local_changed(view, at, name),
+            Event::AssignedLocal { view, at, name } => self.assigned_local(view, at, name),
+            Event::AssignedGlobal { view, at, id } => self.assigned_global(view, at, id),
+            Event::Printed { view, at, text } => self.printed(view, at, text),
+            Event::Debugged {
+                view,
+                at,
+                name,
+                text,
+                json,
+            } => self.debugged(view, at, name, text, json),
+            Event::QuietWrite { place, depth } => return self.quiet_write(place, depth),
+            Event::LocalChangedUnseen { depth, name } => {
+                return self.local_changed_unseen(depth, name)
+            }
+            Event::ChangedUnseen {
+                id,
+                name,
+                depth,
+                path,
+            } => return self.changed_unseen(id, name, depth, path),
+            Event::DeclaredUnseen {
+                id,
+                name,
+                unnamed,
+                depth,
+                at,
+            } => return self.declared_unseen(id, name, unnamed, depth, at),
+            Event::IntWrite(write) => return self.int_write(write),
+        }
+        false
+    }
     fn steps(&self) -> usize {
         self.steps_so_far()
-    }
-    fn begin_cases(&mut self) {
-        self.case = Some(0);
-    }
-    fn divider(&mut self) {
-        Tracer::divider(self)
-    }
-    fn start_case(&mut self, case: u64) {
-        Tracer::start_case(self, case)
-    }
-    fn resume_case(&mut self, case: u64) {
-        self.case = Some(case);
-    }
-    fn enter_fn(&mut self, name: &str) -> (bool, bool) {
-        Tracer::enter_fn(self, name)
-    }
-    fn leave_fn(&mut self, entered: (bool, bool)) {
-        Tracer::leave_fn(self, entered)
     }
     fn steps_over(&self, name: &str) -> bool {
         Tracer::steps_over(self, name)
@@ -185,26 +146,8 @@ impl Observer for Tracer {
     fn over_library(&self) -> bool {
         Tracer::over_library(self)
     }
-    fn enter_fed_body(&mut self) {
-        Tracer::enter_fed_body(self)
-    }
-    fn leave_fed_body(&mut self) {
-        Tracer::leave_fed_body(self)
-    }
-    fn stepped_over(&mut self, view: &View, span: Span) {
-        Tracer::stepped_over(self, view, span)
-    }
-    fn globals_may_change(&mut self) {
-        self.touch_all()
-    }
-    fn enter_call(&mut self, name: &str, args: impl FnOnce() -> String) {
-        Tracer::enter_call(self, name, args)
-    }
     fn keeps_call(&self) -> bool {
         Tracer::keeps_call(self)
-    }
-    fn leave_call(&mut self, returned: Option<String>) {
-        Tracer::leave_call(self, returned)
     }
     fn stopped(&self) -> bool {
         self.stopped
@@ -214,52 +157,6 @@ impl Observer for Tracer {
     }
     fn keeps_step(&self, depth: usize) -> bool {
         self.recording(depth)
-    }
-    fn quiet_write(&mut self, place: &Place, depth: usize) -> bool {
-        Tracer::quiet_write(self, place, depth)
-    }
-    fn local_changed_unseen(&mut self, depth: usize, name: &str) -> bool {
-        Tracer::local_changed_unseen(self, depth, name)
-    }
-    fn changed_unseen(&mut self, id: usize, name: &str, depth: usize, path: &[usize]) -> bool {
-        Tracer::changed_unseen(self, id, name, depth, path)
-    }
-    fn declared_unseen(
-        &mut self,
-        id: usize,
-        name: &str,
-        unnamed: bool,
-        depth: usize,
-        at: Span,
-    ) -> bool {
-        Tracer::declared_unseen(self, id, name, unnamed, depth, at)
-    }
-    fn declared(&mut self, id: usize, view: &View, at: Span) {
-        Tracer::declared(self, id, view, at)
-    }
-    fn changed(&mut self, id: usize, view: &View, at: Span, path: &[usize]) {
-        Tracer::changed(self, id, view, at, path)
-    }
-    fn mutated(&mut self, id: usize, view: &View, at: Span) {
-        Tracer::mutated(self, id, view, at)
-    }
-    fn local_changed(&mut self, view: &View, at: Span, name: &str) {
-        Tracer::local_changed(self, view, at, name)
-    }
-    fn assigned_local(&mut self, view: &View, at: Span, name: &str) {
-        Tracer::assigned_local(self, view, at, name)
-    }
-    fn assigned_global(&mut self, view: &View, at: Span, id: usize) {
-        Tracer::assigned_global(self, view, at, id)
-    }
-    fn printed(&mut self, view: &View, at: Span, text: &str) {
-        Tracer::printed(self, view, at, text)
-    }
-    fn debugged(&mut self, view: &View, at: Span, name: &str, text: String, json: String) {
-        Tracer::debugged(self, view, at, name, text, json)
-    }
-    fn int_write(&mut self, write: &trace::IntWrite) -> bool {
-        Tracer::int_write(self, write)
     }
     fn finish(self: Box<Self>, view: &View, failed: Option<(&str, Span)>) -> Option<Recording> {
         Some(Tracer::finish(*self, view, failed))
@@ -277,25 +174,25 @@ impl<O: Observer> Interp<'_, '_, O> {
         O::ON && self.tracer.as_ref().is_some_and(|o| o.times_steps())
     }
 
-    /// A user statement starts (see [`Observer::step`]).
+    /// A user statement starts (see [`Event::Step`]).
     pub(crate) fn step_event(&mut self, stmt: &Stmt) {
         if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
-            o.step(stmt);
+            o.on(Event::Step(stmt));
         }
     }
 
-    /// The tree-walker runs `stmt` (see [`Observer::walked`]).
+    /// The tree-walker runs `stmt` (see [`Event::Walked`]).
     pub(crate) fn walked_event(&mut self, stmt: &Stmt) {
         if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
-            o.walked(stmt);
-            o.step(stmt);
+            o.on(Event::Walked(stmt));
+            o.on(Event::Step(stmt));
         }
     }
 
-    /// The VM fell back to the tree-walker (see [`Observer::fell_back`]).
-    pub(crate) fn fell_back(&mut self, tag: impl FnOnce() -> String, in_loop: bool) {
+    /// The VM fell back to the tree-walker (see [`Event::FellBack`]).
+    pub(crate) fn fell_back(&mut self, tag: impl Fn() -> String, in_loop: bool) {
         if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
-            o.fell_back(tag, in_loop);
+            o.on(Event::FellBack { tag: &tag, in_loop });
         }
     }
 
@@ -312,7 +209,7 @@ impl<O: Observer> Interp<'_, '_, O> {
     /// The start of an internal call (see [`Interp::quietly`]): the
     /// observer, when it does not hush itself.
     pub(crate) fn hush(&mut self) -> Option<Box<O>> {
-        match self.tracer.as_mut().map(|o| o.hush(true)) {
+        match self.tracer.as_mut().map(|o| o.on(Event::Hush(true))) {
             Some(true) => None,
             _ => self.tracer.take(),
         }
@@ -323,7 +220,7 @@ impl<O: Observer> Interp<'_, '_, O> {
         match (taken, self.tracer.as_mut()) {
             (Some(o), _) => self.tracer = Some(o),
             (None, Some(o)) => {
-                o.hush(false);
+                o.on(Event::Hush(false));
             }
             (None, None) => {}
         }
@@ -347,7 +244,9 @@ impl<O: Observer> Interp<'_, '_, O> {
             && f.params.iter().any(|p| p.mutable)
             && (self.tracer.as_ref()).is_some_and(|t| t.steps_over(&f.name) && !t.over_library())
         {
-            self.traced(|tracer, view| tracer.stepped_over(view, span));
+            self.traced(|tracer, view| {
+                tracer.on(Event::SteppedOver { view, at: span });
+            });
         }
     }
 
@@ -381,7 +280,7 @@ impl<O: Observer> Interp<'_, '_, O> {
                     Value::MutView(_) | Value::Part(_) | Value::Alias(..)
                 );
                 if let (true, Some(tracer)) = (through, self.tracer.as_mut()) {
-                    tracer.globals_may_change();
+                    tracer.on(Event::GlobalsMayChange);
                 }
                 self.trace_local(slot, place.span);
             }
@@ -392,7 +291,13 @@ impl<O: Observer> Interp<'_, '_, O> {
             if self.trace_global_unseen(place, &[]) {
                 return;
             }
-            return self.traced(|tracer, view| tracer.declared(id, view, place.span));
+            return self.traced(|tracer, view| {
+                tracer.on(Event::Declared {
+                    id,
+                    view,
+                    at: place.span,
+                });
+            });
         }
         let mut path = std::mem::take(&mut self.trace_path);
         path.clear();
@@ -403,7 +308,14 @@ impl<O: Observer> Interp<'_, '_, O> {
                 .map(|index| index.int().max(0) as usize),
         );
         if !self.trace_global_unseen(place, &path) {
-            self.traced(|tracer, view| tracer.changed(global, view, place.span, &path));
+            self.traced(|tracer, view| {
+                tracer.on(Event::Changed {
+                    id: global,
+                    view,
+                    at: place.span,
+                    path: &path,
+                });
+            });
         }
         self.trace_path = path;
     }
@@ -425,9 +337,20 @@ impl<O: Observer> Interp<'_, '_, O> {
         match place.kind {
             PlaceKind::Global(_) => {
                 let unnamed = global.span.end == 0;
-                tracer.declared_unseen(id, &global.name, unnamed, depth, place.span)
+                tracer.on(Event::DeclaredUnseen {
+                    id,
+                    name: &global.name,
+                    unnamed,
+                    depth,
+                    at: place.span,
+                })
             }
-            _ => tracer.changed_unseen(id, &global.name, depth, path),
+            _ => tracer.on(Event::ChangedUnseen {
+                id,
+                name: &global.name,
+                depth,
+                path,
+            }),
         }
     }
 
@@ -436,7 +359,7 @@ impl<O: Observer> Interp<'_, '_, O> {
     pub(crate) fn quiet_write(&mut self, place: &Place) -> bool {
         let depth = self.call_frames.len();
         match self.tracer.as_mut() {
-            Some(tracer) if O::ON => tracer.quiet_write(place, depth),
+            Some(tracer) if O::ON => tracer.on(Event::QuietWrite { place, depth }),
             _ => false,
         }
     }
@@ -454,9 +377,13 @@ impl<O: Observer> Interp<'_, '_, O> {
     /// `mut` work on `place` (`push`, `sort`, ...) is done: a step for it.
     pub(crate) fn trace_mutated(&mut self, place: &Place, span: Span) {
         match place.root_global() {
-            Some(global) if self.observed() => {
-                self.traced(|tracer, view| tracer.mutated(global, view, span))
-            }
+            Some(global) if self.observed() => self.traced(|tracer, view| {
+                tracer.on(Event::Mutated {
+                    id: global,
+                    view,
+                    at: span,
+                });
+            }),
             _ => {
                 if let Some(slot) = place.root_local() {
                     self.trace_local(slot, span);
@@ -472,7 +399,9 @@ impl<O: Observer> Interp<'_, '_, O> {
         }
         let span = place.span;
         if let Some(id) = place.root_global() {
-            self.traced(|tracer, view| tracer.assigned_global(view, span, id));
+            self.traced(|tracer, view| {
+                tracer.on(Event::AssignedGlobal { view, at: span, id });
+            });
         } else if let Some(slot) = place.root_local() {
             self.trace_assigned_local(slot, span);
         }
@@ -485,7 +414,13 @@ impl<O: Observer> Interp<'_, '_, O> {
             return;
         }
         let name = self.locals()[slot].name.as_str();
-        self.traced(|tracer, view| tracer.local_changed(view, span, name));
+        self.traced(|tracer, view| {
+            tracer.on(Event::LocalChanged {
+                view,
+                at: span,
+                name,
+            });
+        });
     }
 
     /// [`Interp::trace_local`] in a call, and with no assignments traced,
@@ -499,7 +434,7 @@ impl<O: Observer> Interp<'_, '_, O> {
         let name = self.locals()[slot].name.as_str();
         self.tracer
             .as_mut()
-            .is_some_and(|tracer| tracer.local_changed_unseen(depth, name))
+            .is_some_and(|tracer| tracer.on(Event::LocalChangedUnseen { depth, name }))
     }
 
     pub(crate) fn trace_assigned_local(&mut self, slot: usize, span: Span) {
@@ -507,7 +442,13 @@ impl<O: Observer> Interp<'_, '_, O> {
             return;
         }
         let name = self.locals()[slot].name.as_str();
-        self.traced(|tracer, view| tracer.assigned_local(view, span, name));
+        self.traced(|tracer, view| {
+            tracer.on(Event::AssignedLocal {
+                view,
+                at: span,
+                name,
+            });
+        });
     }
 }
 
@@ -541,23 +482,24 @@ mod tests {
     }
 
     impl Observer for Heard {
-        fn declared(&mut self, id: usize, view: &View, _at: Span) {
-            self.say(format!("declared {}", view.program.globals[id].name));
-        }
-        fn changed(&mut self, id: usize, view: &View, _at: Span, path: &[usize]) {
-            self.say(format!("changed {}{path:?}", view.program.globals[id].name));
-        }
-        fn enter_call(&mut self, name: &str, _args: impl FnOnce() -> String) {
-            self.say(format!("enter {name}"));
-        }
-        fn leave_call(&mut self, _returned: Option<String>) {
-            self.say("leave".into());
-        }
-        fn local_changed(&mut self, view: &View, _at: Span, name: &str) {
-            self.say(format!("local {name} at depth {}", view.depth));
-        }
-        fn printed(&mut self, _view: &View, _at: Span, text: &str) {
-            self.say(format!("printed {}", text.trim_end()));
+        fn on(&mut self, event: Event<'_, '_>) -> bool {
+            let names = |view: &View, id: usize| view.program.globals[id].name.clone();
+            match event {
+                Event::Declared { id, view, .. } => {
+                    self.say(format!("declared {}", names(view, id)));
+                }
+                Event::Changed { id, view, path, .. } => {
+                    self.say(format!("changed {}{path:?}", names(view, id)));
+                }
+                Event::EnterCall { name, .. } => self.say(format!("enter {name}")),
+                Event::LeaveCall(_) => self.say("leave".into()),
+                Event::LocalChanged { view, name, .. } => {
+                    self.say(format!("local {name} at depth {}", view.depth));
+                }
+                Event::Printed { text, .. } => self.say(format!("printed {}", text.trim_end())),
+                _ => {}
+            }
+            false
         }
         fn finish(
             self: Box<Self>,

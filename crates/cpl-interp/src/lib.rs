@@ -33,6 +33,7 @@ mod sort;
 use io::draw_below;
 use io::Feed;
 pub use io::{Choices, Io};
+mod event;
 mod observe;
 pub mod profile;
 pub mod replay;
@@ -811,7 +812,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         // Above `@!multitest`: once. A top-level `return` there ends the
         // program.
         if let Some(tracer) = &mut self.tracer {
-            tracer.begin_cases();
+            tracer.on(crate::observe::Event::BeginCases);
         }
         let returned = match self.vm.clone() {
             Some(compiled) => match &compiled.setup {
@@ -1402,7 +1403,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 // Not a step of its own, as before: the next step shows it.
                 if let (Some(_), Some(tracer)) = (place.root_global(), self.tracer.as_mut()) {
-                    tracer.globals_may_change();
+                    tracer.on(crate::observe::Event::GlobalsMayChange);
                 }
                 Value::Unit
             }
@@ -1469,7 +1470,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.debug_out
                     .extend_from_slice(format!("[line {line}] {prefix}{text}\n").as_bytes());
                 let name = name.clone();
-                self.traced(|tracer, view| tracer.debugged(view, span, &name, text, json));
+                self.traced(|tracer, view| {
+                    tracer.on(crate::observe::Event::Debugged {
+                        view,
+                        at: span,
+                        name: &name,
+                        text,
+                        json,
+                    });
+                });
                 Value::Unit
             }
             ExprKind::Print(args, end) => {

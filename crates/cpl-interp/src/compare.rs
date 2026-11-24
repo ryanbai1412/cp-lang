@@ -250,7 +250,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         if self.observed() {
             let text = String::from_utf8_lossy(&self.out[start.min(self.out.len())..]).into_owned();
-            self.traced(|tracer, view| tracer.printed(view, span, &text));
+            self.traced(|tracer, view| {
+                tracer.on(crate::observe::Event::Printed {
+                    view,
+                    at: span,
+                    text: &text,
+                });
+            });
         }
         if self.program.interactive {
             self.write_out(true);
