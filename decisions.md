@@ -8750,3 +8750,4 @@ from `just next-decision`.
 - **Why.** The old `MeldHeap.meld` copied the other heap's whole node list and claimed \(O(\log n)\). An owning heap cannot relink across two node lists, and owned recursive nodes are not coming (persistent and linked structures take a value-owned arena, decision 438's pool is that arena). Leftist ranks cost a cache miss per level for no gain over skew merging. Refines decision 438.
 - **Reverse.** Go back to leftist ranks in `MeldNode` and the recursive `merge`.
 
+## 515. (reserved, content)
