@@ -247,7 +247,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-graph/dfs-shares-seen.cp: stdlib
 - std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
-- std-segtree/closure-op-picks-index.cp: compiler
+- std-segtree/closure-op-picks-index.cp: stdlib `all` of an identity-less op is `?T`; needs identity-less fold typing (plan/QUESTIONS.md)
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-seq/split-on-separator-predicate.cp: stdlib
 - core-07/step-on-list.cp: compiler
@@ -255,3 +255,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/rev-does-not-satisfy-indexed.cp: compiler
 - core-05/map-entry-index-key-lends.cp: compiler
 - std-tree/up-lift-changes-type.cp: stdlib
+- std-tree/rooted-forest-empty-from-spans-every-component.cp: stdlib Rooted.forest skips reached roots
+- std-tree/rooted-forest-skips-a-reached-root.cp: stdlib Rooted.forest skips reached roots
+- std-bag/range-view-keeps-the-bag-lent.cp: compiler lends of a std method returning a struct
+- tools-bundle/vendor-copies-pinned-libraries.cp: tools Milestone 2 (pins, Rbundle.6), not promised for Milestone 1
+- tools-bundle/cpp-body-names-params-that-shadow-a-global.cp: compiler
+- tools-bundle/cpp-only-as-a-whole-fn-body.cp: compiler

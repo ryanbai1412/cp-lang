@@ -6750,6 +6750,9 @@ delete `scripts/gen.py`.
   checks (`-DLOCAL`). `--checked` stays the sanitizer build. `cpl run
   --release`, `cpl test` and `cpl stress` build at `all` (450); the Trap
   Parity Gate builds at `traps`.
+  --release` and `cpl stress` build with every local check (`all`, since
+  afa44a59a), so a local crash is seen; `--checks none` there is the judge
+  build. The Trap Parity Gate builds at `traps`.
 - **Why.** Ryan (2026-11-22): "by default when releasing to the judge we
   should assume that RE vs WA doesn't really matter"; the traps cost hot-loop
   time and bytes that hand-written C++ does not pay. Names agreed in perf's
@@ -8520,3 +8523,14 @@ Reverse: drop `ExprKind::Cpp` and `cpp_bodies`, and restore the parser's re-read
 - **Call.** `cpl run --release` without `--checks`, `cpl test`'s C++ runs and every `cpl stress` side build at `--checks all` (`Checks::LOCAL`): traps plus overflow, range stores and the other local checks, as `cpl run` makes in the interpreter. `--checks` on `cpl run --release` still picks a level. Judge builds stay at `none` (299).
 - **Why.** At `traps`, an overflow wrapped in the local C++ build where `cpl run` traps (spec/core/09-contexts-checks.md), so stress could pass, or report a wrong answer, on a program the interpreter stops at the overflow. One local profile keeps debug and release agreeing for valid programs and shows a crash as the check it is (afa44a59a).
 - **Reverse.** Set `Checks::LOCAL` in `crates/cpl-codegen/src/checks.rs` to `Checks::Traps`.
+
+## 450. `Rooted.forest` skips reached roots and roots every unreached vertex (spec, 2026-11-23)
+
+`Rooted.forest(g, from:)` trapped when a root was already reached or a vertex was reached from
+no root, so a spanning forest of every component (idioms egoi22p3) took a Dsu pass to pick one
+root per component first. Now it walks `from` in order as `dfs` does, skipping a root an earlier
+tree reached, then roots each vertex still unreached in `V` order; `from: []` gives the forest of
+all components. `dfs_tree` already roots each vertex outside the component on its own, so this
+matches it. Cost: a wrong `from` no longer traps, so a program that wanted one tree per given root
+learns of the overlap only from `t.roots`. Reverse by restoring the trap and the empty-`from` case.
+

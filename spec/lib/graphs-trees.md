@@ -263,6 +263,12 @@ let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Roote
 | `t.path(a, b)` | `List<V>` | \(O(\mathit{length})\) |
 | `t.diameter()`, `t.centroid()` | `(len, u, v)`; a centroid | \(O(n)\) |
 
+`Rooted.forest(g, from: roots)` walks the roots in order like `dfs`: a root
+already reached by an earlier one is skipped, and then every vertex still
+unreached roots a tree of its own, in `V` order. So `from` is a priority,
+not a promise, and `Rooted.forest(g, from: [])` is the spanning forest of
+every component.
+
 **Tree DP without recursion** walks `t.order.rev`:
 
 <!-- given:
