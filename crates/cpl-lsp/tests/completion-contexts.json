@@ -265,6 +265,25 @@
   ]
  },
  {
+  "context": "dot/view",
+  "source": "let xs = [1, 2, 3]\nlet ys = xs.filter(v => v > 1).$0",
+  "want": [
+   "collect",
+   "map",
+   "rev"
+  ]
+ },
+ {
+  "context": "dot/domain-seq",
+  "source": "let n = 5\ndomain V = 1..=n\nlet s = V.$0",
+  "want": [
+   "filter",
+   "at",
+   "pairs",
+   "sum"
+  ]
+ },
+ {
   "context": "name/param",
   "source": "fn f(count: Int) -> Int:\n    co$0\n",
   "want": [

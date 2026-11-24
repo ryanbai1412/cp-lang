@@ -28,6 +28,12 @@ pub(crate) const DOMAIN_MEMBERS: &[(&str, &str)] = &[
     ("last", "the last position"),
     ("rev", "the positions in reverse order"),
     ("cuts", "the boundaries between and around positions"),
+    ("at", "the position at a 0-based index, or `None` outside"),
+    ("nth", "the position at a 0-based index"),
+    ("wrap", "the position at an index taken modulo the size"),
+    ("pairs", "every pair of positions `(u, v)` with `u < v`"),
+    ("partition", "the positions split by a predicate"),
+    ("filter", "the positions a predicate holds on"),
 ];
 pub(crate) const POS_MEMBERS: &[(&str, &str)] = &[
     ("ord", "the 0-based rank of the position"),
@@ -37,6 +43,8 @@ pub(crate) const POS_MEMBERS: &[(&str, &str)] = &[
     ("r", "the boundary after the position"),
     ("before", "the boundary before the position"),
     ("after", "the boundary after the position"),
+    ("prev", "the position before, or `None` at the first"),
+    ("next", "the position after, or `None` at the last"),
 ];
 
 pub(crate) const RANGE_MEMBERS: &[(&str, &str)] = &[
@@ -852,8 +860,14 @@ fn generics_of(header: &str) -> Vec<String> {
 fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)> {
     let mut out = own_members_of_ty(cursor, std, ty);
     let mut seen: HashSet<String> = out.iter().map(|(e, _)| e.name.clone()).collect();
+    // A domain named as a value walks its positions; a type with `each` is a Seq.
+    let ty = match ty {
+        Ty::TypeName(name) if is_domain(cursor.analysis, name) => &Ty::Domain(name.clone()),
+        ty => ty,
+    };
+    let walks = seen.contains("each");
     for entry in std_methods(cursor, std) {
-        if receives(&entry.detail, ty) && seen.insert(entry.name.clone()) {
+        if receives(&entry.detail, ty, walks) && seen.insert(entry.name.clone()) {
             out.push((entry, 1));
         }
     }
@@ -905,15 +919,16 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
     })
 }
 
-/// The prelude's `pub fn f(self: S, ..)`: called as `xs.f()` on any receiver
-/// `S` accepts.
+/// The top-level `fn name(self: ..)` of every std module: a program that
+/// writes `.name` gets the fn without a `use`, so all of them are members.
 fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
     let mut out = Vec::new();
-    for (module, name) in std.prelude(cursor.uri).iter() {
-        let Some(outline) = std.module(cursor.uri, module) else {
+    for (path, name) in cpl_check::std_methods() {
+        let module: Vec<&str> = path[1..].iter().map(|n| n.text.as_str()).collect();
+        let Some(outline) = std.module(cursor.uri, &module.join(".")) else {
             continue;
         };
-        if let Some(entry) = outline.find(name) {
+        if let Some(entry) = outline.find(&name.text) {
             if entry.kind == Kind::Fn && entry.public && self_type(&entry.detail).is_some() {
                 let mut entry = entry.clone();
                 entry.kind = Kind::Method;
@@ -958,7 +973,7 @@ fn self_type(detail: &str) -> Option<&str> {
 
 /// Whether `ty` can be the `self` of the fn whose signature is `detail`:
 /// its generic's bound (`S: Indexed`) holds, or its type is `ty`'s.
-fn receives(detail: &str, ty: &Ty) -> bool {
+fn receives(detail: &str, ty: &Ty, walks: bool) -> bool {
     let Some(self_ty) = self_type(detail) else {
         return false;
     };
@@ -976,7 +991,10 @@ fn receives(detail: &str, ty: &Ty) -> bool {
         .any(|g| g.split(':').next().unwrap_or("").trim() == self_ty);
     match bound {
         Some(bound) => bound.split('+').all(|b| match b.trim() {
-            "Seq" => ty.is_seq(),
+            "Seq" => ty.is_seq() || walks,
+            "Sized" => ty.is_sized(),
+            "Bidir" => ty.is_bidir(),
+            "Keyed" => ty.is_keyed(),
             "Indexed" => ty.is_indexed(),
             "IndexedMut" => ty.is_indexed_mut(),
             _ => false,

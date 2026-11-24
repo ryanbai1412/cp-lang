@@ -78,6 +78,7 @@ fn dot_completion_on_records_domains_and_positions() {
 #[test]
 fn builtin_domain_and_position_members_are_the_checkers() {
     use crate::complete::{DOMAIN_MEMBERS, POS_MEMBERS};
+    let mut wrong = Vec::new();
     for (members, receiver) in [(DOMAIN_MEMBERS, "V"), (POS_MEMBERS, "v")] {
         for (name, _) in members {
             let src = format!("domain V = 0..5\nfor v in V:\n    let x = {receiver}.{name}\n");
@@ -87,16 +88,17 @@ fn builtin_domain_and_position_members_are_the_checkers() {
                 .iter()
                 .filter(|d| d.at(&["code"]).as_str() != Some("E0501"))
                 .collect();
-            assert!(errors.is_empty(), "{receiver}.{name}: {errors:?}");
             let hover = hover_at(&mut server, 2, 8);
             let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
             let ty_line = text.lines().nth(1).unwrap_or("");
-            assert!(
-                ty_line.starts_with("x: ") && ty_line != "x: ?" && !ty_line.contains('_'),
-                "{receiver}.{name} is untyped: {text}"
-            );
+            if !errors.is_empty() {
+                wrong.push(format!("{receiver}.{name}: {errors:?}"));
+            } else if !ty_line.starts_with("x: ") || ty_line == "x: ?" || ty_line.contains('_') {
+                wrong.push(format!("{receiver}.{name} is untyped: {ty_line}"));
+            }
         }
     }
+    assert!(wrong.is_empty(), "{wrong:#?}");
 }
 
 #[test]

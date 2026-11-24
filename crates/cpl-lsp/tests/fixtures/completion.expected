@@ -51,15 +51,15 @@ Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(pub x: T)
 
 == completion @ 12:19
-cyclic_pairs [2] fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T)
-deduped [2] fn deduped<S: Seq, T>(self: S) -> List<T>
-distinct [2] fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>
-drop_while [2] fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T
-find [2] fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T
-flat_map [2] fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V
-flatten [2] fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T
-group [2] fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>>
-inversions [2] fn inversions<S: Seq, T>(self: S) -> Int
+prod [2] fn prod<S: Seq, T>(self: S) -> T
+sum [2] fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U
+mean [2] fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64
+min [2] fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
+max [2] fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
+count [2] fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int
+any [2] fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool
+all [2] fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool
 is_sorted [2] fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool
-is_subsequence [2] fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool
-adjacent [2] fn adjacent<S: Seq, T>(self: S) -> yields (T, T)
+filter [2] fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S>
+map [2] fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U>
+first [2] fn first<S: Seq, T>(self: S) -> ?T
