@@ -5,9 +5,9 @@
 // Solution: count each word's letters; it is playable iff no count exceeds that letter's
 //   tiles, and then it scores the sum of its letters. O(total length).
 // original: corpus/submissions/5430016.cpp
-// Bounds: k: 0..=26; tiles.score: 0..=26; tiles.count: 0..=7; n: 0..=1e5
+// Bounds: k: 0..=7; tiles.score: 0..=26; tiles.count: 0..=7; n: 0..=1e5
 domain Letter = 'a'..='z'
-let k: 0..=26 = read()
+let k: 0..=7 = read()  // 7 tiles, so at most 7 letters
 let tiles: [k](letter: Char, score: 0..=26, count: 0..=7) = read()
 var score: [Letter]Int = 0
 var have: [Letter]Int = 0
@@ -19,8 +19,7 @@ let n: 0..=1e5 = read()
 var best = 0
 for _ in 0..n:
     let w: Str = read()
-    let word = [Letter(c) for c in w]
     var used: [Letter]Int = 0
-    for c in word: used[c] += 1
-    if all(used[c] <= have[c] for c in Letter): best max= sum(score[c] for c in word)
+    for c in w: used[Letter(c)] += 1
+    if all(used[c] <= have[c] for c in Letter): best max= sum(score[c] * used[c] for c in Letter)
 print(best)
