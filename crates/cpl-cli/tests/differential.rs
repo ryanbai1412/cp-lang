@@ -602,7 +602,7 @@ print(x, m, y ?? 0)
 let a: ?Int = None
 let b: ?Int = Some(3)
 let m = Monoid<?Int>(None, min)
-print(m.op(a, b) ?? -1, Monoid<?Int>(None, max).op(b, a) ?? -1, [4, 1, 7].fold(min)!)
+print(m.op(a, b) ?? -1, Monoid<?Int>(None, max).op(b, a) ?? -1, [4, 1, 7].fold(min))
 ",
             "3 3 1\n",
         ),
