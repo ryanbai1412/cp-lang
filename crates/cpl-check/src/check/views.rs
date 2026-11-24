@@ -214,10 +214,45 @@ impl Checker<'_> {
         seq.then(|| show(base))
     }
 
+    /// A key of `V.ranges` is non-empty by its type (lib/search-dp.md): the
+    /// local a `for`, a `V.ranges` parameter or a `[V.ranges]` table binds.
+    pub(crate) fn note_range_key(&mut self, pat: &ast::Pattern) {
+        if let ast::PatternKind::Name(name) = &pat.kind {
+            if let Some(decl) = self.local(name).map(|local| local.span) {
+                self.lends.range_keys.insert(decl);
+            }
+        }
+    }
+
+    pub(crate) fn names_range_keys(ty: &ast::Type) -> bool {
+        matches!(&ty.kind, ast::TypeKind::Named { name, args }
+            if args.is_empty() && name.text.ends_with(".ranges"))
+    }
+
+    /// `r.first` or `r.last` of a `V.ranges` key is a `V`, not a `?V`.
+    pub(crate) fn range_key_end(&mut self, base: &Expr) -> Option<Ty> {
+        let ExprKind::Name(name) = &unparen(base).kind else {
+            return None;
+        };
+        let decl = self.local(name)?.span;
+        if !self.lends.range_keys.contains(&decl) {
+            return None;
+        }
+        match self.infer(base) {
+            Ty::Named { name, mut args } if name == "Range" && args.len() == 1 => args.pop(),
+            _ => None,
+        }
+    }
+
     /// `for r in xs.runs()` or `for (k, r) in xs.runs().items`: `r` keeps
     /// `xs`'s keys.
     pub(crate) fn note_pieces(&mut self, pat: &ast::Pattern, iter: &Expr) {
         let mut iter = unparen(iter);
+        if let ExprKind::Field { base, name } = &iter.kind {
+            if name.text == "ranges" && matches!(self.quietly(|c| c.infer(base)), Ty::Domain(_)) {
+                return self.note_range_key(pat);
+            }
+        }
         let mut pat = pat;
         if let ExprKind::Field { base, name } = &iter.kind {
             if name.text != "items" {

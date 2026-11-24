@@ -628,6 +628,9 @@ impl<'a> Checker<'a> {
                 .last_mut()
                 .unwrap()
                 .insert(p.name.text.clone(), seen);
+            if p.ty.as_ref().is_some_and(Self::names_range_keys) {
+                self.lends.range_keys.insert(p.name.span);
+            }
             params.push(Param {
                 name: p.label_text().to_string(),
                 ty,

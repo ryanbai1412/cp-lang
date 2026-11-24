@@ -415,6 +415,9 @@ impl<'a> Checker<'a> {
                 for (i, param) in params.iter().enumerate() {
                     let ty = cell.clone().or_else(|| index.get(i).cloned());
                     self.bind(param, &ty.unwrap_or(Ty::Unknown), false, "param");
+                    if cell.is_none() && domains.get(i).is_some_and(Self::names_range_keys) {
+                        self.note_range_key(param);
+                    }
                 }
                 let elem = self.infer(body).widen();
                 self.pop_scope();
@@ -1698,6 +1701,11 @@ impl<'a> Checker<'a> {
                         Ty::Error
                     }
                 };
+            }
+        }
+        if matches!(name.text.as_str(), "first" | "last") {
+            if let Some(end) = self.range_key_end(base) {
+                return end;
             }
         }
         // `D.cuts` is never empty: its first and last cuts are always there.

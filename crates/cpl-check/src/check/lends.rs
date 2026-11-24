@@ -359,6 +359,8 @@ pub(crate) struct Lends {
     /// Locals holding a slice or a run/window/chunk, by where the name is
     /// declared (R07.4.5).
     pub(super) keyed: HashMap<Span, Keyed>,
+    /// Locals holding a key of `V.ranges`, by where the name is declared.
+    pub(super) range_keys: HashSet<Span>,
     /// The same for top-level `let`s, by name.
     pub(super) global_keyed: HashMap<String, Keyed>,
     /// The one statement where `lend` may stand: the `lend` of the
