@@ -803,11 +803,13 @@ class NativeTest(Corpus):
 
 
 class AtMax(unittest.TestCase):
-    """`at_max` on scripted runs: the checked C++ first, then three judge runs, then three accepted runs."""
+    """`at_max` on scripted runs: the checked C++, then three judge runs taking turns with three accepted runs."""
 
     def findings(self, safe, mine, theirs=(0, b"1\n", 0.05, 10), limits=(2000, 256)):
-        results = iter([safe, mine, mine, mine, theirs, theirs, theirs])
-        for name, fake in (("measure", lambda exe, data, t: next(results)), ("checked", lambda *a: "safe"),
+        self.order = []
+        result = {"safe": safe, "exe": mine, "orig": theirs}
+        for name, fake in (("measure", lambda exe, data, t: self.order.append(exe) or result[exe]),
+                           ("checked", lambda *a: "safe"),
                            ("limits", lambda port: limits)):
             self.addCleanup(setattr, corpus, name, getattr(corpus, name))
             setattr(corpus, name, fake)
@@ -840,7 +842,12 @@ class AtMax(unittest.TestCase):
         self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"2\n", 0.05, 10)), ["disagrees p --max"])
 
     def test_slow_against_the_accepted_cpp(self):
-        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.5, 10), (0, b"1\n", 0.2, 10)), ["slow p --max"])
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.5, 10), (0, b"1\n", 0.2, 10)),
+                         ["slow p --max: 0.500 s of CPU, 2.50x the accepted C++'s 0.200 s, over 1.5x"])
+
+    def test_the_port_and_the_accepted_cpp_take_turns(self):
+        self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
+        self.assertEqual(self.order, ["safe", "exe", "orig", "orig", "exe", "exe", "orig"])
 
     def test_an_accepted_cpp_that_fails_the_max_is_a_finding(self):
         self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 10), (139, b"", 0.01, 10)), ["reference-fails p --max"])
@@ -869,6 +876,16 @@ class Measure(unittest.TestCase):
         self.assertEqual((code, out), (0, b"hi\n"))
         self.assertLess(mb, 50)
         del big
+
+    def test_the_time_is_the_program_s_cpu_not_the_wall(self):
+        import shutil
+        nap = Path(os.environ.get("TMPDIR", "/tmp")) / f"test_corpus_nap_{os.getpid()}.sh"
+        nap.write_text(f"#!/bin/sh\nexec {shutil.which('sleep')} 0.5\n")
+        nap.chmod(0o755)
+        self.addCleanup(nap.unlink)
+        code, _, took, _ = corpus.measure(str(nap), b"", 20)
+        self.assertEqual(code, 0)
+        self.assertLess(took, 0.1)
 
     def test_a_timeout_is_none(self):
         import shutil

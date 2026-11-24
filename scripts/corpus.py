@@ -982,7 +982,8 @@ int main(int argc, char **argv) {
     struct rusage u;
     if (wait4(p, &st, 0, &u) < 0) return 125;
     FILE *f = fopen(argv[1], "w");
-    if (f) { fprintf(f, "%ld\n", (long)u.ru_maxrss); fclose(f); }
+    long us = (u.ru_utime.tv_sec + u.ru_stime.tv_sec) * 1000000L + u.ru_utime.tv_usec + u.ru_stime.tv_usec;
+    if (f) { fprintf(f, "%ld %ld\n", (long)u.ru_maxrss, us); fclose(f); }
     if (WIFSIGNALED(st)) { signal(WTERMSIG(st), SIG_DFL); kill(getpid(), WTERMSIG(st)); }
     return WEXITSTATUS(st);
 }
@@ -1004,12 +1005,12 @@ def launcher():
 
 
 def measure(exe, data, timeout):
-    """(exit code, stdout, seconds, peak MB) of one run, or None on a timeout."""
+    """(exit code, stdout, CPU seconds, peak MB) of one run, or None on a timeout. CPU
+    time, not wall time: a loaded box shares the cores, not the program's own work."""
     with tempfile.TemporaryFile() as inp, tempfile.TemporaryFile() as out, \
             tempfile.NamedTemporaryFile("r") as peak:
         inp.write(data)
         inp.seek(0)
-        start = time.perf_counter()
         p = subprocess.Popen([launcher(), peak.name, os.path.abspath(exe)], stdin=inp, stdout=out,
                              stderr=subprocess.DEVNULL, start_new_session=True)
         try:
@@ -1018,10 +1019,9 @@ def measure(exe, data, timeout):
             os.killpg(p.pid, signal.SIGKILL)
             p.wait()
             return None
-        took = time.perf_counter() - start
         out.seek(0)
-        kb = int(peak.read() or 0) // (1024 if sys.platform == "darwin" else 1)
-        return code, out.read(), took, kb / 1024
+        kb, us = (int(x) for x in (peak.read().split() or ["0", "0"]))
+        return code, out.read(), us / 1e6, kb // (1024 if sys.platform == "darwin" else 1) / 1024
 
 
 def checked(pid, port, cpl):
@@ -1060,18 +1060,26 @@ def at_max(pkg, cpl, exe, orig, data):
             found.append(f"traps {pid} --max")
     if not exe:
         return found
-    runs = [measure(exe, data, 2 * ms / 1000 + 1) for _ in range(3)]
-    if any(r is None or r[0] != 0 for r in runs):
-        return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
+    # The port and the accepted C++ take turns, each going first in turn, and
+    # each side keeps its best CPU time: a burst of load hits both sides.
+    runs, wants = [], []
+    for i in range(3):
+        for side in ((exe, orig) if i % 2 == 0 else (orig, exe)):
+            if side == exe:
+                runs.append(measure(exe, data, 2 * ms / 1000 + 1))
+            elif side:
+                wants.append(measure(orig, data, 4 * ms / 1000 + 1))
+        if any(r is None or r[0] != 0 for r in runs):
+            return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
     mine, theirs = min(r[2] for r in runs), None
     if orig:
-        wants = [measure(orig, data, 4 * ms / 1000 + 1) for _ in range(3)]
         if all(w is not None and w[0] == 0 for w in wants):
             if not agrees(pkg, data, runs[0][1], wants[0][1]):
                 found.append(f"disagrees {pid} --max")
             theirs = min(w[2] for w in wants)
             if mine >= FLOOR and mine > SLOWER * max(theirs, FLOOR):
-                found.append(f"slow {pid} --max")
+                found.append(f"slow {pid} --max: {mine:.3f} s of CPU, {mine / max(theirs, FLOOR):.2f}x"
+                             f" the accepted C++'s {theirs:.3f} s, over {SLOWER}x")
         else:
             found.append(f"reference-fails {pid} --max")
     # On a box slower than the judge the accepted C++ itself runs past the
