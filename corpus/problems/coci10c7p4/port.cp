@@ -4,8 +4,8 @@
 //   visit every K and return. Print the smallest possible (highest - lowest) height visited.
 // Solution: Two pointers over the sorted heights: raising the floor never lowers the needed
 //   ceiling. For each floor, raise the ceiling until a flood fill from P through cells with
-//   heights inside [floor, ceiling] reaches every K. O(N^2) window steps, each an O(N^2)
-//   fill: O(N^4).
+//   heights inside [floor, ceiling] reaches every K, binary searching each raise. O(N^2 log N)
+//   fills of O(N^2) each in the worst case, a handful when few floors work.
 // original: corpus/submissions/5245379.cpp
 // Bounds: n: 2..=50; high: 1..=1e6
 let n: 2..=50 = read()
@@ -30,13 +30,14 @@ fn delivers(lo: Int, hi: Int) -> Bool:
                 todo.push(q)
     cells.all(p => town[p] != 'K' or seen[p])
 
-// Raising the floor never lowers the ceiling it needs, so both only move up.
+// Raising the floor never lowers the ceiling it needs, so both only move up, and for one
+// floor a higher ceiling only helps: binary search the ceiling above the last one.
 let levels = cells.map(p => high[p]).sorted()
 var best = levels.last! - levels.first!
 var top = 0
 for floor in 0..levels.len:
     top max= floor
-    while top < levels.len and not delivers(levels[floor], levels[top]): top += 1
-    if top == levels.len: break
+    let Some(ceiling) = (top..levels.len).first_true(t => delivers(levels[floor], levels[t])) else: break
+    top = ceiling
     best min= levels[top] - levels[floor]
 print(best)
