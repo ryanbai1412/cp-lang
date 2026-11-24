@@ -38,7 +38,7 @@ threads-required = 'num-cpus'
 # std or the corpus; beside the rest of the suite a personal-library shard of
 # std_items took 41 s against 9 s alone. Give them the machine.
 [[profile.default.overrides]]
-filter = 'binary_id(cpl-lsp::std_items) | binary_id(cpl-lsp::completion_replay) | binary_id(cpl-cli::front_end_fuzz)'
+filter = 'binary_id(cpl-lsp::std_items) | binary_id(cpl-lsp::completion_replay) | binary_id(cpl-cli::front_end_fuzz) | binary_id(cpl-cli::rename_replay)'
 threads-required = 'num-cpus'
 
 # The judges matrix, corpus, limit and size shards each build and compile
