@@ -168,6 +168,12 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "-C", str(root), "add", "."], check=True)
             self.assertEqual(dr.ports_unreported(root), [f"{PKGS}/b/port.cp", f"{PKGS}/c/port.cp"])
 
+    def test_a_port_without_a_report_fails_the_ratchet(self) -> None:
+        self.assertIn("ports_unreported", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"ports_unreported": 1}, {"ports_unreported": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
     def test_reviews_pending_counts_only_an_unscored_port_line(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
