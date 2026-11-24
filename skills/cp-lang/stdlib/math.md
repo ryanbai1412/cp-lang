@@ -62,7 +62,7 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 
 ## Functions
 
-- `fn gcd(a: Int, b: Int) -> Int` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.; traps: when the result is `2^63` (`gcd(Int.MIN, 0)` or `gcd(Int.MIN, Int.MIN)`)
+- `fn gcd(a: Int, b: Int) -> Int`
 - `fn lcm(a: Int, b: Int) -> Int` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); The least common multiple of `a` and `b`, never negative; 0 when either is 0.; traps: when the result overflows `Int`
 - `@get fn isqrt(self: Int) -> Int` — \(O(1)\); The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.; traps: when `self < 0`
 - `fn ceil_sqrt(x: Int) -> Int` — \(O(1)\); The exact ceiling square root `ceil(sqrt(x))` of `x >= 0`.; traps: when `self < 0`
