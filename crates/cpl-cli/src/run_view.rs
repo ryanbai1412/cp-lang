@@ -83,6 +83,7 @@ pub fn view(
         status: None,
         lines,
         diagnostic,
+        ..View::default()
     }
 }
 

@@ -15,7 +15,7 @@ use crate::problem::{
     case_clash, cases_in, find_checker, find_grader, find_interactor, find_tests_dir,
     hidden_cases_in, source_path, tests_dir, Limits, TestCase,
 };
-use cpl_diag::view::{Status, View};
+use cpl_diag::view::{Status, Test, View};
 use cpl_diag::Shown;
 use cpl_stress::args::Args;
 use cpl_stress::cli::{select_judge, solution};
@@ -278,7 +278,7 @@ fn failure_message(r: &CaseResult) -> Option<String> {
 }
 
 /// What an editor shows of a run (spec/tools/cli.md, "The view"): the text
-/// `cpl test` prints, and `2/3 passed` on line 0.
+/// `cpl test` prints, `2/3 passed` on line 0, and each case for a test tree.
 fn view(results: &[CaseResult]) -> View {
     let passed = results.iter().filter(|r| r.passed()).count();
     let label = format!("{passed}/{} passed", results.len());
@@ -288,9 +288,20 @@ fn view(results: &[CaseResult]) -> View {
         label,
         detail: None,
     };
+    let tests = results.iter().map(|r| Test {
+        name: r.name.clone(),
+        outcome: outcome(r),
+        time_ms: r.elapsed.as_millis() as u64,
+        message: failure_message(r),
+        expected: (matches!(r.verdict, Some(Verdict::Wrong(_))))
+            .then(|| r.expected.clone())
+            .flatten(),
+        output: r.output.clone(),
+    });
     View {
         panel: render(results),
         status: Some(status),
+        tests: tests.collect(),
         ..View::default()
     }
 }

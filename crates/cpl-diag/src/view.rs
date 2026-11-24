@@ -12,6 +12,8 @@ pub struct View {
     pub status: Option<Status>,
     pub lines: Vec<Line>,
     pub diagnostic: Option<Diagnostic>,
+    /// The cases a test tree lists, in the order they ran.
+    pub tests: Vec<Test>,
 }
 
 /// The verdict badge, such as `2 of 3 samples passed`.
@@ -66,6 +68,21 @@ impl Kind {
             Kind::Live => "live",
         }
     }
+}
+
+/// One case as a test tree shows it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Test {
+    pub name: String,
+    /// `passed`, `failed` (a wrong answer) or `errored` (it crashed, ran out
+    /// of time or memory, or the judge failed).
+    pub outcome: &'static str,
+    pub time_ms: u64,
+    /// Why it did not pass, in one line.
+    pub message: Option<String>,
+    /// The answer a wrong one is compared with, when the case has one.
+    pub expected: Option<String>,
+    pub output: String,
 }
 
 /// The one problem the report puts in the editor's problem list.
@@ -136,6 +153,21 @@ impl View {
             }
             w.end();
         }
+        if !self.tests.is_empty() {
+            w.key("tests").array();
+            for test in &self.tests {
+                w.object().key("name").str(&test.name);
+                w.key("outcome").str(test.outcome);
+                w.key("time_ms").int(test.time_ms);
+                for (key, text) in [("message", &test.message), ("expected", &test.expected)] {
+                    if let Some(text) = text {
+                        w.key(key).str(text);
+                    }
+                }
+                w.key("output").str(&test.output).end();
+            }
+            w.end();
+        }
         w.end();
     }
 }
@@ -183,13 +215,22 @@ mod tests {
                 help: None,
                 source: Some("cpl (i1)".into()),
             }),
+            tests: vec![Test {
+                name: "2".into(),
+                outcome: "failed",
+                time_ms: 3,
+                message: Some("WA".into()),
+                expected: None,
+                output: "6\n".into(),
+            }],
         };
         assert_eq!(
             written(&view),
             concat!(
                 r#"{"view":{"panel":"6\n","status":{"line":0,"ok":false,"label":"1 of 2"},"#,
                 r#""lines":[{"line":3,"kind":"live","label":"i1: 6","hover":"h"}],"#,
-                r#""diagnostic":{"line":4,"col":2,"code":"R0301","message":"m","source":"cpl (i1)"}}}"#
+                r#""diagnostic":{"line":4,"col":2,"code":"R0301","message":"m","source":"cpl (i1)"},"#,
+                r#""tests":[{"name":"2","outcome":"failed","time_ms":3,"message":"WA","output":"6\n"}]}}"#
             )
         );
     }

@@ -1450,6 +1450,29 @@ fn test_json_says_how_each_case_shows_in_a_test_tree() {
         (status.at(&["ok"]).as_bool(), status.at(&["line"]).as_i64()),
         (Some(false), Some(0))
     );
+    let tree: Vec<_> = (json.at(&["view", "tests"]).as_array().unwrap().iter())
+        .map(|t| {
+            (
+                t.at(&["outcome"]).as_str().unwrap(),
+                t.at(&["message"]).as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        tree, shown,
+        "the view's tests are the cases a test tree shows"
+    );
+    let wrong = &json.at(&["view", "tests"]).as_array().unwrap()[2];
+    assert_eq!(
+        (
+            wrong.at(&["expected"]).as_str(),
+            wrong.at(&["output"]).as_str()
+        ),
+        (
+            results[2].expected.as_deref(),
+            Some(results[2].output.as_str())
+        )
+    );
     let passing = test::results_json(&results[..2]);
     assert_eq!(passing.at(&["view", "status", "ok"]).as_bool(), Some(true));
     assert_eq!(

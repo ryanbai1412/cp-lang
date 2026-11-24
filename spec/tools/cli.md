@@ -133,7 +133,8 @@ The view. Every report an editor shows (`--format json`) carries a `view`
 object the editor draws as is, built in Rust in one place
 (`cpl_diag::view`): `{"panel", "status"?: {"line", "ok", "label", "detail"?},
 "lines"?: [{"line", "kind", "label", "hover"?}], "diagnostic"?: {"line",
-"col"?, "code"?, "message", "help"?, "source"?}}`. `panel` is the output
+"col"?, "code"?, "message", "help"?, "source"?}, "tests"?: [{"name",
+"outcome", "time_ms", "message"?, "expected"?, "output"}]}`. `panel` is the output
 panel's text as the command's text output lays it out; `status` the verdict
 badge (`2 of 3 samples passed`, its `detail` the hover); each of `lines` a
 mark at the end of a source line, `kind` one of `error`, `differs`,
@@ -142,7 +143,10 @@ Markdown `hover`; `diagnostic` the one problem for the editor's problem
 list, `source` naming who reported it (`cpl (i1)`). Lines and columns are
 0-based. An editor only clips a label to its width; showing several
 reports, it keeps the strongest mark on each line and draws a status only
-on a line with no mark.
+on a line with no mark. `tests` lists the cases a test tree shows, in the
+order they ran: each `outcome` `passed`, `failed` (a wrong answer) or
+`errored`, its one-line `message` when it did not pass, and the `expected`
+answer a wrong `output` is compared with.
 `cpl run --samples --format json` prints `{"samples": [{"name", "verdict",
 "time_ms", "output", "expected", "why"}], "passed_count", "case_count",
 "view": {"panel", "status"?: {"line", "ok", "label", "detail"?}, "lines"?:
@@ -176,11 +180,11 @@ line names, in order; each item carries its `aliases`, the names
 `spec/lib/inventory.md` gives it elsewhere (empty outside std).
 `cpl test --format json` prints `{"passed_count", "case_count", "cases": [{"name",
 "verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained", "outcome",
-"message"}], "view": {"panel", "status": {"line", "ok", "label"}}}`: each case's
+"message"}], "view": {"panel", "status": {"line", "ok", "label"}, "tests"}}`: each case's
 `outcome` as a test tree shows it (`passed`, `failed` for a wrong answer, `errored`
 otherwise) and its `message` when it did not pass (`WA: first difference at line 1,
-token 1: expected `7`, got `6``); the view's panel is the text `cpl test` prints and its
-status `2/3 passed`.
+token 1: expected `7`, got `6``); the view's panel is the text `cpl test` prints, its
+status `2/3 passed` and its `tests` the cases.
 `cpl test --list --json` prints `{"cases": [{"name", "input"}]}`: the
 cases in the order `cpl test` runs them, each `input` its `.in` file; the
 editors' test trees list them so. Two case names that differ only in letter
