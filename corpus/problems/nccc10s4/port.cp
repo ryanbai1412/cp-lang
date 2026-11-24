@@ -1,5 +1,4 @@
 // Source: Mock CCC '22 2 S4 (Kaguya Wants to Build a Great Wall), https://dmoj.ca/problem/nccc10s4
-// limits: 8000 ms, 1024 MB
 // Problem: n <= 12 distinct lines, each given by two lattice points with |coordinate| <= 2000.
 //   Count the distinct simple n-sided polygons with exactly one side (of positive length) on
 //   each line.
@@ -14,8 +13,6 @@
 struct Line(a: Int, b: Int, c: Int)  // a x + b y + c = 0
 struct Hom(x: Int, y: Int, w: Int)   // the point (x / w, y / w), w > 0, reduced
 
-fn through(x1: Int, y1: Int, x2: Int, y2: Int) -> Line = Line(y1 - y2, x2 - x1, x1 * y2 - x2 * y1)
-
 fn crossing(p: Line, q: Line) -> ?Hom:
     let w = p.a * q.b - q.a * p.b
     if w == 0: return None  // parallel, or the same line
@@ -26,66 +23,67 @@ fn crossing(p: Line, q: Line) -> ?Hom:
 impl Ord for Hom:
     fn lt(p, q) = if p.x * q.w != q.x * p.w: p.x * q.w < q.x * p.w else: p.y * q.w < q.y * p.w
 
-let n: Int = read()
-var lines: List<Line> = []
-for _ in 0..n:
-    let (x1, y1, x2, y2): (Int, Int, Int, Int) = read()
-    lines.push(through(x1, y1, x2, y2))
+let n: 3..=12 = read()
+domain L = 0..n
+type Coord = -2000..=2000
+let ends: [L](x1: Coord, y1: Coord, x2: Coord, y2: Coord) = read()
+fn line_through(i: L) -> Line:
+    let e = ends[i]
+    Line(e.y1 - e.y2, e.x2 - e.x1, e.x1 * e.y2 - e.x2 * e.y1)
+let lines: [L]Line = [L] i => line_through(i)
 
-var id_of: Map<(Int, Int, Int), Int> = Map()
-var along: List<List<Int>> = []          // the crossings on each line, in order
-for i in 0..n:
-    var found: List<Hom> = []
-    for other in lines:
-        if let p = crossing(lines[i], other): found.push(p)
+// every crossing is one corner; each line keeps its corners in order
+fn corners_on(i: L) -> List<Hom>:
+    var found = L.filter_map(j => crossing(lines[i], lines[j])).collect()
     found.sort()
-    var ids: List<Int> = []
-    for p in found:
-        let key = (p.x, p.y, p.w)
-        if not id_of.contains(key): id_of[key] = id_of.len
-        let id = id_of[key]
-        if ids.is_empty or ids.last != id: ids.push(id)
-    along.push(ids)
+    found.dedup()
+    found
+let hits: [L]List<Hom> = [L] i => corners_on(i)
+var id: Map<Hom, Int> = Map()
+for i in L:
+    for p in hits[i]:
+        if not id.contains(p): id[p] = id.len
+domain Corner = 0..id.len
+let along: [L]List<Corner> = [L] i => hits[i].map(p => Corner(id[p])).collect()
+var place: Map<(Corner, L), Int> = Map()  // where a corner sits in along[line]
+for i in L:
+    for (k, c) in along[i].items: place[(c, i)] = k
 
-var place: [0..id_of.len, 0..n]Int = -1  // [crossing, line] -> where it is in along[line], or -1
-for i in 0..n:
-    for (k, id) in along[i].items: place[id, i] = k
+var used: [L]Bool = false
+var spent: [Corner]Bool = false
+var (sides, polygons) = (1, 0)
 
-var used: List<Bool> = List.filled(n, false)
-var spent: List<Bool> = List.filled(id_of.len, false)
-var (sides, start, polygons) = (1, 0, 0)
-
-fn walk(corner: Int):
+// from `corner`, take an unused line and slide either way to a later corner; every corner
+// passed is spent
+fn walk(corner: Corner, start: Corner):
     if sides == n: return
-    for i in 0..n:
+    for i in L:
         if used[i]: continue
-        let here = place[corner, i]
-        if here < 0: continue
+        let here = place.get((corner, i)) else: continue
         used[i] = true
         sides += 1
-        for step in [1, -1]:
-            var j = here + step
-            while 0 <= j < along[i].len:
-                let next = along[i][j]
+        for dir in [1, -1]:
+            var k = here + dir
+            while let next = along[i].get(k):
                 if sides == n and next == start: polygons += 1
                 if spent[next]: break
                 spent[next] = true
-                walk(next)
-                j += step
-            var k = here + step
-            while k != j:
-                spent[along[i][k]] = false
-                k += step
+                walk(next, start)
+                k += dir
+            var j = here + dir
+            while j != k:
+                spent[along[i][j]] = false
+                j += dir
         sides -= 1
         used[i] = false
 
-if n > 0:
-    used[0] = true
-    for i in 0..along[0].len:
-        start = along[0][i]
-        for v in 0..spent.len: spent[v] = false
-        spent[start] = true
-        for j in i + 1..along[0].len:
-            spent[along[0][j]] = true
-            walk(along[0][j])
+// the first side lies on line 0 and runs forwards
+used[L.first!] = true
+let base = along[L.first!]
+for (k, start) in base.items:
+    spent.fill(false)
+    spent[start] = true
+    for c in base.drop(k + 1):
+        spent[c] = true
+        walk(c, start)
 print(polygons)
