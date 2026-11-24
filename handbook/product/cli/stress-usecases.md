@@ -195,8 +195,8 @@ Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`stress_runs_for_t
 ### stress/U33: helper warnings stay out of the way
 Need: a lint warning in the brute or interactor never reaches the report or the judged stderr.
 Design: helpers are checked for errors only; their warnings go to `cpl lint`.
-Milestone: M1-critical. Status: gap
-Evidence: gap
+Milestone: M1-critical. Status: supported (an `@alt(program)` fn, a `@check` fn, an `@interactor` fn and a `--brute` file, in text and JSON)
+Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`helper_warnings_stay_out_of_the_stress_report`)
 
 ### stress/U34: a case that traps under `cpl run` fails stress too
 Need: trust that a counterexample to an overflow or a range store is found, not wrapped into a plausible answer.

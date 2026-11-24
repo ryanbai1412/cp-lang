@@ -456,3 +456,49 @@ fn a_clean_stress_says_how_far_its_cases_reached() {
         "{out}"
     );
 }
+
+/// A lint warning in a brute, checker or interactor, in the file or not, stays
+/// out of the stress report; `cpl lint` is where it shows (`stress/U33`).
+#[test]
+fn helper_warnings_stay_out_of_the_stress_report() {
+    let sloppy = "    let unused = 3\n    var never_changed = 0\n";
+    let files = [
+        format!("let n: 1..=5 = read()\nprint(n * 2)\n\n@alt(program)\nfn slow():\n    let n: 1..=5 = read()\n{sloppy}    print(n + n)\n"),
+        format!("let n: 1..=5 = read()\nprint(n)\n\n@check\nfn valid():\n    let n: 1..=5 = read()\n{sloppy}    let out: Int = read_output()\n    assert out == n\n"),
+        format!("let n: Int = read()\nprint(n)\n\n@interactor\nfn judge(mut sol: Interactor):\n    let n: 1..=5 = read()\n{sloppy}    sol.send(n)\n    let q: Int = sol.recv()\n    assert q == n\n"),
+    ];
+    for (at, source) in files.iter().enumerate() {
+        let path = scratch(&format!("helper-lints-{at}"));
+        std::fs::write(&path, source).unwrap();
+        for format in ["text", "json"] {
+            let (code, out) = cpl(&[
+                "stress".as_ref(),
+                path.as_os_str(),
+                "--cases".as_ref(),
+                "20".as_ref(),
+                "--format".as_ref(),
+                format.as_ref(),
+            ]);
+            assert_eq!(code, Some(0), "{out}");
+            assert!(!out.contains("warning") && !out.contains("[L0"), "{out}");
+        }
+    }
+    let path = scratch("helper-lints-brute");
+    std::fs::write(&path, "let n: 1..=5 = read()\nprint(n * 2)\n").unwrap();
+    let brute = path.with_file_name("brute.cp");
+    std::fs::write(
+        &brute,
+        "let n: 1..=5 = read()\nlet unused = 3\nvar never_changed = 0\nprint(n + n)\n",
+    )
+    .unwrap();
+    let (code, out) = cpl(&[
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--brute".as_ref(),
+        brute.as_os_str(),
+        "--cases".as_ref(),
+        "20".as_ref(),
+    ]);
+    assert_eq!(code, Some(0), "{out}");
+    assert!(!out.contains("warning") && !out.contains("[L0"), "{out}");
+}
