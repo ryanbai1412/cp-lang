@@ -10,53 +10,25 @@
 //   such hole costs the cottage an elf, and its own a_i elves fill the next a_i holes of the
 //   stream it passes on.
 // original: corpus/submissions/4227368.cpp
+let (n, k): (1..=1e6, 0..=1e9) = read()
+domain I = 0..n
+var a: [I]0..=1e9 = read()
+let m = min(n, k)
 
-let n: 1..=1_000_000 = read()
-let k: 0..=1_000_000_000 = read()
-var a: [0..n]Int = read()
-
-if k == 0:
-    print(a)
-else:
-    let m = min(n, k)
-    let cap = 2 * n + m + 5
-    var buf: [0..cap]Int = 0
-    var dl = n + 2
-    var dr = n + 2
-
-    var csum = 0
+if k > 0:
+    // the hours at which no elf enters the current cottage, from the stream it receives
+    var holes = Deque<Int>()
+    var carry = 0
     for j in 0..m:
-        csum += a[n - 1 - j]
-        if csum > 0:
-            csum -= 1
-        else:
-            buf[dr] = j
-            dr += 1
-
-    for i in 0..n:
-        let pi = a[i]
-        while dr > dl and buf[dr - 1] >= m - i:
-            dr -= 1
-        let sz = dr - dl
-        a[i] = max(0, a[i] - sz)
-        if dr == dl or buf[dr - 1] != m - i - 1:
-            a[i] max= 1
-        dl -= 1
-        buf[dl] = -i - 1
-        var drop = pi
-        drop min= dr - dl
-        dl += drop
-
-    var has_zero = false
-    for i in 0..n:
-        if a[i] == 0:
-            has_zero = true
-
-    if k > n and has_zero:
-        let shift = (n - (k % n)) % n
-        var rot: [0..n]Int = 0
-        for i in 0..n:
-            rot[i] = a[(i + shift) % n]
-        print(rot)
-    else:
-        print(a)
+        carry += a[I(n - 1 - j)]
+        if carry > 0: carry -= 1 else: holes.push(j)
+    for i in I:
+        let x = a[i]
+        holes.pop_while(h => h >= m - i.label)
+        let ends_here = holes.last.is_some_and(h => h == m - i.label - 1)
+        a[i] = max(x - holes.len, if ends_here: 0 else: 1)
+        holes.push_front(-i.label - 1)
+        for _ in 0..min(x, holes.len): holes.pop_front()
+    // with an empty cottage the elves stand one per cottage and the pattern only turns
+    if k > n and a.min()! == 0: a.rotate_right(k % n)
+print(a)

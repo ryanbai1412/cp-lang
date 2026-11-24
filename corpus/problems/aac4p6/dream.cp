@@ -1,22 +1,34 @@
-// AAC 4 P6. The corpus has no statement, so this dream follows the accepted C++'s idea and is
-// not a rethink: a deque of pending "zero" marks seeded from the last min(n, k) values; each
-// position loses one per live mark, keeps at least 1 unless a mark ends exactly here, then
-// pushes its own mark and retires a[i] old ones. If k > n and some value hit 0, rotate by k % n.
-let (n, k) = read (Int, Int)
-domain I = [n]
-var a = read [I]Int
-if k == 0: print(a); return
+// Source: An Animal Contest 4 P6 (Cozy Cottages), https://dmoj.ca/problem/aac4p6
+// Problem: N <= 1e6 cottages on a circle with a_i <= 1e9 elves. Each of K <= 1e9 hours every
+//   non-empty cottage sends exactly one elf to the next cottage, all at once. Print the final
+//   counts.
+// Solution: after min(N, K) hours either no cottage is empty, and then nothing changes any
+//   more, or the elves stand at most one per cottage and the pattern turns one cottage per
+//   hour: simulate m = min(N, K) hours and, if K > N with an empty cottage, rotate by K mod N.
+//   The m hours take one O(N + m) sweep: a deque holds the hours at which no elf enters the
+//   current cottage (seeded by running the elves of cottages N-1, N-2, ... in reverse); each
+//   such hole costs the cottage an elf, and its own a_i elves fill the next a_i holes of the
+//   stream it passes on.
+// original: corpus/submissions/4227368.cpp
+let (n, k): (1..=1e6, 0..=1e9) = read()
+domain I = 0..n
+var a: [I]0..=1e9 = read()
 let m = min(n, k)
-var marks = Deque<Int>()
-var sum = 0
-for (j, x) in a.rev().take(m).enumerate():
-    sum += x
-    if sum > 0: sum -= 1 else: marks.push_back(j)
-for (i, x) in a.items:
-    marks.pop_back_while(j => j >= m - Int(i))
-    let ends_here = marks.back == Some(m - Int(i) - 1)
-    a[i] = max(x - marks.len, if ends_here: 0 else: 1)
-    marks.push_front(-Int(i) - 1)
-    repeat min(x, marks.len): marks.pop_front()
-if k > n and a.min()! == 0: a = a.rotated_right(k % n)
+
+if k > 0:
+    // the hours at which no elf enters the current cottage, from the stream it receives
+    var holes = Deque<Int>()
+    var carry = 0
+    for j in 0..m:
+        carry += a[I(n - 1 - j)]
+        if carry > 0: carry -= 1 else: holes.push(j)
+    for i in I:
+        let x = a[i]
+        holes.pop_while(h => h >= m - i.label)
+        let ends_here = holes.last.is_some_and(h => h == m - i.label - 1)
+        a[i] = max(x - holes.len, if ends_here: 0 else: 1)
+        holes.push_front(-i.label - 1)
+        for _ in 0..min(x, holes.len): holes.pop_front()
+    // with an empty cottage the elves stand one per cottage and the pattern only turns
+    if k > n and a.min()! == 0: a.rotate_right(k % n)
 print(a)
