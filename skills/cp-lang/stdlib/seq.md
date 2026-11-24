@@ -4,7 +4,7 @@
 
 Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.  - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`). - Binary & unimodal search: moved to `std.search` (`bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`). - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`. - Runs, chunking & windows: `runs` (with `by:` or `link:`), `buckets`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`. - Scans & folds: `scan` (`.rev.scan` for suffixes); the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over `a.scan(op)` and `a.rev.scan(op)`. - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`. - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`. - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.window_fold(k, op)` or `Window(op)` (`std.window`). - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `Rev`, `RingSlice`, `Slice`, `Stepped`, `Ties`, `Track`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `prev_permutation`, `prod`, `product`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `span`, `step`, `sum`, `take_while`, `tally`, `windows`, `zip`.
+In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `Positional`, `Rev`, `RingSlice`, `Slice`, `Stepped`, `Ties`, `Track`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `prev_permutation`, `prod`, `product`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `span`, `step`, `sum`, `take_while`, `tally`, `windows`, `zip`.
 
 ## Types & Constants
 
@@ -45,7 +45,11 @@ A sequence with an \(O(1)\) length (R07.3.3).
 
 A `Seq` that can also walk from its end, which is what `.rev` needs.
 
-## `trait Indexed<D, T>: Keyed<D, T> + Sized + Bidir<T>`
+## `trait Positional<T>: Seq<T> + Sized`
+
+A sized sequence read in \(O(1)\) by walk position: `s.nth(k)` is the element `k` steps into the walk.
+
+## `trait Indexed<D, T>: Keyed<D, T> + Positional<T> + Bidir<T>`
 
 A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
 
@@ -208,7 +212,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn pairs<S: Seq, T>(self: S) -> yields (T, T)` — \(O(n^2)\) to walk, \(O(1)\) per pair; Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`, `(20, 30)`.
 - `@get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T)` — \(O(1)\) per step; Every element paired with the one before it, starting with `(None, first)`: `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`.
 - `fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Every element with the one after it, the last with the first: the sides of a polygon, the links of a ring.
-- `fn zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(\min(\lvert a \rvert, \lvert b \rvert))\); The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
+- `fn zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)` — \(O(\min(\lvert a \rvert, \lvert b \rvert))\); The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
 - `fn unzip<S: Seq<(A, B)>, A, B>(self: S) -> (List<A>, List<B>)` — \(O(n)\), two new lists; The first and second halves of each pair, as two lists: the inverse of `zip`.
 - `fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V` — \(O(\log n)\); The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)` gives each new name the next id.
 - `fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)` — \(O(\log n)\), plus one call of `f`; Replace the value under `k` by `f` of it, starting from `init` when `m` holds none: `cnt.update(x, 0, c => c + 1)`.
@@ -268,7 +272,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step, \(O(\lvert a \rvert \cdot \lvert b \rvert)\) to walk; \(O(1)\) per step.
 - `fn iterate<T>(from: ?T, step: T -> ?T) -> yields T` — \(O(1)\) per step plus one call of `step`; \(O(1)\) per step.
 - `fn with_next<S: Seq, T>(self: S) -> yields (T, ?T)` — \(O(1)\) per step
-- `fn zip_exact<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step; traps: when `a.len != b.len`
+- `fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step; traps: when `a.len != b.len`
 - `fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>` — \(O(k)\) per chunk; \(O(n)\).; traps: when `k < 1`
 - `fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T` — \(O(n)\) calls of `f`; \(O(n)\).
 - `fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc` — \(O(n)\) calls of `f`; \(O(n)\).

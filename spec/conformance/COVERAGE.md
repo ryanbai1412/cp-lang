@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3525 (3494 passing). Rules: 616.
+Cases: 3526 (3494 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3525 (3494 passing). Rules: 616.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 96 rules, 254 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 255 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 109 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -54,7 +54,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 26 | 26 (100%) | 18 | 18 (100%) | 26 (100%) |
-| R07 | 96 | 96 (100%) | 32 | 32 (100%) | 96 (100%) |
+| R07 | 97 | 97 (100%) | 32 | 32 (100%) | 97 (100%) |
 | R08 | 31 | 31 (100%) | 12 | 12 (100%) | 31 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
 | R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | Rlsp | 9 | 9 (100%) | 2 | 2 (100%) | 9 (100%) |
 | Rstress | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rtrace | 6 | 6 (100%) | 4 | 4 (100%) | 6 (100%) |
-| all | 616 | 616 (100%) | 256 | 256 (100%) | 616 (100%) |
+| all | 617 | 617 (100%) | 256 | 256 (100%) | 617 (100%) |
 
 ## Rules
 
@@ -483,6 +483,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.3.2 [3+ 0-]: | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `...
 - R07.3.3 [2+ 0-]: | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps
 - R07.3.4 [1+ 0-]: | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorte...
+- R07.3.7 [1+ 0-]: | `Positional<T>` | `Seq` + `Sized` + `s.nth(k)`, the element `k` steps into the walk, in ...
 - R07.3.6 [1+ 0-]: | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment |...
 - R07.4.1 [3+ 0-]: **Keys in, keys out.** Library functions answer in the keys they were given: `s[l..].searc...
 - R07.4.2 [1+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
@@ -512,7 +513,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.6.1 [2+ 0-]: **Push, not pull.** The generator runs and the `for` body runs at each `yield`, so a non-r...
 - R07.6.2 [2+ 2-]: **A generator value is a closure you walk instead of call.** `let g = divisors(n)` stores ...
 - R07.6.3 [2+ 0-]: **Steering.** The yielded item may carry methods the generator reads after `yield` returns...
-- R07.6.4 [3+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
+- R07.6.4 [4+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
 - R07.7.1 [1+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
 - R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.drop_while(p)` | `Seq` |
 - R07.7.3 [5+ 0-]: | `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consumi...
@@ -1057,12 +1058,12 @@ prepends it.
   - line 111: `fn divisors(n: Int) -> yields Int:`
 - 07-sequences.md: 7 blocks, 0 with a case, 0 spec-only, 7 neither
   - line 92: `a[l..=r]`
-  - line 132: `let w = a[l..=r]`
-  - line 215: `a[l..=r]`
-  - line 260: `fn divisors(n: Int) -> yields Int:`
-  - line 329: `[f(x) for x in s if p(x)]`
-  - line 393: `a.keys.min(by: i => a[i])!`
-  - line 410: `let pre = a.scan(+)`
+  - line 133: `let w = a[l..=r]`
+  - line 216: `a[l..=r]`
+  - line 261: `fn divisors(n: Int) -> yields Int:`
+  - line 330: `[f(x) for x in s if p(x)]`
+  - line 394: `a.keys.min(by: i => a[i])!`
+  - line 411: `let pre = a.scan(+)`
 - 08-traits-generics.md: 5 blocks, 0 with a case, 0 spec-only, 5 neither
   - line 20: `trait Next<V>:`
   - line 29: `trait Rank(Eq):`
@@ -1134,7 +1135,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `RingRange`
 - **search** (11/11 named by a case)
 - **segtree** (66/66 named by a case)
-- **seq** (218/225 named by a case)
+- **seq** (219/226 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rebased`, `StepKeys`, `SubseqStep`, `Ring`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -1149,7 +1150,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (21/22 named by a case)
   - uncovered: `Undo`
 
-2318 of 2428 std items are named by a case.
+2319 of 2429 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
