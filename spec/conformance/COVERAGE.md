@@ -7,12 +7,12 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3424 (3312 passing). Rules: 616.
+Cases: 3427 (3312 passing). Rules: 616.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 184 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 159 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 162 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 195 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -162,7 +162,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.5.4 [2+ 1-]: Row types `R: (u: V, v: V, ..)` accept any record with at least those fields, and `..R wit...
 - R02.5.5 [2+ 1-]: A record pattern names fields: `(u: a, v: b)` binds `a` and `b`, and `(u:, v:)` is shortha...
 - R02.6.1 [1+ 1-]: Fields are fixed after construction unless declared `var`; assigning a non-`var` field is ...
-- R02.6.2 [3+ 1-]: Constructors are generated: `Edge(a, b, 5)` or `Edge(u: a, v: b, w: 5)`; fields with defau...
+- R02.6.2 [4+ 3-]: Constructors are generated: `Edge(a, b, 5)` or `Edge(u: a, v: b, w: 5)`; fields with defau...
 - R02.6.3 [3+ 2-]: **Two kinds of constructor, one rule each.** A generated constructor (`Edge(a, b, 5)`, a s...
 - R02.6.4 [1+ 1-]: `struct List<T>` with no body is opaque: its fields are private to its module. A struct bo...
 - R02.6.5 [1+ 1-]: Named structs satisfy traits only through `impl`, including field traits (`impl Target<V> ...
@@ -815,6 +815,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0320 Int index into a cut table: 4 case(s)
 - E0321 Negative literal key: 2 case(s)
 - E0322 Field that stores its own type: 2 case(s)
+- E0323 Type alias defined by itself: 2 case(s)
 - E0401 Assignment to immutable `let` binding: 5 case(s)
 - E0402 Missing `mut` at call site: 4 case(s)
 - E0403 `mut` of an immutable binding: 5 case(s)
@@ -997,7 +998,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-86 of 227 testable codes have no negative case.
+86 of 228 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -1015,7 +1016,7 @@ prepends it.
   - line 373: `use std.segtree.{SegTree}`
   - line 415: `file := (directive | item)*`
 - 02-values-types.md: 3 blocks, 2 with a case, 0 spec-only, 1 neither
-  - line 257: `domain V = 1..=read<1..=2e5>()`
+  - line 260: `domain V = 1..=read<1..=2e5>()`
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 8 blocks, 1 with a case, 0 spec-only, 7 neither
   - line 24: `domain V = 1..=n`
