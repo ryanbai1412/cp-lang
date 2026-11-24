@@ -24,16 +24,18 @@ assert 1 <= T.count <= 1_000_000
 
 // per letter, the (word, index) slots it fills, each word's indices descending so a prefix
 // grows from the previous letter's value before this letter overwrites it
-let slots = [(w:, j:) for w in Word for j in (0..words[w].len).rev].group(by: s => words[s.w][s.j])
+var slots: [256]List<(w: Word, j: Int)> = []
+for w in Word:
+    for j in (0..words[w].len).rev: slots[words[w][j].ord].push((w:, j:))
 
 // start[w][j]: the latest start of a covering of w's first j + 1 letters ending here
 var start: [Word]List<?T> = [Word] w => [None for _ in 0..words[w].len]
 // best[c]: the most word length coverable in the text before cut c, and the last pick
-var best: [T.cuts]Int = 0
+var best: [T.cuts]0..=1_000_000 = 0
 var took: [T.cuts]?(w: Word, from: T.cuts) = None
 for i in T:
     best[i.r] = best[i.l]
-    for s in slots.get(text[i]) ?? []:
+    for s in slots[text[i].ord]:
         start[s.w][s.j] = if s.j == 0: Some(i) else: start[s.w][s.j - 1]
         if s.j == words[s.w].len - 1:
             if let from = start[s.w][s.j] and
