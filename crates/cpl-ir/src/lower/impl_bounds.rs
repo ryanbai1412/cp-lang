@@ -133,7 +133,7 @@ impl<'a> Lowerer<'a> {
             .map(|a| {
                 // `M.Fold` is fixed once `M` is.
                 let fixed = (self.impl_params(m, a).iter())
-                    .all(|n| env.contains_key(n.split('.').next().unwrap_or(n)));
+                    .all(|n| env.contains_key(n.split_once('.').map_or(&**n, |(o, _)| o)));
                 fixed.then(|| {
                     let saved = (
                         std::mem::replace(&mut self.cur_mod, m),
@@ -186,9 +186,9 @@ impl<'a> Lowerer<'a> {
                 if let Some(k) = k {
                     self.unify_ast_ty(t, k, m, &open, &mut env);
                 }
-                let given = ranged.and_then(|(args, outer)| ranged_name(outer, args.get(i)?));
-                if let (ast::TypeKind::Named { name, .. }, Some(g)) = (&t.kind, given) {
-                    if open.contains(&name.text) {
+                if let ast::TypeKind::Named { name, .. } = &t.kind {
+                    let given = ranged.and_then(|(args, outer)| ranged_name(outer, args.get(i)?));
+                    if let Some(g) = given.filter(|_| open.contains(&name.text)) {
                         env.insert(name.text.clone(), g);
                     }
                 }
