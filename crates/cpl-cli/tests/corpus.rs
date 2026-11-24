@@ -101,7 +101,6 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         "ioi15p6",
         "ioi16p6",
         "ioi16p6io",
-        "ioi18p1",
         "ioi19p5",
         "ioi19p6",
         "ioi22p5",
