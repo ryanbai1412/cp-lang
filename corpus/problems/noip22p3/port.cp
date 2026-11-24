@@ -12,8 +12,8 @@
 use std.graph.{two_edge_components}
 const P = 1000000007
 type Z = Mod<P>
-let n = read<1..=5e5>()
-let m = read<n - 1..=1e6>()
+let n: 1..=5e5 = read()
+let m: n - 1..=1e6 = read()
 domain City = 1..=n
 domain Road = 0..m
 let land = Graph.undirected(read<[Road](u: City, v: City)>())

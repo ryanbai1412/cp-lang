@@ -8,14 +8,15 @@
 //   5 pipes, so every amount is a whole multiple of 1 / 60^11 (60^11 is about 3.6e19 and has 2^22,
 //   3^11 and 5^11): hold each amount as an I128 count of those units and every split divides
 //   exactly. Reduce by 2, 3 and 5 at output. O(n + pipes).
+// Bounds: n: 1..=1e5; m: 1..=10
 // original: corpus/submissions/5445672.cpp
 
 const SPLITS = 11
 let unit = I128(60) ** SPLITS
 
-let (n, m) = read<(1..=1e5, 1..=10)>()
+let (n, m): (1..=1e5, 1..=10) = read()
 domain Junction = 1..=n
-let pipes = read<[Junction]List<Junction>>()
+let pipes: [Junction]List<Junction> = read()
 
 var holds = [Junction] u => if u.label <= m: unit else: I128(0)
 for u in topo(pipes)!:

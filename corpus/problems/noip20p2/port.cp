@@ -21,7 +21,7 @@ fn odd_prefixes(xs: List<Letter>) -> List<Odd>:
     f
 
 @multitest
-let s = read<Str>()
+let s: Str = read()
 let n = s.len
 let letters = [Letter(c) for c in s]
 let before = odd_prefixes(letters)          // before[c] = F(s[..c])

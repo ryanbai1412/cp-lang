@@ -9,16 +9,17 @@
 //   card that stays longest. A twin cancels on top, or through the spare stack when its card is
 //   at a bottom. Bitsets of empty, single and ripe stacks; a stack holds the deal times of its cards, so a
 //   card knows its twin. O(m log n).
+// Bounds: n: 1..=300; m: 1..=2e6; k: 1..=2 * n - 1; deck: 1..=k
 // original: corpus/submissions/5445681.cpp
 enum Move = Put(s: Stack) | Pair(s: Stack, t: Stack)
 
 @!multitest
-let (n, m) = read<(1..=300, 1..=2e6)>()
-let k = read<1..=2 * n - 1>()
+let (n, m): (1..=300, 1..=2e6) = read()
+let k: 1..=2 * n - 1 = read()
 domain Stack = 1..=n
 domain Card = 1..=k
 domain Time = 0..m
-let deck = read<[Time]Card>()
+let deck: [Time]Card = read()
 
 // twin[t]: when the card dealt at t is cancelled, for the first card of each pair
 var twin: [Time]?Time = None

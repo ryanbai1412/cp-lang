@@ -6,12 +6,13 @@
 //   unmatched. A ')' at v closes j = open[parent]: the balanced strings ending at v are j..v plus
 //   one per balanced string ending at j's parent, and open[v] becomes open[j's parent]. k[v] is
 //   k[parent] plus those. Everything comes from the parent and j's parent: one preorder, O(n).
+// Bounds: n: 1..=5e5; boss: 1..=n
 // original: corpus/submissions/5127828.cpp
-let n = read<1..=5e5>()
+let n: 1..=5e5 = read()
 domain V = 1..=n
 domain Child = 2..=n
-let s = read<[V]Char>()
-let boss = read<[Child]V>()
+let s: [V]Char = read()
+let boss: [Child]V = read()
 let t = Rooted.from_parents([V] v => if v.label >= 2: boss[Child(v.label)] else: None)
 
 var open: [V]?V = None   // the nearest '(' on the path to v still unmatched

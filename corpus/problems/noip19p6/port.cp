@@ -9,11 +9,11 @@
 //   elsewhere outside x's subtree removes size(v): Fenwick counters over "vertices removed"
 //   (all, seen, chain, above) answer every x in one DFS. c counts unless the cut leaves its
 //   heaviest remaining child above half. O(n log n) per tree.
+// Bounds: n: 1..=299995
 // original: corpus/submissions/5148136.cpp
-// Bounds: tests: 1..=5
 
 @!multitest
-let n = read<1..=299995>()
+let n: 1..=299995 = read()
 domain V = 1..=n
 domain Size = 0..=n
 let g = Graph.undirected(read<Tree<V>>())

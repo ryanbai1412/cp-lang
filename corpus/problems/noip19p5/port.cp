@@ -11,19 +11,20 @@
 // input: `n 0` and the array, or `n 1`, `x y z b1 b2 m` and m lines `p l r`:
 //   b[i] = (x b[i-1] + y b[i-2] + z) mod 2^30, and a[i] = b[i] mod (r - l + 1) + l for the
 //   first line with i <= p.
+// Bounds: n: 2..=4e7; kind: 0..=1
 // original: corpus/submissions/5148191.cpp
 
 const B = 1 << 30
 
-let (n, kind) = read<(2..=4e7, 0..=1)>()
+let (n, kind): (2..=4e7, 0..=1) = read()
 domain Pos = 1..=n
 
 var s = Prefix<Pos, Int>.filling()
 if kind == 0:
     for i in Pos: s.set(i, read<1..=1e9>())
 else:
-    let (x, y, z, b1, b2, m) = read<(0..B, 0..B, 0..B, 0..B, 0..B, 1..=1e5)>()
-    let parts = read<[m](p: Pos, l: 1..=1e9, r: 1..=1e9)>()
+    let (x, y, z, b1, b2, m): (0..B, 0..B, 0..B, 0..B, 0..B, 1..=1e5) = read()
+    let parts: [m](p: Pos, l: 1..=1e9, r: 1..=1e9) = read()
     var (b, after) = (b1, b2)  // b[i], b[i + 1]
     var k = 0
     for i in Pos:

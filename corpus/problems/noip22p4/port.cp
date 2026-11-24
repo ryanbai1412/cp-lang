@@ -10,15 +10,16 @@
 //   adds ab·AB + a·A + b·B + one to H, then sets A and B if given; a query with right end r folds
 //   H over l..=r. All sums and products are U64, which wraps mod 2^64 exactly as the answer asks.
 //   O((n + Q) log n).
+// Bounds: _: 0..=25; n, q: 1..=250_000; a, b, qs.l, qs.r: 1..=n
 // original: orig.cpp
 
-let (_, n) = read<(0..=25, 1..=250_000)>()  // the test id is not used
+let (_, n): (0..=25, 1..=250_000) = read()  // the test id is not used
 domain I = 1..=n
-let a = read<[I]1..=n>()
-let b = read<[I]1..=n>()
-let q = read<1..=250_000>()
+let a: [I]1..=n = read()
+let b: [I]1..=n = read()
+let q: 1..=250_000 = read()
 domain Query = 0..q
-let qs = read<[Query](l: I, r: I)>()
+let qs: [Query](l: I, r: I) = read()
 
 // Over a run of left ends: the sums of A, B, A·B and the history H.
 struct Sums(a: U64, b: U64, ab: U64, hist: U64)

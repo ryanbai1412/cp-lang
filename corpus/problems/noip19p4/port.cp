@@ -6,13 +6,14 @@
 //   ones. Only one ingredient can exceed half, so fix it and DP over methods on its lead: dishes
 //   with it minus dishes without it (each method adds one of either, or nothing). Bad sets end
 //   with lead > 0. O(m n^2).
+// Bounds: n: 1..=100; m: 1..=2000
 // original: corpus/submissions/5147491.cpp
 type Z = Mod<998244353>
 
-let (n, m) = read<(1..=100, 1..=2000)>()
+let (n, m): (1..=100, 1..=2000) = read()
 domain Method = 1..=n
 domain Food = 1..=m
-let a = read<[Method, Food]Z>()
+let a: [Method, Food]Z = read()
 let row = [Method] i => sum(a[i, j] for j in Food)
 
 domain Lead = -n..=n  // dishes using the fixed ingredient minus the other dishes
