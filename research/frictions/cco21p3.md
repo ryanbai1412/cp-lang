@@ -17,7 +17,7 @@ let order = doors.after(back).map(c => (c, pass.next!)) + doors.before(back).map
 - **Where:** `walk` needs the position of the parent's corridor in the room's list.
   `Seq.index_of` exists only on a compressed domain, and `first_true` on a range is a
   binary search (it traps on a non-monotone predicate, which is right but was the first
-  thing tried), so the port writes `(0..doors.len).find(i => doors[i] == p)!`.
+  thing tried), so the port writes `(0..doors.len).find(i => around[u][i] == p)!` (indexing `around[u]` rather than the local `doors`, so the closure captures two scalars instead of copying the list).
 - **General fix:** a linear `position(x) -> ?Int` (or `find_index`) on every `Seq`.
 - **Status:** open.
 

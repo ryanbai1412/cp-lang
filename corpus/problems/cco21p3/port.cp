@@ -20,7 +20,7 @@ var tour: List<(pass: Pass, to: Room)> = []
 fn walk(u: Room, from: ?Room, pass: Pass):
     let doors = around[u]
     let order = if let p = from:
-        let back = (0..doors.len).find(i => doors[i] == p)!
+        let back = (0..doors.len).find(i => around[u][i] == p)!
         [(c, pass.next!) for c in doors[back + 1..]] + [(c, pass) for c in doors[..back]]
     else:
         [(c, pass) for c in doors]
