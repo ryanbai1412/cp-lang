@@ -1,0 +1,29 @@
+error[E0606]: `Map<Str, Int>` does not implement `Seq` required by `find`
+  --> a_key_passed_to_a_sequence_search.cp:3:7
+  |
+3 | print(m.find("a") ?? 0)
+  |       ^^^^^^^^^^^
+  = help: `"a"` is a key: look it up with `m.get("a")`, or test it with `"a" in m`
+
+error[E0606]: `Map<Str, Int>` does not implement `Seq` required by `find`
+  --> a_key_passed_to_a_sequence_search.cp:4:7
+  |
+4 | print(m.find(1))
+  |       ^^^^^^^^^
+  = help: a `Map<Str, Int>` offers `clear`, `clone`, `contains`, `first`, `first_ge`, `first_gt`, `get`, `is_empty`, `items`, `keys` and 10 more
+
+error[E0606]: `Set<Int>` does not implement `Seq` required by `find`
+  --> a_key_passed_to_a_sequence_search.cp:6:4
+  |
+6 | if s.find(3):
+  |    ^^^^^^^^^
+  = help: `3` is an element: test it with `3 in s`
+
+error[E0606]: `Set<Int>` does not implement `Seq` required by `find`
+  --> a_key_passed_to_a_sequence_search.cp:8:7
+  |
+8 | print(s.find(x => x > 1) ?? 0)
+  |       ^^^^^^^^^^^^^^^^^^
+  = help: a `Set<Int>` offers `add`, `clear`, `clone`, `contains`, `drain`, `first`, `first_ge`, `first_gt`, `insert`, `is_empty` and 12 more
+
+a_key_passed_to_a_sequence_search.cp: 4 errors

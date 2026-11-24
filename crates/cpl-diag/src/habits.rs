@@ -107,7 +107,24 @@ const fn shape(key: &'static str, code: Code, help: &'static str, no_fix: &'stat
 
 const ARGS_VARY: &str = "the call's arguments are another language's, so no one rewrite fits";
 
+const SLICED_TWICE: &str =
+    "the receiver is written twice in the rewrite, so no one word replaces the name";
+
 pub const HABITS: &[Habit] = &[
+    Habit { code: codes::UNKNOWN_FIELD, ..call(
+        "capitalize",
+        &["capitalize"],
+        "Python",
+        "upper a string's first character by slicing: `s[0..1].to_upper() + s[1..]`",
+        SLICED_TWICE,
+    ) },
+    Habit { code: codes::UNKNOWN_FIELD, ..call(
+        "title",
+        &["title"],
+        "Python",
+        "upper each word's first character by slicing: `\" \".join([w[0..1].to_upper() + w[1..] for w in s.split_whitespace()])`",
+        SLICED_TWICE,
+    ) },
     call(
         "str",
         &["str", "to_string", "toString"],
@@ -635,6 +652,18 @@ pub static SUM: Habit = shape(
     "write `{}()`: `()` marks a call that does work",
     "",
 );
+pub static MAP_FIND_KEY: Habit = shape(
+    "map_find_key",
+    codes::MISSING_IMPL,
+    "`{}` is a key: look it up with `{}.get({})`, or test it with `{} in {}`",
+    "",
+);
+pub static SET_FIND_KEY: Habit = shape(
+    "set_find_key",
+    codes::MISSING_IMPL,
+    "`{}` is an element: test it with `{} in {}`",
+    "`x in s` is a `Bool` where the search gives an optional, so no one rewrite fits",
+);
 pub static SUM_2: Habit = shape("sum_2", codes::PARENS_MEAN_WORK, "write `{}()`", "");
 pub static C_ADDRESS_2: Habit = shape(
     "c_address_2",
@@ -928,6 +957,8 @@ pub static SHAPES: &[&Habit] = &[
     &MEMBER_FOR_CALL,
     &MEMBER_FOR_CALL_2,
     &MEMBER_FOR_CALL_3,
+    &MAP_FIND_KEY,
+    &SET_FIND_KEY,
     &NO_OPERATOR_IMPL,
     &NO_OPERATOR_IMPL_2,
     &NO_OPERATOR_IMPL_3,

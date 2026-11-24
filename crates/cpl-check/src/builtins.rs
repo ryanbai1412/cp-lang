@@ -65,7 +65,7 @@ impl Receiver {
 pub fn needs_order(type_name: &str, member: &str) -> Option<cpl_diag::msgs::Said> {
     let hash = *Receiver::ALL.iter().find(|r| r.name() == type_name)?;
     let ordered = hash.ordered()?;
-    let on = |r: Receiver| builtin_members(r).any(|m| m.name == member);
+    let on = |r: Receiver| builtin_member(r.name(), member).is_some();
     (on(ordered) && !on(hash))
         .then(|| cpl_diag::msgs::check::NO_ORDER_USE.at(&[&hash.name(), &ordered.name()]))
 }
@@ -151,6 +151,11 @@ pub const BUILTIN_TYPES: &[BuiltinType] = &[
     BuiltinType { name: "Set", written: "Set<T>", members: Some(Receiver::Set), doc: "A set of distinct values: C++ `set`, Python `set`, Rust `BTreeSet`. It walks in order; when nothing observes the order, the C++ is a salted hash set." },
     BuiltinType { name: "HashSet", written: "HashSet<T>", members: Some(Receiver::HashSet), doc: "A hash set whatever the program observes: C++ `unordered_set`, Python `set`, Rust `HashSet`. Salted with `splitmix64`. Walking one has no defined order, so it is not `Show`; `Set<T>` is the usual spelling." },
 ];
+
+/// True when the catalog has rows for the built-in type `name`: `Map`, not `Int`.
+pub fn is_catalog_type(name: &str) -> bool {
+    BUILTIN_MEMBERS.iter().any(|m| m.receiver.name() == name)
+}
 
 /// The members of one built-in type.
 pub fn builtin_members(receiver: Receiver) -> impl Iterator<Item = &'static BuiltinMember> {

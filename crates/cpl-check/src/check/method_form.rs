@@ -655,12 +655,16 @@ impl<'a> Checker<'a> {
             .filter(|d| d.code == codes::MISSING_IMPL)
             .collect();
         // Only where the checker knows every trait the receiver has: an
-        // optional, or a type the program or library declares. A built-in
-        // container's members and traits are lowering's.
+        // optional, a type the program or library declares, or a built-in
+        // container of the catalog, so an error later in the file, which
+        // stops lowering, never hides this one.
         let known = match &base_ty {
             Ty::Optional(_) => true,
-            Ty::Named { name, .. } => (self.type_def(name))
-                .is_some_and(|d| matches!(&*d, Def::Struct { .. } | Def::Enum { .. })),
+            Ty::Named { name, .. } => {
+                crate::builtins::is_catalog_type(name)
+                    || (self.type_def(name))
+                        .is_some_and(|d| matches!(&*d, Def::Struct { .. } | Def::Enum { .. }))
+            }
             _ => false,
         };
         if !fits && known && !missing.is_empty() {

@@ -1610,7 +1610,9 @@ impl<'a> Checker<'a> {
             "Eq" | "Ord" => self.derives_structural(ty, trait_name, seen),
             t if self.is_structural(t) => self.derives_structural(ty, trait_name, seen),
             "Show" => self.derives_print(ty, false, seen),
-            "Seq" => ty.is_seq() || self.walks_by_each(ty),
+            // A built-in container is a `Seq` only as lowering's `is_seq` says:
+            // a `Set` walks by `each` but is not a sequence `find` searches.
+            "Seq" => ty.is_seq() || (!builtin_container(ty) && self.walks_by_each(ty)),
             "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
             "Positional" => ty.rev_source().unwrap_or(ty).is_indexed(),
@@ -1987,4 +1989,8 @@ pub(crate) fn positional(items: &[Ty]) -> Vec<(String, Ty)> {
         .enumerate()
         .map(|(i, t)| (i.to_string(), t.clone()))
         .collect()
+}
+
+fn builtin_container(ty: &Ty) -> bool {
+    matches!(ty, Ty::Named { name, .. } if crate::builtins::is_catalog_type(name))
 }
