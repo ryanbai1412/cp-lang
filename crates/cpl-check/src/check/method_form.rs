@@ -255,6 +255,9 @@ impl<'a> Checker<'a> {
             return None;
         }
         let base_ty = self.quietly(|c| c.infer(base));
+        if name.text == "split" && base_ty == Ty::Str && self.split_on_str(args) {
+            return Some(Ty::Error);
+        }
         if self.declares_member(&base_ty, &name.text) {
             return None;
         }
@@ -426,6 +429,45 @@ impl Checker<'_> {
     /// Whether `base.name(args)` gives arguments its built-in member's row
     /// doesn't take while a library fn fits the receiver: then the call is
     /// the library's, `xs.fold(f, init: 0)` beside the built-in `xs.fold(+)`.
+    /// `s.split(" ")`: a `Str` splits on a `Char` or a `Char -> Bool` (`Sep<T>`), so a one-char
+    /// `Str` separator is fixed to its `Char`. True when it reported.
+    fn split_on_str(&mut self, args: &[Arg]) -> bool {
+        let [Arg {
+            name: None, value, ..
+        }] = args
+        else {
+            return false;
+        };
+        let ExprKind::Str(pieces) = &value.kind else {
+            return false;
+        };
+        let [ast::StrPiece::Text(text)] = pieces.as_slice() else {
+            return false;
+        };
+        let mut chars = text.chars();
+        let (Some(ch), None) = (chars.next(), chars.next()) else {
+            return false;
+        };
+        let lit = match ch {
+            '\'' => "'\\''".to_string(),
+            '\\' => "'\\\\'".to_string(),
+            '\n' => "'\\n'".to_string(),
+            '\t' => "'\\t'".to_string(),
+            c => format!("'{c}'"),
+        };
+        let message = format!(
+            "`split` takes a `Char` separator, but `{}` is a `Str`",
+            self.quote(value.span)
+        );
+        if let Some(diag) = self.error(codes::TYPE_MISMATCH, value.span, message) {
+            diag.help = Some(format!(
+                "a `Str` splits on one `Char` or a `Char -> Bool`: `{lit}`"
+            ));
+            diag.fix(format!("write `{lit}`"), value.span, lit);
+        }
+        true
+    }
+
     pub(super) fn past_builtin_row(&mut self, callee: &Expr, args: &[Arg]) -> bool {
         let ExprKind::Field { base, name } = &callee.kind else {
             return false;
