@@ -1,32 +1,23 @@
 //! Loops and guards newcomers write by hand where a std call says what they
-//! do: a list copied element by element (`copy_comprehension`), a
-//! queue walked by a head index (`queue_head_index`), a range check split in
-//! two (`split_range_check`) and a map key tested before `+=`
+//! do: a list copied element by element (`copy_comprehension`), a range
+//! check split in two (`split_range_check`) and a map key tested before `+=`
 //! (`contains_then_add`).
 
-use crate::facts::Facts;
-use crate::is_std;
-use crate::std_fn;
-use crate::walk::{unparen, walk_stmt, Visitor};
-use crate::{
-    File, Finding, CONTAINS_THEN_ADD, COPY_COMPREHENSION, QUEUE_HEAD_INDEX, SPLIT_RANGE_CHECK,
-};
+use crate::walk::{unparen, Visitor};
+use crate::{File, Finding, CONTAINS_THEN_ADD, COPY_COMPREHENSION, SPLIT_RANGE_CHECK};
 use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, int, is_step, name, single};
+use super::shapes::{compare, name, single};
 use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandLoops {
         src: file.src,
         base: 0,
-        facts: file.facts,
         chains: Vec::new(),
         out: Vec::new(),
     };
-    let top: Vec<_> = file.top_level().collect();
-    v.queue_head(&top);
     file.walk(&mut v, |v, base| v.base = base);
     v.out
 }
@@ -34,7 +25,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 struct HandLoops<'a> {
     src: &'a str,
     base: u32,
-    facts: Option<&'a Facts>,
     /// `and` chains already read whole, so their inner `and`s are skipped.
     chains: Vec<Span>,
     out: Vec<Finding>,
@@ -88,66 +78,6 @@ impl HandLoops<'_> {
             lint: &COPY_COMPREHENSION,
             diag,
         });
-    }
-
-    /// Each statement with its offset: top-level ones come from different items.
-    fn queue_head(&mut self, stmts: &[(u32, &Stmt)]) {
-        for (k, &(decl_base, decl)) in stmts.iter().enumerate() {
-            let StmtKind::Let {
-                mutable: true,
-                pat,
-                init: Some(init),
-                ..
-            } = &decl.kind
-            else {
-                continue;
-            };
-            let (PatternKind::Name(h), Some(0)) = (&pat.kind, int(init)) else {
-                continue;
-            };
-            let Some(&(w_base, w)) = stmts[k + 1..]
-                .iter()
-                .find(|(_, s)| matches!(s.kind, StmtKind::While { .. }))
-            else {
-                continue;
-            };
-            let StmtKind::While {
-                cond: Cond::Expr(c),
-                body,
-                ..
-            } = &w.kind
-            else {
-                continue;
-            };
-            let Some((lhs, CmpOp::Lt, rhs)) = compare(c) else {
-                continue;
-            };
-            let len = unparen(rhs);
-            let ExprKind::Field { base, .. } = &len.kind else {
-                continue;
-            };
-            let is_len = is_std(self.facts, len.span.shift(w_base), std_fn::LEN);
-            let (Some(q), true) = (name(base), name(lhs) == Some(h) && is_len) else {
-                continue;
-            };
-            let read = format!("{q}[{h}]");
-            if !body.stmts.iter().any(|s| is_step(s, h))
-                || reads_head_otherwise(&body.stmts, h)
-                || !body
-                    .stmts
-                    .iter()
-                    .any(|s| s.span.shift(w_base).text(self.src).contains(&read))
-            {
-                continue;
-            }
-            let span = Span::new(decl.span.start + decl_base, c.span.end + w_base);
-            let diag = lint_rules::QUEUE_HEAD_INDEX.warning(span, &[&q, &h])
-            .with_help("`bfs(next, from: [s])` from `std.graph` runs the queue and returns the distances and the visit order; a queue run by hand is a `Deque`, which pops from the front");
-            self.out.push(Finding {
-                lint: &QUEUE_HEAD_INDEX,
-                diag,
-            });
-        }
     }
 
     fn range_check(&mut self, expr: &Expr) {
@@ -323,12 +253,6 @@ fn flatten<'e>(e: &'e Expr, out: &mut Vec<&'e Expr>) {
 }
 
 impl Visitor for HandLoops<'_> {
-    fn stmts(&mut self, stmts: &[Stmt]) {
-        let base = self.base;
-        let stmts: Vec<_> = stmts.iter().map(|s| (base, s)).collect();
-        self.queue_head(&stmts);
-    }
-
     fn stmt(&mut self, stmt: &Stmt) {
         self.contains_add(stmt);
     }
@@ -337,35 +261,4 @@ impl Visitor for HandLoops<'_> {
         self.copy(expr);
         self.range_check(expr);
     }
-}
-
-/// Whether `body` reads the head index `h` other than as an index (`q[h]`,
-/// `qy[h]`) and its step: then it is a result too (a rank, a count), which a
-/// queue drops.
-fn reads_head_otherwise(body: &[Stmt], h: &str) -> bool {
-    struct Reads<'a> {
-        h: &'a str,
-        names: usize,
-        heads: usize,
-    }
-    impl Visitor for Reads<'_> {
-        fn expr(&mut self, e: &Expr) {
-            match &e.kind {
-                ExprKind::Name(n) if n == self.h => self.names += 1,
-                ExprKind::Index { indices, .. } if matches!(indices.as_slice(), [i] if name(i) == Some(self.h)) => {
-                    self.heads += 1
-                }
-                _ => {}
-            }
-        }
-    }
-    let mut reads = Reads {
-        h,
-        names: 0,
-        heads: 0,
-    };
-    for s in body.iter().filter(|s| !is_step(s, h)) {
-        walk_stmt(&mut reads, s);
-    }
-    reads.names > reads.heads
 }

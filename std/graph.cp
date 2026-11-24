@@ -1227,6 +1227,8 @@ pub struct Paths<V, W: Add, A>:
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)])[3] == Some(2)`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)], enter: (v, d) => v != 1).path(3) == Some([0, 2, 3])`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let p = bfs(g, from: [V(0)], until: V(1)); p[1] == Some(1) and p[2] == None`
+@lint(queue_head_index, from: "while head < q.len:\n    let u = q[head]\n    head += 1\n    rest", to: "bfs(next, from: [s])", holes: "q, head, rest")
+@lint(queue_head_index, from: "while head < q.len:\n    let u = q[head]\n    let v = r[head]\n    head += 1\n    rest", to: "bfs(next, from: [s])", holes: "q, r, head, rest")
 pub fn bfs<V, G: Next<V>>(
     g: G,
     from: Seq<V>,
