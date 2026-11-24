@@ -18,7 +18,7 @@ fn a_library_fn_in_method_form_hovers_and_types_like_its_free_form() {
     let shape = (item.check.exprs.types.iter()).find(|(span, _)| *span == call);
     assert_eq!(
         shape.map(|(_, ty)| ty.to_string()).as_deref(),
-        Some("Gen<Slice<Str>>")
+        Some("Runs<Str, _, _>")
     );
 }
 

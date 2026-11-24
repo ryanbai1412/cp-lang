@@ -271,7 +271,7 @@ fn map_keys_and_values_iterate_without_copying() {
 #[test]
 fn mapped_let_read_whole_maps_once_not_per_read() {
     let out = cpp("let s: Str = read()
-let blocks = s.runs().map(r => r.len)
+let blocks = s.runs().collect().map(r => r.len)
 var t = 0
 for k in 0..blocks.len: t += blocks[k] + blocks.first! + blocks.last!
 print(t)
@@ -1037,4 +1037,15 @@ print(hi.cut(0), hi.cut(n - 1))
 "#);
     let main = &out[out.find("void solve()").unwrap()..];
     assert!(!main.contains("to_list("), "{main}");
+}
+
+#[test]
+fn a_held_windows_view_is_no_vector_of_windows() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "let xs = [i * i for i in 0..n]\n",
+        "let w = xs.windows(3)\n",
+        "print(w[1].sum(), w.len)\n",
+    ));
+    assert!(!cpp.contains("std::vector<cpl::ListView"), "{cpp}");
 }

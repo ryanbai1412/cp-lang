@@ -208,9 +208,9 @@ impl Checker<'_> {
         self.slices_of_self(&base_ty, name).then(|| show(base))
     }
 
-    /// Whether `name` on a `List` or `Str` is a fn `(self: S, ..) -> yields
-    /// Slice<S>` whose other params never mention `S`: by parametricity each
-    /// piece is a slice of `self`, keeping its keys (R07.4.5).
+    /// Whether `name` on a `List` or `Str` is a fn `(self: S, ..) -> R` whose
+    /// `R` walks `Slice<S>` and whose other params never mention `S`: by
+    /// parametricity each piece is a slice of `self`, keeping its keys (R07.4.5).
     pub(crate) fn slices_of_self(&mut self, base_ty: &Ty, name: &str) -> bool {
         if !keeps_keys(base_ty) {
             return false;
@@ -218,7 +218,11 @@ impl Checker<'_> {
         let Some(def) = self.method_def(base_ty, name) else {
             return false;
         };
-        let Def::Fn { ty: Ty::Fn { params, ret }, .. } = &*def else {
+        let Def::Fn {
+            ty: Ty::Fn { params, ret },
+            ..
+        } = &*def
+        else {
             return false;
         };
         let Some((first, rest)) = params.split_first() else {
@@ -227,10 +231,12 @@ impl Checker<'_> {
         let Ty::Param(s) = &first.ty else {
             return false;
         };
-        let slice_of_s = |t: &Ty| t.view_source() == Some(&first.ty) && t.rev_source().is_none();
-        matches!(&**ret, Ty::Named { name, args } if name == "Gen"
-            && args.first().is_some_and(slice_of_s))
-            && rest.iter().all(|p| !p.ty.mentions_param_where(&|q| q == s))
+        let mut at_self = crate::ty::Bindings::default();
+        at_self.insert(s.clone(), base_ty.clone());
+        let piece = self.element_ty(&ret.subst(&at_self));
+        piece.view_source() == Some(base_ty)
+            && piece.rev_source().is_none()
+            && rest.iter().all(|p| p.ty.subst(&at_self) == p.ty)
     }
 
     /// A key of `V.ranges` is non-empty by its type (lib/search-dp.md): the

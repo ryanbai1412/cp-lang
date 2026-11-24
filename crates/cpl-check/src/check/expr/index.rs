@@ -616,12 +616,25 @@ impl<'a> Checker<'a> {
                 );
                 Ty::Error
             }
-            Ty::Named { name, .. } if matches!(name.as_str(), "Gen" | "Iter") => {
-                self.report(
+            // A struct with an `Indexed` impl reads piece `i` through its O(1) `at`.
+            ty @ Ty::Named { .. } if self.implements_trait(ty, "Indexed") => self
+                .trait_args_of(ty, "Indexed", 2)
+                .map_or(Ty::Unknown, |args| args[1].clone()),
+            // A walk-only sequence (a generator, or a view with neither `Indexed`
+            // nor `Keyed`) reaches piece `i` by walking, so `[i]` is not O(1).
+            ty @ Ty::Named { name, .. }
+                if matches!(name.as_str(), "Gen" | "Iter")
+                || (self.implements_trait(ty, "Seq") && !self.implements_trait(ty, "Keyed")) =>
+            {
+                if let Some(diag) = self.report(
                     expr.span,
                     msgs::check::MISSING_IMPL_HAS_TYPE_WHICH_DOES,
                     &[&self.quote(base.span), &base_ty],
-                );
+                ) {
+                    diag.help = Some(
+                        "its pieces come one at a time, so reaching piece `i` is a walk: `.collect()[i]` keeps them all (O(n) once)".into(),
+                    );
+                }
                 Ty::Error
             }
             Ty::Named { name, args } if name == "Range" && args.len() == 1 => args[0].clone(),

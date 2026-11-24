@@ -589,9 +589,9 @@ pub fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K>(self: A, b: B, by:
 /// order: left to right; each window keeps the keys of `self`
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].windows(2).map(w => w.sum()).collect() == [3, 5]`
-pub fn windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
+pub fn windows<S: Indexed>(self: S, k: 1..) -> Windows<S>:
     assert k >= 1, "a window holds at least one element"
-    for i in 0..self.len - k + 1: yield piece(self, i, i + k)
+    Windows(self, k)
 
 /// \(O(1)\) per chunk. Lent non-overlapping slice views of length `k` (the last may be shorter).
 ///
@@ -600,12 +600,87 @@ pub fn windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
 /// order: left to right; each chunk keeps the keys of `self`, the last may be shorter
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks(2).map(c => c.len).collect() == [2, 1]`
-pub fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
+pub fn chunks<S: Indexed>(self: S, k: 1..) -> Chunks<S>:
     assert k >= 1, "a chunk holds at least one element"
-    var i = 0
-    while i < self.len:
-        yield piece(self, i, if i + k < self.len: i + k else: self.len)
-        i += k
+    Chunks(self, k)
+
+/// \(O(1)\) to make. The view `s.windows(k)`: its length-`k` slices left to right, each keeping
+/// `s`'s keys; window `i` is \(O(1)\) to read. A lent value (R07.1.5).
+pub struct Windows<S>(
+    /// \(O(1)\). The sequence whose windows these are.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `let a = [1, 2]; a.windows(1).src == a`
+    pub src: S,
+    k: Int,
+)
+
+impl Seq<Slice<S>> for Windows<S: Indexed>:
+    fn iter(self) -> yields Slice<S>:
+        for i in 0..src.len - k + 1: yield piece(src, i, i + k)
+
+impl Keyed<Int, Slice<S>> for Windows<S: Indexed>:
+    fn items(self) -> yields (Int, Slice<S>):
+        for i in 0..src.len - k + 1: yield (i, piece(src, i, i + k))
+
+impl Bidir<Slice<S>> for Windows<S: Indexed>:
+    fn iter_rev(self) -> yields Slice<S>:
+        for i in (0..src.len - k + 1).rev: yield piece(src, i, i + k)
+
+impl Sized for Windows<S: Indexed>:
+    @get fn len(self) -> Int = if src.len < k: 0 else: src.len - k + 1
+
+impl Positional<Slice<S>> for Windows<S: Indexed>:
+    fn nth(self, i: Int) -> Slice<S> = self.at(i)
+
+impl Indexed<Int, Slice<S>> for Windows<S: Indexed>:
+    fn at(self, i: Int) -> Slice<S>:
+        assert 0 <= i < self.len, "no such window"
+        piece(src, i, i + k)
+    @get fn keys(self) -> Range<Int> = 0..self.len
+
+/// \(O(1)\) to make. The view `s.chunks(k)`: its non-overlapping length-`k` slices left to right
+/// (the last may be shorter), each keeping `s`'s keys; chunk `i` is \(O(1)\) to read. A lent value.
+pub struct Chunks<S>(
+    /// \(O(1)\). The sequence whose chunks these are.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `let a = [1, 2]; a.chunks(1).src == a`
+    pub src: S,
+    k: Int,
+)
+
+fn chunk<S: Indexed>(s: S, k: Int, i: Int) -> Slice<S> =
+    piece(s, i * k, if (i + 1) * k < s.len: (i + 1) * k else: s.len)
+
+impl Seq<Slice<S>> for Chunks<S: Indexed>:
+    fn iter(self) -> yields Slice<S>:
+        var i = 0
+        while i < src.len:
+            yield piece(src, i, if i + k < src.len: i + k else: src.len)
+            i += k
+
+impl Keyed<Int, Slice<S>> for Chunks<S: Indexed>:
+    fn items(self) -> yields (Int, Slice<S>):
+        for i in 0..self.len: yield (i, chunk(src, k, i))
+
+impl Bidir<Slice<S>> for Chunks<S: Indexed>:
+    fn iter_rev(self) -> yields Slice<S>:
+        for i in (0..self.len).rev: yield chunk(src, k, i)
+
+impl Sized for Chunks<S: Indexed>:
+    @get fn len(self) -> Int = (src.len + k - 1) / k
+
+impl Positional<Slice<S>> for Chunks<S: Indexed>:
+    fn nth(self, i: Int) -> Slice<S> = self.at(i)
+
+impl Indexed<Int, Slice<S>> for Chunks<S: Indexed>:
+    fn at(self, i: Int) -> Slice<S>:
+        assert 0 <= i < self.len, "no such chunk"
+        chunk(src, k, i)
+    @get fn keys(self) -> Range<Int> = 0..self.len
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives
 /// `(10, 20)` then `(20, 30)`. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). \(O(1)\) per step.
@@ -902,27 +977,50 @@ pub fn runs<S: Indexed, T, K>(
     self: S,
     by: T -> K = x => x,
     link: ?((T, T) -> Bool) = None,
-) -> yields Slice<S>:
-    let n = self.len
-    var i = 0
-    if let Some(linked) = link:
-        while i < n:
-            var j = i + 1
-            while j < n and linked(self.nth(j - 1), self.nth(j)): j += 1
-            yield piece(self, i, j)
-            i = j
-    elif n > 0:
-        var k = by(self.nth(0))
-        while i < n:
-            var j = i + 1
-            while j < n:
-                let next = by(self.nth(j))
-                if not (next == k):
-                    k = next
-                    break
-                j += 1
-            yield self[self.keys.nth(i)..=self.keys.nth(j - 1)]
-            i = j
+) -> Runs<S, T, K> = Runs(self, by, link)
+
+/// \(O(1)\) to make. The view `s.runs(..)`: its maximal runs left to right, each a slice keeping
+/// `s`'s keys. Reaching run `i` is a walk, so it is not indexed. A lent value (R07.1.5).
+pub struct Runs<S, T, K>(
+    /// \(O(1)\). The sequence whose runs these are.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `let a = [1, 2]; a.runs().src == a`
+    pub src: S,
+    by: T -> K,
+    link: ?((T, T) -> Bool),
+)
+
+impl Seq<Slice<S>> for Runs<S: Indexed, T, K>:
+    fn iter(self) -> yields Slice<S>:
+        let n = src.len
+        var i = 0
+        if let Some(linked) = link:
+            while i < n:
+                var j = i + 1
+                while j < n and linked(src.nth(j - 1), src.nth(j)): j += 1
+                yield piece(src, i, j)
+                i = j
+        elif n > 0:
+            var k = by(src.nth(0))
+            while i < n:
+                var j = i + 1
+                while j < n:
+                    let next = by(src.nth(j))
+                    if not (next == k):
+                        k = next
+                        break
+                    j += 1
+                yield src[src.keys.nth(i)..=src.keys.nth(j - 1)]
+                i = j
+
+impl Keyed<Int, Slice<S>> for Runs<S: Indexed, T, K>:
+    fn items(self) -> yields (Int, Slice<S>):
+        var r = 0
+        for run in self.iter():
+            yield (r, run)
+            r += 1
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
 ///

@@ -373,20 +373,18 @@ impl Ty {
 
     /// True when the type, or any part of it, is a generic parameter.
     pub fn mentions_param(&self) -> bool {
-        self.mentions_param_where(&|_| true)
-    }
-
-    /// Whether a type parameter `which` accepts appears anywhere in it.
-    pub fn mentions_param_where(&self, which: &dyn Fn(&str) -> bool) -> bool {
-        let m = |t: &Ty| t.mentions_param_where(which);
         match self {
-            Ty::Param(p) => which(p),
-            Ty::Array { index, elem } => index.iter().any(m) || m(elem),
-            Ty::Optional(t) => m(t),
-            Ty::Tuple(ts) => ts.iter().any(m),
-            Ty::Record(fs) => fs.iter().any(|(_, t)| m(t)),
-            Ty::Named { args, .. } => args.iter().any(m),
-            Ty::Fn { params, ret } => params.iter().any(|p| m(&p.ty)) || m(ret),
+            Ty::Param(_) => true,
+            Ty::Array { index, elem } => {
+                index.iter().any(Ty::mentions_param) || elem.mentions_param()
+            }
+            Ty::Optional(t) => t.mentions_param(),
+            Ty::Tuple(ts) => ts.iter().any(Ty::mentions_param),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| t.mentions_param()),
+            Ty::Named { args, .. } => args.iter().any(Ty::mentions_param),
+            Ty::Fn { params, ret } => {
+                params.iter().any(|p| p.ty.mentions_param()) || ret.mentions_param()
+            }
             _ => false,
         }
     }
