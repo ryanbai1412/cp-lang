@@ -1630,7 +1630,7 @@ impl<'a> Checker<'a> {
             Ty::Int => Some("Int"),
             Ty::I128 => Some("I128"),
             Ty::U64 => Some("U64"),
-            Ty::Float => Some("Float"),
+            Ty::Float => Some("F64"),
             Ty::Bool => Some("Bool"),
             Ty::Char => Some("Char"),
             Ty::Str => Some("Str"),
