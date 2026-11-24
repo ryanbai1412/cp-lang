@@ -849,50 +849,20 @@ impl<'a> Checker<'a> {
                         _ => {}
                     }
                 }
+                if let Some(trait_hits) =
+                    (self.member_traits(type_name, &name.text)).filter(|t| t.len() >= 2)
                 {
-                    let has_inherent = match self.type_def(type_name).as_deref() {
-                        Some(Def::Struct { methods, .. } | Def::Enum { methods, .. }) => {
-                            methods.iter().any(|(m, _)| m == &name.text)
-                        }
-                        _ => false,
-                    };
-                    if !has_inherent {
-                        let mut trait_hits: Vec<String> = Vec::new();
-                        for (trait_name, def) in self.env.impls(type_name) {
-                            let Some(tn) = trait_name else { continue };
-                            let has_in_impl = matches!(
-                                &*def,
-                                Def::Impl { methods, .. }
-                                    if methods.iter().any(|(m, _)| m == &name.text)
-                            );
-                            let has_in_trait = self
-                                .type_def(tn.split('<').next().unwrap_or(&tn))
-                                .as_deref()
-                                .is_some_and(|d| {
-                                    matches!(
-                                        d,
-                                        Def::Trait { methods, .. }
-                                            if methods.iter().any(|m| m.name == name.text)
-                                    )
-                                });
-                            if (has_in_impl || has_in_trait) && !trait_hits.contains(&tn) {
-                                trait_hits.push(tn);
-                            }
-                        }
-                        if trait_hits.len() >= 2 {
-                            if let Some(diag) = self.report(
-                                name.span,
-                                msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND_2,
-                                &[&type_name, &name.text, &trait_hits[0], &trait_hits[1]],
-                            ) {
-                                diag.help = Some(format!(
-                                    "disambiguate with `{}.{}(...)` or `{}.{}(...)`",
-                                    trait_hits[0], name.text, trait_hits[1], name.text
-                                ));
-                            }
-                            return Ty::Error;
-                        }
+                    if let Some(diag) = self.report(
+                        name.span,
+                        msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND_2,
+                        &[&type_name, &name.text, &trait_hits[0], &trait_hits[1]],
+                    ) {
+                        diag.help = Some(format!(
+                            "disambiguate with `{}.{}(...)` or `{}.{}(...)`",
+                            trait_hits[0], name.text, trait_hits[1], name.text
+                        ));
                     }
+                    return Ty::Error;
                 }
                 self.members_of(type_name).map(|members| {
                     let bindings = members.bindings(args);

@@ -974,31 +974,9 @@ impl<'a> Checker<'a> {
         let Ty::Named { name: owner, .. } = base_ty else {
             return false;
         };
-        let own = match self.type_def(owner).as_deref() {
-            Some(Def::Struct { methods, .. } | Def::Enum { methods, .. }) => {
-                methods.iter().any(|(m, _)| *m == name.text)
-            }
-            _ => false,
-        };
-        if own {
+        let Some(traits) = self.member_traits(owner, &name.text) else {
             return false;
-        }
-        let mut traits = Vec::new();
-        for (trait_name, def) in self.env.impls(owner) {
-            match (trait_name, &*def) {
-                (None, Def::Impl { methods, .. })
-                    if methods.iter().any(|(m, _)| *m == name.text) =>
-                {
-                    return false;
-                }
-                (Some(t), Def::Impl { methods, .. })
-                    if methods.iter().any(|(m, _)| *m == name.text) =>
-                {
-                    traits.push(t)
-                }
-                _ => {}
-            }
-        }
+        };
         let [first, second, ..] = traits.as_slice() else {
             return false;
         };

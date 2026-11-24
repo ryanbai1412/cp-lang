@@ -881,28 +881,37 @@ impl Checker<'_> {
         let Ty::Named { name: owner, .. } = base else {
             return false;
         };
+        self.member_traits(owner, name)
+            .is_none_or(|t| !t.is_empty())
+    }
+
+    /// The traits whose impl for `owner` or own body gives it `name`, or `None` when
+    /// `owner` declares `name` itself, in its body or an impl of no trait.
+    pub(super) fn member_traits(&mut self, owner: &str, name: &str) -> Option<Vec<String>> {
         if let Some(Def::Struct { methods, .. } | Def::Enum { methods, .. }) =
             self.type_def(owner).as_deref()
         {
             if methods.iter().any(|(m, _)| m == name) {
-                return true;
+                return None;
             }
         }
+        let mut traits = Vec::new();
         for (trait_name, def) in self.env.impls(owner) {
-            if matches!(&*def, Def::Impl { methods, .. } if methods.iter().any(|(m, _)| m == name))
-            {
-                return true;
-            }
-            let trait_def = (trait_name.as_deref())
-                .and_then(|t| t.split('<').next())
-                .and_then(|t| self.type_def(t));
-            if matches!(trait_def.as_deref(), Some(Def::Trait { methods, .. })
-                if methods.iter().any(|m| m.name == name))
-            {
-                return true;
+            let in_impl = matches!(&*def, Def::Impl { methods, .. } if methods.iter().any(|(m, _)| m == name));
+            let Some(t) = trait_name else {
+                if in_impl {
+                    return None;
+                }
+                continue;
+            };
+            let trait_def = self.type_def(t.split('<').next().unwrap_or(&t));
+            let in_trait = matches!(trait_def.as_deref(), Some(Def::Trait { methods, .. })
+                if methods.iter().any(|m| m.name == name));
+            if (in_impl || in_trait) && !traits.contains(&t) {
+                traits.push(t);
             }
         }
-        false
+        Some(traits)
     }
 
     /// Whether `base.name(args)` gives arguments its built-in member's row
