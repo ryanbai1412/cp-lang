@@ -1,5 +1,6 @@
 // Source: Codeforces 2124F1 (Appending Permutations, Easy Version),
 //   https://codeforces.com/contest/2124/problem/F1
+// limits: 3000 ms, 1024 MB
 // Problem: build an array of length n by appending cyclic shifts [r..s, 1..r-1] of [1..s], with
 //   m bans a[i] != x. Count the distinct arrays mod 998244353. n <= 100, m <= 5000, sums over
 //   tests too; multitest.

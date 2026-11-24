@@ -1,5 +1,6 @@
 // Source: Codeforces 2127D (Root was Built by Love, Broken by Destiny),
 //   https://codeforces.com/contest/2127/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: a connected simple graph with n houses and m bridges. Place the houses on two
 //   parallel river banks (order on each bank matters) so every bridge joins opposite banks and
 //   no two bridges cross; count arrangements mod 1e9+7. n, m <= 2e5 (sums too); multitest.

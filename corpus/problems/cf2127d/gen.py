@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
 import sys, random
+
+if sys.argv[1:] == ["--max"]:
+    # n = 2e5, m = n - 1: a caterpillar with a 1e5-long spine (deep for a recursive walk) and the
+    # other 1e5 vertices hung as leaves, unevenly, so the factorials are large.
+    rng = random.Random(2127)
+    n, spine = 200_000, 100_000
+    edges = [(i, i + 1) for i in range(1, spine)]
+    for i in range(spine + 1, n + 1):
+        p = rng.choice((1, spine, spine // 2)) if rng.random() < 0.3 else rng.randint(1, spine)
+        edges.append((p, i))
+    perm = list(range(1, n + 1))
+    rng.shuffle(perm)
+    rng.shuffle(edges)
+    print(1)
+    print(n, len(edges))
+    print("\n".join(f"{perm[u - 1]} {perm[v - 1]}" if rng.random() < 0.5 else f"{perm[v - 1]} {perm[u - 1]}" for u, v in edges))
+    sys.exit()
 rng = random.Random(int(sys.argv[1]))
 t = rng.randint(1, 5)
 print(t)

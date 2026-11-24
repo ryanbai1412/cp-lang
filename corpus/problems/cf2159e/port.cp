@@ -1,5 +1,6 @@
 // Source: Codeforces 2159 E, Super-Short-Polynomial-San,
 //   https://codeforces.com/contest/2159/problem/E
+// limits: 7000 ms, 1024 MB
 // Problem: a, b, c in 1..1e9+6; q <= 3e5 online queries (n, k), each xored with the previous
 //   answer, 0 <= n <= 3e5, 0 <= k <= 2n: print the sum of the coefficients of x^0..x^k in
 //   (a x^2 + b x + c)^n modulo 1e9+7.

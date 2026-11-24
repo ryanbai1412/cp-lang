@@ -1,5 +1,6 @@
 // Source: Codeforces 2135E2 (Beyond the Palindrome, Hard Version),
 //   https://codeforces.com/contest/2135/problem/E2
+// limits: 3000 ms, 1024 MB
 // Problem: f(r) deletes every "10" from the binary string r, repeatedly, until none is left. For
 //   each n (<= 2e7, sum <= 1e8, t <= 1e4) count the binary strings s of length n with
 //   f(s) = f(rev(s)), mod 998244353. Multitest.

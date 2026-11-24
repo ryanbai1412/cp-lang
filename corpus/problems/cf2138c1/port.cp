@@ -1,5 +1,6 @@
 // Source: Codeforces 2138C1 (Maple and Tree Beauty, Easy Version),
 //   https://codeforces.com/contest/2138/problem/C1
+// limits: 3000 ms, 1024 MB
 // Problem: a rooted tree of n <= 1000 vertices (parents p_i < i). Label exactly k vertices 0
 //   and the rest 1 to maximise the longest common subsequence of all root-to-leaf label strings.
 //   Multitest, t <= 50.
