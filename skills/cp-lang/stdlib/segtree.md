@@ -97,6 +97,8 @@ A pool of mergeable sets of positions of `D`, each stored as a sparse binary seg
 - `fn singleton(mut self, x: D) -> MergeSeg<D>` — \(O(\log \lvert D \rvert)\) time and new nodes; The set holding only `x`.
 - `fn merge(mut self, a: MergeSeg<D>, b: MergeSeg<D>) -> MergeSeg<D>` — \(O(\log \lvert D \rvert)\) amortized per position, over a sequence of merges whose; The union of `a` and `b`.
 - `fn first_alive(mut self, mut s: MergeSeg<D>, alive: D -> Bool) -> ?D` — \(O(\log \lvert D \rvert)\) amortized; The smallest position `x` in `s` with `alive(x)`, or `None`.
+- `fn first_ge(self, s: MergeSeg<D>, x: D) -> ?D` — \(O(\log \lvert D \rvert)\); The smallest position of `s` at or after `x`, or `None`.
+- `fn any_in(self, s: MergeSeg<D>, r: Range<D>) -> Bool` — \(O(\log \lvert D \rvert)\); Whether `s` holds a position in `r`.
 
 ## Example
 
