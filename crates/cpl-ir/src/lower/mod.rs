@@ -517,6 +517,8 @@ struct FnCx {
     /// when one of its arms leaves with `return`, `break` or `continue`.
     exits: Option<Span>,
     pending: Vec<Stmt>,
+    /// What runs after the statement being lowered: a lend's tail (R05.6.3).
+    after: Vec<Stmt>,
     is_main: bool,
     is_closure: bool,
     captures: Vec<Capture>,

@@ -696,3 +696,27 @@ fn an_optional_struct_param_the_fn_only_reads_is_lent_not_copied() {
     );
     assert!(!cpp.contains("std::optional<H>(h2)"), "{cpp}");
 }
+
+#[test]
+fn a_mut_self_call_through_a_lend_runs_on_the_slot() {
+    let cpp = cpp(concat!(
+        "use std.marks.{Arena, Id}\n",
+        "struct C:\n    var n: Int\n    fn bump(mut self, by: Int):\n        n += by\n",
+        "struct N:\n    var kids: List<Int>\n    var c: C\n",
+        "fn grow(mut ar: Arena<N>, i: Id<N>):\n",
+        "    ar.at(i).kids.push(3)\n    ar[i].c.bump(2)\n",
+        "var ar = Arena<N>()\n",
+        "let i = ar.alloc(N([1], C(0)))\n",
+        "grow(mut ar, i)\n",
+        "print(ar.at(i).kids, ar.at(i).c.n)\n",
+    ));
+    assert!(
+        cpp.contains("ar_2._xs, ll(i_2.raw)).kids.push_back(3);"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("C_bump(cpl::at(ar_2._xs, ll(i_2.raw)).c, 2);"),
+        "{cpp}"
+    );
+    assert!(!cpp.contains("N t"), "no node is copied: {cpp}");
+}

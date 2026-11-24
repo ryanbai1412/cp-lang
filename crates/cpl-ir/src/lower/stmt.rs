@@ -312,12 +312,15 @@ impl<'a> Lowerer<'a> {
             std::mem::take(&mut self.cx.pending),
             std::mem::replace(&mut self.cx.exits, exits),
             std::mem::replace(&mut self.cx.rhs_extent, stmt.rhs_extent()),
+            std::mem::take(&mut self.cx.after),
         );
         let at = out.len();
         self.stmt_inner(stmt, rest, out);
         let pending = std::mem::replace(&mut self.cx.pending, outer.1);
+        let after = std::mem::replace(&mut self.cx.after, outer.4);
         (self.cx.way_out, self.cx.exits, self.cx.rhs_extent) = (outer.0, outer.2, outer.3);
         out.splice(at..at, pending);
+        out.extend(after);
         self.lift_leaving(out, at);
     }
 

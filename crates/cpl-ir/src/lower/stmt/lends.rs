@@ -125,16 +125,7 @@ impl<'a> Lowerer<'a> {
             }),
             _ => return None,
         };
-        let (inner, alias) = match self.lent_slot(base, out, post) {
-            Some(alias) => (
-                ast::Expr {
-                    kind: ast::ExprKind::Name(alias.clone()),
-                    span: base.span,
-                },
-                alias,
-            ),
-            None => self.through_lend(base, out, post)?,
-        };
+        let (inner, alias) = self.lent_path(base, out, post)?;
         Some((
             ast::Expr {
                 kind: rebuild(inner),
@@ -142,6 +133,26 @@ impl<'a> Lowerer<'a> {
             },
             alias,
         ))
+    }
+
+    /// `e` itself as a lent slot (`a.at(i)`), or a path under one (`a[i].kids`), rewritten to
+    /// start from an alias of the slot.
+    pub(in crate::lower) fn lent_path(
+        &mut self,
+        e: &ast::Expr,
+        out: &mut Vec<Stmt>,
+        post: &mut Vec<Stmt>,
+    ) -> Option<(ast::Expr, String)> {
+        match self.lent_slot(e, out, post) {
+            Some(alias) => Some((
+                ast::Expr {
+                    kind: ast::ExprKind::Name(alias.clone()),
+                    span: e.span,
+                },
+                alias,
+            )),
+            None => self.through_lend(e, out, post),
+        }
     }
 
     /// Inlines `e` when it is a `lends mut` call (or `s[k]` through such an `at`) and names
