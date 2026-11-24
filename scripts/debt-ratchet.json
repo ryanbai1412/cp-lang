@@ -224,6 +224,6 @@
   "cpp_optional_copies": 6,
   "std_trait_matrix": 0,
   "corpus_no_tests": 60,
-  "silent_unknowns": 42341,
-  "corpus_no_statement": 64
+  "silent_unknowns": 42244,
+  "corpus_no_statement": 63
 }
