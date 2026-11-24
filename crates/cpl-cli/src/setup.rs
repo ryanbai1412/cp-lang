@@ -53,15 +53,11 @@ const COMMON: &[(&str, &str)] = &[
         "ftplugin/cp.vim",
         include_str!("../../../editors/neovim/ftplugin/cp.vim"),
     ),
-    (
-        "compiler/cpl.vim",
-        include_str!("../../../editors/neovim/compiler/cpl.vim"),
-    ),
-    (
-        "plugin/cplang.vim",
-        include_str!("../../../editors/neovim/plugin/cplang.vim"),
-    ),
 ];
+const VIM: (&str, &str) = (
+    "plugin/cplang.vim",
+    include_str!("../../../editors/vim/plugin/cplang.vim"),
+);
 const QUERIES: (&str, &str) = (
     "queries/cp/highlights.scm",
     include_str!("../../../editors/tree-sitter-cp/queries/highlights.scm"),
@@ -72,7 +68,7 @@ fn files(editor: &str) -> Option<Vec<(&'static str, &'static str)>> {
     let mut files = COMMON.to_vec();
     match editor {
         "neovim" | "nvim" => files.extend([LUA, QUERIES]),
-        "vim" => {}
+        "vim" => files.push(VIM),
         _ => return None,
     }
     Some(files)
@@ -331,8 +327,15 @@ fn install_emacs(elpa: Option<PathBuf>) -> Result<String, String> {
          (provide 'cp-mode-autoloads)\n",
         quoted(&cpl.display().to_string())
     );
+    let grammar = format!(
+        ";;; cp-grammar.el --- written by `cpl setup emacs' -*- lexical-binding: t -*-\n\
+         (defconst cp--grammar\n  '{}\n  \"The highlighting and syntax `cp-mode' reads.\")\n\
+         (provide 'cp-grammar)\n",
+        cpl_syntax::grammar::emacs()
+    );
     let files = [
         ("cp-mode.el", EMACS_MODE),
+        ("cp-grammar.el", grammar.as_str()),
         ("cp-mode-pkg.el", pkg.as_str()),
         ("cp-mode-autoloads.el", autoloads.as_str()),
     ];
@@ -1282,5 +1285,14 @@ mod tests {
             }
         }
         assert!(!files("vim").unwrap().contains(&LUA));
+        assert!(!files("neovim").unwrap().contains(&VIM));
+        let vim = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../editors/vim/plugin");
+        for entry in std::fs::read_dir(vim).unwrap() {
+            let name = format!("plugin/{}", entry.unwrap().file_name().to_string_lossy());
+            assert!(
+                files("vim").unwrap().iter().any(|(p, _)| *p == name),
+                "{name} is not in `cpl setup vim`"
+            );
+        }
     }
 }

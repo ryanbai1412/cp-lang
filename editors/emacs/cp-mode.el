@@ -14,30 +14,21 @@
   "The cpl executable; its `lsp' subcommand is the language server."
   :type 'string)
 
-;; The highlighting and syntax come from `cpl setup emacs --grammar', generated from the lexer's tables.
-(defvar cp--grammar nil "The grammar cpl printed, once read.")
-
-(defun cp--rules (key)
-  "KEY of the grammar cpl generates: `:font-lock', `:syntax' or `:syntactic'."
-  (plist-get (or cp--grammar
-                 (setq cp--grammar
-                       (with-temp-buffer
-                         (when (eql 0 (ignore-errors (call-process cp-cpl-program nil '(t nil) nil "setup" "emacs" "--grammar")))
-                           (goto-char (point-min))
-                           (ignore-errors (read (current-buffer)))))))
-             key))
+;; The highlighting and syntax: cp-grammar.el, which `cpl setup emacs' generates from the
+;; lexer's tables beside this file.
+(require 'cp-grammar)
 
 (defun cp-font-lock-keywords ()
   "The font-lock rules cpl generates; with `cpl lsp' running, its semantic tokens add to them."
-  (cp--rules :font-lock))
+  (plist-get cp--grammar :font-lock))
 
 ;;;###autoload
 (define-derived-mode cp-mode prog-mode "CP"
   "Major mode for CP Lang."
-  (dolist (entry (cp--rules :syntax))
+  (dolist (entry (plist-get cp--grammar :syntax))
     (modify-syntax-entry (car entry) (cdr entry)))
   (setq-local font-lock-defaults '(cp-font-lock-keywords))
-  (setq-local syntax-propertize-function (syntax-propertize-via-font-lock (cp--rules :syntactic)))
+  (setq-local syntax-propertize-function (syntax-propertize-via-font-lock (plist-get cp--grammar :syntactic)))
   (setq-local comment-start "// ")
   (setq-local comment-start-skip "//+[ \t]*")
   (setq-local indent-tabs-mode nil)

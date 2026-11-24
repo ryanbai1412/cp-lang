@@ -72,6 +72,7 @@ fn vscode() -> Settings {
 fn neovim() -> Settings {
     let mut paths = Vec::new();
     files(&root().join("editors/neovim"), &["vim", "lua"], &mut paths);
+    files(&root().join("editors/vim"), &["vim"], &mut paths);
     let mut defaults: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for path in paths {
         for line in read(&path).lines() {

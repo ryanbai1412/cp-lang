@@ -2651,7 +2651,7 @@ EDITOR_GLUE = frozenset({
     "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp.kt",
     "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp4ij.kt",
     "editors/zed/src/lib.rs", "editors/neovim/ftdetect/cp.vim", "editors/neovim/ftplugin/cp.vim",
-    "editors/neovim/plugin/cplang.lua",
+    "editors/neovim/plugin/cplang.lua", "editors/vim/plugin/cplang.vim", "editors/emacs/cp-mode.el",
 })
 EDITOR_SOURCE_RE = re.compile(r"^editors/(?!tree-sitter-cp/)(?!.*(?:/tests?/|/scripts/|smoke|\.test\.)).*\.(?:ts|js|kt|rs|lua|el|vim)$")
 EDITOR_COMMENT = ("//", "/*", "*", "#", ";", "--", '"')
@@ -2659,7 +2659,8 @@ EDITOR_COMMENT = ("//", "/*", "*", "#", ";", "--", '"')
 # a branch, a loop, a condition, or a search or transform of data (strings blanked).
 EDITOR_DECIDES_RE = re.compile(r"\b(?:if|else|for|while|switch|case|catch|when)\b|\?\?|\?:|&&|\|\||\s\?\s"
                                r"|\.(?:map|filter|find|flatMap|sort|reduce|split|replace|match|test|some|every|includes)\("
-                               r"|\b(?:and|or|not|elseif)\b|\bvim\.(?:tbl_\w+|split|startswith)\(|:(?:match|gsub|find|sub)\(")
+                               r"|(?<!\.)\b(?:and|or|not|elseif)\b|\bvim\.(?:tbl_\w+|split|startswith)\(|:(?:match|gsub|find|sub)\(")
+EDITOR_IMPL_RE = re.compile(r"^\s*impl\b.*\bfor\b")  # Rust's `impl Trait for Type` is no loop
 EDITOR_STRING_RE = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`")
 
 
@@ -2674,7 +2675,7 @@ def editor_logic_lines(root: Path) -> list[str]:
             glue = rel in EDITOR_GLUE
             out += [f"{rel}:{i}" for i, line in enumerate(_lines(root / rel), 1)
                     if line.strip() and not line.strip().startswith(EDITOR_COMMENT)
-                    and (not glue or EDITOR_DECIDES_RE.search(EDITOR_STRING_RE.sub("''", line)))]
+                    and (not glue or EDITOR_DECIDES_RE.search(EDITOR_IMPL_RE.sub("", EDITOR_STRING_RE.sub("''", line))))]
     return out
 
 

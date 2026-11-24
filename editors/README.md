@@ -131,12 +131,12 @@ autocmd BufWritePre *.cp let b:cpl_view = winsaveview() | silent execute 'keepju
 
 ## Vim (8.2 or later)
 
-Add the Neovim folder to the runtime path for highlighting, filetype, indent,
-`gq` through `cpl fmt`, and `cpl lsp` through vim-lsp or yegappan/lsp when
-either is installed:
+Add the Neovim and Vim folders to the runtime path for highlighting, filetype,
+indent, `gq` through `cpl fmt`, `:make` through `cpl lint`, and `cpl lsp`
+through vim-lsp or yegappan/lsp when either is installed:
 
 ```vim
-set rtp+=/path/to/cp-lang/editors/neovim
+set rtp+=/path/to/cp-lang/editors/neovim,/path/to/cp-lang/editors/vim
 filetype plugin indent on
 syntax on
 ```
@@ -160,8 +160,9 @@ another `elpa` folder), then add to your init file:
 
 `cp-mode` registers `cpl lsp` with both eglot and lsp-mode. It runs the `cpl`
 setup ran as, so Emacs started without the shell's `PATH` finds it; set
-`cp-cpl-program` to run another. From a checkout, add
-`editors/emacs` to `load-path` and `(require 'cp-mode)` instead. It claims `.cp` ahead of
+`cp-cpl-program` to run another. Its highlighting is `cp-grammar.el`, which
+setup generates from the lexer's tables, so from a checkout run
+`cpl setup emacs --dir DIR` with the `cpl` you built. It claims `.cp` ahead of
 Emacs's own entry, which calls `.cp` C++.
 
 ## JetBrains IDEs (2024.3 or later)

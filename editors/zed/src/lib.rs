@@ -18,11 +18,11 @@ impl zed::Extension for CpLang {
         let command = binary
             .as_ref()
             .and_then(|b| b.path.clone())
-            .or_else(|| worktree.which("cpl"))
+            .or(worktree.which("cpl"))
             .ok_or("`cpl` is not on the PATH; set lsp.cpl.binary.path in Zed's settings")?;
         let args = binary
             .and_then(|b| b.arguments)
-            .unwrap_or_else(|| vec!["lsp".into()]);
+            .unwrap_or(vec!["lsp".into()]);
         Ok(zed::Command {
             command,
             args,

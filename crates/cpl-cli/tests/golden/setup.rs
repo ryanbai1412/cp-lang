@@ -49,7 +49,12 @@ fn setup_writes_the_editor_files() {
     let out = cpl(&dir, &["setup", "emacs", "--dir", "elpa"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let version = env!("CARGO_PKG_VERSION").split('-').next().unwrap();
-    for file in ["cp-mode.el", "cp-mode-pkg.el", "cp-mode-autoloads.el"] {
+    for file in [
+        "cp-mode.el",
+        "cp-grammar.el",
+        "cp-mode-pkg.el",
+        "cp-mode-autoloads.el",
+    ] {
         let path = dir
             .join("elpa")
             .join(format!("cp-mode-{version}"))
@@ -440,12 +445,7 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
         }
         command.output().unwrap()
     };
-    let runtime = [
-        "plugin/cplang.vim",
-        "plugin/cpl_path.vim",
-        "ftdetect/cp.vim",
-        "syntax/cp.vim",
-    ];
+    let runtime = ["plugin/cpl_path.vim", "ftdetect/cp.vim", "syntax/cp.vim"];
     let mut packages = vec![];
     for editor in ["neovim", "vim"] {
         let out = fresh(&installed, &["setup", editor]);
@@ -468,6 +468,8 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
         packages.push((editor, written[0].clone()));
     }
     assert!(packages[0].1.join("plugin/cplang.lua").is_file());
+    assert!(!packages[0].1.join("plugin/cplang.vim").exists());
+    assert!(packages[1].1.join("plugin/cplang.vim").is_file());
     assert!(text(&fresh(&installed, &["setup", "vim"]).stdout)
         .contains("yegappan/lsp already installed"));
 

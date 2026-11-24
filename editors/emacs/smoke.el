@@ -4,9 +4,11 @@
 ;; cpl on the PATH).
 (require 'cl-lib)
 (add-to-list 'load-path (file-name-directory load-file-name))
+;; cp-grammar.el, the rules `cpl setup emacs' generates from $CPL's lexer.
+(let ((elpa (make-temp-file "cp-elpa" t)))
+  (cl-assert (eql 0 (call-process (or (getenv "CPL") "cpl") nil nil nil "setup" "emacs" "--dir" elpa)))
+  (add-to-list 'load-path (car (file-expand-wildcards (expand-file-name "cp-mode-*" elpa))) t))
 (require 'cp-mode)
-;; Reads the rules `cpl setup emacs --grammar' generates from $CPL.
-(let ((cp-cpl-program (or (getenv "CPL") "cpl"))) (cp-font-lock-keywords))
 
 (defun cp-smoke-check (ok what)
   (unless ok (message "emacs smoke: %s" what) (kill-emacs 1)))

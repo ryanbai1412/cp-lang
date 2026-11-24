@@ -31,7 +31,7 @@ CP
 mkdir -p "$tmp/rt/syntax"
 "$cpl" setup vim --grammar >"$tmp/rt/syntax/cp.vim"
 "$vim_bin" --clean -Nu NONE -Es \
-    -c "set rtp+=$nvim_dir,$tmp/rt | let g:cpl_path = '$cpl'" \
+    -c "set rtp+=$nvim_dir,$root/editors/vim,$tmp/rt | let g:cpl_path = '$cpl'" \
     -c "filetype plugin indent on" \
     -c "syntax on" \
     -c "edit $tmp/a.cp" \
@@ -45,7 +45,7 @@ mkdir -p "$tmp/rt/syntax"
 # `gq` formats through `cpl fmt --stdin`.
 printf 'let  x=1\nprint( x )\n' >"$tmp/b.cp"
 "$vim_bin" --clean -Nu NONE -Es \
-    -c "set rtp+=$nvim_dir | let g:cpl_path = '$cpl'" \
+    -c "set rtp+=$nvim_dir,$root/editors/vim | let g:cpl_path = '$cpl'" \
     -c "filetype plugin indent on" \
     -c "edit $tmp/b.cp" \
     -c "normal! gggqG" \
@@ -55,7 +55,7 @@ printf 'let x = 1\nprint(x)\n' | cmp -s - "$tmp/b.cp" || { echo "vim smoke: gq w
 # `:make` lists type errors and lints together through `cpl lint`.
 printf 'let x: Int = "a"\nprint(y)\nvar s = 0\nprint(s)\n' >"$tmp/c.cp"
 "$vim_bin" --clean -Nu NONE -Es \
-    -c "set rtp+=$nvim_dir | let g:cpl_path = '$cpl'" \
+    -c "set rtp+=$nvim_dir,$root/editors/vim | let g:cpl_path = '$cpl'" \
     -c "filetype plugin indent on" \
     -c "edit $tmp/c.cp" \
     -c "silent make" \

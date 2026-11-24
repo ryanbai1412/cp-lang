@@ -10,7 +10,11 @@
   (setq command-line-args-left nil)
   (defvar cp-cpl-program)
   (setq cp-cpl-program (nth 2 args))
-  (load (expand-file-name "../../../../editors/emacs/cp-mode.el" (file-name-directory load-file-name)) nil t)
+  ;; cp-mode as `cpl setup emacs' installs it, with the cp-grammar.el it generates.
+  (let ((elpa (make-temp-file "cp-elpa" t)))
+    (call-process cp-cpl-program nil nil nil "setup" "emacs" "--dir" elpa)
+    (add-to-list 'load-path (car (file-expand-wildcards (expand-file-name "cp-mode-*" elpa)))))
+  (require 'cp-mode)
   (dolist (q queries)
     (with-temp-buffer
       (let ((coding-system-for-read 'utf-8-unix))
