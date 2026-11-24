@@ -22,6 +22,15 @@ enum Tok {
     Eof,
 }
 
+fn describe(tok: &Tok) -> String {
+    match tok {
+        Tok::Int(v) => format!("`{v}`"),
+        Tok::Ident(s) => format!("`{s}`"),
+        Tok::Sym(s) => format!("`{s}`"),
+        Tok::Eof => "the end of the text".to_string(),
+    }
+}
+
 const SYMBOLS: &[&str] = &[
     "..=", "=>", "==", "!=", "<=", ">=", "<<", ">>", "**", "??", "..", "(", ")", "[", "]", ",",
     ":", ".", "+", "-", "*", "/", "%", "<", ">", "=", "!", "?", "^", "&", "|",
@@ -31,7 +40,7 @@ fn lex(src: &str) -> Result<Vec<Tok>, Error> {
     let bytes = src.as_bytes();
     let mut toks = Vec::new();
     let mut i = 0;
-    while i < bytes.len() {
+    while let Some(ch) = src[i..].chars().next() {
         let c = bytes[i];
         if c.is_ascii_whitespace() {
             i += 1;
@@ -49,7 +58,6 @@ fn lex(src: &str) -> Result<Vec<Tok>, Error> {
             toks.push(Tok::Sym(sym));
             i += sym.len();
         } else {
-            let ch = src[i..].chars().next().unwrap();
             return Err(Error::new(format!("unexpected character `{ch}`")));
         }
     }
@@ -69,12 +77,14 @@ fn lex_number(src: &str, start: usize) -> Result<(i128, usize), Error> {
     let mut i = if radix == 10 { start } else { start + 2 };
     let mut value = 0i128;
     let digits_from = i;
-    while i < bytes.len() && (bytes[i] == b'_' || (bytes[i] as char).is_digit(radix)) {
-        if bytes[i] != b'_' {
-            let digit = (bytes[i] as char).to_digit(radix).unwrap() as i128;
+    while let Some(&b) = bytes.get(i) {
+        if b != b'_' {
+            let Some(digit) = (b as char).to_digit(radix) else {
+                break;
+            };
             value = value
                 .checked_mul(radix as i128)
-                .and_then(|v| v.checked_add(digit))
+                .and_then(|v| v.checked_add(i128::from(digit)))
                 .ok_or_else(too_big)?;
         }
         i += 1;
@@ -157,12 +167,7 @@ impl Parser {
     }
 
     fn describe(&self) -> String {
-        match self.peek() {
-            Tok::Int(v) => format!("`{v}`"),
-            Tok::Ident(s) => format!("`{s}`"),
-            Tok::Sym(s) => format!("`{s}`"),
-            Tok::Eof => "the end of the text".to_string(),
-        }
+        describe(self.peek())
     }
 
     fn expect_sym(&mut self, sym: &str) -> Res<()> {
@@ -456,12 +461,6 @@ impl Parser {
     }
 
     fn primary(&mut self) -> Res<Term> {
-        if !matches!(self.peek(), Tok::Int(_) | Tok::Ident(_) | Tok::Sym("(")) {
-            return Err(Error::new(format!(
-                "expected an expression, found {}",
-                self.describe()
-            )));
-        }
         match self.next() {
             Tok::Int(v) => Ok(Term::Int(v)),
             Tok::Ident(word) => Ok(match word.as_str() {
@@ -474,7 +473,7 @@ impl Parser {
                 _ => Term::Var(word),
             }),
             Tok::Sym("(") => {
-                let mut items = Vec::new();
+                let mut items: Vec<(Option<String>, Term)> = Vec::new();
                 let mut trailing_comma = false;
                 while !self.eat_sym(")") {
                     let named = matches!(self.peek(), Tok::Ident(_))
@@ -492,14 +491,16 @@ impl Parser {
                         self.expect_sym(",")?;
                     }
                 }
-                let grouping = items.len() == 1 && items[0].0.is_none() && !trailing_comma;
-                Ok(if grouping {
-                    items.pop().unwrap().1
-                } else {
-                    Term::Tuple(items)
+                Ok(match <[_; 1]>::try_from(items) {
+                    Ok([(None, only)]) if !trailing_comma => only,
+                    Ok(one) => Term::Tuple(Vec::from(one)),
+                    Err(items) => Term::Tuple(items),
                 })
             }
-            _ => unreachable!(),
+            other => Err(Error::new(format!(
+                "expected an expression, found {}",
+                describe(&other)
+            ))),
         }
     }
 
@@ -677,8 +678,28 @@ mod tests {
     }
 
     #[test]
+    fn lexing_stops_at_what_is_not_a_token() {
+        assert_eq!(term("a é").unwrap_err().message, "unexpected character `é`");
+        assert_eq!(
+            term("0b12").unwrap_err().message,
+            "unexpected `2` in `0b12`"
+        );
+        assert_eq!(term("0xff_").unwrap(), Term::Int(255));
+        assert_eq!(
+            term("a + )").unwrap_err().message,
+            "expected an expression, found `)` in `a + )`"
+        );
+        assert_eq!(
+            term("a +").unwrap_err().message,
+            "expected an expression, found the end of the text in `a +`"
+        );
+    }
+
+    #[test]
     fn tuples_and_grouping() {
         assert_eq!(term("(a)").unwrap(), Term::var("a"));
+        assert!(matches!(term("((a))").unwrap(), Term::Var(_)));
+        assert!(matches!(term("(x: a)").unwrap(), Term::Tuple(items) if items.len() == 1));
         assert!(matches!(term("(a, b)").unwrap(), Term::Tuple(items) if items.len() == 2));
         assert!(matches!(term("(a,)").unwrap(), Term::Tuple(items) if items.len() == 1));
         assert!(matches!(term("()").unwrap(), Term::Tuple(items) if items.is_empty()));
