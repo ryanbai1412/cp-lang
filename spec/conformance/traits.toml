@@ -195,6 +195,30 @@ print(Z(3) * Z(5))
 """
 out = "1"
 
+[case."Residue/Mod/modulus"]
+code = """
+use std.mod.{Residue}
+type Z = Mod<7>
+print(Z.modulus())
+"""
+out = "7"
+
+[case."Residue/Mod/residue"]
+code = """
+use std.mod.{Residue}
+type Z = Mod<7>
+print(Z(12).residue(), Z(-1).residue())
+"""
+out = "5 6"
+
+[case."Residue/Mod/reduce"]
+code = """
+use std.mod.{Residue}
+type Z = Mod<7>
+print(Z.reduce(40), Z.reduce(7))
+"""
+out = "5 0"
+
 [case."Div/Mod/div"]
 code = """
 type Z = Mod<7>
