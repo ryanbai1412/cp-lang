@@ -33,9 +33,14 @@ fn long_lnds(z: Int, o: Int, m: Int) -> Z = comb.choose(z + o, max(z, o, m))
 fn completions(s: Walk, z: Int, o: Int) -> Z =
     if o >= k - s.lnds: comb.choose(z + o, z) else: long_lnds(z, o, k - s.zeros)
 
-domain Cnt = 0..=k
-var rays: [Cnt, Cnt]Z = Z.zero
-fn ray(z: Int, o: Int, w: Z): rays[Cnt(z), Cnt(o)] += w
+domain Zeros = 0..=min(x, k)
+domain Ones = 0..=min(y, k)
+// A ray slides to (z + 1, o - 1) until z = k, so one starting above y enters the box at o = y and
+// one past min(x, k) never counts: the box holds every ray that reaches a counted (z, o).
+var rays: [Zeros, Ones]Z = Z.zero
+fn ray(z: Int, o: Int, w: Z):
+    let j = max(0, o - y)
+    if z + j <= min(x, k): rays[Zeros(z + j), Ones(o - j)] += w
 
 fn first_hits_from(s: Walk):
     if s.lnds == k:
@@ -43,7 +48,9 @@ fn first_hits_from(s: Walk):
         ray(s.zeros + 1, s.ones - 1, -Z.one)
         return
     let (e0, e1) = (k - s.zeros, k - s.lnds)
-    for d in e1..e0 + e1:
+    // every ray here sits at o = s.ones + e1; past z = min(x, k) - max(0, o - y) none enters the box
+    let last = min(x, k) - max(0, s.ones + e1 - y)
+    for d in e1..min(e0 + e1, last - s.zeros + e1 + 1):
         let top = comb.choose(d - 1, e1 - 1) - comb.choose(d - 1, e0)
         let main = comb.choose(d - 1, e0 - 1) - comb.choose(d - 1, e0)
         let (z, o) = (s.zeros + d - e1, s.ones + e1)
@@ -68,14 +75,14 @@ for c in a:
         phase = Phase.Split(walk)
         walk = Walk(0, 0, 0)
 
-for z in 0..k:
-    for o in 1..=k:
-        rays[Cnt(z + 1), Cnt(o - 1)] += rays[Cnt(z), Cnt(o)]
+for z in 0..min(x, k):
+    for o in 1..=min(y, k):
+        rays[Zeros(z + 1), Ones(o - 1)] += rays[Zeros(z), Ones(o)]
 print(
     ans + sum(
         rays[z, o] * long_lnds(x - z.ord, y - o.ord, k)
-        for z in Cnt
-        for o in Cnt
+        for z in Zeros
+        for o in Ones
         if rays[z, o] != Z.zero
     )
 )
