@@ -76,7 +76,9 @@ async function hoverFor(code) {
 
 let applied = 0;
 for (const c of sample) {
-  await editor.click();
+  // Focus, not click: the last hover's tooltips can still cover the editor.
+  await page.mouse.move(0, 0);
+  await editor.focus();
   await page.keyboard.press("ControlOrMeta+A");
   await page.keyboard.insertText(c.trigger);
   const shown = await page
