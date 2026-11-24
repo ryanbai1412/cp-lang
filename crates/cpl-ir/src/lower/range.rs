@@ -429,20 +429,8 @@ impl<'a> Lowerer<'a> {
                         .map(|e| RangeInfo::Elem(Box::new(e)));
                 }
                 if args.is_empty() {
-                    if let Some(GenArg::Range(lo_c, hi_c)) = self.gen_env.get(&name.text).cloned() {
-                        let lo_expr = lo_c.map(|v| self.int_lit(v, ty.span));
-                        let hi_expr = hi_c.map(|v| self.int_lit(v, ty.span));
-                        return Some(RangeInfo::Scalar(RangeBounds {
-                            lo: lo_expr,
-                            hi: hi_expr,
-                            lo_const: lo_c,
-                            hi_const: hi_c,
-                            text: format!(
-                                "{}..={}",
-                                lo_c.map_or(String::new(), |v| v.to_string()),
-                                hi_c.map_or(String::new(), |v| v.to_string())
-                            ),
-                        }));
+                    if let Some(GenArg::Range(lo, hi)) = self.gen_env.get(&name.text).cloned() {
+                        return Some(RangeInfo::Scalar(self.const_bounds(lo, hi, ty.span)));
                     }
                     if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
                         return self.in_alias(aid, |lw, ty| lw.range_info_from_ast(ty));
@@ -1057,6 +1045,26 @@ impl<'a> Lowerer<'a> {
             _ => {}
         }
         false
+    }
+
+    /// The bounds of a range a type parameter is bound to: `V = 0..=10`.
+    pub(super) fn const_bounds(
+        &mut self,
+        lo: Option<i64>,
+        hi: Option<i64>,
+        span: Span,
+    ) -> RangeBounds {
+        RangeBounds {
+            lo: lo.map(|v| self.int_lit(v, span)),
+            hi: hi.map(|v| self.int_lit(v, span)),
+            lo_const: lo,
+            hi_const: hi,
+            text: format!(
+                "{}..={}",
+                lo.map_or(String::new(), |v| v.to_string()),
+                hi.map_or(String::new(), |v| v.to_string())
+            ),
+        }
     }
 
     /// Wraps `value` in `ExprKind::RangeCheck` unless statically proven inside `bounds`.

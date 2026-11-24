@@ -55,7 +55,9 @@ bytes, never slower), and `cpl explain` prints every layout.
   unless the checker proves it (`a[i] = a[i] % 7` needs no check). A range
   type is a contract: `cpl run` and checked builds trap on a violation;
   release builds don't check (decision 100), the same deal as `Int`
-  overflow, so valid programs pay nothing on the judge. (R03.1.4)
+  overflow, so valid programs pay nothing on the judge. A type parameter
+  bound to a range converts the same way: `V(0)` with `V = 0..=10` is
+  `Int(0)` stored into a `0..=10`. (R03.1.4)
 - **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is
   one byte per element, `[V]0..=4e9` four. Decision 1.7 keeps the number
   types to `Int`, `U64`, `I128` and `F64`: the range already says how many

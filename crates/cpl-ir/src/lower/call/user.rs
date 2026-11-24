@@ -407,6 +407,12 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                         GenArg::Ty(Ty::Int) => return self.prelude("Int", args, hint, span),
+                        // `V(0)` with `V = 0..=10` converts, checked against the range.
+                        GenArg::Range(lo, hi) => {
+                            let value = self.prelude("Int", args, hint, span);
+                            let bounds = self.const_bounds(lo, hi, span);
+                            return self.check_range(value, &bounds, span);
+                        }
                         GenArg::Ty(Ty::Float) => return self.prelude("F64", args, hint, span),
                         GenArg::Ty(Ty::Char) => return self.prelude("Char", args, hint, span),
                         GenArg::Ty(Ty::Str) => return self.prelude("Str", args, hint, span),
