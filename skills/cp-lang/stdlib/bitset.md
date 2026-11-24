@@ -98,7 +98,7 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 \(O(\mathit{bits})\) per op.
 
 - `fn new(bits: Int = 60) -> XorTrie` — \(O(1)\); Create an empty `XorTrie` over `bits`-bit non-negative integers (default 60): values in `0..2^bits`.; traps: when `bits` is not in `1..=62`
-- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\) time and space; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0`
+- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0`
 - `@get fn len(self) -> Int` — \(O(1)\); The total number of stored integers, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the trie holds no integers.
 - `fn add(mut self, x: Int)` — \(O(\mathit{bits})\) time, up to `bits` new nodes; Insert one copy of `x`.; traps: when `x` is not in `0..2^bits`

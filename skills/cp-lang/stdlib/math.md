@@ -67,7 +67,7 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `@get fn isqrt(self: Int) -> Int` — \(O(1)\); The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.; traps: when `self < 0`
 - `fn ceil_sqrt(x: Int) -> Int` — \(O(1)\); The exact ceiling square root `ceil(sqrt(x))` of `x >= 0`.; traps: when `self < 0`
 - `fn iroot(x: Int, k: Int) -> Int` — \(O(\log x)\); The exact floor `k`-th root of `x >= 0`, `k >= 1`: `iroot(x, 3)` is `floor(cbrt(x))`.; traps: when `x < 0` or `k < 1`
-- `fn fixed(num: Int, den: Int, k: Int) -> Str` — \(O(k + \text{digits of the result})\); `num / den` with exactly `k` digits after the point, as text, from integers alone.; traps: when `den == 0`, `k < 0`, or `|num| * 10^k * 2` overflows
+- `fn fixed(num: Int, den: Int, k: Int) -> Str` — \(O(k + \log \lvert \mathit{num} / \mathit{den} \rvert)\), the digits of the result; `num / den` with exactly `k` digits after the point, as text, from integers alone.; traps: when `den == 0`, `k < 0`, or `|num| * 10^k * 2` overflows
 - `fn choose(n: Int, k: Int) -> Int` — \(O(\min(k, n - k))\); The number of ways to pick `k` of `n` things, exactly; 0 when `k` is outside `0..=n`.; traps: when the result overflows `Int`
 - `fn choose2(n: Int) -> Int` — \(O(1)\); The number of unordered pairs from `n` things: `n * (n - 1) / 2` for `n >= 2`, else 0.; traps: when the result overflows `Int`
 - `fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); `(g, x, y)` with `a * x + b * y == g == gcd(a, b)`.; traps: when `g` is `2^63`
