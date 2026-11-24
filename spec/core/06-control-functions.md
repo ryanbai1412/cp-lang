@@ -225,9 +225,9 @@ library or by this spec:
   (`[n, m].filled(c)` on a grid fn), since std cannot declare it. Or `from` calls the fn and `to` does not:
   the lint drops a needless call (`let x = s.last!` then `s.pop()` is
   `let x = s.pop()!`, declared on `last`), its fix titled "drop `f`". A hole
-  `from` evaluates once per item of a comprehension (anywhere in its
-  brackets but its first `for`'s iterable) and `to` does not matches only
-  code that calls nothing. A compound `to` runs its right side before the
+  that `from` evaluates once per item of a comprehension (anywhere in its
+  brackets but its first `for`'s iterable) and `to` evaluates once matches
+  only code that calls nothing. A compound `to` runs its right side before the
   place's indices, so then every hole matches only code that calls
   nothing. A hole whose parameter is written
   as a scalar type (`Int`, `I128`, `U64`, `F64`, `Bool`, `Char`, `Str`)
