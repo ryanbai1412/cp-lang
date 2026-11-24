@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3539 (3525 passing). Rules: 617.
+Cases: 3542 (3525 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1131,8 +1131,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **prefix** (46/58 named by a case)
   - uncovered: `FillPrefix`, `Prefix.of_rev_scan`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
-- **range** (17/18 named by a case)
-  - uncovered: `RingRange`
+- **range** (18/18 named by a case)
 - **search** (11/11 named by a case)
 - **segtree** (66/66 named by a case)
 - **seq** (228/235 named by a case)
@@ -1150,7 +1149,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (23/24 named by a case)
   - uncovered: `Undo`
 
-2335 of 2444 std items are named by a case.
+2336 of 2444 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
