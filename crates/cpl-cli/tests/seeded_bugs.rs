@@ -94,7 +94,7 @@ fn every_seeded_bug_names_its_bug_class() {
 }
 
 /// `run` on every bug, a few at a time.
-fn each<T: Send>(bugs: &[PathBuf], run: impl Fn(&PathBuf) -> T + Sync) -> Vec<T> {
+fn each<B: Sync, T: Send>(bugs: &[B], run: impl Fn(&B) -> T + Sync) -> Vec<T> {
     let threads = std::thread::available_parallelism()
         .map_or(1, |n| n.get())
         .min(4);
@@ -261,4 +261,156 @@ fn explain_names_the_line_each_bug_was_planted_on() {
         results.len()
     );
     assert!(named >= NAMED, "only {named} named, down from {NAMED}");
+}
+
+/// One-token changes a mutant makes, each a classic slip.
+const MUTATIONS: [(&str, &str); 12] = [
+    (" < ", " <= "),
+    (" <= ", " < "),
+    (" > ", " >= "),
+    (" >= ", " > "),
+    (" == ", " != "),
+    (" + 1", " + 2"),
+    (" - 1", ""),
+    (" += ", " -= "),
+    (" + ", " - "),
+    (" * ", " + "),
+    ("min(", "max("),
+    ("max(", "min("),
+];
+
+/// The lines `fn` spans in `lines`, from its header: one line for
+/// `fn f() = expr`, else the header and its indented body.
+fn fn_lines(lines: &[&str], header: usize) -> std::ops::Range<usize> {
+    let mut end = header + 1;
+    while end < lines.len() && (lines[end].starts_with(' ') || lines[end].trim().is_empty()) {
+        end += 1;
+    }
+    while lines[end - 1].trim().is_empty() {
+        end -= 1;
+    }
+    header..end
+}
+
+/// Mutants of a seeded bug the explanation was never tuned on: its
+/// solution replaced by its correct `@alt` fn with one mutation, each
+/// with the line the mutation is on. The `@alt` stays the brute.
+fn mutants(bug: &Path) -> Vec<(String, String, u32)> {
+    let source = std::fs::read_to_string(bug).unwrap();
+    let source = source
+        .replace("  // planted", "")
+        .replace(" // planted", "");
+    let lines: Vec<&str> = source.lines().collect();
+    let Some(alt) = lines.iter().position(|l| l.starts_with("@alt(")) else {
+        return Vec::new();
+    };
+    let solution = &lines[alt]["@alt(".len()..lines[alt].find(')').unwrap()];
+    let Some(header) = (lines.iter()).position(|l| l.starts_with(&format!("fn {solution}(")))
+    else {
+        return Vec::new();
+    };
+    let solved = fn_lines(&lines, header);
+    let correct = fn_lines(&lines, alt + 1);
+    let brute = &lines[alt + 1]["fn ".len()..lines[alt + 1].find('(').unwrap()];
+    // A brute that calls itself takes time exponential in the input: as the
+    // solution, no case of it would finish.
+    if (lines[correct.start + 1..correct.end].iter()).any(|l| l.contains(&format!("{brute}("))) {
+        return Vec::new();
+    }
+    let mut body: Vec<String> = lines[correct].iter().map(|l| l.to_string()).collect();
+    body[0] = body[0].replacen(&format!("fn {brute}("), &format!("fn {solution}("), 1);
+    let stem = bug.file_stem().unwrap().to_string_lossy();
+    let mut found = Vec::new();
+    for (k, line) in body.iter().enumerate() {
+        let code = line.split("//").next().unwrap();
+        // A header only changes in the expression of `fn f() = expr`.
+        let from = if k == 0 {
+            code.find(" = ").map_or(code.len(), |at| at + 3)
+        } else {
+            0
+        };
+        for (was, now) in MUTATIONS {
+            for (at, _) in code.match_indices(was).filter(|(at, _)| *at >= from) {
+                let next = code[at + was.len()..].chars().next();
+                if was.ends_with('1') && next.is_some_and(|c| c.is_ascii_alphanumeric()) {
+                    continue;
+                }
+                let mutated = format!("{}{now}{}", &line[..at], &line[at + was.len()..]);
+                let mut file: Vec<String> = lines[..solved.start]
+                    .iter()
+                    .map(|l| l.to_string())
+                    .collect();
+                file.extend(body[..k].iter().cloned());
+                file.push(mutated);
+                file.extend(body[k + 1..].iter().cloned());
+                file.extend(lines[solved.end..].iter().map(|l| l.to_string()));
+                let name = format!("{stem}-m{}", found.len());
+                found.push((name, file.join("\n") + "\n", (solved.start + k + 1) as u32));
+            }
+        }
+    }
+    found
+}
+
+/// How many mutants `cpl stress --explain` points at the mutated line,
+/// and how many it must at least find. Raise them as explanations get
+/// better; they may never drop.
+const MUTANTS_FOUND: usize = 53;
+const MUTANTS_NAMED: usize = 46;
+
+#[test]
+fn explain_names_the_line_of_mutants_it_was_not_tuned_on() {
+    let scratch = scratch("explain_mutants");
+    let sources = scratch.join("mutants");
+    std::fs::create_dir_all(&sources).unwrap();
+    let mutants: Vec<(PathBuf, u32)> = (bugs().iter())
+        .flat_map(|bug| mutants(bug))
+        .map(|(name, source, line)| {
+            let path = sources.join(format!("{name}.cp"));
+            std::fs::write(&path, source).unwrap();
+            (path, line)
+        })
+        .collect();
+    let args = [
+        "--seed",
+        "1",
+        "--cases",
+        "1000",
+        "--time-limit",
+        "2000",
+        "--explain",
+    ];
+    // Each mutant stresses in a folder of its own, so no saved case of one
+    // decides another.
+    let mut results = each(&mutants, |(path, line)| {
+        let name = path.file_stem().unwrap().to_string_lossy().to_string();
+        let dir = scratch.join(&name);
+        std::fs::create_dir_all(&dir).unwrap();
+        let report = String::from_utf8_lossy(&stress(path, &dir, &args).stdout).to_string();
+        (name, *line, report.contains("FAIL"), blamed(&report))
+    });
+    results.sort();
+    let (mut found, mut named) = (0, 0);
+    for (name, line, caught, blamed) in &results {
+        let verdict = match (caught, blamed.contains(line)) {
+            (false, _) => "not found",
+            (true, true) => "named",
+            (true, false) => "missed",
+        };
+        found += usize::from(*caught);
+        named += usize::from(*caught && blamed.contains(line));
+        println!("{name:<36} mutated {line:<3} blamed {blamed:?} {verdict}");
+    }
+    println!(
+        "{named} of {found} found mutants named at their line, of {}",
+        mutants.len()
+    );
+    assert!(
+        found >= MUTANTS_FOUND,
+        "only {found} mutants found, down from {MUTANTS_FOUND}"
+    );
+    assert!(
+        named >= MUTANTS_NAMED,
+        "only {named} named, down from {MUTANTS_NAMED}"
+    );
 }

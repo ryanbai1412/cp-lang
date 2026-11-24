@@ -157,7 +157,7 @@ tests for wording.
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
 | `--explain` names the line the bug is on | seeded bugs whose planted line is named; only goes up | ratchet over the seeded suite | `crates/cpl-cli/tests/seeded_bugs.rs` `explain_names_the_line_each_bug_was_planted_on` |
-| `--explain` names the right line for bugs it wasn't tuned on | named share over mutants not in the seeded set | `missing`: shares the mutation suite above | `missing` |
+| `--explain` names the right line for bugs it wasn't tuned on | found mutants named at their line; only goes up | ratchet over one-token mutants of each seeded bug's correct `@alt` fn | `crates/cpl-cli/tests/seeded_bugs.rs` `explain_names_the_line_of_mutants_it_was_not_tuned_on` |
 | The first divergence is the first one | divergences reported later than the first differing value | hand-written suite | `crates/cpl-cli/tests/debugger.rs` `stress_explain_*` |
 | An interactive failure says what the solution misread | interactive bugs explained by the read that went wrong | `missing`: the report names the rejected answer only | `missing` |
 | A trap names the rule, the place, the locals and the call path | trap codes with a golden that shows locals | golden suite per code | `crates/cpl-cli/tests/runtime_errors.rs` |
@@ -173,9 +173,9 @@ tests for wording.
 | A trace's state changes only when it should | unexplained changes between saved traces | saved traces as the oracle; edits to expected output are flagged for review | `crates/cpl-cli/tests/trace_goldens.rs` |
 | No saved trace records a crash of `cpl` itself | saved traces holding an internal error | gate in the trace suite | `crates/cpl-cli/tests/trace_goldens.rs` |
 | Any step rebuilt alone equals the step the run took | mismatches | property test | `crates/cpl-interp/tests/trace_log.rs` `any_step_rebuilt_alone_is_the_step_the_run_took` |
-| A run resumed from a checkpoint equals the whole run there | differing steps, output or input | differential tests over hand-picked programs; `missing` over every saved-trace program | `crates/cpl-interp/tests/checkpoint.rs`; `missing` |
+| A run resumed from a checkpoint equals the whole run there | differing steps, output or input | differential tests over long loops, deep calls, closures, mutation, feeds, test cases and interactive runs | `crates/cpl-interp/tests/checkpoint.rs` |
 | Traces run on the VM, not the tree-walker | tree-walker fallbacks by kind; only goes down | ratchet | `crates/cpl-cli/tests/vm_fallbacks.rs` |
-| Large values stay visible | values over the trace's size cap shown as `[]` | `missing`: arrays over 20000 cells are drawn empty | `missing` |
+| Large values stay visible | values over the trace's size cap shown as `[]` | hand-written suite: a 30000-cell array is drawn by a window of its cells | `crates/cpl-cli/tests/trace_goldens.rs` `a_large_array_is_drawn_by_a_window` |
 | Library code stays out of a user's trace | steps inside an imported module's fns the trace didn't ask for | design: the tracer steps over library calls (`debugging/R2`); saved traces of std calls | `crates/cpl-cli/tests/trace_goldens.rs` `every_program_records_its_saved_trace` |
 | Huge traces can be narrowed to what matters | filters by fn, test, watch, depth, window | hand-written suite | `crates/cpl-cli/tests/trace_filters.rs` |
 | Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | budget test, run by hand; `missing` as a gate | `crates/cpl-interp/tests/trace_log.rs` `ten_million_steps_fit_the_debugging_budgets` (ignored); `missing` |
