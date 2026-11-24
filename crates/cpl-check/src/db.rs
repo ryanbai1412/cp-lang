@@ -1317,7 +1317,7 @@ impl Database {
     }
 
     /// Finds, reads and analyzes the module `parts`, imported by `from`.
-    fn load_module(
+    pub(crate) fn load_module(
         &mut self,
         from: &str,
         parts: &[String],

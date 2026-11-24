@@ -624,6 +624,12 @@ fn hover_shows_type_domain_and_storage() {
 }
 
 #[test]
+fn hover_on_a_std_getter_reads_its_std_doc() {
+    let rev = hover("let xs = [3, 1, 2]\nprint(xs.rev)\n", "rev");
+    assert!(rev.ends_with("\ncost: O(1)"), "{rev}");
+}
+
+#[test]
 fn hover_shows_declarations() {
     assert_eq!(
         hover(ROADS, "link(mut g, r)"),

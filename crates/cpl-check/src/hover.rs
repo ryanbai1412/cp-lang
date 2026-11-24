@@ -106,13 +106,7 @@ impl Database {
             let source = if def.path == path {
                 analysis.text.clone()
             } else {
-                analysis
-                    .modules()
-                    .iter()
-                    .find(|m| m.path == def.path)?
-                    .analysis
-                    .text
-                    .clone()
+                self.file_text(&def.path)?
             };
             doc_above(&source, def.span.start)
         });
@@ -248,10 +242,12 @@ impl Database {
                 }
                 None => (path.to_string(), analysis.clone(), owner.clone()),
             };
-            return member_span(&owner_analysis, &owner_name, &entry.name).map(|span| Definition {
-                path: owner_path,
-                span,
-            });
+            let own =
+                member_span(&owner_analysis, &owner_name, &entry.name).map(|span| Definition {
+                    path: owner_path,
+                    span,
+                });
+            return own.or_else(|| self.std_method(path, &entry.name));
         }
         if let Some(decl) = entry.decl {
             return Some(Definition {
@@ -275,6 +271,30 @@ impl Database {
             }
         }
         None
+    }
+
+    /// The top-level std `fn name(..)` a member declared nowhere on its
+    /// receiver's type is: `xs.rev` is std's `@get pub fn rev`.
+    fn std_method(&mut self, path: &str, name: &str) -> Option<Definition> {
+        let declares = |line: &str| {
+            let line = line.strip_prefix("@get ").unwrap_or(line);
+            line.strip_prefix("pub fn ")
+                .and_then(|rest| rest.strip_prefix(name))
+                .is_some_and(|rest| rest.starts_with(['<', '(']))
+        };
+        let (module, _) = crate::modules::std_index()
+            .iter()
+            .find(|(_, text)| text.lines().any(declares))?;
+        let parts: Vec<String> = std::iter::once("std")
+            .chain(module.split('.'))
+            .map(str::to_string)
+            .collect();
+        let module = self.load_module(path, &parts, Span::default(), &mut Vec::new())?;
+        let span = module.analysis.decl_span(name)?;
+        Some(Definition {
+            path: module.path,
+            span,
+        })
     }
 
     /// The file's top-level declarations, in source order.
