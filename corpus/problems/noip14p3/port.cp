@@ -32,4 +32,4 @@ for x in X:
         return
     taps = next
 print(1)
-print([t! for t in taps if t != None].min()!)
+print(taps.present().min()!)

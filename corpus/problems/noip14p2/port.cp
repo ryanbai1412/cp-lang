@@ -15,21 +15,13 @@ fn random_tree() -> [E](u: V, v: V):
     [E] e => (V(rand(1, e.label)), V(e.label + 1))
 let edges: [E](u: V, v: V) = read(gen: random_tree)
 let w: [V]1..=10000 = read()
-
-var adj: [V]List<V> = []
-for (u, v) in edges:
-    adj[u].push(v)
-    adj[v].push(u)
+let g = Graph.undirected(edges, a => a.to)
 
 var best = 0
 var total: Z = 0
 for mid in V:
-    var top = 0
-    var second = 0
-    let around = sum(w[u] for u in adj[mid])
-    for u in adj[mid]:
-        second max= min(top, w[u])
-        top max= w[u]
-    best max= top * second
-    total += Z(around) * Z(around) - sum(Z(w[u] * w[u]) for u in adj[mid])
+    let top = g[mid].map(u => w[u]).max_k(2)
+    if top.len == 2: best max= top[0] * top[1]
+    let around = Z(sum(w[u] for u in g[mid]))
+    total += around * around - sum(Z(w[u]) * Z(w[u]) for u in g[mid])
 print(best, total)

@@ -6,29 +6,33 @@
 //   the first time it is passed. Print the largest total taken.
 // Solution: walk both paths in lockstep. After k steps each walker is on anti-diagonal k, so
 //   the rows (a, b) fix both cells, and the walkers share a cell exactly when a == b, taking
-//   its number once. best[a, b] over diagonal k is the best of the four predecessor row pairs
-//   on diagonal k - 1 plus the cells' numbers; row 0 is a border no walk reaches. O(N^3).
+//   its number once. best[a, b] over diagonal k is the best of the (up to four) reached
+//   predecessor row pairs on diagonal k - 1 plus the cells' numbers. O(N^3).
 // original: corpus/submissions/5067920.cpp
 let n: 1..=9 = read()
-var grid: [1..=n, 1..=n]0..=30 = 0
+domain Row = 1..=n
+var grid: [Row, Row]0..=30 = 0
 while true:
     let x: 0..=n = read()
     if x == 0: break
     let y: 1..=n = read()
     let v: 1..=30 = read()
-    grid[x, y] = v
+    grid[Row(x), Row(y)] = v
 
-const UNREACHED = -1
-var best: [0..=n, 0..=n]Int = UNREACHED
-best[1, 1] = grid[1, 1]
+// best[a, b]: the most taken with the walkers on rows a and b of the current diagonal
+var best: [Row, Row]?Int = None
+best[Row.first!, Row.first!] = grid[Row.first!, Row.first!]
 for k in 1..=2 * n - 2:
-    var next: [0..=n, 0..=n]Int = UNREACHED
-    let rows = max(1, k - n + 2)..=min(n, k + 1)
+    var next: [Row, Row]?Int = None
+    let rows = Row.at(max(1, k - n + 2))!..=Row.at(min(n, k + 1))!
     for a in rows:
         for b in rows:
-            let stay = max(best[a, b], best[a - 1, b - 1])
-            let before = max(stay, max(best[a - 1, b], best[a, b - 1]))
-            let here = grid[a, k + 2 - a] + (if a == b: 0 else: grid[b, k + 2 - b])
-            next[a, b] = before + here
+            var before: ?Int = None
+            for pa in [a.prev, Some(a)]:
+                for pb in [b.prev, Some(b)]:
+                    if let x = pa and let y = pb: before max= best[x, y]
+            let col = (r: Row) => Row(k + 2 - Int(r))
+            let here = grid[a, col(a)] + (if a == b: 0 else: grid[b, col(b)])
+            if let got = before: next[a, b] = got + here
     best = next
-print(best[n, n])
+print(best[Row.last!, Row.last!]!)

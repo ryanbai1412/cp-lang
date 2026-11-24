@@ -1,4 +1,11 @@
 import sys, random
+if sys.argv[1] == "--max":
+    r = random.Random(0); n, m, k = 10000, 1000, 5000
+    print(n, m, k)
+    for _ in range(n): print(r.randint(1, 10), r.randint(1, 10))
+    for c in sorted(r.sample(range(1, n), k)):
+        low = r.randint(0, 600); print(c, low, low + 300)
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = r.randint(1, S + 2); m = r.randint(1, 2 * S); k = r.randint(0, n - 1) if n > 1 else 0
 cols = r.sample(range(1, n), k) if k else []

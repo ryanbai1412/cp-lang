@@ -9,46 +9,44 @@
 // original: corpus/submissions/5117252.cpp
 let n: 1..=26 = read()
 domain Letter = 0..n
-let words: [0..3, 0..n]Char = read()
-// rows[i][col]: the letter of addend / addend / sum at column col, units first
-let rows = [[Letter(words[i, n - 1 - col] - 'A') for col in 0..n] for i in 0..3]
+domain Digit = 0..n
+domain Col = 0..n  // units first
+let words: [0..3, Col]Char = read()
+let at = [0..3, Col] (i, c) => Letter(words[i, Col(n - 1 - c.ord)] - 'A')
 
-var digit: [Letter]Int = -1
-var used: [0..n]Bool = false
+var digit: [Letter]?Digit = None
+var used: [Digit]Bool = false
+
+fn set(l: Letter, d: ?Digit):
+    if let old = digit[l]: used[old] = false
+    digit[l] = d
+    if let new = d: used[new] = true
 
 // no fully known column contradicts a + b (+ carry) == c in base n
 fn plausible() -> Bool:
-    for col in 0..n:
-        let (x, y, z) = (digit[rows[0][col]], digit[rows[1][col]], digit[rows[2][col]])
-        if x >= 0 and y >= 0 and z >= 0 and (x + y) % n != z and (x + y + 1) % n != z: return false
-    return true
+    all(not (if let x = digit[at[0, c]] and let y = digit[at[1, c]] and let z = digit[at[2, c]]:
+            (x.ord + y.ord) % n != z.ord and (x.ord + y.ord + 1) % n != z.ord
+        else: false) for c in Col)
 
 // fix the columns from the units up: guess the two addend letters, then the
 // sum letter is forced
-fn solve(col: Int, carry: Int) -> Bool:
-    if col == n: return carry == 0
+fn solve(col: ?Col, carry: 0..=1) -> Bool:
+    let c = col else: return carry == 0
     for i in 0..2:
-        let l = rows[i][col]
-        if digit[l] >= 0: continue
-        for d in (0..n).rev:
-            if used[d]: continue
-            digit[l] = d
-            used[d] = true
+        let l = at[i, c]
+        if digit[l] != None: continue
+        for d in Digit.rev if not used[d]:
+            set(l, d)
             if plausible() and solve(col, carry): return true
-            digit[l] = -1
-            used[d] = false
+            set(l, None)
         return false
-    let total = digit[rows[0][col]] + digit[rows[1][col]] + carry
-    let l = rows[2][col]
-    if digit[l] == total % n: return solve(col + 1, total / n)
-    if digit[l] >= 0 or used[total % n]: return false
-    digit[l] = total % n
-    used[total % n] = true
-    if solve(col + 1, total / n): return true
-    digit[l] = -1
-    used[total % n] = false
-    return false
+    let total = digit[at[0, c]]!.ord + digit[at[1, c]]!.ord + carry
+    let (l, z) = (at[2, c], Digit(total % n))
+    if digit[l] == z: return solve(c.next, total / n)
+    if digit[l] != None or used[z]: return false
+    set(l, z)
+    if solve(c.next, total / n): return true
+    set(l, None)
+    false
 
-let solved = solve(0, 0)
-assert solved
-print(digit)
+if solve(Col.first, 0): print([d!.ord for d in digit])

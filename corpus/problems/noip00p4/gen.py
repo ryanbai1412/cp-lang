@@ -1,4 +1,5 @@
 import sys, random
+if sys.argv[1] == "--max": sys.argv[1:] = ["0", "81"]
 # usage: gen.py seed size; size >= 81 fills every cell of a 9 x 9 grid
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = 9 if S >= 81 else r.randint(1, 9)
@@ -8,4 +9,4 @@ picked = r.sample(cells, k)
 hi = 30 if S >= 81 or r.random() < 0.5 else r.randint(1, 30)
 print(n)
 for x, y in picked: print(x, y, hi if S >= 81 and r.random() < 0.5 else r.randint(1, hi))
-print(0)
+print(0, 0, 0)  # the statement ends the list with a line 0 0 0
