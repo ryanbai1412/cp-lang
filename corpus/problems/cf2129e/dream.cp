@@ -16,7 +16,8 @@ domain E = 0..m
 let raw: [E](u: V, v: V) = read()
 let g = Graph.undirected(raw)
 let (domain Arc, arcs) = [(u, a.to, a.e) for u in V for a in g.out(u)].with_domain()
-let first_arc = [V.cuts] b => Arc.cuts.nth(V[..b].sum(g.deg))
+let degs = prefix([V] u => g.deg(u))
+let first_arc = [V.cuts] b => Arc.cuts.nth(degs.prefix(b))
 
 let q: 1..=150_000 = read()
 let asks: [0..q](l: V, r: V, k: Int) = read()
@@ -38,4 +39,4 @@ fn step(p: Arc, by: Int):
 
 let windows = [first_arc[x.l.l]..first_arc[x.r.r] for x in asks]
 print(mo(windows, add: p => step(p, 1), remove: p => step(p, -1),
-         answer: qi => values.kth(asks[qi].k + n - (asks[qi].r - asks[qi].l + 1))), sep: "\n")
+         answer: qi => values.kth(asks[qi].k - 1 + n - (asks[qi].r - asks[qi].l + 1))), sep: "\n")
