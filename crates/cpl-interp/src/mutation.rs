@@ -3,7 +3,7 @@
 
 use crate::value::keys::Cmp;
 use crate::value::{self, OptVal, Value};
-use crate::{trap, Res};
+use crate::{bug, trap, Res};
 use cpl_diag::Span;
 use cpl_ir::{Mutation, Program, Ty};
 use std::rc::Rc;
@@ -292,11 +292,6 @@ pub(crate) fn mutate_cell(
             Rc::make_mut(bytes).fill(fill);
             Value::Unit
         }
-        _ => {
-            return trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
-            )
-        }
+        _ => return bug(span, "this value can't be changed that way"),
     })
 }

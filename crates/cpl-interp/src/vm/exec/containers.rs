@@ -2,7 +2,7 @@ use crate::observe::Observer;
 use crate::value::{OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{trap, Interp, Res};
+use crate::{bug, trap, Interp, Res};
 use cpl_ir::CmpOp;
 use std::rc::Rc;
 
@@ -82,12 +82,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::RangeBoundsI { lo, hi, src_v } => {
                 let (l, h) = match &regs_v[src_v as usize] {
                     Value::Range(l, h) => (*l, *h),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_RANGE.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected a range"),
                 };
                 regs_i[lo as usize] = l;
                 regs_i[hi as usize] = h;
@@ -169,10 +164,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::MinMaxLArr1SmallTuple {
@@ -225,10 +217,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::ListPushGArr1I {
@@ -252,16 +241,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     {
                         Rc::make_mut(list).push(v);
                     } else {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_ELEMENT.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "expected list element");
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::ListPushGArr1V { gid, r_i, val_v } => {
@@ -284,16 +267,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     {
                         Rc::make_mut(list).push(v);
                     } else {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_ELEMENT.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "expected list element");
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::ListPushLArr1I {
@@ -317,16 +294,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     {
                         Rc::make_mut(list).push(v);
                     } else {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_ELEMENT.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "expected list element");
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::ListPushLArr1V { arr_v, r_i, val_v } => {
@@ -349,16 +320,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     {
                         Rc::make_mut(list).push(v);
                     } else {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_ELEMENT.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "expected list element");
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::ListPushLV { list_v, val_v } => {
@@ -374,12 +339,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             Rc::make_mut(bytes).push(c);
                         }
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list or string"),
                 }
             }
             Op::ListPushGV { gid, val_v } => {
@@ -395,12 +355,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             Rc::make_mut(bytes).push(c);
                         }
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list or string"),
                 }
             }
             Op::ListPushLI {
@@ -412,12 +367,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 match &mut regs_v[list_v as usize] {
                     Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
                     Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list or string"),
                 }
             }
             Op::ListPushGI { gid, val_i, kind } => {
@@ -425,24 +375,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 match &mut self.globals[gid as usize] {
                     Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
                     Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list or string"),
                 }
             }
             Op::ListPopLV { dst_v, list_v } => {
                 let popped = match &mut regs_v[list_v as usize] {
                     Value::List(items) => Rc::make_mut(items).pop(),
                     Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 };
                 regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
             }
@@ -450,12 +390,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let popped = match &mut self.globals[gid as usize] {
                     Value::List(items) => Rc::make_mut(items).pop(),
                     Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 };
                 regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
             }
@@ -467,12 +402,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let popped = match &mut regs_v[list_v as usize] {
                     Value::List(items) => Rc::make_mut(items).pop(),
                     Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 };
                 match popped {
                     Some(x) => {
@@ -493,12 +423,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let popped = match &mut self.globals[gid as usize] {
                     Value::List(items) => Rc::make_mut(items).pop(),
                     Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 };
                 match popped {
                     Some(x) => {
@@ -518,12 +443,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 Value::Str(bytes) => {
                     Rc::make_mut(bytes).pop();
                 }
-                _ => {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                    )
-                }
+                _ => return bug(spans[cur_pc], "expected list"),
             },
             Op::ListPopDiscardG { gid } => match &mut self.globals[gid as usize] {
                 Value::List(items) => {
@@ -532,12 +452,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 Value::Str(bytes) => {
                     Rc::make_mut(bytes).pop();
                 }
-                _ => {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                    )
-                }
+                _ => return bug(spans[cur_pc], "expected list"),
             },
             Op::LoadGlobalVMove { dst, gid } => {
                 regs_v[dst as usize] =
@@ -557,12 +472,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Tuple(TupleVal::OneInt(v)) if field == 0 => {
                         *v = regs_i[src_i as usize];
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected tuple/struct"),
                 }
             }
             Op::StoreLFieldV {
@@ -579,12 +489,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Tuple(TupleVal::Boxed(fs)) => {
                         crate::value::Shared::make_mut(fs)[field as usize] = val;
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected tuple/struct"),
                 }
             }
             Op::StoreLFieldOptI {
@@ -599,12 +504,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Tuple(TupleVal::Boxed(fs)) => {
                         crate::value::Shared::make_mut(fs)[field as usize] = boxed;
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected tuple/struct"),
                 }
             }
             Op::StoreLFieldIdx1I {
@@ -640,18 +540,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                         }
-                        _ => {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                            )
-                        }
+                        _ => return bug(spans[cur_pc], "expected array or list"),
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
             Op::FieldListLen { dst, obj_v, field } => {
@@ -672,16 +564,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             } => {
                 let idx = regs_i[r_i as usize];
                 let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[obj_v as usize] else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected struct");
                 };
                 let Value::List(list) = &fs[field as usize] else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_FIELD.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected list field");
                 };
                 if idx < 0 || (idx as usize) >= list.len() {
                     return trap(
@@ -703,17 +589,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let idx = regs_i[r_i as usize];
                 let (b, n) = (src_base as usize, len as usize);
                 let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array or list");
                 };
                 let Value::List(list) = &mut crate::value::Shared::make_mut(fs)[field as usize]
                 else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array or list");
                 };
                 let n_len = list.len() as i64;
                 if idx < 0 || idx >= n_len {
@@ -760,18 +640,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             Rc::make_mut(list).set(idx as usize, val);
                         }
-                        _ => {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                            )
-                        }
+                        _ => return bug(spans[cur_pc], "expected array or list"),
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
             Op::StoreLFieldIdx1OptI {
@@ -809,18 +681,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             Rc::make_mut(list).set(idx as usize, kind.box_opt(v, s));
                         }
-                        _ => {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                            )
-                        }
+                        _ => return bug(spans[cur_pc], "expected array or list"),
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
             Op::ListPushFieldLI {
@@ -834,18 +698,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     match &mut crate::value::Shared::make_mut(fs)[field as usize] {
                         Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
                         Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
-                        _ => {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
-                            )
-                        }
+                        _ => return bug(spans[cur_pc], "expected list or string"),
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
             Op::ListPushFieldSmallTuple {
@@ -857,17 +713,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             } => {
                 let (b, n) = (src_base as usize, len as usize);
                 let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 };
                 let Value::List(items) = &mut crate::value::Shared::make_mut(fs)[field as usize]
                 else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected list or string");
                 };
                 Rc::make_mut(items).push_small_tuple(n, &regs_i[b..b + n], &kinds);
             }
@@ -889,18 +739,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 Rc::make_mut(bytes).push(c);
                             }
                         }
-                        _ => {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
-                            )
-                        }
+                        _ => return bug(spans[cur_pc], "expected list or string"),
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
             Op::ListPopDiscardFieldL { obj_v, field } => {
@@ -909,18 +751,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         Value::List(items) => {
                             Rc::make_mut(items).pop();
                         }
-                        _ => {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                            )
-                        }
+                        _ => return bug(spans[cur_pc], "expected list"),
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
             Op::StoreGList1V { gid, r_i, r_val } => {
@@ -940,10 +774,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     Rc::make_mut(list).set(idx as usize, val);
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected list");
                 }
             }
             Op::StoreLList1V { list_v, r_i, r_val } => {
@@ -963,10 +794,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     Rc::make_mut(list).set(idx as usize, val);
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected list");
                 }
             }
             Op::LoadGList1V { dst, gid, r_i } => {
@@ -981,10 +809,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     regs_v[dst as usize] = list.get_unchecked_val(idx as usize);
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected list");
                 }
             }
             Op::LoadLList1V { dst, list_v, r_i } => {
@@ -1010,12 +835,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         regs_v[dst as usize] = view.get(idx as usize).unwrap_or(Value::Unit);
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 }
             }
             Op::LoadLList1OptI {
@@ -1046,12 +866,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         ScalarKind::unbox_opt(&view.get(idx as usize).unwrap_or(Value::Unit))
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 };
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
@@ -1066,12 +881,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Array(array) => (0..array.len())
                         .map(|k| array.get_unchecked_val(k))
                         .collect(),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_SET_MAP_OR.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected a set, map or table"),
                 };
                 regs_v[dst as usize] = Value::List(Rc::new(crate::value::Cells::from(items)));
             }
@@ -1096,16 +906,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                         }
                     } else {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "expected list");
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
             Op::ListPopFieldLV {
@@ -1120,16 +924,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_v[dst_v as usize] =
                             Value::Opt(OptVal::from_option(Rc::make_mut(items).pop()));
                     } else {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "expected list");
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected tuple/struct");
                 }
             }
             Op::MakeRange { dst, r_lo, r_hi } => {
@@ -1230,12 +1028,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             _ => 0,
                         }
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array or list"),
                 };
                 regs_i[dst as usize] = v;
             }
@@ -1268,12 +1061,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                         kind.box_val(raw);
                                 }
                                 Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
-                                _ => {
-                                    return trap(
-                                        spans[cur_pc],
-                                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-                                    )
-                                }
+                                _ => return bug(spans[cur_pc], "expected tuple"),
                             }
                         }
                     }
@@ -1291,20 +1079,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     kind.box_val(raw);
                             }
                             Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
-                            _ => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-                                )
-                            }
+                            _ => return bug(spans[cur_pc], "expected tuple"),
                         }
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array or list"),
                 }
             }
             Op::LoadLIdxFieldI {
@@ -1351,12 +1129,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             _ => 0,
                         }
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array or list"),
                 };
                 regs_i[dst as usize] = v;
             }
@@ -1389,12 +1162,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                         kind.box_val(raw);
                                 }
                                 Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
-                                _ => {
-                                    return trap(
-                                        spans[cur_pc],
-                                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-                                    )
-                                }
+                                _ => return bug(spans[cur_pc], "expected tuple"),
                             }
                         }
                     }
@@ -1412,20 +1180,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     kind.box_val(raw);
                             }
                             Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
-                            _ => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-                                )
-                            }
+                            _ => return bug(spans[cur_pc], "expected tuple"),
                         }
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array or list"),
                 }
             }
             _ => {

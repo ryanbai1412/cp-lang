@@ -109,10 +109,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         span: Span,
     ) -> Res<(Value, Vec<Value>)> {
         let Value::Closure(cid, caps) = fv else {
-            return trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_TRIED_TO_CALL_NON.at(&[]),
-            );
+            return bug(span, "tried to call a non-function value");
         };
         let def = &self.program.closures[cid];
         self.stack_left(span, None)?;

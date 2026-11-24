@@ -560,6 +560,21 @@ fn trap<T>(span: Span, said: cpl_diag::msgs::Said) -> Res<T> {
     Err(Box::new(Trap::said(span, said)))
 }
 
+/// An interpreter bug at `site`, a value lowering should have ruled out:
+/// every one says the shared `INTERPRETER_BUG` row, naming its site.
+fn bug<T>(span: Span, site: &'static str) -> Res<T> {
+    Err(bugged(span, site))
+}
+
+#[cold]
+#[inline(never)]
+fn bugged(span: Span, site: &'static str) -> Box<Trap> {
+    Box::new(Trap::said(
+        span,
+        cpl_diag::msgs::interp::INTERPRETER_BUG.at(&[&site]),
+    ))
+}
+
 enum Flow {
     Next,
     Break(Option<LoopId>),
@@ -1021,12 +1036,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Value::Range128(r) => {
                 (r.0 < r.1).then(|| Value::I128((if last { r.1 - 1 } else { r.0 }).into()))
             }
-            other => {
-                return trap(
-                    span,
-                    cpl_diag::msgs::interp::INTERNAL_FIRST_LAST.at(&[&format_args!("{:?}", other)]),
-                )
-            }
+            _ => return bug(span, "`first`/`last` of a value without ends"),
         })
     }
 }
@@ -1112,31 +1122,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 match direct {
                     Some(Value::Tuple(fields)) => match fields.get(*index) {
                         Some(field) => field,
-                        None => {
-                            return trap(
-                                span,
-                                cpl_diag::msgs::interp::INTERNAL_FIELD_VALUE_WITHOUT_FIELDS.at(&[]),
-                            )
-                        }
+                        None => return bug(span, "field of a value without fields"),
                     },
                     Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                     _ => match self.eval(base)? {
                         Value::Tuple(fields) => match fields.get(*index) {
                             Some(field) => field,
-                            None => {
-                                return trap(
-                                    span,
-                                    cpl_diag::msgs::interp::INTERNAL_FIELD_VALUE_WITHOUT_FIELDS
-                                        .at(&[]),
-                                )
-                            }
+                            None => return bug(span, "field of a value without fields"),
                         },
-                        _ => {
-                            return trap(
-                                span,
-                                cpl_diag::msgs::interp::INTERNAL_FIELD_VALUE_WITHOUT_FIELDS.at(&[]),
-                            )
-                        }
+                        _ => return bug(span, "field of a value without fields"),
                     },
                 }
             }
@@ -1181,12 +1175,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             ExprKind::Do(block) => match self.block(block)? {
                 Flow::Give(value) => value,
-                _ => {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_BLOCK_ENDED_WITHOUT_ITS.at(&[]),
-                    )
-                }
+                _ => return bug(span, "a block ended without its value"),
             },
             ExprKind::Call(id, args) => self.call_or_resume(e, *id, args, span)?,
             ExprKind::CallExpr(callee, args) => self.call_expr(e, callee, args, span)?,
@@ -1279,12 +1268,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         (arr.dims[0] as usize, arr.dims[1] as usize)
                     }
                     Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-                    _ => {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::INTERNAL_GRID_LINE_NEEDS_2D.at(&[]),
-                        )
-                    }
+                    _ => return bug(span, "a grid line needs a 2D array"),
                 };
                 let (fixed, len, step) = if *axis == 1 {
                     (rows, cols, 1)
@@ -1746,10 +1730,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
             Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_INDEX_VALUE_THAT_HAS.at(&[]),
-            ),
+            _ => bug(span, "index of a value that has no elements"),
         }
     }
 

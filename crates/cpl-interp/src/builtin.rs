@@ -652,16 +652,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let at = values.next().unwrap_or_default().int();
                 let axis = values.next().unwrap_or_default().int();
                 let Value::Array(a) = first else {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_GRID_LINE_NEEDS_2D.at(&[]),
-                    );
+                    return bug(span, "a grid line needs a 2D array");
                 };
                 let &[rows, cols] = &a.dims[..] else {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_GRID_LINE_NEEDS_2D.at(&[]),
-                    );
+                    return bug(span, "a grid line needs a 2D array");
                 };
                 let (fixed, len) = if axis == 1 {
                     (rows, cols)

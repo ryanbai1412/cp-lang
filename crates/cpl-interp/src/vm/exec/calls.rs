@@ -3,7 +3,7 @@ use crate::observe::Observer;
 use crate::value::{Array, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{trap, Flow, Interp, Res};
+use crate::{bug, trap, Flow, Interp, Res};
 use cpl_ir::{BinOp, CmpOp};
 use std::rc::Rc;
 
@@ -69,16 +69,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         regs_i[dst as usize] = read_array_i(arr, idx as usize);
                     } else {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_FIELD.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "expected array field");
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRUCT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected struct");
                 }
             }
             Op::FieldArrLen { dst, obj_v, field } => {
@@ -118,12 +112,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         };
                         regs_i[dst as usize] = i64::from(sv.base[pos]);
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRING.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected string"),
                 }
             }
             Op::GStrGetI { dst, gid, r_i } => {
@@ -154,12 +143,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         };
                         regs_i[dst as usize] = i64::from(sv.base[pos]);
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRING.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected string"),
                 }
             }
             Op::MakeTuple { dst, base_v, len } => {
@@ -336,10 +320,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 };
                 regs_v[dst as usize] = val;
             }
@@ -360,10 +341,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 };
                 regs_v[dst as usize] = val;
             }
@@ -382,10 +360,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         Value::Unit,
                     )
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected list");
                 };
                 regs_v[dst as usize] = val;
             }
@@ -404,10 +379,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         Value::Unit,
                     )
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected list");
                 };
                 regs_v[dst as usize] = val;
             }
@@ -438,10 +410,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     arr.get((i * d1 + j) as usize).unwrap_or(Value::Unit)
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 };
                 regs_v[dst as usize] = val;
             }
@@ -467,10 +436,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     arr.get((i * d1 + j) as usize).unwrap_or(Value::Unit)
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 };
                 regs_v[dst as usize] = val;
             }
@@ -481,12 +447,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let flat = nd_flat_index(&arr.dims, indices, spans[cur_pc])?;
                         arr.get(flat).unwrap_or(Value::Unit)
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array"),
                 };
                 regs_v[dst as usize] = val;
             }
@@ -522,10 +483,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     Rc::make_mut(arr).set((i * d1 + j) as usize, val);
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::StoreGArr2V {
@@ -560,10 +518,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     Rc::make_mut(arr).set((i * d1 + j) as usize, val);
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::ConstF64 { dst, idx } => {
@@ -574,10 +529,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let (Value::Float(fa), Value::Float(fb)) =
                     (&regs_v[a as usize], &regs_v[b as usize])
                 else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_FLOAT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected float");
                 };
                 let res = match op {
                     BinOp::Add => *fa + *fb,
@@ -585,12 +537,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     BinOp::Mul => *fa * *fb,
                     BinOp::Div => *fa / *fb,
                     BinOp::Pow => fa.powf(*fb),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_UNSUPPORTED_FLOAT_OP.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "unsupported float op"),
                 };
                 regs_v[dst as usize] = Value::Float(res);
             }
@@ -598,10 +545,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let (Value::Float(fa), Value::Float(fb)) =
                     (&regs_v[a as usize], &regs_v[b as usize])
                 else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_FLOAT.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected float");
                 };
                 let res = if is_max {
                     if *fa >= *fb {
@@ -998,12 +942,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 let (cid, caps) = match &regs_v[callee_v as usize] {
                     Value::Closure(cid, caps) => (*cid, Rc::clone(caps)),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_CLOSURE.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected closure"),
                 };
                 if callee_v as usize >= chunk.num_local_v {
                     regs_v[callee_v as usize] = Value::Unit;

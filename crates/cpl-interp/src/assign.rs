@@ -8,10 +8,7 @@ pub(super) fn field_mut(holder: &mut Value, index: usize, span: Span) -> Res<&mu
     match holder {
         Value::Tuple(fields) => Ok(&mut fields.as_mut_vec()[index]),
         Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-        _ => trap(
-            span,
-            cpl_diag::msgs::interp::INTERNAL_FIELD_VALUE_WITHOUT_FIELDS.at(&[]),
-        ),
+        _ => bug(span, "field of a value without fields"),
     }
 }
 
@@ -66,10 +63,7 @@ pub(super) fn cell_mut<'s>(
             }
         }
         Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-        _ => trap(
-            span,
-            cpl_diag::msgs::interp::INTERNAL_INDEX_VALUE_THAT_HAS.at(&[]),
-        ),
+        _ => bug(span, "index of a value that has no elements"),
     }
 }
 
@@ -402,12 +396,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             self.feed(array.get_unchecked_val(i), span)?;
                         }
                     }
-                    _ => {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::INTERNAL_YIELDS_FN_DID_SOMETHING.at(&[]),
-                        )
-                    }
+                    _ => return bug(span, "a `yields` fn did something else to its list"),
                 }
                 return Ok(Value::Unit);
             }
@@ -478,12 +467,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                     Value::Unit
                 }
-                _ => {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
-                    )
-                }
+                _ => return bug(span, "this value can't be changed that way"),
             });
         }
         let program = self.program;

@@ -233,12 +233,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 [Value::Enum(actual, payload)] if actual as usize == *tag => {
                     payload[*index].clone()
                 }
-                _ => {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_PAYLOAD_ANOTHER_VARIANT.at(&[]),
-                    )
-                }
+                _ => return bug(span, "payload of another variant"),
             },
             ExprKind::Unary(op, _) => {
                 let [value] = operand_values(vals, span)?;
@@ -298,12 +293,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let [l, r] = operand_values(vals, span)?;
                 binary(*op, l, r, span)?
             }
-            _ => {
-                return trap(
-                    span,
-                    cpl_diag::msgs::interp::INTERNAL_NO_SHARED_EVALUATION_FOR.at(&[]),
-                )
-            }
+            _ => return bug(span, "no shared evaluation for this expression"),
         })
     }
 
@@ -367,9 +357,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 fn operand_values<const N: usize>(vals: Vec<Value>, span: Span) -> Res<[Value; N]> {
     match <[Value; N]>::try_from(vals) {
         Ok(vals) => Ok(vals),
-        Err(_) => trap(
-            span,
-            cpl_diag::msgs::interp::INTERNAL_NO_SHARED_EVALUATION_FOR.at(&[]),
-        ),
+        Err(_) => bug(span, "no shared evaluation for this expression"),
     }
 }

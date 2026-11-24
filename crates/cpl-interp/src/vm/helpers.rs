@@ -1,6 +1,6 @@
 use super::ir::*;
 use crate::value::{Array, Cells, TupleVal, Value};
-use crate::{release, trap, Part, Res};
+use crate::{bug, release, trap, Part, Res};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
@@ -53,10 +53,7 @@ pub(crate) fn yielded_items(seq: Value, span: Span) -> Res<Vec<Value>> {
     match seq {
         Value::List(xs) => Ok(xs.iter().collect()),
         Value::Array(a) => Ok((0..a.len()).map(|i| a.get_unchecked_val(i)).collect()),
-        _ => trap(
-            span,
-            cpl_diag::msgs::interp::INTERNAL_YIELDS_FN_DID_SOMETHING.at(&[]),
-        ),
+        _ => bug(span, "a `yields` fn did something else to its list"),
     }
 }
 
@@ -574,12 +571,7 @@ fn exec_bin_u64_rest(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> 
             }
             av >> b_raw
         }
-        _ => {
-            return trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_UNSUPPORTED_U64_OP.at(&[]),
-            )
-        }
+        _ => return bug(span, "unsupported U64 op"),
     };
     Ok(out as i64)
 }
@@ -589,10 +581,7 @@ fn exec_bin_u64_rest(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> 
 /// per element; `desc` puts larger keys first and keeps ties in order.
 pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> Res<Value> {
     let Value::List(keys) = keys else {
-        return trap(
-            span,
-            cpl_diag::msgs::interp::INTERNAL_EXPECTED_SORT_KEYS.at(&[]),
-        );
+        return bug(span, "expected the sort keys");
     };
     let order = crate::sort::stable_order(keys.len(), &mut |a, b| {
         let (a, b) = (keys.get_unchecked_val(a), keys.get_unchecked_val(b));
@@ -656,12 +645,7 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
                 a.data.reverse();
             }
         }
-        _ => {
-            return trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_CANNOT_SORT_THIS_VALUE.at(&[]),
-            )
-        }
+        _ => return bug(span, "cannot sort this value"),
     }
     Ok(())
 }
@@ -789,10 +773,7 @@ pub(super) fn array_flat_index(
         PlaceStep::IndexN(idx, n) => {
             nd_flat_index(&arr.dims, &regs_i[idx as usize..(idx + n) as usize], span)
         }
-        PlaceStep::Field(_) => trap(
-            span,
-            cpl_diag::msgs::interp::INTERNAL_EXPECTED_INDEX_STEP.at(&[]),
-        ),
+        PlaceStep::Field(_) => bug(span, "expected index step"),
     }
 }
 
@@ -924,18 +905,13 @@ pub(super) fn walk_place_mut<'a>(
                         return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]));
                     }
                 },
-                _ => return trap(span, cpl_diag::msgs::interp::INTERNAL_EXPECTED_MAP.at(&[])),
+                _ => return bug(span, "expected map"),
             },
             PlaceStep::Field(f) => match cur {
                 Value::Tuple(TupleVal::Boxed(fs)) => {
                     cur = &mut crate::value::Shared::make_mut(fs)[f as usize];
                 }
-                _ => {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-                    )
-                }
+                _ => return bug(span, "expected tuple"),
             },
             PlaceStep::Index1(r_i) => match cur {
                 Value::List(items) => {
@@ -954,21 +930,10 @@ pub(super) fn walk_place_mut<'a>(
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
                         Cells::Values(vs) => cur = &mut vs[flat],
-                        _ => {
-                            return trap(
-                                span,
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_BOXED_ARRAY_ELEMENT
-                                    .at(&[]),
-                            )
-                        }
+                        _ => return bug(span, "expected boxed array element"),
                     }
                 }
-                _ => {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                    )
-                }
+                _ => return bug(span, "expected array or list"),
             },
             PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match cur {
                 Value::Array(arr) => {
@@ -976,21 +941,10 @@ pub(super) fn walk_place_mut<'a>(
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
                         Cells::Values(vs) => cur = &mut vs[flat],
-                        _ => {
-                            return trap(
-                                span,
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_BOXED_ARRAY_ELEMENT
-                                    .at(&[]),
-                            )
-                        }
+                        _ => return bug(span, "expected boxed array element"),
                     }
                 }
-                _ => {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    )
-                }
+                _ => return bug(span, "expected array"),
             },
         }
     }
@@ -1017,10 +971,7 @@ pub(super) fn store_place_leaf_scalar(
                 *x = raw;
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-            ),
+            _ => bug(span, "expected tuple"),
         },
         PlaceStep::Index1(r_i) => match container {
             Value::Array(arr) => {
@@ -1047,10 +998,7 @@ pub(super) fn store_place_leaf_scalar(
                 Rc::make_mut(items).set(idx as usize, kind.box_val(raw));
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-            ),
+            _ => bug(span, "expected array or list"),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
@@ -1065,10 +1013,7 @@ pub(super) fn store_place_leaf_scalar(
                 }
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-            ),
+            _ => bug(span, "expected array"),
         },
     }
 }
@@ -1090,10 +1035,7 @@ pub(super) fn store_place_leaf_opt_scalar(
                 crate::value::Shared::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-            ),
+            _ => bug(span, "expected tuple"),
         },
         PlaceStep::Index1(r_i) => match container {
             Value::Array(arr) => {
@@ -1118,10 +1060,7 @@ pub(super) fn store_place_leaf_opt_scalar(
                 Rc::make_mut(items).set(idx as usize, kind.box_opt(raw, some));
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-            ),
+            _ => bug(span, "expected array or list"),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
@@ -1134,10 +1073,7 @@ pub(super) fn store_place_leaf_opt_scalar(
                 }
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-            ),
+            _ => bug(span, "expected array"),
         },
     }
 }
@@ -1157,10 +1093,7 @@ pub(super) fn store_place_leaf_val(
                 crate::value::Shared::make_mut(fs)[f as usize] = val;
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-            ),
+            _ => bug(span, "expected tuple"),
         },
         PlaceStep::Index1(r_i) => match container {
             Value::Array(arr) => {
@@ -1180,10 +1113,7 @@ pub(super) fn store_place_leaf_val(
                 Rc::make_mut(items).set(idx as usize, val);
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-            ),
+            _ => bug(span, "expected array or list"),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
@@ -1191,10 +1121,7 @@ pub(super) fn store_place_leaf_val(
                 Rc::make_mut(arr).set(flat, val);
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-            ),
+            _ => bug(span, "expected array"),
         },
     }
 }
@@ -1368,10 +1295,7 @@ pub(super) fn assign_place_leaf_scalar(
                 *x = apply_scalar_assign_op(*x, rhs, op, kind, span)?;
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
-            ),
+            _ => bug(span, "expected tuple"),
         },
         PlaceStep::Index1(r_i) => match container {
             Value::Array(arr) => {
@@ -1386,12 +1310,7 @@ pub(super) fn assign_place_leaf_scalar(
                         let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                         v[flat] = kind.box_val(next);
                     }
-                    _ => {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::INTERNAL_UNSUPPORTED_ARRAY_ASSIGN.at(&[]),
-                        )
-                    }
+                    _ => return bug(span, "unsupported array assign"),
                 }
                 Ok(())
             }
@@ -1410,10 +1329,7 @@ pub(super) fn assign_place_leaf_scalar(
                 slice.set(idx as usize, kind.box_val(next));
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-            ),
+            _ => bug(span, "expected array or list"),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
@@ -1428,19 +1344,11 @@ pub(super) fn assign_place_leaf_scalar(
                         let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                         v[flat] = kind.box_val(next);
                     }
-                    _ => {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::INTERNAL_UNSUPPORTED_ARRAY_ASSIGN.at(&[]),
-                        )
-                    }
+                    _ => return bug(span, "unsupported array assign"),
                 }
                 Ok(())
             }
-            _ => trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-            ),
+            _ => bug(span, "expected array"),
         },
     }
 }

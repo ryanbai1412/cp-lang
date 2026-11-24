@@ -174,12 +174,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             BinOp::Mul => a * b,
             BinOp::Div => a / b,
             BinOp::Pow => a.powf(b),
-            _ => {
-                return trap(
-                    span,
-                    cpl_diag::msgs::interp::INTERNAL_THIS_OPERATOR_HAS_NO.at(&[]),
-                )
-            }
+            _ => return bug(span, "this operator has no float form"),
         }),
         (Value::Bool(a), Value::Bool(b)) => Value::Bool(match op {
             BinOp::BitAnd => a & b,
@@ -190,12 +185,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             Rc::make_mut(&mut a).extend_from_slice(&b);
             Value::Str(a)
         }
-        _ => {
-            return trap(
-                span,
-                cpl_diag::msgs::interp::INTERNAL_OPERANDS_DIFFERENT_KINDS.at(&[]),
-            )
-        }
+        _ => return bug(span, "operands of different kinds"),
     })
 }
 

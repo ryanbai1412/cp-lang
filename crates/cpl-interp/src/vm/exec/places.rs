@@ -4,7 +4,7 @@ use crate::value::keys::{tree_only, Edge};
 use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{trap, Flow, Interp, Res};
+use crate::{bug, trap, Flow, Interp, Res};
 use cpl_ir::{AssignOp, BinOp, CmpOp, LoopId};
 use std::rc::Rc;
 
@@ -203,12 +203,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::List(items) => {
                         Rc::make_mut(items).pop();
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 }
             }
             Op::ListPushPlaceI { path, val_i, kind } => {
@@ -221,12 +216,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::List(items) => {
                         Rc::make_mut(items).push(val);
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 }
             }
             Op::ListPushPlaceV { path, val_v } => {
@@ -239,12 +229,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::List(items) => {
                         Rc::make_mut(items).push(val);
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 }
             }
             Op::SortByKeysPlace {
@@ -275,13 +260,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
                 let cpl_ir::ExprKind::Sort(place, _, _) = &chunk.applies[idx as usize].expr.kind
                 else {
-                    return trap(span, cpl_diag::msgs::interp::INTERNAL_NOT_SORT.at(&[]));
+                    return bug(span, "not a sort");
                 };
                 let (cpl_ir::Ty::List(elem) | cpl_ir::Ty::Array { elem, .. }) = &place.ty else {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_NOT_SEQUENCE_SORT.at(&[]),
-                    );
+                    return bug(span, "not a sequence sort");
                 };
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
@@ -330,24 +312,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     cpl_ir::ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => match &func.ty
                     {
                         cpl_ir::Ty::Fn(_, ret) => &**ret,
-                        _ => {
-                            return trap(span, cpl_diag::msgs::interp::INTERNAL_NOT_KEY_FN.at(&[]))
-                        }
+                        _ => return bug(span, "not a key fn"),
                     },
-                    _ => {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::INTERNAL_NOT_KEYED_SORT.at(&[]),
-                        )
-                    }
+                    _ => return bug(span, "not a keyed sort"),
                 };
                 let seq = std::mem::replace(&mut regs_v[seq_v as usize], Value::Unit);
                 let Value::List(by) = std::mem::replace(&mut regs_v[keys_v as usize], Value::Unit)
                 else {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_SORT_KEYS.at(&[]),
-                    );
+                    return bug(span, "expected the sort keys");
                 };
                 let (items, dims) = seq_items(seq, span)?;
                 let keyed: Vec<(Value, Value)> = by.iter().zip(items).collect();
@@ -428,12 +400,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::List(items) => Rc::make_mut(items).reverse(),
                     Value::Array(arr) => Rc::make_mut(arr).reverse(),
                     Value::Str(bytes) => Rc::make_mut(bytes).reverse(),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_CANNOT_REVERSE_THIS_VALUE.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "cannot reverse this value"),
                 }
             }
             Op::BitWidthI { dst, src } => {
@@ -541,10 +508,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         .remove(&arg, &mut tree_only(spans[cur_pc]))?
                         .is_some(),
                     _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "this value can't be changed that way");
                     }
                 };
                 regs_i[dst as usize] = i64::from(ok);
@@ -599,10 +563,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         map.insert(key, next, &mut tree_only(spans[cur_pc]))?;
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_MAP.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected map");
                 }
             }
             Op::SetMapBoundV {
@@ -653,10 +614,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         ))
                     }
                     _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
-                        );
+                        return bug(spans[cur_pc], "this value can't be changed that way");
                     }
                 };
             }
@@ -699,12 +657,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         };
                         item
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list"),
                 };
                 if let Value::Tuple(TupleVal::Boxed(fs)) = elem {
                     for (k, f) in fs.iter().take(n).enumerate() {
@@ -740,16 +693,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let i1 = regs_i[r_j as usize];
                         let arr_mut = Rc::make_mut(arr);
                         let Cells::Values(rows) = &mut arr_mut.data else {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_NESTED_ARRAY.at(&[]),
-                            );
+                            return bug(spans[cur_pc], "expected nested array");
                         };
                         let Value::Array(row_arr) = &mut rows[i0 as usize] else {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_INNER_ARRAY.at(&[]),
-                            );
+                            return bug(spans[cur_pc], "expected inner array");
                         };
                         let l1 = row_arr.dims[0];
                         if i1 < 0 || i1 >= l1 {
@@ -846,10 +793,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     }
                 } else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "expected array");
                 }
             }
             Op::LoadIdxFieldIdxOptI {
@@ -889,30 +833,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         match &arr.data {
                             Cells::Values(v) => &v[i as usize],
-                            _ => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRUCT_ELEMENT
-                                        .at(&[]),
-                                )
-                            }
+                            _ => return bug(spans[cur_pc], "expected struct element"),
                         }
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_ARRAY.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected list or array"),
                 };
                 let field_val = match elem {
                     Value::Tuple(TupleVal::Boxed(fs)) => &fs[field as usize],
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRUCT_TUPLE.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected struct/tuple"),
                 };
                 let (v, s) = match field_val {
                     Value::Array(arr) => {
@@ -940,12 +868,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             _ => (0, 0),
                         }
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST_2.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array or list field"),
                 };
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
@@ -976,12 +899,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         match &arr.data {
                             Cells::Values(v) => &v[i as usize],
-                            _ => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_NESTED_ARRAY.at(&[]),
-                                )
-                            }
+                            _ => return bug(spans[cur_pc], "expected nested array"),
                         }
                     }
                     Value::List(list) => {
@@ -994,12 +912,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         &list.get_unchecked_val(i as usize)
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array or list"),
                 };
                 let (v, s) = match inner_val {
                     Value::Array(arr) => {
@@ -1012,12 +925,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         read_array_opt_i(arr, j as usize)
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_INNER_ARRAY.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected inner array"),
                 };
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
@@ -1047,12 +955,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         match &arr.data {
                             Cells::Values(v) => &v[i as usize],
-                            _ => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_NESTED_ARRAY.at(&[]),
-                                )
-                            }
+                            _ => return bug(spans[cur_pc], "expected nested array"),
                         }
                     }
                     Value::List(list) => {
@@ -1065,12 +968,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         &list.get_unchecked_val(i as usize)
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array or list"),
                 };
                 regs_i[dst as usize] = match inner_val {
                     Value::Array(arr) => {
@@ -1083,12 +981,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         read_array_i(arr, j as usize)
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_INNER_ARRAY.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected inner array"),
                 };
             }
             Op::SeqIdxEndOptI {
@@ -1116,13 +1009,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         match &arr.data {
                             Cells::Values(v) => &v[i as usize],
-                            _ => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_SEQUENCE_ELEMENT
-                                        .at(&[]),
-                                )
-                            }
+                            _ => return bug(spans[cur_pc], "expected sequence element"),
                         }
                     }
                     Value::List(list) => {
@@ -1135,12 +1022,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         &list.get_unchecked_val(i as usize)
                     }
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
-                        )
-                    }
+                    _ => return bug(spans[cur_pc], "expected array or list"),
                 };
                 let (v, s) = match self.seq_end(inner_val, is_last, spans[cur_pc])? {
                     Some(x) => (ScalarKind::unbox_val(&x), 1),
@@ -1613,10 +1495,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::MutatePlace { idx, path, dst } => {
                 let spec = &chunk.applies[idx as usize];
                 let cpl_ir::ExprKind::Mutate(op, place, _) = &spec.expr.kind else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERNAL_NOT_MUTATION.at(&[]),
-                    );
+                    return bug(spans[cur_pc], "not a mutation");
                 };
                 let arg = |n: usize| {
                     spec.regs

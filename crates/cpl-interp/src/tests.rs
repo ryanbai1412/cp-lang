@@ -1884,3 +1884,36 @@ main()
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "2 2 5 2 2 3 0 4 0 1 0 0 0\n");
 }
+
+#[test]
+fn internal_traps_say_the_shared_row_and_user_traps_their_own() {
+    use cpl_diag::msgs::interp;
+    let trap = crate::bug::<()>(cpl_diag::Span::default(), "expected list").unwrap_err();
+    assert_eq!(trap.message(), "internal: expected list");
+    assert_eq!(trap.code(), cpl_diag::codes::RUNTIME);
+    for row in interp::ALL {
+        if row.text().starts_with("internal") {
+            assert_eq!(row.text(), interp::INTERPRETER_BUG.text());
+        }
+    }
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut dirs = vec![src];
+    while let Some(dir) = dirs.pop() {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                dirs.push(path);
+            } else if path.extension().is_some_and(|e| e == "rs") && !path.ends_with("tests.rs") {
+                let text = std::fs::read_to_string(&path).unwrap();
+                assert!(
+                    !text.contains("\"internal:"),
+                    "{}: internal text outside INTERPRETER_BUG",
+                    path.display()
+                );
+            }
+        }
+    }
+    let user = interp::DIV_BY_ZERO_OP.at(&[&"7", &"/"]);
+    assert_eq!(user.code(), cpl_diag::codes::DIVISION_BY_ZERO);
+    assert_eq!(user.as_str(), "division by zero: `7 / 0`");
+}

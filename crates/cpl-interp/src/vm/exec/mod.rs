@@ -3,7 +3,7 @@ use crate::value::{Part, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Flow;
-use crate::{describe, release, trap, Interp, Res};
+use crate::{bug, describe, release, trap, Interp, Res};
 use cpl_diag::msgs::interp as rows;
 use cpl_ir::{CmpOp, FnId, LoopId};
 use std::rc::Rc;
@@ -550,7 +550,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let n = len as usize;
                         arr.get_small_tuple(i as usize, n, &mut regs_i[b..b + n]);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::LoadLArr1SmallTuple {
@@ -572,7 +572,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let n = len as usize;
                         arr.get_small_tuple(i as usize, n, &mut regs_i[b..b + n]);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::StoreGArr1SmallTuple {
@@ -595,7 +595,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], &kinds);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::StoreLArr1SmallTuple {
@@ -618,7 +618,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], &kinds);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::LoadGArr2SmallTuple {
@@ -643,7 +643,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let n = len as usize;
                         arr.get_small_tuple((i * d1 + j) as usize, n, &mut regs_i[b..b + n]);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::LoadLArr2SmallTuple {
@@ -668,7 +668,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let n = len as usize;
                         arr.get_small_tuple((i * d1 + j) as usize, n, &mut regs_i[b..b + n]);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::StoreGArr2SmallTuple {
@@ -699,7 +699,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             &kinds,
                         );
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::StoreLArr2SmallTuple {
@@ -730,7 +730,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             &kinds,
                         );
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::BoxSmallTuple {
@@ -1022,7 +1022,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         regs_i[dst as usize] = read_array_i(arr, idx as usize);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::StoreGArr1I { gid, r_i, r_val } => {
@@ -1038,7 +1038,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         write_array_i(Rc::make_mut(arr), idx as usize, val);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::LoadGArr2I { dst, gid, r_i, r_j } => {
@@ -1061,7 +1061,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         regs_i[dst as usize] = read_array_i(arr, (i0 * l1 + i1) as usize);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected 2D array");
                     }
                 }
                 Op::StoreGArr2I {
@@ -1090,7 +1090,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         write_array_i(Rc::make_mut(arr), (i0 * l1 + i1) as usize, val);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected 2D array");
                     }
                 }
                 Op::LoadLArr1I { dst, arr_v, r_i } => {
@@ -1117,7 +1117,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             regs_i[dst as usize] =
                                 ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
-                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[])),
+                        _ => return bug(spans[cur_pc], "expected array"),
                     }
                 }
                 Op::StoreLArr1I { arr_v, r_i, r_val } => {
@@ -1151,7 +1151,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 _ => Value::Int(val),
                             };
                         }
-                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[])),
+                        _ => return bug(spans[cur_pc], "expected array"),
                     }
                 }
                 Op::LoadLArr2I {
@@ -1179,7 +1179,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         regs_i[dst as usize] = read_array_i(arr, (i0 * l1 + i1) as usize);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected 2D array");
                     }
                 }
                 Op::StoreLArr2I {
@@ -1208,7 +1208,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         write_array_i(Rc::make_mut(arr), (i0 * l1 + i1) as usize, val);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected 2D array");
                     }
                 }
                 Op::LoadGArr1OptI {
@@ -1230,7 +1230,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_i[dst_val as usize] = v;
                         regs_i[dst_some as usize] = s;
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::StoreGArr1OptI {
@@ -1253,7 +1253,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         write_array_opt_i(Rc::make_mut(arr), idx as usize, val, some, kind);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::LoadGArr2OptI {
@@ -1284,7 +1284,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_i[dst_val as usize] = v;
                         regs_i[dst_some as usize] = s;
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected 2D array");
                     }
                 }
                 Op::StoreGArr2OptI {
@@ -1322,7 +1322,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             kind,
                         );
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected 2D array");
                     }
                 }
                 Op::LoadLArr1OptI {
@@ -1344,7 +1344,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_i[dst_val as usize] = v;
                         regs_i[dst_some as usize] = s;
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::StoreLArr1OptI {
@@ -1367,7 +1367,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         write_array_opt_i(Rc::make_mut(arr), idx as usize, val, some, kind);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::LoadLArr2OptI {
@@ -1398,7 +1398,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_i[dst_val as usize] = v;
                         regs_i[dst_some as usize] = s;
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected 2D array");
                     }
                 }
                 Op::StoreLArr2OptI {
@@ -1436,7 +1436,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             kind,
                         );
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected 2D array");
                     }
                 }
                 Op::LoadGList1I { dst, gid, r_i } => {
@@ -1464,7 +1464,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             };
                             regs_i[dst as usize] = ScalarKind::unbox_val(&item);
                         }
-                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[])),
+                        _ => return bug(spans[cur_pc], "expected list"),
                     }
                 }
                 Op::StoreGList1I {
@@ -1485,7 +1485,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[]));
+                        return bug(spans[cur_pc], "expected list");
                     }
                 }
                 Op::LoadFieldList1I {
@@ -1506,10 +1506,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             regs_i[dst as usize] =
                                 ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         } else {
-                            return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST_FIELD.at(&[]));
+                            return bug(spans[cur_pc], "expected list field");
                         }
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_STRUCT.at(&[]));
+                        return bug(spans[cur_pc], "expected struct");
                     }
                 }
                 Op::PopcountI { dst, src } => {
@@ -1572,7 +1572,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             };
                             regs_i[dst as usize] = ScalarKind::unbox_val(&item);
                         }
-                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[])),
+                        _ => return bug(spans[cur_pc], "expected list"),
                     }
                 }
                 Op::StoreLList1I {
@@ -1593,7 +1593,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[]));
+                        return bug(spans[cur_pc], "expected list");
                     }
                 }
                 Op::GArrLen { dst, gid } => {
@@ -1636,7 +1636,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         regs_v[dst as usize] = arr.get(idx as usize).unwrap_or(Value::Unit);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::StoreGArr1V { gid, r_i, r_val } => {
@@ -1656,7 +1656,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         Rc::make_mut(arr).set(idx as usize, val);
                     } else {
-                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
+                        return bug(spans[cur_pc], "expected array");
                     }
                 }
                 Op::LoadLArr1V { dst, arr_v, r_i } => {
@@ -1682,7 +1682,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             regs_v[dst as usize] = list.get_unchecked_val(idx as usize);
                         }
-                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[])),
+                        _ => return bug(spans[cur_pc], "expected array"),
                     }
                 }
                 Op::StoreLArr1V { arr_v, r_i, r_val } => {
@@ -1713,7 +1713,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             Rc::make_mut(list).set(idx as usize, val);
                         }
-                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[])),
+                        _ => return bug(spans[cur_pc], "expected array"),
                     }
                 }
                 Op::FeedTree {

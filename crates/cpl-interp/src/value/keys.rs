@@ -448,10 +448,5 @@ by_contents!(KeyMap);
 /// ops, emitted for key types without a user `Ord`): a sorted set there is a compiler bug,
 /// never a silent structural order.
 pub(crate) fn tree_only(span: cpl_diag::Span) -> impl FnMut(&Ty, &Value, &Value) -> Res<Ordering> {
-    move |_, _, _| {
-        crate::trap(
-            span,
-            cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
-        )
-    }
+    move |_, _, _| crate::bug(span, "this value can't be changed that way")
 }
