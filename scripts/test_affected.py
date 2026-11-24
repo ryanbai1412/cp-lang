@@ -95,6 +95,12 @@ class AffectedTest(unittest.TestCase):
             self.assertTrue(self.sel(path)["idioms_catalog"], path)
         self.assertFalse(self.sel("crates/cpl-lint/src/lib.rs")["idioms_catalog"])
 
+    def test_std_and_traits_toml_changes_run_the_traits_spec_gate(self):
+        # 2e752de52 added `impl Show for Filtered` with no traits.toml case; only regen noticed.
+        for path in ("std/seq.cp", "spec/conformance/traits.toml"):
+            self.assertTrue(self.sel(path)["spec_traits"], path)
+        self.assertFalse(self.sel("crates/cpl-check/src/lib.rs")["spec_traits"])
+
     def test_acceptance_and_perf_programs_get_cpl_check_only(self):
         s = self.sel("research/acceptance/solutions/2026-11-23-5/linux/cf1.cp",
                      f"{PKGS}/cf2/perf.cp")

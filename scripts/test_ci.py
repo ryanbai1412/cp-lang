@@ -514,7 +514,7 @@ class CommitTest(unittest.TestCase):
 
     def test_every_selected_check_runs_in_order(self) -> None:
         sel = {"slices": "a b", "data_filter": "test(=d)", "check_files": "scripts/ci.py", "audit": "1",
-               "idioms_catalog": "1", "steps": "scripts/x.py", "script_tests": "scripts/test_ci.py",
+               "idioms_catalog": "1", "spec_traits": "1", "steps": "scripts/x.py", "script_tests": "scripts/test_ci.py",
                "conform_cases": "c.cp", "site": "1"}
         dream = f"{PKGS}/p1/dream.cp\n"
         code, ev, _, _, _, _ = self._commit(sel, outs={"git diff --cached": dream})
@@ -523,6 +523,7 @@ class CommitTest(unittest.TestCase):
         firsts = ["scripts/affected.py --run-slices a b", "cargo nextest run --workspace --no-fail-fast -E (test(=d))",
                   "target/debug/cpl check scripts/ci.py", "scripts/corpus.py make --changed staged",
                   "scripts/corpus.py verify --only dream --cpl target/debug/cpl p1", "scripts/idioms-catalog.py --check",
+                  "scripts/spec-gate.py traits",
                   "-m unittest scripts/test_ci.py", "scripts/conform_staged.py", "node web/scripts/gate.mjs"]
         order = [next(i for i, e in enumerate(ev) if e.startswith(f)) for f in firsts]
         self.assertEqual(order, sorted(order))

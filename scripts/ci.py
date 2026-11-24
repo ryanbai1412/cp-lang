@@ -608,6 +608,11 @@ class Tail:
             self.step("lint catalog names only real APIs (scripts/idioms-catalog.py --check)")
             if self.call([sys.executable, "scripts/idioms-catalog.py", "--check"]):
                 raise Failed("a spec/idioms/lints.md row names an API std doesn't define; the finding above names the lint and the name")
+        if sel.get("spec_traits") == "1":
+            self.step("every std trait impl has its traits.toml case (scripts/spec-gate.py traits)")
+            if self.call([sys.executable, "scripts/spec-gate.py", "traits"]):
+                raise Failed("a std impl's trait method has no spec/conformance/traits.toml case; write the case it names"
+                             " (or regenerate: scripts/spec-gate.py traits --write)")
         if steps := sel.get("steps", "").split():
             self.step(f"touched checking scripts (scripts/ci.py steps touched {' '.join(steps)})")
             if run_steps("touched", self.cpl, run=self.run, only=set(steps)):
