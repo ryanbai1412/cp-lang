@@ -44,7 +44,6 @@ pub(super) enum GenArg {
     Domain(DomainId),
     Int(i64),
     RuntimeInt(GlobalId),
-    Op(BareOp),
     Range(Option<i64>, Option<i64>),
     /// `?lo..hi`: an optional of a range, so a field `List<?F>` keeps `F`'s bounds.
     OptRange(Option<i64>, Option<i64>),
@@ -301,9 +300,12 @@ impl<'a> Lowerer<'a> {
                 }
             }
             GenArg::Domain(d) => format!("D{d}_{}", self.domains[*d]),
+            // An operator's own type is named as the operator, `Op_Add`.
+            GenArg::Ty(Ty::Struct(id)) if self.op_types.iter().any(|(_, s)| s == id) => {
+                self.structs[*id].def.name.clone()
+            }
             GenArg::Ty(ty) | GenArg::Drawn(ty, _) => self.mangle_ty(ty),
             GenArg::RuntimeInt(gid) => format!("RI{gid}"),
-            GenArg::Op(op) => format!("Op_{op:?}"),
             GenArg::Range(lo, hi) => format!("R{:?}_{:?}", lo, hi),
             GenArg::OptRange(lo, hi) => format!("OR{:?}_{:?}", lo, hi),
             GenArg::Sized(ty, lens) => format!("S{}_{lens:?}", self.mangle_ty(ty)),

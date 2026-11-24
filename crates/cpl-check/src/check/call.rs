@@ -1469,9 +1469,6 @@ impl<'a> Checker<'a> {
                 }
                 if let Some(def) = callee_def.as_deref() {
                     self.fn_items_take_their_type(def, &params, args, &mut bindings);
-                    if let Def::Fn { bound_args, .. } = def {
-                        self.bare_ops_take_monoid(bound_args, &params, args, &mut bindings);
-                    }
                 }
                 if let (
                     Some(fn_name),
@@ -1551,7 +1548,9 @@ impl<'a> Checker<'a> {
                     .strip_prefix("type_of(")
                     .and_then(|f| f.strip_suffix(')'))
                 {
+                    let outer = std::mem::replace(&mut self.in_call_callee, true);
                     let ty = self.name_ty(f, callee.span);
+                    self.in_call_callee = outer;
                     return self.call_kind(call, callee, ty, args);
                 }
                 self.construct(&name, type_args, &callee_text, args, call)

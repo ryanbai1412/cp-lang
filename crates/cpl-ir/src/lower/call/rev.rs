@@ -111,13 +111,11 @@ impl<'a> Lowerer<'a> {
                 }
                 _ => None,
             });
-            let op = arg.zip(bare_gen).and_then(|(a, g)| {
-                let at = (tpl_mod, tpl_offset, &env);
-                self.bare_op_for(&f.bounds, g, &a.value, at)
-                    .map(|op| (g, op))
-            });
+            let op = arg
+                .zip(bare_gen)
+                .and_then(|(a, g)| self.bare_op_for(&f.bounds, g, &a.value).map(|op| (g, op)));
             if let Some((g, op)) = op {
-                if let GenArg::Op(op) = op {
+                if let Some(op) = self.op_of_arg(&op) {
                     ops.push((p.name.text.clone(), op));
                 }
                 env.insert(g.clone(), op);
@@ -146,7 +144,6 @@ impl<'a> Lowerer<'a> {
             }
         }
         let saved_self = self.self_struct.take();
-        let saved_ops = self.cx.op_locals.clone();
         self.cx.scopes.push(HashMap::new());
         let this = self.temp(value.ty.clone());
         self.cx.view_rev.insert(this);
@@ -164,12 +161,16 @@ impl<'a> Lowerer<'a> {
         }
         self.cx.pending.push_let(this, value);
         self.bind_local("self", this);
-        let op_params: Vec<String> = ops.iter().map(|(name, _)| name.clone()).collect();
-        for (name, op) in ops {
-            self.cx.op_locals.insert(name, op);
+        // An op param is a value of the op's own type, which names it.
+        for (name, op) in &ops {
+            let ty = Ty::Struct(self.op_type(*op));
+            let slot = self.temp(ty.clone());
+            let value = self.mk(ExprKind::Tuple(Vec::new()), ty, span);
+            self.cx.pending.push_let(slot, value);
+            self.bind_local(name, slot);
         }
         for ((p, ty), arg) in params.iter().zip(&tys).zip(given) {
-            if op_params.contains(&p.name.text) {
+            if ops.iter().any(|(name, _)| *name == p.name.text) {
                 continue;
             }
             let arg = match (arg, &p.default) {
@@ -199,7 +200,6 @@ impl<'a> Lowerer<'a> {
             ast::FnBody::None => self.err_expr(span),
         };
         self.cx.scopes.pop();
-        self.cx.op_locals = saved_ops;
         self.cur_mod = saved_mod;
         self.offset = saved_offset;
         self.gen_env = saved_env;
