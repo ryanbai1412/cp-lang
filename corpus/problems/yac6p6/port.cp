@@ -11,7 +11,7 @@
 //   forward walk of under L x L cells the pivot-to-end tables, and each query takes the best
 //   split of its zeros. About nm / L pivots, O(nm K) each; O(L^2 K) a direct query.
 // original: corpus/submissions/5150025.cpp
-// Bounds: n, m: 1..=200; q: 1..=200_000; a: 1..=1e9; x1, y1, x2, y2: Row/Col; zeros: Zeros
+// Bounds: n, m: 1..=200; q: 1..=200_000; a: 1..=1e9; x1, x2: 1..=n; y1, y2: 1..=m; zeros: 0..=MAXK
 const MAXK = 5
 const L = 16
 domain Zeros = 0..=MAXK

@@ -17,8 +17,7 @@ seed = 4
 size = 32
 
 [[case]]
-seed = 1
-size = 0
+input = "1 1\n33\n1 1 2\n"
 
 [[case]]
 seed = 2

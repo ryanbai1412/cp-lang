@@ -17,8 +17,7 @@ seed = 4
 size = 32
 
 [[case]]
-seed = 1
-size = 0
+input = "4 4\nWWWW\nW.SW\nW.DW\nWWWW\n"
 
 [[case]]
 seed = 2

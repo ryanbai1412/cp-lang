@@ -10,6 +10,7 @@
 //   the subtree's writes are undone on return. The sum and count of reached values ride down the
 //   DFS as arguments. O((2^n + m) n log 2^n).
 // original: corpus/submissions/5723063.cpp
+// Bounds: n: 2..=18; m: 0..=2 ** 18; up: 1..=1e9; roads.u: 1..=2 ** n - 1; roads.v: 1..=2 ** n - 1; roads.w: 1..=1e9
 use std.dsu.{RollbackArray}
 
 type Z = Mod<998_244_353>

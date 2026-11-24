@@ -10,7 +10,7 @@
 //   the gap (O((5n)^2 log T) each) and add the bonus at the festival's city. The answer is the
 //   row at city 1 after day T.
 // original: corpus/submissions/3890258.cpp
-// Bounds: n: 1..=50; m: 1..=501; t: 1..=1e9; k: 0..=200; joy: 1..=52501; w: 1..=5;
+// Bounds: n: 1..=50; m: 1..=501; t: 1..=1e9; k: 0..=200; joy: 1..=52501; roads.w: 1..=5;
 //   fests.day: 1..=t; fests.bonus: 1..=1e9; roads.u, roads.v, fests.city: 1..=n
 
 let (n, m, t, k): (1..=50, 1..=501, 1..=1e9, 0..=200) = read()

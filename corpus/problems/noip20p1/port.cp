@@ -8,7 +8,7 @@
 //   5 pipes, so every amount is a whole multiple of 1 / 60^11 (60^11 is about 3.6e19 and has 2^22,
 //   3^11 and 5^11): hold each amount as an I128 count of those units and every split divides
 //   exactly. Reduce by 2, 3 and 5 at output. O(n + pipes).
-// Bounds: n: 1..=1e5; m: 1..=10
+// Bounds: n: 1..=1e5; m: 1..=10; pipes: 1..=n
 // original: corpus/submissions/5445672.cpp
 
 const SPLITS = 11

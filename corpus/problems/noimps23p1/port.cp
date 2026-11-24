@@ -11,6 +11,7 @@
 //   that start there, so each station is swept once. Leftward stops are the same on the
 //   mirrored line. O((n + m) log n).
 // original: corpus/submissions/5556659.cpp
+// Bounds: n: 2..=200_000; m: 1..=200_000; x: 1..=n; tracks.l: 1..=n; tracks.r: 1..=n
 use std.interval.{IntervalSet}
 
 let (n, m): (2..=200_000, 1..=200_000) = read()

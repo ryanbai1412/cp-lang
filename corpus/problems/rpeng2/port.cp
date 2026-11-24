@@ -8,7 +8,7 @@
 //   len] keeps the least and largest value of the chain of len + 1 vertices from i: + adds lows
 //   and highs, * takes the extremes of the four products. O(N^3).
 // original: corpus/submissions/4810287.cpp
-// Bounds: n: 3..=50; x: -32768..=32767
+// Bounds: n: 3..=50; ring.x: -32768..=32767
 let n: 3..=50 = read()
 domain V = 0..n
 domain Len = 0..n
