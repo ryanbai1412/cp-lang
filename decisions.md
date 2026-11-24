@@ -8886,3 +8886,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `std/prelude.cp` imports every free `pub fn` a `spec/lib` table or signature block names bare. A name that means two things is written qualified in the chapter (`fn poly.inv`, `poly.exp`, `poly.sqrt`: they share names with the float builtins and `pow`) and is never imported bare. `scripts/spec-gate.py prelude` fails on any miss; `prelude-gaps.txt` is deleted and `prelude_gaps` is a hard-zero counter.
 - **Why.** The tables promised 96 names a program could not call without a `use` it had to guess, and the known list let that grow. Methods (a `self` first parameter) need no import, so they are not counted.
 - **Reverse.** Drop the added imports from `std/prelude.cp` and give each chapter row its `use` line.
+
+## 542. (reserved, unknown)
