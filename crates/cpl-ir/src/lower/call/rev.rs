@@ -210,10 +210,15 @@ impl<'a> Lowerer<'a> {
     /// The std struct `name` that types a built-in view, wherever the
     /// caller's module stands.
     pub(in crate::lower) fn view_struct(&self, name: &str) -> Option<GenStructId> {
-        let found = |m: ModId| match self.mod_syms[m].get(name) {
-            Some(Sym::GenStruct(gid)) => Some(*gid),
+        match self.std_sym(name)? {
+            Sym::GenStruct(gid) => Some(gid),
             _ => None,
-        };
+        }
+    }
+
+    /// What the std item `name` is, wherever the caller's module stands.
+    pub(in crate::lower) fn std_sym(&self, name: &str) -> Option<Sym> {
+        let found = |m: ModId| self.mod_syms[m].get(name).cloned();
         self.std_mod.into_iter().find_map(found).or_else(|| {
             self.mods
                 .iter()

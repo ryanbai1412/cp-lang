@@ -654,6 +654,9 @@ impl Database {
                     // std.seq is where `contains` and those `Seq` impls live.
                     dot_ident_tokens.insert("contains");
                 }
+                if walks::some_slice_needs_seq(tokens) {
+                    ident_tokens.insert("Slice");
+                }
                 note_idents(&text, tokens, &mut ident_tokens, &mut dot_ident_tokens);
             }
             // A built-in method's declared return type is used where the method is:

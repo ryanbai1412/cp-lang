@@ -1,3 +1,3 @@
-// expect: R0001
+// expect: R0401
 // rule: 04b.1.7
 let k = [1, 2, 3].rekey(5..7) // <- here
