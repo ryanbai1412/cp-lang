@@ -1,4 +1,5 @@
 // Source: Mock CCC '23 Contest 1 J3 (Pairing Gifts), https://dmoj.ca/problem/mccc5j3
+// limits: 1000 ms, 512 MB
 // Problem: n <= 2e5 distinct prices a_i, n distinct prices b_j, all in 1..=M (M <= 1e18), and
 //   0 <= K < n. Print the most disjoint pairs (i, j) with a_i + b_j = M and |i - j| >= K.
 // Solution: the a_i are distinct, so b_j has at most one partner a_i = M - b_j, and the b_j are

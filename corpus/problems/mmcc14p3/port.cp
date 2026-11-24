@@ -1,4 +1,5 @@
 // Source: MMCC '14 P3 (Esdeath), https://dmoj.ca/problem/mmcc14p3
+// limits: 600 ms, 64 MB
 // Problem: a tree of n <= 2e5 cities; put k <= 2e5 soldiers on cities so that every city is
 //   within D roads of a soldier. Print the minimum D.
 // Solution: the soldiers needed fall as D grows, so bisect D. For a fixed D, go from the

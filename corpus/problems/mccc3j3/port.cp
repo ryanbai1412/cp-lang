@@ -1,5 +1,6 @@
 // Source: Mock CCC '22 Contest 1 J3 (String Crossing Maximization),
 //   https://dmoj.ca/problem/mccc3j3
+// limits: 600 ms, 256 MB
 // Problem: uppercase strings S and T, |S|, |T| <= 1e6. A crossing is a pair (i, j) with
 //   S_i = T_j. Change at most one character of T; print the most crossings.
 // Solution: crossings are sum over letters c of cntS[c] * cntT[c]. Changing a T letter x into y

@@ -1,5 +1,6 @@
 // Source: Mock CCC '22 Contest 2 S1 (Kaguya Wants to Let Ishigami Pass),
 //   https://dmoj.ca/problem/nccc10s1
+// limits: 250 ms, 1024 MB
 // Problem: n <= 1000 students' answers to k <= 10 true/false questions. Choose the answer key
 //   that maximises the lowest score; print that score.
 // Solution: try all 2^k keys; a key's value is the lowest score any student gets on it.

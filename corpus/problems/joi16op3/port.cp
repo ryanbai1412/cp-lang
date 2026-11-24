@@ -1,4 +1,5 @@
 // Source: JOI Open 2016, Skyscraper, https://dmoj.ca/problem/joi16op3
+// limits: 1000 ms, 512 MB
 // Problem: N <= 100 distinct heights <= 1000. Count the orders of the buildings whose sum of
 //   |neighbour height differences| is <= L (L <= 1000), mod 1e9+7.
 // Solution: insert buildings from the shortest up into a row of groups. ways[g, c, e] has g

@@ -1,4 +1,5 @@
 // Source: Mock CCC '23 Contest 1 J4 (String Decryption), https://dmoj.ca/problem/mccc5j4
+// limits: 1000 ms, 512 MB
 // Problem: N <= 1e9 and a string S (|S| <= 1e5) of lowercase letters and asterisks. Replace
 //   each asterisk with a letter so the sum of letter values (a = 1, ..., z = 26) is N; print
 //   the lexicographically smallest result, or `Impossible`.

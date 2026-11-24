@@ -1,11 +1,12 @@
 // Source: Mock CCC '23 Contest 1 J5 (Calculus Problem), https://dmoj.ca/problem/mccc5j5
+// limits: 1000 ms, 512 MB
 // Problem: N <= 1e6 problems worth d_0..d_{N-1} points and Q <= 5e5 people (m_j < N,
 //   k_j <= 1e6); person j can solve problem i iff m_j xor i <= k_j. For each person print the
 //   most points of a problem they can solve.
 // Solution: the i with m xor i <= k are i = m xor k itself and, for each 1 bit d of k, the
 //   aligned block of 2^d indices whose m xor i agrees with k above bit d and has a 0 at d.
 //   A max sparse table answers each block in O(1). O(N log N + Q log k).
-// Bounds: n: 1..=1e6; q: 1..=5e5; points: 0..=2_147_483_647
+// Bounds: n: 1..=1e6; q: 1..=5e5; points: 0..=2_147_483_647; m: 0..=n - 1; k: 0..=1e6
 // original: corpus/submissions/5333196.cpp
 let (n, q): (1..=1_000_000, 1..=500_000) = read()
 domain Problem = 0..n

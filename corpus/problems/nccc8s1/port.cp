@@ -1,4 +1,5 @@
 // Source: Mock CCC '21 S1 (Edit Distance), https://dmoj.ca/problem/nccc8s1
+// limits: 250 ms, 1024 MB
 // Problem: an alphabet and a word s (|s| <= 100): print, sorted and without repeats, every word
 //   other than s one edit away: delete a letter, replace one, or insert a letter of the
 //   alphabet anywhere.

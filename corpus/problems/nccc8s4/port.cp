@@ -1,4 +1,5 @@
 // Source: Mock CCC '21 S4 (Infinite Molecule), https://dmoj.ca/problem/nccc8s4
+// limits: 250 ms, 1024 MB
 // Problem: N <= 4e4 square atom types, each with four side labels in -26..=26 (clockwise).
 //   Atoms join along a side whose two labels are nonzero and sum to 0; they may be rotated and
 //   reflected, with unlimited copies. Print 1 if an infinite molecule can be built, else 0.
