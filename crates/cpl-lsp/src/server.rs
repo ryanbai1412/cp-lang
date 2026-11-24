@@ -1312,10 +1312,12 @@ fn offered_lines(text: &str, outline: &Outline) -> String {
             let Some(member) = line.strip_prefix("  ") else {
                 return true;
             };
-            let member = member.strip_prefix("fn ").unwrap_or(member);
-            let word = member
-                .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-                .next();
+            // The member's name: its first identifier, after any `fn`.
+            let word = cpl_syntax::lex(member)
+                .tokens
+                .into_iter()
+                .find(|t| t.kind == cpl_syntax::TokenKind::Ident)
+                .map(|t| &member[t.span.start as usize..t.span.end as usize]);
             members
                 .iter()
                 .find(|m| Some(m.name.as_str()) == word)

@@ -64,6 +64,9 @@ pub struct Entry {
     pub public: bool,
     /// The declaration's header, or a fn's whole signature, on one line.
     pub detail: String,
+    /// What it gives as a value, as written: a field's type, a fn's
+    /// return type; empty when not written.
+    pub ty: String,
     pub doc: String,
     /// A fn's parameters, without `self`.
     pub params: Vec<Param>,
@@ -73,6 +76,15 @@ pub struct Entry {
     /// The std module the host hasn't given yet that this comes from, and
     /// the type it is a member of: its docs come with `completionItem/resolve`.
     pub origin: Option<(String, Option<String>)>,
+}
+
+impl Entry {
+    /// The type a fn, method or getter returns, when it is written.
+    pub fn ret(&self) -> Option<&str> {
+        Some(self.ty.as_str()).filter(|ty| {
+            !ty.is_empty() && matches!(self.kind, Kind::Fn | Kind::Method | Kind::Getter)
+        })
+    }
 }
 
 #[derive(Default, Debug)]
@@ -248,6 +260,7 @@ impl Reader<'_> {
             .into_iter()
             .map(|(name, span, kind)| Entry {
                 name,
+                ty: String::new(),
                 kind,
                 public: stmt.public,
                 detail: self.header(span),
@@ -263,6 +276,7 @@ impl Reader<'_> {
     fn entry(&self, stmt: &Stmt, in_type: bool) -> Option<Entry> {
         let entry = |name: &cpl_syntax::ast::Name, kind: Kind, detail: String| Entry {
             name: name.text.clone(),
+            ty: String::new(),
             kind,
             public: stmt.public,
             detail,
@@ -281,6 +295,10 @@ impl Reader<'_> {
                     _ => Kind::Fn,
                 };
                 let mut e = entry(&f.name, kind, squash(self.slice(f.sig_span)));
+                e.ty = f
+                    .ret
+                    .as_ref()
+                    .map_or(String::new(), |t| squash(self.slice(t.span)));
                 e.instance = in_type && takes_self(f);
                 e.params = f
                     .params
@@ -307,6 +325,7 @@ impl Reader<'_> {
                     .iter()
                     .map(|f| Entry {
                         name: f.name.text.clone(),
+                        ty: squash(self.slice(f.ty.span)),
                         kind: Kind::Field,
                         public: f.public,
                         detail: format!("{}: {}", f.name.text, squash(self.slice(f.ty.span))),
@@ -330,6 +349,7 @@ impl Reader<'_> {
                     .iter()
                     .map(|f| Entry {
                         name: f.name.text.clone(),
+                        ty: squash(self.slice(f.ty.span)),
                         kind: Kind::Field,
                         public: f.public,
                         detail: format!("{}: {}", f.name.text, squash(self.slice(f.ty.span))),
@@ -363,6 +383,7 @@ impl Reader<'_> {
                         };
                         Entry {
                             name: v.name.text.clone(),
+                            ty: String::new(),
                             kind: Kind::Variant,
                             public: true,
                             detail,
@@ -428,4 +449,24 @@ fn leading_comment(text: &str) -> String {
         .map(|l| l.trim_start_matches('/').trim_start_matches('!').trim())
         .collect();
     lines.join("\n").trim().to_string()
+}
+
+#[cfg(test)]
+mod entry_type_tests {
+    use super::*;
+
+    #[test]
+    fn an_entry_carries_its_written_type_from_the_syntax() {
+        let outline = Outline::of_source(
+            "struct P:\n    x: Map<Int, List<Int>>\n    fn far(self, by: Int) -> List<Int> = [self.x.len + by]\nfn none(k: Int):\n    print(k)\n",
+        );
+        let p = outline.entries.iter().find(|e| e.name == "P").unwrap();
+        let x = p.members.iter().find(|m| m.name == "x").unwrap();
+        assert_eq!(x.ty, "Map<Int, List<Int>>");
+        assert_eq!(x.ret(), None);
+        let far = p.members.iter().find(|m| m.name == "far").unwrap();
+        assert_eq!(far.ret(), Some("List<Int>"));
+        let none = outline.entries.iter().find(|e| e.name == "none").unwrap();
+        assert_eq!(none.ret(), None);
+    }
 }
