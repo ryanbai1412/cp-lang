@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/ioi14p5/orig.cpp"
+  ],
   "port": [
    "corpus/problems/ioi14p5/port.cp"
   ]
