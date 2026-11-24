@@ -1010,7 +1010,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                return Ty::Unknown;
+                return self.domain_impl_member(&base_ty, &name.text);
             }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {

@@ -1716,15 +1716,7 @@ impl<'a> Lowerer<'a> {
             // `rev` of its own is its own reverse.
             (_, "rev") if args.is_empty() => value,
             _ => {
-                let prim = self
-                    .prim_methods
-                    .iter()
-                    .find(|(t, m, _)| *t == ty && m == method)
-                    .map(|p| p.2);
-                if let Some(fid) = prim
-                    .or_else(|| self.optional_impl_method(&ty, method))
-                    .or_else(|| self.fn_impl_method(&ty, method))
-                {
+                if let Some(fid) = self.value_impl_method(&ty, method) {
                     let mut all_args = vec![ast::Arg {
                         name: None,
                         mutable: false,

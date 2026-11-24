@@ -944,19 +944,7 @@ impl<'a> Lowerer<'a> {
             }
             // Default `Target::to` trait getter on plain values (e.g. vertices yielded by `u => adj[u]`).
             (_, "to") => value,
-            // Default `Hashable::hash_token` trait getter (`Int(self)`).
-            (Ty::Int, "hash_token") => value,
-            (Ty::Char, "hash_token") => self.cast(Cast::CharToInt, value, Ty::Int),
-            (Ty::Bool, "hash_token") => self.mk(
-                ExprKind::If(
-                    Box::new(value),
-                    Box::new(self.int_lit(1, span)),
-                    Box::new(self.int_lit(0, span)),
-                ),
-                Ty::Int,
-                span,
-            ),
-            (Ty::Pos(_), "hash_token") => self.cast(Cast::Ord, value, Ty::Int),
+            // `Hashable::hash_token` of a position, until a blanket domain impl's getter reaches it.
             // A number's math reads either way: `sqrt(x)` or `x.sqrt`.
             (Ty::Float, "sqrt") => self.mk(
                 ExprKind::Builtin(Builtin::Sqrt, vec![value]),
@@ -986,6 +974,18 @@ impl<'a> Lowerer<'a> {
                 span,
             ),
             _ => {
+                // A getter an impl gives a non-struct type (`'a'.hash_token`, `v.tk` for a domain).
+                if let Some(fid) = self.value_impl_method(&ty, &name.text) {
+                    if self.sigs[fid].decl.params.len() == 1 {
+                        self.cx.pending.truncate(recv_mark);
+                        let recv = ast::Arg {
+                            name: None,
+                            mutable: false,
+                            value: base.clone(),
+                        };
+                        return self.user_call(fid, None, &[recv], span);
+                    }
+                }
                 // UFCS `@get` free function (e.g. `p.adj4`, `g.transposed`, `g.flipped`).
                 if let Some(res) =
                     self.try_ufcs_call(&name.text, base, &[], span, Some(recv_mark), None)
