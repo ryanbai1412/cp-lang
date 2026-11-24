@@ -22,9 +22,9 @@ let ones_before: [Col, Row.cuts]Int = [Col, Row.cuts] (c, k) => column_ones[c].a
 fn flips(c: Col, a: Row.cuts, s: Row.cuts, b: Row.cuts) -> Int =
     (ones_before[c, s] - ones_before[c, a]) + (Int(b) - Int(s)) - (ones_before[c, b] - ones_before[c, s])
 
-var fewest: [Row.cuts, Row.cuts]Int = 0
+var fewest: [Row.cuts, Row.cuts]0..=5e4 = 0  // at most n m flips
 for c in Col.rev:
-    var here: [Row.cuts, Row.cuts]Int = 0
+    var here: [Row.cuts, Row.cuts]0..=5e4 = 0
     var turn: [Row.cuts, Row.cuts]Row.cuts = Row.cuts.first!
     for span in (2..=n).rev:
         for a in Row.cuts:
