@@ -564,6 +564,7 @@ impl Checker<'_> {
                     ),
                 }
             }
+            ("dict", []) => ("Map()".to_string(), "an empty map is written"),
             ("input", []) => (
                 "read_line()".to_string(),
                 "a line is read with `read_line` (a value with `read()`)",
@@ -722,25 +723,34 @@ impl Checker<'_> {
         }
     }
 
-    /// `var m: Map<K, V> = {}`: braces make a block, so the empty container
+    /// `var m: Map<K, V> = {}` or `var d = {}`: braces make a block, so the empty container
     /// is reported as one, with its spelling as the fix.
-    pub(super) fn empty_braces(&mut self, declared: &Ty, init: &Expr) {
-        let empty = match declared {
-            Ty::Named { name, .. } if name == "Map" => "[:]",
-            Ty::Named { name, .. } if name == "Set" => "Set()",
-            Ty::Named { name, .. } if name == "List" => "[]",
+    pub(super) fn empty_braces(&mut self, declared: Option<&Ty>, init: Option<&Expr>) {
+        let Some(init) = init else { return };
+        let (empty, kind, help) = match declared {
+            Some(d @ Ty::Named { name, .. }) if name == "Map" => ("[:]", d.to_string(), ""),
+            Some(d @ Ty::Named { name, .. }) if name == "Set" => ("Set()", d.to_string(), ""),
+            Some(d @ Ty::Named { name, .. }) if name == "List" => ("[]", d.to_string(), ""),
+            // `d = {}` with no type: Python's empty dict.
+            None => (
+                "Map()",
+                "map".to_string(),
+                "; its key and value types come from how it is used",
+            ),
             _ => return,
         };
-        let braces = self.text(init.span).split_whitespace().collect::<String>() == "{}";
-        let Some(diag) = self
-            .sink
-            .last_mut()
-            .filter(|d| braces && d.span == init.span)
-        else {
+        if self.text(init.span).split_whitespace().collect::<String>() != "{}" {
+            return;
+        }
+        let reported = |c: &mut Self| c.sink.last_mut().is_some_and(|d| d.span == init.span);
+        if declared.is_none() && !reported(self) {
+            self.error(codes::TYPE_MISMATCH, init.span, String::new());
+        }
+        let Some(diag) = self.sink.last_mut().filter(|d| d.span == init.span) else {
             return;
         };
-        diag.message = format!("`{{}}` is an empty block in CP Lang, not an empty {declared}");
-        diag.help = Some(format!("an empty {declared} is `{empty}`"));
+        diag.message = format!("`{{}}` is an empty block in CP Lang, not an empty {kind}");
+        diag.help = Some(format!("an empty {kind} is `{empty}`{help}"));
         diag.fix(format!("write `{empty}`"), init.span, empty);
     }
 

@@ -1043,11 +1043,11 @@ impl<'a> Checker<'a> {
                     } else {
                         self.expect_moves(init_ty, declared, init, message);
                     }
-                    self.empty_braces(declared, init);
                 }
                 let guessed = declared.is_none()
                     && self.sink.encloses_poison(stmt.span)
                     && crate::db::head_leaves_open(self.src, stmt);
+                self.empty_braces(declared.as_ref(), init.as_ref());
                 if declared.is_none() && !guessed {
                     let is_bare_none = matches!(
                         init,

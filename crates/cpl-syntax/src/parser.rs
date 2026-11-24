@@ -669,10 +669,26 @@ impl<'a> Parser<'a> {
         self.error(diag);
     }
 
-    /// `{k: v}` (`Some(None)`) or `{x for x in xs}` on one line: a map or
-    /// set, not a block.
-    fn brace_literal(&self) -> Option<Option<&'static crate::planned::Planned>> {
+    /// `{1, 2}`, a set written the other languages' way: `Set([1, 2])`.
+    fn brace_set(&mut self, span: Span, open: Span, close: Span) {
+        let mut diag = Diagnostic::error(
+            codes::REMOVED_SYNTAX,
+            span,
+            "a set is made from a list, `Set([a, b])`, not written in braces",
+        )
+        .with_help("braces make a block; brackets make lists and maps");
+        diag.fixes.push(cpl_diag::Fix {
+            title: "write `Set([..])`".into(),
+            edits: vec![(open, "Set([".into()), (close, "])".into())],
+        });
+        self.error(diag);
+    }
+
+    /// `{k: v}` (`Some(None)`), `{x for x in xs}` or `{a, b}` on one line:
+    /// a map or set, not a block.
+    fn brace_literal(&self) -> Option<Brace> {
         let (mut depth, mut colon, mut comp, mut keyword) = (0u32, false, false, false);
+        let mut comma = false;
         for (i, t) in self.tokens.iter().enumerate().skip(self.pos) {
             match t.kind {
                 T::LParen | T::LBracket | T::LBrace => depth += 1,
@@ -680,9 +696,11 @@ impl<'a> Parser<'a> {
                     depth -= 1;
                     if depth == 0 {
                         return if comp && !colon {
-                            Some(Some(&crate::planned::BRACE_SET))
+                            Some(Brace::Planned(&crate::planned::BRACE_SET))
                         } else if colon {
-                            Some(None)
+                            Some(Brace::Map)
+                        } else if comma && !keyword {
+                            Some(Brace::Set)
                         } else {
                             None
                         };
@@ -696,11 +714,19 @@ impl<'a> Parser<'a> {
                     keyword = true
                 }
                 T::For | T::In if depth == 1 && i > self.pos + 1 => comp = true,
+                T::Comma if depth == 1 => comma = true,
                 _ => {}
             }
         }
         None
     }
+}
+
+/// What a one-line `{ .. }` in a value's place was meant to be.
+enum Brace {
+    Map,
+    Set,
+    Planned(&'static crate::planned::Planned),
 }
 
 /// Finds the token after the bracket group that opens at `tokens[open]`.

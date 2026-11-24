@@ -1297,14 +1297,15 @@ impl<'a> Parser<'a> {
                 ExprKind::Error
             }
             T::LBrace if self.brace_literal().is_some() => {
-                let planned = self.brace_literal().unwrap();
+                let brace = self.brace_literal().unwrap();
                 let open = self.span();
                 self.pos = after_group(self.tokens, self.pos);
                 let span = self.span_from(start);
                 let close = Span::new(span.end - 1, span.end);
-                match planned {
-                    Some(planned) => self.planned(span, planned),
-                    None => self.brace_map(span, open, close),
+                match brace {
+                    Brace::Planned(planned) => self.planned(span, planned),
+                    Brace::Map => self.brace_map(span, open, close),
+                    Brace::Set => self.brace_set(span, open, close),
                 }
                 ExprKind::Error
             }
