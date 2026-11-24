@@ -62,6 +62,15 @@ fn sites(src: &str) -> (Vec<usize>, Vec<usize>) {
     (names, dots)
 }
 
+/// Go to definition over first uses of names: how many it asked, how many
+/// answered with a location, and the names it left unresolved.
+#[derive(Default)]
+struct Definitions {
+    asked: usize,
+    resolved: usize,
+    misses: std::collections::BTreeMap<String, usize>,
+}
+
 /// Opens `src`, asks hover and definition at every first use of a name and
 /// completion after every `name.`, then closes it. Records each missing or
 /// failed reply, each diagnostic outside the text, and each request slower
@@ -73,6 +82,7 @@ fn walk(
     name: &str,
     src: &str,
     failures: &mut Vec<String>,
+    defs: &mut Definitions,
 ) -> bool {
     let uri = format!("file:///ports/{name}");
     let doc = || obj([("uri", uri.as_str().into())]);
@@ -138,6 +148,23 @@ fn walk(
             failures.push(format!("{name}: {method} at byte {at}: {reply:.200}"));
         }
         stores |= method == "textDocument/hover" && reply.contains("storage:");
+        let word: String = src[at..]
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .collect();
+        // `1_000` and `2e5` are numbers, not names.
+        let in_number = src[..at].ends_with(|c: char| c.is_ascii_digit());
+        let a_name = !in_number
+            && !cpl_syntax::KEYWORDS.contains(&word.as_str())
+            && !cpl_syntax::LITERAL_WORDS.contains(&word.as_str());
+        if method == "textDocument/definition" && a_name {
+            defs.asked += 1;
+            if reply.contains("\"uri\"") {
+                defs.resolved += 1;
+            } else {
+                *defs.misses.entry(word).or_default() += 1;
+            }
+        }
     }
     server.handle(&message(
         None,
@@ -172,6 +199,7 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
     let mut id = 1;
     let mut failures = Vec::new();
     let mut storage = 0;
+    let mut defs = Definitions::default();
     for pid in &ids {
         let src =
             std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
@@ -181,6 +209,7 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
             &format!("{pid}.cp"),
             &src,
             &mut failures,
+            &mut defs,
         ));
     }
     assert!(
@@ -189,6 +218,21 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
         failures.len(),
         failures.join("\n")
     );
+    let mut misses: Vec<_> = defs.misses.iter().collect();
+    misses.sort_by_key(|(w, n)| (std::cmp::Reverse(**n), (*w).clone()));
+    for (word, n) in misses.iter().take(40) {
+        println!("no definition {n:4}  {word}");
+    }
+    let permille = defs.resolved * 1000 / defs.asked.max(1);
+    println!(
+        "definition: {}/{} first uses of a name = {}.{}%",
+        defs.resolved,
+        defs.asked,
+        permille / 10,
+        permille % 10
+    );
+    // In tenths of a percent; raise it as definition reaches more names.
+    assert!(permille >= 645, "definition fell to {permille} permille");
     assert!(
         storage >= 88,
         "only {storage} of 100 ports show storage on some hover"
@@ -243,7 +287,14 @@ fn every_corpus_program_and_conformance_case_is_served() {
                             .unwrap()
                             .to_string_lossy()
                             .replace('/', "_");
-                        walk(&mut server, &mut id, &name, &src, &mut failures);
+                        walk(
+                            &mut server,
+                            &mut id,
+                            &name,
+                            &src,
+                            &mut failures,
+                            &mut Definitions::default(),
+                        );
                     }
                     failures
                 })
