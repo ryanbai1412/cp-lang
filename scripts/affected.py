@@ -318,6 +318,43 @@ def select(paths, dirs):
     return sel
 
 
+PUB_FN_RE = re.compile(r"^[-+]\s*pub\s+fn\s+(\w+)\s*[(<\[]")
+CALLER_GLOBS = ("spec/conformance/*.cp", f"{PACKAGES}/*/*.cp")
+
+
+def changed_pub_fns(diff):
+    """The std `pub fn`s whose signature line a -U0 diff changes (8f1685382 made splice's
+    `other` mut, and the cases calling it went red only on main)."""
+    lines = [ln for ln in diff.splitlines() if not ln.startswith(("+++", "---"))]
+    removed = {ln[1:].strip() for ln in lines if ln.startswith("-")}
+    added = {ln[1:].strip() for ln in lines if ln.startswith("+")}
+    return sorted({m[1] for ln in lines if (m := PUB_FN_RE.match(ln)) and ln[1:].strip() not in removed & added})
+
+
+def callers(names):
+    """Conformance cases and corpus programs that call one of `names`."""
+    if not names:
+        return []
+    call = re.compile(r"\b(?:" + "|".join(map(re.escape, names)) + r")\s*\(")
+    out = subprocess.run(["git", "ls-files", "-z", "--", *CALLER_GLOBS], cwd=ROOT,
+                         capture_output=True, check=True).stdout
+    files = [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
+    return [f for f in files if os.path.isfile(os.path.join(ROOT, f))
+            and call.search(open(os.path.join(ROOT, f), encoding="utf-8", errors="replace").read())]
+
+
+def std_diff(*revs):
+    return subprocess.run(["git", "diff", "-U0", *revs, "--", "std/*.cp"], cwd=ROOT,
+                          capture_output=True, text=True, check=True).stdout
+
+
+def add_callers(sel, files):
+    for f in files:
+        key = "conform_cases" if f.startswith("spec/conformance/") else "check_files"
+        if f not in sel[key]:
+            sel[key].append(f)
+
+
 def staged():
     out = subprocess.run(["git", "diff", "--cached", "--name-only", "-z"],
                          cwd=ROOT, capture_output=True, check=True).stdout
@@ -337,11 +374,18 @@ def main(argv):
         return run_slices(argv[1:])
     as_json = "--json" in argv
     argv = [a for a in argv if a != "--json"]
+    if argv[:1] == ["--sig-callers"]:
+        print("\n".join(callers(changed_pub_fns(std_diff(argv[1], "HEAD")))))
+        return 0
     if argv[:1] == ["--base"]:
         paths = changed_since(argv[1])
+        diff = (argv[1], "HEAD")
     else:
         paths = argv or staged()
+        diff = () if argv else ("--cached",)
     sel = select(paths, crate_dirs())
+    if any(p.startswith("std/") and p.endswith(".cp") for p in paths) and (argv[:1] == ["--base"] or not argv):
+        add_callers(sel, callers(changed_pub_fns(std_diff(*diff))))
     if as_json:
         print(json.dumps(sel))
         return 0

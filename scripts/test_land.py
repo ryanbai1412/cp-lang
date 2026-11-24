@@ -212,6 +212,30 @@ class LandTest(unittest.TestCase):
                 git(ours, "rm", "-q", case)
                 self.commit(ours, "drop " + case)
 
+    def test_a_std_change_runs_the_traits_gate_and_the_signature_callers(self):
+        ours = self.clone("ours")
+        (ours / "scripts" / "spec-gate.py").write_text(
+            "import sys, pathlib\nsys.exit(1 if 'Bad' in pathlib.Path('std/a.cp').read_text() else 0)\n")
+        (ours / "scripts" / "affected.py").write_text(
+            "print('spec/conformance/c.cp')\n")
+        (ours / "scripts" / "conform_staged.py").write_text(
+            "import sys\nprint('cases', *sys.argv[1:], file=sys.stderr)\n")
+        (ours / "spec" / "conformance").mkdir(parents=True, exist_ok=True)
+        (ours / "spec" / "conformance" / "c.cp").write_text("x\n")
+        self.commit(ours, "gates")
+        git(ours, "push", "-q", "origin", "HEAD:main")
+        (ours / "std").mkdir(exist_ok=True)
+        (ours / "std" / "a.cp").write_text("impl Bad for X:\n")
+        self.commit(ours, "a std impl with no case")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("no spec/conformance/traits.toml case", r.stderr)
+        (ours / "std" / "a.cp").write_text("pub fn f(mut x: Int):\n")
+        self.commit(ours, "a signature")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("cases --build spec/conformance/c.cp", r.stderr)
+
     def test_pending_cases_refuse_uncommitted_compiler_changes(self):
         ours = self.clone("ours")
         (ours / "crates").mkdir()

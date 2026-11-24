@@ -165,7 +165,21 @@ if [ -s "$pending" ]; then
 fi
 # The staged conformance cases a hook's cut skipped, against what lands: 4aaa8b0db
 # landed a case without the codegen fix its author had left unstaged.
+# Checks too quick to leave to a hook a cut may have skipped (7e3ff18e1 landed
+# a std trait with no traits.toml case while its hook was cut).
+std_changed=$(git diff --name-only FETCH_HEAD HEAD -- 'std/*.cp' spec/conformance/traits.toml)
+if [ -n "$std_changed" ] && [ -f scripts/spec-gate.py ]; then
+    uv run --quiet python scripts/spec-gate.py traits >&2 ||
+        { echo "land: a std trait impl has no spec/conformance/traits.toml case; write it, then: scripts/spec-gate.py traits --write" >&2; exit 1; }
+fi
 pending_cases="$(git rev-parse --git-common-dir)/cpl-pending-cases"
+# A std pub fn signature change runs every case and corpus program that calls
+# it (8f1685382 changed splice and three cases went red on main).
+sig_callers=
+if [ -n "$std_changed" ] && [ -f scripts/affected.py ]; then
+    sig_callers=$(uv run --quiet python scripts/affected.py --sig-callers FETCH_HEAD)
+    printf '%s\n' $sig_callers | grep '^spec/conformance/' >>"$pending_cases" || :
+fi
 if [ -s "$pending_cases" ]; then
     cases=$(sort -u "$pending_cases" | while read -r c; do [ ! -f "$c" ] || echo "$c"; done | tr '\n' ' ' | sed 's/ $//')
     if [ -n "$cases" ]; then
@@ -176,6 +190,14 @@ if [ -s "$pending_cases" ]; then
             { echo "land: a staged conformance case fails at the rebased tip; fix it and land again: uv run scripts/conform_staged.py --build $cases" >&2; exit 1; }
     fi
     rm -f "$pending_cases"
+fi
+sig_programs=$(printf '%s\n' $sig_callers | grep -v '^spec/conformance/' | tr '\n' ' ' | sed 's/ $//') || :
+if [ -n "$sig_programs" ]; then
+    echo "land: cpl check of the corpus programs that call a changed std signature: $sig_programs" >&2
+    cargo build -q -p cpl-cli && for f in $sig_programs; do
+        "${CARGO_TARGET_DIR:-target}/debug/cpl" check "$f" >&2 ||
+            { echo "land: $f no longer checks against the changed std signature; update it in this change" >&2; exit 1; }
+    done
 fi
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
