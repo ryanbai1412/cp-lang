@@ -51,11 +51,15 @@ fn solve():
         print(q)
         return
     var used: [Val]Bool = false
-    for i in Pos.first..first_diff: used[q[i]] = true
+    for i in Pos.first!..first_diff: used[q[i]] = true
 
     // Earliest P-position among unused values <= v.
     let unused_pos: [Val]?Pos = [Val] v => if not used[v]: Some(inv_p[v]) else: None
-    let pref_min = unused_pos.scan((a, b) => [a, b].somes.min())
+    var pref_min: [Val]?Pos = None
+    var low: ?Pos = None
+    for v in Val:
+        low = [low, unused_pos[v]].present().min()
+        pref_min[v] = low
 
     var conds = CondStack()
 
@@ -101,7 +105,7 @@ fn solve():
     // Match Q as far as possible; on the first failure, step q[i] down and return the suffix start.
     fn match_prefix() -> ?Pos:
         var had_inv = false
-        for i in first_diff..=Pos.last:
+        for i in first_diff..=Pos.last!:
             let next_cap = i.next.map(nxt => q[nxt])
             if can_place(i, q[i], next_cap, had_inv):
                 had_inv = commit_place(i, q[i], next_cap, had_inv)
@@ -113,7 +117,7 @@ fn solve():
 
     if let start = match_prefix():
         var suffix: List<Val> = []
-        var right_end: ?Pos = Some(Pos.last)
+        var right_end: ?Pos = Some(Pos.last!)
         while let cond = conds.items.pop(), let hi_bound = right_end:
             let p_thresh = pref_min[cond.max_v]!
             var max_p = cond.max_p

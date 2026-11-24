@@ -23,15 +23,15 @@ let t = g.spanning_tree()
 let d = t.diameter()
 let half = ceil_div(d.len, 2)
 
-let skips = [[j, i, k] for i in V for (j, k) in List(chain([t.parent(i)].present(), t.children(i))).pairs() if not g[j].contains(k)]
-fn joined(i: V, j: V) -> Bool = g[i].contains(j) or t.dist(i, j) == 2
+let skips = [[j, i, k] for i in V for (j, k) in List(chain([t.parent(i)].present(), t.children(i))).pairs() if not g.has(j, k)]
+fn joined(i: V, j: V) -> Bool = g.has(i, j) or t.dist(i, j) == 2
 
 fn route(i: V, j: V) -> List<V>:
     let p = t.path(i, j)
     let dist = p.len - 1
     if dist >= half:
         let skip = dist - half
-        return [x for x in p[..2 * skip].even] + p[2 * skip..]
+        return p[..2 * skip].even.collect() + p[2 * skip..].collect()
     let far = [d.u, d.v].max(by: f => t.dist(i, f))!
     let mid = t.meet(i, j, far)
     let stem_len = half - dist + 1
