@@ -5,7 +5,7 @@
 // SegTree<P, Flip<Int>, Bool> over flip_action(+) and Flip.op(max), with leaves from Flip.of,
 // against plain arrays of values and on/off bits: seeded random range toggles and point sets,
 // with the on-sum, off-sum and on-max of random ranges checked after each op. Reads `seed n`.
-// std_functions: 3
+// std_functions: 1
 use std.rand.{Rng}
 use std.lazy.{Flip, flip_action}
 let seed0 = read<Int>()

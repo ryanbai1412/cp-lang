@@ -17,7 +17,7 @@
 // model: cmp
 // model: minmax
 // model: opt
-// std_functions: 2
+// std_functions: 1
 use std.rand.{Rng}
 use std.algebra.{Affine, Group, MaxCount, MaxSub, MinCount, Monoid, Semigroup, cmp, desc, each, fold, minmax, point_action, pow}
 

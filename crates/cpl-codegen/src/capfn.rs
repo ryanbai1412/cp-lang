@@ -8,8 +8,39 @@
 
 use crate::devirt::Devirt;
 use crate::walk;
-use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Slot, Stmt};
+use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Slot, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
+
+/// A capture of a value with no representation (an op value like `+`,
+/// a struct of them, `()`) holds nothing: the closure makes its own
+/// (`Let` without an init is the type's zero) and captures nothing, so it
+/// lowers like a captureless closure (R06.2.5).
+pub(crate) fn zero_size_captures(program: &mut Program) {
+    let structs = &program.structs;
+    for def in &mut program.closures {
+        let (empty, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut def.captures)
+            .into_iter()
+            .partition(|cap| {
+                !cap.is_global && !cap.by_ref && zero_size(structs, &def.locals[cap.inner].ty)
+            });
+        def.captures = kept;
+        let lets = empty.iter().map(|cap| Stmt::Let(cap.inner, None));
+        def.body.stmts.splice(0..0, lets);
+    }
+}
+
+fn zero_size(structs: &[cpl_ir::StructDef], ty: &Ty) -> bool {
+    match ty {
+        Ty::Unit => true,
+        Ty::Tuple(items) => items.iter().all(|t| zero_size(structs, t)),
+        Ty::Record(fields) => fields.iter().all(|(_, t)| zero_size(structs, t)),
+        Ty::Struct(s) => structs[*s]
+            .fields
+            .iter()
+            .all(|(_, t)| zero_size(structs, t)),
+        _ => false,
+    }
+}
 
 pub(crate) fn known_captures(program: &mut Program) {
     let mut plan: BTreeMap<(FnId, ClosureId), Vec<(Slot, ClosureId)>> = BTreeMap::new();

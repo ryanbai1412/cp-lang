@@ -197,6 +197,7 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     splice::splice(&mut program);
     unpack::unpack(&mut program);
     optfn::known_options(&mut program);
+    capfn::zero_size_captures(&mut program);
     split::split(&mut program);
     capfn::known_captures(&mut program);
     // A closure `capfn` freed of its capture can now split its struct.

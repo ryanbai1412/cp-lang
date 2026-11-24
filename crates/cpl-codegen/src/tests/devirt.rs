@@ -476,3 +476,14 @@ print(h.pop()!)
         "`by` is one known closure, so the comparator made from it captures nothing:\n{out}"
     );
 }
+
+#[test]
+fn a_closure_capturing_only_zero_size_values_captures_nothing() {
+    let out = cpp("let m = Monoid<(Int, Int, Int)>.of(each(+, max, min))
+print(m.op((1, 2, 3), (4, 0, 9)))
+");
+    assert!(
+        !out.contains("std::function"),
+        "`each(+, max, min)` holds only op values, so its op captures nothing:\n{out}"
+    );
+}
