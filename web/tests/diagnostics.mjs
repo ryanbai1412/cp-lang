@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 ;
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { base, done, open } from "./browser.mjs";
+import { base, done, open, until } from "./browser.mjs";
 import { cplBin } from "../scripts/cpl-bin.mjs";
 
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -37,8 +37,8 @@ async function shownCodes() {
 
 // The first check loads the compiler; it is not what a contestant waits for while typing.
 await editor.click();
-await page.keyboard.insertText(" ");
-await page.waitForTimeout(3000);
+await page.keyboard.insertText(sample[0].trigger);
+await until(shown, 30000);
 const times = [];
 for (const c of sample) {
   await editor.click();

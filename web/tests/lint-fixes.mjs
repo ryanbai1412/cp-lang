@@ -8,7 +8,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { base, done, open } from "./browser.mjs";
+import { base, done, open, until } from "./browser.mjs";
 import { cplBin } from "../scripts/cpl-bin.mjs";
 
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -85,8 +85,8 @@ for (const c of sample) {
     .waitForFunction(() => document.querySelector(".cm-lintRange-warning, .cm-lintRange-info, .cm-lintRange-error"), null, { timeout: 10000 })
     .then(() => true, () => false);
   if (!shown) fail(`${c.code}: \`cpl lint\` raises it on its trigger, the editor shows nothing: ${JSON.stringify(c.trigger)}`);
-  await page.waitForTimeout(300);
-  const codes = await hoverFor(c.code);
+  let codes = [];
+  await until(async () => (codes = await hoverFor(c.code)).includes(c.code), 3000);
   if (!codes.includes(c.code)) fail(`${c.code}: the editor shows ${JSON.stringify(codes)} where \`cpl lint\` raises ${c.code}`);
   for (const fix of c.raised.fixes.slice(0, 1)) {
     const button = page.locator(".cm-tooltip-lint .cm-diagnostic", { has: page.locator(".cm-diagnosticSource", { hasText: c.code }) })

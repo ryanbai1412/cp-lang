@@ -1,7 +1,7 @@
 // Enforces site/R5, site/R6 (handbook/guidelines/site-checklist.md).
 // Hover, completion and go to definition in a site editor come from the
 // language server in the wasm build.
-import { base, done, open } from "./browser.mjs";
+import { base, done, open, until } from "./browser.mjs";
 
 const { page, errors } = await open();
 const fail = (what) => {
@@ -93,12 +93,7 @@ const ctrlClick = async ({ x, y }) => {
 const call = await coords("twice", 1);
 await ctrlClick(call);
 let sel;
-for (
-  let i = 0;
-  i < 60 && !((sel = await selected()).text === "twice" && sel.line === 2);
-  i++
-)
-  await page.waitForTimeout(250);
+await until(async () => (sel = await selected()).text === "twice" && sel.line === 2, 15000);
 if (sel.text !== "twice" || sel.line !== 2)
   fail(`ctrl-click on a call selected ${JSON.stringify(sel)}`);
 console.log("go to definition selects `twice` on line 2");
@@ -135,8 +130,7 @@ await page.reload({ waitUntil: "networkidle" });
 await page.locator(".cm-content").first().click();
 await page.keyboard.press("ControlOrMeta+A");
 await page.keyboard.insertText(source);
-await page.waitForTimeout(1500);
-if (await hints.count()) fail("inlay hints came back after a reload with them off");
+if (await until(() => hints.count(), 1500)) fail("inlay hints came back after a reload with them off");
 await page.getByTitle("Show inlay type hints").click();
 await hints.first().waitFor({ timeout: 30000 }).catch(() => fail("inlay hints don't come back on"));
 console.log("inlay hints switch off, stay off across a reload, and back on");

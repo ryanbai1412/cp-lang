@@ -25,3 +25,15 @@ export function done(code = 0) {
 }
 
 export const RESULT = 'suite-result:';
+
+/** The one wait in the browser suites: polls `ready` until it gives something
+ * truthy or `ms` pass, and returns its last answer. A check that something
+ * does not happen passes `ms` as how long it must stay away. */
+export async function until(ready, ms = 10000) {
+  const end = Date.now() + ms;
+  for (;;) {
+    const got = await ready();
+    if (got || Date.now() >= end) return got;
+    await new Promise((next) => setTimeout(next, 100));
+  }
+}

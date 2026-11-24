@@ -1,7 +1,7 @@
 // Enforces site/R5 (handbook/guidelines/site-checklist.md) for complete/U27-U32:
 // completion works the same in every kind of site editor, says when the
 // compiler isn't there, and fits a phone.
-import { base, done, open } from './browser.mjs';
+import { base, done, open, until } from './browser.mjs';
 
 const { page, errors } = await open();
 const fail = (what) => {
@@ -58,18 +58,20 @@ const example = page.locator('.cm-content[aria-label="CP Lang example"]').first(
 await example.click();
 await page.keyboard.press('ControlOrMeta+End');
 await page.keyboard.press('Control+Space');
-await page.waitForTimeout(1500);
-if (await menu.isVisible()) fail('the read-only reference solution opens a completion menu');
+if (await until(() => menu.isVisible(), 1500)) fail('the read-only reference solution opens a completion menu');
 console.log('read-only example: no menu');
 
 // U30: before cpl.wasm loads the menu says so, then fills in.
+let release;
+const held = new Promise((go) => (release = go));
 await page.route('**/*.wasm', async (r) => {
-  await new Promise((done) => setTimeout(done, 4000));
+  await held;
   await r.continue().catch(() => {});
 });
 await page.goto(base + '/play');
 await typeAtEnd('\nlet xs = [3, 1, 2]\nprint(xs.');
 await shows('loading', (l) => l.length === 1 && /Loading the compiler/.test(l[0]), 4000);
+release();
 await shows('after loading', (l) => l.includes('len'));
 await page.unroute('**/*.wasm');
 console.log('cpl.wasm still loading: the menu says so, then shows the members');

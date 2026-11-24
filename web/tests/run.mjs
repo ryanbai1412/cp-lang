@@ -12,7 +12,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { RESULT } from './browser.mjs';
+import { RESULT, until } from './browser.mjs';
 
 const tests = dirname(fileURLToPath(import.meta.url));
 const out = join(dirname(tests), 'out');
@@ -69,8 +69,14 @@ const browser = process.env.CDP ? null : await chromium.launchServer();
 function runSuite(test) {
   const start = Date.now();
   const env = { ...process.env, BASE: base, ...(browser && { PW_WS: browser.wsEndpoint() }) };
-  const child = spawn(process.execPath, [join(tests, test)], { stdio: ['ignore', 'pipe', 'inherit'], env });
+  const child = spawn(process.execPath, [join(tests, test)], {
+    stdio: ['ignore', 'pipe', 'inherit'],
+    env,
+    timeout: limit * 1000,
+    killSignal: 'SIGKILL',
+  });
   return new Promise((ok) => {
+    let exited = false;
     let verdict = null;
     let why = null;
     let line = '';
@@ -78,7 +84,6 @@ function runSuite(test) {
       why ??= reason;
       child.kill('SIGKILL');
     };
-    const timer = setTimeout(() => kill(`still running after ${limit} s (SUITE_SECONDS)`), limit * 1000);
     child.stdout.on('data', (chunk) => {
       process.stdout.write(chunk);
       line += chunk;
@@ -87,11 +92,12 @@ function runSuite(test) {
       for (const l of lines)
         if (l.startsWith(RESULT) && verdict === null) {
           verdict = l.slice(RESULT.length).trim();
-          setTimeout(() => kill(`printed its result but was still running ${grace} ms later`), grace).unref();
+          until(() => exited, grace).then((gone) => gone || kill(`printed its result but was still running ${grace} ms later`));
         }
     });
     child.on('exit', (code, signal) => {
-      clearTimeout(timer);
+      exited = true;
+      if (signal === 'SIGKILL') why ??= `still running after ${limit} s (SUITE_SECONDS)`;
       const took = ((Date.now() - start) / 1000).toFixed(1);
       why ??= verdict === null ? `exited (${signal ?? code}) without a result line` : null;
       why ??= verdict !== 'pass' || code !== 0 ? `failed (${signal ?? code})` : null;
