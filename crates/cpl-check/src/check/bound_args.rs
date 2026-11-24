@@ -179,15 +179,37 @@ impl Checker<'_> {
             .filter(|(p, _)| p == param)
             .flat_map(|(_, ts)| ts.iter().cloned())
             .collect();
+        let of = Ty::Assoc {
+            of: Box::new(Ty::Param(param.into())),
+            name: assoc.into(),
+        };
         for trait_name in traits {
-            let Some(Def::Trait { assoc: declared, .. }) = self.type_def(&trait_name).as_deref().cloned()
-            else {
-                continue;
-            };
-            let Some((_, bounds, _)) = declared.into_iter().find(|(n, ..)| n == assoc) else {
-                continue;
-            };
             let outer = self.bound_bindings(param, &trait_name);
+            if let Some(ty) = self.assoc_member_in(&trait_name, &outer, (assoc, name, &of), 0) {
+                return Some(ty);
+            }
+        }
+        None
+    }
+
+    /// `name` through `assoc`'s bound in `trait_name` or, for a trait alias
+    /// (`WeightedNext<V, W> = Next<V> ..`), in the trait it names.
+    fn assoc_member_in(
+        &mut self,
+        trait_name: &str,
+        outer: &crate::ty::Bindings,
+        (assoc, name, of): (&str, &str, &Ty),
+        depth: u8,
+    ) -> Option<Ty> {
+        let Some(Def::Trait {
+            assoc: declared,
+            super_args,
+            ..
+        }) = self.type_def(trait_name).as_deref().cloned()
+        else {
+            return None;
+        };
+        if let Some((_, bounds, _)) = declared.into_iter().find(|(n, ..)| n == assoc) {
             for (bound, args) in bounds {
                 let Some(Def::Trait { generics, methods, .. }) = self.type_def(&bound).as_deref().cloned()
                 else {
@@ -197,12 +219,24 @@ impl Checker<'_> {
                     continue;
                 };
                 let mut on = crate::ty::Bindings::default();
-                let of = Box::new(Ty::Param(param.into()));
-                on.insert("Self".into(), Ty::Assoc { of, name: assoc.into() });
+                on.insert("Self".into(), of.clone());
                 for (g, a) in generics.iter().zip(args) {
-                    on.insert(g.clone(), a.subst(&outer));
+                    on.insert(g.clone(), a.subst(outer));
                 }
                 return Some(m.ty.subst(&on));
+            }
+            return None;
+        }
+        for (sup, args) in super_args.into_iter().filter(|_| depth < 8) {
+            let Some(Def::Trait { generics, .. }) = self.type_def(&sup).as_deref().cloned() else {
+                continue;
+            };
+            let mut on = crate::ty::Bindings::default();
+            for (g, a) in generics.iter().zip(args) {
+                on.insert(g.clone(), a.subst(outer));
+            }
+            if let Some(ty) = self.assoc_member_in(&sup, &on, (assoc, name, of), depth + 1) {
+                return Some(ty);
             }
         }
         None

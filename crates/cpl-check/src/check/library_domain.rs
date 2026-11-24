@@ -25,6 +25,12 @@ impl Checker<'_> {
             }
             return Ty::Error;
         }
+        // `for v in V` with `V` a generic domain walks its positions.
+        if let (ExprKind::Name(n), Ty::Param(p)) = (&iter.kind, iter_ty) {
+            if n == p && self.generics.contains(p) {
+                return iter_ty.clone();
+            }
+        }
         match self.library_domain_walk(iter) {
             Some(ty) => ty,
             None => self.element_ty(iter_ty),

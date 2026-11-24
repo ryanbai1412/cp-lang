@@ -105,6 +105,8 @@ pub enum Def {
         generics: Vec<String>,
         /// `trait Seq: Index + Ord` lists `Index` and `Ord`.
         supers: Vec<String>,
+        /// Each super with its arguments: `= Next<V> where ..` gives `Next`, `[V]`.
+        super_args: Vec<(String, Vec<Ty>)>,
         methods: Vec<TraitMethod>,
         fields: Vec<(String, Ty)>,
         /// `trait Both = Sh + Nm` (R08.2.6).
