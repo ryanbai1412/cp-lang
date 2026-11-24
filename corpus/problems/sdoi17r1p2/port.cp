@@ -7,7 +7,7 @@
 //   max SegTree over preorder; each switch of a preferred child adds 1 to the subtree it
 //   leaves and takes 1 from the one it joins (amortised O(log n) switches, each O(log n)).
 //   Query 2 is f[x] + f[y] - 2 f[lca] + 1, query 3 the max of f over sub(x).
-// Bounds: n, q: 1..=1e5
+// Bounds: n, q: 1..=1e5; t.u, t.v: 1..=n
 // original: corpus/submissions/5463990.cpp
 let (n, q): (1..=1e5, 1..=1e5) = read()
 domain V = 1..=n
