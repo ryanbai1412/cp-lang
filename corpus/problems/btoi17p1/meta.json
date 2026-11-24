@@ -14,5 +14,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the AC submission corpus/submissions/4456179.cpp with its clique search made O(2^m) over adjacency masks: its O(2^m m^2) DP took 11.8 s on the --max input (every window of ten members a clique), over the 1 s limit. It agrees with the submission on 300 generated inputs (gen.py seeds 1..300)."
 }
