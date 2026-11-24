@@ -1092,7 +1092,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `RingRange`
 - **search** (9/9 named by a case)
 - **segtree** (55/55 named by a case)
-- **seq** (213/220 named by a case)
+- **seq** (212/219 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rebased`, `StepKeys`, `SubseqStep`, `Ring`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
