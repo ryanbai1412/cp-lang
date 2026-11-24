@@ -16,16 +16,14 @@ domain Col = 1..=m
 domain Cell = (Row, Col)
 var paint: [Row, Col]0..=1e9 = read()
 
-var queue = [p for p in Cell if paint[p] != 0].sorted(by: p => paint[p])
-var dist: [Row, Col]Int = -1
-for p in queue: dist[p] = 0
-var head = 0
-while head < queue.len:
-    let u = queue[head]
-    head += 1
-    if dist[u] == k: continue
-    for v in u.adj4 if dist[v] < 0:
-        dist[v] = dist[u] + 1
-        paint[v] = paint[u]
-        queue.push(v)
+// Breadth first by rounds from the painted cells in colour order: an unpainted cell takes
+// the colour of the first cell to reach it, so its colour also marks it seen.
+var front = [p for p in Cell if paint[p] != 0].sorted(by: p => paint[p])
+repeat k:
+    var next: List<Cell> = []
+    for u in front:
+        for v in u.adj4 if paint[v] == 0:
+            paint[v] = paint[u]
+            next.push(v)
+    front = next
 print(paint)
