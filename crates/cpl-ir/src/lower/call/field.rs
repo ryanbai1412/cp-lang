@@ -354,6 +354,12 @@ impl<'a> Lowerer<'a> {
         let builtin = |lw: &mut Self, op: Builtin, args: Vec<Expr>, ty: Ty| {
             lw.mk(ExprKind::Builtin(op, args), ty, span)
         };
+        // A domain reached through a value (`vt.K`) has a named domain's members.
+        if let ExprKind::DomainVal(id) = value.kind {
+            if !matches!(name.text.as_str(), "len" | "size" | "count") {
+                return self.domain_field(id, name, hint, span);
+            }
+        }
         match (&ty, name.text.as_str()) {
             (Ty::Error, _) => value,
             (Ty::Struct(id), method) if self.structs[*id].methods.contains_key(method) => {
@@ -883,13 +889,10 @@ impl<'a> Lowerer<'a> {
             (Ty::Char, "ord" | "idx") => self.cast(Cast::CharToInt, value, Ty::Int),
             (Ty::Pos(d), "len" | "count") => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
             (Ty::DomainVal, "first") => {
-                let dom_id = match value.kind {
-                    ExprKind::DomainVal(id) => Some(id),
-                    _ => self.gen_env.values().find_map(|ga| match ga {
-                        GenArg::Domain(id) => Some(*id),
-                        _ => None,
-                    }),
-                };
+                let dom_id = self.gen_env.values().find_map(|ga| match ga {
+                    GenArg::Domain(id) => Some(*id),
+                    _ => None,
+                });
                 if let Some(id) = dom_id {
                     self.mk(
                         ExprKind::Cast(Cast::Trust, Box::new(self.int_lit(0, span))),
@@ -901,13 +904,10 @@ impl<'a> Lowerer<'a> {
                 }
             }
             (Ty::DomainVal, "last") => {
-                let dom_id = match value.kind {
-                    ExprKind::DomainVal(id) => Some(id),
-                    _ => self.gen_env.values().find_map(|ga| match ga {
-                        GenArg::Domain(id) => Some(*id),
-                        _ => None,
-                    }),
-                };
+                let dom_id = self.gen_env.values().find_map(|ga| match ga {
+                    GenArg::Domain(id) => Some(*id),
+                    _ => None,
+                });
                 if let Some(id) = dom_id {
                     let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                     let last = self.int_add(len, -1);
