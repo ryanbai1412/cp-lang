@@ -612,12 +612,12 @@ def declared_bounds(text):
 
 
 def bound_value(text):
-    """A bound as a number, or None when it names an input (`n`, `n * m`)."""
+    """A bound as a number, or None when it names an input (`n`, `n * m`); `/` divides as Int does."""
     t = text.replace("_", "").replace("^", "**").replace(" ", "")
     if not re.fullmatch(r"[-+*/().0-9e]+", t) or re.search(r"[a-df-z]", t):
         return None
     try:
-        return eval(t, {"__builtins__": {}})
+        return eval(t.replace("/", "//"), {"__builtins__": {}})
     except (SyntaxError, ZeroDivisionError, TypeError):
         return None
 

@@ -535,6 +535,13 @@ class MaxShortTest(unittest.TestCase):
         self.assertEqual(corpus.short_of("p", self.REL, {"n": 100000, "m": 50000}),
                          ["max-short p m: --max reads 50000, the statement allows n - 1"])
 
+    def test_a_relative_bound_divides_as_int_does(self):
+        port = "// Bounds: n: 1..=350; k: 1..=(n + 1) / 2\nlet n: 1..=350 = read()\nlet k: 1..=(n + 1) / 2 = read()\n" \
+               "domain Held = 0..=k\n"
+        self.assertEqual(corpus.short_of("p", port, {"n": 350, "k": 175}), [])
+        self.assertEqual(corpus.short_of("p", port, {"n": 350, "k": 174}),
+                         ["max-short p k: --max reads 174, the statement allows (n + 1) / 2"])
+
     def test_a_bound_on_a_product_that_max_reaches_saturates_both_sides(self):
         port = ("// Bounds: r, c: 1..=5e6; r * c: 1..=5e6\nlet r: 1..=5e6 = read()\nlet c: 1..=5e6 = read()\n"
                 "let g: [r][c]Bool = read()\n")
