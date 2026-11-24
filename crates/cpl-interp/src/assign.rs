@@ -15,18 +15,21 @@ pub(super) fn field_mut(holder: &mut Value, index: usize, span: Span) -> Res<&mu
     }
 }
 
+/// The value inside `opt`, boxed first if it is a bare `Int`.
+fn opt_inside_mut(opt: &mut OptVal, span: Span) -> Res<&mut Value> {
+    match opt {
+        OptVal::Boxed(inner) => Ok(Rc::make_mut(inner)),
+        OptVal::None => trap(span, cpl_diag::msgs::interp::THERE_NO_VALUE_HERE_IT.at(&[])),
+        OptVal::Int(v) => {
+            *opt = OptVal::Boxed(Rc::new(Value::Int(*v)));
+            opt_inside_mut(opt, span)
+        }
+    }
+}
+
 pub(super) fn inside_mut(holder: &mut Value, span: Span) -> Res<&mut Value> {
     match holder {
-        Value::Opt(opt) => {
-            if let OptVal::Int(v) = *opt {
-                *opt = OptVal::Boxed(Rc::new(Value::Int(v)));
-            }
-            match opt {
-                OptVal::Boxed(inner) => Ok(Rc::make_mut(inner)),
-                OptVal::None => trap(span, cpl_diag::msgs::interp::THERE_NO_VALUE_HERE_IT.at(&[])),
-                OptVal::Int(_) => unreachable!(),
-            }
-        }
+        Value::Opt(opt) => opt_inside_mut(opt, span),
         Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
         _ => trap(span, cpl_diag::msgs::interp::THERE_NO_VALUE_HERE_IT.at(&[])),
     }
@@ -162,7 +165,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             _ => &mut self.stack[at],
                         }
                     }
-                    _ => unreachable!(),
+                    _ => {
+                        return trap(
+                            place.span,
+                            cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                        )
+                    }
                 };
                 let span = place.span;
                 let cell: &mut Value = match holder {
@@ -265,7 +273,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         // point at, so those two go through their container.
         if let PlaceKind::Index(base, _) = &place.kind {
             if matches!(base.ty, Ty::Str | Ty::Map(..) | Ty::HashMap(..)) {
-                let (key, rest) = indices.split_last().expect("an index");
+                let Some((key, rest)) = indices.split_last() else {
+                    return trap(
+                        place.span,
+                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                    );
+                };
                 let program = self.program;
                 let holder = self.resolve(base, &mut rest.iter())?;
                 match holder {
@@ -303,7 +316,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         // The key's `Ord` runs user code, so the map is out of its place meanwhile.
                         let mut held = std::mem::replace(holder, Value::Moved);
                         let Value::Map(entries) = &mut held else {
-                            unreachable!("matched a map")
+                            *holder = held;
+                            return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
                         };
                         let done = assign_entry(
                             Rc::make_mut(entries),

@@ -372,13 +372,12 @@ impl Cells {
     }
 
     pub fn as_mut_values(&mut self) -> &mut Vec<Value> {
-        if !matches!(self, Cells::Values(_)) {
-            let vals = self.to_values();
-            *self = Cells::Values(vals);
-        }
-        match &mut *self {
+        match self {
             Cells::Values(v) => v,
-            _ => unreachable!(),
+            other => {
+                *other = Cells::Values(other.to_values());
+                other.as_mut_values()
+            }
         }
     }
 

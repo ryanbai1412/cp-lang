@@ -204,16 +204,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             match piece {
                 FmtPiece::Text(bytes) => text.extend_from_slice(bytes),
                 FmtPiece::Value(FmtArg { value, digits }) => {
-                    let v = vals.next().expect("one value per format piece");
+                    let Some(v) = vals.next() else {
+                        return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+                    };
                     self.show_val(&mut text, v, &value.ty, *digits, span)?;
                 }
-                FmtPiece::Number(_, fmt) => {
-                    match vals.next().expect("one value per format piece") {
-                        Value::Int(v) => text.extend(fmt.int(*v).bytes()),
-                        Value::Float(v) => text.extend(fmt.float(*v).bytes()),
-                        _ => unreachable!("a number format takes an Int or an F64"),
-                    }
-                }
+                FmtPiece::Number(_, fmt) => match vals.next() {
+                    Some(Value::Int(v)) => text.extend(fmt.int(*v).bytes()),
+                    Some(Value::Float(v)) => text.extend(fmt.float(*v).bytes()),
+                    _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+                },
             }
         }
         Ok(Value::Str(Rc::new(text)))

@@ -145,12 +145,12 @@ impl TupleVal {
     }
 
     pub fn as_mut_vec(&mut self) -> &mut Vec<Value> {
-        if let TupleVal::OneInt(v) = *self {
-            *self = TupleVal::Boxed(crate::value::Shared::new(vec![Value::Int(v)]));
-        }
         match self {
             TupleVal::Boxed(fields) => crate::value::Shared::make_mut(fields),
-            TupleVal::OneInt(_) => unreachable!(),
+            TupleVal::OneInt(v) => {
+                *self = TupleVal::Boxed(crate::value::Shared::new(vec![Value::Int(*v)]));
+                self.as_mut_vec()
+            }
         }
     }
 }

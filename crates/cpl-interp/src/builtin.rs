@@ -774,7 +774,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         Value::ListView(crate::value::Shared::new(v.slice_storage(rel)))
                     }
                     Value::StrView(v) => Value::StrView(Rc::new(v.slice_storage(rel))),
-                    _ => unreachable!(),
+                    _ => return trap(span, cpl_diag::msgs::interp::KEYS_NEED_SLICE.at(&[])),
                 }
             }
             Builtin::ListSlice => {

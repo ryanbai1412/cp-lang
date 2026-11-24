@@ -29,8 +29,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if let Some(fast) = self.fast_closures[*cid].clone() {
                     let mut evaled = [Value::Unit, Value::Unit, Value::Unit, Value::Unit];
                     for (slot, arg) in evaled.iter_mut().zip(args) {
-                        let Arg::Value(e) = arg else { unreachable!() };
-                        *slot = self.eval(e)?;
+                        if let Arg::Value(e) = arg {
+                            *slot = self.eval(e)?;
+                        }
                     }
                     // A parameter may appear more than once in the body (`x => x + x`).
                     let arg = |i: usize| evaled[i].clone();

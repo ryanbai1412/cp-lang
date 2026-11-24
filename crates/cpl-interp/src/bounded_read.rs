@@ -28,7 +28,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let word = self.input.word_in(len, alphabet.as_deref(), text);
                 Value::Str(Rc::new(word.map_err(fail)?))
             }
-            _ => unreachable!("only a bounded `Int` or `Str` is read here"),
+            _ => {
+                return trap(
+                    Span::default(),
+                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                )
+            }
         })
     }
 

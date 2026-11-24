@@ -12,7 +12,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     ) -> Res<Flow> {
         let base = self.base;
         let span = match iter {
-            Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
+            Iter::Walk { .. } => {
+                return trap(
+                    Span::default(),
+                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                )
+            }
             Iter::Range { lo: e, .. }
             | Iter::RangeVal(e, _)
             | Iter::Seq(e, _)
@@ -42,7 +47,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         };
         match iter {
-            Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
+            Iter::Walk { .. } => {
+                return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]))
+            }
             Iter::Range {
                 lo,
                 hi,
@@ -236,7 +243,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                                 }
                             }
                         }
-                        _ => unreachable!("TreeRange only lowers on Set/Map"),
+                        _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
                     }
                 }
             }
@@ -244,7 +251,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (ExprKind::Call(callee, args), Some((_, acc))) =
                     (&seq.kind, self.is_fed(id, seq, body))
                 else {
-                    unreachable!("a fed loop is over a call");
+                    return trap(seq.span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
                 };
                 let fed = Fed {
                     callee: 0,

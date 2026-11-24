@@ -130,7 +130,9 @@ pub(crate) fn draw_below(
     let Some(choices) = choices else {
         return splitmix64(rng) as u128 % span;
     };
-    let mut choices = choices.lock().unwrap();
+    let mut choices = choices
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let at = choices.made.len();
     let pick = match &choices.replay {
         Some(list) => (list.get(at).copied().unwrap_or(0) as u128).min(span - 1),

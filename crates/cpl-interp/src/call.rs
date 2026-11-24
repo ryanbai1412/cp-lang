@@ -26,7 +26,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// the loop it feeds. An `Err` with `left` set means the body left
     /// the loop, and the fn stops where it is.
     pub(super) fn feed(&mut self, value: Value, span: Span) -> Res<Value> {
-        let fed = self.fed_loops.last().expect("asked by the caller");
+        let Some(fed) = self.fed_loops.last() else {
+            return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+        };
         let (callee, caller, slot, id, body) = (fed.callee, fed.caller, fed.slot, fed.id, fed.body);
         let locals = self.frame_locals.pop();
         self.base = caller;
@@ -54,7 +56,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Flow::Break(Some(target)) if target == id => Flow::Next,
             other => other,
         };
-        self.fed_loops.last_mut().expect("still the innermost").left = Some(left);
+        match self.fed_loops.last_mut() {
+            Some(fed) => fed.left = Some(left),
+            None => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        }
         Err(Box::new(Trap::said(
             span,
             cpl_diag::msgs::interp::WRITTEN.at(&[&""]),

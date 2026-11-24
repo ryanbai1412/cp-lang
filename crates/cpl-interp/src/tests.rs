@@ -2019,3 +2019,18 @@ print(g[1], p.1, q.0, -p.0, yes(2 in m), yes(5 in m), yes(p.0 < p.1))
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "5 9 8 -3 YES NO YES\n");
 }
+
+#[test]
+fn one_int_tuples_options_and_formats_change_in_place() {
+    let src = "\
+var t = (5,)
+t.0 += 2
+var m: ?Int = 3
+m! += 4
+let x = 1.5
+print(t.0, m!, \"{t.0}:{x}\")
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "7 7 7:1.5000000000\n");
+}
