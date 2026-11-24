@@ -1023,7 +1023,11 @@ impl<'p> Emitter<'p> {
                         .iter()
                         .any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built))
                 });
-            if made_here && !value.ty.is_scalar() && !matches!(value.ty, Ty::Fn(..)) {
+            if made_here
+                && !self.ref_bound.contains(built)
+                && !value.ty.is_scalar()
+                && !matches!(value.ty, Ty::Fn(..))
+            {
                 v.text = format!("std::move({})", v.text);
             }
         }
@@ -1418,6 +1422,7 @@ impl<'p> Emitter<'p> {
                 let text = match init.kind {
                     ExprKind::Local(built)
                         if text == self.names[built]
+                            && !self.ref_bound.contains(&built)
                             && !init.ty.is_scalar()
                             && !matches!(init.ty, Ty::Fn(..))
                             && built_in(whole, built) =>

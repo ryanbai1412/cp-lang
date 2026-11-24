@@ -245,6 +245,11 @@ fn sanitized_binary(cpp: &[u8]) -> Result<PathBuf, String> {
     )
     .replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "");
     let (tmp_source, tmp_binary) = (cache.join(format!("{unique}.cpp")), cache.join(&unique));
+    if let Some(line) = std::str::from_utf8(cpp).ok().and_then(moved_const_ref) {
+        return Err(format!(
+            "`std::move` of a `const T&` name only copies: {line}"
+        ));
+    }
     std::fs::write(&tmp_source, cpp).map_err(|e| e.to_string())?;
     let compiled = Command::new("g++")
         .args(GXX_FLAGS)
@@ -1283,4 +1288,36 @@ fn float_ops_round_as_the_interpreter_under_fma_flags() {
         String::from_utf8_lossy(&native.stdout),
         String::from_utf8_lossy(&interp.stdout)
     );
+}
+
+/// A `std::move(x)` whose nearest declaration of `x` above it is a
+/// `const T& x`: newer g++ rejects it as -Wredundant-move, older ones copy quietly.
+fn moved_const_ref(cpp: &str) -> Option<String> {
+    let lines: Vec<&str> = cpp.lines().collect();
+    for (at, line) in lines.iter().enumerate() {
+        for (i, _) in line.match_indices("std::move(") {
+            let rest = &line[i + "std::move(".len()..];
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if name.is_empty() || !rest[name.len()..].starts_with(')') {
+                continue;
+            }
+            // Only within the enclosing function: a column-0 `}` ends the one before.
+            let declared = lines[..at]
+                .iter()
+                .rev()
+                .take_while(|l| !l.starts_with('}'))
+                .find(|l| {
+                    l.contains(&format!(" {name} = "))
+                        && !l.trim_start().starts_with(&format!("{name} "))
+                });
+            if declared.is_some_and(|l| l.contains("const ") && l.contains(&format!("& {name} = ")))
+            {
+                return Some(line.trim().to_string());
+            }
+        }
+    }
+    None
 }

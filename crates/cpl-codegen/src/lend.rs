@@ -1124,7 +1124,10 @@ impl Emitter<'_> {
     /// `let old_k = ks; ks = List.filled(..)` takes the list, not a copy.
     pub(crate) fn take_if_overwritten(&mut self, init: &Expr, text: String) -> String {
         let taken = std::mem::take(&mut self.moves_last);
-        match taken && !init.ty.is_scalar() && !text.starts_with("std::move(") {
+        // A `const T&` name cannot be moved from; `std::move` of it only copies.
+        let lent =
+            path_of(init).is_some_and(|((global, s), _)| !global && self.ref_bound.contains(&s));
+        match taken && !lent && !init.ty.is_scalar() && !text.starts_with("std::move(") {
             true => format!("std::move({text})"),
             false => text,
         }
