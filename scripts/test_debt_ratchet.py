@@ -1035,11 +1035,8 @@ class DebtRatchetTest(unittest.TestCase):
             port.parent.mkdir(parents=True)
             port.write_text("// copies: 1\nprint(1)\n")
             (root / "corpus/problems/cf1/notes.md").write_text("// copies: 5\n")
-            tests = root / "crates/cpl-cli/tests"
-            tests.mkdir(parents=True)
-            (tests / "read_only_copies.rs").write_text('    [("std_functions", std_functions, 2)];\n')
             self.assertEqual(len(dr.cpp_deep_copies(root)), 3)
-            self.assertEqual(len(dr.cpp_std_functions(root)), 2)
+            self.assertEqual(len(dr.cpp_std_functions(root)), 1)
 
     def test_std_shadowed_counts_receivers_a_builtin_arm_catches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

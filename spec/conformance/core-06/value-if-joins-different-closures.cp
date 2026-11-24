@@ -2,6 +2,7 @@
 // rule: 06.2.5
 // The branches of a value `if` or `match` may be different closures of one fn type;
 // the join is that fn type, as a `var` of it is.
+// std_functions: 8
 let m = 10
 enum K = A | B | C
 fn pick(k: K) -> Int:

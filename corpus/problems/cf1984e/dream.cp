@@ -2,6 +2,7 @@
 // so the leaves that survive form an independent set, plus the new root's side when it was a leaf.
 // Rooting at a leaf r, the answer is the maximum independent set of the rest plus r itself, and
 // the greedy "take a vertex iff no child is taken" is optimal from every root at once by rerooting.
+// std_functions: 1
 @!multitest
 domain V = 1..=read(2..=2e5)
 let g = Graph.undirected(read<[V.count - 1](V, V)>())

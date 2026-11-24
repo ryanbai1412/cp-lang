@@ -983,7 +983,7 @@ def cpp_optional_copies(root: Path) -> list[str]:
 
 
 def cpp_std_functions(root: Path) -> list[str]:
-    return _copy_baseline(root, "std_functions")
+    return _header_counts(root, "std_functions")
 
 
 def cpp_sunk_copies(root: Path) -> list[str]:
@@ -2281,7 +2281,7 @@ COUNTERS = {
     "cpp_deep_copies": ("`// copies:` header sum over the corpus (read_only_copies)", cpp_deep_copies, True),
     "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
                             cpp_optional_copies, True),
-    "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
+    "cpp_std_functions": ("`// std_functions:` header sum over the corpus (read_only_copies)", cpp_std_functions, True),
     "cpp_sunk_copies": ("places copied into a by-value param a fn moves into its struct (read_only_copies)", cpp_sunk_copies, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),

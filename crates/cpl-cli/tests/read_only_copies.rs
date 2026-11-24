@@ -1,8 +1,7 @@
 //! The C++ each corpus program and conformance case builds to makes exactly
-//! the deep copies its header states (`// copies: N`; none when absent), so
-//! a new copy turns the one program that grew it red, by name. The
-//! `std::function`s are bounded over the whole corpus until they move to a
-//! header the same way. A heap value that is only read is read
+//! the deep copies and `std::function`s its header states (`// copies: N`,
+//! `// std_functions: N`; none when absent), so a new one turns the one
+//! program that grew it red, by name. A heap value that is only read is read
 //! in place: the copy shapes in `NEVER` fail anywhere, and `cpl explain`
 //! gives each deep copy its reason.
 //! Enforces performance/R12, R13 and R14 in
@@ -184,19 +183,18 @@ const NEVER: [(&str, Count); 4] = [
     ("lent_part_copies", lent_part_copies),
 ];
 
-/// What a program's header says its C++ makes: `// copies: N` deep copies
-/// and `// optional_copies: N` containers copied into an optional, 0 when
-/// the line is absent.
-const DIRECTIVES: [(&str, Count); 2] = [
+/// What a program's header says its C++ makes: `// copies: N` deep copies,
+/// `// optional_copies: N` containers copied into an optional and
+/// `// std_functions: N` type-erased `std::function`s, 0 when the line is
+/// absent.
+const DIRECTIVES: [(&str, Count); 3] = [
     ("copies", deep_copies),
     ("optional_copies", optional_copies),
+    ("std_functions", std_functions),
 ];
 
-/// The most `std::function`s the corpus may build to, summed over programs.
-const TOTALS: [(&str, Count, usize); 2] = [
-    ("std_functions", std_functions, 68),
-    ("sunk_copies", sunk_copies, 16),
-];
+/// The most of each the corpus may build to, summed over programs.
+const TOTALS: [(&str, Count, usize); 1] = [("sunk_copies", sunk_copies, 16)];
 
 /// The value of the header line `// <key>: N` (0 without one), or why the
 /// header is malformed. The header is the file's leading `//` lines.

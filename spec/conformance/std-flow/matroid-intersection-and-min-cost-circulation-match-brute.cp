@@ -1,4 +1,5 @@
 // expect: ok, output "YES"
+// std_functions: 4
 use std.flow.{GraphicMatroid, ColorMatroid, matroid_intersection, min_cost_circulation}
 
 fn matroid_intersections_match_brute_force():
