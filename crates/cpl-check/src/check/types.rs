@@ -535,15 +535,19 @@ impl<'a> Checker<'a> {
         // A parameter's type can use the ones before it:
         // `fn valid(n: Int, seq: [0..n]Int)`. So can the result's.
         self.push_scope();
+        let declared = self.impl_trait_sig(&f.name.text);
         let mut params = Vec::new();
-        for p in f
+        for (i, p) in f
             .params
             .iter()
             .filter(|p| !(self_ty.is_some() && p.name.text == "self"))
+            .enumerate()
         {
             let ty = match &p.ty {
                 Some(ty) => self.resolve_type(ty),
-                None => Ty::Unknown,
+                None => (declared.as_ref())
+                    .and_then(|(params, _)| params.get(i).cloned())
+                    .unwrap_or(Ty::Unknown),
             };
             if p.variadic && !matches!(ty, Ty::Param(_) | Ty::Error) {
                 if let Some(diag) = self.report(
@@ -593,7 +597,7 @@ impl<'a> Checker<'a> {
             (Some(ty), _, _) => self.resolve_type(ty),
             // A projection's caller works with the value it lends.
             (None, Some(lends), _) => self.resolve_type(&lends.ty),
-            (None, None, ast::FnBody::Expr(_)) => Ty::Unknown,
+            (None, None, ast::FnBody::Expr(_)) => declared.map_or(Ty::Unknown, |(_, ret)| ret),
             (None, None, _) => Ty::Unit,
         };
         self.scopes.pop();
@@ -639,6 +643,104 @@ impl<'a> Checker<'a> {
         self.pop_scope();
         self.generics.truncate(generics);
         self.self_ty = self_ty;
+    }
+
+    /// Reads an impl's trait and its arguments for the fns in its body:
+    /// `impl Mul<Int> for Pt` is `Mul` with `[Int]`. Returns the outer one.
+    pub(crate) fn enter_impl_trait(
+        &mut self,
+        trait_ty: Option<&ast::Type>,
+    ) -> Option<(String, Vec<Ty>)> {
+        let read = trait_ty.and_then(|t| match &t.kind {
+            ast::TypeKind::Named { name, args } => Some((
+                name.text.clone(),
+                args.iter()
+                    .map(|a| self.quietly(|c| c.resolve_type(a)))
+                    .collect(),
+            )),
+            _ => None,
+        });
+        std::mem::replace(&mut self.impl_trait, read)
+    }
+
+    /// The signature the trait of the impl being read declares for its fn
+    /// `method`, with `Self` and the trait's arguments put in (a missing
+    /// argument is `Self`). An impl fn's unwritten types are read from it:
+    /// `fn add(a, b)` in `impl Add for Pt` takes two `Pt`, and `fn mul(a, k)`
+    /// in `impl Mul<Int> for Pt` a `Pt` and an `Int`.
+    fn impl_trait_sig(&mut self, method: &str) -> Option<(Vec<Ty>, Ty)> {
+        let (trait_name, args) = self.impl_trait.clone()?;
+        let self_ty = self.self_ty.clone()?;
+        let (generics, sig) = match self.global(&trait_name).as_deref() {
+            Some(Def::Trait {
+                generics, methods, ..
+            }) => (
+                generics.clone(),
+                methods.iter().find(|m| m.name == method)?.ty.clone(),
+            ),
+            _ => {
+                let (generics, fns) = prelude::core_trait_decl(&trait_name)?;
+                let f = fns.into_iter().find(|f| f.name.text == method)?;
+                let generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
+                let outer = self.generics.len();
+                self.generics.push("Self".into());
+                self.generics.extend(generics.iter().cloned());
+                let sig = self.quietly(|c| {
+                    let params = (f.params.iter())
+                        .filter(|p| p.name.text != "self")
+                        .map(|p| crate::ty::Param {
+                            name: p.name.text.clone(),
+                            ty: p.ty.as_ref().map_or(Ty::Unknown, |t| c.resolve_type(t)),
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        })
+                        .collect();
+                    let ret = f.ret.as_ref().map_or(Ty::Unit, |t| c.resolve_type(t));
+                    Ty::Fn {
+                        params,
+                        ret: Box::new(ret),
+                    }
+                });
+                self.generics.truncate(outer);
+                (generics, sig)
+            }
+        };
+        let mut on = crate::ty::Bindings::default();
+        on.insert("Self".into(), self_ty.clone());
+        for (i, g) in generics.into_iter().enumerate() {
+            on.insert(g, args.get(i).cloned().unwrap_or_else(|| self_ty.clone()));
+        }
+        let Ty::Fn { params, ret } = sig else {
+            return None;
+        };
+        let generics = &self.generics;
+        let known = |t: Ty| {
+            if Self::names_foreign_param(&t, generics) {
+                Ty::Unknown
+            } else {
+                t
+            }
+        };
+        Some((
+            params.iter().map(|p| known(p.ty.subst(&on))).collect(),
+            known(ret.subst(&on)),
+        ))
+    }
+
+    /// Whether `ty` names a type parameter not in scope here, such as a
+    /// trait fn's own `<U>`.
+    fn names_foreign_param(ty: &Ty, generics: &[String]) -> bool {
+        let mut foreign = false;
+        ty.map(&mut |t| {
+            if let Ty::Param(n) = t {
+                foreign |= !generics.contains(n);
+            }
+            None
+        });
+        foreign
     }
 
     /// Declares the domains and constants of a body, which the fields and
@@ -1226,8 +1328,10 @@ impl<'a> Checker<'a> {
                 let assoc = self.with_assoc_defaults(trait_name.as_ref(), &self_ty, assoc);
                 let outer_assoc = std::mem::replace(&mut self.self_assoc, assoc.clone());
                 let owned = self.owned(&target_name, &body.stmts);
+                let outer_trait = self.enter_impl_trait(trait_name.as_ref());
                 let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);
                 let method_rows = self.method_rows(&body.stmts, bounds);
+                self.impl_trait = outer_trait;
                 self.self_assoc = outer_assoc;
                 self.leave_body(scope);
                 let trait_head = trait_name.as_ref().and_then(trait_impl_key);

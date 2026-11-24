@@ -75,6 +75,7 @@ impl<'a> Checker<'a> {
                     UnOp::Neg | UnOp::BitNot if ty.is_numeric() => ty.widen(),
                     UnOp::Neg if matches!(&ty, Ty::Optional(inner) if inner.is_numeric()) => ty,
                     UnOp::BitNot if matches!(&ty, Ty::Optional(inner) if inner.is_int()) => ty,
+                    UnOp::Neg if let Some(neg) = self.neg_impl(&ty) => neg,
                     UnOp::Neg | UnOp::BitNot => {
                         self.bad_operand(&ty, inner, if *op == UnOp::Neg { "-" } else { "~" })
                     }

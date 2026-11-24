@@ -1590,6 +1590,26 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
 }
 
 #[test]
+fn hover_on_an_impl_param_written_bare_shows_the_traits_type() {
+    let src = "\
+trait Scale:
+    fn scale(self, k: Int) -> Self
+struct P(v: Int)
+impl Scale for P:
+    fn scale(self, k) = P(self.v * k)
+print(P(2).scale(3).v)
+";
+    let (mut server, diagnostics) = open(src);
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let hover = hover_at(&mut server, 4, 19);
+    let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+    assert!(
+        text.contains("k: Int"),
+        "expected the trait's Int, got: {hover:?}"
+    );
+}
+
+#[test]
 fn hover_on_punned_named_arg_shows_local_type() {
     let src = "\
 fn f(moves: Int, cost: Int) -> Int = moves + cost

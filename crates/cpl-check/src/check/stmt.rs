@@ -1266,7 +1266,9 @@ impl<'a> Checker<'a> {
                     );
                 }
                 self.owned(&owner, &body.stmts);
+                let outer_trait = self.enter_impl_trait(trait_name.as_ref());
                 self.bounded_methods(&body.stmts, &self_ty, bounds);
+                self.impl_trait = outer_trait;
                 self.leave_body(scope);
             }
             StmtKind::Use { .. } | StmtKind::Break(_) | StmtKind::Continue(_) | StmtKind::Error => {

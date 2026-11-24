@@ -4,6 +4,31 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
+    /// What `-x` is on a struct with an `impl Neg`: its `neg`'s result,
+    /// or the struct when that is written bare.
+    pub(super) fn neg_impl(&mut self, ty: &Ty) -> Option<Ty> {
+        let Ty::Named { name, .. } = ty else {
+            return None;
+        };
+        let impls = self.env.impls(name);
+        let def = impls.iter().find_map(|(implemented, def)| {
+            (implemented.as_deref() == Some("Neg")).then_some(def)
+        })?;
+        let Def::Impl {
+            methods, target, ..
+        } = &**def
+        else {
+            return None;
+        };
+        let mut on = crate::ty::Bindings::default();
+        target.unify(ty, &mut on);
+        let ret = methods.iter().find_map(|(m, sig)| match sig {
+            Ty::Fn { ret, .. } if m == "neg" && !ret.is_vague() => Some(ret.subst(&on)),
+            _ => None,
+        });
+        Some(ret.unwrap_or_else(|| ty.clone()))
+    }
+
     pub(super) fn bad_operand(&mut self, ty: &Ty, expr: &Expr, op: &str) -> Ty {
         if ty.is_vague() {
             return ty.clone();

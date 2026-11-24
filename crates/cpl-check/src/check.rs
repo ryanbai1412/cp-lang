@@ -311,6 +311,9 @@ pub(crate) struct Checker<'a> {
     self_ty: Option<Ty>,
     /// The associated types the impl being read chooses, for `Self.Found`.
     self_assoc: Vec<(String, Ty)>,
+    /// The trait the impl being read implements, with its arguments: an
+    /// impl fn's unwritten parameter types are the trait's.
+    impl_trait: Option<(String, Vec<Ty>)>,
     /// What is lent and what is known, for the exclusivity of lends.
     lends: lends::Lends,
     /// True when the enclosing context expects a `Range<D.cuts>` so ranges
@@ -414,6 +417,7 @@ impl<'a> Checker<'a> {
             rhs_extent: None,
             self_ty: None,
             self_assoc: Vec::new(),
+            impl_trait: None,
             lends: lends::Lends::default(),
             expected_bounds_range: false,
             expected_piece: false,

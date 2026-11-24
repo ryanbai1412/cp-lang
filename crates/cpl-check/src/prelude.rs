@@ -827,6 +827,37 @@ pub fn ty(name: &str) -> Option<Ty> {
     })
 }
 
+/// The declaration in `core_traits.cp` of a core trait std has no source
+/// for: its type parameters and its fns (R08.1.5).
+pub fn core_trait_decl(name: &str) -> Option<(&'static [ast::Name], Vec<&'static ast::FnDecl>)> {
+    static DECLS: OnceLock<Vec<ast::Stmt>> = OnceLock::new();
+    let decls = DECLS.get_or_init(|| {
+        cpl_syntax::parse_file(include_str!("core_traits.cp"))
+            .items
+            .into_iter()
+            .flat_map(|(_, item)| item.stmts)
+            .collect()
+    });
+    decls.iter().find_map(|stmt| match &stmt.kind {
+        ast::StmtKind::Trait {
+            name: n,
+            generics,
+            body,
+            ..
+        } if n.text == name => Some((
+            generics.as_slice(),
+            body.stmts
+                .iter()
+                .filter_map(|s| match &s.kind {
+                    ast::StmtKind::Fn(f) => Some(f),
+                    _ => None,
+                })
+                .collect(),
+        )),
+        _ => None,
+    })
+}
+
 /// A prelude trait: what `T: Ord` and `impl Add for V` may name.
 pub fn is_trait(name: &str) -> bool {
     TRAIT_NAMES.contains(&name)

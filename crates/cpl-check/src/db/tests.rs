@@ -352,6 +352,16 @@ fn a_place_under_a_lends_mut_index_beside_a_get_is_typed() {
 }
 
 #[test]
+fn an_impl_fn_param_written_bare_takes_the_traits_type() {
+    let ops = "struct R(v: Int)\nimpl Add for R:\n    fn add(x, y) = R(x.v + y.v)\nimpl Mul<Int> for R:\n    fn mul(x, k) = R(x.v * k)\nimpl Neg for R:\n    fn neg(x) = R(-x.v)\nprint((R(1) + R(2)).v, (R(3) * 2).v, (-R(4)).v)\n";
+    assert_eq!(silent_unknowns_of(ops), (vec![], 0));
+    let declared = "trait Scale:\n    fn scale(self, k: Int) -> Self\n    fn both(a: Self, b: Self) -> Self\nstruct P(v: Int)\nimpl Scale for P:\n    fn scale(self, k) = P(self.v * k)\n    fn both(a, b) = P(a.v + b.v)\nprint(P(2).scale(3).v, P.both(P(1), P(2)).v)\n";
+    assert_eq!(silent_unknowns_of(declared), (vec![], 0));
+    let generic = "struct Pair<T>(a: T, b: T)\nimpl Add for Pair<T>:\n    fn add(x, y) = Pair(x.a, y.b)\nlet m = Pair(2, 3) + Pair(4, 5)\nprint(m.a, m.b)\n";
+    assert_eq!(silent_unknowns_of(generic), (vec![], 0));
+}
+
+#[test]
 fn a_lambda_in_a_generic_body_takes_the_bodys_own_type_params() {
     let src = "struct Joined<F>(id: F, join: (F, F) -> F)\nfn keep_left<T>(id: T) -> Joined<T> = Joined(id, (a, b) => a)\nprint(keep_left(1).id)\n";
     assert_eq!(silent_unknowns_of(src), (vec![], 0));

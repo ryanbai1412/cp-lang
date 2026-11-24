@@ -430,7 +430,7 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(crate) fn resolve_fn_sig(&mut self, id: FnId, trait_name: Option<&str>) {
-        self.resolve_fn_sig_with(id, trait_name, None, None);
+        self.resolve_fn_sig_with(id, trait_name, &[], None);
     }
 
     /// A struct's own method, its signature read now if it was left for
@@ -506,7 +506,7 @@ impl<'a> Lowerer<'a> {
         &mut self,
         id: FnId,
         trait_name: Option<&str>,
-        rhs_ty: Option<&Ty>,
+        trait_args: &[Ty],
         out_ty: Option<&Ty>,
     ) {
         let decl = self.sigs[id].decl;
@@ -540,12 +540,15 @@ impl<'a> Lowerer<'a> {
                         self.resolve_ty(ty)
                     }
                     None => {
-                        if i == 1 {
-                            if let Some(rt) = rhs_ty {
-                                rt.clone()
-                            } else if let Some(ot) = owner_ty.clone() {
-                                ot
-                            } else {
+                        let declared = match (trait_name, owner_ty.as_ref()) {
+                            (Some(tr), Some(ot)) => {
+                                self.trait_declared_ty(tr, &decl.name.text, Some(i), trait_args, ot)
+                            }
+                            _ => None,
+                        };
+                        match declared.or_else(|| owner_ty.clone()) {
+                            Some(ty) => ty,
+                            None => {
                                 self.report(
                                     param.span,
                                     msgs::ir::UNKNOWN_TYPE_PARAMETER_NEEDS_A_TYPE,
@@ -556,29 +559,6 @@ impl<'a> Lowerer<'a> {
                                     param.name.text
                                 ));
                                 Ty::Error
-                            }
-                        } else {
-                            match (trait_name, owner_ty.clone()) {
-                                (
-                                    Some(
-                                        "Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg" | "Show"
-                                        | "Eq" | "Ord",
-                                    ),
-                                    Some(ot),
-                                ) => ot,
-                                (_, Some(ot)) => ot,
-                                _ => {
-                                    self.report(
-                                        param.span,
-                                        msgs::ir::UNKNOWN_TYPE_PARAMETER_NEEDS_A_TYPE,
-                                        &[&param.name.text],
-                                    );
-                                    self.help(format!(
-                                        "write `{}: Int`, or the type it has",
-                                        param.name.text
-                                    ));
-                                    Ty::Error
-                                }
                             }
                         }
                     }
@@ -593,6 +573,15 @@ impl<'a> Lowerer<'a> {
             });
         }
         self.sigs[id].params = params;
+        // An unwritten result is the impl's `type Out`, else what its trait declares.
+        let declared_ret = match (&decl.ret, out_ty, trait_name, owner_ty.as_ref()) {
+            (Some(_), ..) => None,
+            (None, Some(o), ..) => Some(o.clone()),
+            (None, None, Some(tr), Some(ot)) => {
+                self.trait_declared_ty(tr, &decl.name.text, None, trait_args, ot)
+            }
+            _ => None,
+        };
         self.sigs[id].ret = match (&decl.ret, &decl.body) {
             (
                 Some(ast::Type {
@@ -652,21 +641,9 @@ impl<'a> Lowerer<'a> {
                     kind: ast::StmtKind::Expr(_),
                     ..
                 }) => None,
-                _ => match (trait_name, out_ty, owner_ty) {
-                    (_, Some(o), _) => Some(o.clone()),
-                    (Some("Show"), _, _) => Some(Ty::Str),
-                    (Some("Eq" | "Ord"), _, _) if decl.name.text != "cmp" => Some(Ty::Bool),
-                    (Some("Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg"), _, Some(ot)) => Some(ot),
-                    _ => Some(Ty::Unit),
-                },
+                _ => Some(declared_ret.unwrap_or(Ty::Unit)),
             },
-            (None, _) => match (trait_name, out_ty, owner_ty) {
-                (_, Some(o), _) => Some(o.clone()),
-                (Some("Show"), _, _) => Some(Ty::Str),
-                (Some("Eq" | "Ord"), _, _) if decl.name.text != "cmp" => Some(Ty::Bool),
-                (Some("Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg"), _, Some(ot)) => Some(ot),
-                _ => None,
-            },
+            (None, _) => declared_ret,
         };
 
         self.cur_mod = saved_mod;
@@ -674,6 +651,64 @@ impl<'a> Lowerer<'a> {
         self.gen_env = saved_env;
         self.self_struct = saved_self;
         self.sigs[id].sig = SigState::Resolved;
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// The type a trait declares for its fn `method`'s parameter `at`, or
+    /// its result when `at` is `None`, with `Self` the impl's target and the
+    /// trait's arguments put in, a missing one being `Self` (R08.1.5). A user
+    /// trait's declaration and a core trait's in `core_traits.cp` are read
+    /// the same way, as the checker reads them.
+    pub(crate) fn trait_declared_ty(
+        &mut self,
+        trait_name: &str,
+        method: &str,
+        at: Option<usize>,
+        trait_args: &[Ty],
+        owner: &Ty,
+    ) -> Option<Ty> {
+        let pick = |f: &'a ast::FnDecl| -> Option<&'a ast::Type> {
+            match at {
+                Some(i) => f.params.get(i)?.ty.as_ref(),
+                None => f.ret.as_ref(),
+            }
+        };
+        let (ty, generics, place) = match self.traits.iter().find(|t| t.name == trait_name) {
+            Some(t) => {
+                let f: &'a ast::FnDecl =
+                    t.methods.iter().copied().find(|f| f.name.text == method)?;
+                let generics: Vec<String> = t.generics.iter().map(|g| g.to_string()).collect();
+                (pick(f)?, generics, Some((t.mod_id, t.offset)))
+            }
+            None => {
+                let (generics, fns) = cpl_check::core_trait_decl(trait_name)?;
+                let f = fns.into_iter().find(|f| f.name.text == method)?;
+                (
+                    pick(f)?,
+                    generics.iter().map(|g| g.text.clone()).collect(),
+                    None,
+                )
+            }
+        };
+        let mut env = self.gen_env.clone();
+        env.insert("Self".into(), GenArg::Ty(owner.clone()));
+        for (k, g) in generics.into_iter().enumerate() {
+            env.insert(g, GenArg::Ty(trait_args.get(k).unwrap_or(owner).clone()));
+        }
+        let saved_env = std::mem::replace(&mut self.gen_env, env);
+        let saved_place = place.map(|(m, o)| {
+            (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, o),
+            )
+        });
+        let resolved = self.resolve_ty(ty);
+        if let Some((m, o)) = saved_place {
+            (self.cur_mod, self.offset) = (m, o);
+        }
+        self.gen_env = saved_env;
+        Some(resolved)
     }
 }
 

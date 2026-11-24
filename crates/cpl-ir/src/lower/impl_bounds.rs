@@ -324,9 +324,9 @@ impl<'a> Lowerer<'a> {
                 std::mem::replace(&mut self.gen_env, env),
                 self.self_struct.replace(sid),
             );
-            let first = self.impls[idx].trait_args.first().copied();
-            let rhs = first.map(|t| self.resolve_ty(t));
-            self.resolve_fn_sig_with(fn_id, trait_name.as_deref(), rhs.as_ref(), None);
+            let written = self.impls[idx].trait_args.clone();
+            let args: Vec<Ty> = written.iter().map(|t| self.resolve_ty(t)).collect();
+            self.resolve_fn_sig_with(fn_id, trait_name.as_deref(), &args, None);
             (self.cur_mod, self.offset, self.gen_env, self.self_struct) = saved;
             return Some(fn_id);
         }

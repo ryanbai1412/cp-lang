@@ -55,6 +55,7 @@ pub use modules::{
     std_outline, take_std_needs, FsLoader, GivenFiles, Loader,
 };
 pub use overflow::Overflow;
+pub use prelude::core_trait_decl;
 pub use prelude::{
     arity_key, domain_member, import_edit, labels_fit, method_key, method_module,
     methods as std_methods, overload_key, overload_part, required_labels, std_family, std_module,
