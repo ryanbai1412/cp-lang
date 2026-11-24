@@ -64,7 +64,7 @@ def std_params():
             if inner is None:
                 continue
             names = {""}
-            for p in top_level_parts(inner, angle=True):
+            for p in top_level_parts(inner.replace(";", ","), angle=True):  # `;` starts the named-only params
                 if p.strip().startswith(".."):
                     names.add("*")  # a variadic `..xs` takes any name (R06.1.5, decision 324)
                 n = re.match(r"(?:mut\s+)?(\w+)\s*[:=]", p)

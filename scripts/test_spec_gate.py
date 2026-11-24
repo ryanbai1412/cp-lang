@@ -178,7 +178,7 @@ class GatesTest(unittest.TestCase):
             os.unlink(f.name)
 
     def test_sigs(self):
-        files = {"std/a.cp": "pub fn f(x: Int, by: Int = 0) -> Int = x\n",
+        files = {"std/a.cp": "pub fn f(x: Int; by: Int = 0) -> Int = x\n",
                  "spec/lib/a.md": "```cp\nf(1, by: 2)\nf(1, key: 2)\ng(1, key: 2)\n```\n"}
         with Tree(files):
             self.assertEqual([(p.where, p.what) for p in run("sigs")], [("lib/a.md", "f(key:)")])
