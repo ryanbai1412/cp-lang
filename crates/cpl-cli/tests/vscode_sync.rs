@@ -24,13 +24,17 @@ fn is_word(text: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-/// `cp.<key>` read as `getConfiguration('cp').get<..>('<key>', <default>)`
-/// in the extension's sources: the default as written, spaces dropped and
-/// quotes made double.
+/// `cp.<key>` read as `getConfiguration('cp').get<..>('<key>', <default>)`,
+/// with or without the type argument, in the extension's sources: the default
+/// as written, spaces dropped and quotes made double.
 fn reads(sources: &str) -> BTreeMap<String, String> {
     let mut out = BTreeMap::new();
-    for part in sources.split(".get<").skip(1) {
-        let Some(call) = part.split_once(">(").map(|(_, rest)| rest) else {
+    for part in sources.split(".get").skip(1) {
+        let call = match part.strip_prefix('<') {
+            Some(typed) => typed.split_once(">(").map(|(_, rest)| rest),
+            None => part.strip_prefix('('),
+        };
+        let Some(call) = call else {
             continue;
         };
         let Some(key) = call.strip_prefix('\'').and_then(|k| k.split_once('\'')) else {
