@@ -773,7 +773,7 @@ pub struct SortedBag<K>:
         let s = a * BAG_B + i
         self.put(b * BAG_B + j, keys[s], ws[s], if inner or pay: self.kid(a, i) else: -1)
 
-    fn put(mut self, s: Int, x: K, w: Int, k: Int):
+    fn put(mut self, s: Spot, x: K, w: Int, k: Spot):
         keys[s] = x
         ws[s] = w
         if k >= 0: kids[self.kix(s / BAG_B) * BAG_B + s % BAG_B] = k

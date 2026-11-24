@@ -56,8 +56,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     var dual: Bool = false
     // The `over:` layout: node 0 stands for every untouched node, node 1 is the root over
     // `0..size`, and `lc`/`rc` hold each node's children, made on first touch.
-    lc: List<Int> = []
-    rc: List<Int> = []
+    lc: List<Len> = []
+    rc: List<Len> = []
     blank: List<T> = []
     part: List<T> = []
     base: Int = 0
@@ -148,7 +148,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         if nl >= n: return m.id
         part[ctz(nr - nl)]
 
-    fn grow(mut self, nl: Int, nr: Int) -> Int:
+    fn grow(mut self, nl: Int, nr: Int) -> Len:
         t.push(self.blank_at(nl, nr))
         lc.push(0)
         rc.push(0)
@@ -158,22 +158,22 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         t.len - 1
 
     // The positions of `D` under node `p`, which covers `nl..nr`.
-    fn width(self, p: Int, nl: Int, nr: Int) -> Int:
+    fn width(self, p: Len, nl: Int, nr: Int) -> Int:
         if lc.len == 0: return self.dense_width(p)
         max(0, min(nr, n) - nl)
 
     // The positions of `D` under dense node `p`: its leaves less the padding past `n`.
-    fn dense_width(self, p: Int) -> Int:
+    fn dense_width(self, p: Len) -> Int:
         unchecked:
             let k = log + 1 - bit_width(p)
             return min(max(n - ((p << k) - size), 0), 1 << k)
 
     // The positions of `D` under dense node `p`, one of the nodes with `w` leaves.
-    fn level_width(self, p: Int, w: Int) -> Int:
+    fn level_width(self, p: Len, w: Int) -> Int:
         unchecked:
             return min(max(size + n - p * w, 0), w)
 
-    fn kid(self, p: Int, right: Bool) -> Int:
+    fn kid(self, p: Len, right: Bool) -> Len:
         if lc.len == 0: return if right: 2 * p + 1 else: 2 * p
         if right: rc[p] else: lc[p]
 
@@ -185,7 +185,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         y
 
     // Make node `p`'s children if they are untouched, then hand them its pending tag.
-    fn open_node(mut self, p: Int, nl: Int, nr: Int):
+    fn open_node(mut self, p: Len, nl: Int, nr: Int):
         let mid = (nl + nr) / 2
         if lc[p] == 0:
             let c = self.grow(nl, mid)
@@ -195,7 +195,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             rc[p] = c
         if act != None: self.push(p, lc[p], rc[p], self.width(0, nl, mid), self.width(0, mid, nr), nr - nl == 2)
 
-    fn apply_at(mut self, p: Int, nl: Int, nr: Int, lo: Int, hi: Int, f: F):
+    fn apply_at(mut self, p: Len, nl: Int, nr: Int, lo: Int, hi: Int, f: F):
         if hi <= nl or nr <= lo: return
         if lo <= nl and nr <= hi:
             self.put(p, f, self.width(p, nl, nr), nr - nl == 1)
@@ -206,14 +206,14 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         self.apply_at(rc[p], mid, nr, lo, hi, f)
         self.pull_node(p, lc[p], rc[p], self.width(p, nl, nr))
 
-    fn fold_at(self, p: Int, nl: Int, nr: Int, lo: Int, hi: Int, pend: ?F) -> T:
+    fn fold_at(self, p: Len, nl: Int, nr: Int, lo: Int, hi: Int, pend: ?F) -> T:
         if hi <= nl or nr <= lo: return m.id
         if lo <= nl and nr <= hi: return self.seen(pend, p, nl, nr)
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
         m.op(self.fold_at(self.kid(p, false), nl, mid, lo, hi, down), self.fold_at(self.kid(p, true), mid, nr, lo, hi, down))
 
-    fn pull_path(mut self, p: Int, nl: Int, nr: Int, x: Int):
+    fn pull_path(mut self, p: Len, nl: Int, nr: Int, x: Int):
         if nr - nl == 1: return
         let mid = (nl + nr) / 2
         if x < mid: self.pull_path(lc[p], nl, mid, x) else: self.pull_path(rc[p], mid, nr, x)
@@ -251,7 +251,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             n: D.count(),
         )
 
-    fn put(mut self, p: Int, f: F, w: Int, leaf: Bool):
+    fn put(mut self, p: Len, f: F, w: Int, leaf: Bool):
         unchecked:
             if w == 0: return
             if leaf or not dual: t[p] = act!.apply(f, t[p], w)
@@ -260,7 +260,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
                 has_lz[p] = true
 
     // Hand node `p`'s pending tag to its children `l` and `r`, holding `wl` and `wr` positions.
-    fn push(mut self, p: Int, l: Int, r: Int, wl: Int, wr: Int, leaf: Bool):
+    fn push(mut self, p: Len, l: Len, r: Len, wl: Int, wr: Int, leaf: Bool):
         unchecked:
             if not has_lz[p]: return
             let f = lz[p]
@@ -270,7 +270,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             self.put(r, f, wr, leaf)
 
     // Push dense node `p`'s tag onto its children, each with `w` leaves.
-    fn push_at(mut self, p: Int, w: Int):
+    fn push_at(mut self, p: Len, w: Int):
         unchecked:
             if not has_lz[p]: return
         let (l, r) = (2 * p, 2 * p + 1)
@@ -287,7 +287,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             if i > th: self.push_at((h - 1) >> i, w)
 
     // Rejoin dense node `p`, one of the nodes with `w` leaves, from its children.
-    fn pull_at(mut self, p: Int, w: Int):
+    fn pull_at(mut self, p: Len, w: Int):
         unchecked:
             t[p] = m.op(t[2 * p], t[2 * p + 1])
             if act != None and has_lz[p]: t[p] = act!.apply(lz[p], t[p], self.level_width(p, w))
@@ -308,7 +308,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
 
     // Walk right from `from` under node `p` (covering `nl..nr`): the first leaf where `ok` fails,
     // or -1, and the fold so far. Reads pending tags on the way down instead of pushing them.
-    fn right_from(self, p: Int, nl: Int, nr: Int, from: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
+    fn right_from(self, p: Len, nl: Int, nr: Int, from: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
         if nr <= from: return (-1, acc)
         if from <= nl:
             let w = m.op(acc, self.seen(pend, p, nl, nr))
@@ -320,7 +320,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         if at >= 0: return (at, x)
         self.right_from(self.kid(p, true), mid, nr, from, down, x, ok)
 
-    fn left_from(self, p: Int, nl: Int, nr: Int, to: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
+    fn left_from(self, p: Len, nl: Int, nr: Int, to: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
         if nl >= to: return (-1, acc)
         if nr <= to:
             let w = m.op(self.seen(pend, p, nl, nr), acc)
@@ -342,7 +342,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
                 if has_lz[q]: v = act!.apply(lz[q], v, n)
         v
 
-    fn pull_node(mut self, p: Int, l: Int, r: Int, w: Int):
+    fn pull_node(mut self, p: Len, l: Len, r: Len, w: Int):
         unchecked:
             t[p] = m.op(t[l], t[r])
             if act != None and has_lz[p]: t[p] = act!.apply(lz[p], t[p], w)
@@ -444,7 +444,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         m.op(self.lift(a, na, l - 1), self.lift(b, nb, h))
 
     // Top-down fold that answers from the first tag that sets its whole span.
-    fn fold_set(self, p: Int, nl: Int, nr: Int, lo: Int, hi: Int, set: F -> Bool) -> T:
+    fn fold_set(self, p: Len, nl: Int, nr: Int, lo: Int, hi: Int, set: F -> Bool) -> T:
         unchecked:
             if lo <= nl and nr <= hi: return t[p]
             let w = min(nr, hi) - max(nl, lo)
