@@ -84,7 +84,7 @@ impl Checker<'_> {
     /// The methods impls for fn types give a fn value of type `of`.
     pub(super) fn fn_impl_members(&mut self, of: &Ty) -> Vec<(String, Ty)> {
         let mut out = Vec::new();
-        for (_, def) in self.env.impls("fn") {
+        for (trait_name, def) in self.env.impls("fn") {
             let Def::Impl {
                 target, methods, ..
             } = &*def
@@ -93,9 +93,20 @@ impl Checker<'_> {
             };
             let mut bindings = crate::ty::Bindings::default();
             target.unify(of, &mut bindings);
-            if of.fits(&target.subst(&bindings)) {
-                out.extend(methods.iter().map(|(m, t)| (m.clone(), t.subst(&bindings))));
+            if !of.fits(&target.subst(&bindings)) {
+                continue;
             }
+            out.extend(methods.iter().map(|(m, t)| (m.clone(), t.subst(&bindings))));
+            // What the impl leaves to its trait's defaults (`f.lift(x)`, `(+).laws`).
+            let tr = trait_name.as_deref().and_then(|t| t.split('<').next());
+            let Some(Def::Trait {
+                methods, generics, ..
+            }) = tr.and_then(|tr| self.type_def(tr)).as_deref().cloned()
+            else {
+                continue;
+            };
+            let inherited = self.trait_members(&methods, &generics, &def);
+            out.extend(inherited.into_iter().map(|(m, t)| (m, t.subst(&bindings))));
         }
         out
     }

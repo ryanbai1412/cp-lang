@@ -252,9 +252,13 @@ impl<'a> Lowerer<'a> {
             let Some(Some(env)) = self.fn_impl_env(m, target, ty) else {
                 continue;
             };
-            let Some(f) = body.stmts.iter().find_map(|item| match &item.kind {
+            let own = body.stmts.iter().find_map(|item| match &item.kind {
                 ast::StmtKind::Fn(f) if f.name.text == method && f.generics.is_empty() => Some(f),
                 _ => None,
+            });
+            let Some((f, fm, foff, env)) = (match own {
+                Some(f) => Some((f, m, offset, env.clone())),
+                None => self.impl_trait_default(idx, method, ty, env.clone()),
             }) else {
                 continue;
             };
@@ -270,7 +274,7 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             let trait_name = self.impls[idx].trait_name.clone();
-            let fn_id = self.declare_fn_in(f, m, offset, None, env);
+            let fn_id = self.declare_fn_in(f, fm, foff, None, env);
             let suffix = self.prim_methods.len();
             self.sigs[fn_id].name = format!(
                 "{}_fn_{}_{suffix}",

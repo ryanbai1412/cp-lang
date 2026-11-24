@@ -84,7 +84,7 @@ impl<'a> Lowerer<'a> {
     /// The body trait `impls[idx]` gives `method` when the impl writes none:
     /// `impl<D: Domain> Target<D> for D` takes `Target`'s `to`, with the
     /// trait's parameters bound by the impl's trait arguments.
-    fn impl_trait_default(
+    pub(super) fn impl_trait_default(
         &mut self,
         idx: usize,
         method: &str,
