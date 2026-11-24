@@ -101,7 +101,7 @@ impl<'a> Lowerer<'a> {
             kind: ast::ExprKind::Name(prefix.to_string()),
             span: Span::point(0),
         };
-        let ty = self.probe_ty_silent(&owner)?;
+        let ty = self.checked_ty(&owner)?;
         let Ty::Struct(sid) = ty else {
             return None;
         };
@@ -125,7 +125,7 @@ impl<'a> Lowerer<'a> {
         if !matches!(owner.kind, ast::ExprKind::Name(_)) {
             return None;
         }
-        let Ty::Struct(sid) = self.probe_ty_silent(owner)? else {
+        let Ty::Struct(sid) = self.checked_ty(owner)? else {
             return None;
         };
         if !self.per_value_domain(sid, member) {
