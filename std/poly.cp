@@ -785,7 +785,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for
     /// each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums).
     ///
-    /// cost: one `*`, which is `convolve`'s product: \(O(n m)\) today
+    /// cost: one `*`, which is `convolve`'s product: \(O((n + m) \log (n + m))\) for a `FastProduct` `T` (as `Mod<P>`, `Int`), else \(O(n m)\)
     /// traps: never
     /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).len == 3`
     /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).at(2) == 7`
@@ -806,7 +806,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
 
     /// The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.
     ///
-    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n^2)\) today; the free `inv` on `List<Mod<P>>` is \(O(n \log n)\)
+    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\)
     /// traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, -1]).inv(3).at(2) == Z(1)`
     pub fn inv(self, n: Int) -> Poly<T>:
@@ -821,7 +821,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
 
     /// The formal logarithm mod `x^n` (`self[0] == 1`), as the free `log`.
     ///
-    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n^2)\) today; the free `log` on `List<Mod<P>>` is \(O(n \log n)\)
+    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\)
     /// traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).log(3).at(2) == Z(-1)`
     pub fn log(self, n: Int) -> Poly<T>:
@@ -832,7 +832,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
 
     /// The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.
     ///
-    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n^2)\) today; the free `exp` on `List<Mod<P>>` is \(O(n \log n)\)
+    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\)
     /// traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 2]).exp(3).at(2) == Z(2)`
     pub fn exp(self, n: Int) -> Poly<T>:
@@ -847,7 +847,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
 
     /// The formal power `self(x)^k mod x^n`, as the free `pow`.
     ///
-    /// cost: \(O(\log k)\) truncated `*`: \(O(n^2 \log k)\) today; the free `pow` is \(O(n \log n)\)
+    /// cost: \(O(\log k)\) truncated `*`: \(O(n \log n \log k)\) for a `FastProduct` `T`, else \(O(n^2 \log k)\); the free `pow` on `List<Mod<P>>` is \(O(n \log n)\) by `exp(k log)`
     /// traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 1]).pow(3, 4).at(2) == Z(3)`
     pub fn pow(self, k: Int, n: Int) -> Poly<T>:
@@ -864,7 +864,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
 
     /// The formal square root mod `x^n`, or `None`, as the free `sqrt`.
     ///
-    /// cost: Newton doubling over `*` and `inv`: \(O(n^2 \log n)\) today plus one `T.sqrt()`; the free `sqrt` is \(O(n \log n + \log^2 P)\)
+    /// cost: Newton doubling over `*` and `inv`: \(O(n \log n)\) for a `FastProduct` `T`, else \(O(n^2 \log n)\), plus one `T.sqrt()`
     /// traps: when `n < 0`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
     pub fn sqrt(self, n: Int) -> ?Poly<T>:
@@ -896,14 +896,31 @@ pub struct Poly<T: Div>(pub c: List<T>):
 
     /// The Taylor shift `self(x + c)`, as `taylor_shift`.
     ///
-    /// cost: Horner over `x + c`: \(O(n^2)\); the free `taylor_shift` is \(O(n \log n)\)
-    /// traps: never
+    /// It splits `self = lo + x^m hi` at the largest power of two `m < n` and returns
+    /// `lo(x + c) + (x + c)^m hi(x + c)`, with `(x + c)^m` from repeated squaring, so it only adds and
+    /// multiplies (exact over `Int`).
+    ///
+    /// cost: \(O(n \log^2 n)\) for a `FastProduct` `T`, else \(O(n^2)\)
+    /// traps: over `Int`, when a coefficient of some `(x + c)^m` or a partial sum overflows, even if
+    /// the result's coefficients fit
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 0, 1]).shift(Z(1)).at(1) == Z(2)`
     pub fn shift(self, c: T) -> Poly<T>:
-        let step = Poly([c, T.one])
-        var acc = Poly<T>.zero
-        for i in (0..self.len).rev: acc = acc * step + Poly([self.c[i]])
-        acc.truncated(self.len)
+        var pw = [Poly([c, T.one])]
+        while (1 << pw.len) < self.len: pw.push(pw.last! * pw.last!)
+        self.shift_split(pw).truncated(self.len)
+
+    fn shift_split(self, pw: List<Poly<T>>) -> Poly<T>:
+        let n = self.len
+        if n <= 32:
+            var acc = Poly<T>.zero
+            for i in (0..n).rev: acc = acc * pw[0] + Poly([self.c[i]])
+            return acc
+        var k = 0
+        while (2 << k) < n: k += 1
+        let m = 1 << k
+        let lo = Poly([self.c[i] for i in 0..m])
+        let hi = Poly([self.c[i] for i in m..n])
+        lo.shift_split(pw) + pw[k] * hi.shift_split(pw)
 
 impl Add for Poly<T>:
     fn add(a, b) = Poly([a.at(i) + b.at(i) for i in 0..max(a.len, b.len)])
@@ -923,6 +940,13 @@ impl Div for Poly<T>:
         let db = b.deg()!
         let da = a.deg() ?? -1
         if da < db: return Poly([])
+        let lead = b.c[db]
+        let k = da - db + 1
+        if min(db, k) > 32 and T.one / lead * lead == T.one:
+            let ra = Poly([a.c[da - i] for i in 0..k])
+            let rb = Poly([b.c[db - i] for i in 0..min(k, db + 1)])
+            let q = (ra * rb.inv(k)).truncated(k)
+            return Poly([q.c[k - 1 - i] for i in 0..k])
         var r = a.c
         var q = List.filled(da - db + 1, T.zero)
         for i in (0..=da - db).rev:
