@@ -29,7 +29,7 @@ pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 
 /// What every scan of std's declarations reads, line for line with `text`:
 /// each top-level line of code, each line that declares a `fn` (a `///`
-/// doc aside), and the rest of a header still open on its next line. A fn
+/// doc aside) or a method's `@lint`, and the rest of a header still open on its next line. A fn
 /// whose body is on the lines below gets `todo` for it; the other lines
 /// are blank, so a line number in the outline is the file's. A one-line
 /// fn with its return type written keeps `= todo` for its body.
@@ -44,6 +44,8 @@ pub fn outline(text: &str) -> String {
         let comment = trimmed.starts_with("//");
         let top = !trimmed.is_empty() && trimmed.len() == code.len() && !comment;
         let declares = code.contains("fn ") && !comment;
+        // A method's `@lint` reaches cpl-lint only through the outline.
+        let lint = trimmed.starts_with("@lint(");
         if top {
             open = 0;
         }
@@ -62,7 +64,7 @@ pub fn outline(text: &str) -> String {
             }
             continue;
         }
-        if open > 0 || top || declares {
+        if open > 0 || top || declares || lint {
             out.push_str(line);
             if !comment {
                 if declares && open == 0 {

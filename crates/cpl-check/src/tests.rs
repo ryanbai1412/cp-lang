@@ -810,6 +810,16 @@ fn the_outline_lists_top_level_declarations() {
     );
 }
 
+/// A method's `@lint` stays in std's outline, which is where cpl-lint reads
+/// std's lints for a program that never loads the module.
+#[test]
+fn the_std_outline_keeps_a_methods_lint() {
+    let text = "pub struct S:\n    x: Int\n    @lint(s_by_hand, from: \"y * y\", to: \"S.sq(y)\")\n    pub fn sq(y: Int) -> Int:\n        y * y\n";
+    let outline = crate::std_files::outline(text);
+    assert_eq!(outline.lines().nth(2), text.lines().nth(2), "{outline}");
+    assert_eq!(outline.lines().count(), text.lines().count());
+}
+
 // --- Generics, traits, modules, lends ------------------------------------------
 
 /// Modules held in memory, by dotted name: `("std.algebra", "pub struct ...")`.
