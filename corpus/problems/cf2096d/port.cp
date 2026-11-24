@@ -1,4 +1,5 @@
 // Source: Codeforces 2096D (Wonderful Lightbulbs), https://codeforces.com/contest/2096/problem/D
+// limits: 2000 ms, 250 MB
 // Problem: from one lit bulb (the treasure), each operation toggles (x, y), (x, y + 1),
 //   (x + 1, y - 1) and (x + 1, y). Given the n <= 2e5 lit bulbs (|coords| <= 1e8, multitest),
 //   print any possible treasure position.

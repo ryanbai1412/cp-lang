@@ -1,4 +1,5 @@
 // Source: Codeforces 2124A (Deranged Deletions), https://codeforces.com/contest/2124/problem/A
+// limits: 1000 ms, 250 MB
 // Problem: an array is a derangement if it differs from its sorted copy at every position.
 //   Given n <= 100 values 1 <= a_i <= n, delete some elements so a non-empty derangement
 //   remains: print NO, or YES, its length and its elements. Multitest.

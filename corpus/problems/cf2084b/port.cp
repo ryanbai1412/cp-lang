@@ -1,4 +1,5 @@
 // Source: Codeforces 2084B (MIN = GCD), https://codeforces.com/contest/2084/problem/B
+// limits: 1000 ms, 250 MB
 // Problem: given n <= 1e5 positive a_i <= 1e18, can a be rearranged so some split 1 <= i < n has
 //   min(a_1..a_i) = gcd(a_{i+1}..a_n)? Print Yes or No. Multitest, sum n <= 1e5.
 // Solution: the global minimum mn must be in the prefix (it is <= the suffix gcd), so the
