@@ -10,41 +10,27 @@
 // original: corpus/submissions/4733047.cpp (grader function count_tastiness)
 // stdin here: q, then per call `k x` and a[0..k).
 let q: 1..=1000 = read()
+domain Bit = 0..60
 
-// `1 << (i + 1)` with a loop index is emitted as a 32-bit C++ shift today
-// (silently wrong from bit 31 up); a parameter goes through the checked shift.
-fn bit(i: Int) -> Int: 1 << i
+for _ in 0..q:
+    let (k, x): (1..=60, 1..=1_000_000_000_000_000_000) = read()
+    let a: [k]0..=1_000_000_000_000_000_000 = read()
+    // s.cut(i + 1): the tastiness of types 0..=i, all of which can carry up into bit i
+    let s = ([Bit] i => if Int(i) < k: a[Int(i)] << Int(i) else: 0).scan(+)
+    fn cap_below(i: Int) -> Int = s.cut(i + 1) / x + 1
 
-
-fn count_tastiness(x: Int, a: List<Int>) -> Int:
-    // s[i] = total tastiness of types 0..=i
-    var s: List<Int> = []
-    var run = 0
+    // below[i]: the working y < 2^i. A y with top bit i works when y < cap_below(i) and its
+    // low part does; the low parts under that cap are counted by walking the cap's high bits
+    var below: List<Int> = [1]
     for i in 0..60:
-        if i < a.len:
-            run += a[i] << i
-        s.push(run)
-    // pow[i] = number of valid y below 2^i; the tail below 2^i is one chain
-    var pow: List<Int> = [1]
-    for i in 0..60:
-        var cap = min(bit(i + 1), s[i] / x + 1) - bit(i)
-        var got = pow[i]
+        var cap = min(1 << (i + 1), cap_below(i)) - (1 << i)
+        var got = below[i]
         while cap > 0:
             if cap == 1:
                 got += 1
-                cap = 0
-            else:
-                let j = bit_len(cap - 1) - 1
-                got += pow[j]
-                cap = min(cap, s[j] / x + 1) - bit(j)
-        pow.push(got)
-    pow[60]
-
-for t in 0..q:
-    let k: 1..=60 = read()
-    let x: 1..=1000000000000000000 = read()
-    var a: List<Int> = []
-    for i in 0..k:
-        let v: Int = read()
-        a.push(v)
-    print(count_tastiness(x, a))
+                break
+            let j = bit_len(cap - 1) - 1
+            got += below[j]
+            cap = min(cap, cap_below(j)) - (1 << j)
+        below.push(got)
+    print(below.last!)
