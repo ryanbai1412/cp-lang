@@ -1123,6 +1123,7 @@ impl<'p> Emitter<'p> {
                 // Slots are per fn: one another fn lent says nothing of this one.
                 self.ref_bound.remove(slot);
                 self.mut_bound.remove(slot);
+                self.pointed.remove(slot);
                 if hoisted {
                     if matches!(init.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
                         self.note_let_copy(*slot, init, &text, tail.as_ref());
@@ -1151,6 +1152,13 @@ impl<'p> Emitter<'p> {
                     let text = self.expr(src).text;
                     self.line(out, &format!("const {cpp}& {name} = {text};"));
                     self.ref_bound.insert(*slot);
+                } else if !taken && self.points_at(*slot, init, tail.as_ref()) {
+                    // `var a = m.id` set again only whole: it points at the
+                    // place until then, and owns each value it is set to,
+                    // made only when it is.
+                    self.pointed.insert(*slot);
+                    self.line(out, &format!("std::optional<{cpp}> {name}_own;"));
+                    self.line(out, &format!("const {cpp}* {name} = &{text};"));
                 } else if !taken && self.lends(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list. One a return

@@ -285,6 +285,8 @@ pub(crate) struct Emitter<'p> {
     pub blank_next: bool,
     /// Locals bound as `const T&` to a place they read.
     pub ref_bound: BTreeSet<usize>,
+    /// Locals held as a pointer to their value: see [`Emitter::points_at`].
+    pub pointed: BTreeSet<usize>,
     /// Locals a `return` gives a part of (`return Some(p.x0)`, `return t.b`).
     pub given_parts: BTreeSet<usize>,
     /// Of `ref_bound`, those bound as `T&` to a local the fn owns, so a
@@ -414,6 +416,7 @@ impl<'p> Emitter<'p> {
             slot_written_next: false,
             blank_next: false,
             ref_bound: BTreeSet::new(),
+            pointed: BTreeSet::new(),
             given_parts: BTreeSet::new(),
             mut_bound: BTreeSet::new(),
             opened: BTreeMap::new(),
@@ -692,6 +695,7 @@ impl<'p> Emitter<'p> {
         self.spent = crate::scope::spent(self.program, body);
         self.lent.clear();
         self.ref_bound.clear();
+        self.pointed.clear();
         self.mut_bound.clear();
         self.given_parts.clear();
         self.break_targets.clear();

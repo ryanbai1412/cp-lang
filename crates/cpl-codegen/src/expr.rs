@@ -453,6 +453,9 @@ impl<'p> Emitter<'p> {
             {
                 Code::primary(self.move_of(&e.ty, &self.names[*slot]))
             }
+            ExprKind::Local(slot) if self.closure_id.is_none() && self.pointed.contains(slot) => {
+                Code::primary(format!("(*{})", self.names[*slot]))
+            }
             ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),
             ExprKind::Global(id) => match self.devirt.global_target(*id) {
                 Some(cid) => {

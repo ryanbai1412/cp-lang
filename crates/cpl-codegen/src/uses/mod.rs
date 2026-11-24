@@ -585,6 +585,40 @@ impl crate::emit::Emitter<'_> {
             .then_some(root)
     }
 
+    /// Whether the `var` of `slot` from the place `init` can point at it
+    /// until it is set again: a heap value set again only whole (`a =
+    /// m.op(a, x)`), captured by no closure, whose place nothing changes
+    /// while the name lives ([`Emitter::source_change`]). Each value it is
+    /// set to is its own.
+    pub(crate) fn points_at(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
+        let (Some(id), None, Some(tail)) = (self.fn_id, self.closure_id, tail) else {
+            return false;
+        };
+        let body = &self.program.fns[id].body;
+        let mut whole = true;
+        places::each_put(body, &mut |put, _| {
+            if let places::Put::Store(place, op) = put {
+                if walk::root(place) == (false, slot) {
+                    whole &= matches!(place.kind, PlaceKind::Local(_)) && *op == AssignOp::Set;
+                }
+            }
+        });
+        places::each_write(body, &mut |how, place| {
+            whole &= matches!(how, places::Write::Store) || walk::root(place) != (false, slot);
+        });
+        whole
+            && !init.ty.is_scalar()
+            && !matches!(init.ty, Ty::Fn(..))
+            && crate::lend::holds_heap(self.program, &init.ty)
+            && matches!(init.kind, ExprKind::Field(..) | ExprKind::Index(..))
+            && crate::stmt::place_root(init).is_some()
+            && self.facts.stores(self.facts_local(slot)) > 1
+            && !captured_in(self.program, body, slot)
+            && self
+                .source_change_with(slot, init, Some(tail), true)
+                .is_none()
+    }
+
     pub(crate) fn source_stays(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
         self.source_change(slot, init, tail).is_none()
     }
@@ -597,6 +631,18 @@ impl crate::emit::Emitter<'_> {
         init: &Expr,
         tail: Option<&Tail>,
     ) -> Option<&'static str> {
+        self.source_change_with(slot, init, tail, false)
+    }
+
+    /// [`Emitter::source_change`]; `set_again` when the name may be set
+    /// again whole, which leaves the place as it was.
+    fn source_change_with(
+        &self,
+        slot: usize,
+        init: &Expr,
+        tail: Option<&Tail>,
+        set_again: bool,
+    ) -> Option<&'static str> {
         let temp = |slot: usize| self.locals()[slot].name.is_empty();
         let changed = |yes: bool, why| yes.then_some(why);
         let Some((global, root)) = crate::stmt::place_root(init).or_else(|| self.keyed_root(init))
@@ -604,7 +650,9 @@ impl crate::emit::Emitter<'_> {
             return Some(SOURCE_CALLED);
         };
         let home = self.home();
-        if self.uses.of_binding(home, slot).mutated || self.facts.stores(self.facts_local(slot)) > 1
+        if !set_again
+            && (self.uses.of_binding(home, slot).mutated
+                || self.facts.stores(self.facts_local(slot)) > 1)
         {
             return Some(SET_AGAIN);
         }
@@ -725,6 +773,34 @@ fn moved_on(rest: &[Stmt], slot: usize) -> bool {
     })
 }
 
+/// Whether statement `k` of `setup` or `main` is the last to mention the
+/// global `g`: no later statement there does, nor any fn or closure, which
+/// a later statement could call.
+fn global_unread_past(program: &Program, block: &Block, k: usize, g: usize) -> bool {
+    let mut later = vec![Block {
+        stmts: block.stmts[k + 1..].to_vec(),
+    }];
+    if std::ptr::eq(block, &program.setup) {
+        later.push(program.main.clone());
+    } else if !std::ptr::eq(block, &program.main) {
+        return false;
+    }
+    let mut seen = false;
+    let bodies = later
+        .iter()
+        .chain(program.fns.iter().map(|f| &f.body))
+        .chain(program.closures.iter().map(|c| &c.body));
+    for b in bodies {
+        walk::deep_exprs(b, &mut |e| {
+            seen |= matches!(e.kind, ExprKind::Global(h) if h == g)
+        });
+        walk::deep_stmts(b, &mut |stmt| {
+            seen |= matches!(stmt, Stmt::Assign(place, ..) if walk::root(place) == (true, g));
+        });
+    }
+    !seen
+}
+
 pub(crate) fn last_read(
     program: &Program,
     block: &Block,
@@ -732,6 +808,11 @@ pub(crate) fn last_read(
     outer: &BTreeSet<usize>,
 ) -> bool {
     if let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] {
+        if let ExprKind::Global(g) = value.kind {
+            if walk::root(place) != (true, g) && global_unread_past(program, block, k, g) {
+                return true;
+            }
+        }
         if let ExprKind::Some(inner) = &value.kind {
             if let ExprKind::Local(slot) = inner.kind {
                 return walk::root(place) != (false, slot)

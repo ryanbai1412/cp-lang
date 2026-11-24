@@ -2,11 +2,14 @@
 //! producer's `(x, y)`, binds each part straight from its own expression:
 //! the tuple the pattern takes apart is never built, so its parts are
 //! plain locals and a part that is a closure keeps its own type instead of
-//! a `std::function` slot of a `std::tuple`. It majorizes: the same expressions run in the same order.
+//! a `std::function` slot of a `std::tuple`, and a part read from a place
+//! is a `let` of that place: it lends the place while nothing changes it,
+//! moves it at its last read, and copies it only otherwise. It majorizes:
+//! the same expressions run in the same order.
 
 use crate::uses::read_counts;
 use crate::walk;
-use cpl_ir::{Block, Expr, ExprKind, Local, Program, Stmt};
+use cpl_ir::{AssignOp, Block, Expr, ExprKind, Local, PlaceKind, Program, Stmt};
 
 pub(crate) fn unpack(program: &mut Program) {
     let Program {
@@ -53,8 +56,10 @@ fn home(body: &mut Block, locals: &[Local], captured: &dyn Fn(usize) -> bool) {
                 let items = std::mem::take(items);
                 block.stmts.remove(k);
                 for (i, item) in items.into_iter().enumerate() {
-                    if let Stmt::Let(_, init) = &mut block.stmts[k + i] {
-                        *init = Some(item);
+                    match &mut block.stmts[k + i] {
+                        Stmt::Let(_, init) => *init = Some(item),
+                        Stmt::Assign(_, _, value) => *value = item,
+                        _ => {}
                     }
                 }
                 k += n;
@@ -85,18 +90,18 @@ fn parts(
     else {
         return None;
     };
-    // A part read from a variable stays in the tuple: bound alone it would
-    // be a copy the C++ spells out, where the tuple's is the same copy.
-    if items
-        .iter()
-        .any(|item| !item.ty.is_scalar() && crate::stmt::place_root(item).is_some())
-    {
-        return None;
-    }
     let n = items.len();
-    let binds = |(i, stmt): (usize, &Stmt)| {
-        matches!(stmt, Stmt::Let(_, Some(Expr { kind: ExprKind::Field(base, j), .. }))
+    let part = |e: &Expr, i: usize| {
+        matches!(&e.kind, ExprKind::Field(base, j)
             if *j == i && matches!(base.kind, ExprKind::Local(s) if s == *t))
+    };
+    // A top-level `var (a, b)` stores each part into its global.
+    let binds = |(i, stmt): (usize, &Stmt)| match stmt {
+        Stmt::Let(_, Some(e)) => part(e, i),
+        Stmt::Assign(place, AssignOp::Set, e) => {
+            matches!(place.kind, PlaceKind::Global(_)) && part(e, i)
+        }
+        _ => false,
     };
     let named = !locals[*t].name.is_empty();
     let rest = stmts.get(k + 1..k + 1 + n)?;

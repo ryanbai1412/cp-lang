@@ -1112,3 +1112,112 @@ fn a_list_a_later_struct_or_temporary_view_still_reads_is_kept() {
     let freed = piece.find("swap(a)").unwrap_or(piece.len());
     assert!(piece[..freed].contains("put_int"), "{piece}");
 }
+
+#[test]
+fn a_var_set_again_only_whole_points_at_the_place_it_starts_from() {
+    let cpp = cpp(concat!(
+        "fn join(x: List<Int>, y: List<Int>) -> List<Int>:\n",
+        "    [x[0] + y[0]]\n",
+        "fn fold(t: List<List<Int>>, n: Int) -> List<Int>:\n",
+        "    var (a, b) = (t[0], t[0])\n",
+        "    var i = 1\n",
+        "    while i < n:\n",
+        "        a = join(a, t[i])\n",
+        "        b = join(t[i], b)\n",
+        "        i += 1\n",
+        "    join(a, b)\n",
+        "fn changed(n: Int) -> Int:\n",
+        "    var t = [[i] for i in 0..n]\n",
+        "    var a = t[0]\n",
+        "    t[0] = [5]\n",
+        "    a = join(a, t[0])\n",
+        "    a[0]\n",
+        "let n: Int = read()\n",
+        "let t = [[i] for i in 0..n]\n",
+        "print(fold(t, n)[0], changed(n))\n",
+    ));
+    // SegTree.fold's `var (a, b) = (m.id, m.id)` reads the place twice and copies neither.
+    assert!(
+        cpp.contains("const std::vector<ll>* a = &cpl::at(t_2, 0);"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("const std::vector<ll>* b = &cpl::at(t_2, 0);"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("a_own = ::prog::join((*a), cpl::at(t_2, i));"),
+        "{cpp}"
+    );
+    assert!(cpp.contains("a = &*a_own;"), "{cpp}");
+    assert!(
+        cpp.contains("std::optional<std::vector<ll>> a_own;"),
+        "{cpp}"
+    );
+    // A place written while the name lives is copied, so `a` keeps what it read.
+    let changed = &cpp[cpp.find("ll changed(").unwrap()..];
+    assert!(
+        changed.contains("std::vector<ll> a = cpl::at(t"),
+        "{changed}"
+    );
+    assert!(!changed.contains("a_own"), "{changed}");
+}
+
+#[test]
+fn a_tuple_of_two_read_only_places_lends_both_parts() {
+    let cpp = cpp(concat!(
+        "fn size(at: List<List<Int>>, x: Int, y: Int) -> Int:\n",
+        "    let (xs, ys) = (at[x], at[y])\n",
+        "    xs.len + ys.len\n",
+        "let n: Int = read()\n",
+        "let at = [[i] for i in 0..n]\n",
+        "print(size(at, 0, n - 1))\n",
+    ));
+    assert!(
+        cpp.contains("const std::vector<ll>& xs = cpl::at(at_2, x);"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("const std::vector<ll>& ys = cpl::at(at_2, y);"),
+        "{cpp}"
+    );
+    assert!(!cpp.contains("std::tuple<std::vector<ll>"), "{cpp}");
+}
+
+#[test]
+fn a_tuple_of_one_place_twice_moves_it_into_its_last_part() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "let ranked = [i * 2 for i in 0..n]\n",
+        "var (lo, hi) = (ranked, ranked)\n",
+        "fn bump(i: Int):\n",
+        "    lo[i] -= 1\n",
+        "    hi[i] += 1\n",
+        "bump(0)\n",
+        "print(lo[0], hi[0])\n",
+    ));
+    // `lo` and `hi` change apart, so one copy is the program's; the last part takes `ranked`.
+    assert!(cpp.contains("lo = ranked;"), "{cpp}");
+    assert!(cpp.contains("hi = std::move(ranked);"), "{cpp}");
+    assert!(!cpp.contains("std::tuple<std::vector<ll>"), "{cpp}");
+}
+
+#[test]
+fn a_var_whose_place_a_closure_passed_on_writes_is_a_copy() {
+    let cpp = cpp(concat!(
+        "var g = [[1], [2]]\n",
+        "fn join(x: List<Int>, y: List<Int>) -> List<Int>:\n",
+        "    [x[0] + y[0]]\n",
+        "fn fold(n: Int) -> Int:\n",
+        "    var a = g[0]\n",
+        "    var xs = [n, 1]\n",
+        "    xs.sort(by: x => do: g[0] = [x]; x)\n",
+        "    a = join(a, g[1])\n",
+        "    a[0] + xs[0]\n",
+        "let n: Int = read()\n",
+        "print(fold(n))\n",
+    ));
+    let fold = &cpp[cpp.find("ll fold(").unwrap()..];
+    assert!(!fold.contains("a_own"), "{fold}");
+    assert!(fold.contains("std::vector<ll> a = "), "{fold}");
+}

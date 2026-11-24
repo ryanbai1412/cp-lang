@@ -68,6 +68,16 @@ impl<'p> Emitter<'p> {
     }
 
     pub(super) fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
+        if let (PlaceKind::Local(slot), AssignOp::Set) = (&place.kind, op) {
+            if self.closure_id.is_none() && self.pointed.contains(slot) {
+                // A name held as a pointer owns what it is set to from here on.
+                let name = self.names[*slot].clone();
+                let text = self.expr(value).text;
+                self.line(out, &format!("{name}_own = {text};"));
+                self.line(out, &format!("{name} = &*{name}_own;"));
+                return;
+            }
+        }
         if self.dropped_store(place, op) {
             self.dropped_value(value, out);
             return;
