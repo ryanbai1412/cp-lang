@@ -9026,3 +9026,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** An optional read with no `none:` (R10.2.10) skips whitespace and gives `None` when the input has ended, else `Some` of a `T` read by the usual rules, on both engines. The end check is a read, so it flushes under `Wire` and waits on an interactor like one. `read(none: k)` keeps its sentinel meaning.
 - **Why.** CP Lang had no end-of-input test a program could write, so `read_all` and `@!multitest(until_eof)` were compiler special cases. `?T` is how the language says "maybe absent"; an end-of-input `None` makes `read_all` a four-line std body and lets a statement's optional trailing token read as `?T`, with no new name. `read<?Int>()` was E0501 before, so no program changes meaning.
 - **Reverse.** Make the plain `?T` read E0501 again and add an `at_eof()` intrinsic for std.
+
+## 573. (reserved, unknown)
