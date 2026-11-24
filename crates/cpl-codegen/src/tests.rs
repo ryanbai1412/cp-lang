@@ -136,6 +136,14 @@ print(join(x, x)[K(1)], s.c[K(2)], (o ?? x)[K(0)])
 }
 
 #[test]
+fn list_insert_and_remove_move_the_tail_once() {
+    let body = body("var a = [1, 3]\na.insert(1, 2)\nlet y = a.remove(0)\nprint(a, y)\n");
+    assert!(body.contains("cpl::list_insert(a, "), "{body}");
+    assert!(body.contains("cpl::list_remove(a, "), "{body}");
+    assert!(!body.contains("swap_at"), "{body}");
+}
+
+#[test]
 fn the_same_source_gives_the_same_bytes() {
     let source = "var m: Map<Str, Int> = []\nm[\"b\"] = 1\nm[\"a\"] = 2\nvar s: Set<Int> = []\ns.insert(3)\nprint(m, s)\n";
     assert_eq!(cpp(source), cpp(source));

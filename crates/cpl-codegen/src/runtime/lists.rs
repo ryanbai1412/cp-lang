@@ -17,6 +17,28 @@ template <class S> inline void swap_at(S& s, ll i, ll j) {
 ",
     },
     Piece {
+        name: "list_insert",
+        needs: &[],
+        code: "\
+// `xs.insert(i, x)`, `i` already held to `0..=len`: one move of the tail up.
+template <class S, class T> inline void list_insert(S& s, ll i, T&& x) {
+    s.insert(s.begin() + i, std::forward<T>(x));
+}
+",
+    },
+    Piece {
+        name: "list_remove",
+        needs: &[],
+        code: "\
+// `xs.remove(i)`, `i` already held to `0..len`: the element, then one move of the tail down.
+template <class S> inline typename S::value_type list_remove(S& s, ll i) {
+    typename S::value_type x = std::move(s[i]);
+    s.erase(s.begin() + i);
+    return x;
+}
+",
+    },
+    Piece {
         name: "truncate",
         needs: &[],
         code: "\

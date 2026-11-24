@@ -1,7 +1,5 @@
 // expect: ok, output "ok"
 // input: "1 300\n"
-// model: insert
-// model: remove
 // model: pop_if
 // model: pop_while
 // model: take_all

@@ -577,6 +577,41 @@ impl Cells {
         Some(val)
     }
 
+    /// `val` at `at`, the tail moved up one cell in one block move.
+    pub fn insert(&mut self, at: usize, val: Value) {
+        self.push(val);
+        self.rotate_tail(at, true);
+    }
+
+    /// The cell at `at`, the tail moved down one cell in one block move.
+    pub fn remove(&mut self, at: usize) -> Value {
+        let val = self.get_unchecked_val(at);
+        self.rotate_tail(at, false);
+        self.truncate(self.len() - 1);
+        val
+    }
+
+    fn rotate_tail(&mut self, at: usize, up: bool) {
+        fn turn<T>(s: &mut [T], by: usize, up: bool) {
+            if up {
+                s.rotate_right(by);
+            } else {
+                s.rotate_left(by);
+            }
+        }
+        match self {
+            Cells::Int(v) | Cells::OneIntStruct(v) => turn(&mut v[at..], 1, up),
+            Cells::OptInt(v) => turn(&mut v[at..], 1, up),
+            Cells::Bool(v) | Cells::Char(v) => turn(&mut v[at..], 1, up),
+            Cells::Float(v) => turn(&mut v[at..], 1, up),
+            Cells::SmallIntTuple { stride, data, .. } => {
+                let s = *stride as usize;
+                turn(&mut data[at * s..], s, up);
+            }
+            Cells::Values(v) => turn(&mut v[at..], 1, up),
+        }
+    }
+
     pub fn extend(&mut self, vals: impl IntoIterator<Item = Value>) {
         for v in vals {
             self.push(v);

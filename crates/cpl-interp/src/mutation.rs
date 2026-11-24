@@ -132,6 +132,35 @@ pub(crate) fn mutate_cell(
             }
             Value::Unit
         }
+        (Mutation::Insert, Value::List(items)) => {
+            let i = arg.int();
+            let v = Rc::make_mut(items);
+            match usize::try_from(i).ok().filter(|&at| at <= v.len()) {
+                Some(at) => v.insert(at, arg2),
+                None => {
+                    let len = v.len();
+                    return trap(
+                        span,
+                        format!("insert({i}) is outside a list of length {len}"),
+                    );
+                }
+            }
+            Value::Unit
+        }
+        (Mutation::Remove, Value::List(items)) => {
+            let i = arg.int();
+            let v = Rc::make_mut(items);
+            match usize::try_from(i).ok().filter(|&at| at < v.len()) {
+                Some(at) => v.remove(at),
+                None => {
+                    let len = v.len();
+                    return trap(
+                        span,
+                        format!("remove({i}) is outside a list of length {len}"),
+                    );
+                }
+            }
+        }
         (Mutation::Swap, Value::Array(arr)) => {
             let (i, j) = (arg.int(), arg2.int());
             let a = Rc::make_mut(arr);

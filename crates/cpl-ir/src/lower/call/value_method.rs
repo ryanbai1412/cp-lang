@@ -170,7 +170,8 @@ impl<'a> Lowerer<'a> {
                 let ty_owned = ty.clone();
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {
-                        let at = self.expect(exprs[0], &Ty::Int);
+                        let at = self.expr(exprs[0], Some(&Ty::Int));
+                        let at = self.coerce(at, &Ty::Int, exprs[0].span);
                         let val = self.expect(exprs[1], &elem);
                         let val_span = exprs[1].span;
                         self.do_expr(Some(&Ty::Unit), span, |lw, out| {
@@ -285,6 +286,96 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.foreign_method_args(whole, base, name, args, &ty),
             },
+            // One block move of the tail, `vector::insert` / `erase`, after the
+            // index is held to the list as the std contract states.
+            (Ty::List(_), "insert" | "remove") => {
+                let inserting = method == "insert";
+                match self.positional_any(method, args, if inserting { 2 } else { 1 }, span) {
+                    Some(exprs) => {
+                        let at = self.expr(exprs[0], Some(&Ty::Int));
+                        let at = self.coerce(at, &Ty::Int, exprs[0].span);
+                        let val = inserting.then(|| {
+                            let v = self.expr(exprs[1], Some(&elem));
+                            self.coerce(v, &elem, exprs[1].span)
+                        });
+                        let result = if inserting { Ty::Unit } else { elem.clone() };
+                        self.do_expr(Some(&result), span, |lw, out| {
+                            let place = lw.place(base);
+                            let place = lw.settle_indexes(place, out);
+                            let i = lw.temp(Ty::Int);
+                            out.push(Stmt::Let(i, Some(at)));
+                            let mut margs = vec![lw.local(i, span)];
+                            if let Some(val) = val {
+                                let val = match lw
+                                    .place_range(&place)
+                                    .and_then(|r| r.elem().and_then(|e| e.scalar()).cloned())
+                                {
+                                    Some(b) => lw.check_range(val, &b, span),
+                                    None => val,
+                                };
+                                let held = lw.temp(val.ty.clone());
+                                out.push(Stmt::Let(held, Some(val)));
+                                margs.push(lw.local(held, span));
+                            }
+                            let list = super::stmt::place_to_expr(&place);
+                            let len =
+                                lw.mk(ExprKind::Builtin(Builtin::Len, vec![list]), Ty::Int, span);
+                            let zero = lw.mk(ExprKind::Int(0), Ty::Int, span);
+                            let low = lw.mk(
+                                ExprKind::Cmp(
+                                    CmpOp::Le,
+                                    Box::new(zero),
+                                    Box::new(lw.local(i, span)),
+                                ),
+                                Ty::Bool,
+                                span,
+                            );
+                            let top = if inserting { CmpOp::Le } else { CmpOp::Lt };
+                            let high = lw.mk(
+                                ExprKind::Cmp(top, Box::new(lw.local(i, span)), Box::new(len)),
+                                Ty::Bool,
+                                span,
+                            );
+                            let cond = lw.mk(
+                                ExprKind::Binary(BinOp::And, Box::new(low), Box::new(high)),
+                                Ty::Bool,
+                                span,
+                            );
+                            let text = if inserting {
+                                "0 <= i <= self.len"
+                            } else {
+                                "0 <= i < self.len"
+                            };
+                            out.push(Stmt::Assert {
+                                cond,
+                                message: None,
+                                text: text.to_string(),
+                                line: lw.line(span),
+                                note: None,
+                                span: lw.span(span),
+                                kept: true,
+                            });
+                            let op = if inserting {
+                                Mutation::Insert
+                            } else {
+                                Mutation::Remove
+                            };
+                            let m = lw.mk(
+                                ExprKind::Mutate(op, Box::new(place), margs),
+                                result.clone(),
+                                span,
+                            );
+                            if inserting {
+                                out.push(Stmt::Expr(m));
+                                out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                            } else {
+                                out.push(Stmt::Give(m));
+                            }
+                        })
+                    }
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "swap") => {
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {

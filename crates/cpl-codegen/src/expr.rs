@@ -1012,6 +1012,21 @@ impl<'p> Emitter<'p> {
                             this.need("pop_val");
                             Code::primary(format!("cpl::pop_val({p})"))
                         }
+                        Mutation::Insert if matches!(place.ty, Ty::List(_)) => {
+                            this.need("list_insert");
+                            let v = match &narrow_elem {
+                                Some(cpl_ir::NarrowLayout::Seq(inner)) => {
+                                    this.expr_with_elem_layout(&args[1], Some(inner)).text
+                                }
+                                Some(l) => this.narrow_cell_value(&arg2, l),
+                                None => arg2,
+                            };
+                            Code::primary(format!("cpl::list_insert({p}, {arg}, {v})"))
+                        }
+                        Mutation::Remove if matches!(place.ty, Ty::List(_)) => {
+                            this.need("list_remove");
+                            Code::primary(format!("cpl::list_remove({p}, {arg})"))
+                        }
                         Mutation::Insert => Code::primary(format!("{p}.insert({arg}).second")),
                         Mutation::Remove => Code::new(format!("{p}.erase({arg}) != 0"), EQ),
                         Mutation::Clear => Code::primary(format!("{p}.clear()")),

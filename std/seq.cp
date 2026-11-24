@@ -1288,31 +1288,6 @@ pub fn clone<T>(self: T) -> T = copy(self)
 /// example: `var a = [1, 2]; a.take_all() == [1, 2] and a == []`
 pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 
-/// Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one.
-/// On an empty list `i` must be 0.
-///
-/// cost: \(O(n - i)\)
-/// traps: when `i` is not in `0..=self.len`
-/// example: `var a = [1, 3]; a.insert(1, 2); a == [1, 2, 3]`
-/// empty: `var a: List<Int> = []; a.insert(0, 5); a == [5]`
-pub fn insert<T>(mut self: List<T>, i: Int, x: T):
-    assert 0 <= i <= self.len
-    var carry = x
-    for j in i..self.len: swap(mut carry, mut self[j])
-    self.push(carry)
-
-/// \(O(n)\). Remove and return the element at index `i` (`0 <= i < self.len`), shifting `i + 1..` left.
-///
-/// cost: \(O(n - i)\)
-/// traps: when `i` is not in `0..self.len`
-/// example: `var a = [1, 2, 3]; a.remove(1) == 2 and a == [1, 3]`
-/// empty: `var a: List<Int> = []; a.remove(0) == 0` (traps R0401)
-pub fn remove<T>(mut self: List<T>, i: Int) -> T:
-    assert 0 <= i < self.len
-    var carry = self.pop()!
-    for j in (i..self.len).rev: swap(mut carry, mut self[j])
-    carry
-
 // =============================================================================
 // Spec surface (`= todo` where not yet implemented)
 // =============================================================================
