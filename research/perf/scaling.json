@@ -9352,6 +9352,22 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/meld_heaps_reuse.cp::heap.MeldHeaps.pop": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "heap.MeldHeaps.pop",
+   "measured": 1.22,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/meld_heaps_reuse.cp::heap.MeldHeaps.push": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "heap.MeldHeaps.push",
+   "measured": 1.25,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/mo.cp::mo.mo": {
    "cost": "(n + q) \\sqrt n",
    "documented": 8.0,
