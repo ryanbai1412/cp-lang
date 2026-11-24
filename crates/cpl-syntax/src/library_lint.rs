@@ -169,7 +169,7 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
                 .map(|h| h.trim().to_string())
                 .filter(|h| !h.is_empty()),
         );
-        let (Some((from_toks, _)), Some(to_toks)) = (run(&from), code(&to)) else {
+        let (Some((from_toks, _)), Some(to_toks)) = (run(&from), run(&to).map(|r| r.0)) else {
             let msg = if run(&from).is_none() {
                 &msgs::syntax::LINT_FROM_NOT_CODE
             } else {

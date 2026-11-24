@@ -484,3 +484,22 @@ fn a_redeclaring_fix_needs_member_uses_that_still_check() {
         assert!(found(&format!("{fill}{after}")).is_empty(), "{after}");
     }
 }
+
+/// A `to` may be a run of statements, as a `from` may; its later lines take
+/// the indent of the code it replaces. Rule: R06.4.9.
+#[test]
+fn a_to_run_replaces_a_from_run_at_its_indent() {
+    let decl = "@lint(bump_by_hand, from: \"var m: Map<T, Int> = Map()\\nfor y in xs:\\n    m[x] = (m.get(x) ?? 0) + 1\", to: \"var m = Counter<T>()\\nfor y in xs:\\n    m.bump(x)\", holes: \"T, xs\")\npub fn bump(mut self: Counter<Int, Int>, x: Int):\n    self.push(x)\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "bump_by_hand")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let nested = "fn f(a: List<Int>):\n    var c: Map<Int, Int> = Map()\n    for v in a:\n        c[v] = (c.get(v) ?? 0) + 1\n    print(c[3])\nf([1])\n";
+    assert_eq!(
+        found(nested),
+        ["var c = Counter<Int>()\n    for v in a:\n        c.bump(v)"]
+    );
+}

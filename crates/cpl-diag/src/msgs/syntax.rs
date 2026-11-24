@@ -50,7 +50,7 @@ super::msgs! {
     LINT_NOT_ON_FN = BAD_LIBRARY_LINT, "`@lint` decorates a fn";
     LINT_ARGS = BAD_LIBRARY_LINT, "`@lint` takes a name, `from:` and `to:`";
     LINT_FROM_NOT_CODE = BAD_LIBRARY_LINT, "`from` of `@lint({})` is not one expression or statement, or a run of statements";
-    LINT_TO_NOT_CODE = BAD_LIBRARY_LINT, "`to` of `@lint({})` is not one expression or statement";
+    LINT_TO_NOT_CODE = BAD_LIBRARY_LINT, "`to` of `@lint({})` is not one expression or statement, or a run of statements";
     LINT_TO_DROPS = BAD_LIBRARY_LINT, "`to` of `@lint({})` drops `{}`, which `from` matches";
     LINT_TO_EXTRA = BAD_LIBRARY_LINT, "`to` of `@lint({})` uses `{}`, which `from` does not match";
     LINT_TO_NO_CALL = BAD_LIBRARY_LINT, "`to` of `@lint({})` does not call `{}`";

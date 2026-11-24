@@ -178,10 +178,10 @@ library or by this spec:
 - `@lint(name, from: "<code>", to: "<code>")` on a `pub fn` or a struct's
   or enum's method: a lint the
   library declares, so its users are told to call the fn where they write
-  the code it replaces. `from` and `to` are plain strings: `to` is one
-  expression or statement, and `from` is one expression or statement or a
-  run of consecutive statements in one block (lines joined by `\n`), which
-  matches only the whole run and is replaced by `to`; a hole binds the same
+  the code it replaces. `from` and `to` are plain strings, each one
+  expression or statement or a run of consecutive statements in one block
+  (lines joined by `\n`); `from` matches only the whole run and is
+  replaced by `to`, its later lines indented as the run is; a hole binds the same
   tokens across the run. The fn's parameter names are the holes: in
   `from` a hole matches any expression (a bracketed one with its
   brackets) or type (`C` in `Fenwick<C, Int>()`) or, where `from` writes
@@ -239,7 +239,7 @@ library or by this spec:
   struct's or enum's method may declare one like a top-level fn. E0505
   (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:`, when `from` or `to` is not one expression or
-  statement, when `to` drops a parameter `from` matches or uses one it does
+  statement or a run of statements, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name `from` does not use, when `when:` is not
   holes `from` uses compared with integers, when `to` neither calls the
   fn (or its `builtin:`) nor writes only its body's operators, or when one module declares a
