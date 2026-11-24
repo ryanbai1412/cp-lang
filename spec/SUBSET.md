@@ -183,7 +183,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/list-of-domain-array-loses-domain.cp: compiler
 - core-04/rebased-str-indexes-from-zero.cp: stdlib
 - core-04/runtime-domain-literal-between-traps.cp: compiler
-- core-04/table-one-cell-parameter.cp: compiler
 - core-04/zip-keyed-by-first.cp: compiler
 - core-05/exercise-04-var-from-lent-param.cp: compiler
 - core-05/exercise-35-lent-optional-kept.cp: compiler
@@ -213,6 +212,5 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/for-over-a-bag-range-keeps-the-bag-lent.cp: compiler: a `for` header view of a `lends` method keeps the receiver lent
 - core-05/closure-capturing-a-view-keeps-its-source-lent.cp: compiler: a closure capturing a view keeps the source lent
 - std-bag/closure-captures-a-range-view.cp: compiler: a captured bag range view is typed `()`
-- core-10/hash-containers-are-not-show.cp: compiler: hash containers not Show (decision 460)
 - core-04/grid-rows-view-lends-the-grid.cp: compiler: a bound `lends` getter view (`g.rows`) keeps the grid lent
 - core-04/grid-row-from-rows-lends-the-grid.cp: compiler: a row from a bound `lends` getter view keeps the grid lent
