@@ -1170,6 +1170,7 @@ impl<'p> Emitter<'p> {
             }
             Stmt::Assign(place, op, value) => self.assign(place, *op, value, out),
             Stmt::Expr(e) => self.expr_stmt(e, out),
+            Stmt::If(cond, then, otherwise) if self.if_into(cond, then, otherwise, out) => {}
             Stmt::If(cond, then, otherwise) => {
                 let lead = pad(self.indent);
                 self.if_stmt(cond, then, otherwise, out, &lead);
