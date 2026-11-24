@@ -55,7 +55,14 @@ pub(crate) fn sort_use_runs(src: &str) -> String {
             .iter()
             .map(|&(l, _, key)| (key, lines[l]))
             .collect();
-        run.sort_by(|a, b| a.0.cmp(&b.0));
+        // Insertion sort: runs are short, and `sort_by` costs cpl.wasm 3 KB.
+        for k in 1..run.len() {
+            let mut m = k;
+            while m > 0 && run[m - 1].0 > run[m].0 {
+                run.swap(m - 1, m);
+                m -= 1;
+            }
+        }
         for (k, (_, text)) in run.into_iter().enumerate() {
             out[line + k] = text;
         }
