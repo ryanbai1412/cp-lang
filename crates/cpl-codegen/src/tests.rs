@@ -1202,6 +1202,23 @@ fn a_recursive_fns_branch_past_its_last_call_has_its_own_frame() {
 }
 
 #[test]
+fn a_cold_tails_sort_key_parameter_is_bound_inside_it() {
+    let out = cpp(concat!(
+        "fn go(n: Int) -> F64:\n",
+        "    if n == 0: return 0.0\n",
+        "    var xs: List<F64> = []\n",
+        "    for i in 0..n: xs.push(F64(i) + go(n - 1))\n",
+        "    let best = xs.sorted(by: x => desc(x)).take(2)\n",
+        "    best.sum()\n",
+        "print(go(4))\n",
+    ));
+    let go = fn_text(&out, "double go(ll n) {");
+    let (_, cold) = go.split_once("__attribute__((noinline))").expect(&go);
+    let call = cold.rsplit_once("}(").map_or("", |(_, args)| args);
+    assert!(!call.contains("x_"), "the key's `x` is not an input:\n{go}");
+}
+
+#[test]
 fn a_record_spread_of_a_local_reads_its_fields_without_a_lambda() {
     let cpp = cpp(concat!(
         "let n: 1..=3 = read()\n",
