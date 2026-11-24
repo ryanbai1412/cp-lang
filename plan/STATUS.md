@@ -335,6 +335,7 @@ Process costing more than 10% of a change is skipped with a trailer
 | 2026-11-24 | stdlib | 2 |
 | 2026-11-24 | perf | 1 |
 | 2026-11-24 | infra | 4 |
+| 2026-11-24 | idioms | 1 |
 | 2026-11-24 | compiler | 2 |
 | 2026-11-23 | perf | 1 |
 | 2026-11-23 | debugger | 1 |
