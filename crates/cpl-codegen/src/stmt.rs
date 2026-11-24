@@ -58,9 +58,29 @@ impl<'p> Emitter<'p> {
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for k in 0..block.stmts.len() {
             self.tail = self.tail_at(&block.stmts, k);
+            self.slot_written_next = self.slot_written_next(&block.stmts, k);
             self.stmt_owning(block, k, out);
+            self.slot_written_next = false;
         }
         self.tail = None;
+    }
+
+    /// `let p = mut m[k]` right before `p += v` (or `-=`, `|=`, `^=`): that write puts an absent
+    /// key at its zero anyway, so the `let` can put it and walk the map once. `v` must not read the
+    /// map, which would see the key early.
+    fn slot_written_next(&self, stmts: &[Stmt], k: usize) -> bool {
+        let (Stmt::Let(slot, Some(_)), Some(Stmt::Assign(place, AssignOp::Binary(op), value))) =
+            (&stmts[k], stmts.get(k + 1))
+        else {
+            return false;
+        };
+        let PlaceKind::Index(base, idx) = &place.kind else {
+            return false;
+        };
+        self.locals()[*slot].binds.is_some()
+            && matches!(op, BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor)
+            && matches!(idx[0].kind, ExprKind::Local(s) if s == *slot)
+            && !expr_may_alias_root(value, walk::root(base))
     }
 
     /// `let l = limbs` in a fn's body, where `limbs` is a parameter taken by
@@ -962,6 +982,7 @@ impl<'p> Emitter<'p> {
     /// `let p = mut m[k]` keyed by `slot`: find the slot once; reads trap on an
     /// absent key and writes make room for it, as `m[k]` does.
     fn let_map_slot(&mut self, slot: usize, map: &'p Place, init: &Expr, out: &mut String) {
+        let put = std::mem::take(&mut self.slot_written_next);
         let name = self.names[slot].clone();
         // A key that is an unchanging parameter needs no copy of its own.
         let param = match init.kind {
@@ -986,7 +1007,12 @@ impl<'p> Emitter<'p> {
         let m = self.place(map);
         let at = self.temp();
         self.need("map_slot");
-        self.line(out, &format!("auto* {at} = cpl::map_slot({m}, {name});"));
+        let find = if put {
+            format!("&{m}[{name}]")
+        } else {
+            format!("cpl::map_slot({m}, {name})")
+        };
+        self.line(out, &format!("auto* {at} = {find};"));
         self.map_slots.insert((self.closure_id, slot), at);
     }
 }

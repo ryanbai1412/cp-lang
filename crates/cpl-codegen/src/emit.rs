@@ -219,6 +219,8 @@ pub(crate) struct Emitter<'p> {
     pub map_slots: BTreeMap<(Option<usize>, usize), String>,
     /// Emitting the plain `let` of such a key, before its slot pointer.
     pub plain_let: bool,
+    /// The statement being written is a `let p = mut m[k]` that [`Emitter::slot_written_next`] holds.
+    pub slot_written_next: bool,
     /// Locals bound as `const T&` to a place they read.
     pub ref_bound: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
@@ -315,6 +317,7 @@ impl<'p> Emitter<'p> {
             lent: BTreeSet::new(),
             map_slots: BTreeMap::new(),
             plain_let: false,
+            slot_written_next: false,
             ref_bound: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
