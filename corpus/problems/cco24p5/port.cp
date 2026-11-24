@@ -9,7 +9,7 @@
 //   conditions and the sum of dp[j] where that least is reached. Prepending a[i] adds or removes violations on ranges
 //   of ends from the next occurrences of its value: a light one must not repeat, a heavy one
 //   needs a later copy at a heavy place. dp[i] adds the sums where 0 are violated. O(N log N).
-// Bounds: n: 1..=500_000
+// Bounds: n: 1..=5e5; a: 1..=n
 // original: corpus/submissions/6435483.cpp
 use std.algebra.{MinCount}
 let mod = 1_000_003

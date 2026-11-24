@@ -9,15 +9,14 @@
 //   holds run lengths; first_ge finds the run at a position; next_greater and inverse give
 //   the run ends and the card positions. Sort queries by t and shuffle
 //   until the middle falls between runs (at most N shuffles). O((N + Q) log N + Q log Q).
-// Bounds: deck, qs.i: 1..=n
+// Bounds: n: 2..=200_000; q: 1..=1_000_000; deck, qs.i: 1..=n; qs.t: 0..=1_000_000_000
 // original: corpus/submissions/4728849.cpp
 let (n, q): (2..=200_000, 1..=1_000_000) = read()
 domain Pos = 1..=n
 domain Card = 1..=n
 let deck: [Pos]Card = read()
 domain Q = 0..q
-struct Query(t: 0..=1_000_000_000, i: Pos)
-let qs: [Q]Query = read()
+let qs: [Q](t: 0..=1_000_000_000, i: Pos) = read()
 
 let pos_of = deck.inverse()
 let nxt_gt = deck.next_smaller(by: c => -c.ord)

@@ -10,7 +10,7 @@
 //   Distinct a: a person must take a pizza laid later than
 //   the next person's, so cover b by chains decreasing in placement order: greedy patience
 //   piles, binary-searching the first pile whose top was laid after the new pizza. O(N log N).
-// Bounds: n: 1..=1_000_000
+// Bounds: n: 1..=1e6; a, b: 1..=n
 // original: corpus/submissions/6435481.cpp
 let n: 1..=1e6 = read()
 domain Flavour = 1..=n

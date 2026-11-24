@@ -7,8 +7,8 @@
 //   separators on an increasing stack: a new prefix maximum is pushed, any other element pops
 //   every kept value larger than it. Each value enters and leaves once, so the whole run is
 //   O(n); s_i is the stack's size.
+// Bounds: q: 1..=1e6; bs: 0..1e9
 // original: corpus/submissions/5343197.cpp
-// Bounds: q: 1..=1e6; raw: 0..=1e9
 let q: 1..=1e6 = read()
 let bs: [q]0..1e9 = read()
 var kept: List<Int> = []

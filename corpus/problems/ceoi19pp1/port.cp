@@ -5,6 +5,7 @@
 // Solution: a square is a pair of horizontal lines and a pair of vertical lines with equal gaps.
 //   Tally every horizontal gap over the pairs of lines, then sum the tallies of every vertical
 //   gap: O(h^2 + v^2) map operations.
+// Bounds: n, m: 1..=1500
 // original: corpus/submissions/5343174.cpp
 let n: 1..=1500 = read()
 let m: 1..=1500 = read()
