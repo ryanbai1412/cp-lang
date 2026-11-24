@@ -13,8 +13,6 @@ use std::path::{Path, PathBuf};
 
 #[path = "support/corpus_cases.rs"]
 mod corpus_cases;
-#[path = "support/corpus_programs.rs"]
-mod corpus_programs;
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
@@ -64,8 +62,8 @@ fn programs() -> Vec<String> {
             paths.push(port);
         }
     }
-    for port in corpus_programs::v02_snapshot_ports(&r) {
-        if has_cases(&corpus_programs::problem_dir(&port)) {
+    for port in cpl_corpus::programs::v02_snapshot_ports(&r) {
+        if has_cases(&cpl_corpus::programs::problem_dir(&port)) {
             paths.push(port);
         }
     }
@@ -117,7 +115,7 @@ fn port_inputs(dir: &Path) -> Vec<PathBuf> {
 fn inputs(src: &Path) -> Vec<Vec<u8>> {
     let read = |p: &Path| std::fs::read(p).unwrap();
     if src.file_name().is_some_and(|n| n == "port.cp") {
-        return port_inputs(&corpus_programs::problem_dir(src))
+        return port_inputs(&cpl_corpus::programs::problem_dir(src))
             .iter()
             .map(|p| read(p))
             .collect();
@@ -200,7 +198,7 @@ fn shard(n: usize) {
         .iter()
         .map(|(rel, _, _)| root().join(rel))
         .filter(|src| src.file_name().is_some_and(|n| n == "port.cp"))
-        .map(|src| corpus_programs::problem_dir(&src))
+        .map(|src| cpl_corpus::programs::problem_dir(&src))
         .filter(|dir| dir.join("tests.toml").is_file())
         .map(|dir| dir.file_name().unwrap().to_string_lossy().into_owned())
         .collect();

@@ -8,9 +8,6 @@
 
 use std::path::{Path, PathBuf};
 
-#[path = "support/corpus_programs.rs"]
-mod corpus_programs;
-
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
 use cpp_counts::{deep_copies, optional_copies, std_functions};
@@ -18,7 +15,9 @@ use cpp_counts::{deep_copies, optional_copies, std_functions};
 /// The `.cp` files one directory down from the corpus problems and the
 /// conformance cases.
 fn sources() -> Vec<PathBuf> {
-    corpus_programs::corpus_and_conformance(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+    cpl_corpus::programs::corpus_and_conformance(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+    )
 }
 
 /// The `"lowering"` and `"detail"` of each row of `cpl explain --json`.

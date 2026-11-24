@@ -6,12 +6,11 @@
 
 use std::path::{Path, PathBuf};
 
-#[path = "support/corpus_programs.rs"]
-mod corpus_programs;
-
 /// The `.cp` files one directory down from the corpus and conformance roots.
 fn sources() -> Vec<PathBuf> {
-    corpus_programs::corpus_and_conformance(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+    cpl_corpus::programs::corpus_and_conformance(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+    )
 }
 
 fn build(src: &Path, out: &Path) -> Option<Vec<u8>> {

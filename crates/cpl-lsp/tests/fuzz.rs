@@ -10,8 +10,6 @@
 
 use cpl_json::{obj, Value};
 
-#[path = "../../cpl-cli/tests/support/corpus_programs.rs"]
-mod corpus_programs;
 use cpl_lsp::Server;
 
 const URI: &str = "file:///fuzz/solution.cp";
@@ -194,7 +192,7 @@ fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
             }
         }
     }
-    files.extend(corpus_programs::v02_snapshot_ports(&repo));
+    files.extend(cpl_corpus::programs::v02_snapshot_ports(&repo));
     files.sort();
     let ports = port_count().min(files.len());
     let step = (files.len() / ports).max(1);

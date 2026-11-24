@@ -9,9 +9,6 @@
 
 use std::path::{Path, PathBuf};
 
-#[path = "support/corpus_programs.rs"]
-mod corpus_programs;
-
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
 use cpp_counts::{deep_copies, is_place, optional_copies, std_functions, CONTAINERS};
@@ -275,7 +272,7 @@ fn disagreements(src: &Path, out: &Path) -> (Vec<String>, [usize; TOTALS.len()])
 /// The `.cp` files one directory down from each root: the corpus
 /// problems and the conformance cases.
 fn sources() -> Vec<PathBuf> {
-    corpus_programs::shipped(&repo())
+    cpl_corpus::programs::shipped(&repo())
 }
 
 fn repo() -> PathBuf {
