@@ -674,6 +674,9 @@ struct Lowerer<'a> {
 
     structs: Vec<StructInfo<'a>>,
     gen_structs: Vec<GenStructTemplate<'a>>,
+    /// The traits std bounds a hashed store's key by (`HashSet<K: Hash> = @intrinsic("hash_set")`):
+    /// a struct's own impl of one is its `hash_fn`.
+    store_keys: Vec<String>,
     /// The empty struct each bare operator value has as its type (`op_value`).
     op_types: Vec<(BareOp, StructId)>,
     item_types: Vec<(String, StructId)>,
@@ -854,6 +857,7 @@ impl<'a> Lowerer<'a> {
             warnings: Vec::new(),
             structs: Vec::new(),
             gen_structs: Vec::new(),
+            store_keys: Vec::new(),
             op_types: Vec::new(),
             item_types: Vec::new(),
             value_domain_ids: HashMap::new(),

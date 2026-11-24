@@ -62,7 +62,7 @@ pub fn read_fields<T>() -> T = T(read() for _ in fields(T))
 /// `@structural` gives a tuple, record, optional or array it when each part has it.
 /// It keys `HashMap`/`HashSet`; a rolling hash takes `std.strings.Hashable`'s injective token instead.
 @structural
-pub trait Hash:
+pub trait Hash(Eq):
     fn hash(self) -> U64
 
 /// A hash table keyed by `K`'s own or derived `Hash` (C++ `unordered_map`).

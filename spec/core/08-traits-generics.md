@@ -89,7 +89,9 @@ impl Ord for Frac:
   `Hash` are what `==`, a `Set` or `Map` key and a tuple, list or
   struct holding it read, on every engine. A struct with its own `Eq`
   derives no `Ord` or `Hash`, which would compare fields its `Eq`
-  ignores: it writes them too or goes without. A struct with its own
+  ignores: it writes them too or goes without. For `Hash` that is the
+  general rule, since std declares `trait Hash(Eq)`: a derived impl
+  can't sit on a supertrait the type decides itself. A struct with its own
   `Ord` and no own `Eq` gets `==` from that order (`a == b` when neither
   is before the other, decision 625) and derives no `Hash`; its tables
   keep its order. Tuples and records (not

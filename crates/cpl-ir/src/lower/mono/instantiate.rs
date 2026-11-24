@@ -319,6 +319,7 @@ impl<'a> Lowerer<'a> {
             let imp_mod = self.impls[idx].mod_id;
             let imp_offset = self.impls[idx].offset;
             let imp_trait = self.impls[idx].trait_name.clone();
+            let keys_store = (imp_trait.as_ref()).is_some_and(|t| self.store_keys.contains(t));
             let imp_trait_args = self.impls[idx].trait_args.clone();
             let imp_target = self.impls[idx].target;
             let imp_body = self.impls[idx].body;
@@ -463,7 +464,7 @@ impl<'a> Lowerer<'a> {
                             match (imp_trait.as_deref(), f.name.text.as_str()) {
                                 (Some("Show"), "show") => def.show_fn = Some(fn_id),
                                 (Some("Eq"), "eq") => def.eq_fn = Some(fn_id),
-                                (Some("Hash"), "hash") => def.hash_fn = Some(fn_id),
+                                (Some(_), _) if keys_store => def.hash_fn = Some(fn_id),
                                 (Some("Ord"), "lt") => def.ord = Some(OrdHook::Lt(fn_id)),
                                 (Some("Ord"), "cmp") => def.ord = Some(OrdHook::Cmp(fn_id)),
                                 _ => {}

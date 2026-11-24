@@ -238,13 +238,18 @@ impl Checker<'_> {
         match trait_name {
             "Eq" if self.impl_holds(name, ty, "Ord", seen) => Some(true),
             "Ord" if self.impl_holds(name, ty, "Eq", seen) => Some(false),
-            "Hash"
-                if self.impl_holds(name, ty, "Eq", seen)
-                    || self.impl_holds(name, ty, "Ord", seen) =>
-            {
-                Some(false)
+            _ => {
+                // A derived impl can't sit on a supertrait the type decides itself (`trait Hash(Eq)`).
+                let Some(Def::Trait { supers, .. }) = self.global(trait_name).as_deref().cloned()
+                else {
+                    return None;
+                };
+                let own = (supers.iter()).any(|s| {
+                    self.impl_holds(name, ty, s, seen)
+                        || self.own_impl_decides(name, ty, s, seen) == Some(true)
+                });
+                own.then_some(false)
             }
-            _ => None,
         }
     }
 
