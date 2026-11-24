@@ -14,6 +14,7 @@
 use crate::case::{judge_case, Ran, Ruling, Sides, Talked, Wrong};
 use crate::choices::{self, Drawn};
 use crate::cli::{swap_in_part_brutes, Stage};
+use crate::judge::{explaining, Explaining};
 use crate::judge::{first_difference, Judge, Verdict};
 use crate::program::Program;
 use crate::report::StressResult;
@@ -22,7 +23,7 @@ use crate::run::{stress_with, InputSource, Options, StressError};
 use crate::spec::InputSpec;
 use cpl_diag::Severity;
 use cpl_interp::trace::{
-    explain_divergence, stages as trace_stages, stuck_divergence, TraceConfig,
+    answered_divergence, explain_divergence, stages as trace_stages, stuck_divergence, TraceConfig,
 };
 use std::time::Duration;
 
@@ -629,30 +630,51 @@ pub fn stress_source(
     };
     let mut stages = Vec::new();
     let mut explained = None;
-    let timed_out = |failure: &crate::run::Failure| matches!(failure.verdict, Verdict::TimeLimit);
-    if let (Some(failure), true) = (&report.failure, explain) {
-        if timed_out(failure) {
-            let rec = observe_ir(
-                &engine.fast,
-                failure.input.as_bytes(),
-                stack_limit,
-                TraceConfig {
-                    max_steps: Some(STUCK_STEPS),
-                    stop_when_full: true,
-                    record_frames: true,
-                    ..config(false)
-                },
-            )
-            .recording
-            .unwrap_or_default();
-            explained = Some(stuck_divergence(source, &rec).map(Some).ok_or(format!(
-                "the solution never finishes, and none of its first {STUCK_STEPS} steps repeats an earlier one"
-            )));
-        }
+    let failed = report.failure.as_ref();
+    let brute_prog = engine.brute.as_ref().filter(|_| own_brute.is_some());
+    let interactive = engine.interactor.is_some();
+    let explaining = failed.map(|f| explaining(&f.verdict, interactive, brute_prog.is_some()));
+    if let (Some(failure), true) = (failed, explain) {
+        explained = Some(match explaining.clone() {
+            Some(Ok(Explaining::Answer)) => {
+                let interactor = engine.interactor.as_ref().map(|i| &i.program);
+                let sent = interactor.map(|interactor| {
+                    let input = failure.input.as_bytes();
+                    crate::duplex::talk(&engine.fast, interactor, input, engine.limit, stack_limit)
+                        .sent
+                });
+                let sent = sent.unwrap_or_default();
+                let rec = observe_ir(&engine.fast, &sent, stack_limit, config(true));
+                Ok(answered_divergence(
+                    source,
+                    &rec.recording.unwrap_or_default(),
+                ))
+            }
+            Some(Ok(Explaining::Stuck)) => {
+                let rec = observe_ir(
+                    &engine.fast,
+                    failure.input.as_bytes(),
+                    stack_limit,
+                    TraceConfig {
+                        max_steps: Some(STUCK_STEPS),
+                        stop_when_full: true,
+                        record_frames: true,
+                        ..config(false)
+                    },
+                )
+                .recording
+                .unwrap_or_default();
+                stuck_divergence(source, &rec).map(Some).ok_or(format!(
+                    "the solution never finishes, and none of its first {STUCK_STEPS} steps repeats an earlier one"
+                ))
+            }
+            Some(Ok(Explaining::Versus)) => Ok(None),
+            Some(Err(why)) => Err(why),
+            None => Ok(None),
+        });
     }
-    if let (Some(failure), Some(brute_prog)) = (&report.failure, &engine.brute) {
-        let brute_failed = matches!(failure.verdict, Verdict::BruteError(_));
-        if own_brute.is_some() && !timed_out(failure) && !brute_failed {
+    if let (Some(failure), Some(brute_prog)) = (failed, brute_prog) {
+        if matches!(explaining, Some(Ok(Explaining::Versus))) {
             let fast_rec = observe_ir(
                 &engine.fast,
                 failure.input.as_bytes(),

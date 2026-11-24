@@ -18,6 +18,8 @@ pub struct Spoken {
     /// The interactor's trap: it rejected the run, or failed itself.
     pub interactor: Option<Trap>,
     pub transcript: Transcript,
+    /// Everything the interactor sent: the solution's whole input.
+    pub sent: Vec<u8>,
 }
 
 /// What the two sides have said so far.
@@ -244,6 +246,7 @@ pub fn talk(
             Err(trap) => Err((out, trap)),
         },
         interactor,
+        sent: wire.sent.clone(),
         transcript: wire.finish(),
     }
 }

@@ -174,3 +174,37 @@ fn an_interactor_that_traps_is_an_interactor_re_with_its_trap() {
     assert_eq!(error.at(&["code"]).as_str(), Some("R0101"), "{error:?}");
     assert_eq!(error.at(&["start", "line"]).as_i64(), Some(16), "{error:?}");
 }
+
+/// Under `--explain`, an answer the interactor rejects is explained as
+/// `cpl stress` explains it: the `print` that gave it and the lines behind
+/// it (`cpl_stress::judge::explaining` makes the choice for both).
+#[test]
+fn an_interactive_failure_is_explained_by_the_answer_it_printed() {
+    let source = include_str!("../../../bench/stress/guess-unread-verdict.cp");
+    let options = Options {
+        cases: 30,
+        size: 8,
+        seed: 1,
+        jobs: 1,
+        limit: std::time::Duration::from_millis(1000),
+        ..Options::default()
+    };
+    let result = stress_source("g.cp", source, &options, Some(1 << 26), true).unwrap();
+    let json = cpl_json::parse(&result.render()).unwrap();
+    let divergence = json.at(&["counterexample", "explain", "divergence"]);
+    assert_eq!(
+        divergence.at(&["name"]).as_str(),
+        Some("answer"),
+        "{json:?}"
+    );
+    assert_eq!(
+        divergence.at(&["fast", "line"]).as_i64(),
+        Some(14),
+        "{json:?}"
+    );
+    let blame = divergence.at(&["blame"]).as_array().unwrap();
+    assert!(
+        blame.iter().any(|b| b.at(&["line"]).as_i64() == Some(7)),
+        "{json:?}"
+    );
+}

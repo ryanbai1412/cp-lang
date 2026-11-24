@@ -774,3 +774,30 @@ mod toolchain_tests {
         assert!(!toolchain_differs("3", "3", "3\n"), "no difference at all");
     }
 }
+
+/// What `--explain` shows of a failing case: one choice, made here for
+/// both `cpl stress` and the browser's in-process stress.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Explaining {
+    /// The `print` whose answer the file's `@interactor` rejected.
+    Answer,
+    /// The step a run that never finished goes round.
+    Stuck,
+    /// The first value the solution and its own brute give differently.
+    Versus,
+}
+
+/// What `--explain` shows of a case failing with `verdict`, for an
+/// `interactive` solution or one with a `brute` in its file, or why it
+/// shows nothing.
+pub fn explaining(verdict: &Verdict, interactive: bool, brute: bool) -> Result<Explaining, String> {
+    match verdict {
+        _ if interactive => Ok(Explaining::Answer),
+        Verdict::TimeLimit => Ok(Explaining::Stuck),
+        Verdict::BruteError(_) => {
+            Err("the brute failed, so there is no run to compare".to_string())
+        }
+        _ if brute => Ok(Explaining::Versus),
+        _ => Err("`--explain` runs the file against its own `@alt` fns".to_string()),
+    }
+}

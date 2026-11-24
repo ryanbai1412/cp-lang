@@ -740,23 +740,23 @@ pub fn run_with(
         Some(Ok(traced)) => (traced.stages.as_slice(), Some(traced.html.as_str())),
         _ => (&[][..], None),
     };
-    let explained = match (&report.failure, &traced) {
-        (Some(failure), _) if helper_failed(failure) => None,
-        (Some(_), Some(Ok(traced)))
-            if (part_brute.is_some()
-                || (args.explain && matches!(judge, Judge::Interactor(..))))
-                && traced.divergence.is_some() =>
-        {
+    let explaining = (report.failure.as_ref()).map(|failure| {
+        let interactive = matches!(judge, Judge::Interactor(..));
+        let brute = own_brute.is_some() || part_brute.is_some();
+        crate::judge::explaining(&failure.verdict, interactive, brute)
+    });
+    let explained = match (&report.failure, &traced, explaining) {
+        (Some(failure), ..) if helper_failed(failure) => None,
+        // A part's wrong call is shown without `--explain`: calls are always kept.
+        (Some(_), Some(Ok(traced)), _) if part_brute.is_some() && traced.divergence.is_some() => {
             Some(Ok(traced.divergence.clone()))
         }
-        (Some(_), Some(Ok(traced)))
-            if args.explain && (own_brute.is_some() || part_brute.is_some()) =>
-        {
-            Some(Ok(traced.divergence.clone()))
-        }
-        (Some(_), Some(Err(why))) if args.explain => Some(Err(why.clone())),
-        (Some(_), _) if args.explain => Some(Err(
-            "`--explain` runs the file against its own `@alt` fns".to_string(),
+        _ if !args.explain => None,
+        (Some(_), Some(Ok(traced)), Some(Ok(_))) => Some(Ok(traced.divergence.clone())),
+        (Some(_), Some(Err(why)), Some(Ok(_))) => Some(Err(why.clone())),
+        (Some(_), _, Some(Err(why))) => Some(Err(why)),
+        (Some(_), ..) => Some(Err(
+            "`--explain` runs the file against its own `@alt` fns".to_string()
         )),
         _ => None,
     };
