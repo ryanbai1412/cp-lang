@@ -887,11 +887,7 @@ impl cpl_syntax::visit::Visitor for Contexts<'_> {
 }
 
 fn unknown_lint(name: &str, span: Span) -> Finding {
-    let mut diag = Diagnostic::warning(
-        UNKNOWN_LINT.code,
-        span,
-        format!("there is no lint called `{name}`"),
-    );
+    let mut diag = cpl_diag::msgs::lint_rules::UNKNOWN_LINT.warning(span, &[&name]);
     diag.help = Some(match closest_lint(name) {
         Some(close) => format!("did you mean `{close}`?"),
         None => "`cpl lint --list` prints every lint".to_string(),

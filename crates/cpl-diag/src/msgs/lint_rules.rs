@@ -22,6 +22,7 @@ super::msgs! {
     CYCLE_BY_COLORS = "L0565", "`fn {}` colours `{}` {} on entry and {} on exit to find a directed cycle by hand";
     DEPTH_BY_HAND = "L0567", "`{}` steps each depth from the parent's by hand";
     DIFF_BY_HAND = "L0559", "`{}` is a difference array kept by hand";
+    DOMAIN_EMPTY_THEN_FIRST_LAST = "L0304", "`{}` is empty when `{}` is {}, and then `{}` traps";
     DOMAIN_KEYED_MAP = "L0412", "`{}` is keyed by the domain `{}`";
     DX_DY_ARRAYS = "L0539", "`{}` and `{}` spell the {} grid directions as two lists of offsets";
     EMPTY_THEN_FIRST_LAST = "L0305", "`{}` is empty when `{}` is {}, and then `{}` traps";
@@ -112,6 +113,7 @@ super::msgs! {
     TRIAL_DIVISION_DIVISORS = "L0561", "trial division by `{}` walks the divisors of `{}` by hand";
     TUPLE_POINTS = "L0578", "`{}` and `{}` are the coordinates of one list of points";
     TURBOFISH_TYPE_ARGS = "L0204", "generic calls use `<...>` without `::`";
+    UNKNOWN_LINT = "L0001", "there is no lint called `{}`";
     UNPROVEN_LIST_INDEX = "L0414", "`{}[{}]` is bounds-checked on every pass of a nested loop";
     UNREACHABLE_CODE = "L0597", "this never runs: it comes after `{}` in the same block";
     UNREAD_FIELD = "L0202", "field `{}` of `{}` is never read";

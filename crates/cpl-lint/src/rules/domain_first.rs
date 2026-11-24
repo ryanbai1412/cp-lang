@@ -164,10 +164,13 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let read = &shown[..shown.len() - 1];
             let (name, end, at) = (&e.name, &e.end, e.at);
             let what = if e.domain { "domain" } else { "list" };
-            let mut diag =
-                lint_rules::EMPTY_THEN_FIRST_LAST.warning(span, &[&e.shown, &end, &at, &shown]);
-            diag.code = lint.code;
-            let diag = diag
+            let msg = if e.domain {
+                &lint_rules::DOMAIN_EMPTY_THEN_FIRST_LAST
+            } else {
+                &lint_rules::EMPTY_THEN_FIRST_LAST
+            };
+            let diag = msg
+                .warning(span, &[&e.shown, &end, &at, &shown])
             .with_help(format!(
                 "`{read}` is `None` on an empty {what}: handle it with `if let v = {read}:` or `{read} ?? fallback`, or declare `{end}` so `{name}` is never empty"
             ))
