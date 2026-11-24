@@ -1424,7 +1424,8 @@ const RH_M2 = 1_000_000_009
 pub struct HashVal(pub h1: Int, pub h2: Int)
 
 /// \(O(1)\) per element. Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
-/// implementing `hash_token`.
+/// implementing `hash_token`. The token is injective and unmixed; to key a `HashMap` or `HashSet`, a type
+/// needs `std.derive.Hash` instead.
 pub trait Hashable:
     @get fn hash_token(self) -> Int = Int(self)
 

@@ -70,6 +70,7 @@ pub fn gen_fields<T>() -> T = T(gen() for _ in fields(T))
 /// A value's 64-bit hash: equal values hash equal. `Int`, `I128`, `U64`, `Char`, `Bool` and
 /// `Str` have it here (splitmix64, decision 28.8); a struct gets it from `hash_fields`, and
 /// `@structural` gives a tuple, record, optional or array it when each part has it.
+/// It keys `HashMap`/`HashSet`; a rolling hash takes `std.strings.Hashable`'s injective token instead.
 @structural
 pub trait Hash:
     fn hash(self) -> U64
