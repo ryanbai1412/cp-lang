@@ -178,6 +178,96 @@ fn sampled(pid: &str, src: &str, start: usize, end: usize) -> u64 {
         })
 }
 
+type Tally = BTreeMap<Kind, (usize, usize)>;
+type Misses = BTreeMap<(Kind, String), (usize, String)>;
+
+/// One port retyped through `server`: each kind's hits and sites, its
+/// summed ranks and count, and the words it missed with their first line.
+fn replay(server: &mut Server, id: &mut u32, root: &Path, pid: &str) -> (Tally, Tally, Misses) {
+    let mut tally = Tally::new();
+    let mut ranks = Tally::new();
+    let mut misses = Misses::new();
+    let src = std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
+    let uri = format!("file:///replay/{pid}.cp");
+    let doc = |version: u32| obj([("uri", uri.as_str().into()), ("version", version.into())]);
+    server.handle(&message(
+        None,
+        "textDocument/didOpen",
+        obj([(
+            "textDocument",
+            obj([
+                ("uri", uri.as_str().into()),
+                ("languageId", "cp".into()),
+                ("version", 1.into()),
+                ("text", src.as_str().into()),
+            ]),
+        )]),
+    ));
+    // A debug build replays a share of each kind's sites to stay quick,
+    // enough of the rarer kinds that its recall is not a coin toss: every
+    // after-call site, a quarter of the members, an eighth of the scope
+    // names. Release (the latency job) replays all of them. The share is
+    // chosen by each site's own line and word, so a change to which
+    // sites `sites` finds elsewhere leaves the sample of the rest as it was.
+    let step = |kind: Kind| match (cfg!(debug_assertions), kind) {
+        (false, _) | (true, Kind::AfterCall) => 1,
+        (true, Kind::Member) => 4,
+        (true, Kind::Scope) => 8,
+    };
+    let sampled = sites(&src)
+        .into_iter()
+        .filter(|&(start, end, kind)| sampled(pid, &src, start, end).is_multiple_of(step(kind)));
+    for (version, (start, end, kind)) in (2..).zip(sampled) {
+        let keep = if kind == Kind::Scope { 1 } else { 0 };
+        let cursor = start + keep;
+        let text = format!("{}{}", &src[..cursor], &src[end..]);
+        server.handle(&message(
+            None,
+            "textDocument/didChange",
+            obj([
+                ("textDocument", doc(version)),
+                (
+                    "contentChanges",
+                    Value::Array(vec![obj([("text", text.as_str().into())])]),
+                ),
+            ]),
+        ));
+        *id += 1;
+        let reply = server.handle(&message(
+            Some(*id),
+            "textDocument/completion",
+            obj([
+                ("textDocument", obj([("uri", uri.as_str().into())])),
+                ("position", position(&text, cursor)),
+            ]),
+        ));
+        let word = &src[start..end];
+        let entry = tally.entry(kind).or_default();
+        entry.1 += 1;
+        if labels(&reply).contains(word) {
+            entry.0 += 1;
+            let at = rank(&reply, &src[start..cursor], word).unwrap_or(usize::MAX);
+            let ranks = ranks.entry(kind).or_default();
+            ranks.0 += at.min(1000);
+            ranks.1 += 1;
+        } else {
+            let line_start = src[..start].rfind('\n').map_or(0, |i| i + 1);
+            let line_end = src[end..].find('\n').map_or(src.len(), |i| end + i);
+            let miss = misses.entry((kind, word.to_string())).or_default();
+            miss.0 += 1;
+            if miss.1.is_empty() {
+                miss.1 = format!("{pid}: {}", src[line_start..line_end].trim());
+            }
+        }
+    }
+    server.handle(&message(
+        None,
+        "textDocument/didClose",
+        obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
+    ));
+    (tally, ranks, misses)
+}
+
 #[test]
 fn completion_offers_what_each_hill_climb_port_types_next() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -190,93 +280,52 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
         .iter()
         .filter_map(|p| p.as_str())
         .collect();
-    let mut server = Server::new();
-    server.handle(&message(Some(1), "initialize", obj([])));
-    server.handle(&message(None, "initialized", obj([])));
-    let mut id = 1;
-    let mut tally: BTreeMap<Kind, (usize, usize)> = BTreeMap::new();
-    let mut ranks: BTreeMap<Kind, (usize, usize)> = BTreeMap::new();
-    let mut misses: BTreeMap<(Kind, String), (usize, String)> = BTreeMap::new();
-    for pid in &ids {
-        let src =
-            std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
-        let uri = format!("file:///replay/{pid}.cp");
-        let doc = |version: u32| obj([("uri", uri.as_str().into()), ("version", version.into())]);
-        server.handle(&message(
-            None,
-            "textDocument/didOpen",
-            obj([(
-                "textDocument",
-                obj([
-                    ("uri", uri.as_str().into()),
-                    ("languageId", "cp".into()),
-                    ("version", 1.into()),
-                    ("text", src.as_str().into()),
-                ]),
-            )]),
-        ));
-        // A debug build replays a share of each kind's sites to stay quick,
-        // enough of the rarer kinds that its recall is not a coin toss: every
-        // after-call site, a quarter of the members, an eighth of the scope
-        // names. Release (the latency job) replays all of them. The share is
-        // chosen by each site's own line and word, so a change to which
-        // sites `sites` finds elsewhere leaves the sample of the rest as it was.
-        let step = |kind: Kind| match (cfg!(debug_assertions), kind) {
-            (false, _) | (true, Kind::AfterCall) => 1,
-            (true, Kind::Member) => 4,
-            (true, Kind::Scope) => 8,
-        };
-        let sampled = sites(&src).into_iter().filter(|&(start, end, kind)| {
-            sampled(pid, &src, start, end).is_multiple_of(step(kind))
-        });
-        for (version, (start, end, kind)) in (2..).zip(sampled) {
-            let keep = if kind == Kind::Scope { 1 } else { 0 };
-            let cursor = start + keep;
-            let text = format!("{}{}", &src[..cursor], &src[end..]);
-            server.handle(&message(
-                None,
-                "textDocument/didChange",
-                obj([
-                    ("textDocument", doc(version)),
-                    (
-                        "contentChanges",
-                        Value::Array(vec![obj([("text", text.as_str().into())])]),
-                    ),
-                ]),
-            ));
-            id += 1;
-            let reply = server.handle(&message(
-                Some(id),
-                "textDocument/completion",
-                obj([
-                    ("textDocument", obj([("uri", uri.as_str().into())])),
-                    ("position", position(&text, cursor)),
-                ]),
-            ));
-            let word = &src[start..end];
-            let entry = tally.entry(kind).or_default();
-            entry.1 += 1;
-            if labels(&reply).contains(word) {
-                entry.0 += 1;
-                let at = rank(&reply, &src[start..cursor], word).unwrap_or(usize::MAX);
-                let ranks = ranks.entry(kind).or_default();
-                ranks.0 += at.min(1000);
-                ranks.1 += 1;
-            } else {
-                let line_start = src[..start].rfind('\n').map_or(0, |i| i + 1);
-                let line_end = src[end..].find('\n').map_or(src.len(), |i| end + i);
-                let miss = misses.entry((kind, word.to_string())).or_default();
-                miss.0 += 1;
-                if miss.1.is_empty() {
-                    miss.1 = format!("{pid}: {}", src[line_start..line_end].trim());
-                }
+    // Each thread takes the next port as it frees up, on its own server;
+    // the ports' tallies then add up in hill-climb order.
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let mut done: Vec<(usize, (Tally, Tally, Misses))> = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|_| {
+                let (root, ids, next) = (&root, &ids, &next);
+                scope.spawn(move || {
+                    let mut server = Server::new();
+                    server.handle(&message(Some(1), "initialize", obj([])));
+                    server.handle(&message(None, "initialized", obj([])));
+                    let mut id = 1;
+                    let mut done = Vec::new();
+                    loop {
+                        let n = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(pid) = ids.get(n) else {
+                            break done;
+                        };
+                        done.push((n, replay(&mut server, &mut id, root, pid)));
+                    }
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap())
+            .collect()
+    });
+    done.sort_by_key(|d| d.0);
+    let (mut tally, mut ranks, mut misses) = (Tally::new(), Tally::new(), Misses::new());
+    for (_, (t, r, m)) in done {
+        for (into, from) in [(&mut tally, t), (&mut ranks, r)] {
+            for (kind, (a, b)) in from {
+                let entry = into.entry(kind).or_default();
+                entry.0 += a;
+                entry.1 += b;
             }
         }
-        server.handle(&message(
-            None,
-            "textDocument/didClose",
-            obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
-        ));
+        for (key, (n, first)) in m {
+            let miss = misses.entry(key).or_default();
+            miss.0 += n;
+            if miss.1.is_empty() {
+                miss.1 = first;
+            }
+        }
     }
     let mut ranked: Vec<_> = misses.into_iter().collect();
     ranked.sort_by(|a, b| b.1 .0.cmp(&a.1 .0).then_with(|| a.0.cmp(&b.0)));
