@@ -311,7 +311,7 @@ impl Database {
             })
             .filter(|(span, _)| start <= span.start && span.end <= end)
             .collect();
-        named.sort_by_key(|(span, _)| (span.start, span.end));
+        cpl_diag::sort_by_key(&mut named, |(span, _)| span.order());
         named.dedup_by_key(|(span, _)| *span);
         let io = item
             .check
