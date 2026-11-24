@@ -1224,8 +1224,13 @@ pub(super) fn stream_fix(src: &str, name: &str, span: Span) -> Option<(Span, Str
     match name {
         "cin" => {
             let vs: Vec<&str> = rest.strip_prefix(" >> ")?.split(" >> ").collect();
-            let ident =
-                |v: &&str| !v.is_empty() && v.chars().all(|c| c.is_alphanumeric() || c == '_');
+            // A name, or a place in one: `a[i]`, `g[u][v]`, `p.x`.
+            let ident = |v: &&str| {
+                v.starts_with(|c: char| c.is_alphabetic() || c == '_')
+                    && v.chars()
+                        .all(|c| c.is_alphanumeric() || "_[]. +-".contains(c))
+                    && v.matches('[').count() == v.matches(']').count()
+            };
             let end = span.end + rest.len() as u32;
             let place = match vs.as_slice() {
                 [v] => v.to_string(),

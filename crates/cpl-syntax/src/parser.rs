@@ -8,6 +8,7 @@
 //! missing `:` on a `for` line doesn't hide the errors, or the hovers, in
 //! its body.
 
+mod c_decl;
 mod clause;
 mod expr;
 mod foreign;

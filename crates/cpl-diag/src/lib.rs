@@ -347,6 +347,19 @@ impl Diagnostic {
     }
 
     /// Adds a fix that replaces `span` with `replacement`.
+    /// A fix of several edits, applied together.
+    pub fn with_edits(
+        mut self,
+        title: impl Into<String>,
+        edits: Vec<(Span, String)>,
+    ) -> Diagnostic {
+        self.fixes.push(Fix {
+            title: title.into(),
+            edits,
+        });
+        self
+    }
+
     pub fn fix(&mut self, title: impl Into<String>, span: Span, replacement: impl Into<String>) {
         let edits = vec![(span, replacement.into())];
         self.fixes.push(Fix {
