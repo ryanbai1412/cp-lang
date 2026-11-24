@@ -33,8 +33,8 @@ a [6] let a = e.
 b [6] let b = es.
 runs [3] fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 Each [22] pub struct Each<Ms>(ms: Ms)
-Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>, pub commutes: Bool = false, pub replaces: ?(F -> Bool) = None)
-Action<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+), commutes: Bool = false, replaces: ?(F -> Bool) = None) -> Action<T, F>
+Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>, pub commutes: Bool = false, pub replaces: ?(F -> Bool) = None, pub compose_in: ?((mut F, F) -> ()) = None)
+Action<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+), commutes: Bool = false, replaces: ?(F -> Bool) = None, compose_in: ?((mut F, F) -> ()) = None) -> Action<T, F>
 Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(pub x: T)
 
@@ -48,8 +48,8 @@ b [6] let b = es.
 c [6] let c: Int =
 runs [3] fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 Each [22] pub struct Each<Ms>(ms: Ms)
-Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>, pub commutes: Bool = false, pub replaces: ?(F -> Bool) = None)
-Action<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+), commutes: Bool = false, replaces: ?(F -> Bool) = None) -> Action<T, F>
+Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>, pub commutes: Bool = false, pub replaces: ?(F -> Bool) = None, pub compose_in: ?((mut F, F) -> ()) = None)
+Action<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+), commutes: Bool = false, replaces: ?(F -> Bool) = None, compose_in: ?((mut F, F) -> ()) = None) -> Action<T, F>
 Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(pub x: T)
 
