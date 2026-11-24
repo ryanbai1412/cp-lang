@@ -10,7 +10,10 @@ fn named as `cpl doc --format json std` does (`bag.SortedBag.add`); one
 case may time several fns. A header may name the fn a bare `// timed`
 means (`// scaling: bag.SortedBag.add`), hold symbols at a constant
 (`// fixed: K`), give one as a formula in n (`// let: k = \\log n; d = \\sqrt n`,
-for a fn whose cost names a size the case derives from n) or set the base size (`// n: 4096`, default N). Each case runs under `cpl profile --native`, the
+for a fn whose cost names a size the case derives from n) or set the base size (`// n: 4096`, default N). A
+timed line may give its fn's symbols their own meaning after the mark,
+`// timed: strings.repeat [fixed: self]` or `[let: k = \\log n]`, when one fn
+in the case reads a symbol differently from the rest. Each case runs under `cpl profile --native`, the
 judge's C++ with a counter per statement, RUNS times at n and at 4n; the
 time per hit of the timed lines (the fastest run) gives the measured growth.
 The runs pin glibc's malloc thresholds (MALLOC_TUNABLES): left dynamic, a
@@ -232,14 +235,40 @@ def per_hit(cpl, case, sizes, groups, tmp, within=None, floor=MIN_NS):
     return best, short
 
 
+TIMED = re.compile(r"//\s*timed(?::\s*([\w.]+))?((?:\s*\[[^\]]*\])*)\s*$")
+
+
 def timed_lines(text, default):
     """fn -> the line numbers marked `// timed` (the header's fn) or `// timed: fn`."""
     groups = {}
     for i, line in enumerate(text.splitlines(), 1):
-        m = re.search(r"//\s*timed(?::\s*(\S+))?\s*$", line)
+        m = TIMED.search(line)
         if m:
             groups.setdefault(m.group(1) or default, set()).add(i)
     return groups
+
+
+def lets(text):
+    """`k = \\log n; d = 2` as {symbol: formula}."""
+    return dict((p.strip() for p in d.split("=", 1)) for d in text.split(";") if d.strip())
+
+
+def overrides(text, default):
+    """fn -> (fixed, let) from `[fixed: a, b]` and `[let: k = \\log n]` after its `// timed`
+    marks: the meaning a symbol has in this fn's cost alone, when it differs from the
+    case's header (`self` a fixed-length string for `repeat`, scaled for `trim`)."""
+    out = {}
+    for line in text.splitlines():
+        m = TIMED.search(line)
+        if not m or not m.group(2).strip():
+            continue
+        fixed, let = out.setdefault(m.group(1) or default, (set(), {}))
+        for key, val in re.findall(r"\[\s*(fixed|let)\s*:\s*([^\]]*)\]", m.group(2)):
+            if key == "fixed":
+                fixed.update(s.strip() for s in val.split(",") if s.strip())
+            else:
+                let.update(lets(val))
+    return out
 
 
 def within_lines(text):
@@ -268,16 +297,20 @@ def run_case(cpl, case, costs, tmp):
         return [(f"{rel}::", {"fn": None, "ok": False, "why": "no line is marked `// timed`"})]
     n = int(head.get("n", N))
     fixed = tuple(s.strip() for s in head.get("fixed", "").split(",") if s.strip())
-    let = dict((p.strip() for p in d.split("=", 1)) for d in head.get("let", "").split(";") if d.strip())
+    let = lets(head.get("let", ""))
+    own = overrides(text, head.get("scaling"))
     out, documented = [], {}
     for fn in groups:
+        own_fixed, own_let = own.get(fn, ((), {}))
+        fn_let = {s: e for s, e in let.items() if s not in own_fixed} | own_let
+        fn_fixed = tuple(s for s in fixed if s not in own_let) + tuple(own_fixed)
         formula = big_o(costs[fn]) if fn in costs else None
         try:
             if fn not in costs:
                 raise ValueError(f"`{fn}` is no std fn with a cost")
             if not formula:
                 raise ValueError(f"no O(...) in its cost: {costs[fn]}")
-            documented[fn] = (formula, growth(formula, fixed, n=float(n), let=let))
+            documented[fn] = (formula, growth(formula, fn_fixed, n=float(n), let=fn_let))
         except ValueError as e:
             out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}))
     try:

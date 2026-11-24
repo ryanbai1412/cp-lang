@@ -164,6 +164,13 @@ class Header(unittest.TestCase):
         text = "let f = x => x // within: a.f\nx // timed: a.f\n// within: a.f is prose\n"
         self.assertEqual(scaling.within_lines(text), {"a.f": {1}})
 
+    def test_a_timed_line_may_give_its_fn_its_own_symbols(self):
+        text = ("x // timed: a.f [fixed: s, t]\ny // timed: a.g [let: k = \\log n; d = 2] [fixed: u]\n"
+                "z // timed: a.f\nw // timed: a.h\n")
+        self.assertEqual(scaling.timed_lines(text, None), {"a.f": {1, 3}, "a.g": {2}, "a.h": {4}})
+        self.assertEqual(scaling.overrides(text, None),
+                         {"a.f": ({"s", "t"}, {}), "a.g": ({"u"}, {"k": r"\log n", "d": "2"})})
+
     def test_every_case_times_a_named_fn(self):
         for f in sorted(os.listdir(scaling.CASES)):
             text = open(os.path.join(scaling.CASES, f)).read()
