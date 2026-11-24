@@ -857,3 +857,37 @@ fn a_getter_that_forwards_a_lent_getter_lends_too() {
         );
     }
 }
+
+#[test]
+fn a_map_entry_keyed_by_a_call_is_lent_unless_the_call_writes_the_map() {
+    let lent = body(concat!(
+        "fn key(r: Int) -> Int = r % 3\n",
+        "let n: Int = read()\n",
+        "let at = (0..n).group(by: k => k % 3)\n",
+        "var s = 0\n",
+        "for r in 0..n:\n",
+        "    let xs = at[key(r)]\n",
+        "    s += xs[0]\n",
+        "print(s)\n",
+    ));
+    assert!(
+        lent.contains("const std::vector<ll>& xs = "),
+        "a call that can't change the map leaves the entry lent: {lent}"
+    );
+    let copied = body(concat!(
+        "var at = Map<Int, List<Int>>()\n",
+        "fn key(r: Int) -> Int:\n",
+        "    at[r + 100] = [r]\n",
+        "    r % 3\n",
+        "for r in 0..3: at[r] = [r]\n",
+        "var s = 0\n",
+        "for r in 0..3:\n",
+        "    let xs = at[key(r)]\n",
+        "    s += xs[0]\n",
+        "print(s)\n",
+    ));
+    assert!(
+        copied.contains("std::vector<ll> xs = ") && !copied.contains("& xs = "),
+        "a key that writes the map keeps the copy: {copied}"
+    );
+}

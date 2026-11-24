@@ -1730,7 +1730,7 @@
 2 spec/conformance/core-05/local-var-captured-by-reference.cp
 1 spec/conformance/core-05/loop-item-clone-kept.cp
 1 spec/conformance/core-05/loop-item-cloned-kept.cp
-10 spec/conformance/core-05/map-entry-index-key-lends.cp
+3 spec/conformance/core-05/map-entry-index-key-lends.cp
 5 spec/conformance/core-05/map-entry-var-copies.cp
 8 spec/conformance/core-05/map-walk-lends-entry-list.cp
 2 spec/conformance/core-05/match-payload-outlives-a-fn-writing-its-global-scrutinee.cp
