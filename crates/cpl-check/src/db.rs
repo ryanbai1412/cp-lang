@@ -815,16 +815,22 @@ impl Database {
             for stmt in &item.parsed.stmts {
                 if let StmtKind::Mod { name, .. } = &stmt.kind {
                     if let Some((head, body_raw)) = item.text.split_once('\n') {
+                        // Blank and comment-only lines don't set the
+                        // body's indent, as in the lexer's blocks.
+                        let lead = |l: &str| l.len() - l.trim_start().len();
                         let indent = body_raw
                             .lines()
-                            .filter(|l| !l.trim().is_empty())
-                            .map(|l| l.len() - l.trim_start().len())
+                            .filter(|l| {
+                                let t = l.trim_start();
+                                !t.is_empty() && !t.starts_with("//")
+                            })
+                            .map(lead)
                             .min()
                             .unwrap_or(0);
                         let dedented: String = body_raw
                             .lines()
                             .map(|l| {
-                                if l.len() >= indent {
+                                if lead(l) >= indent {
                                     &l[indent..]
                                 } else {
                                     l.trim_start()
