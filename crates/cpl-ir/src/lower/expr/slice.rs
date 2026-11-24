@@ -76,8 +76,12 @@ impl<'a> Lowerer<'a> {
             return None;
         };
         if step.is_some() {
-            self.unsupported(span, "stepped slice");
-            return None;
+            let shown = self.show(&base_place.ty);
+            self.report(
+                range.span,
+                msgs::check::BAD_OPERANDS_STEPPED_SLICE,
+                &[&shown],
+            );
         }
         for bound in [lo, hi].into_iter().flatten() {
             let negative = matches!(
@@ -510,8 +514,12 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         if step.is_some() {
-            self.unsupported(span, "stepped slice");
-            return self.err_expr(span);
+            let shown = self.show(&base.ty);
+            self.report(
+                range.span,
+                msgs::check::BAD_OPERANDS_STEPPED_SLICE,
+                &[&shown],
+            );
         }
         // `a[..-1]` is known to be wrong before the program runs.
         for bound in [lo, hi].into_iter().flatten() {

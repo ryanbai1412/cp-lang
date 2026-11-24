@@ -154,6 +154,24 @@ impl<'a> Checker<'a> {
         self.index_typed(expr, base, base_ty, indices, false)
     }
 
+    /// `a[l..r by k]`: a slice is contiguous, so a step names a walk (R01.8.5).
+    fn stepped_slice(&mut self, base: &Expr, indices: &[Expr]) -> bool {
+        let Some(range) = indices
+            .iter()
+            .find(|i| matches!(i.kind, ExprKind::Range { step: Some(_), .. }))
+        else {
+            return false;
+        };
+        let (of, walk) = (self.quote(base.span), self.quote(range.span));
+        if let Some(diag) = self.report(range.span, msgs::check::BAD_OPERANDS_STEPPED_SLICE, &[&of])
+        {
+            diag.help = Some(format!(
+                "walk the positions it steps through: `{of}[i] for i in {walk}`"
+            ));
+        }
+        true
+    }
+
     /// `index` once `base` has its type; `split` when `base` is the cell a
     /// table of tables' indices name (R01.8.5).
     fn index_typed(
@@ -168,7 +186,7 @@ impl<'a> Checker<'a> {
             return Ty::Error;
         }
         self.keyed_view_index(expr.span, base, indices);
-        if self.walked_not_indexed(base) {
+        if self.stepped_slice(base, indices) || self.walked_not_indexed(base) {
             for index in indices {
                 self.infer(index);
             }

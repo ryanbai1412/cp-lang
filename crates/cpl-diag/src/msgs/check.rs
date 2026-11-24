@@ -108,6 +108,7 @@ super::msgs! {
     MISSING_IMPL_REQUIRES_WHICH_IS_NOT = MISSING_IMPL, "`{}` requires `{}: {}`, which is not in the bounds";
     MISSING_IMPL_NEEDS_IMPL_FOR_AND = MISSING_IMPL, "`{}` needs `impl {} for {}`, and there is none";
     TYPE_MISMATCH_MIXES_A_AND_A = TYPE_MISMATCH, "`{}` mixes a {} and a {}";
+    BAD_OPERANDS_STEPPED_SLICE = BAD_OPERANDS, "a slice is a contiguous view of `{}`, so its range takes no `by` step";
     BAD_OPERANDS_CAN_T_COMBINE_AN = BAD_OPERANDS, "`{}` can't combine an `I128` and a `U64`";
     BAD_OPERANDS_CAN_T_COMBINE_AND = BAD_OPERANDS, "`{}` can't combine {} and {}";
     WRONG_DOMAIN_RANGE_BETWEEN_AND = WRONG_DOMAIN, "range between {} and {}";
