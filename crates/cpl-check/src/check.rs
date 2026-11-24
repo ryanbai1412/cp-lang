@@ -1711,12 +1711,12 @@ pub(crate) fn spec_member_typo(
         let methods = prelude::spec_receiver_method_names();
         return closest(name, methods.iter().map(String::as_str));
     }
-    let own_members = match base {
+    let own_members: &[(&str, &str)] = match base {
         Ty::Domain(_) => crate::builtins::DOMAIN_MEMBERS,
         Ty::Pos(_) => crate::builtins::POS_MEMBERS,
         _ => &[],
     };
-    if let Some(member) = closest(name, own_members.iter().copied()) {
+    if let Some(member) = closest(name, own_members.iter().map(|(m, _)| *m)) {
         return Some(member);
     }
     let receiver = match base {

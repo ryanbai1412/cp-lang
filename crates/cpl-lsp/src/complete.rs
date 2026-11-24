@@ -25,43 +25,6 @@ pub use signature::{parameter_hints, signature_help};
 /// Every `std/` module but the prelude.
 const STD_MODULES: &[&str] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
 
-/// The members every domain has (`V.first`) and every position has
-/// (`v.ord`), which the checker types without a declaration to read.
-/// The tests check each against the checker.
-pub(crate) const DOMAIN_MEMBERS: &[(&str, &str)] = &[
-    ("first", "the first position"),
-    ("last", "the last position"),
-    ("rev", "the positions in reverse order"),
-    ("cuts", "the boundaries between and around positions"),
-    ("at", "the position at a 0-based index, or `None` outside"),
-    ("nth", "the position at a 0-based index"),
-    ("wrap", "the position at an index taken modulo the size"),
-    ("pairs", "every pair of positions `(u, v)` with `u < v`"),
-    ("partition", "the positions split by a predicate"),
-    ("filter", "the positions a predicate holds on"),
-];
-pub(crate) const POS_MEMBERS: &[(&str, &str)] = &[
-    ("ord", "the 0-based rank of the position"),
-    ("idx", "the position as a raw 0-based index"),
-    ("label", "the value the position stands for"),
-    ("l", "the boundary before the position"),
-    ("r", "the boundary after the position"),
-    ("before", "the boundary before the position"),
-    ("after", "the boundary after the position"),
-    ("prev", "the position before, or `None` at the first"),
-    ("next", "the position after, or `None` at the last"),
-];
-
-pub(crate) const RANGE_MEMBERS: &[(&str, &str)] = &[
-    ("start", "the lower endpoint of the range"),
-    ("end", "the exclusive upper endpoint of the range"),
-    ("first", "the first element, or `None` when empty"),
-    ("last", "the last element, or `None` when empty"),
-    ("len", "the number of elements in the range"),
-    ("is_empty", "true when the range holds no elements"),
-    ("rev", "the range in reverse order"),
-];
-
 /// The standard library's outlines, read once.
 #[derive(Default)]
 pub struct StdLib {
@@ -1297,12 +1260,14 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
             .collect()
     };
     match ty {
-        Ty::Named { name, .. } if name == "Range" => builtin(RANGE_MEMBERS, ty.to_string()),
+        Ty::Named { name, .. } if name == "Range" => {
+            builtin(cpl_check::RANGE_MEMBERS, ty.to_string())
+        }
         Ty::Named { name, args } if builtin_receiver(ty).is_none() => {
             type_members(cursor, std, name, args, true)
         }
         Ty::TypeName(name) if is_domain(cursor.analysis, name) => {
-            builtin(DOMAIN_MEMBERS, format!("domain {name}"))
+            builtin(cpl_check::DOMAIN_MEMBERS, format!("domain {name}"))
         }
         Ty::TypeName(name) => type_members(cursor, std, name, &[], false),
         Ty::Record(fields) => fields
@@ -1328,8 +1293,8 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
                 (plain(name, Kind::Method, detail, doc), 0)
             })
             .collect(),
-        Ty::Domain(domain) => builtin(DOMAIN_MEMBERS, format!("domain {domain}")),
-        Ty::Pos(domain) => builtin(POS_MEMBERS, format!("position in {domain}")),
+        Ty::Domain(domain) => builtin(cpl_check::DOMAIN_MEMBERS, format!("domain {domain}")),
+        Ty::Pos(domain) => builtin(cpl_check::POS_MEMBERS, format!("position in {domain}")),
         Ty::Int | Ty::Range { .. } => scalar_members(cursor, std, "Int"),
         Ty::I128 => scalar_members(cursor, std, "I128"),
         Ty::U64 => scalar_members(cursor, std, "U64"),

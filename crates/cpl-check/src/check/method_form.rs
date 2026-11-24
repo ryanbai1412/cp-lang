@@ -490,8 +490,10 @@ impl<'a> Checker<'a> {
         };
         let own_member = match &base_ty {
             Ty::Optional(_) => crate::builtins::optional_member(&name.text),
-            Ty::Domain(_) => crate::builtins::DOMAIN_MEMBERS.contains(&name.text.as_str()),
-            Ty::Pos(_) => crate::builtins::POS_MEMBERS.contains(&name.text.as_str()),
+            Ty::Domain(_) => {
+                crate::builtins::is_member(crate::builtins::DOMAIN_MEMBERS, &name.text)
+            }
+            Ty::Pos(_) => crate::builtins::is_member(crate::builtins::POS_MEMBERS, &name.text),
             _ => self.catalog_row(base, &name.text).is_some(),
         };
         // A view has its source's members, `xs.rev.nth(1)` (R07.4.5).

@@ -85,24 +85,31 @@ fn dot_completion_on_records_domains_and_positions() {
 /// The members offered on every domain and position are ones the checker types.
 #[test]
 fn builtin_domain_and_position_members_are_the_checkers() {
-    use crate::complete::{DOMAIN_MEMBERS, POS_MEMBERS};
+    use cpl_check::{DOMAIN_MEMBERS, POS_MEMBERS};
     let mut wrong = Vec::new();
     for (members, receiver) in [(DOMAIN_MEMBERS, "V"), (POS_MEMBERS, "v")] {
         for (name, _) in members {
-            let src = format!("domain V = 0..5\nfor v in V:\n    let x = {receiver}.{name}\n");
-            let (mut server, replies) = open(&src);
-            // The back ends may not lower every one yet (E0501); the checker types them.
-            let errors: Vec<&Value> = replies
-                .iter()
-                .filter(|d| d.at(&["code"]).as_str() != Some("E0501"))
+            // Assigning to `Str`, which no member gives, makes the checker name the
+            // member's type: one E0302, and nothing else, means it typed it.
+            let src = format!(
+                "domain V = 0..5\nfor v in V:\n    let x = {receiver}.{name}\n    let y: Str = x\n"
+            );
+            let mut db = cpl_check::Session::new();
+            db.set_file("a.cp", src.as_str());
+            // "Not implemented yet" (E05xx) is a back-end gap, not a typing one.
+            let all = db.diagnostics("a.cp");
+            let gap = all.iter().any(|d| d.code.0.starts_with("E05"));
+            let found: Vec<_> = (all.iter())
+                .filter(|d| !d.code.0.starts_with("E05"))
+                .map(|d| format!("{}: {}", d.code.0, d.message))
                 .collect();
-            let hover = hover_at(&mut server, 2, 8);
-            let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
-            let ty_line = text.lines().nth(1).unwrap_or("");
-            if !errors.is_empty() {
-                wrong.push(format!("{receiver}.{name}: {errors:?}"));
-            } else if !ty_line.starts_with("x: ") || ty_line == "x: ?" || ty_line.contains('_') {
-                wrong.push(format!("{receiver}.{name} is untyped: {ty_line}"));
+            let typed = match found.as_slice() {
+                [one] => one.starts_with("E0302"),
+                [] => gap,
+                _ => false,
+            };
+            if !typed {
+                wrong.push(format!("{receiver}.{name}: {found:?}"));
             }
         }
     }

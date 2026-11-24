@@ -507,27 +507,52 @@ pub fn optional_member(name: &str) -> bool {
     OPTIONAL_MEMBERS.iter().any(|(member, ..)| *member == name)
 }
 
-/// The members `member_ty` gives a domain (`V.first`) and a position
-/// (`v.next`), for "did you mean" on a misspelled one.
-pub(crate) const DOMAIN_MEMBERS: &[&str] = &[
-    "first",
-    "last",
-    "all",
-    "rev",
-    "mask",
-    "wrap",
-    "nth",
-    "cuts",
-    "pairs",
-    "after",
-    "before",
-    "partition",
-    "filter",
-    "sort",
+/// The members `member_ty` gives every domain (`V.first`), position
+/// (`v.next`) and range (`r.start`) without a declaration to read: the
+/// one list "did you mean" suggests from and completion offers.
+pub const DOMAIN_MEMBERS: &[(&str, &str)] = &[
+    ("first", "the first position, or `None` when empty"),
+    ("last", "the last position, or `None` when empty"),
+    ("rev", "the positions in reverse order"),
+    ("cuts", "the boundaries between and around positions"),
+    ("at", "the position at a 0-based index, or `None` outside"),
+    ("nth", "the position at a 0-based index"),
+    ("wrap", "the position at an index taken modulo the size"),
+    ("mask", "a bit mask over the positions"),
+    ("pairs", "every pair of positions `(u, v)` with `u < v`"),
+    ("after", "the positions after a boundary"),
+    ("before", "the positions before a boundary"),
+    ("partition", "the positions split by a predicate"),
+    ("filter", "the positions a predicate holds on"),
 ];
-pub(crate) const POS_MEMBERS: &[&str] = &[
-    "ord", "idx", "label", "prev", "next", "offset", "ahead", "back",
+pub const POS_MEMBERS: &[(&str, &str)] = &[
+    ("ord", "the 0-based rank of the position"),
+    ("idx", "the position as a raw 0-based index"),
+    ("label", "the value the position stands for"),
+    ("prev", "the position before, or `None` at the first"),
+    ("next", "the position after, or `None` at the last"),
+    ("offset", "the position `k` steps away, or `None` outside"),
+    ("ahead", "the position `k` steps after, or `None` outside"),
+    ("back", "the position `k` steps before, or `None` outside"),
+    ("l", "the boundary before the position"),
+    ("r", "the boundary after the position"),
+    ("before", "the boundary before the position"),
+    ("after", "the boundary after the position"),
 ];
+pub const RANGE_MEMBERS: &[(&str, &str)] = &[
+    ("start", "the lower endpoint of the range"),
+    ("end", "the exclusive upper endpoint of the range"),
+    ("first", "the first element, or `None` when empty"),
+    ("last", "the last element, or `None` when empty"),
+    ("len", "the number of elements in the range"),
+    ("is_empty", "true when the range holds no elements"),
+    ("rev", "the range in reverse order"),
+];
+
+/// Whether `name` is in `members`.
+pub fn is_member(members: &[(&str, &str)], name: &str) -> bool {
+    members.iter().any(|(member, _)| *member == name)
+}
 
 /// `i: Int, f: (Int, Int) -> Int` split at its top-level commas, trimmed.
 pub fn split_params(text: &str) -> Vec<&str> {
@@ -575,7 +600,7 @@ mod tests {
             ("V", crate::builtins::DOMAIN_MEMBERS),
             ("v", crate::builtins::POS_MEMBERS),
         ] {
-            for m in members {
+            for (m, _) in members.iter() {
                 let src = format!("domain V = 1..=9\nfor v in V:\n    let x = {owner}.{m}\n");
                 let found: Vec<_> = check(&src).iter().map(|d| d.code.0).collect();
                 assert!(!found.contains(&"E0203"), "{owner}.{m}: {found:?}");

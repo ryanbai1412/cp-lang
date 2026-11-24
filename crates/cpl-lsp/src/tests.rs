@@ -1962,6 +1962,9 @@ fn every_member_completion_type_checks_when_inserted() {
             &[][..],
         ),
         ("", "chain([1, 2], [3])", &[][..]),
+        ("domain V = 0..5\n", "V", &["first", "cuts"][..]),
+        ("domain V = 0..5\nlet v = V(2)\n", "v", &["ord", "next"][..]),
+        ("", "(0..5)", &["start", "len"][..]),
     ] {
         let offered = completions(&format!("{prefix}let probe = {receiver}.|\n"));
         let names = labels(&offered);
