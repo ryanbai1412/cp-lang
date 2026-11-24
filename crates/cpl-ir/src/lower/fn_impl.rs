@@ -161,27 +161,36 @@ impl<'a> Lowerer<'a> {
             if bound_args.contains(&Ty::Error) {
                 continue;
             }
-            for idx in 0..self.impls.len() {
-                let imp = &self.impls[idx];
-                let (m, offset, target) = (imp.mod_id, imp.offset, imp.target);
-                if imp.trait_name.as_deref() != Some(name.text.as_str())
-                    || !fits(target)
-                    || imp.trait_args.len() != bound_args.len()
-                {
-                    continue;
-                }
-                let trait_args = imp.trait_args.clone();
-                let params = self.impl_params(m, target);
-                let mut env = GenEnv::default();
-                for (a, t) in trait_args.iter().zip(&bound_args) {
-                    self.unify_ast_ty(a, t, m, &params, &mut env);
-                }
-                if !params.iter().all(|p| env.contains_key(p)) {
-                    continue;
-                }
-                let ty = self.quietly_in(m, offset, env, |l| l.resolve_ty(target));
-                if ty != Ty::Error {
-                    return Some(ty);
+            // An impl the bound fixes wins over one whose open names default.
+            for open_takes_int in [false, true] {
+                for idx in 0..self.impls.len() {
+                    let imp = &self.impls[idx];
+                    let (m, offset, target) = (imp.mod_id, imp.offset, imp.target);
+                    if imp.trait_name.as_deref() != Some(name.text.as_str())
+                        || !fits(target)
+                        || imp.trait_args.len() != bound_args.len()
+                    {
+                        continue;
+                    }
+                    let trait_args = imp.trait_args.clone();
+                    let params = self.impl_params(m, target);
+                    let mut env = GenEnv::default();
+                    for (a, t) in trait_args.iter().zip(&bound_args) {
+                        self.unify_ast_ty(a, t, m, &params, &mut env);
+                    }
+                    // A fn value its bound leaves open takes `Int`, as a literal does (R08.2.11).
+                    if open_takes_int && matches!(target.kind, ast::TypeKind::Fn { .. }) {
+                        for p in &params {
+                            env.entry(p.clone()).or_insert(GenArg::Ty(Ty::Int));
+                        }
+                    }
+                    if !params.iter().all(|p| env.contains_key(p)) {
+                        continue;
+                    }
+                    let ty = self.quietly_in(m, offset, env, |l| l.resolve_ty(target));
+                    if ty != Ty::Error {
+                        return Some(ty);
+                    }
                 }
             }
         }

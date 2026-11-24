@@ -69,11 +69,12 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The empty struct that stands for `op` as a value.
-    fn op_type(&mut self, op: BareOp) -> StructId {
+    pub(super) fn op_type(&mut self, op: BareOp) -> StructId {
         if let Some(&(_, id)) = self.op_types.iter().find(|(o, _)| *o == op) {
             return id;
         }
         let id = self.push_synth_struct(format!("Op_{op:?}"), Vec::new());
+        self.structs[id].def.is_op = true;
         self.op_types.push((op, id));
         id
     }
@@ -101,6 +102,69 @@ impl<'a> Lowerer<'a> {
                 .ok_or(value),
             None => Err(value),
         }
+    }
+
+    /// A bare operator passed where its own operator type is wanted (a
+    /// generic's parameter bound to it): the operator's value, which costs nothing.
+    pub(super) fn op_value_for(&mut self, want: &Ty, e: &ast::Expr) -> Option<Expr> {
+        if *want == Ty::Unit && self.detect_bare_op(e).is_some() {
+            return Some(self.mk(ExprKind::Unit, Ty::Unit, e.span));
+        }
+        let op = self.op_of_type(want)?;
+        (self.detect_bare_op(e) == Some(op))
+            .then(|| self.mk(ExprKind::Tuple(Vec::new()), want.clone(), e.span))
+    }
+
+    /// An operator's value where a fn is wanted: `(a, b) => a + b`, so a
+    /// generic's `X` that a bare operator bound is that fn too (R08.2.11).
+    pub(super) fn op_closure(&mut self, op: BareOp, want: &Ty, span: Span) -> Expr {
+        let name = |text: &str| ast::Expr {
+            kind: ast::ExprKind::Name(text.into()),
+            span,
+        };
+        let arg = |text: &str| ast::Arg {
+            name: None,
+            mutable: false,
+            value: name(text),
+        };
+        let bin = |op| ast::ExprKind::Binary {
+            op,
+            op_span: span,
+            lhs: Box::new(name("a")),
+            rhs: Box::new(name("b")),
+        };
+        let call = |f: &str| ast::ExprKind::Call {
+            callee: Box::new(name(f)),
+            args: vec![arg("a"), arg("b")],
+        };
+        let body = match op {
+            BareOp::Add => bin(ast::BinOp::Add),
+            BareOp::Mul => bin(ast::BinOp::Mul),
+            BareOp::BitXor => bin(ast::BinOp::BitXor),
+            BareOp::BitOr => bin(ast::BinOp::BitOr),
+            BareOp::BitAnd => bin(ast::BinOp::BitAnd),
+            BareOp::And => bin(ast::BinOp::And),
+            BareOp::Or => bin(ast::BinOp::Or),
+            BareOp::Max => call("max"),
+            BareOp::Min => call("min"),
+            BareOp::Gcd => call("gcd"),
+            BareOp::Lcm => call("lcm"),
+        };
+        let param = |text: &str| ast::Pattern {
+            kind: ast::PatternKind::Name(text.into()),
+            span,
+        };
+        let lambda = ast::Expr {
+            kind: ast::ExprKind::Lambda {
+                params: vec![param("a"), param("b")],
+                param_tys: vec![None, None],
+                param_mut: Vec::new(),
+                ret_ty: None,
+                body: Box::new(ast::Expr { kind: body, span }),
+            },
+            span,
+        };
+        self.expr(&lambda, Some(want))
     }
 
     /// The operator a value of type `ty` stands for.

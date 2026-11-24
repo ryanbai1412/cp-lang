@@ -26,6 +26,9 @@ impl<'a> Lowerer<'a> {
             return Ok(e);
         }
         let span = e.span;
+        if let (Ty::Fn(..), Some(op)) = (want, self.op_of_type(&e.ty)) {
+            return Ok(self.op_closure(op, want, span));
+        }
         let e = match self.range_domain_coerce(e, want) {
             Ok(done) => return Ok(done),
             Err(e) => e,

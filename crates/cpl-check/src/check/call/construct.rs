@@ -315,7 +315,8 @@ impl Checker<'_> {
                     self.expected_bounds_range = true;
                 }
                 self.expected_piece = Self::expects_piece(&expected);
-                typed_lambda = self.lambda_takes(arg, &expected);
+                typed_lambda = self.lambda_defaults(arg, &expected, callee, params)
+                    || self.lambda_takes(arg, &expected);
             }
             let arg_ty = self.infer(&arg.value);
             // A lambda with unwritten parameters keeps its signature for

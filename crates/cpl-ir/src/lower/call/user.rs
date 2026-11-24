@@ -249,6 +249,11 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
+        if let Some(op) = self.op_of_type(&callee.ty) {
+            if let Some(call) = self.bare_op_call(op, callee.span, args, span, None) {
+                return call;
+            }
+        }
         let Ty::Fn(param_tys, ret_ty) = callee.ty.clone() else {
             if callee.ty != Ty::Error {
                 self.report(
@@ -1354,17 +1359,13 @@ impl<'a> Lowerer<'a> {
                 Some(arg) => {
                     if let Some(monoid) = self.monoid_of_bare_op(&param.ty, arg) {
                         lowered.push(Arg::Value(monoid));
-                    } else if param.ty == Ty::Unit && self.detect_bare_op(&arg.value).is_some() {
-                        lowered.push(Arg::Value(self.mk(
-                            ExprKind::Unit,
-                            Ty::Unit,
-                            arg.value.span,
-                        )));
-                    } else if param.ty == Ty::opt(Ty::Unit)
-                        && self.detect_bare_op(&arg.value).is_some()
-                    {
-                        let unit = self.mk(ExprKind::Unit, Ty::Unit, arg.value.span);
-                        let some = ExprKind::Some(Box::new(unit));
+                    } else if let Some(op) = self.op_value_for(&param.ty, &arg.value) {
+                        lowered.push(Arg::Value(op));
+                    } else if let Some(op) = match &param.ty {
+                        Ty::Opt(inner) => self.op_value_for(&inner.clone(), &arg.value),
+                        _ => None,
+                    } {
+                        let some = ExprKind::Some(Box::new(op));
                         lowered.push(Arg::Value(self.mk(some, param.ty.clone(), arg.value.span)));
                     } else if let Some(list) = self.list_given(&param.ty) {
                         // A list where a `[D]T` is asked for is made as
@@ -1404,12 +1405,10 @@ impl<'a> Lowerer<'a> {
                         let sm = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
                         let saved = std::mem::replace(&mut self.offset, self.sigs[id].offset);
                         let se = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
-                        let value =
-                            if param.ty == Ty::Unit && self.detect_bare_op(default).is_some() {
-                                self.mk(ExprKind::Unit, Ty::Unit, default.span)
-                            } else {
-                                self.expect(default, &param.ty)
-                            };
+                        let value = match self.op_value_for(&param.ty, default) {
+                            Some(op) => op,
+                            None => self.expect(default, &param.ty),
+                        };
                         self.cur_mod = sm;
                         self.offset = saved;
                         self.gen_env = se;
@@ -1655,10 +1654,9 @@ impl<'a> Lowerer<'a> {
         for (i, ((field, ty), arg)) in fields.iter().zip(given).enumerate() {
             match (arg, &decl.fields[i].default) {
                 (Some(arg), _) => {
-                    let v = if *ty == Ty::Unit && self.detect_bare_op(&arg.value).is_some() {
-                        self.mk(ExprKind::Unit, Ty::Unit, arg.value.span)
-                    } else {
-                        self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty))
+                    let v = match self.op_value_for(ty, &arg.value) {
+                        Some(op) => op,
+                        None => self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty)),
                     };
                     let v = self.field_keys(id, &decl.fields[i].ty, v, &arg.value);
                     let v = match self.struct_field_range(id, i) {

@@ -6,6 +6,14 @@ impl<'a> Lowerer<'a> {
     /// `ty` as the user would write it; a declared type being checked is
     /// shown as its source writes it, `[n]Int` rather than `[Int]Int`.
     pub(super) fn show(&self, ty: &Ty) -> String {
+        if let Some(op) = self.op_of_type(ty) {
+            let t = if matches!(op, super::mono::BareOp::And | super::mono::BareOp::Or) {
+                Ty::Bool
+            } else {
+                Ty::Int
+            };
+            return self.show(&Ty::Fn(vec![t.clone(), t.clone()], Box::new(t)));
+        }
         if let Some((_, text)) = self.written.iter().rev().find(|(t, _)| t == ty) {
             return text.clone();
         }

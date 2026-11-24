@@ -1419,6 +1419,8 @@ pub struct StructDef {
     /// A generic instance's arguments, shown as `Pair<Int>`.
     pub targs: Vec<Ty>,
     pub fields: Vec<(String, Ty)>,
+    /// The empty type of one operator's value (`+`, `max`), which tools show as a fn.
+    pub is_op: bool,
     /// The fields that are a row of a length written as a number, `kid:
     /// [0..2]?Int`, by position: every value of the struct holds exactly
     /// that many cells there.

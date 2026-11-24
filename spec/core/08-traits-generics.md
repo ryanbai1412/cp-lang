@@ -124,6 +124,12 @@ struct Pair<A, B = Int>: a: A, b: B
 - A generic fn may not reach itself, directly or mutually, at a type that
   grows on every call: `wrap([x], n - 1)` inside `wrap<T>` would need
   `wrap<List<T>>`, `wrap<List<List<T>>>` and so on (E0319). (R08.2.10)
+- A fn value with unwritten parameter types (an operator such as `+`, an
+  overload set such as `max`, or `(a, b) => a * b + 1`) given to a type
+  parameter nothing else fixes takes `Int` parameters, as a literal does:
+  `ap(+)` for `fn ap<X>(op: X) -> X` is an `(Int, Int) -> Int`, and so is
+  `SegTree(max, xs)`'s op. When its body does not check with `Int`s it is
+  E0806, never an unknown type (decision 592). (R08.2.11)
 - `domain` is a kind on type parameters; `const N: Int` parameters take
   compile-time values (`Mod<998244353>`, `SegTree<0..=4e9>`); range
   types are types and may be arguments. (R08.2.4)

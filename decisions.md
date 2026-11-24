@@ -9118,7 +9118,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** These names were string-matched in IR, codegen, the interpreter and the checker, so a user library could not define its own `ctz` and std could not change their signatures.
 - **Reverse.** Restore the `Builtin` variants and the prelude arm, and drop the four entries.
 
-## 592. (reserved, compiler)
+## 592. A fn value with unwritten parameter types given to an open type parameter takes `Int`s (spec, 2026-11-24)
+
+- **Call.** An operator (`+`), an overload set (`max`) or a lambda with unwritten parameter types (`(a, b) => a * b + 1`), given to a type parameter that no bound and no other parameter fixes, takes `Int` parameters, the way an integer literal does: `fn ap<X>(op: X) -> X` makes `ap(+)` an `(Int, Int) -> Int`. A bound whose fn-type impl leaves its names open (`impl<T> Lawful for (T, T) -> T` under `X: Lawful`) fills them with `Int` too, after any impl the bound fixes. A lambda whose body does not check with `Int`s is E0806 naming the parameter, never an unknown type. A bare operator keeps its identity in its type (one empty type per operator, so `same(m, +)` and zero-cost folds still work); that value is the fn wherever a fn is called or wanted. (R08.2.11)
+- **Why.** `laws_hold(+, xs)`, `use_op(max)` and `SegTree(max, xs)` reached std bodies with the op's type silently unknown (the checker) or `()` (the IR, which could not call it), so std could not own them without a compiler intercept. One literal-style default keeps every such op value typed by the ordinary rule.
+- **Reverse.** Drop `lambda_defaults` (cpl-check `check/lambda.rs`), the open-param fallback in cpl-ir `lower/mono/gen_call.rs`, the `open_takes_int` pass in `lower/fn_impl.rs`, and make `GenArg::Op` resolve to `()` again in `lower/resolve_ty.rs`.
 
 ## 593. (reserved, compiler)
 

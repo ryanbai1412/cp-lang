@@ -228,7 +228,7 @@ impl<'a> Lowerer<'a> {
                     GenArg::Domain(d) => Ty::Pos(d),
                     GenArg::Int(_) | GenArg::RuntimeInt(_) | GenArg::Range(_, _) => Ty::Int,
                     GenArg::OptRange(_, _) => Ty::opt(Ty::Int),
-                    GenArg::Op(_) => Ty::Unit,
+                    GenArg::Op(op) => Ty::Struct(self.op_type(op)),
                 });
             }
             let local = self
