@@ -1,6 +1,6 @@
 //! Ordered multiset and set with order statistics, range views, and cursors: `SortedBag<K>`, `SortedSet<K>`.
 
-use std.seq.{Track, remove}
+use std.seq.Track
 
 /// Read-only handle to one distinct key of a `SortedBag<K>`, valid until the next mutation.
 pub struct BagCursor(id: Int)
