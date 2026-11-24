@@ -5,13 +5,36 @@
 //! ([`Interp::quietly`](crate::Interp)) hushes the tracer and the
 //! profiler, not the fallback counts: a fallback there is still one.
 
-use crate::observe::Observer;
-use crate::profile::{Profile, Profiler};
-use crate::trace::{Recording, Tracer, View};
-use crate::vm::VmStats;
+#[cfg(not(target_family = "wasm"))]
+use crate::{
+    observe::Observer,
+    profile::{Profile, Profiler},
+    trace::{Recording, Tracer, View},
+    vm::VmStats,
+};
+#[cfg(not(target_family = "wasm"))]
 use cpl_diag::Span;
+#[cfg(not(target_family = "wasm"))]
 use cpl_ir::{Place, Program, Stmt};
 
+/// The browser has no profiler and no fallback counts: its watch is the
+/// tracer alone, so `cpl.wasm` carries no events for observers it lacks.
+#[cfg(target_family = "wasm")]
+pub(crate) type Watch = crate::trace::Tracer;
+
+#[cfg(target_family = "wasm")]
+impl crate::trace::Tracer {
+    /// [`Watch::of`] in the browser: the tracer, when the run is traced.
+    pub(crate) fn of(
+        _program: &cpl_ir::Program,
+        tracer: Option<Self>,
+        _profile: bool,
+    ) -> Option<Box<Self>> {
+        tracer.map(Box::new)
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
 pub(crate) struct Watch {
     tracer: Option<Tracer>,
     profiler: Option<Profiler>,
@@ -20,6 +43,7 @@ pub(crate) struct Watch {
     quiet: u32,
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl Watch {
     /// What watches a run traced as `tracer` asks, profiled with
     /// `profile`; none when nothing would.
@@ -49,6 +73,7 @@ impl Watch {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl Observer for Profiler {
     fn traces(&self) -> bool {
         false
@@ -61,6 +86,7 @@ impl Observer for Profiler {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl Observer for VmStats {
     fn traces(&self) -> bool {
         false
@@ -81,6 +107,7 @@ impl Observer for VmStats {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl Observer for Watch {
     fn traces(&self) -> bool {
         self.seen().is_some()

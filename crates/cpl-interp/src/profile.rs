@@ -10,8 +10,11 @@
 //! every count.
 
 use cpl_diag::Span;
+#[cfg(not(target_family = "wasm"))]
 use cpl_ir::{Program, Stmt};
+#[cfg(not(target_family = "wasm"))]
 use std::collections::{HashMap, HashSet};
+#[cfg(not(target_family = "wasm"))]
 use std::time::Instant;
 
 /// One statement's tally.
@@ -29,6 +32,8 @@ pub struct Profile {
     pub sites: Vec<(Span, Site)>,
 }
 
+/// Native only: the browser has no clock to read.
+#[cfg(not(target_family = "wasm"))]
 pub(crate) struct Profiler {
     counted: HashSet<*const Stmt>,
     sites: HashMap<Span, Site>,
@@ -36,6 +41,7 @@ pub(crate) struct Profiler {
     since: Instant,
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl Profiler {
     pub fn new(program: &Program) -> Profiler {
         Profiler {

@@ -1116,3 +1116,10 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - VM-stmt: a call whose closure beside a `mut` arg may reach the lent place (batch27: `hs.update(k, d, v => .. hs.len ..)`) runs on the VM as a lending `CallTraced` (`call_mix::compile_call_lending`): its `lent_calls` entry marks the places lent, and the callee puts them back around each closure call (`show_lent`/`hide_lent`), as the tree-walker does. Drops `untraced stmt:Expr(Call)`, and `untraced stmt:For(Seq)`, which no program hits since da5d3c23d; vm_fallbacks 6 to 4. Regression: tests/programs/lent_global_read_by_closure.cp.
 - VM-stmt: a traced `yield from` runs on the VM: `FeedTree` takes `each`, so a fed loop's body runs on each item of the sequence (as the tree-walker's `mutate` feeds them), and eagerly the list is extended by `MutatePlace`. It was batch20's traced `stmt:Expr(Mutate)`, and its untraced one (the traced rerun after its trap). Both gone; vm_fallbacks 3 to 1. Regression: tests/programs/traced_yield_from.cp.
 - VM-memory: fix 7738defd7's clippy red: `lent_places` includes the counting module without running an interpreter, so the shared `TEST_THREAD` const was dead code there; the two tests that run on their own thread name their stack limit themselves.
+
+- 2026-11-24: cut cpl_interp in cpl.wasm from 235,882 to 233,492 B gz
+  (budget 233,600), with no change in behavior. The browser has no
+  profiler and no CPL_VM_STATS, so its watch is the tracer alone, and
+  Profiler and VmStats are native only. The `show` texts a trace keeps
+  now live in the interpreter's own `Value` map, per fn, instead of a
+  second BTreeMap type whose code cost 5.3 KB.

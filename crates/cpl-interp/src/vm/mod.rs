@@ -27,7 +27,9 @@ mod ir;
 mod program;
 mod scalar;
 
+#[cfg(not(target_family = "wasm"))]
 pub(crate) use helpers::stmt_tag;
+#[cfg(not(target_family = "wasm"))]
 pub(crate) use helpers::VmStats;
 pub(crate) use helpers::{read_slot, undeclared};
 pub(crate) use ir::CompiledProgram;

@@ -72,8 +72,51 @@ pub(super) fn field_tys(ty: &Ty, program: &Program) -> Vec<Ty> {
     }
 }
 
-/// A value's `show` fn and the value, to the text the fn gave.
-pub(crate) type ShowTexts = BTreeMap<(cpl_ir::FnId, Value), String>;
+/// A value's `show` fn and the value, to the text the fn gave. Each fn's
+/// texts are kept in the interpreter's own map type, as `Str` values, so a
+/// trace adds no map code of its own.
+#[derive(Default)]
+pub(crate) struct ShowTexts {
+    by_fn: Vec<(cpl_ir::FnId, BTreeMap<Value, Value>)>,
+    len: usize,
+}
+
+impl ShowTexts {
+    pub(crate) fn get(&self, f: cpl_ir::FnId, value: &Value) -> Option<&str> {
+        let (_, texts) = self.by_fn.iter().find(|(g, _)| *g == f)?;
+        match texts.get(value)? {
+            Value::Str(text) => std::str::from_utf8(text).ok(),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn contains_key(&self, (f, value): &(cpl_ir::FnId, Value)) -> bool {
+        self.get(*f, value).is_some()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.len
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.by_fn.clear();
+        self.len = 0;
+    }
+
+    pub(crate) fn insert(&mut self, (f, value): (cpl_ir::FnId, Value), text: String) {
+        let at = match self.by_fn.iter().position(|(g, _)| *g == f) {
+            Some(at) => at,
+            None => {
+                self.by_fn.push((f, BTreeMap::new()));
+                self.by_fn.len() - 1
+            }
+        };
+        let text = Value::Str(std::rc::Rc::new(text.into_bytes()));
+        if self.by_fn[at].1.insert(value, text).is_none() {
+            self.len += 1;
+        }
+    }
+}
 
 /// `value` as `debug(...)` shows it.
 pub(crate) fn text_of(value: &Value, ty: &Ty, view: &View) -> String {
@@ -110,8 +153,7 @@ pub(super) fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode
         }
         out.push(close);
     };
-    if let Some(text) = (view.program.show_fn(ty)).and_then(|f| view.shown.get(&(f, value.clone())))
-    {
+    if let Some(text) = (view.program.show_fn(ty)).and_then(|f| view.shown.get(f, value)) {
         if json {
             string(out, text);
         } else {

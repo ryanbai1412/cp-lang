@@ -422,7 +422,7 @@ fn run_from<O: Observer>(
         frameless_base: None,
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
-        trace_shown: trace::ShowTexts::new(),
+        trace_shown: trace::ShowTexts::default(),
         trace_show_tys: show_hook::ShowTys::default(),
         trap_frame: None,
         trace_indices: Vec::new(),

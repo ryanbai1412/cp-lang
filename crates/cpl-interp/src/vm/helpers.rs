@@ -1254,12 +1254,10 @@ pub(super) fn assign_place_leaf_scalar(
     }
 }
 
-#[cfg_attr(not(target_family = "wasm"), derive(Default))]
+/// `CPL_VM_STATS` is native only: `cpl.wasm` has no counting and no report.
+#[cfg(not(target_family = "wasm"))]
+#[derive(Default)]
 pub(crate) struct VmStats {
-    /// `CPL_VM_STATS` is native only: the browser's stats are uninhabited, so
-    /// `cpl.wasm` drops the counting and the report.
-    #[cfg(target_family = "wasm")]
-    _never: std::convert::Infallible,
     pub(crate) total_fallbacks: u64,
     pub(crate) loop_fallbacks: u64,
     pub(crate) hot_loop_fallbacks: u64,
@@ -1271,13 +1269,8 @@ pub(crate) struct VmStats {
     pub(crate) loop_counts: std::collections::BTreeMap<String, u64>,
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl VmStats {
-    #[cfg(target_family = "wasm")]
-    pub(crate) fn from_env() -> Option<Self> {
-        None
-    }
-
-    #[cfg(not(target_family = "wasm"))]
     pub(crate) fn from_env() -> Option<Self> {
         let val = cpl_env::VM_STATS.raw()?;
         if val.is_empty() || val == "0" {
@@ -1341,6 +1334,7 @@ impl VmStats {
 
 /// `map`'s entries by count, largest first, then by name: `map` iterates by
 /// name and the shared sort is stable.
+#[cfg(not(target_family = "wasm"))]
 fn by_count(map: &std::collections::BTreeMap<String, u64>) -> Vec<(&str, u64)> {
     let mut v: Vec<(&str, u64)> = map.iter().map(|(k, &n)| (k.as_str(), n)).collect();
     cpl_diag::sort_by_key(&mut v, |e| u64::MAX - e.1);
