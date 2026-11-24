@@ -196,8 +196,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/spec-block-segtree-of-ws.cp: compiler
 - core-06/gen-graph-simple-connected.cp: stdlib (generated edge record has no `all`)
 - core-07/chain-takes-any-number.cp: stdlib
-- core-07/count-of-bools-free-form.cp: compiler
-- core-07/count-of-bools-needs-a-predicate.cp: compiler
 - core-07/fold-with-init.cp: compiler
 - core-07/sorted-has-no-desc-flag.cp: compiler (the IR lowers `desc:` itself)
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
@@ -208,10 +206,13 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-11/strings-table-in-prelude.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - std-algebra/each-of-bool-operators.cp: stdlib
-- std-bag/range-view-keeps-the-bag-lent.cp: compiler lends of a std method returning a struct
 - std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
 - std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - std-segtree/closure-op-picks-index.cp: stdlib `all` of an identity-less op is `?T`; needs identity-less fold typing (plan/QUESTIONS.md)
 - std-seq/split-on-separator-predicate.cp: stdlib
 - std-window/track-infers-element-from-sequence.cp: compiler
 - tools-bundle/vendor-copies-pinned-libraries.cp: tools Milestone 2 (pins, Rbundle.6), not promised for Milestone 1
+- core-08/impl-chooses-an-associated-type-per-kind.cp: compiler associated types chosen by impl (decision 456)
+- std-segtree/closure-folds-optional-monoid-folds-plain.cp: compiler associated types chosen by impl (decision 456)
+- core-08/impl-missing-an-associated-type.cp: compiler associated types chosen by impl (decision 456)
+- core-08/generic-body-cannot-assume-an-associated-type.cp: compiler associated types chosen by impl (decision 456)

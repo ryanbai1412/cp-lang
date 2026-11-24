@@ -249,6 +249,20 @@ let xs = [P(2, 1), P(1, 5), P(1, 3)].sorted()
 print(xs[0].a, xs[0].b, yes(P(1, 2) == P(1, 2)))
 ```
 
+**An impl chooses its associated types (decision 456).** `SegTree(f, a)`
+should fold to `?T` when `f` has no identity, since an empty range has no
+answer, and to `T` over a monoid. `(lo..hi).bsearch` should return a
+`Cut<D>` on a domain and a `?F64` on reals, and `split(sep:)` should take a
+value or a predicate. Fns don't overload by parameter type (R07.1.7), so
+each of these needed a second name (`bsearch_real`, a `Str`-only `split`) or
+a wrapper at every call (`f.opt()` and `Some` cells). An associated type
+answers all three with one mechanism: `Op<T>` declares `type Fold`, the
+monoid impl chooses `T`, the impl for a bare closure chooses `?T`, and
+`SegTree`'s folds return `M.Fold`. Generic code sees only `M.Fold`, never one
+impl's choice, so it is still checked once against its bound (R08.1.9). The
+cost is one concept a contestant meets mostly in library signatures, and
+Rust programmers know it already.
+
 Associated types and trait aliases:
 
 ```cp

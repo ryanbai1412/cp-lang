@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3181 (1093 passing). Rules: 605.
+Cases: 3186 (1093 passing). Rules: 606.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 3181 (1093 passing). Rules: 605.
 - R05 (05-ownership.md): 50 rules, 234 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 91 rules, 221 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 29 rules, 93 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 30 rules, 98 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -55,7 +55,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 25 | 25 (100%) | 17 | 17 (100%) | 25 (100%) |
 | R07 | 91 | 91 (100%) | 27 | 27 (100%) | 91 (100%) |
-| R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
+| R08 | 30 | 30 (100%) | 11 | 11 (100%) | 30 (100%) |
 | R09 | 28 | 28 (100%) | 16 | 16 (100%) | 28 (100%) |
 | R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 605 | 601 (99%) | 246 | 238 (96%) | 595 (98%) |
+| all | 606 | 602 (99%) | 245 | 237 (96%) | 596 (98%) |
 
 ## Rules
 
@@ -356,8 +356,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.4.3 [1+ 0-]: | A private 0-based index space for `s` | `let t = s.rebase` | view over fresh `t.Idx`
 - R04b.4.4 [1+ 0-]: | An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that o...
 - R04b.4.5 [1+ 0-]: | Results back in the caller's keys | `table.rekey(s.keys)` | \(O(1)\) re-key
-- R04b.5.1 [3+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`
-- R04b.5.2 [3+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`
+- R04b.5.1 [3+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`; a match st...
+- R04b.5.2 [3+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`; an empty p...
 - R04b.5.3 [7+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
 - R04b.5.4 [1+ 0-]: | `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty
 - R04b.5.5 [1+ 0-]: | `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts
@@ -546,19 +546,20 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.5.2 [1+ 4-]: **Floats** are the other literals with a `.` or an exponent: `0.5`, `2.0`, `1.5e-9`. A lit...
 - R08.1.4 [3+ 2-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
 - R08.1.1 [14+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
-- R08.1.2 [4+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
+- R08.1.2 [4+ 2-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 2-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
 - R08.1.5 [2+ 1-]: Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with `Rhs` and `Out`, `Neg`...
 - R08.1.6 [1+ 1-]: **Derived impls are structural**: tuples, records, structs and enums get `Eq`, `Ord` (lexi...
 - R08.1.7 [5+ 1-]: **Field traits**: a trait may require fields (`trait Target<V>: to: V`); a bodiless `@get ...
 - R08.1.8 [1+ 1-]: Library-authored diagnostics: a trait may attach a message to "not implemented" and to eac...
+- R08.2.7 [1+ 0-]: **An impl chooses each associated type** its trait declares, with `type Name = T` in its b...
+- R08.2.2 [2+ 2-]: , and its body is checked against the bound alone
+- R08.1.9 [2+ 3-]: , so a type has one choice.
 - R08.2.1 [2+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
-- R08.2.2 [2+ 1-]: Generic bodies are checked once against their bounds, at definition; errors point at the g...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
 - R08.2.4 [3+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
 - R08.2.5 [4+ 1-]: Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static ca...
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
-- R08.2.7 [1+ 0-]: **Associated types** are reached through the implementing type or a value: `S.Item`, `g.Ar...
 - R08.2.8 [1+ 0-]: Return-type dispatch: a call may be resolved by its expected type (`read<T>()`).
 - R08.2.9 [7+ 0-]: **Conditional code** on a bound: `if T: Commutative: ... else: ...` chooses at compile tim...
 - R08.3.1 [1+ 1-]: A `law` is a Boolean property of a trait's operations. Implementing a trait promises its l...
@@ -774,7 +775,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0111 Mixed comparison chain: 2 case(s)
 - E0112 `let ... else` block falls through: 1 case(s)
 - E0201 Unresolved name: 10 case(s)
-- E0202 Duplicate definition: 3 case(s)
+- E0202 Duplicate definition: 4 case(s)
 - E0203 Unknown field or method: 18 case(s)
 - E0204 Unknown type: 4 case(s)
 - E0205 Used before initialization: 2 case(s)
@@ -783,7 +784,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
-- E0302 Type mismatch: 49 case(s)
+- E0302 Type mismatch: 50 case(s)
 - E0303 Wrong number of arguments: 11 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
@@ -819,7 +820,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 37 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
-- E0606 Missing trait implementation for operator: 24 case(s)
+- E0606 Missing trait implementation for operator: 25 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
 - E0608 Use of moved value: 16 case(s)
 - E0701 Ambiguous trait method: 2 case(s)

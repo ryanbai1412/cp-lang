@@ -70,6 +70,19 @@ impl Ord for Frac:
 - Library-authored diagnostics: a trait may attach a message to "not
   implemented" and to each law, so `SegTree(f, a)` with a non-associative
   `f` says what to write. (R08.1.8)
+- **An impl chooses each associated type** its trait declares, with
+  `type Name = T` in its body, and impls of one trait for different kinds
+  of type may choose differently: `impl<T> Op<T> for Monoid<T>` chooses
+  `type Fold = T` and the impl for a bare `(T, T) -> T` chooses `?T`, so one
+  generic `SegTree(op, a)` folds `T` over a monoid and `?T` over a closure
+  (decision 456). A fn type is a type an impl may be for, and an impl may
+  cover every domain (`impl<domain D> Search for D`) beside one for a
+  concrete type (`impl Search for F64`). A generic fn names the choice as
+  `M.Name` (R08.2.7), and its body is checked against the bound alone
+  (R08.2.2): it can't assume `M.Name` is one type, so `fn f<B: Box>(b: B) ->
+  Int = b.get()` is E0302. An impl that leaves out an associated type its
+  trait declares is E0606 naming it. Two impls that apply to one type are
+  E0202 (R08.1.2), so a type has one choice. (R08.1.9)
 
 `cmp(a, b)` is the three-way comparison of two `Ord` values, an
 `Ordering` (`Less`, `Equal`, `Greater`); `desc(x)` flips an order.

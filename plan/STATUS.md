@@ -16,7 +16,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | [perf](domains/perf/README.md) | 18 | 3 | 0 |
 | [site](domains/site/README.md) | 17 | 7 | 3 |
 | [spec](domains/spec/README.md) | 21 | 5 | 0 |
-| [stdlib](domains/stdlib/README.md) | 19 | 29 | 5 |
+| [stdlib](domains/stdlib/README.md) | 19 | 29 | 6 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
 | [tools](domains/tools/README.md) | 18 | 22 | 0 |
 
@@ -97,7 +97,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | blind_skill_eval | 20/20 pass, 12/20 first attempt (16/20 without compile fixes), 0 workarounds, 3 lint kept (research/skill-eval/v3/REPORT.md) | 20/20 first-attempt pass, 0 workarounds, 0 non-idiomatic lint flags; then 20/20 on an unseen set |
 | skill_check | ok on main, 50 files, 76 cp blocks verified | on main, in the fast gate, 0 drift, every cp block checks |
 | ports_check_v03 | 289/305 (corpus/sets/v03.txt has 308 entries; cf2066f checks but stays out for the stored-range P0) | 305/305 v0.3 re-ports (as spec.cp or migrated port.cp) |
-| dreams_check_v03 | 267/305 (2026-11-23, on 0846a0b99) | tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md |
+| dreams_check_v03 | 275/305 (2026-11-23, on 0c2627ad4) | tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md |
 | ports_judge_proven | 275/305 tracked ports (277 entries in corpus/sets/v03.txt) pass every_v03_port_checks; 276 of the 277 were also validated against orig.cpp on samples and/or 30 generated cases (interactive ones through interactor.py); ucup5s02f has no statement, gen or tests yet | 305/305 tracked ports compile with every judge's flags and pass their tests under the profile |
 | corpus_suite | 99/100 pass (1 error: noi09p4, a product-domain graph gap in std.graph) (2026-11-23, on 2ee04a2ba) | 100/100 hill-climb spec.cp pass; untested 0 (every problem has tests) |
 | port_lint_warnings | 21 warnings over the 275 v0.3 ports after cpl lint --fix (L0414 13, L0101 4, L0203 3, L0412 1); 5 are false positives, filed with lint-fmt | 0 false positives on the re-ported corpus (lint-fmt's FP gate) |
@@ -313,11 +313,11 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 
 | Area | Use cases | Supported | Partial | Gap | Claimed without evidence | M1 baseline gaps | M1 readiness gaps |
 |---|---|---|---|---|---|---|---|
-| complete | 32 | 22 | 4 | 6 | 0 | 0 | 4 |
+| complete | 32 | 29 | 3 | 0 | 0 | 0 | 1 |
 | play | 12 | 7 | 5 | 0 | 0 | 1 | 1 |
 | seq | 67 | 35 | 16 | 15 | 0 | 4 | 21 |
-| stress | 34 | 24 | 9 | 1 | 0 | 1 | 4 |
-| all | 145 | 88 | 34 | 22 | 0 | 6 | 30 |
+| stress | 34 | 27 | 7 | 0 | 0 | 1 | 3 |
+| all | 145 | 98 | 31 | 15 | 0 | 6 | 26 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 
@@ -337,3 +337,4 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 - tech-debt: which names may the compiler know (the builtin floor)?
 - tech-debt: may the steward land pure-move refactors in other lanes' crates?
 - tech-debt: how strict are the debt ratchets?
+- stdlib: Q6 folds of an identity-less op are `?T` only through the op's type (needs compiler)
