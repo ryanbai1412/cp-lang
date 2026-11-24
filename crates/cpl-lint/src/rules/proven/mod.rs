@@ -1091,7 +1091,13 @@ fn ranges_of_stmt(
                                 .try_fold(0u128, |sum, l| sum.checked_add(l.total?))
                         })
                         .flatten();
-                    let (found, hidden, nested, all_loops, callees) = calls_in(block);
+                    let cost::BlockCalls {
+                        by_name: found,
+                        hidden,
+                        nested,
+                        loops: all_loops,
+                        callees,
+                    } = calls_in(block);
                     let inside = |at: u32, (start, end): (u32, u32)| start <= at && at < end;
                     let callees = callees
                         .into_iter()

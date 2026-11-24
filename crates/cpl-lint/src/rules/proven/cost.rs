@@ -178,61 +178,56 @@ pub(super) struct FnCost {
 /// times or not here (lambdas, tables, comprehensions, nested fns), the
 /// nested fns, the loops, and every call's callee: its name for a call by
 /// name (`print`), the member for a method call (`sorted`).
-pub(super) type Calls = (
-    Vec<(String, u32)>,
-    Vec<(u32, u32)>,
-    Vec<(u32, u32)>,
-    Vec<(u32, u32)>,
-    Vec<(Option<String>, (u32, u32))>,
-);
+#[derive(Default)]
+pub(super) struct BlockCalls {
+    pub(super) by_name: Vec<(String, u32)>,
+    pub(super) hidden: Vec<(u32, u32)>,
+    pub(super) nested: Vec<(u32, u32)>,
+    pub(super) loops: Vec<(u32, u32)>,
+    pub(super) callees: Vec<(Option<String>, (u32, u32))>,
+}
 
-pub(super) fn calls_in(block: &cpl_syntax::ast::Block) -> Calls {
-    use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
-    use cpl_syntax::visit::{walk_block, Visitor};
-    #[allow(clippy::type_complexity)]
-    struct Found(
-        Vec<(String, u32)>,
-        Vec<(u32, u32)>,
-        Vec<(u32, u32)>,
-        Vec<(u32, u32)>,
-        Vec<(Option<String>, (u32, u32))>,
-    );
-    impl Visitor for Found {
-        fn stmt(&mut self, stmt: &Stmt) {
-            match stmt.kind {
-                StmtKind::Fn(_) => {
-                    self.1.push((stmt.span.start, stmt.span.end));
-                    self.2.push((stmt.span.start, stmt.span.end));
-                }
-                StmtKind::For { .. } | StmtKind::While { .. } => {
-                    self.3.push((stmt.span.start, stmt.span.end))
-                }
-                _ => {}
+impl cpl_syntax::visit::Visitor for BlockCalls {
+    fn stmt(&mut self, stmt: &cpl_syntax::ast::Stmt) {
+        use cpl_syntax::ast::StmtKind;
+        match stmt.kind {
+            StmtKind::Fn(_) => {
+                self.hidden.push((stmt.span.start, stmt.span.end));
+                self.nested.push((stmt.span.start, stmt.span.end));
             }
-        }
-        fn expr(&mut self, expr: &Expr) {
-            match &expr.kind {
-                ExprKind::Call { callee, .. } => match &callee.kind {
-                    ExprKind::Name(name) => {
-                        self.0.push((name.clone(), expr.span.start));
-                        self.4
-                            .push((Some(name.clone()), (callee.span.start, callee.span.end)));
-                    }
-                    ExprKind::Field { name, .. } => {
-                        self.4.push((None, (name.span.start, name.span.end)))
-                    }
-                    _ => self.4.push((None, (callee.span.start, callee.span.end))),
-                },
-                ExprKind::Lambda { .. }
-                | ExprKind::Table { .. }
-                | ExprKind::Comprehension { .. } => {
-                    self.1.push((expr.span.start, expr.span.end));
-                }
-                _ => {}
+            StmtKind::For { .. } | StmtKind::While { .. } => {
+                self.loops.push((stmt.span.start, stmt.span.end))
             }
+            _ => {}
         }
     }
-    let mut calls = Found(Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    fn expr(&mut self, expr: &cpl_syntax::ast::Expr) {
+        use cpl_syntax::ast::ExprKind;
+        match &expr.kind {
+            ExprKind::Call { callee, .. } => match &callee.kind {
+                ExprKind::Name(name) => {
+                    self.by_name.push((name.clone(), expr.span.start));
+                    self.callees
+                        .push((Some(name.clone()), (callee.span.start, callee.span.end)));
+                }
+                ExprKind::Field { name, .. } => {
+                    self.callees.push((None, (name.span.start, name.span.end)))
+                }
+                _ => self
+                    .callees
+                    .push((None, (callee.span.start, callee.span.end))),
+            },
+            ExprKind::Lambda { .. } | ExprKind::Table { .. } | ExprKind::Comprehension { .. } => {
+                self.hidden.push((expr.span.start, expr.span.end));
+            }
+            _ => {}
+        }
+    }
+}
+
+pub(super) fn calls_in(block: &cpl_syntax::ast::Block) -> BlockCalls {
+    use cpl_syntax::visit::walk_block;
+    let mut calls = BlockCalls::default();
     walk_block(block, &mut calls);
-    (calls.0, calls.1, calls.2, calls.3, calls.4)
+    calls
 }

@@ -209,7 +209,7 @@
   "site_rederived": 0,
   "browser_lsp_gaps": 0,
   "site_spec_snippets": 0,
-  "allow_attrs": 29,
+  "allow_attrs": 26,
   "std_lint_allows": 0,
   "unsafe_blocks": 18,
   "cpl_env_reads": 0,

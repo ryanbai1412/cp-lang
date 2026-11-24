@@ -241,21 +241,12 @@ impl<'a> Taste<'a> {
                     continue;
                 };
                 for form in acc.forms() {
-                    let AccLoop {
-                        name,
-                        init,
-                        pat,
-                        iter,
-                        ..
-                    } = acc;
                     match form {
                         Form::Search => self.search(&acc, stmt, next),
                         Form::Fold { cond, op, value } => {
-                            self.reduce(name, init, pat, iter, cond, op, value, stmt, next)
+                            self.reduce(&acc, cond, op, value, stmt, next)
                         }
-                        Form::Build { cond, value } => {
-                            self.collect(name, init, pat, iter, cond, value, stmt, next)
-                        }
+                        Form::Build { cond, value } => self.collect(&acc, cond, value, stmt, next),
                     }
                 }
             }
@@ -921,18 +912,21 @@ impl<'a> Taste<'a> {
     }
 
     /// `var xs = [..]` then a loop that only pushes onto `xs`.
-    #[allow(clippy::too_many_arguments)]
     fn collect(
         &mut self,
-        name: &str,
-        init: &Expr,
-        pat: &Pattern,
-        iter: &Expr,
+        acc: &AccLoop,
         cond: Option<&Expr>,
         value: &Expr,
         decl: &Stmt,
         next: &Stmt,
     ) {
+        let AccLoop {
+            name,
+            init,
+            pat,
+            iter,
+            ..
+        } = *acc;
         let ExprKind::List(items) = &init.kind else {
             return;
         };
@@ -1213,19 +1207,22 @@ impl<'a> Taste<'a> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn reduce(
         &mut self,
-        name: &str,
-        init: &Expr,
-        pat: &Pattern,
-        iter: &Expr,
+        acc: &AccLoop,
         cond: Option<&Expr>,
         op: &AssignOp,
         value: &Expr,
         decl: &Stmt,
         next: &Stmt,
     ) {
+        let AccLoop {
+            name,
+            init,
+            pat,
+            iter,
+            ..
+        } = *acc;
         // `x ?? return None` must be a whole right side (E0501), so a
         // generator can't hold it.
         if leaves(value) || cond.is_some_and(leaves) {
