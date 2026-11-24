@@ -10,12 +10,13 @@ domain Item = 1..=n
 domain Cut = 0..=n
 var p, s: [Item]Cut = read()
 
-struct Low(cover: Int, first: Cut, last: Cut, gaps: Int)
+struct Low(cover: Int, first: Cut, last: Cut, gaps: Int):
+    @get pub fn zero() -> Low = Low(n + 1, Cut(0), Cut(0), 0)
 
 fn (a: Low) + (b: Low) -> Low = match cmp(a.cover, b.cover):
-    less => a
-    greater => b
-    equal => Low(a.cover, a.first, b.last, a.gaps + b.gaps + choose2(b.first - a.last))
+    Less => a
+    Greater => b
+    Equal => Low(a.cover, a.first, b.last, a.gaps + b.gaps + choose2(b.first - a.last))
 
 let shift = Action(apply: (d: Int, l: Low, _) => l with cover: l.cover + d)
 var low = SegTree<Cut>(+, [Cut] c => Low(0, c, c, 0), act: shift)
