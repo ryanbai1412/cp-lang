@@ -1195,3 +1195,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - VM-stmt: a fed loop whose body jumps further out (a labelled `break`/`continue` of a loop around it, or a `give` to a `do`'s end) runs on the VM (another cause of stmt.rs route 937). The jump sets the loop's escape register and leaves through `FeedBodyBreak`; after `CallVmFeed` stores the `mut` places back, a `JmpEqI` per escape goes on to the jump's loop or `do`. Only a fed loop inside a fed fn still refuses it, because its `FeedBreak` means the outer consumer broke. An inlined fn's `return` from a fed body escapes the same way. Regression: programs/fed_loop_jumps_out.cp.
 
 - VM-stmt: `allow_fed_loops` is gone from the VM compiler. Nothing ever set it to false, so the two fed-loop checks that read it only ever saw `true`.
+
+- VM-stmt: a fed loop nested in a fed fn compiles on the VM even when its body jumps further out. `try_compile_for_fed` no longer refuses it, since the fed-body escape path (`FeedBodyBreak` and the escape register) already carries such jumps out; every `yields` program in tests/programs and spec/conformance prints the same.

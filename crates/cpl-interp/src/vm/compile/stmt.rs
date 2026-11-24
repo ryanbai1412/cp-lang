@@ -1176,7 +1176,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             || !self.fed_ok[fn_id]
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()
-            || (self.feed_acc.is_some() && Self::block_has_outer_loop_jump(body, id))
         {
             return false;
         }
