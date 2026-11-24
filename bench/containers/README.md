@@ -35,6 +35,7 @@ Summary across all 13 benchmarks (`bash bench/containers/run.sh`): **p50 = 0.95x
 | `sorted_set` | 100k inserts + 50k erases + 100k `rank` + 100k `nth` | `__gnu_pbds::tree` (`rb_tree_tag`) | 112.9 ms | 89.5 ms | **1.26x** |
 | `ordered_map_set` | 100k inserts + 100k `first_ge` + 100k `range` ends + 20k range iters | `std::map` + `std::set` | 178.3 ms | 185.3 ms | **0.96x** |
 | `map_rmw` | 4M `m[k] = (m.get(k) ?? 0) + v` on 100k struct keys, cf2237i1's merge DP; 1.45x (1.15 s) when the store walked the tree a second time | `std::map`, one `m[k] += v` | 800 ms | 790 ms | **1.01x** |
+| `set_seen` | 2M `if s.contains(v): seen += 1` then `s.add(v)` on a `Set<Int>` of 1M values, year2018p7's repeated-block check; 2.16x (1.36 s) when the test and the add each walked the tree | `std::set`, one `insert(v).second` | 730 ms | 630 ms | **1.16x** |
 | `min_heap` | 500k pushes + 500k push/pop + 500k drain | `std::priority_queue` | 115.8 ms | 125.7 ms | **0.92x** |
 | `deque` | 200k prefill + 4M push/pop both ends + 2M random `get` | `std::deque` | 42.0 ms | 36.7 ms | **1.14x** |
 

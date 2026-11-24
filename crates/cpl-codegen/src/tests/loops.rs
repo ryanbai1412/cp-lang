@@ -250,3 +250,27 @@ fn comb_inv_in_a_loop_is_one_load_with_no_mulmod() {
     );
     assert!(!inv.contains(" % ") && !inv.contains("_mul("), "{inv}");
 }
+
+#[test]
+fn a_contains_test_before_its_add_walks_the_set_once() {
+    let out = cpp("let n: Int = read()
+var s: Set<Int> = []
+var h: HashSet<Int> = []
+var seen = 0
+for i in 0..n:
+    let x = i * 7 % 13
+    if s.contains(x): seen += 1
+    s.add(x)
+    if h.contains(x):
+        seen += 1
+        if h.len > 3: return
+    h.add(x)
+print(seen, s.len, h.len)
+");
+    assert!(out.contains("if (!(s.insert(x).second)) {"), "{out}");
+    assert!(!out.contains("s.count(x)"), "{out}");
+    assert!(
+        out.contains("h.count(x)"),
+        "a body that reads the set or leaves keeps the test: {out}"
+    );
+}

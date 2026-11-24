@@ -77,6 +77,18 @@ impl<'p> Emitter<'p> {
             if self.cold_suffix(block, k, out) {
                 break;
             }
+            if !std::ptr::eq(block, &self.program.main) && self.sites.is_none() {
+                if let Some((add, then)) = seen_insert(&block.stmts, k) {
+                    let add = self.expr(add).text;
+                    self.line(out, &format!("if (!({add})) {{"));
+                    self.indent += 1;
+                    self.block(then, out);
+                    self.indent -= 1;
+                    self.line(out, "}");
+                    k += 2;
+                    continue;
+                }
+            }
             let each = |this: &mut Self, k: usize, out: &mut String| this.stmt_at(block, k, out);
             k = match self.open_at(&block.stmts, k, out, &each) {
                 Some(next) => next,
@@ -1251,6 +1263,46 @@ pub(crate) fn place_root(e: &Expr) -> Option<(bool, usize)> {
         ExprKind::Index(base, indices) if indices.iter().all(writes_nothing) => place_root(base),
         _ => walk::path_root(e),
     }
+}
+
+/// `if s.contains(x): body` right before `s.add(x)` on a set: the add answers whether `x` was
+/// new, so the C++ walks the set once. `body` must run no code, neither read nor set `s` or what
+/// `x` reads, and not leave before the add.
+fn seen_insert(stmts: &[Stmt], k: usize) -> Option<(&Expr, &Block)> {
+    let (Stmt::If(cond, then, otherwise), Some(Stmt::Expr(add))) = (&stmts[k], stmts.get(k + 1))
+    else {
+        return None;
+    };
+    let (
+        ExprKind::Builtin(Builtin::Contains, args),
+        ExprKind::Mutate(Mutation::Insert, place, added),
+    ) = (&cond.kind, &add.kind)
+    else {
+        return None;
+    };
+    let ([set, key], [x]) = (args.as_slice(), added.as_slice()) else {
+        return None;
+    };
+    if !otherwise.stmts.is_empty()
+        || !matches!(set.ty, Ty::Set(_) | Ty::HashSet(_))
+        || !steady(set)
+        || !steady(key)
+        || !place_is(place, set)
+        || !same_path(x, key)
+    {
+        return None;
+    }
+    let body = Touch::of_block(then);
+    let mut roots = vec![walk::root(place)];
+    each_part(key, &mut |e| match e.kind {
+        ExprKind::Local(v) => roots.push((false, v)),
+        ExprKind::Global(g) => roots.push((true, g)),
+        _ => {}
+    });
+    let apart = roots
+        .iter()
+        .all(|r| !body.reads.contains(r) && !body.sets(*r));
+    (!body.code() && !crate::uses::loops::jumps_out(then) && apart).then_some((add, then))
 }
 
 /// For `if k in m:` whose body reads `m[k]` and can't change `m` or

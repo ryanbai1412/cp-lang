@@ -128,3 +128,16 @@ pub(crate) fn breaks_or_returns(block: &Block) -> bool {
     });
     found
 }
+
+/// Whether `block` jumps anywhere but its own end, at any depth: a `break`,
+/// `continue`, `return` or `give`.
+pub(crate) fn jumps_out(block: &Block) -> bool {
+    let mut found = false;
+    walk::deep_stmts(block, &mut |stmt| {
+        found |= matches!(
+            stmt,
+            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(_) | Stmt::Give(_)
+        );
+    });
+    found
+}

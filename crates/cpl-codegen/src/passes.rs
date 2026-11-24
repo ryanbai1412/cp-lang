@@ -439,6 +439,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_last_read_assigned_inside_an_if_moves",
     ),
     pass(
+        "seen-insert",
+        "stmt.rs",
+        Uses(&["Touch::of_block", "each_part"]),
+        "a_contains_test_before_its_add_walks_the_set_once",
+    ),
+    pass(
         "loop-in-place",
         "stmt/loops.rs",
         Uses(&["in_place", "trap_free_stmts", "pure_call", "each_value"]),
