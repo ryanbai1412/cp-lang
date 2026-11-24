@@ -139,6 +139,33 @@ pub(crate) fn may_touch(e: &Expr, root: (bool, usize)) -> bool {
 }
 
 impl crate::emit::Emitter<'_> {
+    /// Whether `e` is plain arithmetic that can neither trap nor overflow
+    /// (a product key's flat index): unread, it is not written at all.
+    pub(crate) fn trap_free(&self, e: &Expr) -> bool {
+        match &e.kind {
+            cpl_ir::ExprKind::Local(_)
+            | cpl_ir::ExprKind::Global(_)
+            | cpl_ir::ExprKind::Int(_)
+            | cpl_ir::ExprKind::DomainLen(_)
+            | cpl_ir::ExprKind::DomainLo(_) => true,
+            cpl_ir::ExprKind::Cast(
+                cpl_ir::Cast::Ord | cpl_ir::Cast::Trust | cpl_ir::Cast::EnumOrd(_),
+                x,
+            ) => self.trap_free(x),
+            cpl_ir::ExprKind::Binary(
+                op @ (cpl_ir::BinOp::Add | cpl_ir::BinOp::Sub | cpl_ir::BinOp::Mul),
+                l,
+                r,
+            ) => {
+                l.ty == cpl_ir::Ty::Int
+                    && self.facts.fits(self.facts_home(), *op, l, r)
+                    && self.trap_free(l)
+                    && self.trap_free(r)
+            }
+            _ => false,
+        }
+    }
+
     /// What `stmts` may do while a `let` before them lives.
     pub(crate) fn tail(&self, stmts: &[Stmt]) -> Tail {
         let block = Block {

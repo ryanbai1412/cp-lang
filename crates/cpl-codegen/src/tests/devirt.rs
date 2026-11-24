@@ -518,12 +518,12 @@ fn closures_stored_in_a_list_of_records_are_fn_pointers_or_bound() {
 }
 
 #[test]
-fn an_unread_flat_key_is_voided_so_g_plus_plus_sees_no_dead_statement() {
+fn an_unread_flat_key_is_not_computed() {
     let out = cpp(
         "domain R = 0..3\ndomain C = 2..=4\nvar g: [R, C]Int = 0\nfor p in g.keys:\n    g[p] = p.0.label\nprint(g[(R(1), C(2))])\n",
     );
     for line in out.lines().map(str::trim) {
         assert!(!line.starts_with("(int)((ll)"), "{line}");
     }
-    assert!(out.contains("(void)(int)((ll)"), "{out}");
+    assert!(!out.contains("C_len + (ll)"), "{out}");
 }

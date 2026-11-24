@@ -512,7 +512,9 @@ impl<'p> Emitter<'p> {
             Stmt::Let(slot, Some(init))
                 if self.closure_id.is_none() && self.devirt.unread_let(self.fn_id, *slot) =>
             {
-                self.expr_stmt(init, out)
+                if !self.trap_free(init) {
+                    self.expr_stmt(init, out)
+                }
             }
             Stmt::Assign(place, op, value) if self.dropped_store(place, *op) => {
                 self.dropped_value(value, out)
