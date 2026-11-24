@@ -13430,17 +13430,6 @@
         "status": "D",
         "time": 15.826797675
     },
-    "4325034": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-02-12T16:42:16+00:00",
-        "language": "PYPY3",
-        "memory": 58288.0,
-        "problem": "shortest1",
-        "result": "AC",
-        "status": "D",
-        "time": 3.984083736
-    },
     "4325060": {
         "case_points": 0.0,
         "case_total": 15.0,
