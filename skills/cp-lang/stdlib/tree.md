@@ -82,7 +82,7 @@ Fields: `cpar: [V]?V`.
 - `fn parent(self, c: V) -> ?V` — \(O(1)\); The parent of centroid `c` in the centroid tree; `None` at `cd.root`.
 - `fn depth(self, c: V) -> Int` — \(O(1)\); The depth of `c` in the centroid tree, at most log2 n.
 - `fn ancestors(self, v: V) -> yields (c: V, dist: Int)` — \(O(1)\) per entry, \(O(\log n)\) in all; Every centroid whose piece holds `v`, with the tree distance from it: `v` itself at distance 0, then up the centroid tree.
-- `fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V)` — \(O(\text{size of the piece})\); The piece of centroid `c`: each vertex `v`, its distance from `c`, and `branch`, the neighbour of `c` on the way to `v` (`c` itself for `v == c`).
+- `fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V)` — \(O(\mathit{size}(c))\), the size of the piece; The piece of centroid `c`: each vertex `v`, its distance from `c`, and `branch`, the neighbour of `c` on the way to `v` (`c` itself for `v == c`).
 
 ## `struct JumpTree<V>`
 
@@ -267,7 +267,7 @@ The Kruskal reconstruction tree: each edge that merges two components, in increa
 
 Fields: `edge: [N]Int`, `lift: Lift<N, Int>`.
 
-- `@get fn tree(self) -> Rooted<N, _, _>` — \(O(1)\); built with the tree; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
+- `@get fn tree(self) -> Rooted<N, _, _>` — \(O(n)\); builds the `Rooted` on every read, so bind it once: `let t = kt.tree`; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
 - `fn reach(self, v: V, limit: W) -> N` — \(O(\log n)\); The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when None is); its leaves are what `v` reaches by edges of weight at most `limit`.
 - `fn top<E>(self, v: V, ok: E -> Bool) -> N` — \(O(\log n)\) calls of `ok`; The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`.
 - `fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T` — \(O(n)\) calls of `op` and `leaf`; For every node, `op` folded over the `leaf` values of the leaves under it.
