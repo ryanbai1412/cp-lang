@@ -1,8 +1,9 @@
 // handbook/guidelines/site-checklist.md site/R1: a practice problem's tests must
 // reject wrong solutions. Each one-token mutant of ref.cp that still checks is
 // run on tests.json; a mutant that passes every test survived, which means the
-// tests miss that bug, unless practice-mutants-equivalent.txt lists it with the
-// reason no test can. Writes .gate/mutants.json.
+// tests miss that bug. One no test can catch (an unused extra cell, a bound
+// the input makes moot) says ref.cp can be written without that token, so
+// there is no list of exceptions. Writes .gate/mutants.json.
 import { spawn } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
@@ -65,19 +66,7 @@ const total = results.length;
 const survived = results.filter((r) => !r.killed).length;
 mkdirSync(join(web, '.gate'), { recursive: true });
 writeFileSync(join(web, '.gate/mutants.json'), JSON.stringify(by, null, 2) + '\n');
-const listFile = join(web, 'scripts/practice-mutants-equivalent.txt');
-const listed = new Set(readFileSync(listFile, 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#')).map((l) => l.replace(/\s+#.*$/, '')));
-const key = (r) => `${r.id}: ${r.from}  =>  ${r.to}`;
-const live = new Set(results.filter((r) => !r.killed).map(key));
-const fresh = [...live].filter((k) => !listed.has(k));
-const stale = [...listed].filter((k) => !live.has(k) && (!only.length || only.includes(k.split(':')[0])));
-if (fresh.length) console.error(`mutants: ${fresh.length} mutants of a practice ref.cp pass every test; add a test to its tests.json that fails them:\n  ${fresh.join('\n  ')}`);
-// A listed mutant that a fix now kills is dropped here rather than failing
-// the build (ci/R30): the change that fixed it commits the shorter list.
-if (stale.length) {
-  const keep = readFileSync(listFile, 'utf8').split('\n').filter((l) => !stale.includes(l.replace(/\s+#.*$/, '')));
-  writeFileSync(listFile, keep.join('\n'));
-  console.error(`mutants: ${stale.length} mutants in web/scripts/practice-mutants-equivalent.txt are killed now; dropped them, commit it:\n  ${stale.join('\n  ')}`);
-}
+const fresh = results.filter((r) => !r.killed).map((r) => `${r.id}: ${r.from}  =>  ${r.to}`);
+if (fresh.length) console.error(`mutants: ${fresh.length} mutants of a practice ref.cp pass every test; add a test to its tests.json that fails them, or write ref.cp without the token no test can tell apart:\n  ${fresh.join('\n  ')}`);
 console.log(`mutants: ${total} mutants that check, ${total - survived} killed (${((100 * (total - survived)) / Math.max(total, 1)).toFixed(1)}%), ${survived} survive, over ${Object.keys(by).length} problems`);
 if (fresh.length) process.exit(1);

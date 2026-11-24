@@ -4,9 +4,6 @@ var refused = 0
 for _ in 0..n:
     let (off, on): (0..=1e9, 0..=1e9) = read()
     inside -= min(off, inside)
-    if inside + on <= c:
-        inside += on
-    else:
-        refused += inside + on - c
-        inside = c
+    refused += max(0, inside + on - c)
+    inside = min(c, inside + on)
 print(inside, refused)

@@ -3,7 +3,7 @@ let a: [0..n]1..=1e9 = read()
 var have: Counter<Int, Int> = Counter()
 var distinct = 0
 var lo = 0
-var best = 0
+var best = 1
 for (hi, x) in a.items:
     if have.get(x) == 0: distinct += 1
     have[x] += 1

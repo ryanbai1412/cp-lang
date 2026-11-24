@@ -6,7 +6,7 @@ var i = 0
 var j = n - 1
 var boats = 0
 while i <= j:
-    if i < j and s[i] + s[j] <= x: i += 1
+    if s[i] + s[j] <= x: i += 1
     j -= 1
     boats += 1
 print(boats)
