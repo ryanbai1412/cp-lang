@@ -1945,6 +1945,18 @@ pub struct AugSortedBag<K, T>:
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_gt(1) == 6 and b.fold_gt(3) == 0`
     pub fn fold_gt(self, lo: K) -> T = self.fold_from(root, lo, true)
 
+    /// Fold the elements with key in `keys`, in ascending key order, one `leaf(k)` per copy;
+    /// the one fold for any ordered range (`a..b`, `a..=b`, `..b`, `a..`), as `range(r)` is on
+    /// `SortedBag` (decision 103).
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// empty: `id`, for an empty bag or an empty `keys`
+    /// traps: never
+    /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold(..3) == 1 and b.fold(2..=3) == 6`
+    pub fn fold(self, keys: Range<K>) -> T:
+        if keys.is_empty: return id
+        self.fold_between(keys.l, keys.r)
+
     /// Fold elements with key in `[lo, hi)`.
     ///
     /// `lo >= hi` selects nothing and gives `id`.
@@ -2118,6 +2130,15 @@ pub struct AugSortedSet<K, T>:
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_gt(3) == 5`
     pub fn fold_gt(self, lo: K) -> T = bag.fold_gt(lo)
+
+    /// Fold the keys in `keys`, in ascending order; the one fold for any ordered range (`a..b`,
+    /// `a..=b`, `..b`, `a..`), so `s.fold(..b)` is a prefix sum when `op` is `+`.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// empty: `id`, for an empty set or an empty `keys`
+    /// traps: never
+    /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold(..5) == 4 and s.fold(3..) == 8`
+    pub fn fold(self, keys: Range<K>) -> T = bag.fold(keys)
 
     /// Fold keys in `[lo, hi)`.
     ///
