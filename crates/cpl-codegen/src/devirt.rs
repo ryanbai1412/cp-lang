@@ -398,6 +398,90 @@ impl<'p> Devirt<'p> {
         !stored
     }
 
+    /// The local `@memo` fns of `block`, wrapper slot to body slot and
+    /// whether the body calls the wrapper: each `let w; let b = <closure>;
+    /// ..; w = <closure>` where only the wrapper names the body. A body that
+    /// recurses closes its loop through `cpl::memo`, each passed the other;
+    /// one that doesn't needs no slot before its wrapper. Neither is erased.
+    pub fn memo_pairs(&self, block: &Block) -> BTreeMap<usize, (usize, bool)> {
+        let mut out = BTreeMap::new();
+        self.memo_pairs_in(block, &mut out);
+        out
+    }
+
+    fn memo_pairs_in(&self, block: &Block, out: &mut BTreeMap<usize, (usize, bool)>) {
+        let stmts = &block.stmts;
+        for stmt in stmts {
+            walk::stmt_blocks(stmt, &mut |inner| self.memo_pairs_in(inner, out));
+            walk::stmt_exprs(stmt, &mut |e| {
+                walk::deep_expr(e, &mut |e| {
+                    if let ExprKind::Do(inner) = &e.kind {
+                        self.memo_pairs_in(inner, out);
+                    }
+                })
+            });
+        }
+        let captures = |c: ClosureId, slot: usize| {
+            self.program.closures[c]
+                .captures
+                .iter()
+                .any(|x| !x.is_global && x.outer == slot)
+        };
+        let names = |stmts: &[Stmt], slot: usize| {
+            let mut found = false;
+            for stmt in stmts {
+                let mut look = |e: &Expr| match e.kind {
+                    ExprKind::Local(s) => found |= s == slot,
+                    ExprKind::Closure(c) => found |= captures(c, slot),
+                    _ => {}
+                };
+                walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, &mut look));
+                walk::stmt_blocks(stmt, &mut |inner| walk::deep_exprs(inner, &mut look));
+            }
+            found
+        };
+        for (k, stmt) in stmts.iter().enumerate() {
+            let (Stmt::Let(w, None), Some(Stmt::Let(b, Some(body)))) = (stmt, stmts.get(k + 1))
+            else {
+                continue;
+            };
+            let ExprKind::Closure(cb) = body.kind else {
+                continue;
+            };
+            let mut sets = Vec::new();
+            walk::deep_stmts(block, &mut |s| {
+                if let Stmt::Assign(place, _, value) = s {
+                    if place.kind == PlaceKind::Local(*w) || place.kind == PlaceKind::Local(*b) {
+                        sets.push(value as *const Expr);
+                    }
+                }
+            });
+            let Some(j) = stmts.iter().position(|s| {
+                matches!(s, Stmt::Assign(place, AssignOp::Set, value)
+                    if place.kind == PlaceKind::Local(*w)
+                        && sets == [value as *const Expr]
+                        && matches!(value.kind, ExprKind::Closure(_)))
+            }) else {
+                continue;
+            };
+            let Stmt::Assign(_, _, wrap) = &stmts[j] else {
+                continue;
+            };
+            let ExprKind::Closure(cw) = wrap.kind else {
+                continue;
+            };
+            if j > k + 1
+                && captures(cw, *b)
+                && !captures(cw, *w)
+                && !names(&stmts[k + 2..j], *w)
+                && !names(&stmts[k + 2..j], *b)
+                && !names(&stmts[j + 1..], *b)
+            {
+                out.insert(*w, (*b, captures(cb, *w)));
+            }
+        }
+    }
+
     /// Whether a local `let name = <closure>` that names itself can bind
     /// `auto`: the closure takes itself as a parameter instead of capturing
     /// its own `std::function`.

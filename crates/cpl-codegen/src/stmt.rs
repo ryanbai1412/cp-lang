@@ -536,6 +536,51 @@ impl<'p> Emitter<'p> {
             {
                 self.line(out, "return {};")
             }
+            Stmt::Let(slot, None)
+                if self.closure_id.is_none() && self.memo_pairs.contains_key(slot) => {}
+            Stmt::Let(slot, Some(init))
+                if self.closure_id.is_none()
+                    && self.memo_pairs.values().any(|(b, _)| b == slot)
+                    && matches!(init.kind, ExprKind::Closure(_)) =>
+            {
+                let ExprKind::Closure(cid) = init.kind else {
+                    return;
+                };
+                self.borrow_if_named_closure(*slot, Some(init));
+                self.rec_slot = self
+                    .memo_pairs
+                    .iter()
+                    .find(|(_, (b, rec))| b == slot && *rec)
+                    .map(|(w, _)| *w);
+                let text = self.emit_closure(cid, false).text;
+                let name = self.names[*slot].clone();
+                self.line(out, &format!("auto {name} = {text};"));
+            }
+            Stmt::Assign(place, AssignOp::Set, value)
+                if self.closure_id.is_none()
+                    && matches!(place.kind, PlaceKind::Local(w) if self.memo_pairs.contains_key(&w))
+                    && matches!(value.kind, ExprKind::Closure(_)) =>
+            {
+                let (PlaceKind::Local(w), ExprKind::Closure(cid)) = (&place.kind, &value.kind)
+                else {
+                    return;
+                };
+                let (body, rec) = self.memo_pairs[w];
+                let name = self.names[*w].clone();
+                if !rec {
+                    let text = self.emit_closure(*cid, false).text;
+                    self.line(out, &format!("auto {name} = {text};"));
+                    return;
+                }
+                self.need("memo");
+                self.rec_slot = Some(body);
+                let text = self.emit_closure(*cid, false).text;
+                let body = self.names[body].clone();
+                self.line(
+                    out,
+                    &format!("auto {name} = cpl::memo(std::move({body}), {text});"),
+                );
+            }
             Stmt::Let(slot, Some(init))
                 if matches!(self.locals()[*slot].ty, Ty::Fn(..))
                     && self.closure_id.is_none()
@@ -749,6 +794,18 @@ impl<'p> Emitter<'p> {
                         }
                         _ => false,
                     };
+                // A name for a fn parameter that is a template is that same functor.
+                if matches!(ty, Ty::Fn(..))
+                    && !hoisted
+                    && stores <= 1
+                    && self.closure_id.is_none()
+                    && matches!(init.kind, ExprKind::Local(src)
+                        if self.fn_id.is_some_and(|id| self.devirt.template_params(id).contains(&src)))
+                {
+                    self.ref_bound.remove(slot);
+                    self.line(out, &format!("auto& {name} = {text};"));
+                    return;
+                }
                 // Slots are per fn: one another fn lent says nothing of this one.
                 self.ref_bound.remove(slot);
                 if hoisted {

@@ -27,6 +27,19 @@ template <class F> Rec<F> rec(F f) { return {f}; }
 ",
     },
     Piece {
+        name: "memo",
+        needs: &[],
+        code: "\
+// A `@memo` fn: its body is passed the memo fn first, and its wrapper the body.
+template <class B, class W> struct Memo {
+    B b; W w;
+    struct Body { Memo& m; template <class... A> decltype(auto) operator()(A&&... a) { return m.b(m, (A&&)a...); } };
+    template <class... A> decltype(auto) operator()(A&&... a) { Body body{*this}; return w(body, (A&&)a...); }
+};
+template <class B, class W> Memo<B, W> memo(B b, W w) { return {std::move(b), std::move(w)}; }
+",
+    },
+    Piece {
         name: "fn_ref",
         needs: &[],
         code: "\

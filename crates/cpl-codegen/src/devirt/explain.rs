@@ -296,6 +296,8 @@ pub(super) fn explain_locals_in_block(
     });
     let params = home.map_or(0, |id| devirt.program.fns[id].params.len());
     let hoisted = crate::scope::hoisted(block, params);
+    let mut memo_pairs = devirt.memo_pairs(block);
+    memo_pairs.retain(|w, (b, _)| !hoisted.contains(w) && !hoisted.contains(b));
     walk::deep_stmts(block, &mut |stmt| {
         let Stmt::Let(slot, init) = stmt else {
             return;
@@ -305,6 +307,13 @@ pub(super) fn explain_locals_in_block(
         }
         let site = format!("{owner} local {}", locals[*slot].name);
         let Some(init) = init else {
+            if memo_pairs.contains_key(slot) {
+                out.push(ClosureLowering {
+                    site,
+                    mode: ClosureMode::StaticLocalAuto,
+                });
+                return;
+            }
             out.push(ClosureLowering {
                 site,
                 mode: erased(
@@ -345,6 +354,13 @@ pub(super) fn explain_locals_in_block(
                         f,
                         stores.get(slot).map_or(0, |&n| n as u32),
                     ) =>
+            {
+                ClosureMode::StaticLocalAuto
+            }
+            ExprKind::Local(src)
+                if !hoisted.contains(slot)
+                    && stores.get(slot).copied().unwrap_or(0) <= 1
+                    && home.is_some_and(|id| devirt.template_params(id).contains(&src)) =>
             {
                 ClosureMode::StaticLocalAuto
             }

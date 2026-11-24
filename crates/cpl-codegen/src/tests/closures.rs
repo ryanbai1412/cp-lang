@@ -325,10 +325,15 @@ fn closure_mutating_a_captured_local_is_not_hoisted_static() {
 }
 
 #[test]
-fn a_local_memo_body_is_an_auto_lambda_and_its_wrapper_is_explained() {
+fn a_local_memo_fn_and_its_body_pass_each_other_instead_of_a_std_function() {
     let src = "let n: Int = read()\nfn solve() -> Int:\n    @memo\n    fn fib(i: 0..=n) -> Int = if i < 2: i else: fib(i - 1) + fib(i - 2)\n    fib(n)\nprint(solve())\n";
     let out = cpp(src);
     assert!(out.contains("auto __memo_body"), "{out}");
+    assert!(
+        out.contains("auto fib = cpl::memo(std::move(__memo_body"),
+        "{out}"
+    );
+    assert!(!out.contains("std::function"), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
@@ -338,7 +343,7 @@ fn a_local_memo_body_is_an_auto_lambda_and_its_wrapper_is_explained() {
         .find(|e| e.site == "fn solve local fib")
         .expect("wrapper");
     assert!(
-        matches!(&wrapper.mode, crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("@memo")),
+        matches!(&wrapper.mode, crate::ClosureMode::StaticLocalAuto),
         "{explained:?}"
     );
 }
@@ -753,4 +758,14 @@ fn explain_lists_a_fn_inside_a_record_that_stays_std_function() {
                 && matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
         "{explained:?}"
     );
+}
+
+#[test]
+fn a_name_for_a_template_fn_parameter_is_that_functor_not_a_std_function() {
+    let out = cpp(concat!(
+        "fn each(xs: [2]Int, f: Int -> Int) -> List<Int> = [y for y in xs.map(f)]\n",
+        "let k: Int = read()\n",
+        "print(each([1, 2], v => v + k), each([3, 4], v => v * k))\n",
+    ));
+    assert!(!out.contains("std::function"), "{out}");
 }

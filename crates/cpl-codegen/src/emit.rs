@@ -137,6 +137,8 @@ pub(crate) struct Emitter<'p> {
     pub lent_main: BTreeSet<usize>,
     /// The slot the next emitted closure is bound to when it names itself.
     pub rec_slot: Option<usize>,
+    /// The current fn's local `@memo` fns ([`crate::devirt::Devirt::memo_pairs`]).
+    pub memo_pairs: BTreeMap<usize, (usize, bool)>,
     /// Globals stored once, with a literal: emitted as `static constexpr`.
     pub const_globals: BTreeSet<usize>,
     /// What follows the `let` being written, in its block.
@@ -319,6 +321,7 @@ impl<'p> Emitter<'p> {
             hoisted: BTreeSet::new(),
             lent_main: BTreeSet::new(),
             rec_slot: None,
+            memo_pairs: BTreeMap::new(),
             const_globals: BTreeSet::new(),
             tail: None,
             in_setup: false,
@@ -576,6 +579,9 @@ impl<'p> Emitter<'p> {
             self.names.push(name);
         }
         self.hoisted = crate::scope::hoisted(body, params);
+        let mut memo_pairs = self.devirt.memo_pairs(body);
+        memo_pairs.retain(|w, (b, _)| !self.hoisted.contains(w) && !self.hoisted.contains(b));
+        self.memo_pairs = memo_pairs;
         self.reused = crate::scope::reused(self.program, fn_id, body);
         self.spent = crate::scope::spent(self.program, body);
         self.lent.clear();
