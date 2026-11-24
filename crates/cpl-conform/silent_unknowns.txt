@@ -839,11 +839,6 @@
 1 corpus/problems/cheerio1s3/port.cp
 2 corpus/problems/cheerio1s3/spec.cp
 16 corpus/problems/cheerio1s5/port.cp
-40 corpus/problems/cmt21peter2/port.cp
-25 corpus/problems/cmt21r2ztr/dream.cp
-39 corpus/problems/cmt21r2ztr/perf.cp
-25 corpus/problems/cmt21r2ztr/port.cp
-23 corpus/problems/cmt21r2ztr/spec.cp
 19 corpus/problems/coci06c1p6/port.cp
 16 corpus/problems/coci10c7p4/port.cp
 6 corpus/problems/coci11c4p4/port.cp

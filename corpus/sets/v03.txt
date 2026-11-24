@@ -460,8 +460,6 @@ cheerio1s1
 cheerio1s2
 cheerio1s3
 cheerio1s5
-cmt21peter2
-cmt21r2ztr
 coci06c1p6
 coci10c7p4
 coci11c4p4

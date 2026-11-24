@@ -1,16 +1,16 @@
 {
- "problems": 1159,
- "with_cpp_ac": 1096,
+ "problems": 1145,
+ "with_cpp_ac": 1090,
  "dream": {
-  "draft": 127,
+  "draft": 126,
   "gold": 0,
-  "none": 1032,
+  "none": 1019,
   "reviewed": 0
  },
  "spec": {
-  "draft": 100,
+  "draft": 99,
   "gold": 0,
-  "none": 1059,
+  "none": 1046,
   "reviewed": 0
  },
  "by_source": {
@@ -32,7 +32,6 @@
   "ceoi": 12,
   "cf": 287,
   "cheerio": 5,
-  "cmt": 14,
   "coci": 34,
   "coi": 2,
   "cpc": 1,
