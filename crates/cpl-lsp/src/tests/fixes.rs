@@ -353,3 +353,36 @@ fn the_preferred_quick_fix_is_the_one_cpl_fix_applies() {
         "{actions:?}"
     );
 }
+
+/// A lint a library declares with `@lint` reaches the editor with its
+/// `cpl fix` rewrite as a quick fix (R06.4.9).
+#[test]
+fn a_library_lint_is_published_with_its_quick_fix() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../cpl-lint/testdata/library-lint/main.cp");
+    let original = std::fs::read_to_string(&path).unwrap();
+    let uri = format!("file://{}", path.display());
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    let doc = obj([
+        ("uri", uri.as_str().into()),
+        ("languageId", "cp".into()),
+        ("version", 1.into()),
+        ("text", original.as_str().into()),
+    ]);
+    let published = server.handle(&notification(
+        "textDocument/didOpen",
+        obj([("textDocument", doc)]),
+    ));
+    let diagnostics = published[0]
+        .at(&["params", "diagnostics"])
+        .as_array()
+        .unwrap_or(&[]);
+    let square = diagnostics
+        .iter()
+        .find(|d| d.at(&["code"]).as_str() == Some("square_by_hand"))
+        .unwrap_or_else(|| panic!("no square_by_hand in {diagnostics:?}"));
+    let (title, fixed) = quick_fixed(&mut server, &uri, &original, square);
+    assert!(title.contains("sq"), "{title}");
+    assert!(fixed.contains("let d2 = sq(xa - xb)\n"), "{fixed}");
+}
