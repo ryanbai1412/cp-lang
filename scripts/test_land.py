@@ -89,6 +89,9 @@ class LandTest(unittest.TestCase):
         theirs = {"n": 3, "allow": {"f.rs": 2400}, "edges": ["a"], "new": 1}
         self.assertEqual(merge(base, ours, theirs),
                          {"n": 3, "allow": {"f.rs": 2300}, "edges": ["a", "c"], "new": 1})
+        raised = {"n": 9, "allow": {"f.rs": 2500, "g.rs": 2100}, "edges": ["a", "b"]}
+        for merged in (merge(base, raised, base), merge(base, base, raised)):
+            self.assertEqual(merged, base)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,9 @@
 """Three-way merge of scripts/debt-ratchet.json for a rebase conflict.
 
-Each side's tightening survives: a count either side lowered takes the lower
-value, a name either side dropped stays dropped, and a name or key only one
-side added is kept. Nothing is raised that neither side raised, so the merged
-baseline is at most as loose as main's plus the commit's own change, which
-`debt-ratchet.py --check` still judges.
+Every count is the lower of the two sides, so neither side's raise survives
+the merge; a name or key either side dropped stays dropped. A name or key
+only one side added is kept (a new counter or a decided edge), and the
+raise check against main still judges it.
 
     uv run --quiet python scripts/ratchet_merge.py PATH   # in a conflicted rebase
 """
@@ -17,17 +16,9 @@ GONE = object()
 
 
 def merge(base, ours, theirs):
-    if ours == theirs:
-        return ours
-    if theirs == base:
-        return ours
-    if ours == base:
-        return theirs
     if GONE in (ours, theirs):
-        return GONE
-    if isinstance(ours, bool) or isinstance(theirs, bool):
-        return ours
-    if isinstance(ours, int) and isinstance(theirs, int):
+        return ours if ours is not GONE and base is GONE else theirs if base is GONE else GONE
+    if type(ours) is int and type(theirs) is int:
         return min(ours, theirs)
     if isinstance(ours, dict) and isinstance(theirs, dict):
         b = base if isinstance(base, dict) else {}
@@ -41,7 +32,7 @@ def merge(base, ours, theirs):
         b = set(base) if isinstance(base, list) else set()
         o, t = set(ours), set(theirs)
         return sorted((o | (t - b)) - (b - t) - (b - o))
-    return ours
+    return theirs if ours == base else ours
 
 
 def stage(path, n):
