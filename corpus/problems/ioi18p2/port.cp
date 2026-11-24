@@ -10,94 +10,57 @@
 //   A swap re-accounts the two seats and their neighbours: O(log(hw)) per swap.
 // original: corpus/submissions/4731161.cpp (grader functions give_initial_chart / swap_seats)
 // stdin: h w q, the h * w seats (row, column) of contestants 0.., then q
-// lines a b. stdout: the number of beautiful prefixes after each swap.
+// stdin: h w q, the h * w seats (row, column) of contestants 0.., then q lines a b.
+// stdout: the number of beautiful prefixes after each swap.
+use std.algebra.{MinCount}
+
 let h: 1..=1000 = read()
 let w: 1..=1000 = read()
-let q: 0..=50000 = read()
-let people = h * w
-let chart: [0..2 * people]Int = read()
+let q: 0..=50_000 = read()
+assert h * w <= 1_000_000
+domain Row = 0..h
+domain Col = 0..w
+domain Who = 0..h * w
+var seat: [Who](r: Row, c: Col) = read()
+var who: [Row, Col]Who = Who.first!
+for p in Who: who[seat[p].r, seat[p].c] = p
 
-var row: List<Int> = []
-var col: List<Int> = []
-var who: List<Int> = []  // who[r * w + c]: contestant in that seat
-for _ in 0..people: who.push(0)
-for p in 0..people:
-    row.push(chart[2 * p])
-    col.push(chart[2 * p + 1])
-    who[row[p] * w + col[p]] = p
+// position t of the tree stands for the prefix 0..=t; it holds that prefix's top-left corners
+// (a seated cell with nobody above or to its left) plus its dents (an empty cell with two or
+// more seated neighbours). A prefix is a rectangle exactly when the total is 1, the least.
+let shift = Action<MinCount<Int>, Int>.new(apply: (d, v, _) => MinCount(v.val + d, v.count), over: MinCount.monoid(), commutes: true)
+var bad = SegTree<Who, MinCount<Int>, Int>(MinCount.monoid(), [Who] _ => MinCount.of(0), act: shift)
 
-// Tree position t stands for the prefix 0..=t. bad[t] counts its top-left
-// corners (a seated cell with nobody above or to the left) plus its dents
-// (an empty cell with two or more seated neighbours). A prefix is a
-// rectangle exactly when that total is 1, the least it can be.
-var least: List<Int> = []
-var times: List<Int> = []
-var pending: List<Int> = []
-for _ in 0..4 * people:
-    least.push(0)
-    times.push(1)
-    pending.push(0)
+// the cut where the contestant at (r, c) sits down; off the grid, never
+fn arrival(r: Int, c: Int) -> Cut<Who>:
+    if let row = Row.at(r), let col = Col.at(c): who[row, col].l else: Who.cuts.last!
 
-fn build(o: Int, l: Int, r: Int):
-    times[o] = r - l + 1
-    if l == r: return
-    let mid = (l + r) / 2
-    build(2 * o, l, mid)
-    build(2 * o + 1, mid + 1, r)
-
-fn add(o: Int, l: Int, r: Int, ql: Int, qr: Int, d: Int):
-    if ql <= l and r <= qr:
-        least[o] += d
-        pending[o] += d
-        return
-    let mid = (l + r) / 2
-    if ql <= mid: add(2 * o, l, mid, ql, qr, d)
-    if qr > mid: add(2 * o + 1, mid + 1, r, ql, qr, d)
-    let (a, b) = (least[2 * o], least[2 * o + 1])
-    least[o] = min(a, b) + pending[o]
-    times[o] = (if a <= b: times[2 * o] else: 0) + (if b <= a: times[2 * o + 1] else: 0)
-
-// arrival time of the contestant at (r, c); off the grid counts as never
-fn at(r: Int, c: Int) -> Int:
-    if r < 0 or r >= h or c < 0 or c >= w: return people
-    who[r * w + c]
-
-fn account(r: Int, c: Int, d: Int):
-    let me = at(r, c)
+fn account(r: Row, c: Col, d: Int):
+    let (y, x) = (Int(r), Int(c))
+    let me = who[r, c].l
     // a corner from my arrival until the first of my upper and left neighbours
-    let covered = min(at(r - 1, c), at(r, c - 1))
-    if me < covered: add(1, 0, people - 1, me, covered - 1, d)
+    let covered = min(arrival(y - 1, x), arrival(y, x - 1))
+    if me < covered: bad.apply(me..covered, d)
     // a dent from my second neighbour's arrival until my own
-    var around: List<Int> = [at(r - 1, c), at(r + 1, c), at(r, c - 1), at(r, c + 1)]
+    var around = [arrival(y - 1, x), arrival(y + 1, x), arrival(y, x - 1), arrival(y, x + 1)]
     around.sort()
-    if around[1] < me: add(1, 0, people - 1, around[1], me - 1, d)
+    if around[1] < me: bad.apply(around[1]..me, d)
 
-build(1, 0, people - 1)
-for r in 0..h:
-    for c in 0..w: account(r, c, 1)
+for r in Row:
+    for c in Col: account(r, c, 1)
 
-for _ in 0..q:
-    let a: Int = read()
-    let b: Int = read()
+for (a, b) in read<[q](a: Who, b: Who)>():
     // the two seats and their neighbours are the only cells whose spans change
-    var touched: List<Int> = []
+    var cells: List<(Row, Col)> = []
     for p in [a, b]:
-        touched.push(row[p] * w + col[p])
-        if row[p] > 0: touched.push((row[p] - 1) * w + col[p])
-        if row[p] + 1 < h: touched.push((row[p] + 1) * w + col[p])
-        if col[p] > 0: touched.push(row[p] * w + col[p] - 1)
-        if col[p] + 1 < w: touched.push(row[p] * w + col[p] + 1)
-    touched.sort()
-    var cells: List<Int> = []
-    for x in touched:
-        if cells.len == 0 or cells.last! != x: cells.push(x)
-    for x in cells: account(x / w, x % w, -1)
-    let (ra, ca) = (row[a], col[a])
-    row[a] = row[b]
-    col[a] = col[b]
-    row[b] = ra
-    col[b] = ca
-    who[row[a] * w + col[a]] = a
-    who[row[b] * w + col[b]] = b
-    for x in cells: account(x / w, x % w, 1)
-    print(times[1])
+        let (y, x) = (Int(seat[p].r), Int(seat[p].c))
+        for (dy, dx) in [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]:
+            if let row = Row.at(y + dy), let col = Col.at(x + dx): cells.push((row, col))
+    cells.sort()
+    cells.dedup()
+    for (r, c) in cells: account(r, c, -1)
+    seat.swap_at(a, b)
+    who[seat[a].r, seat[a].c] = a
+    who[seat[b].r, seat[b].c] = b
+    for (r, c) in cells: account(r, c, 1)
+    print(bad.all.count)
