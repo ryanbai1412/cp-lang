@@ -1,6 +1,7 @@
 //! The methods `Rev<S>` declares (`a.rev.take(k)`), called on a list view
-//! known to walk backwards: each runs its std body inline, with `self` the
-//! view and `self.src` the sequence it reverses.
+//! known to walk backwards: each runs its std body inline (an expression, or
+//! a block giving its last value), with `self` the view and `self.src` the
+//! sequence it reverses.
 
 use super::*;
 
@@ -24,8 +25,9 @@ impl<'a> Lowerer<'a> {
         };
         let found = decl.methods.iter().find_map(|stmt| match &stmt.kind {
             ast::StmtKind::Fn(f) if f.name.text == name.text => match &f.body {
-                ast::FnBody::Expr(body) if !body.leaves() => Some((f, body)),
-                _ => None,
+                ast::FnBody::Expr(body) if body.leaves() => None,
+                ast::FnBody::Expr(_) | ast::FnBody::Block(_) => Some((f, &f.body)),
+                ast::FnBody::None => None,
             },
             _ => None,
         });
@@ -74,7 +76,20 @@ impl<'a> Lowerer<'a> {
             self.cx.pending.push(Stmt::Let(slot, Some(arg)));
             self.bind_local(&p.name.text, slot);
         }
-        let out = self.expr(body, None);
+        let out = match body {
+            ast::FnBody::Block(block) => {
+                let tail = if f.ret.is_some() {
+                    Tail::Give
+                } else {
+                    Tail::Discard
+                };
+                self.do_expr(None, span, |lw, out| {
+                    out.extend(lw.block(block, tail).stmts)
+                })
+            }
+            ast::FnBody::Expr(body) => self.expr(body, None),
+            ast::FnBody::None => self.err_expr(span),
+        };
         self.cx.scopes.pop();
         self.cur_mod = saved_mod;
         self.offset = saved_offset;

@@ -931,3 +931,10 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   source's first two backwards (5 4) instead of its last two (6 5).
 - Cases: core-07/rev-runs-is-not-indexed, core-07/rev-is-a-nameable-view; program
   rev_views_of_arrays (interp == C++).
+
+### Request from Content (2026-11-23): block-bodied `Rev` methods
+
+- `a.rev.<m>` now runs a block-bodied `Rev.<m>` too (inline, the block giving its last value),
+  so std can write `Rev.scan`/`Rev.runs` as blocks. Checked with a scratch block method in std:
+  it walks the view's order with source keys, interp == C++, 0 VM fallbacks. The regression is
+  Content's std-prefix/rev-scan-is-suffix-fold, which lands with the first block body.
