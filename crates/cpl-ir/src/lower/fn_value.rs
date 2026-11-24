@@ -152,11 +152,24 @@ impl<'a> Lowerer<'a> {
             }),
             Some(GenArg::Ty(ty)) => {
                 let ty = ty.clone();
-                builtin_has(&ty, trait_name) || self.has_plain_impl(&ty, trait_name)
+                builtin_has(&ty, trait_name)
+                    || self.has_plain_impl(&ty, trait_name)
+                    || (matches!(ty, Ty::Bound(_)) && self.has_domain_blanket_impl(trait_name))
+            }
+            Some(GenArg::Domain(d)) => {
+                builtin_has(&Ty::Pos(*d), trait_name) || self.has_domain_blanket_impl(trait_name)
             }
             _ => false,
         };
         by_impl || self.has_bound_by_shape(param, trait_name)
+    }
+
+    /// An `impl<D: Domain> Tr for D` gives `Tr` to every domain and its cuts.
+    fn has_domain_blanket_impl(&self, trait_name: &str) -> bool {
+        (0..self.impls.len()).any(|idx| {
+            self.impls[idx].trait_name.as_deref() == Some(trait_name)
+                && self.domain_blanket_param(idx).is_some()
+        })
     }
 
     /// `ty` (`Int`, `F64`, ...) has an `impl Tr` written for exactly it, not for a generic type.
@@ -269,7 +282,10 @@ pub(super) fn trait_members(body: &ast::Block) -> (Vec<&ast::FnDecl>, Vec<(&str,
 fn builtin_has(ty: &Ty, trait_name: &str) -> bool {
     let number = matches!(ty, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float);
     let scalar = number || matches!(ty, Ty::Bool | Ty::Char | Ty::Str);
+    let position = matches!(ty, Ty::Pos(_) | Ty::Bound(_));
     match trait_name {
+        "Domain" | "Index" => position,
+        "Eq" | "Ord" | "Hash" if position => true,
         "Add" => number || *ty == Ty::Str,
         "Sub" | "Mul" | "Div" | "Rem" | "Neg" | "Num" => number,
         "Eq" | "Ord" | "Show" => scalar,
