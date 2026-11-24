@@ -32,5 +32,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "one convolve over Semiring(min, +) with shape: Curved.Neither; Rooted.children yields."
+ "notes": "one convolve over Semiring(min, +) with shape: Curved.Neither; Rooted.children yields.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "cf41cdde4fd7f216ae527cf016de1b3306378c0b"
+ }
 }
