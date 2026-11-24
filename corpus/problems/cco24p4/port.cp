@@ -12,10 +12,11 @@
 //   T = 308. Measured S = 13 (full marks need S <= 15) on random, path, star, caterpillar,
 //   broom and binary trees; not proven for every tree. O(N^2) to find the root, O(N T) output.
 // original: corpus/submissions/6435484.cpp
-// Bounds: n: 100..=100; u, v: 0..n
+// Bounds: n: 100..=100; doors.u, doors.v: 0..n
 let n: 100..=100 = read()
 domain Room = 0..n
-let around = Graph.undirected(read<[n - 1](Room, Room)>())
+let doors: [n - 1](u: Room, v: Room) = read()
+let around = Graph.undirected(doors)
 
 fn shallow(r: Room) -> Bool:
     let t = Rooted(around, r)

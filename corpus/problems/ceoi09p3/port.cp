@@ -8,7 +8,7 @@
 //   point's rectangle spans it to some point i at the tallest height area / width allows, which
 //   only helps when it rises above k: 1 + cover(l..=i, that height) + cover(i+1..=r, k).
 //   O(n^4): n^2 ranges, n heights, n splits.
-// Bounds: n: 1..=100; area: 1..=2e6
+// Bounds: n: 1..=100; area: 1..=2e6; pts.x, pts.y: 0..=1e5
 let n: 1..=100 = read()
 let area: 1..=2e6 = read()
 domain P = 0..n
