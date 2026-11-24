@@ -9139,3 +9139,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Reverse.** Drop `LazyForest`/`ForestSeq`; put the GAPS line back.
 
 ## 599. (reserved, content)
+
+## 600. (reserved, stdlib)
