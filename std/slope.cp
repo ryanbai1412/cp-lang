@@ -11,6 +11,7 @@ fn falling() -> LazyTreap<Int, Slide> = LazyTreap<Int, Slide>(
     compose: (f, g) => Slide(f.base + g.base, f.step + g.step),
     split: (f, left) => (f, Slide(f.base + (left + 1) * f.step, f.step)),
     before: (x, y) => x >= y,
+    mirror: (f, n) => Slide(f.base + (n - 1) * f.step, -f.step),
 )
 
 /// \(O(\log n)\) expected per slope operation, for n slopes.
@@ -45,7 +46,7 @@ pub struct Concave(start: Int, base: Int):
     /// cost: \(O(n)\)
     /// traps: when `n < 0`
     /// example: `var f = Concave.flat(0..=3); f.reserve(100); f.at(2) == 0`
-    pub fn reserve(mut self, n: Int) = start
+    pub fn reserve(mut self, n: Int) = slopes.reserve(n)
 
     /// The first point of the domain.
     ///

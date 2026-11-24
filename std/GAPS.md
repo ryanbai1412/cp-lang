@@ -12,7 +12,6 @@ line when the gap closes and the body lands.
 - bag, `SortedBag.split_at`/`join`, `SortedSet.split_at`/`join`: each bag owns its node pool, so O(log n) split/join between two bags needs a shared pool (or node moves) the struct layout does not have.
 - segtree, `DynamicOrderTree.kth`: a Fenwick of order trees answers `count_lt` in O(log^2 |D|), but the k-th value over arbitrary online `T` needs a binary search over values on top of it (O(log^3 |D|)); O(log^2) needs the values known ahead (offline compression), which the signature doesn't take.
 - lazy, `LazyTreap.split_at`/`append`: each treap owns its `nodes` list, so returning or absorbing another treap copies its nodes (O(n), not O(log n)); needs a shared node pool.
-- lazy, `LazyTreap.reverse`: `apply(v, k, f)` and `split(f, k)` see the left-subtree size `k`, so a pending tag is position-dependent and can't be carried through a reversal flag without a way to reverse a tag.
 - seq, `compress`/`pieces`/`rebase`: a fn can now bind `domain C = 0..k` (as `with_domain` does), but a struct over it (`Compressed<C, T>`) keeps the callee's domain instead of unifying with the caller's `C` (E0302), and `(C:, Compressed(...))` misparses as a record field (E0103).
 - seq, `compress`/`pieces`/`rebase`: each returns or keys by a fresh `domain` (`(domain C, ...)`, `t.Idx`), which a library fn cannot mint (same gap as `with_domain`).
 - seq, `covering`: maps a range of cuts back to piece keys of `pieces`, which is itself blocked on fresh domains; nothing can build its `[P]Range<D>` input today.
