@@ -23,6 +23,15 @@ impl Lowerer<'_> {
             .iter()
             .rev()
             .find_map(|s| s.get(name).copied())?;
+        Some(self.capture_slot(found_level, orig_slot, name))
+    }
+
+    /// Captures `orig_slot`, a local of the enclosing `FnCx` at `found_level`,
+    /// under `name` into the current closure.
+    pub(super) fn capture_slot(&mut self, found_level: usize, orig_slot: Slot, name: &str) -> Slot {
+        if let Some(&slot) = self.cx.captured_names.get(name) {
+            return slot;
+        }
         let by_ref = self.outer_cxs[found_level].mut_slots.contains(&orig_slot);
         let (slots, inner) = self.thread_capture(found_level, orig_slot, name, by_ref);
         if let Some(view) = self.outer_cxs[found_level]
@@ -44,7 +53,7 @@ impl Lowerer<'_> {
         {
             self.cx.local_ranges.insert(inner, rinfo);
         }
-        Some(inner)
+        inner
     }
 
     /// Threads the outer slot `orig` of the FnCx at `found_level` down to the current

@@ -1,7 +1,6 @@
 //! Fields and members, and the items/pairs/projection heads of a walk.
 
 use super::*;
-use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -789,7 +788,8 @@ impl<'a> Lowerer<'a> {
                 | Ty::Str
                 | Ty::StrView,
                 "items",
-            ) if let Some(shape) = self.items_of(&value, span) => {
+            ) if let Some(kind) = Self::items_kind(&value.ty) => {
+                let shape = self.items_in(&value, kind.clone(), span);
                 let pair = |items: &Items| Ty::Tuple(vec![items.index.clone(), items.elem.clone()]);
                 let held_ty = value.ty.clone();
                 let list_ty = Ty::list(pair(&shape));
@@ -797,9 +797,7 @@ impl<'a> Lowerer<'a> {
                     let held = lw.temp(held_ty);
                     out.push_let(held, value);
                     let seq = lw.local(held, span);
-                    let Some(items) = lw.items_of(&seq, span) else {
-                        invariant::broken_invariant("a held sequence has the items of its type")
-                    };
+                    let items = lw.items_in(&seq, kind, span);
                     let acc = lw.temp(list_ty.clone());
                     out.push_let(
                         acc,
@@ -1300,26 +1298,21 @@ impl<'a> Lowerer<'a> {
     /// The indices and element type `seq.items` goes through; `None`
     /// when `seq` is not a list or an array of one dimension.
     pub(in crate::lower) fn items_of(&mut self, seq: &Expr, span: Span) -> Option<Items> {
+        let kind = Self::items_kind(&seq.ty)?;
+        Some(self.items_in(seq, kind, span))
+    }
+
+    /// How a sequence of type `ty` walks its items, as its type alone says;
+    /// `None` for a type without items.
+    pub(in crate::lower) fn items_kind(ty: &Ty) -> Option<ItemsKind> {
         // A range's keys are its elements (R04.4.31): `(2..5).items` walks
         // `(2, 2) (3, 3) (4, 4)`.
-        if let Some(of) = match &seq.ty {
-            Ty::Range(of) if matches!(**of, Ty::Int | Ty::Pos(_)) => Some((**of).clone()),
-            _ => None,
-        } {
-            let (lo, len) = self.range_lo_len(seq.clone(), span);
-            let (index, elem, first, keyed) = (of.clone(), of, 0, false);
-            let (seq, lo) = (seq.clone(), Some(lo));
-            return Some(Items {
-                seq,
-                len,
-                index,
-                first,
-                keyed,
-                elem,
-                lo,
-            });
+        if let Ty::Range(of) = ty {
+            if matches!(**of, Ty::Int | Ty::Pos(_)) {
+                return Some(ItemsKind::Range((**of).clone()));
+            }
         }
-        let (dim, elem) = match &seq.ty {
+        let (dim, elem) = match ty {
             Ty::List(elem) => (Dim::Int, (**elem).clone()),
             Ty::ListView(elem, key) | Ty::Keyed(elem, key) | Ty::MutView(elem, key) => {
                 (*key, (**elem).clone())
@@ -1328,25 +1321,51 @@ impl<'a> Lowerer<'a> {
             Ty::Array { dims, elem } if dims.len() == 1 => (dims[0], (**elem).clone()),
             _ => return None,
         };
-        let keyed = Self::keyed_view(&seq.ty);
+        let count = match dim {
+            Dim::Pos(d) => ItemsCount::Pos(d),
+            Dim::Bound(d) => ItemsCount::Bound(d),
+            Dim::Int => ItemsCount::Int,
+            Dim::IntFrom(first) => ItemsCount::IntFrom(first),
+            Dim::Enum(_) | Dim::Sym(_) => return None,
+        };
+        let keyed = Self::keyed_view(ty);
+        Some(ItemsKind::Cells { count, elem, keyed })
+    }
+
+    /// The items of `seq`, walked as `kind` says.
+    pub(in crate::lower) fn items_in(&mut self, seq: &Expr, kind: ItemsKind, span: Span) -> Items {
+        let (count, elem, keyed) = match kind {
+            ItemsKind::Range(of) => {
+                let (lo, len) = self.range_lo_len(seq.clone(), span);
+                return Items {
+                    seq: seq.clone(),
+                    len,
+                    index: of.clone(),
+                    first: 0,
+                    keyed: false,
+                    elem: of,
+                    lo: Some(lo),
+                };
+            }
+            ItemsKind::Cells { count, elem, keyed } => (count, elem, keyed),
+        };
         // The loop counts the cells from 0; `[1..=9]T` names them from 1.
-        let (len, index, first) = match dim {
-            Dim::Pos(d) if keyed => (self.len_of(seq.clone(), span), Ty::Pos(d), 0),
-            Dim::Pos(d) => (
+        let (len, index, first) = match count {
+            ItemsCount::Pos(d) if keyed => (self.len_of(seq.clone(), span), Ty::Pos(d), 0),
+            ItemsCount::Pos(d) => (
                 self.mk(ExprKind::DomainLen(d), Ty::Int, span),
                 Ty::Pos(d),
                 0,
             ),
             // `[D.cuts]T` has a cell per cut, one more than `D` has positions.
-            Dim::Bound(d) => {
+            ItemsCount::Bound(d) => {
                 let n = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                 (self.int_add(n, 1), Ty::Bound(d), 0)
             }
-            Dim::Int => (self.len_of(seq.clone(), span), Ty::Int, 0),
-            Dim::IntFrom(first) => (self.len_of(seq.clone(), span), Ty::Int, first),
-            _ => return None,
+            ItemsCount::Int => (self.len_of(seq.clone(), span), Ty::Int, 0),
+            ItemsCount::IntFrom(first) => (self.len_of(seq.clone(), span), Ty::Int, first),
         };
-        Some(Items {
+        Items {
             seq: seq.clone(),
             len,
             index,
@@ -1354,7 +1373,7 @@ impl<'a> Lowerer<'a> {
             keyed,
             elem,
             lo: None,
-        })
+        }
     }
 
     /// `m.items` kept as a value: the list of `(key, value)`, in the
@@ -1526,4 +1545,25 @@ impl<'a> Lowerer<'a> {
             out.extend(body);
         })
     }
+}
+
+/// How a sequence walks its items, from its type: a range's are its
+/// values, anything else's are its cells.
+#[derive(Clone)]
+pub(in crate::lower) enum ItemsKind {
+    Range(Ty),
+    Cells {
+        count: ItemsCount,
+        elem: Ty,
+        keyed: bool,
+    },
+}
+
+/// What a sequence's cells are counted by.
+#[derive(Clone, Copy)]
+pub(in crate::lower) enum ItemsCount {
+    Pos(DomainId),
+    Bound(DomainId),
+    Int,
+    IntFrom(i64),
 }

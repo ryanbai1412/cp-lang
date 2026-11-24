@@ -2,7 +2,6 @@
 //! projection coercion.
 
 use super::*;
-use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -122,7 +121,6 @@ impl<'a> Lowerer<'a> {
                 span: self.span(span),
             };
         };
-        let mut lent_place = None;
         self.with_projection_scope(&proj, recv_place, args, out, |lw, out| {
             for s in pre_stmts {
                 lw.stmt(s, out);
@@ -130,26 +128,23 @@ impl<'a> Lowerer<'a> {
             // The view's bounds read the projection's arguments, so they
             // are worked out after those are bound, not with the caller's.
             let pending = lw.cx.pending.len();
-            lent_place = Some(lw.place(lend_place_ast));
+            let lent_place = lw.place(lend_place_ast);
             out.extend(lw.cx.pending.drain(pending..));
             for s in post_stmts {
                 lw.stmt(s, post_out);
             }
-        });
-        match lent_place {
-            Some(place) => place,
-            None => invariant::broken_invariant("a projection scope runs its body"),
-        }
+            lent_place
+        })
     }
 
-    pub(in crate::lower) fn with_projection_scope(
+    pub(in crate::lower) fn with_projection_scope<R>(
         &mut self,
         proj: &ProjectionInfo<'a>,
         recv_place: Place,
         call_args: &[ast::Arg],
         out: &mut Vec<Stmt>,
-        f: impl FnOnce(&mut Self, &mut Vec<Stmt>),
-    ) {
+        f: impl FnOnce(&mut Self, &mut Vec<Stmt>) -> R,
+    ) -> R {
         // Bind arguments in the caller's module/env first.
         let ast_params: Vec<&ast::Param> = proj
             .decl
@@ -223,7 +218,7 @@ impl<'a> Lowerer<'a> {
             self.cx.scopes.top_mut().insert(pname, slot);
         }
 
-        f(self, out);
+        let made = f(self, out);
 
         self.cx.scopes.pop();
         self.cx.mut_aliases = saved_aliases;
@@ -232,6 +227,7 @@ impl<'a> Lowerer<'a> {
         self.offset = saved_offset;
         self.gen_env = saved_env;
         self.self_struct = saved_self;
+        made
     }
 
     /// Checks whether a struct `have_id` structurally contains every field of `want_id` (e.g., `Group<T>` -> `Monoid<T>`).

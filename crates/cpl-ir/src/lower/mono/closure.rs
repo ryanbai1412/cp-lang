@@ -214,6 +214,7 @@ impl<'a> Lowerer<'a> {
         fresh.in_body = true;
         fresh.ret = Some(ret_ty.clone());
         let outer_cx = std::mem::replace(&mut self.cx, fresh);
+        let outer_level = self.outer_cxs.len();
         self.outer_cxs.push(outer_cx);
         let mut slots = Vec::new();
         for (p, pty) in decl.params.iter().zip(&param_tys) {
@@ -221,9 +222,7 @@ impl<'a> Lowerer<'a> {
             self.cx.scopes.outer_mut().insert(p.name.text.clone(), slot);
             slots.push((slot, p.ty.as_ref()));
         }
-        let Some(body) = self.capture_from_outer(&body_name) else {
-            invariant::broken_invariant("a local fn's body is declared in its outer scope")
-        };
+        let body = self.capture_slot(outer_level, body_slot, &body_name);
         let args = slots
             .iter()
             .map(|(slot, _)| Arg::Value(self.local(*slot, span)))

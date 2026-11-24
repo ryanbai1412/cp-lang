@@ -1,7 +1,6 @@
 //! Lowering `laws_hold` into nested assertion loops over every law.
 
 use super::*;
-use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -226,24 +225,26 @@ impl<'a> Lowerer<'a> {
         )]
     }
 
+    /// The decl of a synthetic preamble init fn, whose `state` is already
+    /// `State::Done`, so nothing reads it.
     pub(in crate::lower) fn dummy_fn_decl(&self) -> &'a ast::FnDecl {
-        // Only used for synthetic preamble init fns whose `state` is already `State::Done`.
-        for m in &self.mods {
-            for item in &m.items {
-                for s in &item.syntax.parsed.stmts {
-                    if let ast::StmtKind::Fn(f) = &s.kind {
-                        return f;
-                    }
-                    if let ast::StmtKind::Struct(st) = &s.kind {
-                        for m in &st.methods {
-                            if let ast::StmtKind::Fn(f) = &m.kind {
-                                return f;
-                            }
-                        }
-                    }
-                }
+        static PREAMBLE_INIT: std::sync::LazyLock<ast::FnDecl> = std::sync::LazyLock::new(|| {
+            let at = Span { start: 0, end: 0 };
+            ast::FnDecl {
+                name: ast::Name {
+                    text: String::new(),
+                    span: at,
+                },
+                generics: Vec::new(),
+                bounds: Vec::new(),
+                params: Vec::new(),
+                ret: None,
+                lends: None,
+                uses: Vec::new(),
+                body: ast::FnBody::None,
+                sig_span: at,
             }
-        }
-        invariant::broken_invariant("the loaded modules declare a fn")
+        });
+        &PREAMBLE_INIT
     }
 }

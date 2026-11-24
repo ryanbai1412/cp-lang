@@ -19,7 +19,34 @@ mod unwrap_cells;
 
 /// True for a bare `..`, which as an index is all of one axis.
 pub(super) fn is_whole(index: &ast::Expr) -> bool {
-    matches!(index.kind, ast::ExprKind::Range { step: None, .. })
+    axis_range(index).is_some()
+}
+
+/// An index that takes one axis whole or in part: `..`, `lo..hi`, `lo..=hi`.
+#[derive(Clone, Copy)]
+pub(super) struct AxisRange<'e> {
+    pub lo: Option<&'e ast::Expr>,
+    pub hi: Option<&'e ast::Expr>,
+    pub inclusive: bool,
+    pub span: Span,
+}
+
+/// The axis range `index` is, if it is one.
+pub(super) fn axis_range(index: &ast::Expr) -> Option<AxisRange<'_>> {
+    match &index.kind {
+        ast::ExprKind::Range {
+            lo,
+            hi,
+            inclusive,
+            step: None,
+        } => Some(AxisRange {
+            lo: lo.as_deref(),
+            hi: hi.as_deref(),
+            inclusive: *inclusive,
+            span: index.span,
+        }),
+        _ => None,
+    }
 }
 
 /// True for `read()` and `ask(...)` written with no `::<T>`.
@@ -312,6 +339,7 @@ impl<'a> Lowerer<'a> {
                     let whole: Vec<usize> = (0..indices.len())
                         .filter(|&k| is_whole(&indices[k]))
                         .collect();
+                    let ranges: Vec<AxisRange> = indices.iter().filter_map(axis_range).collect();
                     if !whole.is_empty() && !piece_cell && dims.len() == indices.len() {
                         if let Some(line) = self.grid_line(base, &base_expr, indices, &whole, span)
                         {
@@ -348,7 +376,8 @@ impl<'a> Lowerer<'a> {
                                 .collect();
                             let parts: Vec<(Expr, Expr)> = whole
                                 .iter()
-                                .map(|&axis| {
+                                .zip(&ranges)
+                                .map(|(&axis, &range)| {
                                     let len = lw.mk_builtin(
                                         Builtin::AxisLen,
                                         [base.clone(), lw.int_lit(axis as i64, span)],
@@ -356,7 +385,7 @@ impl<'a> Lowerer<'a> {
                                         span,
                                     );
                                     // `g[r, 1..3]`: the part of the row the range names.
-                                    lw.axis_part(&indices[axis], dims[axis], len, out)
+                                    lw.axis_part(range, dims[axis], len, out)
                                 })
                                 .collect();
                             if let (Some(at), Some((lo, _))) = (first, parts.first()) {

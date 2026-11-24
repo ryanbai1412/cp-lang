@@ -1,7 +1,6 @@
 //! Sorting, domain members, and the seq adapters map, filter and partition.
 
 use super::*;
-use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -773,11 +772,20 @@ impl<'a> Lowerer<'a> {
             );
             return self.err_expr(span);
         };
-        let src_idx_ty = match &src_dim {
-            Dim::Pos(d) => Ty::Pos(*d),
-            Dim::Bound(d) => Ty::Bound(*d),
-            Dim::Enum(e) => Ty::Enum(*e),
-            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+        // The source's cells, counted along one line: a symmetric table has none.
+        enum Line {
+            Pos(DomainId),
+            Bound(DomainId),
+            Enum(EnumId),
+            Int,
+            IntFrom(i64),
+        }
+        let (src_idx_ty, src_line) = match src_dim {
+            Dim::Pos(d) => (Ty::Pos(d), Line::Pos(d)),
+            Dim::Bound(d) => (Ty::Bound(d), Line::Bound(d)),
+            Dim::Enum(e) => (Ty::Enum(e), Line::Enum(e)),
+            Dim::Int => (Ty::Int, Line::Int),
+            Dim::IntFrom(c) => (Ty::Int, Line::IntFrom(c)),
             Dim::Sym(_) => {
                 self.unsupported(span, "`inverse` on a symmetric array");
                 return self.err_expr(span);
@@ -858,36 +866,33 @@ impl<'a> Lowerer<'a> {
                     span,
                 ),
             );
-            let (src_lo, src_hi) = match &src_dim {
-                Dim::Pos(d) => (
+            let (src_lo, src_hi) = match src_line {
+                Line::Pos(d) => (
                     lw.int_lit(0, span),
-                    lw.mk(ExprKind::DomainLen(*d), Ty::Int, span),
+                    lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
                 ),
-                Dim::Bound(d) => {
-                    let len = lw.mk(ExprKind::DomainLen(*d), Ty::Int, span);
+                Line::Bound(d) => {
+                    let len = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
                     let one = lw.int_lit(1, span);
                     (
                         lw.int_lit(0, span),
                         lw.mk_binary(BinOp::Add, len, one, Ty::Int, span),
                     )
                 }
-                Dim::Enum(e) => (
+                Line::Enum(e) => (
                     lw.int_lit(0, span),
-                    lw.int_lit(lw.enums[*e].variants.len() as i64, span),
+                    lw.int_lit(lw.enums[e].variants.len() as i64, span),
                 ),
-                Dim::Int => {
+                Line::Int => {
                     let len =
                         lw.mk_builtin(Builtin::Len, [lw.local(arr_slot, span)], Ty::Int, span);
                     (lw.int_lit(0, span), len)
                 }
-                Dim::IntFrom(c) => {
+                Line::IntFrom(c) => {
                     let len =
                         lw.mk_builtin(Builtin::Len, [lw.local(arr_slot, span)], Ty::Int, span);
-                    let hi = lw.mk_binary(BinOp::Add, lw.int_lit(*c, span), len, Ty::Int, span);
-                    (lw.int_lit(*c, span), hi)
-                }
-                Dim::Sym(_) => {
-                    invariant::broken_invariant("a symmetric `inverse` target returned above")
+                    let hi = lw.mk_binary(BinOp::Add, lw.int_lit(c, span), len, Ty::Int, span);
+                    (lw.int_lit(c, span), hi)
                 }
             };
             let i_slot = lw.temp(src_idx_ty.clone());

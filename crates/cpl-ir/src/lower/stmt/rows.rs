@@ -2,6 +2,7 @@
 //! `a[l..r] += x`, a cell at a time.
 
 use super::*;
+use crate::lower::expr::AxisRange;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -23,19 +24,21 @@ impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn grid_row<'e>(
         &mut self,
         e: &'e ast::Expr,
-    ) -> Option<(&'e ast::Expr, &'e [ast::Expr], usize)> {
+    ) -> Option<(&'e ast::Expr, &'e [ast::Expr], usize, AxisRange<'e>)> {
         let ast::ExprKind::Index { base, indices } = &e.kind else {
             return None;
         };
-        let ranges: Vec<usize> = (0..indices.len())
-            .filter(|&k| crate::lower::expr::is_whole(&indices[k]))
+        let ranges: Vec<(usize, AxisRange<'e>)> = (indices.iter().enumerate())
+            .filter_map(|(k, index)| Some((k, crate::lower::expr::axis_range(index)?)))
             .collect();
-        let [axis] = ranges.as_slice() else {
+        let &[(axis, range)] = ranges.as_slice() else {
             return None;
         };
         match self.probe_ty_silent(base)? {
-            Ty::Array { dims, .. } if dims.len() == indices.len() => Some((base, indices, *axis)),
-            Ty::List(_) if indices.len() == 1 => Some((base, indices, *axis)),
+            Ty::Array { dims, .. } if dims.len() == indices.len() => {
+                Some((base, indices, axis, range))
+            }
+            Ty::List(_) if indices.len() == 1 => Some((base, indices, axis, range)),
             _ => None,
         }
     }
@@ -99,7 +102,7 @@ impl<'a> Lowerer<'a> {
             Some(false) => "min=",
             None => "=",
         };
-        let (base, indices, axis) = self.grid_row(target)?;
+        let (base, indices, axis, range) = self.grid_row(target)?;
         let place = self.place(base);
         let place = self.settle_indexes(place, out);
         if let PlaceKind::Local(s) = root_place(&place) {
@@ -141,7 +144,7 @@ impl<'a> Lowerer<'a> {
             .collect();
         let grid = place_to_expr(&place);
         let len = self.axis_len(grid, axis, span);
-        let (lo, hi) = self.axis_part(&indices[axis], dims[axis], len, out);
+        let (lo, hi) = self.axis_part(range, dims[axis], len, out);
         let (lo, hi) = (self.hold(lo, out), self.hold(hi, out));
         let count = self.mk_binary(BinOp::Sub, hi.clone(), lo.clone(), Ty::Int, span);
         let cell = Place {
@@ -154,7 +157,7 @@ impl<'a> Lowerer<'a> {
         let counter = self.cast(Cast::Trust, self.local(at, span), Ty::Int);
         let offset = self.mk_binary(BinOp::Sub, counter, lo.clone(), Ty::Int, span);
         let (theirs, their_count) = match self.grid_row(value) {
-            Some((other, their_indices, their_axis)) => {
+            Some((other, their_indices, their_axis, their_range)) => {
                 let other = self.expr(other, None);
                 let other = self.hold(other, out);
                 let Some((their_dims, their_elem)) = Self::axes_of(&other.ty) else {
@@ -182,12 +185,8 @@ impl<'a> Lowerer<'a> {
                     })
                     .collect();
                 let their_len = self.axis_len(other.clone(), their_axis, span);
-                let (their_lo, their_hi) = self.axis_part(
-                    &their_indices[their_axis],
-                    their_dims[their_axis],
-                    their_len,
-                    out,
-                );
+                let (their_lo, their_hi) =
+                    self.axis_part(their_range, their_dims[their_axis], their_len, out);
                 let (their_lo, their_hi) = (self.hold(their_lo, out), self.hold(their_hi, out));
                 let step = self.mk_binary(BinOp::Add, their_lo.clone(), offset, Ty::Int, span);
                 let step = self.cast(Cast::Trust, step, slot_ty(their_dims[their_axis]));
@@ -321,7 +320,7 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         let span = target.span;
-        let (Some((base, indices, axis)), Some((from, from_indices, from_axis))) =
+        let (Some((base, indices, axis, range)), Some((from, from_indices, from_axis, from_range))) =
             (self.grid_row(target), self.grid_row(source))
         else {
             return;
@@ -390,14 +389,9 @@ impl<'a> Lowerer<'a> {
             })
             .collect();
         let len = self.axis_len(place_to_expr(&place), axis, span);
-        let (lo, hi) = self.axis_part(&indices[axis], dims[axis], len, out);
+        let (lo, hi) = self.axis_part(range, dims[axis], len, out);
         let from_len = self.axis_len(rows.clone(), from_axis, span);
-        let (from_lo, from_hi) = self.axis_part(
-            &from_indices[from_axis],
-            from_dims[from_axis],
-            from_len,
-            out,
-        );
+        let (from_lo, from_hi) = self.axis_part(from_range, from_dims[from_axis], from_len, out);
         let sub = |lw: &Self, a: Expr, b: Expr| lw.mk_binary(BinOp::Sub, a, b, Ty::Int, span);
         let count = sub(self, hi, lo.clone());
         let count = self.hold(count, out);
@@ -486,7 +480,7 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         let span = target.span;
-        let Some((base, indices, axis)) = self.grid_row(target) else {
+        let Some((base, indices, axis, range)) = self.grid_row(target) else {
             return;
         };
         let place = self.place(base);
@@ -517,7 +511,7 @@ impl<'a> Lowerer<'a> {
             .collect();
         let grid = place_to_expr(&place);
         let len = self.axis_len(grid, axis, span);
-        let (lo, hi) = self.axis_part(&indices[axis], dims[axis], len, out);
+        let (lo, hi) = self.axis_part(range, dims[axis], len, out);
         let (lo, hi) = (self.hold(lo, out), self.hold(hi, out));
         let cell = Place {
             kind: PlaceKind::Index(Box::new(place), cell),

@@ -426,18 +426,15 @@ impl<'a> Lowerer<'a> {
     /// program.
     pub(in crate::lower) fn axis_part(
         &mut self,
-        range: &ast::Expr,
+        range: AxisRange<'_>,
         dim: Dim,
         len: Expr,
         out: &mut Vec<Stmt>,
     ) -> (Expr, Expr) {
         let span = range.span;
-        let ast::ExprKind::Range {
+        let AxisRange {
             lo, hi, inclusive, ..
-        } = &range.kind
-        else {
-            crate::invariant::broken_invariant("an axis is taken whole or in part by a range")
-        };
+        } = range;
         if lo.is_none() && hi.is_none() {
             return (self.int_lit(0, span), len);
         }
@@ -448,7 +445,7 @@ impl<'a> Lowerer<'a> {
         let cell = |lw: &mut Self, e: &ast::Expr, end: bool| {
             let hint = match dim {
                 // `g[.., 2..4]` over `C = 0..4`: an exclusive end is a cut.
-                Dim::Pos(d) if end && !*inclusive => Some(Ty::Bound(d)),
+                Dim::Pos(d) if end && !inclusive => Some(Ty::Bound(d)),
                 Dim::Pos(d) => Some(Ty::Pos(d)),
                 Dim::Bound(d) => Some(Ty::Bound(d)),
                 Dim::Enum(_) | Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => None,
@@ -461,7 +458,7 @@ impl<'a> Lowerer<'a> {
                     lw.int_add(v, -first)
                 }
             };
-            if end && *inclusive {
+            if end && inclusive {
                 lw.int_add(at, 1)
             } else {
                 at
