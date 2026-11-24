@@ -258,13 +258,20 @@ fn spec_blocks_std_markers() {
     assert_eq!(
         signatures_unmet(
             "fn scan<D, T>(self: [D]T, from: ?T = None) -> Prefix<D, T>\nstruct Pt(x: Int, y: Int)",
-            std
+            std,
+            "std/seq.cp"
         ),
         None
     );
-    let why = signatures_unmet("fn scan<D>(self: [D]Int) -> Int", std).unwrap();
+    let why = signatures_unmet("fn scan<D>(self: [D]Int) -> Int", std, "std/seq.cp").unwrap();
     assert!(why.contains("std has `fn scan<D, T>("), "{why}");
-    assert!(signatures_unmet("// nothing", std).is_some());
+    assert!(signatures_unmet("// nothing", std, "std/seq.cp").is_some());
+    let qualified = "fn seq.scan<D, T>(self: [D]T, from: ?T = None) -> Prefix<D, T>";
+    assert_eq!(
+        signatures_unmet(qualified, std, "std/heap.cp std/seq.cp"),
+        None
+    );
+    assert!(signatures_unmet(qualified, std, "std/heap.cp").is_some());
     assert_eq!(
         excerpt_unmet("pub struct Pt(pub x: Int, y: Int)  // a point", std),
         None
