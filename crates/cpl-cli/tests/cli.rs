@@ -1695,3 +1695,30 @@ fn test_on_a_contest_folder_runs_every_problem_in_it() {
     );
     assert!(stdout.contains("expected `3`, got `2`"), "{stdout}");
 }
+
+/// `cpl explain <name>` explains a lint a library declares with `@lint`
+/// (R06.4.9), found through the `[libs]` of the cp.toml above the
+/// current directory.
+#[test]
+fn explain_names_a_library_lint() {
+    let from =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-lint/testdata/library-lint");
+    let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("explain-library-lint");
+    let _ = std::fs::remove_dir_all(&dir);
+    for rel in ["cp.toml", "main.cp", "mylib/lib.toml", "mylib/geo.cp"] {
+        std::fs::create_dir_all(dir.join(rel).parent().unwrap()).unwrap();
+        std::fs::copy(from.join(rel), dir.join(rel)).unwrap();
+    }
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["explain", "square_by_hand"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "{out:?}");
+    assert!(
+        text.contains("`mylib.geo` declares with `@lint` on `sq`")
+            && text.contains("writes `x * x`, and suggests `sq(x)`"),
+        "{text}"
+    );
+}

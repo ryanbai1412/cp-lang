@@ -89,6 +89,9 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
                 );
                 return 0;
             }
+            if explain_library_lint(code, stdout) {
+                return 0;
+            }
             *stderr += &format!(
                 "cpl: `{code}` is not a diagnostic or lint code, a lint name, or a file\n\n{}",
                 EXPLAIN_USAGE
@@ -175,4 +178,68 @@ pub(crate) fn explain_file(
         cpl_codegen::explain::report_with(path, &compiled.text, &compiled.program, Some(&section))
     );
     0
+}
+
+/// `cpl explain <name>` for a lint a library declares with `@lint`
+/// (R06.4.9): found in the libraries the `cp.toml` files at or above the
+/// current directory name under `[libs]`.
+fn explain_library_lint(name: &str, stdout: &mut dyn Write) -> bool {
+    let cwd = std::env::current_dir().unwrap_or_default();
+    for (lib, root) in cpl_check::configured_libraries(&cwd) {
+        let mut files = Vec::new();
+        cp_files(&root, &mut files);
+        files.sort();
+        for file in files {
+            let Ok(src) = std::fs::read_to_string(&file) else {
+                continue;
+            };
+            let parsed = cpl_syntax::parse_file(&src);
+            for (offset, item) in &parsed.items {
+                for stmt in &item.stmts {
+                    let decls = cpl_syntax::library_lint::declared(stmt, *offset).0;
+                    let Some(decl) = decls.into_iter().find(|d| d.name == name) else {
+                        continue;
+                    };
+                    let rel = file.strip_prefix(&root).unwrap_or(&file).with_extension("");
+                    let module = std::iter::once(lib.clone())
+                        .chain(rel.iter().map(|c| c.to_string_lossy().into_owned()))
+                        .collect::<Vec<_>>()
+                        .join(".");
+                    let line = src[..decl.decorator.start as usize].matches('\n').count() + 1;
+                    let _ = writeln!(
+                        stdout,
+                        "{name}: a lint `{module}` declares with `@lint` on `{}`",
+                        decl.fn_name
+                    );
+                    let _ = writeln!(
+                        stdout,
+                        "\nIt fires where code writes `{}`, and suggests `{}`.",
+                        decl.from, decl.to
+                    );
+                    let _ = writeln!(
+                        stdout,
+                        "\nFix:\n`cpl fix` writes the call. `with lint({name}: allow):` keeps a block as written; `{name} = \"allow\"` under `[lints]` in cp.toml turns it off."
+                    );
+                    let _ = writeln!(stdout, "\nDeclared at {}:{line}", file.display());
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// The `.cp` files below `dir`.
+fn cp_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            cp_files(&path, out);
+        } else if path.extension().is_some_and(|e| e == "cp") {
+            out.push(path);
+        }
+    }
 }

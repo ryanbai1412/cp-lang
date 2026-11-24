@@ -264,6 +264,37 @@ fn library_root(start: &Path, name: &str) -> Option<PathBuf> {
     configured.or_else(|| library_manifest_root(&start, name))
 }
 
+/// Every library a `cp.toml` at or above `start` names under `[libs]`,
+/// with its folder; a nearer `cp.toml` wins for a name.
+pub fn configured_libraries(start: &Path) -> Vec<(String, PathBuf)> {
+    let start = start.canonicalize().unwrap_or_else(|_| start.to_path_buf());
+    let mut out: Vec<(String, PathBuf)> = Vec::new();
+    for dir in start.ancestors() {
+        let Ok(config) = std::fs::read_to_string(dir.join("cp.toml")) else {
+            continue;
+        };
+        let mut in_libs = false;
+        for line in config.lines() {
+            let line = line.split('#').next().unwrap_or("").trim();
+            if line.starts_with('[') {
+                in_libs = line == "[libs]";
+                continue;
+            }
+            let Some((name, _)) = line.split_once('=').filter(|_| in_libs) else {
+                continue;
+            };
+            let name = name.trim();
+            if out.iter().any(|(n, _)| n == name) {
+                continue;
+            }
+            if let Some(root) = library_root(dir, name) {
+                out.push((name.to_string(), root));
+            }
+        }
+    }
+    out
+}
+
 /// The path `[libs]` of a `cp.toml` gives the library `name`, written as
 /// `name = "path"` or `name = { path = "path" }`.
 fn configured_library<'a>(config: &'a str, name: &str) -> Option<&'a str> {
