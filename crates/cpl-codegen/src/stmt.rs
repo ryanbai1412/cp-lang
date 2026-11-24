@@ -105,12 +105,16 @@ impl<'p> Emitter<'p> {
         self.slot_written_next = self.slot_written_next(&block.stmts, k);
         self.blank_next = self.filled_next(&block.stmts, k);
         let top = std::ptr::eq(block, &self.program.main);
-        if top {
+        let dead = if top {
             self.released = self.released_at(block, k);
-        }
+            self.dead_after(block, k)
+        } else {
+            std::collections::BTreeSet::new()
+        };
         self.stmt_owning(block, k, out);
         if top {
             self.released.clear();
+            self.release_dead(&dead, out);
         }
         self.slot_written_next = false;
         self.blank_next = false;

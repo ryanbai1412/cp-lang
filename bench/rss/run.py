@@ -58,6 +58,12 @@ def edges(n):
     return f"{n}\n" + "\n".join(lines) + "\n"
 
 
+def arcs(n, m):
+    """`n m`, then m lines `u v` with u, v in 0..n."""
+    lines = (f"{i * 7919 % n} {i * 104729 % n}" for i in range(m))
+    return f"{n} {m}\n" + "\n".join(lines) + "\n"
+
+
 def table(r, c):
     """`r c`, then an r x c table of numbers in 0..=500."""
     rows = (" ".join(str((i * c + j) * 7919 % 501) for j in range(c)) for i in range(r))
@@ -103,6 +109,7 @@ CASES = {
     "cf2124c": lambda: gen("cf2124c"),  # b.adjacent over 6e5 [0..n]1..=1e9: 4 B cells, not 8
     "ucrpc21f": lambda: gen("ucrpc21f"),  # dijkstra over 1e6 cells read by p[v]: no settling-order list
     "release_walked": lambda: words20(400_000),  # words freed once a comprehension last walks them
+    "release_dead": lambda: arcs(500_000, 1_000_000),  # arcs freed once Graph.directed reads them (cf2115b)
     "year2018p7": lambda: gen("year2018p7"),  # 2e4 RollingHash of short words: two pair lists each, not four
     "letter_lists": lambda: words20(400_000),  # List<Letter> of 26 letters at a byte a letter, not 4
     "aho_corasick": lambda: aho_words(50_000, 1000),  # 56k states over 3 used letters of 26

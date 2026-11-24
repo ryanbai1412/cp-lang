@@ -270,16 +270,36 @@ impl Ty {
     /// True when some part is a fn value, also inside a struct's fields or
     /// an enum's variants.
     pub fn has_fn(&self, program: &Program) -> bool {
-        self.has_fn_in(program, &mut Vec::new())
+        self.has_part_in(program, &|t| matches!(t, Ty::Fn(..)), &mut Vec::new())
     }
 
-    /// `seen` holds the structs and enums being walked, as in `comparable_in`.
-    fn has_fn_in(&self, program: &Program, seen: &mut Vec<(bool, usize)>) -> bool {
-        let any = |ts: Vec<&Ty>, seen: &mut Vec<(bool, usize)>| {
-            ts.into_iter().any(|t| t.has_fn_in(program, seen))
+    /// True when some part may point into another value: a view or a fn
+    /// value, also inside a struct's fields or an enum's variants.
+    pub fn may_borrow(&self, program: &Program) -> bool {
+        let leaf = |t: &Ty| {
+            matches!(
+                t,
+                Ty::Fn(..) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..) | Ty::StrView
+            )
         };
+        self.has_part_in(program, &leaf, &mut Vec::new())
+    }
+
+    /// Whether `leaf` holds for some part. `seen` holds the structs and
+    /// enums being walked, as in `comparable_in`.
+    fn has_part_in(
+        &self,
+        program: &Program,
+        leaf: &dyn Fn(&Ty) -> bool,
+        seen: &mut Vec<(bool, usize)>,
+    ) -> bool {
+        let any = |ts: Vec<&Ty>, seen: &mut Vec<(bool, usize)>| {
+            ts.into_iter().any(|t| t.has_part_in(program, leaf, seen))
+        };
+        if leaf(self) {
+            return true;
+        }
         match self {
-            Ty::Fn(..) => true,
             Ty::Range(t)
             | Ty::Opt(t)
             | Ty::List(t)
@@ -288,8 +308,8 @@ impl Ty {
             | Ty::MutView(t, _)
             | Ty::Set(t)
             | Ty::HashSet(t)
-            | Ty::Mut(t) => t.has_fn_in(program, seen),
-            Ty::Array { elem, .. } => elem.has_fn_in(program, seen),
+            | Ty::Mut(t) => t.has_part_in(program, leaf, seen),
+            Ty::Array { elem, .. } => elem.has_part_in(program, leaf, seen),
             Ty::Tuple(ts) => any(ts.iter().collect(), seen),
             Ty::Record(fs) => any(fs.iter().map(|(_, t)| t).collect(), seen),
             Ty::Map(k, v) | Ty::HashMap(k, v) => any(vec![k, v], seen),
