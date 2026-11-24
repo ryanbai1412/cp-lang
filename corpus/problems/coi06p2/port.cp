@@ -1,4 +1,5 @@
 // Source: COI 2006 (Policija), https://dmoj.ca/problem/coi06p2
+// limits: 1400 ms, 64 MB
 // Problem: a connected graph of N <= 1e5 towns and E <= 5e5 roads; Q <= 3e5 queries: can one get
 //   from A to B with (1) the road G1-G2 closed, or (2) town C closed? Print yes or no.
 // Solution: in a DFS tree every other road joins a town to an ancestor; low[v] is the highest
