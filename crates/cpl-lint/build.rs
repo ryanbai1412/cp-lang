@@ -7,13 +7,15 @@
 //! `removed` when `before.cp` uses a removed spelling: the checker error it
 //! shows (every other `before.cp` passes `cpl check`). The
 //! optional `family` and `practice` place it in the idiom catalog
-//! (`spec/idioms/lints.md`), for the site's lint pages.
+//! (`spec/idioms/lints.md`), for the site's lint pages. `replaces = "whole"`
+//! marks a lint whose std call replaces its span whole, so a finding inside
+//! it is not shown.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 const KEYS: [&str; 6] = ["code", "level", "title", "summary", "group", "rule"];
-const OPTIONAL: [&str; 4] = ["no_fix", "family", "practice", "removed"];
+const OPTIONAL: [&str; 5] = ["no_fix", "family", "practice", "removed", "replaces"];
 const FILES: [(&str, &str); 4] = [
     ("explanation", "explain.md"),
     ("trigger", "before.cp"),
@@ -104,6 +106,12 @@ fn main() {
             fields.get(9).filter(|v| !v.is_empty())
         )
         .unwrap();
+        let replaces = fields.get(10).map_or("", |v| v.as_str());
+        assert!(
+            ["", "whole"].contains(&replaces),
+            "{name}: `replaces` is \"whole\" or absent"
+        );
+        writeln!(out, "    replaces_whole: {},", replaces == "whole").unwrap();
         for (field, file) in FILES {
             let path = dir.join(file);
             println!("cargo:rerun-if-changed={}", path.display());

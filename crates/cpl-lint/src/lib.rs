@@ -141,6 +141,9 @@ pub struct Lint {
     pub rule: &'static str,
     /// Why `cpl lint --fix` (and the editor's quick fix) has no rewrite for
     /// it; `None` when it has one.
+    /// The std call it names replaces its span whole, so a finding inside
+    /// it is about code that goes away.
+    pub replaces_whole: bool,
     pub no_fix: Option<&'static str>,
     /// The checker error `trigger` shows because it uses a removed spelling;
     /// `None` when it passes `cpl check`.
@@ -583,54 +586,53 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
     }
     out.sort_by_key(|d| (d.span.start, d.span.end, d.code));
     out.dedup();
-    let wide: Vec<_> = out
-        .iter()
-        .map(|d| {
-            (
-                d.code,
-                d.span,
-                d.labels.iter().map(|l| l.span).collect::<Vec<_>>(),
-            )
-        })
-        .collect();
-    out.retain(|d| {
-        !SUPERSEDED_BY.iter().any(|(inner, outer)| {
-            inner.code == d.code
-                && wide.iter().any(|(code, span, evidence)| {
-                    *code == outer.code
-                        && (span.contains(d.span)
-                            || d.labels.iter().any(|l| span.contains(l.span))
-                            || evidence.iter().any(|e| e.contains(d.span)))
-                })
-        })
-    });
+    let all = out.clone();
+    out.retain(|d| !all.iter().any(|wider| supersedes(file.src, wider, d)));
     out
 }
 
-/// A finding inside a wider one that rewrites the same code better, inside
-/// the wider one's labelled evidence, or whose own evidence is inside it: the wider one is shown alone (`s = s + x`
-/// in a loop that is one `sum`; `var found = -1` set by a search loop; the
-/// push loop that copies a slice only to sort it and write it back; code
-/// inside a hand-written algorithm the std call replaces whole; the cache
-/// lookup of a memo `@memo` removes).
-const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[
-    (&SEARCH_LOOP, &PALINDROME_BY_HAND),
-    (&PEEK_THEN_POP, &MONOTONE_STACK_BY_HAND),
-    (&COMPOUND_SELF_REF, &LOOP_REDUCTION),
-    (&CHMIN_CHMAX_IF, &LOOP_REDUCTION),
-    (&SENTINEL_SCALAR, &LOOP_REDUCTION),
-    (&SENTINEL_SCALAR, &SEARCH_LOOP),
-    (&PUSH_LOOP, &COPY_SORT_WRITEBACK),
-    (&VAR_NEVER_REASSIGNED, &SEARCH_LOOP),
-    (&REPEATED_LITERAL, &HAND_ROLLED_STRING_ALGO),
-    (&MANUAL_MOD_REDUCE, &HAND_ROLLED_STRING_ALGO),
-    (&MANUAL_MOD_REDUCE, &FACT_TABLES_BY_HAND),
-    (&SPLIT_RANGE_CHECK, &HAND_ROLLED_STRING_ALGO),
-    (&SHADOWS_TOP_LEVEL, &SLIDING_MIN_BY_HAND),
-    (&LAST_VIA_LEN, &SLIDING_MIN_BY_HAND),
-    (&LAST_VIA_LEN, &HAND_ROLLED_PREFIX_SUM),
-    (&MAP_CONTAINS_THEN_INDEX, &MEMO_BY_HAND),
-];
+/// Whether `wider`'s rewrite removes the code `inner` is about, so only
+/// `wider` is shown. With a fix: `inner` lies inside one of its edits and
+/// no edit carries `inner`'s code over (`s = s + x` in a loop that becomes
+/// one `sum`). With none, when its std call replaces the code whole
+/// (`replaces = "whole"`): `inner` or its evidence lies inside `wider`'s
+/// span or evidence (the cache lookup a `@memo` removes; on one span, a
+/// search loop that is `is_palindrome`). A rewrite that keeps the inner code
+/// keeps both; `inner`'s evidence counts as its code (`var found = -1`, set
+/// in a search loop that becomes `first(..) ?? -1`).
+fn supersedes(src: &str, wider: &Diagnostic, inner: &Diagnostic) -> bool {
+    let whole = |d: &Diagnostic| LINTS.iter().any(|l| l.code == d.code && l.replaces_whole);
+    let len = |s: Span| s.end - s.start;
+    let shorter = len(inner.span) < len(wider.span)
+        || (len(inner.span) == len(wider.span)
+            && whole(wider)
+            && wider.fixes.is_empty()
+            && (!whole(inner) || !inner.fixes.is_empty()));
+    if wider.code == inner.code || !shorter {
+        return false;
+    }
+    let about: Vec<Span> = std::iter::once(inner.span)
+        .chain(inner.labels.iter().map(|l| l.span))
+        .collect();
+    if let Some(fix) = wider.fixes.first() {
+        let text = |s: Span| {
+            src.get(s.start as usize..s.end as usize)
+                .unwrap_or("")
+                .trim()
+        };
+        return about.iter().any(|a| {
+            fix.edits.iter().any(|(at, _)| at.contains(*a))
+                && !fix.edits.iter().any(|(_, to)| to.contains(text(*a)))
+        });
+    }
+    let evidence: Vec<Span> = std::iter::once(wider.span)
+        .chain(wider.labels.iter().map(|l| l.span))
+        .collect();
+    whole(wider)
+        && about
+            .iter()
+            .any(|a| evidence.iter().any(|e| e.contains(*a)))
+}
 
 /// Lints that point to a std structure: a library module is where the
 /// loops that build one are written.

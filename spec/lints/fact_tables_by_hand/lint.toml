@@ -7,3 +7,4 @@ summary = "`fact[i] = fact[i - 1] * i % P` in a loop: `Comb<Mod<P>>(n)` with `co
 no_fix = "the table's readers (`fact[i]`, an inverse table, a hand-written `choose`) are spread over the file, and each becomes a different `Comb` call"
 family = "S.mod: modular arithmetic and combinatorics"
 practice = "#1"
+replaces = "whole"

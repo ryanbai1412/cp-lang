@@ -230,7 +230,7 @@ fn one_item_proves_what_the_whole_file_proves_there() {
 }
 
 /// Two lints that fire on one span either share a root cause (the inner one
-/// is in `SUPERSEDED_BY`, so only the wider is shown) or teach two things
+/// is superseded: the wider one rewrites it away, so only the wider is shown) or teach two things
 /// (listed here). A new pair has to be one or the other.
 /// The rewrite of the outer one keeps the inner code, so both still teach.
 pub(crate) const DISTINCT: &[(&str, &str)] = &[

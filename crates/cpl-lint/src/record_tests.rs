@@ -515,7 +515,6 @@ fn no_two_records_teach_one_shape_undecided() {
         crate::corpus_tests::DISTINCT
             .iter()
             .any(|(x, y)| pair(x, y))
-            || SUPERSEDED_BY.iter().any(|(i, o)| pair(i.code.0, o.code.0))
     };
     let mut undecided = Vec::new();
     for (a, on_a) in &fires {

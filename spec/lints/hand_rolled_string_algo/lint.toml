@@ -7,3 +7,4 @@ summary = "manual prefix-function, Z-function, polynomial hash, or trie loop: us
 no_fix = "the rewrite replaces a whole hand-written algorithm whose names and shape vary; the help names the library call"
 family = "S.strings"
 practice = "#1"
+replaces = "whole"
