@@ -9,6 +9,7 @@ mod devirt;
 mod divrem;
 mod emit;
 mod expr;
+mod fold;
 mod fuse;
 mod inline;
 mod lend;
@@ -144,7 +145,11 @@ pub fn sizes(
         .map(|(part, name, text)| Size {
             part: *part,
             name: unmangled(name),
-            bytes: fit(*part, text),
+            bytes: match fitted.folded.get(&names::fn_name(name)) {
+                Some(Some(template)) => fit(*part, template),
+                Some(None) => 0,
+                None => fit(*part, text),
+            },
         })
         .filter(|size| size.bytes > 0)
         .collect();
@@ -355,6 +360,9 @@ pub struct Fitted {
     pub compact: bool,
     /// The shorter names given to the names codegen numbered: the fourth.
     pub names: std::collections::BTreeMap<String, String>,
+    /// The instances of one generic fn made one C++ template, before the
+    /// spaces go; for the one it stands in place of, the template.
+    pub folded: std::collections::BTreeMap<String, Option<String>>,
 }
 
 impl Fitted {
@@ -366,6 +374,9 @@ impl Fitted {
         }
         if !self.header {
             left.push("the source in the header is left out");
+        }
+        if !self.folded.is_empty() {
+            left.push("the instances of a generic fn that differ only in types and integers are one template");
         }
         if self.narrow && !self.compact {
             left.push("the lines are indented half as far");
@@ -428,7 +439,9 @@ pub fn emit_aiming(
     let emit = |program, name, source| emit_for(program, name, source, target);
     let cpp = emit(program, name, Some(source));
     let full = cpp.len();
-    let fitted = |cpp, comments, header, narrow, compact, names| Fitted {
+    let none = std::collections::BTreeMap::new;
+    let nofold = std::collections::BTreeMap::new;
+    let fitted = |cpp, comments, header, narrow, compact, names, folded| Fitted {
         cpp,
         full,
         comments,
@@ -436,40 +449,49 @@ pub fn emit_aiming(
         narrow,
         compact,
         names,
+        folded,
     };
-    let none = std::collections::BTreeMap::new;
     if full <= aim {
-        return Ok(fitted(cpp, true, true, false, false, none()));
+        return Ok(fitted(cpp, true, true, false, false, none(), nofold()));
     }
     let cpp = uncommented(&cpp, true);
     if cpp.len() <= aim {
-        return Ok(fitted(cpp, false, true, false, false, none()));
+        return Ok(fitted(cpp, false, true, false, false, none(), nofold()));
     }
     let narrowed = narrow(&cpp);
     if narrowed.len() <= aim {
-        return Ok(fitted(narrowed, false, true, true, false, none()));
+        return Ok(fitted(narrowed, false, true, true, false, none(), nofold()));
+    }
+    let origins = instance_origins(program, target);
+    let fold::Folded { cpp, members } = fold::fold(&cpp, &origins);
+    if !members.is_empty() {
+        let narrowed = narrow(&cpp);
+        if narrowed.len() <= aim {
+            return Ok(fitted(narrowed, false, true, true, false, none(), members));
+        }
     }
     let compacted = compact::compact(&cpp, true, &none());
     if compacted.len() <= aim {
-        return Ok(fitted(compacted, false, true, true, true, none()));
+        return Ok(fitted(compacted, false, true, true, true, none(), members));
     }
     let headed = compact::short_names(&compacted);
     let renamed = compact::compact(&cpp, true, &headed);
     if renamed.len() <= aim {
-        return Ok(fitted(renamed, false, true, true, true, headed));
+        return Ok(fitted(renamed, false, true, true, true, headed, members));
     }
-    let bare = uncommented(&emit(program, name, None), true);
-    let names = compact::short_names(&compact::compact(&bare, true, &none()));
+    let bare = fold::fold(&uncommented(&emit(program, name, None), true), &origins);
+    let names = compact::short_names(&compact::compact(&bare.cpp, true, &none()));
     let shortest = fitted(
-        compact::compact(&bare, true, &names),
+        compact::compact(&bare.cpp, true, &names),
         false,
         false,
         true,
         true,
         names,
+        bare.members,
     );
     if shortest.cpp.len() > aim && renamed.len() <= limit {
-        return Ok(fitted(renamed, false, true, true, true, headed));
+        return Ok(fitted(renamed, false, true, true, true, headed, members));
     }
     match shortest.cpp.len() <= limit {
         true => Ok(shortest),
@@ -477,10 +499,40 @@ pub fn emit_aiming(
     }
 }
 
+/// Each fn's C++ name, and the generic fn it is an instance of, with the
+/// number of a clone `split` made (`_k0`) dropped too.
+fn instance_origins(
+    program: &cpl_ir::Program,
+    target: &Target,
+) -> std::collections::BTreeMap<String, String> {
+    let program = prepared(program, target);
+    let clone = |segment: &str| {
+        let mut s = segment;
+        while let Some((head, n)) = s.rsplit_once("_k") {
+            if n.is_empty() || !n.bytes().all(|c| c.is_ascii_digit()) {
+                break;
+            }
+            s = head;
+        }
+        s.to_string()
+    };
+    program
+        .fns
+        .iter()
+        .map(|f| {
+            let origin = unmangled(&f.name);
+            let origin: Vec<String> = origin.split('.').map(clone).collect();
+            (names::fn_name(&f.name), origin.join("."))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod copy_tests;
 #[cfg(test)]
 mod devirt_tests;
+#[cfg(test)]
+mod fold_tests;
 #[cfg(test)]
 mod prune_tests;
 #[cfg(test)]

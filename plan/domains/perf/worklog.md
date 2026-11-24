@@ -3,6 +3,8 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- `codegen: emit a generic fn's instances as one C++ template`: once a file's C++ is over its aim after comments and indentation, the instances of one generic fn (same origin in the IR, with `split`'s `_kN` dropped) whose tokens differ only in type names and integer literals become one `template<class T0, auto V1>` with a declaration ahead of its first use, and each call names its instance (`Mod_7_1_add<Mod_7_1,7>`). It runs to a fixed point, so a template's callers fold too (`ntt` then `convolve`); fns with a `#` line inside never fold. cf2201e/port 47655 -> 38118 bytes, cco20p5/spec 41467 -> 40075, egoi23p7/spec 40444 -> 40325; still 7 over 32 KB. All 35 programs it folds compile under `g++ -std=c++17`; their output matches the `expect:` line or the interpreter (corpus: tests/ and gen.py inputs; cf2201e 90 generated inputs identical to the unfolded C++). Codegen (239), explain accuracy, deterministic C++, read-only-copies pass; `judges a_release_run_builds_with_the_judges_flags_on_the_judges_stack` fails with and without the change (input not reaching the `--release` run).
+
 - 2026-11-23 (from idioms, cf2115f1): `?Id<T>` is not niche-packed: `use std.marks.{Arena, Id}` / `struct S(l: ?Id<S>)` / `var a = Arena<S>.new()` / `let y = a.alloc(S(a.alloc(S(None))))` / `print(yes(a[y].l != None))` emits `std::optional<Id_S0_4> l;` (8 B), though `Id`'s `0..=2e9` has spares (R03.2.2). cf2115f1 with `?Id` children: 8.5 s / 4.2 GB on max vs 5.2-7.3 s / 2.1 GB with an `empty` sentinel node, so the port keeps the sentinel (research/frictions/cf2115f1.md).
 
 ## 2026-11-23

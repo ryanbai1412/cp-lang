@@ -18,7 +18,7 @@ fn word(c: u8) -> bool {
 /// The tokens of a line of C++ and whether space came before each, up to a
 /// `//` comment. `None` for what this does not read: a block comment, a raw
 /// string, or a literal the line does not close.
-fn tokens(line: &str) -> Option<Vec<(bool, &str)>> {
+pub(crate) fn tokens(line: &str) -> Option<Vec<(bool, &str)>> {
     let b = line.as_bytes();
     let mut out = Vec::new();
     let (mut at, mut space) = (0, false);
@@ -90,7 +90,7 @@ fn tokens(line: &str) -> Option<Vec<(bool, &str)>> {
 }
 
 /// Whether `b` written right after `a` would read as other tokens.
-fn needs_space(a: &str, b: &str) -> bool {
+pub(crate) fn needs_space(a: &str, b: &str) -> bool {
     let (x, y) = (*a.as_bytes().last().unwrap(), b.as_bytes()[0]);
     let quote = |c: u8| c == b'"' || c == b'\'';
     (word(x) || quote(x)) && (word(y) || quote(y))
