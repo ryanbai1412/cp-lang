@@ -1795,6 +1795,8 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
                 }
                 push(out, &f.name, DeclKind::Fn)
             }
+            // `struct T = @intrinsic("id")` names the table's type, which stays the floor's.
+            StmtKind::Struct(s) if s.intrinsic.is_some() => {}
             StmtKind::Struct(s) => push(out, &s.name, DeclKind::Struct),
             StmtKind::Enum(e) => {
                 push(out, &e.name, DeclKind::Enum);

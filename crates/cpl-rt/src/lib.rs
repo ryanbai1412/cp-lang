@@ -19,6 +19,24 @@ pub enum Prim {
     BitCeil,
 }
 
+/// A type std declares with `struct T<..> = @intrinsic("id")`: storage the
+/// compiler supplies (R12.14.6).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Store {
+    HashMap,
+    HashSet,
+}
+
+impl Store {
+    /// Each type's name, as `@intrinsic("...")` writes it, at its stable number.
+    pub const IDS: [&'static str; 2] = ["hash_map", "hash_set"];
+
+    /// The name `@intrinsic("...")` writes.
+    pub fn id(self) -> &'static str {
+        Store::IDS[self as usize]
+    }
+}
+
 /// A scalar the interpreter hands to, and gets back from, a primitive.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Scalar {

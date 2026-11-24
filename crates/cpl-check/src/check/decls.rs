@@ -9,6 +9,15 @@ impl Checker<'_> {
     /// R02.6.6 getters and R03.1.3 field bounds, plus the header's bounds.
     pub(super) fn struct_decl_rules(&mut self, s: &ast::StructDecl) {
         self.bounds_exist(&s.bounds);
+        if let Some(id) = s.intrinsic.as_deref() {
+            if !cpl_rt::Store::IDS.contains(&id) {
+                self.report(
+                    s.name.span,
+                    msgs::check::UNKNOWN_INTRINSIC_NO_INTRINSIC_THE_TABLE,
+                    &[&id, &cpl_rt::Store::IDS.join(", ")],
+                );
+            }
+        }
         for field in &s.fields {
             self.field_bound_static(field);
         }

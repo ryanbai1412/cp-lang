@@ -534,6 +534,29 @@ impl<'a> Parser<'a> {
         self.bump();
         let name = self.expect_name("a struct name after `struct`");
         let (generics, generic_defaults, mut bounds) = self.generic_params_with_defaults();
+        // `struct HashMap<K: Hash, V> = @intrinsic("hash_map")`: storage from the table.
+        if self.at(T::Eq) {
+            self.bump();
+            let start = self.start();
+            let body = self.expr();
+            let intrinsic = match body.kind {
+                ExprKind::Intrinsic(id) => Some(id),
+                _ => {
+                    let span = self.span_from(start);
+                    self.error(msgs::syntax::CPP_NEEDS_STRING.error(span, &[&"intrinsic"]));
+                    None
+                }
+            };
+            return StmtKind::Struct(StructDecl {
+                name,
+                generics,
+                generic_defaults,
+                bounds,
+                fields: Vec::new(),
+                methods: Vec::new(),
+                intrinsic,
+            });
+        }
         let mut fields = Vec::new();
         if self.at(T::LParen) && self.peek_n(1) == T::Ident && self.peek_n(2) == T::RParen {
             let start = self.start();
@@ -610,6 +633,7 @@ impl<'a> Parser<'a> {
                 bounds,
                 fields,
                 methods: Vec::new(),
+                intrinsic: None,
             });
         }
         if self.at_line_end() && self.peek_n(1) != T::Indent {
@@ -620,6 +644,7 @@ impl<'a> Parser<'a> {
                 bounds,
                 fields,
                 methods: Vec::new(),
+                intrinsic: None,
             });
         }
         let mut methods = self.members(&format!("`struct {}`", name.text), |p| {
@@ -667,6 +692,7 @@ impl<'a> Parser<'a> {
             bounds,
             fields,
             methods,
+            intrinsic: None,
         })
     }
 
