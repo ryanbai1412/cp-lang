@@ -1858,10 +1858,10 @@ fn a_window_min_by_hand_is_named_but_a_hull_turn_is_not() {
 fn every_lint_message_names_a_lint() {
     for m in cpl_diag::msgs::lint::ALL {
         assert!(
-            crate::LINTS.iter().any(|lint| lint.code == m.code),
+            crate::LINTS.iter().any(|lint| lint.code == m.code()),
             "{:?} has no lint with code {}",
-            m.text,
-            m.code.0
+            m.text(),
+            m.code().0
         );
     }
 }
