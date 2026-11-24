@@ -256,14 +256,10 @@ fn lint_completion(args: &str) -> Vec<Value> {
             .map(|level| item_json(&plain(level, Kind::Keyword, "lint level".into(), ""), 0))
             .collect();
     }
-    cpl_lint::LINTS
+    // `LINT_TITLES`, not `LINTS`: linking the whole table costs cpl.wasm 9 KB gzipped.
+    cpl_lint::LINT_TITLES
         .iter()
-        .map(|lint| {
-            item_json(
-                &plain(lint.name, Kind::Const, lint.title.into(), lint.summary),
-                0,
-            )
-        })
+        .map(|(name, title)| item_json(&plain(name, Kind::Const, (*title).into(), ""), 0))
         .collect()
 }
 

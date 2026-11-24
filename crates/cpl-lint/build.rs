@@ -117,6 +117,13 @@ fn main() {
         writeln!(out, "    {},", name.to_uppercase()).unwrap();
     }
     out.push_str("];\n");
+    // Read without `LINTS` so a caller that wants only names doesn't link
+    // every lint's record into cpl.wasm.
+    out.push_str("\n/// Every lint's name and title, in code order.\npub const LINT_TITLES: &[(&str, &str)] = &[\n");
+    for (_, name, fields, _) in &records {
+        writeln!(out, "    ({name:?}, {:?}),", fields[2]).unwrap();
+    }
+    out.push_str("];\n");
     let dest = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo")).join("lints.rs");
     std::fs::write(dest, out).expect("a writable OUT_DIR");
 }
