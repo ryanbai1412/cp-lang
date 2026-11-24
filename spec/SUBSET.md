@@ -70,12 +70,12 @@ documented.
 | R06.1 | 6.1 Functions | supported |  |
 | R06.2 | 6.2 Nested functions and lambdas | supported |  |
 | R06.3 | 6.3 Generators | supported |  |
-| R06.4 | 6.4 Decorators | supported | 1 known gap |
+| R06.4 | 6.4 Decorators | supported | 2 known gaps |
 | R06.5 | 6.5 Where state lives | supported |  |
 | R07.1 | Key decisions | supported | 2 known gaps |
 | R07.2 | Terms | supported | 1 known gap |
 | R07.3 | User helpers | supported |  |
-| R07.4 | Slices: which keys survive | supported | 1 known gap |
+| R07.4 | Slices: which keys survive | supported | 2 known gaps |
 | R07.5 | The rules | supported |  |
 | R07.6 | Generators | supported |  |
 | R07.7 | Adapters (each makes a view: \(O(1)\), lazy) | supported | 1 known gap |
@@ -158,7 +158,7 @@ documented.
 | std-rand | library: rand | documented | stdlib: outside the Milestone 1 contest staples |
 | std-search | library: search | supported | 1 known gap |
 | std-segtree | library: segtree | supported | 2 known gaps |
-| std-seq | library: seq | supported | 2 known gaps |
+| std-seq | library: seq | supported | 1 known gap |
 | std-slope | library: slope | documented | stdlib: outside the Milestone 1 contest staples |
 | std-sparse | library: sparse | supported |  |
 | std-spec | library: spec | documented | stdlib: outside the Milestone 1 contest staples |
@@ -192,6 +192,7 @@ documented.
 - core-06/returned-closure-copies-a-local-closure.cp: compiler 2026-11-24T05Z
 - core-07/chain-takes-any-number.cp: stdlib 2026-11-24T05Z
 - core-07/prefix-scan-cuts.cp: compiler 2026-11-24T05Z
+- core-07/suffix-fold-is-gone.cp: stdlib 2026-11-24T05Z
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler 2026-11-24T05Z
 - core-08/law-calls-trait-method.cp: compiler 2026-11-24T04Z
 - core-08/trait-message-bound-holds.cp: compiler 2026-11-24T05Z
@@ -200,6 +201,7 @@ documented.
 - core-12/keyed-argmax.cp: compiler 2026-11-24T05Z
 - diagnostics/graph-edge-field-names.cp: diagnostics 2026-11-24T05Z
 - diagnostics/is-empty-fixed-to-len-zero.cp: diagnostics 2026-11-24T05Z
+- lints/std-declares-idiom-lints.cp: lint-fmt 2026-11-24T05Z
 - std-algebra/max-sub-of-is-a-fn-value.cp: compiler 2026-11-24T05Z
 - std-graph/undirected-takes-list-of-records.cp: stdlib 2026-11-24T04Z
 - std-prefix/rev-scan-folds-right-of-each-cut.cp: stdlib 2026-11-24T05Z
@@ -208,7 +210,6 @@ documented.
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: compiler 2026-11-24T05Z
 - std-segtree/closure-op-picks-index.cp: stdlib 2026-11-24T05Z
 - std-seq/keyed-by-answers-with-the-key.cp: compiler 2026-11-24T05Z
-- std-seq/seq-u37-suffix-folds.cp: stdlib 2026-11-24T05Z
 - std-subset/empty-braces-is-empty-subset.cp: compiler 2026-11-24T04Z
 - std-subset/enum-subsets-is-a-domain.cp: compiler 2026-11-24T04Z
 - std-window/track-infers-element-from-sequence.cp: compiler 2026-11-24T05Z
