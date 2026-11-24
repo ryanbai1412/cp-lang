@@ -287,6 +287,14 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
         {
             *split = Some((lines.len(), line.toks.len()));
         }
+        // A closer on its own source line, of a bracket that holds a block
+        // (`let v = {` ... `n * 2` / `}`), stays on its own line.
+        if entry.line_start
+            && matches!(entry.kind, K::RParen | K::RBracket | K::RBrace)
+            && matches!(brackets.last(), Some([_, Some(_)]))
+        {
+            lines.extend(current.take());
+        }
         match current.as_mut() {
             Some(line) => {
                 line.toks.push(Tok { leading, ..entry });

@@ -315,12 +315,10 @@ fn a_block_if_in_nested_brackets_keeps_its_else_at_the_header() {
         "{out}"
     );
     let src = "fn blk(n: Int) -> Int:\n    let v = {\n        if n > 5:\n            return 99\n        n * 2\n    }\n    v\n";
-    let out = fmt(src);
-    assert_eq!(fmt(&out), out);
-    assert!(
-        out.contains("\n        if n > 5:\n            return 99\n        n * 2"),
-        "{out}"
-    );
+    // ...and its closing brace stays on its own line, not `n * 2 }`.
+    assert_eq!(fmt(src), src);
+    let src = "let w = match i % 3:\n    0 => 0\n    _ => {\n        if i == 5:\n            break\n        i * 100\n    }\n";
+    assert_eq!(fmt(src), src);
 }
 
 #[test]
