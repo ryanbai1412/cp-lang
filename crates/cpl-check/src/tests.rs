@@ -1946,3 +1946,15 @@ fn hover_shows_a_fns_type_parameter_and_its_bound() {
     assert_eq!(hover(src, "S) ->"), "type parameter S");
     assert_eq!(hover(src, "Seq>"), "trait Seq\n  fn iter() -> Gen<T>");
 }
+
+#[test]
+fn the_std_outline_keeps_an_at_lint_fns_body() {
+    let text = "pub fn half(x: Int) -> Int = x / 2\n@lint(guard, from: \"(x + d) % d\", to: \"x % d\")\npub fn rem(x: Int, d: Int) -> Int = x % d\n";
+    let out = crate::std_files::outline(text);
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines[0], "pub fn half(x: Int) -> Int = todo");
+    assert_eq!(lines[2], "pub fn rem(x: Int, d: Int) -> Int = x % d");
+    let below = "@lint(guard, from: \"(x + d) % d\", to: \"rem(x, d)\")\npub fn rem(x: Int, d: Int) -> Int =\n    x % d\n";
+    let out = crate::std_files::outline(below);
+    assert_eq!(out.lines().nth(2), Some("    todo"), "{out}");
+}

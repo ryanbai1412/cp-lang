@@ -33,12 +33,14 @@ pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 /// whose body is on the lines below gets `todo` for it; the other lines
 /// are blank, so a line number in the outline is the file's. A fn with
 /// its return type written keeps `= todo` for a one-line body, and `todo`
-/// for an `=` body on the next line.
+/// for an `=` body on the next line, but an `@lint` fn keeps its one-line
+/// body: `@lint` checks `to` against it.
 pub fn outline(text: &str) -> String {
     let mut out = String::with_capacity(text.len() / 4);
     let mut open = 0i32;
     let mut header: Option<usize> = None;
     let mut body: Option<usize> = None;
+    let mut linted = false;
     for line in text.split_inclusive('\n') {
         let code = line.trim_end_matches(['\n', '\r']);
         let trimmed = code.trim_start();
@@ -50,6 +52,7 @@ pub fn outline(text: &str) -> String {
         if top {
             open = 0;
         }
+        let decorated = std::mem::replace(&mut linted, top && lint);
         if open == 0 && declares && nesting(code) == 0 {
             if let Some(head) = typed_head(code) {
                 // `-> T =` with its body below: the body's line gets `todo`, so a
@@ -59,10 +62,12 @@ pub fn outline(text: &str) -> String {
                     body = Some(code.len() - trimmed.len());
                     continue;
                 }
-                out.push_str(head);
-                out.push_str(" = todo");
-                out.push_str(&line[code.len()..]);
-                continue;
+                if !decorated {
+                    out.push_str(head);
+                    out.push_str(" = todo");
+                    out.push_str(&line[code.len()..]);
+                    continue;
+                }
             }
         }
         if comment {
