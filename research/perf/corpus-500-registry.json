@@ -1724,18 +1724,6 @@
     "scout_batch_21"
    ]
   },
-  "ccc14s4hard": {
-   "family": "CCC",
-   "canonical": "proto/ports/scout_batch_7/ccc14s4hard.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
-   "groups": [
-    "scout_batch_7"
-   ]
-  },
   "ccc17s4": {
    "family": "CCC",
    "canonical": "proto/ports/ccc17s4.cp",
@@ -29749,25 +29737,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "nccc8s3: stress OK: 42 tests agree (8 rejected by where)"
-  },
-  {
-   "path": "proto/ports/scout_batch_7/ccc14s4hard.cp",
-   "group": "scout_batch_7",
-   "form": "runnable",
-   "problem": "ccc14s4hard",
-   "mapped_by": "file name is the problem code, id from check.py",
-   "submission": "5672273",
-   "original": "corpus/submissions/5672273.cpp",
-   "generation": "v1",
-   "cp_loc": 47,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_7/check.py",
-   "cpp_raw_loc": 152,
-   "cpp_stripped_loc": 125,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "ccc14s4hard: OK (60 inputs)"
   },
   {
    "path": "proto/ports/scout_batch_7/cco17p3.cp",

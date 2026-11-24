@@ -35540,28 +35540,6 @@
         "status": "D",
         "time": 0.799874574
     },
-    "5672243": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2023-07-28T20:43:19+00:00",
-        "language": "CPP17",
-        "memory": 22276.0,
-        "problem": "ccc14s4hard",
-        "result": "TLE",
-        "status": "D",
-        "time": 3.169666127
-    },
-    "5672273": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-07-28T20:57:53+00:00",
-        "language": "CPP17",
-        "memory": 39552.0,
-        "problem": "ccc14s4hard",
-        "result": "AC",
-        "status": "D",
-        "time": 55.337942669
-    },
     "5672281": {
         "case_points": 15.0,
         "case_total": 15.0,
@@ -35572,39 +35550,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.195509831
-    },
-    "5673260": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-07-29T06:25:42+00:00",
-        "language": "CPP17",
-        "memory": 27484.0,
-        "problem": "ccc14s4hard",
-        "result": "RTE",
-        "status": "D",
-        "time": 1.283536016
-    },
-    "5673262": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-07-29T06:26:17+00:00",
-        "language": "CPP17",
-        "memory": 27580.0,
-        "problem": "ccc14s4hard",
-        "result": "WA",
-        "status": "D",
-        "time": 2.527368004
-    },
-    "5673265": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-07-29T06:26:48+00:00",
-        "language": "CPP17",
-        "memory": 27536.0,
-        "problem": "ccc14s4hard",
-        "result": "RTE",
-        "status": "D",
-        "time": 10.783765171
     },
     "5678049": {
         "case_points": 100.0,

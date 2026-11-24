@@ -2534,10 +2534,6 @@
     "proto/ports/scout_batch_7/check.py": {
       "exit_code": 0,
       "ports": {
-        "ccc14s4hard": {
-          "line": "ccc14s4hard: OK (60 inputs)",
-          "verdict": "pass"
-        },
         "cco17p3": {
           "line": "cco17p3: OK (60 inputs)",
           "verdict": "pass"

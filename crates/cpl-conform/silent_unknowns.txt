@@ -111,7 +111,6 @@
 6 corpus/problems/ccc10s4/port.cp
 19 corpus/problems/ccc14s4/perf.cp
 28 corpus/problems/ccc14s4/port.cp
-36 corpus/problems/ccc14s4hard/port.cp
 3 corpus/problems/ccc18s3/port.cp
 10 corpus/problems/ccc19s3/port.cp
 23 corpus/problems/ccc19s4/port.cp

@@ -1,16 +1,16 @@
 {
- "problems": 1110,
- "with_cpp_ac": 1110,
+ "problems": 1109,
+ "with_cpp_ac": 1109,
  "dream": {
   "draft": 126,
   "gold": 0,
-  "none": 984,
+  "none": 983,
   "reviewed": 0
  },
  "spec": {
   "draft": 100,
   "gold": 0,
-  "none": 1010,
+  "none": 1009,
   "reviewed": 0
  },
  "by_source": {
@@ -26,7 +26,7 @@
   "bsspc": 5,
   "btoi": 24,
   "canada": 2,
-  "ccc": 47,
+  "ccc": 46,
   "cco": 65,
   "ceoi": 12,
   "cf": 287,

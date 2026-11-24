@@ -78,7 +78,6 @@ ccc04s5
 ccc05s5
 ccc10s4
 ccc14s4
-ccc14s4hard
 ccc17s4
 ccc18s2
 ccc18s3
