@@ -127,7 +127,6 @@ reexec_if_land_changed() {
     echo "land: the pull changed scripts/land.sh; landing with the new copy" >&2
     # Set only once push() ran, after drop_lock is defined; the first pull holds no lock.
     [ -z "${lock_held:-}" ] || drop_lock
-    [ -z "${queued:-}" ] || dequeue
     CPL_LAND_REEXEC=1 CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked \
         exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
 }
@@ -347,64 +346,19 @@ fi
 # what main's new commits change, or every other lane waits out its reruns. A lock
 # older than $lock_stale s is a dead holder's and is taken over, compare-and-swap, so
 # two waiters can't both take the same one; pushes that skip land.sh still race,
-# hence retry. Waiters take turns in arrival order (Core and Idioms starved for
-# 20 min while later lands won each 2 s poll): each pushes a ticket, re-stamped
-# while it waits, and only the oldest ticket stamped within $lock_stale s may take
-# the lock; a dead waiter's ticket expires. A land keeps its ticket's place
-# across lost races.
+# hence retry.
 lock_ref=refs/land/lock
 lock_stale=${CPL_LAND_LOCK_STALE:-120}
 lock_wait=${CPL_LAND_LOCK_WAIT:-1200}
 lock_held=""
-ticket=""
-queued=""
-enqueue() {
-    [ -n "$ticket" ] || ticket="refs/locks/queue/$(date +%s%N)-$$-$(printf %s "$domain" | tr -c 'A-Za-z0-9_-' _)"
-    git push -q --no-verify -f "$remote" \
-        "$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land ticket $(hostname) $$ $domain"):$ticket" 2>/dev/null &&
-        queued=1
-}
-dequeue() {
-    [ -n "$queued" ] || return 0
-    git push -q --no-verify "$remote" ":$ticket" 2>/dev/null || :
-    queued=""
-}
-# The oldest ticket stamped within $lock_stale s; older ones are deleted (CAS).
-first_in_line() {
-    local seen=refs/land-seen/queue name sha at
-    git fetch -q --prune --no-write-fetch-head "$remote" "+refs/locks/queue/*:$seen/*" 2>/dev/null || return 0
-    git for-each-ref --sort=refname --format='%(refname:lstrip=3) %(objectname) %(committerdate:unix)' "$seen/" |
-        while read -r name sha at; do
-            if [ $(( $(date +%s) - at )) -gt "$lock_stale" ]; then
-                git push -q --no-verify --force-with-lease="refs/locks/queue/$name:$sha" "$remote" \
-                    ":refs/locks/queue/$name" 2>/dev/null || :
-                continue
-            fi
-            echo "refs/locks/queue/$name"
-            break
-        done
-}
 take_lock() {
-    local me holder held_by at waited=0 first lined=""
-    enqueue || :
+    local me holder held_by at waited=0
     while :; do
-        first=""
-        [ -z "$queued" ] || first=$(first_in_line)
-        if [ -n "$first" ] && [ "$first" != "$ticket" ]; then
-            [ -n "$lined" ] || echo "land: waiting in line behind ${first##*/}" >&2
-            lined=1
-            [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
-            sleep 2
-            waited=$((waited + 2))
-            [ $((waited % 10)) != 0 ] || enqueue || :
-            continue
-        fi
         # Stamped at each try, so a lock is as old as its holder has held it, not
         # as old as the wait for it: otherwise a long wait makes it look stale at once.
         me=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $(hostname) $$ $(date +%s) $domain")
         if err=$(git push -q --no-verify --force-with-lease="$lock_ref:" "$remote" "$me:$lock_ref" 2>&1); then
             lock_held=$me
-            dequeue
             [ "$waited" = 0 ] || echo "land: took the land lock after ${waited}s" >&2
             return 0
         fi
@@ -415,7 +369,7 @@ take_lock() {
             case "$err" in *"stale info"*) continue ;; esac
             # Fails closed: Idioms' land pushed unlocked after two HTTP 500s.
             refused=$((${refused:-0} + 1))
-            [ "$refused" -lt 5 ] || { echo "land: $remote refuses $lock_ref (${err##*$'\n'}); land again" >&2; dequeue; return 1; }
+            [ "$refused" -lt 5 ] || { echo "land: $remote refuses $lock_ref (${err##*$'\n'}); land again" >&2; return 1; }
             sleep "$refused"
             continue
         fi
@@ -428,14 +382,13 @@ take_lock() {
         if [ $(( $(date +%s) - ${at:-0} )) -gt "$lock_stale" ]; then
             echo "land: taking over a land lock held over ${lock_stale}s ($(git log -1 --format=%s "$holder" 2>/dev/null))" >&2
             git push -q --no-verify --force-with-lease="$lock_ref:$holder" "$remote" "$me:$lock_ref" 2>/dev/null &&
-                { lock_held=$me; dequeue; return 0; }
+                { lock_held=$me; return 0; }
             continue
         fi
         [ "$waited" != 0 ] || echo "land: waiting for the land lock ($held_by)" >&2
-        [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
+        [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; return 1; }
         sleep 2
         waited=$((waited + 2))
-        [ $((waited % 10)) != 0 ] || [ -z "$queued" ] || enqueue || :
     done
 }
 drop_lock() {
@@ -443,7 +396,7 @@ drop_lock() {
     git push -q --no-verify --force-with-lease="$lock_ref:$lock_held" "$remote" ":$lock_ref" 2>/dev/null || :
     lock_held=""
 }
-trap 'drop_lock; dequeue' EXIT
+trap drop_lock EXIT
 # Whether the rebased tip owes a rerun (the commit tier, the skipped steps or a
 # cargo check) too slow to hold the lock through: 120 s makes it stale.
 reruns_due() {
