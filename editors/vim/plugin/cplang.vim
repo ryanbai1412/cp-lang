@@ -8,19 +8,8 @@ let g:loaded_cplang = 1
 filetype plugin indent on
 syntax enable
 
-" vim-lsp leaves completion, hover and go to definition unmapped.
-function! s:LspBuffer() abort
-    if &filetype !=# 'cp'
-        return
-    endif
-    setlocal omnifunc=lsp#complete tagfunc=lsp#tagfunc
-    nmap <buffer> gd <plug>(lsp-definition)
-    nmap <buffer> K <plug>(lsp-hover)
-endfunction
-
 augroup cplang
     autocmd!
-    autocmd User lsp_buffer_enabled call s:LspBuffer()
     autocmd User lsp_setup call lsp#register_server({
                 \ 'name': 'cpl',
                 \ 'cmd': [get(g:, 'cpl_path', 'cpl'), 'lsp'],

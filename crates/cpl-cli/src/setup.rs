@@ -58,6 +58,10 @@ const VIM: (&str, &str) = (
     "plugin/cplang.vim",
     include_str!("../../../editors/vim/plugin/cplang.vim"),
 );
+const VIM_BUFFER: (&str, &str) = (
+    "ftplugin/cp_lsp.vim",
+    include_str!("../../../editors/vim/ftplugin/cp_lsp.vim"),
+);
 const QUERIES: (&str, &str) = (
     "queries/cp/highlights.scm",
     include_str!("../../../editors/tree-sitter-cp/queries/highlights.scm"),
@@ -68,7 +72,7 @@ fn files(editor: &str) -> Option<Vec<(&'static str, &'static str)>> {
     let mut files = COMMON.to_vec();
     match editor {
         "neovim" | "nvim" => files.extend([LUA, QUERIES]),
-        "vim" => files.push(VIM),
+        "vim" => files.extend([VIM, VIM_BUFFER]),
         _ => return None,
     }
     Some(files)

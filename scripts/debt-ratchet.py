@@ -2764,7 +2764,7 @@ EDITOR_GLUE = frozenset({
     "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp.kt",
     "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp4ij.kt",
     "editors/zed/src/lib.rs", "editors/neovim/ftdetect/cp.vim", "editors/neovim/ftplugin/cp.vim",
-    "editors/neovim/plugin/cplang.lua", "editors/vim/plugin/cplang.vim", "editors/emacs/cp-mode.el",
+    "editors/neovim/plugin/cplang.lua", "editors/vim/plugin/cplang.vim", "editors/vim/ftplugin/cp_lsp.vim", "editors/emacs/cp-mode.el",
 })
 EDITOR_SOURCE_RE = re.compile(r"^editors/(?!tree-sitter-cp/)(?!.*(?:/tests?/|/scripts/|smoke|\.test\.)).*\.(?:ts|js|kt|rs|lua|el|vim)$")
 EDITOR_COMMENT = ("//", "/*", "*", "#", ";", "--", '"')
