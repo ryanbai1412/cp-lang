@@ -12,13 +12,7 @@
 const MOD = 1_000_000_007
 type Z = Mod<MOD>
 
-let n: Int = read()
-let comb = Comb<Mod<MOD>>(n)
-let step = Z(n - 1).inv()
-
-var ans: Z = 0
-var scale = step
-for i in 2..=n:
-    scale *= step
-    ans += comb.choose(n, i) * comb.fact(i - 1) * scale
-print(ans.v)
+let n: 2..=1e6 = read()
+let comb = Comb<Z>(n)
+let pick = Z(n - 1).inv()  // the chance a node picks one given other node
+print(sum(comb.choose(n, len) * comb.fact(len - 1) * pick ** len for len in 2..=n))
