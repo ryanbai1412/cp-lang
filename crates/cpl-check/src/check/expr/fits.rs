@@ -4,10 +4,34 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
+    /// Any one-key `Indexed<K, T>`, `Slice<S>` included, as the `[K]T` it
+    /// reads as (R07.4.17); other types as they are.
+    pub(crate) fn as_row(&mut self, ty: &Ty) -> Ty {
+        let open = Ty::Array {
+            index: vec![Ty::Unknown],
+            elem: Box::new(Ty::Unknown),
+        };
+        match self.narrowed(ty, &open) {
+            array @ Ty::Array { .. } => array,
+            _ => ty.clone(),
+        }
+    }
+
     /// A struct value seen as a struct with fewer fields, when one is
     /// wanted: a `Group<Int>` has the `id` and `op` of a `Monoid<Int>`, so
     /// it is one (decision 14.1). Anything else is returned as it is.
     pub(crate) fn narrowed(&mut self, got: &Ty, want: &Ty) -> Ty {
+        // A `[K]T` parameter takes any `Indexed<K, T>` (R04b.3.1).
+        if let (Ty::Named { name, .. }, Ty::Array { index, .. }) = (got, want) {
+            if index.len() == 1 && self.has_impl(name, "Indexed") {
+                if let Some([key, elem]) = self.trait_args_of(got, "Indexed", 2).as_deref() {
+                    return Ty::Array {
+                        index: vec![key.clone()],
+                        elem: Box::new(elem.clone()),
+                    };
+                }
+            }
+        }
         let (
             Ty::Named {
                 name: got_name,

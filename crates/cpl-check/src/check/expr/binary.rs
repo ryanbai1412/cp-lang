@@ -229,7 +229,13 @@ impl<'a> Checker<'a> {
                 _ => Ty::Int,
             },
             _ if left.is_numeric() && right.is_numeric() => Ty::Float,
-            BinOp::Add if left == Ty::Str && right == Ty::Str => Ty::Str,
+            BinOp::Add
+                if [&left, &right]
+                    .iter()
+                    .all(|t| t.slice_source().unwrap_or(t) == &Ty::Str) =>
+            {
+                Ty::Str
+            }
             BinOp::Add
                 if let (Some(le), Some(re)) = (seq_concat_elem(&left), seq_concat_elem(&right)) =>
             {
@@ -539,7 +545,11 @@ impl Checker<'_> {
 }
 
 pub(super) fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
-    match ty.rev_source().unwrap_or(ty) {
+    let mut ty = ty;
+    while let Some(source) = ty.rev_source().or(ty.slice_source()) {
+        ty = source;
+    }
+    match ty {
         Ty::Named { name, args }
             if matches!(name.as_str(), "List" | "ListView") && args.len() == 1 =>
         {

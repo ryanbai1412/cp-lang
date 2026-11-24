@@ -162,6 +162,14 @@ impl Ty {
         }
     }
 
+    /// `s[r]`: std's `Slice<S>` over `source` (R07.4.17).
+    pub fn slice_of(source: Ty) -> Ty {
+        Ty::Named {
+            name: "Slice".into(),
+            args: vec![source],
+        }
+    }
+
     /// The sequence a view walks: a `.rev`'s or a `Slice`'s source, whose
     /// elements it has (R07.4.5).
     pub fn view_source(&self) -> Option<&Ty> {
@@ -194,6 +202,14 @@ impl Ty {
     pub fn rev_source(&self) -> Option<&Ty> {
         match self {
             Ty::Named { name, args } if name == "Rev" && args.len() == 1 => args.first(),
+            _ => None,
+        }
+    }
+
+    /// The sequence a `Slice` was cut from: it reads as that sequence (R07.4.17).
+    pub fn slice_source(&self) -> Option<&Ty> {
+        match self {
+            Ty::Named { name, args } if name == "Slice" && args.len() == 1 => args.first(),
             _ => None,
         }
     }

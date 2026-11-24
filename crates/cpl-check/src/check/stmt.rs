@@ -1302,6 +1302,17 @@ impl<'a> Checker<'a> {
                     self.assigning_name = Some(target.span);
                 }
                 let target_ty = self.assign_target(target);
+                // `a[l..r] = ..` stores into the part as the row it reads as.
+                let target_ty = match &target.kind {
+                    ExprKind::Index { indices, .. }
+                        if indices
+                            .iter()
+                            .any(|i| matches!(i.kind, ExprKind::Range { .. })) =>
+                    {
+                        self.as_row(&target_ty)
+                    }
+                    _ => target_ty,
+                };
                 let prev_bounds_range = self.expected_bounds_range;
                 self.expected_bounds_range |= Self::expects_bounds_range(&target_ty);
                 self.assigning_name = prev_assigning;
@@ -1397,6 +1408,11 @@ impl<'a> Checker<'a> {
                 if matches!(op, AssignOp::Max | AssignOp::Min) {
                     self.row_keep(target, &target_ty, value, &value_ty);
                 }
+                let value_ty = if part {
+                    self.as_row(&value_ty)
+                } else {
+                    value_ty
+                };
                 let row = |ty: &Ty| {
                     matches!(ty, Ty::Array { .. })
                         || matches!(ty, Ty::Named { name, .. } if name == "List")

@@ -339,6 +339,7 @@ impl Checker<'_> {
                 .collect();
             return traits.iter().all(|t| self.implements_trait(base, t));
         }
+        let base = &self.narrowed(base, &first.ty);
         let same_shape = match (&first.ty, base) {
             (Ty::Record(takes), Ty::Record(on)) => {
                 takes.len() == on.len() && takes.iter().zip(on).all(|(a, b)| a.0 == b.0)
@@ -571,6 +572,7 @@ impl Checker<'_> {
             ty: Ty::Fn { params, ret },
             generics,
             bounds,
+            bound_args,
             ..
         } = &*def
         else {
@@ -582,8 +584,10 @@ impl Checker<'_> {
         let builtin = super::call::catalog_owner(base)
             .is_some_and(|owner| crate::builtins::builtin_member(owner, name).is_some());
         if let Some(first) = params.first().filter(|_| !builtin) {
-            first.ty.unify(base, &mut bindings);
+            let base = self.narrowed(base, &first.ty);
+            first.ty.unify(&base, &mut bindings);
         }
+        self.bind_written_bound_args(bound_args, &mut bindings);
         self.bind_bound_params(generics, bounds, &mut bindings);
         let ty = Ty::Fn {
             params: params[1..].to_vec(),

@@ -120,7 +120,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             (ty, "at") if let Some(elem) = ty.seq_elem().filter(|_| Self::keyed_view(ty)) => {
-                match self.one_arg("at", args, &Ty::Int, span) {
+                match self.one_arg("at", args, &ty.key_ty(), span) {
                     Some(at) => {
                         let view = self.hold_view(value, span);
                         self.key_index(view, at, elem, span)

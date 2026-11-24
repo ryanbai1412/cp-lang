@@ -50,7 +50,8 @@ impl<'a> Checker<'a> {
             return None;
         }
         let (part, one) = if is_part(lhs) { (lhs, rhs) } else { (rhs, lhs) };
-        let (part_ty, one_ty) = (self.infer(part), self.infer(one));
+        let part_ty = self.infer(part);
+        let (part_ty, one_ty) = (self.as_row(&part_ty), self.infer(one));
         let cell = self.element_ty(&part_ty);
         let row = |ty: &Ty| {
             matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List")
@@ -96,6 +97,7 @@ impl<'a> Checker<'a> {
         // `a[l..r] max= x`, `g[r, ..] min= x`: one value against every cell
         // of the part.
         let part = matches!(&target.kind, ExprKind::Index { indices, .. } if indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. })));
+        let target_ty = &self.as_row(target_ty);
         let cell = match target_ty {
             Ty::Array { elem, .. } => Some(&**elem),
             Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(&args[0]),

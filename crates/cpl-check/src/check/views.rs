@@ -80,7 +80,8 @@ impl Checker<'_> {
         let Some(keyed) = self.keyed_view(base) else {
             return;
         };
-        if let Ty::Array { index, .. } = self.quietly(|c| c.infer(base)) {
+        let base_ty = self.quietly(|c| c.infer(base));
+        if let Ty::Array { index, .. } = self.as_row(&base_ty) {
             if let [Ty::Domain(d) | Ty::Pos(d)] = index.as_slice() {
                 if let Some(diag) = self.report(
                     indices[0].span,

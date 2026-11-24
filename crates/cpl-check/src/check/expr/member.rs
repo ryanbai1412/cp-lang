@@ -67,6 +67,7 @@ impl<'a> Checker<'a> {
             Some(Def::Enum { methods, .. }) => add(&mut out, methods, &[]),
             _ => return None,
         }
+        let mut readers: Vec<String> = Vec::new();
         for (trait_name, def) in self.env.impls(type_name) {
             // Every fn of the trait comes with the impl: the ones the
             // trait writes a body for, and the ones the impl must write
@@ -92,11 +93,19 @@ impl<'a> Checker<'a> {
             } = &*def
             {
                 out.mutators.extend(mutators.iter().cloned());
+                readers.extend(
+                    methods
+                        .iter()
+                        .filter(|(m, _)| !mutators.contains(m))
+                        .map(|(m, _)| m.clone()),
+                );
                 add(&mut out, methods, getters);
                 out.members.extend(owned.iter().cloned());
                 out.projections.extend(projections.iter().cloned());
             }
         }
+        // `Indexed.at` beside `IndexedMut.at`: a read of the name is the read one.
+        out.mutators.retain(|m| !readers.contains(m));
         Some(out)
     }
 
@@ -348,7 +357,10 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        if let Some(elem) = base_ty.seq_elem() {
+        // A type that declares the member, `Slice<S>.at`, answers it itself.
+        let declared =
+            matches!(base_ty, Ty::Named { .. }) && self.declares_member(&base_ty, &name.text);
+        if let Some(elem) = base_ty.seq_elem().filter(|_| !declared) {
             match name.text.as_str() {
                 "len" => {
                     if !base_ty.is_sized() {
@@ -877,6 +889,7 @@ impl<'a> Checker<'a> {
                                 trait_hits.push(tn);
                             }
                         }
+                        self.drop_implied(&mut trait_hits);
                         if trait_hits.len() >= 2 {
                             if let Some(diag) = self.report(
                                 name.span,
@@ -892,8 +905,13 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                self.members_of(type_name).map(|members| {
-                    let bindings = members.bindings(args);
+                let members = self.members_of(type_name);
+                let mut bindings = members
+                    .as_ref()
+                    .map(|m| m.bindings(args))
+                    .unwrap_or_default();
+                self.impl_bindings(&base_ty, &mut bindings);
+                members.map(|members| {
                     (
                         members
                             .fields
@@ -1181,6 +1199,14 @@ impl<'a> Checker<'a> {
                         Ty::Fn { params, ret } if !self.in_call_callee && params.is_empty() => *ret,
                         other => other,
                     }
+                }
+                // `v.push(x)` on a slice is reported once, with its fix, as a length change.
+                None if matches!(&expr.kind, ExprKind::Field { base, .. }
+                    if self.view_kind(base) == Some("slice"))
+                    && super::super::known::LENGTH_CHANGING_MUTATORS
+                        .contains(&name.text.as_str()) =>
+                {
+                    return Ty::Error;
                 }
                 None => {
                     self.unknown_member(name, &base_ty, &field_names, &methods);

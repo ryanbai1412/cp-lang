@@ -1702,12 +1702,7 @@ pub struct Slice<S>(
     /// traps: never
     /// example: `[5, 6, 7][1..].keys == 1..3`
     /// order: increasing
-    @get pub fn keys<K>(self) -> Range<K>:
-        if lo < hi: return src.keys[lo]..=src.keys[hi - 1]
-        if lo < src.len: return src.keys[lo]..src.keys[lo]
-        if src.len == 0: return src.keys
-        let k = src.keys[src.len - 1]
-        k..k
+    @get pub fn keys<K>(self) -> Range<K> = slice_keys(self)
     /// The number of elements in the slice.
     ///
     /// cost: \(O(1)\)
@@ -1720,6 +1715,12 @@ pub struct Slice<S>(
     /// traps: never
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = hi <= lo
+    /// An owned copy of a text slice's characters, in order.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// traps: never
+    /// example: `"abcd"[1..3].to_str() == "bc"`
+    pub fn to_str(self) -> Str = Str([c for c in self])
 
     /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
     /// same elements without the keys.
@@ -1816,7 +1817,19 @@ impl<S: Indexed<K, T>, K, T> Indexed<K, T> for Slice<S>:
     fn at(self, i: K) -> T:
         assert self.lo <= self.src.keys.ord(i) < self.hi, "the key is outside the slice"
         self.src.at(i)
-    @get fn keys(self) -> Range<K> = self.src.keys.drop(self.lo).take(self.hi - self.lo)
+    @get fn keys(self) -> Range<K> = slice_keys(self)
+
+impl<S: IndexedMut<K, T>, K, T> IndexedMut<K, T> for Slice<S>:
+    fn at(mut self, i: K) -> lends mut T:
+        assert self.lo <= self.src.keys.ord(i) < self.hi, "the key is outside the slice"
+        mut self.src[i]
+
+fn slice_keys<S: Indexed<K, T>, K, T>(w: Slice<S>) -> Range<K>:
+    if w.lo < w.hi: return w.src.keys[w.lo]..=w.src.keys[w.hi - 1]
+    if w.lo < w.src.len: return w.src.keys[w.lo]..w.src.keys[w.lo]
+    if w.src.len == 0: return w.src.keys
+    let k = w.src.keys[w.src.len - 1]
+    k..k
 
 /// \(O(n)\). An owned copy of the slice's elements, in order.
 ///

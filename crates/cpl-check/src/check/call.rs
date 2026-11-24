@@ -11,6 +11,24 @@ mod construct;
 mod declared_ret;
 
 impl<'a> Checker<'a> {
+    /// Drops each trait another in `traits` implies: `IndexedMut<K, T>`
+    /// beside `Indexed<K, T>` keeps the subtrait, whose `at` is the one.
+    pub(crate) fn drop_implied(&mut self, traits: &mut Vec<String>) {
+        let heads: Vec<String> = traits
+            .iter()
+            .map(|t| t.split('<').next().unwrap_or(t).to_string())
+            .collect();
+        let implied: Vec<bool> = (0..heads.len())
+            .map(|i| {
+                (0..heads.len()).any(|j| {
+                    j != i && heads[j] != heads[i] && self.trait_implies(&heads[j], &heads[i])
+                })
+            })
+            .collect();
+        let mut implied = implied.into_iter();
+        traits.retain(|_| !implied.next().unwrap_or(false));
+    }
+
     /// Whether `e` writes or reads in O(1): a number, a character, a tuple of
     /// them, or a string of fixed text around them.
     pub(crate) fn fixed_size(&mut self, e: &Expr) -> bool {
@@ -978,6 +996,7 @@ impl<'a> Checker<'a> {
                 _ => {}
             }
         }
+        self.drop_implied(&mut traits);
         let [first, second, ..] = traits.as_slice() else {
             return false;
         };
@@ -1150,7 +1169,9 @@ impl<'a> Checker<'a> {
                 }
                 "sort" | "reverse" if !matches!(base_ty, Ty::Domain(_)) => {
                     // A read-only view (`xs.rev`) is reported once, as not writable.
-                    if !base_ty.is_indexed_mut() && !self.is_readonly_view(base) {
+                    if !self.implements_trait(&base_ty, "IndexedMut")
+                        && !self.is_readonly_view(base)
+                    {
                         self.report(
                             name.span,
                             msgs::check::MISSING_IMPL_REQUIRES_INDEXEDMUT_BUT_HAS,
