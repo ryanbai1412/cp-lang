@@ -2216,6 +2216,222 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/builtin_map.cp::builtin.Map.contains": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.contains",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.first_ge": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.first_ge",
+   "measured": 1.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.first_gt",
+   "measured": 1.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.get",
+   "measured": 1.71,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.keys": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Map.keys",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.last_le": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.last_le",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.last_lt",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.pop_first": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.pop_first",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.pop_last": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.pop_last",
+   "measured": 0.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.range": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Map.range",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.remove": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.remove",
+   "measured": 0.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.values": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Map.values",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.add": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.add",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.contains": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.contains",
+   "measured": 1.62,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.drain": {
+   "cost": "k \\log n",
+   "documented": 4.57,
+   "fn": "builtin.Set.drain",
+   "measured": 4.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.first_ge": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.first_ge",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.first_gt",
+   "measured": 0.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.insert": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.insert",
+   "measured": 1.19,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.last_le": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.last_le",
+   "measured": 1.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.last_lt",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.max": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.max",
+   "measured": 0.93,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.min": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.min",
+   "measured": 0.92,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.pop_first": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.pop_first",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.pop_last": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.pop_last",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.range": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Set.range",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.remove": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.remove",
+   "measured": 1.17,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.set": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.set",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/builtin_str.cp::builtin.Str.all": {
    "cost": "n",
    "documented": 4.0,
@@ -18477,33 +18693,10 @@
   "builtin.HashSet.range",
   "builtin.HashSet.remove",
   "builtin.HashSet.set",
-  "builtin.Map.contains",
-  "builtin.Map.first_ge",
-  "builtin.Map.first_gt",
-  "builtin.Map.get",
-  "builtin.Map.keys",
-  "builtin.Map.last_le",
-  "builtin.Map.last_lt",
-  "builtin.Map.pop_first",
-  "builtin.Map.pop_last",
-  "builtin.Map.range",
-  "builtin.Map.remove",
-  "builtin.Map.values",
-  "builtin.Set.add",
-  "builtin.Set.contains",
-  "builtin.Set.drain",
-  "builtin.Set.first_ge",
-  "builtin.Set.first_gt",
-  "builtin.Set.insert",
-  "builtin.Set.last_le",
-  "builtin.Set.last_lt",
-  "builtin.Set.max",
-  "builtin.Set.min",
-  "builtin.Set.pop_first",
-  "builtin.Set.pop_last",
-  "builtin.Set.range",
-  "builtin.Set.remove",
-  "builtin.Set.set",
-  "strings.Palindromes.items"
+  "math.Int.word",
+  "math.U64.word",
+  "math.popcount",
+  "strings.Palindromes.items",
+  "window.Window.expire"
  ]
 }
