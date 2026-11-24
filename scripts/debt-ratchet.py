@@ -736,9 +736,14 @@ def _register_check(root: Path, check: str) -> tuple[bool, list[str]]:
         path = words[0].rstrip("/")
         if (root / path).exists():
             named = True
-        else:
+        elif not _build_output(root, path):
             gone.append(path)
     return named, gone
+
+
+def _build_output(root: Path, path: str) -> bool:
+    """A gitignored or build-output path: absent from a fresh clone, so neither named nor gone."""
+    return path.split("/")[0] == "target" or path in _git_ignored(root, [path])
 
 
 def register_rows(root: Path) -> list[str]:
@@ -864,6 +869,13 @@ def escapes_open(root: Path) -> list[str]:
     return found
 
 
+# Counters that are paid off: any instance fails, and no baseline, `--update` or
+# main's own measurement can raise them above 0. Every gated counter whose
+# committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
+HARD_ZERO = frozenset({
+    "pending_tests", "edition_refs", "uncited_rules",
+})
+
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
 COUNTERS = {
     "stdlib_todo": ("stdlib todo stubs", stdlib_todo, True),
@@ -978,7 +990,15 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
             notes.append(f"{rel}: now <= {max_lines} lines (was {cap}; can be removed from allowlist)")
 
     for name, (label, _, gated) in COUNTERS.items():
-        if not gated or name not in baseline or name not in actual:
+        if name in HARD_ZERO and int(actual.get(name, 0)) > 0:
+            errors.append(f"{label}: {actual[name]} found; this debt is paid off and must stay at 0 "
+                          f"(`--list {name}` shows them)")
+            continue
+        if not gated or name not in actual:
+            continue
+        if name not in baseline:
+            if baseline:
+                errors.append(f"{label}: gated counter with no baseline (`--update {name}` in the commit that adds it)")
             continue
         cur, base = int(actual[name]), int(baseline[name])
         if cur > base:
@@ -1056,7 +1076,9 @@ def inherited_baseline(baseline: dict, upstream: dict) -> dict:
     fails only on debt this tree adds on top of main."""
     eff = json.loads(json.dumps(baseline))
     for name, (_, _, gated) in COUNTERS.items():
-        if gated and name in eff and name in upstream:
+        if name in HARD_ZERO:
+            eff[name] = 0
+        elif gated and name in eff and name in upstream:
             eff[name] = max(int(eff[name]), int(upstream[name]))
     allow = eff.setdefault("rs_file_size_allowlist", {})
     for rel, lines in upstream.get("rs_file_size_allowlist", {}).items():
@@ -1136,6 +1158,11 @@ def main(argv: list[str] | None = None) -> int:
             for n in args.update:
                 base[keys.get(n, n)] = data[keys.get(n, n)]
             data = base
+        raised = [n for n in sorted(HARD_ZERO) if int(data.get(n, 0)) > 0]
+        if raised:
+            print(f"debt-ratchet: refusing to write hard-zero counters above 0: {', '.join(raised)} "
+                  f"(remove the debt; `--list NAME` shows it)", file=sys.stderr)
+            return 1
         args.ratchet.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         counts = ", ".join(f"{k}={data[k]}" for k, (_, _, g) in COUNTERS.items() if g and k in data)
         print(f"debt-ratchet: wrote {args.ratchet} (rs>{max_lines}={len(data['rs_file_size_allowlist'])}, {counts})")

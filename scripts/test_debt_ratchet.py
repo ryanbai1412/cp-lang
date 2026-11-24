@@ -75,7 +75,7 @@ class DebtRatchetTest(unittest.TestCase):
             "rs_file_size_allowlist": {"crates/demo/src/big.rs": 25},
             "stdlib_todo": 2,
             "rust_ignore": 1,
-            "pending_tests": 1,
+            "dead_code_allows": 1,
         }
         # Exact match passes with no warnings/errors
         errs, warns, notes = dr.evaluate(baseline, baseline)
@@ -90,7 +90,7 @@ class DebtRatchetTest(unittest.TestCase):
             },
             "stdlib_todo": 3,
             "rust_ignore": 2,
-            "pending_tests": 2,
+            "dead_code_allows": 2,
         }
         errs, warns, _ = dr.evaluate(worse, baseline)
         self.assertEqual(len(errs), 5)
@@ -210,6 +210,43 @@ class DebtRatchetTest(unittest.TestCase):
                 "#2 x: b (suite not fixed)",
                 "#3 x: c (no such register row: 'Nope')",
             ])
+
+    def test_register_rows_never_miss_ignored_or_build_output_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, ".gitignore", "/out/\n")
+            self._write(root, "handbook/domains/x.md", "\n".join([
+                "## Quality register", "| Attribute | Metric | Check |", "|---|---|---|",
+                "| a | m | `target/release/cpl` |",
+                "| b | m | `out/report.json` |",
+                "| c | m | `scripts/gone.py` |", ""]))
+            self.assertEqual(dr.register_rows(root), [
+                "handbook/domains/x.md:4 missing: a",
+                "handbook/domains/x.md:5 missing: b",
+                "handbook/domains/x.md:6 no such check scripts/gone.py: c",
+            ])
+
+    def test_hard_zero_counters_fail_on_any_instance_and_never_rise(self) -> None:
+        name = sorted(dr.HARD_ZERO)[0]
+        errs, _, _ = dr.evaluate({name: 1}, {name: 5})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+        errs, _, _ = dr.evaluate({name: 1}, {})
+        self.assertEqual(len(errs), 1)
+        self.assertEqual(dr.inherited_baseline({name: 0}, {name: 3})[name], 0)
+
+    def test_every_zero_baseline_is_hard_zero(self) -> None:
+        baseline = json.loads(dr.DEFAULT_RATCHET.read_text(encoding="utf-8"))
+        gated = {n for n, (_, _, g) in dr.COUNTERS.items() if g}
+        self.assertEqual({n for n in gated if baseline.get(n) == 0} - dr.HARD_ZERO, set())
+        self.assertEqual(dr.HARD_ZERO - set(dr.COUNTERS), set())
+        self.assertEqual({n for n in gated if n not in baseline}, set())
+
+    def test_a_gated_counter_without_a_baseline_fails(self) -> None:
+        errs, _, _ = dr.evaluate({"stdlib_todo": 1, "rust_ignore": 0}, {"rust_ignore": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("no baseline", errs[0])
 
     def test_register_rows_counts_missing_and_unknown_checks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -343,12 +380,11 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertTrue(any("cpl-diag -> cpl-json" in n for n in notes))
 
     def test_evaluate_counters_and_edges(self) -> None:
-        baseline = {"edition_refs": 3, "crate_edges": ["a -> b", "a -> c"]}
-        actual = {"edition_refs": 4, "dup_fn_bodies": 9, "crate_edges": ["a -> b", "a -> d"]}
+        baseline = {"near_dup_fns": 3, "dup_fn_bodies": 9, "crate_edges": ["a -> b", "a -> c"]}
+        actual = {"near_dup_fns": 4, "dup_fn_bodies": 9, "crate_edges": ["a -> b", "a -> d"]}
         errs, _, notes = dr.evaluate(actual, baseline)
-        # dup_fn_bodies has no baseline yet, so it is not gated.
         self.assertEqual(len(errs), 2)
-        self.assertIn("edition", errs[0])
+        self.assertIn("near-identical", errs[0])
         self.assertIn("a -> d", errs[1])
         self.assertEqual(notes, ["crate edge a -> c removed"])
 
@@ -386,6 +422,9 @@ class DebtRatchetTest(unittest.TestCase):
             root = Path(d)
             self._make_repo(root)
             ratchet = root / "ratchet.json"
+            # A hard-zero counter above 0 is never written as a baseline.
+            self.assertEqual(dr.main(["--update", "--root", str(root), "--ratchet", str(ratchet)]), 1)
+            (root / "crates/cpl-cli/tests/pending/case1.cp").unlink()
             self.assertEqual(dr.main(["--update", "--root", str(root), "--ratchet", str(ratchet)]), 0)
             self.assertTrue(json.loads(ratchet.read_text())["stdlib_todo"] == 2)
             self.assertEqual(dr.main(["--check", "--root", str(root), "--ratchet", str(ratchet)]), 0)
