@@ -21,11 +21,11 @@ import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
+import corpus
 import specgate
 from specgate import Problem
 
 HELP = "cpl's help, explain, errors and LSP hovers use no spelling spec/GLOSSARY.md bans"
-CORPUS_FILES = ("port.cp", "dream.cp", "spec.cp", "perf.cp")
 
 
 def split_top(cell):
@@ -209,10 +209,9 @@ def check_errors(cpl, files):
     return texts, crashed
 
 
-def error_files(root):
-    """Every corpus solution and dream, and every conformance case that expects a diagnostic."""
-    corpus = root / "corpus/problems"
-    files = sorted(p for d in corpus.iterdir() for n in CORPUS_FILES if (p := corpus.joinpath(d.name, n)).is_file())
+def error_files():
+    """Every corpus port, dream, spec and perf program, and every conformance case that expects a diagnostic."""
+    files = [p for pkg in corpus.problems() for p in (pkg.port, pkg.dream, pkg.spec, pkg.dir / "perf.cp") if p and p.is_file()]
     return files + [c for c in specgate.cases() if re.match(r"// expect: [EW]\d", specgate.read(c))]
 
 
@@ -233,7 +232,7 @@ def run(args) -> list[Problem]:
         for field in ("title", "summary", "explanation", "fix"):
             texts.append((f"cpl explain {e['code']} ({field})", e.get(field) or ""))
     texts.extend(registry_messages(specgate.ROOT))
-    errors, crashed = check_errors(cpl, error_files(specgate.ROOT))
+    errors, crashed = check_errors(cpl, error_files())
     texts.extend(errors)
     problems.extend(crashed)
     docs = list(std_docs(specgate.ROOT))
