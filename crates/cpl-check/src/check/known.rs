@@ -556,20 +556,12 @@ impl<'a> Checker<'a> {
         })
     }
 
-    /// `base.name(..)` calls a `mut self` method of `base`'s own type.
-    pub(crate) fn own_mutator(&mut self, base: &Ty, name: &str) -> bool {
-        let Ty::Named { name: owner, .. } = base else {
-            return false;
-        };
-        self.members_of(owner)
-            .is_some_and(|m| m.mutators.iter().any(|n| n == name))
-    }
-
-    /// `base.name(args)` calls a built-in row that changes its receiver. A
-    /// field `base`'s type declares is what a call of that name calls, and
-    /// a receiver not yet typed calls no row.
-    pub(crate) fn row_mutator(&mut self, base: &Ty, name: &str, args: &[Arg]) -> bool {
-        !base.is_vague() && !self.declares_field(base, name) && mutating_call(name, args)
+    /// `base.name(args)` changes its receiver: a built-in row does, or a fn
+    /// that takes `mut self`, std's or a program's.
+    pub(crate) fn call_mutator(&mut self, base: &Ty, name: &str, args: &[Arg]) -> bool {
+        !base.is_vague()
+            && !self.declares_field(base, name)
+            && (mutating_call(name, args) || self.changes_self(base, name))
     }
 
     /// `base`'s type declares a field `name`: `base.name(..)` calls it.
@@ -586,31 +578,8 @@ impl<'a> Checker<'a> {
 
 /// Methods that change their receiver.
 const MUTATORS: &[&str] = &[
-    "push",
-    "pop",
-    "sort",
-    "reverse",
-    "rotate_left",
-    "rotate_right",
-    "scan_in_place",
-    "suffix_scan_in_place",
-    "nth_element",
-    "next_permutation",
-    "prev_permutation",
-    "shuffle",
-    "clear",
-    "insert",
-    "remove",
-    "take",
-    "swap",
-    "swap_idx",
-    "set",
-    "set_at",
-    "add",
-    "resize",
-    "truncate",
-    "reserve",
-    "fill",
+    "push", "pop", "clear", "insert", "remove", "take", "swap", "swap_idx", "set_at", "add",
+    "resize", "truncate", "reserve", "fill",
 ];
 /// `List` methods that change length and therefore cannot run on a fixed-length slice view.
 pub(super) const LENGTH_CHANGING_MUTATORS: &[&str] = &[

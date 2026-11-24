@@ -192,12 +192,13 @@ impl FileCtx<'_> {
         if !items[..current].iter().any(|item| item.flow != Flow::None) {
             return Vec::new();
         }
-        let names = self.names.get_or_insert_with(|| {
-            items
-                .iter()
-                .map(|item| item_names(&item.parsed.stmts))
-                .collect()
-        });
+        let names = match self.names.take() {
+            Some(names) => names,
+            None => (items.iter())
+                .map(|item| item_names(&item.parsed.stmts, &mut *self))
+                .collect(),
+        };
+        let names = &*self.names.insert(names);
         let mut carried = crate::fx::HashSet::default(); // views a closure carries here
         for k in (0..current).rev() {
             // `let d = o!` lends what `o` lends, so `o`'s loan lives while `d` does.
@@ -290,6 +291,35 @@ impl FileCtx<'_> {
             return known.clone();
         }
         let items = self.items.clone();
+        let index = self.scope.names.get(name).copied();
+        let mut_self: MutSelf = &mut *self;
+        let own = index.and_then(|index| {
+            items[index]
+                .parsed
+                .stmts
+                .iter()
+                .find_map(|stmt| match &stmt.kind {
+                    StmtKind::Fn(f) if f.name.text == name => Some(own_effects(f, &mut *mut_self)),
+                    StmtKind::Let {
+                        pat:
+                            cpl_syntax::ast::Pattern {
+                                kind: cpl_syntax::ast::PatternKind::Name(n),
+                                ..
+                            },
+                        init:
+                            Some(cpl_syntax::ast::Expr {
+                                kind: cpl_syntax::ast::ExprKind::Lambda { params, body, .. },
+                                ..
+                            }),
+                        ..
+                    } if n == name => Some(crate::check::lends::lambda_effects(
+                        params,
+                        body,
+                        &mut *mut_self,
+                    )),
+                    _ => None,
+                })
+        });
         let vars = self.vars.get_or_insert_with(|| {
             let mutable = |item: &&Arc<ItemSyntax>| {
                 item.parsed.stmts.iter().any(|stmt| {
@@ -311,29 +341,6 @@ impl FileCtx<'_> {
                 .filter(mutable)
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.clone()))
                 .collect()
-        });
-        let own = self.scope.names.get(name).and_then(|&index| {
-            items[index]
-                .parsed
-                .stmts
-                .iter()
-                .find_map(|stmt| match &stmt.kind {
-                    StmtKind::Fn(f) if f.name.text == name => Some(own_effects(f)),
-                    StmtKind::Let {
-                        pat:
-                            cpl_syntax::ast::Pattern {
-                                kind: cpl_syntax::ast::PatternKind::Name(n),
-                                ..
-                            },
-                        init:
-                            Some(cpl_syntax::ast::Expr {
-                                kind: cpl_syntax::ast::ExprKind::Lambda { params, body, .. },
-                                ..
-                            }),
-                        ..
-                    } if n == name => Some(crate::check::lends::lambda_effects(params, body)),
-                    _ => None,
-                })
         });
         let own = own.map(|mut own| {
             own.writes.retain(|n| vars.contains(n));

@@ -1771,6 +1771,24 @@ fn refutable(pat: &ast::Pattern) -> bool {
     }
 }
 
+/// `stmts` up to the last one that names `name`: a lend through `name` ends there.
+fn until_last_use<'s>(stmts: &'s [ast::Stmt], name: &str) -> &'s [ast::Stmt] {
+    struct Names<'n>(&'n str, bool);
+    impl cpl_syntax::visit::Visitor for Names<'_> {
+        fn expr(&mut self, e: &ast::Expr) {
+            if matches!(&e.kind, ast::ExprKind::Name(n) if n == self.0) {
+                self.1 = true;
+            }
+        }
+    }
+    let last = stmts.iter().rposition(|s| {
+        let mut names = Names(name, false);
+        cpl_syntax::visit::walk_stmt(s, &mut names);
+        names.1
+    });
+    &stmts[..last.map_or(0, |i| i + 1)]
+}
+
 /// Whether a closure or a fn among `stmts` names `name`.
 fn captured(stmts: &[ast::Stmt], name: &str) -> bool {
     struct Names<'n>(&'n str, bool);

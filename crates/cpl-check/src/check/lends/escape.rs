@@ -195,11 +195,10 @@ impl<'a> Checker<'a> {
             return;
         };
         let base_ty = self.infer_quietly(base);
-        let own = self.own_mutator(&base_ty, &name.text);
-        let by_row = self.row_mutator(&base_ty, &name.text, args);
-        if !own && !by_row {
+        if !self.call_mutator(&base_ty, &name.text, args) {
             return;
         }
+        let by_fn = !mutating_call(&name.text, args);
         if name.text == "sort" {
             if let ExprKind::Name(n) = &base.kind {
                 if matches!(self.local(n).map(|b| &b.ty), Some(Ty::Domain(_)))
@@ -211,10 +210,6 @@ impl<'a> Checker<'a> {
         }
         // `xs.push(x)` changes `xs` as an assignment to it would.
         self.check_access(base, true);
-        // A type's own `mut self` method says why its receiver can't change.
-        if own && !by_row {
-            return;
-        }
         let viewed = self.view_kind(base).is_some();
         if let Some(kind) = self.view_kind(base) {
             if self.is_readonly_view(base) {
@@ -239,6 +234,10 @@ impl<'a> Checker<'a> {
                 }
                 return;
             }
+        }
+        // A `mut self` fn's call says why its receiver can't change.
+        if by_fn {
+            return;
         }
         let Some(place) = self.place(base) else {
             return;

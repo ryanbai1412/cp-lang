@@ -36,13 +36,14 @@ impl<'a> Lowerer<'a> {
         if !self.sigs[id].is_generator {
             return None;
         }
+        let live = until_last_use(rest, name);
         let steady = args.iter().all(|a| match &a.value.kind {
             ast::ExprKind::Int(_) | ast::ExprKind::Bool(_) | ast::ExprKind::Char(_) => true,
-            ast::ExprKind::Name(n) => n != name && (a.mutable || !Self::stmts_mutate_name(rest, n)),
+            ast::ExprKind::Name(n) => n != name && (a.mutable || !self.stmts_mutate_name(live, n)),
             ast::ExprKind::Mut(inner) => matches!(&inner.kind, ast::ExprKind::Name(n) if n != name),
             _ => false,
         });
-        if !steady || Self::stmts_mutate_name(rest, name) || captured(rest, name) {
+        if !steady || self.stmts_mutate_name(rest, name) || captured(rest, name) {
             return None;
         }
         Some((name.clone(), init))

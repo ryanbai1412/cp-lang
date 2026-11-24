@@ -56,15 +56,14 @@ impl Effects {
     }
 }
 
-#[derive(Default)]
-pub(super) struct Touched {
+pub(super) struct Touched<'m> {
     pub(super) declared: HashSet<String>,
-    pub(super) written: Written,
+    pub(super) written: Written<'m>,
     pub(super) read: Vec<String>,
     pub(super) calls: Vec<String>,
 }
 
-impl Visitor for Touched {
+impl Visitor for Touched<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         match &stmt.kind {
             StmtKind::Assign { target, .. } => self.written.add(root_name(target)),
@@ -84,7 +83,7 @@ impl Visitor for Touched {
                     self.written.add(root_name(&arg.value));
                 }
                 match &callee.kind {
-                    ExprKind::Field { base, name } if mutating_call(&name.text, args) => {
+                    ExprKind::Field { base, name } if self.written.changes(&name.text, args) => {
                         self.written.add(root_name(base));
                     }
                     ExprKind::Name(name) if !self.calls.contains(name) => {
@@ -105,37 +104,19 @@ impl Visitor for Touched {
     }
 }
 
-pub(crate) fn lambda_effects(params: &[ast::Pattern], body: &Expr) -> Effects {
-    let mut touched = Touched::default();
+pub(crate) fn lambda_effects(params: &[ast::Pattern], body: &Expr, mut_self: MutSelf) -> Effects {
+    let mut touched = Touched::new(mut_self);
     for p in params {
         let mut names = Names::default();
         names.pattern(p);
         touched.declared.extend(names.0);
     }
     walk_expr(body, &mut touched);
-    let Touched {
-        declared,
-        written,
-        read,
-        calls,
-    } = touched;
-    let outer = |names: Vec<String>| -> Vec<String> {
-        names
-            .into_iter()
-            .filter(|n| !declared.contains(n))
-            .collect()
-    };
-    let calls = outer(calls);
-    Effects {
-        writes: outer(written.0),
-        reads: outer(read),
-        io: calls.iter().find_map(|name| io_of(name)),
-        calls,
-    }
+    touched.effects()
 }
 
-pub(crate) fn own_effects(f: &ast::FnDecl) -> Effects {
-    let mut touched = Touched::default();
+pub(crate) fn own_effects(f: &ast::FnDecl, mut_self: MutSelf) -> Effects {
+    let mut touched = Touched::new(mut_self);
     touched
         .declared
         .extend(f.params.iter().map(|p| p.name.text.clone()));
@@ -147,7 +128,16 @@ pub(crate) fn own_effects(f: &ast::FnDecl) -> Effects {
     touched.effects()
 }
 
-impl Touched {
+impl<'m> Touched<'m> {
+    fn new(mut_self: MutSelf<'m>) -> Self {
+        Touched {
+            declared: HashSet::default(),
+            written: Written(Vec::new(), Some(mut_self)),
+            read: Vec::new(),
+            calls: Vec::new(),
+        }
+    }
+
     pub(super) fn effects(self) -> Effects {
         let Touched {
             declared,
@@ -176,10 +166,11 @@ impl<'a> Checker<'a> {
     /// `mut` arguments and mutating methods, and what the fns it calls
     /// change.
     pub(super) fn changed_by(&mut self, e: &Expr) -> Vec<String> {
-        let mut touched = Touched::default();
+        let mut touched = Touched::new(&mut *self.env);
         walk_expr(e, &mut touched);
-        let mut writes = touched.written.0;
-        for name in touched.calls {
+        let Touched { written, calls, .. } = touched;
+        let mut writes = written.0;
+        for name in calls {
             if !self.names_fn_item(&name) {
                 continue;
             }
@@ -251,9 +242,7 @@ impl<'a> Checker<'a> {
             match &callee.kind {
                 ExprKind::Field { base, name } => {
                     let base_ty = self.infer_quietly(base);
-                    if self.own_mutator(&base_ty, &name.text)
-                        || self.row_mutator(&base_ty, &name.text, args)
-                    {
+                    if self.call_mutator(&base_ty, &name.text, args) {
                         let root = root_name(base).unwrap_or("what it is called on");
                         return Some((call.span, format!("changes `{root}`")));
                     }

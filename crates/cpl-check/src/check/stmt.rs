@@ -327,7 +327,7 @@ impl<'a> Checker<'a> {
                 if let StmtKind::Fn(f) = &stmt.kind {
                     let sig = self.quietly(|c| c.fn_sig(f, None));
                     self.declare(&f.name.text, f.name.span, sig, false, "fn");
-                    let eff = super::lends::own_effects(f);
+                    let eff = super::lends::own_effects(f, &mut *self.env);
                     let caps: Vec<String> = eff
                         .reads
                         .into_iter()
@@ -965,8 +965,8 @@ impl<'a> Checker<'a> {
                     }),
                 ) = (&pat.kind, init)
                 {
-                    self.local_effects
-                        .insert(n.clone(), super::lends::lambda_effects(params, body));
+                    let eff = super::lends::lambda_effects(params, body, &mut *self.env);
+                    self.local_effects.insert(n.clone(), eff);
                 }
                 let is_mut = *mutable
                     || matches!(

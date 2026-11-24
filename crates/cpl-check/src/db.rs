@@ -22,7 +22,7 @@
 //! signature, has the same fingerprint, so no caller is touched. Editing
 //! the signature re-checks exactly the items that looked the fn up.
 
-use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, Replay};
+use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, MutSelf, Replay};
 use crate::check::{Checker, Env, GlobalRef, HoverEntry, Resolved, TypedIndex};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use crate::fx::HashMap;

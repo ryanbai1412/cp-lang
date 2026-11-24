@@ -24,6 +24,20 @@ pub(super) fn takes_self(def: &Def) -> bool {
         if params.first().is_some_and(|p| p.name == "self" && !p.named_only))
 }
 
+fn takes_mut_self(def: &Def) -> bool {
+    matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
+        if params.first().is_some_and(|p| p.name == "self" && p.mutable))
+}
+
+/// Whether a fn `name` that `env` sees takes `mut self`: `x.name(..)` may
+/// change `x`.
+pub(crate) fn env_mut_self_name(env: &mut dyn super::Env, name: &str) -> bool {
+    let mut keys = env.method_keys(name);
+    keys.push(name.to_string());
+    keys.iter()
+        .any(|k| env.global(k).is_some_and(|d| takes_mut_self(&d)))
+}
+
 /// Whether `def` takes `n` positional arguments after `self`: one never
 /// binds a named-only parameter, so `xs.sorted(x => -x)` isn't `sorted(by:)`.
 fn takes_positionals(def: &Def, n: usize) -> bool {

@@ -4,26 +4,20 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
-    pub(in crate::lower) fn is_mut_method_name(name: &str) -> bool {
-        matches!(
-            name,
-            "sort"
-                | "reverse"
-                | "rotate_left"
-                | "rotate_right"
-                | "scan_in_place"
-                | "suffix_scan_in_place"
-                | "next_permutation"
-                | "prev_permutation"
-                | "nth_element"
-                | "swap"
-                | "swap_at"
-                | "swap_idx"
-                | "set"
-                | "set_at"
-                | "fill"
-                | "shuffle"
-        )
+    /// `x.name(..)` may change `x`: a fn of that name takes `mut self`, or
+    /// the compiler's own method does.
+    pub(in crate::lower) fn is_mut_method_name(&self, name: &str) -> bool {
+        let mut_self = |d: &ast::FnDecl| {
+            d.name.text == name
+                && d.params
+                    .first()
+                    .is_some_and(|p| p.name.text == "self" && p.mutable)
+        };
+        self.sigs
+            .iter()
+            .any(|s| s.receiver == Some(true) && s.decl.name.text == name)
+            || self.gen_fns.iter().any(|g| mut_self(g.decl))
+            || matches!(name, "swap" | "swap_idx" | "set_at" | "fill")
     }
 
     pub(in crate::lower) fn collect_mut_slices_expr(&mut self, e: &ast::Expr) {
@@ -38,7 +32,7 @@ impl<'a> Lowerer<'a> {
                 }
                 if let ast::ExprKind::Field { base, name } = &callee.kind {
                     if matches!(base.kind, ast::ExprKind::Index { .. })
-                        && Self::is_mut_method_name(&name.text)
+                        && self.is_mut_method_name(&name.text)
                     {
                         let sp = self.span(base.span);
                         self.mut_slice_inits.insert(sp);
@@ -78,7 +72,7 @@ impl<'a> Lowerer<'a> {
             } => {
                 if let ast::PatternKind::Name(name) = &pat.kind {
                     if matches!(init.kind, ast::ExprKind::Index { .. })
-                        && Self::stmts_mutate_name(rest, name)
+                        && self.stmts_mutate_name(rest, name)
                     {
                         let sp = self.span(init.span);
                         self.mut_slice_inits.insert(sp);
@@ -114,17 +108,17 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    pub(in crate::lower) fn cond_mutates_name(c: &ast::Cond, name: &str) -> bool {
+    pub(in crate::lower) fn cond_mutates_name(&self, c: &ast::Cond, name: &str) -> bool {
         match c {
-            ast::Cond::Expr(e) | ast::Cond::Const(e) => Self::expr_mutates_name(e, name),
-            ast::Cond::Let { value, .. } => Self::expr_mutates_name(value, name),
+            ast::Cond::Expr(e) | ast::Cond::Const(e) => self.expr_mutates_name(e, name),
+            ast::Cond::Let { value, .. } => self.expr_mutates_name(value, name),
             ast::Cond::Guard { test, and } => {
-                Self::expr_mutates_name(test, name) || Self::cond_mutates_name(and, name)
+                self.expr_mutates_name(test, name) || self.cond_mutates_name(and, name)
             }
         }
     }
 
-    pub(in crate::lower) fn expr_mutates_name(e: &ast::Expr, name: &str) -> bool {
+    pub(in crate::lower) fn expr_mutates_name(&self, e: &ast::Expr, name: &str) -> bool {
         match &e.kind {
             ast::ExprKind::Call { callee, args, .. } => {
                 if args
@@ -135,81 +129,63 @@ impl<'a> Lowerer<'a> {
                 }
                 if let ast::ExprKind::Field { base, name: method } = &callee.kind {
                     if Self::expr_root_name(base) == Some(name)
-                        && matches!(
-                            method.text.as_str(),
-                            "sort"
-                                | "reverse"
-                                | "rotate_left"
-                                | "rotate_right"
-                                | "scan_in_place"
-                                | "suffix_scan_in_place"
-                                | "next_permutation"
-                                | "prev_permutation"
-                                | "nth_element"
-                                | "swap"
-                                | "swap_at"
-                                | "swap_idx"
-                                | "set"
-                                | "set_at"
-                                | "fill"
-                                | "shuffle"
-                        )
+                        && self.is_mut_method_name(&method.text)
                     {
                         return true;
                     }
                 }
-                Self::expr_mutates_name(callee, name)
-                    || args.iter().any(|a| Self::expr_mutates_name(&a.value, name))
+                self.expr_mutates_name(callee, name)
+                    || args.iter().any(|a| self.expr_mutates_name(&a.value, name))
             }
-            ast::ExprKind::Block(b) => Self::stmts_mutate_name(&b.stmts, name),
+            ast::ExprKind::Block(b) => self.stmts_mutate_name(&b.stmts, name),
             ast::ExprKind::If {
                 branches,
                 otherwise,
             } => {
                 branches.iter().any(|(c, b)| {
-                    Self::cond_mutates_name(c, name) || Self::stmts_mutate_name(&b.stmts, name)
+                    self.cond_mutates_name(c, name) || self.stmts_mutate_name(&b.stmts, name)
                 }) || otherwise
                     .as_ref()
-                    .is_some_and(|b| Self::stmts_mutate_name(&b.stmts, name))
+                    .is_some_and(|b| self.stmts_mutate_name(&b.stmts, name))
             }
             ast::ExprKind::Match { scrutinee, arms } => {
-                Self::expr_mutates_name(scrutinee, name)
+                self.expr_mutates_name(scrutinee, name)
                     || arms.iter().any(|a| {
                         a.guard
                             .as_ref()
-                            .is_some_and(|g| Self::expr_mutates_name(g, name))
-                            || Self::stmts_mutate_name(&a.body.stmts, name)
+                            .is_some_and(|g| self.expr_mutates_name(g, name))
+                            || self.stmts_mutate_name(&a.body.stmts, name)
                     })
             }
             ast::ExprKind::Paren(inner) | ast::ExprKind::Unary { expr: inner, .. } => {
-                Self::expr_mutates_name(inner, name)
+                self.expr_mutates_name(inner, name)
             }
             ast::ExprKind::Binary { lhs, rhs, .. } => {
-                Self::expr_mutates_name(lhs, name) || Self::expr_mutates_name(rhs, name)
+                self.expr_mutates_name(lhs, name) || self.expr_mutates_name(rhs, name)
             }
             ast::ExprKind::Index { base, indices } => {
-                Self::expr_mutates_name(base, name)
-                    || indices.iter().any(|i| Self::expr_mutates_name(i, name))
+                self.expr_mutates_name(base, name)
+                    || indices.iter().any(|i| self.expr_mutates_name(i, name))
             }
-            ast::ExprKind::Field { base, .. } => Self::expr_mutates_name(base, name),
-            ast::ExprKind::Lambda { body, .. } => Self::expr_mutates_name(body, name),
+            ast::ExprKind::Field { base, .. } => self.expr_mutates_name(base, name),
+            ast::ExprKind::Lambda { body, .. } => self.expr_mutates_name(body, name),
             _ => false,
         }
     }
 
-    pub(in crate::lower) fn stmts_mutate_name(stmts: &[ast::Stmt], name: &str) -> bool {
+    pub(in crate::lower) fn stmts_mutate_name(&self, stmts: &[ast::Stmt], name: &str) -> bool {
         for (i, s) in stmts.iter().enumerate() {
             match &s.kind {
                 ast::StmtKind::Assign { target, value, .. } => {
                     if Self::expr_root_name(target) == Some(name)
-                        || Self::expr_mutates_name(target, name)
-                        || Self::expr_mutates_name(value, name)
+                        || self.expr_mutates_name(target, name)
+                        || self.expr_mutates_name(value, name)
                     {
                         return true;
                     }
                 }
                 ast::StmtKind::Expr(e) => {
-                    if Self::expr_mutates_name(e, name) {
+                    if self.expr_mutates_name(e, name) {
                         return true;
                     }
                 }
@@ -218,12 +194,12 @@ impl<'a> Lowerer<'a> {
                     init: Some(init),
                     ..
                 } => {
-                    if Self::expr_mutates_name(init, name) {
+                    if self.expr_mutates_name(init, name) {
                         return true;
                     }
                     if let ast::PatternKind::Name(sub) = &pat.kind {
                         if Self::expr_root_name(init) == Some(name)
-                            && Self::stmts_mutate_name(&stmts[i + 1..], sub)
+                            && self.stmts_mutate_name(&stmts[i + 1..], sub)
                         {
                             return true;
                         }
@@ -233,20 +209,20 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 ast::StmtKind::For { iter, body, .. } => {
-                    if Self::expr_mutates_name(iter, name)
-                        || Self::stmts_mutate_name(&body.stmts, name)
+                    if self.expr_mutates_name(iter, name)
+                        || self.stmts_mutate_name(&body.stmts, name)
                     {
                         return true;
                     }
                 }
                 ast::StmtKind::While { cond, body, .. } => {
-                    if Self::cond_mutates_name(cond, name)
-                        || Self::stmts_mutate_name(&body.stmts, name)
+                    if self.cond_mutates_name(cond, name)
+                        || self.stmts_mutate_name(&body.stmts, name)
                     {
                         return true;
                     }
                 }
-                ast::StmtKind::Return(Some(e)) if Self::expr_mutates_name(e, name) => {
+                ast::StmtKind::Return(Some(e)) if self.expr_mutates_name(e, name) => {
                     return true;
                 }
                 _ => {}
