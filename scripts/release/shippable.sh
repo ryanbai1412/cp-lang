@@ -17,11 +17,11 @@ runs=$(gh run list -R "$repo" --workflow ci.yml --branch main --event push -L 80
 # "<conclusion>\t<name>" per shipping job; nothing while one hasn't finished.
 jobs_of() {
     local j
-    j=$(gh run view "$1" -R "$repo" --json jobs --jq '.jobs[] | "\(.conclusion)\t\(.name)"' | grep -P "\t$shipping" || true)
+    j=$(gh run view "$1" -R "$repo" --json jobs --jq '.jobs[] | "\(.conclusion)\t\(.name)"' | grep -P "\t$shipping" || [ $? = 1 ])
     grep -qP '^\t' <<<"$j" && return 0
     printf '%s\n' "$j"
 }
-green() { grep -P '^success\t' <<<"$1" | cut -f2 || true; }
+green() { grep -P '^success\t' <<<"$1" | cut -f2 || [ $? = 1 ]; }
 edge=$(curl -fsSL "https://github.com/$repo/releases/download/edge/latest.json" 2>/dev/null | jq -r '.commit // empty' || true)
 must="" base_id=""
 if [ -n "$edge" ]; then
@@ -32,7 +32,7 @@ if [ -n "$edge" ]; then
         base=$(jobs_of "$id")
         [ -n "$base" ] || continue
         must=$(green "$base") base_id=$id
-        echo "shippable: baseline run $id (${sha:0:9}, at or before edge ${edge:0:9}): $(grep -c . <<<"$must" || true) shipping jobs green" >&2
+        echo "shippable: baseline run $id (${sha:0:9}, at or before edge ${edge:0:9}): $(grep -c . <<<"$must" || [ $? = 1 ]) shipping jobs green" >&2
         break
     done <<<"$runs"
 fi
@@ -41,12 +41,12 @@ while read -r id sha; do
     jobs=$(jobs_of "$id")
     [ -n "$jobs" ] || continue
     if [ -n "$base_id" ]; then
-        worse=$(grep -vxFf <(green "$jobs") <<<"$must" || true)
+        worse=$(grep -vxFf <(green "$jobs") <<<"$must" || [ $? = 1 ])
     else
-        worse=$(grep -vP '^success\t' <<<"$jobs" | cut -f2 || true)
+        worse=$(grep -vP '^success\t' <<<"$jobs" | cut -f2 || [ $? = 1 ])
     fi
     if [ -z "$worse" ]; then
-        red=$(grep -vP '^success\t' <<<"$jobs" | cut -f2 | paste -sd, - || true)
+        red=$(grep -vP '^success\t' <<<"$jobs" | cut -f2 | paste -sd, - || [ $? = 1 ])
         echo "shippable: $sha (run $id)${red:+; red as at edge: $red}" >&2
         echo "$sha"
         exit 0

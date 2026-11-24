@@ -10,7 +10,7 @@ cd "$root"
 fail() { echo "pre-push: $*" >&2; exit 1; }
 
 # 1. Merge conflict markers anywhere in tracked files.
-markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
+markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || [ $? = 1 ])
 [ -z "$markers" ] || fail "merge conflict markers found in repository:
 $markers"
 

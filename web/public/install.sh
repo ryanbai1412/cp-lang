@@ -152,7 +152,7 @@ case "$default" in
 esac
 {
     if [ -f "$settings" ]; then
-        grep -vE "^(default|${key:-default}) *=" "$settings" || true
+        grep -vE "^(default|${key:-default}) *=" "$settings" || [ $? = 1 ]
     fi
     if [ "$default" != stable ]; then
         printf 'default = "%s"\n' "$default"

@@ -7,7 +7,7 @@
 # test binaries are reused. With no cached target/ it does nothing.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-base=$(cat target/.ci-sha 2>/dev/null || true)
+base=$([ ! -f target/.ci-sha ] || cat target/.ci-sha)
 [ -n "$base" ] || { echo "ci-mtime: no cached target/; full build"; exit 0; }
 if ! git cat-file -e "$base^{commit}" 2>/dev/null && ! git fetch -q --depth=1 origin "$base"; then
     echo "ci-mtime: cached target/ is from $base, which is gone; full build"
