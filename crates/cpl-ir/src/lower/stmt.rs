@@ -6,6 +6,7 @@ mod cond;
 mod domain_decl;
 mod lambda_tuple;
 mod lends;
+mod let_infer;
 mod let_value;
 mod loops;
 mod mutation;

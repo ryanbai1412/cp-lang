@@ -71,17 +71,56 @@ impl<'a> Lowerer<'a> {
                         .iter()
                         .any(|e| matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()))
                 {
-                    let _ = pats;
+                    // Lower non-empty elements first so sibling names (e.g. `at` in `var (path, at) = ([], v)`)
+                    // are visible when peeking `path.push(at)` in `rest`.
+                    let mut slots: Vec<Option<Expr>> = vec![None; exprs.len()];
+                    let mut temp_bindings: Vec<(String, Ty)> = Vec::new();
+                    for (i, (p, e)) in pats.iter().zip(exprs).enumerate() {
+                        if !matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty()) {
+                            let v = self.expr(e, None);
+                            if let ast::PatternKind::Name(n) = &p.kind {
+                                temp_bindings.push((n.clone(), v.ty.clone()));
+                            }
+                            slots[i] = Some(v);
+                        }
+                    }
+                    // Temporarily bind sibling names in a scratch scope while peeking empty-list element types.
+                    let saved_cx = self.cx.clone();
+                    self.cx.scopes.push(HashMap::new());
+                    for (n, t) in &temp_bindings {
+                        let s = self.cx.locals.len();
+                        self.cx.locals.push(Local {
+                            name: n.clone(),
+                            ty: t.clone(),
+                            binds: None,
+                        });
+                        self.cx.scopes.top_mut().insert(n.clone(), s);
+                    }
+                    let mut inferred_elems: Vec<Option<Ty>> = vec![None; exprs.len()];
+                    for (i, (p, e)) in pats.iter().zip(exprs).enumerate() {
+                        if slots[i].is_none() {
+                            if let ast::PatternKind::Name(vname) = &p.kind {
+                                inferred_elems[i] = self.peek_list_elem_type(vname, rest);
+                            }
+                        }
+                        let _ = e;
+                    }
+                    self.cx = saved_cx;
                     let mut lowered = Vec::with_capacity(exprs.len());
                     let mut tys = Vec::with_capacity(exprs.len());
-                    for e in exprs {
-                        let empty = matches!(&e.kind, ast::ExprKind::List(items) if items.is_empty());
-                        let v = match self.checked_ty(e).filter(|_| empty) {
-                            Some(lty) => self.mk(ExprKind::Tuple(Vec::new()), lty, e.span),
-                            None => self.expr(e, None),
-                        };
-                        tys.push(v.ty.clone());
-                        lowered.push(v);
+                    for (i, e) in exprs.iter().enumerate() {
+                        if let Some(v) = slots[i].take() {
+                            tys.push(v.ty.clone());
+                            lowered.push(v);
+                        } else if let Some(elem_ty) = inferred_elems[i].take() {
+                            let lty = Ty::list(elem_ty);
+                            lowered.push(self.mk(ExprKind::Tuple(Vec::new()), lty.clone(), e.span));
+                            tys.push(lty);
+                        } else {
+                            let v = self.expr(e, None);
+                            tys.push(v.ty.clone());
+                            lowered.push(v);
+                        }
                     }
                     return Some(self.mk(ExprKind::Tuple(lowered), Ty::Tuple(tys), *tspan));
                 }
@@ -94,10 +133,9 @@ impl<'a> Lowerer<'a> {
                 }),
             ) = (&pat.kind, init)
             {
-                let _ = vname;
                 if items.is_empty() {
-                    if let Some(lty) = self.checked_ty(init.unwrap()) {
-                        return Some(self.mk(ExprKind::Tuple(Vec::new()), lty, span));
+                    if let Some(elem_ty) = self.peek_list_elem_type(vname, rest) {
+                        return Some(self.mk(ExprKind::Tuple(Vec::new()), Ty::list(elem_ty), span));
                     }
                 }
             }
@@ -125,8 +163,8 @@ impl<'a> Lowerer<'a> {
                 }),
             ) = (&pat.kind, init)
             {
-                let _ = vname;
-                if let Some(hint) = self.checked_ty(init.unwrap()) {
+                if let Some(param_tys) = self.peek_fn_arg_types(vname, params.len(), rest) {
+                    let hint = Ty::Fn(param_tys, Box::new(Ty::Error));
                     return Some(self.lower_lambda(
                         params,
                         ann_tys,

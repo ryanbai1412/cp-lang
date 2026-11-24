@@ -39,6 +39,22 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The type of the first value the rest of the block pushes onto `var_name`.
+    pub(super) fn peek_list_elem_type(&mut self, var_name: &str, rest: &[ast::Stmt]) -> Option<Ty> {
+        let mut find = Calls {
+            name: var_name,
+            calls: Vec::new(),
+        };
+        for s in rest {
+            cpl_syntax::visit::walk_stmt(s, &mut find);
+        }
+        let (_, arg) = find
+            .calls
+            .iter()
+            .find(|(m, a)| m == "push" && a.len() == 1)?;
+        self.probe_ty_silent(&arg[0])
+    }
+
     /// Binds each generic of `decl` still open that its result passes to a struct, from the
     /// later calls on the value whose parameters take that struct's generic (R06.4.1).
     pub(super) fn bind_from_later_calls(
