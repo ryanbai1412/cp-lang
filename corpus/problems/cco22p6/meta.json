@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "4801887", "language": "CPP17", "result": "TLE", "time": 6.630675208, "memory_kb": 320600.0, "file": "corpus/submissions/4801887.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/cco22p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission (one TLE, an O(N^2) DP). orig.cpp is a written reference: on the run-length sequence, an odd count collapses iff its middle run is long or the nearest long runs either side of it sit at distances a + c <= H, and an even count must split into two such parts; the rule matches an exhaustive search of the run game for every sequence of up to 20 runs and of the letter game for every string of up to 14 letters, and checker.py accepts its moves on every string of up to 11 letters and 300 generated inputs. The moves are not unique, so checker.py checks them. Statement: LOJ 4028."
 }
