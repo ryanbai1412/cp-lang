@@ -1,6 +1,6 @@
 # noi17p2
 
-Score: 3/5
+Score: pending
 Dream: 4/5
 
 Baseline review, cold, on main 15cc353a, after 14cdbd55 moved it onto `std.strings.RollingHash`. There is no dream, so the score is capped at 3. The header (lines 1-11) gives the block-count idea well.

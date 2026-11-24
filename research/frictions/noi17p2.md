@@ -50,7 +50,20 @@ that is 1.87 s and 857 MB peak, down from 3.84 s and 1.25 GB; the accepted C++ t
 both arrays live while it rehashes), sent to Content stdlib with this input as the repro.
 
 With `blocks.reserve(longest * n)` the --max run is 1.77 s and 198 MB against the accepted
-C++'s 0.88 s and 280 MB on the same box. `Counter.add` is a `get` then a `set`, two lookups;
-with it done as one lookup the run is 1.22 s, within the 1.5x bar (stdlib fix requested). A
-table holding only the windows some query asks about, as the accepted C++ does, is no faster
-(1.90 s), so the port keeps the dream's online counts.
+C++'s 0.88 s and 280 MB on the same box. `Counter.add` was a `get` then a `set`, two lookups;
+it is now one (a `mut` alias of a map entry binds its slot once).
+
+## Query windows only
+
+The port now stores only the windows some query asks about, as the accepted C++ does: it reads
+every operation first, hashes each ask's windows once, and keeps one `HashMap<Hash61, Int>` per
+window length, reserved to that length's window count. A join or split bumps a run only when
+its map already holds it, through `if m.contains(h): m[h] += by`, which now finds the entry
+once whatever path names the map. With the runtime's salt read once at start-up and an integer
+key hashed by one multiply, --max runs in 0.80-0.83 s against the accepted C++'s 0.74-0.78 s
+(best of 8 on the same box, 1.06-1.08x) and 203 MB against its 280 MB.
+
+The dream keeps the online `Counter` of every run: it is the shorter program and needs no
+second pass over the operations, and nothing in the language stops it being as fast once a
+counter of 1e7 runs costs what a table of the asked windows does.
+
