@@ -633,7 +633,7 @@ class GateTest(unittest.TestCase):
         made: list = []
 
         def __init__(self, mode, part="", cpl="", cache_dir="", manifest="", packages="", filter="", site="", run=None,
-                     sel_slices="", sel_slice_filter=""):
+                     sel_slices="", sel_slice_filter="", progress=""):
             self.mode, self.sel, self.slices = mode, (packages, filter, site), (sel_slices, sel_slice_filter)
             self.times = [(7, "the tests"), (0, "instant")]
             GateTest.FakeTier.made.append(self)
