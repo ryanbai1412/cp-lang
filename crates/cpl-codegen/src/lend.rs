@@ -842,7 +842,7 @@ impl Emitter<'_> {
 
     /// Whether `key` is the temporary the store's key was evaluated into,
     /// and `got` the same key written again.
-    fn key_temp_of(&self, key: &Expr, got: &Expr) -> bool {
+    pub(crate) fn key_temp_of(&self, key: &Expr, got: &Expr) -> bool {
         let ExprKind::Local(slot) = key.kind else {
             return false;
         };

@@ -34,6 +34,7 @@ Summary across all 13 benchmarks (`bash bench/containers/run.sh`): **p50 = 0.95x
 | `sorted_range` | 100k inserts + 100k `.range(r)` `.first`/`.last`/`.len` + 20k range iters | matched randomized treap | 107.8 ms | 177.9 ms | **0.61x** |
 | `sorted_set` | 100k inserts + 50k erases + 100k `rank` + 100k `nth` | `__gnu_pbds::tree` (`rb_tree_tag`) | 112.9 ms | 89.5 ms | **1.26x** |
 | `ordered_map_set` | 100k inserts + 100k `first_ge` + 100k `range` ends + 20k range iters | `std::map` + `std::set` | 178.3 ms | 185.3 ms | **0.96x** |
+| `map_rmw` | 4M `m[k] = (m.get(k) ?? 0) + v` on 100k struct keys, cf2237i1's merge DP; 1.45x (1.15 s) when the store walked the tree a second time | `std::map`, one `m[k] += v` | 800 ms | 790 ms | **1.01x** |
 | `min_heap` | 500k pushes + 500k push/pop + 500k drain | `std::priority_queue` | 115.8 ms | 125.7 ms | **0.92x** |
 | `deque` | 200k prefill + 4M push/pop both ends + 2M random `get` | `std::deque` | 42.0 ms | 36.7 ms | **1.14x** |
 

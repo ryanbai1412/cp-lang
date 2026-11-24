@@ -398,6 +398,24 @@ template <class M, class Q> typename M::mapped_type map_move_or(M& m, const Q& k
 ",
     },
     Piece {
+        name: "map_put_or",
+        needs: &[],
+        code: "\
+template <class M, class Q, class F> typename M::mapped_type& map_put_or(M& m, const Q& k, F d) {
+    auto it = m.lower_bound(k); if (it == m.end() || m.key_comp()(k, it->first)) it = m.emplace_hint(it, k, d()); return it->second;
+}
+",
+    },
+    Piece {
+        name: "hash_put_or",
+        needs: &["cphashmap"],
+        code: "\
+template <class K, class V, class H, class F> V& hash_put_or(HashMap<K, V, H>& m, const K& k, F d) {
+    size_t i = m.t.slot(k, m.t.hash(k), [&] { return std::pair<K, V>(k, d()); }).first; return m.t.e[i].second;
+}
+",
+    },
+    Piece {
         name: "map_take",
         needs: &[],
         code: "\

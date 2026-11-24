@@ -246,7 +246,7 @@ fn an_entry_stored_back_longer_is_moved_out_unless_the_rest_reads_the_map() {
         "print(h.len)\n",
     ));
     assert!(
-        moved.contains("cpl::map_move_or(h, "),
+        moved.contains("cpl::hash_put_or(h, ") && moved.contains("= std::move(t2);"),
         "the entry is moved, not copied: {moved}"
     );
     assert!(!moved.contains("map_get("), "no copy of the entry: {moved}");
@@ -541,7 +541,7 @@ fn an_entry_a_store_overwrites_is_moved_into_the_fn_that_makes_it() {
         "print(h.len)\n",
     ));
     assert!(
-        moved.contains("cpl::map_move_or(self, "),
+        moved.contains("cpl::hash_put_or(self, ") && moved.contains("f(std::move(t0))"),
         "`update` moves the entry into `f`, not a copy: {moved}"
     );
     let copied = body(concat!(
@@ -1060,4 +1060,79 @@ fn a_tuple_assignment_moves_each_item_into_its_place() {
             "{place} takes its item:\n{out}"
         );
     }
+}
+
+#[test]
+fn a_read_modify_write_of_one_map_entry_walks_the_map_once() {
+    let tree = cpp(concat!(
+        "struct S(a: Int, b: Bool)\n",
+        "fn merge(s: S, w: Int, mut next: Map<S, Int>):\n",
+        "    next[s] = (next.get(s) ?? 0) + w\n",
+        "var m: Map<S, Int> = Map()\n",
+        "for i in 0..9:\n",
+        "    merge(S(i % 3, i % 2 == 0), i, mut m)\n",
+        "for (k, v) in m.items:\n",
+        "    print(k.a, v)\n",
+    ));
+    assert!(
+        tree.contains("cpl::map_put_or(next, s, [&] { return 0; })"),
+        "a tree map finds or puts the entry once: {tree}"
+    );
+    let code = |cpp: &str| -> String {
+        let lines = cpp.lines().filter(|l| !l.trim_start().starts_with("//"));
+        lines.collect::<Vec<_>>().join("\n")
+    };
+    assert!(
+        !code(&tree).contains("next[s] ="),
+        "no second walk to store: {tree}"
+    );
+    let hashed = body(concat!(
+        "fn f(x: Int) -> Int = x * 3 + 1\n",
+        "var h: HashMap<Int, Int> = HashMap()\n",
+        "for i in 0..9:\n",
+        "    let k = i % 4\n",
+        "    h[k] = f(h.get(k) ?? 5)\n",
+        "    if k in h:\n",
+        "        h[k] = f(h[k])\n",
+        "print(h[0])\n",
+    ));
+    assert!(
+        hashed.contains("cpl::hash_put_or(h, k, [&] { return 5; })"),
+        "a hash map finds or puts the entry once: {hashed}"
+    );
+    assert!(
+        !code(&hashed).contains("h[k] ="),
+        "no second walk to store: {hashed}"
+    );
+    let kept = body(concat!(
+        "fn noisy() -> Int:\n",
+        "    print(0)\n",
+        "    return 0\n",
+        "var h: HashMap<Int, Int> = HashMap()\n",
+        "for i in 0..9:\n",
+        "    let k = i % 4\n",
+        "    h[k] = (h.get(k) ?? 0) + h.len\n",
+        "    h[k] = (h.get(k) ?? noisy()) + 1\n",
+        "print(h[0])\n",
+    ));
+    let called = cpp(concat!(
+        "var h: HashMap<Int, Int> = HashMap()\n",
+        "fn note(x: Int) -> Int:\n",
+        "    h[x + 100] = 0\n",
+        "    return x\n",
+        "fn bump(mut m: HashMap<Int, Int>, k: Int):\n",
+        "    m[k] = note(m.get(k) ?? 0)\n",
+        "var g: HashMap<Int, Int> = HashMap()\n",
+        "for i in 0..9:\n",
+        "    bump(mut g, i % 4)\n",
+        "print(g[0], h.len)\n",
+    ));
+    assert!(
+        !called.contains("hash_put_or(m,"),
+        "a call that writes could grow the map behind the entry: {called}"
+    );
+    assert!(
+        !kept.contains("_put_or("),
+        "a value that reads the map again, or a default that prints, keeps both walks: {kept}"
+    );
 }

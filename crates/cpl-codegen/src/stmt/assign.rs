@@ -84,6 +84,132 @@ impl<'p> Emitter<'p> {
             }
         }
         self.mark_moved_entry(place, op, value);
+        let marks = self.one_walk_entry(place, op, value, out);
+        self.store(place, op, value, out);
+        if let Some((found, pinned)) = marks {
+            self.found.truncate(found);
+            self.pinned.truncate(pinned);
+        }
+    }
+
+    /// `m[k] = f(m.get(k) ?? d)` or `m[k] = f(m[k])` would walk the map
+    /// twice, to read the entry and to store it. When nothing else in the
+    /// value reaches `m` or changes `k`, and the value cannot leave early,
+    /// the entry is found (or put at `d`) once and read and stored through
+    /// a reference. Gives back the marks to undo once the store is written.
+    fn one_walk_entry(
+        &mut self,
+        place: &Place,
+        op: AssignOp,
+        value: &Expr,
+        out: &mut String,
+    ) -> Option<(usize, usize)> {
+        let (AssignOp::Set, PlaceKind::Index(base, keys)) = (op, &place.kind) else {
+            return None;
+        };
+        let ([key], PlaceKind::Local(_) | PlaceKind::Global(_), Ty::Map(..) | Ty::HashMap(..)) =
+            (keys.as_slice(), &base.kind, &base.ty)
+        else {
+            return None;
+        };
+        if self.found_cell(base, keys).is_some()
+            || self.map_slot(key).is_some()
+            || !crate::uses::effects::pure_path(key)
+        {
+            return None;
+        }
+        let root = walk::root(base);
+        let same = |m: &Expr, k: &Expr| {
+            matches!(m.kind, ExprKind::Local(_) | ExprKind::Global(_))
+                && walk::path_root(m) == Some(root)
+                && (same_path(k, key) || self.key_temp_of(key, k))
+        };
+        let (mut read, mut copies, mut mentions, mut exits) = (None, Vec::new(), 0, false);
+        walk::deep_expr(value, &mut |e| match &e.kind {
+            ExprKind::Local(s) if root == (false, *s) => mentions += 1,
+            ExprKind::Global(g) if root == (true, *g) => mentions += 1,
+            ExprKind::Binary(BinOp::Coalesce, got, d) => {
+                if let Some((m, k)) = crate::lend::entry_read(got) {
+                    if same(m, k) {
+                        read = Some((e, m, Some(&**d)));
+                    }
+                }
+            }
+            ExprKind::Index(m, ks) if matches!(m.ty, Ty::Map(..) | Ty::HashMap(..)) => {
+                if let [k] = ks.as_slice() {
+                    if same(m, k) {
+                        read = Some((e, m, None));
+                    }
+                }
+            }
+            ExprKind::Builtin(Builtin::Copy, of) if of.len() == 1 => {
+                copies.push((e as *const Expr, &of[0] as *const Expr))
+            }
+            ExprKind::Do(block) => walk::deep_stmts(block, &mut |s| {
+                exits |= matches!(s, Stmt::Return(_) | Stmt::Break(_) | Stmt::Continue(_))
+            }),
+            _ => {}
+        });
+        let (at, map, d) = read?;
+        let touch = Touch::of_expr(value);
+        let key_kept = walk::path_root(key).is_some_and(|r| !touch.writes.contains(&r));
+        // A `mut` parameter may alias a global or a caller's local, and a
+        // call may grow the map behind the reference, so the value writes
+        // nothing but its own locals, through any call.
+        let deep = self
+            .uses
+            .table
+            .access(self.program, None, &|_, _| None, value);
+        let own = |w: &(bool, usize)| !w.0 && deep.binds.contains(&w.1);
+        let reaches = deep.opaque || !deep.writes.iter().all(own);
+        if mentions != 1 || exits || !key_kept || touch.writes.contains(&root) || reaches {
+            return None;
+        }
+        let traps = self.target.checks != crate::Checks::None;
+        if let Some(d) = d {
+            let call_ok = |e: &Expr| {
+                crate::uses::effects::pure_call(
+                    self.program,
+                    &self.devirt,
+                    &self.sink_pure,
+                    self.fn_id,
+                    traps,
+                    e,
+                )
+            };
+            if !crate::uses::effects::trap_free_with(d, traps, &call_ok) {
+                return None;
+            }
+        }
+        let (m, k, cell) = (self.place(base), self.expr(key).text, self.temp());
+        let find = match d {
+            None => format!("{m}.at({k})"),
+            Some(d) => {
+                let d = self.expr(d).text;
+                let hashed = match &base.ty {
+                    Ty::Map(k, _) => self.program.unordered_maps.contains(k),
+                    _ => true,
+                };
+                let put = if hashed { "hash_put_or" } else { "map_put_or" };
+                self.need(put);
+                format!("cpl::{put}({m}, {k}, [&] {{ return {d}; }})")
+            }
+        };
+        self.line(out, &format!("auto& {cell} = {find};"));
+        let marks = (self.found.len(), self.pinned.len());
+        let at = at as *const Expr;
+        let copy = copies.iter().find(|c| c.1 == at).map(|c| c.0);
+        let pin = match copy {
+            Some(c) if self.moved_entry.remove(&(c as usize)) => (c, format!("std::move({cell})")),
+            _ if self.moved_entry.remove(&(at as usize)) => (at, format!("std::move({cell})")),
+            _ => (at, cell.clone()),
+        };
+        self.pinned.push(pin);
+        self.found.push((map.clone(), key.clone(), cell));
+        Some(marks)
+    }
+
+    fn store(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
         let whole = value;
         let value = self.flatten(value, out);
         if matches!(op, AssignOp::Set) && self.let_lent_main(place, value, out) {
