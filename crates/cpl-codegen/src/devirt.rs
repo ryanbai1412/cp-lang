@@ -1332,7 +1332,7 @@ pub(crate) fn same_closures(program: &Program) -> Vec<ClosureId> {
 }
 
 /// The fn closure `cid` only calls, with its own parameters in order.
-fn forwards_to(program: &Program, cid: ClosureId) -> Option<FnId> {
+pub(crate) fn forwards_to(program: &Program, cid: ClosureId) -> Option<FnId> {
     let c = &program.closures[cid];
     let call = match c.body.stmts.as_slice() {
         [Stmt::Return(Some(e))] | [Stmt::Expr(e)] => e,

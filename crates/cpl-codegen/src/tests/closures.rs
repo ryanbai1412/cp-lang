@@ -639,7 +639,7 @@ fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
         "struct Plus(z: Int):\n",
         "    fn monoid(self) -> Monoid<Int> = Monoid(z, (a, b) => self.op(a, b))\n",
         "impl Op<Int> for Plus:\n",
-        "    fn op(self, a: Int, b: Int) -> Int = a + b\n",
+        "    fn op(self, a: Int, b: Int) -> Int = a + b + z\n",
         "let n: 1..=8 = read()\n",
         "let m = Plus(n).monoid()\n",
         "print(m.op(m.id, 2))\n",

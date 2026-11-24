@@ -29,7 +29,7 @@ fn a_return_a_known_branch_always_takes_drops_the_rest_of_the_fn() {
     let cpp = cpp(concat!(
         "fn same<A, B>(a: A, b: B) -> Bool = a == b\n",
         "fn fast(a: Int, b: Int) -> Int = a * b + 1\n",
-        "fn slow(a: Int, b: Int) -> Int = a * b + 2\n",
+        "fn slow(a: Int, b: Int) -> Int = a * b + a\n",
         "fn combine<F>(a: Int, b: Int, on: F = +) -> Int:\n",
         "    if not same(on, +):\n",
         "        return slow(a, b)\n",

@@ -217,7 +217,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "forward-call",
         "forward.rs",
-        Uses(&["returned_param"]),
+        Uses(&["returned_expr"]),
         "a_call_to_a_fn_that_returns_its_param_is_that_argument",
     ),
     pass(

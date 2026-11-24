@@ -176,6 +176,7 @@ fn optional_mut_param_does_not_emit_optional_of_reference() {
     let src = concat!(
         "domain V = 0..2\n",
         "fn f(seen: ?mut [V]Bool = None) -> Int:\n",
+        "    print(1)\n",
         "    0\n",
         "print(f())\n",
     );
@@ -449,4 +450,16 @@ fn the_max_of_optional_positions_is_one_std_max_and_their_min_one_unsigned_compa
     assert!(cpp.contains("b = std::max<cpl::OptPos>(b, x)"), "{cpp}");
     assert!(cpp.contains("cpl::opt_min("), "{cpp}");
     assert!(!cpp.contains("has_value() ? ("), "{cpp}");
+}
+
+#[test]
+fn std_is_some_and_is_none_are_a_plain_has_value_check() {
+    let body = cpp(
+        "let n: Int = read()\nlet x: ?Int = if n > 0: Some(n) else: None\nprint(yes(x.is_some), yes(x.is_none))\n",
+    );
+    let solve = &body[body.find("void solve()").unwrap()..];
+    // std.opt's `self != None` runs in place of each call: no fn of it is left.
+    assert_eq!(solve.matches(".has_value()").count(), 2, "{solve}");
+    assert!(!body.contains("is_some_Int"), "{body}");
+    assert!(!body.contains("is_none_Int"), "{body}");
 }

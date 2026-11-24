@@ -704,7 +704,7 @@ fn a_loop_to_the_length_of_a_list_indexes_it_unchecked() {
 fn a_fn_is_declared_ahead_only_when_it_is_named_before_it_is_defined() {
     // A fn is written after the fns it calls, so only a cycle needs one.
     let cpp = cpp("fn first(n: Int) -> Int: second(n) + 1\n\
-         fn second(n: Int) -> Int: n * 2\n\
+         fn second(n: Int) -> Int: n * n\n\
          fn even(n: Int) -> Bool: n == 0 or odd(n - 1)\n\
          fn odd(n: Int) -> Bool: n != 0 and even(n - 1)\n\
          print(first(2), yes(even(4)))\n");

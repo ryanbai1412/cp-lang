@@ -1004,21 +1004,40 @@ pub(crate) fn repeats(block: &Block) -> bool {
 }
 
 /// How many times `block` reads each of the locals below `n`, at any depth.
-/// The param `f` returns when its whole body is `return <param>`: it reads
-/// that param once and no other.
-pub(crate) fn returned_param(f: &cpl_ir::Function) -> Option<usize> {
-    let [Stmt::Return(Some(Expr {
-        kind: ExprKind::Local(k),
-        ..
-    }))] = f.body.stmts.as_slice()
-    else {
+/// The expression `f` returns when its whole body is `return <e>` and a
+/// call can be `e` with its arguments in place: `e` reads only `f`'s params,
+/// each at most once, binds, calls and builds no closure, is trap-free in
+/// this build and small, and no param is `mut`, ranged or a cache. Past
+/// `return <param>`, `e` is a scalar, so it holds nothing it could lend.
+pub(crate) fn returned_expr(f: &cpl_ir::Function, traps: bool) -> Option<&Expr> {
+    let [Stmt::Return(Some(e))] = f.body.stmts.as_slice() else {
         return None;
     };
+    let plain_params = f
+        .params
+        .iter()
+        .all(|p| !p.mutable && p.range.is_none() && !p.fills_cache);
     let reads = read_counts(&f.body, f.locals.len());
-    let own = (0..f.params.len()).all(|p| reads[p] == usize::from(p == *k));
-    (own && *k < f.params.len() && !f.params[*k].mutable && f.locals[*k].ty == f.ret).then_some(*k)
+    let own = reads
+        .iter()
+        .enumerate()
+        .all(|(s, &n)| n <= usize::from(s < f.params.len()));
+    let mut nodes = 0;
+    let mut flat = true;
+    walk::deep_expr(e, &mut |x| {
+        nodes += 1;
+        flat &= !matches!(x.kind, ExprKind::Do(_) | ExprKind::Closure(_));
+    });
+    let small = nodes <= MAX_RETURNED_NODES;
+    let held = matches!(e.kind, ExprKind::Local(_)) || e.ty.is_scalar();
+    (plain_params && own && flat && small && held && effects::trap_free_with(e, traps, &|_| false))
+        .then_some(e)
 }
 
+/// The most expression nodes a [`returned_expr`] has: no larger than the call it replaces.
+const MAX_RETURNED_NODES: usize = 3;
+
+/// How many times `block` reads each of the locals below `n`, at any depth.
 pub(crate) fn read_counts(block: &Block, n: usize) -> Vec<usize> {
     let mut reads = vec![0usize; n];
     walk::deep_exprs(block, &mut |e| {
