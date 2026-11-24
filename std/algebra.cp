@@ -185,7 +185,7 @@ pub trait Reversible:
 /// sees elements in sequence order. `m` is anything `Monoid.of` accepts.
 ///
 /// cost: \(O(n)\) calls of `op`
-/// empty: the identity of `m`
+/// empty: `fold(min, List<Int>()) == Int.MAX`
 /// traps: never (an `m` without a known identity is a compile-time error)
 /// example: `fold(+, [1, 2, 3]) == 6`
 /// example: `fold(+, 0..0) == 0`
@@ -204,7 +204,7 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
 /// (`op: Affine.monoid()`), a permutation (`op: Monoid(id, compose)`).
 ///
 /// cost: \(O(\log k)\) calls of `op`
-/// empty: `k == 0` gives the identity of `op`
+/// empty: `pow(3, 0, op: *) == 1`
 /// traps: when `k < 0`
 /// example: `pow(3, 0, op: +) == 0`
 /// example: `pow(3, 5, op: +) == 15`
@@ -274,7 +274,7 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// the empty summary.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `MaxSub.monoid().id.try_best == None`
     /// traps: never
     /// example: `MaxSub.join(MaxSub.of(-1), MaxSub.of(-2)).try_best == Some(-1)`
     @get pub fn try_best(self) -> ?Int = if has: Some(best) else: None
@@ -300,8 +300,9 @@ impl Reversible for MaxSub:
 /// `MaxSubAt.of(i, a[i])` and join with `+` (or `MaxSubAt.join`), associative with identity
 /// `MaxSubAt<D>.zero` in \(O(1)\). The same summary answers range queries in a `SegTree`.
 ///
-/// ties: the widest best subarray, then the leftmost; `join` resolves ties itself, so every
-/// grouping of the same elements gives the same `at`
+/// `join` resolves ties itself, so every grouping of the same elements gives the same `at`.
+///
+/// ties: `domain D = 0..5; let s = MaxSubAt.of(D(0), 0) + MaxSubAt.of(D(1), 1) + MaxSubAt.of(D(2), -5) + MaxSubAt.of(D(3), 1) + MaxSubAt.of(D(4), 0); s.at == D(0).l..D(1).r`
 pub struct MaxSubAt<D>(
     has: Bool,
     pub best: Int,
@@ -332,7 +333,7 @@ pub struct MaxSubAt<D>(
     /// subarray may cross the seam.
     ///
     /// cost: \(O(1)\)
-    /// ties: widest, then leftmost
+    /// ties: `domain D = 0..5; let a = MaxSubAt.of(D(0), 0) + MaxSubAt.of(D(1), 1); let b = MaxSubAt.of(D(2), -5) + MaxSubAt.of(D(3), 1) + MaxSubAt.of(D(4), 0); MaxSubAt.join(a, b).at == D(0).l..D(1).r`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `domain D = 0..3; MaxSubAt.join(MaxSubAt.of(D(0), 1), MaxSubAt.of(D(1), 0)).at == D(0).l..D(1).r`
     pub fn join(a: MaxSubAt<D>, b: MaxSubAt<D>) -> MaxSubAt<D>:
@@ -358,7 +359,7 @@ pub struct MaxSubAt<D>(
     /// The largest sum of a non-empty contiguous run, or `None` for the empty summary.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `domain D = 0..3; MaxSubAt<D>.zero.try_best == None`
     /// traps: never
     /// example: `domain D = 0..3; MaxSubAt<D>.zero.try_best == None`
     @get pub fn try_best(self) -> ?Int = if has: Some(best) else: None
@@ -366,7 +367,7 @@ pub struct MaxSubAt<D>(
     /// Where the best subarray is (widest, then leftmost), or `None` for the empty summary.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `domain D = 0..3; MaxSubAt<D>.zero.try_at == None`
     /// traps: never
     /// example: `domain D = 0..3; MaxSubAt.of(D(2), 5).try_at == Some(D(2).l..D(2).r)`
     /// order: the range runs left to right
@@ -444,7 +445,7 @@ pub struct MinCount<T>(pub val: T, pub count: Int):
     /// The smaller value with its count; on equal values, the value with both counts summed.
     ///
     /// cost: \(O(1)\)
-    /// ties: equal values merge; their counts add
+    /// ties: `let m = MinCount.join(MinCount(2, 3), MinCount(2, 4)); (m.val, m.count) == (2, 7)`
     /// traps: never
     /// example: `MinCount.join(MinCount.of(2), MinCount.of(2)).count == 2`
     /// example: `MinCount.join(MinCount(1, 3), MinCount(2, 5)).val == 1`
@@ -481,7 +482,7 @@ pub struct MaxCount<T>(pub val: T, pub count: Int):
     /// The larger value with its count; on equal values, the value with both counts summed.
     ///
     /// cost: \(O(1)\)
-    /// ties: equal values merge; their counts add
+    /// ties: `let m = MaxCount.join(MaxCount(4, 1), MaxCount(4, 2)); (m.val, m.count) == (4, 3)`
     /// traps: never
     /// example: `MaxCount.join(MaxCount(4, 1), MaxCount(4, 2)).count == 3`
     pub fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T>:
@@ -678,7 +679,7 @@ pub fn cmp<T: Ord>(self: T, other: T) -> Ordering =
 /// example: `minmax(3, 1) == (1, 3)`
 /// example: `minmax(1, 3) == (1, 3)`
 /// example: `minmax("b", "a") == ("a", "b")`
-/// ties: equal operands come back in argument order, `(a, b)`
+/// ties: `struct K(k: Int, t: Int); impl Ord for K: fn lt(a, b) = a.k < b.k; let p = minmax(K(1, 0), K(1, 1)); (p.0.t, p.1.t) == (0, 1)`
 pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) = if b < a: (b, a) else: (a, b)
 
 /// \(O(1)\). A semiring from two operation values: `Semiring(min, +)`, `Semiring(or, and)`.
