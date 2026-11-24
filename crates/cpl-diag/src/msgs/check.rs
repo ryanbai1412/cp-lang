@@ -263,6 +263,8 @@ super::msgs! {
     UNKNOWN_INTRINSIC_IS_MUST_HAVE_THAT = UNKNOWN_INTRINSIC, "`{}` is `({}) -> {}`; `{}` must have that signature";
     DOMAIN_ESCAPES_A_VALUE_OF_FRESH = DOMAIN_ESCAPES, "a value of fresh domain `{}` cannot escape its declaring block ({})";
     USE_AFTER_MOVE_WAS_ALREADY_MOVED = USE_AFTER_MOVE, "`{}` was already moved";
+    /// R05.7.1: a parameter is lent, so a `var` can't take it from the caller.
+    USE_AFTER_MOVE_VAR_FROM_LENT_PARAM = USE_AFTER_MOVE, "`{}` would take `{}` from the caller: a parameter is lent, never moved";
     UNRESOLVED_NAME_WAS_REPLACED_BY = UNRESOLVED_NAME, "`{}` was replaced by `{}`";
     ASSIGN_TO_LET_IS_NOT_A_VAR = ASSIGN_TO_LET, "`{}` is not a var, so it can't be {}";
     CPP_FN_S_WHOLE = UNSUPPORTED, "`@cpp(\"...\")` is a fn's whole body: `fn f(a: Int) -> Int = @cpp(\"return a;\")`";

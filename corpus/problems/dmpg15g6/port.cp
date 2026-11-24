@@ -21,7 +21,7 @@ let asks: [q](l: Piece, r: Piece) = read()
 // a Misra-Gries summary with three counters: it keeps every flavour of more than a quarter
 type Heavy = List<(flavour: Flavour, n: Int)>
 fn join(a: Heavy, b: Heavy) -> Heavy:
-    var all = a
+    var all = a.clone()
     for x in b:
         if let i = (0..all.len).find(i => all[i].flavour == x.flavour): all[i].n += x.n
         else: all.push(x)

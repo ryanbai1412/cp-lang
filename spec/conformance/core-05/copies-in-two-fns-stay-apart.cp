@@ -8,7 +8,7 @@ fn first(xs: List<Int>) -> List<Int>:
     w.push(99)
     return a
 fn second(ys: List<Int>) -> List<Int>:
-    var v = ys
+    var v = ys.clone()
     let t = v.clone()
     v.push(7)
     return t

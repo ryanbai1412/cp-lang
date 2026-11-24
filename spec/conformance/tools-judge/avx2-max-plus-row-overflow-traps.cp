@@ -10,7 +10,7 @@ let n: 1..=8 = read()
 domain S = 0..n
 type Row = [S]?Int
 fn keep(acc: Row, row: Row, base: Int) -> Row:
-    var c = acc
+    var c = acc.clone()
     for l in S:
         if let w = row[l]: c[l] max= Some(base + w)
     c

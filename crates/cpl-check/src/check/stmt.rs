@@ -896,6 +896,22 @@ impl<'a> Checker<'a> {
                         if is_owned && src_is_heap {
                             self.mark_moved(src, *src_span);
                         }
+                        let is_param = self.local(src).is_some_and(|l| l.keyword == "param");
+                        // A `var xs` parameter opens its body with this binding, spanning the name.
+                        let var_param = pat.span == *src_span;
+                        if *mutable && is_param && src_is_heap && !var_param {
+                            let name = self.quote(pat.span);
+                            let what = format!("var {name}");
+                            if let Some(diag) = self.report(
+                                *src_span,
+                                msgs::check::USE_AFTER_MOVE_VAR_FROM_LENT_PARAM,
+                                &[&what, src],
+                            ) {
+                                diag.help = Some(format!(
+                                    "keep your own copy: `var {name} = {src}.clone()`"
+                                ));
+                            }
+                        }
                     }
                 }
                 if let Some(init) = init {
