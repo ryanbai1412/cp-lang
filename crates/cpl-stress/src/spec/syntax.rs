@@ -243,28 +243,40 @@ pub(super) fn values(
     values
 }
 
-/// What each bare `read()` and `ask(..)` in `src` reads, by its file
-/// span: the type checker facts give it from where its value goes
-/// (R10.2.1), written as `let _: T = read()` for [`Builder::shape`].
-pub(super) fn read_types(src: &str) -> HashMap<Span, String> {
+/// What the type checker says about the reads in `src`.
+#[derive(Default)]
+pub(super) struct ReadFacts {
+    /// What each bare `read()` and `ask(..)` reads, by its file span: the
+    /// facts give it from where its value goes (R10.2.1), written as
+    /// `let _: T = read()` for [`Builder::shape`].
+    pub(super) reads: HashMap<Span, String>,
+    /// The file spans of the expressions typed `Char`, so a domain whose
+    /// bounds are characters reads as characters.
+    pub(super) chars: HashSet<Span>,
+}
+
+pub(super) fn read_types(src: &str) -> ReadFacts {
     let mut db = cpl_check::Session::new();
     db.set_file("input.cp", src);
     let Some(facts) = db.facts("input.cp") else {
-        return HashMap::new();
+        return ReadFacts::default();
     };
     let whole = Span::new(0, src.len() as u32);
-    facts
-        .types_in(whole)
-        .filter(|(span, ty)| {
-            let text = &src[span_range(*span)];
-            let called = |name: &str| {
-                text.strip_prefix(name)
-                    .is_some_and(|rest| rest.trim_start().starts_with('('))
-            };
-            (text == "read()" || called("ask")) && !ty.is_vague() && **ty != cpl_check::Ty::Error
-        })
-        .map(|(span, ty)| (span, format!("let _: {ty} = read()")))
-        .collect()
+    let mut out = ReadFacts::default();
+    for (span, ty) in facts.types_in(whole) {
+        if *ty == cpl_check::Ty::Char {
+            out.chars.insert(span);
+        }
+        let text = &src[span_range(span)];
+        let called = |name: &str| {
+            text.strip_prefix(name)
+                .is_some_and(|rest| rest.trim_start().starts_with('('))
+        };
+        if (text == "read()" || called("ask")) && !ty.is_vague() && *ty != cpl_check::Ty::Error {
+            out.reads.insert(span, format!("let _: {ty} = read()"));
+        }
+    }
+    out
 }
 
 /// Each `fn f(..) -> T = body` whose body reads, which reads for its

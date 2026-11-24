@@ -610,6 +610,7 @@ impl InputSpec {
             src,
             base: 0,
             read_types: &read_types,
+            char_domains: HashSet::new(),
             bodies: bodies(src, &parsed.items),
             streams: streams(src, &parsed.items),
             inlining: Vec::new(),
@@ -733,6 +734,7 @@ impl InputSpec {
                     }
                 }
                 StmtKind::Domain { name, def } => {
+                    builder.note_char_domain(&name.text, def);
                     if let ExprKind::Range {
                         lo: Some(lo),
                         hi: Some(hi),

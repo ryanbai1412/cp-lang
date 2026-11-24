@@ -1015,6 +1015,38 @@ fn words_letters_flags_records_permutations_and_trees_are_generated_valid() {
 }
 
 #[test]
+fn a_word_over_a_char_domain_is_made_of_its_characters() {
+    let src = "domain Base = 'a'..='d'\n\
+               domain Digit = '0'..'8'\n\
+               let c: Base = read()\n\
+               let s: [domain S]Base = read()\n\
+               let t: [domain T]Digit = read()\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let mut seen = HashSet::new();
+    for seed in 0..200 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
+        // A lone value reads as its code point, as the runtime reads it.
+        assert!(matches!(case.values[0], Value::Int(97..=100)), "{case:?}");
+        for (at, (lo, hi)) in [(1, (b'a', b'd')), (2, (b'0', b'7'))] {
+            let Value::Seq(word) = &case.values[at] else {
+                panic!("a word: {case:?}")
+            };
+            assert!(!word.is_empty());
+            for c in word {
+                let Value::Char(c) = c else {
+                    panic!("a letter: {case:?}")
+                };
+                assert!((i128::from(lo)..=i128::from(hi)).contains(c), "{case:?}");
+                seen.insert(*c);
+            }
+        }
+        let lines: Vec<String> = case.render().lines().map(str::to_string).collect();
+        assert_eq!(lines.len(), 3, "{case:?}");
+    }
+    assert!(seen.contains(&i128::from(b'd')) && seen.contains(&i128::from(b'7')));
+}
+
+#[test]
 fn shrinking_keeps_permutations_and_trees_valid_and_makes_them_plain() {
     let spec = InputSpec::from_source(KINDS).unwrap();
     let start = generate(&spec, &mut Rng::new(7), Size::Small(8)).unwrap();

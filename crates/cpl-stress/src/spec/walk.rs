@@ -38,8 +38,11 @@ pub(super) struct Builder<'a> {
     /// `a[i] = read()` reads one of them ([`elems`]).
     pub(super) elems: HashMap<String, (u32, Type)>,
     /// What each bare `read()` or `ask(..)` reads, from checker facts,
-    /// as the source of a `let _: T = read()` ([`read_types`]).
-    pub(super) read_types: &'a HashMap<Span, String>,
+    /// as the source of a `let _: T = read()`, and which expressions are
+    /// characters ([`read_types`]).
+    pub(super) read_types: &'a ReadFacts,
+    /// Domains whose positions are characters: `domain Letter = 'a'..='z'`.
+    pub(super) char_domains: HashSet<String>,
     /// Each `fn f(..) -> T = body` whose body reads ([`bodies`]).
     pub(super) bodies: HashMap<&'a str, (u32, &'a Expr)>,
     /// Each `fn f() -> yields T` that reads until a sentinel ([`streams`]).
@@ -117,6 +120,39 @@ impl Builder<'_> {
     }
 
     /// `lo..hi` or `lo..=hi` as inclusive bounds.
+    /// Records whether `domain name = def` is over characters: the
+    /// checker types its low bound `Char`.
+    pub(super) fn note_char_domain(&mut self, name: &str, def: &Expr) {
+        let over_chars = matches!(&def.kind, ExprKind::Range { lo: Some(lo), .. }
+            if self.read_types.chars.contains(&lo.span.shift(self.base)));
+        if over_chars {
+            self.char_domains.insert(name.to_string());
+        } else {
+            self.char_domains.remove(name);
+        }
+    }
+
+    /// The characters a word's element is: `Char`, or a domain over
+    /// characters with constant bounds. A lone value of such a domain reads
+    /// as its code point, so only a word reads its characters.
+    fn letters(&mut self, elem: &Type) -> Option<(u8, u8)> {
+        if let TypeKind::Named { name, args } = &elem.kind {
+            if args.is_empty() && self.char_domains.contains(&name.text) {
+                let (lo, hi) = self.domains.get(&name.text)?;
+                let char = |end: &Expr| {
+                    eval(end, &Env::new())
+                        .and_then(|c| u8::try_from(c).ok())
+                        .filter(u8::is_ascii_graphic)
+                };
+                return Some((char(lo)?, char(hi)?)).filter(|(lo, hi)| lo <= hi);
+            }
+        }
+        match self.shape(elem) {
+            Ok(Shape::Char { lo, hi }) => Some((lo, hi)),
+            _ => None,
+        }
+    }
+
     pub(super) fn inclusive(lo: &Expr, hi: &Expr, inclusive: bool) -> (Expr, Expr) {
         let hi = if inclusive {
             hi.clone()
@@ -422,11 +458,16 @@ impl Builder<'_> {
                     kind,
                 })
             }
-            // `[domain S]Char`: a word that brings its own length.
-            TypeKind::OwnDomain { elem, .. }
-                if matches!(self.shape(elem), Ok(Shape::Char { .. })) =>
-            {
-                Ok(Shape::WORD)
+            // `[domain S]Char`, `[domain S]Letter`: a word that brings its
+            // own length, over the characters its element is.
+            TypeKind::OwnDomain { elem, .. } if self.letters(elem).is_some() => {
+                let Some((lo, hi)) = self.letters(elem) else {
+                    return Err(unsupported(self));
+                };
+                Ok(Shape::Str {
+                    alphabet: ((lo, hi) != (b'a', b'z')).then(|| (lo..=hi).collect()),
+                    len: None,
+                })
             }
             // `Str of "01"`, `Str(len: 1..=n)`: a word over that alphabet,
             // of a length in that range.
@@ -1234,7 +1275,7 @@ impl Builder<'_> {
             self.inlining.pop();
             return read.map(Some);
         }
-        let Some(snippet) = self.read_types.get(&at.shift(self.base)) else {
+        let Some(snippet) = self.read_types.reads.get(&at.shift(self.base)) else {
             return Ok(Some(false));
         };
         let parsed = cpl_syntax::parse_file(snippet);
@@ -1382,6 +1423,7 @@ impl Builder<'_> {
                     parts.push(shape);
                 }
                 StmtKind::Domain { name, def } => {
+                    self.note_char_domain(&name.text, def);
                     let (bounds, read) = match &def.kind {
                         ExprKind::Range {
                             lo: Some(lo),
