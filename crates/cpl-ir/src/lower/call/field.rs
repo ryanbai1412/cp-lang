@@ -1423,6 +1423,11 @@ impl<'a> Lowerer<'a> {
                 Ty::Pos(d),
                 0,
             ),
+            // `[D.cuts]T` has a cell per cut, one more than `D` has positions.
+            Dim::Bound(d) => {
+                let n = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                (self.int_add(n, 1), Ty::Bound(d), 0)
+            }
             Dim::Int => (self.len_of(seq.clone(), span), Ty::Int, 0),
             Dim::IntFrom(first) => (self.len_of(seq.clone(), span), Ty::Int, first),
             _ => return None,
