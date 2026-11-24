@@ -794,7 +794,7 @@ pub fn find_all_wildcard<S: Indexed<K, Char>, P: Indexed<L, Char>, K, L>(
 
 /// \(O(n)\) space, \(O(1)\) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
-pub struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0):
+pub struct Palindromes(pub odd: List<Len>, even: List<Len>, first: Int = 0):
     /// The length of the sequence the radii were computed for.
     ///
     /// cost: \(O(1)\)
@@ -901,8 +901,8 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0):
 /// example: `manacher("aba").odd == [1, 2, 1]`
 pub fn manacher<S: Indexed>(s: S) -> Palindromes:
     let n = s.len
-    var odd = List.filled(n, 0)
-    var even = List.filled(n, 0)
+    var odd: List<Len> = List.filled(n, 0)
+    var even: List<Len> = List.filled(n, 0)
     var (l, r) = (0, -1)
     unchecked:
         for i in 0..n:
