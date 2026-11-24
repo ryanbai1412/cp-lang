@@ -828,16 +828,22 @@ pub(crate) fn stored_last(program: &Program, f: &cpl_ir::Function) -> BTreeSet<u
     sunk
 }
 
-pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
-    let stored = Touch::of_block(&f.body).stored_locals();
-    let mut reads = vec![0usize; f.params.len()];
-    walk::deep_exprs(&f.body, &mut |e| {
+/// How many times `block` reads each of the locals below `n`, at any depth.
+pub(crate) fn read_counts(block: &Block, n: usize) -> Vec<usize> {
+    let mut reads = vec![0usize; n];
+    walk::deep_exprs(block, &mut |e| {
         if let ExprKind::Local(s) = e.kind {
-            if s < reads.len() {
-                reads[s] += 1;
+            if let Some(k) = reads.get_mut(s) {
+                *k += 1;
             }
         }
     });
+    reads
+}
+
+pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
+    let stored = Touch::of_block(&f.body).stored_locals();
+    let reads = read_counts(&f.body, f.params.len());
     f.body
         .stmts
         .iter()

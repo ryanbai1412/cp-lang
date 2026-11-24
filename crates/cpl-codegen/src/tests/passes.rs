@@ -214,3 +214,18 @@ fn each_built_reports_a_struct_literal_nested_in_a_fn() {
     built.sort();
     assert_eq!(built, [("P".to_string(), 1), ("Q".to_string(), 1)]);
 }
+
+#[test]
+fn read_counts_counts_each_read_at_any_depth() {
+    let program = lower(concat!(
+        "fn f(a: Int, b: Int) -> Int:\n",
+        "    var t = a\n",
+        "    for i in 0..b:\n",
+        "        t += a\n",
+        "    t\n",
+        "print(f(1, 2))\n",
+    ));
+    let f = &program.fns[0];
+    let reads = crate::uses::read_counts(&f.body, f.params.len());
+    assert_eq!(reads, [2, 1], "a twice (once in the loop), b once");
+}

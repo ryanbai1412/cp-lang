@@ -3,6 +3,7 @@
 //! closure keeps its own type instead of a `std::function` slot of a
 //! `std::tuple`. It majorizes: the same expressions run in the same order.
 
+use crate::uses::read_counts;
 use crate::walk;
 use cpl_ir::{Block, Expr, ExprKind, Local, Program, Stmt, Ty};
 
@@ -32,14 +33,7 @@ pub(crate) fn unpack(program: &mut Program) {
 }
 
 fn home(body: &mut Block, locals: &[Local], captured: &dyn Fn(usize) -> bool) {
-    let mut reads = vec![0usize; locals.len()];
-    walk::deep_exprs(body, &mut |e| {
-        if let ExprKind::Local(s) = e.kind {
-            if let Some(n) = reads.get_mut(s) {
-                *n += 1;
-            }
-        }
-    });
+    let reads = read_counts(body, locals.len());
     walk::blocks_mut(body, &mut |block| {
         let mut k = 0;
         while k < block.stmts.len() {

@@ -319,7 +319,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "tuple-unpack",
         "unpack.rs",
-        Unasked,
+        Uses(&["read_counts"]),
         "a_tuple_of_closures_taken_apart_is_not_a_std_function",
     ),
     pass(
