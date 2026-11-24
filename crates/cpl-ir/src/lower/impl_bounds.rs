@@ -43,10 +43,11 @@ impl<'a> Lowerer<'a> {
                     continue;
                 };
                 let trait_name = name.text.as_str();
-                let (key, elem) = match trait_name {
-                    "Seq" | "Bidir" | "Sized" | "Positional" => (None, args.first()),
-                    "Keyed" | "Indexed" | "IndexedMut" => (args.first(), args.get(1)),
-                    _ => {
+                let roles = (self.seq_roles(trait_name).map(|r| (r.key, r.elem)))
+                    .or((trait_name == "Sized").then_some((None, None)));
+                let (key, elem) = match roles {
+                    Some((k, e)) => (k.and_then(|i| args.get(i)), e.and_then(|i| args.get(i))),
+                    None => {
                         let known = self.known_trait_args(args, m, env);
                         if let Some((given, opened)) =
                             self.impl_trait_args(&seq, trait_name, &known)

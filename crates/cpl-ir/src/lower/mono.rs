@@ -149,6 +149,8 @@ pub(super) struct TraitInfo<'a> {
     pub generics: Vec<&'a str>,
     /// `trait Selective<T>: Idempotent<T>` lists `Idempotent`.
     pub supers: Vec<String>,
+    /// The supers as written, with their args: `Keyed<D, T>`.
+    pub super_tys: Vec<&'a ast::Type>,
     /// The associated types it gives a default: `type Out = ?T`.
     pub assoc_defaults: Vec<(&'a str, &'a ast::Type)>,
     /// `@on_unimplemented("{T} can't ...")`: the trait's own words for a

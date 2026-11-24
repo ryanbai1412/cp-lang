@@ -57,6 +57,7 @@ mod range_coerce;
 mod read_spec;
 mod report;
 mod resolve_ty;
+mod seq_roles;
 mod shown;
 mod signature;
 mod stmt;

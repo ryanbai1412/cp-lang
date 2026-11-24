@@ -397,6 +397,7 @@ impl<'a> Lowerer<'a> {
                             _ => None,
                         })
                         .collect(),
+                    super_tys: supers.iter().collect(),
                     assoc_defaults: body
                         .stmts
                         .iter()

@@ -255,7 +255,7 @@ impl<'a> Lowerer<'a> {
                         // `A: Indexed<K, U>` names its element `U`, not `T`.
                         let is_seq_bound = b.traits.iter().any(|tr| {
                             matches!(&tr.kind, ast::TypeKind::Named { name, args }
-                                if matches!(name.text.as_str(), "Seq" | "Keyed" | "Bidir" | "Positional" | "Indexed" | "IndexedMut")
+                                if self.seq_roles(&name.text).is_some_and(|r| r.elem.is_some())
                                     && args.last().is_none_or(|a| ty_mentions(a, "T")))
                         });
                         if !is_seq_bound {
@@ -369,7 +369,7 @@ impl<'a> Lowerer<'a> {
             let key = decl.bounds.iter().find_map(|b| {
                 let keyed = b.traits.iter().any(|tr| {
                     matches!(&tr.kind, ast::TypeKind::Named { name, .. }
-                        if matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut"))
+                        if self.seq_roles(&name.text).is_some_and(|r| r.key.is_some()))
                 });
                 match inferred.get(&b.name.text) {
                     Some(GenArg::Ty(t)) if keyed => t.seq_key(),
@@ -393,10 +393,9 @@ impl<'a> Lowerer<'a> {
                 let ast::TypeKind::Named { name, args: targs } = &tr.kind else {
                     continue;
                 };
-                let named = name.text.as_str();
-                if !matches!(named, "Keyed" | "Indexed" | "IndexedMut" | "Positional") {
+                let Some(roles) = self.seq_roles(&name.text) else {
                     continue;
-                }
+                };
                 let free = |t: Option<&ast::Type>| match t.map(|t| &t.kind) {
                     Some(ast::TypeKind::Named { name, args })
                         if args.is_empty()
@@ -407,11 +406,10 @@ impl<'a> Lowerer<'a> {
                     }
                     _ => None,
                 };
-                let (k, t) = if named == "Positional" {
-                    (None, free(targs.first()))
-                } else {
-                    (free(targs.first()), free(targs.get(1)))
-                };
+                let (k, t) = (
+                    roles.key.and_then(|i| free(targs.get(i))),
+                    roles.elem.and_then(|i| free(targs.get(i))),
+                );
                 if let (Some(k), Some(arg)) = (k, key.and_then(GenArg::of_key)) {
                     inferred.insert(k, arg);
                 }
