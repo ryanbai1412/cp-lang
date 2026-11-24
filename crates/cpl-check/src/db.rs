@@ -94,9 +94,6 @@ pub struct ItemCheck {
     /// Where `print` or `ask` writes arrays over domains or named lists of
     /// fixed-size values: the callee, its name and its cost, `O(|V| + xs.len)`.
     pub io_costs: Vec<(Span, String, String)>,
-    /// The type of each call, index, unwrap and parenthesised or range
-    /// expression: what no name's hover carries, for the editor's `.`.
-    pub shapes: Vec<(Span, Ty)>,
     pub exprs: crate::ExprFacts,
 }
 

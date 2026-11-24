@@ -91,7 +91,8 @@ impl Database {
                     .filter(|h: &&HoverEntry| h.span == at);
                 let tys = item
                     .check
-                    .shapes
+                    .exprs
+                    .types
                     .iter()
                     .filter(|(s, _)| *s == at)
                     .map(|(_, t)| t);

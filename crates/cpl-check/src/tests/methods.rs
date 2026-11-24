@@ -14,7 +14,8 @@ fn a_library_fn_in_method_form_hovers_and_types_like_its_free_form() {
     let an = db.analyze("a.cp").unwrap();
     let call = src.find("s.runs").unwrap() as u32;
     let (item, at) = an.item_at(call).unwrap();
-    let shape = item.check.shapes.iter().find(|(span, _)| span.start == at);
+    let call = Span::new(at, at + "s.runs(by: c => c)".len() as u32);
+    let shape = (item.check.exprs.types.iter()).find(|(span, _)| *span == call);
     assert_eq!(
         shape.map(|(_, ty)| ty.to_string()).as_deref(),
         Some("Gen<Slice<Str>>")

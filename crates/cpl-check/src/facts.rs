@@ -149,9 +149,6 @@ impl Facts {
                     owners.push((shift(entry.span), owner.clone()));
                 }
             }
-            for (span, ty) in &check.shapes {
-                facts.types.push((shift(*span), ty.clone()));
-            }
             for t in &check.typed_indexes {
                 facts.typed_indexes.push(TypedIndex {
                     access: shift(t.access),
@@ -233,10 +230,13 @@ impl Facts {
         let at = self
             .types
             .partition_point(|(s, _)| (s.end, s.start) < (span.end, span.start));
-        self.types
-            .get(at)
-            .filter(|(s, _)| s.end == span.end)
-            .map(|(_, ty)| ty)
+        let named = self.types.get(at).filter(|(s, _)| s.end == span.end);
+        let expr = (self.exprs.within(span)).find(|(s, ty)| s.end == span.end && !ty.is_vague());
+        match (named, expr) {
+            (Some((n, ty)), Some((e, _))) if n.start <= e.start => Some(ty),
+            (_, Some((_, ty))) => Some(ty),
+            (named, None) => named.map(|(_, ty)| ty),
+        }
     }
 
     /// The type the member named at `span` belongs to.

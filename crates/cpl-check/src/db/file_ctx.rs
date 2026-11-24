@@ -440,7 +440,6 @@ impl FileCtx<'_> {
             typed_indexes: checked.typed_indexes,
             fixed_io: checked.fixed_io,
             io_costs: checked.io_costs,
-            shapes: checked.shapes,
             exprs: checked.exprs,
         });
         self.db.checks.insert(

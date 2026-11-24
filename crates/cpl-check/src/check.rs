@@ -243,7 +243,6 @@ pub(crate) struct Checker<'a> {
     pub(crate) typed_indexes: Vec<TypedIndex>,
     pub(crate) fixed_io: Vec<Span>,
     pub(crate) io_costs: Vec<(Span, String, String)>,
-    shapes: Vec<(Span, Ty)>,
     /// The type of every expression and the callee of every call.
     pub(crate) exprs: crate::ExprFacts,
     /// Name, return type, whether declared, and scope depth at fn entry.
@@ -323,7 +322,6 @@ pub(crate) struct Checked {
     pub typed_indexes: Vec<TypedIndex>,
     pub fixed_io: Vec<Span>,
     pub io_costs: Vec<(Span, String, String)>,
-    pub shapes: Vec<(Span, Ty)>,
     pub exprs: crate::ExprFacts,
 }
 
@@ -351,7 +349,6 @@ impl<'a> Checker<'a> {
             typed_indexes: Vec::new(),
             fixed_io: Vec::new(),
             io_costs: Vec::new(),
-            shapes: Vec::new(),
             exprs: crate::ExprFacts::default(),
             fns: Vec::new(),
             ret_slots: HashMap::default(),
@@ -528,7 +525,6 @@ impl<'a> Checker<'a> {
             typed_indexes: self.typed_indexes,
             fixed_io: self.fixed_io,
             io_costs: self.io_costs,
-            shapes: self.shapes,
             exprs: self.exprs,
         }
     }
@@ -588,7 +584,7 @@ impl<'a> Checker<'a> {
     fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let (hovers, refs, typed) = (self.hovers.len(), self.refs.len(), self.typed_indexes.len());
         let resolved = self.resolved.len();
-        let (fixed, io, shapes) = (self.fixed_io.len(), self.io_costs.len(), self.shapes.len());
+        let (fixed, io) = (self.fixed_io.len(), self.io_costs.len());
         let (conflicts, exprs) = (self.lends.conflicts.len(), self.exprs.mark());
         let moved = self.moved.clone();
         let lambda_params = self.lambda_params.clone();
@@ -605,7 +601,6 @@ impl<'a> Checker<'a> {
         self.typed_indexes.truncate(typed);
         self.fixed_io.truncate(fixed);
         self.io_costs.truncate(io);
-        self.shapes.truncate(shapes);
         self.lends.conflicts.truncate(conflicts);
         self.exprs.truncate(exprs);
         out

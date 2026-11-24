@@ -180,11 +180,11 @@ impl Checker<'_> {
         if !matches!(&*def, Def::Fn { getter: true, .. }) {
             return None;
         }
-        // A call giving a value of a struct leaves its type in `shapes`.
+        // A call giving a value of a struct leaves its type in `exprs.types`.
         let read = |c: &mut Self| {
             let ty = c.method_form_call(expr, expr, &[]);
             ty.or_else(|| {
-                let shape = c.shapes.iter().rev().find(|(at, _)| *at == expr.span);
+                let shape = (c.exprs.types.iter().rev()).find(|(at, _)| *at == expr.span);
                 shape.map(|(_, ty)| ty.clone())
             })
         };
@@ -616,7 +616,7 @@ impl<'a> Checker<'a> {
             });
             return Some(ty);
         }
-        self.shapes.push((call.span, ty));
+        self.exprs.types.push((call.span, ty));
         None
     }
 }
@@ -729,23 +729,12 @@ impl Checker<'_> {
         matches!(ty, Ty::Named { .. }) && !matches!(self.element_ty(ty), Ty::Unknown | Ty::Error)
     }
 
-    /// The type of `expr` for `Facts::type_of`, and of a call, index or
-    /// other compound expression for the editor's `.`. An untyped call
-    /// keeps the library type `method_form_call` gave it.
+    /// The type of `expr` for `Facts::type_of`. An untyped call keeps the
+    /// library type `method_form_call` gave it.
     pub(super) fn record_shape(&mut self, expr: &Expr, ty: &Ty) {
-        self.exprs.types.push((expr.span, ty.clone()));
-        let compound = matches!(
-            expr.kind,
-            ExprKind::Call { .. }
-                | ExprKind::Index { .. }
-                | ExprKind::Paren(_)
-                | ExprKind::Range { .. }
-                | ExprKind::Unwrap(_)
-                | ExprKind::Try(_)
-        );
-        let kept = *ty == Ty::Unknown && self.shapes.last().is_some_and(|s| s.0 == expr.span);
-        if compound && !kept {
-            self.shapes.push((expr.span, ty.clone()));
+        let kept = *ty == Ty::Unknown && self.exprs.types.last().is_some_and(|s| s.0 == expr.span);
+        if !kept {
+            self.exprs.types.push((expr.span, ty.clone()));
         }
     }
 }

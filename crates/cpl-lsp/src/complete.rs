@@ -970,13 +970,17 @@ fn call_type(item: &AnalyzedItem, callee: &Expr) -> Option<Ty> {
 
 /// What the checker found `expr` to be, from the types it left behind.
 fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
-    if let Some((_, ty)) = item
-        .check
-        .shapes
-        .iter()
-        .rev()
-        .find(|(span, _)| *span == expr.span)
-    {
+    let compound = matches!(
+        expr.kind,
+        ExprKind::Call { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Paren(_)
+            | ExprKind::Range { .. }
+            | ExprKind::Unwrap(_)
+            | ExprKind::Try(_)
+    );
+    let typed = (item.check.exprs.types.iter().rev()).find(|(span, _)| *span == expr.span);
+    if let Some((_, ty)) = typed.filter(|_| compound) {
         if !matches!(ty, Ty::Error | Ty::Unknown) {
             return Some(ty.clone());
         }
