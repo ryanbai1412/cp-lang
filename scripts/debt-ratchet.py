@@ -873,7 +873,7 @@ def escapes_open(root: Path) -> list[str]:
 # main's own measurement can raise them above 0. Every gated counter whose
 # committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
 HARD_ZERO = frozenset({
-    "pending_tests", "edition_refs", "uncited_rules",
+    "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
