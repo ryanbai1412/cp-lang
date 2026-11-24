@@ -159,7 +159,8 @@ impl Feeds {
         let mut fed = BTreeSet::new();
         let bodies = [&program.main, &program.setup]
             .into_iter()
-            .chain(program.fns.iter().map(|f| &f.body));
+            .chain(program.fns.iter().map(|f| &f.body))
+            .chain(program.closures.iter().map(|c| &c.body));
         for body in bodies {
             walk::deep_stmts(body, &mut |stmt| {
                 if let Stmt::For(id, _, Iter::Seq(seq, false), inner) = stmt {
