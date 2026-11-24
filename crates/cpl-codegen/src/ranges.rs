@@ -1145,9 +1145,13 @@ impl<'p> Facts<'p> {
                 let hi = u64::try_from(self.upper_bound(fn_id, &a[0], depth + 1)?.max(1)).ok()?;
                 i64::try_from(hi.checked_next_power_of_two()?).ok()
             }
-            ExprKind::Call(id, _) => (self.returned(*id)?.iter())
-                .map(|r| self.upper_bound(Some(*id), r, depth + 2))
-                .try_fold(i64::MIN, |hi, r| Some(hi.max(r?))),
+            // A range check traps outside its range, so what it gives is inside.
+            ExprKind::RangeCheck { value, hi, .. } => (hi.as_deref())
+                .and_then(|hi| self.upper_bound(fn_id, hi, depth + 1))
+                .into_iter()
+                .chain(self.upper_bound(fn_id, value, depth + 1))
+                .min(),
+            ExprKind::Call(id, _) => self.call_bound(*id, depth, true),
             _ => None,
         }
     }
@@ -1160,6 +1164,20 @@ impl<'p> Facts<'p> {
             .get(&id)
             .map(Vec::as_slice)
             .filter(|r| (1..=RETURNS_MAX).contains(&r.len()))
+    }
+
+    /// A bound (`hi`: upper, else lower) of a call to `id`: the hull of what
+    /// its returns give, each checked into a ranged return type (R03.1.4)
+    /// unless proven inside it.
+    pub(crate) fn call_bound(&self, id: usize, depth: u8, hi: bool) -> Option<i64> {
+        let rets = self.returned(id)?.iter();
+        if hi {
+            rets.map(|r| self.upper_bound(Some(id), r, depth + 2))
+                .try_fold(i64::MIN, |hi, r| Some(hi.max(r?)))
+        } else {
+            rets.map(|r| self.lower_bound(Some(id), r, depth + 2))
+                .try_fold(i64::MAX, |lo, r| Some(lo.min(r?)))
+        }
     }
 
     fn local_hi(&self, v: Var, depth: u8) -> Option<i64> {
@@ -1653,6 +1671,13 @@ impl<'p> Facts<'p> {
                 Unknown => Unknown,
                 sign => sign,
             },
+            ExprKind::RangeCheck { value, lo, .. } => {
+                match (lo.as_deref().map(|l| &l.kind), of(value)) {
+                    (Some(ExprKind::Int(1..)), _) | (_, Positive) => Positive,
+                    (Some(ExprKind::Int(0)), _) | (_, NonNeg) => NonNeg,
+                    _ => Unknown,
+                }
+            }
             ExprKind::Call(id, _) => match self.returned(*id) {
                 Some(rets) => (rets.iter())
                     .map(|r| self.sign_at(Some(*id), r, depth + 4))

@@ -228,3 +228,14 @@ print(f(read(), read()))
         "{out}"
     );
 }
+
+#[test]
+fn a_call_takes_its_checked_return_range() {
+    let out = cpp("type Len = 0..2_147_483_648
+fn f(x: Int) -> Len = x
+fn g(x: Int) -> Int = x
+print(f(read<Int>()) + 63, g(read<Int>()) + 63)
+");
+    assert!(!out.contains("cpl::iadd(f("), "{out}");
+    assert!(out.contains("cpl::iadd(g("), "{out}");
+}

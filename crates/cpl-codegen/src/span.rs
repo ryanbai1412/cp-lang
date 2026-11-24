@@ -115,9 +115,12 @@ impl Facts<'_> {
                 .iter()
                 .map(at)
                 .try_fold(i64::MAX, |lo, a| Some(lo.min(a?))),
-            ExprKind::Call(id, _) => (self.returned(*id)?.iter())
-                .map(|r| self.lower_bound(Some(*id), r, depth + 2))
-                .try_fold(i64::MAX, |lo, r| Some(lo.min(r?))),
+            ExprKind::RangeCheck { value, lo, .. } => (lo.as_deref())
+                .and_then(at)
+                .into_iter()
+                .chain(at(value))
+                .max(),
+            ExprKind::Call(id, _) => self.call_bound(*id, depth, false),
             ExprKind::Index(..) => (match self.spec(fn_id, e) {
                 Some(Spec::Int { lo: Some(lo), .. }) => at(lo),
                 _ => None,
