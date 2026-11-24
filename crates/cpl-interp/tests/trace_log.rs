@@ -373,14 +373,20 @@ const OVER_BUDGET: &[(&str, f64)] = &[
     ("shows", 1.7),
 ];
 
+/// How far a noisy neighbour can move a slowdown (see
+/// `a_busy_machine_does_not_decide_the_trace_budget`).
+const NOISE: f64 = 1.15;
+
 /// Holds mode `name`, `slower` times the untraced run, to the 1.2x budget
-/// or, while it is over that, to its [`OVER_BUDGET`] ceiling.
+/// or, while it is over that, to its [`OVER_BUDGET`] ceiling. An entry is
+/// due for deletion only when it fits with [`NOISE`] to spare, so a quiet
+/// machine can't demand a deletion that a busy one then fails.
 fn check_budget(over: &mut Vec<String>, name: &str, slower: f64) {
     match OVER_BUDGET.iter().find(|(mode, _)| *mode == name) {
         Some(&(_, ceiling)) if slower > ceiling => over.push(format!(
             "{name}: tracing made the run {slower:.2}x slower (ceiling {ceiling}x, budget 1.2x)"
         )),
-        Some(_) if slower <= 1.2 => over.push(format!(
+        Some(_) if slower * NOISE <= 1.2 => over.push(format!(
             "{name}: fits the 1.2x budget now: delete its OVER_BUDGET entry"
         )),
         Some(_) => eprintln!("{name}: {slower:.2}x, still over the 1.2x budget"),
