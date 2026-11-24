@@ -16,7 +16,7 @@
 // Bounds: n: 1..=2e5; a0: 1..=1e9; coupons.p: 1..=1e9; coupons.t: 1..=4
 let (n, a0) = read<(1..=2e5, 1..=1e9)>()
 domain C = 0..n
-let coupons = read<[C](p: 1..=1e9, t: 1..=4)>()
+let coupons: [C](p: 1..=1e9, t: 1..=4) = read()
 let cap = 1e15                                       // more than every price combined
 fn buy(a: Int, c: C) -> Int = min((a - coupons[c].p) * coupons[c].t, cap)
 
