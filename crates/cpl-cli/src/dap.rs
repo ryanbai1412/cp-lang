@@ -578,14 +578,25 @@ impl Session {
                     }
                     _ => std::mem::take(&mut seen),
                 };
-                // Two runs longer than what is kept, or a run the time limit
-                // cut, compare over what both keep. A cut run's last step
-                // stopped partway, so it is not kept.
+                // A run longer than what is kept, or cut by the time limit,
+                // goes on past its recording; a cut run's last step stopped
+                // partway, so it is not kept. Runs compare over what both
+                // keep, unless the shorter one ended there: that is a change.
+                let open = |run: &Recording, cut: bool| cut || run.truncated;
                 let kept =
                     |run: &Recording, cut: bool| run.len() - usize::from(cut && !run.truncated);
-                let cut = was_stopped || self.stopped;
-                let same_steps = (cut || before.truncated && self.recording.truncated)
-                    .then(|| kept(&before, was_stopped).min(kept(&self.recording, self.stopped)));
+                let (was, now) = (
+                    kept(&before, was_stopped),
+                    kept(&self.recording, self.stopped),
+                );
+                let shorter_open = match was.cmp(&now) {
+                    std::cmp::Ordering::Less => open(&before, was_stopped),
+                    std::cmp::Ordering::Greater => open(&self.recording, self.stopped),
+                    std::cmp::Ordering::Equal => {
+                        open(&before, was_stopped) || open(&self.recording, self.stopped)
+                    }
+                };
+                let same_steps = shorter_open.then(|| was.min(now));
                 self.change = match same_steps {
                     Some(n) => first_change_in(&before, 0..n, &self.recording, 0..n),
                     None => first_change(&before, &self.recording),

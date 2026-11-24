@@ -1496,6 +1496,10 @@ fn a_watch_reads_the_parameter_that_hides_a_global() {
     );
     let reply = eval(&mut dap, "k");
     assert!(reply.contains("\"result\":\"5\""), "{reply}");
+    assert!(
+        !reply.contains("\"type\":\"Int\""),
+        "a local is not the global's type: {reply}"
+    );
     dap.send("continue", Some("{\"threadId\":1}"));
     let _ = dap.recv_until("\"event\":\"stopped\"");
     let reply = eval(&mut dap, "k");
@@ -1503,5 +1507,89 @@ fn a_watch_reads_the_parameter_that_hides_a_global() {
         reply.contains("\"result\":\"1\",\"type\":\"Int\""),
         "{reply}"
     );
+    dap.finish();
+}
+
+#[test]
+fn a_restart_that_ends_sooner_inside_the_first_window_is_a_change() {
+    const SHORT: &str = "var i = 0\nwhile i < 10:\n    i += 1\nprint(i)\n";
+    let (mut dap, path) = launched(
+        "ends_sooner",
+        &format!("{SHORT}for _ in 0..3000:\n    i += 0\n"),
+        "\"stopOnEntry\":true,\"recordSteps\":1000",
+    );
+    std::fs::write(&path, SHORT).unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("re-ran");
+    assert!(note.contains("the run has ended"), "{note}");
+    dap.finish();
+}
+
+/// A run that ends where a longer one goes on without changing a value.
+const IDLE_TAIL: &str = "var i = 0\nwhile i < 1500:\n    i += 1\nprint(i)\n";
+
+#[test]
+fn a_restart_that_ends_sooner_on_screen_is_a_change() {
+    let (mut dap, path) = launched_at(
+        "ends_sooner_on_screen",
+        &format!("{IDLE_TAIL}for _ in 0..3000:\n    i += 0\n"),
+        "\"stopOnEntry\":false,\"recordSteps\":1000",
+        &[4],
+    );
+    std::fs::write(&path, IDLE_TAIL).unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("re-ran");
+    assert!(note.contains("the run has ended"), "{note}");
+    dap.finish();
+}
+
+#[test]
+fn continue_from_before_an_edit_s_window_pages_forward_to_it() {
+    let source = |step: i64| {
+        format!(
+            "let n: Int = read()\nvar i = 0\nwhile i < n:\n    i += 1\nvar s = 0\ns += 1\ns += {step}\nprint(s + i)\n"
+        )
+    };
+    let (mut dap, path) = launched_at(
+        "edit_ahead",
+        &source(1),
+        "\"stopOnEntry\":false,\"recordSteps\":1000,\"inputText\":\"3000\\n\"",
+        &[5],
+    );
+    std::fs::write(&path, source(2)).unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let _ = dap.recv_until("re-ran");
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    dap.send(
+        "setBreakpoints",
+        Some(&format!(
+            "{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[]}}"
+        )),
+    );
+    let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
+    dap.send("reverseContinue", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let frame = top_line(&mut dap);
+    assert!(frame.contains("\"line\":1"), "{frame}");
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let stop = dap.recv_until("\"event\":\"stopped\"");
+    assert!(stop.contains("\"reason\":\"divergence\""), "{stop}");
+    let frame = top_line(&mut dap);
+    assert!(frame.contains("\"line\":7"), "{frame}");
+    dap.finish();
+}
+
+#[test]
+fn a_cut_run_that_now_ends_inside_what_it_kept_is_a_change() {
+    let (mut dap, path) = launched(
+        "cut_then_ends",
+        "var i = 0\nwhile i < 10:\n    i += 1\nwhile true:\n    i += 0\n",
+        "\"stopOnEntry\":true,\"recordSteps\":1000000000,\"timeLimit\":0.2",
+    );
+    std::fs::write(&path, "var i = 0\nwhile i < 10:\n    i += 1\n").unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("re-ran");
+    assert!(note.contains("the run has ended"), "{note}");
     dap.finish();
 }
