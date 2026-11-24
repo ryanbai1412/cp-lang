@@ -179,3 +179,11 @@ print(Tw<V>.filter(x => x.a > 0).count(), Tw<V>.min(by: x => -x.a)!.a)
 "#;
     assert!(check(src).is_empty(), "{:?}", check(src));
 }
+
+#[test]
+fn an_item_meets_its_impls_bounds_at_the_bounds_trait_args() {
+    let head = "fn q<T, M: Op<T>>(m: M, x: T) -> T = m.op(x, x)\n";
+    let fits = format!("{head}print(q(*, 3))\n");
+    assert!(check(&fits).is_empty(), "{:?}", check(&fits));
+    assert_eq!(codes(&format!("{head}print(q(*, (1, 2)))\n")), ["E0606"]);
+}
