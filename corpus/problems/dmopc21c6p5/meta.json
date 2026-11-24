@@ -8,11 +8,15 @@
   {"id": "4342631", "language": "CPP17", "result": "RTE", "time": 0.25188833, "memory_kb": 5756.0, "file": "corpus/submissions/4342631.cpp"},
   {"id": "4342660", "language": "CPP17", "result": "TLE", "time": 5.818400805, "memory_kb": 890944.0, "file": "corpus/submissions/4342660.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc21c6p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp is a broken-profile DP over links between same-team neighbours, forward with colour checks at a link's later tile and backward at its earlier tile, so one sweep gives every flip. It matches a recursive tiling count for every flip on 420 small gen.py cases, and both statement samples."
 }
