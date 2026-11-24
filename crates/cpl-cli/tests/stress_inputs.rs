@@ -8,6 +8,7 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use cpl_stress::gen::{generate, Size};
 use cpl_stress::rng::Rng;
@@ -60,42 +61,59 @@ fn read_trap(program: &Path, src: &str, input: &str) -> Option<String> {
         .then(|| stderr.lines().next().unwrap_or("").to_string())
 }
 
-#[test]
-fn every_generated_input_is_one_the_programs_reader_accepts() {
+/// The programs whose index in sorted order is `shard` modulo `SHARDS`, so
+/// each shard is its own test and CI spreads them over its jobs.
+const SHARDS: usize = 8;
+
+fn shard_of(programs: &[PathBuf], shard: usize) -> Vec<&PathBuf> {
+    programs.iter().skip(shard).step_by(SHARDS).collect()
+}
+
+/// The cases checked on `program`, and the first one its reader rejected.
+fn check(program: &Path) -> (usize, Option<String>) {
+    let src = std::fs::read_to_string(program).unwrap();
+    if src.contains("Wire()") || src.contains("@interactor") {
+        return (0, None);
+    }
+    let Ok(spec) = InputSpec::from_source(&src) else {
+        return (0, None);
+    };
+    if spec.is_empty() {
+        return (0, None);
+    }
+    let mut checked = 0;
+    for seed in 0..SEEDS {
+        let Some(case) = generate(&spec, &mut Rng::new(seed), Size::Small(8)) else {
+            continue;
+        };
+        checked += 1;
+        let input = case.render();
+        if let Some(trap) = read_trap(program, &src, &input) {
+            let name = program.display();
+            return (
+                checked,
+                Some(format!("{name} seed {seed}: {trap}\n{input}")),
+            );
+        }
+    }
+    (checked, None)
+}
+
+fn accepts_on_shard(shard: usize) {
     let programs = programs();
+    let mine = shard_of(&programs, shard);
+    let next = AtomicUsize::new(0);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let chunks: Vec<&[PathBuf]> = programs.chunks(programs.len().div_ceil(threads)).collect();
     let (mut checked, mut rejected) = (0, Vec::new());
     std::thread::scope(|s| {
-        let handles: Vec<_> = chunks
-            .into_iter()
-            .map(|chunk| {
-                s.spawn(move || {
+        let handles: Vec<_> = (0..threads)
+            .map(|_| {
+                s.spawn(|| {
                     let (mut checked, mut rejected) = (0, Vec::new());
-                    for program in chunk {
-                        let src = std::fs::read_to_string(program).unwrap();
-                        if src.contains("Wire()") || src.contains("@interactor") {
-                            continue;
-                        }
-                        let Ok(spec) = InputSpec::from_source(&src) else {
-                            continue;
-                        };
-                        if spec.is_empty() {
-                            continue;
-                        }
-                        for seed in 0..SEEDS {
-                            let Some(case) = generate(&spec, &mut Rng::new(seed), Size::Small(8))
-                            else {
-                                continue;
-                            };
-                            checked += 1;
-                            let input = case.render();
-                            if let Some(trap) = read_trap(program, &src, &input) {
-                                let name = program.display();
-                                rejected.push(format!("{name} seed {seed}: {trap}\n{input}"));
-                                break;
-                            }
-                        }
+                    while let Some(program) = mine.get(next.fetch_add(1, Ordering::Relaxed)) {
+                        let (c, r) = check(program);
+                        checked += c;
+                        rejected.extend(r);
                     }
                     (checked, rejected)
                 })
@@ -107,11 +125,45 @@ fn every_generated_input_is_one_the_programs_reader_accepts() {
             rejected.extend(r);
         }
     });
-    assert!(checked > 100, "only {checked} cases were checked");
+    assert!(
+        checked > 100 / SHARDS,
+        "only {checked} cases were checked in shard {shard}"
+    );
     assert!(
         rejected.is_empty(),
-        "{} rejected:\n{}",
+        "{} rejected in shard {shard}:\n{}",
         rejected.len(),
         rejected.join("\n")
     );
+}
+
+macro_rules! shards {
+    ($($test:ident = $shard:literal),* $(,)?) => {
+        $(
+            #[test]
+            fn $test() {
+                accepts_on_shard($shard);
+            }
+        )*
+        #[test]
+        fn the_shards_cover_every_program_once() {
+            let programs = programs();
+            let mut covered: Vec<&PathBuf> =
+                [$($shard),*].into_iter().flat_map(|k| shard_of(&programs, k)).collect();
+            covered.sort();
+            assert_eq!(covered, programs.iter().collect::<Vec<_>>());
+            assert_eq!([$($shard),*].len(), SHARDS);
+        }
+    };
+}
+
+shards! {
+    every_generated_input_is_one_the_programs_reader_accepts_0 = 0,
+    every_generated_input_is_one_the_programs_reader_accepts_1 = 1,
+    every_generated_input_is_one_the_programs_reader_accepts_2 = 2,
+    every_generated_input_is_one_the_programs_reader_accepts_3 = 3,
+    every_generated_input_is_one_the_programs_reader_accepts_4 = 4,
+    every_generated_input_is_one_the_programs_reader_accepts_5 = 5,
+    every_generated_input_is_one_the_programs_reader_accepts_6 = 6,
+    every_generated_input_is_one_the_programs_reader_accepts_7 = 7,
 }
