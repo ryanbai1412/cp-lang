@@ -28,6 +28,34 @@ class BothForms(unittest.TestCase):
         self.assertIn("g.cp:8: std-api/R11: `dot`", found[0])
 
 
+class ReadingOrder(unittest.TestCase):
+    def test_same_order_is_accepted(self):
+        text = "pub fn put(mut self, k: K, v: V)\npub fn put(mut self, k: K, v: V, at: Int = 0)\n"
+        self.assertEqual(list(lint.reading_order([("m.cp", text)])), [])
+
+    def test_a_shared_name_of_another_type_is_another_parameter(self):
+        text = "pub fn set(mut self, k: K, v: V)\npub fn set(mut self, v: D, k: K)\n"
+        self.assertEqual(list(lint.reading_order([("m.cp", text)])), [])
+
+    def test_swapped_order_is_rejected(self):
+        text = "pub fn put(mut self, k: K, v: V)\npub fn put(\n    mut self,\n    v: V,\n    k: K,\n)\n"
+        found = list(lint.reading_order([("m.cp", text)]))
+        self.assertEqual(len(found), 1)
+        self.assertIn("m.cp:2: std-api/R8: `put` takes v, k; m.cp:1", found[0])
+
+
+class IndexSpace(unittest.TestCase):
+    def test_domain_position_is_accepted(self):
+        text = "pub fn swap<D, T>(mut self: [D]T, i: D, j: D)\npub fn windows<D, T>(self: [D]T, k: Int)\n"
+        self.assertEqual(list(lint.index_space([("s.cp", text)])), [])
+
+    def test_int_position_over_a_sequence_is_rejected(self):
+        text = "pub fn swap<D, T>(mut self: [D]T, i: Int, j: D)\n"
+        found = list(lint.index_space([("s.cp", text)]))
+        self.assertEqual(len(found), 1)
+        self.assertIn("s.cp:1: std-api/R9: `swap` takes the position `i`", found[0])
+
+
 LEXICON = """### R1. Every name comes from the lexicon
 
 | Idea | Name | Not |

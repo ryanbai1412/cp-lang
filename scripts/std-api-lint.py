@@ -10,6 +10,11 @@
   doc says it is "not a sentinel" (the eertree's odd-root length `-1`).
 - R6 (#r6-options-are-named-arguments-with-defaults): a public fn `f_by`,
   `f_key` or `f_with` beside a public `f`: a variant where an option belongs.
+- R8 (#r8-required-arguments-come-in-reading-order): two public fns of one
+  name whose shared required parameters (same name, same type) come in a
+  different order.
+- R9 (#r9-over-a-dt-keys-keep-their-index-space): a public fn over a `[D]T`
+  taking a position parameter (`i`, `at`, `l`, `r`, ...) as a bare `Int`.
 - R11 (#r11-one-form-per-operation): a top-level public fn whose first
   parameter's type also has a public method of that name: both forms.
 
@@ -58,6 +63,62 @@ CHECKLIST = os.path.join(ROOT, "handbook", "guidelines", "std-api-checklist.md")
 WORD = re.compile(r"^`([A-Za-z_]\w*)(?:\(\))?`$")
 
 
+SIG = re.compile(r"^[ \t]*(?:@\w+(?:\([^)]*\))?\s+)*pub\s+fn\s+(\w+)\s*(?:<[^>]*>)?\(", re.M)
+POSITION = re.compile(r"^(i|j|at|pos|idx|index|l|r|lo|hi)$")
+
+
+def signatures(text):
+    """(line, name, [(param, type, has_default)]) of each public fn, parameters split at depth 0."""
+    for m in SIG.finditer(text):
+        depth, cur, params = 0, "", []
+        for ch in text[m.end():]:
+            if ch in "([<{":
+                depth += 1
+            elif ch in ")]>}":
+                if depth == 0:
+                    break
+                depth -= 1
+            if ch == "," and depth == 0:
+                params.append(cur)
+                cur = ""
+            else:
+                cur += ch
+        params.append(cur)
+        parsed = []
+        for p in params:
+            head, _, default = p.partition("=")
+            name, _, ty = head.partition(":")
+            if name.strip():
+                parsed.append((name.strip(), " ".join(ty.split()), bool(default.strip())))
+        yield text.count("\n", 0, m.start(1)) + 1, m.group(1), parsed
+
+
+def reading_order(texts):
+    """std-api/R8: same-named public fns whose shared required parameters come in another order."""
+    seen = {}
+    for rel, text in texts:
+        for line, name, params in signatures(text):
+            req = [(n, t) for n, t, d in params[1:] if not d]
+            for orel, oline, oreq in seen.get(name, []):
+                common = [p for p in req if p in oreq]
+                if len(common) >= 2 and [p for p in oreq if p in common] != common:
+                    yield (f"{rel}:{line}: std-api/R8: `{name}` takes "
+                           f"{', '.join(n for n, _ in common)}; {orel}:{oline} takes them in another order")
+            seen.setdefault(name, []).append((rel, line, req))
+
+
+def index_space(texts):
+    """std-api/R9: a public fn over a `[D]T` taking a position as a bare `Int`."""
+    for rel, text in texts:
+        for line, name, params in signatures(text):
+            if not params or not re.match(r"(mut |lent )?\[", params[0][1]):
+                continue
+            for n, t, _ in params[1:]:
+                if t == "Int" and POSITION.match(n):
+                    yield (f"{rel}:{line}: std-api/R9: `{name}` takes the position `{n}` as an `Int`; "
+                           f"take the sequence's `D` (or `Cut<D>`)")
+
+
 def lexicon(text):
     """(own, banned): the words R1's table uses, and its bare "Not" words no row uses."""
     section = text.split("### R1.", 1)[1].split("\n### ", 1)[0]
@@ -101,7 +162,10 @@ def findings():
             v = VARIANT.search(name)
             if v and name[: v.start()] in names and name not in WORDS:
                 yield f"{rel}:{line}: std-api/R6: `{name}` is a variant; make the option a named argument"
-    yield from both_forms((os.path.relpath(p, ROOT), open(p).read()) for p in paths)
+    texts = [(os.path.relpath(p, ROOT), open(p).read()) for p in paths]
+    yield from both_forms(texts)
+    yield from reading_order(texts)
+    yield from index_space(texts)
     _, banned = lexicon(open(CHECKLIST).read())
     yield from off_lexicon(((os.path.relpath(p, ROOT), open(p).read()) for p in paths), banned)
 

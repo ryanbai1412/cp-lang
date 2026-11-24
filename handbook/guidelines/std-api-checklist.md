@@ -114,7 +114,7 @@ Required arguments are positional: the container first, then what is looked up, 
 
 - **Why:** neighbouring fns with swapped orders are a guaranteed slip.
 - **Example:** `a.count(x)`, `t.fold(l..r)`, `t.max_right(from, ok)`.
-- **Enforced by:** `missing` (API-consistency lint: neighbour pairs with swapped order).
+- **Enforced by:** `scripts/std-api-lint.py` fails two public fns of one name whose shared required parameters come in another order.
 
 ## Keys and indices
 
@@ -124,7 +124,7 @@ A fn over a `[D]T` takes and returns `D`, `Cut<D>` or `Range<D>`, never a bare `
 
 - **Why:** the domain is what lets the checker catch an off-by-one or a wrong index space.
 - **Example:** `a.windows(k)` yields slices keyed like `a`; `a.scan(+)` is keyed by `D.cuts`.
-- **Enforced by:** `missing` (API-consistency lint: `Int` keys where a domain exists).
+- **Enforced by:** `scripts/std-api-lint.py` fails a public fn over a `[D]T` taking a position (`i`, `at`, `l`, `r`, ...) as a bare `Int`.
 
 ### R10. A fn that makes a new index space returns it
 

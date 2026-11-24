@@ -214,8 +214,8 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Searches and min/max return `?T`, never a sentinel | fns returning `-1`, `n` or `INF` for "none" | rule `std-api/R4`; `scripts/std-api-lint.py` (in `scripts/check.sh`, shrink-only) |
 | Options are named arguments (`by:`), never `_by` variants | `_by`/`_key` names, positional options | rule `std-api/R6`; `scripts/std-api-lint.py` (in `scripts/check.sh`, shrink-only) |
 | One form per operation: method or free fn, not both by accident | operations reachable both ways without a documented reason | rule `std-api/R11`; `scripts/std-api-lint.py` (an operation both a free fn and a method of its first parameter's type) |
-| Same argument order across neighbours | neighbour pairs with swapped order | rule `std-api/R8`; `missing` (same lint) |
-| Keys and indices keep their index space (positions, cuts, vertices, edges) | fns that take or return a bare `Int` where a domain exists | rule `std-api/R9`; `missing` (same lint) |
+| Same argument order across neighbours | neighbour pairs with swapped order | rule `std-api/R8`; `scripts/std-api-lint.py` (at 0) |
+| Keys and indices keep their index space (positions, cuts, vertices, edges) | fns that take or return a bare `Int` where a domain exists | rule `std-api/R9`; `scripts/std-api-lint.py` (at 0) |
 | Every container has the common traits (`Show`, `Eq`, `Seq`, `len`, `is_empty`) | (type, expected trait) pairs missing | rule `std-api/R12`; `scripts/std-trait-matrix.py` (in `scripts/check.sh`, shrink-only) |
 | Spec and std agree on names and named arguments | unmatched `f(k: v)` in spec blocks | rule `std-api/R6`; `scripts/conformance-sigs.py --check`, gap list only shrinks |
 | Each type's common tasks are one short call | journeys per type with a tested example (`SortedBag`: insert, erase one, erase at cursor, predecessor, successor, range) | rule `std-api/R13`; `missing` (usage-journey suite, first for `SortedBag`/`SortedSet`) |
