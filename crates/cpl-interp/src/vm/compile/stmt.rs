@@ -1182,7 +1182,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         {
             return false;
         }
-        let Some((args_i, args_v, muts)) = self.compile_fed_args(fn_id, args) else {
+        let Some((args_i, args_v, muts, lends)) = self.compile_fed_args(fn_id, args) else {
             return false;
         };
         let var_loc = self.slot_loc(slot);
@@ -1194,6 +1194,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             body_pc: 0,
             var_loc,
             muts,
+            lends,
         });
         let call_pc = self.emit(Op::CallVmFeed { spec: spec_idx }, seq_expr.span);
         self.note_fed_site(call_pc, stmt, seq_expr);

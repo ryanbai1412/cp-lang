@@ -96,7 +96,7 @@ pub(super) fn sync_to_stack(
 }
 
 #[inline(always)]
-fn slot_to_stack(
+pub(super) fn slot_to_stack(
     slot: usize,
     loc: &SlotLoc,
     regs_i: &[i64],
@@ -289,7 +289,7 @@ pub(super) fn sync_from_stack(
 }
 
 #[inline(always)]
-fn slot_from_stack(
+pub(super) fn slot_from_stack(
     slot: usize,
     loc: &SlotLoc,
     regs_i: &mut [i64],

@@ -5,7 +5,14 @@
 
 use super::*;
 
-type FedArgs = (Vec<u16>, Vec<u16>, Vec<(usize, FeedBack)>);
+/// Values, then `mut` places to store back, then the `lent_calls` entry
+/// and first index register of places a fn value may reach.
+type FedArgs = (
+    Vec<u16>,
+    Vec<u16>,
+    Vec<(usize, FeedBack)>,
+    Option<(u16, u16)>,
+);
 
 /// The registers a `mut` argument that is not a register of its own goes in.
 enum Lent {
@@ -20,7 +27,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let has_fn_param =
             (f.locals.iter().take(f.params.len())).any(|l| matches!(l.ty, Ty::Fn(..)));
         let has_mut = f.params.iter().any(|p| p.mutable);
-        if has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args) {
+        // A fn value may reach a `mut` place: the fed fn lends it on, as
+        // a VM call does, and puts it back around each closure it calls.
+        let lending = has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args);
+        if lending && self.traced {
             return None;
         }
         let held = |c: &Self, arg: &Arg| match arg {
@@ -58,11 +68,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
             let scalar = ScalarKind::of_ty(pty, self.program);
             let opt = ScalarKind::of_opt_ty(pty, self.program);
             match (arg, held(self, arg)) {
-                (Arg::Mut(_), Some(SlotLoc::I(r, _))) => {
+                (Arg::Mut(_), Some(SlotLoc::I(r, _))) if !lending => {
                     args_i.push(r);
                     muts.push((i, FeedBack::I(r)));
                 }
-                (Arg::Mut(_), Some(SlotLoc::OptI { val, some, .. })) => {
+                (Arg::Mut(_), Some(SlotLoc::OptI { val, some, .. })) if !lending => {
                     args_i.extend([val, some]);
                     muts.push((i, FeedBack::OptI(val, some)));
                 }
@@ -80,7 +90,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         args_v.push(r);
                         Lent::V(r)
                     };
-                    lent.push((i, place, regs));
+                    if !lending {
+                        lent.push((i, place, regs));
+                    }
                 }
                 (Arg::Value(e), _) if scalar.is_some() => args_i.push(self.compile_expr_i(e)),
                 (Arg::Value(e), _) if opt.is_some() => {
@@ -90,6 +102,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 (Arg::Value(e), _) => args_v.push(self.compile_expr_v(e)),
             }
         }
+        let lends = lending.then(|| {
+            let mut exprs = Vec::new();
+            for arg in args {
+                if let Arg::Mut(place) = arg {
+                    crate::vm::helpers::place_indices(place, &mut exprs);
+                }
+            }
+            let regs: Vec<u16> = exprs.iter().map(|_| self.alloc_v()).collect();
+            for (e, &dst) in exprs.into_iter().zip(&regs) {
+                let src = self.compile_expr_v(e);
+                self.emit(Op::MoveV { dst, src }, e.span);
+            }
+            self.lent_calls.push(args);
+            let first = regs.first().copied().unwrap_or(0);
+            ((self.lent_calls.len() - 1) as u16, first)
+        });
         for (i, place, regs) in lent {
             let Some(path) = self.whole_place_path(place) else {
                 self.ops.truncate(marks.0);
@@ -125,7 +153,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             };
             muts.push((i, back));
         }
-        Some((args_i, args_v, muts))
+        Some((args_i, args_v, muts, lends))
     }
 
     /// The path of `place`, a whole variable included.

@@ -1658,6 +1658,9 @@ pub(crate) struct FeedCallSpec {
     /// Each `mut` parameter, by position, and where its value goes back
     /// when the loop ends.
     pub muts: Vec<(usize, FeedBack)>,
+    /// The `lent_calls` entry whose `mut` places the fed fn lends on, and
+    /// the register of their first index.
+    pub lends: Option<(u16, u16)>,
 }
 
 /// Where a `mut` argument of a fed call is stored back.
