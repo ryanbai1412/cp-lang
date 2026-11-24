@@ -9052,3 +9052,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** std can't spell `into: Bitset`, because a type isn't a value, so the form kept `adjacency` a compiler arm (`lower_adjacency`, the checker's known call, `BUILT_ON`). One std fn and one constructor do the job with nothing privileged. It amends 66.1.
 - **Lost.** One name for both shapes. The fix writes `Bitset.undirected` without `<V>`, which the edges infer.
 - **Reverse.** Restore the compiler arm and drop the row.
+
+## 579. (reserved, stdlib)
