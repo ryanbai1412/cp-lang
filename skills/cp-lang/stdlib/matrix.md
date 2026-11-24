@@ -32,7 +32,7 @@ A dense `rows x cols` matrix stored flat in row-major order.
 - `fn det_mod(self, m: Int) -> Int` — \(O(n^3 \log m)\); The determinant modulo any (possibly composite) `m >= 1`, in `0..m`, by Euclidean (gcd-style) row elimination, so no inverse is needed.; traps: when the matrix is not square or `m < 1`
 - `fn char_poly(self) -> List<T>` — \(O(n^3)\) time, \(O(n^2)\) space; The characteristic polynomial `det(xI - self)`, lowest degree first, via Hessenberg reduction: `n + 1` coefficients, the last one `T.one`.; traps: when the matrix is not square
 - `fn pfaffian(self) -> T` — \(O(n^3)\) time, \(O(n^2)\) space; The Pfaffian of an even-order skew-symmetric matrix over a field, with the sign convention `pf([[0, a], [-a, 0]]) == a`; `pf(A)^2 == det(A)`.; traps: when the matrix is not square or `n` is odd
-- `fn adjugate(self) -> Mat<T>` — \(O(n^3)\) time, \(O(n^2)\) space; The adjugate matrix `adj(self)`, the transpose of the cofactor matrix, so `self * adj(self) == det(self) * I`.; traps: when the matrix is not square
+- `fn adjugate(self) -> Mat<T> where T: Mul + Div` — \(O(n^3)\) time, \(O(n^2)\) space; The adjugate matrix `adj(self)`, the transpose of the cofactor matrix, so `self * adj(self) == det(self) * I`.; traps: when the matrix is not square
 
 ## `struct XorBasis`
 
