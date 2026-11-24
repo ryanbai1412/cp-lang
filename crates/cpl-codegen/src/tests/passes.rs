@@ -283,3 +283,23 @@ fn each_loop_and_stmt_count_see_nested_loops() {
     assert_eq!((fors, whiles, ids.len()), (1, 1, 2));
     assert!(stmt_count(body) >= 4, "let, for, while and the store");
 }
+
+#[test]
+fn labeled_jumps_sees_a_labeled_break_and_continue_in_a_closure() {
+    let out = cpp(concat!(
+        "let n: Int = read()\n",
+        "let f = (k: Int) =>\n",
+        "    var t = 0\n",
+        "    'outer: for i in 0..k:\n",
+        "        for j in 0..k:\n",
+        "            if j == 2: continue 'outer\n",
+        "            if i == 3: break 'outer\n",
+        "            t += j\n",
+        "    t\n",
+        "print(f(n))\n",
+    ));
+    assert!(
+        out.contains("goto"),
+        "the labeled jumps leave the inner loop:\n{out}"
+    );
+}

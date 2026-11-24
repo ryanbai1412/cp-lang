@@ -280,18 +280,9 @@ impl<'p> Emitter<'p> {
         let saved_lent = std::mem::take(&mut self.lent);
         let saved_taken = std::mem::replace(&mut self.taken, inner_taken);
         let saved_fresh = std::mem::replace(&mut self.fresh, inner_fresh);
-        let saved_brk = std::mem::take(&mut self.break_targets);
-        let saved_cont = std::mem::take(&mut self.continue_targets);
-
-        walk::deep_stmts(&def.body, &mut |stmt| match stmt {
-            Stmt::Break(Some(id)) => {
-                self.break_targets.insert(*id);
-            }
-            Stmt::Continue(Some(id)) => {
-                self.continue_targets.insert(*id);
-            }
-            _ => {}
-        });
+        let (breaks, continues) = crate::uses::loops::labeled_jumps(&def.body);
+        let saved_brk = std::mem::replace(&mut self.break_targets, breaks);
+        let saved_cont = std::mem::replace(&mut self.continue_targets, continues);
 
         let mut text = String::new();
         self.indent += 1;

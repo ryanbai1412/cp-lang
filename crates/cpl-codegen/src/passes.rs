@@ -133,7 +133,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "closure-captures",
         "expr/closure.rs",
-        Unasked,
+        Uses(&["labeled_jumps"]),
         "non_escaping_closure_borrows_immutable_non_scalar_captures",
     ),
     pass(
