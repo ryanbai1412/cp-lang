@@ -109,7 +109,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'partition', 'peel', 'period', 'phi', 'polygon_area', 'polygon_cut', 'popcount', 'pow',
     'pow_mod', 'prefix', 'prefix_function', 'prev_permutation', 'primitive_root', 'print', 'prod',
     'product', 'project', 'rand', 'ray', 'reachable', 'read', 'read_all', 'read_line',
-    'read_output', 'reduce', 'reflect', 'remove', 'repeat', 'reverse', 'rotate_left',
+    'read_output', 'reduce', 'reflect', 'remove', 'repeat', 'reverse', 'reversed', 'rotate_left',
     'rotate_right', 'rotated_left', 'rotated_right', 'round', 'runs', 'same_dir', 'scan', 'scc',
     'seg_dist', 'segments_meet', 'select', 'shuffle', 'sieve_multiplicative', 'sign', 'sign_eps',
     'sin', 'smawk', 'some', 'sort', 'sorted', 'sos', 'span', 'split_best', 'splitmix64', 'sqrt',

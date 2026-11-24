@@ -7,11 +7,11 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3749 (3602 passing). Rules: 618.
+Cases: 3752 (3602 passing). Rules: 618.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 57 rules, 189 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 57 rules, 190 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 163 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 198 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -104,7 +104,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.5.1 [4+ 1-]: So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and `s & (s << 1) == 0` is `(...
 - R01.5.9 [1+ 1-]: On `Bool`, `!=` is exclusive or; `^`, `&` and `|` are integer operators only, and on `Bool...
 - R01.5.2 [3+ 1-]: `/` and `%` are Euclidean: `%` is never negative and `a == (a / b) * b + a % b`, so `7 / -...
-- R01.5.3 [1+ 2-]: Chained comparisons keep Python's meaning, each operand evaluated once, but only when ever...
+- R01.5.3 [2+ 2-]: Chained comparisons keep Python's meaning, each operand evaluated once, but only when ever...
 - R01.5.4 [1+ 0-]: Operands and arguments evaluate left to right. Assignment evaluates the right side first, ...
 - R01.5.5 [1+ 0-]: `and`, `or`, `+`, `*`, `min`, `max`, `gcd`, `^`, `&`, `|` are also operation values (`xs.f...
 - R01.5.6 [1+ 1-]: `??` written next to `+ - * / %` without parentheses is an error: `a ?? 0 + 1` must be wri...
@@ -1129,7 +1129,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **range** (19/19 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (67/67 named by a case)
-- **seq** (234/237 named by a case)
+- **seq** (235/238 named by a case)
   - uncovered: `Filtered`, `Mapped`, `RingWindows`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -1142,7 +1142,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2443 of 2478 std items are named by a case.
+2444 of 2479 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
