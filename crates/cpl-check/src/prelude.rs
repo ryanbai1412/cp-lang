@@ -864,7 +864,6 @@ pub const TRAIT_NAMES: &[&str] = &[
     "Indexed",
     "IndexedMut",
     "Keyed",
-    "Sized",
     "Bidir",
     "Contains",
     "Ord",

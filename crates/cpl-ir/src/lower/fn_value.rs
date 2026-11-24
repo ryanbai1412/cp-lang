@@ -175,6 +175,7 @@ impl<'a> Lowerer<'a> {
                 builtin_has(&ty, trait_name)
                     || builtin_seq_has(&ty, trait_name)
                     || self.has_plain_impl(&ty, trait_name)
+                    || self.has_head_impl(&ty, trait_name)
                     || (matches!(ty, Ty::Bound(_)) && self.has_domain_blanket_impl(trait_name))
                     || (position && self.index_has_structural(trait_name))
             }
@@ -206,12 +207,42 @@ impl<'a> Lowerer<'a> {
         structural && self.has_plain_impl(&Ty::Int, trait_name)
     }
 
+    /// `ty` (`List<Int>`, `[R]Int`) fits the head of an impl of `trait_name` written for a
+    /// built-in type, with that impl's head bounds met: `impl Sized for List<T>`.
+    fn has_head_impl(&mut self, ty: &Ty, trait_name: &str) -> bool {
+        (0..self.impls.len()).any(|idx| {
+            let (m, offset, target) = (
+                self.impls[idx].mod_id,
+                self.impls[idx].offset,
+                self.impls[idx].target,
+            );
+            let head_fits = match &target.kind {
+                ast::TypeKind::Named { name, args } => {
+                    !matches!(
+                        self.mod_syms[m].get(&name.text),
+                        Some(Sym::Struct(_) | Sym::GenStruct(_))
+                    ) && !(args.is_empty() && self.impl_params(m, target).contains(&name.text))
+                }
+                ast::TypeKind::Array { .. } => matches!(ty, Ty::Array { .. }),
+                _ => false,
+            };
+            if self.impls[idx].trait_name.as_deref() != Some(trait_name) || !head_fits {
+                return false;
+            }
+            let Some(env) = self.pattern_impl_env(idx, ty) else {
+                return false;
+            };
+            self.quietly_in(m, offset, env, |l| l.resolve_ty(target)) == *ty
+        })
+    }
+
     fn has_plain_impl(&mut self, ty: &Ty, trait_name: &str) -> bool {
         for idx in 0..self.impls.len() {
             let imp = &self.impls[idx];
             if imp.trait_name.as_deref() != Some(trait_name)
                 || !matches!(&imp.target.kind, ast::TypeKind::Named { args, .. } if args.is_empty())
                 || self.row_param(idx).is_some()
+                || self.domain_blanket_param(idx).is_some()
             {
                 continue;
             }
@@ -332,7 +363,7 @@ pub(super) fn trait_members(body: &ast::Block) -> (Vec<&ast::FnDecl>, Vec<(&str,
 /// The built-in containers' `Seq` traits, as an impl head's bound reads them.
 fn builtin_seq_has(ty: &Ty, trait_name: &str) -> bool {
     match trait_name {
-        "Seq" | "Sized" => ty.is_seq(),
+        "Seq" => ty.is_seq(),
         "Keyed" | "Indexed" | "Bidir" | "Positional" => ty.is_indexed(),
         "IndexedMut" => ty.is_indexed_mut(),
         _ => false,

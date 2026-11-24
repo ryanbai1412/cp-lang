@@ -319,7 +319,6 @@ impl Ty {
     pub fn meets_seq_bound(&self, bound: &str, walks: bool) -> bool {
         match bound.split('<').next().unwrap_or(bound).trim() {
             "Seq" => self.is_seq() || walks,
-            "Sized" => self.is_sized(),
             "Bidir" => self.is_bidir(),
             "Keyed" => self.is_keyed(),
             "Indexed" => self.is_indexed(),

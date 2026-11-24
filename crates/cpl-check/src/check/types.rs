@@ -1631,7 +1631,6 @@ impl<'a> Checker<'a> {
             t if self.is_structural(t) => self.derives_structural(ty, trait_name, seen),
             "Show" => self.derives_print(ty, false, seen),
             "Seq" => ty.is_seq() || self.walks_by_each(ty),
-            "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
             "Positional" | super::views::INDEXED_BY_WALK => {
                 ty.rev_source().unwrap_or(ty).is_indexed()

@@ -724,7 +724,7 @@ impl<'a> Lowerer<'a> {
                     continue;
                 };
                 let ok = match tr_name.text.as_str() {
-                    "Seq" | "Keyed" | "Sized" => {
+                    "Seq" | "Keyed" => {
                         ty.is_seq()
                             || (matches!(ty, Ty::Struct(_))
                                 && self.implements(ty, tr_name.text.as_str()))

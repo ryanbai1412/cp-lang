@@ -1462,6 +1462,12 @@ impl Bidir<T> for [D]T:
     fn iter_rev(self) -> yields T:
         for x in self.rev: yield x
 
+impl Sized for [D]T:
+    @get fn len(self) -> Int = self.len
+
+impl<D: Domain> Sized for D:
+    @get fn len(self) -> Int = D.count
+
 /// A `Prefix` walks its running folds: the fold through each position (from the right for a
 /// suffix table), in key order, so
 /// `a.scan(+).min()` is the least running total and `inversions(a.scan(+))` counts its

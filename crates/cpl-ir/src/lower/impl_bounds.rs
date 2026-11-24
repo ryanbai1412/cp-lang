@@ -68,9 +68,8 @@ impl<'a> Lowerer<'a> {
                 if is_struct && !self.implements(&seq, trait_name) {
                     return false;
                 }
-                let roles = (self.seq_roles(trait_name).map(|r| (r.key, r.elem)))
-                    .or((trait_name == "Sized").then_some((None, None)))
-                    .filter(|_| !is_struct);
+                let roles =
+                    (self.seq_roles(trait_name).map(|r| (r.key, r.elem))).filter(|_| !is_struct);
                 let (key, elem) = match roles {
                     Some((k, e)) => (k.and_then(|i| args.get(i)), e.and_then(|i| args.get(i))),
                     None => {
