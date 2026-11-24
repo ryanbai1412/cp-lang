@@ -1,8 +1,6 @@
 {
   "max_rs_lines": 2000,
-  "rs_file_size_allowlist": {
-    "crates/cpl-interp/src/lib.rs": 3155
-  },
+  "rs_file_size_allowlist": {},
   "stdlib_todo": 5,
   "rust_ignore": 0,
   "pending_tests": 0,
