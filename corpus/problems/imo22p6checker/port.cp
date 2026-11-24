@@ -19,6 +19,10 @@ for p in a.keys: at[a[p]] = p
 // Paths ending at a cell, taken in increasing order of value: 1 at a valley, else the sum below.
 var ways: [Row, Col]M = 0
 for p in at:
-    let lower = [q for q in p.adj4 if a[q] < a[p]]
-    ways[p] = if lower.is_empty: M.one else: lower.sum(q => ways[q])
+    var (valley, below) = (true, M.zero)
+    for q in p.adj4:
+        if a[q] < a[p]:
+            valley = false
+            below += ways[q]
+    ways[p] = if valley: M.one else: below
 print(ways.sum())
