@@ -598,30 +598,30 @@ declares, and each write returns a `Version<S>` that names the structure type
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
-struct PArena<T>                               // append-only node pool
-    fn new(cap: Int = 0) -> PArena<T>          // O(cap)
-    @get fn len(self) -> Int                   // O(1)
-    @get fn is_empty(self) -> Bool             // O(1)
-    fn alloc(mut self, x: T) -> Id<T>          // O(1) amortized; ids 0, 1, ...
-    fn get(self, id: Id<T>) -> T               // O(1); traps past len
-    fn reserve(mut self, cap: Int)             // O(cap)
+struct PArena<T>                       // append-only node pool
+    fn new(cap: Int = 0) -> PArena<T>  // O(cap)
+    @get fn len(self) -> Int           // O(1)
+    @get fn is_empty(self) -> Bool     // O(1)
+    fn alloc(mut self, x: T) -> Id<T>  // O(1) amortized; ids 0, 1, ...
+    fn get(self, id: Id<T>) -> T       // O(1); traps past len
+    fn reserve(mut self, cap: Int)     // O(cap)
 
-struct PMultiset<D>                            // hashed persistent multiset
-    fn empty() -> PMultiset<D>                 // O(1), no node
-    @get fn len(self) -> Int                   // O(1)
-    fn with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>     // O(log |D|) time and nodes
-    fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>  // O(log |D|); self when absent
-    fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int                 // O(log |D|)
+struct PMultiset<D>                                                                         // hashed persistent multiset
+    fn empty() -> PMultiset<D>                                                              // O(1), no node
+    @get fn len(self) -> Int                                                                // O(1)
+    fn with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>                       // O(log |D|) time and nodes
+    fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>                    // O(log |D|); self when absent
+    fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int                                   // O(log |D|)
     fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int  // O(log |D|)
     // ==: O(1) by size and a 64-bit sum of fixed per-key weights
 
-struct Version<S>                              // one version of the tree or array type S;
-                                               // only S's methods make one, so S's are never mixed
-struct PersistentDsu<V>                        // one version of a union-find (std.dsu)
-    fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>             // O(n) time, 2n - 1 nodes
-    fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V                     // O(log^2 n)
-    fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool            // O(log^2 n)
-    fn size(self, ar: PArena<DsuNode<V>>, v: V) -> Int                   // O(log^2 n)
+struct Version<S>  // a version of tree or array type S; only S takes it
+
+struct PersistentDsu<V>                                                         // one version of a union-find (std.dsu)
+    fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>                      // O(n) time, 2n - 1 nodes
+    fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V                            // O(log^2 n)
+    fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool                   // O(log^2 n)
+    fn size(self, ar: PArena<DsuNode<V>>, v: V) -> Int                          // O(log^2 n)
     fn unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>  // O(log^2 n), O(log n) nodes; self when already one set
 ```
 
