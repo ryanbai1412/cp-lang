@@ -10,8 +10,9 @@
 //! the `.out` of a new program, run the tests with `CPL_BLESS=1`; the
 //! interpreter writes it, and the C++ is then held to it.
 //!
-//! The programs are split into `SHARDS` tests by their index in sorted
-//! order, so the test runner spreads them over its threads. A sanitized
+//! The programs are split into `SHARDS` tests by a hash of their path, so
+//! the test runner spreads them over its threads and a new program moves
+//! no other between shards. A sanitized
 //! binary comes from the C++ cache the suites share (`support/cxx.rs`) while
 //! the source, flags and compiler are unchanged; it is still run every time.
 
@@ -25,7 +26,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-const SHARDS: usize = 16;
+const SHARDS: usize = 32;
 
 const GXX_FLAGS: [&str; 6] = [
     "-std=c++17",
@@ -405,9 +406,18 @@ fn check(program: &Path, group: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// The programs whose index in sorted order is `shard` modulo `SHARDS`.
+/// The programs whose path, from the crate, hashes to `shard` modulo `SHARDS`.
 fn shard_of(programs: &[PathBuf], shard: usize) -> Vec<&PathBuf> {
-    programs.iter().skip(shard).step_by(SHARDS).collect()
+    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let hash = |path: &Path| {
+        let path = path.strip_prefix(crate_dir).unwrap_or(path);
+        (path.to_string_lossy().bytes()).fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
+            (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3)
+        })
+    };
+    (programs.iter())
+        .filter(|p| hash(p) % SHARDS as u64 == shard as u64)
+        .collect()
 }
 
 fn agree_on_shard(shard: usize) {
@@ -467,6 +477,22 @@ shards! {
     interpreter_and_sanitized_cpp_agree_shard_13 = 13,
     interpreter_and_sanitized_cpp_agree_shard_14 = 14,
     interpreter_and_sanitized_cpp_agree_shard_15 = 15,
+    interpreter_and_sanitized_cpp_agree_shard_16 = 16,
+    interpreter_and_sanitized_cpp_agree_shard_17 = 17,
+    interpreter_and_sanitized_cpp_agree_shard_18 = 18,
+    interpreter_and_sanitized_cpp_agree_shard_19 = 19,
+    interpreter_and_sanitized_cpp_agree_shard_20 = 20,
+    interpreter_and_sanitized_cpp_agree_shard_21 = 21,
+    interpreter_and_sanitized_cpp_agree_shard_22 = 22,
+    interpreter_and_sanitized_cpp_agree_shard_23 = 23,
+    interpreter_and_sanitized_cpp_agree_shard_24 = 24,
+    interpreter_and_sanitized_cpp_agree_shard_25 = 25,
+    interpreter_and_sanitized_cpp_agree_shard_26 = 26,
+    interpreter_and_sanitized_cpp_agree_shard_27 = 27,
+    interpreter_and_sanitized_cpp_agree_shard_28 = 28,
+    interpreter_and_sanitized_cpp_agree_shard_29 = 29,
+    interpreter_and_sanitized_cpp_agree_shard_30 = 30,
+    interpreter_and_sanitized_cpp_agree_shard_31 = 31,
 }
 
 #[test]

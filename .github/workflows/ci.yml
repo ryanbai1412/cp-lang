@@ -244,11 +244,14 @@ jobs:
       # from this one's builds; scripts/ci_cache_prune.py deletes the older ones.
       # Saved after Tests even when it fails: actions/cache saves only after a
       # green job, so a red main kept the tests' g++ cache from 45371294523.
+      # Keyed by part: a key is saved once, so twelve parts sharing one kept
+      # only the first part's builds and the rest started cold.
       - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/cpl/cxx
-          key: cxx-${{ runner.os }}-tests-${{ github.run_id }}
+          key: cxx-${{ runner.os }}-tests-${{ matrix.part }}-${{ github.run_id }}
           restore-keys: |
+            cxx-${{ runner.os }}-tests-${{ matrix.part }}-
             cxx-${{ runner.os }}-tests-
             cxx-${{ runner.os }}-
       # The cases scripts/corpus.py make wrote in the conform part (interp_memory, fix_behavior).
@@ -274,7 +277,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           path: ~/.cache/cpl/cxx
-          key: cxx-${{ runner.os }}-tests-${{ github.run_id }}
+          key: cxx-${{ runner.os }}-tests-${{ matrix.part }}-${{ github.run_id }}
 
   # The Milestone 1 editor: `cpl setup neovim`, then diagnostics, completion,
   # `gd` and format on write in headless Neovim (editors/neovim/test/smoke.lua).
