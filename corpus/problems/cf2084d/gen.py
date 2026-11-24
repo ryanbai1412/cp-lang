@@ -1,4 +1,10 @@
 import sys, random
+
+if sys.argv[1] == "--max":
+    # one test at sum n = 2e5 with m k just below n
+    print(1)
+    print(200_000, 447, 447)
+    sys.exit()
 rng = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 T = rng.randint(1, 5)

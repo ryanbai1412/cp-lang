@@ -1,4 +1,5 @@
 // Source: Codeforces 2096E (Wonderful Teddy Bears), https://codeforces.com/contest/2096/problem/E
+// limits: 2000 ms, 250 MB
 // Problem: a row of n bears, black (B) or pink (P). One move sorts three consecutive bears so the
 //   B's come first. Print the fewest moves that put every B before every P. Multitest, sum of
 //   n <= 2e5.

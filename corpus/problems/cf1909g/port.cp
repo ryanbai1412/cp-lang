@@ -1,4 +1,5 @@
 // Source: Codeforces 1909G (Pumping Lemma), https://codeforces.com/contest/1909/problem/G
+// limits: 2000 ms, 1000 MB
 // Problem: lowercase strings s, t of lengths n < m <= 1e7. Count the triples (x, y, z) with
 //   s = x + y + z and t = x + y^k + z for some integer k.
 // Solution: t is s with delta = m - n characters inserted, delta = (k - 1)|y|. x lies in the

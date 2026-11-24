@@ -1,4 +1,5 @@
 // Source: Codeforces 2066B (White Magic), https://codeforces.com/contest/2066/problem/B
+// limits: 2000 ms, 250 MB
 // Problem: a sequence is magical if min(a_1..a_i) >= mex(a_{i+1}..a_n) for every 1 <= i < n.
 //   Given n <= 2e5 values 0 <= a_i <= 1e9, print the length of the longest magical subsequence.
 //   Multitest, sum n <= 2e5.

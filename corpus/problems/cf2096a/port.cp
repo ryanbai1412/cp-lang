@@ -1,4 +1,5 @@
 // Source: Codeforces 2096A (Wonderful Sticks), https://codeforces.com/contest/2096/problem/A
+// limits: 1000 ms, 250 MB
 // Problem: arrange sticks of distinct lengths 1..n (n <= 100) in a row so that stick i + 1 is
 //   shorter than every earlier stick if s_i = '<' and longer than every one if s_i = '>';
 //   print any such arrangement. Multitest (t <= 500).

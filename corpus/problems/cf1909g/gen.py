@@ -2,6 +2,16 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # m = 1e7, delta = m - n = 7207200 (288 divisors), all one letter: every divisor is a period
+    # and every window start counts, so the answer is large
+    m = 10**7
+    n = m - 7_207_200
+    print(n, m)
+    print("a" * n)
+    print("a" * m)
+    sys.exit()
+
 seed = int(sys.argv[1])
 size = int(sys.argv[2])
 rng = random.Random(seed)

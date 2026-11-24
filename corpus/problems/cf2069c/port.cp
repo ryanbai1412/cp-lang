@@ -1,4 +1,5 @@
 // Source: Codeforces 2069C (Beautiful Sequence), https://codeforces.com/contest/2069/problem/C
+// limits: 2000 ms, 250 MB
 // Problem: n <= 2e5 values in 1..3. Count subsequences of length >= 3 where every element but
 //   the first has a smaller one to its left and every element but the last a larger one to
 //   its right, mod 998244353. Multitest, sum n <= 2e5.

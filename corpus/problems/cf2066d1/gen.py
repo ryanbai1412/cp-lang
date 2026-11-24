@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 import random, sys
 
+if sys.argv[1] == "--max":
+    # one test at sum m = 1e4: n = c = 100, m = n c
+    print(1)
+    print(100, 100, 10_000)
+    print(*([0] * 10_000))
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 T = 6 if S == 0 else 5

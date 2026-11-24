@@ -1,4 +1,5 @@
 // Source: Codeforces 2089A (Simple Permutation), https://codeforces.com/contest/2089/problem/A
+// limits: 2000 ms, 250 MB
 // Problem: given n <= 1e5, print a permutation p of 1..n such that at least floor(n/3) - 1
 //   of c_i = ceil((p_1 + ... + p_i) / i) are prime. Multitest (t <= 10).
 // Solution: take a prime p with n/2 < p <= n (Bertrand), found with a sieve. Start with p,

@@ -2,6 +2,15 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = 2e5, values 1..3 (counts wrap the modulus many times)
+    rng = random.Random(1)
+    n = 200_000
+    print(1)
+    print(n)
+    print(*[rng.randint(1, 3) for _ in range(n)])
+    sys.exit()
+
 
 def main():
     seed = int(sys.argv[1])

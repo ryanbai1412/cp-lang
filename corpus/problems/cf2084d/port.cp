@@ -1,4 +1,5 @@
 // Source: Codeforces 2084D (Arcology On Permafrost), https://codeforces.com/contest/2084/problem/D
+// limits: 2000 ms, 250 MB
 // Problem: given n <= 2e5, m, k with m k < n, f(b) is the least mex of b after at most m
 //   removals of k consecutive elements (the rest concatenated). Print any a of length n,
 //   0 <= a_i <= 1e9, maximising f(a). Multitest, sum of n <= 2e5.

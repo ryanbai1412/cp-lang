@@ -1,5 +1,6 @@
 // Source: Codeforces 2066D1 (Club of Young Aircraft Builders, easy version),
 //   https://codeforces.com/contest/2066/problem/D1
+// limits: 4000 ms, 1000 MB
 // Problem: floors 1..=n (n <= 100) launch m planes in turn (c <= m <= n c, c <= 100); a launch
 //   from floor i is seen on floors 1..=i, a resident stops once they have seen c, and every
 //   resident must see >= c. All records are lost: count the floor sequences of length m, mod

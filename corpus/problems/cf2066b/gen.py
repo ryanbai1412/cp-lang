@@ -1,5 +1,19 @@
 import sys, random
 
+if sys.argv[1] == "--max":
+    # one test at sum n = 2e5: 1..n-2 falling with two zeros, so the kept zero is checked
+    # against suffix mexes that climb to n
+    rng = random.Random(1)
+    n = 200_000
+    a = list(range(n - 2, 0, -1))
+    for _ in range(2):
+        a.insert(rng.randrange(len(a) + 1), 0)
+    a[rng.randrange(n)] = 10**9
+    print(1)
+    print(n)
+    print(*a)
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 if S >= 1000:
