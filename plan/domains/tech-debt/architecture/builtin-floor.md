@@ -13,15 +13,26 @@ Measured 89 before this note; 88 after `choose2` moved (below).
 | Class | Stays? | Names |
 |---|---|---|
 | Storage: types and constructors | intrinsic | `Bool` `Char` `F64` `I128` `Int` `U64` `Str` `List` `Map` `Set` `HashMap` `HashSet` `Some` `some` `MAX` `MIN` `zero` `one` `K` |
-| Storage: access to lists, ranges, positions | intrinsic | `len` `size` `is_empty` `at` `try_at` `from_idx` `nth` `first` `last` `swap` `copy` `keys` `values` `start` `end` `bounds` `cuts` `before` `after` `wrap` `range` `count` `rev` `pairs` |
+| Storage: access to lists, ranges, positions | intrinsic | `len` `size` `is_empty` `at` `try_at` `get` `from_idx` `nth` `first` `last` `swap` `copy` `clone` `keys` `values` `items` `start` `end` `bounds` `cuts` `before` `after` `wrap` `range` `count` `rev` `pairs` |
+| Storage: writes to lists, strings, maps, sets | intrinsic | `push` `push_id` `pop` `insert` `add` `remove` `set` `set_at` `swap_idx` `reserve` `resize` `truncate` `drain` `pop_first` `pop_last` `to_list` `to_str` |
+| Storage: views over another list or domain | intrinsic | `take` `drop` `take_last` `drop_last` `src` `rebase` `rekey` |
+| Storage: ordered-set and map lookups | intrinsic | `first_ge` `first_gt` `last_le` `last_lt` |
+| Storage: positions, cuts and domain values | intrinsic | `l` `r` `left` `right` `offset` `ahead` `back` `cyc` `next` `prev` `idx` `ord` `label` `rank` `cut_after` `cut_before` `mask` `step` `halves` |
+| Storage: optionals | intrinsic | `is_some` `is_none` |
 | I/O | intrinsic | `print` `read` `read_line` `read_output` `debug` `flush` `ask` `rand` |
 | Bits | intrinsic | `popcount` `ctz` `clz` `bit_width` `bit_ceil` `bit` |
-| Numeric primitives | intrinsic | `abs` `min` `max` `sqrt` `floor` `ceil` `round` `trunc` `atan2` |
-| Derived: std body exists | move | `isqrt` (math) `sum` `prod` `all` `any` `sort` `sorted` `runs` `span` `first_ge` `first_gt` `last_le` (seq) `prefix` `adjacency` `AddAction` (algebra, prefix, graph) |
-| Derived: std body missing | move, body first | `counts` `shuffle` `laws_hold` `AffineAction` `AssignAction` `FlipAction` |
-| Moved | done | `choose2` `minmax` |
+| Numeric primitives | intrinsic | `abs` `min` `max` `sqrt` `floor` `ceil` `round` `trunc` `atan2` `sin` `cos` `tan` `asin` `acos` `exp` `ln` `hypot` |
+| Derived: std body exists | move | `isqrt` (math) `sum` `prod` `all` `any` `fold` `find` `rfind` `sort` `sorted` `runs` `distinct` `adjacent` `windows` `join` `extend` `fill` `reverse` `reversed` `clamp` (seq, strings, range) `prefix` `adjacency` `out` `AddAction` (algebra, prefix, graph) |
+| Derived: std body missing | move, body first | `counts` `shuffle` `laws_hold` `AffineAction` `AssignAction` `FlipAction` `is_alpha` `is_digit` `is_lower` `is_upper` `is_space` `gen` |
+| Derived: trait default getters | move, needs trait default bodies | `to` (`Target`) `hash_token` (`Hashable`) |
+| Derived: diagnostic help keyed by name | move to the diagnostic registry | `e` `indices` |
+| Moved | done | `choose2` `minmax` `span` |
 
-Totals: 66 intrinsic, 23 derived (2 moved). Floor target for v0.3: 66.
+Every name `ir_builtin_names` counts has a row. `ir_builtin_derived` (the ratchet) counts the
+names that are not on an `intrinsic` row and gates at 0: a new string-matched name either sits on
+the floor (a decision-266 line says why) or is a std body. 2026-11-24: the floor grew to cover the
+storage writes, views, optionals, positions and numeric functions the first pass left unlisted
+(decision 535); 38 derived names remain.
 
 Reclassified after reading the arms: `rev` is an O(1) reverse view over a list, string, array or
 range, and `pairs` on a domain is the domain's own pair list (`domain_pairs_list`); both are

@@ -1,4 +1,7 @@
 import sys, random
+# --max: n = 4000 points in general position over the full box, every pivot a full sort.
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["5", "4000"]
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 C, W = 10**6, 10**4

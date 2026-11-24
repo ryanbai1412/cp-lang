@@ -1362,15 +1362,16 @@ fn a_million_calls_deep_run_in_the_built_cpp_on_an_8_mb_stack() {
     assert_eq!(String::from_utf8_lossy(&run.stdout), "1000000 999999\n");
 }
 
-/// An accepted C++ keeping 64 MB on the stack (noi10p2's 5670502.cpp)
+/// An accepted C++ keeping big arrays on the stack (noi10p2's 5670502.cpp)
 /// crashes on a shell's 8 MB: every program `cpl test` and `cpl stress`
-/// start gets the stack a judge gives, the hard cap.
+/// start gets the stack a judge gives, the hard cap (linked in on
+/// Windows). 32 MB is over 8 MB and under macOS's 64 MB hard cap.
 #[test]
 fn programs_started_by_test_and_stress_get_the_hard_stack_cap() {
     if Command::new("g++").arg("--version").output().is_err() {
         return;
     }
-    let big = b"#include <cstdio>\n#include <cstring>\nint main() {\n    volatile char a[64 << 20];\n    memset((char *)a, 1, sizeof a);\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 1;\n    printf(\"%d\\n\", n + a[n]);\n}\n";
+    let big = b"#include <cstdio>\n#include <cstring>\nint main() {\n    volatile char a[32 << 20];\n    memset((char *)a, 1, sizeof a);\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 1;\n    printf(\"%d\\n\", n + a[n]);\n}\n";
     let path = scratch("big-stack", "big.cpp", big);
     let dir = path.parent().unwrap();
     std::fs::write(

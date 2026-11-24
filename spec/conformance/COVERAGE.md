@@ -7,12 +7,12 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3450 (3427 passing). Rules: 616.
+Cases: 3464 (3427 passing). Rules: 616.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 187 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 163 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 164 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 195 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -142,7 +142,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.1.2 [2+ 3-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [3+ 1-]: a **function value**: `fn` items (a static fn named through its type, `MaxSub.of`, include...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
-- R02.2.1 [3+ 3-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
+- R02.2.1 [4+ 3-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
 - R02.2.2 [2+ 1-]: Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has exactly those valu...
 - R02.3.1 [1+ 0-]: `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence capabilities of ...
 - R02.3.2 [4+ 2-]: `Str of "01?"` is a string whose characters come from the literal's alphabet. The alphabet...
@@ -524,7 +524,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.12 [1+ 1-]: | `product(a, b)` | `Seq<(T, U)>`, every `(x, y)` with `x` from `a` and `y` from `b`, `a` ...
 - R07.7.9 [3+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
-- R07.7.11 [4+ 1-]: | `s.step(k)` | every k-th element | ranges and indexed
+- R07.7.11 [4+ 1-]: | `s.step(k)` | every k-th element, a `Stepped` view | ranges and indexed
 - R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [5+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
@@ -1100,7 +1100,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **derive** (5/6 named by a case)
   - uncovered: `read_fields`
 - **dp** (39/39 named by a case)
-- **dsu** (62/62 named by a case)
+- **dsu** (64/64 named by a case)
 - **fenwick** (42/42 named by a case)
 - **flow** (57/65 named by a case)
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
@@ -1120,13 +1120,13 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **mo** (5/6 named by a case)
   - uncovered: `mo_steps`
 - **mod** (29/29 named by a case)
-- **ntt** (18/19 named by a case)
+- **ntt** (19/20 named by a case)
   - uncovered: `SosOver`
 - **opt** (3/3 named by a case)
 - **pair** (5/5 named by a case)
 - **persistent** (45/47 named by a case)
   - uncovered: `RangeKth`, `RangeKth.new`
-- **poly** (56/57 named by a case)
+- **poly** (57/58 named by a case)
   - uncovered: `prod_linear`
 - **prefix** (46/58 named by a case)
   - uncovered: `FillPrefix`, `Prefix.of_rev_scan`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
@@ -1147,10 +1147,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **timetree** (11/11 named by a case)
 - **tree** (160/176 named by a case)
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
-- **window** (20/21 named by a case)
+- **window** (21/22 named by a case)
   - uncovered: `Undo`
 
-2281 of 2393 std items are named by a case.
+2286 of 2398 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

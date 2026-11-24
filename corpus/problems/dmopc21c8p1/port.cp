@@ -8,30 +8,31 @@
 //   from the front and partners are promoted from the back onto a stack whose top is the
 //   smallest. No partner left means -1. O(n log n) for the sort, then O(n).
 // original: corpus/submissions/4522590.cpp
-let n: 1..=1e6 = read()
-let m: 1..=2e9 = read()
-let a: [n]1..=1e9 = read()
-
 // The line takes the smallest number left, then the smallest that is a good
 // neighbour for it, and so on. The smallest numbers only grow, so a number
 // that was once a good neighbour stays one: `small` gives numbers out from its
 // front and promotes them from its back, and the promoted ones form a stack
 // with the smallest on top.
-var small = a.sorted()
-var front = 0
+
+let n: 1..=1e6 = read()
+let m: 1..=2e9 = read()
+var a: [n]1..=1e9 = read()
+a.sort()
+
+// a[lo..hi] are the numbers not yet used or promoted; `partners` holds the promoted ones,
+// good neighbours for every later number, the smallest on top
+var lo = 0
+var hi = n
 var partners: List<Int> = []
 var line: List<Int> = []
 var stuck = false
 while line.len < n and not stuck:
-    var x = 0
-    if front < small.len:
-        x = small[front]
-        front += 1
-    else: x = partners.pop()!
+    let x = if lo < hi: a[lo] else: partners.pop()!
+    if lo < hi: lo += 1
     line.push(x)
-    while front < small.len and small.last! + x >= m: partners.push(small.pop()!)
+    while lo < hi and a[hi - 1] + x >= m:
+        hi -= 1
+        partners.push(a[hi])
     if line.len < n:
-        if let y = partners.pop(): line.push(y)
-        else: stuck = true
-if stuck: print(-1)
-else: print(line)
+        if let y = partners.pop(): line.push(y) else: stuck = true
+if stuck: print(-1) else: print(line)

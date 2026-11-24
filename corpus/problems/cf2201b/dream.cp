@@ -13,7 +13,7 @@
 //     giving `(n - braid) + (2 * braid - 1) = k` in total.
 
 @!multitest
-let (n, k): (1..=300_000, 1..=600_000) = read()
+let (n, k): (1..=300_000, 1..=1e6) = read()
 if not (n <= k <= 2 * n - 1):
     print("NO")
     return

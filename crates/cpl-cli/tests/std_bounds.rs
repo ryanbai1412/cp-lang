@@ -1,164 +1,213 @@
-//! Every public std fn whose first parameter is a bounded generic rejects,
-//! with E0606 naming the fn, an argument whose type doesn't meet the bound:
-//! a fn value, which has no order, equality, hash or text, and an optional of a type
-//! that does, which must not be unwrapped to fit. A fn taking `self` is
-//! probed in method form too. Probes run through `cpl check`, which lowers
-//! too: method form is checked there, until method lookup by receiver type
-//! lets the checker pick the candidate.
+//! Std bounds mean what they say: for each `pub fn` in `std/` whose generics
+//! bound a type by `Ord`, `Eq` or `Hash`, a call is generated that fills that
+//! type with a fn value, which has none of them. Each call must be rejected
+//! at the call, in the caller's file, never accepted or reported inside std.
+//! Enforces the "Std bounds mean what they say" row of
+//! `handbook/domains/compiler.md`.
 
-use std::path::{Path, PathBuf};
+use std::collections::BTreeMap;
+use std::path::Path;
+use std::process::Command;
 
-use cpl_syntax::ast::{StmtKind, TypeKind};
+const BOUNDS: [&str; 3] = ["Ord", "Eq", "Hash"];
+/// Calls generated today; the generator may only grow.
+const AT_LEAST: usize = 8;
 
-/// Calls that type-check today though their argument misses the bound.
-/// Only shrinks.
-const KNOWN_ACCEPTED: &[&str] = &[];
-
-/// Methods `?T` has itself, so `opt.name(..)` calls the optional's own.
-const OPTIONAL_METHODS: &[&str] = &["map", "filter"];
-
-fn probes(bound: &str) -> &'static [(&'static str, &'static str, &'static str)] {
-    match bound {
-        "Seq" | "Indexed" => &[
-            (
-                "a fn value",
-                "let probe: Int -> Int = x => x",
-                "(Int) -> Int",
-            ),
-            (
-                "an optional list",
-                "let probe: ?List<Int> = Some([1])",
-                "?List<Int>",
-            ),
-        ],
-        "Ord" | "Add" | "Sub" | "Keyed" | "Bidir" | "Undo" | "Read" => &[(
-            "a fn value",
-            "let probe: Int -> Int = x => x",
-            "(Int) -> Int",
-        )],
-        _ => &[],
+fn split_top(s: &str) -> Vec<String> {
+    let (mut out, mut depth, mut cur) = (Vec::new(), 0i32, String::new());
+    for c in s.chars() {
+        match c {
+            '<' | '(' | '[' | '{' => depth += 1,
+            '>' | ')' | ']' | '}' => depth -= 1,
+            _ => {}
+        }
+        if c == ',' && depth == 0 {
+            out.push(cur.trim().to_string());
+            cur.clear();
+        } else {
+            cur.push(c);
+        }
     }
+    if !cur.trim().is_empty() {
+        out.push(cur.trim().to_string());
+    }
+    out
+}
+
+/// The text between the bracket opening at `open` and its match.
+fn enclosed(s: &str, open: usize) -> Option<&str> {
+    let mut depth = 0;
+    for (i, c) in s[open..].char_indices() {
+        match c {
+            '<' | '(' | '[' => depth += 1,
+            '>' | ')' | ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(&s[open + 1..open + i]);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Every `pub fn` signature in `text`, joined onto one line.
+fn signatures(text: &str) -> Vec<String> {
+    let lines: Vec<&str> = text.lines().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < lines.len() {
+        if lines[i].starts_with("pub fn ") {
+            let mut sig = lines[i].to_string();
+            while sig.matches('(').count() > sig.matches(')').count() && i + 1 < lines.len() {
+                i += 1;
+                sig.push(' ');
+                sig.push_str(lines[i].trim());
+            }
+            out.push(sig);
+        }
+        i += 1;
+    }
+    out
+}
+
+/// A call to the fn `sig` declares that puts a fn value where a bounded type
+/// goes, or `None` when the generator can't fill its other parameters.
+fn violating_call(sig: &str) -> Option<(String, String)> {
+    let rest = sig.strip_prefix("pub fn ")?;
+    let name_end = rest.find('<')?;
+    let name = &rest[..name_end];
+    if !name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        return None;
+    }
+    let gens = enclosed(rest, name_end)?;
+    let after = name_end + gens.len() + 2;
+    if !rest[after..].starts_with('(') {
+        return None;
+    }
+    let params = enclosed(rest, after)?;
+    let bounds: BTreeMap<String, Vec<String>> = split_top(gens)
+        .into_iter()
+        .map(|g| match g.split_once(':') {
+            Some((n, b)) => (
+                n.trim().to_string(),
+                b.split('+').map(|t| t.trim().to_string()).collect(),
+            ),
+            None => (g.trim().to_string(), Vec::new()),
+        })
+        .collect();
+    let bounded = |n: &str| {
+        bounds.get(n).is_some_and(|b| {
+            b.iter()
+                .any(|t| BOUNDS.contains(&t.split('<').next().unwrap_or("")))
+        })
+    };
+    let (mut args, mut recv, mut hit) = (Vec::new(), None, false);
+    for p in split_top(params) {
+        let (head, has_default) = match p.split_once(" = ") {
+            Some((h, _)) => (h.trim().to_string(), true),
+            None => (p.clone(), false),
+        };
+        let mutable = head.starts_with("mut ");
+        let (pn, pt) = head.trim_start_matches("mut ").split_once(':')?;
+        let (pn, pt) = (pn.trim(), pt.trim());
+        let value = if bounded(pt) {
+            "bad".to_string()
+        } else if let Some(traits) = bounds.get(pt) {
+            // `S: Seq<T>`, `S: Indexed<K, T>`, or a bare `S: Seq` beside a bounded `T`.
+            let elem = traits.iter().find_map(|t| {
+                let head = t.split('<').next().unwrap_or("");
+                ["Seq", "Indexed", "IndexedMut", "Keyed"]
+                    .contains(&head)
+                    .then(|| {
+                        t.find('<')
+                            .and_then(|o| enclosed(t, o))
+                            .and_then(|a| split_top(a).pop())
+                    })
+            })?;
+            let bad = match elem {
+                Some(e) => bounded(&e),
+                None => bounds.keys().any(|k| k != pt && bounded(k)),
+            };
+            if bad { "[bad, bad]" } else { "[1, 2]" }.to_string()
+        } else if let Some((_, ret)) = pt.split_once("->").filter(|_| has_default) {
+            // `by: T -> K` with `K: Ord`: a key that has no order.
+            if bounded(ret.trim()) {
+                args.push(format!("{pn}: x => bad"));
+                hit = true;
+            }
+            continue;
+        } else if has_default {
+            continue;
+        } else {
+            return None;
+        };
+        hit |= value.contains("bad");
+        if pn == "self" {
+            recv = Some((value, mutable));
+        } else {
+            args.insert(0, value);
+        }
+    }
+    if !hit {
+        return None;
+    }
+    let args = args.join(", ");
+    let call = match recv {
+        Some((v, mutable)) => {
+            let kw = if mutable { "var" } else { "let" };
+            format!("{kw} xs = {v}\nprint(xs.{name}({args}))\n")
+        }
+        None => format!("print({name}({args}))\n"),
+    };
+    Some((name.to_string(), call))
 }
 
 #[test]
-fn std_fns_reject_arguments_that_miss_their_bound() {
-    let std_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../std");
-    let mut files: Vec<PathBuf> = std::fs::read_dir(&std_dir)
-        .unwrap()
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|e| e == "cp"))
+fn std_bounds_reject_calls_that_break_them() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("std_bounds");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut files: Vec<_> = std::fs::read_dir(root.join("std"))
+        .expect("std/ exists")
+        .map(|e| e.expect("readable entry").path())
+        .filter(|p| p.extension().is_some_and(|x| x == "cp"))
         .collect();
     files.sort();
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("std_bounds");
-    std::fs::create_dir_all(&dir).unwrap();
-    let main = dir.join("main.cp");
-    let (mut calls, mut accepted) = (0, Vec::new());
+    let (mut generated, mut wrong) = (0, Vec::new());
     for file in &files {
-        let module = file.file_stem().unwrap().to_string_lossy().into_owned();
-        if module == "prelude" {
-            continue;
-        }
-        let parsed = cpl_syntax::parse_file(&std::fs::read_to_string(file).unwrap());
-        for (_, item) in &parsed.items {
-            for stmt in &item.stmts {
-                let StmtKind::Fn(f) = &stmt.kind else {
-                    continue;
-                };
-                let Some(first) = f.params.first() else {
-                    continue;
-                };
-                if !stmt.public || f.params.iter().any(|p| p.variadic) {
-                    continue;
-                }
-                let Some(TypeKind::Named { name, args }) = first.ty.as_ref().map(|t| &t.kind)
-                else {
-                    continue;
-                };
-                if !args.is_empty() {
-                    continue;
-                }
-                let traits = f.bounds.iter().filter(|b| b.name.text == name.text);
-                let traits: Vec<String> = traits
-                    .flat_map(|b| &b.traits)
-                    .filter_map(|t| match &t.kind {
-                        TypeKind::Named { name, .. } => Some(name.text.clone()),
-                        _ => None,
-                    })
-                    .collect();
-                let rest: Vec<String> = f.params[1..]
-                    .iter()
-                    .filter(|p| p.default.is_none())
-                    .map(|p| match p.named_only {
-                        true => format!("{}: todo", p.label_text()),
-                        false => "todo".to_string(),
-                    })
-                    .collect();
-                let fname = &f.name.text;
-                for bound in &traits {
-                    for (what, probe, ty) in probes(bound) {
-                        let free = std::iter::once("probe".to_string())
-                            .chain(rest.iter().cloned())
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        let getter = stmt.decorators.iter().any(|d| d.name.text == "get");
-                        let method = match getter {
-                            true => format!("probe.{fname}"),
-                            false => format!("probe.{fname}({})", rest.join(", ")),
-                        };
-                        let own = ty.starts_with('?') && OPTIONAL_METHODS.contains(&fname.as_str());
-                        let method = (first.name.text == "self" && !own).then_some(method);
-                        for call in std::iter::once(format!("{fname}({free})")).chain(method) {
-                            let src =
-                                format!("use std.{module}.{{{fname}}}\n{probe}\nlet _ = {call}\n");
-                            calls += 1;
-                            if !misses_bound(&main, &src, fname, ty) {
-                                accepted.push(format!(
-                                    "std.{module}.{fname} ({bound}) takes {what}:\n{src}"
-                                ));
-                            }
-                        }
-                    }
-                    if matches!(bound.as_str(), "Seq" | "Indexed") {
-                        let call = std::iter::once("[1]".to_string()).chain(rest.iter().cloned());
-                        let call = call.collect::<Vec<_>>().join(", ");
-                        let src =
-                            format!("use std.{module}.{{{fname}}}\nlet _ = {fname}({call})\n");
-                        assert!(
-                            !misses_bound(&main, &src, fname, "List<Int>"),
-                            "a list meets `{bound}`, yet the check reports it missing:\n{src}"
-                        );
-                    }
-                }
+        let module = file.file_stem().unwrap().to_string_lossy().to_string();
+        let text = std::fs::read_to_string(file).unwrap();
+        for sig in signatures(&text) {
+            let Some((name, call)) = violating_call(&sig) else {
+                continue;
+            };
+            generated += 1;
+            let program = format!("use std.{module}.{{{name}}}\nlet bad = (x: Int) => x\n{call}");
+            let path = dir.join(format!("{module}_{name}.cp"));
+            std::fs::write(&path, &program).unwrap();
+            let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+                .arg("check")
+                .arg(&path)
+                .current_dir(&root)
+                .output()
+                .expect("cpl runs");
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let at = stderr.lines().find(|l| l.trim_start().starts_with("-->"));
+            let in_caller = at.is_some_and(|l| l.contains(&*path.to_string_lossy()));
+            if out.status.success() || !in_caller {
+                wrong.push(format!("std/{module}.cp `{name}`:\n{program}{stderr}"));
             }
         }
     }
-    let key = |s: &String| s.split(' ').next().unwrap().to_string();
-    let new: Vec<&String> = accepted
-        .iter()
-        .filter(|a| !KNOWN_ACCEPTED.contains(&key(a).as_str()))
-        .collect();
-    let fixed: Vec<&&str> = KNOWN_ACCEPTED
-        .iter()
-        .filter(|k| !accepted.iter().any(|a| key(a) == **k))
-        .collect();
-    eprintln!("{calls} probe calls, {} accepted", accepted.len());
-    assert!(calls > 100, "only {calls} probe calls; the std scan broke");
     assert!(
-        new.is_empty() && fixed.is_empty(),
-        "{} of {calls} probe calls type-check though the argument misses the bound:\n{}\nnow rejected, delete from KNOWN_ACCEPTED: {fixed:?}",
-        new.len(),
-        new.iter().map(|s| s.as_str()).collect::<Vec<_>>().join("\n"),
+        generated >= AT_LEAST,
+        "only {generated} bound-breaking calls generated, at least {AT_LEAST}"
     );
-}
-
-/// Whether `cpl check` of `src` reports that `ty` misses a bound of the std fn `fname`.
-fn misses_bound(main: &Path, src: &str, fname: &str, ty: &str) -> bool {
-    std::fs::write(main, src).unwrap();
-    let out = cpl_cli::run(&["check", main.to_str().unwrap()]);
-    out.stderr.lines().any(|l| {
-        l.starts_with("error[E0606]: `")
-            && l.contains(&format!("{ty}` does not implement"))
-            && l.ends_with(&format!("required by `{fname}`"))
-    })
+    assert!(
+        wrong.is_empty(),
+        "calls that break a std bound must be rejected at the call:\n{}",
+        wrong.join("\n")
+    );
 }

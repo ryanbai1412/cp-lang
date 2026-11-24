@@ -4,22 +4,20 @@
 //   in a closed set containing all the required ones.
 // Solution: go up from vertex 1 with S = v's higher neighbours; closure joins every pair in S,
 //   but joining the lowest f in S to the rest suffices, as f's own turn then joins those
-//   among themselves. So count |S|, remove f and merge S into f's set, smaller into larger
-//   (swapping the sets first). O((N + M) log^2).
-let (n, m): (Int, Int) = read()
+//   among themselves. So count |S|, remove f and absorb S into f's SortedSet (smaller into
+//   larger). O((N + M) log^2).
+let n: 1..=1e5 = read()
+let m: 1..=1e5 = read()
 domain V = 1..=n
-domain Stick = 0..m
-let sticks: [Stick](lo: V, hi: V) = read()
+let sticks: [m](lo: V, hi: V) = read()
 
-var above = [V] v => Set<V>()  // the higher neighbours of v
-for (lo, hi) in sticks: above[lo].add(hi)
+var above = [V] v => SortedSet<V>()  // the higher neighbours of v
+for s in sticks: above[s.lo].add(s.hi)
 
 var total = 0
 for v in V:
     total += above[v].len
-    if above[v].len == 0: continue
-    let f = above[v].min()!
-    above[v].remove(f)
-    if f != v and above[f].len < above[v].len: swap(mut above[f], mut above[v])
-    for x in above[v].clone(): above[f].add(x)
+    if let f = above[v].first:
+        above[v].remove(f)
+        above[f].absorb(mut above[v])
 print(total)

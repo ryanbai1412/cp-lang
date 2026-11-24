@@ -79,6 +79,10 @@ fn cache_dir() -> PathBuf {
 /// only usable by a build with the same ones.
 const CXX_FLAGS: [&str; 2] = ["-std=c++17", "-O2"];
 
+/// Windows has no `ulimit`: a program's stack is the one it was linked
+/// with, so C++ is linked with the 256 MB stack Windows judges give.
+const WINDOWS_STACK: &str = "-Wl,--stack,268435456";
+
 /// A header that includes the whole standard library, with its
 /// precompiled form beside it, or `None` while there is none.
 ///
@@ -201,6 +205,9 @@ fn compile_with(
     if !usual {
         text.extend(format!("\0{compiler} {}", flags.join(" ")).bytes());
     }
+    if cfg!(windows) {
+        text.extend(format!("\0{WINDOWS_STACK}").bytes());
+    }
     let dir = cache_dir();
     std::fs::create_dir_all(&dir)
         .map_err(|e| BuildError(format!("can't create {}: {e}", dir.shown())))?;
@@ -218,6 +225,9 @@ fn compile_with(
         ));
         let mut build = Command::new(compiler);
         build.args(flags);
+        if cfg!(windows) {
+            build.arg(WINDOWS_STACK);
+        }
         if usual && (ours || starts_with_std(&text[..source_len])) {
             if let Some(header) = std_header() {
                 build.arg("-include").arg(header);
@@ -419,7 +429,7 @@ fn build_judged(
     }
     let binary = compile_with(&cpp, true, &host.compiler, &host.flags)?;
     let stack = profile.ulimit();
-    // Off Unix there is no `ulimit`: the stack is the one the linker gave.
+    // Off Unix there is no `ulimit`: the stack is the one it was linked with.
     if cfg!(not(unix)) || current_stack().as_deref() == Some(stack.as_str()) {
         return Ok(vec![binary]);
     }

@@ -32,6 +32,7 @@ are the input spec:
     print(n)
 ```
 
+- `gen<Perm<V>>()` draws a uniformly random permutation: a `Perm<V>` is a `[V]V`.
 - Constraints types cannot state go in `@gen fn input()`, which prints
   the input exactly as the judge would, using `gen` calls.
 - Every `gen` choice is recorded, so the shrinker minimizes any failing

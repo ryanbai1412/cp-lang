@@ -2,6 +2,9 @@
 size >= 2e6 gives N = 2e6 with shapes by seed: uniform a_i; a_i near i; half zeros then
 a_i = i - 1 (every reopen reaches far back, answers near 1e12); a sawtooth."""
 import random, sys
+# --max: N = 2e6, half zeros then a_i = i - 1: every reopen reaches far back, answers near 1e12.
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["2", "2000000"]
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 n = 2 * 10 ** 6 if size >= 2 * 10 ** 6 else rng.randint(1, size + 1)

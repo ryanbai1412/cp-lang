@@ -1,4 +1,5 @@
 // Source: NOI 2007 P2 (Cash Exchange), https://dmoj.ca/problem/noi07p2
+// limits: 600 ms, 256 MB
 // Problem: over n <= 1e5 days vouchers A and B are worth a_k and b_k (in (0, 10]); cash spent
 //   on day k buys A and B in the amount ratio rate_k. Any day you may sell the same share of both
 //   and buy with any cash. Starting with s dollars, print the most cash after day n (3 decimals).

@@ -1,4 +1,9 @@
 import sys, random
+# --max: T = 3 tests at n = 2e5, m = 4e5, q = 4e5, S = 1e9: a random graph, a path (walks near
+# 2e9) and few altitudes.
+MAX = sys.argv[1] == "--max"
+if MAX:
+    sys.argv[1:] = ["0", "1000000"]
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 
@@ -37,8 +42,9 @@ if size <= 20:
         out += case(n, m, rng.randint(1, 10), s, rng.random() < 0.3, min(s + 1, 10**9))
 else:
     # 0: random graph, all maxima; 1: a path of 1e4 roads, walks near 2e9; 2: few altitudes.
-    mode = seed % 3
-    n = 200_000
-    m = n - 1 if mode == 1 else 400_000
-    out = ["1"] + case(n, m, 400_000, 10**9, mode == 1, 5 if mode == 2 else 10**9)
+    out = ["3" if MAX else "1"]
+    for mode in range(3) if MAX else [seed % 3]:
+        n = 200_000
+        m = n - 1 if mode == 1 else 400_000
+        out += case(n, m, 400_000, 10**9, mode == 1, 5 if mode == 2 else 10**9)
 print("\n".join(out))

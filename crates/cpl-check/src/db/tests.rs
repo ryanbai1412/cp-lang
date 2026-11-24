@@ -173,3 +173,29 @@ fn std_and_prelude_paths_match_with_either_separator() {
     assert!(is_prelude(r"C:\cpl\std\prelude.cp"));
     assert!(is_prelude("std/prelude.cp"));
 }
+
+#[test]
+fn an_imported_body_is_checked_when_its_facts_are_asked_for() {
+    let lib = "pub fn f(x: Int) -> Int:\n    x * 2\n";
+    let mut db = Database::with_loader(Box::new(MapLoader(vec![(
+        "lib.a".into(),
+        "lib/a.cp".into(),
+        lib.into(),
+    )])));
+    db.set_file("main.cp", "use lib.a.{f}\nprint(f(3))\n");
+    db.analyze("main.cp").expect("analyzes");
+    let at = lib.find("x * 2").unwrap() as u32;
+    let body = Span::new(at, at + 5);
+    let imported = (db.files.get("lib/a.cp"))
+        .and_then(|f| f.analysis.clone())
+        .expect("main imports lib.a");
+    assert_eq!(
+        imported.facts().type_of(body),
+        None,
+        "an import skips bodies"
+    );
+    let facts = db
+        .body_facts("lib/a.cp", body)
+        .expect("the body is checked");
+    assert_eq!(facts.type_of(body), Some(&Ty::Int));
+}

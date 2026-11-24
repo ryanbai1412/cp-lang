@@ -1,4 +1,5 @@
 // Source: APIO 2007 P1 (Mobiles), https://dmoj.ca/problem/apio07p1
+// limits: 1000 ms, 32 MB
 // Problem: a binary tree of n <= 1e5 rods (children of rod i numbered above i, -1 a toy).
 //   A swap exchanges a rod's left and right subtrees. Print the fewest swaps after which all
 //   toy depths differ by at most one and deeper toys lie left of shallower ones, or -1.

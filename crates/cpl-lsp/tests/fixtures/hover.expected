@@ -32,6 +32,8 @@ cost: O(n), about 200000 (2e5) steps: xs has at most n = 200000 (2e5) items
 
 The sum of the cells; `0` when empty. O(n).
 
+cost: O(n)
+
 == hover @ 8:2
 ```cp
 for: runs at most n = 200000 (2e5) times
@@ -215,6 +217,8 @@ cost: O(n log n)
 
 A new sorted list in O(n log n); takes `by:` and `cmp:` like `sort`.
 
+cost: O(n log n)
+
 == hover @ 86:7
 ```cp
 fn order(cells: [V]Int)
@@ -230,6 +234,8 @@ cost: O(n log n), about 3521929 (3.5e6) steps: cells has at most n = 200000 (2e5
 
 The cells as a sorted list in O(n log n); takes `by:` and `cmp:` like `sort`.
 
+cost: O(n log n)
+
 == hover @ 89:13
 ```cp
 sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b) -> List<T>
@@ -237,6 +243,8 @@ cost: O(n log n), about 20 steps: pts has at most k = 7 items
 ```
 
 The cells as a sorted list in O(n log n); takes `by:` and `cmp:` like `sort`.
+
+cost: O(n log n)
 
 == hover @ 90:8
 ```cp
@@ -275,6 +283,8 @@ cost: O(n log n), about 28583794 (2.9e7) steps: seen has at most n * k = 1400000
 ```
 
 A new sorted list in O(n log n); takes `by:` and `cmp:` like `sort`.
+
+cost: O(n log n)
 
 == hover @ 100:7
 ```cp
@@ -417,7 +427,7 @@ dists: [V][V]?Int
 == hover @ 153:17
 ```cp
 fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
-cost: O(1)
+cost: O(1) to make, O(n) to walk
 ```
 
 The stretches of equal neighbours (or equal `by:` keys), in order, each a slice of `self`.
@@ -442,3 +452,5 @@ cost: O(n)
 ```
 
 The smallest character (optionally keyed by `by:`), `None` when empty; first on ties. O(n).
+
+cost: O(n)

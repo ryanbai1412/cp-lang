@@ -111,6 +111,41 @@ class ProblemsTest(Corpus):
         self.assertTrue(corpus.Context("cpl", named=["p1"]).runs(pkg))
         self.assertFalse(corpus.Context("cpl", run=False, named=["p1"]).runs(pkg))
 
+    def test_a_binary_appears_only_once_fully_built(self):
+        seen = []
+        def cxx(cmd, *a, **k):
+            out = cmd[cmd.index("-o") + 1]
+            Path(out).write_text("partial")
+            seen.append(os.path.exists(os.path.join(corpus.CXX_CACHE, key)))
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        src = self.root / "a.cpp"
+        src.write_text("int main(){}\n")
+        self.addCleanup(setattr, corpus, "CXX_CACHE", corpus.CXX_CACHE)
+        corpus.CXX_CACHE = str(self.root / "cxx")
+        import hashlib
+        key = hashlib.sha1(src.read_bytes() + b"\0gcc 14.4.0").hexdigest()[:16]
+        with mock.patch.object(corpus, "reference_cxx", lambda: (["g++"], "14.4.0")), \
+                mock.patch("subprocess.run", cxx):
+            exe = corpus.binary(src)
+        self.assertEqual((seen, os.path.basename(exe)), ([False], key))
+
+    def test_a_reference_with_an_avx2_pragma_before_its_includes_builds(self):
+        calls = []
+        def cxx(cmd, *a, **k):
+            calls.append("-mavx2" in cmd)
+            if "-mavx2" not in cmd:
+                return subprocess.CompletedProcess(cmd, 1, "", "error: inlining failed: target specific option mismatch")
+            Path(cmd[cmd.index("-o") + 1]).write_text("exe")
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        src = self.root / "a.cpp"
+        src.write_text('#pragma GCC target("avx2")\n#include <bits/stdc++.h>\nint main(){}\n')
+        self.addCleanup(setattr, corpus, "CXX_CACHE", corpus.CXX_CACHE)
+        corpus.CXX_CACHE = str(self.root / "cxx")
+        with mock.patch.object(corpus, "reference_cxx", lambda: (["g++"], "14.4.0")), \
+                mock.patch("subprocess.run", cxx):
+            self.assertTrue(os.path.exists(corpus.binary(src)))
+        self.assertEqual(calls, [False, True])
+
     def test_reference_falls_back_to_an_accepted_submission(self):
         d = self.package("p1", orig_cpp="")
         self.assertEqual(corpus.Package.at(d).reference(), d / "orig.cpp")
@@ -200,6 +235,62 @@ class CompareTest(unittest.TestCase):
     def test_a_failing_side_shows_its_stderr(self):
         why = self.outcome((3, b"", b"error[R0001]: internal: lost frame\n  at 4:2\n"), (0, b"4\n", b""))
         self.assertIn("interp exit 3, c++ exit 0, interp stderr b'error[R0001]: internal: lost frame | at 4:2'", why)
+
+
+class LsTest(Corpus):
+    def test_lists_dirs_or_one_file_per_package(self):
+        self.package("p1", port_cp="")
+        self.package("p2", dream_cp="", gen_py="")
+        for argv, want in ((["ls"], ["p1", "p2"]), (["ls", "--file", "port.cp"], ["p1/port.cp"]),
+                           (["ls", "--set", "small"], ["p2"]),
+                           (["ls", "--file", "*.cp", "--file", "gen.py"], ["p1/port.cp", "p2/dream.cp", "p2/gen.py"])):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(corpus.cli(argv), 0)
+            got = [os.path.relpath(os.path.join(corpus.ROOT, l), self.root / "problems") for l in out.getvalue().split()]
+            self.assertEqual(got, want)
+
+
+class CheckTestsTest(Corpus):
+    """tests mode runs the port on the cases tests.toml makes, never on a missing tests/."""
+
+    def run_tests(self, cases):
+        d = self.package("p", port_cp="print(1)\n", tests_toml="", checker_py="")
+        calls = []
+
+        def cpl_cases(cpl, program, *args):
+            calls.append(args)
+            return cases
+        ctx = mock.Mock(cpl="cpl")
+        with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
+                mock.patch.object(corpus, "make_cases", mock.Mock()), mock.patch.object(corpus, "cpl_cases", cpl_cases):
+            found = corpus.check_tests(corpus.Package.at(d), ctx)
+        return found, calls, d
+
+    def test_judges_the_made_cases_with_the_checker_at_the_limits(self):
+        found, (args,), d = self.run_tests([{"name": "01", "verdict": "ok"}])
+        self.assertEqual(found, [])
+        self.assertEqual(args[:4], ("--tests", os.path.join(corpus.OUT, "p"), "--checker", str(d / "checker.py")))
+        self.assertIn("--time-limit", args)
+
+    def test_no_cases_is_a_finding(self):
+        found, *_ = self.run_tests("cpl-test-no-cases")
+        self.assertEqual(found, ["cpl-test-no-cases p -"])
+
+
+class CommittedInputsTest(Corpus):
+    def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
+        d = self.package("p", port_cp="", interactor_py="")
+        (d / "tests").mkdir()
+        for name, text in (("01.case", "data"), ("01.in", "replies"), ("01.ans", "")):
+            (d / "tests" / name).write_text(text)
+        self.assertEqual(corpus.committed_inputs(corpus.Package.at(d)), [("01.case", "data")])
+
+    def test_a_plain_package_seeds_from_its_inputs(self):
+        d = self.package("p", port_cp="")
+        (d / "tests").mkdir()
+        (d / "tests" / "01.in").write_text("1")
+        self.assertEqual(corpus.committed_inputs(corpus.Package.at(d)), [("01.in", "1")])
 
 
 class InteractedTest(Corpus):

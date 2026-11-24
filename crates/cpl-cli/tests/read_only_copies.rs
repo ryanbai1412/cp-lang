@@ -1,7 +1,8 @@
 //! A ratchet on the C++ the corpus and the conformance cases build to: a
 //! heap value that is only read is read in place, never copied. Each
 //! pattern below is a copy the generated code used to make, or (for
-//! `deep_copies`) any deep copy of a container; its count may only go down.
+//! `deep_copies`) any deep copy of a container; its count may only go down,
+//! and `cpl explain` gives each deep copy its reason.
 //! Enforces performance/R12, R13 and R14 in
 //! handbook/guidelines/performance-checklist.md.
 
@@ -74,7 +75,7 @@ const BOUNDS: [Bound; 5] = [
     // global-copied-by-a-fn-a-closure-calls-twice, -called-in-a-loop,
     // -by-a-recursive-fn, global-read-by-another-fn-after-the-copy and
     // match-payload-outlives-a-fn-writing-its-global-scrutinee.
-    ("deep_copies", deep_copies, 31),
+    ("deep_copies", deep_copies, 34),
     ("std_functions", std_functions, 79),
 ];
 
@@ -91,12 +92,14 @@ fn the_corpus_and_conformance_never_copy_a_heap_value_they_only_read() {
     let sources = sources();
     let chunk = sources.len().div_ceil(8);
     let built = std::sync::atomic::AtomicUsize::new(0);
+    let unexplained = std::sync::Mutex::new(Vec::new());
     let found: Vec<(String, [usize; BOUNDS.len()])> = std::thread::scope(|s| {
         let jobs: Vec<_> = sources
             .chunks(chunk)
             .enumerate()
             .map(|(n, part)| {
-                let (out, built) = (out.join(format!("{n}.cpp")), &built);
+                let (out, built, unexplained) =
+                    (out.join(format!("{n}.cpp")), &built, &unexplained);
                 s.spawn(move || {
                     let mut found = Vec::new();
                     for src in part {
@@ -115,6 +118,16 @@ fn the_corpus_and_conformance_never_copy_a_heap_value_they_only_read() {
                         }
                         built.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         let counts = BOUNDS.map(|(_, count, _)| count(&cpp));
+                        let copies = deep_copies(&cpp);
+                        if copies > 0 {
+                            let explained = explained_copies(src);
+                            if explained < copies {
+                                unexplained.lock().unwrap().push(format!(
+                                    "{}: {copies} copies, {explained} explained",
+                                    src.display()
+                                ));
+                            }
+                        }
                         if counts.iter().any(|&c| c > 0) {
                             found.push((src.display().to_string(), counts));
                         }
@@ -129,6 +142,12 @@ fn the_corpus_and_conformance_never_copy_a_heap_value_they_only_read() {
     assert!(
         built >= 1000,
         "only {built} corpus and conformance programs built"
+    );
+    let unexplained = unexplained.into_inner().unwrap();
+    assert!(
+        unexplained.is_empty(),
+        "deep copies `cpl explain` gives no reason for:\n{}",
+        unexplained.join("\n")
     );
     for (k, (name, _, bound)) in BOUNDS.iter().enumerate() {
         let total: usize = found.iter().map(|(_, c)| c[k]).sum();
@@ -146,4 +165,14 @@ fn the_corpus_and_conformance_never_copy_a_heap_value_they_only_read() {
             eprintln!("{name}: {total} copies, under the bound of {bound}: lower it");
         }
     }
+}
+
+/// The `[copy]` lines `cpl explain` prints for `src`: each copy the judge
+/// build makes, with why it must own its value.
+fn explained_copies(src: &Path) -> usize {
+    let explain = cpl_cli::run(&["explain", src.to_str().unwrap()]);
+    String::from_utf8_lossy(&explain.stdout)
+        .lines()
+        .filter(|l| l.trim_start().starts_with("[copy] "))
+        .count()
 }

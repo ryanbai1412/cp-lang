@@ -1,4 +1,5 @@
 // Source: DMOPC 2020 Contest 4 P4 (Javelin Throwing), https://dmoj.ca/problem/dmopc20c4p4
+// limits: 2000 ms, 512 MB
 // Problem: n <= 2e6 throws each make a hole on a line unless landing in an existing one. After
 //   throw i you learn 0 <= a_i < i, the holes strictly behind it; b_i counts those strictly in
 //   front. Print, space-separated, the least possible sum of b_1..b_i given a_1..a_i, for every i.

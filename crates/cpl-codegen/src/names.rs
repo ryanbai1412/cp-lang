@@ -452,6 +452,22 @@ pub(crate) fn fn_pointer(program: &Program, arity: usize) -> bool {
         .all(|c| c.params.len() != arity || c.captures.is_empty())
 }
 
-fn cached(program: &Program, ty: &Ty) -> bool {
-    matches!(ty, Ty::Struct(sid) if !program.structs[*sid].cached_fields.is_empty())
+/// Whether reading a value may fill a cache: a struct with a `@cache`
+/// field, or one holding such a value (`Holder(d: Dsu<V>)`).
+pub(crate) fn cached(program: &Program, ty: &Ty) -> bool {
+    cached_in(program, ty, &mut Vec::new())
+}
+
+fn cached_in(program: &Program, ty: &Ty, seen: &mut Vec<usize>) -> bool {
+    match ty {
+        Ty::Struct(sid) if !seen.contains(sid) => {
+            seen.push(*sid);
+            let def = &program.structs[*sid];
+            !def.cached_fields.is_empty()
+                || def.fields.iter().any(|(_, f)| cached_in(program, f, seen))
+        }
+        Ty::Tuple(items) => items.iter().any(|t| cached_in(program, t, seen)),
+        Ty::Opt(inner) => cached_in(program, inner, seen),
+        _ => false,
+    }
 }

@@ -2,6 +2,9 @@
 distinct endpoints, at most one route per pair. size >= 1e6 gives max shapes by seed:
 random graph, one long path, all costs 0, all v = 1e9 with c = 1e9, a star."""
 import random, sys
+# --max: N = M = 1e6, a random graph with costs and coins up to 1e9.
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "1000000"]
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 big = size >= 10 ** 6

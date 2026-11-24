@@ -7,47 +7,34 @@
 //   and max over the column span. For each span, two pointers over the rows with monotone
 //   queues for the max of row maxima and the min of row minima find, for every top row, the
 //   lowest bottom row that keeps the spread <= C. O(U * 100 * V).
-// Buildable today-form.
 // original: corpus/submissions/4899527.cpp
-let m: 1..=700 = read()
-let n: 1..=700 = read()
-let k: 0..=10 = read()
-let h: [0..n * m]Int = read()
+let (m, n, k): (1..=700, 1..=700, 0..=10) = read()
+domain Col = 0..m
+domain Row = 0..n
+let h: [Row, Col]-30_000..=30_000 = read()
 
-var best = -1
-var ans: List<Int> = [0, 0, 0, 0]
-var lo: [0..n]Int = 0
-var hi: [0..n]Int = 0
-// monotone queues of row numbers over the current row window top..bottom
-var q_hi: [0..n]Int = 0
-var q_lo: [0..n]Int = 0
-for left in 0..m:
-    for r in 0..n:
-        lo[r] = h[r * m + left]
-        hi[r] = lo[r]
-    for right in left..min(m, left + 100):
-        for r in 0..n:
-            lo[r] min= h[r * m + right]
-            hi[r] max= h[r * m + right]
-        var (hi_head, hi_tail, lo_head, lo_tail) = (0, 0, 0, 0)
-        var bottom = 0  // one past the last row of the window
-        for top in 0..n:
-            bottom max= top
-            while bottom < n:
-                let peak = if hi_head < hi_tail: max(hi[q_hi[hi_head]], hi[bottom]) else: hi[bottom]
-                let pit = if lo_head < lo_tail: min(lo[q_lo[lo_head]], lo[bottom]) else: lo[bottom]
-                if peak - pit > k: break
-                while hi_head < hi_tail and hi[q_hi[hi_tail - 1]] <= hi[bottom]: hi_tail -= 1
-                q_hi[hi_tail] = bottom
-                hi_tail += 1
-                while lo_head < lo_tail and lo[q_lo[lo_tail - 1]] >= lo[bottom]: lo_tail -= 1
-                q_lo[lo_tail] = bottom
-                lo_tail += 1
+var best: ?(area: Int, corner: List<Int>) = None
+for left in Col:
+    var lo: [Row]Int = [Row] r => h[r, left]
+    var hi: [Row]Int = [Row] r => h[r, left]
+    for right in left..=Col(min(m - 1, Int(left) + 99)):
+        for r in Row:
+            lo[r] min= h[r, right]
+            hi[r] max= h[r, right]
+        // rows top..bottom, the tallest window from each top whose spread stays within k
+        var peak = Window(max)
+        var pit = Window(min)
+        var bottom = 0
+        for top in Row:
+            bottom max= Int(top)
+            while let r = Row.at(bottom) and max(peak.all ?? hi[r], hi[r]) - min(pit.all ?? lo[r], lo[r]) <= k:
+                peak.push(hi[r])
+                pit.push(lo[r])
                 bottom += 1
-            let area = (bottom - top) * (right - left + 1)
-            if area > best:
-                best = area
-                ans = [left + 1, n - bottom + 1, right + 1, n - top]
-            if hi_head < hi_tail and q_hi[hi_head] == top: hi_head += 1
-            if lo_head < lo_tail and q_lo[lo_head] == top: lo_head += 1
-print(ans)
+            let area = (bottom - Int(top)) * (Int(right) - Int(left) + 1)
+            if best == None or area > best!.area:
+                best = Some((area:, corner: [Int(left) + 1, n - bottom + 1, Int(right) + 1, n - Int(top)]))
+            if Int(top) < bottom:
+                peak.pop(hi[top])
+                pit.pop(lo[top])
+print(best!.corner)

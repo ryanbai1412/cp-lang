@@ -8,8 +8,9 @@
 //   empties with all of B matched. O(|A| + |B|) amortised.
 // original: corpus/submissions/4563973.cpp
 
-@multitest
-let (a, b): (Str, Str) = read()
+@!multitest
+let a: Str = read()
+let b: Str = read()
 var pending = Deque<Char>.new()
 var matched = 0
 for c in a:
@@ -18,7 +19,7 @@ for c in a:
         let x = pending.pop()!
         pending.pop()
         pending.push(Char(Int(x) + 1))
-    while matched < b.len and not pending.is_empty and pending[0] == b[matched]:
+    while matched < b.len and pending.first == Some(b[matched]):
         pending.pop_front()
         matched += 1
-print(if pending.is_empty and matched == b.len: "YES" else: "NO")
+print(yes(pending.is_empty and matched == b.len))

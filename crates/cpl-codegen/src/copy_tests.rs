@@ -291,3 +291,10 @@ fn a_let_of_a_nested_field_read_never_again_moves_it() {
     let kept = cpp(&src(", p.q.s"));
     assert!(!kept.contains("std::move(p.q.s)"), "{kept}");
 }
+
+#[test]
+fn a_closure_takes_a_struct_holding_a_cache_by_value() {
+    // `x.d.components` may halve `x.d`'s paths: a `const Holder&` can't call it.
+    let cpp = cpp("struct Holder(pub d: Dsu<V>)\ndomain V = 0..3\nlet h = Holder(Dsu<V>(rollback: true))\nlet ok = (x: Holder) => x.d.components >= 2\nprint(yes(ok(h)))\n");
+    assert!(!cpp.contains("const Holder&"), "{cpp}");
+}

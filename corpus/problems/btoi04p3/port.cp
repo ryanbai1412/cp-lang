@@ -1,4 +1,5 @@
 // Source: Baltic OI 2004 Day 1 P3 (Sequence), https://dmoj.ca/problem/btoi04p3
+// limits: 2000 ms, 512 MB
 // Problem: given t_1..t_N (N <= 1e6, 0 <= t_i <= 2e9), find a strictly increasing integer
 //   z_1 < ... < z_N (|z_i| <= 2e9) minimizing sum |t_i - z_i|; print that minimum, then
 //   any optimal z, one per line.

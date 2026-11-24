@@ -7,46 +7,45 @@
 //   with value c allows c + 1..=c + M (a difference array counts how many columns allow x), and
 //   each blank column has min(x - 1, 2M + 1 - x) fillings. A class gives the sum over allowed x of
 //   ways(x)^blanks; multiply the two. O(N + M log N).
-// Runnable port (proto/cp.py lib-run) of dmopc21c8p2.cp
 // original: corpus/submissions/4522631.cpp
+// Per parity class: how many columns are fully blank, how many constrain the
+// column sum, and a difference array of the sums each constraint allows.
 
 const MOD = 1_000_000_007
 type Z = Mod<MOD>
 
-let (n, m): (Int, Int) = read()
-domain I = 0..n
-domain S = 0..=(2 * m + 1)
-let top: [I]Int = read()
-let bot: [I]Int = read()
+let n: 1..=1e6 = read()
+let m: 1..=1e6 = read()
+domain Col = 0..n
+domain Parity = 0..2
+domain Sum = 2..=2 * m + 1  // a column sum, plus one past the largest for the difference array
+let top: [Col]0..=m = read()
+let bot: [Col]0..=m = read()
 
-// Per parity class: how many columns are fully blank, how many constrain the
-// column sum, and a difference array of the sums each constraint allows.
-var blank: List<Int> = [0, 0]
-var need: List<Int> = [0, 0]
-var diff: List<[S]Int> = [[S] _ => 0, [S] _ => 0]
-
-for i in I:
-    let par = i.ord % 2
-    let x = top[i] + bot[i]
+// per parity class: the blank columns, the constraining ones, and a difference array
+// counting the constraints each sum meets
+var blank: [Parity]Int = 0
+var need: [Parity]Int = 0
+var allowed: [Parity, Sum]Int = 0
+for i in Col:
+    let par = Parity(i.ord % 2)
+    let known = top[i] + bot[i]
     if top[i] == 0 and bot[i] == 0:
         blank[par] += 1
     else:
-        let one_blank = top[i] == 0 or bot[i] == 0
-        let lo = if one_blank: x + 1 else: x
-        let hi = if one_blank: x + m else: x
+        let (lo, hi) = if top[i] == 0 or bot[i] == 0: (known + 1, known + m) else: (known, known)
         need[par] += 1
-        diff[par][S(lo)] += 1
-        diff[par][S(hi + 1)] -= 1
+        allowed[par, Sum(lo)] += 1
+        allowed[par, Sum(hi + 1)] -= 1
 
-fn ways(x: Int) -> Int = max(0, min(x - 2, 2 * m - x) + 1)
+fn ways(x: Int) -> Int = min(x - 1, 2 * m + 1 - x)  // fillings of a blank column summing to x
 
 var ans: Z = 1
-for par in 0..2:
+for par in Parity:
     var total: Z = 0
     var cover = 0
-    for x in 0..=(2 * m):
-        cover += diff[par][S(x)]
-        if cover == need[par]:
-            total += Z(ways(x)) ** blank[par]
+    for x in Sum:
+        cover += allowed[par, x]
+        if cover == need[par] and x.label <= 2 * m: total += Z(ways(x.label)) ** blank[par]
     ans *= total
-print(ans.v)
+print(ans)

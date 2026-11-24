@@ -28,5 +28,17 @@ should feel like a local editor with the language server, not a demo box.
 and hints, strict enough that a wrong solution never passes.
 
 Each surface has its own doc and use cases: `playground.md` and
-`playground-usecases.md` so far. Owner: site. How the site is built and
+`playground-usecases.md` so far; the standing rules below hold for all of them. Owner: site. How the site is built and
 checked is in `handbook/domains/site.md`.
+
+## Standing rules
+
+Each rule holds on every change; the check that enforces it is named.
+
+- **Every landing example is a program.** The landing's tabs show programs with their input, and Run appears on each one the compiler runs; a tab group opens on one that runs (`runsFirst` in `web/lib/landing.ts`).
+- **Guide code that runs is live.** Every guide block whose status is `runs` has Open in playground, and Run when it prints (`remarkLive` in `web/source.config.ts`).
+- **One header.** Every page, on both Fumadocs layouts, uses `web/components/site-header.tsx`: title and links, then search, theme and GitHub; on phones, Install, search and one menu button.
+- **Browser gates have no accepted findings.** a11y, search and completion parity fail on any finding; a fix lands with its test instead of a list entry (`scripts/debt-ratchet.py` counts any list that comes back).
+- **Size caps only shrink.** `/` at most 800 KB gz with no wasm (`web/tests/page-weight.mjs`), the search index at most 500 KB gz, `cpl.wasm` at most 1,875,000 B gz (`web/scripts/wasm-size.mjs`).
+- **Every prebuild stage declares its inputs.** A stage that reads a repo file it doesn't declare fails (`web/scripts/prebuild/stages.mjs`), so the cache never serves stale output.
+- **Every LSP message goes through `lspTask`** (`web/lib/cpl.ts`), so a request never overtakes a `didChange` waiting on lazy std (`web/lib/lsp.test.ts`).

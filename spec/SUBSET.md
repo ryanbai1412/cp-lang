@@ -66,7 +66,7 @@ documented.
 | R05.7 | 7. Lent values (R6 to R8) | supported | 2 known gaps |
 | R05.8 | Contest code | supported |  |
 | R05.9 | 9. Generators and views (R12) | supported | 1 known gap |
-| R05.10 | 10. Closures and nested fns | supported | 1 known gap |
+| R05.10 | 10. Closures and nested fns | supported |  |
 | R06.1 | 6.1 Functions | supported |  |
 | R06.2 | 6.2 Nested functions and lambdas | supported |  |
 | R06.3 | 6.3 Generators | supported |  |
@@ -112,7 +112,7 @@ documented.
 | R04a.5 | D. Counters and literals into the slice | supported |  |
 | R04a.6 | E. Generic algorithms run on a sub-sequence | supported |  |
 | R04a.7 | F. Grids and multi-dimensional arrays | supported |  |
-| R04a.8 | G. Revision: changing your mind | supported | 1 known gap |
+| R04a.8 | G. Revision: changing your mind | supported |  |
 | R04a.9 | H. Keys of the other views | supported |  |
 | R04a.11 | Recommendation: identity everywhere (I) | supported |  |
 | R04b.1 | Methods | supported | 2 known gaps |
@@ -174,7 +174,6 @@ documented.
 
 - core-01/stepped-range-is-a-value.cp: fail
 - core-03/memory-over-profile.cp: fail
-- core-04/list-of-domain-array-loses-domain.cp: fail
 - core-04/named-product-domain-runs.cp: fail
 - core-04/rebased-str-indexes-from-zero.cp: fail
 - core-04/runtime-domain-literal-between-traps.cp: fail
@@ -184,18 +183,14 @@ documented.
 - core-05/lent-generator-blocks-overlapping-write.cp: fail
 - core-05/let-heap-element-lends-no-copy.cp: fail
 - core-05/map-entry-index-key-lends.cp: fail
-- core-06/returned-closure-copies-a-local-closure.cp: fail
 - core-08/extension-concrete-and-generic-ambiguous.cp: fail
 - core-08/law-calls-trait-method.cp: fail
 - core-08/trait-message-bound-holds.cp: fail
 - core-10/test-position-stored-above-multitest.cp: fail
 - diagnostics/graph-edge-field-names.cp: fail
-- std-algebra/max-sub-of-is-a-fn-value.cp: fail
-- std-algebra/pow-folds-under-any-monoid.cp: fail
 - std-graph/undirected-takes-list-of-records.cp: fail
 - std-search/real-bsearch-is-a-range-method.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
-- std-subset/empty-braces-is-empty-subset.cp: fail
 - std-subset/enum-subsets-is-a-domain.cp: fail
 - std-window/track-infers-element-from-sequence.cp: fail

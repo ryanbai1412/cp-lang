@@ -1055,14 +1055,14 @@ fn sa_rank_lcp<S: Indexed>(s: S) -> (List<Int>, List<Int>, List<Int>):
     (sa, rank, lcp)
 
 /// \(O(n)\) SA-IS + Kasai LCP (\(O(n \log n)\) with RMQ). Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries.
-pub struct SuffixArray:
+pub struct SuffixArray<T: Ord>:
     pub sa: List<Int>
     rank: List<Int>
     pub lcp: List<Int>
     rmq: List<Int>
     bits: Int
     dcum: List<Int>
-    toks: List<Int>
+    src: List<T>
 
     /// The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix
     /// of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r
@@ -1078,7 +1078,7 @@ pub struct SuffixArray:
     /// traps: never
     /// example: `SuffixArray("banana").sa == [5, 3, 1, 0, 4, 2]`
     /// example: `SuffixArray("banana").lcp == [1, 3, 0, 0, 2]`
-    pub fn new<S: Indexed>(s: S) -> SuffixArray:
+    pub fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>:
         let n = s.len
         let (sa, rank, lcp) = sa_rank_lcp(s)
         // Each sparse-table cell packs `lcp[i] << bits | i`, so one `min` picks the
@@ -1098,10 +1098,8 @@ pub struct SuffixArray:
             for r in 0..n:
                 let shared = if r == 0: 0 else: lcp[r - 1]
                 dcum[r + 1] = dcum[r] + (n - sa[r]) - shared
-        var toks = List.filled(n, 0)
-        unchecked:
-            for i in 0..n: toks[i] = s.nth(i).hash_token
-        SuffixArray(sa, rank, lcp, rmq, bits, dcum, toks)
+        let src = [s.nth(i) for i in 0..n]
+        SuffixArray(sa, rank, lcp, rmq, bits, dcum, src)
 
     /// The length `n` of the sequence the suffix array was built over.
     ///
@@ -1139,14 +1137,12 @@ pub struct SuffixArray:
     /// traps: never
     /// example: `SuffixArray("banana").rank_range("ana") == 1..3`
     /// example: `SuffixArray("banana").rank_range("c") == 4..4`
-    pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>:
+    pub fn rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>:
         with lint(unproven_list_index: allow)
         let n = sa.len
         let m = pat.len
         if m == 0: return 0..n
-        var ptok = List.filled(m, 0)
-        unchecked:
-            for k in 0..m: ptok[k] = pat.nth(k).hash_token
+        let p = [pat.nth(k) for k in 0..m]
         var lo = 0
         var hi = n
         unchecked:
@@ -1155,8 +1151,8 @@ pub struct SuffixArray:
                 let start = sa[mid]
                 let lim = min(n - start, m)
                 var k = 0
-                while k < lim and toks[start + k] == ptok[k]: k += 1
-                let less = if k < lim: toks[start + k] < ptok[k] else: n - start < m
+                while k < lim and src[start + k] == p[k]: k += 1
+                let less = if k < lim: src[start + k] < p[k] else: n - start < m
                 if less: lo = mid + 1 else: hi = mid
         let left = lo
         lo = left
@@ -1167,8 +1163,8 @@ pub struct SuffixArray:
                 let start = sa[mid]
                 let lim = min(n - start, m)
                 var k = 0
-                while k < lim and toks[start + k] == ptok[k]: k += 1
-                let greater = if k < lim: toks[start + k] > ptok[k] else: false
+                while k < lim and src[start + k] == p[k]: k += 1
+                let greater = if k < lim: src[start + k] > p[k] else: false
                 if greater: hi = mid else: lo = mid + 1
         left..lo
 
@@ -1180,7 +1176,7 @@ pub struct SuffixArray:
     /// order: suffix-array order (by rank), not by position
     /// traps: never
     /// example: `SuffixArray("banana").find_all("ana").collect() == [3, 1]`
-    pub fn find_all<P: Indexed>(self, pat: P) -> yields Int:
+    pub fn find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int:
         with lint(unproven_list_index: allow)
         for r in self.rank_range(pat): yield sa[r]
 
@@ -1190,7 +1186,7 @@ pub struct SuffixArray:
     /// empty: an empty `pat` gives `n`
     /// traps: never
     /// example: `SuffixArray("banana").count("an") == 2`
-    pub fn count<P: Indexed>(self, pat: P) -> Int = self.rank_range(pat).len
+    pub fn count<P: Indexed<J, T>, J>(self, pat: P) -> Int = self.rank_range(pat).len
 
     /// The ranks `lo..hi` of the suffixes whose LCP with the suffix at `i` is at least `len`;
     /// always contains `rank[i]`.
@@ -1287,7 +1283,7 @@ pub struct SuffixArray:
 /// empty: an empty suffix array
 /// traps: never
 /// example: `suffix_array([3, 1, 2]).sa == [1, 2, 0]`
-pub fn suffix_array<S: Indexed>(s: S) -> SuffixArray = SuffixArray.new(s)
+pub fn suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T> = SuffixArray.new(s)
 
 /// \(O(1)\) value. One edge of the compressed suffix tree of a sequence, built in \(O(n)\) from SA + LCP.
 pub struct SuffixTreeEdge(

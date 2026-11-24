@@ -1328,12 +1328,14 @@ pub struct SortedMap<K, V>:
     pub fn new() -> SortedMap<K, V>:
         SortedMap(SortedBag<K>.new(), HashMap<K, V>())
 
-    /// Preallocate treap node pool for at least `cap` entries.
+    /// Reserve the key pool and the value table for at least `cap` entries.
     ///
-    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
+    /// cost: \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise
     /// traps: never
-    /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.reserve(100); m.is_empty`
-    pub fn reserve(mut self, cap: Int) = ks.reserve(cap)
+    /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.reserve(100); m.get(1) == Some("a")`
+    pub fn reserve(mut self, cap: Int):
+        ks.reserve(cap)
+        vals.reserve(cap)
 
     /// Number of key-value pairs.
     ///

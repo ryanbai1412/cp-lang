@@ -8857,3 +8857,17 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `dfs(g, from:, seen:, prune: f)` does not expand the arcs of a `v` with `f(v)`; it still yields `Enter(v)` and `Exit(v)`. `step.prune()` is gone from the spec.
 - **Why.** `Visit` is a plain enum, so `step.prune()` had no body to call, and the spec example could not run. A predicate is visible at the call and costs one call per entered vertex.
 - **Reverse.** Drop `prune:` and `dfs_arcs` from `std/graph.cp` and give `Visit` a steering handle.
+
+## 534. One fold per sliding window is `a.window_fold(k, op)`; `zip` will take any `Seq` (stdlib, 2026-11-24)
+
+- **Call.** `a.window_fold(k, op) -> yields T` yields one fold per length-`k` window, using `Window(op)`'s strategy: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, and any other op keeps two stacks. `windows(k).fold(op)` is not added. `zip`/`zip_exact` will take any `Seq` and walk both in lockstep (4.4), with the pairs keyed by the first argument when it is `Indexed`, and `Rev` of an `Indexed` becomes `Indexed` with reversed keys. `Filtered` stays non-`Indexed`.
+- **Why.** `.fold` on a sequence already means "fold every element", so a second meaning on windows would break one-name-one-meaning. Three module docs taught a `windows(k).fold` that never existed.
+- **Reverse.** Drop `window_fold` from `std/window.cp` and the prelude.
+
+## 535. Every name the lowering string-matches has a floor row, and off-floor names ratchet to 0 (core, 2026-11-24)
+
+- **Call.** `plan/domains/tech-debt/architecture/builtin-floor.md` classifies all 161 `ir_builtin_names`. The decision-266 floor now also lists the storage writes (`push` `insert` `reserve` ...), views (`take` `rebase` `rekey` ...), ordered-set lookups (`first_ge` ...), positions and cuts (`l` `r` `idx` `ord` ...), optionals (`is_some` `is_none`) and the libm functions (`sin` ... `hypot`): all storage or numeric primitives that the first pass had left unlisted. The remaining 38 names (seq reducers, sorts, `Char` predicates, trait default getters, name-keyed help) are counted by `ir_builtin_derived`, which shrinks to 0 as each becomes a std body or a registry row.
+- **Why.** The table listed 66 of 161 names, so 95 privileged names had no class and nothing stopped a new one. Now a new string-matched name fails the ratchet unless it gets an intrinsic row, which needs a line here. `std_shadowed` excludes floor names, so it falls from 81 to 62 by this reclassification alone, not by moved bodies.
+- **Reverse.** Drop `ir_builtin_derived` from `scripts/debt-ratchet.py` and the added intrinsic rows from the floor table.
+
+## 536. (reserved, factory)

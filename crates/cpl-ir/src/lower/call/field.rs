@@ -299,6 +299,19 @@ impl<'a> Lowerer<'a> {
                         return self.method_call(fn_id, None, &[], span);
                     }
                 }
+                // A range type's ends are its `MIN` and `MAX` (R02.2.1).
+                if let Some(GenArg::Range(lo, hi)) = self.gen_env.get(type_name).cloned() {
+                    let v = match name.text.as_str() {
+                        "MIN" => Some(lo.unwrap_or(INT_MIN)),
+                        "MAX" => Some(hi.unwrap_or(i64::MAX)),
+                        "zero" => Some(0),
+                        "one" => Some(1),
+                        _ => None,
+                    };
+                    if let Some(v) = v {
+                        return self.mk(ExprKind::Int(v), Ty::Int, span);
+                    }
+                }
                 if let Some(GenArg::Ty(Ty::Opt(inner))) = self.gen_env.get(type_name).cloned() {
                     if matches!(name.text.as_str(), "MAX" | "MIN") {
                         return self.mk(ExprKind::None, Ty::Opt(inner), span);

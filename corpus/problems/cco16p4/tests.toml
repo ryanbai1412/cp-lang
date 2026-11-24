@@ -32,3 +32,6 @@ size = 16384
 [[case]]
 seed = 9
 size = 16384
+
+[[case]]
+args = ["--max"]

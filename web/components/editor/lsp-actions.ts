@@ -24,6 +24,7 @@ import {
   ViewPlugin,
   WidgetType,
 } from "@codemirror/view";
+import { started } from "@/lib/cpl";
 import { capabilities } from "@/lib/lsp";
 
 type Position = { line: number; character: number };
@@ -297,28 +298,35 @@ export function lspActions(lsp: Lsp): { extension: Extension; link: (view: Edito
   }
 
   // Formatting as you type the characters the server names.
+  // The trigger characters are asked for once the compiler runs or the reader
+  // types, so an editor that is only shown doesn't fetch cpl.wasm.
   const onType = ViewPlugin.fromClass(
     class {
-      triggers: string[] = [];
+      triggers: Promise<string[]> | null = null;
       constructor(readonly view: EditorView) {
-        void capabilities().then((caps) => {
+        if (started()) void this.load();
+      }
+      load() {
+        return (this.triggers ??= capabilities().then((caps) => {
           const c = caps.documentOnTypeFormattingProvider as { firstTriggerCharacter?: string; moreTriggerCharacter?: string[] } | undefined;
-          this.triggers = c ? [c.firstTriggerCharacter ?? "", ...(c.moreTriggerCharacter ?? [])].filter(Boolean) : [];
-        }).catch(() => {});
+          return c ? [c.firstTriggerCharacter ?? "", ...(c.moreTriggerCharacter ?? [])].filter(Boolean) : [];
+        }).catch(() => []));
       }
       update(u: ViewUpdate) {
         if (!u.docChanged || !u.transactions.some((tr) => tr.isUserEvent("input.type"))) return;
-        let typed: { ch: string; pos: number } | null = null;
-        u.changes.iterChanges((_fa, _ta, _fb, toB, text) => {
-          const s = text.toString();
-          const ch = this.triggers.find((t) => s.endsWith(t));
-          if (ch) typed = { ch, pos: toB };
-        });
-        if (!typed) return;
-        const { ch, pos } = typed;
-        const doc = u.state.doc;
-        void lsp.request<TextEdit[]>(this.view, "textDocument/onTypeFormatting", { ...at(this.view, pos), ch, options: FORMAT }).then((edits) => {
-          if (edits && this.view.state.doc === doc) apply(lsp, this.view, edits, { userEvent: "format" });
+        const { changes, state: { doc } } = u;
+        void this.load().then((triggers) => {
+          let typed: { ch: string; pos: number } | null = null;
+          changes.iterChanges((_fa, _ta, _fb, toB, text) => {
+            const s = text.toString();
+            const ch = triggers.find((t) => s.endsWith(t));
+            if (ch) typed = { ch, pos: toB };
+          });
+          if (!typed || this.view.state.doc !== doc) return;
+          const { ch, pos } = typed;
+          void lsp.request<TextEdit[]>(this.view, "textDocument/onTypeFormatting", { ...at(this.view, pos), ch, options: FORMAT }).then((edits) => {
+            if (edits && this.view.state.doc === doc) apply(lsp, this.view, edits, { userEvent: "format" });
+          });
         });
       }
     },

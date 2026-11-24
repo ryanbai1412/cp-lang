@@ -1,6 +1,40 @@
 import sys, random
 # seed size: about `size` commands, inserts of ASCII 32-126 (spaces too) wrapped at random
 # line breaks; size >= 1e5 gives 4000 edits, 2 MB inserted, many Moves, Prev/Next and Gets.
+# --max: every bound at once: 4000 edits (3000 inserts of 2 MB in all at random cursors, so about
+# 6000 pieces, and 1000 deletes), 50000 Moves, 200000 Prev/Next and Gets of up to 1500 characters
+# until 3 MB is printed, all interleaved.
+if sys.argv[1] == "--max":
+    rng, cap, out_cap = random.Random(0), 2 * 1024 * 1024, 3 * 1024 * 1024
+    ops = ["E"] * 3990 + ["M"] * 50_000 + ["S"] * 200_000 + ["G"] * 4000
+    rng.shuffle(ops)
+    ops = ["E"] * 10 + ops
+    inserts, deletes, length, cur, inserted, printed, cmds = 3000, 1000, 0, 0, 0, 0, []
+    pending = 0  # deletes waiting for text after the cursor
+    for op in ops:
+        if pending and cur < length:
+            pending -= 1; deletes -= 1
+            n = rng.randint(1, min(length - cur, 1000))
+            cmds.append(f"Delete {n}"); length -= n
+        if op == "E" and (inserts and (length < 2000 or not deletes or rng.random() < 0.75)):
+            n = (cap - inserted) // inserts
+            inserts -= 1; inserted += n
+            t = "".join(chr(rng.randint(32, 126)) for _ in range(n))
+            cmds.append(f"Insert {n}\n" + "\n".join(t[i:i + 80] for i in range(0, n, 80)))
+            length += n
+        elif op == "E":
+            pending += 1
+        elif op == "M":
+            cur = rng.randint(0, length); cmds.append(f"Move {cur}")
+        elif op == "S":
+            if cur > 0 and (cur == length or rng.random() < 0.5): cur -= 1; cmds.append("Prev")
+            else: cur += 1; cmds.append("Next")
+        elif cur < length and printed < out_cap:
+            n = min(length - cur, 1500, out_cap - printed - 1)
+            if n > 0: printed += n + 1; cmds.append(f"Get {n}")
+    print(len(cmds))
+    print("\n".join(cmds))
+    sys.exit()
 rng = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 big = S >= 100_000
 ins_cap = 2 * 1024 * 1024 if big else rng.randint(1, 200)

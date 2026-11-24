@@ -6,8 +6,6 @@ line when the gap closes and the body lands.
 
 - subset: every `Subset` method: `Subset` is built into the compiler (`crates/cpl-ir/src/lower/expr.rs`, `library_domain.rs`, cpl-check `prelude.rs`), so `cpl run` answers its calls itself instead of running these bodies.
 - tree: `Lift.of(next)` without type arguments: `V` is not inferred from the lambda `next: V -> ?V` (E0302 "`Lift.of` needs a domain for `V`, and `Int` is not one"), so programs write `Lift<V, ()>.of(next)`.
-- strings: `SuffixArray.rank_range`, `find_all`, `count`: the pattern must be compared with the original elements, but `SuffixArray` is not generic over its element type, so it cannot store `s`; needs `SuffixArray<T>` (a signature change) or an element-erased `Ord` box.
-- pair: `symmetric`: `[Pair<V>]T` is rejected as an array key (E0204 "an array is indexed by a domain or a length"), and `Pair<0..4>` in the doc examples is rejected ("`Pair` takes a domain by name"); blocks egoi23p4.
 - window, `undoing`/`Tracked` with a tuple-pattern closure: `(mut d, (u, v)) => ...` is E0302 "a `Int` can't be taken apart into 2 names" (the element type is not inferred from the callee), so btoi20p3 writes `e: (V, V)`.
 - io: `read_all`: CP Lang has no end-of-input test (the interpreter has one internally, `Input::at_eof`), so reading to the end can't be written; blocks ioi05p2 and the site's `read_all<Cmd>(until:)` snippets.
 - seq, `filter` / `map`: `Filtered<S>` and `Mapped<S, U>` have no fields and no `T` parameter to hold the closure, and a struct cannot implement `Seq` yet; the compiler's built-in views serve these calls.
@@ -16,7 +14,6 @@ line when the gap closes and the body lands.
 - mo, `mo_rollback` doc: an in-block query answered with only `mark`/`undo` sees the previous block's right part unless the structure is reset first; the body resets on entering a block that the previous one left dirty (still at most one `reset` per block).
 - bag, `SortedBag.range`/`drain_range`, `SortedSet.range`/`sum(keys:)`, `SortedRange.*`: no way to read an open bound of a generic `Range<K>` (`..b`, `a..`, `..`), and `..` alone is rejected by `cpl run`.
 - bag, `SortedBag.split_at`/`join`, `SortedSet.split_at`/`join`: each bag owns its node pool, so O(log n) split/join between two bags needs a shared pool (or node moves) the struct layout does not have.
-- hashmap, `Counter.reserve` and the `HashMap` half of `SortedMap.reserve`: `HashMap` has no `reserve` (E0203 "a `HashMap<Int, Int>` has no method `reserve`"), so these reserve only their list storage.
 - deque, `LinkedList.splice_back`/`splice_front`: each list owns its `nx`/`pv`/`val` pools, so an O(1) splice needs a shared pool the struct layout does not have.
 - beats, `BeatsSegTree`/`HistoricBeatsSegTree` query doc examples (`BeatsSegTree([5, 1, 4]).sum(1..3)`): `sum`/`min_val`/`get` take `mut self` (they push tags down), so calling them on a temporary is E0401; the examples need a `var` or the queries a non-pushing signature.
 - segtree, `DynamicOrderTree.kth`: a Fenwick of order trees answers `count_lt` in O(log^2 |D|), but the k-th value over arbitrary online `T` needs a binary search over values on top of it (O(log^3 |D|)); O(log^2) needs the values known ahead (offline compression), which the signature doesn't take.

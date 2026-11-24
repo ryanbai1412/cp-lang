@@ -105,7 +105,7 @@ use std.search.{
     ternary_min_real,
 }
 use std.segtree.{SegTree}
-use std.window.{Sweep, Undo, Undoing, Window, track, undoing}
+use std.window.{Sweep, Undo, Undoing, Window, track, undoing, window_fold}
 use std.seq.{
     Compressed,
     Rev,

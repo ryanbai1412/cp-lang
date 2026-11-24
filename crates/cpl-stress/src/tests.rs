@@ -478,6 +478,10 @@ fn an_interactor_talks_to_the_solution_and_rules() {
         lost.verdict,
         Verdict::Wrong("interactor: too many guesses".to_string())
     );
+    assert_eq!(
+        lost.outcome.stdout, "1\n2\n3\n4\n5\n",
+        "all the solution said"
+    );
     let silent = interactor
         .run(&sh("sleep 5"), "2\n", None, Duration::from_millis(100))
         .unwrap();

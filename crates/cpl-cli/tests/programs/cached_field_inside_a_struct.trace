@@ -1,0 +1,6 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"h":{"name":"h","type":"Holder","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":4,"label":"let h = Holder(Dsu\u003cV>(rollback: true))","stage":"main","values":{"stdout":[],"h":{"d":"0 1 2"}},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":1,"line":5,"label":"let ok = (x: Holder) => x.d.components >= 2","stage":"main","values":{"stdout":[],"h":{"d":"0 1 2"}},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":2,"line":5,"label":"let ok = (x: Holder) => x.d.components >= 2","stage":"main","values":{"stdout":[],"h":{"d":"0 1 2"}},"locals":{"x":{"d":"0 1 2"}},"frames":[{"fn":"\u003cclosure>","line":5},{"fn":"main","line":6}]},
+{"id":3,"line":6,"label":"print → YES","stage":"main","values":{"stdout":["YES"],"h":{"d":"0 1 2"}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":6}]},
+{"id":4,"line":6,"label":"the program ended","stage":"main","values":{"stdout":["YES"],"h":{"d":"0 1 2"}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":6}]}]}}}
+stderr:

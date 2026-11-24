@@ -158,9 +158,15 @@ def binary(src):
     key = hashlib.sha1(data + b"\0gcc " + version.encode()).hexdigest()[:16]
     exe = os.path.join(CXX_CACHE, key)
     if not os.path.exists(exe):
-        r = subprocess.run([*cxx, "-o", exe, str(src)], capture_output=True, text=True)
+        # Built aside and renamed in: a parallel check must never run a half-written binary.
+        tmp = f"{exe}.{os.getpid()}.{threading.get_ident()}"
+        r = subprocess.run([*cxx, "-o", tmp, str(src)], capture_output=True, text=True)
+        if r.returncode and "target specific option mismatch" in r.stderr:
+            # `#pragma GCC target("avx2")` before the includes: the judges' CPUs have AVX2.
+            r = subprocess.run([*cxx, "-mavx2", "-o", tmp, str(src)], capture_output=True, text=True)
         if r.returncode:
             raise RuntimeError("c++: " + r.stderr[:200])
+        os.replace(tmp, exe)
     return exe
 
 
@@ -180,6 +186,12 @@ def stress_inputs(pkg):
     if pkg.gen:
         return [pkg.case_input({"seed": i, "size": s}) for i, s in enumerate(STRESS_SIZES * 2, 1)]
     return []
+
+
+def judge_args(pkg):
+    """How `cpl test` judges the package: its interactor, else its checker, else the answers."""
+    return ["--interactor", str(pkg.interactor)] if pkg.interactor else \
+        ["--checker", str(pkg.checker)] if pkg.checker else []
 
 
 def package_limits(pkg):
@@ -208,9 +220,7 @@ def judged(pkg, source, inputs, cpl):
                 if r.returncode:
                     raise InfraError(f"{pkg.id}: accepted C++ exits {r.returncode} on case {i}")
                 Path(cases, f"{i:02}.ans").write_text(r.stdout)
-        judge = ["--interactor", str(pkg.interactor)] if pkg.interactor else \
-                ["--checker", str(pkg.checker)] if pkg.checker else []
-        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge, *package_limits(pkg)],
+        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge_args(pkg), *package_limits(pkg)],
                            cwd=ROOT, capture_output=True, text=True)
         try:
             results = json.loads(r.stdout)["cases"]
@@ -506,10 +516,18 @@ def cpl_cases(cpl, program, *args):
 
 
 def check_tests(pkg, ctx):
-    """`cpl test port.cp` reads the package's cases and passes every one (problem-packages/R8)."""
-    if not pkg.port or not ctx.runs(pkg):
+    """`cpl test port.cp` passes every case `make` writes from tests.toml, judged
+    like the judge would: answers from the accepted C++, or the checker or
+    interactor, at the package's limits (problem-packages/R8)."""
+    if not pkg.port or not pkg.tests or not ctx.runs(pkg):
         return []
-    cases = cpl_cases(ctx.cpl, pkg.port)
+    if not pkg.interactor and pkg.reference() is None:
+        return [f"no-reference {pkg.id} -"]
+    try:
+        make_cases(pkg)
+    except (RuntimeError, subprocess.SubprocessError) as e:
+        raise InfraError(f"{pkg.id}: {e}") from e
+    cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg), *package_limits(pkg))
     if isinstance(cases, str):
         return [f"{cases} {pkg.id} -"]
     found = [f"cpl-test-fails {pkg.id} {c['name']}" for c in cases if c["verdict"] not in (None, "ok")]
@@ -794,6 +812,8 @@ def check_max(pkg, ctx):
         return [f"invalid-input {pkg.id} --max"]
     ref = pkg.reference()
     orig = built(ref) if ref else None
+    if ref and not orig:
+        return [f"no-ref-build {pkg.id} {Path(ref).name}"]
     return at_max(pkg, ctx.cpl, exe, orig, data)
 
 
@@ -958,9 +978,13 @@ def seed_toml(pkg, inputs):
 
 
 def committed_inputs(pkg):
-    """The committed tests/ inputs: `*.in`, or an interactive package's `*.case`, samples first."""
+    """The committed tests/ inputs, samples first: `*.in`, but an interactive
+    package's `*.case` where it has them, since its `*.in` is then the reply
+    transcript the interactor writes, not data the interactor can read."""
     d = pkg.dir / "tests"
     files = [f for f in d.iterdir() if f.suffix in (".in", ".case")] if d.is_dir() else []
+    if pkg.interactor and any(f.suffix == ".case" for f in files):
+        files = [f for f in files if f.suffix == ".case"]
     order = lambda f: (not f.stem.startswith("sample"), int(re.sub(r"\D", "", f.stem) or 0), f.name)
     return [(f.name, f.read_text()) for f in sorted(files, key=order)]
 
@@ -1172,6 +1196,11 @@ def cli(argv):
     m.add_argument("--out")
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
+    ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")
+    ls.add_argument("ids", nargs="*")
+    ls.add_argument("--set", action="append")
+    ls.add_argument("--file", action="append",
+                    help="a package file such as port.cp, or a glob such as '*.cp'; repeatable; packages without one are left out")
     g = sub.add_parser("gaps")
     g.add_argument("paths", nargs="*")
     g.add_argument("--json", action="store_true")
@@ -1186,7 +1215,18 @@ def cli(argv):
         return seed(args)
     if args.mode == "gaps":
         return gaps(args)
+    if args.mode == "ls":
+        return ls_mode(args)
     return main(args.mode)
+
+
+def ls_mode(args):
+    """The one corpus listing other languages' tools read: one path per line."""
+    for pkg in problems(args.set, args.ids):
+        paths = sorted({f for leaf in args.file for f in pkg.dir.glob(leaf) if f.is_file()}) if args.file else [pkg.dir]
+        for path in paths:
+            print(os.path.relpath(path, ROOT))
+    return 0
 
 
 def toolchain(argv):

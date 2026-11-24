@@ -7,6 +7,26 @@ import random
 import string
 import sys
 
+# --max: n = k = 2000, words of 10 letters: anagram classes of 2, 3, ... words (about 1000 in all)
+# plus 1000 random words, so the knapsack runs every class over all of 0..=k.
+if sys.argv[1] == "--max":
+    rng, words, seen = random.Random(0), [], set()
+    for size in range(2, 63):
+        if len(words) + size > 1000:
+            break
+        base = "".join(rng.sample(string.ascii_lowercase, 10))
+        cls = set()
+        while len(cls) < size:
+            cls.add("".join(rng.sample(base, 10)))
+        words += sorted(cls); seen |= cls
+    while len(words) < 2000:
+        w = "".join(rng.choice(string.ascii_lowercase) for _ in range(10))
+        if w not in seen:
+            seen.add(w); words.append(w)
+    rng.shuffle(words)
+    print(2000, 2000)
+    print("\n".join(words))
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 8
 rng = random.Random(seed)
 n = rng.randint(1, max(1, min(size, 2000)))

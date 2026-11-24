@@ -100,7 +100,7 @@ Order-statistic ordered map from `K` to `V` backed by a randomized treap.
 Fields: `ks: SortedBag<K>`, `vals: HashMap<K, V>`.
 
 - `fn new() -> SortedMap<K, V>` — \(O(1)\); Create an empty `SortedMap<K, V>`.
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` entries.
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise; Reserve the key pool and the value table for at least `cap` entries.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of key-value pairs.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the map is empty.
 - `fn clear(mut self)` — \(O(1)\); Remove all entries.

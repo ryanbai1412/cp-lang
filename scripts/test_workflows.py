@@ -33,6 +33,13 @@ def job_block(text, job):
     return m.group(1) if m else ""
 
 
+
+def fake_curl(body):
+    """A `curl` that answers 200 with `body`, to stdout or to `-o FILE` with
+    `-w '%{http_code}'` as scripts/retry.sh's fetch_optional asks."""
+    return ('out=\nwhile [ $# -gt 0 ]; do case $1 in -o) out=$2; shift 2 ;; -w) shift 2 ;; *) shift ;; esac; done\n'
+            f"if [ -n \"$out\" ]; then printf '%s\\n' '{body}' >\"$out\"; printf 200; else printf '%s\\n' '{body}'; fi")
+
 class WorkflowTest(unittest.TestCase):
     def test_only_a_green_job_stamps_the_cached_target(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
@@ -73,7 +80,7 @@ class WorkflowTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             calls = os.path.join(d, "calls")
             for name, body in (
-                ("curl", 'echo \'{"commit":"live","built":"2026-11-23T16:15:00Z"}\''),
+                ("curl", fake_curl('{"commit":"live","built":"2026-11-23T16:15:00Z"}')),
                 ("gh", f'echo "$*" >>{calls}\n[ "$2" = list ] && printf "%s\\n" '
                        '"2 new 2026-11-23T17:00:00Z" "1 old 2026-11-23T16:00:00Z" "0 older 2026-11-23T15:00:00Z"\ntrue'),
             ):
@@ -96,7 +103,7 @@ class WorkflowTest(unittest.TestCase):
         # the deploy as the single job did.
         with tempfile.TemporaryDirectory() as d:
             for name, body in (
-                ("curl", 'echo \'{"commit":"live","built":"2026-11-23T16:15:00Z"}\''),
+                ("curl", fake_curl('{"commit":"live","built":"2026-11-23T16:15:00Z"}')),
                 ("gh", '[ "$2" = list ] && printf "%s\\n" "2 new 2026-11-23T18:00:00Z" "1 old 2026-11-23T17:00:00Z"\n'
                        '[ "$2" = view ] && [ "$3" = 2 ] && printf "%s\\n" "success site build" '
                        '"success site browser tests (1/2)" "failure site browser tests (2/2)"\n'

@@ -580,7 +580,7 @@ impl<'a> Lowerer<'a> {
                 GenArg::Int(1)
             }
             ast::TypeKind::Named { name, args } if args.is_empty() => {
-                if let Some(a) = self.gen_env.get(&name.text).cloned() {
+                if let Some(a) = self.named_gen_arg(&name.text) {
                     return a;
                 }
                 // `Comb<Z.MOD>`: a number a type holds, by the type's name.

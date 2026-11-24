@@ -7,7 +7,7 @@
 //! - Scans & folds: `scan` (`.rev.scan` for suffixes); the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over `a.scan(op)` and `a.rev.scan(op)`.
 //! - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`.
 //! - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`.
-//! - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.windows(k).fold(op)` or `Window(op)` (`std.window`).
+//! - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.window_fold(k, op)` or `Window(op)` (`std.window`).
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.hashmap.{Counter}
@@ -1432,6 +1432,18 @@ impl Seq<(D, T)> for Items<S: Keyed<D, T>>:
 
 impl Sized for Items<S: Sized>:
     @get fn len(self) -> Int = src.len
+
+impl Keyed<D, (D, T)> for Items<S: Indexed<D, T>>:
+    fn items(self) -> yields (D, (D, T)):
+        for (k, x) in src.items: yield (k, (k, x))
+
+impl Bidir<(D, T)> for Items<S: Indexed<D, T>>:
+    fn iter_rev(self) -> yields (D, T):
+        for k in src.keys.rev: yield (k, src.at(k))
+
+impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
+    fn at(self, i: D) -> (D, T) = (i, src.at(i))
+    @get fn keys(self) -> Range<D> = src.keys
 
 /// \(O(1)\) to make. `s[r]`: a borrowed view of `s` over the range `r`. Every slice keeps its
 /// source's keys: `a[l..=r][i]` is `a[i]` and `i` must lie in `l..=r`; for a `List` or `Str`,

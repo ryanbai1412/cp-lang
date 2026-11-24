@@ -100,7 +100,8 @@ variants recur:
   min, max, first representative in `cf2222f`) and directional skip-DSU
   (`(_, b) => b` in `cf2237h`), with full rollback of merges and `set`s.
 - **Bipartite / parity DSU (`ParityDsu<V>`).** Tracks `x[a] xor x[b] == d`,
-  contradiction count (`consistent`), and rollback (`mark`/`undo_to`).
+  contradiction count (`consistent`), the sets like `Dsu`'s (`components`,
+  `groups()`), and rollback (`mark`/`undo_to`).
 - **Weighted / potential DSU (`PotentialDsu<V, W>`).** Tracks difference
   constraints `pot(b) - pot(a) == d` in a commutative group (`+` by default, `^`
   for xor) (`diff(a, b) -> ?W`, contradiction

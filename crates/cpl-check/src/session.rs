@@ -155,6 +155,14 @@ impl Session {
         self.analysis(path).map(|a| a.facts().clone())
     }
 
+    /// What checking found in the item of `path` around `at`. A module read
+    /// through `use` has only its signatures checked; this checks the one
+    /// body asked for (memoised per item), so lowering a std fn reads the
+    /// checker's answers for it too.
+    pub fn body_facts(&mut self, path: &str, at: cpl_diag::Span) -> Option<Arc<Facts>> {
+        self.db.body_facts(path, at)
+    }
+
     /// The file's diagnostics, from its memoised analysis.
     pub fn diagnostics(&mut self, path: &str) -> Vec<Diagnostic> {
         self.analysis(path)

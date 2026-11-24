@@ -1581,6 +1581,12 @@ def _builtin_floor(root: Path) -> set[str]:
     return floor
 
 
+def ir_builtin_derived(root: Path) -> list[str]:
+    """String-matched names not on a decision-266 intrinsic row: std bodies the compiler still owns."""
+    floor = _builtin_floor(root)
+    return [n for n in ir_builtin_names(root) if n not in floor]
+
+
 def _compiler_strings(root: Path) -> set[str]:
     """Every identifier-like string literal in the checker, IR, interpreter and emitter, tests aside."""
     found: set[str] = set()
@@ -1663,6 +1669,18 @@ def std_fns_unscaled(root: Path) -> list[str]:
     return list(board.get("unscaled", []))
 
 
+ONE_PROBLEM_RE = re.compile(r"corpus/problems/[\w.-]+")
+GIT_CHANGED_RE = re.compile(r"\bgit\b[^|;]*\b(?:diff|status)\b")
+
+
+def _names_corpus_set(line: str) -> bool:
+    """A line naming the problem set, not one named problem or a pathspec over
+    the files git says changed."""
+    if GIT_CHANGED_RE.search(line):
+        return False
+    return bool(re.search(r"[\"']problems[\"']", line)) or "corpus/problems" in ONE_PROBLEM_RE.sub("", line)
+
+
 def corpus_walkers(root: Path) -> list[str]:
     """Files besides scripts/corpus.py that list corpus/problems themselves: a second corpus walker."""
     found = []
@@ -1672,8 +1690,8 @@ def corpus_walkers(root: Path) -> list[str]:
             continue
         lines = _lines(root / rel)
         for i, line in enumerate(lines):
-            if "corpus/problems" in line or re.search(r"[\"']problems[\"']", line):
-                if any(WALK_RE.search(l) for l in lines[max(0, i - 3):i + 4]):
+            if _names_corpus_set(line):
+                if any(WALK_RE.search(l) and not GIT_CHANGED_RE.search(l) for l in lines[max(0, i - 3):i + 4]):
                     found.append(rel)
                     break
     return found
@@ -1763,9 +1781,9 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "spec/idioms/lints-known.txt": ("idiom_lint_gaps", "idioms", "deleted: idioms-catalog.py fails on any finding"),
     "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "fix each example"),
     "web/scripts/practice-mutants-equivalent.txt": ("known_lists", "site", "data: equivalent mutants"),
-    "web/tests/a11y-known.txt": ("xfail_markers", "site", "fix each a11y finding"),
-    "web/tests/completion-known.txt": ("known_lists", "site", "fix each completion miss"),
-    "web/tests/search-known.txt": ("known_lists", "site", "fix each search miss"),
+    "web/tests/a11y-known.txt": ("xfail_markers", "site", "deleted: a11y.mjs fails on any violation"),
+    "web/tests/completion-known.txt": ("known_lists", "site", "deleted: completion-parity.mjs fails on any miss"),
+    "web/tests/search-known.txt": ("known_lists", "site", "deleted: search-tasks.mjs fails on any miss"),
 }
 # Directories of test data and fixtures, not lists of exemptions.
 LIST_DATA_DIRS = ("research/", "corpus/problems/", "corpus/submissions/", "bench/stress/", "node_modules/")
@@ -1870,6 +1888,7 @@ COUNTERS = {
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
+    "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
     "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),

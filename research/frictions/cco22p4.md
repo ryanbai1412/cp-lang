@@ -7,15 +7,6 @@ memoized fn (`1 - here[u] + spare of the children`) and memoizes `fill` over `(N
 
 ## Frictions
 
-- **Names bound in a `|` pattern don't build.** The one-child case is
-  `(Some(c), None) | (None, Some(c)) => ...`, which checks but is E0501 for `cpl run`/`cpl build`
-  ("can't handle names bound inside a `|` pattern yet"). The port matches `_` and recomputes
-  the child as `(left[u] ?? right[u])!`. Sent to Core.
-- **`if let` cannot destructure a tuple of optionals.** `if let (Some(l), Some(r)) = (left[u],
-  right[u]):` is E0302 ("takes the value out of an optional, but this is a `(?Node, ?Node)`"), so
-  the three cases are a `match`.
-- **`??` in an `elif let` head needs parentheses.** `elif let c = left[u] ?? right[u]:` is E0103
-  (expected `:` after the condition, found `??`), while `let c = left[u] ?? right[u]` parses.
 - **A memo keyed by a domain value needs an `Int` wrapper.** Arrival counts past `spare(u)` are
   zero, and they can exceed `n`, so `ways(u, k: Int)` guards and converts to `Arrive(k)` before the
   `@memo(array)` `fill`; one fn would do if the memo took the guard.

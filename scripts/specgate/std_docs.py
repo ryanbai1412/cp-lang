@@ -198,6 +198,8 @@ def untyped(lines):
                 if angle == 0:
                     break
             k += 1
+        while text[k].isspace():
+            k += 1
         depth = 0
         for k in range(k, len(text)):
             depth += text[k] in "([{"

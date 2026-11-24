@@ -1,4 +1,5 @@
 // Source: NOI 2003 P2 (Text Editor), https://dmoj.ca/problem/noi03p2
+// limits: 250 ms, 64 MB
 // Problem: a text, empty at first, and a cursor. t commands: "Move k", "Prev", "Next" place the
 //   cursor; "Insert n" inserts the n characters (ASCII 32-126) that follow, line breaks
 //   ignored; "Delete n" removes and "Get n" prints the n characters after the cursor. At most
