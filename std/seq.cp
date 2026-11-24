@@ -258,6 +258,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// ties: `[(1, 'a'), (1, 'b')].last == Some((1, 'b'))`
 /// traps: never
 /// example: `[4, 5].last == Some(5)`
+@lint(peek_then_pop, from: "let x = self.last!\nself.pop()", to: "let x = self.pop()!")
 @get pub fn last<S: Bidir, T>(self: S) -> ?T:
     for x in self.iter_rev(): return Some(x)
     None
