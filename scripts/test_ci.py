@@ -498,10 +498,10 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(code, 0)
         gate = [e for e in ev if e.startswith(("cargo check -q -p cpl-wasm", "scripts/build-wasm.sh", "node web/scripts/wasm-crates.mjs"))]
         self.assertEqual([g.split()[0] for g in gate], ["cargo", "scripts/build-wasm.sh", "node"])
-        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm"))
+        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm --touched cpl_check"))
         code, _, _, err, _, _ = self._commit(sel, outs=outs, codes={"node": 1})
         self.assertEqual(code, 1)
-        self.assertIn("the data segment of cpl.wasm is over its budget", err)
+        self.assertIn("cpl.wasm's data segment or a touched crate is over its budget", err)
 
     def test_a_failed_check_names_its_rerun_and_stops_the_tier(self) -> None:
         sel = {"packages": "cpl-fmt", "filter": "x", "site": "1"}

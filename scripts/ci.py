@@ -511,17 +511,18 @@ class Tail:
                          " RUSTFLAGS=-Dwarnings cargo check -p cpl-wasm --target wasm32-unknown-unknown")
         return True
 
-    def wasm_data(self) -> None:
+    def wasm_data(self, pkgs: list[str]) -> None:
         """The data segment of a names build of cpl.wasm (std's outlines and every
-        crate's strings) within its budget, so a change that grows it fails at
-        commit and land time, not later in the site job."""
-        self.step("cpl.wasm data segment within its budget (scripts/build-wasm.sh --names)")
+        crate's strings) and each touched crate within its budget, so a change that
+        grows one fails at commit and land time, not later in the site job."""
+        self.step("cpl.wasm data segment and touched crates within their budgets (scripts/build-wasm.sh --names)")
         out = target_dir() / "wasm-data-gate"
         if self.call(["scripts/build-wasm.sh", "--names", str(out)]):
             raise Failed(f"scripts/build-wasm.sh --names failed; rerun: scripts/build-wasm.sh --names {out}")
-        if self.call(["node", "web/scripts/wasm-crates.mjs", "--data", str(out / "cpl.wasm")]):
-            raise Failed("the data segment of cpl.wasm is over its budget (named above); rerun:"
-                         f" node web/scripts/wasm-crates.mjs --data {out / 'cpl.wasm'}")
+        touched = ",".join(p.replace("-", "_") for p in pkgs)
+        if self.call(["node", "web/scripts/wasm-crates.mjs", "--data", str(out / "cpl.wasm"), "--touched", touched]):
+            raise Failed("cpl.wasm's data segment or a touched crate is over its budget (named above); rerun:"
+                         f" node web/scripts/wasm-crates.mjs --data {out / 'cpl.wasm'} --touched {touched}")
 
     def _build(self) -> None:
         self.step("cargo fmt --all --check")
@@ -566,7 +567,7 @@ class Tail:
             if tree.returncode:
                 raise Failed(f"cargo tree -p cpl-wasm failed:\n{tree.stderr}")
             if {line.split()[0] for line in tree.stdout.splitlines() if line.strip()} & set(pkgs) and self.wasm():
-                self.wasm_data()
+                self.wasm_data(pkgs)
             expr = f"({sel.get('filter', '')}){not_slow}"
             if slice_filter := sel.get("slice_filter"):
                 expr += f" & not ({slice_filter})"

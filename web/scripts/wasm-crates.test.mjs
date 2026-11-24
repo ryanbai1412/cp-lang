@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, crateOf, DATA, dataOverBudget, ownerOf, owners, readCharters } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, crateOf, DATA, dataOverBudget, ownerOf, owners, readCharters, touchedOverBudget } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -52,6 +52,18 @@ describe('wasm crate budgets', () => {
       'cpl_new (no domain: add crates/cpl-new to the Describes row of its charter in handbook/domains/) has no budget in web/scripts/wasm-crate-budgets.json; it is 20 B gzipped',
     ]);
     expect(lower).toEqual([`cpl_lsp: lower its budget to ${budgetFor(100)}`, 'gone is no longer in cpl.wasm: delete its budget']);
+  });
+
+  test('the commit gate fails a touched crate over budget and warns for the rest', () => {
+    const map = owners(charters);
+    const rows = [['cpl_check', 900, 300], ['cpl_lsp', 500, 200], [DATA, 900, 50]];
+    const budgets = { cpl_check: 250, cpl_lsp: 100, [DATA]: 40 };
+    const { errors, warnings } = touchedOverBudget(rows, budgets, map, ['cpl_lsp']);
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toMatch(/^data .* 50 B gzipped, over its budget of 40/);
+    expect(errors[1]).toMatch(/^cpl_lsp is 200 B gzipped/);
+    expect(warnings).toEqual([expect.stringMatching(/^cpl_check is 300 B gzipped/)]);
+    expect(touchedOverBudget(rows, { ...budgets, [DATA]: 50 }, map, []).errors).toEqual([]);
   });
 
   test('within budget passes', () => {
