@@ -923,6 +923,9 @@ struct Lowerer<'a> {
     preamble_stmts: Vec<Stmt>,
     /// The top-level fns marked `@memo`.
     memo_fns: HashSet<FnId>,
+    /// Each `@grader fn` over its own domains (`p: [C]Int`), with the
+    /// entry the judge's grader calls in its place, over lists.
+    grader_wrappers: Vec<(&'a ast::FnDecl, &'a ast::FnDecl)>,
     memo_count: usize,
     /// The lookup of the `@memo` wrapper being built, for a short fn of
     /// its own (see [`memo::MemoFast`]).
@@ -1056,6 +1059,7 @@ impl<'a> Lowerer<'a> {
             queued_set: HashSet::new(),
             preamble_stmts: Vec::new(),
             memo_fns: HashSet::new(),
+            grader_wrappers: Vec::new(),
             memo_count: 0,
             memo_fast: None,
             raw_lists: Vec::new(),
