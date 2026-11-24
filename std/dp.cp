@@ -11,7 +11,8 @@
 //! `convexity_break`). A sliding-window optimum is `a.windows(k).fold(op)` or `std.window.Window(op)`.
 use std.algebra.{Monoid}
 use std.math.{bit}
-use std.seq.{collect, first_true}
+use std.seq.{collect}
+use std.range.{first_true}
 
 /// \(O(1)\) per evaluation.
 /// The line `k * x + m`, the usual entry of a `LiChao`.

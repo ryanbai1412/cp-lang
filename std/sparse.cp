@@ -1,6 +1,6 @@
 //! Sparse table: \(O(1)\) range folds of a fixed array (range minimum query, RMQ).
 use std.math.{gcd}
-use std.seq.{ends}
+use std.range.{ends}
 
 /// `SparseTable<V, Int>(min, a)`: built in \(O(n \log n)\) time and memory, `fold` is \(O(1)\).
 /// The operation must be associative and idempotent (`op(a, a) == a`): `min`, `max`, `gcd`,

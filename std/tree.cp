@@ -17,7 +17,8 @@ use std.dsu.{Dsu}
 use std.graph.{Next, Target, Graph, Visit, Edged, dfs, Tree, arc_len}
 use std.rand.{Rng}
 use std.segtree.{SegTree}
-use std.seq.{collect, dedup, first_true, get_or_insert, span}
+use std.seq.{collect, dedup, get_or_insert, span}
+use std.range.{first_true}
 use std.math.{bit}
 
 /// A BFS spanning tree rooted at `V.first`, as a `Rooted`.

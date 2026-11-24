@@ -1,7 +1,7 @@
 //! Interval partition map (ODT / Chtholly tree): `IntervalMap<D, T>`; merge overlapping intervals.
 
 use std.rand.{Rng}
-use std.seq.{ends}
+use std.range.{ends}
 
 /// A total partition of domain `D` into maximal contiguous half-open runs,
 /// each carrying a value of type `T`.

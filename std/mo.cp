@@ -1,5 +1,5 @@
 //! Mo's algorithm: offline ordering and window stepping over `Range<D>`.
-use std.seq.{ends}
+use std.range.{ends}
 use std.math.{isqrt}
 
 /// The order in which to visit `queries` so a sliding window moves its endpoints

@@ -3,7 +3,8 @@
 //! Each update copies only the \(O(\log n)\) nodes on the root-to-leaf path and returns a
 //! new `Version` handle. All earlier versions remain readable in \(O(\log n)\).
 use std.algebra.{Action, Monoid}
-use std.seq.{deduped, ends}
+use std.seq.{deduped}
+use std.range.{ends}
 
 /// Opaque version handle for `PersistentSegTree`.
 pub struct Version(root: Int)

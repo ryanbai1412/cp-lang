@@ -2,7 +2,7 @@
 use std.algebra.{Action, Monoid}
 use std.bag.{SortedBag}
 use std.math.{gcd, bit}
-use std.seq.{ends, first_true}
+use std.range.{ends, first_true}
 
 struct NoAction
 struct NoOp

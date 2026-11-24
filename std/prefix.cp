@@ -5,7 +5,7 @@
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) /
 //! \(O(r \cdot c)\) `finish()`.
 use std.algebra.{Monoid}
-use std.seq.{ends, RingRange, first_true}
+use std.range.{ends, RingRange, first_true}
 
 /// \(O(n)\) calls of `f`.
 ///

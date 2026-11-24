@@ -2,7 +2,7 @@
 use std.algebra.{Action, MaxCount, MinCount, Monoid, add, affine, assign}
 use std.rand.Rng
 use std.segtree.{SegTree}
-use std.seq.{ends}
+use std.range.{ends}
 
 /// Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTree(op, a, act: flip)`).
 /// Build the toggle action with `flip_action(m)` (tag `Bool`: `true` swaps `now` and `flipped`).

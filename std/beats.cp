@@ -3,7 +3,7 @@
 //! Maintains exact `min`, second `min`, `max`, second `max`, and `sum` on every node.
 //! Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized
 //! (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
-use std.seq.{ends}
+use std.range.{ends}
 
 /// Segment Tree Beats over a domain `D` of `Int` values.
 /// Supports `chmin`, `chmax`, `add`, `sum`, `min_val`, `max_val`, and `get`.

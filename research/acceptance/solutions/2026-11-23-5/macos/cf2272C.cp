@@ -2,7 +2,7 @@
 // https://codeforces.com/contest/2272/problem/C
 // judge: generic
 
-use std.seq.{first_true}
+use std.range.{first_true}
 
 @!multitest
 let (n, x): (2..=2e5, 0..=n) = read()
