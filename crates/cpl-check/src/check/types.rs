@@ -201,6 +201,7 @@ impl<'a> Checker<'a> {
                             ty: self.resolve_type(inner),
                             mutable,
                             has_default: false,
+                            default_ty: None,
                             named_only: false,
                             variadic: false,
                             lazy: false,
@@ -570,11 +571,15 @@ impl<'a> Checker<'a> {
             if p.ty.as_ref().is_some_and(Self::names_range_keys) {
                 self.lends.range_keys.insert(p.name.span);
             }
+            let params_ty_is_param = matches!(ty, Ty::Param(_));
             params.push(Param {
                 name: p.label_text().to_string(),
                 ty,
                 mutable: p.mutable || self.note_opt_mut(p),
                 has_default: p.default.is_some(),
+                default_ty: (p.default.as_ref())
+                    .filter(|_| params_ty_is_param)
+                    .map(|d| self.quietly(|c| c.infer(d))),
                 named_only: p.named_only,
                 variadic: p.variadic,
                 lazy: p.lazy,
@@ -975,6 +980,7 @@ impl<'a> Checker<'a> {
                         ty: self.field_type(f),
                         mutable: false,
                         has_default: f.default.is_some(),
+                        default_ty: None,
                         named_only: false,
                         variadic: false,
                         lazy: false,

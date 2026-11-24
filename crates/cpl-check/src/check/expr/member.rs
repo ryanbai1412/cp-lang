@@ -460,6 +460,7 @@ impl<'a> Checker<'a> {
                                 ty: Ty::Bool,
                                 mutable: false,
                                 has_default: true,
+                                default_ty: None,
                                 named_only: true,
                                 variadic: false,
                                 lazy: false,

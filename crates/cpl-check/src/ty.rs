@@ -74,6 +74,8 @@ pub struct Param {
     pub ty: Ty,
     pub mutable: bool,
     pub has_default: bool,
+    /// What an omitted `op: M = NoOp()` binds a bare generic `M` to.
+    pub default_ty: Option<Ty>,
     pub named_only: bool,
     pub variadic: bool,
     pub lazy: bool,
@@ -87,6 +89,7 @@ impl Param {
             ty,
             mutable: false,
             has_default: false,
+            default_ty: None,
             named_only: false,
             variadic: false,
             lazy: false,

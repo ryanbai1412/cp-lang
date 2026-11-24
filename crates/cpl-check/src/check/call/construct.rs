@@ -189,6 +189,17 @@ impl Checker<'_> {
                             .collect()
                     });
                     self.bare_ops_take_monoid(&bound_args, params, args, &mut bindings);
+                    // `new<M: Folds<T>, A: Acts<M.Fold, F>>(op: M = NoOp(), ..)` without `op`.
+                    for p in params {
+                        if let (Ty::Param(g), Some(d)) = (&p.ty, &p.default_ty) {
+                            if !bindings.contains_key(g) {
+                                bindings.insert(g.clone(), d.clone());
+                            }
+                        }
+                    }
+                    let outer = std::mem::replace(&mut self.call_bound_args, Some(bound_args));
+                    self.bind_bound_args(&mut bindings);
+                    self.call_bound_args = outer;
                     if !is_generated_ctor && self.sink.len() > before {
                         self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
                     }

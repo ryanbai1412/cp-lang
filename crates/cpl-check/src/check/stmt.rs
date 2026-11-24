@@ -700,6 +700,7 @@ impl<'a> Checker<'a> {
                                         ty: pty,
                                         mutable: false,
                                         has_default: false,
+                                        default_ty: None,
                                         named_only: false,
                                         variadic: false,
                                         lazy: false,
