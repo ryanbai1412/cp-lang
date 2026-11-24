@@ -17,23 +17,25 @@ domain City = 0..n
 let fun: [City]0..=1e9 = read()
 let home = City.at(start)!
 
-// most[t]: the most seen in t days spent on `side`, the cities in the order
-// they are passed going away from the start. Reaching the i-th costs `step`
-// days a city: 2 if the walk has to come back, 1 if it ends there; the days
-// left go to the best cities passed.
-fn away(side: List<Int>, step: Int) -> List<Int>:
+// away(side): (round trip, one way) for one side, the cities in the order they
+// are passed going away from the start, both from one WaveletMatrix. most[t] is
+// the most seen in t days on the side: reaching the i-th costs `step` days a
+// city, 2 if the walk has to come back and 1 if it ends there, and the days left
+// go to the best cities passed.
+fn away(side: List<Int>) -> (List<Int>, List<Int>):
     let order = WaveletMatrix(side)
     let passed = Prefix<Int>(side)
-    fn seen(t: Int, i: Int) -> ?Int:
-        let visits = min(t - (i + 1) * step, i + 1)
-        if visits < 0: return None
-        Some(-(passed.cut(i + 1) - order.quantile_sum(0..i + 1, i + 1 - visits)))
-    // with more days it never pays to turn round sooner, so the best last city only moves away
-    [if let b = best: -b.val else: 0 for best in monotone_minima(days + 1, side.len, seen)]
+    fn most(step: Int) -> List<Int>:
+        fn seen(t: Int, i: Int) -> ?Int:
+            let visits = min(t - (i + 1) * step, i + 1)
+            if visits < 0: return None
+            Some(-(passed.cut(i + 1) - order.quantile_sum(0..i + 1, i + 1 - visits)))
+        // with more days it never pays to turn round sooner, so the best last city only moves away
+        [if let b = best: -b.val else: 0 for best in monotone_minima(days + 1, side.len, seen)]
+    (most(2), most(1))
 
-// walk `first` and come back, then walk `second`; the start city is visited or not
-fn best(first: List<Int>, second: List<Int>) -> Int:
-    let (round_trip, one_way) = (away(first, 2), away(second, 1))
+// walk one side and come back, then walk the other; the start city is visited or not
+fn best(round_trip: List<Int>, one_way: List<Int>) -> Int:
     [
         here + round_trip[t] + one_way[days - spent - t] for (spent, here) in [
             (0, 0),
@@ -41,6 +43,6 @@ fn best(first: List<Int>, second: List<Int>) -> Int:
         ] for t in 0..=days - spent
     ].max()!
 
-let left = fun[..home].rev.collect()
-let right = fun[home..].drop(1).collect()
-print(max(best(right, left), best(left, right)))
+let (left_back, left_on) = away(fun[..home].rev.collect())
+let (right_back, right_on) = away(fun[home..].drop(1).collect())
+print(max(best(right_back, left_on), best(left_back, right_on)))
