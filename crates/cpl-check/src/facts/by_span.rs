@@ -4,7 +4,7 @@ use cpl_diag::Span;
 
 /// Values by file span, sorted by start then end and found by binary search.
 /// Every per-span table of the facts has this one shape, so the wasm build
-/// carries one sort for all of them instead of a hash table per value type.
+/// carries one sort, `cpl_diag::sort_by_key`, instead of a hash table per value type.
 #[derive(Clone, Debug)]
 pub(crate) struct BySpan<T>(Vec<(Span, T)>);
 
@@ -23,17 +23,9 @@ impl<T> BySpan<T> {
     /// Like [`BySpan::new`], but `prefer(kept, earlier)` may swap in an
     /// earlier entry's value at the same span.
     pub(crate) fn merged(mut entries: Vec<(Span, T)>, prefer: impl Fn(&mut T, &mut T)) -> Self {
-        let mut at = order(entries.iter().map(|(s, _)| *s).collect());
-        for k in 0..at.len() {
-            let mut cur = k;
-            while at[cur] as usize != k {
-                let next = at[cur] as usize;
-                entries.swap(cur, next);
-                at[cur] = cur as u32;
-                cur = next;
-            }
-            at[cur] = cur as u32;
-        }
+        // Latest first at each span, so `dedup_by` keeps the last entry.
+        entries.reverse();
+        cpl_diag::sort_by_key(&mut entries, |(s, _)| s.order());
         entries.dedup_by(|earlier, kept| {
             let same = earlier.0 == kept.0;
             if same {
@@ -61,16 +53,6 @@ impl<T> BySpan<T> {
             .filter(move |(s, _)| s.end <= span.end)
             .map(|(s, v)| (*s, v))
     }
-}
-
-/// Where each of `spans` goes, by start, then end, then latest first: the
-/// one sort every table shares.
-fn order(spans: Vec<Span>) -> Vec<u32> {
-    let mut keys: Vec<(u32, u32, u32)> = (spans.iter().enumerate())
-        .map(|(i, s)| (s.start, s.end, u32::MAX - i as u32))
-        .collect();
-    keys.sort_unstable();
-    keys.into_iter().map(|(_, _, i)| u32::MAX - i).collect()
 }
 
 #[cfg(test)]
