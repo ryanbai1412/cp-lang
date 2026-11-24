@@ -11,7 +11,7 @@
 //   forward walk of under L x L cells the pivot-to-end tables, and each query takes the best
 //   split of its zeros. About nm / L pivots, O(nm K) each; O(L^2 K) a direct query.
 // original: corpus/submissions/5150025.cpp
-// Bounds: n, m: 1..=200; q: 1..=200_000; a: 1..=1e9; x1, x2: 1..=n; y1, y2: 1..=m; zeros: 0..=MAXK
+// Bounds: n, m: 1..=200; q: 1..=200_000; a: 1..=1e9; asks.x1, asks.x2: 1..=n; asks.y1, asks.y2: 1..=m; asks.zeros: 0..=MAXK
 const MAXK = 5
 const L = 16
 domain Zeros = 0..=MAXK
@@ -62,26 +62,26 @@ fn walk_ahead(from: Cell, to: Cell):
                 if let fewer = k.prev: best min= before(r, c, from, fewer)
                 ahead[r, c, k] = best
 
-type Ask = (from: Cell, to: Cell, zeros: Zeros, id: Query)
+let asks: [Query](x1: Row, y1: Col, x2: Row, y2: Col, zeros: Zeros) = read()
 var answer: [Query]?Int = None
-var buckets: [Row, Col]List<Ask> = []
-for id in Query:
-    let (x1, y1, x2, y2, zeros): (Row, Col, Row, Col, Zeros) = read()
+var buckets: [Row, Col]List<Query> = []
+for (id, (x1, y1, x2, y2, zeros)) in asks.items:
     let d = Int(x2) + Int(y2) - (Int(x2) + Int(y2)) % L
     if d < Int(x1) + Int(y1):
         walk_back((x1, y1), (x2, y2))
         answer[id] = back[x1, y1, zeros]
     else:
         for x in max(Int(x1), d - Int(y2))..=min(Int(x2), d - Int(y1)):
-            buckets[Row(x), Col(d - x)].push((from: (x1, y1), to: (x2, y2), zeros:, id:))
+            buckets[Row(x), Col(d - x)].push(id)
 
 for pivot in (Row, Col):
     let bucket = buckets[pivot]
     if bucket.is_empty: continue
-    walk_back((bucket.map(b => b.from.0).min()!, bucket.map(b => b.from.1).min()!), pivot)
-    walk_ahead(pivot, (bucket.map(b => b.to.0).max()!, bucket.map(b => b.to.1).max()!))
-    for (from, to, zeros, id) in bucket:
+    walk_back((min(asks[i].x1 for i in bucket)!, min(asks[i].y1 for i in bucket)!), pivot)
+    walk_ahead(pivot, (max(asks[i].x2 for i in bucket)!, max(asks[i].y2 for i in bucket)!))
+    for id in bucket:
+        let (x1, y1, x2, y2, zeros) = asks[id]
         for k in Zeros if k <= zeros:
-            answer[id] min= back[from.0, from.1, k] + ahead[to.0, to.1, zeros.offset(-k.ord)!]
+            answer[id] min= back[x1, y1, k] + ahead[x2, y2, zeros.offset(-k.ord)!]
 
 for id in Query: print(answer[id]!)
