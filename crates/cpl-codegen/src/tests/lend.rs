@@ -1435,3 +1435,30 @@ fn a_map_entry_or_a_default_given_by_value_copies_the_entry_once() {
         "the entry is copied straight out, not into an optional first: {given}"
     );
 }
+
+#[test]
+fn a_let_of_a_long_literal_names_the_constant_unless_it_changes() {
+    let read = cpp(concat!(
+        "fn digit(i: Int) -> Char:\n",
+        "    let ds = \"0123456789abcdefghijklmnopqrstuvwxyz\"\n",
+        "    ds[i % 36]\n",
+        "let i: 0..=100 = read()\n",
+        "print(digit(i))\n",
+    ));
+    assert!(
+        read.contains("const std::string& ds = cpl_str0;"),
+        "a read-only literal is the constant itself: {read}"
+    );
+    let changed = cpp(concat!(
+        "fn grown(i: Int) -> Int:\n",
+        "    var ds = \"0123456789abcdefghijklmnopqrstuvwxyz\"\n",
+        "    ds += \"{i}\"\n",
+        "    ds.len\n",
+        "let i: 0..=100 = read()\n",
+        "print(grown(i))\n",
+    ));
+    assert!(
+        changed.contains("std::string ds = cpl_str0;"),
+        "a changed one is its own copy: {changed}"
+    );
+}

@@ -425,6 +425,8 @@ impl crate::emit::Emitter<'_> {
                         || (self.is_param(src) && !self.uses.of_binding(self.home(), slot).moved)
                 }
                 ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
+                // A long literal is a `static const` string the C++ never changes.
+                ExprKind::Str(ref bytes) => bytes.len() > crate::expr::SHORT_STR,
                 // `let n = arena.get(id)`: a fn that lends from an argument.
                 ExprKind::Call(callee, _) => self.lent_roots.contains_key(&callee),
                 _ => false,
@@ -539,13 +541,20 @@ impl crate::emit::Emitter<'_> {
     ) -> Option<&'static str> {
         let temp = |slot: usize| self.locals()[slot].name.is_empty();
         let changed = |yes: bool, why| yes.then_some(why);
+        let home = self.home();
+        let set_again = || {
+            self.uses.of_binding(home, slot).mutated
+                || self.facts.stores(self.facts_local(slot)) > 1
+        };
+        // A long literal is a `static const` string: only the name can change.
+        if matches!(&init.kind, ExprKind::Str(bytes) if bytes.len() > crate::expr::SHORT_STR) {
+            return changed(set_again(), SET_AGAIN);
+        }
         let Some((global, root)) = crate::stmt::place_root(init).or_else(|| self.keyed_root(init))
         else {
             return Some(SOURCE_CALLED);
         };
-        let home = self.home();
-        if self.uses.of_binding(home, slot).mutated || self.facts.stores(self.facts_local(slot)) > 1
-        {
+        if set_again() {
             return Some(SET_AGAIN);
         }
         let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
