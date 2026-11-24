@@ -24,9 +24,10 @@ pub struct FnSummary {
     /// must run as it yields (R06.3.4), whatever else the body does.
     pub yields_fns: bool,
     /// The fns whose frames a closure it may call writes by reference
-    /// (`None`: the program's top level). Only another fn's frame makes it
-    /// `opaque` to a loop it feeds.
-    pub lent_from: BTreeSet<Option<usize>>,
+    /// ([`TOP`]: the program's top level). Only another fn's frame makes it
+    /// `opaque` to a loop it feeds. A set of `usize`, as `reads` is, so the
+    /// browser build carries one set's code.
+    pub lent_from: BTreeSet<usize>,
     pub reads: BTreeSet<usize>,
     pub writes: BTreeSet<usize>,
 }
@@ -104,9 +105,12 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
     }
 }
 
+/// The owner of what the program's top level makes, beside its fns.
+pub const TOP: usize = usize::MAX;
+
 /// The fn each closure is made in, through the closures it is made in
-/// (`None`: the top level).
-fn closure_owners(program: &Program) -> Vec<Option<usize>> {
+/// ([`TOP`]: the top level).
+fn closure_owners(program: &Program) -> Vec<usize> {
     #[derive(Clone, Copy)]
     enum Made {
         Top,
@@ -131,12 +135,12 @@ fn closure_owners(program: &Program) -> Vec<Option<usize>> {
         .map(|mut c| {
             for _ in 0..made.len() {
                 match made[c] {
-                    Made::Top => return None,
-                    Made::Fn(id) => return Some(id),
+                    Made::Top => return TOP,
+                    Made::Fn(id) => return id,
                     Made::In(outer) => c = outer,
                 }
             }
-            None
+            TOP
         })
         .collect()
 }
@@ -168,7 +172,7 @@ fn pusher(id: usize, f: &Function, summary: &FnSummary) -> Option<usize> {
     let yields = f.locals.iter().position(|local| local.name == "__yields");
     let acc = yields.or_else(|| returned_list(f))?;
     // A closure it makes writing its own locals is part of its own run.
-    let opaque = summary.lent_from.iter().any(|&owner| owner != Some(id));
+    let opaque = summary.lent_from.iter().any(|&owner| owner != id);
     if acc < f.params.len() || summary.sizes || (!summary.yields_fns && opaque) {
         return None;
     }
@@ -478,7 +482,8 @@ pub fn escaping_yields(program: &Program) -> Vec<Diagnostic> {
     }
     let feeds = Feeds::of(program);
     // Loops in a closure or in a fn that may itself be feeding are never fed.
-    let mut fed: BTreeSet<*const Expr> = BTreeSet::new();
+    // Addresses as `usize`, so this is the one set of `usize` the crate already carries.
+    let mut fed: BTreeSet<usize> = BTreeSet::new();
     let fed_bodies = [&program.main, &program.setup].into_iter().chain(
         (program.fns.iter().enumerate())
             .filter(|(id, _)| !feeds.pushers.contains_key(id))
@@ -488,7 +493,7 @@ pub fn escaping_yields(program: &Program) -> Vec<Diagnostic> {
         walk::deep_stmts(body, &mut |stmt| {
             if let Stmt::For(id, _, Iter::Seq(seq, false), inner) = stmt {
                 if feeds.feeds(*id, seq, inner).is_some() {
-                    fed.insert(seq as *const Expr);
+                    fed.insert(seq as *const Expr as usize);
                 }
             }
         });
@@ -506,7 +511,7 @@ pub fn escaping_yields(program: &Program) -> Vec<Diagnostic> {
             let Some(local) = lent.get(&callee) else {
                 return;
             };
-            if fed.contains(&(e as *const Expr)) {
+            if fed.contains(&(e as *const Expr as usize)) {
                 return;
             }
             let name = &program.fns[callee].name;
