@@ -90,9 +90,14 @@ pub(crate) fn is_declared(name: &str) -> bool {
 
 static ALL: Mutex<Vec<&'static Lint>> = Mutex::new(Vec::new());
 
-/// The library lint named `name`, made once per name and kept: a finding
+/// The library lint named `name`: the `spec/lints` record of that name when
+/// there is one (std's idiom lints keep their codes, levels and
+/// explanations), else one made once per name and kept, since a finding
 /// names its lint by a `&'static` reference.
 pub(crate) fn intern(name: &str) -> &'static Lint {
+    if let Some(lint) = crate::lint_named(name) {
+        return lint;
+    }
     let mut all = ALL.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(lint) = all.iter().find(|l| l.name == name) {
         return lint;
@@ -224,8 +229,13 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     let mut out = Vec::new();
     for d in declared {
         let all = &d.from;
+        let to = library_lint::tokens(&d.decl.to);
+        let in_to = |h: &str| {
+            to.iter()
+                .any(|t| &d.decl.to[t.span.start as usize..t.span.end as usize] == h)
+        };
         let repeated: Vec<bool> = (d.decl.holes.iter())
-            .map(|h| all.iter().filter(|(_, t)| t == h).count() > 1)
+            .map(|h| all.iter().filter(|(_, t)| t == h).count() > 1 || !in_to(h))
             .collect();
         let matcher = |pat| Matcher {
             pat,
@@ -242,9 +252,18 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         let parts: Vec<Matcher> = (d.ends.iter())
             .map(|&end| matcher(&d.from[std::mem::replace(&mut start, end)..end]))
             .collect();
-        // A run of statements matches statement by statement, in one block.
+        // A run of statements matches statement by statement, in one block;
+        // one statement matches as an expression or as a block's statement.
         let sites: Vec<Vec<Span>> = match d.ends.len() {
-            1 => candidates.iter().map(|c| vec![c.2]).collect(),
+            1 => {
+                let mut one: Vec<Vec<Span>> = (candidates.iter().map(|c| c.2))
+                    .chain(spans.blocks.iter().flatten().copied())
+                    .map(|s| vec![s])
+                    .collect();
+                cpl_diag::sort_by_key(&mut one, |r| r[0].order());
+                one.dedup();
+                one
+            }
             k => {
                 let mut runs: Vec<Vec<Span>> = (spans.blocks.iter())
                     .flat_map(|b| b.windows(k).map(<[Span]>::to_vec))
@@ -309,7 +328,8 @@ struct Matcher<'a> {
     toks: &'a [Token],
     ends: &'a HashMap<u32, Vec<u32>>,
     by_end: &'a HashMap<u32, usize>,
-    /// Per hole: whether `from` uses it twice, so it must be pure.
+    /// Per hole: whether `from` uses it twice or `to` drops it, so it must
+    /// be pure.
     repeated: Vec<bool>,
 }
 

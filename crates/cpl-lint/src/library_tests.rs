@@ -121,3 +121,26 @@ fn a_library_lint_matches_a_run_of_statements() {
         );
     }
 }
+
+/// `holes:` names more holes than the fn's parameters; `to` may drop one
+/// when it matched code that calls nothing, `to` may use the fn as a getter
+/// (`xs.walk`), and a lint named like a `spec/lints` record reports as it.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn declared_holes_match_free_names_and_a_record_name_keeps_its_code() {
+    let decl = "@lint(binom_by_hand, from: \"for i in 0..n:\\n    print(xs[i])\", to: \"for x in xs.walk:\\n    print(x)\", holes: \"n\")\npub fn walk(xs: List<Int>) -> List<Int> = xs\n";
+    let found = |body: &str| -> Vec<(String, String)> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "L0557")
+            .map(|d| (d.code.0.to_string(), d.fixes[0].edits[0].1.clone()))
+            .collect()
+    };
+    let hit = "let a = [3, 1]\nlet m = a.len\nfor j in 0..m:\n    print(a[j])\n";
+    assert_eq!(
+        found(hit),
+        [("L0557".into(), "for x in a.walk:\n    print(x)".into())]
+    );
+    let calls = "let a = [3, 1]\nfn m() -> Int = 2\nfor j in 0..m():\n    print(a[j])\n";
+    assert!(found(calls).is_empty());
+}
