@@ -1,6 +1,6 @@
 //! Double-ended queue: `Deque<T>`.
 
-use std.seq.{Bidir, Seq, remove}
+use std.seq.{Bidir, Seq}
 
 /// A queue with both ends open: `var q = Deque<Int>()`. `push` / `pop` work at the back,
 /// `push_front` / `pop_front` at the front, all amortized \(O(1)\); `q[i]` is the `i`-th element
