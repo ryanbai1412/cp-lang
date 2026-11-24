@@ -1849,8 +1849,9 @@ fn without_keep_heap(text: &str) -> String {
 
 const MALLOC_H: &str = "#include <malloc.h>\n";
 
+// ASan follows a thread's stack, not one `setcontext` switched to, so a
+// sanitized build takes the pthread path.
 const POSIX_THREAD: &str = "
-// ASan follows a thread's stack, not one `setcontext` switched to.
 #if defined(__GLIBC__) && !defined(__SANITIZE_ADDRESS__)
 MALLOC_H#include <sys/mman.h>
 #include <ucontext.h>
