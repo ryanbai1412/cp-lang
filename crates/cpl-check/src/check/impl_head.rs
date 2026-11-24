@@ -198,10 +198,13 @@ impl Checker<'_> {
             let own = methods.iter().find(|(m, _)| m == name).map(|m| m.1.clone());
             let found = own.or_else(|| {
                 let tr = trait_name.as_deref()?.split('<').next()?.to_string();
-                let Def::Trait { methods, .. } = &*self.type_def(&tr)? else {
+                let Def::Trait {
+                    methods, generics, ..
+                } = &*self.type_def(&tr)?
+                else {
                     return None;
                 };
-                let members = self.trait_members(&methods.clone(), &def);
+                let members = self.trait_members(&methods.clone(), &generics.clone(), &def);
                 members.into_iter().find(|(m, _)| m == name).map(|m| m.1)
             });
             let Some(ty) = found else {

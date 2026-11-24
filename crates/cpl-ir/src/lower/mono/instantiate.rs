@@ -507,12 +507,13 @@ impl<'a> Lowerer<'a> {
                     let t_mod = self.traits[tid].mod_id;
                     let t_offset = self.traits[tid].offset;
                     let t_methods = self.traits[tid].methods.clone();
+                    let t_env = self.default_fn_env(tid, &imp_trait_args, imp_body, &env);
                     for m in t_methods {
                         if !matches!(m.body, ast::FnBody::None)
                             && !self.structs[sid].methods.contains_key(&m.name.text)
                         {
                             let fn_id =
-                                self.declare_fn_in(m, t_mod, t_offset, Some(sid), env.clone());
+                                self.declare_fn_in(m, t_mod, t_offset, Some(sid), t_env.clone());
                             self.resolve_fn_sig(fn_id, Some(tname.as_str()));
                             self.structs[sid].methods.insert(m.name.text.clone(), fn_id);
                             let key = (tname.clone(), m.name.text.clone());
@@ -527,6 +528,45 @@ impl<'a> Lowerer<'a> {
             self.gen_env = saved_env;
             self.self_struct = saved_self;
         }
+    }
+
+    /// The names a trait's default fn sees inside an impl: the impl's own,
+    /// the trait's parameters as the impl's trait args, and `Self.Out` as the
+    /// type the impl chooses or else the trait's default (decision 469).
+    fn default_fn_env(
+        &mut self,
+        tid: usize,
+        trait_args: &[&ast::Type],
+        imp_body: &ast::Block,
+        env: &HashMap<String, GenArg>,
+    ) -> HashMap<String, GenArg> {
+        let mut t_env = env.clone();
+        let generics = self.traits[tid].generics.clone();
+        for (g, a) in generics.iter().zip(trait_args) {
+            t_env.insert(g.to_string(), GenArg::Ty(self.resolve_ty(a)));
+        }
+        for s in &imp_body.stmts {
+            if let ast::StmtKind::TypeAlias { name, ty, .. } = &s.kind {
+                let chosen = self.resolve_ty(ty);
+                t_env.insert(format!("Self.{}", name.text), GenArg::Ty(chosen));
+            }
+        }
+        let defaults = self.traits[tid].assoc_defaults.clone();
+        let (t_mod, t_offset) = (self.traits[tid].mod_id, self.traits[tid].offset);
+        let saved_mod = std::mem::replace(&mut self.cur_mod, t_mod);
+        let saved_offset = std::mem::replace(&mut self.offset, t_offset);
+        let saved_env = std::mem::replace(&mut self.gen_env, t_env.clone());
+        for (name, ty) in defaults {
+            let key = format!("Self.{name}");
+            if !t_env.contains_key(&key) {
+                let default = self.resolve_ty(ty);
+                t_env.insert(key, GenArg::Ty(default));
+            }
+        }
+        self.cur_mod = saved_mod;
+        self.offset = saved_offset;
+        self.gen_env = saved_env;
+        t_env
     }
 
     /// Evaluates a generic `const Sum<T> = ...` with concrete `args`.

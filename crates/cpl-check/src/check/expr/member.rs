@@ -71,13 +71,15 @@ impl<'a> Checker<'a> {
             // Every fn of the trait comes with the impl: the ones the
             // trait writes a body for, and the ones the impl must write
             // (one it leaves out is reported once, on the impl).
-            if let Some(Def::Trait { methods, .. }) = trait_name
+            if let Some(Def::Trait {
+                methods, generics, ..
+            }) = trait_name
                 .as_deref()
                 .and_then(|t| t.split('<').next())
                 .and_then(|t| self.type_def(t))
                 .as_deref()
             {
-                let members = self.trait_members(methods, &def);
+                let members = self.trait_members(methods, generics, &def);
                 out.members.extend(members);
             }
             if let Def::Impl {

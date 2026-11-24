@@ -227,5 +227,61 @@ impl<'a> Checker<'a> {
             }
         }
         self.impl_chooses_assoc_types(trait_ty, target, body);
+        self.overridden_assoc_needs_fns(&methods, &defined, trait_ty, target, body);
     }
+
+    /// An impl that chooses `type Out` writes every default fn whose signature
+    /// names `Self.Out`: those bodies were written for the trait's default (decision 469).
+    fn overridden_assoc_needs_fns(
+        &mut self,
+        methods: &[crate::def::TraitMethod],
+        defined: &[&ast::Name],
+        trait_ty: &ast::Type,
+        target: &ast::Type,
+        body: &[Stmt],
+    ) {
+        for s in body {
+            let StmtKind::TypeAlias { name: assoc, .. } = &s.kind else {
+                continue;
+            };
+            let stale: Vec<String> = methods
+                .iter()
+                .filter(|m| !m.required && defined.iter().all(|d| d.text != m.name))
+                .filter(|m| names_self_assoc(&m.ty, &assoc.text))
+                .map(|m| m.name.clone())
+                .collect();
+            if stale.is_empty() {
+                continue;
+            }
+            let message = format!(
+                "`impl {} for {}` chooses `{}`, so it must write {}",
+                self.quote(trait_ty.span),
+                self.quote(target.span),
+                assoc.text,
+                super::expr::list_names(&stale)
+            );
+            if let Some(diag) = self.error(codes::MISSING_IMPL, assoc.span, message) {
+                diag.help = Some(format!(
+                    "the trait's default {} written for its own `Self.{}`; write {} in this impl too",
+                    if stale.len() == 1 { "body is" } else { "bodies are" },
+                    assoc.text,
+                    if stale.len() == 1 { "it" } else { "them" },
+                ));
+            }
+        }
+    }
+}
+
+/// `ty` mentions `Self.name`.
+fn names_self_assoc(ty: &Ty, name: &str) -> bool {
+    let mut found = false;
+    ty.map(&mut |t| {
+        if let Ty::Assoc { of, name: n } = t {
+            if n == name && matches!(&**of, Ty::Param(p) if p == "Self") {
+                found = true;
+            }
+        }
+        None
+    });
+    found
 }

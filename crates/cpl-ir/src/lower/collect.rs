@@ -392,6 +392,18 @@ impl<'a> Lowerer<'a> {
                     methods,
                     fields,
                     generics: generics.iter().map(|g| g.text.as_str()).collect(),
+                    assoc_defaults: body
+                        .stmts
+                        .iter()
+                        .filter_map(|s| match &s.kind {
+                            ast::StmtKind::TypeAlias { name, ty, .. }
+                                if !matches!(ty.kind, ast::TypeKind::Error) =>
+                            {
+                                Some((name.text.as_str(), ty))
+                            }
+                            _ => None,
+                        })
+                        .collect(),
                     unimplemented,
                     alias_of,
                 });

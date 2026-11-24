@@ -219,15 +219,17 @@ impl Checker<'_> {
     }
 
     /// The fns a trait gives an impl's target: the ones the impl does not
-    /// write itself, seeing `Self` and `Self.Item` as the impl's.
+    /// write itself, seeing `Self`, `Self.Item` and the trait's parameters as the impl's.
     pub(super) fn trait_members(
         &mut self,
         methods: &[crate::def::TraitMethod],
+        generics: &[String],
         def: &Def,
     ) -> Vec<(String, Ty)> {
         let Def::Impl {
             target,
             methods: own,
+            trait_args,
             ..
         } = def
         else {
@@ -238,6 +240,9 @@ impl Checker<'_> {
         };
         let mut on = crate::ty::Bindings::default();
         on.insert("Self".into(), target.clone());
+        for (g, a) in generics.iter().zip(trait_args) {
+            on.insert(g.clone(), a.clone());
+        }
         methods
             .iter()
             .filter(|m| !own.iter().any(|(name, _)| *name == m.name))
