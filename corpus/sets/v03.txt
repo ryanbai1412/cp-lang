@@ -448,6 +448,8 @@ coci21c6p3
 coci21c6p5
 coci25c3p1
 coci25c3p2
+coci25c3p3
+coci25c3p5
 coi06p2
 csps21p2
 ctsc04p4

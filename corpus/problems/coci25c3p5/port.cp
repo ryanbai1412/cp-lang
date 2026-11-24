@@ -9,17 +9,18 @@
 //   a/b = p/q in lowest terms, two columns share the multiples of lcm(p_l, p_r) /
 //   gcd(q_l, q_r) up to min(a_l, a_r); subtract that count per adjacent pair. O(n log).
 // original: corpus/submissions/7730259.cpp
+// Bounds: n: 1..=1e5; a, b: 1..=1e9
 
-let n: Int = read()
+let n: 1..=1e5 = read()
 domain Fan = 1..=n
-let a: [Fan]Int = read()
-let b: [Fan]Int = read()
+let a: [Fan]1..=1e9 = read()
+let b: [Fan]1..=1e9 = read()
 
-/// The points fans l and r have in common.
+// the heights where fans l and r both have a line
 fn shared(l: Fan, r: Fan) -> Int:
     let (gl, gr) = (gcd(a[l], b[l]), gcd(a[r], b[r]))
     let step = lcm(a[l] / gl, a[r] / gr)
     let scale = gcd(b[l] / gl, b[r] / gr)
     min(a[l], a[r]) * scale / step + 1
 
-print(n + 1 + sum(b[i] + 1 for i in Fan) - sum(shared(i.prev!, i) for i in Fan if i != Fan.first))
+print(n + 1 + sum(b[i] + 1 for i in Fan) - sum(shared(l, r) for r in Fan if let l = r.prev))

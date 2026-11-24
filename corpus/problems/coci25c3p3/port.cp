@@ -10,52 +10,40 @@
 //   of non-pair edges, so dp[v] (the longest chain of pairs ending at v) relaxes along it,
 //   with a parent pointer to rebuild the path. O(N + M).
 // original: corpus/submissions/7730378.cpp
-// Bounds: edges.u, edges.v: 1..=2 * n
-use scout.connectivity.{two_color}
+// Bounds: n: 1..=5e5; m: 1..=1e6; edges.u, edges.v: 1..=2 * n
 
-let (n, m): (Int, Int) = read()
+let (n, m): (1..=5e5, 1..=1e6) = read()
 domain V = 1..=2 * n
 domain E = 0..m
-
 let edges: [E](u: V, v: V) = read()
-let g = Graph<V, E>.undirected(edges)
-let side = two_color<V>(u => g.out(u))!
+let g = Graph.undirected(edges)
+let side = two_color(g)!
 
 var deg: [V]Int = [V] u => g.deg(u)
 var mate: [V]?V = None
-var dp: [V]Int = 0
-var nxt: [V]?V = None
-
-var q = [u for u in V if not side[u] and deg[u] == 1]
-var head = 0
-var best_len = -1
-var start: ?V = None
-
-while head < q.len:
-    let u = q[head]
-    head += 1
-    for a in g.out(u):
-        if mate[a.to] == None:
-            mate[a.to] = u
-            mate[u] = a.to
-    let p = mate[u]!
-    for a in g.out(p):
+var chain: [V]Int = 0  // pairs on the longest chain that ends at v's pair
+var from: [V]?V = None
+var todo = Deque<V>()
+for u in V if not side[u] and deg[u] == 1: todo.push(u)
+var peeled: List<V> = []
+while let u = todo.pop_front():
+    peeled.push(u)
+    for a in g.out(u) if mate[a.to] == None:
+        mate[a.to] = u
+        mate[u] = a.to
+    for a in g.out(mate[u]!) if mate[a.to] == None:
         let v = a.to
-        if mate[v] == None:
-            if dp[v] < dp[u] + 1:
-                dp[v] = dp[u] + 1
-                nxt[v] = u
-            deg[v] -= 1
-            if deg[v] == 1: q.push(v)
-    if dp[u] > best_len:
-        best_len = dp[u]
-        start = u
+        if chain[v] < chain[u] + 1:
+            chain[v] = chain[u] + 1
+            from[v] = u
+        deg[v] -= 1
+        if deg[v] == 1: todo.push(v)
 
-print(2 * (best_len + 1))
-var line = ""
-var cur = start
-while let u = cur:
-    if line.len > 0: line += " "
-    line += "{mate[u]!.label} {u.label}"
-    cur = nxt[u]
-print(line)
+var tellers: List<V> = []
+var at: ?V = peeled[peeled.argmax(by: u => chain[u])!]
+while let u = at:
+    tellers.push(mate[u]!)
+    tellers.push(u)
+    at = from[u]
+print(tellers.len)
+print(tellers)
