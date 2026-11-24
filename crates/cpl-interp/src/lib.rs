@@ -767,10 +767,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     cpl_ir::walk::deep_exprs(&c.body, &mut check);
                 }
             }
-            // `CPL_TRACE_ENGINE=tree` traces on the tree-walker;
-            // trace_goldens holds both engines to the saved traces.
-            let tree = self.observed() && cpl_env::TRACE_ENGINE.is("tree");
-            if !has_mut_view && !tree {
+            if !has_mut_view {
                 let (traced, profiled) = (self.observed(), self.profiler.is_some());
                 self.vm = Some(Rc::new(vm::CompiledProgram::compile(
                     program,

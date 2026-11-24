@@ -127,8 +127,6 @@ vars! {
     CACHE = "CPL_CACHE";
     /// Set: stress compiles without a precompiled header.
     NO_PCH = "CPL_NO_PCH";
-    /// `tree`: traces run on the tree-walker.
-    TRACE_ENGINE = "CPL_TRACE_ENGINE";
     /// The VM prints its op counts on exit; `json` prints them as JSON.
     VM_STATS = "CPL_VM_STATS";
 }
