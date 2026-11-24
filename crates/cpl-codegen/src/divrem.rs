@@ -58,9 +58,19 @@ impl<'p> Emitter<'p> {
                     a.text, b.text
                 ));
             }
-            let mut code = infix(a, sym, b, MUL);
-            code.narrow = both_narrow;
-            return code;
+            if both_narrow || self.facts.fits_u32(self.facts_home(), l) {
+                let mut code = infix(a, sym, b, MUL);
+                code.narrow = both_narrow;
+                return code;
+            }
+            // A wide dividend (a residue product, say) divides unsigned: signed
+            // `/` and `%` pay a sign fix-up the C++ compiler cannot always drop.
+            let int = self.ty(&cpl_ir::Ty::Int);
+            let divisor = match r.kind {
+                ExprKind::Int(_) => b.text.clone(),
+                _ => format!("uint64_t({})", b.text),
+            };
+            return Code::primary(format!("{int}(uint64_t({}) {sym} {divisor})", a.text));
         }
         let helper = match (divisor == Sign::Positive, div) {
             (true, true) => "divp",
