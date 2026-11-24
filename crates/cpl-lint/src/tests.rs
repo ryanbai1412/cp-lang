@@ -456,10 +456,8 @@ fn overlapping_fixes_wait_for_the_next_round() {
 /// Every program under `corpus/problems/` and `crates/cpl-cli/tests/cases/`:
 /// the linter reads it without panicking and every span it reports lies inside
 /// the file, on the text it names.
-#[test]
-fn lints_the_whole_corpus() {
+fn lints_corpus_shard(shard: usize, of: usize) {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut seen = 0;
     let mut files = Vec::new();
     files.extend(cpl_corpus::files(&root, "port.cp"));
     for dir in [
@@ -476,9 +474,9 @@ fn lints_the_whole_corpus() {
             }
         }
     }
-    for path in files {
+    assert!(files.len() >= 40, "found only {} corpus files", files.len());
+    for path in files.into_iter().skip(shard).step_by(of) {
         let src = std::fs::read_to_string(&path).unwrap();
-        seen += 1;
         for found in lint(&src, &Config::default()) {
             assert!(found.span.end as usize <= src.len(), "{}", path.display());
             assert!(!found.span.is_empty(), "{}: {found:?}", path.display());
@@ -487,7 +485,18 @@ fn lints_the_whole_corpus() {
             }
         }
     }
-    assert!(seen >= 40, "found only {seen} corpus files");
+}
+
+crate::shards! {
+    lints_the_whole_corpus, lints_corpus_shard,
+    shard_0 = 0,
+    shard_1 = 1,
+    shard_2 = 2,
+    shard_3 = 3,
+    shard_4 = 4,
+    shard_5 = 5,
+    shard_6 = 6,
+    shard_7 = 7,
 }
 
 mod cli {

@@ -131,47 +131,31 @@ fn dump(name: &str, n: usize, mutant: &str) {
     }
 }
 
-#[test]
-fn mutated_sources_never_crash_lint_or_fmt() {
+fn never_crash_on_shard(shard: usize, of: usize) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let config = tests::all_on();
     let files = sources(&root);
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let per_file = mutants_per_file();
-    let mut wrong: Vec<String> = std::thread::scope(|s| {
-        let workers: Vec<_> = (0..threads)
-            .map(|w| {
-                let (root, config, files) = (&root, &config, &files);
-                s.spawn(move || {
-                    let mut wrong = Vec::new();
-                    for (n, path) in files.iter().enumerate().skip(w).step_by(threads) {
-                        let src = std::fs::read_to_string(path).unwrap();
-                        let name = path
-                            .strip_prefix(root)
-                            .unwrap_or(path)
-                            .display()
-                            .to_string();
-                        if let Some(why) = trouble(&src, config) {
-                            wrong.push(format!("{name}: {why}"));
-                        }
-                        let mut rng = Rng(n as u64);
-                        for _ in 0..per_file {
-                            let (mutant, edit) = mutate(&src, &mut rng);
-                            if let Some(why) = trouble(&mutant, config) {
-                                dump(&name, wrong.len(), &mutant);
-                                wrong.push(format!("{name}, {edit}: {why}"));
-                            }
-                        }
-                    }
-                    wrong
-                })
-            })
-            .collect();
-        workers
-            .into_iter()
-            .flat_map(|w| w.join().unwrap())
-            .collect()
-    });
+    let mut wrong = Vec::new();
+    for (n, path) in files.iter().enumerate().skip(shard).step_by(of) {
+        let src = std::fs::read_to_string(path).unwrap();
+        let name = path
+            .strip_prefix(&root)
+            .unwrap_or(path)
+            .display()
+            .to_string();
+        if let Some(why) = trouble(&src, &config) {
+            wrong.push(format!("{name}: {why}"));
+        }
+        let mut rng = Rng(n as u64);
+        for _ in 0..per_file {
+            let (mutant, edit) = mutate(&src, &mut rng);
+            if let Some(why) = trouble(&mutant, &config) {
+                dump(&name, wrong.len(), &mutant);
+                wrong.push(format!("{name}, {edit}: {why}"));
+            }
+        }
+    }
     wrong.sort();
     assert!(
         wrong.is_empty(),
@@ -179,4 +163,24 @@ fn mutated_sources_never_crash_lint_or_fmt() {
         wrong.len(),
         wrong.join("\n")
     );
+}
+
+crate::shards! {
+    mutated_sources_never_crash_lint_or_fmt, never_crash_on_shard,
+    shard_0 = 0,
+    shard_1 = 1,
+    shard_2 = 2,
+    shard_3 = 3,
+    shard_4 = 4,
+    shard_5 = 5,
+    shard_6 = 6,
+    shard_7 = 7,
+    shard_8 = 8,
+    shard_9 = 9,
+    shard_10 = 10,
+    shard_11 = 11,
+    shard_12 = 12,
+    shard_13 = 13,
+    shard_14 = 14,
+    shard_15 = 15,
 }

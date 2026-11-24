@@ -30,6 +30,32 @@ macro_rules! std_source {
 #[cfg(test)]
 pub(crate) use std_source;
 
+/// `shards!(suite, check, shard_0 = 0, ...)`: tests `suite::shard_k` run
+/// `check(k, n)` over every n-th file of a corpus-wide suite, so nextest
+/// spreads the suite over cores and CI shards instead of one test holding a
+/// core for minutes.
+#[cfg(test)]
+macro_rules! shards {
+    ($suite:ident, $check:ident, $($shard:ident = $k:literal),+ $(,)?) => {
+        mod $suite {
+            const N: usize = [$($k),+].len();
+            $(
+                #[test]
+                fn $shard() {
+                    super::$check($k, N);
+                }
+            )+
+            #[test]
+            fn the_shards_are_every_index_once() {
+                let ks: [usize; N] = [$($k),+];
+                assert_eq!(ks, std::array::from_fn(|i| i));
+            }
+        }
+    };
+}
+#[cfg(test)]
+pub(crate) use shards;
+
 mod checker;
 mod config;
 pub mod facts;
