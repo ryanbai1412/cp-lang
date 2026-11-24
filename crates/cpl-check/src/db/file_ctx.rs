@@ -5,11 +5,19 @@ use super::*;
 
 impl FileCtx<'_> {
     pub(super) fn record(&mut self, key: &str, fingerprint: u64) {
-        if let Some(frame) = self.frames.last_mut() {
-            if !frame.iter().any(|(k, _)| k == key) {
-                frame.push((key.to_string(), fingerprint));
-            }
+        if self.recording && !self.frame.iter().any(|(k, _)| k == key) {
+            self.frame.push((key.to_string(), fingerprint));
         }
+    }
+
+    /// Runs `query` in a frame of its own: its result, and the
+    /// dependencies it read.
+    fn tracked<R>(&mut self, query: impl FnOnce(&mut Self) -> R) -> (R, Vec<(String, u64)>) {
+        let outer = std::mem::take(&mut self.frame);
+        let was_recording = std::mem::replace(&mut self.recording, true);
+        let result = query(self);
+        self.recording = was_recording;
+        (result, std::mem::replace(&mut self.frame, outer))
     }
 
     /// The current fingerprint of a dependency key.
@@ -54,8 +62,7 @@ impl FileCtx<'_> {
             self.in_progress.push(name.to_string());
             let holds = self.deps_hold(&deps);
             self.in_progress.pop();
-            if holds {
-                let memo = self.db.defs.get_mut(&key).unwrap();
+            if let Some(memo) = self.db.defs.get_mut(&key).filter(|_| holds) {
                 memo.verified_at = revision;
                 return (Some(memo.def.clone()), memo.fingerprint);
             }
@@ -64,10 +71,9 @@ impl FileCtx<'_> {
         // One statement can define several names (`let (a, b) = ...`, an
         // enum and its variants); they are computed and stored together.
         self.in_progress.push(name.to_string());
-        self.frames.push(Vec::new());
-        let mut defs = Vec::new();
-        {
-            let mut checker = Checker::new(self, &item.text, Vec::new());
+        let (defs, deps) = self.tracked(|ctx| {
+            let mut defs = Vec::new();
+            let mut checker = Checker::new(ctx, &item.text, Vec::new());
             for stmt in &item.parsed.stmts {
                 let found = checker.defs_of(stmt);
                 if head_is_poisoned(&item.text, stmt, &item.parsed.poisoned) {
@@ -88,8 +94,8 @@ impl FileCtx<'_> {
                     defs.extend(found);
                 }
             }
-        }
-        let deps = self.frames.pop().unwrap();
+            defs
+        });
         self.in_progress.pop();
         self.db.stats.defs_computed += 1;
 
@@ -417,19 +423,18 @@ impl FileCtx<'_> {
                 return result;
             }
             let deps = memo.deps.clone();
-            if self.deps_hold(&deps) {
-                self.db.checks.get_mut(&key).unwrap().verified_at = revision;
+            let holds = self.deps_hold(&deps);
+            if let Some(memo) = self.db.checks.get_mut(&key).filter(|_| holds) {
+                memo.verified_at = revision;
                 self.db.stats.items_reused += 1;
                 return result;
             }
         }
-        self.frames.push(Vec::new());
-        let checked = {
-            let mut checker = Checker::new(self, &item.text, item.parsed.poisoned.clone());
+        let (checked, deps) = self.tracked(|ctx| {
+            let mut checker = Checker::new(ctx, &item.text, item.parsed.poisoned.clone());
             checker.item(&item.parsed.stmts);
             checker.finish()
-        };
-        let deps = self.frames.pop().unwrap();
+        });
         self.db.stats.items_checked += 1;
         let result = Arc::new(ItemCheck {
             diagnostics: checked.diagnostics,

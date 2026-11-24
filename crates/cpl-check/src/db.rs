@@ -813,7 +813,8 @@ impl Database {
                 file: id,
                 items: items.clone(),
                 scope: scope.clone(),
-                frames: Vec::new(),
+                frame: Vec::new(),
+                recording: false,
                 in_progress: Vec::new(),
                 current: None,
                 offsets: ranges.iter().map(|r| r.span.start).collect(),
@@ -1420,7 +1421,8 @@ impl Database {
             file: id,
             items: analysis.syntax.clone(),
             scope: analysis.scope.clone(),
-            frames: Vec::new(),
+            frame: Vec::new(),
+            recording: false,
             in_progress: Vec::new(),
             current: None,
             offsets: Vec::new(),
@@ -1701,8 +1703,10 @@ struct FileCtx<'d> {
     file: u32,
     items: Arc<Vec<Arc<ItemSyntax>>>,
     scope: Arc<Scope>,
-    /// Dependencies of each query being computed, innermost last.
-    frames: Vec<Vec<(String, u64)>>,
+    /// Dependencies the innermost query being computed has read.
+    frame: Vec<(String, u64)>,
+    /// Whether a query is being computed, so reads are its dependencies.
+    recording: bool,
     /// Names whose definitions are being computed, to stop cycles.
     in_progress: Vec<String>,
     /// The item being checked.
