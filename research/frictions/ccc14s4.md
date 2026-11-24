@@ -10,6 +10,31 @@
   `.adjacent` of a domain.
 - **Severity:** low
 
+## Adding a rectangle on a 2-D difference grid
+- **Where:** the four corner marks of each rectangle on `marks` before the two running-sum passes.
+- **What felt wrong:** the corner pattern (`+v`, `-v`, `-v`, `+v` at the four corners) is spelled by
+  hand. `cpl run` of `marks.add_rect(X(0)..X(2), Y(0)..Y(2), 5)` fails with
+  `error[E0203]: a [X, Y]Int has no method add_rect`.
+- **Goal it hurts:** obvious way is correct (a sign or an off-by-one corner is the usual bug).
+- **Ideal code:** `marks.add_rect(xs.index_of(r.x0)..xs.index_of(r.x1), ys.index_of(r.y0)..ys.index_of(r.y1), r.tint)`
+  then `marks.prefix_sums()`.
+- **General fix:** a 2-D difference array in std (`add_rect` plus the prefix-sum read-back), the
+  2-D form of the 1-D `Diff`.
+- **Severity:** low
+- **Owner:** stdlib.
+
+## The formatter splits a two-`for` generator's tuple pattern
+- **Where:** the final `print(sum(...))`, port L35-41: `for (` / `j,` / `j2,` / `) in Y.all.adjacent`.
+- **What felt wrong:** `cpl fmt` breaks the second tuple pattern over four lines instead of breaking
+  before the second `for`, so the one-line editorial sum reads as a puzzle.
+- **Goal it hurts:** readable layout.
+- **Ideal code:** `sum(... for (i, i2) in X.all.adjacent` / `for (j, j2) in Y.all.adjacent if ...)`,
+  one clause per line.
+- **General fix:** in the formatter, prefer breaking between generator clauses over breaking inside a
+  clause's pattern.
+- **Severity:** low
+- **Owner:** lint-fmt.
+
 ## Dream
 
 ```cp

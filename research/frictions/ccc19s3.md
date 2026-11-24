@@ -17,6 +17,18 @@
 - **General fix:** `rows`/`cols` views on 2-D arrays and indexing by a `(A, B)` cell.
 - **Severity:** low
 
+## Reading a marker token as `None`
+- **Where:** `fn read_cell() -> ?Int` (`let w: Str = read()`; `if w == "X": None else: Some(Int(w))`)
+  and the double loop that fills `given`.
+- **What felt wrong:** a grid of numbers with a placeholder token cannot be read in one line.
+  `cpl run` of `let given: [Ax, Ax]?Int = read(none: "X")` fails with
+  `error[E0302]: expected Int, found Str` (at `"X"`).
+- **Goal it hurts:** quick to write (input parsing is boilerplate).
+- **Ideal code:** `let given: [Ax, Ax]?Int = read(none: "X")`.
+- **General fix:** a `none:` token option on `read` for `?T` targets, applied element-wise.
+- **Severity:** low
+- **Owner:** stdlib.
+
 ## Dream
 
 ```cp

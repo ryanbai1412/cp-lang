@@ -20,6 +20,18 @@
 - **General fix:** one spelling for sequence combinators: methods, with the free form as the alias.
 - **Severity:** low
 
+## `kruskal` cannot say whether the forest spans
+- **Where:** `if take.count(t => t) == regions - 1: total else: None` after `kruskal(...)`.
+- **What felt wrong:** every caller that needs a spanning tree re-derives "it spans" from the
+  taken-edge count and the vertex count. `cpl run` of `kruskal(es, spanning: true)` fails with
+  `error[E0310]: kruskal has no parameter named spanning` ("its parameters are `edges`, `by`").
+- **Goal it hurts:** obvious way is correct (the count check is easy to get off by one or forget).
+- **Ideal code:** `kruskal(fences, spanning: true)?.total`.
+- **General fix:** a `spanning:` flag (or a `spans` field in the result) on `std.graph.kruskal`,
+  returning `None` when the edges leave more than one component.
+- **Severity:** low
+- **Owner:** stdlib.
+
 ## Dream
 
 ```cp
