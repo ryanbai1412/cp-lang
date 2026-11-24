@@ -17,27 +17,53 @@ class Tree:
         kids = [[] for _ in range(n + 1)]
         for v in range(1, n + 1):
             kids[self.par[v]].append(v)
-        self.depth, self.dist = [0] * (n + 1), [0] * (n + 1)
+        self.dist = [0] * (n + 1)
+        self.kids = kids
         stack = list(kids[0])
         while stack:
             v = stack.pop()
             p = self.par[v]
             if p:
-                self.depth[v], self.dist[v] = self.depth[p] + 1, self.dist[p] + w[v - 1]
+                self.dist[v] = self.dist[p] + w[v - 1]
             stack += kids[v]
 
-    def lca(self, a, b):
-        while self.depth[a] > self.depth[b]:
-            a = self.par[a]
-        while self.depth[b] > self.depth[a]:
-            b = self.par[b]
-        while a != b:
-            a, b = self.par[a], self.par[b]
-        return a
+    def lcas(self, pairs):
+        """Offline Tarjan: the LCA of every pair, in one walk of the tree."""
+        n = len(self.par) - 1
+        asked = [[] for _ in range(n + 1)]
+        for i, (a, b) in enumerate(pairs):
+            asked[a].append((b, i))
+            asked[b].append((a, i))
+        up, done, got = list(range(n + 1)), bytearray(n + 1), [0] * len(pairs)
 
-    def to_lca(self, a, b):
-        top = self.dist[self.lca(a, b)]
-        return self.dist[a] - top, self.dist[b] - top
+        def find(x):
+            r = x
+            while up[r] != r:
+                r = up[r]
+            while up[x] != r:
+                up[x], x = r, up[x]
+            return r
+
+        nxt, stack = [0] * (n + 1), [0]
+        while stack:
+            v = stack[-1]
+            kids = self.kids[v]
+            if nxt[v] < len(kids):
+                stack.append(kids[nxt[v]])
+                nxt[v] += 1
+                continue
+            stack.pop()
+            done[v] = 1
+            for u, i in asked[v]:
+                if done[u]:
+                    got[i] = find(u)
+            if stack:
+                up[v] = stack[-1]
+        return got
+
+    def to_lca(self, pairs):
+        tops = self.lcas(pairs)
+        return [(self.dist[a] - self.dist[c], self.dist[b] - self.dist[c]) for (a, b), c in zip(pairs, tops)]
 
 
 def drive(case_text, io):
@@ -71,14 +97,15 @@ def drive(case_text, io):
         asks.append((a, b))
         if len(asks) > q:
             raise RuntimeError(f"more than {q} questions")
-    for a, b in asks:
-        io.send(" ".join(map(str, trees[0].to_lca(a, b) + trees[1].to_lca(a, b))))
     pairs = [(chosen[picks[2 * i] - 1], chosen[picks[2 * i + 1] - 1]) for i in range(t)]
+    first, second = (tr.to_lca(asks + pairs) for tr in trees)
+    for one, two in zip(first, second[:len(asks)]):
+        io.send(" ".join(map(str, one + two)))
     for a, b in pairs:
         io.send(f"{a} {b}")
-    for a, b in pairs:
+    for (a, b), one, two in zip(pairs, first[len(asks):], second[len(asks):]):
         got = list(map(int, io.recv_line().split()))
-        want = [sum(tr.to_lca(a, b)) for tr in trees]
+        want = [sum(one), sum(two)]
         if got != want:
             raise RuntimeError(f"pair {a} {b}: got {got}, want {want}")
 

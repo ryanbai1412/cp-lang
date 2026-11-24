@@ -23,7 +23,7 @@ let two = Rooted.from_parents(read<[V]?V>(none: -1))
 var picked: List<V> = [one.at[one.Pre.at(i)!] for i in 0..k]
 print(picked)
 picked.sort(by: v => two.tin[v].ord)
-let ask_pairs = [(a, b) for (a, b) in picked.adjacent]
+let ask_pairs = picked.adjacent.collect()
 for (a, b) in ask_pairs: print("?", a, b)
 print("!")
 

@@ -3,69 +3,42 @@
 //   numbers i, j, k is x (x <= 1e9). Print YES and numbers that fit every fact, or NO.
 // Solution: a fact says at most one of its three numbers is below x and at most one is
 //   above, so the only questions are "is number s below / above value x" for each slot
-//   and value a fact names. These are 2-SAT variables: each fact forbids two of its
-//   three being below (or above), a mark is never both, and consecutive marks of one
-//   slot chain (above this or below the next). SCC of the implication graph decides it
-//   and gives each slot its bound, O(n + m log m).
+//   and value a fact names. These are 2-SAT variables: each fact allows at most one of
+//   its three below (or above), a mark is never both, and consecutive marks of one slot
+//   chain (above this or below the next, exactly one). `TwoSat` decides it and the
+//   truth gives each slot its bound, O(n + m log m).
 // original: corpus/submissions/4016530.cpp
 // checker: proto/ports/scout_batch_9/harness/cmt21r2ztr_check.cpp
 // Bounds: n, m: 1..=1e5; facts.i, facts.j, facts.k: 1..=n; facts.x: 1..=1e9
+enum Side: Below | Above
 let n: 1..=1e5 = read()
 let m: 1..=1e5 = read()
 domain Slot = 1..=n
 let facts: [m](i: Slot, j: Slot, k: Slot, x: 1..=1e9) = read()
 
-// A fact says: of its three numbers at most one is below x and at most one
-// is above. So the only questions are "is slot s below x?" and "is it
-// above x?", one pair for every slot and value some fact puts together.
-const SPAN = 1073741824  // 2^30, above every value
-fn key(s: Slot, x: Int) -> Int: s.label * SPAN + x
-var keys: List<Int> = []
+// Every slot and value some fact puts together, in order of slot, then value.
+let (domain Pin, pins) = compress([(s:, x: f.x) for f in facts for s in [f.i, f.j, f.k]])
+// One question for each pin and side: is the number below (above) the pin's value?
+domain Question = (Pin, Side)
+fn on(p: Pin, side: Side) -> Lit<Question> = Lit(Question((p, side)), true)
+
+var sat = TwoSat<Question>()
 for f in facts:
-    for s in [f.i, f.j, f.k]: keys.push(key(s, f.x))
-let (domain Mark, mark) = compress(keys)
-fn at(s: Slot, x: Int) -> Mark: mark.first_ge(key(s, x))!
-fn slot(q: Mark) -> Slot: Slot(mark[q] / SPAN)
-fn value(q: Mark) -> Int: mark[q] % SPAN
+    let ps = [pins.index_of((s:, x: f.x)) for s in [f.i, f.j, f.k]]
+    for side in Side: sat.at_most_one([on(p, side) for p in ps])
+for p in Pin: sat.add_or(on(p, Below).neg, on(p, Above).neg)
+// A number strictly between two values of its slot can move down onto one, so it is
+// above the lower value or below the higher one, and never both.
+for (p, q) in Pin.collect().adjacent if pins.get(p).s == pins.get(q).s:
+    sat.add_xor(on(p, Above), on(q, Below))
 
-// Four statements for each mark: below, not below, above, not above. An
-// arc u -> v says "if u holds then v holds".
-domain Claim = 0..4 * Mark.len
-fn below(q: Mark) -> Claim: Claim(4 * q.idx)
-fn above(q: Mark) -> Claim: Claim(4 * q.idx + 2)
-fn no(c: Claim) -> Claim: Claim(c.idx ^ 1)
-var arcs: List<(Claim, Claim)> = []
-fn either(a: Claim, b: Claim):
-    arcs.push((no(a), b))
-    arcs.push((no(b), a))
-
-for f in facts:
-    let (p, q, r) = (at(f.i, f.x), at(f.j, f.x), at(f.k, f.x))
-    for (a, b) in [(p, q), (p, r), (q, r)]:
-        either(no(below(a)), no(below(b)))
-        either(no(above(a)), no(above(b)))
-for q in Mark:
-    either(no(below(q)), no(above(q)))
-    // marks of one slot are neighbours, in order of value: a number is
-    // above this value or below the next one, and never both, because a
-    // number strictly between two values can be moved down onto one
-    if q.ord + 1 < Mark.len:  // WISH: `q.right`, the next mark (filed with stdlib)
-        let r = Mark.nth(q.ord + 1)
-        if slot(q) == slot(r):
-            either(above(q), below(r))
-            either(no(above(q)), no(below(r)))
-
-// Claims that force each other hold or fail together. If a claim forces its
-// own denial round a cycle there is no answer. Otherwise believe whichever
-// of the two comes later, since nothing later can force something earlier.
-let (Knot, of) = scc(Graph.directed(arcs))
-fn holds(c: Claim) -> Bool: of[c] > of[no(c)]
-if any(of[below(q)] == of[no(below(q))] or of[above(q)] == of[no(above(q))] for q in Mark):
-    print("NO")
-else:
+if let truth = sat.solve():
     print("YES")
     var number: [Slot]Int = 1
-    for q in Mark:  // ascending, so the last word on a slot is its largest bound
-        if not holds(below(q)): number[slot(q)] = value(q)
-        if holds(above(q)): number[slot(q)] = value(q) + 1
+    for p in Pin:
+        let pin = pins.get(p)
+        if truth[Question((p, Above))]: number[pin.s] max= pin.x + 1
+        elif not truth[Question((p, Below))]: number[pin.s] max= pin.x
     print(number)
+else:
+    print("NO")

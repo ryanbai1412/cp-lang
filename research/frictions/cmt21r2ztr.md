@@ -35,3 +35,10 @@ submission 4007960) and a `checker.py`, and every output it prints is accepted b
   "expected `List<Lit<Prod3>>`, found `List<Lit<(P, Side)>>`". Workaround: name it,
   `domain Var = (P, Side)`, and write `Var((p, s))` and `value[Var((p, Above))]`.
   Already in the compiler worklog (2026-11-22, corpus migration); not filed again.
+
+## port.cp follows spec.cp
+
+The port is now spec.cp's design: a `Side` enum, `domain Question = (Pin, Side)` and
+`TwoSat<Question>` with `at_most_one` per fact and side, replacing the hand-built implication
+graph, the `SPAN` key packing and the `4 * q.idx` claim arithmetic. It still walks
+`Pin.collect().adjacent` (the E0501 above).
