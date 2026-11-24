@@ -1,4 +1,16 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # N = 1000 as a complete binary tree under shuffled labels: the most detectives (about
+    # log n) and the longest plan, with every root tried
+    g = random.Random(1)
+    n = 1000
+    perm = list(range(1, n + 1)); g.shuffle(perm)
+    edges = [(perm[v - 1], perm[v // 2 - 1]) for v in range(2, n + 1)]
+    g.shuffle(edges)
+    print(n)
+    for u, v in edges: print(u, v)
+    sys.exit()
+
 # seed size: a tree on 1..size cities: random, path, star, caterpillar or complete binary
 if sys.argv[1] == "--max": sys.argv[1:] = ["0", "1000"]  # n = 1000
 rng = random.Random(int(sys.argv[1])); S = int(sys.argv[2])

@@ -1,4 +1,5 @@
 // Source: NOI 2007 P6, https://dmoj.ca/problem/noi07p6
+// limits: 600 ms, 256 MB
 // Problem: a tree on 1 <= N <= 1000 cities hides a thief who moves arbitrarily fast; a
 //   detective in his city or on his road catches him. Steps: L x lands a detective at x, B x
 //   recalls one, M x y moves one along an edge. Print S, the fewest detectives that surely
