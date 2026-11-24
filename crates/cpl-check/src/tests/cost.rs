@@ -314,3 +314,19 @@ fn representation_is_the_data_behind_the_storage_line() {
         .text
         .contains("None is a spare value"));
 }
+
+#[test]
+fn every_builtin_cost_is_written_as_std_writes_it() {
+    for m in crate::BUILTIN_MEMBERS {
+        let Some(cost) = cpl_syntax::doc::Facts::parse(m.doc).cost else {
+            continue;
+        };
+        let plain = cpl_diag::plain::text(&cost);
+        assert!(
+            cost.starts_with("\\(O(") && cpl_syntax::doc::big_o(&plain).is_some(),
+            "{}.{}: cost `{cost}` is not `\\(O(..)\\)`",
+            m.receiver.name(),
+            m.name
+        );
+    }
+}
