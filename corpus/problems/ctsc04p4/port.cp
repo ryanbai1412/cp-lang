@@ -1,130 +1,64 @@
 // Source: CTSC 2004 (Network Upgrade), https://dmoj.ca/problem/ctsc04p4
-// Problem: a tree of n <= 400 switches with edge lengths < 20000 and upgrade costs c_i. Upgrade
-//   1..p switches to cores; cost is the sum of their c_i plus, for every other switch, the tree
-//   distance to its nearest core. Print the least cost, then the number of cores used.
-// Solution: all-pairs distances by n tree walks. dp(u)[v] is a list (cores opened in u's
-//   subtree, least cost) for that subtree when u's nearest core is at most dist(u, v) away and v
-//   is open for free: children merge knapsack-style capped by subtree size; then, scanning v
-//   by distance from u, either u uses v or a closer core a opened at c_a. Lists keep only points
-//   where the cost drops. Answer: min over v of dp(root)[v] with <= p - 1 cores, plus c_v.
-//   About O(n^2 p).
-// Uses top-level recursive fns (working around cpl-emit recursive nested-fn self-capture bug).
+// Problem: a tree of n <= 400 switches with link lengths below 20000 and upgrade costs c_i.
+//   Upgrade 1 to p switches to cores; the cost is the sum of their c_i plus, for every other
+//   switch, the distance to its nearest core. Print the least cost, then the fewest cores that
+//   reach it.
+// Solution: plan(u)[v] is the staircase (more extra cores, strictly lower cost) for u's subtree
+//   when u's nearest core is v, opened for free, or a closer core. Children (largest first)
+//   merge knapsack-style, capped by the cores the subtree can hold; then, scanning the cores a
+//   by distance from u, u either uses a or a closer core opened at c_a. The answer is the best
+//   last step of plan(root)[v] plus c_v. About O(n^2 p).
 // original: corpus/submissions/4529641.cpp
+let n: 1..=400 = read()
+let p: 1..=1e9 = read()
+domain Switch = 1..=n
+domain Link = 1..n
+let cost: [Switch]0..=1e9 = read()
+let links: [Link](u: Switch, v: Switch, len: 0..20_000) = read()
+let tree = Rooted(Graph.undirected(links).weighted(a => links[a.e].len), Switch.first!)
+let dist: [Switch, Switch]Int = [Switch, Switch] (a, b) => tree.dist(a, b)
+let extra = min(p - 1, n)
+type Steps = List<(cores: Int, cost: Int)>
 
-fn ri() -> Int:
-    let x: Int = read()
-    return x
+// best[j]: least cost with exactly j extra cores, kept where it changes.
+fn staircase(best: [0..=extra]?Int) -> Steps:
+    var steps: Steps = []
+    for j in 0..=extra:
+        if let c = best[j] and steps.last.map(s => s.cost) != c: steps.push((j, c))
+    return steps
 
-const INF = 1_000_000_000_000_000
-var g_n = 0
-var g_m = 0
-var g_cost: List<Int> = []
-var g_adj: List<List<(Int, Int)>> = []
-var g_dist: List<Int> = []
-var g_kids: List<List<Int>> = []
-var g_sz: List<Int> = []
-
-fn build_tree(u: Int, p: Int):
-    g_sz[u] = 1
-    for e in g_adj[u]:
-        let v = e.0
-        if v != p:
-            g_kids[u].push(v)
-            build_tree(v, u)
-            g_sz[u] += g_sz[v]
-
-fn compress_dp(f: List<Int>) -> List<(Int, Int)>:
-    var out: List<(Int, Int)> = []
-    var prev = INF
-    for i in 0..=g_m:
-        if f[i] < INF and f[i] != prev:
-            out.push((i, f[i]))
-            prev = f[i]
+fn plan(u: Switch) -> [Switch]Steps:
+    let kids = tree.children(u).sorted(by: c => desc(tree.size(c)))
+    let kid_plans = [(c, plan(c)) for c in kids]
+    let alone: [Switch]Steps = [Switch] v =>
+        var best: [0..=extra]?Int = None
+        best[0] = dist[u, v]
+        var held = 1
+        for (c, kid) in kid_plans:
+            for j in (0..=min(extra, held)).rev:
+                let here = best[j]
+                best[j] = None
+                if let h = here:
+                    for s in kid[v]:
+                        if j + s.cores > extra: break
+                        best[j + s.cores] min= h + s.cost
+            held += tree.size(c)
+        staircase(best)
+    var out: [Switch]Steps = []
+    var closer: [0..=extra]?Int = None
+    for a in Switch.sort(by: a => dist[u, a]):
+        var at_a: [0..=extra]?Int = None
+        for s in alone[a]: at_a[s.cores] = s.cost
+        for j in 1..=extra: at_a[j] min= at_a[j - 1]
+        out[a] = staircase([0..=extra] j => min(closer[j], at_a[j]))
+        for j in 1..=extra:
+            if let c = at_a[j - 1]: closer[j] min= c + cost[a]
     return out
 
-fn dp(u: Int) -> List<List<(Int, Int)>>:
-    var ord_kids: List<(Int, Int)> = [(-g_sz[v], v) for v in g_kids[u]]
-    ord_kids.sort()
-    var child_dp: List<List<List<(Int, Int)>>> = [dp(p.1) for p in ord_kids]
-
-    var raw: List<List<(Int, Int)>> = []
-    for v in 0..g_n:
-        var f = [0..g_m + 1] _ => INF
-        f[0] = g_dist[u * g_n + v]
-        var csz = 1
-        for ci in 0..ord_kids.len:
-            var j = min(g_m, csz)
-            while j >= 0:
-                let cur = f[j]
-                f[j] = INF
-                if cur < INF:
-                    for pair in child_dp[ci][v]:
-                        if j + pair.0 > g_m: break
-                        f[j + pair.0] min= cur + pair.1
-                j -= 1
-            csz += g_sz[ord_kids[ci].1]
-        raw.push(compress_dp(f))
-
-    var ord_v: List<(Int, Int)> = [(g_dist[u * g_n + v], v) for v in 0..g_n]
-    ord_v.sort()
-
-    var out: List<List<(Int, Int)>> = [[] for _ in 0..g_n]
-    var cur = [0..g_m + 1] _ => INF
-    for pair in ord_v:
-        let a = pair.1
-        var acur = [0..g_m + 1] _ => INF
-        var j = 0
-        var best = INF
-        for i in 0..=g_m:
-            while j < raw[a].len and raw[a][j].0 <= i:
-                best min= raw[a][j].1
-                j += 1
-            acur[i] = best
-        var merged = [0..g_m + 1] _ => INF
-        for i in 0..=g_m: merged[i] = min(cur[i], acur[i])
-        out[a] = compress_dp(merged)
-        for i in 1..=g_m:
-            if acur[i - 1] < INF:
-                cur[i] min= acur[i - 1] + g_cost[a]
-    return out
-
-g_n = ri()
-let raw_m = ri()
-g_m = min(raw_m - 1, g_n)
-for _ in 0..g_n: g_cost.push(ri())
-for _ in 0..g_n:
-    g_adj.push([])
-    g_kids.push([])
-for _ in 0..g_n - 1:
-    let u = ri() - 1
-    let v = ri() - 1
-    let w = ri()
-    g_adj[u].push((v, w))
-    g_adj[v].push((u, w))
-
-g_dist = [0..g_n * g_n] _ => 0
-for s in 0..g_n:
-    var d = [0..g_n] _ => -1
-    d[s] = 0
-    var stk: List<Int> = [s]
-    while stk.len > 0:
-        let u = stk.pop()!
-        for e in g_adj[u]:
-            if d[e.0] == -1:
-                d[e.0] = d[u] + e.1
-                stk.push(e.0)
-    for v in 0..g_n: g_dist[s * g_n + v] = d[v]
-
-g_sz = [0..g_n] _ => 0
-build_tree(0, -1)
-let res = dp(0)
-var best_cost = INF
-var best_cnt = 0
-for v in 0..g_n:
-    let last = res[v][res[v].len - 1]
-    let tot = last.1 + g_cost[v]
-    if tot < best_cost or (tot == best_cost and last.0 + 1 < best_cnt):
-        best_cost = tot
-        best_cnt = last.0 + 1
-print(best_cost)
-print(best_cnt)
+let root_plan = plan(tree.root)
+fn finish(v: Switch) -> (Int, Int):
+    let s = root_plan[v].last!
+    return (s.cost + cost[v], s.cores + 1)
+let (total, cores) = min(finish(v) for v in Switch)!
+print(total)
+print(cores)
