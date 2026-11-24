@@ -7,6 +7,10 @@ use crate::tests::body;
 fn an_inclusive_loop_to_a_bound_below_int_max_is_a_plain_loop() {
     let open = cpp("let n: Int = read()\nfor i in 0..=n:\n    print(i)\n");
     assert!(open.contains("i_go"), "{open}");
+    assert!(
+        open.contains("i != n && (++i, true)"),
+        "a counted step to a last value: {open}"
+    );
     let len = cpp("let xs = [1, 2, 3]\nfor i in 0..=xs.len:\n    print(i)\n");
     assert!(len.contains("i <= "), "{len}");
     assert!(!len.contains("i_go"), "{len}");

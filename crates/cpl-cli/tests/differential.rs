@@ -68,6 +68,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
         names,
         [
             "argmin_own_index",
+            "closed_loop_at_int_bounds",
             "closure_param_mod",
             "codegen_names_shadow",
             "dead_field",

@@ -397,11 +397,13 @@ impl<'p> Emitter<'p> {
                             }
                             // The last value may be `Int.MAX`, which has
                             // no next one: the loop stops on reaching it.
+                            // `!=` rather than `<` lets the C++ compiler count
+                            // the rounds, as it does for a plain loop.
                             None => {
                                 let go = self.unique(&format!("{var}_go"));
                                 format!(
                                     "for ({cpp} {var} = {start}{extra}, {go} = {var} <= {bound}; {go}; \
-                                     {go} = {var} < {bound} && (++{var}, true)) {{"
+                                     {go} = {var} != {bound} && (++{var}, true)) {{"
                                 )
                             }
                         };
@@ -434,7 +436,7 @@ impl<'p> Emitter<'p> {
                             let go = self.unique(&format!("{var}_go"));
                             format!(
                                 "for ({cpp} {var} = {start}{extra}, {go} = {var} >= {bound}; {go}; \
-                                 {go} = {var} > {bound} && (--{var}, true)) {{"
+                                 {go} = {var} != {bound} && (--{var}, true)) {{"
                             )
                         };
                         self.line(out, &head);
