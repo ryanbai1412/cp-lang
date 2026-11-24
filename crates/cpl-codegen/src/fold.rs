@@ -255,8 +255,11 @@ fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded
                     .collect();
                 shapes.entry(shape).or_default().push(k);
             }
-            for class in shapes.into_values().filter(|c| c.len() > 1) {
-                let rep = &streams[*class.last().unwrap()];
+            for class in shapes.into_values() {
+                let [_, .., last] = class[..] else {
+                    continue;
+                };
+                let rep = &streams[last];
                 let mut cols: Vec<Vec<&str>> = Vec::new();
                 let mut kinds = Vec::new();
                 let mut slots = vec![None; rep.len()];
@@ -332,8 +335,10 @@ fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded
     let mut rendered: BTreeSet<usize> = BTreeSet::new();
     let mut members: BTreeMap<String, Option<String>> = BTreeMap::new();
     for f in &folds {
-        let tmpl = &f.members[0];
-        let rep = &defs[f.members.last().unwrap().as_str()];
+        let [tmpl, .., last] = f.members.as_slice() else {
+            continue;
+        };
+        let rep = &defs[last.as_str()];
         let header = match f.kinds.len() {
             0 => String::new(),
             n => {
@@ -418,7 +423,7 @@ fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded
             members.insert(m.clone(), None);
         }
         let _ = &mut def;
-        members.insert(f.members.last().unwrap().clone(), Some(def));
+        members.insert(last.clone(), Some(def));
     }
     for (at, item) in items.iter().enumerate() {
         if rendered.contains(&at) {
@@ -610,21 +615,23 @@ fn items<'a>(lines: &[&'a str]) -> Option<Vec<Item<'a>>> {
         if ts.is_empty() {
             continue;
         }
-        if cur.is_none() {
-            let words: Vec<&str> = ts.iter().map(|t| t.1).collect();
-            if matches!(words.as_slice(), ["namespace", _, "{"] | ["}"]) {
-                namespace += 1;
-                continue;
+        let item = match &mut cur {
+            Some(item) => item,
+            None => {
+                let words: Vec<&str> = ts.iter().map(|t| t.1).collect();
+                if matches!(words.as_slice(), ["namespace", _, "{"] | ["}"]) {
+                    namespace += 1;
+                    continue;
+                }
+                cur.insert(Item {
+                    first: li,
+                    last: li,
+                    toks: Vec::new(),
+                    namespace,
+                    opaque: false,
+                })
             }
-            cur = Some(Item {
-                first: li,
-                last: li,
-                toks: Vec::new(),
-                namespace,
-                opaque: false,
-            });
-        }
-        let item = cur.as_mut().unwrap();
+        };
         item.last = li;
         for &(space, t) in &ts {
             let start = t.as_ptr() as usize - line.as_ptr() as usize;
@@ -644,8 +651,8 @@ fn items<'a>(lines: &[&'a str]) -> Option<Vec<Item<'a>>> {
                 space,
             });
         }
-        if depth == 0 && matches!(ts.last().unwrap().1, ";" | "}") {
-            items.push(cur.take().unwrap());
+        if depth == 0 && matches!(ts.last(), Some((_, ";" | "}"))) {
+            items.extend(cur.take());
         }
     }
     cur.is_none().then_some(items)
