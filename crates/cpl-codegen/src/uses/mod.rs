@@ -584,7 +584,10 @@ impl crate::emit::Emitter<'_> {
     ) -> Option<&'static str> {
         let temp = |slot: usize| self.locals()[slot].name.is_empty();
         let changed = |yes: bool, why| yes.then_some(why);
-        let Some((global, root)) = crate::stmt::place_root(init).or_else(|| self.keyed_root(init))
+        let path = places::read_path(init);
+        let Some((global, root)) = (crate::stmt::place_root(init))
+            .or_else(|| self.keyed_root(init))
+            .or_else(|| path.as_ref().map(|p| p.root))
         else {
             return Some(SOURCE_CALLED);
         };
@@ -639,15 +642,25 @@ impl crate::emit::Emitter<'_> {
         let calls_writing =
             |f: &dyn Fn(&Effects) -> bool| t.calls.iter().any(|&id| f(self.uses.effects(id)));
         let sets_param = t.writes.iter().any(|&(g, l)| !g && l < params);
+        // Every write the statements make is to a place they name, unless
+        // they run a closure or fn value: then only those that overlap the
+        // path read count.
+        let set = t.writes.contains(&(global, root))
+            && match &path {
+                Some(path) if !t.closures && !t.values => {
+                    tail.written.iter().any(|w| w.overlaps(path))
+                }
+                _ => true,
+            };
         match global {
             // A parameter may be another name for the global.
-            true => changed(calls_writing(&|e| e.writes.contains(&root)), SOURCE_CALLED).or(
-                changed(t.writes.contains(&(true, root)) || sets_param, SOURCE_SET),
-            ),
+            true => changed(calls_writing(&|e| e.writes.contains(&root)), SOURCE_CALLED)
+                .or(changed(set || sets_param, SOURCE_SET)),
             // No fn sees a local it isn't passed `mut`, and that is a store.
             // Nor may it read the local whole: that read could move it.
-            false if named_local => changed(t.writes.contains(&(false, root)), SOURCE_SET)
-                .or(changed(tail.whole.contains(&root), SOURCE_READ_WHOLE)),
+            false if named_local => {
+                changed(set, SOURCE_SET).or(changed(tail.whole.contains(&root), SOURCE_READ_WHOLE))
+            }
             // A parameter may be another name for a global a call writes,
             // or for another parameter a store sets.
             false => {

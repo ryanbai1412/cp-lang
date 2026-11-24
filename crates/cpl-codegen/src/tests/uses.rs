@@ -397,10 +397,15 @@ fn a_global_set_from_a_place_that_still_holds_it_is_listed() {
 }
 
 #[test]
-fn a_name_bound_to_a_part_through_an_inlined_lend_lists_its_copy() {
+fn a_name_bound_to_a_part_through_an_inlined_lend_reads_it_in_place() {
     let source =
         include_str!("../../../../spec/conformance/core-05/call-through-a-lends-mut-call.cp");
-    assert!(copy_reasons(source).contains(&crate::uses::SOURCE_CALLED));
+    let reasons = copy_reasons(source);
+    assert!(
+        !reasons.contains(&crate::uses::SOURCE_CALLED)
+            && !reasons.contains(&crate::uses::SOURCE_SET),
+        "later operands write other fields: {reasons:?}"
+    );
 }
 
 #[test]

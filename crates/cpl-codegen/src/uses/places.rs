@@ -3,7 +3,8 @@
 
 use crate::walk;
 use cpl_ir::{
-    Arg, AssignOp, Block, ClosureId, Expr, ExprKind, FnId, Mutation, Place, Slot, Stmt, Ty,
+    Arg, AssignOp, Block, ClosureId, Expr, ExprKind, FnId, Mutation, Place, PlaceKind, Slot, Stmt,
+    Ty,
 };
 
 /// Where a statement puts a whole value.
@@ -222,4 +223,98 @@ pub(crate) fn notes_an_assert(block: &Block) -> bool {
         found |= matches!(stmt, Stmt::Assert { note: Some(_), .. });
     });
     found
+}
+
+/// One step down from a variable to a part of it.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum Step {
+    Field(usize),
+    /// Any element of a list or map: two indices may name the same one.
+    Elem,
+    /// The value inside an optional.
+    Opt,
+    /// A field of one variant's payload.
+    Payload(usize, usize),
+}
+
+/// A variable and the steps from it to the part a read or write reaches.
+#[derive(Clone, PartialEq, Debug)]
+pub(crate) struct Path {
+    pub(crate) root: (bool, usize),
+    pub(crate) steps: Vec<Step>,
+}
+
+impl Path {
+    /// Whether a write to one can change what the other reads: same root,
+    /// and one is the other or a part of it. A write above a part may move
+    /// or reallocate what holds it.
+    pub(crate) fn overlaps(&self, other: &Path) -> bool {
+        self.root == other.root
+            && self.steps.iter().zip(&other.steps).all(|pair| match pair {
+                (Step::Field(a), Step::Field(b)) => a == b,
+                (Step::Payload(v, a), Step::Payload(w, b)) => v != w || a == b,
+                _ => true,
+            })
+    }
+}
+
+/// The path a write to `place` changes.
+pub(crate) fn place_path(place: &Place) -> Path {
+    match &place.kind {
+        PlaceKind::Local(slot) => Path {
+            root: (false, *slot),
+            steps: Vec::new(),
+        },
+        PlaceKind::Global(id) => Path {
+            root: (true, *id),
+            steps: Vec::new(),
+        },
+        PlaceKind::Index(base, _) => place_path(base).then(Step::Elem),
+        PlaceKind::Field(base, k) => place_path(base).then(Step::Field(*k)),
+        PlaceKind::Some(base) => place_path(base).then(Step::Opt),
+    }
+}
+
+impl Path {
+    fn then(mut self, step: Step) -> Path {
+        self.steps.push(step);
+        self
+    }
+}
+
+/// The path `e` reads, when it is a part of a variable whose indices
+/// change nothing: also through a call that lends a place inlined as
+/// `{ let t = place; t }`.
+pub(crate) fn read_path(e: &Expr) -> Option<Path> {
+    let quiet = crate::uses::effects::writes_nothing;
+    match &e.kind {
+        ExprKind::Local(slot) => Some(Path {
+            root: (false, *slot),
+            steps: Vec::new(),
+        }),
+        ExprKind::Global(id) => Some(Path {
+            root: (true, *id),
+            steps: Vec::new(),
+        }),
+        ExprKind::Field(base, k) => Some(read_path(base)?.then(Step::Field(*k))),
+        ExprKind::Payload(base, v, k) => Some(read_path(base)?.then(Step::Payload(*v, *k))),
+        ExprKind::Unwrap(base, _) => Some(read_path(base)?.then(Step::Opt)),
+        ExprKind::Index(base, indices) if indices.iter().all(quiet) => {
+            Some(read_path(base)?.then(Step::Elem))
+        }
+        ExprKind::Do(block) => match block.stmts.as_slice() {
+            [Stmt::Let(slot, Some(init)), Stmt::Give(given)] if matches!(given.kind, ExprKind::Local(s) if s == *slot) => {
+                read_path(init)
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// The paths every write in `block` changes.
+pub(crate) fn write_paths(block: &Block) -> Vec<Path> {
+    let mut paths = Vec::new();
+    each_write(block, &mut |_, place| paths.push(place_path(place)));
+    paths
 }

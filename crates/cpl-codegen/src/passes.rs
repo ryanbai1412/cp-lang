@@ -248,6 +248,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it",
     ),
     pass(
+        "path-lend",
+        "uses/places.rs",
+        Uses(&["each_write", "write_paths", "read_path"]),
+        "an_operand_binds_by_reference_when_later_operands_write_other_fields",
+    ),
+    pass(
         "fn-refs",
         "uses/fn_refs.rs",
         Uses(&[
