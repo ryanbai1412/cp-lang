@@ -1,4 +1,5 @@
 // Source: Codeforces 2115E (Mayflower), https://codeforces.com/contest/2115/problem/E
+// limits: 3000 ms, 1024 MB
 // Problem: a DAG on n <= 200 vertices with m <= 2000 edges u -> v, u < v, every vertex
 //   reachable from 1. Vertex i sells any number of cards of cost c_i <= 200 and power
 //   w_i <= 1e9. For q <= 2e5 queries (p, r <= 1e9): walking from 1 to p with r coins, buying

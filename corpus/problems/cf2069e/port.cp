@@ -1,4 +1,5 @@
 // Source: Codeforces 2069E (A, B, AB and BA), https://codeforces.com/contest/2069/problem/E
+// limits: 2000 ms, 256 MB
 // Problem: split a string s over {A, B} into blocks "A", "B", "AB", "BA" using at most a,
 //   b, ab and ba of each; print YES or NO. |s| <= 5e5 (sum), counts <= 5e5, multitest.
 // Solution: we need at least need = max(0, #A - a, #B - b) pair blocks. Cut s between equal

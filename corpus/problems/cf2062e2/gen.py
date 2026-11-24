@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 import random, sys
+if sys.argv[1] == "--max":
+    # one test with n = sum n = 4e5: a deep, thin tree (parent among the last three nodes, so
+    # depth ~2e5) with random weights 1..n, shuffled labels apart from the root 1
+    r = random.Random(1)
+    n = 400_000
+    lab = [1] + r.sample(range(2, n + 1), n - 1)
+    out = ["1", str(n), " ".join(str(r.randint(1, n)) for _ in range(n))]
+    for i in range(1, n):
+        p = r.randint(max(0, i - 3), i - 1)
+        out.append(f"{lab[p]} {lab[i]}" if r.random() < 0.5 else f"{lab[i]} {lab[p]}")
+    print("\n".join(out))
+    sys.exit()
 
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])

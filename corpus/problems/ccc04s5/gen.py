@@ -1,4 +1,14 @@
 import sys, random
+if sys.argv[1] == "--max":
+    # ten 100 x 100 grids (the test count is unbounded; ten is the official data's scale), few
+    # walls and coins everywhere so every column scan runs its full length
+    r = random.Random(1)
+    for _ in range(10):
+        print(100, 100)
+        for i in range(100):
+            print("".join("*" if r.random() < 0.02 and i < 99 else r.choice("123456789.") for _ in range(100)))
+    print(0, 0)
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2]) if len(sys.argv) > 2 else 100
 for _ in range(r.randint(1, 4)):
     m, n = r.randint(2, S), r.randint(2, S)

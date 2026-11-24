@@ -1,4 +1,5 @@
 // Source: Codeforces 2062E2 (The Game, hard), https://codeforces.com/contest/2062/problem/E2
+// limits: 6000 ms, 512 MB
 // Problem: a tree of n <= 4e5 nodes rooted at 1 with values w_i <= n. Players alternately delete
 //   the subtree of a remaining node heavier than the opponent's last pick (Cirno's first pick is
 //   free); whoever cannot move wins. Print how many first picks win for Cirno and list them.

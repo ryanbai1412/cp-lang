@@ -1,4 +1,5 @@
 // Source: CCC 2004 Senior #5, Super Plumber, https://dmoj.ca/problem/ccc04s5
+// limits: 1000 ms, 256 MB
 // Problem: multitest, ending with "0 0": an m x n grid (2 <= m, n <= 100) of '*' obstacles,
 //   coins '1'..'9' and '.'. Moving only right, up or down, never revisiting a cell, go from the
 //   bottom-left to the bottom-right corner; print the largest total of coins collected.

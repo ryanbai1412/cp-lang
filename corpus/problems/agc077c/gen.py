@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 import random, sys
+if sys.argv[1] == "--max":
+    # one test with N = M = 2e5 (both sums) and an odd K, the case that needs the parity
+    # components; distinct pairs, never both ways
+    r = random.Random(1)
+    n = m = 200_000
+    seen, out = set(), ["1", f"{n} {m} 99999"]
+    while len(seen) < m:
+        u, v = r.randint(1, n), r.randint(1, n)
+        if u == v or (min(u, v), max(u, v)) in seen: continue
+        seen.add((min(u, v), max(u, v))); out.append(f"{u} {v}")
+    print("\n".join(out))
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 T = r.randint(1, 3)

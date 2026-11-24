@@ -1,4 +1,5 @@
 // Source: AtCoder AGC077 C (Reverse and DAG), https://atcoder.jp/contests/agc077/tasks/agc077_c
+// limits: 2000 ms, 1024 MB
 // Problem: a simple directed graph, n <= 2e5 vertices and m <= 2e5 edges with no pair joined
 //   both ways, and 2 <= K <= n - 2. An operation picks K vertices and reverses every edge
 //   inside them. Can some sequence make the graph acyclic? Multitest, sum n, m <= 2e5.

@@ -3,7 +3,20 @@ import random
 import sys
 
 
+def max_case():
+    # one test with |s| = sum |s| = 5e5: alternating runs with breaks (many runs to sort), no
+    # single blocks and a tight AB cap so the conversion loop runs over many runs
+    rng = random.Random(1)
+    n = 500_000
+    chars = ["A"]
+    for _ in range(n - 1):
+        chars.append(chars[-1] if rng.random() < 0.1 else "B" if chars[-1] == "A" else "A")
+    print(1); print("".join(chars)); print(0, 0, 1000, 500_000)
+
+
 def main():
+    if sys.argv[1] == "--max":
+        return max_case()
     seed = int(sys.argv[1])
     size = int(sys.argv[2])
     rng = random.Random(seed)

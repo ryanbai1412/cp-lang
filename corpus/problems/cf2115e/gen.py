@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
 import sys, random
+if sys.argv[1] == "--max":
+    # n = 200, m = 2000 (a chain plus random forward arcs), costs near 200 (knapsack width C^2),
+    # q = 2e5 queries mixing budgets below and far above C^2
+    rng = random.Random(1)
+    n, m, q = 200, 2000, 200_000
+    edges = {(i, i + 1) for i in range(1, n)}
+    while len(edges) < m:
+        u = rng.randint(1, n - 1); edges.add((u, rng.randint(u + 1, n)))
+    out = [f"{n} {m}"] + [f"{rng.randint(150, 200)} {rng.randint(1, 10**9)}" for _ in range(n)]
+    out += [f"{u} {v}" for u, v in sorted(edges)] + [str(q)]
+    for _ in range(q):
+        out.append(f"{rng.randint(1, n)} {rng.randint(1, 40_000) if rng.random() < 0.5 else rng.randint(1, 10**9)}")
+    print("\n".join(out))
+    sys.exit()
 rng = random.Random(int(sys.argv[1]))
 n = rng.randint(2, 8)
 edges = set()

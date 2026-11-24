@@ -1,4 +1,5 @@
 // Source: Codeforces 2062G (Permutation Factory), https://codeforces.com/contest/2062/problem/G
+// limits: 2000 ms, 512 MB
 // Problem: permutations p, q of n <= 100. Swapping p_i and p_j costs min(|i - j|, |p_i - p_j|);
 //   print a cheapest sequence of at most n^2 swaps turning p into q. Multitest,
 //   sum of n^3 <= 1e6.
