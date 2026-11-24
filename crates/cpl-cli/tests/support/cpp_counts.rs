@@ -131,10 +131,19 @@ pub fn deep_copies(cpp: &str) -> usize {
     // opened at, and whether it returns a container by value.
     let mut bodies: Vec<(i64, bool)> = Vec::new();
     let mut depth = 0i64;
+    // The fns that return a container by `const&`: a by-value return of
+    // a call to one copies what it lends.
+    let mut lending = std::collections::BTreeSet::new();
     for line in cpp.lines() {
         let line = line.trim();
         if let Some(ret) = returned_type(line) {
             bodies.push((depth, container(ret) && !ret.ends_with(['&', '*'])));
+            if container(ret.trim_start_matches("const ")) && ret.ends_with('&') {
+                lending.extend(
+                    line.split_once('(')
+                        .and_then(|(sig, _)| sig.rsplit([' ', '&']).next()),
+                );
+            }
         }
         depth += line.matches('{').count() as i64 - line.matches('}').count() as i64;
         let returns_container = bodies.last().is_some_and(|b| b.1);
@@ -145,7 +154,9 @@ pub fn deep_copies(cpp: &str) -> usize {
             && line
                 .strip_prefix("return ")
                 .and_then(|r| r.strip_suffix(';'))
-                .is_some_and(is_part)
+                .is_some_and(|r| {
+                    is_part(r) || r.split_once('(').is_some_and(|(f, _)| lending.contains(f))
+                })
         {
             count += 1;
         }

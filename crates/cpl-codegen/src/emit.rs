@@ -169,6 +169,8 @@ pub(crate) struct Emitter<'p> {
     pub give_ref: bool,
     /// The fn being written returns `const T&`: its `return` of a place lends it.
     pub lends_result: bool,
+    /// The fns that return `const T&`, each with the parameter whose place it lends.
+    pub lent_roots: BTreeMap<cpl_ir::FnId, usize>,
     /// The `let`s the `Do` block being written as a lambda owns: they
     /// move into what it gives.
     pub give_owned: Option<BTreeSet<usize>>,
@@ -327,6 +329,7 @@ impl<'p> Emitter<'p> {
             last_use_call: false,
             give_ref: false,
             lends_result: false,
+            lent_roots: BTreeMap::new(),
             give_owned: None,
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
@@ -605,8 +608,9 @@ impl<'p> Emitter<'p> {
     }
 
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
-    /// The fn's C++ signature, and whether it returns `const T&`.
-    fn signature(&self, f: &Function) -> (String, bool) {
+    /// The fn's C++ signature, and the parameter whose place it lends
+    /// when it returns `const T&`.
+    fn signature(&self, f: &Function) -> (String, Option<usize>) {
         let id = self.fn_id.expect("a fn");
         let mut named = crate::scope::named_params(&f.body, f.params.len());
         named.retain(|slot| !self.devirt.dead_local(Some(id), *slot));
@@ -679,8 +683,11 @@ impl<'p> Emitter<'p> {
         if self.devirt.returns_lambda(id) {
             ret = "auto".into();
         }
-        let lends = !self.devirt.returns_lambda(id) && self.lends_its_result(id, f, &by_ref);
-        if lends {
+        let lends = match self.devirt.returns_lambda(id) {
+            true => None,
+            false => self.lends_its_result(id, f, &by_ref),
+        };
+        if lends.is_some() {
             ret = format!("const {ret}&");
         }
         let signature = format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "));
@@ -689,11 +696,13 @@ impl<'p> Emitter<'p> {
 
     /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
     /// is, like a `@get` of a stored list, lends it: the caller reads it in place and copies
-    /// it only where it keeps it.
-    fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> bool {
+    /// it only where it keeps it. So does one that gives what such a fn lends from a place of
+    /// its own (`a.view` where `A.view` lends `xs`), through any chain of them. The answer is
+    /// the parameter the result is a place on.
+    fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> Option<usize> {
         use cpl_ir::{ElemLoc, ExprKind, NarrowLayout};
         let [Stmt::Return(Some(e))] = f.body.stmts.as_slice() else {
-            return false;
+            return None;
         };
         if f.ret.is_scalar()
             || f.ret == Ty::Unit
@@ -701,7 +710,7 @@ impl<'p> Emitter<'p> {
             || self.caches_on_read(&f.ret)
             || self.expr_elem_layout(e) != self.elem_layout(ElemLoc::FnRet(id))
         {
-            return false;
+            return None;
         }
         let mut at = e;
         loop {
@@ -716,8 +725,16 @@ impl<'p> Emitter<'p> {
                 {
                     base
                 }
-                ExprKind::Local(slot) => return !std::ptr::eq(at, e) && by_ref.contains(slot),
-                _ => return false,
+                ExprKind::Call(callee, args) => {
+                    match self.lent_roots.get(callee).map(|&s| &args[s]) {
+                        Some(cpl_ir::Arg::Value(arg)) => arg,
+                        _ => return None,
+                    }
+                }
+                ExprKind::Local(slot) => {
+                    return (!std::ptr::eq(at, e) && by_ref.contains(slot)).then_some(*slot)
+                }
+                _ => return None,
             };
         }
     }
@@ -976,8 +993,11 @@ impl<'p> Emitter<'p> {
                 crate::Part::Yours
             };
             self.enter(Some(id), &f.body, f.params.len());
-            let (signature, lends) = self.signature(f);
-            self.lends_result = lends;
+            let (signature, root) = self.signature(f);
+            self.lends_result = root.is_some();
+            if let Some(slot) = root {
+                self.lent_roots.insert(id, slot);
+            }
             let hook = program.is_hook(id);
             protos.push(Proto {
                 name: fn_name(&f.name),

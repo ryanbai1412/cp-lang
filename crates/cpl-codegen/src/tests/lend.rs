@@ -837,3 +837,23 @@ fn mut_alias_of_a_map_key_finds_its_slot_once() {
     assert!(code.contains("cpl::map_slot_at("), "{code}");
     assert!(!code.contains("m.at("), "{code}");
 }
+
+#[test]
+fn a_getter_that_forwards_a_lent_getter_lends_too() {
+    let out = cpp(concat!(
+        "struct A:\n    xs: List<Int>\n    @get pub fn view(self) -> List<Int> = xs\n",
+        "struct B:\n    a: A\n    @get pub fn view(self) -> List<Int> = a.view\n",
+        "struct C:\n    b: B\n    @get pub fn view(self) -> List<Int> = b.view\n",
+        "let n: Int = read()\n",
+        "let c = C(B(A([i for i in 0..n])))\n",
+        "var s = 0\n",
+        "for i in 0..n: s += c.view[i]\n",
+        "print(s)\n",
+    ));
+    for f in ["A_view", "B_view", "C_view"] {
+        assert!(
+            out.contains(&format!("const std::vector<ll>& {f}(")),
+            "{f}:\n{out}"
+        );
+    }
+}
