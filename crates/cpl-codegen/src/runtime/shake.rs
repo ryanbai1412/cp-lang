@@ -311,8 +311,8 @@ fn braces(line: &str) -> i32 {
     depth
 }
 
-/// Adds the names `text` mentions, not in a comment, to `calls`, and to
-/// `names` unless written as a member (`x.first`, `p->first`), which no
+/// Adds the names `text` mentions, not in a comment, to `calls` unless
+/// written as a field, and to `names` unless written as a member (`x.first`, `p->first`), which no
 /// top-level runtime definition is.
 fn words<'a>(text: &'a str, names: &mut BTreeSet<&'a str>, calls: &mut BTreeSet<&'a str>) {
     for line in text.lines() {
@@ -320,6 +320,15 @@ fn words<'a>(text: &'a str, names: &mut BTreeSet<&'a str>, calls: &mut BTreeSet<
         let b = code.as_bytes();
         let mut i = 0;
         while i < b.len() {
+            // A message such as "pass `rev:`" names nothing.
+            if b[i] == b'"' {
+                i += 1;
+                while i < b.len() && b[i] != b'"' {
+                    i += 1 + usize::from(b[i] == b'\\');
+                }
+                i += 1;
+                continue;
+            }
             if !word(b[i]) || b[i].is_ascii_digit() {
                 i += 1;
                 continue;
@@ -328,8 +337,18 @@ fn words<'a>(text: &'a str, names: &mut BTreeSet<&'a str>, calls: &mut BTreeSet<
             while i < b.len() && word(b[i]) {
                 i += 1;
             }
-            calls.insert(&code[start..i]);
             let member = code[..start].ends_with('.') || code[..start].ends_with("->");
+            let rest = code[i..].trim_start();
+            let called = rest.starts_with(['(', '<']);
+            // A field, `bool rev = false;` or `m.rev`, doesn't call `Range::rev()`.
+            let field = if member {
+                !called
+            } else {
+                rest.starts_with(';') || rest.starts_with('=') && !rest.starts_with("==")
+            };
+            if !field {
+                calls.insert(&code[start..i]);
+            }
             if !member {
                 names.insert(&code[start..i]);
             }

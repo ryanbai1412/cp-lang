@@ -73,6 +73,13 @@ fn only_the_runtime_a_program_uses_is_written() {
 }
 
 #[test]
+fn a_segtree_writes_no_runtime_member_it_never_calls() {
+    let cpp = cpp("domain V = 0..4\nvar init: [V]Int = 0\nvar st = SegTree<V, Int>(+, init)\nst.set(V.nth(1), 5)\nprint(st.fold(V.nth(0)..=V.nth(2)))\n");
+    assert!(cpp.contains("struct Range"), "{cpp}");
+    assert!(!cpp.contains("rev() const"), "{cpp}");
+}
+
+#[test]
 fn a_printed_number_is_written_in_place_into_the_output_buffer() {
     let cpp = cpp("let n: Int = read()\nprint(n)\n");
     let put = &cpp[cpp.find("inline void put_int(").unwrap()..];
