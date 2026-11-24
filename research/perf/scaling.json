@@ -2476,7 +2476,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.Dsu.components",
-   "measured": 1.03,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -2484,7 +2484,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.Dsu.find",
-   "measured": 1.04,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2492,7 +2492,7 @@
    "cost": "n \\alpha(n)",
    "documented": 4.0,
    "fn": "dsu.Dsu.groups",
-   "measured": 3.92,
+   "measured": 4.16,
    "n": 16384,
    "ok": true
   },
@@ -2500,7 +2500,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.Dsu.mark",
-   "measured": 1.01,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2508,7 +2508,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.Dsu.merge",
-   "measured": 1.08,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2516,7 +2516,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.Dsu.new",
-   "measured": 3.96,
+   "measured": 4.06,
    "n": 16384,
    "ok": true
   },
@@ -2524,7 +2524,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.Dsu.roots",
-   "measured": 4.05,
+   "measured": 4.14,
    "n": 16384,
    "ok": true
   },
@@ -2532,7 +2532,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.Dsu.same",
-   "measured": 1.03,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2540,7 +2540,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.Dsu.size",
-   "measured": 1.02,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2548,7 +2548,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.Dsu.undo_to",
-   "measured": 1.01,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -2556,7 +2556,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.Dsu.unite",
-   "measured": 1.13,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -2564,7 +2564,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.DsuOf.components",
-   "measured": 1.04,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2572,7 +2572,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.DsuOf.find",
-   "measured": 1.09,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2580,7 +2580,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.DsuOf.get",
-   "measured": 1.04,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -2588,7 +2588,7 @@
    "cost": "n \\alpha(n)",
    "documented": 4.0,
    "fn": "dsu.DsuOf.groups",
-   "measured": 4.19,
+   "measured": 4.02,
    "n": 16384,
    "ok": true
   },
@@ -2596,7 +2596,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.DsuOf.mark",
-   "measured": 1.04,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
@@ -2604,7 +2604,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.DsuOf.merge",
-   "measured": 1.23,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -2612,7 +2612,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.DsuOf.new",
-   "measured": 4.02,
+   "measured": 4.07,
    "n": 16384,
    "ok": true
   },
@@ -2620,7 +2620,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.DsuOf.roots",
-   "measured": 4.46,
+   "measured": 4.31,
    "n": 16384,
    "ok": true
   },
@@ -2628,7 +2628,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.DsuOf.same",
-   "measured": 1.04,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2636,7 +2636,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.DsuOf.set",
-   "measured": 1.09,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -2644,7 +2644,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.DsuOf.size",
-   "measured": 1.11,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -2652,7 +2652,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.DsuOf.undo_to",
-   "measured": 1.03,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2660,7 +2660,7 @@
    "cost": "\\alpha(n)",
    "documented": 1.0,
    "fn": "dsu.DsuOf.unite",
-   "measured": 1.11,
+   "measured": 1.15,
    "n": 16384,
    "ok": true
   },
@@ -2668,7 +2668,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.DsuOf.values",
-   "measured": 4.74,
+   "measured": 3.98,
    "n": 16384,
    "ok": true
   },
@@ -2676,7 +2676,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.ParityDsu.components",
-   "measured": 1.28,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -2684,7 +2684,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.ParityDsu.consistent",
-   "measured": 1.28,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -2692,7 +2692,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.ParityDsu.diff",
-   "measured": 1.37,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -2700,7 +2700,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.ParityDsu.find",
-   "measured": 1.39,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -2708,7 +2708,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "dsu.ParityDsu.groups",
-   "measured": 5.62,
+   "measured": 4.64,
    "n": 16384,
    "ok": true
   },
@@ -2716,7 +2716,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.ParityDsu.mark",
-   "measured": 1.26,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2724,7 +2724,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.ParityDsu.new",
-   "measured": 4.35,
+   "measured": 4.2,
    "n": 16384,
    "ok": true
   },
@@ -2732,7 +2732,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.ParityDsu.same",
-   "measured": 1.36,
+   "measured": 1.11,
    "n": 16384,
    "ok": true
   },
@@ -2740,7 +2740,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.ParityDsu.size",
-   "measured": 1.39,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -2748,7 +2748,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.ParityDsu.undo_to",
-   "measured": 1.3,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2756,7 +2756,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.ParityDsu.unite",
-   "measured": 1.32,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2764,7 +2764,7 @@
    "cost": "\\log^2 n",
    "documented": 1.31,
    "fn": "dsu.PersistentDsu.find",
-   "measured": 1.73,
+   "measured": 1.77,
    "n": 16384,
    "ok": true
   },
@@ -2772,7 +2772,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.PersistentDsu.new",
-   "measured": 4.43,
+   "measured": 4.23,
    "n": 16384,
    "ok": true
   },
@@ -2780,7 +2780,7 @@
    "cost": "\\log^2 n",
    "documented": 1.31,
    "fn": "dsu.PersistentDsu.same",
-   "measured": 1.7,
+   "measured": 1.71,
    "n": 16384,
    "ok": true
   },
@@ -2788,7 +2788,7 @@
    "cost": "\\log^2 n",
    "documented": 1.31,
    "fn": "dsu.PersistentDsu.size",
-   "measured": 1.69,
+   "measured": 1.73,
    "n": 16384,
    "ok": true
   },
@@ -2796,7 +2796,39 @@
    "cost": "\\log^2 n",
    "documented": 1.31,
    "fn": "dsu.PersistentDsu.unite",
-   "measured": 1.3,
+   "measured": 1.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dsu.cp::dsu.PersistentDsu.within": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dsu.PersistentDsu.within",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dsu.cp::dsu.PersistentDsuWithin.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dsu.PersistentDsuWithin.is_empty",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dsu.cp::dsu.PersistentDsuWithin.items": {
+   "cost": "n \\log^2 n",
+   "documented": 5.22,
+   "fn": "dsu.PersistentDsuWithin.items",
+   "measured": 6.52,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dsu.cp::dsu.PersistentDsuWithin.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dsu.PersistentDsuWithin.len",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2804,7 +2836,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.PotentialDsu.components",
-   "measured": 1.24,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -2812,7 +2844,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.PotentialDsu.consistent",
-   "measured": 1.26,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -2820,7 +2852,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.PotentialDsu.diff",
-   "measured": 1.36,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -2828,7 +2860,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.PotentialDsu.find",
-   "measured": 1.43,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -2836,7 +2868,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.PotentialDsu.mark",
-   "measured": 1.23,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2844,7 +2876,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.PotentialDsu.new",
-   "measured": 5.17,
+   "measured": 3.89,
    "n": 16384,
    "ok": true
   },
@@ -2852,7 +2884,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.PotentialDsu.same",
-   "measured": 1.37,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -2860,7 +2892,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.PotentialDsu.size",
-   "measured": 1.39,
+   "measured": 1.15,
    "n": 16384,
    "ok": true
   },
@@ -2868,7 +2900,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.PotentialDsu.undo_to",
-   "measured": 1.3,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2876,7 +2908,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dsu.PotentialDsu.unite",
-   "measured": 1.34,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -2884,7 +2916,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.RollbackArray.get",
-   "measured": 1.08,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2892,7 +2924,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.RollbackArray.mark",
-   "measured": 1.26,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2900,7 +2932,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dsu.RollbackArray.new",
-   "measured": 4.18,
+   "measured": 3.96,
    "n": 16384,
    "ok": true
   },
@@ -2908,7 +2940,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.RollbackArray.set",
-   "measured": 1.32,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2916,7 +2948,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dsu.RollbackArray.undo_to",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -17837,10 +17869,6 @@
   "builtin.Str.sorted",
   "builtin.Str.swap",
   "builtin.Str.to_str",
-  "dsu.PersistentDsu.within",
-  "dsu.PersistentDsuWithin.is_empty",
-  "dsu.PersistentDsuWithin.items",
-  "dsu.PersistentDsuWithin.len",
   "grid.GridCols.each",
   "grid.GridRows.each",
   "strings.Palindromes.items"
