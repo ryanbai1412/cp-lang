@@ -18,11 +18,15 @@
   {"id": "4224319", "language": "CPP17", "result": "WA", "time": 1.993785332, "memory_kb": 7484.0, "file": "corpus/submissions/4224319.cpp"},
   {"id": "4224323", "language": "CPP17", "result": "WA", "time": 28.236385199, "memory_kb": 7500.0, "file": "corpus/submissions/4224323.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc21c5p5hard/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No submission is AC (all WA, RTE or TLE), so orig.cpp is a reference written for the port. Primeness is at most T = floor(N^2/2) - 1, the maximum total variation, and for N >= 6 an all-prime path cannot reach T (the forced alternating shape puts every peak on one parity), so orig.cpp builds a T - 1 path as two parity-class Hamiltonian paths (Posa rotation-extension) over the prime-difference graph and aborts unless the total is exactly T - 1; N <= 21 comes from an exact bitmask DP. Checked: primeness equals the dmopc21c5p5 AC 4223887 for every N in 1..=100, and every N in 22..=5000 and 99800..=100000 plus 500 random N up to 1e5 reaches T - 1 in under 1 s. Any maximum permutation is accepted, so checker.py (shared with dmopc21c5p5) compares primeness with the reference's."
 }
