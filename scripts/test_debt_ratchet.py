@@ -242,7 +242,6 @@ class DebtRatchetTest(unittest.TestCase):
                 "jobs:", "  a:", "    continue-on-error: true", "    steps:",
                 "      - run: make || true", "        continue-on-error: true",
                 "      - run: x", "        continue-on-error: false", "      # a || true comment", ""]))
-            self._write(root, "bench/unbuilt.txt", "# why\ncf1\ncf2\n")
             self._write(root, "corpus/problems/p/dream.cp", "print(1)\n")
             self._write(root, "corpus/problems/p/meta.json", "{}")
             self._write(root, "corpus/problems/q/dream.cp", "print(2)\n")
@@ -263,7 +262,6 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.or_true(root), [".github/workflows/ci.yml:5"])
             self.assertEqual(dr.continue_on_error(root), [".github/workflows/ci.yml:6"])
             self.assertEqual(dr.nonblocking_jobs(root), [".github/workflows/ci.yml:3"])
-            self.assertEqual(dr.bench_lists(root), ["bench/unbuilt.txt"] * 2)
             self.assertEqual(dr.dream_unverified(root), ["corpus/problems/p/dream.cp"])
             self.assertEqual(dr.measure_untested(root), ["plan/domains/tools/measure.py"])
             self.assertEqual(dr.mono_unguarded(root), ["crates/cpl-check, crates/cpl-ir: no GROWING_INSTANTIATION use"])

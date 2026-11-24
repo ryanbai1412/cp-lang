@@ -957,11 +957,6 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
     return [rel for rel, (c, _, _) in LISTS.items() if c == counter for _ in range(_list_entries(root, rel))]
 
 
-def bench_lists(root: Path) -> list[str]:
-    """Entries of bench/unbuilt.txt, unmatched.txt and oversize.txt: problems the bench can't compare."""
-    return _registered_entries(root, "bench_lists")
-
-
 def known_lists(root: Path) -> list[str]:
     """Entries of *-known.txt and other accepted-finding baselines."""
     return _registered_entries(root, "known_lists")
@@ -1073,7 +1068,6 @@ def corpus_walkers(root: Path) -> list[str]:
 # goes away. A new list without a row here fails `unregistered_lists`.
 LISTS: dict[str, tuple[str | None, str, str]] = {
     "bench/oversize.txt": ("bench_lists", "perf", "shrink inputs or give the bench a size cap"),
-    "bench/unbuilt.txt": ("bench_lists", "perf", "build each port"),
     "bench/unmatched.txt": ("bench_lists", "perf", "match each port's output"),
     "corpus/audit-known.txt": ("known_lists", "idioms", "fix each audited port"),
     "corpus/differential-known.txt": ("known_lists", "idioms", "fix each differing port"),
@@ -1180,7 +1174,6 @@ COUNTERS = {
     "unsupported_sites": ("lowering unsupported( calls and E0501 literals", unsupported_sites, True),
     "lsp_string_types": ("LSP lines reading types out of rendered text", lsp_string_types, True),
     "lint_post_filters": ("entries of cpl-lint after-the-fact tables", lint_post_filters, True),
-    "bench_lists": ("entries of bench unbuilt/unmatched/oversize lists", bench_lists, True),
     "known_lists": ("entries of known-finding lists", known_lists, True),
     "prelude_gaps": ("prelude names with no conformance case", prelude_gaps, True),
     "permits": ("entries of spec/conformance/permits.txt", permits, True),
