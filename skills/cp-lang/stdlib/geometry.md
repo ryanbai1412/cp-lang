@@ -4,7 +4,7 @@
 
 Plane and 3D geometry on exact integer points (`Pt`, `Pt3`) and careful floating-point vectors (`Vec`). Exact predicates compute cross and dot signs in `I128` so integer geometry is the default overflow-free path:  - `|x|, |y| <= 1e9` (coordinates read as `-1e9..=1e9`): differences in `[-2e9, 2e9]`; single-vector `dot`/`cross` <= `2e18` fit `Int`, `turn`/`cross128`/`dot128` <= `8e18` fit `I128` with 19 orders of magnitude to spare, and `any_segments_meet` sweep comparisons <= `1.6e28` fit `I128`. - `|x|, |y| <= 2e18`: `turn`/`cross128`/`dot128`/`dist2_128` <= `8e36` fit `I128`. - 3D `|x|, |y|, |z| <= 1e9`: `cross3` components <= `8e18` fit `Int` (or `I128` up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
-In prelude (no `use` needed): `ByAngle`, `Location`, `Pt`, `cross`, `dot`, `locate`, `turn`.
+In prelude (no `use` needed): `ByAngle`, `Location`, `Pt`, `angle_less`, `area2`, `circle_circle_tangents`, `circle_intersect`, `circle_line_intersect`, `circle_tangents`, `circles_union_area`, `circumcenter`, `close`, `closest_pair`, `closest_pair2`, `convex_hull`, `convex_hull_idx`, `cross`, `diameter2`, `dot`, `half_plane_intersect`, `hull_extreme`, `hull_tangents`, `line_dist`, `line_intersect`, `locate`, `locate_convex`, `lower_hull`, `min_bounding_box`, `minkowski_sum`, `minkowski_upper`, `on_segment`, `polygon_area`, `polygon_cut`, `project`, `reflect`, `same_dir`, `seg_dist`, `segments_meet`, `sign_eps`, `turn`, `upper_hull`.
 
 ## Types & Constants
 

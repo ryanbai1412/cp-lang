@@ -4,7 +4,7 @@
 
 Search on answers: binary, exponential, ternary and parallel searches, and fractional programming. Each returns a position of the space searched or `None`, never a sentinel, and names the monotone or unimodal law it needs. Binary search over a range is a method on it (`std.seq`): `r.first_true(ok)`, `r.last_true(ok)`, `r.bsearch(ok, last:)`. Sorted lookup in a container is the four-name family `first_ge`/`first_gt`/`last_le`/`last_lt`; a search inside a range structure is its `right_while`/`left_while`.
 
-In prelude (no `use` needed): `bsearch_real`, `split_best`, `ternary_max`, `ternary_max_real`, `ternary_min`, `ternary_min_real`.
+In prelude (no `use` needed): `bsearch_real`, `dinkelbach`, `parallel_bsearch`, `split_best`, `ternary_max`, `ternary_max_real`, `ternary_min`, `ternary_min_real`.
 
 ## Functions
 

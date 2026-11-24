@@ -4,7 +4,7 @@
 
 Mo's algorithm: offline ordering and window stepping over `Range<D>`.
 
-Import: `use std.mo.{...}`.
+In prelude (no `use` needed): `mo`.
 
 ## Functions
 

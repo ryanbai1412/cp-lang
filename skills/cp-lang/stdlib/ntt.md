@@ -4,7 +4,7 @@
 
 Number-theoretic transform, exact and modular convolution, SOS, and bitwise transforms.  Polynomials are coefficient lists, lowest degree first (`p[k]` is the coefficient of `x^k`). There is one `convolve`: `on:` says how indices combine and `over:` which semiring the values live in; the value type picks the algorithm (NTT for an NTT-prime `Mod<P>`, three primes and CRT for any other `Mod` or `Int`, FFT for `F64`), and `cpl explain` names it. `cyclic: Bool = false`: - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty) - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 
-In prelude (no `use` needed): `Curved`, `convolve`, `convolve_2d`.
+In prelude (no `use` needed): `Curved`, `convolve`, `convolve_2d`, `ntt`, `sos`.
 
 ## Types & Constants
 
