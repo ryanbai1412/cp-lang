@@ -1,4 +1,2 @@
 # Contexts whose labels the playground's menu doesn't show in its first 100
 # today; this list only shrinks (complete/U18).
-match/optional
-test/body

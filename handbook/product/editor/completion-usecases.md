@@ -105,8 +105,8 @@ Evidence: integration `crates/cpl-lsp/tests/latency.rs`
 ### complete/U18: in the browser editor
 Need: the same completion in the playground and the guide's code blocks, with nothing installed.
 Design: the language server built to wasm behind the site's editor, answering every context of `crates/cpl-lsp/tests/completion-contexts.json` as `cpl lsp` does.
-Milestone: M1-critical. Status: partial (the browser test types 2 of the contexts; the rest wait for a parity test over the shared cases)
-Evidence: integration `web/tests/intelligence.mjs`
+Milestone: M1-critical. Status: supported
+Evidence: integration `web/tests/completion-parity.mjs` (every shared context typed into the playground, the wanted labels in the menu's first 100, and `(`, `, ` and `{` opening the menu); `web/tests/intelligence.mjs`
 
 ### complete/U19: in VS Code
 Need: completion as soon as the extension is installed.
@@ -128,9 +128,9 @@ Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion
 
 ### complete/U22: match arms on an optional or a struct
 Need: write the arms of a `match` without remembering how the variants or fields are spelled.
-Design: `Some` and `None` as the prelude names they are; a struct pattern's fields after `P(`.
+Design: `Some` and `None` as the prelude names they are, ranked first with the other variants where an arm starts; a struct pattern's fields after `P(`.
 Milestone: M1-critical. Status: supported
-Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases match/optional, match/field-pattern
+Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases match/optional, match/field-pattern; `crates/cpl-lsp/src/tests/complete.rs` (`completion_ranks_what_the_context_starts_with_first`)
 
 ### complete/U23: a member through `!` or `?`
 Need: call a method of the value inside an optional, after asserting or propagating it.
@@ -140,9 +140,9 @@ Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion
 
 ### complete/U24: inside a `@test` fn
 Need: write a quick property check next to the solution.
-Design: `assert` and the file's fns, as in any body.
+Design: `assert`, ranked first, and the file's fns, as in any body.
 Milestone: M1-differentiating. Status: supported
-Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases test/body
+Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases test/body; `crates/cpl-lsp/src/tests/complete.rs` (`completion_ranks_what_the_context_starts_with_first`)
 
 ### complete/U25: the bounds of a domain and the type of a `read`
 Need: declare an index space and its input from names already read.

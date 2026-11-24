@@ -705,3 +705,45 @@ fn a_typed_paren_comma_or_brace_completes_only_what_belongs_there() {
     assert!(items.iter().any(|i| i == "Graph"), "{items:?}");
     assert!(triggered("let s = \"{|\"\n", "{").is_empty());
 }
+
+#[test]
+fn completion_ranks_what_the_context_starts_with_first() {
+    let first_of = |src: &str, label: &str| {
+        let reply = ask_at("textDocument/completion", src);
+        let items = reply
+            .at(&["items"])
+            .as_array()
+            .map(<[_]>::to_vec)
+            .unwrap_or_default();
+        // The rank is the sortText's leading digit; the label follows it.
+        let sort = |i: &Value| i.at(&["sortText"]).as_str().unwrap_or("~")[..1].to_string();
+        let best = items.iter().map(sort).min().unwrap_or_default();
+        let mine = items
+            .iter()
+            .find(|i| i.at(&["label"]).as_str() == Some(label))
+            .map(sort);
+        let labels: Vec<_> = items
+            .iter()
+            .take(12)
+            .map(|i| i.at(&["label"]).as_str())
+            .collect();
+        assert_eq!(
+            mine.as_deref(),
+            Some(best.as_str()),
+            "{label} in {src:?}: {labels:?}"
+        );
+    };
+    // A match arm on `?T` starts with `Some` or `None`, before any std name.
+    first_of("let m: ?Int = None\nmatch m:\n    |", "Some");
+    first_of(
+        "let m: ?Int = None\nmatch m:\n    Some(x) => print(x)\n    |",
+        "None",
+    );
+    first_of(
+        "enum Who:\n    A\n    B\nlet w = Who.A\nmatch w:\n    |",
+        "B",
+    );
+    // A `@test` fn's body starts with `assert`.
+    first_of("fn f(a: Int) -> Int = a\n@test\nfn t():\n    |", "assert");
+    first_of("@test fn t():\n    let x = 1\n    |", "assert");
+}
