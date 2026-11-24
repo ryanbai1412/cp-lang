@@ -398,6 +398,55 @@ fn completion_ranks_first_what_fits_the_expected_type() {
 }
 
 #[test]
+fn completion_ranks_types_above_values_where_a_type_goes() {
+    let decls = "struct Edge:\n    to: Int\nlet edges = [Edge(to: 1)]\nlet n = 3\n";
+    let order = |src: String| {
+        let reply = ask_at("textDocument/completion", &src);
+        let mut items: Vec<(String, String)> = reply
+            .at(&["items"])
+            .as_array()
+            .unwrap_or(&[])
+            .iter()
+            .map(|i| {
+                let sort = i.at(&["sortText"]).as_str().unwrap().to_string();
+                (sort, i.at(&["label"]).as_str().unwrap().to_string())
+            })
+            .collect();
+        items.sort();
+        items
+            .into_iter()
+            .map(|(_, label)| label)
+            .collect::<Vec<_>>()
+    };
+    let at = |names: &[String], name: &str| names.iter().position(|n| n == name);
+    for typed in [
+        "let e: |",
+        "let o: ?|",
+        "fn f(q: Int, r: |",
+        "fn f() -> |",
+        "let es: List<|",
+        "let m: Map<Int, |",
+        "struct G:\n    es: |",
+    ] {
+        let names = order(format!("{decls}{typed}\n"));
+        for ty in ["Edge", "Int"] {
+            assert!(
+                at(&names, ty) < at(&names, "edges") && at(&names, ty) < at(&names, "n"),
+                "{ty} should rank above values after {typed:?}: {names:?}"
+            );
+        }
+    }
+    // Where a value goes, values keep their place above the prelude's types.
+    for typed in ["print(|", "f(by: |", "let k = |"] {
+        let names = order(format!("{decls}{typed}\n"));
+        assert!(
+            at(&names, "edges") < at(&names, "Int"),
+            "values should come first after {typed:?}: {names:?}"
+        );
+    }
+}
+
+#[test]
 fn signature_help_shows_defaults_and_named_only_parameters() {
     let decl = "fn walk(from: Int, steps: Int = 1; back: Bool = false) -> Int = from\n";
     let (label, active, params) = signature(&format!("{decl}print(walk(1, |))\n"));

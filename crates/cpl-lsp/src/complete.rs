@@ -180,7 +180,12 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
         _ => {}
     }
     let expected = expected_type(cursor, std, offset - word.len());
+    let wants_type = type_position(line, head);
     let rank = |entry: &Entry, sort: u8| match &expected {
+        _ if wants_type => match entry.kind {
+            Kind::Struct | Kind::Enum | Kind::Domain | Kind::Trait | Kind::Alias => sort,
+            _ => sort + 5,
+        },
         Some(want)
             if type_of_entry(entry)
                 .or_else(|| inferred_type(cursor.analysis, entry))
@@ -313,6 +318,51 @@ fn argument_names(cursor: &Cursor, std: &mut StdLib, offset: usize) -> Vec<Value
         out.push(item);
     }
     out
+}
+
+/// Whether `head`, the line before the word being typed, leaves the cursor
+/// where a type goes: after a declaration's or parameter's `:`, after `->`,
+/// in `<..>` type arguments, or after the `?` of an optional type.
+fn type_position(line: &str, head: &str) -> bool {
+    let head = head.trim_end_matches('?').trim_end();
+    if head.ends_with("->") {
+        return true;
+    }
+    if let Some(before) = head.strip_suffix('<') {
+        return before.ends_with(is_ident);
+    }
+    if let Some(before) = head.strip_suffix(',') {
+        // `Map<Int, |`: the innermost open bracket is a `<`.
+        let mut depth = 0i32;
+        for c in before.chars().rev() {
+            match c {
+                '>' | ')' | ']' => depth += 1,
+                '(' | '[' if depth == 0 => return false,
+                '<' if depth == 0 => return true,
+                '<' | '(' | '[' => depth -= 1,
+                _ => {}
+            }
+        }
+        return false;
+    }
+    let Some(before) = head.strip_suffix(':') else {
+        return false;
+    };
+    let code = line.trim_start();
+    let decl = [
+        "let ",
+        "var ",
+        "const ",
+        "fn ",
+        "pub fn ",
+        "pub let ",
+        "pub const ",
+    ]
+    .iter()
+    .any(|kw| code.starts_with(kw));
+    // A field of a struct: an indented `name:` alone on its line.
+    let field = line.starts_with([' ', '\t']) && before.trim().chars().all(is_ident);
+    (decl && !before.contains('=')) || (field && !before.trim().is_empty())
 }
 
 /// The type the expression starting at `at` should have: the parameter it

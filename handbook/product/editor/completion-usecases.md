@@ -63,8 +63,8 @@ Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion
 ### complete/U11: a type
 Need: write an annotation, a parameter type, a return type or a generic argument.
 Design: the types in scope (built-in, the file's, imported, std not imported yet).
-Milestone: M1-critical. Status: partial (values are listed beside the types and ranked above them)
-Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases type/let, type/generic-arg, type/param, type/return, type/field, type/opt
+Milestone: M1-critical. Status: supported
+Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases type/let, type/generic-arg, type/param, type/return, type/field, type/opt; `crates/cpl-lsp/src/tests/complete.rs` (`completion_ranks_types_above_values_where_a_type_goes`)
 
 ### complete/U12: what fits comes first
 Need: the right name on top when many are offered.
