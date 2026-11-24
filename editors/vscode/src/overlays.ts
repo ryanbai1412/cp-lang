@@ -11,7 +11,6 @@ import {
     divergenceLabel,
     divergenceTitle,
     firstDifference,
-    SampleStatusOverlay,
     stageLabel,
     View,
     VIEW_KINDS,
@@ -83,11 +82,6 @@ export class Overlays implements vscode.Disposable {
     }
 
     /** Until `cpl run`'s sample verdicts come back as a view. */
-    setSampleStatus(uri: vscode.Uri, status: SampleStatusOverlay | undefined): void {
-        this.setView(uri, 'status', status && { panel: '', status });
-    }
-
-    /** Until `cpl stress` reports its marks as a view. */
     setCounterexample(uri: vscode.Uri, counterexample: Counterexample | undefined): void {
         this.setView(uri, 'stress', counterexample && counterexampleView(counterexample));
     }

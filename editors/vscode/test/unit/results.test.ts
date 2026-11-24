@@ -4,9 +4,7 @@ import {
     clip,
     counterexampleSummary,
     divergenceLabel,
-    diffOutput,
     firstDifference,
-    parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
     parseTestReport,
@@ -150,46 +148,6 @@ test('labels are clipped to the configured length', () => {
     const [agree, differ] = parseStressReport(FAIL)!.counterexample!.stages;
     assert.equal(stageLabel(agree, 60), 'fast = brute = [none, 1]');
     assert.equal(stageLabel(differ, 60), 'fast [0]  \u2260  brute [1]  \u2190 first difference');
-});
-
-test('diffOutput ignores trailing spaces and blank lines, and finds the first different line', () => {
-    assert.deepEqual(diffOutput('1 2 \n3\n\n', '1 2\n3'), { same: true });
-    assert.deepEqual(diffOutput('1\n2\n3\n', '1\n5\n3\n'), { same: false, line: 1, expected: '2', actual: '5' });
-    assert.deepEqual(diffOutput('1\n', '1\n2\n'), { same: false, line: 1, expected: undefined, actual: '2' });
-});
-
-test('parseCliDiagnostics extracts line, column, code and help from cpl stderr', () => {
-    const stderr = [
-        'cpl: the solution failed',
-        'error[E0301]: `deg` is indexed by V, but `e` is an E',
-        '  --> d.cp:7:17',
-        '  |',
-        '7 | let x = deg[e]',
-        '  |             ^',
-        '  = help: index with a V',
-        '',
-        'warning[W0002]: unused binding `tmp`',
-        '  --> d.cp:3:5',
-    ].join('\n');
-    assert.deepEqual(parseCliDiagnostics(stderr), [
-        {
-            severity: 'error',
-            code: 'E0301',
-            message: '`deg` is indexed by V, but `e` is an E',
-            file: 'd.cp',
-            line: 6,
-            col: 16,
-            help: 'index with a V',
-        },
-        {
-            severity: 'warning',
-            code: 'W0002',
-            message: 'unused binding `tmp`',
-            file: 'd.cp',
-            line: 2,
-            col: 4,
-        },
-    ]);
 });
 
 test('parseTestReport reads each case, with null fields left out', () => {

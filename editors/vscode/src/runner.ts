@@ -12,18 +12,13 @@ import { CplResult, EXIT_FAILED, EXIT_NOT_BUILT, missingCpl, runCpl } from './cp
 import { samplesOf } from './lenses';
 import { Overlays } from './overlays';
 import {
-    diffOutput,
-    parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
     viewOf,
     renderCounterexample,
-    RuntimeErrorOverlay,
 } from './results';
 import { Sample } from './samples';
 import { TraceView } from './traceView';
-
-type SampleOutcome = 'passed' | 'failed' | 'printed' | 'stopped';
 
 export class Runner {
     /** Only one background live-value run at a time per document. */
@@ -38,81 +33,46 @@ export class Runner {
 
     async runSample(uri?: vscode.Uri, sample?: Sample): Promise<void> {
         const document = await this.document(uri);
-        if (!document) {
-            return;
+        const chosen = document && (sample ?? (await this.pickSample(document)));
+        if (document && chosen !== undefined) {
+            await this.runSamples(document, chosen ? ['--case', chosen.label] : []);
         }
-        const chosen = sample ?? (await this.pickSample(document));
-        if (chosen === undefined) {
-            return;
-        }
-        this.output.show(true);
-        await this.runOne(document, chosen ?? undefined, { showValues: true, showStatus: true });
     }
 
     async runAllSamples(uri?: vscode.Uri): Promise<void> {
         const document = await this.document(uri);
-        if (!document) {
-            return;
+        const live = vscode.workspace.getConfiguration('cp').get<string>('liveValues.input', '');
+        if (document) {
+            await this.runSamples(document, live ? ['--values-of', live] : []);
         }
-        const samples = await samplesOf(document);
-        if (samples.length === 0) {
-            void vscode.window.showInformationMessage(
-                'No samples yet. Save an input as `i1` beside the file (and its output as `o1`), or place `N.in`/`N.out` files in `<file>.tests/`.',
-            );
-            return;
-        }
+    }
+
+    /** `cpl run --samples`: cpl runs and judges the samples and lays out what to show. */
+    private async runSamples(document: vscode.TextDocument, extra: string[]): Promise<void> {
         this.output.show(true);
-        this.overlays.setView(document.uri, 'error', undefined);
-        const counts: Record<SampleOutcome, number> = { passed: 0, failed: 0, printed: 0, stopped: 0 };
-        const shown = this.liveSample(samples);
-        const summaryLines: string[] = [];
-        await vscode.window.withProgress(
-            {
-                location: vscode.ProgressLocation.Window,
-                title: `CP: Running ${samples.length} samples...`,
-                cancellable: true,
-            },
+        const args = ['run', document.uri.fsPath, '--samples', '--format', 'json', ...extra];
+        const result = await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Window, title: 'CP: Running samples...', cancellable: true },
             async (_progress, token) => {
                 const controller = new AbortController();
                 const cancelSub = token.onCancellationRequested(() => controller.abort());
                 try {
-                    for (const sample of samples) {
-                        if (token.isCancellationRequested) {
-                            counts.stopped += 1;
-                            return;
-                        }
-                        const outcome = await this.runOne(document, sample, {
-                            showValues: sample === shown,
-                            showStatus: false,
-                            signal: controller.signal,
-                            onSummary: line => summaryLines.push(line),
-                        });
-                        counts[outcome] += 1;
-                        if (outcome === 'stopped') {
-                            return;
-                        }
-                    }
+                    return await this.cpl(document, args, 'cpl run', undefined, { allowRuntimeError: true, signal: controller.signal });
                 } finally {
                     cancelSub.dispose();
                 }
             },
         );
-        if (counts.stopped > 0) {
+        const view = result && viewOf(result.stdout);
+        if (!view) {
+            if (result) {
+                this.printRaw(result);
+            }
             return;
         }
-        const checked = counts.passed + counts.failed;
-        const summary =
-            checked > 0
-                ? `${counts.passed} of ${checked} samples passed` +
-                  (counts.printed > 0 ? `; ${counts.printed} had no expected output` : '')
-                : `ran ${counts.printed} samples; none has an expected output`;
-        this.output.appendLine(summary);
-        this.overlays.setSampleStatus(document.uri, {
-            line: 0,
-            ok: counts.failed === 0,
-            label: summary,
-            detail: summaryLines.join('\n') || undefined,
-        });
+        this.output.append(view.panel);
+        this.overlays.setView(document.uri, 'live', undefined);
+        this.overlays.setView(document.uri, 'status', view);
     }
 
     async stress(uri?: vscode.Uri, part?: string): Promise<void> {
@@ -168,15 +128,11 @@ export class Runner {
                     ? `stress: ${report.cases ?? 'all'} cases passed`
                     : 'stress: FAIL (the report has no counterexample)';
             this.output.appendLine(msg);
-            this.overlays.setSampleStatus(document.uri, {
-                line: 0,
-                ok: report.status === 'pass',
-                label: msg,
-            });
+            this.overlays.setView(document.uri, 'status', { panel: '', status: { line: 0, ok: report.status === 'pass', label: msg } });
             return;
         }
         this.output.appendLine(renderCounterexample(report.counterexample));
-        this.overlays.setSampleStatus(document.uri, undefined);
+        this.overlays.setView(document.uri, 'status', undefined);
         this.overlays.setCounterexample(document.uri, report.counterexample);
     }
 
@@ -267,7 +223,7 @@ export class Runner {
             return;
         }
         this.output.append(view.panel);
-        this.overlays.setSampleStatus(document.uri, view.status);
+        this.overlays.setView(document.uri, 'status', view);
         if (view.status.ok) {
             void vscode.window.showInformationMessage(view.status.label);
         } else {
@@ -335,112 +291,6 @@ export class Runner {
         return wanted === '' ? samples[0] : samples.find(sample => sample.label === wanted);
     }
 
-    private async runOne(
-        document: vscode.TextDocument,
-        sample: Sample | undefined,
-        options: {
-            showValues?: boolean;
-            showStatus?: boolean;
-            signal?: AbortSignal;
-            onSummary?: (line: string) => void;
-        } = {},
-    ): Promise<SampleOutcome> {
-        const showValues = options.showValues ?? true;
-        const showStatus = options.showStatus ?? false;
-        const label = sample?.label ?? 'no input';
-        const stdin = sample ? await this.read(document, sample.input) : '';
-        let result = await this.cpl(
-            document,
-            ['run', document.uri.fsPath, '--format', 'json', ...(sample ? ['--sample', sample.label] : [])],
-            `cpl run (${label})`,
-            stdin,
-            { allowUsageFallback: true, allowRuntimeError: true, signal: options.signal },
-        );
-        // Fall back to plain `cpl run <file>` when this `cpl` build doesn't accept `--format json` yet.
-        if (result && result.code === 2 && /takes a file|unknown option|--format/i.test(result.stderr)) {
-            result = await this.cpl(document, ['run', document.uri.fsPath], `cpl run (${label})`, stdin, {
-                allowRuntimeError: true,
-                signal: options.signal,
-            });
-        }
-        if (!result) {
-            return 'stopped';
-        }
-        const report = parseRunReport(result.stdout);
-        const stdout = report?.stdout ?? result.stdout;
-        const time = `${report?.timeMs ?? result.timeMs} ms`;
-        if (report && sample && showValues) {
-            this.overlays.setView(document.uri, 'live', report.view);
-        }
-        if (result.code !== 0 || report?.error) {
-            const parsed = extractRuntimeError(report?.error, result.stderr, label);
-            const error = report?.view?.diagnostic && { ...report.view, lines: report.view.lines?.filter(l => l.kind === 'error') };
-            this.overlays.setView(document.uri, 'error', error);
-            const summary = `${label}: runtime error (${time})`;
-            this.output.appendLine(summary);
-            this.output.appendLine(indent(report?.error?.message ?? result.stderr));
-            options.onSummary?.(`${summary}: ${parsed.message}`);
-            if (showStatus) {
-                this.overlays.setSampleStatus(document.uri, {
-                    line: 0,
-                    ok: false,
-                    label: `${label}: runtime error (${time})`,
-                    detail: report?.error?.message ?? result.stderr.trimEnd(),
-                });
-            }
-            return 'failed';
-        }
-        if (showStatus) {
-            this.overlays.setView(document.uri, 'error', undefined);
-        }
-        if (!sample?.expected) {
-            const summary = `${label}: ${time}`;
-            this.output.appendLine(summary);
-            this.output.appendLine(indent(stdout));
-            options.onSummary?.(summary);
-            if (showStatus) {
-                this.overlays.setSampleStatus(document.uri, {
-                    line: 0,
-                    ok: true,
-                    label: summary,
-                    detail: stdout.trimEnd() || '(empty output)',
-                });
-            }
-            return 'printed';
-        }
-        const diff = diffOutput(await this.read(document, sample.expected), stdout);
-        if (diff.same) {
-            const summary = `${label}: passed (${time})`;
-            this.output.appendLine(summary);
-            options.onSummary?.(summary);
-            if (showStatus) {
-                this.overlays.setSampleStatus(document.uri, {
-                    line: 0,
-                    ok: true,
-                    label: summary,
-                    detail: stdout.trimEnd() || '(empty output)',
-                });
-            }
-            return 'passed';
-        }
-        const failSummary = `${label}: FAILED at output line ${diff.line! + 1} (${time})`;
-        const expectedLine = `expected: ${diff.expected ?? '(no more lines)'}`;
-        const actualLine = `actual:   ${diff.actual ?? '(no more lines)'}`;
-        this.output.appendLine(failSummary);
-        this.output.appendLine(`  ${expectedLine}`);
-        this.output.appendLine(`  ${actualLine}`);
-        options.onSummary?.(`${failSummary} (${expectedLine}, ${actualLine})`);
-        if (showStatus) {
-            this.overlays.setSampleStatus(document.uri, {
-                line: 0,
-                ok: false,
-                label: failSummary,
-                detail: `${expectedLine}\n${actualLine}`,
-            });
-        }
-        return 'failed';
-    }
-
     /**
      * Runs `cpl`. Returns undefined, after telling the user why, when the
      * command could not do its work at all: no binary, the source has errors,
@@ -496,7 +346,7 @@ export class Runner {
         // `cpl` prints diagnostics on stderr and nothing on stdout when the source has errors.
         if (result.code !== 0 && result.stdout.trim() === '') {
             this.output.appendLine(`${what}:`);
-            this.output.appendLine(indent(result.stderr));
+            this.output.appendLine(result.stderr.trimEnd().replace(/^/gm, '  '));
             return undefined;
         }
         return result;
@@ -538,47 +388,4 @@ export class Runner {
         const file = vscode.Uri.file(path.join(path.dirname(document.uri.fsPath), source.file));
         return Buffer.from(await vscode.workspace.fs.readFile(file)).toString('utf8');
     }
-}
-
-function extractRuntimeError(
-    reportError: { line?: number; message: string } | undefined,
-    stderr: string,
-    sample: string,
-): RuntimeErrorOverlay {
-    if (reportError) {
-        return {
-            line: reportError.line ?? 0,
-            message: reportError.message,
-            sample,
-        };
-    }
-    const diagnostics = parseCliDiagnostics(stderr);
-    const first = diagnostics.find(d => d.severity === 'error') ?? diagnostics[0];
-    if (first) {
-        return {
-            line: first.line ?? 0,
-            col: first.col,
-            code: first.code,
-            message: first.message,
-            help: first.help,
-            sample,
-        };
-    }
-    const firstLine = stderr
-        .trim()
-        .split(/\r?\n/)
-        .find(line => line.trim() !== '');
-    return {
-        line: 0,
-        message: firstLine ?? 'runtime error',
-        sample,
-    };
-}
-
-function indent(text: string): string {
-    return text
-        .trimEnd()
-        .split('\n')
-        .map(line => '  ' + line)
-        .join('\n');
 }
