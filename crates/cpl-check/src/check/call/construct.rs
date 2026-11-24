@@ -82,6 +82,10 @@ impl Checker<'_> {
             self.push_scope();
             self.bind_whole(&clause.pat, &elem, false, "for");
             let got = self.infer(body);
+            if want.is_none() {
+                // `T(gen() for _ in fields(T))`: each field's own type, known per `T`.
+                self.gens_given_a_type.insert(body.span);
+            }
             if let (Some(i), Some(fields)) = (i, want) {
                 let field = &fields[i];
                 self.expect_fits(&got, &field.ty, body, &|c, got, want| {

@@ -226,6 +226,7 @@ impl<'a> Lowerer<'a> {
             }
             return Some(z);
         };
+        self.want_written(init.span, ty);
         if is_read_call(init) {
             let mut spec = spec;
             if let ast::ExprKind::Call { args, .. } = &init.kind {

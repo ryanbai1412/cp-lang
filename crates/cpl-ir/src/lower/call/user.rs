@@ -1662,6 +1662,18 @@ impl<'a> Lowerer<'a> {
                 };
                 self.bind(&clause.pat, value, &mut stmts);
             }
+            if let Ty::Struct(id) = own {
+                if let Some(field) = self.structs[id].decl.and_then(|d| d.fields.get(i)) {
+                    let s = &self.structs[id];
+                    self.want_written = Some((
+                        body.span,
+                        field.ty.clone(),
+                        s.mod_id,
+                        s.offset,
+                        s.env.clone(),
+                    ));
+                }
+            }
             let v = self.expr_as(body, fty);
             let range = match &own {
                 Ty::Struct(id) => self

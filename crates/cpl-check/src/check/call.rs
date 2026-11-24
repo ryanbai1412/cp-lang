@@ -57,10 +57,41 @@ impl<'a> Checker<'a> {
         let ExprKind::Name(name) = &callee.kind else {
             return;
         };
-        let reads = (name == "read" && args.is_empty()) || name == "ask";
+        let reads = (matches!(name.as_str(), "read" | "gen") && args.is_empty())
+            || name == "ask"
+            || self.returns_only_its_own_param(name);
         if reads && self.local(name).is_none() && !want.is_vague() && *want != Ty::Error {
+            if name == "gen" {
+                self.gens_given_a_type.insert(value.span);
+            }
             self.exprs.types.push((value.span, want.clone()));
         }
+    }
+
+    /// Whether `name` is a generic fn whose result is a type parameter none of
+    /// its parameters names, `fn mk<T: Default>() -> T`: only the type its
+    /// value goes to can bind it.
+    fn returns_only_its_own_param(&mut self, name: &str) -> bool {
+        let Some(Def::Fn {
+            ty: Ty::Fn { params, ret },
+            generics,
+            ..
+        }) = self.global(name).as_deref().cloned()
+        else {
+            return false;
+        };
+        let Ty::Param(p) = &*ret else {
+            return false;
+        };
+        let names_p = |t: &Ty| {
+            let mut hit = false;
+            t.map(&mut |x| {
+                hit |= matches!(x, Ty::Param(q) if q == p);
+                None
+            });
+            hit
+        };
+        generics.contains(p) && !params.iter().any(|q| names_p(&q.ty))
     }
 
     /// [`Checker::narrowed`], after [`Checker::note_read`] on `at`.
@@ -1636,6 +1667,14 @@ impl<'a> Checker<'a> {
                     }
                 }
                 Ty::Error
+            }
+            // `T(read() for _ in fields(T))` in a fn generic over `T` makes a `T`.
+            _ if let ExprKind::Name(n) = &callee.kind
+                && self.local(n).is_none()
+                && self.generics.iter().any(|g| g == n) =>
+            {
+                self.plain_args(args);
+                Ty::Param(n.clone())
             }
             _ => {
                 self.plain_args(args);

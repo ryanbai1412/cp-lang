@@ -450,7 +450,7 @@ impl<'a> Lowerer<'a> {
                     out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
                 })
             }
-            "gen" => self.gen_call(None, args, span),
+            "gen" => self.gen_wanted(args, hint, span),
             "rand" => match self.positional_any(name, args, 2, span) {
                 Some(exprs) => {
                     let lo = self.expr_as(exprs[0], &Ty::Int);

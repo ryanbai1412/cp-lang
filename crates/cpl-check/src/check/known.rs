@@ -142,6 +142,9 @@ impl<'a> Checker<'a> {
         if self.local(name).is_some() || (self.free_global(name).is_some() && shadowed) {
             return None;
         }
+        if name == "gen" && args.is_empty() && matches!(callee.kind, ExprKind::Name(_)) {
+            self.bare_gens.push(call.span);
+        }
         let tys: Vec<Ty> = args
             .iter()
             .map(|arg| self.quietly(|c| c.infer(&arg.value)))

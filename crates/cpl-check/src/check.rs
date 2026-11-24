@@ -224,7 +224,7 @@ pub struct GlobalRef {
 
 /// What `Checker::quietly` puts back after its probe.
 struct Hushed {
-    lens: [usize; 7],
+    lens: [usize; 8],
     exprs: [usize; 6],
     moved: crate::names::NameMap<Span>,
     lambda_params: Vec<(Span, Vec<Ty>)>,
@@ -242,6 +242,10 @@ pub(crate) struct Checker<'a> {
     /// `s` to the caller's place, so it is mutable.
     opt_mut_params: crate::fx::HashSet<Span>,
     generics: Vec<String>,
+    /// Each bare `gen()`, and those [`Checker::note_read`] gave a type: the
+    /// rest have no type to draw (E0501).
+    bare_gens: Vec<Span>,
+    gens_given_a_type: crate::fx::HashSet<Span>,
     /// The `type` aliases whose right side is being resolved, innermost last.
     defining_aliases: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
@@ -367,6 +371,8 @@ impl<'a> Checker<'a> {
             scopes: scopes::Scopes::default(),
             opt_mut_params: Default::default(),
             generics: Vec::new(),
+            bare_gens: Vec::new(),
+            gens_given_a_type: Default::default(),
             defining_aliases: Vec::new(),
             param_bounds: Vec::new(),
             param_bound_args: Vec::new(),
@@ -549,6 +555,11 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn finish(mut self) -> Checked {
+        for span in std::mem::take(&mut self.bare_gens) {
+            if !self.gens_given_a_type.contains(&span) {
+                self.report(span, cpl_diag::msgs::ir::GEN_TAKES, &[]);
+            }
+        }
         let resolved = self.with_chosen_methods();
         Checked {
             diagnostics: self.sink.finish(),
@@ -649,6 +660,7 @@ impl<'a> Checker<'a> {
                 self.fixed_io.len(),
                 self.io_costs.len(),
                 self.lends.conflicts.len(),
+                self.bare_gens.len(),
             ],
             exprs: self.exprs.mark(),
             moved: self.moved.clone(),
@@ -660,7 +672,8 @@ impl<'a> Checker<'a> {
 
     #[inline(never)]
     fn unhush(&mut self, kept: Hushed) {
-        let [hovers, refs, typed, resolved, fixed, io, conflicts] = kept.lens;
+        let [hovers, refs, typed, resolved, fixed, io, conflicts, gens] = kept.lens;
+        self.bare_gens.truncate(gens);
         self.sink = kept.sink;
         self.moved = kept.moved;
         self.lambda_params = kept.lambda_params;

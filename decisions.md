@@ -9312,6 +9312,7 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** A fn declares the names another language gives it, `@aka(upper, toUpperCase, uppercase)` above `pub fn to_upper(self: Str)`; the checker builds its foreign-name fixes for a receiver type from these decorators, and the `foreign_str_fn` name table in the compiler is deleted. `to_lower`, `to_upper`, `trim`, `trim_start` and `trim_end` move first. Compiler ruling of 2026-11-24.
 - **Why.** No privileged stdlib: a std name the compiler spells is one a user library cannot match; `@aka` is the sibling of `@was` (older std names) and any library may write it. Diagnostics are unchanged.
 - **Reverse.** Restore the table in `builtins/foreign.rs` and drop the decorator.
+## 633. (reserved, compiler)
 
 ## 634. (reserved, site)
 
@@ -9322,3 +9323,8 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 ## 637. (reserved, compiler)
 
 ## 638. (reserved, compiler)
+## 632. A bare `gen()` takes its type from where it goes; `gen_fields` closes GAPS:12 (stdlib, 2026-11-24)
+
+- **Call.** `gen()` with no type and no range draws the type its value goes to, as a generic fn's return-only type parameter binds from the expected type (the lowerer's `call_hint`): the type a `let` declares (`let x: 1..=9 = gen()`), each field's written type in a `fields` constructor, else the type the context wants. With no such type, the checker reports E0501 (it had typed the call `Unknown` and left the error to lowering). The checker binds the same way: a call to a fn whose result is a type parameter none of its parameters names (`fn mk<T: Default>() -> T`) takes the type its value goes to, and `T(.. for _ in fields(T))` in a fn generic over `T` is a `T`, so silent unknowns fall rather than grow. That lets std write `gen_fields<T>() -> T = T(gen() for _ in fields(T))` beside `read_fields`, so a struct's whole `Random` is `fn gen() -> P = gen_fields<P>()`. GAPS:12 closes: the trait is std's `Random` (decision 587), so no compiler table names a `Gen` that std would overlap, and std_gaps goes 4 -> 3. Core's ruling of 2026-11-24.
+- **Why.** Coherent stdlib: `read()` and `gen()` both take their type from where the value goes, and the field-wise derive is plain std on `fields` like the other derives. `read()` keeps its own I/O arms (`none:`, `from:`, fixed-size reads), which are about input layout, not about inferring a type.
+- **Reverse.** Drop the bare-`gen()` arm (`Lowerer::gen_wanted`) and `gen_fields`; callers write `gen<T>()` per field.

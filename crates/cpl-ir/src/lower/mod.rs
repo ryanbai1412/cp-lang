@@ -816,6 +816,11 @@ struct Lowerer<'a> {
     /// The range ends of the owner struct's parameters for the generic method
     /// call being lowered: `Monoid<T>.of(max)` with `T` a `1..=9` sees `T.MIN == 1`.
     owner_ranges: Vec<(String, GenArg)>,
+    /// The type written where a call's value goes, for a call that takes its
+    /// type from there (`let x: 1..=9 = gen()`, a field in `T(gen() for _ in
+    /// fields(T))`): the call's span, the type, and the module, offset and
+    /// generics it was written in.
+    want_written: Option<(Span, ast::Type, ModId, u32, GenEnv)>,
     self_struct: Option<StructId>,
     /// The trait fns a law being lowered names unqualified (`LawInfo::trait_fns`).
     law_fns: Vec<String>,
@@ -955,6 +960,7 @@ impl<'a> Lowerer<'a> {
             gen_env: HashMap::new(),
             call_hint: (None, None),
             owner_ranges: Vec::new(),
+            want_written: None,
             self_struct: None,
             law_fns: Vec::new(),
             default_trait_fns: HashMap::new(),

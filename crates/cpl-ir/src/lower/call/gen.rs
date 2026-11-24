@@ -6,6 +6,46 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// `gen()` with no type: a value of the type its value goes to, as a
+    /// generic fn's return-only type parameter binds (`let x: 1..=9 = gen()`).
+    pub(in crate::lower) fn gen_wanted(
+        &mut self,
+        args: &[ast::Arg],
+        hint: Option<&Ty>,
+        span: Span,
+    ) -> Expr {
+        let written = self.want_written.take().filter(|w| w.0 == span);
+        if !args.is_empty() {
+            return self.gen_call(None, args, span);
+        }
+        if let Some((_, ty, m, off, env)) = written {
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, off),
+                std::mem::replace(&mut self.gen_env, env),
+            );
+            let value = self.gen_call(Some(&ty), args, span);
+            (self.cur_mod, self.offset, self.gen_env) = saved;
+            return value;
+        }
+        match hint.filter(|t| !matches!(t, Ty::Unit | Ty::Error)) {
+            Some(want) => self.gen_param(GenArg::Ty(want.clone()), args, span),
+            None => self.gen_call(None, args, span),
+        }
+    }
+
+    /// Notes `ty` as the type written where `value` goes, for a call there
+    /// that takes its type from it.
+    pub(in crate::lower) fn want_written(&mut self, at: Span, ty: &ast::Type) {
+        self.want_written = Some((
+            at,
+            ty.clone(),
+            self.cur_mod,
+            self.offset,
+            self.gen_env.clone(),
+        ));
+    }
+
     pub(in crate::lower) fn gen_call(
         &mut self,
         ty: Option<&ast::Type>,
