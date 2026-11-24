@@ -32,7 +32,6 @@ fn staircase(best: [0..=extra]?Int) -> Steps:
 
 fn plan(u: Switch) -> [Switch]Steps:
     let kids = tree.children(u).sorted(by: c => desc(tree.size(c)))
-    let near = Switch.sort(by: a => dist[u, a])
     let kid_plans = [(c, plan(c)) for c in kids]
     let alone: [Switch]Steps = [Switch] v =>
         var best: [0..=extra]?Int = None
@@ -50,7 +49,7 @@ fn plan(u: Switch) -> [Switch]Steps:
         staircase(best)
     var out: [Switch]Steps = []
     var closer: [0..=extra]?Int = None
-    for a in near:
+    for a in Switch.sort(by: a => dist[u, a]):
         var at_a: [0..=extra]?Int = None
         for s in alone[a]: at_a[s.cores] = s.cost
         for j in 1..=extra: at_a[j] min= at_a[j - 1]
