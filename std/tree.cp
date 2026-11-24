@@ -133,12 +133,13 @@ pub struct Rooted<V, Pre>:
         for v in V:
             if let p = par[v]: kids[p].push(v)
             else: roots.push(v)
-        var queue = roots.clone()
-        var i = 0
-        while i < queue.len:
-            for c in kids[queue[i]]: queue.push(c)
-            i += 1
-        if roots.len > 0 and queue.len == V.count: Some(Rooted.build(kids, roots)) else: None
+        // a cycle in `par` is a set of vertices no root reaches
+        var todo = roots.clone()
+        var reached = 0
+        while let u = todo.pop():
+            reached += 1
+            for c in kids[u]: todo.push(c)
+        if roots.len > 0 and reached == V.count: Some(Rooted.build(kids, roots)) else: None
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// A spanning forest: walks `from` as `dfs` does, skipping a root already reached, then roots
