@@ -3,7 +3,7 @@
 
     new_reds.py [--base REV] -- CMD...
 
-A land is refused for the reds it brings, not for main's own (Perf C's
+A land is refused for the reds it brings, not for main's own (ci/R40; Perf C's
 -Wredundant-move fix was refused for 4 tests red on clean main). CMD runs
 as given. When it fails, each test its FAIL lines name is run again at the
 base (default HEAD, which the commit tier stages against) in a scratch
