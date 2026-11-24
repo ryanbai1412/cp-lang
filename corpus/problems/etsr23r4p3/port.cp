@@ -30,9 +30,7 @@ for mask in Subset<V>:
         for v1 in mask:
             var ways: U64 = 1
             for c in tree.children(u):
-                var near: U64 = 0
-                for v2 in adj[v1] & mask: near += dp[c, v2]
-                ways *= near
+                ways *= sum(dp[c, v2] for v2 in adj[v1] & mask)
             dp[u, v1] = ways
     let total = sum(dp[V.first!, v] for v in mask)
     if (n - mask.len) % 2 == 0: ans += total else: ans -= total
