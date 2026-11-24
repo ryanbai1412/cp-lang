@@ -69,6 +69,11 @@ use std::sync::Arc;
 pub(crate) trait Env {
     /// The definition of a top-level name.
     fn global(&mut self, name: &str) -> Option<Arc<Def>>;
+    /// The public trait `name` of a module this file reaches, past a value or
+    /// variant of that name the file declares.
+    fn imported_def(&mut self, _name: &str) -> Option<Arc<Def>> {
+        None
+    }
     /// The module a top-level `name` comes from (`std.seq`), or `None` when
     /// this file declares it.
     fn origin(&mut self, _name: &str) -> Option<String> {
@@ -470,6 +475,17 @@ impl<'a> Checker<'a> {
             Some(def) => Some(def.clone()),
             None => self.env.global(name),
         }
+    }
+
+    /// `name` where only a trait can stand (an impl's trait, a bound): this file's
+    /// trait, else the one it reaches, so a value or variant named `Random` can't hide it.
+    pub(crate) fn trait_global(&mut self, name: &str) -> Option<Arc<Def>> {
+        let is_trait = |d: &Arc<Def>| matches!(&**d, Def::Trait { .. });
+        let first = self.global(name);
+        if first.as_ref().is_none_or(is_trait) {
+            return first;
+        }
+        self.env.imported_def(name).filter(is_trait).or(first)
     }
 
     /// `name` as a plain call: a `@get` fn is read as `.name` (R06.4.2), so it
