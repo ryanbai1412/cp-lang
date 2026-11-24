@@ -282,8 +282,8 @@ if [ "$mode" = timing ]; then
 fi
 
 # CI splits --fast across parallel jobs (.github/workflows/ci.yml):
-# CPL_GATE_PART=checks runs everything but the workspace tests and the
-# conformance ratchet, CPL_GATE_PART=conform runs the ratchet and the script
+# CPL_GATE_PART=checks runs everything but the workspace tests, the
+# conformance ratchet and fmt_check (CPL_GATE_PART=fmt), CPL_GATE_PART=conform runs the ratchet and the script
 # unit tests (CPL_GATE_PART=conform:<suite+...> runs only those suites, the
 # script tests with the conformance suite; a trailing @N/M passes --shard N/M), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
 # runs only that share of the tests, plus the doctests in share 1. Unset runs
@@ -338,7 +338,22 @@ case "$gate_part" in
         printf '\ncheck: test partition %s passed in %ss\n' "$part" "$(( $(date +%s) - gate_t0 ))"
         exit 0
         ;;
-    *) fail "unknown CPL_GATE_PART \`$gate_part\` (checks, conform or tests:<partition>)" ;;
+    fmt)
+        [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
+        step "cpl fmt is idempotent and keeps meaning on every .cp file"
+        if cache_hit fmt_corpus; then
+            echo "cached (tree unchanged outside its excludes)"
+        else
+            cargo build -q -p cpl-cli
+            scripts/fmt_check.py --cpl "$cpl" \
+                || fail "cpl fmt is unstable or changes meaning; rerun: scripts/fmt_check.py"
+            cache_save fmt_corpus
+        fi
+        step_end
+        printf '\ncheck: fmt part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
+        exit 0
+        ;;
+    *) fail "unknown CPL_GATE_PART \`$gate_part\` (checks, fmt, conform or tests:<partition>)" ;;
 esac
 
 if [ "$mode" = land ]; then
@@ -478,7 +493,9 @@ fmt_pid=""
 # fmt(fmt(x)) == fmt(x) on every tracked .cp file, and formatting changes
 # no file's check result or interpreter output.
 fmt_cached=0
-if cache_hit fmt_corpus; then
+if [ "$gate_part" = checks ]; then
+    fmt_cached=2
+elif cache_hit fmt_corpus; then
     fmt_cached=1
 else
     scripts/fmt_check.py --cpl "$cpl" >"$lib_logs/fmt_corpus.log" 2>&1 &
@@ -563,7 +580,9 @@ prelude=$(sed 's://.*::' std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',
 echo "prelude: $prelude names"
 
 step "cpl fmt is idempotent and keeps meaning on every .cp file"
-if [ "$fmt_cached" -eq 1 ]; then
+if [ "$fmt_cached" -eq 2 ]; then
+    echo "skipped: the CI fmt part runs it (CPL_GATE_PART=checks)"
+elif [ "$fmt_cached" -eq 1 ]; then
     echo "cached (tree unchanged outside its excludes)"
 else
     fmt_status=0
