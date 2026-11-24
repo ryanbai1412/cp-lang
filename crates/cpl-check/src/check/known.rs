@@ -228,6 +228,7 @@ impl<'a> Checker<'a> {
             ("all" | "any", [_]) if generator => Some(Ty::Bool),
             ("abs", [Ty::Int | Ty::Range { .. }]) => Some(Ty::Int),
             ("abs", [t @ (Ty::I128 | Ty::Float)]) => Some(t.clone()),
+            ("copy", [t]) if args[0].name.is_none() => Some(t.clone()),
             // `first(xs)`, `last(xs, x => x > 3)`: the free form of the members, an optional.
             ("first" | "last", [over, ..])
                 if args.len() <= 2

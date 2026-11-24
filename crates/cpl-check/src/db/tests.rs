@@ -327,6 +327,31 @@ fn forms_typed_by_where_they_go_are_never_silent() {
     assert_eq!(silent_unknowns_of(src), (vec![], 0));
 }
 
+/// `x.clone()` and `copy(x)` are separate values of `x`'s own type, for every
+/// owning collection and on a lent param as on a local.
+#[test]
+fn a_clone_or_copy_has_its_sources_type() {
+    let src = "fn f(a: List<Int>, s: Str, m: Map<Int, Int>, t: Set<Int>) -> Int:\n    let (a2, s2, m2, t2) = (a.clone(), s.clone(), m.clone(), t.clone())\n    let (a3, s3, m3, t3) = (copy(a), copy(s), copy(m), copy(t))\n    a2.len + s2.len + m2.len + t2.len + a3.len + s3.len + m3.len + t3.len\nvar b = [1, 2].clone()\nb.push(3)\nvar c = copy(b)\nc.push(4)\nprint(f(b, \"ab\", [1: 2], Set<Int>()), b.len, c.len)\n";
+    let mut db = Database::new();
+    db.set_file("main.cp", src);
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    for (name, ty) in [
+        ("a3", "List<Int>"),
+        ("s3", "Str"),
+        ("m3", "Map<Int, Int>"),
+        ("t3", "Set<Int>"),
+    ] {
+        let at = src.find(&format!("{name}.len")).unwrap() as u32;
+        let hover = db.hover("main.cp", at).map(|h| h.text);
+        assert!(
+            hover
+                .as_deref()
+                .is_some_and(|h| h.contains(&format!("{name}: {ty}"))),
+            "{name}: {hover:?}"
+        );
+    }
+}
+
 #[test]
 fn a_bound_reaches_its_supers_methods_typed() {
     // `Tall: Height<Int>` reaches `height` as `Int`; `Table<U>: Positional<U>`
