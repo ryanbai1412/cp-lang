@@ -1817,15 +1817,18 @@ impl<'a> Lowerer<'a> {
                 // subsequent arguments (like `0` for `Mod<M>`) get the element type as hint.
                 if gen_names.iter().any(|g| g == "T") && !inferred.contains_key("T") {
                     let elem_ty = decl.bounds.iter().find_map(|b| {
+                        // `A: Indexed<K, U>` names its element `U`, not `T`.
                         let is_seq_bound = b.traits.iter().any(|tr| {
-                            matches!(&tr.kind, ast::TypeKind::Named { name, .. }
-                                if matches!(name.text.as_str(), "Seq" | "Keyed" | "Bidir" | "Indexed" | "IndexedMut"))
+                            matches!(&tr.kind, ast::TypeKind::Named { name, args }
+                                if matches!(name.text.as_str(), "Seq" | "Keyed" | "Bidir" | "Indexed" | "IndexedMut")
+                                    && args.last().is_none_or(|a| ty_mentions(a, "T")))
                         });
                         if !is_seq_bound {
                             return None;
                         }
                         match inferred.get(&b.name.text) {
                             Some(GenArg::Ty(t)) => t.seq_elem(),
+                            Some(GenArg::Domain(d)) => Some(Ty::Pos(*d)),
                             _ => None,
                         }
                     });
@@ -1918,9 +1921,12 @@ impl<'a> Lowerer<'a> {
         }
 
         // `S: Indexed<K, T>`: `K` is what `S` is keyed by and `T` its element (R04b.5.3).
+        // A domain passed as `S` is the sequence of its positions.
         for b in &decl.bounds {
-            let Some(GenArg::Ty(seq)) = inferred.get(&b.name.text).cloned() else {
-                continue;
+            let (key, elem) = match inferred.get(&b.name.text) {
+                Some(GenArg::Ty(seq)) => (seq.seq_key(), seq.seq_elem()),
+                Some(GenArg::Domain(d)) => (None, Some(Ty::Pos(*d))),
+                _ => continue,
             };
             for tr in &b.traits {
                 let ast::TypeKind::Named { name, args: targs } = &tr.kind else {
@@ -1940,7 +1946,7 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 };
                 let (k, t) = (free(targs.first()), free(targs.get(1)));
-                match (k, seq.seq_key()) {
+                match (k, key) {
                     (Some(k), Some(Dim::Pos(d))) => {
                         inferred.insert(k, GenArg::Domain(d));
                     }
@@ -1949,7 +1955,7 @@ impl<'a> Lowerer<'a> {
                     }
                     _ => {}
                 }
-                if let (Some(t), Some(elem)) = (t, seq.seq_elem()) {
+                if let (Some(t), Some(elem)) = (t, elem.clone()) {
                     inferred.insert(t, GenArg::Ty(elem));
                 }
             }
