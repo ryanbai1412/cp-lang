@@ -2560,11 +2560,291 @@
    "n": 2048,
    "ok": true
   },
+  "bench/scaling/fenwick.cp::fenwick.DualFenwick.add": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.DualFenwick.add",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.DualFenwick.clear": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.DualFenwick.clear",
+   "measured": 4.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.DualFenwick.get": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.DualFenwick.get",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.DualFenwick.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.DualFenwick.new",
+   "measured": 4.17,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.add": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.add",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "fenwick.Fenwick.all",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.clear": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.Fenwick.clear",
+   "measured": 3.79,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.first_ge": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.first_ge",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.first_gt": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.first_gt",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.fold": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.fold",
+   "measured": 1.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.get": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.get",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.kth": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.kth",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/fenwick.cp::fenwick.Fenwick.new": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "fenwick.Fenwick.new",
-   "measured": 3.86,
+   "measured": 4.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.prefix": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.prefix",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.set": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.set",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.suffix": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick.suffix",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick2D.add": {
+   "cost": "\\log \\lvert R \\rvert \\log \\lvert C \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick2D.add",
+   "measured": 1.44,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick2D.clear": {
+   "cost": "\\lvert R \\rvert \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.Fenwick2D.clear",
+   "measured": 6.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick2D.fold": {
+   "cost": "\\log \\lvert R \\rvert \\log \\lvert C \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick2D.fold",
+   "measured": 1.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick2D.get": {
+   "cost": "\\log \\lvert R \\rvert \\log \\lvert C \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick2D.get",
+   "measured": 1.31,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick2D.new": {
+   "cost": "\\lvert R \\rvert \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.Fenwick2D.new",
+   "measured": 5.92,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick2D.prefix": {
+   "cost": "\\log \\lvert R \\rvert \\log \\lvert C \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.Fenwick2D.prefix",
+   "measured": 1.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.RangeFenwick.add": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.RangeFenwick.add",
+   "measured": 1.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.RangeFenwick.clear": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.RangeFenwick.clear",
+   "measured": 4.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.RangeFenwick.fold": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.RangeFenwick.fold",
+   "measured": 1.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.RangeFenwick.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.RangeFenwick.new",
+   "measured": 4.77,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.RangeFenwick.prefix": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.RangeFenwick.prefix",
+   "measured": 1.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.SparseFenwick2D.add": {
+   "cost": "\\log^2 n",
+   "documented": 1.31,
+   "fn": "fenwick.SparseFenwick2D.add",
+   "measured": 1.42,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.SparseFenwick2D.add_point": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "fenwick.SparseFenwick2D.add_point",
+   "measured": 0.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.SparseFenwick2D.build": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "fenwick.SparseFenwick2D.build",
+   "measured": 4.7,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.SparseFenwick2D.fold": {
+   "cost": "\\log^2 n",
+   "documented": 1.31,
+   "fn": "fenwick.SparseFenwick2D.fold",
+   "measured": 1.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.SparseFenwick2D.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "fenwick.SparseFenwick2D.new",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.XorFenwick.add": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.XorFenwick.add",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.XorFenwick.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.XorFenwick.new",
+   "measured": 4.2,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.XorFenwick.prefix": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.XorFenwick.prefix",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/fenwick.cp::fenwick.XorFenwick.xor": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "fenwick.XorFenwick.xor",
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -5008,6 +5288,326 @@
    "n": 2048,
    "ok": true
   },
+  "bench/scaling/marks.cp::marks.Arena.alloc": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.alloc",
+   "measured": 0.87,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Arena.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.clear",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Arena.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.get",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Arena.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.is_empty",
+   "measured": 0.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Arena.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.len",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Arena.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.new",
+   "measured": 0.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Arena.reserve": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "marks.Arena.reserve",
+   "measured": 5.51,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Arena.set": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.set",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.clear",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.contains",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.get",
+   "measured": 1.13,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.id": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.id",
+   "measured": 1.54,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.is_empty",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.key": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.key",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.len",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.new",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Interner.reserve": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "marks.Interner.reserve",
+   "measured": 6.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.MarkMap.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.MarkMap.clear",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.MarkMap.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.MarkMap.contains",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.MarkMap.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.MarkMap.get",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.MarkMap.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.MarkMap.is_empty",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.MarkMap.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.MarkMap.len",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.MarkMap.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "marks.MarkMap.new",
+   "measured": 4.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.MarkMap.remove": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.MarkMap.remove",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.MarkMap.set": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.MarkMap.set",
+   "measured": 1.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Marks.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Marks.add",
+   "measured": 0.9,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Marks.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Marks.clear",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Marks.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Marks.contains",
+   "measured": 0.86,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Marks.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Marks.is_empty",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Marks.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Marks.len",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Marks.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "marks.Marks.new",
+   "measured": 4.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.Marks.remove": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Marks.remove",
+   "measured": 0.9,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.SparseSet.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.SparseSet.add",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.SparseSet.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.SparseSet.clear",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.SparseSet.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.SparseSet.contains",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.SparseSet.each": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "marks.SparseSet.each",
+   "measured": 3.91,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.SparseSet.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.SparseSet.is_empty",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.SparseSet.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.SparseSet.len",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.SparseSet.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "marks.SparseSet.new",
+   "measured": 4.13,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks.cp::marks.SparseSet.remove": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.SparseSet.remove",
+   "measured": 0.94,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/mat.cp::matrix.Mat.adjugate": {
    "cost": "n^3",
    "documented": 64.0,
@@ -6598,6 +7198,238 @@
    "fn": "poly.Poly.zero",
    "measured": 0.98,
    "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.ArithDiff.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.ArithDiff.add",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.ArithDiff.add_arith": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.ArithDiff.add_arith",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.ArithDiff.finish": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.ArithDiff.finish",
+   "measured": 4.44,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.ArithDiff.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.ArithDiff.new",
+   "measured": 4.38,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Diff.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Diff.add",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Diff.finish": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Diff.finish",
+   "measured": 4.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Diff.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Diff.new",
+   "measured": 4.34,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.FillPrefix.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix.at",
+   "measured": 1.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.FillPrefix.cut": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix.cut",
+   "measured": 1.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.FillPrefix.fold": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix.fold",
+   "measured": 1.13,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.FillPrefix.prefix": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix.prefix",
+   "measured": 1.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.FillPrefix.set": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix.set",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix.all",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix.at",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.cut": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix.cut",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.cyclic_sum": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix.cyclic_sum",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.filling": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Prefix.filling",
+   "measured": 4.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.first_ge": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "prefix.Prefix.first_ge",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.first_gt": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "prefix.Prefix.first_gt",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.fold": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix.fold",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Prefix.new",
+   "measured": 4.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.prefix": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix.prefix",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix.suffix": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix.suffix",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.SweepAdd.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.SweepAdd.add",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.SweepAdd.advance": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.SweepAdd.advance",
+   "measured": 1.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.SweepAdd.current": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.SweepAdd.current",
+   "measured": 1.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.SweepAdd.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.SweepAdd.new",
+   "measured": 4.29,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.prefix_fold": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "prefix.prefix_fold",
+   "measured": 4.56,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.scan": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "prefix.scan",
+   "measured": 4.0,
+   "n": 16384,
    "ok": true
   },
   "bench/scaling/rand.cp::rand.Rng.chance": {
@@ -9885,6 +10717,8 @@
   "bag.SortedSet.take",
   "bag.SortedSet.to_list",
   "bitset.BitTrie.each",
+  "bitset.BitTrieArena.new",
+  "bitset.BitTrieArena.node_count",
   "bitset.XorTrie.each",
   "builtin.Array.all",
   "builtin.Array.any",
@@ -10064,41 +10898,10 @@
   "dp.subset_folds",
   "dp.subset_sums",
   "dp.supermasks",
-  "fenwick.DualFenwick.add",
-  "fenwick.DualFenwick.clear",
-  "fenwick.DualFenwick.get",
-  "fenwick.DualFenwick.new",
-  "fenwick.Fenwick.add",
-  "fenwick.Fenwick.all",
-  "fenwick.Fenwick.clear",
-  "fenwick.Fenwick.first_ge",
-  "fenwick.Fenwick.first_gt",
-  "fenwick.Fenwick.fold",
-  "fenwick.Fenwick.get",
-  "fenwick.Fenwick.kth",
-  "fenwick.Fenwick.prefix",
-  "fenwick.Fenwick.set",
-  "fenwick.Fenwick.suffix",
-  "fenwick.Fenwick2D.add",
-  "fenwick.Fenwick2D.clear",
-  "fenwick.Fenwick2D.fold",
-  "fenwick.Fenwick2D.get",
-  "fenwick.Fenwick2D.new",
-  "fenwick.Fenwick2D.prefix",
-  "fenwick.RangeFenwick.add",
-  "fenwick.RangeFenwick.clear",
-  "fenwick.RangeFenwick.fold",
-  "fenwick.RangeFenwick.new",
-  "fenwick.RangeFenwick.prefix",
-  "fenwick.SparseFenwick2D.add",
-  "fenwick.SparseFenwick2D.add_point",
-  "fenwick.SparseFenwick2D.build",
-  "fenwick.SparseFenwick2D.fold",
-  "fenwick.SparseFenwick2D.new",
-  "fenwick.XorFenwick.add",
-  "fenwick.XorFenwick.new",
-  "fenwick.XorFenwick.prefix",
-  "fenwick.XorFenwick.xor",
+  "dsu.PersistentDsu.within",
+  "dsu.PersistentDsuWithin.is_empty",
+  "dsu.PersistentDsuWithin.items",
+  "dsu.PersistentDsuWithin.len",
   "geometry.Circle.area",
   "geometry.Circle.circumference",
   "geometry.Circle.locate",
@@ -10410,50 +11213,10 @@
   "lazy.SeqFold.reverse",
   "lazy.SeqFold.total",
   "lazy.flip_action",
-  "marks.Arena.alloc",
-  "marks.Arena.clear",
-  "marks.Arena.get",
-  "marks.Arena.is_empty",
   "marks.Arena.items",
-  "marks.Arena.len",
-  "marks.Arena.new",
-  "marks.Arena.reserve",
-  "marks.Arena.set",
-  "marks.Interner.clear",
-  "marks.Interner.contains",
   "marks.Interner.each",
-  "marks.Interner.get",
-  "marks.Interner.id",
-  "marks.Interner.is_empty",
-  "marks.Interner.key",
-  "marks.Interner.len",
-  "marks.Interner.new",
-  "marks.Interner.reserve",
-  "marks.MarkMap.clear",
-  "marks.MarkMap.contains",
-  "marks.MarkMap.get",
-  "marks.MarkMap.is_empty",
   "marks.MarkMap.items",
-  "marks.MarkMap.len",
-  "marks.MarkMap.new",
-  "marks.MarkMap.remove",
-  "marks.MarkMap.set",
-  "marks.Marks.add",
-  "marks.Marks.clear",
-  "marks.Marks.contains",
   "marks.Marks.each",
-  "marks.Marks.is_empty",
-  "marks.Marks.len",
-  "marks.Marks.new",
-  "marks.Marks.remove",
-  "marks.SparseSet.add",
-  "marks.SparseSet.clear",
-  "marks.SparseSet.contains",
-  "marks.SparseSet.each",
-  "marks.SparseSet.is_empty",
-  "marks.SparseSet.len",
-  "marks.SparseSet.new",
-  "marks.SparseSet.remove",
   "persistent.PArena.alloc",
   "persistent.PArena.get",
   "persistent.PArena.is_empty",
@@ -10500,36 +11263,7 @@
   "persistent.RangeKth.new",
   "poly.Poly.is_empty",
   "poly.Poly.items",
-  "prefix.ArithDiff.add",
-  "prefix.ArithDiff.add_arith",
-  "prefix.ArithDiff.finish",
-  "prefix.ArithDiff.new",
-  "prefix.Diff.add",
-  "prefix.Diff.finish",
-  "prefix.Diff.new",
-  "prefix.FillPrefix.at",
-  "prefix.FillPrefix.cut",
-  "prefix.FillPrefix.fold",
-  "prefix.FillPrefix.prefix",
-  "prefix.FillPrefix.set",
-  "prefix.Prefix.all",
-  "prefix.Prefix.at",
-  "prefix.Prefix.cut",
-  "prefix.Prefix.cyclic_sum",
-  "prefix.Prefix.filling",
-  "prefix.Prefix.first_ge",
-  "prefix.Prefix.first_gt",
-  "prefix.Prefix.fold",
-  "prefix.Prefix.new",
   "prefix.Prefix.of_rev_scan",
-  "prefix.Prefix.prefix",
-  "prefix.Prefix.suffix",
-  "prefix.SweepAdd.add",
-  "prefix.SweepAdd.advance",
-  "prefix.SweepAdd.current",
-  "prefix.SweepAdd.new",
-  "prefix.prefix_fold",
-  "prefix.scan",
   "range.RingRange.each",
   "range.RingRange.is_empty",
   "range.shift",

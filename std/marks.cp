@@ -277,7 +277,7 @@ pub struct Interner<K>:
     /// Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not
     /// reallocate. Changes no ids.
     ///
-    /// cost: \(O(\mathit{cap})\)
+    /// cost: \(O(\mathit{len})\) when it grows (it moves the keys), \(O(1)\) otherwise
     /// traps: when `cap < 0`
     /// example: `var t = Interner<Int>(); t.reserve(100); t.id(5); t.len == 1`
     pub fn reserve(mut self, cap: Int):
@@ -382,7 +382,7 @@ pub struct Arena<T>:
 
     /// An empty arena with room for `cap` nodes before it reallocates.
     ///
-    /// cost: \(O(\mathit{cap})\)
+    /// cost: \(O(1)\) time: the room is allocated, not filled
     /// traps: when `cap < 0`
     /// example: `Arena<Int>(cap: 8).is_empty`
     pub fn new(cap: Int = 0) -> Arena<T>:
@@ -445,7 +445,7 @@ pub struct Arena<T>:
 
     /// Allocate room for at least `cap` nodes in total; changes no handle or node.
     ///
-    /// cost: \(O(\mathit{cap})\)
+    /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: when `cap < 0`
     /// example: `var a = Arena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
     pub fn reserve(mut self, cap: Int):
