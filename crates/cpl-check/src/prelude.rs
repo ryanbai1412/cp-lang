@@ -1083,6 +1083,31 @@ pub fn std_names() -> &'static [(&'static str, &'static str)] {
     })
 }
 
+/// Whether a std fn named `name` takes a `by:` key: `max`, `sort`, `is_sorted`.
+pub fn std_takes_by(name: &str) -> bool {
+    static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
+    NAMES
+        .get_or_init(|| {
+            let mut out = crate::fx::HashSet::default();
+            for (_, text) in crate::modules::std_index() {
+                for (_, item) in cpl_syntax::parse_file(text).items {
+                    for stmt in &item.stmts {
+                        let ast::StmtKind::Fn(f) = &stmt.kind else {
+                            continue;
+                        };
+                        let label =
+                            |p: &ast::Param| p.label.as_ref().unwrap_or(&p.name).text == "by";
+                        if f.params.iter().any(label) {
+                            out.insert(f.name.text.clone());
+                        }
+                    }
+                }
+            }
+            out
+        })
+        .contains(name)
+}
+
 /// Every public name that exactly one module declares, with that module,
 /// sorted by name: what the hint for a missing `use` reads. It is read off
 /// the files, so a new `pub fn` needs no second edit.

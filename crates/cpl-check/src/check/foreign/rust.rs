@@ -22,21 +22,16 @@ pub(crate) fn by_twin(src: &str, name: &str, span: Span) -> Option<(String, Fix)
     ))
 }
 
-/// The one std name a `_by` twin (`max_by`, `sort_by_key`) folds into.
-fn by_base(name: &str) -> Option<&'static str> {
+/// The one std name a `_by` twin (`max_by`, `sort_by_key`) folds into: a std fn that takes
+/// `by:`, or the std name itertools' `position_max` stands for.
+fn by_base(name: &str) -> Option<&str> {
     let base = name.strip_suffix("_by").or(name.strip_suffix("_by_key"))?;
-    Some(match base {
-        "max" => "max",
-        "min" => "min",
-        "sort" => "sort",
-        "sorted" => "sorted",
-        "argmax" | "position_max" => "argmax",
-        "argmin" | "position_min" => "argmin",
-        "is_sorted" => "is_sorted",
-        "runs" => "runs",
-        "group" => "group",
-        _ => return None,
-    })
+    let base = match base {
+        "position_max" => "argmax",
+        "position_min" => "argmin",
+        base => base,
+    };
+    crate::prelude::std_takes_by(base).then_some(base)
 }
 
 /// `min_by(xs, f)`, a `_by` twin called as a free function: `xs.min(by: f)`.
