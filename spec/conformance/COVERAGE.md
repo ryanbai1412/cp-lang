@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3507 (3483 passing). Rules: 616.
+Cases: 3508 (3483 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 3507 (3483 passing). Rules: 616.
 - R07 (07-sequences.md): 96 rules, 254 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 108 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 20 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 20 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 33 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -617,7 +617,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R10: 10-io.md
 
 - R10.3.7 [1+ 2-]: `?T` is not a `Seq`: `for v in x` on a `?Int` is E0302 naming `if let`. A sequence prints ...
-- R10.1.1 [14+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
+- R10.1.1 [15+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [7+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
@@ -848,7 +848,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0802 Bare `with` after another statement: 2 case(s)
 - E0803 `?` used directly in a condition: 2 case(s)
 - E0804 `?` whose result is dropped: 1 case(s)
-- E0805 fresh_type_leaks_test *(0.3)*: 1 case(s)
+- E0805 Per-test position kept across test cases: 1 case(s)
 - E0806 Type annotation required for inference: 4 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
 - E0902 Range store not provable: 9 case(s)
