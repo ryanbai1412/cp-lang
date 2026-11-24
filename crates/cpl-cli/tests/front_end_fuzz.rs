@@ -12,6 +12,9 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
+#[path = "support/shards.rs"]
+mod shards;
+
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -153,11 +156,29 @@ fn front_end(db: &mut cpl_check::Session, path: &str, src: &str) -> Vec<String> 
         .collect()
 }
 
-#[test]
-fn mutated_programs_never_crash_and_report_deterministically() {
-    let rounds: usize = cpl_env::FUZZ_ROUNDS.parse().unwrap_or(12);
+const SHARDS: usize = 8;
+const COPY_SHARDS: usize = 4;
+
+fn specs() -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = cpl_corpus::files(&root(), "spec.cp");
     paths.sort();
+    paths
+}
+
+/// A spec's path under the repo root, which picks its shard.
+fn key(path: &Path) -> String {
+    path.strip_prefix(root()).unwrap().display().to_string()
+}
+
+fn keys() -> Vec<String> {
+    specs().iter().map(|p| key(p)).collect()
+}
+
+fn mutated_programs_never_crash_and_report_deterministically(shard: usize) {
+    let rounds: usize = cpl_env::FUZZ_ROUNDS.parse().unwrap_or(12);
+    // Each spec keeps its place in the whole sorted corpus, which seeds it.
+    let numbered: Vec<(usize, PathBuf)> = specs().into_iter().enumerate().collect();
+    let paths = shards::mine(numbered, |(_, p)| key(p), shard, SHARDS);
     std::panic::set_hook(Box::new(|_| {}));
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let runs = paths.len() * rounds;
@@ -168,7 +189,7 @@ fn mutated_programs_never_crash_and_report_deterministically() {
                 scope.spawn(move || {
                     let mut crashes = Vec::new();
                     let mut db = cpl_check::Session::new();
-                    for (k, path) in paths.iter().enumerate().skip(t).step_by(threads) {
+                    for &(k, ref path) in paths.iter().skip(t).step_by(threads) {
                         let src = std::fs::read_to_string(path).unwrap();
                         let name = path.to_string_lossy().into_owned();
                         for round in 0..rounds {
@@ -229,17 +250,33 @@ fn mutated_programs_never_crash_and_report_deterministically() {
     );
 }
 
+shards::shard_tests!(
+    mutated_programs_never_crash_and_report_deterministically,
+    keys(),
+    the_fuzz_shards_cover_every_spec,
+    [
+        mutated_programs_never_crash_and_report_deterministically_0 = 0,
+        mutated_programs_never_crash_and_report_deterministically_1 = 1,
+        mutated_programs_never_crash_and_report_deterministically_2 = 2,
+        mutated_programs_never_crash_and_report_deterministically_3 = 3,
+        mutated_programs_never_crash_and_report_deterministically_4 = 4,
+        mutated_programs_never_crash_and_report_deterministically_5 = 5,
+        mutated_programs_never_crash_and_report_deterministically_6 = 6,
+        mutated_programs_never_crash_and_report_deterministically_7 = 7,
+    ]
+);
+
 /// Diagnostics add under 10% to the front end: every corpus spec, broken by
 /// a mutation that keeps its size (a token, a line or a piece pasted in) so
 /// that it reports something, goes through the checker, lowering and linter
 /// against a warm database, alternating with its clean original. Summed over
-/// the corpus, the broken copies take at most 1.10x the originals' time.
+/// each of the corpus's path-hashed shards, the broken copies take at most
+/// 1.10x the originals' time.
 /// Rule: `errors/R17`, handbook/guidelines/errors-checklist.md#r17-a-mistake-costs-no-more-time-than-a-clean-file.
-#[test]
-fn a_broken_copy_checks_within_10_percent_of_its_original() {
+fn a_broken_copy_checks_within_10_percent_of_its_original(shard: usize) {
     use std::time::{Duration, Instant};
-    let mut paths: Vec<PathBuf> = cpl_corpus::files(&root(), "spec.cp");
-    paths.sort();
+    let numbered: Vec<(usize, PathBuf)> = specs().into_iter().enumerate().collect();
+    let paths = shards::mine(numbered, |(_, p)| key(p), shard, COPY_SHARDS);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let (clean, broken, copies) = std::thread::scope(|scope| {
         let workers: Vec<_> = (0..threads)
@@ -248,7 +285,7 @@ fn a_broken_copy_checks_within_10_percent_of_its_original() {
                 scope.spawn(move || {
                     let mut db = cpl_check::Session::new();
                     let (mut clean, mut broken, mut copies) = (Duration::ZERO, Duration::ZERO, 0);
-                    for (k, path) in paths.iter().enumerate().skip(t).step_by(threads) {
+                    for &(k, ref path) in paths.iter().skip(t).step_by(threads) {
                         let src = std::fs::read_to_string(path).unwrap();
                         let name = path.to_string_lossy().into_owned();
                         let mut rng = Rng((0x5EED_u64 << 32 | k as u64) | 1);
@@ -295,6 +332,18 @@ fn a_broken_copy_checks_within_10_percent_of_its_original() {
         (ratio - 1.0) * 100.0
     );
 }
+
+shards::shard_tests!(
+    a_broken_copy_checks_within_10_percent_of_its_original,
+    keys(),
+    the_broken_copy_shards_cover_every_spec,
+    [
+        a_broken_copy_checks_within_10_percent_of_its_original_0 = 0,
+        a_broken_copy_checks_within_10_percent_of_its_original_1 = 1,
+        a_broken_copy_checks_within_10_percent_of_its_original_2 = 2,
+        a_broken_copy_checks_within_10_percent_of_its_original_3 = 3,
+    ]
+);
 
 /// One planted mistake: replace `src[start..end]` with `with`.
 struct Edit {
