@@ -1,6 +1,6 @@
 //! Subsets of a small domain as one machine word: the mask of mask DP with its domain kept.
 
-use std.math.{popcount}
+use std.math.{popcount, ctz}
 
 /// A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for `B`'s `k`-th
 /// position). `B.subsets` is the domain of all `2^|B|` of them, so `[B.subsets]T` is a mask-DP

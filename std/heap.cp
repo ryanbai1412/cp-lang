@@ -7,6 +7,7 @@
 //! Without `by:`, equal elements are indistinguishable, so this never shows. For a fixed order
 //! among equals, put the tie-breaker in the entry: `(d, v)`, or `(d, desc(v))`.
 use std.algebra.{Desc, desc}
+use std.math.{bit_width}
 
 /// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
 /// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the

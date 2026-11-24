@@ -3,7 +3,7 @@ use crate::value::Value;
 use cpl_diag::Span;
 use cpl_ir::Prim;
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, Builtin, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId, Place,
+    Arg, AssignOp, BinOp, Block, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId, Place,
     PlaceKind, Program, Slot, Stmt, Ty, UnOp,
 };
 
@@ -882,8 +882,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     safe_op && simple_expr(a, f, program) && simple_expr(b, f, program)
                 }
                 ExprKind::Cmp(_, a, b) => simple_expr(a, f, program) && simple_expr(b, f, program),
-                ExprKind::Builtin(Builtin::Ctz | Builtin::Clz, args)
-                | ExprKind::Intrinsic(Prim::Popcount, args) => {
+                ExprKind::Intrinsic(Prim::Popcount | Prim::Ctz | Prim::Clz, args) => {
                     args.len() == 1 && simple_expr(&args[0], f, program)
                 }
                 ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], f, program),

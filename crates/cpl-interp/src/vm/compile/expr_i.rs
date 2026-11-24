@@ -640,7 +640,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::RangeHiI { dst, src_v }, span);
                 dst
             }
-            ExprKind::Builtin(Builtin::BitCeil, args)
+            ExprKind::Intrinsic(Prim::BitCeil, args)
                 if args.len() == 1 && matches!(expr.ty, Ty::Int) =>
             {
                 let src = self.compile_expr_i(&args[0]);
@@ -656,7 +656,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::PopcountI { dst, src }, span);
                 dst
             }
-            ExprKind::Builtin(Builtin::Ctz, args)
+            ExprKind::Intrinsic(Prim::Ctz, args)
                 if args.len() == 1 && ScalarKind::of_ty(&args[0].ty, self.program).is_some() =>
             {
                 let src = self.compile_expr_i(&args[0]);
@@ -664,7 +664,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::CtzI { dst, src }, span);
                 dst
             }
-            ExprKind::Builtin(Builtin::Clz, args)
+            ExprKind::Intrinsic(Prim::Clz, args)
                 if args.len() == 1 && ScalarKind::of_ty(&args[0].ty, self.program).is_some() =>
             {
                 let src = self.compile_expr_i(&args[0]);
@@ -672,7 +672,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::ClzI { dst, src }, span);
                 dst
             }
-            ExprKind::Builtin(Builtin::BitWidth, args)
+            ExprKind::Intrinsic(Prim::BitWidth, args)
                 if args.len() == 1 && ScalarKind::of_ty(&args[0].ty, self.program).is_some() =>
             {
                 let src = self.compile_expr_i(&args[0]);

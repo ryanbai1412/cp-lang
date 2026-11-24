@@ -898,10 +898,6 @@ pub enum Builtin {
     SwapInput,
     /// True when only blanks are left on stdin: what `read_all` stops at.
     AtEof,
-    Ctz,
-    Clz,
-    BitWidth,
-    BitCeil,
     /// The length of one axis of an array of two or more: the array, then
     /// the axis as a literal.
     AxisLen,

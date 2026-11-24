@@ -9112,4 +9112,8 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 
 ## 589. (reserved, unknown)
 
-## 591. (reserved, unknown)
+## 591. `ctz`, `clz`, `bit_width` and `bit_ceil` join the `cpl-rt` table; `mask` stays a domain member (compiler, 2026-11-24)
+
+- **Call.** std/math.cp declares the four as ordinary fns over `@intrinsic` (decision 573): `ctz`/`clz`/`bit_width` take any `Word` (an `Int` counts its two's complement word, `ctz(0) == clz(0) == 64`), `bit_ceil` takes an `Int` and traps above \(2^{62}\). The table grows from 7 to 11 entries; each emits the same `cpl::` helper as before through the once-per-bundle `bits` runtime, and the VM keeps its register fast paths, now keyed on `Prim`. The compiler arm in lower/call/prelude.rs, the four `Builtin` variants and the checker prelude rows go. `V.mask` is a member of a domain, not a std fn, so it moves when domains get std methods, not in this batch.
+- **Why.** These names were string-matched in IR, codegen, the interpreter and the checker, so a user library could not define its own `ctz` and std could not change their signatures.
+- **Reverse.** Restore the `Builtin` variants and the prelude arm, and drop the four entries.

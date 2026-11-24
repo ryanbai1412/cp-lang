@@ -15,7 +15,7 @@ use std.algebra.{add}
 use std.dp.{Step}
 use std.dsu.{Dsu}
 use std.graph.{Next, Target, Graph, Visit, Edged, dfs, Tree, arc_len}
-use std.math.{bit}
+use std.math.{bit, bit_width}
 use std.rand.{Rng, shuffle}
 use std.range.{first_true}
 use std.segtree.{SegTree}

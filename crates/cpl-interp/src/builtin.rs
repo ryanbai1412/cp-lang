@@ -88,33 +88,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 Value::Unit
             }
-            Builtin::Ctz => Value::Int(i64::from(bits64(&first).trailing_zeros())),
-            Builtin::Clz => Value::Int(i64::from(bits64(&first).leading_zeros())),
             Builtin::AxisLen => match (&first, values.next()) {
                 (Value::Array(array), Some(Value::Int(axis))) => {
                     Value::Int(array.dims[axis as usize])
                 }
                 _ => Value::Int(0),
             },
-            Builtin::BitWidth => {
-                let u = bits64(&first);
-                Value::Int(i64::from(64 - u.leading_zeros()))
-            }
-            Builtin::BitCeil => {
-                let x = first.int();
-                if x <= 1 {
-                    Value::Int(1)
-                } else {
-                    let shift = 64 - ((x - 1) as u64).leading_zeros();
-                    if shift > 62 {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::INTEGER_OVERFLOW_BIT_CEIL_DOES.at(&[&x]),
-                        );
-                    }
-                    Value::Int(1 << shift)
-                }
-            }
             Builtin::Rand => {
                 let lo = first.int();
                 let hi = values.next().unwrap_or_default().int();

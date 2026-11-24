@@ -4,6 +4,7 @@
 //! into a dynamic structure with insertions and deletions over `[0, q)` in \(O(q \log q)\)
 //! apply/undo steps.
 use std.dsu.{Dsu, Mark}
+use std.math.{bit_ceil}
 
 /// One step in a `TimeTree` DFS traversal:
 /// - `Apply(id)`: apply event `tt.event(id)` on entry to a segment-tree node.

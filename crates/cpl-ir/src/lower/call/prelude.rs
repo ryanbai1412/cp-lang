@@ -413,27 +413,6 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            "ctz" | "clz" | "bit_width" | "bit_ceil" => {
-                let op = match name {
-                    "ctz" => Builtin::Ctz,
-                    "clz" => Builtin::Clz,
-                    "bit_width" => Builtin::BitWidth,
-                    _ => Builtin::BitCeil,
-                };
-                // The bits of a `U64` are counted as they are.
-                let value = match self.positional_any(name, args, 1, span) {
-                    Some(exprs) if op != Builtin::BitCeil => {
-                        let value = self.expr(exprs[0], None);
-                        match value.ty {
-                            Ty::U64 => value,
-                            _ => self.coerce(value, &Ty::Int, exprs[0].span),
-                        }
-                    }
-                    Some(exprs) => self.expect(exprs[0], &Ty::Int),
-                    None => return self.err_expr(span),
-                };
-                self.mk_builtin(op, [value], Ty::Int, span)
-            }
             "swap" => {
                 if args.len() != 2 {
                     self.report(span, msgs::ir::WRONG_ARG_COUNT_SWAP_TAKES_2_ARGUMENTS, &[]);

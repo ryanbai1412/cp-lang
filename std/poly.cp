@@ -4,7 +4,7 @@
 //! matching `std.ntt.convolve`. Every truncated operation takes an explicit output
 //! length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).
 use std.algebra as algebra
-use std.math.{mod_sqrt, pow_mod}
+use std.math.{mod_sqrt, pow_mod, bit_ceil, ctz}
 use std.mod.{Mod}
 use std.ntt.{convolve, ntt}
 

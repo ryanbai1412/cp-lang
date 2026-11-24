@@ -82,24 +82,8 @@ impl<'p> Emitter<'p> {
                 self.need("at_eof");
                 Code::primary("cpl::at_eof()".to_string())
             }
-            Builtin::Ctz => {
-                self.need("bits");
-                Code::primary(format!("cpl::ctz({})", text(0)))
-            }
-            Builtin::Clz => {
-                self.need("bits");
-                Code::primary(format!("cpl::clz({})", text(0)))
-            }
             Builtin::AxisLen => {
                 Code::primary(format!("((ll){}.n[{}])", codes[0].at(PRIMARY), text(1)))
-            }
-            Builtin::BitWidth => {
-                self.need("bits");
-                Code::primary(format!("cpl::bit_width({})", text(0)))
-            }
-            Builtin::BitCeil => {
-                self.need("bits");
-                Code::primary(format!("cpl::bit_ceil({})", text(0)))
             }
             Builtin::Rand => {
                 self.need("rng");

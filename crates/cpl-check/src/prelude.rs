@@ -491,10 +491,6 @@ pub fn std_family(name: &str) -> impl Iterator<Item = (&'static str, &'static st
         .map(|&(_, module, sym)| (module, sym))
 }
 
-fn int_fn(arity: usize) -> Ty {
-    fn_of(arity, Ty::Int, Ty::Int)
-}
-
 /// `sqrt`, `atan2`: an F64 from any number, an `Int` variable included.
 fn float_fn(arity: usize) -> Ty {
     fn_of(arity, Ty::Unknown, Ty::Float)
@@ -524,7 +520,6 @@ fn fn_of(arity: usize, param: Ty, ret: Ty) -> Ty {
 pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
-        "bit_ceil" => int_fn(1),
         "cbrt" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "exp" | "ln" | "log2"
         | "log10" => float_fn(1),
         "atan2" | "hypot" => float_fn(2),
@@ -557,9 +552,6 @@ pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'stati
         ("max", Some(1)) => "The largest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.\n\ncost: O(n)",
         ("min", _) => "The smallest of its arguments, in O(1) per argument; `min(xs)` gives the smallest element of `xs`.\n\ncost: O(1)",
         ("max", _) => "The largest of its arguments, in O(1) per argument; `max(xs)` gives the largest element of `xs`.\n\ncost: O(1)",
-        ("ctz", _) => "The number of 0 bits below the lowest 1 bit, in O(1).\n\ncost: O(1)",
-        ("bit_width", _) => "The number of bits needed to write the value, in O(1).\n\ncost: O(1)",
-        ("bit_ceil", _) => "The smallest power of two that is at least the value, in O(1).\n\ncost: O(1)",
         ("swap", _) => "Exchanges the values of two `mut` places, in O(1) whatever their size.\n\ncost: O(1)",
         ("some", _) => "The value as a present `?T`, in O(1).\n\ncost: O(1)",
         _ => return None,
@@ -681,9 +673,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "rand",
     "some",
     "laws_hold",
-    "ctz",
-    "bit_width",
-    "bit_ceil",
     "atan2",
     "sin",
     "cos",

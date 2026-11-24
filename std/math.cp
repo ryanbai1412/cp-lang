@@ -506,6 +506,31 @@ impl Word for U64:
 /// example: `popcount(U64(11)) == 3`
 pub fn popcount<W: Word>(x: W) -> Int = @intrinsic("popcount")
 
+/// The 0 bits below the lowest 1 bit of `x`'s 64-bit word; `ctz(0) == 64`.
+///
+/// cost: \(O(1)\)
+/// example: `ctz(8) == 3`
+pub fn ctz<W: Word>(x: W) -> Int = @intrinsic("ctz")
+
+/// The 0 bits above the highest 1 bit of `x`'s 64-bit word; `clz(0) == 64`.
+///
+/// cost: \(O(1)\)
+/// example: `clz(1) == 63`
+pub fn clz<W: Word>(x: W) -> Int = @intrinsic("clz")
+
+/// The bits needed to write `x`'s 64-bit word, `64 - clz(x)`.
+///
+/// cost: \(O(1)\)
+/// example: `bit_width(5) == 3`
+pub fn bit_width<W: Word>(x: W) -> Int = @intrinsic("bit_width")
+
+/// The smallest power of two that is at least `x`, `1` for `x <= 1`.
+///
+/// cost: \(O(1)\)
+/// traps: when `x > 2^62`
+/// example: `bit_ceil(5) == 8`
+pub fn bit_ceil(x: Int) -> Int = @intrinsic("bit_ceil")
+
 /// `Int`, `I128` or `F64`: has an `abs`.
 pub trait Signed
 

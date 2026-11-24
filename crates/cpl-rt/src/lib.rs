@@ -13,6 +13,10 @@ pub enum Prim {
     Ceil,
     Round,
     Trunc,
+    Ctz,
+    Clz,
+    BitWidth,
+    BitCeil,
 }
 
 /// A scalar the interpreter hands to, and gets back from, a primitive.
@@ -123,6 +127,20 @@ fn sqrt(a: &[Scalar]) -> Ran {
 
 const TO_INT: &str = "narrow";
 
+fn bit_ceil(a: &[Scalar]) -> Ran {
+    let x = a[0].bits() as i64;
+    if x <= 1 {
+        return Ok(Scalar::Int(1));
+    }
+    let shift = 64 - ((x - 1) as u64).leading_zeros();
+    if shift > 62 {
+        return Err(format!(
+            "integer overflow: `bit_ceil({x})` does not fit in an `Int` (64 bits)"
+        ));
+    }
+    Ok(Scalar::Int(1 << shift))
+}
+
 pub static TABLE: &[Entry] = &[
     Entry {
         prim: Prim::Popcount,
@@ -201,6 +219,46 @@ pub static TABLE: &[Entry] = &[
         vm: Vm::Scalar(|a| to_int(a[0].f64().trunc())),
         cpp: &[cpp("*", "cpl::to_int($0)", Some(TO_INT))],
     },
+    Entry {
+        prim: Prim::Ctz,
+        id: "ctz",
+        params: &["Int|U64"],
+        result: "Int",
+        cost: "\\(O(1)\\)",
+        explain: "the 0 bits below the lowest 1 bit, 64 for 0; one `tzcnt` with bmi",
+        vm: Vm::Scalar(|a| Ok(Scalar::Int(i64::from(a[0].bits().trailing_zeros())))),
+        cpp: &[cpp("*", "cpl::ctz($0)", Some("bits"))],
+    },
+    Entry {
+        prim: Prim::Clz,
+        id: "clz",
+        params: &["Int|U64"],
+        result: "Int",
+        cost: "\\(O(1)\\)",
+        explain: "the 0 bits above the highest 1 bit, 64 for 0; one `lzcnt` with lzcnt",
+        vm: Vm::Scalar(|a| Ok(Scalar::Int(i64::from(a[0].bits().leading_zeros())))),
+        cpp: &[cpp("*", "cpl::clz($0)", Some("bits"))],
+    },
+    Entry {
+        prim: Prim::BitWidth,
+        id: "bit_width",
+        params: &["Int|U64"],
+        result: "Int",
+        cost: "\\(O(1)\\)",
+        explain: "the bits needed to write the word, 0 for 0",
+        vm: Vm::Scalar(|a| Ok(Scalar::Int(i64::from(64 - a[0].bits().leading_zeros())))),
+        cpp: &[cpp("*", "cpl::bit_width($0)", Some("bits"))],
+    },
+    Entry {
+        prim: Prim::BitCeil,
+        id: "bit_ceil",
+        params: &["Int"],
+        result: "Int",
+        cost: "\\(O(1)\\)",
+        explain: "the smallest power of two at least the value; traps above 2^62",
+        vm: Vm::Scalar(bit_ceil),
+        cpp: &[cpp("*", "cpl::bit_ceil($0)", Some("bits"))],
+    },
 ];
 
 impl Prim {
@@ -259,7 +317,7 @@ mod tests {
     /// count in the commit that adds it.
     #[test]
     fn table_count() {
-        assert_eq!(TABLE.len(), 7);
+        assert_eq!(TABLE.len(), 11);
     }
 
     #[test]
@@ -290,6 +348,19 @@ mod tests {
             p.cpp("Int", &["x".into()]),
             "(ll)__builtin_popcountll((uint64_t)(x))"
         );
+    }
+
+    #[test]
+    fn bits_count_as_cpp_counts() {
+        assert_eq!(Prim::Ctz.run(&[Scalar::Int(0)]), Ok(Scalar::Int(64)));
+        assert_eq!(Prim::Ctz.run(&[Scalar::Int(8)]), Ok(Scalar::Int(3)));
+        assert_eq!(Prim::Clz.run(&[Scalar::Int(-1)]), Ok(Scalar::Int(0)));
+        assert_eq!(Prim::Clz.run(&[Scalar::U64(1)]), Ok(Scalar::Int(63)));
+        assert_eq!(Prim::BitWidth.run(&[Scalar::Int(5)]), Ok(Scalar::Int(3)));
+        assert_eq!(Prim::BitCeil.run(&[Scalar::Int(5)]), Ok(Scalar::Int(8)));
+        assert_eq!(Prim::BitCeil.run(&[Scalar::Int(-3)]), Ok(Scalar::Int(1)));
+        assert!(Prim::BitCeil.run(&[Scalar::Int((1 << 62) + 1)]).is_err());
+        assert_eq!(Prim::Ctz.cpp("U64", &["x".into()]), "cpl::ctz(x)");
     }
 
     #[test]

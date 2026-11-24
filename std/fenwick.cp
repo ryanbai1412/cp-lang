@@ -2,6 +2,7 @@
 use std.algebra.{Group}
 use std.seq.{deduped}
 use std.range.{ends}
+use std.math.{bit_ceil}
 
 /// Point add and range sum over anything with `+` and `-` (`Int`, `Mod<P>`).
 /// `Fenwick<D, Int>()` starts at zero and `Fenwick<D, Int>(a)` from an array, in \(O(n)\).

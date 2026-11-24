@@ -1873,13 +1873,6 @@ pub(crate) fn intrinsic(p: Prim, vals: &[Value], span: Span) -> Res<Value> {
     })
 }
 
-fn bits64(value: &Value) -> u64 {
-    match value {
-        Value::U64(bits) => *bits,
-        other => other.int() as u64,
-    }
-}
-
 /// A domain for a message: `1..=5`, or that it is empty.
 pub(crate) fn describe(lo: i64, len: i64) -> String {
     if len == 0 {
