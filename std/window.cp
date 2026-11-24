@@ -14,7 +14,7 @@ use std.seq.{Track, collect}
 /// keeps two stacks.
 ///
 /// cost: \(O(n)\) amortized calls of `op`
-/// empty: yields nothing; so does `k > self.len`
+/// empty: `[List<Int>().window_fold(1, max).collect(), [1, 2].window_fold(3, max).collect()] == [[], []]`
 /// order: by window start, left to right
 /// traps: when `k < 1`
 /// example: `[3, 1, 4, 1, 5].window_fold(2, max).collect() == [3, 4, 4, 5]`
@@ -67,7 +67,7 @@ pub struct Window<T, M>(op: M):
     /// `x3`), so a non-commutative op folds in push order; `None` when empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `Window<Int, (Int, Int) -> Int>(+).all == None`
     /// traps: never
     /// example: `var w = Window(+); w.push(2); w.push(3); w.all == Some(5)`
     /// example: `var w = Window(+); w.push(2); w.pop(2); w.all == None`
@@ -306,7 +306,7 @@ pub struct Sweep<D, S>(pub state: S):
     /// first cut of `D`; with `start`, each position of `start` is pushed in increasing order.
     ///
     /// cost: \(O(1)\), plus `start.len` pushes when `start` is given
-    /// empty: an empty `start` is the same as None, but sits at `start`'s cut
+    /// empty: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(), start: Some(3..3)); s.range == D(3)..D(3)`
     /// traps: never (beyond what `state.push` traps on)
     /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.range.len == 0`
     /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(), start: Some(1..3)); s.range == 1..3`
@@ -324,14 +324,19 @@ pub struct Sweep<D, S>(pub state: S):
     /// with Mo the state's answer must ignore order.
     ///
     /// cost: \(O(\lvert \mathit{dl} \rvert + \lvert \mathit{dr} \rvert)\) pushes and pops, where `dl` and `dr` are the moves of the two ends
-    /// empty: moving to an empty `to` pops everything
+    /// empty: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(1..4); s.move(2..2); (s.range.len, s.state.total()) == (0, 0)`
     /// traps: never (beyond what the state traps on)
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(1..4); s.move(2..5); s.range == 2..5`
     pub fn move(mut self, to: Range<D>):
-        var (l, r) = (0, 0)
-        if not to.is_empty:
-            l = Int(to.first!) - Int(D.nth(0))
-            r = Int(to.last!) - Int(D.nth(0)) + 1
+        if to.is_empty:
+            while hi > lo:
+                hi -= 1
+                state.pop(D.nth(hi))
+            lo = Int(to.l) - Int(D.cuts.nth(0))
+            hi = lo
+            return
+        let l = Int(to.first!) - Int(D.nth(0))
+        let r = Int(to.last!) - Int(D.nth(0)) + 1
         while hi < r:
             state.push(D.nth(hi))
             hi += 1
@@ -352,4 +357,4 @@ pub struct Sweep<D, S>(pub state: S):
     /// order: increasing positions of `D`
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(0..2); s.range.len == 2`
     @get pub fn range(self) -> Range<D>:
-        if lo < hi: D.nth(lo)..=D.nth(hi - 1) else: D.nth(0)..D.nth(0)
+        if lo < hi: D.nth(lo)..=D.nth(hi - 1) else: D.cuts.nth(lo)..D.cuts.nth(lo)
