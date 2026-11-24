@@ -690,7 +690,7 @@ impl<'p> Emitter<'p> {
         let by_ref: Vec<usize> = (0..f.params.len())
             .filter(|&slot| f.locals[slot].ty != Ty::Unit)
             .zip(&params)
-            .filter(|(_, p)| p.contains("const ") && p.contains("& "))
+            .filter(|(_, p)| p.contains("& ") && !p.contains("&& "))
             .map(|(slot, _)| slot)
             .collect();
         if self.devirt.returns_lambda(id) {
@@ -707,16 +707,25 @@ impl<'p> Emitter<'p> {
         (signature, lends)
     }
 
-    /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
-    /// is, like a `@get` of a stored list, lends it: the caller reads it in place and copies
+    /// A fn that gives a field of a parameter it takes by reference (or an element of one) as
+    /// is, last and from its only return, like a `@get` of a stored list, lends it: the caller reads it in place and copies
     /// it only where it keeps it. So does one that gives what such a fn lends from a place of
     /// its own (`a.view` where `A.view` lends `xs`), through any chain of them. The answer is
     /// the parameter the result is a place on.
     fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> Option<usize> {
         use cpl_ir::{ElemLoc, ExprKind, NarrowLayout};
-        let [Stmt::Return(Some(e))] = f.body.stmts.as_slice() else {
+        // What runs before the one return (a cache's fill) only changes
+        // what the place holds.
+        let Some(Stmt::Return(Some(e))) = f.body.stmts.last() else {
             return None;
         };
+        let mut returns = 0;
+        cpl_ir::walk::deep_stmts(&f.body, &mut |s| {
+            returns += matches!(s, Stmt::Return(_)) as usize
+        });
+        if returns != 1 {
+            return None;
+        }
         if f.ret.is_scalar()
             || f.ret == Ty::Unit
             || e.ty != f.ret

@@ -378,6 +378,8 @@ fn a_part_returned_by_value_is_a_copy_and_by_reference_is_not() {
     assert_eq!(deep_copies(after_lambda), 0);
     let forwarded = "inline const std::vector<ll>& A_view(const A& self) {\n  return self.xs;\n}\ninline std::vector<ll> B_view(const B& self) {\n  return A_view(self.a);\n}\n";
     assert_eq!(deep_copies(forwarded), 1);
+    let cached = "inline std::vector<ll> T_plain(T& self) {\n  return self.xs;\n}\n";
+    assert_eq!(deep_copies(cached), 1);
 }
 
 #[test]

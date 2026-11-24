@@ -904,3 +904,36 @@ fn mut_alias_of_a_map_key_puts_it_only_when_written() {
         assert!(!code.contains("= &m["), "{first}: {code}");
     }
 }
+
+#[test]
+fn a_getter_on_a_struct_with_a_cache_lends_its_field_and_its_filled_cache() {
+    let out = cpp(concat!(
+        "struct T:\n    xs: List<Int>\n    @cache c: List<Int>\n",
+        "    @get pub fn plain(self) -> List<Int> = xs\n",
+        "    @get pub fn cached(self) -> List<Int>:\n",
+        "        if c.is_empty: c = [1, 2, 3]\n",
+        "        c\n",
+        "let t = T([4, 5, 6], [])\n",
+        "var acc = 0\n",
+        "for i in 0..3: acc += t.plain[i] + t.cached[i]\n",
+        "print(acc)\n",
+    ));
+    for f in ["T_plain", "T_cached"] {
+        assert!(
+            out.contains(&format!("const std::vector<ll>& {f}(T& self)")),
+            "{f}:\n{out}"
+        );
+    }
+    let early = cpp(concat!(
+        "struct T:\n    xs: List<Int>\n    @cache c: List<Int>\n",
+        "    @get pub fn first(self) -> List<Int>:\n",
+        "        if xs.is_empty: return [0]\n",
+        "        xs\n",
+        "let t = T([4], [])\n",
+        "print(t.first[0])\n",
+    ));
+    assert!(
+        early.contains("std::vector<ll> T_first(") && !early.contains("& T_first("),
+        "{early}"
+    );
+}
