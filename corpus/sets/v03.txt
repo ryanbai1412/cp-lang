@@ -470,6 +470,7 @@ sdoi17r1p1
 sdoi17r1p2
 sdoi17r2p4
 shoi16p1
+tle17c5p1
 tle17c5p6
 tsoc15c2p6
 ucrpc21h
