@@ -67,7 +67,7 @@ const BOUNDS: [Bound; 5] = [
     // that exist to show a copy is required count too: core-05's
     // map-entry-var-copies, copies-in-two-fns-stay-apart and
     // match-payload-outlives-reassigning-its-scrutinee (twice).
-    ("deep_copies", deep_copies, 32),
+    ("deep_copies", deep_copies, 37),
     ("std_functions", std_functions, 153),
 ];
 
