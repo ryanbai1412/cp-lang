@@ -62,7 +62,7 @@ No route is wider than 390 px; pages stay within the size budgets in `plan/domai
 
 - **Why:** readers arrive from phones and slow links, and leave before a large page renders.
 - **Example:** every route fits 390 px; the compiler (`cpl.wasm`) loads only when a reader runs or edits code, and Build, Explain and Stress load a second module on first use.
-- **Enforced by:** `web/tests/phone.mjs`, `web/tests/page-weight.mjs`, `web/scripts/wasm-size.mjs`, `web/scripts/budgets.mjs`.
+- **Enforced by:** `web/tests/phone.mjs`, `web/tests/page-weight.mjs`, `web/scripts/wasm-size.mjs` (the total cap, and on CI each crate's gzipped budget in `web/scripts/wasm-crate-budgets.json`, naming the owning lane), `web/scripts/budgets.mjs`.
 
 ## site/R8: Design chapters cite the spec
 

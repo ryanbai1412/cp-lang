@@ -6,6 +6,12 @@
 //
 //   node scripts/wasm-size.mjs [dist/wasm/cpl.wasm]
 //   node scripts/wasm-size.mjs --why   the crates cpl.wasm's bytes come from
+//   node scripts/wasm-size.mjs --update-budgets   rewrite each crate's budget
+//
+// With WASM_NAMES=<cpl.wasm built by scripts/build-wasm.sh --names>, it also
+// holds each crate to its gzipped budget in wasm-crate-budgets.json and names
+// the lane that owns a crate over it (wasm-crates.mjs). CI's site job always
+// passes it: the hosted measurement is the one that counts.
 //
 // With WASM_SIZE_HISTORY=<file> (CI keeps it across main runs), it prints the
 // gzipped change since the commit recorded there, then records this one, so
@@ -17,6 +23,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { budgetFor, checkBudgets, contributors, owners } from './wasm-crates.mjs';
 import { sizeDelta } from './wasm-delta.mjs';
 
 // A shrink-only ratchet: after each cut, lower the cap to the new size plus
@@ -31,77 +38,10 @@ const cap = 1_875_000;
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const args = process.argv.slice(2);
 const why = args.includes('--why');
+const update = args.includes('--update-budgets');
+const budgetsFile = join(repo, 'web/scripts/wasm-crate-budgets.json');
 const file = args.find((a) => !a.startsWith('--')) ?? join(repo, 'dist/wasm/cpl.wasm');
 const n = (x) => x.toLocaleString('en-US');
-
-// Code bytes per crate from the module's name section, plus its data.
-export function contributors(wasm) {
-  let at = 8;
-  const leb = () => {
-    let v = 0, shift = 0, b;
-    do {
-      b = wasm[at++];
-      v += (b & 0x7f) * 2 ** shift;
-      shift += 7;
-    } while (b & 0x80);
-    return v;
-  };
-  const str = () => {
-    const len = leb();
-    const s = wasm.toString('utf8', at, at + len);
-    at += len;
-    return s;
-  };
-  let imported = 0;
-  const bodies = [];
-  const names = new Map();
-  let data = 0;
-  while (at < wasm.length) {
-    const id = wasm[at++];
-    const size = leb();
-    const end = at + size;
-    if (id === 2) {
-      for (let i = leb(); i > 0; i--) {
-        str();
-        str();
-        const kind = wasm[at++];
-        if (kind === 0) (leb(), imported++);
-        else if (kind === 1) (at++, wasm[at++] & 1 ? (leb(), leb()) : leb());
-        else if (kind === 2) (wasm[at++] & 1 ? (leb(), leb()) : leb());
-        else if (kind === 3) at += 2;
-      }
-    } else if (id === 10) {
-      for (let i = leb(); i > 0; i--) {
-        const len = leb();
-        bodies.push(len);
-        at += len;
-      }
-    } else if (id === 11) {
-      data = size;
-    } else if (id === 0 && str() === 'name') {
-      while (at < end) {
-        const sub = wasm[at++];
-        const subEnd = leb() + at;
-        if (sub === 1) for (let i = leb(); i > 0; i--) names.set(leb(), str());
-        at = subEnd;
-      }
-    }
-    at = end;
-  }
-  // Rust's v0 mangling (`_R`): the first crate root, `C`, a disambiguator
-  // `s<base62>_`, and the crate's name, length-prefixed; for an impl, the
-  // crate it is in. Anything else is libc or compiler-rt.
-  const crate = (name) => {
-    const m = /^_R.*?C(?:s[0-9A-Za-z]*_)?(\d+)/.exec(name);
-    return m ? name.substr(m.index + m[0].length, +m[1]) : '(runtime)';
-  };
-  const by = new Map([['data (std source, strings)', data]]);
-  bodies.forEach((len, i) => {
-    const c = crate(names.get(i + imported) ?? '');
-    by.set(c, (by.get(c) ?? 0) + len);
-  });
-  return [...by].sort((a, b) => b[1] - a[1]);
-}
 
 function explain() {
   const out = mkdtempSync(join(tmpdir(), 'wasm-why-'));
@@ -114,8 +54,8 @@ function explain() {
   }
   const rows = contributors(readFileSync(join(out, 'cpl.wasm')));
   const total = rows.reduce((s, [, b]) => s + b, 0);
-  console.error('wasm-size: raw bytes by crate (gzip shrinks each about 3x):');
-  for (const [c, b] of rows.slice(0, 15)) console.error(`  ${n(b).padStart(10)}  ${((100 * b) / total).toFixed(1).padStart(5)}%  ${c}`);
+  console.error('wasm-size: bytes by crate (raw, and gzipped on its own):');
+  for (const [c, b, g] of rows.slice(0, 15)) console.error(`  ${n(b).padStart(10)}  ${((100 * b) / total).toFixed(1).padStart(5)}%  ${n(g).padStart(9)} gz  ${c}`);
   console.error('  Leave what the editors do not need out of cpl.wasm (crates/cpl-wasm feature `build`, or cfg on wasm32).');
 }
 
@@ -150,11 +90,35 @@ const full = join(dirname(file), 'cpl-build.wasm');
 const fullLine = existsSync(full)
   ? `wasm-size: cpl-build.wasm (loaded on the first build, explain or stress) is ${n(gzipSync(readFileSync(full), { level: 9 }).length)} gzipped`
   : null;
+const names = process.env.WASM_NAMES;
+let over = [];
+if (names && existsSync(names)) {
+  const rows = contributors(readFileSync(names));
+  if (update) {
+    writeFileSync(budgetsFile, `${JSON.stringify(Object.fromEntries(rows.map(([c, , g]) => [c, budgetFor(g)]).sort(([a], [b]) => (a < b ? -1 : 1))), null, 2)}\n`);
+    console.log(`wasm-size: wrote ${rows.length} crate budgets to web/scripts/wasm-crate-budgets.json`);
+  }
+  const budgets = JSON.parse(readFileSync(budgetsFile, 'utf8'));
+  const { errors, lower } = checkBudgets(rows, budgets, owners(readFileSync(join(repo, 'handbook/domains/README.md'), 'utf8')));
+  over = errors;
+  for (const e of errors) {
+    console.error(`wasm-size: ${e}`);
+    if (process.env.GITHUB_ACTIONS) console.log(`::error title=cpl.wasm crate over budget::${e}`);
+  }
+  for (const l of lower) console.log(`wasm-size: ${l} (node scripts/wasm-size.mjs --update-budgets)`);
+  if (!errors.length) console.log(`wasm-size: ${rows.length} crates within their gzipped budgets`);
+} else if (process.env.GITHUB_ACTIONS) {
+  console.error('wasm-size: CI must set WASM_NAMES to a names build (scripts/build-wasm.sh --names DIR) for the per-crate budgets');
+  process.exit(1);
+} else {
+  console.log('wasm-size: per-crate budgets skipped; set WASM_NAMES=DIR/cpl.wasm after scripts/build-wasm.sh --names DIR');
+}
 if (gz > cap) {
   console.error(`${line}: over the cap`);
   explain();
   process.exit(1);
 }
+if (over.length) process.exit(1);
 console.log(line);
 if (fullLine) console.log(fullLine);
 if (gz * 1.05 < cap) console.log(`wasm-size: over 5% headroom; lower the cap to about ${Math.ceil((gz * 1.02) / 1e4) * 1e4}`);

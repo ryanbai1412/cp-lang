@@ -481,8 +481,11 @@ jobs:
       - name: Build cpl and the browser build
         run: |
           scripts/build-wasm.sh >"$RUNNER_TEMP/wasm.log" 2>&1 & wasm=$!
+          # cpl.wasm with function names, for wasm-size's per-crate budgets.
+          scripts/build-wasm.sh --names "$RUNNER_TEMP/wasm-names" >"$RUNNER_TEMP/wasm-names.log" 2>&1 & names=$!
           cargo build --profile ci --bin cpl
           wait "$wasm" || { cat "$RUNNER_TEMP/wasm.log"; exit 1; }
+          wait "$names" || { cat "$RUNNER_TEMP/wasm-names.log"; exit 1; }
           cat "$RUNNER_TEMP/wasm.log"
       # The last main run's cpl.wasm size, so wasm-size prints the change since.
       - name: Restore cpl.wasm size history
@@ -498,6 +501,7 @@ jobs:
         env:
           CPL: ${{ github.workspace }}/target/ci/cpl
           WASM_SIZE_HISTORY: ${{ github.workspace }}/.wasm-size/last
+          WASM_NAMES: ${{ runner.temp }}/wasm-names/cpl.wasm
         run: pnpm --filter cp-lang-web build
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('.wasm-size/last') != '' }}

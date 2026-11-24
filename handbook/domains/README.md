@@ -46,7 +46,7 @@ decide. How registers work, and how suites are judged, is in
 | [spec](spec.md) | `spec/`, `handbook/language/`, conformance suite | The language is precise, and its tests catch every compiler bug |
 | [stdlib](stdlib.md) | `std/` | A coherent, documented, fast standard library |
 | [idioms](idioms.md) | The skill, idiom catalog, `corpus/`, `crates/cpl-judge`, acceptance run | Code written from the docs is correct and idiomatic first time |
-| [site](site.md) | `web/` | A cold reader writes correct code from the site alone |
+| [site](site.md) | `web/`, `crates/cpl-wasm` | A cold reader writes correct code from the site alone |
 | [debugger](debugger.md) | `crates/cpl-stress`, tracing, the trace viewer | A wrong answer becomes a minimal counterexample in seconds |
 
 ## How involved Ryan is
