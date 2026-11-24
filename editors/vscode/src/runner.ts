@@ -16,10 +16,9 @@ import {
     parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
-    parseSubmitReport,
+    viewOf,
     renderCounterexample,
     RuntimeErrorOverlay,
-    submitSummary,
 } from './results';
 import { Sample } from './samples';
 import { TraceView } from './traceView';
@@ -262,21 +261,17 @@ export class Runner {
         if (!result) {
             return;
         }
-        const report = parseSubmitReport(result.stdout);
-        if (!report) {
+        const view = viewOf(result.stdout);
+        if (!view?.status) {
             this.printRaw(result);
             return;
         }
-        const summary = submitSummary(report) + (report.ready && /copied/.test(result.stderr) ? '; copied to the clipboard' : '');
-        this.output.appendLine(summary);
-        if (!report.ready && result.stderr.trim() !== '') {
-            this.output.appendLine(indent(result.stderr));
-        }
-        this.overlays.setSampleStatus(document.uri, { line: 0, ok: report.ready, label: summary });
-        if (report.ready) {
-            void vscode.window.showInformationMessage(summary);
+        this.output.append(view.panel);
+        this.overlays.setSampleStatus(document.uri, view.status);
+        if (view.status.ok) {
+            void vscode.window.showInformationMessage(view.status.label);
         } else {
-            void vscode.window.showWarningMessage(summary);
+            void vscode.window.showWarningMessage(view.status.label);
         }
     }
 

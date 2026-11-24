@@ -3,6 +3,7 @@
 
 use std::io::Write;
 
+use cpl_diag::view::{Status, View};
 use cpl_json::{obj, Value};
 
 use crate::build::{build_file, BuildOptions};
@@ -18,18 +19,21 @@ pub(crate) fn submit(
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
-    let report = |ready: bool, build: &[u8], test: &[u8], stdout: &mut (dyn Write + Send)| {
-        if json {
-            let parse =
-                |out: &[u8]| cpl_json::parse(&String::from_utf8_lossy(out)).unwrap_or_default();
-            let report = obj([
-                ("ready", ready.into()),
-                ("build", parse(build)),
-                ("test", parse(test)),
-            ]);
-            let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
-        }
-    };
+    let report =
+        |ready: bool, build: &[u8], test: &[u8], said: &str, stdout: &mut (dyn Write + Send)| {
+            if json {
+                let parse =
+                    |out: &[u8]| cpl_json::parse(&String::from_utf8_lossy(out)).unwrap_or_default();
+                let (build, test) = (parse(build), parse(test));
+                let report = cpl_json::write_with(|w| {
+                    w.object().key("ready").bool(ready);
+                    w.key("build").value(&build).key("test").value(&test);
+                    view(ready, &build, &test, said).write(w);
+                    w.end();
+                });
+                let _ = writeln!(stdout, "{report}");
+            }
+        };
     let mut built = Vec::new();
     let options = BuildOptions {
         json,
@@ -42,7 +46,7 @@ pub(crate) fn submit(
     }
     if code != 0 {
         *stderr += &format!("cpl: `{path}` is not ready to send: it does not build\n");
-        report(false, &built, &[], stdout);
+        report(false, &built, &[], stderr, stdout);
         return code;
     }
     let mut sink = Vec::new();
@@ -58,7 +62,7 @@ pub(crate) fn submit(
             tests.shown()
         );
         let code = ready_to_send(&source, copy, said, stderr);
-        report(true, &built, &[], stdout);
+        report(true, &built, &[], stderr, stdout);
         return code;
     }
     let mut out = Vec::new();
@@ -77,12 +81,68 @@ pub(crate) fn submit(
             "cpl: `{path}` is not ready to send: a case in {} fails\n",
             tests.shown()
         );
-        report(false, &built, &out, stdout);
+        report(false, &built, &out, stderr, stdout);
         return EXIT_ERRORS;
     }
     let code = ready_to_send(&source, copy, said, stderr);
-    report(true, &built, &out, stdout);
+    report(true, &built, &out, stderr, stdout);
     code
+}
+
+/// What `cpl submit --json` shows in an editor: one line saying whether the
+/// file is ready, its size against the judge's limit and the samples it
+/// passed, as the status and the panel, and under it what stopped it.
+fn view(ready: bool, build: &Value, test: &Value, said: &str) -> View {
+    let path = build.at(&["path"]).as_str().unwrap_or("the file");
+    let size = build
+        .at(&["bytes"])
+        .as_u64()
+        .map_or(String::new(), |bytes| {
+            let share = build
+                .at(&["limit"])
+                .as_u64()
+                .filter(|&limit| limit > 0)
+                .map_or(String::new(), |limit| {
+                    let judge = build.at(&["judge"]).as_str().unwrap_or("the judge");
+                    let percent = (100.0 * bytes as f64 / limit as f64).round() as u64;
+                    format!(", {percent}% of {judge}'s limit")
+                });
+            format!(" ({:.1} KB{share})", bytes as f64 / 1024.0)
+        });
+    let samples = match test.at(&["case_count"]).as_u64() {
+        Some(total) => {
+            let passed = test.at(&["passed_count"]).as_u64().unwrap_or(0);
+            format!(", {passed}/{total} samples")
+        }
+        None => ", no samples".into(),
+    };
+    let verdict = if ready {
+        "ready to send"
+    } else {
+        "not ready to send"
+    };
+    let copied = if ready && said.contains("cpl: copied ") {
+        "; copied to the clipboard"
+    } else {
+        ""
+    };
+    let label = format!("{verdict}: {path}{size}{samples}{copied}");
+    let mut panel = format!("{label}\n");
+    if !ready {
+        for line in said.trim_end().lines() {
+            panel += &format!("  {line}\n");
+        }
+    }
+    View {
+        panel,
+        status: Some(Status {
+            line: 0,
+            ok: ready,
+            label,
+            detail: None,
+        }),
+        ..View::default()
+    }
 }
 
 /// Says that `what` ran in the interpreter because `path`'s judge compiler
@@ -292,4 +352,57 @@ pub(crate) fn list_judges(
         let _ = writeln!(stdout, "{}", cpl_json::to_string(&judges));
     }
     0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn label(ready: bool, build: &str, test: &str, said: &str) -> (String, String) {
+        let parse = |text: &str| cpl_json::parse(text).unwrap();
+        let view = view(ready, &parse(build), &parse(test), said);
+        assert_eq!(view.status.as_ref().unwrap().ok, ready);
+        (view.status.unwrap().label, view.panel)
+    }
+
+    #[test]
+    fn the_view_says_if_it_is_ready_how_big_and_how_many_samples_pass() {
+        let build = r#"{"bytes":4593,"judge":"codeforces","limit":65536,"path":"a.cpp"}"#;
+        let test = r#"{"cases":[],"passed_count":2,"case_count":2}"#;
+        let (status, panel) = label(true, build, test, "");
+        assert_eq!(
+            status,
+            "ready to send: a.cpp (4.5 KB, 7% of codeforces's limit), 2/2 samples"
+        );
+        assert_eq!(panel, format!("{status}\n"));
+        let copied = "cpl: copied a.cpp to the clipboard with `xclip`\n";
+        assert!(label(true, build, test, copied)
+            .0
+            .ends_with("2/2 samples; copied to the clipboard"));
+        let (status, panel) = label(
+            false,
+            r#"{"path":"a.cpp","bytes":10}"#,
+            r#"{"passed_count":0,"case_count":1}"#,
+            "cpl: `a.cp` is not ready to send: a case in a.tests fails\n",
+        );
+        assert_eq!(status, "not ready to send: a.cpp (0.0 KB), 0/1 samples");
+        assert_eq!(
+            panel,
+            format!("{status}\n  cpl: `a.cp` is not ready to send: a case in a.tests fails\n")
+        );
+        // A build that failed has no report; a problem with no cases, no test.
+        assert_eq!(
+            label(false, "null", "null", "").0,
+            "not ready to send: the file, no samples"
+        );
+        let unlimited = r#"{"path":"a.cpp","bytes":2048,"limit":0}"#;
+        assert_eq!(
+            label(true, unlimited, "null", "").0,
+            "ready to send: a.cpp (2.0 KB), no samples"
+        );
+        let unnamed = r#"{"path":"a.cpp","bytes":32768,"limit":65536}"#;
+        assert!(label(true, unnamed, "null", "")
+            .0
+            .contains("50% of the judge's limit"));
+    }
 }

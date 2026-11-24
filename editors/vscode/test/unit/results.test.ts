@@ -10,9 +10,7 @@ import {
     parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
-    parseSubmitReport,
     parseTestReport,
-    submitSummary,
     renderCounterexample,
     runtimeErrorLabel,
     sampleStatusLabel,
@@ -226,19 +224,6 @@ test('runtimeErrorLabel and sampleStatusLabel format compact inline badges', () 
     );
     assert.equal(sampleStatusLabel({ line: 0, ok: true, label: 'i1: passed (3 ms)' }, 60), '\u2713 i1: passed (3 ms)');
     assert.equal(sampleStatusLabel({ line: 0, ok: false, label: '1 of 2 samples passed' }, 60), '\u2717 1 of 2 samples passed');
-});
-
-test('parseSubmitReport reads `cpl submit --json` and submitSummary says if it is ready', () => {
-    const stdout =
-        '{"build":{"bytes":4593,"checks":"none","judge":"codeforces","limit":65536,"path":"a.cpp","sizes":[]},' +
-        '"ready":true,"test":{"cases":[],"passed_count":2,"case_count":2}}\n';
-    const report = parseSubmitReport(stdout);
-    assert.deepEqual(report, { ready: true, path: 'a.cpp', bytes: 4593, limit: 65536, judge: 'codeforces', passed: 2, total: 2 });
-    assert.equal(submitSummary(report!), "ready to send: a.cpp (4.5 KB, 7% of codeforces's limit), 2/2 samples");
-    const failed = parseSubmitReport('{"ready":false,"build":{"path":"a.cpp","bytes":10},"test":{"passed_count":0,"case_count":1}}');
-    assert.equal(submitSummary(failed!), 'not ready to send: a.cpp (0.0 KB), 0/1 samples');
-    assert.equal(parseSubmitReport('wrote a.cpp'), undefined);
-    assert.equal(parseSubmitReport('{"cases":[]}'), undefined);
 });
 
 test('parseTestReport reads each case, with null fields left out', () => {

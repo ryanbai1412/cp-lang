@@ -58,8 +58,11 @@ last two `null` when the judge accepts. `cpl build --json` prints `{"path", "byt
 `limit` and `judge` it was built for, the `checks` it still traps on (`none`,
 `traps` or `all`, as `--checks` names them), and `sizes`:
 each piece's `part`, `name` and `bytes`, adding up to `bytes`. `cpl submit
---json` prints `{"ready", "build", "test"}`: the `build` and `test` reports those two print,
-`null` for a step that did not run. `cpl report --json` prints `{"path", "bytes", "sections", "comparison",
+--json` prints `{"ready", "build", "test", "view": {"panel", "status": {"line", "ok", "label"}}}`:
+the `build` and `test` reports those two print, `null` for a step that did not run, and the
+`view`: one line, its `status` and `panel`, saying whether the file is ready, its size against
+the judge's limit and the samples it passed (`ready to send: a.cpp (4.5 KB, 7% of codeforces's
+limit), 2/2 samples`), the panel adding under it what stopped it. `cpl report --json` prints `{"path", "bytes", "sections", "comparison",
 "issue_url"}`: the report's
 `path` and `bytes`, its `sections`, the `comparison` of the interpreter and
 C++ runs and the prefilled `issue_url`, `null` when there is none. `cpl fmt
