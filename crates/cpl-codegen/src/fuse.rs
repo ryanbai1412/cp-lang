@@ -14,7 +14,9 @@ pub(crate) struct FusedPush {
     pub var: String,
     pub cpp: String,
     pub first: Vec<String>,
-    pub body: Block,
+    /// Shared, not copied, by each `push` it runs at: a profile counts the
+    /// body's statements by address.
+    pub body: std::rc::Rc<Block>,
     /// Hands each element to this callback instead (`crate::sink`).
     pub sink: Option<String>,
 }
@@ -80,6 +82,7 @@ impl<'p> Emitter<'p> {
         if self.hoisted.contains(vec_slot) {
             return false;
         }
+        let written = outer_body;
         let mut outer_body = outer_body.clone();
         let Some(stops) = retarget_breaks(&mut outer_body, outer_id, *inner_id, 0) else {
             return false;
@@ -121,10 +124,14 @@ impl<'p> Emitter<'p> {
                 var: var.to_string(),
                 cpp: cpp.to_string(),
                 first: first.to_vec(),
-                body: outer_body.clone(),
+                body: std::rc::Rc::new(outer_body.clone()),
                 sink: None,
             },
         ));
+        if let (Some(_), Some((_, fused))) = (&self.sites, self.fused_pushes.last()) {
+            carry(&mut self.counted, written, &fused.body);
+            carry(&mut self.entries, written, &fused.body);
+        }
         let inside = walk::inside_list(*inner_slot, inner_iter, inner_body, self.locals());
         self.inside.extend(
             inside.map(|(l, i)| crate::bounds::Inside::List((false, l, None), i, None, 0, 0)),
@@ -134,6 +141,21 @@ impl<'p> Emitter<'p> {
             .truncate(self.inside.len() - usize::from(inside.is_some()));
         self.fused_pushes.pop();
         true
+    }
+}
+
+/// The statements of `copy` (a clone of `from`) put in `set` where the
+/// ones they copy are: a profile's sites are keyed by address.
+fn carry(set: &mut std::collections::HashSet<*const Stmt>, from: &Block, copy: &Block) {
+    let mut froms = Vec::new();
+    cpl_ir::walk::deep_stmts(from, &mut |s| froms.push(s as *const Stmt));
+    let mut copies = Vec::new();
+    cpl_ir::walk::deep_stmts(copy, &mut |s| copies.push(s as *const Stmt));
+    debug_assert_eq!(froms.len(), copies.len());
+    for (from, copy) in froms.into_iter().zip(copies) {
+        if set.contains(&from) {
+            set.insert(copy);
+        }
     }
 }
 

@@ -204,6 +204,27 @@ fn a_loop_binding_a_tuple_starts_its_line_once() {
 }
 
 #[test]
+fn a_loop_fused_onto_a_library_walk_counts_its_body() {
+    // `rg.from(r)` builds its list in a loop the consumer is fused onto,
+    // which writes the body from a copy of it.
+    let file = scratch(
+        "fused_for.cp",
+        "let ys = [i for i in 0..5]\nlet rg = ys.ring\nvar s = 0\nfor r in 0..2:\n    for i in rg.from(r):\n        s += i\nprint(s)\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        let starts = field(&out, "start_count");
+        assert_eq!(&starts[3..6], [(4, 1), (5, 2), (6, 10)], "{engine:?}");
+    }
+}
+
+#[test]
 fn native_profile_charges_the_caller_again_after_a_user_fn_returns() {
     if !has_gxx() {
         return;
