@@ -189,7 +189,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/zip-keyed-by-first.cp: compiler
 - core-05/exercise-04-var-from-lent-param.cp: compiler
 - core-05/exercise-20-segtree-lent-from-ws.cp: compiler
-- core-05/exercise-24-mut-generator-rewalked-lint.cp: compiler
 - core-05/exercise-35-lent-optional-kept.cp: compiler
 - core-05/lent-generator-blocks-overlapping-write.cp: compiler
 - core-05/let-heap-element-lends-no-copy.cp: compiler
@@ -216,6 +215,4 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-segtree/closure-op-picks-index.cp: stdlib `all` of an identity-less op is `?T`; needs identity-less fold typing (plan/QUESTIONS.md)
 - std-seq/split-on-separator-predicate.cp: stdlib
 - std-window/track-infers-element-from-sequence.cp: compiler
-- tools-bundle/cpp-body-names-params-that-shadow-a-global.cp: compiler
-- tools-bundle/cpp-only-as-a-whole-fn-body.cp: compiler
 - tools-bundle/vendor-copies-pinned-libraries.cp: tools Milestone 2 (pins, Rbundle.6), not promised for Milestone 1
