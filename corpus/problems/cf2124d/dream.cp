@@ -20,7 +20,7 @@ let a: [0..n]1..=2e5 = read()
 if k == 1: return print("YES")
 
 let thresh = a.sorted()[k - 2]
-let small = a.filter(v => v < thresh)
-let gaps = a.split(by: v => v < thresh).map(g => g.count(v => v == thresh))
-let kept = small.len + zip(gaps, gaps.rev).map((x, y) => min(x, y)).sum()
+let small = a.filter(v => v < thresh).collect()
+let gaps = a.split(v => v < thresh).map(g => g.count(v => v == thresh))
+let kept = small.count() + zip(gaps, gaps.rev).map((x, y) => min(x, y)).sum()
 print(if is_palindrome(small) and kept >= k - 1: "YES" else: "NO")

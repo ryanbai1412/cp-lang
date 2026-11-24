@@ -16,9 +16,9 @@ let s: [Row][Col]Char = read()
 
 fn other(r: Row) -> Row = if r == Row.Top: Row.Bottom else: Row.Top
 fn won(cells: [3](Row, Col)) -> Int = Int(cells.count((r, c) => s[r][c] == 'A') >= 2)
-fn bar(r: Row, c: Col) -> Int = won([(r, c), (r, (c + 1)!), (r, (c + 2)!)])
-fn open_ell(z: Row, c: Col) -> Int = won([(z, c), (other(z), c), (other(z), (c + 1)!)])
-fn close_ell(z: Row, c: Col) -> Int = won([(z, c), (z, (c + 1)!), (other(z), (c + 1)!)])
+fn bar(r: Row, c: Col) -> Int = won([(r, c), (r, Col(c + 1)), (r, Col(c + 2))])
+fn open_ell(z: Row, c: Col) -> Int = won([(z, c), (other(z), c), (other(z), Col(c + 1))])
+fn close_ell(z: Row, c: Col) -> Int = won([(z, c), (z, Col(c + 1)), (other(z), Col(c + 1))])
 
 enum Front = Flush | Behind(Row)
 
@@ -27,16 +27,16 @@ fn best(c: Col.cuts, f: Front) -> Int = match f:
     Flush if c == Col.cuts.last => 0
     Flush =>
         let col = c.right!
-        let stacked = bar(Row.Top, col) + bar(Row.Bottom, col) + best(c + 3, Front.Flush)
-        let by_ell = max(open_ell(z, col) + best(c + 1, Front.Behind(z)) for z in Row)
+        let stacked = bar(Row.Top, col) + bar(Row.Bottom, col) + best(Col.cuts(c.ord + 3), Front.Flush)
+        let by_ell = max(open_ell(z, col) + best(Col.cuts(c.ord + 1), Front.Behind(z)) for z in Row)
         max(stacked, by_ell)
     Behind(z) =>
         let col = c.right!
-        let close = close_ell(z, col) + best(c + 2, Front.Flush)
+        let close = close_ell(z, col) + best(Col.cuts(c.ord + 2), Front.Flush)
         if c.ord + 4 <= n:
-            let stagger = bar(z, col) + bar(other(z), (col + 1)!) + best(c + 3, Front.Behind(z))
+            let stagger = bar(z, col) + bar(other(z), Col(col + 1)) + best(Col.cuts(c.ord + 3), Front.Behind(z))
             max(close, stagger)
         else:
             close
 
-print(best(Col.cuts.first, Front.Flush))
+print(best(Col.cuts.first!, Front.Flush))
