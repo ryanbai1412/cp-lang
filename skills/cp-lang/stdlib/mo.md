@@ -8,7 +8,7 @@ In prelude (no `use` needed): `mo`.
 
 ## Functions
 
-- `fn mo_order<D>(queries: List<Range<D>>) -> List<Int>` — \(O(q \log q)\); The order in which to visit `queries` so a sliding window moves its endpoints \(O((n + q) \sqrt n)\) times, as a permutation of `0..queries.len`.
+- `fn mo_order<D>(queries: List<Range<D>>) -> List<Int>` — \(O(q \log q)\); The order in which to visit `queries` so a sliding window moves its endpoints \(O(n \sqrt q)\) times, as a permutation of `0..queries.len`.
 - `fn mo_steps<D>(from: Range<D>, to: Range<D>) -> List<(pos: D, entering: Bool)>` — \(O(\lvert Δ\mathit{start} \rvert + \lvert Δ\mathit{end} \rvert)\); The positions that enter (`entering: true`) or leave (`entering: false`) a window as it moves from `from` to `to`, in the order a caller should apply them.
 - `fn mo<D, R>(queries: List<Range<D>>, add: D -> (), remove: D -> (), answer: Int -> R) -> List<R>` — \(O((n + q) \sqrt n)\) calls to `add` and `remove`, `q` calls to `answer`, plus \(O(q \log q)\); Answers offline range queries by moving one window through them in [`mo_order`](mo_order) and calling `add(pos)` / `remove(pos)` for each step of [`mo_steps`](mo_steps).; traps: never; traps raised by the callbacks propagate
 - `fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int>` — \(O(q \log q + q \log n)\); The order in which to visit `queries`, by Hilbert-curve key: typically 1.5-2x fewer endpoint moves than [`mo_order`](mo_order) on dense queries.
