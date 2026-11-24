@@ -8723,3 +8723,5 @@ first to land keeps the number, the later one has a fresh number and a
 `Formerly N` line. This reverses decision 327's "old duplicates keep their
 numbers". Reverse by dropping the landing check and going back to `max + 1`
 from `just next-decision`.
+
+## 506. (reserved, content)
