@@ -375,13 +375,7 @@ fn zero_bits(program: &cpl_ir::Program, e: &Expr, zeros: &[bool], depth: usize) 
 }
 
 fn cell_bytes(cell: &str) -> Option<i64> {
-    match cell.trim_start_matches('u') {
-        "ll" | "double" | "int64_t" => Some(8),
-        "int" | "int32_t" => Some(4),
-        "int16_t" => Some(2),
-        "char" | "8" | "int8_t" => Some(1),
-        _ => None,
-    }
+    cpl_ir::IntWidth::cpp_bytes(cell)
 }
 
 /// A cell C++ leaves unset until written: a number.

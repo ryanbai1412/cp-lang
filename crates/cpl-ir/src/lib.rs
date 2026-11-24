@@ -1347,6 +1347,17 @@ impl IntWidth {
             IntWidth::I32 => "int32_t",
         }
     }
+
+    /// The bytes of a C++ number cell (`int16_t`, `ull`, `double`), signed or not.
+    pub fn cpp_bytes(cell: &str) -> Option<i64> {
+        match cell.trim_start_matches('u') {
+            "ll" | "double" | "int64_t" => Some(8),
+            "int" | "int32_t" => Some(4),
+            "int16_t" => Some(2),
+            "char" | "8" | "int8_t" => Some(1),
+            _ => None,
+        }
+    }
 }
 
 /// Narrowed element layout for a range-typed array, grid, or list.

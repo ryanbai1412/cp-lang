@@ -638,3 +638,28 @@ fn a_joined_list_sorted_by_a_key_keeps_its_narrow_cells_and_is_moved() {
         "{wide}"
     );
 }
+
+#[test]
+fn a_narrow_cell_holds_its_width_in_bytes() {
+    use cpl_ir::IntWidth;
+    for (w, bytes) in [
+        (IntWidth::U8, 1),
+        (IntWidth::I8, 1),
+        (IntWidth::U16, 2),
+        (IntWidth::I16, 2),
+        (IntWidth::U32, 4),
+        (IntWidth::I32, 4),
+    ] {
+        assert_eq!(IntWidth::cpp_bytes(w.cpp()), Some(bytes), "{}", w.cpp());
+    }
+    for (cell, bytes) in [
+        ("ll", Some(8)),
+        ("ull", Some(8)),
+        ("double", Some(8)),
+        ("int", Some(4)),
+        ("char", Some(1)),
+        ("bool", None),
+    ] {
+        assert_eq!(IntWidth::cpp_bytes(cell), bytes, "{cell}");
+    }
+}
