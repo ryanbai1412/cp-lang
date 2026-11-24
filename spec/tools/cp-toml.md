@@ -4,6 +4,14 @@
 
 The nearest `cp.toml` at or above a program's folder configures the tools. `cpl lint` reports a table or key not listed here.
 
+## `[project]`
+
+The project's own notes, such as its `name`; no tool reads them. Read by `no tool`.
+
+| Key | Meaning |
+|---|---|
+| `<name>` | any key the project keeps for itself |
+
 ## `[fmt]`
 
 The layout `cpl fmt` writes. Read by `cpl-fmt`.

@@ -367,7 +367,7 @@ fn an_unknown_lint_name_is_reported_with_the_closest_one() {
 fn cp_toml_sets_levels() {
     let src = "var total = 0\nlet x: F64 = read()\nprint(total, yes(x == 1.0))\n";
     assert_eq!(codes(src), ["L0201", "L0301"]);
-    let toml = "[project]\nname = \"x\"\n\n[lints]\nvar_never_reassigned = \"allow\"  # noisy here\nfloat_equality = \"deny\"\n\n[judge]\nfloat_equality = \"allow\"\n";
+    let toml = "[project]\nname = \"x\"\nfloat_equality = \"allow\"\n\n[lints]\nvar_never_reassigned = \"allow\"  # noisy here\nfloat_equality = \"deny\"\n";
     let (config, errors) = Config::from_toml(toml);
     assert_eq!(errors, []);
     let found = lint(src, &config);
