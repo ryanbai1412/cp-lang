@@ -3,8 +3,8 @@
 //! start: `SortedBag`, `SortedSet`, `SortedMap`, `BucketCount`
 //! example: `var s: SortedSet<Int> = SortedSet(); s.add(5); s.add(2); s.add(9); s.nth(1) == 5 and s.rank(9) == 2`
 
-use std.seq.Track
 use std.math.{ceil_sqrt}
+use std.seq.Track
 
 /// Read-only handle to one key's slot in a `SortedBag<K>`, valid until the bag's next `add`,
 /// `remove` or `clear`, because a B+tree change may move keys between leaves (decision 579).
@@ -82,8 +82,10 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([3, 1, 3]).to_list() == [1, 3, 3]`
     pub fn of(xs: List<K>) -> SortedBag<K>:
         var b = SortedBag<K>.new()
-        b.keys.reserve(min(xs.len, BAG_B))
-        b.ws.reserve(min(xs.len, BAG_B))
+        if xs.len > 0:
+            let cap = min(max(xs.len, 4), BAG_B)
+            b.keys.reserve(cap)
+            b.ws.reserve(cap)
         for x in xs: b.add(x)
         b
 
