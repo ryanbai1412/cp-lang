@@ -19,6 +19,12 @@ priority = 20
 filter = 'binary_id(cpl-lsp::ports) | binary_id(cpl-lsp::latency)'
 threads-required = 'num-cpus'
 
+# std's @test fns each fail past the judge's 2 s limit; beside the rest of
+# the suite three went past it on a 4-core runner (CI run 45311869328).
+[[profile.default.overrides]]
+filter = 'test(=std_own_tests_pass)'
+threads-required = 'num-cpus'
+
 # The commit tier (scripts/check.sh --commit) skips the end-to-end suites:
 # they drive whole programs through the CLI, LSP and conformance corpus, and
 # take most of the fast gate's time. The land tier (--fast) runs them all.

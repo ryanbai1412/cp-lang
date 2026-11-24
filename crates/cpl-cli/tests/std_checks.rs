@@ -96,22 +96,35 @@ fn std_own_tests_pass() {
         "only {} std files have @test fns",
         files.len()
     );
+    // One `cpl test` per core: a test past the judge's 2 s limit fails, and
+    // on a 4-core CI runner every file at once pushed three past it (CI run
+    // 45311869328). nextest gives this test the machine (.config/nextest.toml).
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let runs: Vec<(String, std::process::Output)> = std::thread::scope(|s| {
-        let handles: Vec<_> = files
-            .iter()
-            .map(|file| {
-                let root = &root;
+        let handles: Vec<_> = (0..threads)
+            .map(|_| {
+                let (root, files, next) = (&root, &files, &next);
                 s.spawn(move || {
-                    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-                        .args(["test", file])
-                        .current_dir(root)
-                        .output()
-                        .expect("cpl runs");
-                    (file.clone(), out)
+                    let mut runs = Vec::new();
+                    while let Some(file) =
+                        files.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                    {
+                        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+                            .args(["test", file])
+                            .current_dir(root)
+                            .output()
+                            .expect("cpl runs");
+                        runs.push((file.clone(), out));
+                    }
+                    runs
                 })
             })
             .collect();
-        handles.into_iter().map(|h| h.join().unwrap()).collect()
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
     });
     let mut problems = Vec::new();
     let mut failed = Vec::new();
