@@ -3,9 +3,13 @@
 //! start: `BeatsSegTree`, `BeatsSegTree.chmin`, `BeatsSegTree.chmax`, `HistoricBeatsSegTree`
 //! example: `BeatsSegTree([5, 1, 4]).all_sum == 10`
 //!
-//! Maintains exact `min`, second `min`, `max`, second `max`, and `sum` on every node.
+//! Maintains `sum`, `min` and `max` on every node, and from the first `chmin` or `chmax` on also
+//! the second `min` and `max` and their counts, which only those two need. A node whose `min`
+//! equals its `max` is constant and hands that value to its children, so `assign` and a
+//! `chdiv` that flattens a node are one tag each.
 //! Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized
 //! (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
+use std.math.{bit_ceil}
 use std.range.{Len, ends}
 use std.seq.{any}
 
@@ -26,19 +30,24 @@ struct BeatsView:
 pub struct BeatsSegTree<D>:
     s: List<Int>
     mx1: List<Int>
-    mx2: List<Int>
-    mx_c: List<Int>
     mn1: List<Int>
-    mn2: List<Int>
-    mn_c: List<Int>
     lz_add: List<Int>
     n: Len
+    // The second extremes and their counts, kept once `beats` is set by the first `chmin` or
+    // `chmax`; empty before.
+    beats: Bool = false
+    mx2: List<Int> = []
+    mx_c: List<Int> = []
+    mn2: List<Int> = []
+    mn_c: List<Int> = []
 
     /// A Segment Tree Beats over `D` holding the values of `a`, or `fill` at every position, or
-    /// zero everywhere when neither is given. Every node keeps the exact maximum, second maximum
-    /// and its count, the same for the minimum, and the sum.
+    /// zero everywhere when neither is given. Every node keeps the sum, minimum and maximum and a
+    /// pending add; the first `chmin` or `chmax` adds each node's second maximum and minimum and
+    /// their counts, in one \(O(\lvert D \rvert)\) pass.
     ///
-    /// cost: \(O(\lvert D \rvert)\)
+    /// cost: \(O(\lvert D \rvert)\); \(2 \cdot \mathrm{bit\_ceil}(\lvert D \rvert)\) nodes of four `Int`s, eight
+    /// from the first `chmin` or `chmax` on
     /// empty: `BeatsSegTree<0..0>().all_sum == 0 and BeatsSegTree<0..0>().all_max == None`
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: when both `a` and `fill` are given
@@ -46,15 +55,11 @@ pub struct BeatsSegTree<D>:
     /// example: `BeatsSegTree<0..3>(fill: 2).all_sum == 6`
     pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D>:
         let n = D.count
-        let sz = max(1, 4 * n)
+        let sz = 2 * bit_ceil(n)
         var st = BeatsSegTree(
             List.filled(sz, 0),
             List.filled(sz, Int.MIN),
-            List.filled(sz, Int.MIN),
-            List.filled(sz, 0),
             List.filled(sz, Int.MAX),
-            List.filled(sz, Int.MAX),
-            List.filled(sz, 0),
             List.filled(sz, 0),
             n,
         )
@@ -71,6 +76,15 @@ pub struct BeatsSegTree<D>:
         st
 
     fn pull(mut self, u: Int):
+        let (l, r) = (2 * u, 2 * u + 1)
+        if not beats:
+            s[u] = s[l] + s[r]
+            mx1[u] = max(mx1[l], mx1[r])
+            mn1[u] = min(mn1[l], mn1[r])
+            return
+        self.pull_beats(u)
+
+    fn pull_beats(mut self, u: Int):
         let (l, r) = (2 * u, 2 * u + 1)
         s[u] = s[l] + s[r]
         if mx1[l] == mx1[r]:
@@ -103,24 +117,52 @@ pub struct BeatsSegTree<D>:
             let v = vals[nl]
             s[u] = v
             mx1[u] = v
-            mx2[u] = Int.MIN
-            mx_c[u] = 1
             mn1[u] = v
-            mn2[u] = Int.MAX
-            mn_c[u] = 1
             return
         let mid = (nl + nr) / 2
         self.build(2 * u, nl, mid, vals)
         self.build(2 * u + 1, mid, nr, vals)
         self.pull(u)
 
+    // Start keeping the second extremes: push every tag down and pull the whole tree again.
+    fn start_beats(mut self):
+        if beats or n == 0: return
+        let sz = s.len
+        mx2 = List.filled(sz, Int.MIN)
+        mx_c = List.filled(sz, 1)
+        mn2 = List.filled(sz, Int.MAX)
+        mn_c = List.filled(sz, 1)
+        self.widen(1, 0, n)
+        beats = true
+
+    fn widen(mut self, u: Int, nl: Int, nr: Int):
+        if nr - nl == 1: return
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        self.widen(2 * u, nl, mid)
+        self.widen(2 * u + 1, mid, nr)
+        self.pull_beats(u)
+
+    // Node `u`, over `len` positions, holds `v` at every one; its subtree takes it on push.
+    fn put_const(mut self, u: Int, len: Int, v: Int):
+        s[u] = v * len
+        mx1[u] = v
+        mn1[u] = v
+        lz_add[u] = 0
+        if not beats: return
+        mx2[u] = Int.MIN
+        mx_c[u] = len
+        mn2[u] = Int.MAX
+        mn_c[u] = len
+
     fn apply_add(mut self, u: Int, len: Int, x: Int):
         s[u] += x * len
         mx1[u] += x
-        if mx2[u] != Int.MIN: mx2[u] += x
         mn1[u] += x
-        if mn2[u] != Int.MAX: mn2[u] += x
         lz_add[u] += x
+        if not beats: return
+        if mx2[u] != Int.MIN: mx2[u] += x
+        if mn2[u] != Int.MAX: mn2[u] += x
 
     fn apply_chmin(mut self, u: Int, x: Int):
         if x >= mx1[u]: return
@@ -139,10 +181,16 @@ pub struct BeatsSegTree<D>:
     fn push(mut self, u: Int, nl: Int, nr: Int):
         let mid = (nl + nr) / 2
         let (l, r) = (2 * u, 2 * u + 1)
+        if mn1[u] == mx1[u]:
+            self.put_const(l, mid - nl, mn1[u])
+            self.put_const(r, nr - mid, mn1[u])
+            lz_add[u] = 0
+            return
         if lz_add[u] != 0:
             self.apply_add(l, mid - nl, lz_add[u])
             self.apply_add(r, nr - mid, lz_add[u])
             lz_add[u] = 0
+        if not beats: return
         self.apply_chmin(l, mx1[u])
         self.apply_chmin(r, mx1[u])
         self.apply_chmax(l, mn1[u])
@@ -162,13 +210,15 @@ pub struct BeatsSegTree<D>:
     /// Replace every `a[i]` in `r` with `min(a[i], x)`. Descends only into nodes whose maximum
     /// exceeds `x` and whose second maximum does not, where the update is a tag.
     ///
-    /// cost: \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`
+    /// cost: \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`;
+    /// the tree's first `chmin` or `chmax` also pays \(O(\lvert D \rvert)\) once
     /// empty: `var t = BeatsSegTree([5, 1, 4]); t.chmin(1..1, 0); t.all_sum == 10`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..3, 3); t.all_sum == 7`
     pub fn chmin(mut self, r: Range<D>, x: Int):
         let (lo, hi) = r.ends
         if lo == hi: return
+        self.start_beats()
         self.chmin_rec(1, 0, n, lo, hi, x)
 
     fn chmax_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int):
@@ -184,13 +234,15 @@ pub struct BeatsSegTree<D>:
 
     /// Replace every `a[i]` in `r` with `max(a[i], x)`; the mirror of `chmin`.
     ///
-    /// cost: \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`
+    /// cost: \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`;
+    /// the tree's first `chmin` or `chmax` also pays \(O(\lvert D \rvert)\) once
     /// empty: `var t = BeatsSegTree([5, 1, 4]); t.chmax(1..1, 9); t.all_sum == 10`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmax(0..2, 2); t.all_sum == 11`
     pub fn chmax(mut self, r: Range<D>, x: Int):
         let (lo, hi) = r.ends
         if lo == hi: return
+        self.start_beats()
         self.chmax_rec(1, 0, n, lo, hi, x)
 
     fn add_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int):
@@ -215,12 +267,34 @@ pub struct BeatsSegTree<D>:
         if lo == hi: return
         self.add_rec(1, 0, n, lo, hi, x)
 
-    fn root_view(self) -> BeatsView =
+    fn root_view(self) -> BeatsView:
+        if not beats: return BeatsView(s[1], mx1[1], Int.MIN, 0, mn1[1], Int.MAX, 0, lz_add[1])
         BeatsView(s[1], mx1[1], mx2[1], mx_c[1], mn1[1], mn2[1], mn_c[1], lz_add[1])
 
     // Node `c` as a push from parent view `p` would leave it, without writing it back.
     fn seen(self, c: Int, len: Int, p: BeatsView) -> BeatsView:
         let a = p.add
+        if p.mn1 == p.mx1: return BeatsView(
+            p.mn1 * len,
+            p.mn1,
+            Int.MIN,
+            len,
+            p.mn1,
+            Int.MAX,
+            len,
+            0,
+        )
+        if not beats:
+            return BeatsView(
+                s[c] + a * len,
+                mx1[c] + a,
+                Int.MIN,
+                0,
+                mn1[c] + a,
+                Int.MAX,
+                0,
+                lz_add[c] + a,
+            )
         var v = BeatsView(
             s[c] + a * len,
             mx1[c] + a,
@@ -304,6 +378,9 @@ pub struct BeatsSegTree<D>:
         if qr <= nl or nr <= ql: return
         if ql <= nl and nr <= qr:
             if rem and mn1[u] >= 0 and mx1[u] < d: return
+            if not rem and mn1[u] / d == mx1[u] / d:
+                self.put_const(u, nr - nl, mn1[u] / d)
+                return
             let a = if rem: -d * (mx1[u] / d) else: mx1[u] / d - mx1[u]
             let b = if rem: -d * (mn1[u] / d) else: mn1[u] / d - mn1[u]
             if a == b:
@@ -326,18 +403,31 @@ pub struct BeatsSegTree<D>:
 
     /// Overwrite every position in `r` with `x`.
     ///
-    /// cost: \(O(\log \lvert D \rvert)\) amortized
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: `var t = BeatsSegTree([5, 1, 4]); t.assign(1..1, 0); t.all_sum == 10`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.assign(0..2, 0); t.all_sum == 4`
     pub fn assign(mut self, r: Range<D>, x: Int):
-        self.chmin(r, x)
-        self.chmax(r, x)
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.assign_rec(1, 0, n, lo, hi, x)
+
+    fn assign_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int):
+        if qr <= nl or nr <= ql: return
+        if ql <= nl and nr <= qr:
+            self.put_const(u, nr - nl, x)
+            return
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        self.assign_rec(2 * u, nl, mid, ql, qr, x)
+        self.assign_rec(2 * u + 1, mid, nr, ql, qr, x)
+        self.pull(u)
 
     /// Replace every `a[i]` in `r` with `a[i] / d`, rounding toward negative infinity.
     ///
-    /// A node whose values all map to the same shift becomes a single `add` tag, so each value is
-    /// divided \(O(\log V)\) times before it settles, for values of magnitude at most `V`.
+    /// A node whose values all map to the same shift becomes a single `add` tag, and one whose
+    /// values all map to one value a constant, so each value is divided \(O(\log V)\) times
+    /// before it settles, for values of magnitude at most `V`.
     ///
     /// cost: \(O(\log \lvert D \rvert \log V)\) amortized
     /// empty: `var t = BeatsSegTree([5, 1, 4]); t.chdiv(1..1, 2); t.all_sum == 10`
@@ -693,7 +783,17 @@ pub struct HistoricBeatsSegTree<D>:
     fn handed(self, v: Int, t: List<Int>, pmax: Int, pmin: Int) -> List<Int>:
         let k1 = if mx1[v] == pmax: 0 elif mx1[v] == mn1[v] and mn1[v] == pmin: 1 else: 2
         let k2 = if mx1[v] == mn1[v]: k1 elif mn1[v] == pmin: 1 else: 2
-        [t[3 * k1], t[3 * k1 + 1], t[3 * k1 + 2], t[3 * k2], t[3 * k2 + 1], t[3 * k2 + 2], t[6], t[7], t[8]]
+        [
+            t[3 * k1],
+            t[3 * k1 + 1],
+            t[3 * k1 + 2],
+            t[3 * k2],
+            t[3 * k2 + 1],
+            t[3 * k2 + 2],
+            t[6],
+            t[7],
+            t[8],
+        ]
 
     fn query(mut self, r: Range<D>, what: Int) -> ?Int:
         let (lo, hi) = r.ends
