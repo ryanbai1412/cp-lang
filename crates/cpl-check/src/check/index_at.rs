@@ -53,6 +53,20 @@ impl Checker<'_> {
             },
             span: expr.span,
         };
-        Some(self.infer(&call))
+        let (hovers, resolved) = (self.hovers.len(), self.resolved.len());
+        let ty = self.infer(&call);
+        // The `at` the call names is not written: the index in its place
+        // keeps its own hover and refs.
+        let mut i = 0;
+        self.hovers.retain(|h| {
+            i += 1;
+            i <= hovers || !(h.span == index.span && h.keyword == "field" && h.name == "at")
+        });
+        let mut i = 0;
+        self.resolved.retain(|(span, r)| {
+            i += 1;
+            i <= resolved || !(*span == index.span && r.name == "at" && r.owner.is_some())
+        });
+        Some(ty)
     }
 }

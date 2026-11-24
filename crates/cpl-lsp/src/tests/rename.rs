@@ -253,3 +253,11 @@ fn rename_reaches_a_domain_a_tuple_pattern_binds() {
     let src = "let xs = [3, 1, 3]\nlet (domain C|, ids) = compress(xs)\nvar t: [C]Int = 0\nprint(t[ids[0]] + C.count)\n";
     assert_eq!(renamed_texts(src, "Rank"), ["Rank", "Rank", "Rank"]);
 }
+
+/// `g[v]` on a struct with an `at` method reads as `g.at(v)`, but the `v`
+/// written there is still the local's.
+#[test]
+fn rename_reaches_an_index_into_a_struct_read_through_at() {
+    let src = "domain V = 1..=3\nlet g = Graph.undirected([(u: V.first!, v: V.last!)])\nprint(V.find(v| => g[v].len > 1))\n";
+    assert_eq!(renamed_texts(src, "w"), ["w", "w"]);
+}
