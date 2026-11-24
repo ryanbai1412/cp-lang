@@ -25,5 +25,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Semiring/Mat stubs reconciled to Semiring(min, +) and Mat(over:). Needs explicit use lines: Mat and Semiring are not in the prelude."
+ "notes": "Semiring/Mat stubs reconciled to Semiring(min, +) and Mat(over:). Needs explicit use lines: Mat and Semiring are not in the prelude.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "5ff97645274661921f2e8f0c4f7c6069137dfcb6"
+ }
 }
