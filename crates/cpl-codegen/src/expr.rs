@@ -73,7 +73,7 @@ fn char_literal(c: u8) -> Code {
 
 /// The bytes as a C++ string literal, quotes included.
 /// The longest `std::string` libstdc++ and libc++ hold without allocating.
-const SHORT_STR: usize = 15;
+pub(crate) const SHORT_STR: usize = 15;
 
 pub(crate) fn string_literal(bytes: &[u8]) -> String {
     let mut out = String::from("\"");

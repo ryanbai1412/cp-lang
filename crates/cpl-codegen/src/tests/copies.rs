@@ -27,6 +27,25 @@ print(n, say(\"short\"))
 }
 
 #[test]
+fn a_let_of_a_long_str_literal_names_the_static() {
+    let out = cpp("fn f(x: Int) -> Str:
+    let ds = \"0123456789abcdefghijklmnopqrstuvwxyz\"
+    var s = \"a message past the short-string buffer\"
+    s += ds
+    s
+print(f(1))
+");
+    assert!(
+        out.contains("const std::string& ds = cpl_str0;"),
+        "a let names the static:\n{out}"
+    );
+    assert!(
+        out.contains("std::string s = cpl_str1;"),
+        "a var that changes owns its value:\n{out}"
+    );
+}
+
+#[test]
 fn a_reversed_list_pays_only_for_the_view_parts_it_uses() {
     let read = "let n: Int = read()\nlet xs: List<Int> = [read() for _ in 0..n]\n";
     let size = |body: &str| cpp(&format!("{read}{body}")).len();

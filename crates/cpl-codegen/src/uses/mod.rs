@@ -390,6 +390,11 @@ impl crate::emit::Emitter<'_> {
     /// ([`Emitter::source_change`]). `tail` is what the statements after the
     /// `let` in its block do; without one the whole fn is held to that.
     pub(crate) fn lends(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
+        // A long literal is one `static const std::string`, which nothing writes.
+        if matches!(&init.kind, ExprKind::Str(bytes) if bytes.len() > crate::expr::SHORT_STR) {
+            return !self.uses.of_binding(self.home(), slot).mutated
+                && self.facts.stores(self.facts_local(slot)) <= 1;
+        }
         !init.ty.is_scalar()
             && !matches!(init.ty, Ty::Fn(..))
             && !self.spent.contains(&slot)
