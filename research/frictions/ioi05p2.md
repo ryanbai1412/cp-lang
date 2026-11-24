@@ -41,6 +41,29 @@ The port now follows the dream: `Rail.range.pieces(cuts:)` over rail cuts, `piec
   tools (worklog 2026-11-23, with a 4-leaf repro).
 - **Severity:** high.
 
+## `cpl check` and `cpl lint` accept colon match arms
+- **Where:** port lines 50-52, `Set(a, b, d): track.apply(...)` and `Ask(h):`; dream.cp lines
+  15, 38-39 the same.
+- **Dream line:** `Set(a, b, d) => track.apply(piece.covering(a..=b), d)`.
+- **What felt wrong:** `=>` is the one arm spelling (handbook/language/overview.md), yet the
+  colon form runs and passes both tools silently, so the port and its dream drifted to it:
+  ```
+  $ cat arm.cp
+  let x: 1..=2 = read()
+  match x:
+      1: print("one")
+      _: print("other")
+  $ echo 1 | cpl run arm.cp
+  one
+  $ cpl lint arm.cp
+  1 file checked, 0 warnings, 0 errors
+  ```
+- **Goal it hurts:** one canonical spelling (idiomatic-code/R8).
+- **General fix:** a lint (with `cpl fix`) rewriting `pat:` arms to `pat =>`, or a removed-spelling
+  error like E0503 if the grammar should drop them.
+- **Owner:** lint-fmt.
+- **Severity:** low.
+
 ## Tests 01-08 break the statement
 The factory tests set slopes like `I 1 2 -8`, so elevations go negative, outside the statement's
 "[0, 1e9] at any moment". They are kept; `gen.py` and tests 09-17 stay inside it (09 is the
