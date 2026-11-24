@@ -109,3 +109,15 @@ was always the plain `sorted(by:)`.
   splitting the body's last call.
 - **Severity:** low.
 
+
+## Addendum: `struct Coupon` and the bounds gate
+- **Where:** `port.cp` now reads `coupons: [C]Coupon` with `struct Coupon(p: 1..=1e9, t: 1..=4):`
+  and its `@get fn key` / `fn buy` (review minor). `corpus.py verify` then reported
+  `bounds-unread coupons.p` and `coupons.t`, because its `STRUCT_LINE` only matched a struct with
+  no body, so a struct with methods hid its fields from the bounds check.
+- **Goal it hurts:** express (the gate punished the better spelling).
+- **General fix:** `STRUCT_LINE` accepts the trailing `:`, with a test in `scripts/test_corpus.py`.
+  Owner: tools (fixed in the same push).
+- **Measurements** (`gen.py --max`, best of 7, g++ 14 -O2): port 0.04 s / 8.83 MB, orig.cpp
+  0.06 s / 9.82 MB. The struct keeps the narrow layout (`cpl explain`: 8 B per coupon, 1.6 MB).
+- **Severity:** low.

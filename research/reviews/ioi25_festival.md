@@ -35,3 +35,7 @@ of sums `<= b` (`first_true` stands in), and `cpl fmt` splitting `buy(t, c)` at 
 - The port keeps only the cheapest 32 of each type past the free run; the dream keeps all of
   them and bounds the count by 32 instead. Both are correct and the port's header says why the
   cut is safe. The dream could state the cut too, so the two read the same.
+
+Addressed (minor): `port.cp` has `struct Coupon(p: 1..=1e9, t: 1..=4)`. Its `@get fn key` gives the
+exchange order once, and `fn buy(self, a)` gives the token update once. `coupons: [C]Coupon` keeps the
+narrow layout (`cpl explain`: 8 B per element, 1.6 MB at n = 2e5).

@@ -21,9 +21,7 @@ fn create_map(n: 1..=40, m: Int, a: List<1..=n>, b: List<1..=n>) -> List<List<1.
     var expanded = Bitset<V>.empty()
     for v in tree.euler_tour(by: c => deep.contains(c)):  // the deep child last
         diags.push([v])
-        if up[v].len > 0 and not expanded.contains(v):
-            expanded.add(v)
-            diags.extend([up[v], [v]])
+        if up[v].len > 0 and expanded.add(v): diags.extend([up[v], [v]])
     diags.resize(4 * n - 1, diags.last!)
 
     let map = [2 * n] x => [2 * n] y =>

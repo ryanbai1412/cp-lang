@@ -16,20 +16,21 @@
 // Bounds: n: 1..=2e5; a0: 1..=1e9; coupons.p: 1..=1e9; coupons.t: 1..=4
 let (n, a0) = read<(1..=2e5, 1..=1e9)>()
 domain C = 0..n
-let coupons: [C](p: 1..=1e9, t: 1..=4) = read()
 let cap = 2e14  // every price combined: n · max p = 2e5 · 1e9
-fn buy(a: Int, c: C) -> Int = min((a - coupons[c].p) * coupons[c].t, cap)
+struct Coupon(p: 1..=1e9, t: 1..=4):
+    /// The exchange order of a multiplier: buy smaller keys first.
+    @get fn key(self) -> Ratio = Ratio(p * t, t - 1)
+    fn buy(self, a: Int) -> Int = min((a - p) * t, cap)
+let coupons: [C]Coupon = read()
 
-let mult = C.filter(c => coupons[c].t > 1).sorted(
-    by: c => Ratio(coupons[c].p * coupons[c].t, coupons[c].t - 1)
-)
+let mult = C.filter(c => coupons[c].t > 1).sorted(by: c => coupons[c].key)
 let plain = C.filter(c => coupons[c].t == 1).sorted(by: c => coupons[c].p)
 
 var a: Int = a0
 var order: List<C> = []  // the free run: buys that don't shrink a
 var left = mult[..]
-while let c = left.first and buy(a, c) >= a:
-    a = buy(a, c)
+while let c = left.first and coupons[c].buy(a) >= a:
+    a = coupons[c].buy(a)
     order.push(c)
     left = left.drop(1)
 var cheapest = Bitset<C>.empty()  // the cheapest 32 left of each type
@@ -43,10 +44,9 @@ best[0][0] = a
 for (i, c) in rest.items:
     for k in K:
         best[i + 1][k] max= best[i][k]
-        if let j = k.prev and let t = best[i][j] and t >= coupons[c].p: best[i + 1][k] max= buy(
-            t,
-            c,
-        )
+        if let j = k.prev and
+            let t = best[i][j] and
+            t >= coupons[c].p: best[i + 1][k] max= coupons[c].buy(t)
 
 let cost = plain.map(c => coupons[c].p).scan(+)
 fn covered(k: K) -> Int =  // the plain coupons k's tokens pay for

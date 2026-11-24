@@ -19,7 +19,7 @@ use std.math.{iroot}
 
 domain Site = 0..10_000
 
-struct Phase(start: Int, m: Int, b: Int, k: Int, first: Bool):
+struct Phase(start: Site, m: Int, b: Int, k: Int, first: Bool):
     @get fn block(self) -> Int = self.m.ceil_div(self.b)
     @get fn pairs(self) -> List<(Int, Int)> =
         [(x, y) for x in 0..self.b for y in (if self.first: x else: 0)..self.b]
@@ -35,7 +35,7 @@ fn phase_plan(n: Int) -> List<Phase>:
                 b => (m + 1).ceil_div(b) + (pairs(b) - 1).ceil_div(4)
             )!
             let k = (pairs(b) - 1).ceil_div(4)
-            phases.push(Phase(at, m, b, k, first))
+            phases.push(Phase(Site(at), m, b, k, first))
             (m, at) = (m.ceil_div(b) + k - 1, at + k)
         if at == n - 3 and phases.len == 5 and m <= 4: return phases
     assert false, "no start fits five phases"
@@ -115,7 +115,7 @@ struct Sender:
         if tree.dist(u, at)! > len: (v, len) = (at, len + 1)
         elif tree.dist(v, at)! > len: (u, len) = (at, len + 1)
         if at.ord < n - 3: p.push(at); q.push(at)
-        if next_phase < plan.len and plan[next_phase].start == at.ord:
+        if next_phase < plan.len and plan[next_phase].start == at:
             let phase = plan[next_phase]
             next_phase += 1
             if not (p.contains(u) and q.contains(v)): (u, v) = (v, u)
@@ -151,10 +151,10 @@ fn longest_path(s: List<0..=4>) -> (Int, Int):
     var (p, q): (List<Site>, List<Site>) = ([], [])
     var next = 0
     for phase in phase_plan(n):
-        p.extend(Site(next)..=Site(phase.start)); q.extend(Site(next)..=Site(phase.start))
-        let (x, y) = phase.pairs[heard(s, phase.start..phase.start + phase.k)]
+        p.extend(Site(next)..=phase.start); q.extend(Site(next)..=phase.start)
+        let (x, y) = phase.pairs[heard(s, phase.start.ord..phase.start.ord + phase.k)]
         (p, q) = (block(p, x, phase.block), block(q, y, phase.block))
-        next = phase.start + 1
+        next = phase.start.ord + 1
     p.extend(Site(next)..Site(n - 3)); q.extend(Site(next)..Site(n - 3))
     let (p2, q3) = after3(s[n - 3], padded(p), padded(q), prev: Some(Site(n - 3)))
     let (a, b) = last1(

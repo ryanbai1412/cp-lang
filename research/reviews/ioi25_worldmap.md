@@ -31,3 +31,7 @@ differently").
   the friction report), so this is `if up[v].len > 0 and expanded.add(v):` today.
 - The friction report says to move the dream to the port's rule (no `expanded` set, no
   `while` padding at `dream.cp:26`) when it is next rewritten; that rewrite would make it a 5.
+
+Addressed (minor): `port.cp` declares `domain Visit = 0..2 * n - 1` and holds the tour as
+`[Visit]V`, so `room`, `best: [V]Visit` and `i == best[v]` are typed visits. The dream's
+`if up[v].len > 0 and expanded.add(v):` uses the Bool that `Bitset.add` returns (59bed056c).

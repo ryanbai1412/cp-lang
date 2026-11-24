@@ -37,3 +37,7 @@ gaps, and the `List<0..=4>` storage widening.
 
 - `dream.cp:51-76, 90-101`: `cpl fmt` puts the 24- and 10-row case tables one pair per line;
   already sent to lint-fmt as a fmt friction (research/frictions/fmt-corpus.md).
+
+Addressed (minor): `struct Phase(start: Site, ...)`. `Sender.arrive` compares
+`plan[next_phase].start == at` and `longest_path` extends with `Site(next)..=phase.start`. Only
+`heard`'s symbol window and `next` still take `.ord`, since both count positions in `s`.
