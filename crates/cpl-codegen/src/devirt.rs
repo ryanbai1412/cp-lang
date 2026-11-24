@@ -727,7 +727,9 @@ impl<'p> Devirt<'p> {
                 break;
             }
             for (id, slot) in dropped {
-                let slots = self.template_params.get_mut(&id).expect("a template fn");
+                let Some(slots) = self.template_params.get_mut(&id) else {
+                    continue;
+                };
                 slots.retain(|&s| s != slot);
                 if slots.is_empty() {
                     self.template_params.remove(&id);
