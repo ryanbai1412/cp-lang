@@ -1,114 +1,81 @@
 // Source: IOI 2013 P3 (Wombats), https://dmoj.ca/problem/ioi13p3
+// Problem: an R x C grid of roads (R <= 5000, C <= 200) with at most 1000 wombats on each
+//   segment; people walk east or west along rows and only south between them. Handle <= 500
+//   changes of one segment and <= 2e5 escape(V1, V2) queries: the fewest wombats on a route from
+//   (0, V1) to (R - 1, V2).
+// Solution: cut the rows into blocks of 20 and keep each block's C x C matrix of least costs
+//   from its top row to the row below it, built by C left/right relaxations per row in
+//   O(10 C^2). A SegTree over blocks multiplies them in the (min, +) semiring, with `?Cost`
+//   (None = no route) as its zero. Routes from neighbouring tops never need to cross, so the
+//   best middle column is monotone (opt[i][j-1] <= k <= opt[i+1][j]) and a product is O(C^2).
+//   A change rebuilds one block and its O(log R) ancestors; an escape reads the root.
 // limits: 9000 ms, 256 MB
-// Problem: an R x C grid of roads (R <= 5000, C <= 200) with wombat counts on each segment;
-//   people walk east/west and only south. Handle <= 500 changes of one segment and <= 2e5
-//   escape(V1, V2) queries: fewest wombats from (0, V1) to (R - 1, V2).
-// Solution: a segment tree over blocks of 8 rows; each node stores the C x C cost matrix
-//   across its rows. A leaf runs C left/right relaxations per row, O(8 C^2); parents combine
-//   by min-plus product with monotone optima (opt[i][j-1] <= k <= opt[i+1][j]), O(C^2). A
-//   change rebuilds one leaf and its O(log R) ancestors; an escape reads the root.
-// Stdin: r, c, h[r][c-1], v[r-1][c], q, then queries (1/2/3).
-// Uses top-level recursive fns (working around cpl-emit recursive nested-fn self-capture bug).
-// original: corpus/submissions/4722414.cpp
+// original: corpus/submissions/4722414.cpp (orig.cpp enables its sample grader)
+const BLOCK = 20
+type Wombats = 0..=1000
+type Cost = 0..=1e7  // the cheapest route never exceeds R * 1000 + C * 1000
 
-fn ri() -> Int:
-    let x: Int = read()
-    return x
+let r: 1..=5000 = read()
+let c: 1..=200 = read()
+domain Row = 0..r
+domain Col = 0..c
+domain Gap = 0..c - 1  // the road between columns g and g + 1
+domain Drop = 0..r - 1  // the road below row d
+var east: [Row, Gap]Wombats = read()
+var south: [Drop, Col]Wombats = read()
+domain Block = 0..ceil_div(r, BLOCK)
 
-const INF = 1_000_000_000_000
-const BS = 8
-var g_r = 0
-var g_c = 0
-var g_h: List<List<Int>> = []
-var g_v: List<List<Int>> = []
-var g_seg: List<List<Int>> = []
+type Matrix = [Col, Col]?Cost
 
-fn comb(a: List<Int>, b: List<Int>) -> List<Int>:
-    let c = g_c
-    var out = [0..c * c] _ => INF
-    var opt = [0..c * c] _ => 0
-    var i = c - 1
-    while i >= 0:
-        for j in 0..c:
-            let lo = if j > 0: opt[i * c + j - 1] else: 0
-            let hi = if i + 1 < c: opt[(i + 1) * c + j] else: c - 1
-            var best = INF
-            var best_k = lo
+fn identity() -> Matrix = [Col, Col] (i, j) => if i == j: Some(0) else: None
+
+fn mul(x: Matrix, y: Matrix) -> Matrix:
+    var out: Matrix = None
+    var opt: [Col, Col]Col = Col.first!
+    for i in Col.all.rev:
+        for j in Col:
+            let lo = j.prev.map(p => opt[i, p]) ?? Col.first!
+            let hi = i.next.map(n => opt[n, j]) ?? Col.last!
+            opt[i, j] = min(max(i, lo), hi)  // where no route exists (the identity's off-diagonal)
             for k in lo..=hi:
-                let cand = a[i * c + k] + b[k * c + j]
-                if cand < best:
-                    best = cand
-                    best_k = k
-            out[i * c + j] = best
-            opt[i * c + j] = best_k
-        i -= 1
-    return out
+                if let via = x[i, k] + y[k, j]:
+                    if out[i, j].map(best => via < best) ?? true:
+                        out[i, j] = Some(via)
+                        opt[i, j] = k
 
-fn build_leaf(blk: Int) -> List<Int>:
-    let c = g_c
-    let lo = blk * BS
-    let hi = min(g_r, lo + BS)
-    var dp = [0..c * c] _ => INF
-    for s in 0..c:
-        var cur = [0..c] _ => INF
-        cur[s] = 0
-        for row in lo..hi:
-            for j in 1..c: cur[j] min= cur[j - 1] + g_h[row][j - 1]
-            var j = c - 2
-            while j >= 0:
-                cur[j] min= cur[j + 1] + g_h[row][j]
-                j -= 1
-            if row + 1 < g_r:
-                for j in 0..c: cur[j] += g_v[row][j]
-        for j in 0..c: dp[s * c + j] = cur[j]
-    return dp
+    out
 
-fn seg_build(o: Int, l: Int, rr: Int):
-    if l == rr:
-        g_seg[o] = build_leaf(l)
-        return
-    let mid = (l + rr) / 2
-    seg_build(o * 2, l, mid)
-    seg_build(o * 2 + 1, mid + 1, rr)
-    g_seg[o] = comb(g_seg[o * 2], g_seg[o * 2 + 1])
+fn block(b: Block) -> Matrix:
+    let rows = span(Row.cuts.nth(b.ord * BLOCK), Row.cuts.nth(min(r, (b.ord + 1) * BLOCK)))
+    let top = rows.first!
+    var along: [Col]Int = 0  // the cost along the top row from column 0
+    for g in Gap: along[Col(g.ord + 1)] = along[Col(g.ord)] + east[top, g]
+    var out: Matrix = None
+    for s in Col:
+        var cost = [Col] j => abs(along[j] - along[s])
+        for row in rows:
+            if row != top:
+                for g in Gap: cost[Col(g.ord + 1)] min= cost[Col(g.ord)] + east[row, g]
+                for g in Gap.all.rev: cost[Col(g.ord)] min= cost[Col(g.ord + 1)] + east[row, g]
+            if let d = Drop.at(row.ord):
+                for j in Col: cost[j] += south[d, j]
+        for j in Col: out[s, j] = Some(cost[j])
+    out
 
-fn seg_update(o: Int, l: Int, rr: Int, blk: Int):
-    if l == rr:
-        g_seg[o] = build_leaf(l)
-        return
-    let mid = (l + rr) / 2
-    if blk <= mid: seg_update(o * 2, l, mid, blk)
-    else: seg_update(o * 2 + 1, mid + 1, rr, blk)
-    g_seg[o] = comb(g_seg[o * 2], g_seg[o * 2 + 1])
+var routes = SegTree<Block, Matrix>(Monoid(identity(), mul), [Block] b => block(b))
+fn block_of(row: Int) -> Block = Block(row / BLOCK)
 
-g_r = ri()
-g_c = ri()
-for _ in 0..g_r:
-    var row: List<Int> = [ri() for _ in 0..g_c - 1]
-    g_h.push(row)
-for _ in 0..g_r - 1:
-    var row: List<Int> = [ri() for _ in 0..g_c]
-    g_v.push(row)
-let blocks = ceil_div(g_r, BS)
-for _ in 0..4 * blocks + 5: g_seg.push([0..g_c * g_c] _ => INF)
-seg_build(1, 0, blocks - 1)
-
-let q = ri()
-for _ in 0..q:
-    let ty = ri()
-    if ty == 1:
-        let p = ri()
-        let qq = ri()
-        let cost = ri()
-        g_h[p][qq] = cost
-        seg_update(1, 0, blocks - 1, p / BS)
-    elif ty == 2:
-        let p = ri()
-        let qq = ri()
-        let cost = ri()
-        g_v[p][qq] = cost
-        seg_update(1, 0, blocks - 1, p / BS)
+let events: 1..=2e5 + 500 = read()
+for _ in 0..events:
+    let kind: 1..=3 = read()
+    if kind == 1:
+        let (p, q, w): (Row, Gap, Wombats) = read()
+        east[p, q] = w
+        routes.set(block_of(p.ord), block(block_of(p.ord)))
+    elif kind == 2:
+        let (p, q, w): (Drop, Col, Wombats) = read()
+        south[p, q] = w
+        routes.set(block_of(p.ord), block(block_of(p.ord)))
     else:
-        let v1 = ri()
-        let v2 = ri()
-        print(g_seg[1][v1 * g_c + v2])
+        let (v1, v2): (Col, Col) = read()
+        print(routes.all[v1, v2]!)

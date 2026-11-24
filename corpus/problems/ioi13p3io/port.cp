@@ -1,130 +1,81 @@
-// Source: IOI 2013 Day 1 (Wombats), standard I/O version, https://dmoj.ca/problem/ioi13p3io
+// Source: IOI 2013 P3 (Wombats), standard I/O version, https://dmoj.ca/problem/ioi13p3io
+// Problem: an R x C grid of roads (R <= 5000, C <= 200) with at most 1000 wombats on each
+//   segment; people walk east or west along rows and only south between them. Handle <= 500
+//   changes of one segment and <= 2e5 escape(V1, V2) queries: the fewest wombats on a route from
+//   (0, V1) to (R - 1, V2).
+// Solution: cut the rows into blocks of 20 and keep each block's C x C matrix of least costs
+//   from its top row to the row below it, built by C left/right relaxations per row in
+//   O(10 C^2). A SegTree over blocks multiplies them in the (min, +) semiring, with `?Cost`
+//   (None = no route) as its zero. Routes from neighbouring tops never need to cross, so the
+//   best middle column is monotone (opt[i][j-1] <= k <= opt[i+1][j]) and a product is O(C^2).
+//   A change rebuilds one block and its O(log R) ancestors; an escape reads the root.
 // limits: 9000 ms, 256 MB
-// Problem: an R x C grid of roads (R <= 5000, C <= 200) with wombat counts on the segments;
-//   people move east or west on horizontal roads and only south on vertical ones. Up to 500
-//   events change one segment's count; up to 200000 events ask the fewest wombats on a route from
-//   (0, V1) to (R-1, V2).
-// Solution: cut the rows into blocks of 8 and give each block its C x C matrix of least costs
-//   from top column to bottom column, built by C row-by-row relaxations in O(8 C^2). A SegTree
-//   over blocks composes matrices by min-plus product; the matrices are Monge, so the optimal
-//   middle column is monotone and Knuth's bound makes a product O(C^2). A change rebuilds one
-//   block and its path, O(C^2 log(R/8)); the root product is kept, so an escape is one lookup.
-// original: corpus/submissions/4722412.cpp
+// original: corpus/submissions/4722412.cpp (orig.cpp enables its sample grader)
+const BLOCK = 20
+type Wombats = 0..=1000
+type Cost = 0..=1e7  // the cheapest route never exceeds R * 1000 + C * 1000
 
-let (r_cnt, c_cnt): (Int, Int) = read()
-var h_cost: List<List<Int>> = []
-for _ in 0..r_cnt:
-    var row: List<Int> = []
-    for _ in 0..(c_cnt - 1):
-        let x: Int = read()
-        row.push(x)
-    h_cost.push(row)
+let r: 1..=5000 = read()
+let c: 1..=200 = read()
+domain Row = 0..r
+domain Col = 0..c
+domain Gap = 0..c - 1  // the road between columns g and g + 1
+domain Drop = 0..r - 1  // the road below row d
+var east: [Row, Gap]Wombats = read()
+var south: [Drop, Col]Wombats = read()
+domain Block = 0..ceil_div(r, BLOCK)
 
-var v_cost: List<List<Int>> = []
-for _ in 0..(r_cnt - 1):
-    var row: List<Int> = []
-    for _ in 0..c_cnt:
-        let x: Int = read()
-        row.push(x)
-    v_cost.push(row)
+type Matrix = [Col, Col]?Cost
 
-let inf: Int = 1000000000
-let block = 8
+fn identity() -> Matrix = [Col, Col] (i, j) => if i == j: Some(0) else: None
 
-fn relax_row(r: Int, mut dist: List<Int>):
-    for c in 1..c_cnt:
-        let cand = dist[c - 1] + h_cost[r][c - 1]
-        dist[c] min= cand
-    var c = c_cnt - 2
-    while c >= 0:
-        let cand = dist[c + 1] + h_cost[r][c]
-        dist[c] min= cand
-        c -= 1
-
-fn build_block(r_lo: Int, r_hi: Int) -> List<Int>:
-    var d = List.filled(c_cnt * c_cnt, inf)
-    let last_trans = r_cnt - 2
-    for s in 0..c_cnt:
-        var cur = List.filled(c_cnt, inf)
-        cur[s] = 0
-        for r in r_lo..=r_hi:
-            relax_row(r, mut cur)
-            if r <= last_trans:
-                for j in 0..c_cnt:
-                    cur[j] += v_cost[r][j]
-        if r_hi == last_trans:
-            relax_row(r_cnt - 1, mut cur)
-        for j in 0..c_cnt:
-            d[s * c_cnt + j] = cur[j]
-    d
-
-// Knuth-accelerated Monge min-plus product: O(C^2).
-fn combine_monge(a: List<Int>, b: List<Int>) -> List<Int>:
-    var out = List.filled(c_cnt * c_cnt, inf)
-    var opt = List.filled(c_cnt * c_cnt, 0)
-    var i = c_cnt - 1
-    while i >= 0:
-        for j in 0..c_cnt:
-            let lo = if j > 0: opt[i * c_cnt + (j - 1)] else: 0
-            let hi = if i + 1 < c_cnt: opt[(i + 1) * c_cnt + j] else: c_cnt - 1
-            var best = inf
-            var best_k = lo
+fn mul(x: Matrix, y: Matrix) -> Matrix:
+    var out: Matrix = None
+    var opt: [Col, Col]Col = Col.first!
+    for i in Col.all.rev:
+        for j in Col:
+            let lo = j.prev.map(p => opt[i, p]) ?? Col.first!
+            let hi = i.next.map(n => opt[n, j]) ?? Col.last!
+            opt[i, j] = min(max(i, lo), hi)  // where no route exists (the identity's off-diagonal)
             for k in lo..=hi:
-                let cand = a[i * c_cnt + k] + b[k * c_cnt + j]
-                if cand < best:
-                    best = cand
-                    best_k = k
-            out[i * c_cnt + j] = best
-            opt[i * c_cnt + j] = best_k
-        i -= 1
+                if let via = x[i, k] + y[k, j]:
+                    if out[i, j].map(best => via < best) ?? true:
+                        out[i, j] = Some(via)
+                        opt[i, j] = k
+
     out
 
-let e_cnt: Int = read()
+fn block(b: Block) -> Matrix:
+    let rows = span(Row.cuts.nth(b.ord * BLOCK), Row.cuts.nth(min(r, (b.ord + 1) * BLOCK)))
+    let top = rows.first!
+    var along: [Col]Int = 0  // the cost along the top row from column 0
+    for g in Gap: along[Col(g.ord + 1)] = along[Col(g.ord)] + east[top, g]
+    var out: Matrix = None
+    for s in Col:
+        var cost = [Col] j => abs(along[j] - along[s])
+        for row in rows:
+            if row != top:
+                for g in Gap: cost[Col(g.ord + 1)] min= cost[Col(g.ord)] + east[row, g]
+                for g in Gap.all.rev: cost[Col(g.ord)] min= cost[Col(g.ord + 1)] + east[row, g]
+            if let d = Drop.at(row.ord):
+                for j in Col: cost[j] += south[d, j]
+        for j in Col: out[s, j] = Some(cost[j])
+    out
 
-if r_cnt == 1:
-    var mat = build_block(0, 0)
-    for _ in 0..e_cnt:
-        let ev: Int = read()
-        if ev == 1:
-            let (p, q, w): (Int, Int, Int) = read()
-            h_cost[p][q] = w
-            mat = build_block(0, 0)
-        elif ev == 2:
-            let (p, q, w): (Int, Int, Int) = read()
-            v_cost[p][q] = w
-        else:
-            let (v1, v2): (Int, Int) = read()
-            print(mat[v1 * c_cnt + v2])
-else:
-    let n_trans = r_cnt - 1
-    let n_blk = ceil_div(n_trans, block)
-    domain Blk = 0..n_blk
+var routes = SegTree<Block, Matrix>(Monoid(identity(), mul), [Block] b => block(b))
+fn block_of(row: Int) -> Block = Block(row / BLOCK)
 
-    fn blk_lo(b: Int) -> Int = b * block
-    fn blk_hi(b: Int) -> Int = min(n_trans - 1, b * block + block - 1)
-
-    var id_mat = List.filled(c_cnt * c_cnt, inf)
-    for i in 0..c_cnt: id_mat[i * c_cnt + i] = 0
-    let mat_monoid = Monoid<List<Int>>(id: id_mat, op: (a, b) => combine_monge(a, b))
-    let init = [Blk] b => build_block(blk_lo(b.ord), blk_hi(b.ord))
-    var st = SegTree<Blk, List<Int>>(mat_monoid, init)
-    // queries outnumber updates 400 to 1, so keep the whole product instead of folding per query
-    var top = st.fold(Blk.all)
-
-    for _ in 0..e_cnt:
-        let ev: Int = read()
-        if ev == 1:
-            let (p, q, w): (Int, Int, Int) = read()
-            h_cost[p][q] = w
-            let b = min(p, n_trans - 1) / block
-            st.set(Blk(b), build_block(blk_lo(b), blk_hi(b)))
-            top = st.fold(Blk.all)
-        elif ev == 2:
-            let (p, q, w): (Int, Int, Int) = read()
-            v_cost[p][q] = w
-            let b = p / block
-            st.set(Blk(b), build_block(blk_lo(b), blk_hi(b)))
-            top = st.fold(Blk.all)
-        else:
-            let (v1, v2): (Int, Int) = read()
-            print(top[v1 * c_cnt + v2])
+let events: 1..=2e5 + 500 = read()
+for _ in 0..events:
+    let kind: 1..=3 = read()
+    if kind == 1:
+        let (p, q, w): (Row, Gap, Wombats) = read()
+        east[p, q] = w
+        routes.set(block_of(p.ord), block(block_of(p.ord)))
+    elif kind == 2:
+        let (p, q, w): (Drop, Col, Wombats) = read()
+        south[p, q] = w
+        routes.set(block_of(p.ord), block(block_of(p.ord)))
+    else:
+        let (v1, v2): (Col, Col) = read()
+        print(routes.all[v1, v2]!)
