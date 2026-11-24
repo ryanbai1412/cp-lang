@@ -952,7 +952,7 @@ pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>
 /// cost: \(O(\log k)\)
 /// empty: an empty `r` gives an empty range of pieces
 /// traps: when an end of `r` is not one of the cuts
-/// example: with the pieces of `(0..10).pieces(cuts: [3, 7])`, `piece.covering(3..10).len == 2`
+/// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..10).len == 2`
 /// order: pieces left to right, keyed by `P`
 pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
     if P.count == 0:

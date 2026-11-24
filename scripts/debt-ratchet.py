@@ -1358,7 +1358,6 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "web/tests/a11y-known.txt": ("known_lists", "site", "fix each a11y finding"),
     "web/tests/completion-known.txt": ("known_lists", "site", "fix each completion miss"),
     "web/tests/search-known.txt": ("known_lists", "site", "fix each search miss"),
-    "std/doc-baseline.json": (None, "stdlib", "data: per-module undocumented counts spec-stub.py ratchets"),
 }
 # Directories of test data and fixtures, not lists of exemptions.
 LIST_DATA_DIRS = ("research/", "corpus/problems/", "corpus/submissions/", "bench/stress/", "node_modules/")
