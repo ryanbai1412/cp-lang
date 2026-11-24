@@ -459,7 +459,7 @@ impl Checker<'_> {
             // the fix needs `h` to be a type with heapq's `heappushpop`, `push_pop`.
             if matches!(&base.kind, ExprKind::Name(m) if m == "heapq") {
                 let heap = |c: &mut Self, a: &Arg| {
-                    let ty = c.quietly(|c| c.infer(&a.value));
+                    let ty = c.infer_quietly(&a.value);
                     matches!(&ty, Ty::Named { name, .. }
                         if c.struct_method(name, "push_pop").is_some())
                 };
@@ -502,8 +502,8 @@ impl Checker<'_> {
                             rhs,
                             ..
                         } => {
-                            let l = self.quietly(|c| c.infer(lhs));
-                            let r = self.quietly(|c| c.infer(rhs));
+                            let l = self.infer_quietly(lhs);
+                            let r = self.infer_quietly(rhs);
                             let (a, b) = (self.text(lhs.span), self.text(rhs.span));
                             let bare = !a.contains(' ') || a.starts_with('(') && a.ends_with(')');
                             let a = if bare {
@@ -1332,7 +1332,7 @@ impl<'a> Checker<'a> {
                     if name.text != "range" {
                         return None;
                     }
-                    let base_ty = self.quietly(|c| c.infer(base));
+                    let base_ty = self.infer_quietly(base);
                     return match base_ty {
                         Ty::Named { name, .. } if name == "Set" => Some("Set"),
                         Ty::Named { name, .. } if name == "Map" => Some("Map"),

@@ -36,7 +36,7 @@ impl<'a> Checker<'a> {
                 }
             });
         }
-        let ty = self.quietly(|c| c.infer(e));
+        let ty = self.infer_quietly(e);
         self.io_fixed(&ty)
     }
 
@@ -134,7 +134,7 @@ impl<'a> Checker<'a> {
             if self.fixed_size(&arg.value) {
                 continue;
             }
-            let ty = self.quietly(|c| c.infer(&arg.value));
+            let ty = self.infer_quietly(&arg.value);
             if let (ExprKind::Name(name), Ty::Named { name: list, args }) = (&arg.value.kind, &ty) {
                 if list == "List" && args.len() == 1 && self.io_fixed(&args[0]) {
                     terms.push(format!("{name}.len"));
@@ -203,7 +203,7 @@ impl<'a> Checker<'a> {
                 && !Self::generator_test(callee, args)
                 && self.local(n).is_none()
             {
-                let over = self.quietly(|c| c.infer(&arg.value));
+                let over = self.infer_quietly(&arg.value);
                 self.bool_count(call, &over);
             }
         }
@@ -795,7 +795,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         if !self.builtin_get(&base_ty, &name.text) {
             return None;
         }
@@ -822,7 +822,7 @@ impl<'a> Checker<'a> {
         };
         let Ty::Named {
             name: type_name, ..
-        } = self.quietly(|c| c.infer(base))
+        } = self.infer_quietly(base)
         else {
             return None;
         };
@@ -882,7 +882,7 @@ impl<'a> Checker<'a> {
         else {
             return None;
         };
-        let given = self.quietly(|c| c.infer(&only.value));
+        let given = self.infer_quietly(&only.value);
         let array = matches!(given, Ty::Array { .. });
         let suffix = match given.clone() {
             Ty::Named { name: list, args } if list == "List" => match args.as_slice() {
@@ -1066,7 +1066,7 @@ impl<'a> Checker<'a> {
                             c.pop_scope();
                             ret
                         }),
-                        _ => match self.quietly(|c| c.infer(&arg.value)) {
+                        _ => match self.infer_quietly(&arg.value) {
                             Ty::Fn { ret, .. } => (*ret).clone(),
                             _ => Ty::Unknown,
                         },
@@ -1144,7 +1144,7 @@ impl<'a> Checker<'a> {
                         args,
                         [arg] if arg.name.is_none()
                             && (matches!(arg.value.kind, ExprKind::Lambda { .. })
-                                || matches!(self.quietly(|c| c.infer(&arg.value)), Ty::Fn { .. }))
+                                || matches!(self.infer_quietly(&arg.value), Ty::Fn { .. }))
                     ) =>
                 {
                     return Some(Ty::Optional(Box::new(elem)));
@@ -1411,7 +1411,7 @@ impl<'a> Checker<'a> {
                 None => positional.next(),
             };
             if let Some(param) = param {
-                let got = self.quietly(|c| c.infer(&arg.value));
+                let got = self.infer_quietly(&arg.value);
                 param.ty.unify(&got, &mut bindings);
             }
         }

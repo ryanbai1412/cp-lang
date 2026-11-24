@@ -276,7 +276,7 @@ impl<'a> Checker<'a> {
     /// A field's declared type, or its default's when written `total = 0`.
     pub(crate) fn field_type(&mut self, f: &ast::FieldDecl) -> Ty {
         match (&f.ty.kind, &f.default) {
-            (TypeKind::Infer, Some(default)) => self.quietly(|c| c.infer(default)).widen(),
+            (TypeKind::Infer, Some(default)) => self.infer_quietly(default).widen(),
             _ => self.resolve_type(&f.ty),
         }
     }
@@ -694,7 +694,7 @@ impl<'a> Checker<'a> {
         // expression reports is reported where the body is checked.
         match (ty, init) {
             (Some(ty), _) => self.resolve_type(ty),
-            (None, Some(init)) => self.quietly(|c| c.infer(init)).widen(),
+            (None, Some(init)) => self.infer_quietly(init).widen(),
             (None, None) => Ty::Error,
         }
     }

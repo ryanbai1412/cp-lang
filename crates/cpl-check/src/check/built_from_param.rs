@@ -11,7 +11,7 @@ impl Checker<'_> {
         let Some(part) = self.lent_param_part(e) else {
             return;
         };
-        let ty = self.quietly(|c| c.infer(e)).to_string();
+        let ty = self.infer_quietly(e).to_string();
         let name = self.text(part.span);
         let whole = self.text(e.span);
         let at = (part.span.start - e.span.start) as usize;

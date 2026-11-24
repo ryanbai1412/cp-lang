@@ -61,7 +61,7 @@ impl Checker<'_> {
         if matches!(index.kind, ExprKind::Range { .. }) {
             return None;
         }
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         let Ty::Named { name, .. } = &base_ty else {
             return None;
         };
@@ -88,7 +88,7 @@ impl Checker<'_> {
                 && matches!(ty, Ty::Fn { params, .. } if params.last().is_some_and(|p|
                     matches!(&p.ty, Ty::Named { name, .. } if name == "Cut")))
         });
-        if takes_cut && matches!(self.quietly(|c| c.infer(index)), Ty::Pos(_)) {
+        if takes_cut && matches!(self.infer_quietly(index), Ty::Pos(_)) {
             return None;
         }
         let callee = Expr {

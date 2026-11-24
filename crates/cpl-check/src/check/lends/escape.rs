@@ -70,7 +70,7 @@ impl<'a> Checker<'a> {
                 // A container stores its `.push`/`.insert`/`.set`/`.add` argument when
                 // the method takes one of the type's own parameters, `push(x: T)`;
                 // `Trie<A>.add(word: Seq<A>)` only reads the sequence it is given.
-                let base_ty = self.quietly(|c| c.infer(base));
+                let base_ty = self.infer_quietly(base);
                 let stores_elem = match &base_ty {
                     Ty::Named { name: ty_name, .. } => {
                         matches!(
@@ -194,7 +194,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Call { args, .. } = &call.kind else {
             return;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         let own = self.own_mutator(&base_ty, &name.text);
         let by_row = self.row_mutator(&base_ty, &name.text, args);
         if !own && !by_row {

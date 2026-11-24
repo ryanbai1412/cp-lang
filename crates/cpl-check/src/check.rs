@@ -664,6 +664,12 @@ impl<'a> Checker<'a> {
         out
     }
 
+    /// The type of `e`, inferred without leaving diagnostics or facts.
+    #[inline(never)]
+    fn infer_quietly(&mut self, e: &cpl_syntax::ast::Expr) -> Ty {
+        self.quietly(|c| c.infer(e))
+    }
+
     /// What `quietly` restores, kept out of line so its many callers share it.
     #[inline(never)]
     fn hush(&mut self) -> Hushed {
@@ -715,7 +721,7 @@ impl<'a> Checker<'a> {
             .unwrap_or_default();
         match given.iter().rev().find(|(at, _)| *at == base.span) {
             Some((_, ty)) => ty.clone(),
-            None => self.quietly(|c| c.infer(base)),
+            None => self.infer_quietly(base),
         }
     }
 
@@ -953,7 +959,7 @@ impl<'a> Checker<'a> {
         let target_depth = self.var_depth(root);
         let how = format!("stored in `{root}` from an outer scope");
         for arg in args {
-            let arg_ty = self.quietly(|c| c.infer(&arg.value));
+            let arg_ty = self.infer_quietly(&arg.value);
             self.check_expr_domain_escape(&arg.value, &arg_ty, target_depth, &how, &[], false);
         }
     }

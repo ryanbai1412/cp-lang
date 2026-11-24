@@ -1551,7 +1551,7 @@ impl<'a> Checker<'a> {
                     .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })) =>
             {
                 // An element of a lent view (`g.rows[r]`), not of an element, carries its lend.
-                let ty = self.quietly(|c| c.infer(e));
+                let ty = self.infer_quietly(e);
                 let lent = self.extra_holds(base);
                 if !ty.is_plain_value() && lent.first().is_some_and(|l| l.0 != "element") {
                     return lent;
@@ -1567,7 +1567,7 @@ impl<'a> Checker<'a> {
             ExprKind::Call { callee, args } => {
                 if let ExprKind::Field { base, name } = &unparen(callee).kind {
                     if matches!(name.text.as_str(), "filter" | "take" | "drop") {
-                        let base_ty = self.quietly(|c| c.infer(base));
+                        let base_ty = self.infer_quietly(base);
                         if base_ty.is_seq() {
                             if let Some(mut place) = self.place(base) {
                                 place.steps.clear();
@@ -1578,7 +1578,7 @@ impl<'a> Checker<'a> {
                 }
                 // `b.range(r)` on a projection returning a view holds `b`.
                 if let ExprKind::Field { base, name } = &unparen(callee).kind {
-                    let projection = match self.quietly(|c| c.infer(base)) {
+                    let projection = match self.infer_quietly(base) {
                         Ty::Named {
                             name: type_name, ..
                         } => self
@@ -1586,7 +1586,7 @@ impl<'a> Checker<'a> {
                             .and_then(|m| m.projections.into_iter().find(|p| p.name == name.text)),
                         _ => None,
                     };
-                    let ty = match self.quietly(|c| c.infer(e)) {
+                    let ty = match self.infer_quietly(e) {
                         // `lends ?T` lends what its `Some` holds.
                         Ty::Optional(inner) => *inner,
                         ty => ty,
@@ -1601,7 +1601,7 @@ impl<'a> Checker<'a> {
                             let mutable = projection.mutable;
                             let mut out = vec![("lent view", place, !mutable, mutable)];
                             for (arg, source) in args.iter().zip(&projection.sources) {
-                                let arg_ty = self.quietly(|c| c.infer(&arg.value));
+                                let arg_ty = self.infer_quietly(&arg.value);
                                 let lent = arg.mutable || self.is_heap_type(&arg_ty);
                                 if let (true, Some(_)) = (lent, source) {
                                     if let Some(mut place) = self.place(&arg.value) {
@@ -1631,7 +1631,7 @@ impl<'a> Checker<'a> {
                     let mut out = Vec::new();
                     for arg in args {
                         let is_mut = arg.mutable;
-                        let arg_ty = self.quietly(|c| c.infer(&arg.value));
+                        let arg_ty = self.infer_quietly(&arg.value);
                         if is_mut || self.is_heap_type(&arg_ty) {
                             if let Some(mut place) = self.place(&arg.value) {
                                 place.steps.clear();
@@ -1644,12 +1644,12 @@ impl<'a> Checker<'a> {
                     }
                 }
                 // Generator call: holds all non-copy or `mut` args.
-                let ret_ty = self.quietly(|c| c.infer(e));
+                let ret_ty = self.infer_quietly(e);
                 if matches!(&ret_ty, Ty::Named { name, .. } if name == "Gen") {
                     let mut out = Vec::new();
                     for arg in args {
                         let is_mut = arg.mutable;
-                        let arg_ty = self.quietly(|c| c.infer(&arg.value));
+                        let arg_ty = self.infer_quietly(&arg.value);
                         if is_mut || self.is_heap_type(&arg_ty) {
                             if let Some(mut place) = self.place(&arg.value) {
                                 place.steps.clear();
@@ -1885,7 +1885,7 @@ impl<'a> Checker<'a> {
         }
         if let ExprKind::Field { base, name } = &iter.kind {
             if name.text == "keys" {
-                let base_ty = self.quietly(|c| c.infer(base));
+                let base_ty = self.infer_quietly(base);
                 if matches!(base_ty, Ty::Array { .. }) {
                     return;
                 }
@@ -1951,7 +1951,7 @@ impl<'a> Checker<'a> {
             let ExprKind::Field { base, name } = &callee.kind else {
                 continue;
             };
-            let base_ty = self.quietly(|c| c.infer(base));
+            let base_ty = self.infer_quietly(base);
             if self.row_mutator(&base_ty, &name.text, args) {
                 changed.0.push((**base).clone());
             }

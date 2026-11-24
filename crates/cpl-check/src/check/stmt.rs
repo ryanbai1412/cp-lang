@@ -1342,7 +1342,7 @@ impl<'a> Checker<'a> {
                 self.require_mutable(target, "assigned");
                 let not_assignable = self.sink.len() > before_mutable;
                 if let ExprKind::Field { base, name } = &target.kind {
-                    let base_ty = self.quietly(|c| c.infer(base));
+                    let base_ty = self.infer_quietly(base);
                     if let Ty::Named { name: sname, .. } = &base_ty {
                         let fixed_field = match self.type_def(sname).as_deref() {
                             Some(Def::Struct {

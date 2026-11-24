@@ -147,7 +147,7 @@ impl<'a> Checker<'a> {
         }
         let tys: Vec<Ty> = args
             .iter()
-            .map(|arg| self.quietly(|c| c.infer(&arg.value)))
+            .map(|arg| self.infer_quietly(&arg.value))
             .collect();
         match (name.as_str(), tys.as_slice()) {
             ("gen", [_]) if matches!(args[0].value.kind, ExprKind::Range { .. }) => Some(Ty::Int),
@@ -345,7 +345,7 @@ impl<'a> Checker<'a> {
         {
             return None;
         }
-        let Ty::Array { index, elem } = self.quietly(|c| c.infer(&args[0].value)) else {
+        let Ty::Array { index, elem } = self.infer_quietly(&args[0].value) else {
             return None;
         };
         if index.len() != 2 || !index.iter().all(|d| matches!(d, Ty::Pos(_))) {
@@ -372,7 +372,7 @@ impl<'a> Checker<'a> {
         if self.local(name).is_some() || !takes_list || args.len() != 1 || args[0].name.is_some() {
             return None;
         }
-        let elem = match self.quietly(|c| c.infer(&args[0].value)) {
+        let elem = match self.infer_quietly(&args[0].value) {
             Ty::Array { index, elem } if index.len() == 1 && index[0].is_int() => *elem,
             Ty::Named { name, mut args } if name == "List" && args.len() == 1 => args.remove(0),
             _ => return None,
@@ -451,7 +451,7 @@ impl<'a> Checker<'a> {
     /// (R06.1.8).
     /// Gives what the fn returns.
     pub(crate) fn fn_value_takes(&mut self, method: &str, arg: &Expr, given: usize) -> Ty {
-        let Ty::Fn { params, ret } = self.quietly(|c| c.infer(arg)) else {
+        let Ty::Fn { params, ret } = self.infer_quietly(arg) else {
             return Ty::Unknown;
         };
         let Some(missing) = params

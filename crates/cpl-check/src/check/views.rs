@@ -80,7 +80,7 @@ impl Checker<'_> {
         let Some(keyed) = self.keyed_view(base) else {
             return;
         };
-        if let Ty::Array { index, .. } = self.quietly(|c| c.infer(base)) {
+        if let Ty::Array { index, .. } = self.infer_quietly(base) {
             if let [Ty::Domain(d) | Ty::Pos(d)] = index.as_slice() {
                 if let Some(diag) = self.report(
                     indices[0].span,
@@ -155,7 +155,7 @@ impl Checker<'_> {
                     _ => None,
                 };
                 // An open end is the source's own bound when its type fixes it: `[1..=4]T`.
-                let (src_lo, src_hi) = match self.quietly(|c| c.infer(base)) {
+                let (src_lo, src_hi) = match self.infer_quietly(base) {
                     Ty::Array { index, .. } => match index.as_slice() {
                         [Ty::Range { lo, hi, .. }] => (*lo, hi.map(|h| h + 1)),
                         _ => (None, None),
@@ -207,7 +207,7 @@ impl Checker<'_> {
         if !matches!(name, "runs" | "windows" | "chunks") {
             return None;
         }
-        let ty = self.quietly(|c| c.infer(base));
+        let ty = self.infer_quietly(base);
         let seq = ty == Ty::Str || matches!(&ty, Ty::Named { name, .. } if name == "List");
         seq.then(|| show(base))
     }
@@ -247,7 +247,7 @@ impl Checker<'_> {
     pub(crate) fn note_pieces(&mut self, pat: &ast::Pattern, iter: &Expr) {
         let mut iter = unparen(iter);
         if let ExprKind::Field { base, name } = &iter.kind {
-            if name.text == "ranges" && matches!(self.quietly(|c| c.infer(base)), Ty::Domain(_)) {
+            if name.text == "ranges" && matches!(self.infer_quietly(base), Ty::Domain(_)) {
                 return self.note_range_key(pat);
             }
         }
@@ -570,7 +570,7 @@ impl Checker<'_> {
                 return false;
             }
         }
-        let ty = self.quietly(|c| c.infer(call));
+        let ty = self.infer_quietly(call);
         matches!(&ty, Ty::Str | Ty::Array { .. })
             || matches!(&ty, Ty::Named { name, .. } if name == "List")
     }

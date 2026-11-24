@@ -27,7 +27,7 @@ impl Checker<'_> {
         if key.name.is_some() || text(base.span) != text(other.span) {
             return None;
         }
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         let names = ["Set", "Map", "HashMap", "List"];
         if !matches!(&base_ty, Ty::Named { name, .. } if names.contains(&name.as_str())) {
             return None;

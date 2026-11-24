@@ -348,7 +348,7 @@ impl Checker<'_> {
         if !fits_arity || missing_named {
             return false;
         }
-        let base_ty = self.quietly(|c| c.infer(base)).widen();
+        let base_ty = self.infer_quietly(base).widen();
         if matches!(base_ty, Ty::Error | Ty::Unknown) || !self.fits(&base_ty, &first.ty) {
             return false;
         }
@@ -529,7 +529,7 @@ impl Checker<'_> {
             true => format!("{x} {op_text} {y}"),
             false => format!("{op_text}({x}, {y})"),
         };
-        let domain = match self.quietly(|c| c.infer(a)) {
+        let domain = match self.infer_quietly(a) {
             Ty::Array { index, .. } => match index.as_slice() {
                 [Ty::Domain(d) | Ty::Pos(d)]
                     if matches!(self.type_def(d).as_deref(), Some(Def::Domain(_))) =>

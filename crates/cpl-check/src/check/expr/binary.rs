@@ -505,7 +505,7 @@ impl Checker<'_> {
         }
         // `a.last += 1`: `last` is no place, which lowering reports and fixes.
         if let ExprKind::Field { base, name } = &target.kind {
-            let base_ty = self.quietly(|c| c.infer(base));
+            let base_ty = self.infer_quietly(base);
             let listed = matches!(&base_ty, Ty::Array { .. })
                 || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
             if name.text == "last" && listed {

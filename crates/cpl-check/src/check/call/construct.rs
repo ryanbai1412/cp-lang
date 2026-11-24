@@ -629,7 +629,7 @@ impl Checker<'_> {
         if arg.name.is_some() {
             return;
         }
-        let ty = self.quietly(|c| c.infer(&arg.value));
+        let ty = self.infer_quietly(&arg.value);
         let text = self.text(arg.value.span).to_string();
         let of = methods.iter().any(|(m, _)| m == "of") && !receivers.iter().any(|r| r == "of");
         let list = matches!(&ty, Ty::Array { .. })

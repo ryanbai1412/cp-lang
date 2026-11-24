@@ -288,7 +288,7 @@ impl Checker<'_> {
         let ExprKind::Field { base, name } = &expr.kind else {
             return None;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
             return None;
         };
@@ -709,7 +709,7 @@ impl<'a> Checker<'a> {
         if self.quietly(|c| c.library_domain_walk(base)).is_some() {
             return None;
         }
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         if name.text == "split" && base_ty == Ty::Str && self.split_on_str(args) {
             return Some(Ty::Error);
         }
@@ -954,7 +954,7 @@ impl Checker<'_> {
         let Some((row, _)) = self.catalog_row(base, &name.text) else {
             return false;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.infer_quietly(base);
         let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
             Pick::NoFit => self.pick_method(&base_ty, &name.text),
             pick => pick,

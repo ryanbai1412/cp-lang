@@ -101,7 +101,7 @@ impl Checker<'_> {
                 out.extend(nested);
                 continue;
             }
-            let ty = self.quietly(|c| c.infer(value));
+            let ty = self.infer_quietly(value);
             if is_mut || self.is_heap_type(&ty) {
                 if let Some(mut place) = self.place(value) {
                     place.steps.clear();
