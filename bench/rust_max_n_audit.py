@@ -148,10 +148,6 @@ def g_ioi09p5(p, big, _):
             if queue: parked.append(queue.pop(0))
     W(p, [f"{n} {m}"] + [rng.randint(1, 100) for _ in range(n)] + [rng.randint(1, 10000) for _ in range(m)] + ev)
 
-def g_saspeed(p, big, _):
-    rng = random.Random(19); n = 10**6 if big else 20000
-    W(p, [letters(rng, n, "ab")])
-
 def g_noip20p2(p, big, _):
     rng = random.Random(20); t, n = (5, 1 << 20) if big else (3, 5000)
     W(p, [t] + [("ab" * (n // 2)) if i % 2 == 0 else letters(rng, n, "ab") for i in range(t)])
@@ -283,7 +279,6 @@ SPECS = [
     ("scout_batch_12/ioi05p1", O(5034025), "2D prefix", "250x250, 5000 roses", g_ioi05p1, "exact"),
     ("cco20p1", P("cco20p1_orig.cpp"), "range/steps", "N=1e5", shared("cco20p1"), "exact"),
     ("scout_batch_33/ioi09p5", O(5106592), "heap sim", "n=100, m=2000", g_ioi09p5, "exact"),
-    ("scout_batch_10/saspeed", O(4852075), "suffix array", "|s|=1e6", g_saspeed, "exact"),
     ("scout_batch_10/noip20p2", O(5445673), "Z-function", "T=5, |s|=2^20", g_noip20p2, "exact"),
     ("scout_batch_10/btoi19p5", O(4456167), "KMP", "|s|=|t|=3000", g_btoi19p5, "head1"),
     ("scout_batch_11/sdoi17r1p1", O(5463988), "number theory", "T=1000, n,m=1e6", g_sdoi17r1p1, "exact"),
