@@ -67,8 +67,8 @@ struct CpHash {
         return s;
     }
     // Full salted splitmix64 so both prime-mod and power-of-two open-addressing tables stay hack-resistant.
-    // Every integer width, signed or not (`Hash61` is a `U64`), hashes as its 64-bit value.
-    template <class I, std::enable_if_t<std::is_integral_v<I>, int> = 0>
+    // Every integer width, signed or not (`Hash61` is a `U64`), and every enum hash as their 64-bit value.
+    template <class I, std::enable_if_t<std::is_integral_v<I> || std::is_enum_v<I>, int> = 0>
     size_t operator()(I x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
     size_t operator()(double x) const { return (*this)((ll)std::hash<double>()(x)); }
     size_t operator()(const std::string& s) const {
@@ -91,6 +91,19 @@ struct CpHash {
     template <class L> auto operator()(const L& xs) const -> decltype(xs.begin(), xs.data(), size_t()) {
         uint64_t h = salt() ^ xs.size();
         for (const auto& x : xs) h = splitmix64(h ^ (uint64_t)(*this)(x));
+        return (size_t)h;
+    }
+    // A K-dimensional array (`cpl::Grid`): its sizes, then each cell in row-major order.
+    template <class G> auto operator()(const G& g) const -> decltype(g.d.data(), g.n[0], size_t()) {
+        uint64_t h = salt();
+        for (size_t k : g.n) h = splitmix64(h ^ k);
+        for (const auto& x : g.d) h = splitmix64(h ^ (uint64_t)(*this)(x));
+        return (size_t)h;
+    }
+    // A row held in a struct (`cpl::Row`): the same hash as the list it stands for.
+    template <class R> auto operator()(const R& r) const -> decltype(r.vec(), r.a.data(), size_t()) {
+        uint64_t h = salt() ^ r.size();
+        for (const auto& x : r) h = splitmix64(h ^ (uint64_t)(*this)(x));
         return (size_t)h;
     }
     // An optional, packed or not.
