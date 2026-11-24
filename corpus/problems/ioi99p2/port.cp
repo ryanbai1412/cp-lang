@@ -15,51 +15,35 @@
 // original: corpus/submissions/4896839.cpp
 const SPAN = 1000
 let m: 1..=100 = read()
-var by_char: [0..256]List<(Int, Int)> = []
-var word_len: [0..m]Int = 0
-var max_wlen = 0
-for i in 0..m:
-    let w: [domain W]Char = read()
-    let wl: 1..=100 = w.len
-    word_len[i] = wl
-    max_wlen max= wl
-    for j in (0..wl).rev:
-        by_char[Int(w[W(j)])].push((i, j))
+domain Word = 0..m
+let words: [Word]Str = read()
+assert all(1 <= words[w].len <= 100 for w in Word)
+let text: [domain T]Char = read()
+assert 1 <= T.count <= 1_000_000
 
-let s: [domain S]Char = read()
-let n: 1..=1e6 = s.len
+// per letter, the (word, index) slots it fills, each word's indices descending so a prefix
+// grows from the previous letter's value before this letter overwrites it
+let slots = [(w:, j:) for w in Word for j in (0..words[w].len).rev].group(by: s => words[s.w][s.j])
 
-var start_pos: [0..m, 0..max_wlen]Int = -1
-var dp: [0..n]Int = 0
-var opt_word: [0..n]Int = -1
-var opt_prev: [0..n]Int = -1
+// start[w][j]: the latest start of a covering of w's first j + 1 letters ending here
+var start: [Word]List<?T> = [Word] w => [None for _ in 0..words[w].len]
+// best[c]: the most word length coverable in the text before cut c, and the last pick
+var best: [T.cuts]Int = 0
+var took: [T.cuts]?(w: Word, from: T.cuts) = None
+for i in T:
+    best[i.r] = best[i.l]
+    for s in slots.get(text[i]) ?? []:
+        start[s.w][s.j] = if s.j == 0: Some(i) else: start[s.w][s.j - 1]
+        if s.j == words[s.w].len - 1:
+            if let from = start[s.w][s.j] and Int(i) - Int(from) < SPAN and words[s.w].len + best[from.l] > best[i.r]:
+                best[i.r] = words[s.w].len + best[from.l]
+                took[i.r] = Some((w: s.w, from: from.l))
 
-for i in 0..n:
-    dp[i] = if i > 0: dp[i - 1] else: 0
-    opt_word[i] = -1
-    opt_prev[i] = i - 1
-    for e in by_char[Int(s[S(i)])]:
-        let wi = e.0
-        let pos = e.1
-        if pos == 0:
-            start_pos[wi, 0] = i
-        else:
-            start_pos[wi, pos] = start_pos[wi, pos - 1]
-        if pos == word_len[wi] - 1:
-            let st = start_pos[wi, pos]
-            if st != -1 and i - st < SPAN:
-                let prev_dp = if st > 0: dp[st - 1] else: 0
-                let cand = word_len[wi] + prev_dp
-                if cand > dp[i]:
-                    dp[i] = cand
-                    opt_word[i] = wi
-                    opt_prev[i] = st - 1
-
-print(dp[n - 1])
-var cur = n - 1
-while cur >= 0:
-    let wi = opt_word[cur]
-    let nxt = opt_prev[cur]
-    if wi != -1:
-        print(wi + 1, nxt + 2, cur + 1)
-    cur = nxt
+print(best[T.cuts.last!])
+var at = T.cuts.last!
+while at != T.cuts.first!:
+    if let t = took[at]:
+        print(Int(t.w) + 1, Int(t.from) + 1, Int(at))
+        at = t.from
+    else:
+        at = T.cuts.at(Int(at) - 1)!
