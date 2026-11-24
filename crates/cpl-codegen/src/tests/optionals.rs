@@ -266,3 +266,13 @@ fn an_optional_of_an_optional_range_is_one_int32() {
         "{wide}"
     );
 }
+
+#[test]
+fn a_local_moved_into_a_narrowed_field_is_packed_on_the_way_in() {
+    let code = cpp(
+        "type Small = -1000..=1000\nstruct Box<F>(o: F):\n    fn of(o: F) -> Box<F> = Box<F>(o)\n\
+         let b = Box<?Small>.of(Some(read<Small>()))\nprint(b.o ?? 0)\n",
+    );
+    assert_eq!(decl(&code, "o"), "cpl::OptI32", "{code}");
+    assert!(code.contains("cpl::OptI32(std::move(o))"), "{code}");
+}
