@@ -46,6 +46,10 @@ class AffectedTest(unittest.TestCase):
         s = self.sel("scripts/land.sh", "scripts/affected.py", ".githooks/pre-commit")
         self.assertEqual(s["script_tests"], ["scripts/test_affected.py", "scripts/test_check_cache.py"])
 
+    def test_a_workflow_selects_its_tests_and_actionlint(self):
+        s = self.sel(".github/workflows/ci.yml", ".github/actions/install-tools/action.yml")
+        self.assertEqual((s["all"], s["script_tests"]), (False, ["scripts/test_workflows.py"]))
+
     def test_the_justfile_selects_the_test_that_just_parses_it(self):
         s = self.sel("justfile")
         self.assertEqual((s["all"], s["script_tests"]), (False, ["scripts/test_justfile.py"]))

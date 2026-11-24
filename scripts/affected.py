@@ -282,6 +282,8 @@ def select(paths, dirs):
             sel["check_files"].append(path)
         elif matches(path, AUDIT_ONLY):
             continue
+        elif path.startswith((".github/workflows/", ".github/actions/")):
+            tests.add("scripts/test_workflows.py")
         elif matches(path, PROSE):
             continue
         elif matches(path, EVERY_CRATE):

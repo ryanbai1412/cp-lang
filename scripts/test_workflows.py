@@ -4,6 +4,7 @@ target/ as built at HEAD (ci/R32), and releases are signed (ci/R33), and the tes
 import glob
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -41,6 +42,12 @@ def fake_curl(body):
             f"if [ -n \"$out\" ]; then printf '%s\\n' '{body}' >\"$out\"; printf 200; else printf '%s\\n' '{body}'; fi")
 
 class WorkflowTest(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("actionlint") and shutil.which("shellcheck"),
+                         "actionlint and shellcheck are not both installed")
+    def test_actionlint_passes(self):
+        run = subprocess.run(["actionlint"], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+
     def test_only_a_green_job_stamps_the_cached_target(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             stamps = [l for l in f if "> target/.ci-sha" in l]
