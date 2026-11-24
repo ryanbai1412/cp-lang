@@ -199,3 +199,20 @@ fn a_fn_from_declares_binds_its_name_and_parameters() {
     let mixed = "let k = 3\nfn down(x: Int):\n    if x > 0:\n        go(x - 1)\nfn go(y: Int) = ()\ndown(k)\n";
     assert!(found(mixed).is_empty());
 }
+
+/// `when:` keeps a finding only where what a hole matched is proven in
+/// bounds: an integer literal, or a range type whose ends lie in them.
+/// Rule: R06.4.9.
+#[test]
+fn when_keeps_a_finding_only_where_the_hole_is_proven_in_bounds() {
+    let decl = "@lint(up, from: \"(self + b - 1) / b\", to: \"up(self, b)\", when: \"b >= 1\")\npub fn up(self: Int, b: Int) -> Int = self\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "up")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let src = "let n: 1..=100 = read()\nlet k: 1..=10 = read()\nlet m: 0..=10 = read()\nlet j: Int = read()\nprint((n + k - 1) / k, (n + 4 - 1) / 4, (n + m - 1) / m, (n + j - 1) / j, (n + 0 - 1) / 0)\n";
+    assert_eq!(found(src), ["up(n, k)", "up(n, 4)"]);
+}

@@ -185,7 +185,11 @@ library or by this spec:
   turns it off; its fix is `to` with each hole replaced by what it matched.
   `holes: "a, b"` names more holes than the fn's parameters (a domain or a
   bound the call no longer needs); `to` may drop one of those only when it
-  matched an expression that calls nothing. `to` calls the fn by name or
+  matched an expression that calls nothing. `when: "b >= 1"` keeps a
+  finding only where each listed hole (compared with `>=`, `>`, `<=` or `<`
+  and an integer, comma-separated) is proven in bounds: it matched an
+  integer literal, or code whose range type's ends lie in them (`k: 1..=10`
+  for `k >= 1`). `to` calls the fn by name or
   as a method or getter (`xs.f`). A lint named like a `spec/lints` record
   reports as that record: its code, level and explanation, and with no fix
   when the record gives `no_fix` (its `to` is then only the advice).
@@ -195,7 +199,8 @@ library or by this spec:
   the fn. E0505 (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:`, when `from` or `to` is not one expression or
   statement, when `to` drops a parameter `from` matches or uses one it does
-  not, when `holes:` names a name `from` does not use, when `to` does not
+  not, when `holes:` names a name `from` does not use, when `when:` is not
+  holes `from` uses compared with integers, when `to` does not
   call the fn, or when one module declares a name on two fns (one fn may
   declare a name more than once, one `from` per spelling). (R06.4.9)
 - An idiom whose fix is one library call is declared this way beside the

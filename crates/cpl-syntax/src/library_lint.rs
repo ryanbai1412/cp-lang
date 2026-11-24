@@ -19,6 +19,9 @@ pub struct LibraryLint {
     pub holes: Vec<String>,
     /// How many of `holes` are the fn's parameters; `to` may drop the rest.
     pub params: usize,
+    /// `when:`'s bounds: a hole and the least and greatest value the code
+    /// it matched must be proven to take.
+    pub when: Vec<Bound>,
     pub from: String,
     pub to: String,
     /// The decorator, in file positions.
@@ -26,6 +29,53 @@ pub struct LibraryLint {
     /// The decorated fn, in file positions: the pattern does not apply
     /// inside it.
     pub item: Span,
+}
+
+/// `hole >= n`, `hole > n`, `hole <= n` or `hole < n` from `when:`, as the
+/// inclusive range it asks the hole's value to lie in.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Bound {
+    pub hole: String,
+    pub lo: Option<i128>,
+    pub hi: Option<i128>,
+}
+
+/// `when:`'s comma-separated bounds, if each is a name compared with an
+/// integer literal.
+pub fn bounds(src: &str) -> Option<Vec<Bound>> {
+    let src = src.trim();
+    if src.is_empty() {
+        return Some(Vec::new());
+    }
+    src.split(',')
+        .map(|part| {
+            let toks = tokens(part);
+            let text = |t: &Token| &part[t.span.start as usize..t.span.end as usize];
+            let (name, op, rest) = match toks.as_slice() {
+                [n, op, rest @ ..] if is_name(n.kind, text(n)) => (text(n), op.kind, rest),
+                _ => return None,
+            };
+            let n: i128 = match rest {
+                [v] if v.kind == TokenKind::Int => text(v).replace('_', "").parse().ok()?,
+                [m, v] if m.kind == TokenKind::Minus && v.kind == TokenKind::Int => {
+                    -text(v).replace('_', "").parse::<i128>().ok()?
+                }
+                _ => return None,
+            };
+            let (lo, hi) = match op {
+                TokenKind::GtEq => (Some(n), None),
+                TokenKind::Gt => (Some(n + 1), None),
+                TokenKind::LtEq => (None, Some(n)),
+                TokenKind::Lt => (None, Some(n - 1)),
+                _ => return None,
+            };
+            Some(Bound {
+                hole: name.to_string(),
+                lo,
+                hi,
+            })
+        })
+        .collect()
 }
 
 /// The `@lint` declarations on `stmt`, an item at `offset`, and the errors
@@ -141,6 +191,19 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             );
             continue;
         }
+        let when = text("when").map_or(Some(Vec::new()), |w| bounds(&w));
+        let Some(when) = when.filter(|w| {
+            w.iter()
+                .all(|b| in_from.contains(&b.hole) && holes.contains(&b.hole))
+        }) else {
+            error(
+                &msgs::syntax::LINT_WHEN,
+                &[&name],
+                "write `when: \"b >= 1\"`: holes `from` uses, each compared with an integer",
+                &mut label,
+            );
+            continue;
+        };
         if let Some(p) = f.params.iter().find(|p| {
             let h = &p.name.text;
             in_to.contains(h) && !in_from.contains(h)
@@ -173,6 +236,7 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             fn_name: f.name.text.clone(),
             holes,
             params,
+            when,
             from,
             to,
             decorator: span,
@@ -287,6 +351,27 @@ mod tests {
         assert!(errors(one).is_empty(), "{:?}", errors(one));
         let two = "@lint(by_hand, from: \"x * x\", to: \"sq(x)\")\npub fn sq(x: Int) -> Int = x * x\n@lint(by_hand, from: \"x * x * x\", to: \"cube(x)\")\npub fn cube(x: Int) -> Int = x * x * x\n";
         assert_eq!(errors(two).len(), 1);
+    }
+
+    #[test]
+    fn when_bounds_a_hole_from_uses_by_an_integer() {
+        let decl = |when: &str| {
+            format!("@lint(up, from: \"(self + b - 1) / b\", to: \"up(self, b)\", when: \"{when}\")\npub fn up(self: Int, b: Int) -> Int = self\n")
+        };
+        assert!(errors(&decl("b >= 1, self < -2")).is_empty());
+        let want = super::Bound {
+            hole: "self".into(),
+            lo: None,
+            hi: Some(-3),
+        };
+        assert_eq!(super::bounds("b > 0, self < -2").unwrap()[1], want);
+        for bad in ["c >= 1", "b >= n", "b == 1"] {
+            assert_eq!(
+                errors(&decl(bad)),
+                ["`when:` of `@lint(up)` is not holes `from` uses compared with integers"],
+                "{bad}"
+            );
+        }
     }
 
     #[test]

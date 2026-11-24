@@ -8,7 +8,7 @@ use crate::{File, Finding, Group, Level, Lint};
 use cpl_check::Analysis;
 use cpl_diag::{Code, Span};
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
-use cpl_syntax::library_lint::{self, is_name, LibraryLint};
+use cpl_syntax::library_lint::{self, is_name, Bound, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -313,7 +313,12 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 tok_range(s)
                     .is_some_and(|(start, stop)| m.go(0, start, stop, &mut holes, &mut names))
             });
-            if !matched {
+            let bounded = |b: &Bound| {
+                let at = d.decl.holes.iter().position(|h| *h == b.hole);
+                at.and_then(|i| holes[i])
+                    .is_some_and(|run| proven(file, &toks, &text, run, b))
+            };
+            if !matched || !d.decl.when.iter().all(bounded) {
                 continue;
             }
             taken.push(span);
@@ -440,6 +445,30 @@ impl Matcher<'_> {
         }
         out
     }
+}
+
+/// Whether the tokens `run`, what a hole matched, take only values in `b`'s
+/// range: an integer literal in it, or code the checker gives a range type
+/// whose ends lie in it (`k: 1..=10` for `k >= 1`).
+fn proven(file: &File, toks: &[Token], text: &[&str], run: (usize, usize), b: &Bound) -> bool {
+    let (a, z) = run;
+    let literal = |t: &str| t.replace('_', "").parse::<i128>().ok();
+    let (lo, hi) = match (&toks[a..z], &text[a..z]) {
+        ([t], [v]) if t.kind == K::Int => (literal(v), literal(v)),
+        ([m, t], [_, v]) if m.kind == K::Minus && t.kind == K::Int => {
+            let v = literal(v).map(|v| -v);
+            (v, v)
+        }
+        _ => {
+            let span = Span::new(toks[a].span.start, toks[z - 1].span.end);
+            match file.facts.and_then(|f| f.place_type(span)) {
+                Some(cpl_check::Ty::Range { lo, hi, .. }) => (*lo, *hi),
+                _ => (None, None),
+            }
+        }
+    };
+    b.lo.is_none_or(|want| lo.is_some_and(|lo| lo >= want))
+        && b.hi.is_none_or(|want| hi.is_some_and(|hi| hi <= want))
 }
 
 /// An expression a fix may write once where the code wrote it twice: it
