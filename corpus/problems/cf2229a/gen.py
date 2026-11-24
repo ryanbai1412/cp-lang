@@ -1,6 +1,10 @@
 # Usage: gen.py seed size. Valid under the statement: t <= 100, 2 <= n <= 1000,
 # 1 <= a_i <= 1000, sum of n <= 1000. size >= 1000 emits a max-size shape picked by seed.
 import sys, random
+if sys.argv[1] == "--max":
+    # one n = 1000 test (sum n) with both extremes 1 and 1000 present
+    sys.argv[1:] = ["1", "1000"]
+
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 A = 1000
 if S >= 1000:

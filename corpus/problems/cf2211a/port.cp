@@ -1,4 +1,5 @@
 // Source: Codeforces 2211A (Antimedian Deletion), https://codeforces.com/contest/2211/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: a permutation p of n <= 100. An operation takes 3 adjacent elements and deletes their
 //   minimum or maximum. For each i, print the shortest reachable length of an array that still
 //   holds p[i]. Multitest.

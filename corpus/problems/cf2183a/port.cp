@@ -1,4 +1,5 @@
 // Source: Codeforces 2183A (Binary Array Game), https://codeforces.com/contest/2183/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: a 0/1 array of n <= 100 (multitest). Alice and Bob alternate, Alice first, replacing
 //   a subarray of length >= 2 by 1 - its min, until one element is left; Alice wins if it is 0.
 //   Print the winner.
