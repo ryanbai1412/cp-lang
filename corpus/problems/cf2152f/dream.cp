@@ -15,18 +15,18 @@
 let (n, z) = read<(Int, Int)>()
 let x: [0..n]Int = read()
 domain V = 0..=n
-let greedy = JumpTree<V>.grown(
-    V.rev,
-    parent: i => V.after(i).first(j => j == V.last or x[j] > x[i] + z),
-)
-let meet = [V.until_last] i => greedy.lca(i, i.next!)
-let pairs = JumpTree<V>.grown(V.until_last.rev, parent: i => meet[i])
-let taken = pairs.down(0, (above, i) => above + greedy.dist(i, i.next!))
+var (greedy, pairs) = (JumpTree<V>(), JumpTree<V>())
+var taken: [V]Int = 0
+for i in V.rev if i != V.last:
+    greedy.add(i, V((i.ord + 1..=n).first_true(j => j == n or x[j] > x[i.ord] + z)!))
+    let meet = greedy.lca(i, i.next!)!
+    pairs.add(i, meet)
+    taken[i] = taken[meet] + greedy.dist(i, i.next!)!
 
 for (l, r) in read<[0..read()](l: V, r: V)>():
     let l = l.prev!
-    let c = pairs.lift_while(l, i => i < r)
+    let c = pairs.jump_while(l, i => i < r)!
     let finish = sum(
-        greedy.dist(st, greedy.lift_while(st, i => i < r)) + 1 for st in [c, c.next!] if st < r
+        greedy.dist(st, greedy.jump_while(st, i => i < r)!)! + 1 for st in [c, c.next!] if st < r
     )
     print(taken[l] - taken[c] + finish)
