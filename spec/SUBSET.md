@@ -214,4 +214,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/closure-capturing-a-view-keeps-its-source-lent.cp: compiler: a closure capturing a view keeps the source lent
 - std-bag/closure-captures-a-range-view.cp: compiler: a captured bag range view is typed `()`
 - core-10/hash-containers-are-not-show.cp: compiler: hash containers not Show (decision 460)
+- core-04/grid-rows-view-lends-the-grid.cp: compiler: a bound `lends` getter view (`g.rows`) keeps the grid lent
+- core-04/grid-row-from-rows-lends-the-grid.cp: compiler: a row from a bound `lends` getter view keeps the grid lent
 - core-02/enum-level-tags-is-removed.cp: compiler: enum-level `@tags` removed (decision 459)
