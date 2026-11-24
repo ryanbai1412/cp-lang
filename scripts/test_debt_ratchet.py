@@ -1477,7 +1477,7 @@ class DebtRatchetTest(unittest.TestCase):
             (root / dr.SCALING_BOARD).write_text('{"cases": {}, "unscaled": []}')
             board = root / dr.SCOREBOARD
             board.parent.mkdir(parents=True, exist_ok=True)
-            board.write_text('{"suites": {"corpus": {"interp_max_over_20s": []}}}')
+            board.write_text('{"suites": {"corpus": {"interp_max_over_20s": []}, "conformance": {"cases": {}}}}')
             self.assertEqual(dr.main(["--update", "--root", str(root), "--ratchet", str(ratchet)]), 0)
             self.assertTrue(json.loads(ratchet.read_text())["stdlib_todo"] == 2)
             self.assertEqual(dr.main(["--check", "--root", str(root), "--ratchet", str(ratchet)]), 0)
