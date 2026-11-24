@@ -758,24 +758,27 @@ pub struct KmpAutomaton<A>:
 pub fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K:
     for i in find_all(self, pat): yield i
 
-/// The start position of every place where `pat` matches `self` when each `wildcard` in
+/// The start key of every place where `pat` matches `self` when each `wildcard` in
 /// `pat` matches any one element. A `wildcard` in `self` is an ordinary element.
 ///
-/// Positions count from 0 in `self`'s order, as for `shift_and`.
+/// Keys are those of `self`, as for `find_all`; an empty pattern matches at every key, never at the end.
 ///
-/// cost: \(O(\lvert \mathit{self} \rvert \cdot \mathit{ceil}(\lvert \mathit{pat} \rvert / 64))\)
-/// empty: an empty `pat` yields `0..=|self|`; an empty `self` yields nothing for a non-empty `pat`
+/// cost: \(O(\lvert \mathit{self} \rvert \cdot \lvert \mathit{pat} \rvert)\) worst case, comparing directly
+/// empty: an empty `pat` yields every key of `self`; an empty `self` yields nothing
 /// ties: every match is yielded; None is preferred
-/// order: increasing start
+/// order: increasing start key
 /// traps: never
 /// example: `"abcab".find_all_wildcard("a?").collect() == [0, 3]`
 /// example: `"a?c".find_all_wildcard("ab").collect() == []`
-pub fn find_all_wildcard<S: Indexed, P: Indexed>(
+pub fn find_all_wildcard<S: Indexed<K, Char>, P: Indexed<L, Char>, K, L>(
     self: S,
     pat: P,
     wildcard: Char = '?',
-) -> yields Int:
+) -> yields K:
     let (n, m) = (self.len, pat.len)
+    if m == 0:
+        for k in self.keys: yield k
+        return
     for i in 0..=n - m:
         var ok = true
         for j in 0..m:
@@ -783,7 +786,7 @@ pub fn find_all_wildcard<S: Indexed, P: Indexed>(
             if c != wildcard and c != self.nth(i + j):
                 ok = false
                 break
-        if ok: yield i
+        if ok: yield self.keys.nth(i)
 
 /// \(O(n)\) space, \(O(1)\) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
