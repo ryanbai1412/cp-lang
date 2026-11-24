@@ -13,7 +13,7 @@ use crate::lend::{whole_reads, Tail};
 use crate::walk;
 
 pub(crate) use cpl_ir::effects::{
-    in_domain, known_where, pure_path, trap_free_stmts, trap_free_with, Effects,
+    in_domain, known_with, pure_path, trap_free_stmts, trap_free_with, Effects,
 };
 
 /// [`cpl_ir::effects::pure_fns`], knowing the closures `devirt` resolves.

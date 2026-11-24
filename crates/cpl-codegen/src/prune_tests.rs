@@ -252,3 +252,60 @@ print(hop[0, 2] ?? -1)
     assert!(body.contains("floyd_warshall"), "{out}");
     assert!(!body.contains("assertion failed"), "{out}");
 }
+
+const POOL: &str = concat!(
+    "struct Pool:\n",
+    "    xs: List<Int> = []\n",
+    "    n: Int\n",
+    "    fn grow(mut self):\n",
+    "        xs.push(n)\n",
+    "    fn spread(self) -> Int = xs.len * 7 + 3\n",
+    "    fn get(mut self) -> Int:\n",
+    "        if xs.len > 0:\n",
+    "            self.grow()\n",
+    "            return self.spread()\n",
+    "        n\n",
+    "let n: 1..=10 = read()\n",
+    "var s = Pool(n: n)\n",
+);
+
+#[test]
+fn a_branch_on_the_len_of_a_list_field_nothing_fills_is_left_out() {
+    // A store only the left-out branch makes does not keep it: `grow` is reached only from there.
+    let cpp = cpp(&format!("{POOL}print(s.get())\n"));
+    let code: String = cpp.lines().filter(|l| !l.starts_with("//")).collect();
+    assert!(code.contains("Pool_get"), "{cpp}");
+    assert!(
+        !code.contains("Pool_grow") && !code.contains("Pool_spread"),
+        "{cpp}"
+    );
+}
+
+#[test]
+fn a_list_field_code_that_runs_fills_keeps_its_branches() {
+    let cpp = cpp(&format!("{POOL}if n > 5: s.grow()\nprint(s.get())\n"));
+    let code: String = cpp.lines().filter(|l| !l.starts_with("//")).collect();
+    assert!(code.contains("Pool_spread"), "{cpp}");
+}
+
+#[test]
+fn a_lazy_segtree_over_a_domain_emits_only_the_dense_tree() {
+    // atcoder_dp_w: the `over:` layout's growing tree went out with the dense one.
+    let cpp = cpp(concat!(
+        "let n: 1..=2e5 = read()\n",
+        "domain P = 0..=n\n",
+        "var t = SegTree<P, Int, Int>(max, fill: 0, act: add)\n",
+        "t.apply(.., 1)\n",
+        "print(t.fold(..))\n",
+    ));
+    for growing in [
+        "_grow(",
+        "_open_node(",
+        "_blank_at(",
+        "_kid(",
+        "_dense_width(",
+    ] {
+        assert!(!cpp.contains(growing), "{growing} in {cpp}");
+    }
+    assert!(cpp.len() < 26 * 1024, "{} bytes", cpp.len());
+}

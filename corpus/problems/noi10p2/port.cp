@@ -9,7 +9,6 @@
 //   two candidates. O((n + k) log n).
 // original: corpus/submissions/5670502.cpp
 // Bounds: n, k: 1..=5e5; pre: -1_000..=1_000
-// sunk_copies: 1
 
 let (n, k) = read<(1..=5e5, 1..=5e5)>()
 let len = read<Range<1..=n>>()

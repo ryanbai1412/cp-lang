@@ -314,6 +314,20 @@ pub fn pure_path(e: &Expr) -> bool {
 /// What `e` is at compile time, when that is known; `is_none` names the
 /// optionals known to be absent.
 pub fn known_where(e: &Expr, is_none: &dyn Fn(&Expr) -> bool) -> Option<bool> {
+    known_with(e, is_none, &|_| None)
+}
+
+/// [`known_where`], where `int` gives the value of an `Int` operand known
+/// without being a literal (the `len` of a list known to be empty).
+pub fn known_with(
+    e: &Expr,
+    is_none: &dyn Fn(&Expr) -> bool,
+    int: &dyn Fn(&Expr) -> Option<i64>,
+) -> Option<bool> {
+    let value = |x: &Expr| match x.kind {
+        ExprKind::Int(v) => Some(v),
+        _ => int(x),
+    };
     match &e.kind {
         ExprKind::IsSome(x) if is_none(x) => Some(false),
         ExprKind::Bool(b) => Some(*b),
@@ -326,9 +340,7 @@ pub fn known_where(e: &Expr, is_none: &dyn Fn(&Expr) -> bool) -> Option<bool> {
             Some(*op == CmpOp::Eq)
         }
         ExprKind::Cmp(op, a, b) => {
-            let (ExprKind::Int(a), ExprKind::Int(b)) = (&a.kind, &b.kind) else {
-                return None;
-            };
+            let (a, b) = (value(a)?, value(b)?);
             match op {
                 CmpOp::Eq => Some(a == b),
                 CmpOp::Ne => Some(a != b),
@@ -339,14 +351,14 @@ pub fn known_where(e: &Expr, is_none: &dyn Fn(&Expr) -> bool) -> Option<bool> {
                 _ => None,
             }
         }
-        ExprKind::Unary(UnOp::Not, x) => known_where(x, is_none).map(|b| !b),
-        ExprKind::Binary(BinOp::And, a, b) => match known_where(a, is_none)? {
+        ExprKind::Unary(UnOp::Not, x) => known_with(x, is_none, int).map(|b| !b),
+        ExprKind::Binary(BinOp::And, a, b) => match known_with(a, is_none, int)? {
             false => Some(false),
-            true => known_where(b, is_none),
+            true => known_with(b, is_none, int),
         },
-        ExprKind::Binary(BinOp::Or, a, b) => match known_where(a, is_none)? {
+        ExprKind::Binary(BinOp::Or, a, b) => match known_with(a, is_none, int)? {
             true => Some(true),
-            false => known_where(b, is_none),
+            false => known_with(b, is_none, int),
         },
         _ => None,
     }

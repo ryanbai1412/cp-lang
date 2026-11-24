@@ -244,6 +244,13 @@ pub(crate) const PASSES: &[Pass] = &[
         Uses(&["Touch::of_block", "Touch::of_expr"]),
         "a_branch_on_an_op_value_keeps_only_the_one_taken",
     ),
+    // A list or optional field nothing reached fills is empty, so the branches on it fold.
+    pass(
+        "known-empty-fields",
+        "prune.rs",
+        Reach,
+        "a_branch_on_the_len_of_a_list_field_nothing_fills_is_left_out",
+    ),
     pass(
         "sign-ranges",
         "ranges.rs",

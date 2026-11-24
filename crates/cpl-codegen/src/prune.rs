@@ -7,10 +7,15 @@
 //! parameter every call passes `None` (a `by: ?F = None` nobody sets), and
 //! a struct field every construction fills with `None` or copies from the
 //! same field, so `if let f = self.lt` goes when no `Heap` ever gets an `lt`.
+//! A list field is known to be empty the same way, so its `len` is 0: a
+//! `SegTree` over a domain never makes the `over:` layout's `lc`, and every
+//! `if lc.len > 0` branch of the growing tree goes. A field's constructions
+//! and stores count only in code that can run once the branches known so far
+//! are left out, so a store only those branches make does not keep them.
 
-use crate::uses::effects::{known_where, Touch};
+use crate::uses::effects::{known_with, Touch};
 use crate::walk::{deep_exprs, deep_stmts, path_root};
-use cpl_ir::{Arg, Block, Expr, ExprKind, FnId, Place, PlaceKind};
+use cpl_ir::{Arg, Block, Builtin, ClosureId, Expr, ExprKind, FnId, Place, PlaceKind};
 use cpl_ir::{Program, Slot, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -23,10 +28,11 @@ pub(crate) fn prune(program: &mut Program, asserts: bool) {
     let mut nones = Nones {
         params: none_params(program),
         fields: BTreeSet::new(),
+        empty: BTreeSet::new(),
     };
     run(program, asserts, &nones);
-    nones.fields = none_fields(program);
-    if !nones.fields.is_empty() {
+    known_fields(program, &mut nones);
+    if !nones.fields.is_empty() || !nones.empty.is_empty() {
         run(program, asserts, &nones);
     }
 }
@@ -85,6 +91,8 @@ struct Nones {
     params: BTreeSet<(FnId, Slot)>,
     /// `(struct, field)`.
     fields: BTreeSet<(usize, usize)>,
+    /// List fields that are empty wherever they are read, as `(struct, field)`.
+    empty: BTreeSet<(usize, usize)>,
 }
 
 /// What one body knows: which of its slots can only be `None`.
@@ -113,6 +121,21 @@ impl Cx<'_> {
             }
             _ => false,
         }
+    }
+
+    /// The value of an `Int` known without being a literal: the `len` of a
+    /// list field known to be empty.
+    fn int(&self, e: &Expr) -> Option<i64> {
+        let ExprKind::Builtin(Builtin::Len, args) = &e.kind else {
+            return None;
+        };
+        let [list] = &args[..] else { return None };
+        let ExprKind::Field(base, i) = &list.kind else {
+            return None;
+        };
+        (matches!(base.ty, Ty::Struct(id) if self.nones.empty.contains(&(id, *i)))
+            && path_root(base).is_some())
+        .then_some(0)
     }
 }
 
@@ -263,22 +286,131 @@ fn none_params(program: &Program) -> BTreeSet<(FnId, Slot)> {
         .collect()
 }
 
-/// Optional struct fields that every construction fills with `None` or
-/// with the same field of another value of the struct, and nothing stores to.
-fn none_fields(program: &Program) -> BTreeSet<(usize, usize)> {
+/// The optional fields known `None` and the list fields known empty: every
+/// construction that can run fills them with `None` or `[]` or with the same
+/// field of another value of the struct, and nothing that can run stores to
+/// them. Starts from every such field and drops the ones the code reached
+/// under the current guess stores, until the guess holds.
+fn known_fields(program: &Program, nones: &mut Nones) {
+    for (id, def) in program.structs.iter().enumerate() {
+        for (i, (_, ty)) in def.fields.iter().enumerate() {
+            match ty {
+                Ty::Opt(_) => nones.fields.insert((id, i)),
+                Ty::List(_) => nones.empty.insert((id, i)),
+                _ => false,
+            };
+        }
+    }
+    loop {
+        let bad = stored_in(program, &reached(program, nones));
+        let before = nones.fields.len() + nones.empty.len();
+        nones.fields.retain(|f| !bad.contains(f));
+        nones.empty.retain(|f| !bad.contains(f));
+        if nones.fields.len() + nones.empty.len() == before {
+            return;
+        }
+    }
+}
+
+/// The bodies that can run when the branches `nones` decides are left out:
+/// main, setup, the entry, judge and type-hook fns, and what they call.
+fn reached<'p>(program: &'p Program, nones: &Nones) -> Vec<&'p Block> {
+    let mut fns: BTreeSet<FnId> = program
+        .entry_fns
+        .iter()
+        .chain(&program.judge_fns)
+        .copied()
+        .collect();
+    for s in &program.structs {
+        fns.extend(
+            [s.eq_fn, s.ord.map(cpl_ir::OrdHook::id), s.show_fn]
+                .into_iter()
+                .flatten(),
+        );
+    }
+    fns.extend(program.enums.iter().filter_map(|e| e.show_fn));
+    let mut fn_work: Vec<FnId> = fns.iter().copied().collect();
+    let mut closures: BTreeSet<ClosureId> = BTreeSet::new();
+    let mut closure_work: Vec<ClosureId> = Vec::new();
+    let mut out = vec![&program.main, &program.setup];
+    let mut at = 0;
+    loop {
+        while at < out.len() {
+            let cx = Cx {
+                nones,
+                home: None,
+                written: BTreeSet::new(),
+                captured: BTreeSet::new(),
+                lets: BTreeSet::new(),
+            };
+            taken_exprs(out[at], &cx, &mut |e| match e.kind {
+                ExprKind::Call(id, _) if fns.insert(id) => fn_work.push(id),
+                ExprKind::Closure(id) if closures.insert(id) => closure_work.push(id),
+                _ => {}
+            });
+            at += 1;
+        }
+        if let Some(id) = fn_work.pop() {
+            out.push(&program.fns[id].body);
+        } else if let Some(id) = closure_work.pop() {
+            out.push(&program.closures[id].body);
+        } else {
+            return out;
+        }
+    }
+}
+
+/// [`deep_exprs`], skipping the branch of an `if` that `cx` knows is not taken
+/// and what follows a statement known to leave the block; whether `b` leaves.
+fn taken_exprs<'p>(b: &'p Block, cx: &Cx, f: &mut dyn FnMut(&'p Expr)) -> bool {
+    for stmt in &b.stmts {
+        cpl_ir::walk::stmt_exprs(stmt, &mut |e| cpl_ir::walk::deep_expr(e, f));
+        let left = match stmt {
+            Stmt::Return(_) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Give(_) => true,
+            Stmt::If(cond, then, otherwise) => match known_in(cond, Some(cx)) {
+                Some(true) => taken_exprs(then, cx, f),
+                Some(false) => taken_exprs(otherwise, cx, f),
+                None => taken_exprs(then, cx, f) & taken_exprs(otherwise, cx, f),
+            },
+            Stmt::While(_, _, body) | Stmt::For(_, _, _, body) => {
+                taken_exprs(body, cx, f);
+                false
+            }
+            _ => false,
+        };
+        if left {
+            return true;
+        }
+    }
+    false
+}
+
+/// The `(struct, field)`s that `bodies` construct with something other than
+/// `None`, `[]` or the same field, store to, or read from input.
+fn stored_in(program: &Program, bodies: &[&Block]) -> BTreeSet<(usize, usize)> {
     let mut bad = BTreeSet::new();
-    for (_, body) in bodies(program) {
+    for body in bodies {
         deep_exprs(body, &mut |e| match (&e.kind, &e.ty) {
             (ExprKind::Tuple(items), Ty::Struct(id)) => {
                 for (i, item) in items.iter().enumerate() {
                     let kept = match &item.kind {
                         ExprKind::None => true,
+                        ExprKind::Tuple(empty) => {
+                            empty.is_empty() && matches!(item.ty, Ty::List(_))
+                        }
                         ExprKind::Field(base, j) => *j == i && base.ty == Ty::Struct(*id),
                         _ => false,
                     };
                     if !kept {
                         bad.insert((*id, i));
                     }
+                }
+            }
+            (ExprKind::Read(_) | ExprKind::ReadFrom(..), ty) => {
+                let mut ids = BTreeSet::new();
+                structs_in(program, ty, &mut ids);
+                for id in ids {
+                    bad.extend((0..program.structs[id].fields.len()).map(|i| (id, i)));
                 }
             }
             (ExprKind::Call(_, args) | ExprKind::CallExpr(_, args), _) => {
@@ -303,15 +435,38 @@ fn none_fields(program: &Program) -> BTreeSet<(usize, usize)> {
             }
         });
     }
-    let mut out = BTreeSet::new();
-    for (id, def) in program.structs.iter().enumerate() {
-        for (i, (_, ty)) in def.fields.iter().enumerate() {
-            if matches!(ty, Ty::Opt(_)) && !bad.contains(&(id, i)) {
-                out.insert((id, i));
+    bad
+}
+
+/// The structs a value of `ty` holds, at any depth.
+fn structs_in(program: &Program, ty: &Ty, out: &mut BTreeSet<usize>) {
+    match ty {
+        Ty::Struct(id) => {
+            if out.insert(*id) {
+                for (_, t) in &program.structs[*id].fields {
+                    structs_in(program, t, out);
+                }
             }
         }
+        Ty::Enum(id) => {
+            for (_, fields) in &program.enums[*id].variants {
+                for t in fields {
+                    structs_in(program, t, out);
+                }
+            }
+        }
+        Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
+            structs_in(program, t, out)
+        }
+        Ty::Array { elem, .. } => structs_in(program, elem, out),
+        Ty::Map(k, v) | Ty::HashMap(k, v) => {
+            structs_in(program, k, out);
+            structs_in(program, v, out);
+        }
+        Ty::Tuple(ts) => ts.iter().for_each(|t| structs_in(program, t, out)),
+        Ty::Record(fs) => fs.iter().for_each(|(_, t)| structs_in(program, t, out)),
+        _ => {}
     }
-    out
 }
 
 fn stored_fields(place: &Place, bad: &mut BTreeSet<(usize, usize)>) {
@@ -336,7 +491,9 @@ pub(crate) fn known(e: &Expr) -> Option<bool> {
 }
 
 fn known_in(e: &Expr, cx: Option<&Cx>) -> Option<bool> {
-    known_where(e, &|x| cx.is_some_and(|cx| cx.is_none(x)))
+    known_with(e, &|x| cx.is_some_and(|cx| cx.is_none(x)), &|x| {
+        cx.and_then(|cx| cx.int(x))
+    })
 }
 
 fn block(b: &mut Block, asserts: bool, cx: &mut Cx) {

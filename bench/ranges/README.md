@@ -20,6 +20,7 @@ Run with `./bench/ranges/run.sh`.
 | `time_tree` | n=30k, m=60k edge intervals, q=30k rollback-DSU queries | 50.0 ms | 41.0 ms | 1.22x | 12,910 B |
 | `mo` | n=100k, q=100k distinct-value queries, odd-even block order | 112.7 ms | 43.9 ms (106.5 ms global C++) | 2.57x (1.06x vs global C++) | 9,957 B |
 | `dual_segtree` vs `lazy_segtree` | n=100k, 200k range adds + 200k point gets | 71.4 ms | 94.1 ms (`LazySegTree`) | 0.76x (1.32x speedup) | 10,938 B |
+| `segtree_domain_lazy` (size only) | one range `apply` + one `fold` on a lazy `SegTree` over a domain: the dense tree alone, no `over:` paths | - | - | - | 24,096 B |
 
 All seven core range benchmarks are at p50 1.06x (max 1.22x) against
 hand-written C++17 with zero `std::function`: `MergeSortTree` uses a single flat

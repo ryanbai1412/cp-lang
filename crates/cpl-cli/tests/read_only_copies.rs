@@ -74,6 +74,48 @@ fn items(list: &str) -> Vec<&str> {
     out
 }
 
+/// The structs whose fields hold no container or `std::function`, directly
+/// or through another struct: passing one by value copies a few words.
+fn flat_structs(lines: &[&str]) -> std::collections::BTreeSet<String> {
+    let mut fields = Vec::new();
+    for (i, line) in lines.iter().enumerate() {
+        let Some(name) = line
+            .strip_prefix("struct ")
+            .and_then(|l| l.strip_suffix(" {"))
+        else {
+            continue;
+        };
+        let body: Vec<&str> = lines[i + 1..]
+            .iter()
+            .take_while(|l| **l != "};")
+            .map(|l| l.trim())
+            .filter(|l| !l.starts_with("auto ") && !l.starts_with("bool operator"))
+            .collect();
+        fields.push((name.to_string(), body));
+    }
+    let mut flat = std::collections::BTreeSet::new();
+    loop {
+        let more: Vec<String> = fields
+            .iter()
+            .filter(|(name, _)| !flat.contains(name))
+            .filter(|(_, body)| {
+                body.iter().all(|f| {
+                    let decl = f.split(" = ").next().unwrap_or(f);
+                    let ty = decl.rsplit_once(' ').map_or(decl, |(ty, _)| ty);
+                    !CONTAINERS.iter().any(|c| f.contains(c))
+                        && !f.contains("std::function")
+                        && (!ty.starts_with(|c: char| c.is_ascii_uppercase()) || flat.contains(ty))
+                })
+            })
+            .map(|(name, _)| name.clone())
+            .collect();
+        if more.is_empty() {
+            return flat;
+        }
+        flat.extend(more);
+    }
+}
+
 /// `inline H wrap(std::vector<ll> xs) { return H{std::move(xs)}; }` called
 /// as `wrap(a)`: a fn takes a heap parameter by value to move it into the
 /// struct it returns, and a call hands it a named place, which is copied.
@@ -87,6 +129,7 @@ fn sunk_copies(cpp: &str) -> usize {
         let named = sig.contains(' ') && name.chars().all(|c| c.is_alphanumeric() || c == '_');
         named.then(|| (name.to_string(), params.to_string()))
     };
+    let flat = flat_structs(&lines);
     let mut sunk = Vec::new();
     for (i, line) in lines.iter().enumerate() {
         let Some((name, params)) = head(line) else {
@@ -103,7 +146,7 @@ fn sunk_copies(cpp: &str) -> usize {
             };
             let by_value = !ty.ends_with('&') && !ty.starts_with("[[") && !ty.starts_with('F');
             let heap = CONTAINERS.iter().any(|c| ty.starts_with(c))
-                || ty.starts_with(|c: char| c.is_ascii_uppercase());
+                || ty.starts_with(|c: char| c.is_ascii_uppercase()) && !flat.contains(ty);
             let moved = format!("std::move({p})");
             if by_value && heap && returns.iter().any(|r| r.contains(&moved)) {
                 sunk.push((name.clone(), k));
@@ -418,8 +461,8 @@ fn a_fn_whose_every_arm_returns_a_part_of_self_lends_it_and_explain_lists_no_cop
             &["AugSortedBag.all"],
         ),
         (
-            "spec/conformance/std-matrix/min-plus-gaps-fold-in-a-segtree.cp",
-            // `seen` keeps `Mat v = c ? blank_at(..) : self.t[p]` by value, a copy
+            "spec/conformance/std-segtree/right-while-lends-str-parts.cp",
+            // `seen` keeps `v = c ? blank_at(..) : self.t[p]` by value, a copy
             // explain lists.
             &["SegTree.blank_at"],
         ),
@@ -490,6 +533,11 @@ fn a_place_passed_to_a_fn_that_moves_it_into_a_struct_is_a_sunk_copy() {
         sunk_copies(&cpp.replace("std::vector<ll> xs", "const std::vector<ll>& xs")),
         0
     );
+    let pair = "struct P {\n  ll a = 0;\n  Q q;\n};\nstruct Q {\n  int b = 0;\n};\n";
+    let flat = cpp.replace("std::vector<ll> xs", "P xs");
+    assert_eq!(sunk_copies(&format!("{pair}{flat}")), 0);
+    let held = pair.replace("int b = 0;", "std::vector<ll> b;");
+    assert_eq!(sunk_copies(&format!("{held}{flat}")), 1);
 }
 
 #[test]
