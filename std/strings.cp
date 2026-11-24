@@ -1328,7 +1328,6 @@ pub struct SuffixTreeEdge(
 pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
     with lint(unproven_list_index: allow)
     let n = s.len
-    if n == 0: return []
     let (sa, _, lcp) = sa_rank_lcp(s)
     var out: List<SuffixTreeEdge> = []
     // open nodes from the root down: string depth, first leaf rank, edge lengths below
