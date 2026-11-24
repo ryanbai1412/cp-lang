@@ -160,7 +160,9 @@ class WorkflowTest(unittest.TestCase):
             run("git", "push", "-q", "origin", "HEAD:main")
             with open(os.path.join(sizes, run("git", "rev-parse", "HEAD~1") + ".json"), "w", encoding="utf-8") as f:
                 f.write("{}")
-            env = {**os.environ, "PATH": bin_dir + os.pathsep + os.environ["PATH"]}
+            # As inside a git hook, whose identity must not end up on the bot's commit.
+            env = {**os.environ, "PATH": bin_dir + os.pathsep + os.environ["PATH"],
+                   "GIT_AUTHOR_NAME": "a hook's author", "GIT_COMMITTER_NAME": "a hook's committer"}
             script = os.path.join(ROOT, "scripts", "wasm-ratchet.sh")
             lower = lambda: subprocess.run(["bash", script, "lower", "cpl.wasm", sizes], cwd=repo, env=env, capture_output=True, text=True)
             out = lower()

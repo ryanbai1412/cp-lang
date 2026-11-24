@@ -26,8 +26,10 @@ check)
 lower)
     "$0" check "$wasm" "$sizes" --lower-budgets
     ! git diff --quiet -- "$budgets" || exit 0
-    git config user.name "github-actions[bot]"
-    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+    # The environment's identity, as a git hook sets it, would beat `git config`.
+    export GIT_AUTHOR_NAME="github-actions[bot]" GIT_COMMITTER_NAME="github-actions[bot]"
+    export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
+    export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
     git commit -q -m "ci: lower wasm budgets to $(git rev-parse --short HEAD)'s sizes" -m "Domain: infra" -- "$budgets"
     # One attempt, as regen's: a lost race means a newer tip, whose run lowers them.
     if git pull -q --rebase origin main && git push -q origin HEAD:main; then
