@@ -8,7 +8,7 @@ let comb = Comb<Z>()
 domain Bit = 0..2
 
 @!multitest
-let n: 1..=200_000 = read()
+let n: 1..=1e6 = read()
 let s: Str = read()
 
 var total: [Bit]Int = 0
