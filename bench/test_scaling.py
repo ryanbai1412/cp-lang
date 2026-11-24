@@ -74,6 +74,23 @@ class Env(unittest.TestCase):
         self.assertEqual(env["GLIBC_TUNABLES"], "glibc.cpu.x=1:" + scaling.MALLOC_TUNABLES)
 
 
+class Runs(unittest.TestCase):
+    def test_runs_alternate_between_the_sizes(self):
+        import json
+        import tempfile
+        from unittest import mock
+        order = []
+
+        def run(cmd, **_):
+            order.append(int(open(cmd[4]).read()))
+            out = {"lines": [{"line": 1, "time_ns": scaling.MIN_NS * order[-1], "start_count": 1}]}
+            return mock.Mock(returncode=0, stdout=json.dumps(out), stderr="")
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(scaling.subprocess, "run", run):
+            best = scaling.per_hit("cpl", "case.cp", (1, 4), {"f": {1}}, tmp)
+        self.assertEqual(order, [1, 4] * scaling.RUNS)
+        self.assertEqual(best, {1: {"f": scaling.MIN_NS}, 4: {"f": 4 * scaling.MIN_NS}})
+
+
 class Alias(unittest.TestCase):
     def test_a_cost_as_another_fn_reads_its_cost(self):
         costs = {"m.T.f": r"\(O(\log n)\)", "m.T.g": "as `f`", "m.U.h": "as [`T.g`](T.g), plus one call",
