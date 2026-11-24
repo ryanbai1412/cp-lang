@@ -48,9 +48,9 @@ for _ in 0..400:
     s += t.reorder(rpar).len // timed: tree.Rooted.reorder
     s += pt.centroid().ord // timed: tree.Rooted.centroid
     s += pt.centroids().len // timed: tree.Rooted.centroids
-    s += t.subtree_sizes[V(n - 1)] // timed: tree.Rooted.subtree_sizes
-for _ in 0..3000:
-    s += t.order.len // timed: tree.Rooted.order
+for k in 0..200_000:
+    s += t.subtree_sizes[V(k % n)] // timed: tree.Rooted.subtree_sizes
+    s += t.order[k % n].ord // timed: tree.Rooted.order
 for _ in 0..16:
     for r in ft.roots: // timed: tree.Rooted.roots
         s += r.ord // timed: tree.Rooted.roots

@@ -64,7 +64,7 @@ pub fn optional_copies(cpp: &str) -> usize {
         .sum()
 }
 
-fn is_container(ty: &str) -> bool {
+pub fn is_container(ty: &str) -> bool {
     CONTAINERS.iter().any(|c| ty.starts_with(c))
 }
 

@@ -624,12 +624,54 @@ impl<'p> Emitter<'p> {
             let args: Vec<String> = (0..tparams.len()).map(|i| format!("class F{i}")).collect();
             format!("template <{}>\n", args.join(", "))
         };
-        format!(
-            "{prefix}{} {}({})",
-            self.ty_with_elem_layout(&f.ret, self.elem_layout(cpl_ir::ElemLoc::FnRet(id))),
-            fn_name(&f.name),
-            params.join(", ")
-        )
+        let mut ret =
+            self.ty_with_elem_layout(&f.ret, self.elem_layout(cpl_ir::ElemLoc::FnRet(id)));
+        let by_ref: Vec<usize> = (0..f.params.len())
+            .filter(|&slot| f.locals[slot].ty != Ty::Unit)
+            .zip(&params)
+            .filter(|(_, p)| p.contains("const ") && p.contains("& "))
+            .map(|(slot, _)| slot)
+            .collect();
+        if self.lends_its_result(f, &by_ref) {
+            ret = format!("const {ret}&");
+        }
+        format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "))
+    }
+
+    /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
+    /// is, like a `@get` of a stored list, lends it: the caller reads it in place and copies
+    /// it only where it keeps it.
+    fn lends_its_result(&self, f: &Function, by_ref: &[usize]) -> bool {
+        use cpl_ir::{ElemLoc, ExprKind, NarrowLayout};
+        let id = self.fn_id.expect("a fn");
+        let [Stmt::Return(Some(e))] = f.body.stmts.as_slice() else {
+            return false;
+        };
+        if f.ret.is_scalar()
+            || f.ret == Ty::Unit
+            || e.ty != f.ret
+            || self.caches_on_read(&f.ret)
+            || self.expr_elem_layout(e) != self.elem_layout(ElemLoc::FnRet(id))
+        {
+            return false;
+        }
+        let mut at = e;
+        loop {
+            at = match &at.kind {
+                ExprKind::Field(base, _) if matches!(base.ty, Ty::Struct(_)) => base,
+                ExprKind::Index(base, _)
+                    if matches!(base.ty, Ty::List(_) | Ty::Array { .. })
+                        && matches!(
+                            self.expr_elem_layout(base),
+                            None | Some(NarrowLayout::Seq(_))
+                        ) =>
+                {
+                    base
+                }
+                ExprKind::Local(slot) => return !std::ptr::eq(at, e) && by_ref.contains(slot),
+                _ => return false,
+            };
+        }
     }
 
     /// The fn as the judge's grader declares it.

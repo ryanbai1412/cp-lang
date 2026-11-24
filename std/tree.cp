@@ -260,7 +260,7 @@ pub struct Rooted<V, Pre, A>:
     /// children in child order. `t.order.rev` lists children before parents, the order a tree DP
     /// without recursion walks.
     ///
-    /// cost: \(O(n)\); copies the stored breadth-first order, which `t.bfs` reads in place
+    /// cost: \(O(1)\); lends the stored breadth-first order
     /// order: breadth-first; the roots first
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.order == [0, 1, 2, 3, 4]`
@@ -525,12 +525,12 @@ pub struct Rooted<V, Pre, A>:
 
     /// The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
     ///
-    /// cost: \(O(n)\); builds the array, while `t.size(v)` reads one size in \(O(1)\)
+    /// cost: \(O(1)\); lends the stored sizes
     /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.subtree_sizes == [1]`
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.subtree_sizes == [5, 3, 1, 1, 1]`
-    @get pub fn subtree_sizes(self) -> [V]Int = [V] v => sz[v]
+    @get pub fn subtree_sizes(self) -> [V]1..=V.count = sz
 
     /// A centroid of the tree holding `t.root`: a vertex whose removal leaves no piece of more than
     /// half its vertices. Found by walking heavy children down from the root while the heavy

@@ -62,10 +62,43 @@ fn entry_copies(cpp: &str) -> usize {
 type Count = fn(&str) -> usize;
 
 /// Copy shapes no program may build to: each is a read made into a copy.
-const NEVER: [(&str, Count); 3] = [
+/// `std::vector<..> f(const S& self) {` then `return self.xs;`: a fn, like a
+/// `@get` of a stored list, that copies out a part of what it was lent
+/// instead of lending it on.
+fn lent_part_copies(cpp: &str) -> usize {
+    let lines: Vec<&str> = cpp.lines().collect();
+    lines
+        .windows(2)
+        .filter(|w| {
+            let sig = w[0].trim();
+            let sig = sig.strip_prefix("inline ").unwrap_or(sig);
+            let Some(part) = w[1].trim().strip_prefix("return ") else {
+                return false;
+            };
+            let name: String = part
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            cpp_counts::is_container(sig)
+                && sig.ends_with(") {")
+                && !name.is_empty()
+                && part[name.len()..].starts_with(['.', '['])
+                && part.ends_with(';')
+                && [format!("& {name},"), format!("& {name})")]
+                    .iter()
+                    .any(|p| {
+                        sig.find(p.as_str())
+                            .is_some_and(|at| sig[..at].contains("const "))
+                    })
+        })
+        .count()
+}
+
+const NEVER: [(&str, Count); 4] = [
     ("map_get_copies", map_get_copies),
     ("block_copies", block_copies),
     ("entry_copies", entry_copies),
+    ("lent_part_copies", lent_part_copies),
 ];
 
 /// What a program's header says its C++ makes: `// copies: N` deep copies

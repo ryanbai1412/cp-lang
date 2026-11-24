@@ -324,3 +324,32 @@ fn a_field_a_literal_reads_before_it_is_reset_moves_in() {
         "xs is never set again: {kept}"
     );
 }
+
+#[test]
+fn a_get_of_a_stored_field_or_an_element_of_one_lends_it() {
+    let out = cpp("struct H:
+    xs: List<Int>
+    g: [0..2]List<Int>
+    @get pub fn items(self) -> List<Int> = xs
+    @get pub fn row(self) -> List<Int> = g[1]
+    @get pub fn fresh(self) -> List<Int> = [x + 1 for x in xs]
+let n: Int = read()
+let h = H([i for i in 0..n], [[1], [2]])
+var t = 0
+for k in 0..n: t += h.items[k] + h.row[0] + h.fresh[k]
+for v in H([n], [[1], [2]]).items: t += v
+print(t)
+");
+    assert!(
+        out.contains("inline const std::vector<ll>& H_items(const H& self)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("inline const std::vector<ll>& H_row(const H& self)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("inline std::vector<ll> H_fresh(const H& self)"),
+        "{out}"
+    );
+}
