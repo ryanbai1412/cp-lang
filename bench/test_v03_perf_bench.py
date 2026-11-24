@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location(
     "v03_perf_bench", os.path.join(os.path.dirname(__file__), "v03_perf_bench.py"))
@@ -48,6 +49,30 @@ class Summarize(unittest.TestCase):
 
     def test_there_is_no_unmatched_list(self):
         self.assertFalse(os.path.exists(os.path.join(bench.ROOT, "bench", "unmatched.txt")))
+
+
+class BarRecord(unittest.TestCase):
+    def test_a_run_rewrites_the_ports_it_tried_and_keeps_the_rest(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(bench, "port_sha", lambda p: "sha"):
+            path = os.path.join(d, "bar.txt")
+            with open(path, "w") as f:
+                f.write("# old\na old 9 9\nb old 2 2\nkept old 1.2 1.0\n")
+            ok = {"suite": "corpus", "status": "ok", "repeats": 1, "ratio": 1.05, "rss_ratio": None}
+            bench.write_bar_record([{**ok, "name": "a"}, {"suite": "corpus", "name": "b", "status": "skip"},
+                                    {**ok, "suite": "dryrun", "name": "c"}], 10.0, path)
+            rows = [r for r in open(path).read().splitlines() if not r.startswith("#")]
+        self.assertEqual(rows, ["a sha 1.05 -", "kept old 1.2 1.0"])
+
+
+class RecordBlocker(unittest.TestCase):
+    def test_a_record_needs_live_corpus_ports_and_a_current_cpl(self):
+        with mock.patch.object(bench, "cpl_stale", lambda cpl, root: None):
+            self.assertIn("--live", bench.record_blocker(False, ["corpus"]))
+            self.assertIn("corpus suite", bench.record_blocker(True, ["dryrun"]))
+            self.assertIsNone(bench.record_blocker(True, ["corpus"]))
+        with mock.patch.object(bench, "cpl_stale", lambda cpl, root: f"{cpl} is stale: run cargo build"):
+            self.assertIn("is stale", bench.record_blocker(True, ["corpus"], "cpl"))
 
 
 class Repeats(unittest.TestCase):

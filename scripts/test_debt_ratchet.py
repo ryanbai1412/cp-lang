@@ -461,7 +461,7 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
                             "--allow-empty", "-m", "x"], cwd=root, check=True, env=env)
             seen = []
-            with mock.patch.object(dr, "measure", lambda wt, _: seen.append(os.environ.get("CPL")) or {}):
+            with mock.patch.object(dr, "measure", lambda wt, *_: seen.append(os.environ.get("CPL")) or {}):
                 dr._measure_at(root, "HEAD", 0)
             self.assertEqual(seen, [str((root / "target/debug/cpl").resolve())])
 
@@ -1279,6 +1279,23 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "scripts/ci.py", '"""Runner."""\nSTEP = "scripts/ci.py steps checks"\n')
             self.assertEqual(dr.uncited_rules(root), ["lint bad", "lint noid", "lint none", "gate scripts/b.py"])
 
+    def test_upstream_skips_a_counter_its_baseline_does_not_have_yet(self) -> None:
+        def needs_a_record(_root):
+            raise dr.MeasureError("research/new.txt is missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env = dr._git_env()
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=env)
+            (cpl := root.parent / "cpl").write_text("")
+            self.enterContext(mock.patch.dict(os.environ, {"CPL": str(cpl)}))
+            self.enterContext(mock.patch.dict(dr.COUNTERS, {"brand_new": ("new", needs_a_record, True)}))
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"rust_ignore": 0}))
+            for args in (["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"]):
+                subprocess.run(["git", "-C", str(root), *args], check=True, env=env)
+            up = dr._measure_at(root, "HEAD", 20)
+            self.assertIn("rust_ignore", up)
+            self.assertNotIn("brand_new", up)
+
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1329,6 +1346,32 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertIn("near-identical", errs[0])
         self.assertIn("a -> d", errs[1])
         self.assertEqual(notes, ["crate edge a -> c removed"])
+
+    def test_the_perf_counters_read_the_bar_record_and_an_edit_alone_clears_nothing(self) -> None:
+        import hashlib
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.assertEqual(dr.ports_over_bar(root), [], "no corpus, nothing to time")
+            (root / "corpus/problems/p").mkdir(parents=True)
+            (root / "corpus/problems/p/orig.cpp").write_text("")
+            with self.assertRaisesRegex(dr.MeasureError, "--record"):
+                dr.ports_over_bar(root)
+            sha = {}
+            for pid in ("slow", "fat", "fine", "tuned", "edited", "retuned"):
+                (root / "corpus/problems" / pid).mkdir(parents=True)
+                (root / "corpus/problems" / pid / "port.cp").write_text(pid)
+                sha[pid] = hashlib.sha256(pid.encode()).hexdigest()[:12]
+            for pid in ("fine", "tuned", "slow", "retuned"):
+                (root / "corpus/problems" / pid / "perf.cp").write_text("")
+            (root / "research/perf").mkdir(parents=True)
+            (root / "research/perf/v03-bar.txt").write_text(
+                f"# header\nslow {sha['slow']} 1.4 1.0\nfat {sha['fat']} 1.0 1.2\nfine {sha['fine']} 1.1 -\n"
+                f"tuned {sha['tuned']} 0.9 1.1\nedited {sha['fat']} 2.0 2.0\nretuned {sha['fat']} 0.5 0.5\n")
+            self.assertEqual(dr.ports_over_bar(root), [
+                "slow time 1.4x rss 1.0x", "fat time 1.0x rss 1.2x",
+                f"edited time 2.0x rss 2.0x (port.cp edited since: run {dr.BAR_CMD})"])
+            self.assertEqual(dr.perf_twins_stale(root), ["corpus/problems/fine/perf.cp: port.cp time 1.1x rss 0.0x",
+                                                         "corpus/problems/tuned/perf.cp: port.cp time 0.9x rss 1.1x"])
 
     def test_cli_show_and_list(self) -> None:
         with tempfile.TemporaryDirectory() as d:

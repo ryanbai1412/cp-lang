@@ -2521,6 +2521,39 @@ CONFIG_MODULES: tuple[str, ...] = ("crates/cpl-config/",)
 CONFIG_RE = re.compile(r'"cp\.toml"|\btoml::')
 
 
+BAR = 1.1
+BAR_RECORD = "research/perf/v03-bar.txt"
+BAR_CMD = "python3 bench/v03_perf_bench.py --suite corpus --live --record"
+
+
+def _bar(root: Path) -> list[tuple[str, float, float, bool]]:
+    """BAR_RECORD (`bench/v03_perf_bench.py --suite corpus --live --record`): each timed port's
+    time and peak-RSS ratio against orig.cpp at --max, and whether port.cp is still the one timed."""
+    p = root / BAR_RECORD
+    if not p.is_file() and any((root / "corpus/problems").glob("*/orig.cpp")):
+        raise MeasureError(f"{BAR_RECORD} is missing: run {BAR_CMD}")
+    rows = []
+    for row in (r.split() for r in (_lines(p) if p.is_file() else []) if r.strip() and not r.startswith("#")):
+        port = root / "corpus/problems" / row[0] / "port.cp"
+        if port.is_file():
+            current = hashlib.sha256(port.read_bytes()).hexdigest()[:12] == row[1]
+            rows.append((row[0], float(row[2]), 0.0 if row[3] == "-" else float(row[3]), current))
+    return rows
+
+
+def ports_over_bar(root: Path) -> list[str]:
+    """Ports over 1.1x orig.cpp on time or peak RSS at --max (perf). A port edited since it was
+    timed keeps its row until BAR_CMD times it again, so an edit alone can't clear it."""
+    return [f"{n} time {t}x rss {m}x" + ("" if cur else f" (port.cp edited since: run {BAR_CMD})")
+            for n, t, m, cur in _bar(root) if t > BAR or m > BAR]
+
+
+def perf_twins_stale(root: Path) -> list[str]:
+    """perf.cp twins kept beside a port.cp that, as it is now, was timed within the bar."""
+    return [f"corpus/problems/{n}/perf.cp: port.cp time {t}x rss {m}x" for n, t, m, cur in _bar(root)
+            if cur and t <= BAR and m <= BAR and (root / "corpus/problems" / n / "perf.cp").is_file()]
+
+
 def config_schemas(root: Path) -> list[str]:
     """Shipped files reading `cp.toml` or using `toml::` outside the one config module."""
     return sorted({rel for rel, _, line in _src_lines(root)
@@ -3117,6 +3150,8 @@ COUNTERS = {
     "std_fns_unscaled": ("std fns with a cost: and no bench/scaling case", std_fns_unscaled, True),
     "json_outside_cpl_json": ("serde_json or hand-built JSON outside cpl-json", json_outside_cpl_json, True),
     "config_schemas": ("cp.toml/toml:: readers outside the config module", config_schemas, True),
+    "ports_over_bar": ("corpus ports over 1.1x orig.cpp on time or peak RSS at --max (perf)", ports_over_bar, True),
+    "perf_twins_stale": ("perf.cp twins whose port.cp is within 1.1x of orig.cpp (perf)", perf_twins_stale, True),
     "std_doc_parsers": ("`///` doc-comment readers outside cpl-syntax/cpl-doc", std_doc_parsers, True),
     "edit_engines": ("text edits applied outside cpl-diag/cpl-fmt", edit_engines, True),
     "codemods_outside_fix": ("scripts rewriting .cp files instead of cpl fix", codemods_outside_fix, True),
@@ -3203,10 +3238,11 @@ def _counts(names: list[str], root: Path) -> dict[str, int]:
     return {n: counts[n] for n in names}
 
 
-def measure(root: Path = ROOT, max_rs_lines: int = DEFAULT_MAX_RS_LINES) -> dict:
-    """Current file sizes over the cap, every ratcheted count, and the crate edges."""
+def measure(root: Path = ROOT, max_rs_lines: int = DEFAULT_MAX_RS_LINES, only: set[str] | None = None) -> dict:
+    """Current file sizes over the cap, every ratcheted count (those in `only`, if given), and the crate edges."""
     data: dict = {"max_rs_lines": max_rs_lines, "rs_file_size_allowlist": rs_over_cap(root, max_rs_lines)}
-    data.update(_counts([name for name, (_, _, gated) in COUNTERS.items() if gated], root))
+    data.update(_counts([name for name, (_, _, gated) in COUNTERS.items()
+                         if gated and (only is None or name in only)], root))
     data["register_rows_by_domain"] = register_rows_by_domain(root)
     data["crate_edges"] = crate_edges(root)
     data["a4_edges"] = a4_edges(root)
@@ -3461,7 +3497,10 @@ def _measure_at(root: Path, rev: str, max_rs_lines: int) -> dict:
         try:
             # The worktree has no target/: it is measured with this checkout's cpl.
             os.environ["CPL"] = str(_built_cpl(root).resolve())
-            return measure(wt, max_rs_lines)
+            # A counter main's baseline doesn't have yet is new here: main has nothing
+            # to inherit for it, and may not have what it reads.
+            known = wt / "scripts/debt-ratchet.json"
+            return measure(wt, max_rs_lines, set(json.loads(known.read_text(encoding="utf-8"))) if known.is_file() else None)
         finally:
             if saved is None:
                 os.environ.pop("CPL", None)
