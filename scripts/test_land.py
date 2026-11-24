@@ -292,6 +292,27 @@ class LandTest(unittest.TestCase):
         self.assertIn("std/b.cp:second (+0 there, +1 here)", r.stderr)
         self.assertNotIn("pre-existing red", r.stderr)
 
+    def test_a_base_with_a_stale_build_is_rebuilt_clean_then_judged(self):
+        # d2fc481a: the base's cpl-interp built against a stale cpl-rt (E0599 on a variant the
+        # base had), and main's own reds refused the land as its.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\n[ ! -f \"$CARGO_TARGET_DIR/stale\" ] || exit 101\n"
+            "echo '        FAIL [   0.010s] cpl-cli::trace_goldens red_on_main'\nexit 100\n")
+        self.commit(theirs, "main is red")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "origin", "main")
+        common = Path(git(ours, "rev-parse", "--path-format=absolute", "--git-common-dir").strip())
+        (common / "cpl-base-target").mkdir()
+        (common / "cpl-base-target" / "stale").write_text("old cpl-rt\n")
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        env = {k: v for k, v in os.environ.items() if k != "CPL_BASE_TARGET"}
+        r = subprocess.run(cmd, cwd=ours, env=env, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("rebuilding its worktree and target", r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+        self.assertNotIn("NEW", r.stderr)
+
     def test_a_base_that_doesnt_build_is_rebuilt_before_its_reds_count_as_new(self):
         # perf's ord: the base worktree lacked a test file ("couldn't find file"), the
         # base run failed to build, and two reds main had too refused the land.

@@ -159,9 +159,12 @@ def rerun_at_base(cmd, tests, base, common, wt, target):
     if code not in (0, 4, 100):
         # perf's ord and bw: the base "didn't build" (a test file missing from the
         # worktree, a generated msgs constant not found), and its reds counted as new.
-        print(f"new-reds: the base {base[:9]} didn't build; rebuilding its worktree and trying once more",
+        print(f"new-reds: the base {base[:9]} didn't build; rebuilding its worktree and target and trying once more",
               file=sys.stderr)
         wt = base_checkout(common, base, fresh=True, wt=wt)
+        # A stale build there (d2fc481a's cpl-interp against an old cpl-rt) fails the
+        # same way in a fresh worktree; the slot is ours, so its target starts clean too.
+        shutil.rmtree(target, ignore_errors=True)
         code, out = tee(only(cmd, tests), cwd=wt, env=env)
     failed = set(failing_tests(out))
     if code not in (0, 4, 100):
