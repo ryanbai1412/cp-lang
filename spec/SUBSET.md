@@ -200,8 +200,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/count-of-bools-free-form.cp: compiler
 - core-07/count-of-bools-needs-a-predicate.cp: compiler
 - core-07/fold-with-init.cp: compiler
-- core-07/rev-keeps-keys.cp: compiler (E0603 on `let b = xs.sorted().rev`, regressed)
-- core-07/sorted-has-no-desc-flag.cp: stdlib
+- core-07/sorted-has-no-desc-flag.cp: compiler (the IR lowers `desc:` itself)
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf
@@ -216,8 +215,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - std-segtree/closure-op-picks-index.cp: stdlib `all` of an identity-less op is `?T`; needs identity-less fold typing (plan/QUESTIONS.md)
 - std-seq/split-on-separator-predicate.cp: stdlib
-- std-tree/rooted-forest-empty-from-spans-every-component.cp: stdlib Rooted.forest skips reached roots
-- std-tree/rooted-forest-skips-a-reached-root.cp: stdlib Rooted.forest skips reached roots
 - std-window/track-infers-element-from-sequence.cp: compiler
 - tools-bundle/cpp-body-names-params-that-shadow-a-global.cp: compiler
 - tools-bundle/cpp-only-as-a-whole-fn-body.cp: compiler
