@@ -434,3 +434,16 @@ print(w)
         "the literal drops the field too:\n{out}"
     );
 }
+
+#[test]
+fn a_closure_calling_a_known_field_of_a_returned_struct_is_no_std_function() {
+    let out = cpp("use std.lazy.{Flip}
+let m = Flip.op(+)
+let x = m.op(Flip(3, 7), m.id)
+print(x.now, x.flipped, m.id.now)
+");
+    assert!(
+        !out.contains("std::function"),
+        "`Flip.op(+)` captures a Monoid whose `op` is one known fn, so its own `op` is static:\n{out}"
+    );
+}

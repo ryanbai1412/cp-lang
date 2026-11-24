@@ -256,8 +256,13 @@ impl<'p> Devirt<'p> {
         match &e.kind {
             ExprKind::Local(slot) => !cap_slots.contains(slot),
             ExprKind::CallExpr(callee, args) => {
-                let callee_ok = self.target(None, callee).is_some_and(|_| skippable(callee))
-                    || self.expr_captures_unused(callee, cap_slots);
+                // Nothing stored yet counts as known: the fixpoint only
+                // moves a field from unset to one closure to many, so a
+                // closure first taken as captureless is revisited when a
+                // second closure reaches the field it calls through.
+                let known = matches!(self.value(None, callee), None | Some(Held::One(_)));
+                let callee_ok =
+                    known && skippable(callee) || self.expr_captures_unused(callee, cap_slots);
                 callee_ok
                     && args.iter().all(|a| match a {
                         Arg::Value(v) => self.expr_captures_unused(v, cap_slots),
