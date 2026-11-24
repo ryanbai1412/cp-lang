@@ -11,12 +11,15 @@
                                    found: the dir, their submissions and
                                    info.json entries, and their lines in
                                    corpus/sets and silent_unknowns.txt
-  scripts/corpus.py verify <id>... [--cpl PATH] [--check]
-                                   verify packages; records `dream_stress` in
-                                   each meta.json (--check writes nothing and
-                                   fails unless the dream agrees and meta.json
-                                   already records that for this dream.cp;
-                                   problem-packages/R10)
+  scripts/corpus.py verify <id>... [--only MODES] [--cpl PATH]
+                                   verify packages; writes nothing, so its
+                                   `dream` mode fails unless the dream agrees
+                                   and meta.json already records that for this
+                                   dream.cp (problem-packages/R10)
+  scripts/corpus.py record <id>... [--cpl PATH]
+                                   run each dream.cp against its accepted C++
+                                   and record an agreement as meta.json's
+                                   `dream_stress`
 
 Every tool that walks the corpus calls `problems()` and reads a `Package`;
 nothing else lists corpus/problems (handbook/guidelines/
@@ -1097,19 +1100,44 @@ def check_lint(pkg, ctx):
 
 
 def check_dream(pkg, ctx):
-    """dream.cp agrees with the accepted C++ (problem-packages/R10). Records the
-    verdict in meta.json; with `check`, writes nothing and also fails when meta.json
-    doesn't record this dream.cp's agreement."""
+    """dream.cp agrees with the accepted C++ (problem-packages/R10), and meta.json records
+    that for this dream.cp. It writes nothing: `corpus.py record <id>` writes the record."""
     if not (pkg.dream and pkg.meta and ctx.run):
         return []
     got = dream_stress(pkg, ctx.cpl)
     if not got["ok"]:
         return [f"dream-stress {pkg.id} fails-on-{got['cases']}-cases"]
-    if not ctx.check:
-        record(pkg, "dream_stress", got)
-    elif (pkg.read_meta().get("dream_stress") or {}).get("sha") != got["sha"]:
-        return [f"dream-unrecorded {pkg.id} run-scripts/corpus.py-verify-{pkg.id}-and-stage-meta.json"]
+    if (pkg.read_meta().get("dream_stress") or {}).get("sha") != got["sha"]:
+        return [f"dream-unrecorded {pkg.id} run-scripts/corpus.py-record-{pkg.id}-and-stage-meta.json"]
     return []
+
+
+def record_dreams(args):
+    """Run each named package's dream.cp against its accepted C++ and record an agreement
+    as meta.json's `dream_stress`, the record verify's `dream` mode checks. Every run
+    finishes before anything is written, so a broken toolchain writes nothing."""
+    import concurrent.futures
+    cpl = args.cpl or default_cpl()
+    require_cpl(cpl)
+    wanted = [p for p in problems(sets=args.set, ids=args.ids or None) if p.dream and p.meta]
+    if missing := set(args.ids) - {p.id for p in wanted}:
+        sys.exit(f"corpus: no package with a dream.cp: {', '.join(sorted(missing))}")
+    try:
+        with concurrent.futures.ThreadPoolExecutor(args.j) as pool:
+            got = list(pool.map(lambda p: (p, dream_stress(p, cpl)), wanted))
+    except InfraError as e:
+        print(f"corpus: no verdict, the toolchain failed: {e}", file=sys.stderr)
+        return 2
+    failed = []
+    for pkg, verdict in got:
+        if verdict["ok"]:
+            record(pkg, "dream_stress", verdict)
+        else:
+            failed.append(f"dream-stress {pkg.id} fails-on-{verdict['cases']}-cases")
+    for f in sorted(failed):
+        print(f)
+    print(f"corpus: recorded {len(got) - len(failed)} of {len(got)} dream(s)", file=sys.stderr)
+    return 1 if failed else 0
 
 
 CHECKS = {"header": check_header, "check": check_check, "package": check_package, "tests": check_tests,
@@ -1117,8 +1145,8 @@ CHECKS = {"header": check_header, "check": check_check, "package": check_package
 
 
 class Context:
-    def __init__(self, cpl, run=True, check=False, named=()):
-        self.check, self.named = check, set(named)
+    def __init__(self, cpl, run=True, named=()):
+        self.named = set(named)
         self.cpl, self.run, self.natives, self._hill, self._tests = cpl, run, {}, None, None
         self.run_ids = set_ids(RUN_SET) if os.path.exists(os.path.join(SETS, RUN_SET + ".txt")) else set()
 
@@ -1386,14 +1414,14 @@ def verify(args):
     missing = set(ids) - {p.id for p in wanted}
     if missing and not opt("changed"):
         sys.exit(f"corpus: no package {', '.join(sorted(missing))}")
-    only = opt("only") or ("dream" if opt("check") else None)
+    only = opt("only")
     modes = only.split(",") if only else [m for m in MODES if m not in (opt("skip") or "").split(",")]
     bad = [m for m in modes if m not in CHECKS]
     if bad:
         sys.exit(f"corpus: no mode {', '.join(bad)}; modes: {', '.join(MODES)}")
     if not opt("no_run") and set(modes) - {"header"}:
         require_cpl(cpl)
-    ctx = Context(cpl, run=not opt("no_run"), check=bool(opt("check")), named=() if opt("changed") else ids)
+    ctx = Context(cpl, run=not opt("no_run"), named=() if opt("changed") else ids)
     try:
         with concurrent.futures.ThreadPoolExecutor(opt("j", os.cpu_count() or 4)) as pool:
             found = sorted(f for fs in pool.map(lambda p: findings(p, modes, ctx), wanted) for f in fs)
@@ -1615,9 +1643,13 @@ def cli(argv):
     v.add_argument("--skip", help="comma-separated modes to leave out")
     v.add_argument("--no-run", action="store_true", help="skip everything that compiles or runs")
     v.add_argument("--cpl")
-    v.add_argument("--check", action="store_true")
     v.add_argument("-j", type=int, default=os.cpu_count() or 4)
     v.add_argument("--shard", metavar="N/M", help="only shard N of M (every M-th package by id)")
+    r = sub.add_parser("record")
+    r.add_argument("ids", nargs="*", help="package ids (default: every package with a dream.cp)")
+    r.add_argument("--set", action="append", help="only the packages in corpus/sets/<SET>.txt")
+    r.add_argument("--cpl")
+    r.add_argument("-j", type=int, default=os.cpu_count() or 4)
     m = sub.add_parser("make")
     m.add_argument("ids", nargs="*")
     m.add_argument("--set", action="append")
@@ -1641,6 +1673,8 @@ def cli(argv):
     args = ap.parse_args(argv)
     if args.mode == "verify":
         return verify(args)
+    if args.mode == "record":
+        return record_dreams(args)
     if args.mode == "make":
         return make(args)
     if args.mode == "seed":
@@ -1723,7 +1757,7 @@ def ls_mode(args):
 
 def toolchain(argv):
     """Modes that build C++ need reference_cxx(): stop and name it when it's missing."""
-    if not argv or argv[0] not in ("verify", "make", "seed"):
+    if not argv or argv[0] not in ("verify", "record", "make", "seed"):
         return
     try:
         reference_cxx()

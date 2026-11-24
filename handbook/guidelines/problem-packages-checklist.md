@@ -79,5 +79,5 @@ with a stable id that audits and tests cite. The ideas behind them are in
 
 **Rule:** a package's `dream.cp` checks and agrees with the accepted C++ on the package's tests (or its `gen.py` seeds), and `meta.json` records that for the current `dream.cp`.
 **Why:** a dream that checks but answers wrong teaches a wrong idiom (a reversed `partition_point`, a bare-`Int` prefix index) and hides the language gap it was written to find.
-**Example:** `"dream_stress": {"ok": true, "cases": 8, "sha": ...}` in `corpus/problems/cf2147f/meta.json`, written by `scripts/corpus.py verify cf2147f`.
-**Enforced by:** `scripts/corpus.py verify --check` on every staged `dream.cp` (`scripts/check.sh` commit tier); `scripts/debt-ratchet.py` (`dream_unverified`, shrink-only, target 0).
+**Example:** `"dream_stress": {"ok": true, "cases": 8, "sha": ...}` in `corpus/problems/cf2147f/meta.json`, written by `scripts/corpus.py record cf2147f`.
+**Enforced by:** `scripts/corpus.py verify --only dream` on every staged `dream.cp` (`scripts/check.sh` commit tier); `scripts/debt-ratchet.py` (`dream_unverified`, shrink-only, target 0).

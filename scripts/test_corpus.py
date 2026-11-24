@@ -254,14 +254,40 @@ class DreamStressTest(Corpus):
     def check(self, dream, meta_json="{}"):
         d = self.package("p1", dream_cp=dream, orig_cpp=ECHO_CPP, gen_py=GEN, meta_json=meta_json)
         cpl = os.path.join(corpus.ROOT, "target", "release", "cpl")
-        args = argparse.Namespace(ids=["p1"], cpl=cpl, check=True)
+        args = argparse.Namespace(ids=["p1"], cpl=cpl, only="dream")
         with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])):
             return corpus.verify(args), json.loads((d / "meta.json").read_text())
+
+    def test_record_writes_an_agreeing_dream_that_verify_then_passes(self):
+        dream = "let _t = read<Int>()\nlet x = read<Int>()\nprint(x)\n"
+        d = self.package("p1", dream_cp=dream, orig_cpp=ECHO_CPP, gen_py=GEN, meta_json="{}")
+        args = argparse.Namespace(ids=["p1"], set=None, cpl=os.path.join(corpus.ROOT, "target", "release", "cpl"), j=1)
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(corpus.record_dreams(args), 0)
+        meta = (d / "meta.json").read_text()
+        self.assertEqual(json.loads(meta)["dream_stress"]["sha"], corpus.blob_sha(d / "dream.cp"))
+        args = argparse.Namespace(ids=["p1"], cpl=args.cpl, only="dream")
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(corpus.verify(args), 0)
+        self.assertEqual((d / "meta.json").read_text(), meta)
+
+    def test_record_leaves_a_disagreeing_dream_unrecorded(self):
+        d = self.package("p1", dream_cp="let _t = read<Int>()\nlet x = read<Int>()\nprint(x + 1)\n",
+                         orig_cpp=ECHO_CPP, gen_py=GEN, meta_json="{}")
+        args = argparse.Namespace(ids=["p1"], set=None, cpl=os.path.join(corpus.ROOT, "target", "release", "cpl"), j=1)
+        out = io.StringIO()
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(corpus.record_dreams(args), 1)
+        self.assertIn("dream-stress p1 fails-on-", out.getvalue())
+        self.assertEqual(json.loads((d / "meta.json").read_text()), {})
 
     def test_a_broken_toolchain_is_no_verdict_and_writes_nothing(self):
         good = json.dumps({"dream_stress": {"ok": True, "cases": 8, "sha": "abc"}})
         d = self.package("p1", dream_cp="print(1)\n", orig_cpp=ECHO_CPP, gen_py=GEN, meta_json=good)
-        args = argparse.Namespace(ids=["p1"], cpl=os.path.join(corpus.ROOT, "target", "release", "cpl"), check=False)
+        args = argparse.Namespace(ids=["p1"], cpl=os.path.join(corpus.ROOT, "target", "release", "cpl"))
         broken = mock.Mock(side_effect=RuntimeError("no g++ 14 or newer on PATH"))
         err = io.StringIO()
         with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
@@ -276,17 +302,27 @@ class DreamStressTest(Corpus):
             corpus.toolchain(["verify", "p1"])
         self.assertIn("g++ 14", str(e.exception))
 
-    def test_check_fails_a_disagreeing_dream_and_writes_nothing(self):
+    def test_verify_fails_a_disagreeing_dream_and_writes_nothing(self):
         self.assertEqual(self.check("let _t = read<Int>()\nlet x = read<Int>()\nprint(x + 1)\n"), (1, {}))
 
-    def test_check_fails_an_agreeing_dream_its_meta_does_not_record(self):
-        self.assertEqual(self.check("let _t = read<Int>()\nlet x = read<Int>()\nprint(x)\n")[0], 1)
+    def test_verify_fails_an_agreeing_dream_its_meta_does_not_record_and_writes_nothing(self):
+        self.assertEqual(self.check("let _t = read<Int>()\nlet x = read<Int>()\nprint(x)\n"), (1, {}))
 
-    def test_check_passes_an_agreeing_dream_its_meta_records(self):
+    def test_verify_passes_an_agreeing_dream_its_meta_records(self):
         dream = "let _t = read<Int>()\nlet x = read<Int>()\nprint(x)\n"
         sha = subprocess.run(["git", "hash-object", "--stdin"], input=dream, capture_output=True, text=True).stdout.strip()
         meta = json.dumps({"dream_stress": {"ok": True, "cases": 8, "sha": sha}})
         self.assertEqual(self.check(dream, meta)[0], 0)
+
+
+class CliTest(unittest.TestCase):
+    def test_an_unknown_verify_flag_fails_loudly(self):
+        for argv in (["verify", "--check", "p1"], ["verify", "--frozen", "p1"]):
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as e:
+                corpus.cli(argv)
+            self.assertEqual(e.exception.code, 2)
+            self.assertIn(f"unrecognized arguments: {argv[1]}", err.getvalue())
 
 
 class CompareTest(unittest.TestCase):

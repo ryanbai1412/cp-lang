@@ -2153,7 +2153,7 @@ def continue_on_error(root: Path) -> list[str]:
 
 def dream_unverified(root: Path) -> list[str]:
     """corpus/problems/*/dream.cp whose meta.json has no `dream_stress` record with ok=true
-    for the current blob (written by `scripts/corpus.py verify`)."""
+    for the current blob (written by `scripts/corpus.py record`)."""
     found = []
     for line in _git(root, "ls-files", "-s", "corpus/problems/*/dream.cp"):
         meta_sha, rel = line.split()[1], line.split("\t", 1)[1]

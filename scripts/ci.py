@@ -600,10 +600,10 @@ class Tail:
                 raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
             staged = self.run(["git", "diff", "--cached", "--name-only", "--diff-filter=AMR", "--", "corpus/problems/*/dream.cp"], cwd=ROOT, capture_output=True, text=True)
             if dreams := [Path(f).parent.name for f in staged.stdout.split()]:
-                self.step("staged dreams agree with the accepted C++ (scripts/corpus.py verify --check)")
-                if self.call([sys.executable, "scripts/corpus.py", "verify", "--check", "--cpl", self.cpl, *dreams]):
+                self.step("staged dreams agree with the accepted C++ (scripts/corpus.py verify --only dream)")
+                if self.call([sys.executable, "scripts/corpus.py", "verify", "--only", "dream", "--cpl", self.cpl, *dreams]):
                     raise Failed("a staged dream.cp disagrees with its accepted C++ or meta.json lacks its record;"
-                                 " run scripts/corpus.py verify <id> and stage meta.json")
+                                 " run scripts/corpus.py record <id> and stage meta.json")
         if sel.get("idioms_catalog") == "1":
             self.step("lint catalog names only real APIs (scripts/idioms-catalog.py --check)")
             if self.call([sys.executable, "scripts/idioms-catalog.py", "--check"]):

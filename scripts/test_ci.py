@@ -522,7 +522,7 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(self.tiers, [("commit", None), ("touched", {"scripts/x.py"})])
         firsts = ["scripts/affected.py --run-slices a b", "cargo nextest run --workspace --no-fail-fast -E (test(=d))",
                   "target/debug/cpl check scripts/ci.py", "scripts/corpus.py make --changed staged",
-                  "scripts/corpus.py verify --check --cpl target/debug/cpl p1", "scripts/idioms-catalog.py --check",
+                  "scripts/corpus.py verify --only dream --cpl target/debug/cpl p1", "scripts/idioms-catalog.py --check",
                   "-m unittest scripts/test_ci.py", "scripts/conform_staged.py", "node web/scripts/gate.mjs"]
         order = [next(i for i, e in enumerate(ev) if e.startswith(f)) for f in firsts]
         self.assertEqual(order, sorted(order))
