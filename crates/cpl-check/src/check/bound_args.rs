@@ -5,6 +5,47 @@ use super::*;
 use cpl_syntax::ast;
 
 impl Checker<'_> {
+    /// `f`'s bounds: the record rows (`R: (u: V, ..)`) and the traits (`T: Ord`) its type
+    /// parameters must meet.
+    pub(crate) fn fn_bounds(
+        &mut self,
+        f: &ast::FnDecl,
+    ) -> (
+        crate::def::RowBounds,
+        Vec<(String, String)>,
+        Vec<(String, String, Vec<Ty>)>,
+    ) {
+        let outer = self.generics.len();
+        self.generics
+            .extend(f.generics.iter().map(|g| g.text.clone()));
+        let mut rows = Vec::new();
+        let mut traits = Vec::new();
+        let mut bound_args = Vec::new();
+        for b in &f.bounds {
+            for t in &b.traits {
+                match &t.kind {
+                    ast::TypeKind::Row(fields) => {
+                        let resolved = fields
+                            .iter()
+                            .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
+                            .collect();
+                        rows.push((b.name.text.clone(), resolved));
+                    }
+                    ast::TypeKind::Named { name: tname, args } => {
+                        traits.push((b.name.text.clone(), tname.text.clone()));
+                        if !args.is_empty() {
+                            let args = args.iter().map(|a| self.resolve_type(a)).collect();
+                            bound_args.push((b.name.text.clone(), tname.text.clone(), args));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        self.generics.truncate(outer);
+        (rows, traits, bound_args)
+    }
+
     /// Puts a fn's bounds in scope for its body; [`Self::leave_bounds`] takes them out.
     pub(crate) fn enter_fn_bounds(&mut self, f: &ast::FnDecl) -> (usize, usize) {
         let outer = (self.param_bounds.len(), self.param_bound_args.len());
@@ -205,4 +246,33 @@ impl Checker<'_> {
         out.push(elem);
         Some(out)
     }
+}
+
+/// `of: T -> U = x => x`: each generic a defaulted identity lambda gives
+/// back, with the parameter type it then is (`U` is `T`).
+pub(crate) fn identity_defaults(f: &ast::FnDecl, ty: &Ty) -> Vec<(String, Ty)> {
+    let Ty::Fn { params, .. } = ty else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for p in &f.params {
+        let Some(ast::Expr {
+            kind: ast::ExprKind::Lambda {
+                params: lp, body, ..
+            },
+            ..
+        }) = &p.default
+        else {
+            continue;
+        };
+        let identity = matches!((lp.as_slice(), &body.kind),
+            ([one], ast::ExprKind::Name(b)) if matches!(&one.kind, ast::PatternKind::Name(x) if x == b));
+        let sig = params.iter().find(|q| q.name == p.name.text).map(|q| &q.ty);
+        if let (true, Some(Ty::Fn { params: takes, ret })) = (identity, sig) {
+            if let ([taken], Ty::Param(r)) = (takes.as_slice(), ret.as_ref()) {
+                out.push((r.clone(), taken.ty.clone()));
+            }
+        }
+    }
+    out
 }
