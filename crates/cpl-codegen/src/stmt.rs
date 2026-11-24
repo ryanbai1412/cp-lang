@@ -660,6 +660,10 @@ impl<'p> Emitter<'p> {
                     }
                 };
                 let text = self.take_if_overwritten(init, text);
+                // A payload taken from an optional nothing reads again is owned:
+                // a reference into the optional could not be moved on.
+                let taken =
+                    text.starts_with("std::move(") && matches!(init.kind, ExprKind::Unwrap(..));
                 // A kept comprehension's list stays in its buffer: name it.
                 if let ExprKind::Local(built) = init.kind {
                     if reused && self.reused.contains(&built) && built_in(whole, built) {
@@ -699,7 +703,7 @@ impl<'p> Emitter<'p> {
                     // `_t` is a name for a value the program may not use.
                     let cpp = if auto { "auto" } else { &cpp };
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
-                } else if self.lends(*slot, init, tail.as_ref()) {
+                } else if !taken && self.lends(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list.
                     self.line(out, &format!("const {cpp}& {name} = {text};"));

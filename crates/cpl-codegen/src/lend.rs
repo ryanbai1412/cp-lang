@@ -1542,6 +1542,7 @@ fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
     match &e.kind {
         ExprKind::Local(s) => Some(((false, *s), Vec::new())),
         ExprKind::Global(g) => Some(((true, *g), Vec::new())),
+        ExprKind::Unwrap(base, _) => path_of(base),
         ExprKind::Field(base, f) => path_of(base).map(|(root, mut fields)| {
             fields.push(*f);
             (root, fields)

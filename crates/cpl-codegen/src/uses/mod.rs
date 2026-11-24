@@ -511,6 +511,34 @@ impl crate::emit::Emitter<'_> {
 /// time and may move it: `x = y` or `let x = y` (or `Some(y)`) with `y` dead after it
 /// (`uses::dead_after`), or a `let` whose source is set again before
 /// anything reads it.
+/// Whether a statement of `rest` moves `slot` on whole: returns, gives or
+/// stores it, or puts it in an optional, a tuple or a variant.
+fn moved_on(rest: &[Stmt], slot: usize) -> bool {
+    let whole = |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == slot);
+    let held = |s: &Stmt| match s {
+        Stmt::Return(Some(e)) | Stmt::Give(e) | Stmt::Assign(_, AssignOp::Set, e) => whole(e),
+        _ => false,
+    };
+    let wraps = |e: &Expr| match &e.kind {
+        ExprKind::Some(inner) => whole(inner),
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().any(whole),
+        _ => false,
+    };
+    rest.iter().any(|stmt| {
+        let mut found = held(stmt);
+        walk::stmt_blocks(stmt, &mut |inner| {
+            walk::deep_stmts(inner, &mut |s| found |= held(s))
+        });
+        walk::stmt_exprs(stmt, &mut |e| {
+            walk::deep_expr(e, &mut |e| found |= wraps(e))
+        });
+        walk::stmt_blocks(stmt, &mut |inner| {
+            walk::deep_exprs(inner, &mut |e| found |= wraps(e))
+        });
+        found
+    })
+}
+
 pub(crate) fn last_read(
     program: &Program,
     block: &Block,
@@ -525,7 +553,13 @@ pub(crate) fn last_read(
             }
         }
     }
-    if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
+    if let Stmt::Let(bound, Some(init)) = &block.stmts[k] {
+        // An `if let` payload stays a reference unless the name moves on.
+        if let ExprKind::Unwrap(..) = init.kind {
+            return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
+                || (place_dies(program, block, k, init, outer)
+                    && moved_on(&block.stmts[k + 1..], *bound));
+        }
         let init = match &init.kind {
             ExprKind::Some(inner) => &**inner,
             ExprKind::If(_, a, b) => match some_local(a).or(some_local(b)) {
@@ -608,6 +642,9 @@ fn some_local(e: &Expr) -> Option<usize> {
 fn field_path(e: &Expr) -> Option<(usize, Vec<usize>)> {
     match &e.kind {
         ExprKind::Local(slot) => Some((*slot, Vec::new())),
+        // The payload of an optional is the optional's place: `if let x = t`
+        // binds `*t`, which dies with `t`.
+        ExprKind::Unwrap(base, _) => field_path(base),
         ExprKind::Field(base, f) => field_path(base).map(|(slot, mut fields)| {
             fields.push(*f);
             (slot, fields)
