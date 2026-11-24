@@ -11,8 +11,7 @@
 //   furniture. O(K N M).
 // original: corpus/submissions/5032738.cpp
 // Bounds: n, m, q: 1..=200; tilts.way: 1..=4
-let n: 1..=200 = read()
-let m: 1..=200 = read()
+let (n, m): (1..=200, 1..=200) = read()
 domain Row = 1..=n
 domain Col = 1..=m
 type Cell = (Row, Col)
@@ -20,34 +19,31 @@ let start: Cell = read()
 let q: 1..=200 = read()
 let hall: [Row, Col]Char = read()
 domain Tilt = 1..=q
-let tilts: [Tilt](from: Int, to: Int, way: 1..=4) = read()  // WISH L2: way: Dir4, numbered N S W E
+let tilts: [Tilt](from: Int, to: Int, way: 1..=4) = read()
 
-// Every row or column of the hall, walked in the direction of the tilt.
-fn lines(way: Int) -> List<List<Cell>>:  // WISH L3: for line in Cell.lines(way)
-    if way == 1: return [[(r, c) for r in Row.rev] for c in Col]
-    if way == 2: return [[(r, c) for r in Row] for c in Col]
-    if way == 3: return [[(r, c) for c in Col.rev] for r in Row]
-    return [[(r, c) for c in Col] for r in Row]
+// every row or column of the hall, walked in the tilt's direction (1 N, 2 S, 3 W, 4 E)
+fn lines(way: 1..=4) -> List<List<Cell>> = match way:
+    1 => [[(r, c) for r in Row.rev] for c in Col]
+    2 => [[(r, c) for r in Row] for c in Col]
+    3 => [[(r, c) for c in Col.rev] for r in Row]
+    _ => [[(r, c) for c in Col] for r in Row]
 
-var far: [Row, Col]?Int = None  // longest slide that ends here
+var far: [Row, Col]?Int = None  // the longest slide that ends here
 far[start] = 0
 for (from, to, way) in tilts:
     let seconds = to - from + 1
     var next: [Row, Col]?Int = None
     for line in lines(way):
-        // (slide minus place, place) of the starts still in reach, best first
-        var reach: List<(Int, Int)> = []  // WISH L15: sliding(max, xs, width) over a MonoQueue
-        var head = 0
-        for i in 0..line.len:
-            let p = line[i]
-            if hall[p] == 'x':  // WISH L16: for run in line.split(p => hall[p] == 'x')
-                reach = []
-                head = 0
-            else:
-                if let slid = far[p]:
-                    while reach.len > head and reach.last!.0 <= slid - i: reach.pop()
-                    reach.push((slid - i, i))
-                if head < reach.len and reach[head].1 < i - seconds: head += 1
-                if head < reach.len: next[p] = reach[head].0 + i
+        var best = Window(max)  // the best slide - place of the starts still in reach
+        var reach: Deque<(Int, Int)> = Deque.new()  // (slide - place, place), oldest first
+        for (i, p) in line.items:
+            if hall[p] == 'x':
+                (best, reach) = (Window(max), Deque.new())
+                continue
+            if let slid = far[p]:
+                best.push(slid - i)
+                reach.push((slid - i, i))
+            for o in reach.pop_front_while(o => o.1 < i - seconds): best.pop(o.0)
+            if let v = best.all: next[p] = v + i
     far = next
-print([far[r, c] ?? 0 for r in Row for c in Col].max()!)
+print(max(far[r, c] ?? 0 for r in Row for c in Col)!)
