@@ -763,9 +763,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         SlotLoc::SmallTuple { len, .. } => ni += *len as usize,
                     }
                 }
-                let mut arg_buf_i = [0i64; 16];
                 let abi = arg_base_i as usize;
-                arg_buf_i[..ni].copy_from_slice(&regs_i[abi..abi + ni]);
+                let (mut small, mut wide) = ([0i64; 8], None);
+                let arg_buf_i = match ni {
+                    0..=8 => &mut small[..ni],
+                    _ => &mut wide.insert(vec![0; ni])[..],
+                };
+                arg_buf_i.copy_from_slice(&regs_i[abi..abi + ni]);
                 let abv = arg_base_v as usize;
                 let needs_stack = callee.needs_stack;
                 if chunk.has_by_ref_closure {
@@ -793,7 +797,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let res = self.exec_chunk_mix(
                     compiled,
                     callee,
-                    &mut arg_buf_i[..ni],
+                    arg_buf_i,
                     &mut regs_v[abv..abv + nv],
                     &f.params,
                     vm_regs_i,
@@ -812,7 +816,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 }
                 if f.params.iter().any(|p| p.mutable) {
-                    regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);
+                    regs_i[abi..abi + ni].copy_from_slice(arg_buf_i);
                 }
                 // A tuple the caller takes in registers stays in `ret_tuple`.
                 match (ret_mode, exit) {

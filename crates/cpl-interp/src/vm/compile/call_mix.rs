@@ -93,18 +93,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         args: &'p [Arg],
         callee: Option<&'p cpl_ir::Function>,
     ) -> Option<MixPlan<'p>> {
-        // Several `mut` args must be places that never overlap: each is
-        // taken in turn and written back after the call.
-        let muts: Vec<&Place> = (args.iter())
-            .filter_map(|a| match a {
-                Arg::Mut(p) => Some(p),
-                Arg::Value(_) => None,
-            })
-            .collect();
-        let multi = muts.len() > 1;
-        if (muts.iter().enumerate()).any(|(k, a)| muts[k + 1..].iter().any(|b| !disjoint(a, b))) {
-            return None;
-        }
+        // The checker proves several `mut` args never overlap (E0601), so
+        // each is taken in turn and written back after the call.
+        let multi = args.iter().filter(|a| matches!(a, Arg::Mut(_))).count() > 1;
         // A mut arg is a local or global, a 1D indexed V place, or any other
         // place walked by path.
         let mut takes = Vec::with_capacity(args.len());
@@ -136,8 +127,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         index: &indices[0],
                     }
                 }
-                PlaceKind::Index(..) | PlaceKind::Field(..) => MutTake::Path,
-                _ => return None,
+                PlaceKind::Index(..) | PlaceKind::Field(..) | PlaceKind::Some(_) => MutTake::Path,
             };
             takes.push(Some((place, take)));
         }
@@ -153,9 +143,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             } else {
                 nv += 1;
             }
-        }
-        if ni > 16 || nv > 8 {
-            return None;
         }
         Some((takes, ni, nv))
     }
@@ -218,7 +205,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
         }
-        // Pass 2: move out all mut arguments after value arguments are evaluated.
+        // Pass 2: walk to every path place before any is moved out of.
+        let mut paths = vec![0; takes.len()];
+        for (i, take) in takes.iter().enumerate() {
+            if let Some((place, MutTake::Path)) = *take {
+                let Some(path) = self.compile_place_path_to(place, true) else {
+                    self.ops.truncate(marks.0);
+                    self.spans.truncate(marks.1);
+                    self.places.truncate(marks.2);
+                    return None;
+                };
+                paths[i] = path;
+            }
+        }
+        // Pass 3: move out all mut arguments after value arguments are evaluated.
         for (i, take) in takes.iter().enumerate() {
             let Some((place, take)) = *take else {
                 continue;
@@ -227,12 +227,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             let off = param_offs[i];
             match take {
                 MutTake::Path => {
-                    let Some(path) = self.compile_place_path_to(place, true) else {
-                        self.ops.truncate(marks.0);
-                        self.spans.truncate(marks.1);
-                        self.places.truncate(marks.2);
-                        return None;
-                    };
+                    let path = paths[i];
                     let r = self.alloc_v();
                     self.emit(Op::TakePlaceV { dst: r, path }, place.span);
                     if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
@@ -588,57 +583,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             _ => None,
         }
     }
-}
-
-/// Whether `a` and `b` are never the same value nor one inside the other:
-/// different roots, or a step where they take different fields or
-/// different literal keys.
-fn disjoint(a: &Place, b: &Place) -> bool {
-    fn steps(p: &Place) -> (&Place, Vec<&Place>) {
-        let mut path = vec![p];
-        let mut at = p;
-        while let PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) =
-            &at.kind
-        {
-            at = base;
-            path.push(at);
-        }
-        path.reverse();
-        (at, path)
-    }
-    let ((ra, pa), (rb, pb)) = (steps(a), steps(b));
-    match (&ra.kind, &rb.kind) {
-        (PlaceKind::Local(x), PlaceKind::Local(y)) if x != y => return true,
-        (PlaceKind::Global(x), PlaceKind::Global(y)) if x != y => return true,
-        (PlaceKind::Local(_), PlaceKind::Global(_))
-        | (PlaceKind::Global(_), PlaceKind::Local(_)) => return true,
-        _ => {}
-    }
-    for (x, y) in pa.iter().zip(&pb).skip(1) {
-        match (&x.kind, &y.kind) {
-            (PlaceKind::Field(_, f), PlaceKind::Field(_, g)) if f != g => return true,
-            (PlaceKind::Index(_, xi), PlaceKind::Index(_, yi)) => {
-                let lit = |e: &Expr| match e.kind {
-                    ExprKind::Int(v) => Some(v),
-                    _ => None,
-                };
-                let differ = (xi.iter().zip(yi))
-                    .any(|(p, q)| matches!((lit(p), lit(q)), (Some(m), Some(n)) if m != n));
-                let same = (xi.iter().zip(yi))
-                    .all(|(p, q)| matches!((lit(p), lit(q)), (Some(m), Some(n)) if m == n));
-                if differ {
-                    return true;
-                }
-                if !same {
-                    return false;
-                }
-            }
-            (PlaceKind::Field(..), PlaceKind::Field(..))
-            | (PlaceKind::Some(_), PlaceKind::Some(_)) => {}
-            _ => return false,
-        }
-    }
-    false
 }
 
 /// The arg slots [`Compiler::compile_mix_args`] filled, and how each `mut`
