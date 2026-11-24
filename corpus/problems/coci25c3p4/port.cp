@@ -27,12 +27,7 @@ let tree = Rooted(Graph.undirected(edges), V.first!)
 let height: 0..=35 = V.map(v => tree.depth(v)).max()!
 
 // A count for every k is a polynomial: the coefficient of x^k is the count.
-// Picking independently in two parts multiplies their polynomials.
-fn times(a: List<Z>, b: List<Z>) -> List<Z>:
-    var c = [Z(0) for _ in 0..a.len + b.len - 1]
-    for i in 0..a.len:
-        for j in 0..b.len: c[i + j] += a[i] * b[j]
-    c
+// Picking independently in two parts multiplies their polynomials (`convolve`).
 
 // Take the part b back out of a product a. b starts with 1 (pick nothing).
 fn without(a: List<Z>, b: List<Z>) -> List<Z>:
@@ -52,7 +47,7 @@ fn hung(inside: List<Z>) -> List<Z>:
 var down: [V]List<Z> = [V] _ => [Z(1)]
 for v in tree.at.rev:
     var inside = [Z(1)]
-    for c in tree.children(v): inside = times(inside, down[c])
+    for c in tree.children(v): inside = convolve(inside, down[c])
     down[v] = hung(inside)
 
 // around[v]: picks with the tree hung from v, one factor for every
@@ -60,7 +55,7 @@ for v in tree.at.rev:
 var around: [V]List<Z> = [V] _ => [Z(1)]
 var total: [n]Z = 0
 for v in tree.at:
-    for c in tree.children(v): around[v] = times(around[v], down[c])
-    if let p = tree.parent(v): around[v] = times(around[v], hung(without(around[p], down[v])))
+    for c in tree.children(v): around[v] = convolve(around[v], down[c])
+    if let p = tree.parent(v): around[v] = convolve(around[v], hung(without(around[p], down[v])))
     for k in 0..around[v].len: total[k] += around[v][k]
 print(total)

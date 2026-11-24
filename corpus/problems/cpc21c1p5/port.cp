@@ -8,8 +8,8 @@
 //   rectangle exactly, and one more query gives its multiplicity. About 4 * 30 + 1 queries
 //   per distinct rectangle.
 // original: corpus/submissions/4899391.cpp; interactor: tests/interactor.py
-// As it builds today: a reply needs a `let` of its own (R10).
 // Bounds: n: 1..=500
+const SIDE = 1e9  // coordinates are in 1..=SIDE
 let n: 1..=500 = read()
 type Box = (x1: Int, x2: Int, y1: Int, y2: Int)
 var found: List<Box> = []
@@ -22,10 +22,10 @@ fn left(x1: Int, x2: Int, y1: Int, y2: Int) -> Int:
 // Pin down one rectangle a side at a time: the least right edge, then the
 // greatest left edge that goes with it, then the same for bottom and top.
 while found.len < n:
-    let x2 = (1..=1e9).first_true(x => left(1, x, 1, 1e9) > 0)!
-    let x1 = (1..=x2).last_true(x => left(x, x2, 1, 1e9) > 0)!
-    let y2 = (1..=1e9).first_true(y => left(x1, x2, 1, y) > 0)!
+    let x2 = (1..=SIDE).first_true(x => left(1, x, 1, SIDE) > 0)!
+    let x1 = (1..=x2).last_true(x => left(x, x2, 1, SIDE) > 0)!
+    let y2 = (1..=SIDE).first_true(y => left(x1, x2, 1, y) > 0)!
     let y1 = (1..=y2).last_true(y => left(x1, x2, y, y2) > 0)!
-    for copy in 0..left(x1, x2, y1, y2): found.push((x1, x2, y1, y2))
+    for _ in 0..left(x1, x2, y1, y2): found.push((x1, x2, y1, y2))
 print("!")
 for b in found: print(b)
