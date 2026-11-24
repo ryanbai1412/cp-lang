@@ -10,115 +10,74 @@
 //   leaves. Then uncross: for each pair i < j, A_i - A_j stays valid or else A_j - A_i does (cut
 //   size is submodular), so after all pairs the groups are disjoint. O(n^2 (p + q)) after search.
 // original: corpus/submissions/4523876.cpp
-// Bounds: n: 1..=2500; p: 1..=16; q: 0..=16; deg: 0..=n; v: 0..n
+// Bounds: n: 1..=2500; p: 1..=16; q: 0..=16; friends: 0..n
 let n: 1..=2500 = read()
 let p: 1..=16 = read()
 let q: 0..=16 = read()
 domain V = 0..n
-var adj: [V]List<V> = []
-var bad = false
-for u in V:
-    let deg: 0..=n = read()
-    if deg > p + q - 1: bad = true
-    for _ in 0..deg:
-        let v: V = read()
-        adj[u].push(v)
+let friends: [V]List<V> = read()
 
-var decided: [V]Int = 0
-var incl: List<V> = []
-var cans: List<V> = []
-var found = false
+// The search's state: who is in the group, and each student's side once
+// decided (true: in the group, false: cut off from it).
+var members: List<V> = []
+var side: [V]?Bool = None
 
-fn dfs():
-    if found or incl.len > p: return
-    var cq = 0
-    for idx in 0..incl.len:
-        let a = incl[idx]
-        for v in adj[a]:
-            if decided[v] == 0:
-                decided[v] = 1
-                incl.push(v)
-                dfs()
-                incl.pop()
-                decided[v] = -1
-                dfs()
-                decided[v] = 0
-                return
-            elif decided[v] == -1:
-                cq += 1
-                if cq > q: return
-    cans = []
-    for x in incl: cans.push(x)
-    found = true
+// Some valid group holding `members`: branch on the first undecided friend
+// of the group, taking it in or cutting it off.
+fn grow() -> ?List<V>:
+    if members.len > p: return None
+    if count(side[v] == Some(false) for a in members for v in friends[a]) > q: return None
+    let open = [v for a in members for v in friends[a] if side[v] == None].first
+    let v = open else: return Some(members.sorted())
+    side[v] = Some(true)
+    members.push(v)
+    let inside = grow()
+    members.pop()
+    side[v] = Some(false)
+    let found = if inside != None: inside else: grow()
+    side[v] = None
+    found
 
-fn solve():
-    if bad:
-        print("detention")
-        return
-    for u in V:
-        for v in adj[u]:
-            var ok = false
-            for w in adj[v]:
-                if w == u:
-                    ok = true
-                    break
-            if not ok:
-                print("detention")
-                return
+fn group_of(u: V) -> ?List<V>:
+    members = [u]
+    side[u] = Some(true)
+    let found = grow()
+    side[u] = None
+    found
 
+var stamp: [V]Int = 0
+var now = 0
+fn mark(a: List<V>):
+    now += 1
+    for x in a: stamp[x] = now
+
+fn minus(a: List<V>, b: List<V>) -> List<V>:
+    mark(b)
+    [x for x in a if stamp[x] != now]
+
+fn valid(a: List<V>) -> Bool:
+    if a.len > p: return false
+    mark(a)
+    count(stamp[v] != now for u in a for v in friends[u]) <= q
+
+// A valid group per student, uncrossed pair by pair into disjoint groups.
+fn groups() -> ?[V]List<V>:
+    if not V.all(u => friends[u].len < p + q and friends[u].all(v => friends[v].contains(u))):
+        return None
     var blocks: [V]List<V> = []
     for u in V:
-        incl = [u]
-        decided[u] = 1
-        found = false
-        dfs()
-        decided[u] = 0
-        if not found:
-            print("detention")
-            return
-        cans.sort()
-        blocks[u] = cans
+        let b = group_of(u) else: return None
+        blocks[u] = b
+    for i in V:
+        for j in V.after(i):
+            let cut = minus(blocks[i], blocks[j])
+            if valid(cut): blocks[i] = cut
+            else: blocks[j] = minus(blocks[j], blocks[i])
+    Some(blocks)
 
-    var vis: [V]Int = 0
-    var vind = 0
-
-    fn excl(a: List<V>, b: List<V>) -> List<V>:
-        vind += 1
-        for x in b: vis[x] = vind
-        var out: List<V> = []
-        for x in a:
-            if vis[x] != vind: out.push(x)
-        out
-
-    fn valid(arr: List<V>) -> Bool:
-        if arr.len > p: return false
-        vind += 1
-        for x in arr: vis[x] = vind
-        var cut = 0
-        for u in arr:
-            for v in adj[u]:
-                if vis[v] != vind:
-                    cut += 1
-                    if cut > q: return false
-        true
-
-    for i in 0..n:
-        for j in i + 1..n:
-            let x = excl(blocks[V(i)], blocks[V(j)])
-            if valid(x):
-                blocks[V(i)] = x
-            else:
-                blocks[V(j)] = excl(blocks[V(j)], blocks[V(i)])
-
-    var non_empty: List<V> = []
-    for u in V:
-        if blocks[u].len > 0: non_empty.push(u)
-
+if let blocks = groups():
+    let used = [u for u in V if not blocks[u].is_empty]
     print("home")
-    print(non_empty.len)
-    for u in non_empty:
-        var line: List<Int> = [blocks[u].len]
-        for x in blocks[u]: line.push(x.idx)
-        print(line)
-
-solve()
+    print(used.len)
+    for u in used: print(blocks[u].len, blocks[u])
+else: print("detention")
