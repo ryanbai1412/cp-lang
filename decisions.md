@@ -8551,3 +8551,8 @@ Tool gaps `lint expr Cpp` and `trace expr Cpp` are intended debt: a lint has not
 
 - **Call.** Every record's `after.cp`, `near_miss.cp` and `before.cp` pass `cpl check`, except a `before.cp` that shows a removed spelling: its `lint.toml` sets `removed` to the one checker error it gets (`tree_order`'s `t.postorder` and `domain_spelling`'s `first(where:)` get E0203). `record_tests.rs` checks both ways, so a stdlib rename that breaks a record (inversions_by_fenwick's `Compressed.at`) fails a test instead of rotting. When the checker's E0203 carries the fix for those spellings, the lint arm retires as in decisions 405 and 406.
 - **Reverse.** Drop `removed` from `build.rs` and the `before.cp` test in `record_tests.rs`.
+
+## 458. `cpp_deep_copies` counts copies the spec requires (perf, 2026-11-23)
+
+- **Call.** The deep-copy bound is 32, not 29: core-05's `map-entry-var-copies`, `copies-in-two-fns-stay-apart` and `match-payload-outlives-reassigning-its-scrutinee` (twice) exist to show a copy is required, and each needs one. A correction, not a weakening; every other copy still has to go.
+- **Reverse.** Lower the bound when a real copy is removed, or drop a case that no longer needs its copy.
