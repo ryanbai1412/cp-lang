@@ -10,7 +10,7 @@ cp-lang.org serves every route from `web/out`, with the compiler in the page (`c
 
 Ordered by [Milestone 1](../../../handbook/product/milestones.md): steps 1-2 of its scenario (Understand, Try) and the way into step 3 (Install) first.
 
-1. **Run on every landing example.** 5 of the 8 syntax and library examples run. The other 3 wait on checker fixes (Core): `egoi23p4` (generic `W` in `[Pair<W>]T` falls to `Int`), `ioi05p2` (`flat_map` loses the closure's element type), `btoi20p3` (nested tuple pattern in a closure parameter). Each runs as soon as its fix lands: rename `.spec.cp` to `.cp` and add its `.in` and `.out`.
+1. **Run on every landing example.** 6 of the 8 syntax and library examples run. The other 2 wait on checker fixes (Core): `egoi23p4` (a bare generic struct `Semiring` as a parameter type), `btoi20p3` (`undoing` nested in `.minimal(...)`). Each runs as soon as its fix lands: rename `.spec.cp` to `.cp` and add its `.in` and `.out`.
 2. **Std doc examples all run.** `web/scripts/doc-examples-failing.txt` lists the ones that don't, each a std or checker bug (Content, Core). Delete the file once it is empty; `skip_lists` counts it until then.
 3. **Practice that teaches.** At least 12 Div 2 A/B problems with hints before acceptance (21 have hints) and live lints in the practice and playground editors.
 4. **Homepage cold read.** Probe P5: a cold reader names 3 advantages over C++ after 3 minutes, at 390 and 1280 px.
