@@ -352,7 +352,7 @@ impl<'a> Lowerer<'a> {
                 if let Some(decl) = self.cx.local_gen_fns.get(name).cloned() {
                     return self.call_local_gen_fn(&decl, args, span);
                 }
-                if let Some(&op) = self.cx.op_locals.get(name) {
+                if let Some(op) = self.op_local(name) {
                     if let Some(e) = self.bare_op_call(op, callee.span, args, span, hint) {
                         return e;
                     }
