@@ -5245,6 +5245,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::ExprKind::Field { base, name } => {
+                let written = base;
                 let base = self.place(base);
                 match self.field_of(&base.ty, &name.text) {
                     Some((index, ty)) => Place {
@@ -5260,6 +5261,7 @@ impl<'a> Lowerer<'a> {
                                 name.text
                             );
                             self.error(codes::UNKNOWN_FIELD, name.span, message);
+                            self.last_place_fix(&base.ty, written.span, name);
                         }
                         error
                     }

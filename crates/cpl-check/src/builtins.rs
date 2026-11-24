@@ -128,6 +128,20 @@ pub fn foreign_own(name: &str) -> Option<&'static str> {
 pub const ITERATOR_POSITION_HELP: &str =
     "CP Lang has no iterators: a position is its index, so `a.begin() + i` is `i` and `a.end()` is `a.len`";
 
+/// `a.pop_front()` on a list: a list changes only at its end, since a front
+/// edit would be O(n); both ends are a `Deque`.
+pub fn list_end_help(method: &str) -> Option<&'static str> {
+    match method {
+        "pop_front" | "popleft" => Some(
+            "a list pops only at its end; for both ends use `Deque` (`var q = Deque.of(a)`, then `q.pop_front()`)",
+        ),
+        "push_front" | "appendleft" => Some(
+            "a list grows only at its end; for both ends use `Deque` (`var q = Deque.of(a)`, then `q.push_front(x)`)",
+        ),
+        _ => None,
+    }
+}
+
 /// Rust's `xs.iter()` or `s.chars()`: a call CP Lang leaves out, since
 /// a list or string is iterated as it is.
 pub fn foreign_iter_call(name: &str) -> bool {

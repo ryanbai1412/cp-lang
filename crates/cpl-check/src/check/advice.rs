@@ -1327,9 +1327,12 @@ pub(super) fn stream_fix(src: &str, name: &str, span: Span) -> Option<(Span, Str
 
 /// `a.begin()`, C++'s iterators: a call takes the whole sequence.
 pub(super) fn foreign_method(name: &str) -> Option<&'static str> {
-    matches!(name, "begin" | "end" | "rbegin" | "rend" | "cbegin" | "cend").then_some(
-        "CP Lang has no iterators: a call takes the whole sequence, so `sort(a.begin(), a.end())` is `a.sort()`",
-    )
+    match name {
+        "begin" | "end" | "rbegin" | "rend" | "cbegin" | "cend" => Some(
+            "CP Lang has no iterators: a call takes the whole sequence, so `sort(a.begin(), a.end())` is `a.sort()`",
+        ),
+        _ => crate::builtins::list_end_help(name),
+    }
 }
 
 /// Python's `a.index(x)` on a list: a value's first position is

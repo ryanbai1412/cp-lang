@@ -283,6 +283,13 @@ impl<'a> Lowerer<'a> {
     /// `xs.iter()` and `s.chars()`
     /// are left out, since a list or string is iterated as it is.
     pub(super) fn foreign_call_fix(&mut self, ty: &Ty, base: &ast::Expr, method: &str, span: Span) {
+        let listed = matches!(ty, Ty::List(_) | Ty::Array { .. });
+        if let Some(help) = cpl_check::list_end_help(method).filter(|_| listed) {
+            if let Some(last) = self.diags.last_mut() {
+                last.help = Some(help.to_string());
+            }
+            return;
+        }
         if matches!(ty, Ty::Str | Ty::List(_)) && method == "end" {
             let new = format!("{}.len", self.source(base.span));
             let edit = self.span(Span::new(base.span.start, span.end));
@@ -651,6 +658,26 @@ impl<'a> Lowerer<'a> {
                 "`{text}` changes it in place and gives nothing back; `{copy}` gives the result"
             ));
             last.fix(format!("write `{copy}`"), edit, copy);
+        }
+    }
+
+    /// `a.last = 5`: `last` reads the end item and is no place, so the
+    /// end item is assigned through its index.
+    pub(super) fn last_place_fix(&mut self, ty: &Ty, base: Span, name: &ast::Name) {
+        let b = self.source(base);
+        let index = match ty {
+            _ if name.text != "last" || b.contains('\n') => return,
+            Ty::List(_) => format!("{b}.len - 1"),
+            Ty::Array { dims, .. } if dims.len() == 1 => format!("{b}.keys.last!"),
+            _ => return,
+        };
+        let new = format!("{b}[{index}]");
+        let edit = self.span(Span::new(base.start, name.span.end));
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!(
+                "`last` is read-only; assign the end item by its index, `{new}`"
+            ));
+            last.fix(format!("write `{new}`"), edit, new);
         }
     }
 
