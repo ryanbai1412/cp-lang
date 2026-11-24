@@ -370,6 +370,9 @@ const ELSEWHERE: Span = Span {
 
 #[derive(Default)]
 pub(crate) struct Lends {
+    /// `let`-bound closures that capture only copied values, by where the
+    /// name is declared: plain values themselves (decision 471).
+    pub(super) plain_closures: HashSet<Span>,
     /// Top-level `let`-bound views from earlier statements, by name.
     pub(super) global_views: HashMap<String, Lent>,
     facts: Vec<Fact>,
@@ -1725,7 +1728,7 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn begin_hold(&mut self, stmt: &Stmt, name: &str, value: &Expr, rest: &[Stmt]) {
-        if matches!(unparen(value).kind, ExprKind::Lambda { .. }) {
+        if self.note_closure(name, value) {
             let Some(last) = rest.iter().rev().find(|s| mentions(s, name)) else {
                 return;
             };
@@ -2411,51 +2414,6 @@ impl<'a> Checker<'a> {
     /// True when a parameter of type `ty` is passed by lend rather than copied.
     fn is_lent_param_ty(&mut self, ty: &Ty) -> bool {
         matches!(ty, Ty::Str | Ty::Fn { .. }) || self.is_heap_type(ty)
-    }
-
-    /// Returning a lent parameter without `lends`, or returning a closure that
-    /// captures a local variable, is E0603 (R05.7.5 / R05.7.8 / R05.10.2).
-    pub(crate) fn no_escape_return(&mut self, e: &Expr, what: &str) {
-        if self.fn_lends.last().copied().unwrap_or(false) {
-            return;
-        }
-        let e = unparen(e);
-        match &e.kind {
-            ExprKind::Name(name) => {
-                if let Some(local) = self.local(name).cloned() {
-                    if local.keyword == "param" && self.is_lent_param_ty(&local.ty) {
-                        let message = format!(
-                            "{what} would return lent parameter `{name}` without a `lends` clause"
-                        );
-                        self.error(codes::LENT_ESCAPES, e.span, message);
-                    }
-                }
-            }
-            ExprKind::Lambda { params, body, .. } => {
-                let mut param_names: Vec<String> = Vec::new();
-                for p in params {
-                    if let ast::PatternKind::Name(n) = &p.kind {
-                        param_names.push(n.clone());
-                    }
-                }
-                let fn_depth = self.fns.last().map(|f| f.3).unwrap_or(0);
-                let escaped = names_in(body).into_iter().find(|n| {
-                    !param_names.iter().any(|p| p == n)
-                        && self.var_depth(n) >= fn_depth
-                        && self
-                            .local(n)
-                            .cloned()
-                            .is_some_and(|l| l.mutable || self.is_lent_param_ty(&l.ty))
-                });
-                if let Some(cap) = escaped {
-                    let message = format!(
-                        "{what} returns a closure that captures local `{cap}`, which does not outlive this fn"
-                    );
-                    self.error(codes::LENT_ESCAPES, e.span, message);
-                }
-            }
-            _ => self.escape_built_from_param(e, what),
-        }
     }
 
     /// Assigning a lent param or heap `for`-loop variable into an outer `var`

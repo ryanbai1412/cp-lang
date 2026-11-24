@@ -605,7 +605,7 @@ impl Checker<'_> {
     }
 
     /// Variables captured by reference by a lambda: local `var`s, local heap
-    /// values, parameters, or top-level heap/`var` values (R05.10.1).
+    /// values, parameters with a heap part, or top-level heap/`var` values (R05.10.1).
     pub(crate) fn lambda_ref_captures(&mut self, expr: &Expr) -> Vec<String> {
         let ExprKind::Lambda { params, body, .. } = &unparen(expr).kind else {
             return Vec::new();
@@ -625,7 +625,7 @@ impl Checker<'_> {
                 let ty = local.ty.clone();
                 let span = local.span;
                 local.mutable
-                    || local.keyword == "param"
+                    || (local.keyword == "param" && !ty.is_plain_value())
                     || self.is_heap_type(&ty)
                     || self.lends.views.contains_key(&span)
             } else if let Some(def) = self.global(&n) {
