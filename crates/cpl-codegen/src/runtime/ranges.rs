@@ -73,6 +73,7 @@ template <class T> struct Range {
     bool operator==(const Range& o) const { return lo == o.lo && hi == o.hi; }
     bool operator!=(const Range& o) const { return !(*this == o); }
     bool operator<(const Range& o) const { return lo != o.lo ? lo < o.lo : hi < o.hi; }
+    auto cpl_tie() const { return std::tie(lo, hi); }
 };
 ",
     },

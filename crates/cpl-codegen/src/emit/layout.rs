@@ -461,7 +461,7 @@ impl<'p> Emitter<'p> {
                         names.push(name);
                     }
                 }
-                if self.ties && Ty::Struct(*id).is_comparable(program) {
+                if self.ties && Ty::Struct(*id).is_equatable(program) {
                     out.push_str(&format!(
                         "    auto cpl_tie() const {{ return std::tie({}); }}\n",
                         names.join(", ")
