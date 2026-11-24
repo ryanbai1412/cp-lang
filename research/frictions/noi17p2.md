@@ -41,3 +41,10 @@ The dream keeps an `Op` enum read as `read<[q]Op>()` and a `PolyHash` value buil
 Stress: 30/30 agree with the v0.2 port and with AC; max (n = 2e5, m = 5e5, sum |s| ~ 1e7)
 2.77 s vs the v0.2 port 2.56 s vs C++ 0.96 s, same output. The gap to C++ is the hash map of
 HashVal pairs (C++ uses one 64-bit key in a gp_hash_table).
+
+## Max case
+
+Blocks are keyed by a 61-bit `Hash61` sharing `rh.base`, not a two-word `HashVal`. At --max
+that is 1.87 s and 857 MB peak, down from 3.84 s and 1.25 GB; the accepted C++ takes 0.84 s and
+280 MB. What remains is the std hash table's layout (load at most 1/2, 17 bytes per slot,
+both arrays live while it rehashes), sent to Content stdlib with this input as the repro.

@@ -3,21 +3,22 @@
 //   queue ending at i to the one starting at j, split after i (at most 1e3 splits), or for a
 //   digit string s and k <= 50 print the product over the length-k substrings t of s of the
 //   number of worms whose next k lengths read t, mod 998244353 (sum |s| <= 1e7).
-// Solution: count every run of at most 50 consecutive worms in a Map keyed by rolling hash. A
-//   join adds the runs crossing the new joint (a suffix of i's queue plus a prefix of j's, at
-//   most 50 long) and a split removes them; each run is made once between splits, so that is
-//   O(50 n + 50^2 c) map updates. A query hashes s and multiplies the counts of its windows.
+// Solution: count every run of at most 50 consecutive worms in a Counter keyed by its 61-bit
+//   rolling hash, all hashes sharing one base so a query's windows hash the same way. A join adds
+//   the runs crossing the new joint (a suffix of i's queue plus a prefix of j's, at most 50 long)
+//   and a split removes them; each run is made once between splits, so that is O(50 n + 50^2 c)
+//   map updates. A query hashes s and multiplies the counts of its windows.
 // Bounds: n: 1..=200_000; q: 1..=500_000; size: 1..=6; u, v: 1..=n; k: 1..=longest
 
-use std.strings.{HashVal}
+use std.strings.{Hash61, RollingHash61}
 
 type Z = Mod<998_244_353>
 let longest = 50
-let rh = RollingHash.new(List.filled(longest, 0))
+let rh = RollingHash61(List.filled(longest, 0))
 
-struct Block(hash: HashVal, len: Int)
-let empty_block = Block(HashVal(0, 0), 0)
-let one = [Block(RollingHash.new([d], bases: rh.bases).all, 1) for d in 0..=6]
+struct Block(hash: Hash61, len: Int)
+let empty_block = Block(rh.get(0..0), 0)
+let one = [Block(RollingHash61([d], base: rh.base).all, 1) for d in 0..=6]
 
 fn concat(a: Block, b: Block) -> Block = Block(rh.combine(a.hash, b.hash, b.len), a.len + b.len)
 
@@ -26,7 +27,7 @@ domain Worm = 1..=n
 let size: [Worm]1..=6 = read()
 var before: [Worm]?Worm = None
 var after: [Worm]?Worm = None
-var blocks = Counter<HashVal>()
+var blocks = Counter<Hash61>()
 
 /// Blocks of fewer than `longest` worms starting at `from` along `toward`
 /// (`back = true`: extending on the right; `back = false`: prepending on the left).
@@ -63,5 +64,5 @@ repeat q:
             (after[u], before[v]) = (None, None)
         _ =>
             let (s, k): (Str, 1..=longest) = read()
-            let hash = RollingHash.new([c - '0' for c in s], bases: rh.bases)
-            print((0..=s.len - k).map(i => Z(blocks[hash.slice(i, i + k)])).prod())
+            let hash = RollingHash61([c - '0' for c in s], base: rh.base)
+            print((0..=s.len - k).map(i => Z(blocks[hash.get(i..i + k)])).prod())
