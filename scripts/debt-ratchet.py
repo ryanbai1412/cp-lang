@@ -2779,7 +2779,7 @@ HARD_ZERO = frozenset({
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_no_limits", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "unchecked_fix_paths", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
-    "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
+    "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs", "opt_without_uses",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
     "measure_broken", "mono_unguarded", "ts_ignore", "ports_unreported",
     "site_rederived", "browser_lsp_gaps",
