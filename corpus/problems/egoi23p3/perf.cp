@@ -1,5 +1,6 @@
 // Tuned: the robot walks plain coordinates with one bounds test per move, as the accepted
-// C++'s does, where the port steps through an optional cell built by `Row.at`/`Col.at`.
+// C++'s does, where the port steps through an optional cell built by `Row.at`/`Col.at`; the
+// row probe is found by a loop, not `find`, whose optional holds a copy of the moves.
 //
 // Source: EGOI 2023 P3 (Find the Box), https://dmoj.ca/problem/egoi23p3
 // limits: 1000 ms, 1024 MB
@@ -14,7 +15,6 @@
 //   through the top rows. O(H W |moves|) simulation per query.
 // original: corpus/submissions/5678051.cpp
 // Bounds: h, w: 1..=50
-// optional_copies: 1
 let wire = Wire()
 let h: 1..=50 = read()
 let w: 1..=50 = read()
@@ -49,7 +49,9 @@ fn row_probe(r: Int) -> Str = "v".repeat(r) + ">".repeat(w)
 let fallback = ">vv<^v" + ">".repeat(w) + "^v" + "<".repeat(w) + "^^" + ">".repeat(w)
 
 let swept = ask([(r, c) for r in Row for c in Col if (r, c) != start], snake)
-let found =
-    if swept.len == 1: swept
-    else: ask(swept, (0..h).map(row_probe).find(m => tells_apart(swept, m)) ?? fallback)
+fn probe_for(boxes: List<Cell>) -> Str:
+    for r in 0..h:
+        if tells_apart(boxes, row_probe(r)): return row_probe(r)
+    fallback
+let found = if swept.len == 1: swept else: ask(swept, probe_for(swept))
 print("!", found[0].0, found[0].1)
