@@ -383,3 +383,25 @@ print(t)
         "{out}"
     );
 }
+
+#[test]
+fn a_returned_literal_moves_the_parts_of_a_dead_local() {
+    let out = cpp(concat!(
+        "struct S: pub a: List<Int>\n",
+        "struct T:\n    pub a: List<Int>\n    pub n: Int\n",
+        "fn f() -> S:\n    var s = S([0 for _ in 0..10])\n    s.a.push(1)\n    S(s.a)\n",
+        "fn g() -> S:\n    let st = [(1, [0 for _ in 0..10])]\n    S(st[0].1)\n",
+        "fn h() -> List<Int>:\n    var s = S([0 for _ in 0..10])\n    s.a.push(1)\n    s.a\n",
+        "fn kept(s: S) -> S = S(s.a)\n",
+        "fn twice() -> T:\n    var s = S([0 for _ in 0..10])\n    s.a.push(1)\n    T(s.a, s.a.len)\n",
+        "print(f().a.len, g().a.len, h().len, kept(f()).a.len, twice().a.len + twice().n)\n",
+    ));
+    assert!(out.contains("return S{std::move(s.a)};"), "{out}");
+    assert!(out.contains("return S{std::move(std::get<1>("), "{out}");
+    assert!(out.contains("return std::move(s.a);"), "{out}");
+    assert!(
+        out.contains("return S{s.a};"),
+        "a parameter is the caller's: {out}"
+    );
+    assert!(out.contains("T{s.a, "), "another item reads `s`: {out}");
+}

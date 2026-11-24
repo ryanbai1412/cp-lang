@@ -685,8 +685,6 @@ impl<'p> Emitter<'p> {
                                     Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)
                                 )
                             {
-                                let params =
-                                    self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
                                 let ty = self.ty(&value.ty);
                                 let struct_id = match value.ty {
                                     Ty::Struct(s) => Some(s),
@@ -727,25 +725,9 @@ impl<'p> Emitter<'p> {
                                                 }
                                             }
                                         }
-                                        if let ExprKind::Local(slot) = item.kind {
-                                            if (slot >= params
-                                                || self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot)))
-                                                && !item.ty.is_scalar()
-                                                && !matches!(item.ty, Ty::Fn(..))
-                                                && !items.iter().enumerate().any(|(j, other)| {
-                                                    j != idx && {
-                                                        let mut used = false;
-                                                        crate::walk::deep_expr(other, &mut |e| {
-                                                            if matches!(e.kind, ExprKind::Local(s) if s == slot) {
-                                                                used = true;
-                                                            }
-                                                        });
-                                                        used
-                                                    }
-                                                })
-                                            {
-                                                return format!("std::move({})", self.names[slot]);
-                                            }
+                                        let dies = self.returned_item_dies(items, idx);
+                                        if let (ExprKind::Local(slot), true) = (&item.kind, dies) {
+                                            return format!("std::move({})", self.names[*slot]);
                                         }
                                         if let Some(l) = struct_id
                                             .and_then(|s| {
@@ -753,9 +735,11 @@ impl<'p> Emitter<'p> {
                                             })
                                             .cloned()
                                         {
-                                            return self.expr_with_elem_layout(item, Some(&l)).text;
+                                            let v = self.expr_with_elem_layout(item, Some(&l)).text;
+                                            return self.moved_if(dies, v);
                                         }
                                         let v = self.expr(item).text;
+                                        let v = self.moved_if(dies, v);
                                         match struct_id {
                                             Some(s) => self.narrow_field_store(s, idx, &v),
                                             None => v,
@@ -793,6 +777,13 @@ impl<'p> Emitter<'p> {
                         };
                         self.expr_with_elem_layout(value, ret_l.as_ref()).text
                     };
+                    if is_return
+                        && self.closure_id.is_none()
+                        && matches!(value.kind, ExprKind::Field(..) | ExprKind::Index(..))
+                        && self.returned_item_dies(std::slice::from_ref(value), 0)
+                    {
+                        text = self.moved_if(true, text);
+                    }
                     if let Some(local) = rekeyed {
                         let name = &self.names[local];
                         if let Some(rest) = text.strip_prefix(&format!("cpl::rekey_own({name}, ")) {

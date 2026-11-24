@@ -1264,6 +1264,33 @@ impl Emitter<'_> {
         }
     }
 
+    /// Whether item `idx` of a returned literal reads a place on a local
+    /// the function owns (`s.a`, `st[0].1`) that no other item reads: the
+    /// return is the local's last use, so the item may move.
+    pub(crate) fn returned_item_dies(&self, items: &[Expr], idx: usize) -> bool {
+        let item = &items[idx];
+        let Some(slot) = owned_root(item) else {
+            return false;
+        };
+        let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
+        (slot >= params || self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot)))
+            && !self.ref_bound.contains(&slot)
+            && !item.ty.is_scalar()
+            && !matches!(item.ty, Ty::Fn(..))
+            && !items
+                .iter()
+                .enumerate()
+                .any(|(j, other)| j != idx && crate::uses::mentions_any(self.program, other, slot))
+    }
+
+    /// `std::move(text)` when `dies`.
+    pub(crate) fn moved_if(&self, dies: bool, text: String) -> String {
+        match dies && !text.starts_with("std::move(") {
+            true => format!("std::move({text})"),
+            false => text,
+        }
+    }
+
     /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets
     /// before reading it, which nothing later in the literal reads either:
     /// moving them in leaves only the value `rest` overwrites.
@@ -1339,6 +1366,15 @@ fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
             fields.push(*f);
             (root, fields)
         }),
+        _ => None,
+    }
+}
+
+/// The local a place expression reads through fields and indexes.
+fn owned_root(e: &Expr) -> Option<usize> {
+    match &e.kind {
+        ExprKind::Local(s) => Some(*s),
+        ExprKind::Field(base, _) | ExprKind::Index(base, _) => owned_root(base),
         _ => None,
     }
 }
