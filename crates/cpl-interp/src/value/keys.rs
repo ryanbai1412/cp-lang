@@ -141,7 +141,10 @@ impl<T: Entry> Runs<T> {
         let (mut lo, mut hi) = (0, self.runs.len());
         while lo < hi {
             let mid = lo + (hi - lo) / 2;
-            let last = self.runs[mid].last().expect("a run is never empty");
+            let Some(last) = self.runs[mid].last() else {
+                hi = mid;
+                continue;
+            };
             if less(ty, last.key(), key)? {
                 lo = mid + 1;
             } else {

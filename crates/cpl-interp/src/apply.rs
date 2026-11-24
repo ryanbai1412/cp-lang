@@ -344,11 +344,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     pub(crate) fn less_ty_val(&mut self, ty: &Ty, l: &Value, r: &Value, span: Span) -> Res<bool> {
-        match (ty, l, r) {
-            (Ty::Struct(id), _, _) if self.program.structs[*id].ord.is_some() => {
-                let hook = self.program.structs[*id].ord.expect("checked");
-                self.user_less(hook, l.clone(), r.clone(), span)
+        if let Ty::Struct(id) = ty {
+            if let Some(hook) = self.program.structs[*id].ord {
+                return self.user_less(hook, l.clone(), r.clone(), span);
             }
+        }
+        match (ty, l, r) {
             // A tuple's last part decides only when the rest ties, so it needs `<` one way.
             (Ty::Tuple(ts), Value::Tuple(ls), Value::Tuple(rs)) if !ts.is_empty() => {
                 let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
