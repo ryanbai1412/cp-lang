@@ -1,10 +1,10 @@
-"""abc478e checker: `checker.py input expected output`. No exactly when no valid A exists;
+"""abc478e checker: `checker.py input output answer`. No exactly when no valid A exists;
 otherwise A has values in 1..=n and meets every condition."""
 import sys
 
 inp = open(sys.argv[1]).read().split()
-exp = open(sys.argv[2]).read().split()
-out = open(sys.argv[3]).read().split()
+out = open(sys.argv[2]).read().split()
+exp = open(sys.argv[3]).read().split()
 n, q = int(inp[0]), int(inp[1])
 conds = [tuple(map(int, inp[2 + 3 * i: 5 + 3 * i])) for i in range(q)]
 if exp[0] == "No":
