@@ -468,13 +468,7 @@ fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
 /// The words of the language that are written with a library fn: a
 /// program that uses the word gets the fn, as if it had named it.
 /// `prefix(a)` dispatches by what `a` is (`[D]T`, `[R, C]T`, or `List<T>`).
-pub const BUILT_ON: &[(&str, &str)] = &[
-    ("prefix", "Prefix"),
-    ("adjacency", "Bitset"),
-    ("all", "Bitset"),
-    ("without", "Bitset"),
-    ("subsets", "Subset"),
-];
+pub const BUILT_ON: &[(&str, &str)] = &[("prefix", "Prefix"), ("subsets", "Subset")];
 
 /// Internal shape specializations brought in from a stdlib module when a
 /// file uses the unified family name (`prefix`, `Prefix`, `Diff`), without

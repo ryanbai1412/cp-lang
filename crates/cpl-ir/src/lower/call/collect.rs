@@ -56,30 +56,11 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// `adjacency(edges)` -> `[V]List<V>` and `adjacency(edges, into: Bitset)` -> `[V]Bitset<V>`.
+    /// `adjacency(edges)` -> `[V]List<V>`.
     pub(in crate::lower) fn lower_adjacency(&mut self, args: &[ast::Arg], span: Span) -> Expr {
-        if args.is_empty() || args.len() > 2 {
-            self.error(
-                codes::WRONG_ARG_COUNT,
-                span,
-                "`adjacency` takes `(edges)` or `(edges, into: Bitset)`",
-            );
+        if args.len() != 1 {
+            self.error(codes::WRONG_ARG_COUNT, span, "`adjacency` takes `(edges)`");
             return self.err_expr(span);
-        }
-        let mut into_bitset = false;
-        if let Some(opt) = args.get(1) {
-            if opt.name.as_ref().map(|n| n.text.as_str()) == Some("into")
-                && matches!(&opt.value.kind, ast::ExprKind::Name(n) if n == "Bitset")
-            {
-                into_bitset = true;
-            } else {
-                self.error(
-                    codes::TYPE_MISMATCH,
-                    opt.value.span,
-                    "`adjacency` expects `into: Bitset`",
-                );
-                return self.err_expr(span);
-            }
         }
         // Fuse `edges.filter(e => cond)` to avoid materializing a temporary edge list.
         let (edges_ast, filter_lambda) = match &args[0].value.kind {
@@ -153,25 +134,8 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         };
-        let (cell_ty, init_expr, add_fn_opt) = if into_bitset {
-            let Some(sid) = self.instantiate_bitset(dom, span) else {
-                return self.err_expr(span);
-            };
-            let Some(new_fn) = self.own_method(sid, "new") else {
-                return self.err_expr(span);
-            };
-            let Some(add_fn) = self.own_method(sid, "add") else {
-                return self.err_expr(span);
-            };
-            self.queue_fn(new_fn);
-            self.queue_fn(add_fn);
-            let init = self.mk(ExprKind::Call(new_fn, Vec::new()), Ty::Struct(sid), span);
-            (Ty::Struct(sid), init, Some(add_fn))
-        } else {
-            let list_ty = Ty::list(Ty::Pos(dom));
-            let init = self.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
-            (list_ty, init, None)
-        };
+        let cell_ty = Ty::list(Ty::Pos(dom));
+        let init_expr = self.mk(ExprKind::Tuple(Vec::new()), cell_ty.clone(), span);
         let arr_ty = Ty::Array {
             dims: vec![Dim::Pos(dom)],
             elem: Box::new(cell_ty.clone()),
@@ -221,33 +185,18 @@ impl<'a> Lowerer<'a> {
                 span: lw.span(span),
             };
             let mut body_stmts = Vec::new();
-            if let Some(add_fn) = add_fn_opt {
-                let c1 = lw.mk(
-                    ExprKind::Call(add_fn, vec![Arg::Mut(u_cell), Arg::Value(v_expr)]),
-                    Ty::Unit,
-                    span,
-                );
-                let c2 = lw.mk(
-                    ExprKind::Call(add_fn, vec![Arg::Mut(v_cell), Arg::Value(u_expr)]),
-                    Ty::Unit,
-                    span,
-                );
-                body_stmts.push(Stmt::Expr(c1));
-                body_stmts.push(Stmt::Expr(c2));
-            } else {
-                let p1 = lw.mk(
-                    ExprKind::Mutate(Mutation::Push, Box::new(u_cell), vec![v_expr]),
-                    Ty::Unit,
-                    span,
-                );
-                let p2 = lw.mk(
-                    ExprKind::Mutate(Mutation::Push, Box::new(v_cell), vec![u_expr]),
-                    Ty::Unit,
-                    span,
-                );
-                body_stmts.push(Stmt::Expr(p1));
-                body_stmts.push(Stmt::Expr(p2));
-            }
+            let p1 = lw.mk(
+                ExprKind::Mutate(Mutation::Push, Box::new(u_cell), vec![v_expr]),
+                Ty::Unit,
+                span,
+            );
+            let p2 = lw.mk(
+                ExprKind::Mutate(Mutation::Push, Box::new(v_cell), vec![u_expr]),
+                Ty::Unit,
+                span,
+            );
+            body_stmts.push(Stmt::Expr(p1));
+            body_stmts.push(Stmt::Expr(p2));
             let loop_body = if let Some(cond) = filter_cond {
                 loop_pre.push(Stmt::If(
                     cond,

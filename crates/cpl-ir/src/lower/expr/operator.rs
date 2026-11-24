@@ -224,18 +224,6 @@ impl<'a> Lowerer<'a> {
                     ast::ExprKind::List(_) | ast::ExprKind::Binary { .. } | ast::ExprKind::Paren(_)
                 )
         });
-        let lhs_bitset_hint = if matches!(op, Sub | BitAnd | BitOr | BitXor)
-            && matches!(&lhs.kind, ast::ExprKind::Field { name, .. } if name.text == "all")
-        {
-            hint.filter(|ty| matches!(ty, Ty::Struct(_)))
-                .cloned()
-                .or_else(|| {
-                    self.probe_ty_silent(rhs)
-                        .filter(|ty| matches!(ty, Ty::Struct(_)))
-                })
-        } else {
-            None
-        };
         let joined_owned = if op == Add
             && joined.is_none()
             && matches!(&lhs.kind, ast::ExprKind::List(items) if items.is_empty())
@@ -246,14 +234,7 @@ impl<'a> Lowerer<'a> {
         } else {
             None
         };
-        let mut l = unwrap_first_last(
-            self.expr(
-                lhs,
-                wide.or(joined)
-                    .or(joined_owned.as_ref())
-                    .or(lhs_bitset_hint.as_ref()),
-            ),
-        );
+        let mut l = unwrap_first_last(self.expr(lhs, wide.or(joined).or(joined_owned.as_ref())));
         if let (Some(wide), Ty::Int) = (wide, &l.ty) {
             l = self.coerce(l, wide, lhs.span);
         }
@@ -303,30 +284,6 @@ impl<'a> Lowerer<'a> {
                     ret,
                     span,
                 );
-            }
-        }
-        // `V.all - side` (or `&`, `|`, `^`) with `side: Bitset<V>`: lift `V.all` to `Bitset<V>`.
-        if let (Ty::Range(of), Ty::Struct(sid)) = (&l.ty, &r.ty) {
-            if let Ty::Pos(dom) = of.as_ref() {
-                let sid = *sid;
-                if self.is_bitset_of(sid, *dom) {
-                    let mname = match op {
-                        Sub => Some("sub"),
-                        BitOr => Some("bitor"),
-                        BitAnd => Some("bitand"),
-                        BitXor => Some("bitxor"),
-                        _ => None,
-                    };
-                    if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {
-                        let l = self.coerce(l, &Ty::Struct(sid), lhs.span);
-                        let ret = self.ret_of(fn_id, span);
-                        return self.mk(
-                            ExprKind::Call(fn_id, vec![Arg::Value(l), Arg::Value(r)]),
-                            ret,
-                            span,
-                        );
-                    }
-                }
             }
         }
         // `1 - z` with `z: Mod<P>`: the number becomes a `Mod<P>` first,

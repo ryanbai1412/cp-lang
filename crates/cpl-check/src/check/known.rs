@@ -284,20 +284,9 @@ impl<'a> Checker<'a> {
                     _ => None,
                 };
                 if let Some(Ty::Pos(dom)) = v_ty {
-                    let into_bitset = args.iter().any(|a| {
-                        a.name.as_ref().map(|n| n.text.as_str()) == Some("into")
-                            && matches!(&a.value.kind, ExprKind::Name(n) if n == "Bitset")
-                    });
-                    let cell = if into_bitset {
-                        Ty::Named {
-                            name: "Bitset".into(),
-                            args: vec![Ty::Pos(dom.clone())],
-                        }
-                    } else {
-                        Ty::Named {
-                            name: "List".into(),
-                            args: vec![Ty::Pos(dom.clone())],
-                        }
+                    let cell = Ty::Named {
+                        name: "List".into(),
+                        args: vec![Ty::Pos(dom.clone())],
                     };
                     return Some(Ty::Array {
                         index: vec![Ty::Pos(dom)],

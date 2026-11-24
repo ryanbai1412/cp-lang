@@ -101,7 +101,7 @@ impl<'a> Lowerer<'a> {
         if let ast::ExprKind::Name(n) = &base.kind {
             if self.lookup(n).is_none() {
                 if let Some(&Ty::Pos(id)) = self.cx.local_type_aliases.get(n) {
-                    return self.domain_field(id, name, hint, span);
+                    return self.domain_field(id, name, span);
                 }
             }
         }
@@ -206,7 +206,7 @@ impl<'a> Lowerer<'a> {
                             return number;
                         }
                     }
-                    Ty::Pos(id) => return self.domain_field(id, name, hint, span),
+                    Ty::Pos(id) => return self.domain_field(id, name, span),
                     _ => {}
                 }
             }
@@ -230,7 +230,7 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
-            Some(Sym::Domain(id)) => return self.domain_field(id, name, hint, span),
+            Some(Sym::Domain(id)) => return self.domain_field(id, name, span),
             Some(Sym::Enum(id)) => {
                 return match self.enums[id]
                     .variants
@@ -355,7 +355,7 @@ impl<'a> Lowerer<'a> {
         // A domain reached through a value (`vt.K`) has a named domain's members.
         if let ExprKind::DomainVal(id) = value.kind {
             if !matches!(name.text.as_str(), "len" | "size" | "count") {
-                return self.domain_field(id, name, hint, span);
+                return self.domain_field(id, name, span);
             }
         }
         match (&ty, name.text.as_str()) {

@@ -436,7 +436,6 @@ impl<'a> Lowerer<'a> {
         &mut self,
         id: DomainId,
         name: &ast::Name,
-        hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
         if let Some(info) = self.sum_enums.get(&id).cloned() {
@@ -524,21 +523,14 @@ impl<'a> Lowerer<'a> {
                 Ty::Bound(id),
                 span,
             ),
-            "all" | "range" => {
-                if let Some(Ty::Struct(sid)) = hint {
-                    if self.is_bitset_of(*sid, id) {
-                        return self.domain_bitset_full(id, span);
-                    }
-                }
-                self.mk(
-                    ExprKind::Range {
-                        lo: Box::new(self.int_lit(0, span)),
-                        hi: Box::new(len),
-                    },
-                    Ty::Range(Box::new(Ty::Pos(id))),
-                    span,
-                )
-            }
+            "all" | "range" => self.mk(
+                ExprKind::Range {
+                    lo: Box::new(self.int_lit(0, span)),
+                    hi: Box::new(len),
+                },
+                Ty::Range(Box::new(Ty::Pos(id))),
+                span,
+            ),
             "rev" => {
                 let range = self.mk(
                     ExprKind::Range {
@@ -612,44 +604,6 @@ impl<'a> Lowerer<'a> {
             },
             _ => None,
         }
-    }
-
-    pub(in crate::lower) fn is_bitset_of(&self, sid: StructId, dom: DomainId) -> bool {
-        let Some((gid, gargs)) = self.structs[sid].origin_gen.as_ref() else {
-            return false;
-        };
-        self.gen_structs[*gid].decl.name.text == "Bitset"
-            && matches!(
-                gargs.as_slice(),
-                [GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d))] if *d == dom
-            )
-    }
-
-    pub(in crate::lower) fn instantiate_bitset(
-        &mut self,
-        dom: DomainId,
-        span: Span,
-    ) -> Option<StructId> {
-        let Some(Sym::GenStruct(gid)) = self.get_sym("Bitset") else {
-            self.error(
-                codes::UNKNOWN_TYPE,
-                span,
-                "`Bitset` is not in scope (import `std.bitset.{Bitset}`)",
-            );
-            return None;
-        };
-        Some(self.instantiate_struct(gid, vec![GenArg::Domain(dom)]))
-    }
-
-    pub(in crate::lower) fn domain_bitset_full(&mut self, id: DomainId, span: Span) -> Expr {
-        let Some(sid) = self.instantiate_bitset(id, span) else {
-            return self.err_expr(span);
-        };
-        let Some(full_fn) = self.own_method(sid, "full") else {
-            return self.err_expr(span);
-        };
-        self.queue_fn(full_fn);
-        self.mk(ExprKind::Call(full_fn, Vec::new()), Ty::Struct(sid), span)
     }
 
     /// Lowers `a.inverse()` on a 1D array:

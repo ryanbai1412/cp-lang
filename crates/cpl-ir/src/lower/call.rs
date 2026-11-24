@@ -261,27 +261,6 @@ impl<'a> Lowerer<'a> {
                 });
             }
         }
-        // `V.all.without(v)`: lift `Range<V>` to `Bitset<V>` and call `without(v)`.
-        if name.text == "without" && args.len() == 1 {
-            if let Some(Ty::Range(of)) = self.probe_ty_silent(base) {
-                if let Ty::Pos(dom) = of.as_ref() {
-                    let dom = *dom;
-                    if let Some(sid) = self.instantiate_bitset(dom, span) {
-                        let base_expr = self.expr(base, Some(&Ty::Struct(sid)));
-                        let bs = self.coerce(base_expr, &Ty::Struct(sid), base.span);
-                        if let Some(without_fn) = self.own_method(sid, "without") {
-                            self.queue_fn(without_fn);
-                            let v = self.expect(&args[0].value, &Ty::Pos(dom));
-                            return self.mk(
-                                ExprKind::Call(without_fn, vec![Arg::Value(bs), Arg::Value(v)]),
-                                Ty::Struct(sid),
-                                span,
-                            );
-                        }
-                    }
-                }
-            }
-        }
         // A fold over a sequence reads as its method: `xs.sum()` is
         // `sum(xs)`, `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
         let seq_ty = self.probe_ty_silent(base);

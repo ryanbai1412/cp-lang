@@ -17,7 +17,7 @@ let edges = read<[m](u: V, v: V, w: 1..=1_000_000)>()
 let g = gomory_hu(edges).map(e => e.w).fold(gcd)
 
 let colors: List<Bitset<V>> = if g != 1:
-    [V.all]
+    [Bitset<V>.full()]
 else:
     var odd = Bitset.undirected(edges.filter(e => e.w % 2 == 1))
 
@@ -38,8 +38,8 @@ else:
         if (nbr & side).len % 2 == 0: side.add(v)
         side
 
-    let side = even_split(V.all)
-    [V.all - side, side]
+    let side = even_split(Bitset<V>.full())
+    [side.complement(), side]
 
 print(colors.len)
 for c in colors:
