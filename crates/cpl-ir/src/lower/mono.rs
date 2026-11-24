@@ -1558,12 +1558,19 @@ impl<'a> Lowerer<'a> {
                         if !is_seq_bound {
                             return None;
                         }
-                        match inferred.get(&b.name.text).cloned() {
+                        // `S: Seq<?T>` names the element `?T`: unify against it, not `T` itself.
+                        let pat = b.traits.iter().find_map(|tr| match &tr.kind {
+                            ast::TypeKind::Named { args, .. } => args.last(),
+                            _ => None,
+                        });
+                        let elem = match inferred.get(&b.name.text).cloned() {
                             Some(GenArg::Ty(t)) => self.walk_elem(&t, span),
                             Some(GenArg::Domain(d)) => Some(Ty::Pos(d)),
                             _ => None,
-                        }
+                        };
+                        elem.map(|e| (e, pat))
                     });
+                    let (elem_ty, mut pat) = elem_ty.map_or((None, None), |(e, p)| (Some(e), p));
                     // `flatten<S: Seq, U: Seq, T>(self: S)`: a `Seq` generic no parameter
                     // names is the element of `S`, and `T` is the element of that.
                     let inner = decl.bounds.iter().find(|b| {
@@ -1573,14 +1580,21 @@ impl<'a> Lowerer<'a> {
                     });
                     let elem_ty = match (inner, elem_ty) {
                         (Some(u), Some(ety)) => {
+                            pat = None;
                             let inner_elem = ety.seq_elem();
                             inferred.insert(u.name.text.clone(), GenArg::Ty(ety));
                             inner_elem
                         }
                         (_, ety) => ety,
                     };
-                    if let Some(ety) = elem_ty {
-                        inferred.insert("T".to_string(), GenArg::Ty(ety));
+                    match (elem_ty, pat) {
+                        (Some(ety), Some(p)) => {
+                            self.unify_ast_ty(p, &ety, tpl_mod, &gen_names, &mut inferred)
+                        }
+                        (Some(ety), None) => {
+                            inferred.insert("T".to_string(), GenArg::Ty(ety));
+                        }
+                        _ => {}
                     }
                 }
             }
