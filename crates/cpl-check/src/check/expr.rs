@@ -3444,7 +3444,7 @@ impl<'a> Checker<'a> {
     ) -> bool {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
-        let got = &self.narrowed(got, want);
+        let got = &self.read_narrowed(got, want, at);
         // §124: `j..=i` over cuts never converts to `Range<D>`.
         if let ExprKind::Range {
             hi: Some(hi),

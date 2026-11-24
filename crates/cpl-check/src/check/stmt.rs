@@ -1458,9 +1458,7 @@ impl<'a> Checker<'a> {
                 }
                 let target_ty = self.assign_target(target);
                 let prev_bounds_range = self.expected_bounds_range;
-                if Self::expects_bounds_range(&target_ty) {
-                    self.expected_bounds_range = true;
-                }
+                self.expected_bounds_range |= Self::expects_bounds_range(&target_ty);
                 self.assigning_name = prev_assigning;
                 let value_ty = match self.part_map(target, *op, value) {
                     Some(ty) => ty,
@@ -1468,6 +1466,7 @@ impl<'a> Checker<'a> {
                 };
                 self.expected_bounds_range = prev_bounds_range;
                 if *op == AssignOp::Set {
+                    self.note_read(value, &target_ty);
                     if let ExprKind::Name(tname) = &target.kind {
                         self.moved.remove(tname);
                         if let ExprKind::Name(sname) = &value.kind {

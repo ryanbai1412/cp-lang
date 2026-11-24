@@ -1,4 +1,2 @@
 # Programs whose input `cpl stress` can't generate yet, and why.
 # Checked by readable_shapes.rs; a fix deletes its line.
-crates/cpl-cli/tests/programs/batch25_yields_with_effects.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
-crates/cpl-cli/tests/programs/s2_read_flow.cp: this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`

@@ -1455,3 +1455,85 @@ let a: [D]0..=0 = read()
         assert!(tokens[2..].iter().all(|&v| v == 0), "{text}");
     }
 }
+
+#[test]
+fn a_bare_read_takes_its_type_from_where_its_value_goes() {
+    // The checker's facts type each `read()` and `ask(..)`: a typed place
+    // in a counted loop, a fn's return type, parameter types and a
+    // domain-typed place.
+    let src = "let n: 1..=4 = read()
+domain Day = 1..=n
+var a: [Day]1..=3 = 1
+var b: [Day]0..=9 = 0
+for d in Day: (a[d], b[d]) = read()
+fn small() -> 5..=6 = read()
+fn twice(x: 7..=8, y: 0..=1) -> Int = x * 2 + y
+let q = small()
+let t = twice(read(), read())
+var who = Day(1)
+who = read()
+fn guess(x: Int) -> 2..=3 = ask(\"?\", x)
+let r = guess(1)
+print(sum(a), sum(b), q, t, who, r)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..50 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let n = tokens[0];
+        assert_eq!(tokens.len() as i128, 2 * n + 6, "{}", case.render());
+        let (rows, rest) = tokens[1..].split_at(2 * n as usize);
+        for row in rows.chunks(2) {
+            assert!((1..=3).contains(&row[0]) && (0..=9).contains(&row[1]));
+        }
+        let fits = [5..=6, 7..=8, 0..=1, 1..=n, 2..=3];
+        for (got, want) in rest.iter().zip(fits) {
+            assert!(want.contains(got), "{}", case.render());
+        }
+    }
+}
+
+#[test]
+fn a_yields_fn_reads_until_its_sentinel_return() {
+    let src = "fn words() -> yields Int:
+    while true:
+        let x: 0..=9 = read()
+        if x == 0: return
+        yield x
+var total = 0
+for w in words():
+    total += w
+    if total > 20: break
+let rest: 4..=5 = read()
+print(total, rest)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..50 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let stop = tokens.iter().position(|&t| t == 0).unwrap();
+        assert!(tokens[..stop].iter().all(|t| (1..=9).contains(t)));
+        assert_eq!(tokens.len(), stop + 2, "{}", case.render());
+        assert!((4..=5).contains(&tokens[stop + 1]));
+    }
+    // A stream read anywhere but as a `for`'s iterable whose body reads
+    // nothing reads what no field describes.
+    for use_ in [
+        "for w in words():\n    let y: Int = read()\n    print(w + y)\n",
+        "let all = words()\nfor w in all: print(w)\n",
+    ] {
+        let words = &src[..src.find("var total").unwrap()];
+        assert!(
+            InputSpec::from_source(&format!("{words}{use_}")).is_err(),
+            "{use_}"
+        );
+    }
+}

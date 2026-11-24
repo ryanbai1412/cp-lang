@@ -91,6 +91,7 @@ dependencies = [
 name = "cpl-doc"
 version = "0.3.0"
 dependencies = [
+ "cpl-check",
  "cpl-diag",
  "cpl-json",
  "cpl-syntax",

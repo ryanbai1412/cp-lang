@@ -37,6 +37,28 @@ impl<'a> Checker<'a> {
         self.io_fixed(&ty)
     }
 
+    /// A bare `read()` or an `ask(..)` takes its type from where its value
+    /// goes (R10.2.1): record that type as the call's, so its facts say
+    /// what it reads.
+    pub(crate) fn note_read(&mut self, value: &Expr, want: &Ty) {
+        let ExprKind::Call { callee, args } = &value.kind else {
+            return;
+        };
+        let ExprKind::Name(name) = &callee.kind else {
+            return;
+        };
+        let reads = (name == "read" && args.is_empty()) || name == "ask";
+        if reads && self.local(name).is_none() && !want.is_vague() && *want != Ty::Error {
+            self.exprs.types.push((value.span, want.clone()));
+        }
+    }
+
+    /// [`Checker::narrowed`], after [`Checker::note_read`] on `at`.
+    pub(crate) fn read_narrowed(&mut self, got: &Ty, want: &Ty, at: &Expr) -> Ty {
+        self.note_read(at, want);
+        self.narrowed(got, want)
+    }
+
     /// Whether a value of `ty` is read or written in a bounded number of
     /// characters: a fixed-size value, a position in a domain of integers,
     /// a variant of an enum without fields, or a tuple of them.
