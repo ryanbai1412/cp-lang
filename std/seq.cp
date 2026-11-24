@@ -36,7 +36,9 @@ pub fn prod<S: Seq, T>(self: S) -> T:
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
 pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U:
-    self.fold((acc, x) => acc + of(x), U.zero)
+    var out = U.zero
+    for x in self: out += of(x)
+    out
 
 /// The average of `of` over the elements as `F64`; `None` when empty.
 ///
