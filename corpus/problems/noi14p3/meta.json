@@ -25,10 +25,14 @@
   {"id": "5656881", "language": "CPP17", "result": "AC", "time": 0.050322055, "memory_kb": 4476.0, "file": "corpus/submissions/5656881.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi14p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The accepted C++ prints stored answers for the ten official inputs, so it is no reference. orig.cpp is a corpus-written greedy (each move takes the best scoring path of at most 18 digits found by bounded searches, then the columns fall); checker.py replays a move list and accepts it when it is valid and scores at least as much as orig.cpp."
 }
