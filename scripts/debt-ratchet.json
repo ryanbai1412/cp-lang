@@ -134,9 +134,7 @@
   "codegen_effect_guesses": 0,
   "near_dup_fns": 10,
   "consumer_rederived": 39,
-  "rs_near_cap": [
-    "crates/cpl-interp/src/vm/exec/mod.rs"
-  ],
+  "rs_near_cap": [],
   "skip_lists": 34,
   "dead_code_allows": 0,
   "external_crates": 5,
