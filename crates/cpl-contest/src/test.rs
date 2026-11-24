@@ -57,6 +57,10 @@ options:
                      \"case_count\"}`, each case with its name, verdict (null
                      when unjudged), time_ms, peak_kb, expected, output, why
                      and explained
+  --format teamcity  print one TeamCity service message per case event, as
+                     IntelliJ's test tree and CI servers read them: each case
+                     located at its `.in` file, a wrong answer as an
+                     expected/actual comparison
 ";
 
 /// What happened on one case.
@@ -245,6 +249,76 @@ pub fn results_json(results: &[CaseResult]) -> cpl_json::Value {
     ])
 }
 
+/// One TeamCity service message (`##teamcity[KIND name='value' ...]`) and its newline.
+fn service_message(kind: &str, attrs: &[(&str, &str)]) -> String {
+    let mut out = format!("##teamcity[{kind}");
+    for (key, value) in attrs {
+        let mut escaped = String::new();
+        for c in value.chars() {
+            match c {
+                '|' | '\'' | '[' | ']' => escaped.extend(['|', c]),
+                '\n' => escaped.push_str("|n"),
+                '\r' => escaped.push_str("|r"),
+                '\u{85}' => escaped.push_str("|x"),
+                '\u{2028}' => escaped.push_str("|l"),
+                '\u{2029}' => escaped.push_str("|p"),
+                _ => escaped.push(c),
+            }
+        }
+        out.push_str(&format!(" {key}='{escaped}'"));
+    }
+    out.push_str("]\n");
+    out
+}
+
+/// The results as TeamCity service messages, for IntelliJ's test tree and CI
+/// servers: one test per case located at `DIR/NAME.in`, its output, and a
+/// failure that is an expected/actual comparison when the answer is known.
+pub fn render_teamcity(results: &[CaseResult], dir: &Path) -> String {
+    let dir = std::path::absolute(dir).unwrap_or_else(|_| dir.to_path_buf());
+    let mut out = String::new();
+    for r in results {
+        let name = r.name.as_str();
+        let input = dir.join(format!("{name}.in")).display().to_string();
+        let hint = format!("file://{}", input.replace('\\', "/"));
+        out += &service_message("testStarted", &[("name", name), ("locationHint", &hint)]);
+        if !r.output.is_empty() {
+            out += &service_message("testStdOut", &[("name", name), ("out", &r.output)]);
+        }
+        if let Some(verdict) = r.verdict.as_ref().filter(|_| !r.passed()) {
+            let why = match verdict {
+                Verdict::Wrong(why) | Verdict::RuntimeError(why) => Some(why.as_str()),
+                _ => None,
+            };
+            let message = [Some(verdict.code()), why, r.explained.as_deref()]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+                .join(": ");
+            let mut attrs = vec![("name", name), ("message", message.as_str())];
+            if let (Verdict::Wrong(_), Some(expected)) = (verdict, r.expected.as_deref()) {
+                attrs.extend([
+                    ("type", "comparisonFailure"),
+                    ("expected", expected),
+                    ("actual", &r.output),
+                ]);
+            }
+            out += &service_message("testFailed", &attrs);
+        }
+        let ms = r.elapsed.as_millis().to_string();
+        out += &service_message("testFinished", &[("name", name), ("duration", &ms)]);
+    }
+    out
+}
+
+/// What `cpl test --format` prints.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Report {
+    Text,
+    Json,
+    TeamCity,
+}
+
 /// A problem ready to run: its solution, judge, and limits.
 pub(crate) struct Ready {
     pub solution: Program,
@@ -348,7 +422,7 @@ pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, Stri
 fn run_folder(
     folder: &Path,
     rest: Vec<String>,
-    json: bool,
+    report: Report,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> u8 {
@@ -374,7 +448,20 @@ fn run_folder(
         worst = worst.max(code);
         passed += usize::from(code == 0);
         let out = String::from_utf8_lossy(&out);
-        if json {
+        if report == Report::TeamCity {
+            let suite = source.shown();
+            let _ = write!(
+                stdout,
+                "{}",
+                service_message("testSuiteStarted", &[("name", &suite)])
+            );
+            let _ = write!(stdout, "{out}");
+            let _ = write!(
+                stdout,
+                "{}",
+                service_message("testSuiteFinished", &[("name", &suite)])
+            );
+        } else if report == Report::Json {
             let report = Some(out.trim()).filter(|report| !report.is_empty());
             rows.push(cpl_json::write_with(|w| {
                 w.object().key("path").str(&source.shown());
@@ -386,7 +473,7 @@ fn run_folder(
         }
     }
     let total = sources.len();
-    if json {
+    if report == Report::Json {
         let json = cpl_json::write_with(|w| {
             w.object().key("problems").array();
             for row in &rows {
@@ -396,7 +483,7 @@ fn run_folder(
             w.key("problem_count").int(total).end();
         });
         let _ = writeln!(stdout, "{json}");
-    } else {
+    } else if report == Report::Text {
         let _ = writeln!(stdout, "{passed} of {total} problems pass every case");
     }
     worst
@@ -450,21 +537,26 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         &["--make"],
     )
     .and_then(|args| {
-        let json = match args.value("--format") {
-            None | Some("text") => false,
-            Some("json") => true,
-            Some(other) => return Err(format!("`--format` is text or json, not `{other}`")),
+        let report = match args.value("--format") {
+            None | Some("text") => Report::Text,
+            Some("json") => Report::Json,
+            Some("teamcity") => Report::TeamCity,
+            Some(other) => {
+                return Err(format!(
+                    "`--format` is text, json or teamcity, not `{other}`"
+                ))
+            }
         };
         let file = args.file("test")?.to_string();
-        Ok((args, file, json))
+        Ok((args, file, report))
     });
     if let Ok((args, file, _)) = &parsed {
         if args.has("--make") {
             return make_cases(Path::new(file), args.value("--tests"), stdout, stderr);
         }
     }
-    let (args, source, json) = match parsed {
-        Ok((args, file, json)) if Path::new(&file).is_dir() => {
+    let (args, source, report) = match parsed {
+        Ok((args, file, report)) if Path::new(&file).is_dir() => {
             if args.value("--case").is_some() || args.value("--add").is_some() {
                 let message =
                     "`--case` and `--add` pick one problem: name its file, not the folder";
@@ -474,17 +566,21 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             return run_folder(
                 Path::new(&file),
                 args_without(raw.to_vec(), &file),
-                json,
+                report,
                 stdout,
                 stderr,
             );
         }
-        Ok((args, file, json)) => (args, source_path(&file), json),
+        Ok((args, file, report)) => (args, source_path(&file), report),
         Err(message) => {
             let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
             return 2;
         }
     };
+    let dir = args
+        .value("--tests")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| find_tests_dir(&source));
     let result = std::fs::read_to_string(&source)
         .map_err(|e| format!("can't read {}: {e}", source.display()))
         .and_then(|src| {
@@ -493,10 +589,6 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                     crate::package::make(package, &crate::package::cases_dir(package))?;
                 }
             }
-            let dir = args
-                .value("--tests")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| find_tests_dir(&source));
             let mut only = args.value("--case").map(str::to_string);
             if let Some(from) = args.value("--add") {
                 let name = add_case(&dir, from, args.value("--expect"))?;
@@ -538,10 +630,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         });
     match result {
         Ok(results) => {
-            if json {
-                let _ = writeln!(stdout, "{}", render_json(&results));
-            } else {
-                let _ = write!(stdout, "{}", render(&results));
+            match report {
+                Report::Text => _ = write!(stdout, "{}", render(&results)),
+                Report::Json => _ = writeln!(stdout, "{}", render_json(&results)),
+                Report::TeamCity => _ = write!(stdout, "{}", render_teamcity(&results, &dir)),
             }
             results.iter().any(|r| !r.passed()) as u8
         }

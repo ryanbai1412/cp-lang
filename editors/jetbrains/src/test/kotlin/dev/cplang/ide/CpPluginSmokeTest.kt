@@ -105,6 +105,7 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         assertEquals(report, 1, File(dir, "k.tests").listFiles { f -> f.name.endsWith(".in") }.orEmpty().size)
         val (failed, rerun) = run("test")
         assertTrue(rerun, failed != 0)
+        assertTrue(rerun, rerun.contains("##teamcity[testFailed name='"))
         source.writeText(planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:"))
         val (passed, fixed) = run("test")
         assertEquals(fixed, 0, passed)

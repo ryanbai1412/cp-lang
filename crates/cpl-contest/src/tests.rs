@@ -423,6 +423,50 @@ fn the_test_command_judges_with_a_checker_or_an_interactor() {
         wrong[0].at(&["expected"]).as_str().is_some() && wrong[0].at(&["why"]).as_str().is_some(),
         "{out}"
     );
+    let (code, out, _) = cli(
+        test::run,
+        &[path, "--fast", &solution, "--format", "teamcity"],
+    );
+    assert_eq!(code, 1);
+    let lines: Vec<&str> = out.lines().collect();
+    assert!(
+        lines
+            .iter()
+            .all(|l| l.starts_with("##teamcity[") && l.ends_with(']')),
+        "{out}"
+    );
+    let tests_dir = std::path::absolute(dir.join("d.tests")).unwrap();
+    let started = format!("locationHint='file://{}/", tests_dir.display());
+    assert_eq!(
+        lines
+            .iter()
+            .filter(|l| l.starts_with("##teamcity[testStarted") && l.contains(&started))
+            .count(),
+        3,
+        "{out}"
+    );
+    assert_eq!(
+        lines
+            .iter()
+            .filter(|l| l.starts_with("##teamcity[testFinished"))
+            .count(),
+        3,
+        "{out}"
+    );
+    let failed: Vec<_> = lines
+        .iter()
+        .filter(|l| l.starts_with("##teamcity[testFailed"))
+        .collect();
+    assert_eq!(failed.len(), 1, "{out}");
+    assert!(
+        failed[0].contains(" message='WA: ")
+            && failed[0].contains(" type='comparisonFailure' expected='"),
+        "{out}"
+    );
+    assert!(
+        out.contains("|n"),
+        "a newline in an output is escaped: {out}"
+    );
     let (code, _, err) = cli(test::run, &[path, "--format", "xml"]);
     assert_eq!(code, 2);
     assert!(err.contains("not `xml`"), "{err}");

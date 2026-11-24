@@ -128,6 +128,11 @@ per choice it explains.
 `spec/lib/inventory.md` gives it elsewhere (empty outside std).
 `cpl test --format json` prints `{"passed_count", "case_count", "cases": [{"name",
 "verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
+`cpl test --format teamcity` prints TeamCity service messages (`##teamcity[...]`),
+as IntelliJ's test tree and CI servers read them: per case `testStarted` (its
+`locationHint` the absolute `file://` URL of `NAME.in`), `testStdOut`, `testFailed`
+when it fails (a wrong answer with a known answer as a `comparisonFailure` with
+`expected` and `actual`) and `testFinished`; a folder wraps each problem in a suite.
 `cpl stress --format json` prints `{"status", "build"?, "case_count", "saved_count"?,
 "tried"?, "counterexample"?}`: the toolchain that built the solution (`build`, when the
 CLI built one), how many cases ran (`case_count`), then `saved_count` and
