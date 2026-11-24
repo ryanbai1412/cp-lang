@@ -1297,6 +1297,54 @@ assert d.diff(V(0), V(2)) == before
 """
 out = "0:0 0:6 0:5 3:0"
 
+[case."Show/MergeSeg/show"]
+rule = "std.segtree MergeSeg prints its root node in the pool, #0 for the empty set"
+code = """
+use std.segtree.{MergeSeg, MergeSegs}
+domain D = 0..8
+var q = MergeSegs<D>()
+let s = q.singleton(D(2))
+print(MergeSeg<D>(), s)
+"""
+out = "#0 #4"
+
+[case."Show/MergeSegs/show"]
+rule = "std.segtree MergeSegs prints its node count, past the shared empty node"
+code = """
+use std.segtree.{MergeSegs}
+domain D = 0..8
+var q = MergeSegs<D>()
+print(q)
+let s = q.singleton(D(2))
+print(q)
+"""
+out = "0 nodes\n4 nodes"
+
+[case."Show/MergeTree/show"]
+rule = "std.segtree MergeTree prints its root node in the pool, #0 for the all-zero tree"
+code = """
+use std.segtree.{MergeTree, MergeTrees}
+domain D = 0..8
+var p = MergeTrees<D, Int>()
+var t = MergeTree<D>()
+print(t)
+p.set(mut t, D(3), 5)
+print(t)
+"""
+out = "#0\n#1"
+
+[case."Show/MergeTrees/show"]
+rule = "std.segtree MergeTrees prints its node count, past the shared empty node"
+code = """
+use std.segtree.{MergeTree, MergeTrees}
+domain D = 0..8
+var p = MergeTrees<D, Int>()
+var t = MergeTree<D>()
+p.set(mut t, D(3), 5)
+print(p)
+"""
+out = "4 nodes"
+
 [case."Show/Dsu/show"]
 rule = "std.dsu Dsu prints each vertex's root in V order, without compressing paths"
 code = """
