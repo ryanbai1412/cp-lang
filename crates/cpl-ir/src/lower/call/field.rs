@@ -956,11 +956,6 @@ impl<'a> Lowerer<'a> {
                 });
                 self.mk_builtin(op, [value], ty, span)
             }
-            (Ty::Opt(_), "is_some") => self.mk_is_some(value, Ty::Bool, span),
-            (Ty::Opt(_), "is_none") => {
-                let some = self.mk_is_some(value, Ty::Bool, span);
-                self.mk_unary(UnOp::Not, some, Ty::Bool, span)
-            }
             // Default `Target::to` trait getter on plain values (e.g. vertices yielded by `u => adj[u]`).
             (_, "to") => value,
             // `Hashable::hash_token` of a position, until a blanket domain impl's getter reaches it.
@@ -1184,6 +1179,15 @@ impl<'a> Lowerer<'a> {
         if let Some(mark) = recv_mark {
             self.cx.pending.truncate(mark);
         }
+        if let Some(some) = self.opt_test(sym) {
+            let value = self.expr(base, None);
+            let test = self.mk_is_some(value, Ty::Bool, span);
+            return Some(if some {
+                test
+            } else {
+                self.mk_unary(UnOp::Not, test, Ty::Bool, span)
+            });
+        }
         let mut all_args = Vec::with_capacity(args.len() + 1);
         all_args.push(ast::Arg {
             name: None,
@@ -1199,6 +1203,27 @@ impl<'a> Lowerer<'a> {
             }
             _ => None,
         }
+    }
+
+    /// Whether `sym` is std's `is_some` (`Some(true)`) or `is_none`
+    /// (`Some(false)`) of an optional: a has-value test in place, not a call.
+    fn opt_test(&self, sym: Sym) -> Option<bool> {
+        let Sym::GenFn(id) = sym else {
+            return None;
+        };
+        let decl = self.gen_fns[id].decl;
+        let some = match decl.name.text.as_str() {
+            "is_some" => true,
+            "is_none" => false,
+            _ => return None,
+        };
+        let on_optional = (decl.params.first()).is_some_and(
+            |p| matches!(&p.ty, Some(t) if matches!(t.kind, ast::TypeKind::Optional(_))),
+        );
+        let at = self.gen_fns[id].mod_id;
+        let in_std = (self.mods.iter().flat_map(|a| a.modules()))
+            .any(|m| m.name.starts_with("std.") && self.path_to_mod.get(&m.path) == Some(&at));
+        (on_optional && in_std).then_some(some)
     }
     /// `xs.items` in a `for` or a comprehension: the loop counts through the indices and reads
     /// each element in place, so no list of pairs is built.

@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"x":{"name":"x","type":"?Int","kind":"scalar"},"y":{"name":"y","type":"?Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let n: Int = read()","stage":"main","values":{"stdout":[],"n":3},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"let x: ?Int = if n > 0: Some(n) else: None","stage":"main","values":{"stdout":[],"n":3,"x":3},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"let y: ?Int = None","stage":"main","values":{"stdout":[],"n":3,"x":3,"y":null},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"print → YES NO NO YES","stage":"main","values":{"stdout":["YES NO NO YES"],"n":3,"x":3,"y":null},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
+{"id":4,"line":6,"label":"print → YES YES","stage":"main","values":{"stdout":["YES NO NO YES","YES YES"],"n":3,"x":3,"y":null},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":6}]},
+{"id":5,"line":6,"label":"the program ended","stage":"main","values":{"stdout":["YES NO NO YES","YES YES"],"n":3,"x":3,"y":null},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":6}]}]}}}
+stderr:
