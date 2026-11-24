@@ -244,17 +244,16 @@ fn claims() -> Vec<String> {
 fn allocations(prog: &cpl_ir::Program, m: usize) -> usize {
     let mut out = Vec::with_capacity(64);
     let input = format!("{m}\n");
-    let before = counting::usage().1;
-    cpl_interp::run_on_this_thread(
-        prog,
-        input.as_bytes(),
-        &mut out,
-        cpl_interp::Limits {
-            stack_bytes: 1 << 20,
-        },
-    )
-    .expect("the check runs");
-    counting::usage().1 - before
+    let (observed, usage) = counting::measure(|here| {
+        here.observe(
+            prog,
+            cpl_interp::Io::fixed(input.as_bytes()),
+            &mut out,
+            None,
+        )
+    });
+    assert!(observed.trap.is_none(), "the check runs");
+    usage.calls
 }
 
 #[test]

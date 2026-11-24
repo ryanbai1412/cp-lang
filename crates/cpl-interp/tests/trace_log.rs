@@ -430,18 +430,11 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             );
         });
         out.clear();
-        let before = counting::usage().0;
-        let observed = cpl_interp::observe_on_this_thread(
-            &program,
-            cpl_interp::Io::fixed(b""),
-            &mut out,
-            cpl_interp::Limits {
-                stack_bytes: 1 << 20,
-            },
-            Some(config),
-        );
+        let (observed, usage) = counting::measure(|here| {
+            here.observe(&program, cpl_interp::Io::fixed(b""), &mut out, Some(config))
+        });
         let rec = observed.recording.unwrap();
-        let held = counting::usage().0 - before;
+        let held = usage.held;
         let mut back = std::time::Duration::ZERO;
         for k in [
             rec.len() - 1,

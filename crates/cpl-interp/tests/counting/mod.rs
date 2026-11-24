@@ -1,8 +1,8 @@
 //! The test binary's allocator, counting what each thread hands out, so a
 //! test measures what a run really allocates rather than what it estimates.
-//! The counts are per thread: a test measures a run it makes on its own
-//! thread (`*_on_this_thread`), and a test running beside it cannot move
-//! them.
+//! The counts are per thread, so a test running beside it cannot move them,
+//! and a run on another thread is not counted: `measure` is the only way to
+//! read them, and its closure runs programs only through `OnThisThread`.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
@@ -46,8 +46,76 @@ static COUNTING: Counting = Counting;
 
 /// The bytes this thread has in use now, and how many allocations (and
 /// reallocations) it made so far.
-pub fn usage() -> (isize, usize) {
+fn usage() -> (isize, usize) {
     (IN_USE.with(Cell::get), CALLS.with(Cell::get))
+}
+
+/// What a measured closure allocated on this thread.
+pub struct Usage {
+    /// Bytes still in use when it returned.
+    pub held: isize,
+    /// Allocations and reallocations it made.
+    pub calls: usize,
+}
+
+/// Runs programs on the measuring thread, the only thread `measure` counts.
+pub struct OnThisThread {
+    ran: Cell<bool>,
+}
+
+impl OnThisThread {
+    pub fn observe(
+        &self,
+        program: &cpl_ir::Program,
+        io: cpl_interp::Io,
+        output: &mut (dyn std::io::Write + Send),
+        trace: Option<cpl_interp::trace::TraceConfig>,
+    ) -> cpl_interp::Observed {
+        self.ran.set(true);
+        let limits = cpl_interp::Limits {
+            stack_bytes: 1 << 20,
+        };
+        cpl_interp::observe_on_this_thread(program, io, output, limits, trace)
+    }
+}
+
+/// What `run` allocates on this thread. It fails unless `run` ran a program
+/// through `OnThisThread`: a run on another thread would count nothing.
+pub fn measure<T>(run: impl FnOnce(&OnThisThread) -> T) -> (T, Usage) {
+    let here = OnThisThread {
+        ran: Cell::new(false),
+    };
+    let (held, calls) = usage();
+    let value = run(&here);
+    let (now_held, now_calls) = usage();
+    assert!(
+        here.ran.get(),
+        "measure: no program ran on this thread, and a run on another thread is not counted"
+    );
+    let usage = Usage {
+        held: now_held - held,
+        calls: now_calls - calls,
+    };
+    (value, usage)
+}
+
+/// A run measures what it allocated on this thread.
+#[test]
+fn measure_counts_a_run_on_this_thread() {
+    let program = crate::common::program("let v = [i for i in 0..1000]\nprint(v[999])");
+    let mut out = Vec::new();
+    let (observed, usage) =
+        measure(|here| here.observe(&program, cpl_interp::Io::fixed(b""), &mut out, None));
+    assert!(observed.trap.is_none());
+    assert_eq!(out, b"999\n");
+    assert!(usage.calls > 0 && usage.held < 1 << 20);
+}
+
+/// A closure whose work runs on another thread fails instead of counting 0.
+#[test]
+#[should_panic(expected = "no program ran on this thread")]
+fn measure_fails_a_run_on_another_thread() {
+    let _ = measure(|_| std::thread::scope(|s| s.spawn(|| vec![0u8; 1000].len()).join()));
 }
 
 /// What `Counting` hands back holds what was written through every grow,
