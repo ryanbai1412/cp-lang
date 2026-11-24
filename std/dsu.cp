@@ -181,29 +181,44 @@ pub struct Dsu<V>:
 /// Union-find where every set carries a value of type `T`. When two sets merge, the
 /// merged set gets `join(value of a's set, value of b's set)` for `unite(a, b)`, whichever
 /// root is kept, so a directional join like `(_, b) => b` means "b's value wins".
-/// Costs are those of `Dsu`, plus one `join` per merge; memory is three `[V]` arrays.
+/// Costs are those of `Dsu`, plus one `join` per merge; memory is `Dsu`'s one `[V]` array
+/// plus the values.
 ///
 /// `mark` and `undo_to` step back in time like `Dsu`'s, and restore the values too: every
 /// merge and every `set` since the mark is undone, \(O(1)\) each.
 pub struct DsuOf<V, T>:
-    @cache up: [V]V
-    sz: [V]1..=V.count
+    /// As `Dsu.p`: a root holds minus its set's size, any other position its parent.
+    @cache p: List<-2_147_483_648..=2_147_483_647>
     val: [V]T
     join: (T, T) -> T
-    parts: 0..=2_000_000_000
+    parts: Int
     /// Since the first `mark`, one entry per change: the root that went under another (the
     /// root itself for a `set`), the root whose value changed, and that value before.
     pub log: List<(V, V, T)>
+    /// The old `p` of each root that went under another, one per merge in `log`.
+    gone: List<-2_147_483_648..=2_147_483_647>
     marked: Bool
 
     /// A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and
     /// `join` combining the values of two sets when they merge.
     ///
-    /// cost: \(O(n)\) calls of `init`; three `[V]` arrays
+    /// cost: \(O(n)\) calls of `init`; two `[V]` arrays
     /// traps: never
     /// example: `let d = DsuOf<0..3, Int>(init: v => v + 1, join: (x, y) => x + y); d.get(2) == 3`
     pub fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T> =
-        DsuOf([V] v => v, [V] _ => 1, [V] v => init(v), join, V.count, [], false)
+        DsuOf(List.filled(V.count, -1), [V] v => init(v), join, V.count, [], [], false)
+
+    fn find_root(self, v: V) -> V:
+        var x = v.ord
+        unchecked:
+            if marked:
+                while p[x] >= 0: x = p[x]
+            else:
+                while p[x] >= 0:
+                    let par = p[x]
+                    if p[par] >= 0: p[x] = p[par]
+                    x = par
+            return V.nth(x)
 
     /// The representative of `v`'s set, as for [`Dsu.find`](Dsu.find). Halves paths through
     /// `@cache` until the first `mark`.
@@ -214,13 +229,7 @@ pub struct DsuOf<V, T>:
     /// ties: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(1, 2); d.unite(0, 1); d.find(2) == 1 and d.find(0) == 1`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(1, 2); d.find(2) == 1`
-    pub fn find(self, v: V) -> V:
-        var x = v
-        while up[x] != x:
-            let par = up[x]
-            if not marked: up[x] = up[par]
-            x = par
-        x
+    pub fn find(self, v: V) -> V = self.find_root(v)
 
     /// The value of `v`'s set.
     ///
@@ -228,7 +237,7 @@ pub struct DsuOf<V, T>:
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v + 1, join: (x, y) => x + y); d.unite(0, 2); d.get(2) == 4 and d.get(1) == 2`
     pub fn get(self, v: V) -> T:
-        let r = self.find(v)
+        let r = self.find_root(v)
         val[r]
 
     /// Replaces the value of `v`'s whole set with `x`.
@@ -237,7 +246,7 @@ pub struct DsuOf<V, T>:
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 1); d.set(1, 7); d.get(0) == 7`
     pub fn set(mut self, v: V, x: T):
-        let r = self.find(v)
+        let r = self.find_root(v)
         if marked: log.push((r, r, val[r]))
         val[r] = x
 
@@ -251,18 +260,7 @@ pub struct DsuOf<V, T>:
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (_, y) => y); d.unite(2, 0); d.get(2) == 0`
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 1); not d.unite(1, 0) and d.get(0) == 1`
-    pub fn unite(mut self, a: V, b: V) -> Bool:
-        let ra = self.find(a)
-        let rb = self.find(b)
-        if ra == rb: return false
-        let joined = join(val[ra], val[rb])
-        let (x, y) = if sz[ra] >= sz[rb]: (ra, rb) else: (rb, ra)
-        if marked: log.push((y, x, val[x]))
-        up[y] = x
-        sz[x] += sz[y]
-        val[x] = joined
-        parts -= 1
-        true
+    pub fn unite(mut self, a: V, b: V) -> Bool = self.merge(a, b) != None
 
     /// As [`unite`](DsuOf.unite), but says which root stayed and which went under it. `None` if
     /// `a` and `b` were already one set.
@@ -271,11 +269,21 @@ pub struct DsuOf<V, T>:
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.merge(2, 1) == Some((kept: 2, merged: 1))`
     pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
-        let ra = self.find(a)
-        let rb = self.find(b)
+        let ra = self.find_root(a)
+        let rb = self.find_root(b)
         if ra == rb: return None
-        let (x, y) = if sz[ra] >= sz[rb]: (ra, rb) else: (rb, ra)
-        self.unite(ra, rb)
+        let joined = join(val[ra], val[rb])
+        var (x, y) = (ra, rb)
+        unchecked:
+            if p[x.ord] > p[y.ord]: swap(mut x, mut y)
+            let neg_sy = p[y.ord]
+            p[x.ord] += neg_sy
+            p[y.ord] = x.ord
+            parts -= 1
+            if marked:
+                log.push((y, x, val[x]))
+                gone.push(neg_sy)
+        val[x] = joined
         Some((kept: x, merged: y))
 
     /// Whether `a` and `b` are in the same set.
@@ -283,7 +291,7 @@ pub struct DsuOf<V, T>:
     /// cost: \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 2); d.same(0, 2) and not d.same(1, 2)`
-    pub fn same(self, a: V, b: V) -> Bool = self.find(a) == self.find(b)
+    pub fn same(self, a: V, b: V) -> Bool = self.find_root(a) == self.find_root(b)
 
     /// The number of positions in `v`'s set, `v` included.
     ///
@@ -291,8 +299,9 @@ pub struct DsuOf<V, T>:
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 2); d.size(0) == 2`
     pub fn size(mut self, v: V) -> Int:
-        let r = self.find(v)
-        sz[r]
+        let r = self.find_root(v)
+        unchecked:
+            return -p[r.ord]
 
     /// The number of sets.
     ///
@@ -310,7 +319,8 @@ pub struct DsuOf<V, T>:
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(2, 0); d.roots().collect() == [1, 2]`
     pub fn roots(self) -> yields V:
         for v in V:
-            if up[v] == v: yield v
+            unchecked:
+                if p[v.ord] < 0: yield v
 
     /// The value of each set, once each, lazily: one per root, in the order of
     /// [`roots`](DsuOf.roots). \(O(1)\) to make.
@@ -322,7 +332,8 @@ pub struct DsuOf<V, T>:
     /// example: `var d = DsuOf<0..3, Int>(init: v => v + 1, join: (x, y) => x + y); d.unite(2, 0); d.values.collect() == [2, 4]`
     @get pub fn values(self) -> yields T:
         for v in V:
-            if up[v] == v: yield val[v]
+            unchecked:
+                if p[v.ord] < 0: yield val[v]
 
     /// The present, to return to with [`undo_to`](DsuOf.undo_to). The first call switches path
     /// shortening off for good.
@@ -345,8 +356,10 @@ pub struct DsuOf<V, T>:
         while log.len > snap.at:
             let (y, x, old) = log.pop()!
             if y != x:
-                sz[x] -= sz[y]
-                up[y] = y
+                let neg_sy = gone.pop()!
+                unchecked:
+                    p[x.ord] -= neg_sy
+                    p[y.ord] = neg_sy
                 parts += 1
             val[x] = old
 
@@ -1089,10 +1102,10 @@ impl Show for DsuOf<V, T>:
     fn show(d):
         var out = ""
         for v in V:
-            var x = v
-            while d.up[x] != x: x = d.up[x]
+            var x = v.ord
+            while d.p[x] >= 0: x = d.p[x]
             if not out.is_empty: out += " "
-            out += "{x}"
+            out += "{V.nth(x)}"
         out
 
 @test

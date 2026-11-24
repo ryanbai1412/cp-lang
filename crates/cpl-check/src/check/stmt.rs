@@ -95,12 +95,10 @@ impl<'a> Checker<'a> {
             return;
         }
         let shown = self.quote(expr.span);
-        let message = format!(
-            "`{shown}` returns {}, and it is dropped",
-            ret.with_article()
-        );
         self.sink.push(
-            Diagnostic::warning(codes::UNUSED_VALUE, expr.span, message).with_help(format!(
+            cpl_diag::msgs::check::RESULT_DROPPED
+                .warning(expr.span, &[&shown, &ret.with_article()])
+                .with_help(format!(
                 "use it (`let r = {shown}`), or mark `{name}` `@droppable` if its result is optional"
             )),
         );
@@ -217,6 +215,12 @@ impl<'a> Checker<'a> {
     }
 
     fn array_fills(&mut self, declared: &Ty, init_ty: &Ty, init: &Expr) -> bool {
+        // `read()` reads the whole array, not one cell.
+        if let ExprKind::Call { callee, args } = &init.kind {
+            if args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if n == "read") {
+                return false;
+            }
+        }
         match (declared, init_ty) {
             (Ty::Array { index, elem }, Ty::Named { name, args })
                 if name == "List" && args.len() == 1 =>
@@ -437,6 +441,18 @@ impl<'a> Checker<'a> {
                 }
             }
             PatternKind::Variant { path, args } => {
+                if let Some(name) = path.last() {
+                    if let Some(def) = self.global(&name.text) {
+                        self.hovers.push(HoverEntry {
+                            span: name.span,
+                            name: name.text.clone(),
+                            ty: def.value_ty(&name.text),
+                            keyword: "global",
+                            decl: None,
+                            owner: None,
+                        });
+                    }
+                }
                 let fields = self.variant_payload(path, ty);
                 for (i, arg) in args.iter().enumerate() {
                     let ty = fields.get(i).cloned().unwrap_or(Ty::Unknown);
@@ -538,10 +554,10 @@ impl<'a> Checker<'a> {
                                 if let cpl_syntax::ast::StrPiece::Text(text) = piece {
                                     if let Some(bad) = text.chars().find(|c| !alphabet.contains(*c))
                                     {
-                                        self.error(
-                                            codes::RANGE_STORE_CONST,
+                                        self.report(
+                                            &cpl_diag::msgs::check::NOT_IN_STR_OF,
                                             init_expr.span,
-                                            format!("`{bad}` is not in `Str of \"{alphabet}\"`"),
+                                            &[&bad, &alphabet],
                                         );
                                         break;
                                     }
@@ -746,6 +762,12 @@ impl<'a> Checker<'a> {
                     }
                     _ => false,
                 };
+                // `var adj: [V]List<V> = []`: the `[]` is one cell.
+                if let (true, Some(Ty::Array { elem, .. }), Some(init)) = (fills, &declared, init) {
+                    if matches!(&init.kind, ExprKind::List(items) if items.is_empty()) {
+                        self.note_read(init, elem);
+                    }
+                }
                 let view = match (&declared, init) {
                     (Some(Ty::Named { name, .. }), Some(init)) if name == "List" => {
                         self.view_kind(init)
@@ -1116,7 +1138,9 @@ impl<'a> Checker<'a> {
                 }
                 self.type_hover(name);
                 self.owned(&name.text, &body.stmts);
+                self.own_fns_scope(&name.text, &body.stmts);
                 self.methods(&body.stmts, &self_ty);
+                self.pop_scope();
                 self.param_bounds.truncate(outer_bounds);
                 self.leave_body(scope);
             }
@@ -1216,13 +1240,9 @@ impl<'a> Checker<'a> {
                                         if cached_fields.iter().any(|c| c == &field.text)
                                 );
                                 if is_cached {
-                                    self.sink.push(Diagnostic::warning(
-                                        codes::CACHE_FIELD_WRITTEN_OUTSIDE,
+                                    self.sink.push(cpl_diag::msgs::check::CACHE_FIELD_WRITTEN.warning(
                                         target.span,
-                                        format!(
-                                            "`{}.{}` is a `@cache` field and should only be written inside `{sname}`",
-                                            sname, field.text
-                                        ),
+                                        &[&sname, &field.text, &sname],
                                     ).with_help(format!(
                                         "`{sname}`'s methods keep a `@cache` field in step with the fields it derives from; \
                                          write it from one of them, or drop `@cache` if it is plain state"
@@ -1404,6 +1424,7 @@ impl<'a> Checker<'a> {
                 self.branch -= 1;
                 let mark = self.lend_mark();
                 self.add_cond_facts(cond, false);
+                self.begin_cond_hold(cond, body);
                 let before = self.moved.clone();
                 self.block(body);
                 self.lend_reset(mark);

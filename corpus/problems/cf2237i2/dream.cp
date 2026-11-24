@@ -1,6 +1,6 @@
 // Codeforces 2237 I2: Tree DP over a rooted tree with edge labels '0', '1', '?'.
-// At each vertex u, `dp[u]` counts valid labellings keyed by
-// `State(depth, active, resolved)`:
+// At each vertex u, `dp[u]` counts valid labellings per
+// `State(depth, active, resolved)`, packed densely at `slot(state)`:
 //   - `depth`: max 1-edge depth among processed children,
 //   - `active` in {Off, On, Deferred}: whether an open 0-chain reaches u;
 //     `Deferred` carries the inclusion-exclusion state for an open chain whose
@@ -33,6 +33,20 @@ enum Active: Off | On | Deferred
 
 struct State(depth: Int, active: Active, resolved: Bool)
 
+fn slot(s: State) -> Int:
+    let a = match s.active:
+        Active.Off => 0
+        Active.On => 1
+        Active.Deferred => 2
+    6 * s.depth + 2 * a + (if s.resolved: 1 else: 0)
+
+fn state_at(i: Int) -> State:
+    let a = match i % 6 / 2:
+        0 => Active.Off
+        1 => Active.On
+        _ => Active.Deferred
+    State(i / 6, a, i % 2 == 1)
+
 fn parse_label(ch: Char) -> Label = match ch:
     '0' => Label.Zero
     '1' => Label.One
@@ -44,14 +58,13 @@ fn lift(child: State, edge: Edge) -> State:
     else:
         State(child.depth + if edge == Edge.One: 1 else: 0, child.active, child.resolved)
 
-fn merge_edge(parent: State, child: State, lbl: Label, edge: Edge, mut out: List<(State, Int)>):
+fn merge_edge(parent: State, child: State, lbl: Label, edge: Edge, w: Z, mut next: List<Z>):
     let lifted = lift(child, edge)
     let one_active = parent.active == Active.Off or lifted.active == Active.Off
     let one_resolved = not (parent.resolved and lifted.resolved)
     let edge_ok = parent.active == Active.Off or edge == Edge.One
-    let resolved_deepest = (
-        not lifted.resolved or parent.depth <= lifted.depth
-    ) and (not parent.resolved or parent.depth > lifted.depth)
+    let resolved_deepest = (not lifted.resolved or parent.depth <= lifted.depth) and
+        (not parent.resolved or parent.depth > lifted.depth)
     let active_clean = lifted.active == Active.Off or parent.depth == 0
     if not (one_active and one_resolved and edge_ok and resolved_deepest and active_clean):
         return
@@ -61,27 +74,25 @@ fn merge_edge(parent: State, child: State, lbl: Label, edge: Edge, mut out: List
         (Active.Deferred, Active.Deferred) => return
         (_, Active.Deferred) =>
             if lbl == Label.Zero:
-                out.push((State(nd, Active.Deferred, nr), 1))
+                next[slot(State(nd, Active.Deferred, nr))] += w
         (Active.Deferred, _) =>
             if lbl == Label.One:
-                out.push((State(nd, Active.On, nr), 1))
+                next[slot(State(nd, Active.On, nr))] += w
             elif lbl == Label.Any and edge == Edge.One:
-                out.push((State(nd, Active.Deferred, nr), 1))
+                next[slot(State(nd, Active.Deferred, nr))] += w
         _ =>
             let na = if parent.active != Active.Off or lifted.active != Active.Off: Active.On else: Active.Off
-            out.push((State(nd, na, nr), 1))
+            next[slot(State(nd, na, nr))] += w
             if parent.active == Active.Off and edge == Edge.One and parent.depth == 0:
-                out.push((State(nd, Active.On, nr), -1))
+                next[slot(State(nd, Active.On, nr))] -= w
 
-fn merge(parent: State, child: State, lbl: Label) -> List<(State, Int)>:
-    var out: List<(State, Int)> = []
+fn merge(parent: State, child: State, lbl: Label, w: Z, mut next: List<Z>):
     match lbl:
-        Label.Zero => merge_edge(parent, child, lbl, Edge.Zero, mut out)
-        Label.One => merge_edge(parent, child, lbl, Edge.One, mut out)
+        Label.Zero => merge_edge(parent, child, lbl, Edge.Zero, w, mut next)
+        Label.One => merge_edge(parent, child, lbl, Edge.One, w, mut next)
         Label.Any =>
-            merge_edge(parent, child, lbl, Edge.Zero, mut out)
-            merge_edge(parent, child, lbl, Edge.One, mut out)
-    out
+            merge_edge(parent, child, lbl, Edge.Zero, w, mut next)
+            merge_edge(parent, child, lbl, Edge.One, w, mut next)
 
 @!multitest
 let n: 2..=3000 = read()
@@ -98,20 +109,22 @@ for u in V:
         par[c] = u
 let t = Rooted.from_parents(par)
 
-var dp: [V]Map<State, Z> = [V] _ => Map<State, Z>()
+// A merge deepens the child by at most one edge, so `next` needs one depth (6 slots) more.
+var dp: [V]List<Z> = [V] _ => []
 for p in t.Pre.rev:
     let u = t.at[p]
-    var cur: Map<State, Z> = Map()
-    cur[State(0, Active.Off, false)] = Z(1)
-    cur[State(0, Active.Deferred, false)] = Z(1)
+    var cur = List.filled(6, Z(0))
+    cur[slot(State(0, Active.Off, false))] = Z(1)
+    cur[slot(State(0, Active.Deferred, false))] = Z(1)
     for c in kids[u]:
-        var next: Map<State, Z> = Map()
-        for (parent, w0) in cur.items:
-            for (child, w1) in dp[c].items:
-                for (s, sign) in merge(parent, child, label[c]):
-                    next[s] = (next.get(s) ?? Z(0)) + sign * w0 * w1
+        var next = List.filled(max(cur.len, dp[c].len + 6), Z(0))
+        for i in 0..cur.len if cur[i] != Z(0):
+            for j in 0..dp[c].len if dp[c][j] != Z(0):
+                merge(state_at(i), state_at(j), label[c], cur[i] * dp[c][j], mut next)
+        dp[c] = []
         cur = next
     dp[u] = cur
 
 // Exclude Active.Deferred at the root: no parent edge exists to close it.
-print([w for (s, w) in dp[V.first!].items if s.active != Active.Deferred].sum())
+let root = dp[V.first!]
+print(sum(root[i] for i in 0..root.len if state_at(i).active != Active.Deferred))

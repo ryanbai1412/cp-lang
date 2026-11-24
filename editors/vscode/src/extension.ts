@@ -5,7 +5,6 @@ import { missingCpl } from './cpl';
 import { LensProvider } from './lenses';
 import { Overlays } from './overlays';
 import { Runner } from './runner';
-import { Sample } from './samples';
 import { TestPanel } from './testPanel';
 import { TraceView } from './traceView';
 
@@ -35,9 +34,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
         lenses,
         tests,
         vscode.languages.registerCodeLensProvider(SELECTOR, lenses),
-        command('cp.runSample', (uri?: vscode.Uri, sample?: Sample) => runner.runSample(uri, sample)),
+        command('cp.runSample', (uri?: vscode.Uri, name?: string) => runner.runSample(uri, name)),
         command('cp.runAllSamples', (uri?: vscode.Uri) => runner.runAllSamples(uri)),
-        command('cp.stress', (uri?: vscode.Uri, part?: string) => runner.stress(uri, part)),
+        command('cp.stress', (uri?: vscode.Uri) => runner.stress(uri)),
         command('cp.submit', (uri?: vscode.Uri) => runner.submit(uri)),
         command('cp.addTest', (uri?: vscode.Uri, input?: string, expected?: string) => runner.addTest(uri, input, expected)),
         command('cp.importProblem', (folder?: string) => {
@@ -50,7 +49,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
             }
             runner.listen(target);
         }),
-        command('cp.trace', (uri?: vscode.Uri, sample?: Sample, part?: string) => runner.trace(uri, sample, part)),
+        command('cp.trace', (uri?: vscode.Uri, input?: string, part?: string) => runner.trace(uri, input, part)),
         command('cp.debug', async (uri?: vscode.Uri) => {
             const target = uri ?? vscode.window.activeTextEditor?.document.uri;
             if (!target) {
@@ -100,19 +99,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
                 void vscode.window.showErrorMessage(`Replay: ${error instanceof Error ? error.message : String(error)}`);
             }
         }),
-        // The server's lenses name `cpl` arguments; run them in a terminal.
-        command('cpl.exec', (...args: string[]) => {
-            const binary = serverBinary();
-            if (binary) {
-                vscode.window.createTerminal({ name: 'cpl', shellPath: binary, shellArgs: args }).show();
-            }
-        }),
+        command('cpl.exec', (...args: string[]) => runner.exec(args)),
         command('cp.restartServer', () => client.restart()),
         command('cp.showOutput', () => output.show()),
         command('cp.clearOverlays', () => {
             const uri = vscode.window.activeTextEditor?.document.uri;
             if (uri) {
-                overlays.clear(uri);
+                overlays.show(uri, undefined);
             }
         }),
         command('cp.toggleLiveValues', async () => {
@@ -126,7 +119,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
             if (enabled) {
                 await runner.refreshLiveValues(document);
             } else {
-                overlays.clear(document.uri);
+                overlays.show(document.uri, undefined);
             }
         }),
         vscode.workspace.onDidSaveTextDocument(document => {

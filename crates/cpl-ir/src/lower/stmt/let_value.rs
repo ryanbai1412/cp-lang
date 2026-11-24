@@ -395,11 +395,7 @@ impl<'a> Lowerer<'a> {
                     return Some(self.do_expr(Some(&want.clone()), at, |lw, out| {
                         for (len, count) in unknown {
                             let count = lw.int_lit(count as i64, at);
-                            let wrong = lw.mk(
-                                ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(count)),
-                                Ty::Bool,
-                                at,
-                            );
+                            let wrong = lw.mk_cmp(CmpOp::Ne, len, count, Ty::Bool, at);
                             let trap = Stmt::Trap(
                                 "an array literal needs one value per position".to_string(),
                                 lw.span(at),

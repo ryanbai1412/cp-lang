@@ -54,6 +54,8 @@ for _ in 0..cases:
             before += c
         let h = hubs.first ?? return -r
         let branch = T.filter(i => at[i].along == h)
-        if branch.majority(eq: (u, v) => d(u, v) != at[u].down + at[v].down).is_some_and(m => m.count > n / 2): -r else: r
+        if branch.majority(
+            eq: (u, v) => d(u, v) != at[u].down + at[v].down
+        ).is_some_and(m => m.count > n / 2): -r else: r
 
     print(hub_distance())

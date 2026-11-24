@@ -20,5 +20,7 @@ let (domain Var, vars) = compress(raw)
 var cls = Dsu<Var>()
 for r in rules:
     if r.same: cls.unite(vars.index_of(r.a), vars.index_of(r.b))
-let ok = rules.filter(r => not r.same).all(r => not cls.same(vars.index_of(r.a), vars.index_of(r.b)))
+let ok = rules.filter(r => not r.same).all(
+    r => not cls.same(vars.index_of(r.a), vars.index_of(r.b))
+)
 print(if ok: "YES" else: "NO")

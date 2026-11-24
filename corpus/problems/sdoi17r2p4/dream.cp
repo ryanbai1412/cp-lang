@@ -10,7 +10,10 @@ domain V = 1..=n
 domain Word = 1..=k
 domain Road = [m]
 let roads: [Road](u: V, v: V, w: 0..=2e4, word: Word) = read()
-let trie = Rooted(Graph.undirected(read<[k - 1](u: Word, v: Word, c: 1..=2e4)>()), root: Word.first!)
+let trie = Rooted(
+    Graph.undirected(read<[k - 1](u: Word, v: Word, c: 1..=2e4)>()),
+    root: Word.first!,
+)
 let leave = Graph.directed(roads)
 let enter = leave.transpose()
 fn lcp(a: Road, b: Road) -> Int = trie.depth(trie.lca(roads[a].word, roads[b].word))
@@ -36,9 +39,17 @@ for x in V:
             if i + 1 < t:
                 arcs.push((from: arrived(i), arc: (to: arrived(i + 1), w: 0)))
                 arcs.push((from: departing(i), arc: (to: departing(i + 1), w: 0)))
-                arcs.push((from: arrived(i), arc: (to: departing(i + 1), w: lcp(it.road, line[i + 1].road))))
+                arcs.push(
+                    (
+                        from: arrived(i),
+                        arc: (to: departing(i + 1), w: lcp(it.road, line[i + 1].road)),
+                    )
+                )
         used += 2 * t
 
-let dist = dijkstra(Graph.of(arcs), from: leave.out(V.first!).map(a => (driven(a.e), roads[a.e].w))).dist
+let dist = dijkstra(
+    Graph.of(arcs),
+    from: leave.out(V.first!).map(a => (driven(a.e), roads[a.e].w)),
+).dist
 for v in V.drop(1):
     print(enter.out(v).filter_map(a => dist[driven(a.e)]).min()!)

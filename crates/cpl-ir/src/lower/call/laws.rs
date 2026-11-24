@@ -53,6 +53,18 @@ impl<'a> Lowerer<'a> {
                 if &own.text != tname {
                     continue;
                 }
+                let trait_fns: Vec<String> = body
+                    .stmts
+                    .iter()
+                    .filter_map(|s| match &s.kind {
+                        ast::StmtKind::Fn(f)
+                            if f.params.first().is_none_or(|p| p.name.text != "self") =>
+                        {
+                            Some(f.name.text.clone())
+                        }
+                        _ => None,
+                    })
+                    .collect();
                 for law in &body.stmts {
                     if let ast::StmtKind::Law { name, params, body } = &law.kind {
                         laws.push(LawInfo {
@@ -61,6 +73,7 @@ impl<'a> Lowerer<'a> {
                             name: name.text.clone(),
                             params,
                             body,
+                            trait_fns: trait_fns.clone(),
                         });
                     }
                 }

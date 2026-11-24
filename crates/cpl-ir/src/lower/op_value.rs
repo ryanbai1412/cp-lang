@@ -92,7 +92,7 @@ impl<'a> Lowerer<'a> {
             return Err(value);
         };
         if matches!(fty, Ty::Fn(..)) {
-            let fv = self.mk(ExprKind::Field(Box::new(value), index), fty, span);
+            let fv = self.mk_field(value, index, fty, span);
             return Ok(self.call_fn_val(fv, args, span));
         }
         match self.op_of_type(&fty) {

@@ -38,7 +38,7 @@ impl<'a> Lowerer<'a> {
                     if args.is_empty() && self.gen_env.get(&name.text) == Some(&GenArg::Ty(Ty::Int))
                         && !self.gen_env.contains_key(&mono::own_generic_marker(&name.text))) =>
             {
-                Spec::Plain(Ty::List(Box::new(self.resolve(elem, values).ty())))
+                Spec::Plain(Ty::list(self.resolve(elem, values).ty()))
             }
             ast::TypeKind::Array { index, elem } => {
                 // `[V]T` where `V` stands for `(R, C)`: one dimension for
@@ -193,11 +193,23 @@ impl<'a> Lowerer<'a> {
         }
         if args.is_empty() {
             if let Some(ga) = self.gen_env.get(&name.text).cloned() {
+                // `read<T>()` in a generic fn reads the type `T` stands for.
+                if let (true, GenArg::Ty(ty)) = (values, &ga) {
+                    if let Some(spec) = self.spec_of(ty) {
+                        return spec;
+                    }
+                }
+                if let (true, GenArg::Range(lo, hi)) = (values, &ga) {
+                    let bounds = RangeInfo::Scalar(self.const_bounds(*lo, *hi, name.span));
+                    if let Some(spec) = bounds.spec() {
+                        return spec;
+                    }
+                }
                 return Spec::Plain(match ga {
                     GenArg::Ty(t) => t,
                     GenArg::Domain(d) => Ty::Pos(d),
                     GenArg::Int(_) | GenArg::RuntimeInt(_) | GenArg::Range(_, _) => Ty::Int,
-                    GenArg::OptRange(_, _) => Ty::Opt(Box::new(Ty::Int)),
+                    GenArg::OptRange(_, _) => Ty::opt(Ty::Int),
                     GenArg::Op(_) => Ty::Unit,
                 });
             }
@@ -231,10 +243,10 @@ impl<'a> Lowerer<'a> {
             }
             if rest == "ranges" {
                 if let Some(GenArg::Domain(d)) = self.gen_env.get(prefix).cloned() {
-                    return Spec::Plain(Ty::Range(Box::new(Ty::Pos(d))));
+                    return Spec::Plain(Ty::range(Ty::Pos(d)));
                 }
                 if let Some(Sym::Domain(d)) = self.get_sym(prefix) {
-                    return Spec::Plain(Ty::Range(Box::new(Ty::Pos(d))));
+                    return Spec::Plain(Ty::range(Ty::Pos(d)));
                 }
             }
             if rest == "subsets" {
@@ -326,7 +338,7 @@ impl<'a> Lowerer<'a> {
                 let key = arg(self, 0);
                 Ty::HashMap(Box::new(key), Box::new(arg(self, 1)))
             }
-            "Range" => Ty::Range(Box::new(arg(self, 0))),
+            "Range" => Ty::range(arg(self, 0)),
             "Cut" if !args.is_empty() => match arg(self, 0) {
                 Ty::Pos(d) => Ty::Bound(d),
                 other => other,
@@ -382,16 +394,14 @@ impl<'a> Lowerer<'a> {
         let at = self.temp(Ty::Int);
         let id = self.fresh_loop();
         let push = |lw: &mut Self, value: Expr| {
-            Stmt::Expr(lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(Place {
-                        kind: PlaceKind::Local(acc),
-                        ty: list_ty.clone(),
-                        span,
-                    }),
-                    vec![value],
-                ),
+            Stmt::Expr(lw.mk_mutate(
+                Mutation::Push,
+                Place {
+                    kind: PlaceKind::Local(acc),
+                    ty: list_ty.clone(),
+                    span,
+                },
+                vec![value],
                 Ty::Unit,
                 span,
             ))
@@ -427,9 +437,11 @@ impl<'a> Lowerer<'a> {
     }
 
     /// True when `id` is declared in another module and has a field
-    /// without `pub`, which code here can't name (R11.1.4).
+    /// without `pub`, which code here can't name (R11.1.4). A generic fn
+    /// reads it where a fn of its module asked for the instance.
     pub(in crate::lower) fn private_fields(&self, id: StructId) -> bool {
         self.structs[id].mod_id != self.cur_mod
+            && !self.lowered_for(self.structs[id].mod_id)
             && self.structs[id]
                 .decl
                 .is_some_and(|decl| decl.fields.iter().any(|f| !f.public))
@@ -454,11 +466,7 @@ impl<'a> Lowerer<'a> {
                     if let Some(arg_spec) =
                         arg_spec.filter(|spec| read_spec::unreadable(spec).is_none())
                     {
-                        let read_arg = self.mk(
-                            ExprKind::Read(Box::new(arg_spec)),
-                            param_ty,
-                            Span::default(),
-                        );
+                        let read_arg = self.mk_read(arg_spec, param_ty, Span::default());
                         let call = self.mk(
                             ExprKind::Call(fn_id, vec![Arg::Value(read_arg)]),
                             Ty::Struct(id),

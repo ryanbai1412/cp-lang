@@ -227,6 +227,60 @@ fn a_table_key_hashes_over_its_cells() {
 }
 
 #[test]
+fn a_map_of_ranged_keys_and_values_stores_them_narrow() {
+    let narrow = cpp(concat!(
+        "let n: 1..=100 = read()\n",
+        "var c: Counter<-5..=1000, 0..=4000000> = Counter()\n",
+        "for i in 0..n: c.add(i, 1)\n",
+        "print(c[3])\n",
+    ));
+    assert!(
+        narrow.contains("cpl::HashMap<int16_t, uint32_t, cpl::CpHash> m;"),
+        "{narrow}"
+    );
+    // `+=` sums wide and checks the count against its range: the cell's width can't wrap it back in.
+    assert!(
+        narrow.contains("cpl::fit<uint32_t>(cpl::iadd(ll("),
+        "{narrow}"
+    );
+    assert!(narrow.contains("0, 4000000, \"0..=4000000\")"), "{narrow}");
+    // A map given whole from elsewhere keeps its stored width.
+    let wide = cpp(concat!(
+        "struct Hold:\n    m: HashMap<0..=9, 0..=9>\n",
+        "var m: HashMap<Int, Int> = []\nm[1] = 2\n",
+        "let h = Hold(m)\n",
+        "print(h.m.len)\n",
+    ));
+    assert!(
+        wide.contains("cpl::HashMap<ll, ll, cpl::CpHash> m;"),
+        "{wide}"
+    );
+}
+
+#[test]
+fn a_narrow_map_field_stays_narrow_when_given_an_empty_or_narrow_map() {
+    let src = |o: &str| {
+        format!(
+            "struct Hold:\n    var m: HashMap<0..=9, 0..=9>\n    var o: {o}\nvar h = Hold([], [])\nh.m[1] = 2\nh.o = h.m\nh.m = []\nprint(h.m.len, h.o.len)\n"
+        )
+    };
+    let same = cpp(&src("HashMap<0..=9, 0..=9>"));
+    assert_eq!(
+        same.matches("cpl::HashMap<uint8_t, uint8_t, cpl::CpHash> ")
+            .count(),
+        2,
+        "{same}"
+    );
+    assert!(
+        same.contains("h.m = cpl::HashMap<uint8_t, uint8_t, cpl::CpHash>()"),
+        "{same}"
+    );
+    // Copied into a map of another layout, both keep their full width.
+    let other = cpp(&src("HashMap<0..=9, 0..=999>"));
+    assert!(!other.contains("uint8_t, uint8_t"), "{other}");
+}
+
+#[test]
 fn hash_map_uses_salted_splitmix64_cphash() {
     let cpp = cpp("var hm: HashMap<Int, Int> = []\nhm[42] = 7\nprint(hm.get(42) ?? 0)\n");
     assert!(cpp.contains("struct CpHash"), "{cpp}");
@@ -1047,4 +1101,78 @@ var t = T<(Int, Int)>([(1, 2)])
 print(t.dup(0))
 ");
     assert!(out.contains("_grow(self, std::tuple<ll, ll>("), "{out}");
+}
+
+#[test]
+fn a_dsuof_merge_finds_each_root_once_and_stores_ordinals_unchecked() {
+    let out = cpp("domain V = 0..8
+var d = DsuOf<V, Int>(v => v.ord, (a, b) => a + b)
+let a: Int = read()
+print(yes(d.unite(V.nth(a), V.nth(a + 1))), d.get(V.nth(a)))
+");
+    let start = out.find("_merge(").expect("merge is emitted");
+    let body = &out[start..start + out[start..].find("\n}\n").expect("merge ends")];
+    assert_eq!(body.matches("_find_root(self").count(), 2, "{body}");
+    assert_eq!(body.matches("check_range(").count(), 1, "{body}");
+    assert!(body.contains("self.p[(ll)y] = int32_t((ll)x);"), "{body}");
+    let unite = &out[out.find("_unite(").expect("unite is emitted")..];
+    assert!(
+        !unite[..unite.find("\n}\n").unwrap()].contains("find"),
+        "{out}"
+    );
+}
+
+fn fn_text(cpp: &str, head: &str) -> String {
+    let start = cpp
+        .find(head)
+        .unwrap_or_else(|| panic!("no `{head}`:\n{cpp}"));
+    let len = cpp[start..].find("\n}\n").expect("the fn ends");
+    cpp[start..start + len].to_string()
+}
+
+#[test]
+fn a_recursive_fns_branch_past_its_last_call_has_its_own_frame() {
+    let out = cpp(concat!(
+        "fn ends(n: Int) -> List<Int>:\n",
+        "    if n == 0: return [1]\n",
+        "    var res = ends(n - 1)\n",
+        "    res.push(0)\n",
+        "    if n % 2 == 0:\n",
+        "        for i in 1..res.len: res[i] += res[i - 1]\n",
+        "        res\n",
+        "    else:\n",
+        "        let w = n + 1\n",
+        "        res.map(e => e * w)\n",
+        "fn sum_to(n: Int) -> Int:\n",
+        "    if n == 0: return 0\n",
+        "    var s = 0\n",
+        "    for i in 0..n: s += i\n",
+        "    s + sum_to(n - 1)\n",
+        "fn flat(n: Int) -> List<Int> = [i * 2 for i in 0..n]\n",
+        "print(ends(5).sum(), sum_to(6), flat(3).len)\n",
+    ));
+    let ends = fn_text(&out, "std::vector<ll> ends(ll n) {");
+    assert_eq!(
+        ends.matches("__attribute__((noinline))").count(),
+        1,
+        "{ends}"
+    );
+    let (inline, cold) = ends.split_once("__attribute__((noinline))").unwrap();
+    assert!(
+        inline.contains("ends(cpl::isub(n, 1))") && !cold.contains("ends("),
+        "{ends}"
+    );
+    assert!(
+        cold.contains("ll w = ") && !inline.contains("ll w = "),
+        "{ends}"
+    );
+    assert!(
+        inline.contains("return res;"),
+        "the branch returning `res` stays inline:\n{ends}"
+    );
+    assert!(
+        !fn_text(&out, "ll sum_to(ll n) {").contains("noinline"),
+        "a loop before the recursive call runs on every frame anyway:\n{out}"
+    );
+    assert!(!fn_text(&out, "flat(ll n) {").contains("noinline"), "{out}");
 }

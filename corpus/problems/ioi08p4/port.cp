@@ -14,7 +14,7 @@ let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 domain Tele = 1..=n
 domain Point = 1..=2 * n  // the endpoints, west to east
-domain Spot = 1..=2e6  // the spots between the track ends
+domain Spot = 1..=2e6     // the spots between the track ends
 type Ends = (w: Spot, e: Spot)
 
 let teles: [Tele]Ends = read()

@@ -1,7 +1,6 @@
 // Tuned: each closure check is a plain Int Floyd-Warshall in its own (max, min) or (min, max)
 // algebra on a narrow -1..=1e6 + 1 grid (-1 or k + 1 for a missing street), instead of the
-// generic optional closure. Streets are packed Ints, sorted in place once and swept both ways
-// with a Dsu, instead of two kruskal calls over a list of records.
+// generic optional closure.
 //
 // Source: EGOI 2023 Day 1 P4 (Bikes vs Cars), https://dmoj.ca/problem/egoi23p4
 // Problem: n <= 500 places, streets of width k <= 1e6 split into a bike lane b and a car lane
@@ -49,22 +48,9 @@ fn narrowest_ok(only: Bool) -> Bool:
 if not (widest_ok(false) and narrowest_ok(false) and widest_ok(true) and narrowest_ok(true)):
     print("NO")
 else:
-    // a street per fitting pair and lane width, as one Int w * 2^18 + pair so a plain sort orders them
-    let pairs = [(u, v) for (u, v) in V.pairs() if fits(u, v)]
-    let wrap = 1 << 18
-    var streets: List<Int> = []
-    for p in 0..pairs.len:
-        let (u, v) = pairs[p]
-        for w in [wide[u, v], narrow[u, v]]: streets.push(w * wrap + p)
-    streets.sort()
-    var take = List.filled(streets.len, false)  // in a minimum or a maximum spanning forest
-    for heavy in [false, true]:
-        var dsu = Dsu<V>()
-        for j in 0..streets.len:
-            let i = if heavy: streets.len - 1 - j else: j
-            let (u, v) = pairs[streets[i] % wrap]
-            if dsu.unite(u, v): take[i] = true
-    print(take.count(t => t))
-    for i in 0..streets.len if take[i]:
-        let (u, v) = pairs[streets[i] % wrap]
-        print(u, v, streets[i] / wrap)
+    let streets = [(u:, v:, w:) for (u, v) in V.pairs() if fits(u, v) for w in [wide[u, v], narrow[u, v]]]
+    let low = kruskal(streets).take
+    let high = kruskal(streets, by: e => desc(e.w)).take
+    let keep = streets.keys.filter(e => low[e] or high[e]).collect()
+    print(keep.len)
+    for e in keep: print(streets[e].u, streets[e].v, streets[e].w)

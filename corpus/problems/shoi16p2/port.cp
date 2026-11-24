@@ -35,8 +35,15 @@ var total = sum(Z((n - i + 1) * (m - i + 1) * i) for i in 1..=min(n, m))
 
 // minus the squares through each deleted point
 for (x, y) in gone:
-    total -= corner_squares(x, n - x, y) + corner_squares(m - y, y, x)
-        + corner_squares(n - x, x, m - y) + corner_squares(y, m - y, n - x)
+    total -= corner_squares(x, n - x, y) + corner_squares(m - y, y, x) + corner_squares(
+        n - x,
+        x,
+        m - y,
+    ) + corner_squares(
+        y,
+        m - y,
+        n - x,
+    )
 
 // plus a share of each square met at a pair of deleted corners
 let deleted = Set([point(x, y)! for (x, y) in gone])
@@ -44,7 +51,12 @@ let share = [if c < 2: Z(0) else: Z(2) / Z(c) for c in 0..=4]
 
 // the square with corner (x, y) and side (dx, dy), turning left
 fn meet(x: Int, y: Int, dx: Int, dy: Int) -> Z:
-    let corners = [point(x, y), point(x + dx, y + dy), point(x + dx - dy, y + dx + dy), point(x - dy, y + dx)]
+    let corners = [
+        point(x, y),
+        point(x + dx, y + dy),
+        point(x + dx - dy, y + dx + dy),
+        point(x - dy, y + dx),
+    ]
     if corners.contains(None): Z(0) else: share[corners.count(c => c! in deleted)]
 
 for i in Gone:

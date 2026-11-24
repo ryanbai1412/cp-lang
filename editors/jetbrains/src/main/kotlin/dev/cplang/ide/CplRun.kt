@@ -22,13 +22,9 @@ import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessHandlerFactory
-import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.process.ProcessTerminatedListener
-import com.intellij.execution.testframework.TestConsoleProperties
 import com.intellij.execution.testframework.sm.FileUrlProvider
-import com.intellij.execution.testframework.sm.SMCustomMessagesParsing
 import com.intellij.execution.testframework.sm.SMTestRunnerConnectionUtil
-import com.intellij.execution.testframework.sm.runner.OutputToGeneralTestEventsConverter
 import com.intellij.execution.testframework.sm.runner.SMTRunnerConsoleProperties
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.runners.ExecutionEnvironment
@@ -110,7 +106,7 @@ class CplRunConfiguration(project: Project, factory: ConfigurationFactory, name:
         val file = File(options.file ?: "")
         val args = Cpl.runArgs(options.command ?: "run", file.path, options.input, options.arguments ?: "")
         // `cpl test` fills the test tree from its JSON report.
-        val report = if (options.command == "test") listOf("--format", "json") else emptyList()
+        val report = if (options.command == "test") listOf("--format", "teamcity") else emptyList()
         return Cpl.commandLine(args + report, file.absoluteFile.parentFile)
     }
 
@@ -138,35 +134,10 @@ class CplRunConfiguration(project: Project, factory: ConfigurationFactory, name:
         }
 }
 
-/** The test tree of a `cpl test` run: each case of [Cpl.testsDir], a wrong answer as a diff. */
-class CplTestConsoleProperties(private val config: CplRunConfiguration, executor: Executor) :
-    SMTRunnerConsoleProperties(config, "CP Lang", executor), SMCustomMessagesParsing {
+/** The test tree of a `cpl test --format teamcity` run: cpl prints the service messages. */
+class CplTestConsoleProperties(config: CplRunConfiguration, executor: Executor) :
+    SMTRunnerConsoleProperties(config, "CP Lang", executor) {
     override fun getTestLocator() = FileUrlProvider.INSTANCE
-
-    override fun createTestEventsConverter(name: String, properties: TestConsoleProperties): OutputToGeneralTestEventsConverter {
-        val source = File(config.options.file ?: "").absoluteFile
-        return CplTestEventsConverter(name, properties, Cpl.testsDir(source))
-    }
-}
-
-/** Holds back `cpl test`'s JSON until it exits, then replays it as test events. */
-class CplTestEventsConverter(name: String, properties: TestConsoleProperties, private val tests: File) :
-    OutputToGeneralTestEventsConverter(name, properties) {
-    private val report = StringBuilder()
-
-    override fun process(text: String, outputType: Key<*>) {
-        if (outputType == ProcessOutputTypes.STDOUT) report.append(text) else super.process(text, outputType)
-    }
-
-    override fun flushBufferOnProcessTermination(code: Int) {
-        val messages = Cpl.testMessages(report.toString(), tests)
-        if (messages == null) {
-            super.process(report.toString(), ProcessOutputTypes.STDOUT)
-        } else {
-            messages.forEach { super.process(it + "\n", ProcessOutputTypes.STDOUT) }
-        }
-        super.flushBufferOnProcessTermination(code)
-    }
 }
 
 class CplSettingsEditor : SettingsEditor<CplRunConfiguration>() {

@@ -27,22 +27,27 @@ fn files(root: &Path, dir: &str, leaf: &str) -> Vec<PathBuf> {
 }
 
 fn warnings(root: &Path) -> Vec<String> {
-    let mut out = Vec::new();
-    for (_, dir, leaf) in SETS {
-        for file in files(root, dir, leaf) {
-            let src = std::fs::read_to_string(&file).unwrap();
-            let (config, _) = Config::discover(&file);
-            for diag in lint(&src, &config) {
-                out.push(format!(
-                    "{}: {}: {}",
-                    file.display(),
-                    diag.code.0,
-                    diag.message
-                ));
-            }
-        }
-    }
-    out
+    let all: Vec<PathBuf> = SETS
+        .iter()
+        .flat_map(|(_, dir, leaf)| files(root, dir, leaf))
+        .collect();
+    let of = |file: &PathBuf| {
+        let src = std::fs::read_to_string(file).unwrap();
+        let (config, _) = Config::discover(file);
+        lint(&src, &config)
+            .into_iter()
+            .map(|diag| format!("{}: {}: {}", file.display(), diag.code.0, diag.message))
+            .collect::<Vec<_>>()
+    };
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let chunk = all.len().div_ceil(threads).max(1);
+    std::thread::scope(|scope| {
+        let jobs: Vec<_> = all
+            .chunks(chunk)
+            .map(|part| scope.spawn(move || part.iter().flat_map(of).collect::<Vec<_>>()))
+            .collect();
+        jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
+    })
 }
 
 #[test]

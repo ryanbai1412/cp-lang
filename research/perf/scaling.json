@@ -4,7 +4,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Action.new",
-   "measured": 1.09,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -12,7 +12,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Action.of",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -20,7 +20,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.eval",
-   "measured": 1.04,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -28,7 +28,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.id",
-   "measured": 1.04,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -36,7 +36,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.monoid",
-   "measured": 1.03,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -44,7 +44,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.then",
-   "measured": 1.06,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -52,7 +52,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Comm.monoid",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -60,7 +60,7 @@
    "cost": "\\mathit{components}",
    "documented": 1.0,
    "fn": "algebra.Each.monoid",
-   "measured": 1.04,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -68,7 +68,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Group.of",
-   "measured": 1.03,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -76,7 +76,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.join",
-   "measured": 1.04,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -84,7 +84,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.monoid",
-   "measured": 1.04,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -100,7 +100,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.zero",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -108,7 +108,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.join",
-   "measured": 1.04,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -116,7 +116,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.monoid",
-   "measured": 1.05,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -128,11 +128,19 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/algebra.cp::algebra.MaxSub.repeat": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "algebra.MaxSub.repeat",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/algebra.cp::algebra.MaxSub.reversed": {
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.reversed",
-   "measured": 1.08,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -140,7 +148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.scale",
-   "measured": 1.03,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -148,7 +156,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.try_best",
-   "measured": 1.03,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -156,7 +164,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.zero",
-   "measured": 1.06,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -164,7 +172,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.join",
-   "measured": 1.26,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -172,7 +180,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.monoid",
-   "measured": 1.17,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -180,7 +188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.of",
-   "measured": 1.24,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -188,7 +196,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.try_at",
-   "measured": 1.16,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -196,7 +204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.try_best",
-   "measured": 1.15,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -204,7 +212,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.zero",
-   "measured": 1.17,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -212,7 +220,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.join",
-   "measured": 1.03,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -220,7 +228,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.monoid",
-   "measured": 1.03,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -228,7 +236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.of",
-   "measured": 1.05,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -236,7 +244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.zero",
-   "measured": 1.03,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -244,7 +252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.commutative",
-   "measured": 1.04,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -252,7 +260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.monoid",
-   "measured": 1.03,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -268,7 +276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Semigroup.opt",
-   "measured": 1.05,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -276,7 +284,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.cmp",
-   "measured": 1.04,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -284,7 +292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.desc",
-   "measured": 1.06,
+   "measured": 1.11,
    "n": 16384,
    "ok": true
   },
@@ -292,7 +300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.each",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -300,7 +308,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.minmax",
-   "measured": 1.03,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -308,7 +316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.opt",
-   "measured": 1.03,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -316,7 +324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.point_action",
-   "measured": 1.05,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -324,7 +332,7 @@
    "cost": "\\log k",
    "documented": 1.14,
    "fn": "algebra.pow",
-   "measured": 1.11,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -332,7 +340,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.add",
-   "measured": 1.23,
+   "measured": 1.33,
    "n": 16384,
    "ok": true
   },
@@ -340,7 +348,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedBag.all",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -348,7 +356,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.count",
-   "measured": 1.55,
+   "measured": 1.79,
    "n": 16384,
    "ok": true
   },
@@ -356,7 +364,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedBag.each",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -364,7 +372,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedBag.first",
-   "measured": 1.0,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -372,7 +380,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.fold",
-   "measured": 1.37,
+   "measured": 1.36,
    "n": 16384,
    "ok": true
   },
@@ -380,7 +388,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.fold_between",
-   "measured": 1.26,
+   "measured": 1.24,
    "n": 16384,
    "ok": true
   },
@@ -388,7 +396,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.fold_ge",
-   "measured": 1.12,
+   "measured": 1.3,
    "n": 16384,
    "ok": true
   },
@@ -404,7 +412,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.fold_le",
-   "measured": 1.21,
+   "measured": 1.17,
    "n": 16384,
    "ok": true
   },
@@ -412,7 +420,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.fold_lt",
-   "measured": 1.23,
+   "measured": 1.27,
    "n": 16384,
    "ok": true
   },
@@ -420,7 +428,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedBag.is_empty",
-   "measured": 1.0,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -428,7 +436,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedBag.last",
-   "measured": 1.0,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -436,7 +444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedBag.len",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -444,7 +452,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedBag.new",
-   "measured": 1.01,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -452,7 +460,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.nth",
-   "measured": 1.44,
+   "measured": 1.41,
    "n": 16384,
    "ok": true
   },
@@ -460,7 +468,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.rank",
-   "measured": 1.18,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
@@ -468,7 +476,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedBag.remove",
-   "measured": 1.22,
+   "measured": 1.25,
    "n": 16384,
    "ok": true
   },
@@ -476,7 +484,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "bag.AugSortedBag.reserve",
-   "measured": 5.76,
+   "measured": 7.27,
    "n": 16384,
    "ok": true
   },
@@ -484,7 +492,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.add",
-   "measured": 1.21,
+   "measured": 1.3,
    "n": 16384,
    "ok": true
   },
@@ -492,7 +500,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedSet.all",
-   "measured": 1.0,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -500,7 +508,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.contains",
-   "measured": 1.74,
+   "measured": 1.76,
    "n": 16384,
    "ok": true
   },
@@ -508,7 +516,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedSet.each",
-   "measured": 1.03,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -516,7 +524,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedSet.first",
-   "measured": 1.0,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -524,7 +532,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.fold",
-   "measured": 1.32,
+   "measured": 1.36,
    "n": 16384,
    "ok": true
   },
@@ -532,7 +540,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.fold_between",
-   "measured": 1.3,
+   "measured": 1.26,
    "n": 16384,
    "ok": true
   },
@@ -540,7 +548,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.fold_ge",
-   "measured": 1.31,
+   "measured": 1.28,
    "n": 16384,
    "ok": true
   },
@@ -548,7 +556,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.fold_gt",
-   "measured": 1.17,
+   "measured": 1.21,
    "n": 16384,
    "ok": true
   },
@@ -556,7 +564,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.fold_le",
-   "measured": 1.15,
+   "measured": 1.18,
    "n": 16384,
    "ok": true
   },
@@ -564,7 +572,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.fold_lt",
-   "measured": 1.31,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -580,7 +588,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedSet.last",
-   "measured": 1.0,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -588,7 +596,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedSet.len",
-   "measured": 1.01,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -596,7 +604,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.AugSortedSet.new",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -604,7 +612,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.nth",
-   "measured": 1.21,
+   "measured": 1.44,
    "n": 16384,
    "ok": true
   },
@@ -612,7 +620,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.rank",
-   "measured": 1.18,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -620,7 +628,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.AugSortedSet.remove",
-   "measured": 1.28,
+   "measured": 1.24,
    "n": 16384,
    "ok": true
   },
@@ -628,7 +636,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "bag.AugSortedSet.reserve",
-   "measured": 5.92,
+   "measured": 6.77,
    "n": 16384,
    "ok": true
   },
@@ -1758,6 +1766,1118 @@
    "fn": "bag.SortedRange.rev",
    "measured": 1.03,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.all": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.all",
+   "measured": 4.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.any": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.any",
+   "measured": 4.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.clone",
+   "measured": 6.74,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.contains": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.contains",
+   "measured": 4.16,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.count": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.count",
+   "measured": 3.66,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.cut_after": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Array.cut_after",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.cut_before": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Array.cut_before",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.fill": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.fill",
+   "measured": 4.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.filter": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.filter",
+   "measured": 4.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.first_ge": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Array.first_ge",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Array.first_gt",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Array.get",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.last_le": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Array.last_le",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Array.last_lt",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.map": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.map",
+   "measured": 4.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.max": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.max",
+   "measured": 4.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.min": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.min",
+   "measured": 4.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.reach": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.reach",
+   "measured": 4.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.reverse": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.reverse",
+   "measured": 4.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.reversed": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.reversed",
+   "measured": 4.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.sort": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "builtin.Array.sort",
+   "measured": 4.8,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.sorted": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "builtin.Array.sorted",
+   "measured": 4.83,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.sum": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.sum",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.swap": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Array.swap",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.clear": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashMap.clear",
+   "measured": 2.61,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashMap.clone",
+   "measured": 2.86,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.contains",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.get",
+   "measured": 1.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.is_empty",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashMap.items",
+   "measured": 3.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.keys": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.keys",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.len",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.remove": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.remove",
+   "measured": 1.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.reserve": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashMap.reserve",
+   "measured": 4.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.values": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.values",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.add",
+   "measured": 1.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.clear": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashSet.clear",
+   "measured": 2.67,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashSet.clone",
+   "measured": 2.9,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.contains",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.insert": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.insert",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.is_empty",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.len",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.max": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashSet.max",
+   "measured": 2.91,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.min": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashSet.min",
+   "measured": 2.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.remove": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.remove",
+   "measured": 1.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.set": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.set",
+   "measured": 1.17,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.sorted": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "builtin.HashSet.sorted",
+   "measured": 4.57,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.all": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.all",
+   "measured": 3.93,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.any": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.any",
+   "measured": 4.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.clone",
+   "measured": 7.57,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.contains": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.contains",
+   "measured": 4.38,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.count": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.count",
+   "measured": 4.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.cut_after": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.cut_after",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.cut_before": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.cut_before",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.fill": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.fill",
+   "measured": 4.27,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.filter": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.filter",
+   "measured": 4.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.find": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.find",
+   "measured": 4.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.first_ge": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.List.first_ge",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.List.first_gt",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.get",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.insert": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.insert",
+   "measured": 4.68,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.last_le": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.List.last_le",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.List.last_lt",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.map": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.map",
+   "measured": 4.13,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.max": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.max",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.min": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.min",
+   "measured": 4.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.pop": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.pop",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.push": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.push",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.push_id": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.push_id",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.reach": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.reach",
+   "measured": 4.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.remove": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.remove",
+   "measured": 3.92,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.reserve": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.reserve",
+   "measured": 6.64,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.reverse": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.reverse",
+   "measured": 3.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.reversed": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.reversed",
+   "measured": 4.2,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.sort": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "builtin.List.sort",
+   "measured": 5.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.sorted": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "builtin.List.sorted",
+   "measured": 5.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.sum": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.sum",
+   "measured": 4.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.swap": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.swap",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.to_list": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.to_list",
+   "measured": 4.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.clear": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Map.clear",
+   "measured": 4.5,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Map.clone",
+   "measured": 6.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.contains": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.contains",
+   "measured": 1.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.first_ge": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.first_ge",
+   "measured": 1.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.first_gt",
+   "measured": 1.46,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.get",
+   "measured": 1.92,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Map.items",
+   "measured": 4.89,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.keys": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Map.keys",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.last_le": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.last_le",
+   "measured": 1.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.last_lt",
+   "measured": 1.14,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.pop_first": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.pop_first",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.pop_last": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.pop_last",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.range": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Map.range",
+   "measured": 1.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.remove": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Map.remove",
+   "measured": 1.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.reserve": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Map.reserve",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Map.values": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Map.values",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.add": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.add",
+   "measured": 1.22,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.clear": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Set.clear",
+   "measured": 4.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Set.clone",
+   "measured": 5.41,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.contains": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.contains",
+   "measured": 1.86,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.drain": {
+   "cost": "k \\log n",
+   "documented": 4.57,
+   "fn": "builtin.Set.drain",
+   "measured": 4.22,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.first_ge": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.first_ge",
+   "measured": 1.14,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.first_gt",
+   "measured": 1.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.insert": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.insert",
+   "measured": 1.23,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.last_le": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.last_le",
+   "measured": 1.16,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.last_lt",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.max": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.max",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.min": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.min",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.pop_first": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.pop_first",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.pop_last": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.pop_last",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.range": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Set.range",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.remove": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.remove",
+   "measured": 1.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.set": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Set.set",
+   "measured": 1.14,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_map.cp::builtin.Set.sorted": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Set.sorted",
+   "measured": 7.49,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.all": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.all",
+   "measured": 3.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.any": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.any",
+   "measured": 3.93,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.count": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.count",
+   "measured": 3.76,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.cut_after": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Str.cut_after",
+   "measured": 0.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.cut_before": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Str.cut_before",
+   "measured": 0.93,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.filter": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.filter",
+   "measured": 3.91,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.first_ge": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Str.first_ge",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Str.first_gt",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Str.get",
+   "measured": 0.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.last_le": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Str.last_le",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "builtin.Str.last_lt",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.map": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.map",
+   "measured": 3.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.max": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.max",
+   "measured": 4.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.min": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.min",
+   "measured": 3.77,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.pop": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Str.pop",
+   "measured": 0.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.push": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Str.push",
+   "measured": 0.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.reach": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.reach",
+   "measured": 3.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.reverse": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.reverse",
+   "measured": 3.9,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.reversed": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.reversed",
+   "measured": 3.93,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.sort": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "builtin.Str.sort",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.sorted": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "builtin.Str.sorted",
+   "measured": 4.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.swap": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Str.swap",
+   "measured": 0.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str_copy.cp::builtin.Str.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.clone",
+   "measured": 4.02,
+   "n": 4194304,
+   "ok": true
+  },
+  "bench/scaling/builtin_str_copy.cp::builtin.Str.contains": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.contains",
+   "measured": 3.99,
+   "n": 4194304,
+   "ok": true
+  },
+  "bench/scaling/builtin_str_copy.cp::builtin.Str.fill": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.fill",
+   "measured": 4.04,
+   "n": 4194304,
+   "ok": true
+  },
+  "bench/scaling/builtin_str_copy.cp::builtin.Str.to_str": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.to_str",
+   "measured": 4.02,
+   "n": 4194304,
    "ok": true
   },
   "bench/scaling/deque.cp::deque.Deque.clear": {
@@ -4152,11 +5272,35 @@
    "n": 1024,
    "ok": true
   },
+  "bench/scaling/geometry_3d.cp::geometry.convex_hull_3d": {
+   "cost": "n^2",
+   "documented": 16.0,
+   "fn": "geometry.convex_hull_3d",
+   "measured": 11.44,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_3d.cp::geometry.convex_hull_3d_idx": {
+   "cost": "n^2",
+   "documented": 16.0,
+   "fn": "geometry.convex_hull_3d_idx",
+   "measured": 11.29,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_3d.cp::geometry.polyhedron_volume6": {
+   "cost": "\\lvert \\mathit{faces} \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.polyhedron_volume6",
+   "measured": 4.07,
+   "n": 1024,
+   "ok": true
+  },
   "bench/scaling/geometry_algo.cp::geometry.any_segments_meet": {
    "cost": "n \\log n",
    "documented": 4.8,
    "fn": "geometry.any_segments_meet",
-   "measured": 4.53,
+   "measured": 4.76,
    "n": 1024,
    "ok": true
   },
@@ -4164,7 +5308,7 @@
    "cost": "n \\log n",
    "documented": 4.8,
    "fn": "geometry.any_segments_meet_idx",
-   "measured": 4.7,
+   "measured": 4.94,
    "n": 1024,
    "ok": true
   },
@@ -4172,7 +5316,7 @@
    "cost": "n^2 \\log n",
    "documented": 19.2,
    "fn": "geometry.circles_union_area",
-   "measured": 13.71,
+   "measured": 15.07,
    "n": 1024,
    "ok": true
   },
@@ -4180,7 +5324,7 @@
    "cost": "n \\log n",
    "documented": 4.8,
    "fn": "geometry.closest_pair",
-   "measured": 6.43,
+   "measured": 6.36,
    "n": 1024,
    "ok": true
   },
@@ -4188,39 +5332,7 @@
    "cost": "n \\log n",
    "documented": 4.8,
    "fn": "geometry.closest_pair2",
-   "measured": 6.29,
-   "n": 1024,
-   "ok": true
-  },
-  "bench/scaling/geometry_algo.cp::geometry.convex_hull_3d": {
-   "cost": "n^2",
-   "documented": 16.0,
-   "fn": "geometry.convex_hull_3d",
-   "measured": 10.45,
-   "n": 1024,
-   "ok": true
-  },
-  "bench/scaling/geometry_algo.cp::geometry.convex_hull_3d_idx": {
-   "cost": "n^2",
-   "documented": 16.0,
-   "fn": "geometry.convex_hull_3d_idx",
-   "measured": 10.89,
-   "n": 1024,
-   "ok": true
-  },
-  "bench/scaling/geometry_algo.cp::geometry.delaunay": {
-   "cost": "n \\log n",
-   "documented": 4.8,
-   "fn": "geometry.delaunay",
-   "measured": 4.72,
-   "n": 1024,
-   "ok": true
-  },
-  "bench/scaling/geometry_algo.cp::geometry.manhattan_mst": {
-   "cost": "n \\log n",
-   "documented": 4.8,
-   "fn": "geometry.manhattan_mst",
-   "measured": 4.1,
+   "measured": 6.24,
    "n": 1024,
    "ok": true
   },
@@ -4228,31 +5340,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "geometry.min_enclosing_circle",
-   "measured": 4.52,
-   "n": 1024,
-   "ok": true
-  },
-  "bench/scaling/geometry_algo.cp::geometry.planar_faces": {
-   "cost": "(n + m) \\log m",
-   "documented": 4.8,
-   "fn": "geometry.planar_faces",
-   "measured": 3.95,
-   "n": 1024,
-   "ok": true
-  },
-  "bench/scaling/geometry_algo.cp::geometry.point_location_planar": {
-   "cost": "(n + m + q) \\log(n + m)",
-   "documented": 4.73,
-   "fn": "geometry.point_location_planar",
-   "measured": 4.18,
-   "n": 1024,
-   "ok": true
-  },
-  "bench/scaling/geometry_algo.cp::geometry.polyhedron_volume6": {
-   "cost": "\\lvert \\mathit{faces} \\rvert",
-   "documented": 4.0,
-   "fn": "geometry.polyhedron_volume6",
-   "measured": 3.89,
+   "measured": 4.9,
    "n": 1024,
    "ok": true
   },
@@ -4260,15 +5348,191 @@
    "cost": "n \\log n",
    "documented": 4.8,
    "fn": "geometry.rects_union_area",
-   "measured": 4.68,
+   "measured": 4.73,
    "n": 1024,
    "ok": true
   },
-  "bench/scaling/geometry_algo.cp::geometry.voronoi_cells": {
+  "bench/scaling/geometry_faces.cp::geometry.planar_faces": {
+   "cost": "(n + m) \\log m",
+   "documented": 4.8,
+   "fn": "geometry.planar_faces",
+   "measured": 4.08,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.convex_hull": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.convex_hull",
+   "measured": 4.44,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.convex_hull_idx": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.convex_hull_idx",
+   "measured": 4.4,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.diameter2": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.diameter2",
+   "measured": 4.06,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.farthest_pair": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.farthest_pair",
+   "measured": 4.43,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.hull_width": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.hull_width",
+   "measured": 4.09,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.lower_hull": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.lower_hull",
+   "measured": 4.33,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.lower_hull_idx": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.lower_hull_idx",
+   "measured": 4.46,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.min_bounding_box": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.min_bounding_box",
+   "measured": 4.09,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.upper_hull": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.upper_hull",
+   "measured": 4.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull.cp::geometry.upper_hull_idx": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.upper_hull_idx",
+   "measured": 3.92,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull_query.cp::geometry.convex_polygons_overlap": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.convex_polygons_overlap",
+   "measured": 4.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull_query.cp::geometry.hull_extreme": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "geometry.hull_extreme",
+   "measured": 1.14,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull_query.cp::geometry.hull_line_intersect": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "geometry.hull_line_intersect",
+   "measured": 1.14,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull_query.cp::geometry.hull_tangents": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "geometry.hull_tangents",
+   "measured": 1.14,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull_query.cp::geometry.locate_convex": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "geometry.locate_convex",
+   "measured": 1.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull_query.cp::geometry.minkowski_lower": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.minkowski_lower",
+   "measured": 4.03,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull_query.cp::geometry.minkowski_sum": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.minkowski_sum",
+   "measured": 3.92,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_hull_query.cp::geometry.minkowski_upper": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.minkowski_upper",
+   "measured": 3.86,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_locate_planar.cp::geometry.point_location_planar": {
+   "cost": "(n + m + q) \\log(n + m)",
+   "documented": 4.73,
+   "fn": "geometry.point_location_planar",
+   "measured": 4.99,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_planar.cp::geometry.delaunay": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.delaunay",
+   "measured": 4.94,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_planar.cp::geometry.manhattan_mst": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.manhattan_mst",
+   "measured": 4.21,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_planar.cp::geometry.voronoi_cells": {
    "cost": "n \\log n",
    "documented": 4.8,
    "fn": "geometry.voronoi_cells",
-   "measured": 4.3,
+   "measured": 4.38,
    "n": 1024,
    "ok": true
   },
@@ -4996,7 +6260,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "geometry.area2_128",
-   "measured": 3.81,
+   "measured": 4.02,
    "n": 2048,
    "ok": true
   },
@@ -5004,23 +6268,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "geometry.circle_polygon_area",
-   "measured": 4.18,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.convex_hull": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "geometry.convex_hull",
-   "measured": 4.37,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.convex_hull_idx": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "geometry.convex_hull_idx",
-   "measured": 4.43,
+   "measured": 4.02,
    "n": 2048,
    "ok": true
   },
@@ -5028,31 +6276,7 @@
    "cost": "(\\lvert a \\rvert + \\lvert b \\rvert) \\log(\\lvert a \\rvert + \\lvert b \\rvert)",
    "documented": 4.67,
    "fn": "geometry.convex_polygon_intersect",
-   "measured": 4.83,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.convex_polygons_overlap": {
-   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "geometry.convex_polygons_overlap",
-   "measured": 4.13,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.diameter2": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "geometry.diameter2",
-   "measured": 4.11,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.farthest_pair": {
-   "cost": "n \\log n",
-   "documented": 4.73,
-   "fn": "geometry.farthest_pair",
-   "measured": 4.24,
+   "measured": 4.51,
    "n": 2048,
    "ok": true
   },
@@ -5060,39 +6284,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "geometry.half_plane_intersect",
-   "measured": 4.62,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.hull_extreme": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "geometry.hull_extreme",
-   "measured": 1.08,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.hull_line_intersect": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "geometry.hull_line_intersect",
-   "measured": 1.12,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.hull_tangents": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "geometry.hull_tangents",
-   "measured": 1.12,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.hull_width": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "geometry.hull_width",
-   "measured": 4.14,
+   "measured": 4.44,
    "n": 2048,
    "ok": true
   },
@@ -5100,63 +6292,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "geometry.locate",
-   "measured": 3.84,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.locate_convex": {
-   "cost": "\\log n",
-   "documented": 1.18,
-   "fn": "geometry.locate_convex",
-   "measured": 1.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.lower_hull": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "geometry.lower_hull",
-   "measured": 4.26,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.lower_hull_idx": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "geometry.lower_hull_idx",
-   "measured": 4.1,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.min_bounding_box": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "geometry.min_bounding_box",
-   "measured": 4.01,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.minkowski_lower": {
-   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "geometry.minkowski_lower",
-   "measured": 4.05,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.minkowski_sum": {
-   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "geometry.minkowski_sum",
-   "measured": 4.11,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.minkowski_upper": {
-   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "geometry.minkowski_upper",
-   "measured": 4.22,
+   "measured": 3.88,
    "n": 2048,
    "ok": true
   },
@@ -5164,7 +6300,7 @@
    "cost": "n \\log \\mathit{max\\_coord}",
    "documented": 4.73,
    "fn": "geometry.pick_boundary",
-   "measured": 4.12,
+   "measured": 3.97,
    "n": 2048,
    "ok": true
   },
@@ -5172,7 +6308,7 @@
    "cost": "n \\log \\mathit{max\\_coord}",
    "documented": 4.73,
    "fn": "geometry.pick_interior",
-   "measured": 4.11,
+   "measured": 4.07,
    "n": 2048,
    "ok": true
   },
@@ -5180,7 +6316,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "geometry.polygon_area",
-   "measured": 3.9,
+   "measured": 3.96,
    "n": 2048,
    "ok": true
   },
@@ -5196,7 +6332,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "geometry.polygon_cut",
-   "measured": 4.07,
+   "measured": 3.91,
    "n": 2048,
    "ok": true
   },
@@ -5204,31 +6340,15 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "geometry.polygon_kernel",
-   "measured": 4.73,
+   "measured": 4.45,
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/geometry_poly.cp::geometry.polygon_triangulate": {
+  "bench/scaling/geometry_triangulate.cp::geometry.polygon_triangulate": {
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "geometry.polygon_triangulate",
-   "measured": 4.37,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.upper_hull": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "geometry.upper_hull",
-   "measured": 4.28,
-   "n": 2048,
-   "ok": true
-  },
-  "bench/scaling/geometry_poly.cp::geometry.upper_hull_idx": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "geometry.upper_hull_idx",
-   "measured": 4.02,
+   "measured": 7.61,
    "n": 2048,
    "ok": true
   },
@@ -8544,6 +9664,14 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/marks.cp::marks.Arena.free": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.free",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/marks.cp::marks.Arena.get": {
    "cost": "1",
    "documented": 1.0,
@@ -8564,7 +9692,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.len",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8572,7 +9700,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.new",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -8588,7 +9716,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Interner.new",
-   "measured": 0.96,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8596,7 +9724,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.clear",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -8604,7 +9732,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.contains",
-   "measured": 0.93,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -8636,7 +9764,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.MarkMap.new",
-   "measured": 3.91,
+   "measured": 4.0,
    "n": 16384,
    "ok": true
   },
@@ -8644,7 +9772,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.remove",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -8652,7 +9780,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.set",
-   "measured": 1.05,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -8660,7 +9788,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.add",
-   "measured": 1.06,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -8684,7 +9812,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.is_empty",
-   "measured": 1.02,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8700,7 +9828,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.Marks.new",
-   "measured": 4.05,
+   "measured": 4.01,
    "n": 16384,
    "ok": true
   },
@@ -8708,7 +9836,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.remove",
-   "measured": 0.92,
+   "measured": 0.91,
    "n": 16384,
    "ok": true
   },
@@ -8716,7 +9844,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.add",
-   "measured": 1.08,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -8732,7 +9860,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.contains",
-   "measured": 0.95,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -8740,7 +9868,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "marks.SparseSet.each",
-   "measured": 4.09,
+   "measured": 4.02,
    "n": 16384,
    "ok": true
   },
@@ -8756,7 +9884,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.len",
-   "measured": 0.98,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8764,7 +9892,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.SparseSet.new",
-   "measured": 3.99,
+   "measured": 3.98,
    "n": 16384,
    "ok": true
   },
@@ -8772,7 +9900,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.remove",
-   "measured": 0.93,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -9550,6 +10678,38 @@
    "fn": "heap.MeldHeaps.push",
    "measured": 1.25,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/merge_trees.cp::segtree.MergeTrees.merge": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.17,
+   "fn": "segtree.MergeTrees.merge",
+   "measured": 1.17,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/merge_trees.cp::segtree.MergeTrees.set": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.17,
+   "fn": "segtree.MergeTrees.set",
+   "measured": 0.97,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/merge_trees.cp::segtree.MergeTrees.sum": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.17,
+   "fn": "segtree.MergeTrees.sum",
+   "measured": 0.99,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/merge_trees_reserve.cp::segtree.MergeTrees.reserve": {
+   "cost": "\\mathit{sets} \\log \\lvert D \\rvert",
+   "documented": 4.89,
+   "fn": "segtree.MergeTrees.reserve",
+   "measured": 3.93,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/mo.cp::mo.mo": {
@@ -11056,11 +12216,35 @@
    "n": 2048,
    "ok": true
   },
+  "bench/scaling/popcount.cp::math.Int.word": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.Int.word",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/popcount.cp::math.U64.word": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.U64.word",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/popcount.cp::math.popcount": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.popcount",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/prefix.cp::prefix.ArithDiff.add": {
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.ArithDiff.add",
-   "measured": 1.11,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -11068,7 +12252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.ArithDiff.add_arith",
-   "measured": 1.1,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -11076,7 +12260,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "prefix.ArithDiff.finish",
-   "measured": 4.92,
+   "measured": 4.17,
    "n": 16384,
    "ok": true
   },
@@ -11084,175 +12268,231 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "prefix.ArithDiff.new",
-   "measured": 4.74,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Diff.add": {
+  "bench/scaling/prefix.cp::prefix.Diff<D,T>.add": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Diff.add",
-   "measured": 0.93,
+   "fn": "prefix.Diff<D,T>.add",
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Diff.finish": {
+  "bench/scaling/prefix.cp::prefix.Diff<D,T>.finish": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
-   "fn": "prefix.Diff.finish",
-   "measured": 3.87,
+   "fn": "prefix.Diff<D,T>.finish",
+   "measured": 3.8,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Diff.new": {
+  "bench/scaling/prefix.cp::prefix.Diff<D,T>.new": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
-   "fn": "prefix.Diff.new",
-   "measured": 4.85,
+   "fn": "prefix.Diff<D,T>.new",
+   "measured": 4.12,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.at": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.at": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.at",
-   "measured": 1.09,
+   "fn": "prefix.FillPrefix<D,T>.at",
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.cut": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.cut": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.cut",
-   "measured": 1.11,
+   "fn": "prefix.FillPrefix<D,T>.cut",
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.fold": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.fold": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.fold",
-   "measured": 1.09,
+   "fn": "prefix.FillPrefix<D,T>.fold",
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.prefix": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.prefix": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.prefix",
-   "measured": 1.1,
+   "fn": "prefix.FillPrefix<D,T>.prefix",
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.FillPrefix.set": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<D,T>.set": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.FillPrefix.set",
-   "measured": 1.11,
+   "fn": "prefix.FillPrefix<D,T>.set",
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.all": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<T>.cut": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.all",
-   "measured": 1.09,
+   "fn": "prefix.FillPrefix<T>.cut",
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.at": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<T>.fold": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.at",
-   "measured": 1.11,
+   "fn": "prefix.FillPrefix<T>.fold",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.cut": {
+  "bench/scaling/prefix.cp::prefix.FillPrefix<T>.set": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.cut",
-   "measured": 1.1,
+   "fn": "prefix.FillPrefix<T>.set",
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.cyclic_sum": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.all": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.cyclic_sum",
-   "measured": 1.1,
+   "fn": "prefix.Prefix<D,T>.all",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.filling": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<D,T>.at",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.cut": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<D,T>.cut",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.cyclic_sum": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<D,T>.cyclic_sum",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.filling": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
-   "fn": "prefix.Prefix.filling",
-   "measured": 4.7,
+   "fn": "prefix.Prefix<D,T>.filling",
+   "measured": 4.15,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.first_ge": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.first_ge": {
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
-   "fn": "prefix.Prefix.first_ge",
-   "measured": 1.18,
+   "fn": "prefix.Prefix<D,T>.first_ge",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.first_gt": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.first_gt": {
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
-   "fn": "prefix.Prefix.first_gt",
-   "measured": 1.13,
+   "fn": "prefix.Prefix<D,T>.first_gt",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.fold": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.fold": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.fold",
-   "measured": 1.11,
+   "fn": "prefix.Prefix<D,T>.fold",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.new": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.new": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
-   "fn": "prefix.Prefix.new",
-   "measured": 4.03,
+   "fn": "prefix.Prefix<D,T>.new",
+   "measured": 4.39,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.of_rev_scan": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.of_rev_scan": {
    "cost": "n",
    "documented": 4.0,
-   "fn": "prefix.Prefix.of_rev_scan",
-   "measured": 4.71,
+   "fn": "prefix.Prefix<D,T>.of_rev_scan",
+   "measured": 4.64,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.prefix": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.prefix": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.prefix",
-   "measured": 1.12,
+   "fn": "prefix.Prefix<D,T>.prefix",
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.suffix": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.suffix": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.suffix",
-   "measured": 1.12,
+   "fn": "prefix.Prefix<D,T>.suffix",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/prefix.cp::prefix.Prefix.through": {
+  "bench/scaling/prefix.cp::prefix.Prefix<D,T>.through": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "prefix.Prefix.through",
-   "measured": 1.11,
+   "fn": "prefix.Prefix<D,T>.through",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<T>.cut": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<T>.cut",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<T>.filling": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "prefix.Prefix<T>.filling",
+   "measured": 4.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<T>.fold": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<T>.fold",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix.cp::prefix.Prefix<T>.new": {
+   "cost": "a.\\mathit{len}",
+   "documented": 4.0,
+   "fn": "prefix.Prefix<T>.new",
+   "measured": 4.39,
    "n": 16384,
    "ok": true
   },
@@ -11260,7 +12500,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.SweepAdd.add",
-   "measured": 1.1,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -11268,7 +12508,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.SweepAdd.advance",
-   "measured": 1.1,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -11276,7 +12516,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "prefix.SweepAdd.current",
-   "measured": 1.09,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -11284,7 +12524,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "prefix.SweepAdd.new",
-   "measured": 4.5,
+   "measured": 3.98,
    "n": 16384,
    "ok": true
   },
@@ -11292,7 +12532,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "prefix.prefix_fold",
-   "measured": 3.95,
+   "measured": 4.26,
    "n": 16384,
    "ok": true
   },
@@ -11300,8 +12540,88 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "prefix.scan",
-   "measured": 5.87,
+   "measured": 3.9,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Diff<R,C,T>.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Diff<R,C,T>.add",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Diff<R,C,T>.finish": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Diff<R,C,T>.finish",
+   "measured": 4.22,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Diff<R,C,T>.new": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Diff<R,C,T>.new",
+   "measured": 4.06,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.FillPrefix<R,C,T>.fold": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix<R,C,T>.fold",
+   "measured": 1.1,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.FillPrefix<R,C,T>.prefix": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix<R,C,T>.prefix",
+   "measured": 1.15,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.FillPrefix<R,C,T>.set": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.FillPrefix<R,C,T>.set",
+   "measured": 1.07,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Prefix<R,C,T>.filling": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Prefix<R,C,T>.filling",
+   "measured": 4.5,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Prefix<R,C,T>.fold": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<R,C,T>.fold",
+   "measured": 1.07,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Prefix<R,C,T>.new": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "prefix.Prefix<R,C,T>.new",
+   "measured": 4.3,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/prefix_grid.cp::prefix.Prefix<R,C,T>.prefix": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "prefix.Prefix<R,C,T>.prefix",
+   "measured": 1.05,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/rand.cp::rand.Rng.chance": {
@@ -11852,7 +13172,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.ancestor",
-   "measured": 1.01,
+   "measured": 1.05,
    "n": 2048,
    "ok": true
   },
@@ -11860,7 +13180,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.below",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 2048,
    "ok": true
   },
@@ -11868,7 +13188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.depth",
-   "measured": 0.95,
+   "measured": 0.99,
    "n": 2048,
    "ok": true
   },
@@ -11876,7 +13196,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.dist",
-   "measured": 1.23,
+   "measured": 1.14,
    "n": 2048,
    "ok": true
   },
@@ -11884,7 +13204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.is_anc",
-   "measured": 1.0,
+   "measured": 1.05,
    "n": 2048,
    "ok": true
   },
@@ -11892,7 +13212,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.jump",
-   "measured": 1.04,
+   "measured": 1.11,
    "n": 2048,
    "ok": true
   },
@@ -11900,7 +13220,7 @@
    "cost": "\\log^2 n",
    "documented": 1.4,
    "fn": "tree.Rooted.jump_while",
-   "measured": 0.99,
+   "measured": 1.05,
    "n": 2048,
    "ok": true
   },
@@ -11908,7 +13228,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.lca",
-   "measured": 1.2,
+   "measured": 1.26,
    "n": 2048,
    "ok": true
   },
@@ -11916,7 +13236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.lower",
-   "measured": 1.05,
+   "measured": 1.09,
    "n": 2048,
    "ok": true
   },
@@ -11932,7 +13252,15 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.on_path",
-   "measured": 1.06,
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_query.cp::tree.Rooted.orient": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Rooted.orient",
+   "measured": 1.09,
    "n": 2048,
    "ok": true
   },
@@ -11940,7 +13268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.parent",
-   "measured": 1.45,
+   "measured": 1.04,
    "n": 2048,
    "ok": true
   },
@@ -11948,7 +13276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.pos",
-   "measured": 0.95,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
@@ -11956,7 +13284,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.root_of",
-   "measured": 1.35,
+   "measured": 1.13,
    "n": 2048,
    "ok": true
   },
@@ -11964,7 +13292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.size",
-   "measured": 0.94,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
@@ -11972,7 +13300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.sub",
-   "measured": 0.95,
+   "measured": 1.04,
    "n": 2048,
    "ok": true
   },
@@ -11980,7 +13308,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.up_arc",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -14472,6 +15800,14 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/slice_to_list.cp::seq.to_list": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.to_list",
+   "measured": 4.27,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/slope.cp::slope.Concave.add_abs": {
    "cost": "\\log n",
    "documented": 1.14,
@@ -14772,7 +16108,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.add",
-   "measured": 1.21,
+   "measured": 1.22,
    "n": 16384,
    "ok": true
   },
@@ -14780,7 +16116,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.contains",
-   "measured": 1.3,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -14788,7 +16124,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.count",
-   "measured": 1.22,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -14796,7 +16132,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.remove",
-   "measured": 1.26,
+   "measured": 1.11,
    "n": 16384,
    "ok": true
   },
@@ -14804,7 +16140,7 @@
    "cost": "\\min(n, m) \\log(n + m)",
    "documented": 4.53,
    "fn": "bag.SortedBag.absorb",
-   "measured": 5.24,
+   "measured": 4.44,
    "n": 16384,
    "ok": true
   },
@@ -14812,7 +16148,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.add_many",
-   "measured": 1.3,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -14820,7 +16156,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.clear",
-   "measured": 0.98,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -14828,15 +16164,15 @@
    "cost": "k \\log n",
    "documented": 4.57,
    "fn": "bag.SortedBag.drain",
-   "measured": 5.23,
+   "measured": 4.23,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/sortedbag_edits.cp::bag.SortedBag.drain_range": {
-   "cost": "\\log n + k",
-   "documented": 1.13,
+   "cost": "k \\log n",
+   "documented": 1.14,
    "fn": "bag.SortedBag.drain_range",
-   "measured": 1.16,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -14844,7 +16180,7 @@
    "cost": "\\log n + s \\log n",
    "documented": 4.57,
    "fn": "bag.SortedBag.join",
-   "measured": 3.03,
+   "measured": 4.31,
    "n": 16384,
    "ok": true
   },
@@ -14852,7 +16188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.new",
-   "measured": 1.02,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -14860,7 +16196,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.pop_first",
-   "measured": 1.12,
+   "measured": 0.87,
    "n": 16384,
    "ok": true
   },
@@ -14868,7 +16204,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.pop_last",
-   "measured": 1.12,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -14876,7 +16212,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.remove_all",
-   "measured": 1.2,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -14884,15 +16220,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.remove_at",
-   "measured": 1.12,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/sortedbag_edits.cp::bag.SortedBag.reserve": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "bag.SortedBag.reserve",
-   "measured": 6.89,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -14900,7 +16228,7 @@
    "cost": "\\log n + s \\log n",
    "documented": 4.57,
    "fn": "bag.SortedBag.split_at",
-   "measured": 5.57,
+   "measured": 4.41,
    "n": 16384,
    "ok": true
   },
@@ -14908,7 +16236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.take",
-   "measured": 1.02,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -14916,7 +16244,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.take_first",
-   "measured": 1.21,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
@@ -14924,7 +16252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.count_of",
-   "measured": 1.01,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -14932,7 +16260,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.cursor_at",
-   "measured": 1.19,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -14940,7 +16268,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.cursor_first",
-   "measured": 1.16,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -14948,7 +16276,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.cursor_ge",
-   "measured": 1.07,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -14956,7 +16284,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.cursor_gt",
-   "measured": 1.06,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -14964,7 +16292,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.cursor_last",
-   "measured": 1.2,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -14972,7 +16300,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.cursor_le",
-   "measured": 1.08,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -14980,7 +16308,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.cursor_lt",
-   "measured": 1.1,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -14988,7 +16316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.distinct",
-   "measured": 1.04,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -14996,7 +16324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.each",
-   "measured": 1.32,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -15004,7 +16332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.each_rev",
-   "measured": 1.35,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -15012,7 +16340,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.entries",
-   "measured": 1.59,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -15020,7 +16348,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.entries_rev",
-   "measured": 1.39,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -15028,7 +16356,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.first",
-   "measured": 1.01,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -15036,7 +16364,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.first_true",
-   "measured": 0.93,
+   "measured": 1.45,
    "n": 16384,
    "ok": true
   },
@@ -15044,7 +16372,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.is_empty",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -15052,7 +16380,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.key_of",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -15060,7 +16388,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.last",
-   "measured": 1.01,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -15068,7 +16396,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.last_true",
-   "measured": 0.88,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -15076,7 +16404,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.len",
-   "measured": 1.02,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -15084,7 +16412,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.next_cursor",
-   "measured": 1.15,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -15092,7 +16420,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.nth",
-   "measured": 1.23,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -15100,7 +16428,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "bag.SortedBag.of",
-   "measured": 5.33,
+   "measured": 4.7,
    "n": 16384,
    "ok": true
   },
@@ -15108,7 +16436,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.prev_cursor",
-   "measured": 1.02,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -15116,7 +16444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.range",
-   "measured": 1.33,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -15124,7 +16452,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.rank",
-   "measured": 1.43,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -15132,7 +16460,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "bag.SortedBag.sum",
-   "measured": 7.48,
+   "measured": 4.49,
    "n": 16384,
    "ok": true
   },
@@ -15140,15 +16468,31 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "bag.SortedBag.to_list",
-   "measured": 7.42,
+   "measured": 4.43,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/sortedbag_reserve.cp::bag.SortedBag.reserve": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "bag.SortedBag.reserve",
+   "measured": 6.82,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/sortedbag_reserve.cp::bag.SortedSet.reserve": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "bag.SortedSet.reserve",
+   "measured": 6.95,
+   "n": 65536,
    "ok": true
   },
   "bench/scaling/sortedmap.cp::bag.SortedMap.absorb": {
    "cost": "\\min(n, m) \\log(n + m)",
    "documented": 4.53,
    "fn": "bag.SortedMap.absorb",
-   "measured": 4.7,
+   "measured": 4.39,
    "n": 16384,
    "ok": true
   },
@@ -15156,7 +16500,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.clear",
-   "measured": 1.6,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -15164,7 +16508,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.contains",
-   "measured": 1.07,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -15172,7 +16516,7 @@
    "cost": "k \\log n",
    "documented": 4.57,
    "fn": "bag.SortedMap.drain",
-   "measured": 4.32,
+   "measured": 4.46,
    "n": 16384,
    "ok": true
   },
@@ -15180,7 +16524,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.each_rev",
-   "measured": 0.94,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -15188,7 +16532,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.first",
-   "measured": 1.09,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -15196,7 +16540,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.first_ge",
-   "measured": 1.1,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -15204,7 +16548,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.first_gt",
-   "measured": 1.34,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -15212,7 +16556,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.first_true",
-   "measured": 1.27,
+   "measured": 1.23,
    "n": 16384,
    "ok": true
   },
@@ -15220,7 +16564,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.get",
-   "measured": 1.46,
+   "measured": 1.59,
    "n": 16384,
    "ok": true
   },
@@ -15228,7 +16572,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.is_empty",
-   "measured": 1.03,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -15236,7 +16580,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.items",
-   "measured": 1.12,
+   "measured": 1.39,
    "n": 16384,
    "ok": true
   },
@@ -15244,7 +16588,7 @@
    "cost": "m",
    "documented": 4.0,
    "fn": "bag.SortedMap.join",
-   "measured": 3.9,
+   "measured": 4.75,
    "n": 16384,
    "ok": true
   },
@@ -15252,7 +16596,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.keys",
-   "measured": 1.13,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -15260,7 +16604,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.last",
-   "measured": 1.06,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -15268,7 +16612,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.last_le",
-   "measured": 1.14,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -15276,7 +16620,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.last_lt",
-   "measured": 1.22,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -15284,7 +16628,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.last_true",
-   "measured": 1.07,
+   "measured": 1.19,
    "n": 16384,
    "ok": true
   },
@@ -15292,7 +16636,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.len",
-   "measured": 1.02,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -15300,7 +16644,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.new",
-   "measured": 1.02,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -15308,7 +16652,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.nth",
-   "measured": 1.14,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -15316,7 +16660,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.pop_first",
-   "measured": 1.27,
+   "measured": 0.91,
    "n": 16384,
    "ok": true
   },
@@ -15324,7 +16668,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.pop_last",
-   "measured": 1.34,
+   "measured": 1.21,
    "n": 16384,
    "ok": true
   },
@@ -15332,7 +16676,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.rank",
-   "measured": 2.12,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -15340,7 +16684,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.remove",
-   "measured": 1.37,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -15348,7 +16692,7 @@
    "cost": "\\mathit{cap}",
    "documented": 4.0,
    "fn": "bag.SortedMap.reserve",
-   "measured": 3.62,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -15356,7 +16700,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedMap.set",
-   "measured": 1.2,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -15364,7 +16708,7 @@
    "cost": "\\log n + s \\log n",
    "documented": 4.57,
    "fn": "bag.SortedMap.split_at",
-   "measured": 3.95,
+   "measured": 4.48,
    "n": 16384,
    "ok": true
   },
@@ -15372,7 +16716,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.take",
-   "measured": 1.03,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -15380,7 +16724,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedMap.values",
-   "measured": 1.31,
+   "measured": 1.17,
    "n": 16384,
    "ok": true
   },
@@ -15388,7 +16732,7 @@
    "cost": "\\min(n, m) \\log(n + m)",
    "documented": 4.53,
    "fn": "bag.SortedSet.absorb",
-   "measured": 4.82,
+   "measured": 4.26,
    "n": 16384,
    "ok": true
   },
@@ -15396,7 +16740,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.add",
-   "measured": 1.1,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -15404,7 +16748,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.clear",
-   "measured": 1.0,
+   "measured": 0.84,
    "n": 16384,
    "ok": true
   },
@@ -15412,7 +16756,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.contains",
-   "measured": 1.26,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -15420,7 +16764,7 @@
    "cost": "k \\log n",
    "documented": 4.57,
    "fn": "bag.SortedSet.drain",
-   "measured": 4.89,
+   "measured": 4.1,
    "n": 16384,
    "ok": true
   },
@@ -15428,7 +16772,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.each",
-   "measured": 1.04,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -15436,7 +16780,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.each_rev",
-   "measured": 1.21,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -15444,7 +16788,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.first",
-   "measured": 0.99,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -15452,7 +16796,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.first_true",
-   "measured": 1.23,
+   "measured": 1.35,
    "n": 16384,
    "ok": true
   },
@@ -15460,7 +16804,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.is_empty",
-   "measured": 1.0,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
@@ -15468,7 +16812,7 @@
    "cost": "\\log n + s \\log n",
    "documented": 4.57,
    "fn": "bag.SortedSet.join",
-   "measured": 2.81,
+   "measured": 4.48,
    "n": 16384,
    "ok": true
   },
@@ -15476,7 +16820,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.last",
-   "measured": 0.99,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -15484,7 +16828,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.last_true",
-   "measured": 1.18,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -15492,7 +16836,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.len",
-   "measured": 0.99,
+   "measured": 0.87,
    "n": 16384,
    "ok": true
   },
@@ -15500,7 +16844,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.new",
-   "measured": 0.99,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -15508,7 +16852,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.nth",
-   "measured": 1.19,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -15516,7 +16860,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "bag.SortedSet.of",
-   "measured": 4.63,
+   "measured": 5.01,
    "n": 16384,
    "ok": true
   },
@@ -15524,7 +16868,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.pop_first",
-   "measured": 1.44,
+   "measured": 0.86,
    "n": 16384,
    "ok": true
   },
@@ -15532,7 +16876,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.pop_last",
-   "measured": 1.5,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -15540,7 +16884,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.range",
-   "measured": 1.33,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -15548,7 +16892,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.rank",
-   "measured": 1.3,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -15556,15 +16900,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.remove",
-   "measured": 1.12,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/sortedset.cp::bag.SortedSet.reserve": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "bag.SortedSet.reserve",
-   "measured": 6.94,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -15572,7 +16908,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedSet.set",
-   "measured": 1.08,
+   "measured": 0.92,
    "n": 16384,
    "ok": true
   },
@@ -15580,7 +16916,7 @@
    "cost": "\\log n + s \\log n",
    "documented": 4.57,
    "fn": "bag.SortedSet.split_at",
-   "measured": 5.47,
+   "measured": 4.17,
    "n": 16384,
    "ok": true
   },
@@ -15588,7 +16924,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedSet.take",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -15596,7 +16932,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "bag.SortedSet.to_list",
-   "measured": 5.86,
+   "measured": 5.49,
    "n": 16384,
    "ok": true
   },
@@ -16556,7 +17892,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.complement",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 98304,
    "ok": true
   },
@@ -16564,7 +17900,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.contains",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 98304,
    "ok": true
   },
@@ -16572,7 +17908,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.each",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 98304,
    "ok": true
   },
@@ -16580,7 +17916,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.empty",
-   "measured": 0.98,
+   "measured": 1.02,
    "n": 98304,
    "ok": true
   },
@@ -16588,7 +17924,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.first",
-   "measured": 0.98,
+   "measured": 1.0,
    "n": 98304,
    "ok": true
   },
@@ -16596,7 +17932,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.full",
-   "measured": 0.97,
+   "measured": 1.01,
    "n": 98304,
    "ok": true
   },
@@ -16604,7 +17940,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.is_empty",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 98304,
    "ok": true
   },
@@ -16612,7 +17948,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.items",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 98304,
    "ok": true
   },
@@ -16620,7 +17956,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.len",
-   "measured": 0.99,
+   "measured": 1.01,
+   "n": 98304,
+   "ok": true
+  },
+  "bench/scaling/subset.cp::subset.Subset.of": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "subset.Subset.of",
+   "measured": 1.04,
    "n": 98304,
    "ok": true
   },
@@ -16628,7 +17972,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.set",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 98304,
    "ok": true
   },
@@ -16636,7 +17980,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.shifted",
-   "measured": 0.97,
+   "measured": 1.02,
    "n": 98304,
    "ok": true
   },
@@ -16644,7 +17988,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.single",
-   "measured": 0.95,
+   "measured": 1.02,
    "n": 98304,
    "ok": true
   },
@@ -16652,7 +17996,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.subsets",
-   "measured": 0.98,
+   "measured": 1.04,
    "n": 98304,
    "ok": true
   },
@@ -16660,7 +18004,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.supersets",
-   "measured": 0.9,
+   "measured": 1.02,
    "n": 98304,
    "ok": true
   },
@@ -16668,7 +18012,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.with",
-   "measured": 0.85,
+   "measured": 1.02,
    "n": 98304,
    "ok": true
   },
@@ -16676,7 +18020,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "subset.Subset.without",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 98304,
    "ok": true
   },
@@ -17372,7 +18716,7 @@
    "cost": "\\lvert \\mathit{dl} \\rvert + \\lvert \\mathit{dr} \\rvert",
    "documented": 4.0,
    "fn": "window.Sweep.move",
-   "measured": 2.37,
+   "measured": 4.79,
    "n": 16384,
    "ok": true
   },
@@ -17380,7 +18724,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Sweep.new",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -17388,7 +18732,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Sweep.range",
-   "measured": 1.0,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -17396,7 +18740,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.pop",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -17404,7 +18748,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.push",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -17412,7 +18756,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.state",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -17420,7 +18764,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "window.Undoing.pop",
-   "measured": 1.14,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
@@ -17428,7 +18772,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Undoing.push",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -17436,7 +18780,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Undoing.state",
-   "measured": 1.07,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -17444,7 +18788,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.all",
-   "measured": 0.98,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/window.cp::window.Window.expire": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "window.Window.expire",
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -17452,7 +18804,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.is_empty",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -17460,7 +18812,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.items",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -17468,7 +18820,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.len",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -17476,7 +18828,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.new",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -17484,7 +18836,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.pop",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -17492,7 +18844,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.push",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -17500,7 +18852,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.track",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -17508,7 +18860,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.undoing",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -17516,7 +18868,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "window.window_fold",
-   "measured": 3.97,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -17786,143 +19138,6 @@
   }
  },
  "unscaled": [
-  "algebra.MaxSub.repeat",
-  "builtin.Array.all",
-  "builtin.Array.any",
-  "builtin.Array.clone",
-  "builtin.Array.contains",
-  "builtin.Array.count",
-  "builtin.Array.cut_after",
-  "builtin.Array.cut_before",
-  "builtin.Array.fill",
-  "builtin.Array.filter",
-  "builtin.Array.first_ge",
-  "builtin.Array.first_gt",
-  "builtin.Array.get",
-  "builtin.Array.last_le",
-  "builtin.Array.last_lt",
-  "builtin.Array.map",
-  "builtin.Array.max",
-  "builtin.Array.min",
-  "builtin.Array.reach",
-  "builtin.Array.reverse",
-  "builtin.Array.reversed",
-  "builtin.Array.sort",
-  "builtin.Array.sorted",
-  "builtin.Array.sum",
-  "builtin.Array.swap",
-  "builtin.HashMap.contains",
-  "builtin.HashMap.first_ge",
-  "builtin.HashMap.first_gt",
-  "builtin.HashMap.get",
-  "builtin.HashMap.keys",
-  "builtin.HashMap.last_le",
-  "builtin.HashMap.last_lt",
-  "builtin.HashMap.pop_first",
-  "builtin.HashMap.pop_last",
-  "builtin.HashMap.range",
-  "builtin.HashMap.remove",
-  "builtin.HashMap.values",
-  "builtin.HashSet.add",
-  "builtin.HashSet.contains",
-  "builtin.HashSet.drain",
-  "builtin.HashSet.first_ge",
-  "builtin.HashSet.first_gt",
-  "builtin.HashSet.insert",
-  "builtin.HashSet.last_le",
-  "builtin.HashSet.last_lt",
-  "builtin.HashSet.max",
-  "builtin.HashSet.min",
-  "builtin.HashSet.pop_first",
-  "builtin.HashSet.pop_last",
-  "builtin.HashSet.range",
-  "builtin.HashSet.remove",
-  "builtin.HashSet.set",
-  "builtin.List.all",
-  "builtin.List.any",
-  "builtin.List.clone",
-  "builtin.List.contains",
-  "builtin.List.count",
-  "builtin.List.cut_after",
-  "builtin.List.cut_before",
-  "builtin.List.fill",
-  "builtin.List.filter",
-  "builtin.List.find",
-  "builtin.List.first_ge",
-  "builtin.List.first_gt",
-  "builtin.List.get",
-  "builtin.List.insert",
-  "builtin.List.last_le",
-  "builtin.List.last_lt",
-  "builtin.List.map",
-  "builtin.List.max",
-  "builtin.List.min",
-  "builtin.List.pop",
-  "builtin.List.push",
-  "builtin.List.push_id",
-  "builtin.List.reach",
-  "builtin.List.remove",
-  "builtin.List.reserve",
-  "builtin.List.reverse",
-  "builtin.List.reversed",
-  "builtin.List.sort",
-  "builtin.List.sorted",
-  "builtin.List.sum",
-  "builtin.List.swap",
-  "builtin.List.to_list",
-  "builtin.Map.contains",
-  "builtin.Map.first_ge",
-  "builtin.Map.first_gt",
-  "builtin.Map.get",
-  "builtin.Map.keys",
-  "builtin.Map.last_le",
-  "builtin.Map.last_lt",
-  "builtin.Map.pop_first",
-  "builtin.Map.pop_last",
-  "builtin.Map.range",
-  "builtin.Map.remove",
-  "builtin.Map.values",
-  "builtin.Set.add",
-  "builtin.Set.contains",
-  "builtin.Set.drain",
-  "builtin.Set.first_ge",
-  "builtin.Set.first_gt",
-  "builtin.Set.insert",
-  "builtin.Set.last_le",
-  "builtin.Set.last_lt",
-  "builtin.Set.max",
-  "builtin.Set.min",
-  "builtin.Set.pop_first",
-  "builtin.Set.pop_last",
-  "builtin.Set.range",
-  "builtin.Set.remove",
-  "builtin.Set.set",
-  "builtin.Str.all",
-  "builtin.Str.any",
-  "builtin.Str.clone",
-  "builtin.Str.contains",
-  "builtin.Str.count",
-  "builtin.Str.cut_after",
-  "builtin.Str.cut_before",
-  "builtin.Str.fill",
-  "builtin.Str.filter",
-  "builtin.Str.first_ge",
-  "builtin.Str.first_gt",
-  "builtin.Str.get",
-  "builtin.Str.last_le",
-  "builtin.Str.last_lt",
-  "builtin.Str.map",
-  "builtin.Str.max",
-  "builtin.Str.min",
-  "builtin.Str.pop",
-  "builtin.Str.push",
-  "builtin.Str.reach",
-  "builtin.Str.reverse",
-  "builtin.Str.reversed",
-  "builtin.Str.sort",
-  "builtin.Str.sorted",
-  "builtin.Str.swap",
-  "builtin.Str.to_str",
   "strings.Palindromes.items"
  ]
 }

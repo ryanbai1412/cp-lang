@@ -15,7 +15,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let span = expr.span;
         if let Some((fn_id, args)) = self.traced_call(expr) {
             if ScalarKind::of_ty(&expr.ty, self.program).is_none() {
-                return self.emit_traced_call(expr, fn_id, args, false);
+                return self.emit_traced_call(expr.span, fn_id, args, false);
             }
         }
         if let Some(kind) = ScalarKind::of_ty(&expr.ty, self.program) {
@@ -1263,7 +1263,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     pub(super) fn compile_expr_small_tuple(&mut self, expr: &'p Expr, dst_base: u16, len: u8) {
         if let Some((fn_id, args)) = self.traced_call(expr) {
-            let src_v = self.emit_traced_call(expr, fn_id, args, false);
+            let src_v = self.emit_traced_call(expr.span, fn_id, args, false);
             let unbox = Op::UnboxSmallTuple {
                 dst_base,
                 len,

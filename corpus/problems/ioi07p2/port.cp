@@ -20,7 +20,7 @@ domain W = 1..=m
 let walls: [W](u: P, v: P) = read()
 
 enum Dir = East | North | West | South  // counter-clockwise
-domain Side = 0..2 * m              // wall w has sides 2w and 2w + 1
+domain Side = 0..2 * m                  // wall w has sides 2w and 2w + 1
 fn side(w: W, first: Bool) -> Side = Side.nth(2 * w.ord + if first: 0 else: 1)
 fn flip(s: Side) -> Side = Side.nth(s.ord ^ 1)  // the other side of the same wall
 

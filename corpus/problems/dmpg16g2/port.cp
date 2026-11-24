@@ -68,7 +68,7 @@ for bot in Row:
             for mask in holding[b]:
                 blocked[mask, c] -= 1
                 if blocked[mask, c] == 0:
-                    for d in c.ord - 1 ..= c.ord + 1:
+                    for d in c.ord - 1..=c.ord + 1:
                         if d != c.ord and d in Col and blocked[mask, Col(d)] == 0:
                             total[mask] -= c2(runs[mask].size(Col(d)))
                             runs[mask].unite(c, Col(d))

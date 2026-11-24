@@ -3,7 +3,7 @@
 let (n, k) = read<(1..=200_000, 1..=200_000)>()
 domain K = 1..=k
 let a = read<[n]K>()
-var last: [K]Int = 0                  // the last position of each value
+var last: [K]Int = 0  // the last position of each value
 for (i, x) in a.items: last[x] = i
 var stack: List<K> = []
 var held: [K]Bool = false

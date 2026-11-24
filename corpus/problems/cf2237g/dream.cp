@@ -45,7 +45,12 @@ for _ in 0..read<Int>():
     match run:
         First:
             let a: List<0..=V> = read()
-            let b = recut(a, WORD, SYMBOL, ceil_div(a.len * WORD, SYMBOL)).map(s => symbols[s]) + powers
+            let b = recut(
+                a,
+                WORD,
+                SYMBOL,
+                ceil_div(a.len * WORD, SYMBOL),
+            ).map(s => symbols[s]) + powers
             print(b.len)
             print(b)
         Second:

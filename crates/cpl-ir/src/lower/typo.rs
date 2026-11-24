@@ -256,8 +256,7 @@ impl<'a> Lowerer<'a> {
             return false;
         }
         let (text, at) = (self.source(base.span).to_string(), self.span(base.span));
-        let message = format!("this method is called on a `Str`, and `{text}` is a `List<Char>`");
-        let mut d = Diagnostic::error(codes::TYPE_MISMATCH, at, message);
+        let mut d = cpl_diag::msgs::check::STR_METHOD_ON_CHARS.error(at, &[&text]);
         d.help = Some(format!("write `Str({text})`"));
         d.fix(format!("write `Str({text})`"), at, format!("Str({text})"));
         self.diags.push(d);
@@ -653,7 +652,7 @@ impl<'a> Lowerer<'a> {
     /// `print(xs.sort())`: an in-place change gives nothing to print; its
     /// copying form does.
     pub(super) fn no_value_to_print(&mut self, span: Span) {
-        self.error(codes::TYPE_MISMATCH, span, "this has no value to print");
+        self.report(&cpl_diag::msgs::ir::NO_VALUE_TO_PRINT, span, &[]);
         let text = self.source(span);
         let copy = [(".sort()", ".sorted()"), (".reverse()", ".rev")]
             .into_iter()
@@ -926,8 +925,8 @@ impl<'a> Lowerer<'a> {
             _ => "Int".to_string(),
         };
         let recv = self.source(base.span).to_string();
-        let message = format!("`parse` needs the type it reads: `{recv}.parse<{ty}>()`");
-        let mut d = Diagnostic::error(codes::WRONG_ARG_COUNT, self.span(name.span), message);
+        let mut d =
+            cpl_diag::msgs::check::PARSE_NEEDS_TYPE.error(self.span(name.span), &[&recv, &ty]);
         d.help = Some(format!(
             "`parse<T>()` reads a `T` by the rules `read` uses (R10.2.4), so name it: `{recv}.parse<{ty}>()`, or `{recv}.parse<(Int, Int)>()` for two numbers"
         ));
@@ -975,8 +974,10 @@ fn receiver_of(ty: &Ty) -> Option<cpl_check::Receiver> {
     match ty {
         Ty::Str | Ty::StrView => Some(Receiver::Str),
         Ty::List(_) | Ty::MutView(..) | Ty::ListView(..) | Ty::Keyed(..) => Some(Receiver::List),
-        Ty::Map(..) | Ty::HashMap(..) => Some(Receiver::Map),
-        Ty::Set(_) | Ty::HashSet(_) => Some(Receiver::Set),
+        Ty::Map(..) => Some(Receiver::Map),
+        Ty::HashMap(..) => Some(Receiver::HashMap),
+        Ty::Set(_) => Some(Receiver::Set),
+        Ty::HashSet(_) => Some(Receiver::HashSet),
         Ty::Array { .. } => Some(Receiver::Array),
         _ => None,
     }

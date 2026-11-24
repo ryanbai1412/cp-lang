@@ -18,6 +18,12 @@ buffering is the gap. The first row was in the port and is fixed there (below); 
 fourth are `cpl::sort_by`. With the fix the port is at 10.3 MB against 9.8 MB (1.05x) and
 0.04 s against 0.06 s.
 
+After 333c96870 (Core: `sort(by:)` compares table-cell keys in place) the second to fourth
+rows are gone: on the same input, 7 runs each under g++ 14 `-O2`, the port takes 8.87-9.00 MB
+and 0.04-0.09 s against orig.cpp's 9.82 MB and 0.06-0.13 s (0.91x). The two print different
+optimal coupon orders and both pass `checker.py`. The port has no sort workaround to remove; it
+was always the plain `sorted(by:)`.
+
 ## `read<T>()` stores a narrow table wide, and `cpl explain` says it doesn't
 - **Where:** `port.cp` as first written, `let coupons = read<[C](p: 1..=1e9, t: 1..=4)>()`.
 - **Repro:** the same program with each spelling, 2e5 random coupons, best of 3:
@@ -45,9 +51,13 @@ fourth are `cpl::sort_by`. With the fix the port is at 10.3 MB against 9.8 MB (1
   two can't disagree.
 - **Port fix:** the annotated `let`. 11.9 MB to 10.3 MB; the `--max` output is unchanged and
   `scripts/corpus.py verify ioi25_festival` stays clean.
+- **Owner:** Core.
 - **Severity:** high (a silent 2x on the main input table, and the cost report is wrong).
 
-## `sorted(by:)` allocates three n-sized buffers beside the list
+## `sorted(by:)` allocates three n-sized buffers beside the list (fixed by 333c96870)
+- **Status:** fixed by 333c96870. The repro below now takes 7.59 MB peak RSS (was 9.19 MB)
+  against 6.16 MB, heap 4.95 MB (was 6.45 MB) against 3.25 MB, best of 5. The 1.7 MB left is
+  the `read<T>()` widening of the next section (`coupons` at 16 B per row against 8 B).
 - **Where:** `port.cp` and `dream.cp`,
   `C.filter(c => coupons[c].t > 1).sorted(by: c => Ratio(coupons[c].p * coupons[c].t, coupons[c].t - 1))`.
 - **Repro:** 2e5 random coupons, best of 3; the C++ is `std::stable_sort` with a comparator:
@@ -70,4 +80,32 @@ fourth are `cpl::sort_by`. With the fix the port is at 10.3 MB against 9.8 MB (1
   here), sort the list in place with a comparator that recomputes the key; keep the cached
   keys for expensive keys, and then sort (key, element) pairs in one buffer, not keys plus
   an index permutation plus a copy.
+- **Owner:** Core.
 - **Severity:** medium (1.5x peak RSS on an n log n sort; 2.4 + 1.2 + 1.2 MB in festival).
+
+## The port and the dream had two DP bounds and two caps
+
+- **Where:** `port.cp` kept the cheapest 32 of each type past the free run ("fewer than 33
+  more fit"), `dream.cp` kept all of them with `K = 0..=min(rest.len, 70)` ("fewer than 70");
+  the caps were `1e15` and `3e14` for the same fact.
+- **Fixed:** both now state the doubling argument and use 32, and both cap at `2e14`, which is
+  n · max p = 2e5 · 1e9, the most every price combined can be. The port's free run is its own
+  `while let` loop, and the per-type cut is a `Bitset<C>` filter over what is left. "How many
+  plain coupons the tokens pay for" is `(0..plain.len).first_true(i => cost.cut(i + 1) > b)`
+  instead of `first_gt(b).map(c => Int(c) - 1)`. Port output is byte-identical to the previous
+  port on all 19 package cases.
+- **Gap (stdlib):** `Prefix` has `first_gt`/`first_ge` (a cut) but no count of the prefixes
+  `<= b`; `first_true` over the keys says it, at one extra closure.
+
+## `cpl fmt` breaks a trailing call instead of the statement
+
+- **Where:** `port.cp`, the DP's inner line.
+- **What:** `if let j = k.prev and let t = best[i][j] and t >= coupons[c].p: best[i + 1][k] max= buy(t, c)`
+  (101 columns) is formatted as `... max= buy(` / `t,` / `c,` / `)`, splitting the two-argument
+  call one per line rather than moving the body under the `if`. Layout only: the meaning is
+  unchanged (an earlier report that fmt damaged code came from `fmt_check.py`, fixed in
+  219472d40).
+- **General fix (fmt):** prefer breaking a one-line `if ...: body` before the body over
+  splitting the body's last call.
+- **Severity:** low.
+

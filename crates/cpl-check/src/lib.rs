@@ -27,14 +27,16 @@ mod multitest;
 mod nav;
 mod prelude;
 mod session;
+#[cfg(test)]
+mod std_bundle;
 mod std_files;
 mod ty;
 
 pub use builtins::{
     builtin_member, builtin_members, char_literal, foreign_iter_call, foreign_member,
-    foreign_str_fn, list_end_help, prelude_names, split_params as split_builtin_params,
-    BuiltinMember, BuiltinType, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES,
-    ITERATOR_POSITION_HELP,
+    foreign_str_fn, list_end_help, needs_order, prelude_names,
+    split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind, PreludeKind,
+    Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, ITERATOR_POSITION_HELP,
 };
 pub use check::{closest, GlobalRef, HoverEntry, Resolved, TypedIndex};
 pub use db::{
@@ -50,8 +52,8 @@ pub use modules::{
 };
 pub use prelude::{
     arity_key, import_edit, method_key, method_module, methods as std_methods, overload_key,
-    overload_part, set_domain, std_family, std_module, std_names, std_self_heads, type_arity,
-    written_name, SetDomain, VALUE_NAMES as PRELUDE_VALUES,
+    overload_part, set_domain, std_family, std_module, std_names, std_self_heads,
+    ty as prelude_type, type_arity, written_name, SetDomain, VALUE_NAMES as PRELUDE_VALUES,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};

@@ -26,7 +26,10 @@ fn crossing(p: Line, q: Line) -> ?Corner:
 let n = read<3..=12>()
 domain W = [n]
 let ends = read<[W](a: (Coord, Coord), b: (Coord, Coord))>()
-let line = [W] w => Line(Pt(ends[w].a.0, ends[w].a.1), Pt(ends[w].b.0 - ends[w].a.0, ends[w].b.1 - ends[w].a.1))
+let line = [W] w => Line(
+    Pt(ends[w].a.0, ends[w].a.1),
+    Pt(ends[w].b.0 - ends[w].a.0, ends[w].b.1 - ends[w].a.1),
+)
 fn crossings(u: W) -> yields Corner = W.filter_map(v => crossing(line[u], line[v]))
 let (domain C, corner) = compress([p for u in W for p in crossings(u)])
 let along = [W] u => crossings(u).map(p => corner.index_of(p)).sorted().deduped()
@@ -38,7 +41,10 @@ fn walk(from: C, start: C, sides: Int):
     for w in W:
         if used[w] or not along[w].contains(from): continue
         used[w] = true
-        for ray in [along[w].filter(c => c > from).collect(), along[w].filter(c => c < from).rev.collect()]:
+        for ray in [
+            along[w].filter(c => c > from).collect(),
+            along[w].filter(c => c < from).rev.collect(),
+        ]:
             var side: List<C> = []
             for c in ray:
                 if spent[c]:

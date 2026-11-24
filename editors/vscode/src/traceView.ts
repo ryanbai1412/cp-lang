@@ -4,7 +4,6 @@
 
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { parseTraceMessage } from './results';
 
 export class TraceView implements vscode.Disposable {
     private readonly panels = new Map<string, vscode.WebviewPanel>();
@@ -38,11 +37,8 @@ export class TraceView implements vscode.Disposable {
         return panel;
     }
 
-    private async follow(uri: vscode.Uri, raw: unknown): Promise<void> {
-        const message = parseTraceMessage(raw);
-        if (!message) {
-            return;
-        }
+    /** Follows what the viewer posts: `{type: 'step' | 'reveal', line}`, 0-based. */
+    private async follow(uri: vscode.Uri, message: { type: 'step' | 'reveal'; line: number }): Promise<void> {
         let editors = this.editorsOf(uri);
         if (message.type === 'reveal' || editors.length === 0) {
             const document = await vscode.workspace.openTextDocument(uri);
@@ -50,7 +46,7 @@ export class TraceView implements vscode.Disposable {
             editors = [await vscode.window.showTextDocument(document, { viewColumn: column, preserveFocus: message.type === 'step' })];
         }
         for (const editor of editors) {
-            const line = Math.min(message.line - 1, editor.document.lineCount - 1);
+            const line = Math.min(message.line, editor.document.lineCount - 1);
             const range = editor.document.lineAt(line).range;
             editor.setDecorations(this.stepLine, [range]);
             editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);

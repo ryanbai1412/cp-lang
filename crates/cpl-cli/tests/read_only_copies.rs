@@ -191,7 +191,7 @@ const DIRECTIVES: [(&str, Count); 3] = [
 ];
 
 /// The most of each the corpus may build to, summed over programs.
-const TOTALS: [(&str, Count, usize); 1] = [("sunk_copies", sunk_copies, 12)];
+const TOTALS: [(&str, Count, usize); 1] = [("sunk_copies", sunk_copies, 8)];
 
 /// The value of the header line `// <key>: N` (0 without one), or why the
 /// header is malformed. The header is the file's leading `//` lines.
@@ -353,8 +353,8 @@ fn every_program_makes_the_copies_its_header_says() {
 
 #[test]
 fn explain_gives_one_reason_per_copy_a_library_call_makes() {
-    let src = repo().join("spec/conformance/std-bag/aug-sorted-bag-set-match-brute.cp");
-    let out = std::env::temp_dir().join(format!("cpl-explain-bag-{}.cpp", std::process::id()));
+    let src = repo().join("corpus/problems/nccc10s3/port.cp");
+    let out = std::env::temp_dir().join(format!("cpl-explain-nccc-{}.cpp", std::process::id()));
     let built = cpl_cli::run(&["build", src.to_str().unwrap(), "-o", out.to_str().unwrap()]);
     assert_eq!(built.code, 0);
     let cpp = std::fs::read_to_string(&out).unwrap();
@@ -378,6 +378,8 @@ fn a_part_returned_by_value_is_a_copy_and_by_reference_is_not() {
     assert_eq!(deep_copies(after_lambda), 0);
     let forwarded = "inline const std::vector<ll>& A_view(const A& self) {\n  return self.xs;\n}\ninline std::vector<ll> B_view(const B& self) {\n  return A_view(self.a);\n}\n";
     assert_eq!(deep_copies(forwarded), 1);
+    let cached = "inline std::vector<ll> T_plain(T& self) {\n  return self.xs;\n}\n";
+    assert_eq!(deep_copies(cached), 1);
 }
 
 #[test]

@@ -191,6 +191,17 @@ pub(crate) const REMOVED: &[Removed] = &[
         slots: &[],
         op_first: false,
     },
+    Removed {
+        name: "adjacency",
+        method: false,
+        arity: 2,
+        to: "Bitset.undirected({0})",
+        why: "neighbour sets are `Bitset.undirected(edges)`, as `Graph.undirected` is for lists",
+        kept: None,
+        respelled: true,
+        slots: &["into"],
+        op_first: false,
+    },
 ];
 
 /// `prefix_excl` is rewritten by `Checker::prefix_excl_edits`: it hoists two scans.
@@ -362,7 +373,9 @@ impl Checker<'_> {
             .iter()
             .any(|r| r.respelled && r.name == name && r.method == receiver.is_some());
         let callee_error = |d: &cpl_diag::Diagnostic| {
-            d.span == at && (d.code == code || (respelled && d.code == codes::WRONG_ARG_COUNT))
+            let in_call = call.span.start <= d.span.start && d.span.end <= call.span.end;
+            (d.span == at && (d.code == code || (respelled && d.code == codes::WRONG_ARG_COUNT)))
+                || (respelled && in_call && d.code == codes::UNKNOWN_ARG_NAME)
         };
         let Some(mut diag) = self
             .sink

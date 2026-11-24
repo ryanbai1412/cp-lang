@@ -135,8 +135,13 @@ impl<'a> Lowerer<'a> {
                         inferred.insert(name.text.clone(), g);
                         continue;
                     }
+                    // A domain passed as a value is the walk of its positions:
+                    // `walk(R)` binds `A` to `Range<R>`, not to one position.
                     if let Some(Sym::Domain(d)) = self.sym(&arg.value) {
-                        inferred.insert(name.text.clone(), GenArg::Domain(d));
+                        inferred.insert(
+                            name.text.clone(),
+                            GenArg::Ty(Ty::Range(Box::new(Ty::Pos(d)))),
+                        );
                         continue;
                     }
                 }
@@ -167,7 +172,7 @@ impl<'a> Lowerer<'a> {
                             if targs.is_empty() && gen_names.contains(&name.text) {
                                 inferred
                                     .entry(name.text.clone())
-                                    .or_insert(GenArg::Domain(d));
+                                    .or_insert(GenArg::Ty(Ty::Range(Box::new(Ty::Pos(d)))));
                                 continue;
                             }
                             if name.text == "List" {
@@ -183,7 +188,7 @@ impl<'a> Lowerer<'a> {
                             if name.text == "Range" {
                                 self.unify_ast_ty(
                                     pty,
-                                    &Ty::Range(Box::new(Ty::Pos(d))),
+                                    &Ty::range(Ty::Pos(d)),
                                     tpl_mod,
                                     &gen_names,
                                     &mut inferred,

@@ -53,8 +53,10 @@ for (z, i) in order:
     let met = val[opp].len
     let upto = (crossed[opp]..met).first_true(j => side[opp][j].v > h.v) ?? met
     let cross = max(
-        val[opp][j] + op.v * (h.d - (h.x + op.x + 1)) + op.pref + h.pref - v[x]
-        for (j, op) in side[opp][crossed[opp]..upto].items if op.d + h.x + op.x <= h.d
+        val[opp][j] + op.v * (h.d - (h.x + op.x + 1)) + op.pref + h.pref - v[x] for (
+            j,
+            op,
+        ) in side[opp][crossed[opp]..upto].items if op.d + h.x + op.x <= h.d
     )
     crossed[opp] = upto
     val[z].push(max(stay, cross ?? stay) - h.d * h.v)

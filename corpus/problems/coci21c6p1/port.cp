@@ -19,6 +19,8 @@ for k in Keeper:
 
 // ahead ranks first: the higher total, then the smaller name
 fn place(me: Keeper, mine: Int, theirs: Int) -> Int =
-    1 + Keeper.count(o => o != me and (total[o] + theirs, desc(name[o])) > (total[me] + mine, desc(name[me])))
+    1 + Keeper.count(
+        o => o != me and (total[o] + theirs, desc(name[o])) > (total[me] + mine, desc(name[me]))
+    )
 
 for k in Keeper: print(place(k, 500, 0), place(k, 0, 500))

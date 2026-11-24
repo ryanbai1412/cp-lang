@@ -14,6 +14,7 @@ use crate::{
     HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE, HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP,
     LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
 };
+use cpl_diag::msgs;
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
 use std::collections::HashSet;
@@ -42,6 +43,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         valued_fns: HashSet::new(),
         declared: HashSet::new(),
         idents: idents(file.src),
+        asks: asks(file),
         unchecked: unchecked_spans(file),
         findings: Vec::new(),
         fn_spans: Vec::new(),
@@ -150,6 +152,8 @@ struct Taste<'a> {
     declared: HashSet<String>,
     /// Every identifier-like word in the file, for picking fresh names.
     idents: HashSet<&'a str>,
+    /// Whether the file calls std's `ask`: an interactive program.
+    asks: bool,
     findings: Vec<Finding>,
     /// Every fn's name and absolute span: a reduction's own body is the
     /// loop it names.
@@ -269,7 +273,7 @@ impl<'a> Taste<'a> {
         // An interactive search's queries are counted: `first_true` asks at
         // the ends too.
         if self.unchecked.iter().any(|&(a, b)| a <= start && start < b)
-            || self.idents.contains(std_fn::ASK)
+            || self.asks
             || self.idents.contains("flush")
         {
             return;
@@ -284,12 +288,9 @@ impl<'a> Taste<'a> {
         } else {
             std_fn::FIRST_TRUE
         };
-        let mut diag = Diagnostic::warning(
-            HAND_ROLLED_ANSWER_SEARCH.code,
-            stmt.span,
-            format!("a hand-rolled binary search: this is `{call}`"),
-        )
-        .with_help(format!(
+        let mut diag = msgs::lint::ANSWER_SEARCH
+            .warning(stmt.span, &[&call])
+            .with_help(format!(
             "`let {lo} = (..).{call}({mid} => ..)`: the predicate must be monotone along the range",
             lo = found.lo,
             mid = found.mid
@@ -395,17 +396,13 @@ impl<'a> Taste<'a> {
         if mentions(rhs_text, found.arr) || has_try(stmt) {
             return;
         }
-        let mut diag = Diagnostic::warning(
-            HAND_ROLLED_PREFIX_SUM.code,
-            stmt.span,
-            format!("a hand-rolled prefix sum into `{}`: use `Prefix(...)`", found.arr),
-        )
+        let mut diag = msgs::lint::PREFIX_SUM.warning(stmt.span, &[&found.arr])
         .with_help(format!(
             "`let {} = Prefix(..)` builds the prefix table in O(n) with O(1) `.fold(range)` and `.prefix(cut)`",
             found.arr
         ));
         if let Some((decl_idx, decl_base, decl_stmt)) =
-            prefix_zero_decl(self.src, stmts, i, found.arr, &found.kind, self.facts)
+            prefix_zero_decl(stmts, i, found.arr, &found.kind, self.facts)
         {
             if let Some(reads) = collect_pure_index_reads(&stmts[i + 1..], found.arr) {
                 let expr = match &found.kind {
@@ -527,15 +524,9 @@ impl<'a> Taste<'a> {
             start: first_stmt.span.start,
             end,
         };
-        let mut diag = Diagnostic::warning(
-            COPY_SORT_WRITEBACK.code,
-            span,
-            format!(
-                "copies `{}[{}]`, mutates it, and writes it back: use `{replacement}`",
-                found.target, found.range
-            ),
-        )
-        .with_help(format!("mutate the slice in place: `{replacement}`"));
+        let mut diag = msgs::lint::COPY_SORT_WRITEBACK
+            .warning(span, &[&found.target, &found.range, &replacement])
+            .with_help(format!("mutate the slice in place: `{replacement}`"));
 
         let sub_used_after = stmts[found.wb_idx + 1..]
             .iter()
@@ -713,14 +704,11 @@ impl<'a> Taste<'a> {
         if !matches!(pat.kind, PatternKind::Wildcard) || !self.valued_fns.contains(name) {
             return;
         }
-        let diag = Diagnostic::warning(
-            DISCARDED_RESULT.code,
-            stmt.span,
-            format!("`let _ =` throws away what `{name}` returns"),
-        )
-        .with_help(format!(
-            "use the result, or if `{name}` is called for what it does, make it return nothing"
-        ));
+        let diag = msgs::lint::DISCARDED_RESULT
+            .warning(stmt.span, &[&name])
+            .with_help(format!(
+                "use the result, or if `{name}` is called for what it does, make it return nothing"
+            ));
         self.push(&DISCARDED_RESULT, diag);
     }
 
@@ -777,11 +765,7 @@ impl<'a> Taste<'a> {
         if !mirrored {
             return;
         }
-        let diag = Diagnostic::warning(
-            SYMMETRIC_WRITE.code,
-            self.pair_span(a.span, b.span),
-            "one fact written twice, once for each order",
-        )
+        let diag = msgs::lint::SYMMETRIC_WRITE.warning(self.pair_span(a.span, b.span), &[])
         .with_help(if cells {
             "keep it in one place: key it by `Pair<V>` and build the matrix with `.symmetric(diag: ..)`"
         } else {
@@ -861,15 +845,7 @@ impl<'a> Taste<'a> {
                 None,
             ),
         };
-        let mut diag = Diagnostic::warning(
-            SEARCH_LOOP.code,
-            self.pair_span(decl.span, next.span),
-            if breaks_after_setting(&body.stmts, name) {
-                format!("a search loop that sets `{name}` and breaks")
-            } else {
-                format!("a search loop: only the first write to `{name}` counts")
-            },
-        )
+        let mut diag = (if breaks_after_setting(&body.stmts, name) { &msgs::lint::SEARCH_LOOP_BREAKS } else { &msgs::lint::SEARCH_LOOP_FIRST }).warning(self.pair_span(decl.span, next.span), &[&name])
         .with_help(if let Some(text) = &fix {
             let keep = if sentinel {
                 format!(", or keep the `?Int` `first` returns instead of the sentinel `{init_text}`")
@@ -987,11 +963,7 @@ impl<'a> Taste<'a> {
         } else {
             format!("{i} + {comp}")
         };
-        let mut diag = Diagnostic::warning(
-            PUSH_LOOP.code,
-            self.pair_span(decl.span, next.span),
-            format!("a loop that only pushes onto `{name}` is a comprehension"),
-        )
+        let mut diag = msgs::lint::PUSH_LOOP.warning(self.pair_span(decl.span, next.span), &[&name])
         .with_help(if reversed.is_some() {
             format!("write `{text}`: it is the sequence reversed, with no `- 1 -` index to get wrong")
         } else {
@@ -1048,11 +1020,7 @@ impl<'a> Taste<'a> {
         if !unwraps.1 {
             return;
         }
-        let diag = Diagnostic::warning(
-            NONE_CHECK_UNWRAP.code,
-            expr.span,
-            format!("`{x} != None` and then `{x}!`: the check is said twice"),
-        )
+        let diag = msgs::lint::NONE_CHECK_UNWRAP.warning(expr.span, &[&x, &x])
         .with_help(format!(
             "bind it once: `if let v = {x} and ..:`, or compare the option itself (`{x} == Some(..)`, `{x} ?? d`)"
         ));
@@ -1068,16 +1036,13 @@ impl<'a> Taste<'a> {
         // `xs.first` is the first element; the element a test holds for is
         // `xs.find(x => ..)` (decisions.md §182).
         if let (ExprKind::Field { name: method, .. }, [test]) = (&callee.kind, &args[..]) {
-            if method.text == std_fn::FIRST
+            if Calls::new(self.facts, self.base).unresolved(expr) == Some(std_fn::FIRST)
                 && test.name.is_none()
                 && matches!(test.value.kind, ExprKind::Lambda { .. })
             {
-                let mut diag = Diagnostic::warning(
-                    FREE_FOLD.code,
-                    method.span,
-                    "the element a test holds for is `find`; `first` is the first element",
-                )
-                .with_help("write `.find(..)`");
+                let mut diag = msgs::lint::FIRST_WITH_TEST
+                    .warning(method.span, &[])
+                    .with_help("write `.find(..)`");
                 diag.fixes.push(Fix {
                     title: "use `.find`".to_string(),
                     edits: vec![(method.span, std_fn::FIND.to_string())],
@@ -1152,11 +1117,7 @@ impl<'a> Taste<'a> {
             other => other,
         };
         let call = format!("{recv}.{method}({rest})");
-        let mut diag = Diagnostic::warning(
-            FREE_FOLD.code,
-            expr.span,
-            format!("`{name}` of one sequence reads as its method"),
-        )
+        let mut diag = msgs::lint::FREE_FOLD.warning(expr.span, &[&name])
         .with_help(format!("write `{call}`; the method follows the sequence, so a chain like `xs.filter(..).sum()` reads in order"));
         diag.fixes.push(Fix {
             title: format!("use `.{method}`"),
@@ -1180,16 +1141,15 @@ impl<'a> Taste<'a> {
         {
             return;
         }
-        let to = match name.text.as_str() {
-            std_fn::PREORDER => std_fn::AT,
-            "postorder" | "post_order" => "at.rev",
+        let written = (self.facts)
+            .and_then(|f| f.unresolved(expr.span.shift(self.base)))
+            .and_then(|path| path.last());
+        let to = match written.map(String::as_str) {
+            Some(std_fn::PREORDER) => std_fn::AT,
+            Some("postorder" | "post_order") => "at.rev",
             _ => return,
         };
-        let mut diag = Diagnostic::warning(
-            TREE_ORDER.code,
-            name.span,
-            format!("`{}` is the preorder array `{to}`", name.text),
-        )
+        let mut diag = msgs::lint::TREE_ORDER.warning(name.span, &[&name.text, &to])
         .with_help(format!("write `.{to}`; the tree already keeps that order, so there is no array to build or keep in step"));
         diag.fixes.push(Fix {
             title: format!("use `.{to}`"),
@@ -1208,15 +1168,17 @@ impl<'a> Taste<'a> {
         let ExprKind::Field { base, name: method } = &callee.kind else {
             return;
         };
-        if method.text == std_fn::SORTED {
+        let calls = Calls::new(self.facts, self.base);
+        if calls.is(expr, std_fn::SORTED) {
             if let ExprKind::Name(n) = &base.kind {
-                if n.chars().next().is_some_and(char::is_uppercase) {
-                    let mut diag = Diagnostic::warning(
-                        DOMAIN_SPELLING.code,
-                        method.span,
-                        format!("use `{n}.sort(...)` instead of `{n}.sorted(...)`"),
-                    )
-                    .with_help("domains sort with `.sort(by:)`, matching `xs.sort(by:)`");
+                let domain = (self.facts).and_then(|f| f.type_of(base.span.shift(self.base)));
+                if matches!(
+                    domain,
+                    Some(cpl_check::Ty::Domain(_) | cpl_check::Ty::TypeName(_))
+                ) {
+                    let mut diag = msgs::lint::DOMAIN_SORTED
+                        .warning(method.span, &[&n, &n])
+                        .with_help("domains sort with `.sort(by:)`, matching `xs.sort(by:)`");
                     diag.fixes.push(Fix {
                         title: "rename to `sort`".into(),
                         edits: vec![(method.span, std_fn::SORT.into())],
@@ -1226,19 +1188,16 @@ impl<'a> Taste<'a> {
                 }
             }
         }
-        if method.text == std_fn::FIRST && args.len() == 1 {
+        if calls.unresolved(expr) == Some(std_fn::FIRST) && args.len() == 1 {
             if let Some(arg_name) = &args[0].name {
                 if arg_name.text == "where" {
                     let label_span = Span {
                         start: arg_name.span.start,
                         end: args[0].value.span.start,
                     };
-                    let mut diag = Diagnostic::warning(
-                        DOMAIN_SPELLING.code,
-                        arg_name.span,
-                        "a predicate search is `.find(p)`, without `where:`",
-                    )
-                    .with_help(
+                    let mut diag = msgs::lint::FIND_WHERE
+                        .warning(arg_name.span, &[])
+                        .with_help(
                         "`first` is the first element; `find(p)` is the first one `p` holds for",
                     );
                     diag.fixes.push(Fix {
@@ -1304,11 +1263,7 @@ impl<'a> Taste<'a> {
                 (_, Some(t)) if t.starts_with('?') && !is_type_name(elem) => return,
                 _ => f.to_string(),
             };
-            let diag = Diagnostic::warning(
-                LOOP_REDUCTION.code,
-                self.pair_span(decl.span, next.span),
-                format!("a loop that only folds `{name}` through `{f}` is one `fold`"),
-            )
+            let diag = msgs::lint::LOOP_FOLD.warning(self.pair_span(decl.span, next.span), &[&name, &f])
             .with_help(format!(
                 "write `{seq}.fold_from({i}, {folded})`; one call says what the loop computes, with the start value first"
             ));
@@ -1371,11 +1326,7 @@ impl<'a> Taste<'a> {
         {
             return;
         }
-        let mut diag = Diagnostic::warning(
-            LOOP_REDUCTION.code,
-            self.pair_span(decl.span, next.span),
-            format!("a loop that only accumulates `{name}` is one `{call}`"),
-        )
+        let mut diag = msgs::lint::LOOP_ACCUMULATE.warning(self.pair_span(decl.span, next.span), &[&name, &call])
         .with_help(match &text {
             Some(text) => format!(
                 "write `{text}`; one call says what the loop computes, with no starting value to get wrong"
@@ -1438,12 +1389,9 @@ impl<'a> Taste<'a> {
         if !uses.ok || uses.reads.is_empty() || !uses.names.iter().all(|s| inside(*s)) {
             return;
         }
-        let mut diag = Diagnostic::warning(
-            INDEX_ONLY_LOOP.code,
-            pat.span.to(iter.span),
-            format!("`{index}` is only used as `{list}[{index}]`"),
-        )
-        .with_help(format!(
+        let mut diag = msgs::lint::INDEX_ONLY_LOOP
+            .warning(pat.span.to(iter.span), &[&index, &list, &index])
+            .with_help(format!(
             "iterate the values: `for x in {list}:`; with no index there is nothing to get wrong"
         ));
         if let Some(elem) = list
@@ -1653,4 +1601,27 @@ fn in_place_twin(name: &str) -> Option<String> {
         .flatten()
         .map(|w| rest.map_or_else(|| w.to_string(), |r| format!("{w}_{r}")))
         .find(|stem| heads.contains_key(stem))
+}
+
+/// Whether `file` calls std's `ask`, by the checker's callees.
+fn asks(file: &File) -> bool {
+    struct Asks<'a> {
+        facts: Option<&'a crate::Facts>,
+        base: u32,
+        found: bool,
+    }
+    impl crate::walk::Visitor for Asks<'_> {
+        fn expr(&mut self, e: &Expr) {
+            if matches!(e.kind, ExprKind::Call { .. }) {
+                self.found |= Calls::new(self.facts, self.base).is(e, std_fn::ASK);
+            }
+        }
+    }
+    let mut v = Asks {
+        facts: file.facts,
+        base: 0,
+        found: false,
+    };
+    file.walk(&mut v, |v, base| v.base = base);
+    v.found
 }

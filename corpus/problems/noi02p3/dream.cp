@@ -16,7 +16,11 @@ fn cost(v: V) -> [Eater]List<Int>:
     for arc in t.child_arcs(v):
         let sub = cost(arc.to)
         best = [Eater] me =>
-            let edge = (0..sub[Big].len).map(j => [Small, Big].map(them => sub[them][j] + (if pays(me, them): arc.w else: 0)).min()!).collect()
+            let edge = (0..sub[Big].len).map(
+                j => [Small, Big].map(
+                    them => sub[them][j] + (if pays(me, them): arc.w else: 0)
+                ).min()!
+            ).collect()
             convolve(best[me], edge, over: Semiring(min, +), shape: Curved.Neither)
     best
 

@@ -17,7 +17,9 @@ fn toggle(p: Cell, d: Digit):
     in_row[r] ^= bit
     in_col[c] ^= bit
     in_box[b] ^= bit
-fn free(p: Cell) -> Subset<Digit> = Subset<Digit>.full - (in_row[p.0] | in_col[p.1] | in_box[box(p)])
+fn free(p: Cell) -> Subset<Digit> = Subset<Digit>.full - (
+    in_row[p.0] | in_col[p.1] | in_box[box(p)]
+)
 var best: ?Int = None
 fn fill(score: Int):
     let p = Cell.filter(p => board[p] == None).min(by: p => free(p).len) else:

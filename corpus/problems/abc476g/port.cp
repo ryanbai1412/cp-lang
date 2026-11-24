@@ -21,9 +21,9 @@ for k in 1..=MAXB:
     for a in 0..=k:
         for b in 0..=a:
             f[k, a, b] = max(
-                (if c > k - 1: 0 else: f[k - 1, min(a, k - 1), c])
-                    + (if c == 0 or b - 1 > k - 1: 0 else: f[k - 1, min(c - 1, k - 1), max(0, b - 1)])
-                for c in b..=a
+                (if c > k - 1: 0 else: f[k - 1, min(a, k - 1), c]) + (
+                    if c == 0 or b - 1 > k - 1: 0 else: f[k - 1, min(c - 1, k - 1), max(0, b - 1)]
+                ) for c in b..=a
             )!
 
 @!multitest

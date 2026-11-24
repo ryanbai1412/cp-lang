@@ -4,10 +4,11 @@
 
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, COUNT_UNTIL};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
 use super::shapes::{compare, int, is_step, mentions, name, negated_op};
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = CountUntil {
@@ -150,11 +151,7 @@ impl CountUntil<'_> {
             };
             let step_text = self.text(w_base, step.span).to_string();
             let span = Span::new(w.span.start + w_base, cond.span.end + w_base);
-            let diag = Diagnostic::warning(
-                COUNT_UNTIL.code,
-                span,
-                format!("`{k}` counts the steps of `{step_text}` until `{cond_text}` fails"),
-            )
+            let diag = lint_rules::COUNT_UNTIL.warning(span, &[&k, &step_text, &cond_text])
             .with_help(format!(
                 "`{k}` is the smallest step count with `{until}`: write `(0..).find({k} => {until})!`; after `{k}` steps `{p}` is `{closed}`"
             ));

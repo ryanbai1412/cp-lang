@@ -8,7 +8,6 @@
 //   a side is even. The split peels an odd-degree vertex after complementing the odd edges among
 //   its neighbours, and puts it back on the side where it is even. n - 1 flows plus O(n^2) bitset
 //   steps.
-use std.flow.gomory_hu
 
 @!multitest
 let (n, m): (1..=50, 0..=1225) = read()
@@ -18,9 +17,9 @@ let edges = read<[m](u: V, v: V, w: 1..=1_000_000)>()
 let g = gomory_hu(edges).map(e => e.w).fold(gcd)
 
 let colors: List<Bitset<V>> = if g != 1:
-    [V.all]
+    [Bitset<V>.full()]
 else:
-    var odd = adjacency(edges.filter(e => e.w % 2 == 1), into: Bitset)
+    var odd = Bitset.undirected(edges.filter(e => e.w % 2 == 1))
 
     fn complement_within(s: Bitset<V>):
         for u in s: odd[u] ^= s.without(u)
@@ -39,8 +38,8 @@ else:
         if (nbr & side).len % 2 == 0: side.add(v)
         side
 
-    let side = even_split(V.all)
-    [V.all - side, side]
+    let side = even_split(Bitset<V>.full())
+    [side.complement(), side]
 
 print(colors.len)
 for c in colors:

@@ -27,7 +27,10 @@ fn districts(n: Int, m: Int) -> ?Count:
     for k in max(1, (m - 2 * n) / jump - 1)..=m / jump:
         if let rest = districts(m - k * jump, n):
             best = join(best, Some((fewest: rest.fewest + k, most: rest.most + k)))
-            if n % 2 == 0: best = join(best, Some((fewest: rest.fewest + k / 4 + k % 4, most: rest.most)))
+            if n % 2 == 0: best = join(
+                best,
+                Some((fewest: rest.fewest + k / 4 + k % 4, most: rest.most)),
+            )
     best
 
 let both = join(districts(n, m), districts(m, n))!

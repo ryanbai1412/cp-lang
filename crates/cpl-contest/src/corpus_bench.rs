@@ -96,21 +96,9 @@ fn median_f64(vals: &mut [f64]) -> f64 {
     }
 }
 
+/// The accepted C++ the port is timed against: the one its answers come from.
 fn find_orig_cpp(prob_dir: &Path) -> Option<PathBuf> {
-    let direct = prob_dir.join("orig.cpp");
-    if direct.is_file() {
-        return Some(direct);
-    }
-    // Fall back to `submissions[*].file` in meta.json.
-    let meta = std::fs::read_to_string(prob_dir.join("meta.json")).ok()?;
-    let meta = cpl_json::parse(&meta).ok()?;
-    meta.get("submissions")?
-        .as_array()?
-        .iter()
-        .filter_map(|submission| submission.get("file")?.as_str())
-        .filter(|rel| rel.ends_with(".cpp"))
-        .map(PathBuf::from)
-        .find(|cand| cand.is_file())
+    crate::package::reference(prob_dir)
 }
 
 fn choose_port(prob_dir: &Path) -> Option<(PathBuf, bool)> {
@@ -139,21 +127,19 @@ fn choose_port(prob_dir: &Path) -> Option<(PathBuf, bool)> {
     None
 }
 
-fn find_input(prob_dir: &Path, port_path: &Path, scratch: &Path) -> Option<(PathBuf, String)> {
-    let gen_py = prob_dir.join("gen.py");
-    if gen_py.is_file() {
-        let out_path = scratch.join("gen.in");
-        let out = Command::new("python3")
-            .arg(&gen_py)
-            .current_dir(prob_dir)
-            .output()
-            .ok()?;
-        if out.status.success()
-            && !out.stdout.is_empty()
-            && std::fs::write(&out_path, &out.stdout).is_ok()
-        {
-            return Some((out_path, "gen.py".to_string()));
-        }
+/// The input to time on, and what it is. A package's is its largest case,
+/// made from its tests.toml the way `cpl test` makes it: the `--max` case,
+/// else the longest input.
+fn find_input(
+    prob_dir: &Path,
+    port_path: &Path,
+    scratch: &Path,
+) -> Result<(PathBuf, String), String> {
+    if prob_dir.join("tests.toml").is_file() {
+        let cases = crate::package::cases_dir(prob_dir);
+        crate::package::make(prob_dir, &cases)?;
+        return largest_case(&cases)
+            .ok_or_else(|| format!("{} lists no case", prob_dir.join("tests.toml").display()));
     }
     let tests_dir = prob_dir.join("tests");
     if tests_dir.is_dir() {
@@ -176,7 +162,7 @@ fn find_input(prob_dir: &Path, port_path: &Path, scratch: &Path) -> Option<(Path
                 .and_then(|s| s.to_str())
                 .unwrap_or("test.in")
                 .to_string();
-            return Some((p, format!("tests/{label}")));
+            return Ok((p, format!("tests/{label}")));
         }
     }
     if let Ok(source) = std::fs::read_to_string(port_path) {
@@ -189,14 +175,48 @@ fn find_input(prob_dir: &Path, port_path: &Path, scratch: &Path) -> Option<(Path
                     if !rendered.is_empty() {
                         let out_path = scratch.join("worst.in");
                         if std::fs::write(&out_path, rendered.as_bytes()).is_ok() {
-                            return Some((out_path, "derived/random".to_string()));
+                            return Ok((out_path, "derived/random".to_string()));
                         }
                     }
                 }
             }
         }
     }
-    None
+    Err("no max-N input".to_string())
+}
+
+/// The `--max` case of made cases, else the longest input.
+fn largest_case(dir: &Path) -> Option<(PathBuf, String)> {
+    let inputs: Vec<PathBuf> = std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|e| e == "in"))
+        .collect();
+    let max = inputs.iter().find(|p| p.with_extension("max").is_file());
+    let size = |p: &&PathBuf| p.metadata().map_or(0, |m| m.len());
+    let input = max.or_else(|| inputs.iter().max_by_key(size))?;
+    let stem = input.file_stem()?.to_string_lossy();
+    let marked = if max.is_some() { " (--max)" } else { "" };
+    Some((input.clone(), format!("tests.toml case {stem}{marked}")))
+}
+
+/// What a bench mismatch says: the input and both outputs, as stress does.
+fn mismatch(input: &str, orig: &[u8], port: &[u8]) -> String {
+    let (orig, port) = (String::from_utf8_lossy(orig), String::from_utf8_lossy(port));
+    let why = cpl_stress::judge::first_difference(&orig, &port).unwrap_or_default();
+    let shown = |text: &str| {
+        let flat = text.trim_end().replace('\n', "\\n");
+        match flat.char_indices().nth(120) {
+            Some((at, _)) => format!("{}...", &flat[..at]),
+            None => flat,
+        }
+    };
+    format!(
+        "output mismatch vs orig.cpp on {input}: {why}; orig.cpp printed `{}`, the port `{}`",
+        shown(&orig),
+        shown(&port)
+    )
 }
 
 fn compile_cpp(src: &Path, bin: &Path) -> Result<(), String> {
@@ -375,8 +395,9 @@ fn bench_problem(prob_dir: &Path, runs: usize) -> PortRecord {
             verify_perf_tests(&port_bin, prob_dir).map_err(|e| (emitted_bytes, e))?;
         }
 
-        let (inp_path, inp_label) = find_input(prob_dir, &port_path, &scratch)
-            .ok_or_else(|| (emitted_bytes, "no max-N input".to_string()))?;
+        let (inp_path, inp_label) =
+            find_input(prob_dir, &port_path, &scratch).map_err(|e| (emitted_bytes, e))?;
+        let input_name = format!("{inp_label} ({})", inp_path.display());
 
         let mut orig_times = Vec::with_capacity(runs);
         let mut port_times = Vec::with_capacity(runs);
@@ -386,7 +407,7 @@ fn bench_problem(prob_dir: &Path, runs: usize) -> PortRecord {
             let (tp, op) = run_bin(&port_bin, &inp_path)
                 .map_err(|e| (emitted_bytes, format!("port run: {e}")))?;
             if r == 0 && !tokens_equal(&oo, &op) {
-                return Err((emitted_bytes, "output mismatch vs orig.cpp".to_string()));
+                return Err((emitted_bytes, mismatch(&input_name, &oo, &op)));
             }
             orig_times.push(to);
             port_times.push(tp);
@@ -761,6 +782,41 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         0
     } else {
         1
+    }
+}
+
+#[cfg(test)]
+mod input_tests {
+    use super::*;
+
+    #[test]
+    fn a_package_benches_on_its_tests_toml_max_case_not_a_bare_gen_run() {
+        let root = std::env::temp_dir().join(format!("cpl-bench-input-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let dir = root.join("corpus/problems").join("p");
+        std::fs::create_dir_all(&dir).unwrap();
+        let toml = "[[case]]\ninput = \"1\"\n\n[[case]]\nargs = [\"--max\"]\n";
+        std::fs::write(dir.join("tests.toml"), toml).unwrap();
+        // Run bare, as bench once did, the generator fails: it takes a seed and size or --max.
+        let gen = "import sys\nif sys.argv[1] == '--max':\n    print(9)\n";
+        std::fs::write(dir.join("gen.py"), gen).unwrap();
+        std::fs::write(dir.join("interactor.py"), "").unwrap();
+        let (path, label) = find_input(&dir, &dir.join("port.cp"), &root).unwrap();
+        assert_eq!(label, "tests.toml case 02 (--max)");
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "9\n");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_mismatch_names_the_input_and_both_outputs() {
+        let why = mismatch(
+            "tests.toml case 02 (--max) (/w/02.in)",
+            b"12005\n",
+            b"12006\n",
+        );
+        for part in ["case 02 (--max) (/w/02.in)", "`12005`", "`12006`"] {
+            assert!(why.contains(part), "{why}");
+        }
     }
 }
 

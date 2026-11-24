@@ -4,8 +4,9 @@
   scripts/corpus.py build          regenerate the generated fields of every
                                    meta.json and corpus/index.json, keeping
                                    hand-written fields
-  scripts/corpus.py check          fail when a meta.json is stale or names a
-                                   missing file
+  scripts/corpus.py check          fail when a meta.json is stale, isn't
+                                   byte-identical to meta_text's canonical
+                                   form, or names a missing file
   scripts/corpus.py delete <id>... remove packages whose statement can't be
                                    found: the dir, their submissions and
                                    info.json entries, and their lines in
@@ -25,7 +26,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, functools, hashlib, importlib.util, inspect, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
+import argparse, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,7 +39,7 @@ SETS = os.path.join(ROOT, "corpus", "sets")
 # Under ~/.cache/cpl/cxx, which CI caches across runs; the key holds the source and compiler.
 CXX_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "cpl", "cxx", "corpus")
 HAND = {"tags": [], "difficulty": None, "dream": "none", "spec": "none", "notes": ""}
-RECORDED = ("dream_stress",)
+RECORDED = ("dream_stress", "statement")
 STATUSES = {"none", "draft", "reviewed", "gold"}
 EXT = {"CPP": ".cpp", "CPP03": ".cpp", "CPP11": ".cpp", "CPP14": ".cpp", "CPP17": ".cpp",
        "CPP20": ".cpp", "JAVA": ".java", "PY3": ".py", "PYPY3": ".py", "PY2": ".py", "C": ".c",
@@ -77,6 +78,17 @@ class Package:
     def read_meta(self):
         return json.loads(self.meta.read_text()) if self.meta else {}
 
+    @property
+    def solution(self):
+        """What the gates run: port.cp, else a dream of `@grader` fns linked with the
+        package's grader, which runs a two-phase task's phases in their own processes
+        as the judge does, so that task needs no stdin twin."""
+        if self.port:
+            return self.port
+        if self.dream and self.grader and GRADER.search(self.dream.read_text(errors="replace")):
+            return self.dream
+        return None
+
     def reference(self):
         """The accepted C++: orig.cpp, else meta.json's first AC .cpp submission."""
         if self.orig:
@@ -87,17 +99,18 @@ class Package:
                 return Path(ROOT, f)
         return None
 
-    def cases(self):
-        """tests.toml's `[[case]]` tables: `input` (a statement sample), `seed` and `size`, or `args`."""
-        return tomllib.loads(self.tests.read_text()).get("case", []) if self.tests else []
+    def judge(self):
+        """The judge the package's cp.toml names (`[judge] judge = ...`), else `codeforces`: what
+        `cpl test` and the real judge build the port for."""
+        toml = self.dir / "cp.toml"
+        named = tomllib.loads(toml.read_text()).get("judge", {}).get("judge") if toml.is_file() else None
+        return named or "codeforces"
 
-    def case_input(self, case, timeout=60):
-        if "input" in case:
-            text = case["input"]
-        else:
-            argv = [str(a) for a in case["args"]] if "args" in case else [str(case["seed"]), str(case["size"])]
-            text = subprocess.run([sys.executable, str(self.gen), *argv], capture_output=True, text=True,
-                                  timeout=timeout, check=True).stdout
+    def gen_input(self, argv, timeout=60):
+        """What gen.py prints for `argv`: `seed size`, or `--max`. A tests.toml's cases are
+        made by `cpl test --make` alone (make_cases)."""
+        text = subprocess.run([sys.executable, str(self.gen), *map(str, argv)], capture_output=True, text=True,
+                              timeout=timeout, check=True).stdout
         return text if text.endswith("\n") else text + "\n"
 
 
@@ -187,12 +200,13 @@ def judge_stack():
 STRESS_SIZES = (4, 8, 16, 32)
 
 
-def stress_inputs(pkg):
-    """tests.toml's cases, else gen.py at small sizes: what a solution must agree on."""
+def stress_inputs(pkg, cpl=None):
+    """The cases tests.toml makes, else gen.py at small sizes: what a solution must agree on."""
     if pkg.tests:
-        return [pkg.case_input(c) for c in pkg.cases()]
+        make_cases(pkg, cpl=cpl)
+        return [p.read_text() for p in generated(pkg)]
     if pkg.gen:
-        return [pkg.case_input({"seed": i, "size": s}) for i, s in enumerate(STRESS_SIZES * 2, 1)]
+        return [pkg.gen_input([i, s]) for i, s in enumerate(STRESS_SIZES * 2, 1)]
     return []
 
 
@@ -210,9 +224,9 @@ def judge_args(pkg, source):
 
 def package_limits(pkg):
     """The problem's limits, from its port's `// limits:` line, so a dream is judged as the port is."""
-    if not pkg.port:
+    if not pkg.solution:
         return []
-    ms, mb = limits(pkg.port)
+    ms, mb = limits(pkg.solution)
     return ["--time-limit", str(ms), "--memory-limit", str(mb)]
 
 
@@ -248,7 +262,7 @@ def judged(pkg, source, inputs, cpl):
 def dream_stress(pkg, cpl):
     """Does dream.cp agree with the accepted C++ on the package's inputs?"""
     try:
-        ok, n = judged(pkg, pkg.dream, stress_inputs(pkg), cpl)
+        ok, n = judged(pkg, pkg.dream, stress_inputs(pkg, cpl), cpl)
     except (RuntimeError, subprocess.SubprocessError, OSError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
     return {"ok": ok, "cases": n, "sha": blob_sha(pkg.dream)}
@@ -394,7 +408,7 @@ def summary_lines(r, top=10):
 def record(pkg, field, value):
     meta = pkg.read_meta()
     meta[field] = value
-    pkg.meta.write_text(dump(meta))
+    write_meta(pkg.meta, meta)
 
 
 HEADER_FIELDS = ("Source", "Problem", "Solution")
@@ -642,6 +656,9 @@ def built(src):
         return None
 
 
+INLINE_INPUT_LIMIT = 64 * 1024
+
+
 def check_package(pkg, ctx):
     """problem-packages R1-R4: answers from an accepted C++, a checker where
     answers vary, a generator for interactive hidden data, a logged dream."""
@@ -650,11 +667,13 @@ def check_package(pkg, ctx):
         found.append(f"interactor-no-gen {pkg.id} -")
     if pkg.dir.joinpath("tests").exists():
         found.append(f"committed-tests {pkg.id} -")
-    # gen.py SEED SIZE takes any size >= 1: tests.toml may grow a case down to 1.
-    found += [f"size-below-1 {pkg.id} {i}" for i, c in enumerate(pkg.cases(), 1) if "size" in c and c["size"] < 1]
+    # Every walk parses tests.toml: a sample over 64 KiB goes in a package file its case names.
+    cases = tomllib.loads(pkg.tests.read_text()).get("case", []) if pkg.tests else []
+    found += [f"inline-input-over-64k {pkg.id} case={i},use=input_file" for i, c in enumerate(cases, 1)
+              if len(c.get("input", "").encode()) > INLINE_INPUT_LIMIT]
     for size in range(1, 6) if pkg.gen and ctx.run else ():
         try:
-            pkg.case_input({"seed": 1, "size": size})
+            pkg.gen_input([1, size])
         except (subprocess.SubprocessError, OSError):
             found.append(f"gen-fails {pkg.id} size={size}")
             break
@@ -677,8 +696,13 @@ def check_package(pkg, ctx):
             return found + [f"no-reference {pkg.id} -"]
         if ctx.run and not pkg.checker:
             exes = [e for e in map(built, srcs) if e]
-            for i, case in enumerate(pkg.cases(), 1) if len(exes) > 1 else ():
-                data = pkg.case_input(case).encode()
+            if len(exes) > 1:
+                try:
+                    make_cases(pkg, cpl=ctx.cpl)
+                except ReferenceFails as e:
+                    return found + [f"reference-fails {pkg.id} {e.case}"]
+            for i, inp in enumerate(generated(pkg), 1) if len(exes) > 1 else ():
+                data = inp.read_bytes()
                 outs = {e: run_out(e, data) for e in exes}
                 if None in outs.values():
                     found.append(f"reference-fails {pkg.id} {i}")
@@ -717,17 +741,21 @@ def check_tests(pkg, ctx):
     """`cpl test port.cp` passes every case `make` writes from tests.toml, judged
     like the judge would: answers from the accepted C++, or the checker or
     interactor, at the package's limits (problem-packages/R8)."""
-    if not pkg.port or not pkg.tests or not ctx.runs(pkg):
+    if not pkg.tests or not ctx.runs(pkg):
         return []
     if not pkg.interactor and pkg.reference() is None:
         return [f"no-reference {pkg.id} -"]
     try:
-        make_cases(pkg)
+        make_cases(pkg, cpl=ctx.cpl)
     except ReferenceFails as e:
         return [f"reference-fails {pkg.id} {e.case}"]
     except (RuntimeError, subprocess.SubprocessError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
-    cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg, pkg.port), *package_limits(pkg))
+    # Without a program, making the cases has run the reference on every one: that is the check.
+    if not pkg.solution:
+        return []
+    cases = cpl_cases(ctx.cpl, pkg.solution, "--tests", os.path.join(OUT, pkg.id),
+                      *judge_args(pkg, pkg.solution), *package_limits(pkg))
     if isinstance(cases, str):
         return [f"{cases} {pkg.id} -"]
     found = [f"cpl-test-fails {pkg.id} {c['name']}" for c in cases if c["verdict"] not in (None, "ok")]
@@ -737,12 +765,12 @@ def check_tests(pkg, ctx):
 
 
 def native(pkg, ctx):
-    """The port's Codeforces C++ built with g++ -O2 (cached): (exe, bytes), or (None, 0)."""
+    """The port's C++ for its package's judge, built with g++ -O2 (cached): (exe, bytes), or (None, 0)."""
     if pkg.id in ctx.natives:
         return ctx.natives[pkg.id]
     with tempfile.TemporaryDirectory() as tmp:
         cpp = os.path.join(tmp, f"{pkg.id}.cpp")
-        r = subprocess.run([ctx.cpl, "build", "--judge", "codeforces", str(pkg.port), "-o", cpp], capture_output=True)
+        r = subprocess.run([ctx.cpl, "build", "--judge", pkg.judge(), str(pkg.port), "-o", cpp], capture_output=True)
         got = (None, 0) if r.returncode else (built(cpp), os.path.getsize(cpp))
     ctx.natives[pkg.id] = got
     return got
@@ -770,7 +798,7 @@ def rejects(cmd, data):
 def gen_out(pkg, args):
     try:
         timeout = MAX_GEN_TIMEOUT if "--max" in args else TIMEOUT
-        return pkg.case_input({"args": list(args)}, timeout=timeout).encode()
+        return pkg.gen_input(list(args), timeout=timeout).encode()
     except (subprocess.SubprocessError, OSError):
         return None
 
@@ -1006,11 +1034,15 @@ def check_max(pkg, ctx):
     without a trap, its judge build runs within the `// limits:` time and memory,
     and it matches the accepted C++ within 1.5x its time (problem-packages/R6).
     A missing --max is counted by the `corpus_no_max` ratchet, not here."""
-    if not pkg.port or not ctx.runs(pkg) or pkg.interactor or not has_max(pkg):
+    if not pkg.solution or not ctx.runs(pkg) or pkg.interactor or not has_max(pkg):
         return []
     data = gen_out(pkg, ("--max",))
     if data is None:
         return [f"gen-fails {pkg.id} --max"]
+    if not pkg.port:
+        # A dream through its grader: `cpl test` judges it at the limits.
+        ok, _ = judged(pkg, pkg.solution, [data.decode()], ctx.cpl)
+        return [] if ok else [f"max-fails {pkg.id} --max"]
     exe, _ = native(pkg, ctx)
     if exe and rejects([exe], data):
         return [f"invalid-input {pkg.id} --max"]
@@ -1030,16 +1062,22 @@ def check_size(pkg, ctx):
 
 
 def check_lint(pkg, ctx):
-    """No removed spelling `cpl migrate --check` would rewrite (idiomatic-code/R8)."""
+    """No removed spelling `cpl migrate --check` would rewrite (idiomatic-code/R8), and
+    every file already in `cpl fmt`'s canonical style."""
     files = [str(f) for f in (pkg.port, pkg.dream, pkg.spec) if f]
     if not files:
         return []
-    r = subprocess.run([ctx.cpl, "migrate", "--check", "--json", *files], capture_output=True, text=True)
-    try:
-        out = json.loads(r.stdout)["files"]
-    except (ValueError, KeyError):
-        return [f"migrate-error {pkg.id} -"]
-    return sorted(f"removed-spelling {pkg.id} {Path(f['path']).name}" for f in out if f["changed"] or f["diagnostics"])
+    found = []
+    for tool, finding in (("migrate", "removed-spelling"), ("fmt", "fmt-dirty")):
+        r = subprocess.run([ctx.cpl, tool, "--check", "--json", *files], capture_output=True, text=True)
+        try:
+            out = json.loads(r.stdout)["files"]
+        except (ValueError, KeyError):
+            found.append(f"{tool}-error {pkg.id} -")
+            continue
+        found += [f"{finding} {pkg.id} {Path(f['path']).name}" for f in out
+                  if f["changed"] or f.get("diagnostics") or f.get("error")]
+    return sorted(found)
 
 
 def check_dream(pkg, ctx):
@@ -1106,70 +1144,97 @@ OUT = os.path.join(ROOT, "target", "corpus-tests")
 INLINE = 200
 
 
-def stamp(pkg, ref):
-    """What a package's generated cases depend on, `made` itself included; `make` skips one
-    whose stamp is unchanged."""
-    h = hashlib.sha256(inspect.getsource(made).encode())
-    for f in (pkg.tests, pkg.gen, ref):
-        if f:
-            h.update(Path(f).read_bytes())
-    return h.hexdigest()
-
-
 class ReferenceFails(RuntimeError):
-    """The accepted C++ crashes on a case tests.toml makes: the case or the reference is wrong."""
-    def __init__(self, case, code):
-        super().__init__(f"accepted C++ exits {code} on case {case}")
+    """The accepted C++ crashes on a case tests.toml makes, or runs past its time budget:
+    the case or the reference is wrong."""
+    def __init__(self, case, why):
+        super().__init__(f"accepted C++ {why} on case {case}")
         self.case = case
 
 
-def make_cases(pkg, out=OUT):
-    """Write <out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++
-    (an interactive package's NN.in is the interactor's hidden data, with no answer),
-    and an empty NN.max beside each `args = ["--max"]` case."""
-    ref = None if pkg.interactor else pkg.reference()
-    if not pkg.interactor and ref is None:
-        raise RuntimeError("no accepted C++ to make answers")
-    tests = os.path.join(out, pkg.id)
-    os.makedirs(out, exist_ok=True)
-    # One make of a package at a time, so concurrent makers (nextest runs each
-    # test in its own process) wait for the first and then find it made.
-    with open(os.path.join(out, f".{pkg.id}.lock"), "w") as lock:
-        import fcntl  # POSIX only; `ls` and the walkers run on Windows too
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        made(pkg, ref, tests, out)
+REFERENCE_FAILS = re.compile(r"accepted C\+\+ (exits .+?|runs past \d+ s) on case (\d+)")
 
 
-def made(pkg, ref, tests, out):
-    key = os.path.join(tests, ".stamp")
-    if os.path.exists(key) and open(key).read() == stamp(pkg, ref):
-        return
-    exe = binary(ref) if ref else None
-    # Made aside and renamed in, so a test reading the cases never sees half of them.
-    aside = tempfile.mkdtemp(prefix=f".{pkg.id}.", dir=out)
+def default_cpl():
+    """The cpl corpus.py runs: $CPL, else the release build."""
+    return os.environ.get("CPL") or os.path.join(ROOT, "target", "release", "cpl")
+
+
+CPL_BUILD = "cargo build --release -p cpl-cli"
+
+
+def cpl_sources(crate="cpl-cli"):
+    """The workspace files a `cpl` binary is built from: the workspace manifests and
+    Cargo.lock, and the Cargo.toml, build.rs and src/ of cpl-cli and every crate it
+    depends on by path."""
+    files, seen, todo = [os.path.join(ROOT, "Cargo.toml"), os.path.join(ROOT, "Cargo.lock")], set(), [crate]
+    while todo:
+        name = todo.pop()
+        manifest = os.path.join(ROOT, "crates", name, "Cargo.toml")
+        if name in seen or not os.path.isfile(manifest):
+            continue
+        seen.add(name)
+        with open(manifest, "rb") as f:
+            toml = tomllib.load(f)
+        tables = [toml.get("dependencies", {}), toml.get("build-dependencies", {})]
+        tables += [t.get("dependencies", {}) for t in toml.get("target", {}).values()]
+        todo += [dep for t in tables for dep in t]
+        files += [manifest, os.path.join(ROOT, "crates", name, "build.rs")]
+        for top, _, names in os.walk(os.path.join(ROOT, "crates", name, "src")):
+            files += [os.path.join(top, n) for n in names]
+    return [f for f in files if os.path.isfile(f)]
+
+
+def cpl_dep_info(cpl):
+    """The files cargo built `cpl` from, by the `<cpl>.d` it writes beside it (std/
+    through include_str!, build.rs inputs, every source), or None with no .d. It is
+    the list cargo itself rebuilds by, so this agrees with cargo, and with CI's
+    back-dated checkouts (scripts/ci-mtime.sh)."""
     try:
-        for i, case in enumerate(pkg.cases(), 1):
-            text = pkg.case_input(case)
-            Path(aside, f"{i:02}.in").write_text(text)
-            if "--max" in case.get("args", []):
-                Path(aside, f"{i:02}.max").touch()
-            if exe:
-                r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=TIMEOUT, preexec_fn=judge_stack)
-                if r.returncode:
-                    raise ReferenceFails(f"{i:02}", r.returncode)
-                Path(aside, f"{i:02}.ans").write_text(r.stdout)
-        Path(aside, ".stamp").write_text(stamp(pkg, ref))
-        shutil.rmtree(tests, ignore_errors=True)
-        os.rename(aside, tests)
-    finally:
-        shutil.rmtree(aside, ignore_errors=True)
+        with open(cpl + ".d", encoding="utf-8") as f:
+            text = f.read().replace("\\\n", " ")
+    except OSError:
+        return None
+    rule = next((l for l in text.splitlines() if re.match(r"(\\ |[^ ])+: ", l)), "")
+    deps = re.split(r"(?<!\\)\s+", rule.partition(": ")[2].strip())
+    return [os.path.join(ROOT, d.replace("\\ ", " ")) for d in deps if d]
+
+
+def require_cpl(cpl):
+    """Exit with one line saying how to build `cpl` when it is missing, or when a
+    build under target/ is older than a source it is built from: a stale binary
+    may lack a command corpus.py runs (`cpl test --make`) and fail with its usage."""
+    rel = os.path.relpath(cpl, ROOT)
+    if not os.path.exists(cpl):
+        sys.exit(f"corpus: no cpl at {rel}; build it with `{CPL_BUILD}`")
+    target = os.path.join(ROOT, "target")
+    if os.path.commonpath([os.path.abspath(cpl), target]) == target:
+        built = os.path.getmtime(cpl)
+        inputs = cpl_dep_info(cpl)
+        if inputs is None:
+            inputs = cpl_sources()
+        if any(not os.path.exists(f) or os.path.getmtime(f) > built for f in inputs):
+            sys.exit(f"corpus: {rel} is stale: run {CPL_BUILD}")
+
+
+def make_cases(pkg, out=OUT, cpl=None):
+    """<out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++ (an interactive
+    package's NN.in is the interactor's hidden data, with no answer), and an empty NN.max
+    beside each `args = ["--max"]` case: `cpl test --make`, the one expansion `cpl test` reads."""
+    r = subprocess.run([cpl or default_cpl(), "test", "--make", str(pkg.dir), "--tests", os.path.join(out, pkg.id)],
+                       cwd=ROOT, capture_output=True, text=True)
+    if r.returncode:
+        if m := REFERENCE_FAILS.search(r.stderr):
+            raise ReferenceFails(m.group(2), m.group(1))
+        lines = r.stderr.strip().splitlines()
+        raise RuntimeError(lines[-1] if lines else f"cpl test --make exits {r.returncode}")
 
 
 def make_one(job):
     """Make one package's cases in a worker process: its id and error, or None."""
-    pid, out = job
+    pid, out, cpl = job
     try:
-        make_cases(next(problems(ids=[pid])), out)
+        make_cases(next(problems(ids=[pid])), out, cpl)
     except (RuntimeError, subprocess.SubprocessError, OSError) as e:
         return f"{pid}: {e!s:.160}"
     return None
@@ -1177,7 +1242,7 @@ def make_one(job):
 
 def make(args):
     """Make the cases of every package with a tests.toml, -j at a time. Processes,
-    not threads: make_cases runs the accepted C++ with a preexec_fn."""
+    each a `cpl test --make`."""
     import concurrent.futures, multiprocessing
     ids = list(args.ids)
     if getattr(args, "changed", None):
@@ -1185,7 +1250,9 @@ def make(args):
         if not ids:
             return 0
     wanted = [p for p in problems(sets=args.set or None, ids=ids or None) if p.tests]
-    jobs = [(p.id, args.out or OUT) for p in wanted]
+    if wanted:
+        require_cpl(args.cpl or default_cpl())
+    jobs = [(p.id, args.out or OUT, args.cpl) for p in wanted]
     with concurrent.futures.ProcessPoolExecutor(max(1, args.j), mp_context=multiprocessing.get_context("fork")) as pool:
         failed = [f for f in pool.map(make_one, jobs) if f]
     for f in failed:
@@ -1195,20 +1262,25 @@ def make(args):
 
 
 def seed_toml(pkg, inputs):
-    """tests.toml for `inputs` (name, text): a tiny one inline, a larger one a
-    gen.py case of the largest power-of-two size whose input is no longer, plus
+    """tests.toml for `inputs` (name, text): a tiny one inline (over 64 KiB, as an
+    input_file in samples/), a larger one a gen.py case of the largest power-of-two size whose input is no longer, plus
     `--max` when gen.py has it."""
     lines = ["# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.", ""]
     for n, (_, text) in enumerate(inputs, 1):
         if len(text) <= INLINE or not pkg.gen or pkg.interactor:
             if len(text) > INLINE and not pkg.interactor:
                 raise RuntimeError(f"a {len(text)}-byte case and no gen.py")
+            if len(text.encode()) > INLINE_INPUT_LIMIT:
+                (pkg.dir / "samples").mkdir(exist_ok=True)
+                (pkg.dir / "samples" / f"{n}.in").write_text(text)
+                lines += ["[[case]]", f'input_file = "samples/{n}.in"', ""]
+                continue
             lines += ["[[case]]", "input = " + json.dumps(text), ""]
             continue
         size = 4
         while size < 1 << 20:
             try:
-                if len(pkg.case_input({"seed": n, "size": size * 2}, timeout=TIMEOUT)) > len(text):
+                if len(pkg.gen_input([n, size * 2], timeout=TIMEOUT)) > len(text):
                     break
             except subprocess.SubprocessError:
                 break
@@ -1272,8 +1344,8 @@ def verify(args):
     bad = [m for m in modes if m not in CHECKS]
     if bad:
         sys.exit(f"corpus: no mode {', '.join(bad)}; modes: {', '.join(MODES)}")
-    if not opt("no_run") and set(modes) - {"header", "package"} and not os.path.exists(cpl):
-        sys.exit(f"corpus: no cpl at {os.path.relpath(cpl, ROOT)}; build it with `cargo build --release -p cpl-cli`")
+    if not opt("no_run") and set(modes) - {"header"}:
+        require_cpl(cpl)
     ctx = Context(cpl, run=not opt("no_run"), check=bool(opt("check")), named=() if opt("changed") else ids)
     try:
         with concurrent.futures.ThreadPoolExecutor(opt("j", os.cpu_count() or 4)) as pool:
@@ -1364,8 +1436,24 @@ def merged(gen, path):
 
 
 def dump(x):
-    text = json.dumps(x, indent=1)
-    return re.sub(r"\{\n\s+(\"id\"[^{}]*?)\n\s+\}", lambda m: "{" + re.sub(r"\n\s+", " ", m.group(1)) + "}", text) + "\n"
+    return json.dumps(x, indent=1) + "\n"
+
+
+def meta_text(meta):
+    """meta.json's one canonical form, which every writer uses and `check` holds each file to:
+    one-space indent, ASCII, each submission row on one line."""
+    fields = []
+    for k, v in meta.items():
+        if k == "submissions" and v:
+            body = "[\n" + ",\n".join("  " + json.dumps(r) for r in v) + "\n ]"
+        else:
+            body = json.dumps(v, indent=1).replace("\n", "\n ")
+        fields.append(f" {json.dumps(k)}: {body}")
+    return "{\n" + ",\n".join(fields) + "\n}\n"
+
+
+def write_meta(path, meta):
+    Path(path).write_text(meta_text(meta))
 
 
 def index(metas):
@@ -1385,12 +1473,36 @@ def orphan_submissions(metas):
         cwd=ROOT).returncode != 0]
 
 
+PATH_REF = re.compile(r"(?<![\w./-])corpus/(problems|submissions)/([\w-](?:[\w.-]*[\w-])?)(\*)?")
+
+
+def dangling_references():
+    """(file, line, path) for each `corpus/problems/<id>` or `corpus/submissions/<file>`
+    a tracked file outside corpus/ names that doesn't exist; a trailing `*` names a prefix."""
+    out = subprocess.run(["git", "grep", "-n", "-I", "-E", "corpus/(problems|submissions)/", "--", ".", ":!corpus"],
+                         cwd=ROOT, capture_output=True, text=True).stdout
+    found = []
+    for hit in out.splitlines():
+        f, n, text = hit.split(":", 2)
+        for m in PATH_REF.finditer(text):
+            kind, name, star = m.groups()
+            d = PROBLEMS if kind == "problems" else SUBS
+            ok = any(e.startswith(name) for e in os.listdir(d)) if star else os.path.exists(os.path.join(d, name))
+            if not ok:
+                found.append((f, int(n), f"corpus/{kind}/{name}{star or ''}"))
+    return found
+
+
 def main(mode):
     gen = generate()
     metas, errors = {}, []
     for problem, g in gen.items():
         path = os.path.join(PROBLEMS, problem, "meta.json")
-        meta = merged(g, path)
+        try:
+            meta = merged(g, path)
+        except json.JSONDecodeError as e:
+            errors.append(f"{rel(path)}: not JSON ({e}); fix it by hand")
+            continue
         metas[problem] = meta
         for k in ("dream", "spec"):
             if meta[k] not in STATUSES:
@@ -1399,20 +1511,23 @@ def main(mode):
                  [f for v in meta["artifacts"].values() for f in v]:
             if not os.path.exists(os.path.join(ROOT, f)):
                 errors.append(f"{rel(path)}: missing {f}")
+        text = Path(path).read_text() if os.path.exists(path) else None
         if mode == "build":
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            open(path, "w").write(dump(meta))
-        elif not os.path.exists(path) or open(path).read() != dump(meta):
-            errors.append(f"{rel(path)}: stale; run scripts/corpus.py build")
+            write_meta(path, meta)
+        elif text != meta_text(meta):
+            what = "not in canonical form" if text and json.loads(text) == meta else "stale"
+            errors.append(f"{rel(path)}: {what}; run scripts/corpus.py build")
     for pkg in problems():
         if pkg.id not in gen:
             errors.append(f"corpus/problems/{pkg.id}: no submissions or artifacts")
     errors += [f"corpus/submissions/{n}: no package lists it; delete it or add it to info.json"
                for n in orphan_submissions(metas)]
+    errors += [f"{f}:{n}: names {path}, which doesn't exist" for f, n, path in dangling_references()]
     ipath = os.path.join(ROOT, "corpus", "index.json")
     if mode == "build":
-        open(ipath, "w").write(dump(index(metas)))
-    elif not os.path.exists(ipath) or open(ipath).read() != dump(index(metas)):
+        Path(ipath).write_text(dump(index(metas)))
+    elif not os.path.exists(ipath) or Path(ipath).read_text() != dump(index(metas)):
         errors.append("corpus/index.json: stale; run scripts/corpus.py build")
     for e in errors:
         print(e, file=sys.stderr)
@@ -1422,7 +1537,7 @@ def main(mode):
 
 def gaps(args):
     """What the dreams need: `cpl check` errors on every dream.cp, filed by gap."""
-    cpl = args.cpl or os.environ.get("CPL") or os.path.join(ROOT, "target", "release", "cpl")
+    cpl = args.cpl or default_cpl()
     paths = [os.path.abspath(p) for p in args.paths] or [str(p.dream) for p in problems() if p.dream]
     r = report(cpl, paths)
     if args.json:
@@ -1460,6 +1575,7 @@ def cli(argv):
     m.add_argument("--set", action="append")
     m.add_argument("--changed", metavar="BASE", help="only packages changed since BASE (a commit, or `staged`)")
     m.add_argument("--out")
+    m.add_argument("--cpl")
     m.add_argument("-j", type=int, default=os.cpu_count() or 4)
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
@@ -1501,10 +1617,20 @@ def named_by(name, pid):
 def delete(ids):
     """Remove packages and everything that names them, then rebuild the index,
     so a later `build` can't recreate one from info.json. A submission file
-    another tracked file still names stays, without its info.json entry."""
+    another tracked file still names stays, without its info.json entry, and a
+    path to a removed package or submission another tracked file still names is
+    reported and fails the deletion. A hill-climb problem is refused before
+    anything changes, since dropping it would shrink that fixed set."""
     known = {p.id for p in problems()}
     ipath = os.path.join(SUBS, "info.json")
     info = json.load(open(ipath))
+    hill = Path(ROOT, "corpus", "hillclimb.json")
+    climbs = set(json.loads(hill.read_text())["problems"]) if hill.exists() else set()
+    for pid in ids:
+        if pid in climbs:
+            sys.exit(f"corpus: {pid} is in corpus/hillclimb.json; add a replacement picked by its criteria "
+                     f"(sha1 of the problem id within its contest) and remove {pid} there first")
+    removed = set()
     for pid in ids:
         subs = [sid for sid, e in info.items() if canonical_id(e["problem"]) == pid]
         if pid not in known and not subs:
@@ -1517,18 +1643,24 @@ def delete(ids):
                     print(f"{pid}: kept {rel(str(f))}, named by {', '.join(users)}")
                 else:
                     f.unlink()
+                    removed.add(f.name)
         for listing in [*Path(SETS).glob("*.txt"), Path(UNKNOWNS)]:
             if listing.exists():
                 lines = listing.read_text().splitlines(keepends=True)
                 kept = [l for l in lines if l.strip() != pid and f"corpus/problems/{pid}/" not in l]
                 if kept != lines:
                     listing.write_text("".join(kept))
-        for d in (Path(PROBLEMS) / pid, Path(ROOT, "target", "corpus-tests", pid)):
+        for d in (Path(PROBLEMS) / pid, Path(ROOT, "target", "corpus-tests", pid),
+                  Path(ROOT, "tests", "v02-snapshot", pid)):
             shutil.rmtree(d, ignore_errors=True)
         print(f"{pid}: deleted with {len(subs)} submission(s)")
     with open(ipath, "w") as f:
         f.write(json.dumps(info, indent=4))
-    return main("build")
+    left = [(f, n, path) for f, n, path in dangling_references()
+            if path.split("/")[2].rstrip("*") in {*ids, *removed}]
+    for f, n, path in left:
+        print(f"{f}:{n}: still names deleted {path}; drop that row or path")
+    return main("build") or int(bool(left))
 
 
 def ls_mode(args):

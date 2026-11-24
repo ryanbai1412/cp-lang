@@ -26,6 +26,8 @@ pub struct StressResult {
     pub trap: Option<Value>,
     /// The built solution and the interpreter disagree on the case.
     pub toolchain_bug: bool,
+    /// The CLI's text output of the run, for the editor's `view`.
+    pub panel: Option<String>,
 }
 
 impl StressResult {
@@ -41,6 +43,9 @@ impl StressResult {
         let mut out = BTreeMap::new();
         let mut put = |key: &str, value: Value| out.insert(key.to_string(), value);
         put("case_count", report.cases.into());
+        if let Some(panel) = &self.panel {
+            put("view", crate::view::view(self, panel.clone()).to_value());
+        }
         if let Some(build) = &self.build {
             put("build", build.as_str().into());
         }
@@ -138,6 +143,7 @@ const ORDER: cpl_json::KeyOrder = cpl_json::KeyOrder(&[
             "tried",
             "counterexample",
             "error",
+            "view",
         ],
     ),
     (

@@ -7,13 +7,13 @@ use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::Calls;
-use crate::{
-    File, Finding, Lint, INTERVAL_DP_BY_LENGTH, INVERSIONS_BY_FENWICK, SMALL_TO_LARGE_BY_HAND,
-};
-use cpl_diag::{Diagnostic, Span};
+use crate::{File, Finding, INTERVAL_DP_BY_LENGTH, INVERSIONS_BY_FENWICK, SMALL_TO_LARGE_BY_HAND};
+use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
 use super::shapes::{compare, int, name, single, squash};
+use super::Warn;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandDs {
@@ -59,6 +59,12 @@ fn loop_var(pat: &Pattern) -> Option<&str> {
     }
 }
 
+impl super::Warn for HandDs<'_> {
+    fn sink(&mut self) -> (&mut Vec<Finding>, u32) {
+        (&mut self.out, self.base)
+    }
+}
+
 impl HandDs<'_> {
     fn calls(&self) -> Calls<'_> {
         Calls::new(self.facts, self.base)
@@ -66,11 +72,6 @@ impl HandDs<'_> {
 
     fn text(&self, span: Span) -> &str {
         span.shift(self.base).text(self.src)
-    }
-
-    fn warn(&mut self, lint: &'static Lint, span: Span, msg: String, help: String) {
-        let diag = Diagnostic::warning(lint.code, span.shift(self.base), msg).with_help(help);
-        self.out.push(Finding { lint, diag });
     }
 
     /// `if a.len < b.len: (a, b) = (b, a)` then `for x in b: a.add(x)`.
@@ -145,10 +146,10 @@ impl HandDs<'_> {
                 continue;
             }
             let (into, from) = (into.to_string(), from.to_string());
-            self.warn(
+            self.warn_at(
                 &SMALL_TO_LARGE_BY_HAND,
                 pair[0].span.to(pair[1].span),
-                format!("`{from}` is merged into `{into}` smaller-into-larger by hand"),
+&lint_rules::SMALL_TO_LARGE_BY_HAND, &[&from, &into],
                 format!("`{into}.absorb(mut {from})` swaps so the smaller side moves, then empties `{from}` (`SortedSet`, `SortedBag`, `SortedMap`, `FlatMap`, `Counter`, `MeldHeap`)"),
             );
         }
@@ -194,10 +195,10 @@ impl HandDs<'_> {
         if !adds_one {
             return;
         }
-        self.warn(
+        self.warn_at(
             &INVERSIONS_BY_FENWICK,
             stmt.span,
-            format!("`{bit}` counts, for each item, the earlier ones above it: an inversion count by hand"),
+&lint_rules::INVERSIONS_BY_FENWICK, &[&bit],
             "`inversions(xs)` is the number of pairs `i < j` with `xs[i] > xs[j]`, in \\(O(n \\log n)\\), with no compression or Fenwick tree".to_string(),
         );
     }
@@ -239,10 +240,10 @@ impl HandDs<'_> {
         if !hit {
             return;
         }
-        self.warn(
+        self.warn_at(
             &INTERVAL_DP_BY_LENGTH,
             stmt.span,
-            format!("an interval DP stepped by length `{len}` with its end computed by hand"),
+&lint_rules::INTERVAL_DP_BY_LENGTH, &[&len],
             "`var dp: [I.ranges]T` keys the table by range, and `for r in I.ranges` visits shorter ranges first; `r.first!`, `r.last!`, `r.drop(1)` and `r.drop_last(1)` name the ends and the smaller ranges".to_string(),
         );
     }

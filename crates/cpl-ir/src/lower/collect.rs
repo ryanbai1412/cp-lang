@@ -142,6 +142,7 @@ impl<'a> Lowerer<'a> {
                                     name: name.text.clone(),
                                     params,
                                     body,
+                                    trait_fns: Vec::new(),
                                 });
                             }
                             _ => {}

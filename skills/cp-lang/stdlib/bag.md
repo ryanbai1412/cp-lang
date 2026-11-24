@@ -6,13 +6,13 @@ Ordered multiset and set with order statistics, range views, and cursors: `Sorte
 
 In prelude (no `use` needed): `SortedBag`, `SortedMap`, `SortedSet`.
 
-## `struct BagCursor(id: Int)`
+## `struct BagCursor(id: Int, stamp: Int)`
 
-Read-only handle to one distinct key of a `SortedBag<K>`, valid until the next mutation.
+Read-only handle to one key's slot in a `SortedBag<K>`, valid until the bag's next `add`, `remove` or `clear`, because a B+tree change may move keys between leaves (decision 579).
 
 ## `struct SortedBag<K>`
 
-An ordered multiset (bag) of `K` backed by a B+tree of 32-slot nodes in flat arrays, with recycled node slots and linked leaves for \(O(1)\) cursor stepping.
+An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat arrays: leaves of up to 32 keys with their multiplicities, linked for \(O(1)\) cursor steps, under inner nodes that keep each child's element count, with recycled node slots (decision 579).
 
 - `fn new() -> SortedBag<K>` — \(O(1)\); Create an empty `SortedBag<K>`.
 - `fn of(xs: List<K>) -> SortedBag<K>` — \(O(n \log n)\) expected; Build a `SortedBag` containing every element of `xs`.
@@ -32,7 +32,7 @@ An ordered multiset (bag) of `K` backed by a B+tree of 32-slot nodes in flat arr
 - `@get fn last(self) -> ?K` — \(O(1)\); The largest element, or `None` when empty.
 - `fn pop_first(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return one copy of the smallest element, or `None` when empty.
 - `fn take_first(mut self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected; \(O(\log n)\).; traps: never; an `ok` that is not false-then-true gives an unspecified answer
-- `fn drain_range(mut self, r: Range<K>) -> yields K` — \(O(\log n + k)\) expected for `k` removed; \(O(\log n + k)\).
+- `fn drain_range(mut self, r: Range<K>) -> yields K` — \(O(k \log n)\) expected for `k` removed elements; Removes the elements whose value lies in `r`, yielding them in order; each removal is a full \(O(\log n)\) `remove`.
 - `fn pop_last(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return one copy of the largest element, or `None` when empty.
 - `fn rank(self, k: K) -> Int` — \(O(\log n)\) expected; Number of elements strictly less than `k` (counting duplicates).
 - `fn range(self, r: Range<K>) -> lends SortedRange<K>` — \(O(1)\) to make; see `SortedRange` for each query; The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`, `last_le`, `last_lt` and `count_range` (decision 103).
@@ -56,7 +56,7 @@ An ordered multiset (bag) of `K` backed by a B+tree of 32-slot nodes in flat arr
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Visit every element, duplicates included, in ascending order; `for x in b` uses this.
 - `fn each_rev(self) -> yields K` — \(O(1)\) amortized per step; Visit every element, duplicates included, in descending order.
 - `fn to_list(self) -> List<K>` — \(O(n)\); Every element in ascending order, repeated by multiplicity.
-- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate node storage for at least `cap` distinct keys.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate leaf storage for at least `cap` distinct keys.
 - `fn split_at(mut self, k: K) -> SortedBag<K>` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Split off and return all elements `>= k`, keeping `< k` in `self`.
 - `fn join(mut self, other: SortedBag<K>)` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and `self.last >= other.first`
 - `fn absorb(mut self, mut other: SortedBag<K>)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all elements of `other` into `self` (small-to-large, emptying `other`).
@@ -89,17 +89,19 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Visit every key in ascending order.
 - `fn each_rev(self) -> yields K` — \(O(1)\) amortized per step; Visit every key in descending order.
 - `fn to_list(self) -> List<K>` — \(O(n)\); Return all keys in ascending order as a `List<K>`.
-- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate node storage for at least `cap` keys.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate leaf storage for at least `cap` keys.
 - `fn split_at(mut self, k: K) -> SortedSet<K>` — \(O(\log n + s \log n)\) expected, `s` the smaller side's size; Split off and return all keys `>= k`, keeping `< k` in `self`.
 - `fn join(mut self, other: SortedSet<K>)` — as `SortedBag.join`; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and `self.last >= other.first`
 - `fn absorb(mut self, mut other: SortedSet<K>)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all keys of `other` into `self` (small-to-large, emptying `other`).
 
 ## `struct SortedMap<K, V>`
 
-Order-statistic ordered map from `K` to `V`, keys and values side by side in the `SortedBag` B+tree.
+Order-statistic ordered map from `K` to `V`, each value beside its key in the `SortedBag` B+tree (decision 579).
+
+Fields: `ks: SortedBag<K>`, `vals: List<V>`, `vfree: List<Int>`.
 
 - `fn new() -> SortedMap<K, V>` — \(O(1)\); Create an empty `SortedMap<K, V>`.
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise; Reserve node storage for at least `cap` entries.
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise; Reserve the key pool and the value list for at least `cap` entries.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of key-value pairs.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the map is empty.
 - `fn clear(mut self)` — \(O(1)\); Remove all entries.

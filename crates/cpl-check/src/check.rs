@@ -58,6 +58,7 @@ use crate::def::Def;
 use crate::fx::HashMap;
 use crate::prelude;
 use crate::ty::Ty;
+use cpl_diag::msgs::Msg;
 use cpl_diag::{codes, Code, Diagnostic, Sink, Span};
 use cpl_syntax::narrow;
 use std::sync::Arc;
@@ -569,6 +570,24 @@ impl<'a> Checker<'a> {
             .flatten()
     }
 
+    /// Reports `msg` with `args` at `span`, unless an earlier error already
+    /// covers it; the reported diagnostic, to add help to.
+    fn report(
+        &mut self,
+        msg: &'static Msg,
+        span: Span,
+        args: &[&dyn std::fmt::Display],
+    ) -> Option<&mut Diagnostic> {
+        if self.sink.encloses_poison(span) {
+            return None;
+        }
+        let before = self.sink.len();
+        self.sink.push(msg.error(span, args));
+        (self.sink.len() > before)
+            .then(|| self.sink.last_mut())
+            .flatten()
+    }
+
     /// Whether an earlier fix already rewrites `span`, so an error there is its echo.
     fn rewritten(&self, span: Span) -> bool {
         self.sink.diagnostics().iter().any(|d| {
@@ -638,6 +657,43 @@ impl<'a> Checker<'a> {
             "`@cpp(\"...\")` is a fn's whole body: `fn f(a: Int) -> Int = @cpp(\"return a;\")`";
         self.error(codes::UNSUPPORTED, at, message.to_string());
         Ty::Error
+    }
+
+    /// `fn f(..) = @intrinsic("name")`: `name` is in the table and `f`'s
+    /// signature is its entry's (R12.14.1, R12.14.2). A type parameter
+    /// stands for the entry's types; each call's type is checked as it lowers.
+    pub(super) fn intrinsic_body(
+        &mut self,
+        f: &cpl_syntax::ast::FnDecl,
+        name: &str,
+        at: Span,
+        ret: &Ty,
+    ) {
+        let Some(p) = cpl_rt::Prim::from_id(name) else {
+            let known: Vec<&str> = cpl_rt::TABLE.iter().map(|e| e.id).collect();
+            let message = format!("no intrinsic `{name}`; the table has {}", known.join(", "));
+            self.error(codes::UNKNOWN_INTRINSIC, at, message);
+            return;
+        };
+        let entry = p.entry();
+        let fits = |ty: &Ty, want: &str| match ty {
+            Ty::Named { name, .. } if f.generics.iter().any(|g| &g.text == name) => true,
+            _ => want.split('|').any(|w| w == ty.to_string()),
+        };
+        let params_fit = f.params.len() == entry.params.len()
+            && (f.params.iter().zip(entry.params)).all(|(param, want)| {
+                self.local(&param.name.text)
+                    .is_some_and(|l| fits(&l.ty, want))
+            });
+        if !params_fit || !fits(ret, entry.result) {
+            let message = format!(
+                "`{name}` is `({}) -> {}`; `{}` must have that signature",
+                entry.params.join(", "),
+                entry.result,
+                f.name.text,
+            );
+            self.error(codes::UNKNOWN_INTRINSIC, at, message);
+        }
     }
 
     fn local(&self, name: &str) -> Option<&Local> {
@@ -1266,14 +1322,11 @@ impl<'a> Checker<'a> {
                 continue;
             }
             let name = &p.name.text;
-            let mut diag = cpl_diag::Diagnostic::warning(
-                codes::MUT_PARAM_UNUSED,
-                p.name.span,
-                format!("`{name}` is taken `mut`, but the fn never changes it"),
-            )
-            .with_help(format!(
-                "take `{name}` without `mut`, and pass it without `mut` where the fn is called"
-            ));
+            let mut diag = cpl_diag::msgs::check::MUT_PARAM_UNUSED
+                .warning(p.name.span, &[name])
+                .with_help(format!(
+                    "take `{name}` without `mut`, and pass it without `mut` where the fn is called"
+                ));
             let at = Span::new(p.span.start, p.name.span.start);
             if self.src.get(at.start as usize..at.end as usize) == Some("mut ") {
                 diag.fix(format!("take `{name}` without `mut`"), at, String::new());

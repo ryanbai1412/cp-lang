@@ -1,6 +1,7 @@
 //! Calls of compiled fns from compiled code: value args first, then each
 //! `mut` arg moved out of its place, written back after the call.
 
+use super::stmt::Callee;
 use super::*;
 
 impl<'p, 'f> Compiler<'p, 'f> {
@@ -21,12 +22,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if f.locals.len() > 512
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()
-            || (has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args))
         {
             return None;
         }
         if (args.iter().zip(&f.params)).any(|(a, p)| matches!(a, Arg::Mut(_)) != p.mutable) {
             return None;
+        }
+        if has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args) {
+            return self.compile_call_lending(fn_id, args, ret_mode, span);
         }
         let tys: Vec<&'p Ty> = (f.locals.iter().take(f.params.len()))
             .map(|l| &l.ty)
@@ -53,6 +56,28 @@ impl<'p, 'f> Compiler<'p, 'f> {
         );
         self.emit_mix_writebacks(mix, span);
         Some((dst_i, dst_v, dst_some))
+    }
+
+    /// A call whose fn values passed beside its `mut` args may reach their
+    /// places: the places are lent, as the tree-walker lends them, and the
+    /// callee puts them back around each closure it calls (`show_lent`).
+    fn compile_call_lending(
+        &mut self,
+        fn_id: FnId,
+        args: &'p [Arg],
+        ret_mode: CallRet,
+        span: Span,
+    ) -> Option<(u16, u16, u16)> {
+        let scalar = match ret_mode {
+            CallRet::Unit | CallRet::V => false,
+            CallRet::I => true,
+            CallRet::OptI => return None,
+        };
+        let dst = self.emit_traced_call(span, Callee::Fn(fn_id), args, scalar);
+        Some(match scalar {
+            true => (dst, 0, 0),
+            false => (0, dst, 0),
+        })
     }
 
     /// Whether [`Self::compile_mix_args`] takes `args` for params of types

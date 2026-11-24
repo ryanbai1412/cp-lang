@@ -9,7 +9,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let span = expr.span;
         if let Some((fn_id, args)) = self.traced_call(expr) {
-            let src_v = self.emit_traced_call(expr, fn_id, args, false);
+            let src_v = self.emit_traced_call(expr.span, fn_id, args, false);
             let (dst_val, dst_some) = (self.alloc_i(), self.alloc_i());
             let unbox = Op::UnboxOptI {
                 dst_val,

@@ -42,7 +42,13 @@ fn with_budget() -> Int:
 // end and anywhere in it.
 type Strip = (low: Int, len: Int, head: Int, tail: Int, run: Int)
 
-fn at_low(s: Strip, low: Int) -> Strip = if s.low == low: s else: (low: s.low, len: s.len, head: 0, tail: 0, run: 0)
+fn at_low(s: Strip, low: Int) -> Strip = if s.low == low: s else: (
+    low: s.low,
+    len: s.len,
+    head: 0,
+    tail: 0,
+    run: 0,
+)
 
 fn join(a: Strip, b: Strip) -> Strip:
     let low = min(a.low, b.low)
@@ -64,8 +70,15 @@ fn for_free() -> Int:
         enters[X(b.x0)].push(Y(b.y0)..=Y(b.y1))
         leaves[X(b.x1)].push(Y(b.y0)..=Y(b.y1))
     let none: Strip = (low: Int.MAX, len: 0, head: 0, tail: 0, run: 0)
-    let cover_by = Action<Strip, Int>(apply: (d, s, _) => (low: s.low + d, len: s.len, head: s.head, tail: s.tail, run: s.run), over: Monoid(none, join))
-    var cover = SegTree<Y, Strip, Int>(Monoid(none, join), act: cover_by, a: [Y] _ => (low: 0, len: 1, head: 1, tail: 1, run: 1))
+    let cover_by = Action<Strip, Int>(
+        apply: (d, s, _) => (low: s.low + d, len: s.len, head: s.head, tail: s.tail, run: s.run),
+        over: Monoid(none, join),
+    )
+    var cover = SegTree<Y, Strip, Int>(
+        Monoid(none, join),
+        act: cover_by,
+        a: [Y] _ => (low: 0, len: 1, head: 1, tail: 1, run: 1),
+    )
     fn widest_free() -> Int = if cover.all.low == 0: cover.all.run else: 0
     var (best, left) = (0, X.cuts.first!)  // the window is the columns from cut left to right
     for right in X:

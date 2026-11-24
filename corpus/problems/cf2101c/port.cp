@@ -2,10 +2,11 @@
 // limits: 4000 ms, 250 MB
 // Problem: multitest, sum n <= 2e5, a_i in 1..=n. Choose b_i in 1..=a_i to maximize the
 //   beauty: the sum over distinct values v in b of (last index of v - first index of v).
-// Solution: give the earliest indices the largest still-free value <= a[i] (a SortedSet of
-//   free values, a DSU whose set labels point at the free value below); the t-th index that gets one is the best t-th left end. The same scan from
-//   the right gives the right ends. Pair the t-th left with the t-th right and add the
-//   spans while positive. O(n α(n)).
+// Solution: give the earliest indices the largest still-free value <= a[i]; the t-th index
+//   that gets one is the best t-th left end. The free value is the label of a[i]'s set in a DSU
+//   (0 = none left), and taking it joins its set to the one below. The same scan from the
+//   right gives the right ends. Pair the t-th left with the t-th right and add the spans while
+//   positive. O(n α(n)).
 // Bounds: n: 1..=200_000; a: 1..=n
 
 @!multitest

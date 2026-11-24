@@ -191,7 +191,7 @@ impl<'a> Lowerer<'a> {
         // stands for a list's positions is that list, and sets `D`'s size.
         if let Some(want @ Ty::Array { dims, elem }) = hint {
             if matches!(dims[..], [Dim::Pos(d)] if self.list_domains.contains(&d)) {
-                let list_ty = Ty::List(Box::new(self.plain_ty(elem)));
+                let list_ty = Ty::list(self.plain_ty(elem));
                 let list = self.list(items, Some(&list_ty), span);
                 return self.coerce(list, want, span);
             }
@@ -266,11 +266,7 @@ impl<'a> Lowerer<'a> {
                 let elem = (**elem).clone();
                 self.do_expr(Some(&ty), span, |lw, out| {
                     let count = lw.mk(ExprKind::Int(values.len() as i64), Ty::Int, span);
-                    let wrong = lw.mk(
-                        ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(count)),
-                        Ty::Bool,
-                        span,
-                    );
+                    let wrong = lw.mk_cmp(CmpOp::Ne, len, count, Ty::Bool, span);
                     let trap = Stmt::Trap(
                         "an array literal needs one value per position".to_string(),
                         lw.span(span),

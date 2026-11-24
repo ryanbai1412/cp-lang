@@ -228,6 +228,9 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.commit }}
       - uses: astral-sh/setup-uv@v6
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -243,15 +246,9 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: JetBrains plugin
-        working-directory: editors/jetbrains
         # Gradle is uncached (decision 383): it resolves through the Maven
         # mirror and backs off on a 429.
-        run: |
-          for wait in 0 30 90 180; do
-            sleep "$wait"
-            ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle buildPlugin && exit 0
-          done
-          exit 1
+        run: just jetbrains-fetch && just jetbrains-gradle buildPlugin
       - name: Collect
         env:
           VERSION: ${{ needs.plan.outputs.version }}

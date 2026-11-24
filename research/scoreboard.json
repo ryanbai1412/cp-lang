@@ -4030,7 +4030,6 @@
         "ceoi18p1": "pass",
         "ceoi19pp1": "pass",
         "cheerio1s3": "pass",
-        "cmt21r2ztr": "pass",
         "coci20c6p3": "pass",
         "coci21c1p1": "pass",
         "coci21c2p4": "pass",
@@ -4103,31 +4102,24 @@
       },
       "causes": [
         {
-          "cause": "E0204: `\u003cid>` (`\u003cid>`) does not work on the types it was given here: `\u003cid>` is not a type `\u003cid>` knows",
+          "cause": "E0301: this is indexed by `\u003cid>`, but the index is a `\u003cid>`",
           "count": 1,
           "examples": [
             "noi09p4"
-          ]
-        },
-        {
-          "cause": "R0202: integer overflow: range `\u003cid>` span does not fit in an `\u003cid>` (64 bits)",
-          "count": 1,
-          "examples": [
-            "dmopc21c9p1"
           ]
         }
       ],
       "counts": {
         "error": 1,
-        "pass": 99
+        "pass": 98
       },
       "interp_max_over_20s": [
-        "cco19p5",
+        "cco04p4",
         "cco24p1",
         "noi10p2"
       ],
-      "passed": 99,
-      "total": 100
+      "passed": 98,
+      "total": 99
     },
     "diff": {
       "cases": {
@@ -6837,9 +6829,11 @@
         "algebra.cp#MaxSub.monoid:2": "pass",
         "algebra.cp#MaxSub.monoid:empty": "pass",
         "algebra.cp#MaxSub.of:1": "pass",
+        "algebra.cp#MaxSub.repeat:1": "pass",
+        "algebra.cp#MaxSub.repeat:2": "pass",
+        "algebra.cp#MaxSub.repeat:3": "pass",
+        "algebra.cp#MaxSub.repeat:4": "pass",
         "algebra.cp#MaxSub.reversed:1": "pass",
-        "algebra.cp#MaxSub.scale:1": "pass",
-        "algebra.cp#MaxSub.scale:2": "pass",
         "algebra.cp#MaxSub.zero:1": "pass",
         "algebra.cp#MaxSubAt:ties": "pass",
         "algebra.cp#MinCount.join:1": "pass",
@@ -8739,6 +8733,7 @@
         "lazy.cp#SeqFold.new:1": "pass",
         "lazy.cp#SeqFold.new:2": "pass",
         "lazy.cp#SeqFold.new:3": "pass",
+        "lazy.cp#SeqFold.new:4": "pass",
         "lazy.cp#SeqFold.new:empty": "pass",
         "lazy.cp#SeqFold.out:1": "pass",
         "lazy.cp#SeqFold.out:2": "pass",
@@ -10060,7 +10055,6 @@
         "seq.cp#k:1": "pass",
         "seq.cp#k:2": "pass",
         "seq.cp#k:3": "pass",
-        "seq.cp#k:4": "pass",
         "seq.cp#keyed:1": "pass",
         "seq.cp#keyed:empty": "pass",
         "seq.cp#kway_merge:1": "pass",
@@ -10076,6 +10070,7 @@
         "seq.cp#lis:2": "pass",
         "seq.cp#lis:empty": "pass",
         "seq.cp#lis:ties": "pass",
+        "seq.cp#lo:1": "pass",
         "seq.cp#majority:1": "pass",
         "seq.cp#majority:empty": "pass",
         "seq.cp#map.x:1": "pass",
@@ -11057,6 +11052,9 @@
         "window.cp#Undoing.pop:1": "pass",
         "window.cp#Undoing.push:1": "pass",
         "window.cp#Window.:1": "pass",
+        "window.cp#Window.expire:1": "pass",
+        "window.cp#Window.expire:2": "pass",
+        "window.cp#Window.expire:empty": "pass",
         "window.cp#Window.front:1": "pass",
         "window.cp#Window.front:2": "pass",
         "window.cp#Window.front:empty": "pass",
@@ -11066,6 +11064,7 @@
         "window.cp#Window.pop:1": "pass",
         "window.cp#Window.pop:2": "pass",
         "window.cp#Window.push:1": "pass",
+        "window.cp#Window.push:2": "pass",
         "window.cp#track:1": "pass",
         "window.cp#undoing:1": "pass",
         "window.cp#undoing:2": "pass",
@@ -11074,10 +11073,10 @@
         "window.cp#window_fold:empty": "pass"
       },
       "counts": {
-        "pass": 4256
+        "pass": 4263
       },
-      "passed": 4256,
-      "total": 4256
+      "passed": 4263,
+      "total": 4263
     },
     "rewrites": {
       "cases": {

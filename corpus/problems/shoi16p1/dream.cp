@@ -16,7 +16,9 @@ for v in t.order.rev:
     fn at(r: Reach) -> Int = sum(best[c, r] for c in kids)
     var b: [Reach]?Int = [Reach] r =>
         if r == Reach.last!: cost[v] + at(Reach.first!)
-        elif r.label >= 0: min(best[c, r.next!] - best[c, Reach(-r.label)] for c in kids) + at(Reach(-r.label))
+        elif r.label >= 0: min(
+            best[c, r.next!] - best[c, Reach(-r.label)] for c in kids
+        ) + at(Reach(-r.label))
         else: at(r.next!)
     if not must[v]: b[Reach(0)] min= at(Reach(0))
     for r in Reach.rev:

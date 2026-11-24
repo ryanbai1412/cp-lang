@@ -261,6 +261,9 @@ impl<'a> Checker<'a> {
         let outer = self.generics.len();
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
+        for g in &f.generics {
+            self.note_generic(&g.text, g.span, Some(g.span));
+        }
         let outer_bounds = self.enter_fn_bounds(f);
         self.in_fn += 1;
         // A move is a fact about one body: a later fn may name a field or global again.
@@ -405,7 +408,9 @@ impl<'a> Checker<'a> {
                     c.lend_reset(mark);
                     c.pop_scope();
                 }
-                FnBody::Expr(expr) if !matches!(expr.kind, ExprKind::Cpp(_)) => {
+                FnBody::Expr(expr)
+                    if !matches!(expr.kind, ExprKind::Cpp(_) | ExprKind::Intrinsic(_)) =>
+                {
                     if matches!(expr.kind, ExprKind::If { .. } | ExprKind::Match { .. }) {
                         c.plain_if = Some(expr.span);
                     }
@@ -417,6 +422,10 @@ impl<'a> Checker<'a> {
                     }
                     c.no_escape_return(expr, "returning it");
                 }
+                FnBody::Expr(Expr {
+                    kind: ExprKind::Intrinsic(name),
+                    span,
+                }) => c.intrinsic_body(f, name, *span, ret),
                 // An `@cpp` body is C++: only the signature is checked.
                 FnBody::Expr(_) | FnBody::None => {}
             }
@@ -594,5 +603,19 @@ impl<'a> Checker<'a> {
             }
             _ => {}
         }
+    }
+}
+
+impl Checker<'_> {
+    /// A hover for a fn's type parameter, at its declaration or a use.
+    pub(crate) fn note_generic(&mut self, name: &str, span: Span, decl: Option<Span>) {
+        self.hovers.push(HoverEntry {
+            span,
+            name: name.to_string(),
+            ty: Ty::Param(name.to_string()),
+            keyword: "generic",
+            decl,
+            owner: None,
+        });
     }
 }

@@ -15,7 +15,9 @@ domain Value = 1..=n
 let a: [Card]Value = read()
 
 // the score of a hand of x cards, for every x
-let score = [if k == 2: F64(x) elif k == 3: F64(x) * sqrt(F64(x)) else: F64(x * x) for x in 0..=n + 1]
+let score = [
+    if k == 2: F64(x) elif k == 3: F64(x) * sqrt(F64(x)) else: F64(x * x) for x in 0..=n + 1
+]
 
 // keeping cards of one value from here up to the one with m cards left ahead, then dp after it
 struct Run(m: Int, after: F64):

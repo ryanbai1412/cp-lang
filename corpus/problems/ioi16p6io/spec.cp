@@ -2,9 +2,7 @@
 // on the diagonal, minimizing covered cells. Aliens trick over a monotone-hull DP.
 let (n, m, k) = read<(1..=1e5, 1..=1e6, 1..=1e5)>()
 domain Diag = 0..m
-let spans = read<[n](r: Diag, c: Diag)>()
-    .map(p => min(p.r, p.c)..=max(p.r, p.c))
-    .outermost()
+let spans = read<[n](r: Diag, c: Diag)>().map(p => min(p.r, p.c)..=max(p.r, p.c)).outermost()
 
 fn cover(fee: Int) -> (val: Int, count: Int):
     var hull = MonotoneHull<Int>()

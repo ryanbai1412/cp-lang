@@ -250,8 +250,8 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Quality | Metric | Mechanism |
 |---|---|---|
 | Within 1.1x of matched C++ | p50 and max ratio over std benches | `cpl bench` matched baselines in `bench/`, owned with perf |
-| No hidden allocation or copy | std fns that allocate without saying so | `crates/cpl-interp/tests/std_allocations.rs`: every doc claiming no allocation has a check, run on the VM with a counting allocator (3 claims fail today, all VM boxing, listed in `ALLOCATING_TODAY`, which only shrinks) |
-| Fixed-size `windows(k)` for a compile-time `k` does not allocate | allocations per window | rule `std-api/R17`; `crates/cpl-interp/tests/std_allocations.rs` (`seq.cp windows`: the VM still allocates one slice view per window) |
+| No hidden allocation or copy | std fns that allocate without saying so | `crates/cpl-interp/tests/std_allocations.rs`: every doc claiming no allocation has a check, run on the VM with a counting allocator |
+| Fixed-size `windows(k)` for a compile-time `k` does not allocate | allocations per window | rule `std-api/R17`; `crates/cpl-interp/tests/std_allocations.rs` (`seq.cp windows`) |
 | Small submissions | bytes of std code per emitted solution | `bench/sizes.py --check` (every corpus and bench program's judge C++ under 32 KB, no list); `crates/cpl-cli/tests/read_only_copies.rs` counts std fns |
 | Fast front end with std loaded | `check` and `explain` time of a program that uses every std module | `crates/cpl-cli/tests/cold_start.rs` (500 ms median, release build; about 110 ms today) |
 | Compiles fast on the judge | g++ time of std-heavy solutions | `bench/compile_time.py --check` (g++ -O2 CPU time of every bench program over a `<bits/stdc++.h>` baseline: median under 1.0x, max under 2.2x) |

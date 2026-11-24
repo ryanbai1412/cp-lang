@@ -29,12 +29,9 @@ impl<'a> Parser<'a> {
         let q = self.span();
         self.bump();
         let span = Span::new(inner.span.start, q.end);
-        let mut diag = Diagnostic::error(
-            codes::EXPECTED_TYPE,
-            span,
-            "an optional type puts its `?` first in CP Lang",
-        )
-        .with_help("write `?T`, as in `?Int`, for a `T` or `None`");
+        let mut diag = msgs::syntax::OPTIONAL_MARK_FIRST
+            .error(span, &[])
+            .with_help("write `?T`, as in `?Int`, for a `T` or `None`");
         diag.fixes.push(cpl_diag::Fix {
             title: "move the `?` to the front".into(),
             edits: vec![
@@ -55,17 +52,11 @@ impl<'a> Parser<'a> {
         let len = glued.then(|| {
             self.bump();
             if !(self.eat_ident("len") && self.eat(T::Colon)) {
-                let message = "a `Str(…)` type takes the range of its length, `Str(len: 1..=n)`";
-                self.error(Diagnostic::error(
-                    codes::EXPECTED_TYPE,
-                    self.error_span(),
-                    message,
-                ));
+                self.error(msgs::syntax::STR_LEN_LABEL.error(self.error_span(), &[]));
             }
             let len = self.ty();
             if !matches!(len.kind, TypeKind::Range { .. } | TypeKind::Error) {
-                let message = "the length of a `Str(len: …)` is a range, such as `1..=n`";
-                self.error(Diagnostic::error(codes::EXPECTED_TYPE, len.span, message));
+                self.error(msgs::syntax::STR_LEN_RANGE.error(len.span, &[]));
             }
             self.expect(T::RParen, "`)` after the length");
             Box::new(len)
@@ -89,7 +80,8 @@ impl<'a> Parser<'a> {
             let span = self.span();
             self.not_in_language(
                 span,
-                "there is no `dyn`: every trait call is resolved at compile time, with no vtables (R08.2.3)",
+                &msgs::syntax::NO_DYN,
+                &[],
                 "take a type parameter instead: `fn f<T: Ord>(x: T)`",
             );
             self.bump();
@@ -142,11 +134,7 @@ impl<'a> Parser<'a> {
                     let elem = self.ty();
                     let span = Span::new(open.start, elem.span.end);
                     self.tree_error(
-                        Diagnostic::error(
-                            codes::EXPECTED_TYPE,
-                            span,
-                            "a ragged read `[i in V][..i]T` is not a type",
-                        )
+                        msgs::syntax::RAGGED_READ.error(span, &[])
                         .with_help(format!(
                             "the pairs of `{dom}` are the domain `Pair<{dom}>`: `[Pair<{dom}>]T` reads the triangle in their walk order"
                         )),
@@ -215,19 +203,16 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let span = Span::new(open.start, close.end);
                     self.error(
-                        Diagnostic::error(
-                            codes::REMOVED_SYNTAX,
-                            span,
-                            format!("a list type is `List<{text}>`, not `[{text}]`"),
-                        )
-                        .with_help(
-                            "`[D]T` is an array over a domain or range `D`, e.g. `[0..n]Int`",
-                        )
-                        .with_fix(
-                            format!("write `List<{text}>`"),
-                            span,
-                            format!("List<{text}>"),
-                        ),
+                        msgs::syntax::LIST_TYPE_BRACKETS
+                            .error(span, &[&text, &text])
+                            .with_help(
+                                "`[D]T` is an array over a domain or range `D`, e.g. `[0..n]Int`",
+                            )
+                            .with_fix(
+                                format!("write `List<{text}>`"),
+                                span,
+                                format!("List<{text}>"),
+                            ),
                     );
                     TypeKind::Named {
                         name: Name {
@@ -485,12 +470,9 @@ impl<'a> Parser<'a> {
                 let _trait_ty = self.ty_atom();
                 let span = self.span_from(start);
                 self.error(
-                    Diagnostic::error(
-                        codes::UNSUPPORTED,
-                        span,
-                        "CP Lang has no `dyn` trait objects; use a generic type parameter with a trait bound instead",
-                    )
-                    .with_help("write `fn f<T: Trait>(x: T)`"),
+                    msgs::syntax::DYN_TRAIT_OBJECT
+                        .error(span, &[])
+                        .with_help("write `fn f<T: Trait>(x: T)`"),
                 );
                 TypeKind::Error
             }
@@ -539,13 +521,10 @@ impl<'a> Parser<'a> {
                     "built-in types are capitalized: `Int`, `Str`, `List<T>`"
                 };
                 self.error(
-                    Diagnostic::error(
-                        codes::EXPECTED_TYPE,
-                        name.span,
-                        format!("CP Lang spells the type `{ours}`, not `{}`", name.text),
-                    )
-                    .with_help(help)
-                    .with_fix(format!("change to `{ours}`"), name.span, ours),
+                    msgs::syntax::TYPE_SPELLING
+                        .error(name.span, &[&ours, &name.text])
+                        .with_help(help)
+                        .with_fix(format!("change to `{ours}`"), name.span, ours),
                 );
                 name.text = ours.to_string();
                 let args = if self.at(T::Lt) {
@@ -564,7 +543,8 @@ impl<'a> Parser<'a> {
             T::Amp => {
                 let amp = self.span();
                 self.recovered(
-                    Diagnostic::error(codes::EXPECTED_TYPE, amp, "CP Lang has no `&` types")
+                    msgs::syntax::AMP_TYPE
+                        .error(amp, &[])
                         .with_help("a parameter is lent without a copy: write `xs: List<Int>`")
                         .with_fix("remove the `&`", amp, ""),
                 );
@@ -575,8 +555,8 @@ impl<'a> Parser<'a> {
             T::Eq if self.prev_kind() == Some(T::Colon) => {
                 let colon = self.tokens[self.pos - 1].span;
                 let found = self.peek().describe();
-                let message = format!("expected a type after `:`, found {found}");
-                let diag = Diagnostic::error(codes::EXPECTED_TYPE, self.error_span(), message)
+                let diag = msgs::syntax::TYPE_AFTER_COLON
+                    .error(self.error_span(), &[&found])
                     .with_fix("remove the `:`", colon, "");
                 self.error(diag);
                 TypeKind::Error
@@ -655,7 +635,8 @@ impl<'a> Parser<'a> {
         if !inclusive && !self.at(T::DotDot) {
             let span = lo.span;
             self.error(
-                Diagnostic::error(codes::EXPECTED_TYPE, span, "expected a type")
+                msgs::syntax::EXPECTED_A_TYPE
+                    .error(span, &[])
                     .with_help("types are capitalized (`Int`, `V`), or ranges such as `0..=1e9`"),
             );
             return TypeKind::Error;
@@ -814,10 +795,8 @@ impl<'a> Parser<'a> {
                 let span = self.span_from(start);
                 self.not_in_language(
                     span,
-                    &format!(
-                        "type parameter `{}` can't take type parameters: there are no higher-kinded types (R08.5.3)",
-                        name.text
-                    ),
+                    &msgs::syntax::NO_HIGHER_KINDS,
+                    &[&name.text],
                     "pass the concrete type, or use a trait with an associated type",
                 );
             }
@@ -884,12 +863,9 @@ impl<'a> Parser<'a> {
         if !self.eat(T::RBracket) {
             return args;
         }
-        let mut diag = Diagnostic::error(
-            codes::EXPECTED_TYPE,
-            open,
-            format!("CP Lang writes type arguments in `<>`: `{name}<...>`, not `{name}[...]`"),
-        )
-        .with_help("`[...]` is a list or an index; a type's arguments go in `<>`");
+        let mut diag = msgs::syntax::TYPE_ARGS_IN_ANGLES
+            .error(open, &[&name, &name])
+            .with_help("`[...]` is a list or an index; a type's arguments go in `<>`");
         diag.fixes.push(cpl_diag::Fix {
             title: "write `<...>`".into(),
             edits: vec![(open, "<".into()), (close, ">".into())],

@@ -154,6 +154,18 @@ inline ll check_range(ll v, ll lo, ll hi, const char* text) {
 ",
     },
     Piece {
+        name: "fit",
+        needs: &["out"],
+        code: "\
+template <class T> T fit(ll v) {
+#ifdef LOCAL
+    if (__builtin_expect(v != (ll)(T)v, 0)) { cpl::flush(); fprintf(stderr, \"%lld is outside the range its map holds\\n\", v); exit(3); }
+#endif
+    return (T)v;
+}
+",
+    },
+    Piece {
         name: "shl128",
         needs: &[],
         code: "\

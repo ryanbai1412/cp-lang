@@ -16,40 +16,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cpl="${CPL:-$root/target/debug/cpl}"
 [ -x "$cpl" ] || { echo "editors: build cpl first: cargo build -p cpl-cli" >&2; exit 1; }
 
-echo "editors: keyword lists match crates/cpl-syntax/src/token.rs"
-python3 - "$root" <<'PY'
-import pathlib, re, sys
-root = pathlib.Path(sys.argv[1])
-token = (root / "crates/cpl-syntax/src/token.rs").read_text()
-body = token.split("pub fn keyword(text: &str)")[1].split("_ => return")[0]
-compiler = set(re.findall(r'"([a-z]+)" =>', body))
-lists = {
-    "editors/neovim/syntax/cp.vim": lambda s: " ".join(
-        l.split(None, 3)[3] for l in s.splitlines() if re.match(r"syntax keyword cp(Keyword|Boolean) ", l)),
-    "editors/emacs/cp-mode.el": lambda s: " ".join(
-        re.search(r"\(defconst cp-%s\s+'\((.*?)\)\)" % n, s, re.S).group(1) for n in ("keywords", "constants")),
-    "editors/tree-sitter-cp/grammar.js": lambda s: " ".join(
-        re.findall(r"'([a-z]+)'", re.search(r"boolean: _ =>(.*?)function_definition:", s, re.S).group(1))),
-    "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLexer.kt": lambda s: " ".join(
-        re.findall(r'"([a-z]+)"', re.search(r"val KEYWORDS: Set<String> = setOf\((.*?)\)", s, re.S).group(1))),
-}
-bad = False
-for path, words in lists.items():
-    file = root / path
-    if not file.exists():
-        continue
-    got = set(re.findall(r"[a-z]+", words(file.read_text())))
-    if got != compiler:
-        bad = True
-        print(f"  {path}: missing {sorted(compiler - got)}, extra {sorted(got - compiler)}", file=sys.stderr)
-literals = set(re.findall(r'"([A-Za-z]+)"', token.split("pub const LITERAL_WORDS: &[&str] = &[")[1].split("];")[0]))
-grammar = (root / "editors/tree-sitter-cp/grammar.js").read_text()
-words = set(re.findall(r"'([A-Za-z]+)'", re.search(r"boolean: _ =>(.*?)self: _ =>", grammar, re.S).group(1)))
-if words != literals:
-    bad = True
-    print(f"  editors/tree-sitter-cp/grammar.js literals: missing {sorted(literals - words)}, extra {sorted(words - literals)}", file=sys.stderr)
-sys.exit(1 if bad else 0)
-PY
+echo "editors: editors/words.json is crates/cpl-syntax/src/token.rs's tables"
+(cd "$root" && uv run --quiet python scripts/editor-words.py --check)
 
 if command -v node >/dev/null && command -v npm >/dev/null && [ -d "$root/editors/vscode/node_modules" ]; then
     echo "editors: vscode"

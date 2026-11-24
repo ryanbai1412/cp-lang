@@ -2,7 +2,7 @@
 
 # std.window
 
-Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).  `a.window_fold(k, op)` and `Window(op)` pick their strategy from the op's laws: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else uses two stacks. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo and divide-and-conquer DP all accept a `Track`.
+Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).  `a.window_fold(k, op)` and `Window(op)` keep two stacks for every op today; the law-picked strategies of `lib/sequence-patterns.md` (a `Group` adds and subtracts, a `Selective` op keeps a monotone deque) wait on law-bound dispatch over op values. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo and divide-and-conquer DP all accept a `Track`.
 
 In prelude (no `use` needed): `Sweep`, `Undo`, `Undoing`, `Window`, `track`, `undoing`, `window_fold`.
 
@@ -10,10 +10,11 @@ In prelude (no `use` needed): `Sweep`, `Undo`, `Undoing`, `Window`, `track`, `un
 
 A sliding fold queue over `op`.
 
-Fields: `q: List<T>`, `front: List<T>`, `olds: List<T>`, `head: Int`, `back: ?T`.
+Fields: `q: List<T>`, `front: List<T>`, `olds: List<T>`, `head: Int`, `back: ?T`, `keys: List<Int>`, `oldkeys: List<Int>`.
 
-- `fn new(op: M) -> Window<T, M>` — \(O(1)\); An empty window over `op`.
-- `fn push(mut self, x: T)` — \(O(1)\) amortized calls of `op`; Push `x` at the back, as the newest element.; traps: never (beyond what `op` traps on)
+- `fn new(op: M) -> Window<T, M>` — \(O(1)\); An empty window over `op`, kept as two stacks: the back folds as it grows, and the front holds suffix folds of the older elements.
+- `fn push(mut self, x: T, at: ?Int = None)` — \(O(1)\) amortized calls of `op`; Push `x` at the back, as the newest element.; traps: when `at:` is given to a window that has unkeyed elements or the other way round, or
+- `fn expire(mut self, before: Int)` — \(O(1)\) amortized calls of `op` per removed element; Remove every element pushed `at:` a place below `before`, oldest first.; traps: when the window has unkeyed elements
 - `fn pop(mut self, x: T)` — \(O(1)\) amortized calls of `op`; Pop the front: remove the oldest element, `x`.; traps: on an empty window, or in a checked build when `x` is not the oldest element
 - `@get fn all(self) -> ?T` — \(O(1)\); The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`, `x3`), so a non-commutative op folds in push order; `None` when empty.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window: pushes minus pops.
@@ -52,7 +53,7 @@ Fields: `lo: Int`, `hi: Int`.
 
 ## Functions
 
-- `fn window_fold<S: Indexed, T, M>(self: S, k: Int, op: M) -> yields T` — \(O(n)\) amortized calls of `op`; One fold of `op` per length-`k` window of `self`, left to right, with `Window(op)`'s strategy: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else keeps two stacks.; traps: when `k < 1`
+- `fn window_fold<S: Indexed, T, M>(self: S, k: Int, op: M) -> yields T` — \(O(n)\) amortized calls of `op`; One fold of `op` per length-`k` window of `self`, left to right, kept the way `Window(op)` keeps it (two stacks).; traps: when `k < 1`
 - `fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T>` — \(O(1)\); A `Track` over any structure: `add(mut state, x)` applies an element at the back and `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`.
 - `fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T>` — \(O(1)\); `Undoing` over `state`, holding no elements; see there.
 

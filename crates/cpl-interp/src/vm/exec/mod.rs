@@ -719,7 +719,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     for k in 0..n {
                         fs.push(kinds[k].box_val(regs_i[b + k]));
                     }
-                    regs_v[dst_v as usize] = Value::Tuple(TupleVal::Boxed(Rc::new(fs)));
+                    regs_v[dst_v as usize] =
+                        Value::Tuple(TupleVal::Boxed(crate::value::Shared::new(fs)));
                 }
                 Op::UnboxSmallTuple {
                     dst_base,
@@ -1734,6 +1735,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 Op::FeedTree {
                     src,
                     back,
+                    each,
                     acc,
                     point,
                     skip,
@@ -1749,19 +1751,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_v[src as usize].clone()
                     };
                     let span = spans[cur_pc];
-                    // The loop's body shows a lent argument in its caller's
-                    // place, so the argument's slot holds its latest value.
-                    let lends = self.lends();
-                    if lends {
-                        let (slots, base) = (&chunk.slot_map, self.base);
-                        sync_to_stack(slots, regs_i, regs_v, &mut self.stack, base, true);
-                    }
-                    let updated = self.feed(val, span);
-                    if lends {
-                        let (slots, base) = (&chunk.slot_map, self.base);
-                        sync_from_stack(slots, regs_i, regs_v, &mut self.stack, base, true);
-                    }
-                    let updated = updated?;
+                    let updated = self.feed_tree(chunk, regs_i, regs_v, val, each, span)?;
                     if back != 0 {
                         write_slot(&chunk.slot_map[back as usize - 1], regs_i, regs_v, updated);
                     }

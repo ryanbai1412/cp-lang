@@ -55,11 +55,9 @@ impl Lowerer<'_> {
             ("nth", _) => self.space_at_ord(s, i),
             ("wrap", OrdSpace::Domain(d)) => self.domain_wrap(d, i, span),
             ("wrap", _) => self.space_wrap(s, i, span),
-            (_, OrdSpace::Domain(d)) => self.mk(
-                ExprKind::Builtin(Builtin::PosTryOrd(d), vec![i]),
-                Ty::opt(Ty::Pos(d)),
-                span,
-            ),
+            (_, OrdSpace::Domain(d)) => {
+                self.mk_builtin(Builtin::PosTryOrd(d), [i], Ty::opt(Ty::Pos(d)), span)
+            }
             _ => self.space_try_at(s, i, span),
         })
     }
@@ -68,19 +66,11 @@ impl Lowerer<'_> {
     fn space_wrap(&mut self, s: OrdSpace, i: Expr, span: Span) -> Expr {
         let rem = |lw: &mut Self, e: Expr| {
             let n = lw.space_count(s, span);
-            lw.mk(
-                ExprKind::Binary(BinOp::Rem, Box::new(e), Box::new(n)),
-                Ty::Int,
-                span,
-            )
+            lw.mk_binary(BinOp::Rem, e, n, Ty::Int, span)
         };
         let once = rem(self, i);
         let n = self.space_count(s, span);
-        let up = self.mk(
-            ExprKind::Binary(BinOp::Add, Box::new(once), Box::new(n)),
-            Ty::Int,
-            span,
-        );
+        let up = self.mk_binary(BinOp::Add, once, n, Ty::Int, span);
         let ord = rem(self, up);
         self.space_at_ord(s, ord)
     }
@@ -91,30 +81,14 @@ impl Lowerer<'_> {
         let i = self.hold(value, &mut stmts);
         let zero = self.int_lit(0, span);
         let n = self.space_count(s, span);
-        let ge0 = self.mk(
-            ExprKind::Cmp(CmpOp::Ge, Box::new(i.clone()), Box::new(zero)),
-            Ty::Bool,
-            span,
-        );
-        let lt_n = self.mk(
-            ExprKind::Cmp(CmpOp::Lt, Box::new(i.clone()), Box::new(n)),
-            Ty::Bool,
-            span,
-        );
-        let ok = self.mk(
-            ExprKind::Binary(BinOp::And, Box::new(ge0), Box::new(lt_n)),
-            Ty::Bool,
-            span,
-        );
+        let ge0 = self.mk_cmp(CmpOp::Ge, i.clone(), zero, Ty::Bool, span);
+        let lt_n = self.mk_cmp(CmpOp::Lt, i.clone(), n, Ty::Bool, span);
+        let ok = self.mk_binary(BinOp::And, ge0, lt_n, Ty::Bool, span);
         let ty = Ty::opt(self.space_ty(s));
         let at = self.space_at_ord(s, i);
-        let some = self.mk(ExprKind::Some(Box::new(at)), ty.clone(), span);
+        let some = self.mk_some(at, ty.clone(), span);
         let none = self.mk(ExprKind::None, ty.clone(), span);
-        let pick = self.mk(
-            ExprKind::If(Box::new(ok), Box::new(some), Box::new(none)),
-            ty.clone(),
-            span,
-        );
+        let pick = self.mk_if(ok, some, none, ty.clone(), span);
         stmts.push(Stmt::Give(pick));
         self.mk(ExprKind::Do(Block { stmts }), ty, span)
     }
@@ -122,26 +96,14 @@ impl Lowerer<'_> {
     /// `V.wrap(x)`: the position labelled `x` modulo `V.count` (R04.2.13).
     pub(super) fn domain_wrap(&mut self, id: DomainId, label: Expr, span: Span) -> Expr {
         let lo = self.domain_first_label(id, span);
-        let off = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(label), Box::new(lo)),
-            Ty::Int,
-            span,
-        );
+        let off = self.mk_binary(BinOp::Sub, label, lo, Ty::Int, span);
         let rem = |lw: &mut Self, e: Expr| {
             let len = lw.mk(ExprKind::DomainLen(id), Ty::Int, span);
-            lw.mk(
-                ExprKind::Binary(BinOp::Rem, Box::new(e), Box::new(len)),
-                Ty::Int,
-                span,
-            )
+            lw.mk_binary(BinOp::Rem, e, len, Ty::Int, span)
         };
         let once = rem(self, off);
         let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
-        let shifted = self.mk(
-            ExprKind::Binary(BinOp::Add, Box::new(once), Box::new(len)),
-            Ty::Int,
-            span,
-        );
+        let shifted = self.mk_binary(BinOp::Add, once, len, Ty::Int, span);
         let ord = rem(self, shifted);
         self.mk(
             ExprKind::Cast(Cast::FromOrd(id), Box::new(ord)),

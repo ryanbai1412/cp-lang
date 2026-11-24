@@ -158,15 +158,26 @@ pub fn find_interactor(source: &Path) -> Option<PathBuf> {
 
 /// The judge's grader, `grader.cpp`, for a program of `@grader` fns: it
 /// has the `main` and calls them. Found where `find_checker` looks.
-pub fn find_grader(source: &Path) -> Option<PathBuf> {
+/// The judge's `grader.cpp` to link `source` (its text `src`) with: one
+/// found where its cases are, and only when it declares a `@grader` fn, so
+/// a stdin port beside the package's grader runs alone.
+pub fn find_grader(source: &Path, src: &str) -> Option<PathBuf> {
+    let parsed = cpl_syntax::parse_file(src);
+    let mut stmts = parsed.items.iter().flat_map(|(_, item)| &item.stmts);
+    if !stmts.any(|stmt| stmt.decorators.iter().any(|d| d.name.text == "grader")) {
+        return None;
+    }
     find_judge(source, "grader.cpp")
 }
 
 fn find_judge(source: &Path, file: &str) -> Option<PathBuf> {
     let cases = find_tests_dir(source);
+    let package = source
+        .parent()
+        .is_some_and(|p| p.join("tests.toml").is_file());
     let beside = match cases.file_name() {
         Some(name) if name == "tests" => cases.parent().map(|p| p.join(file)),
-        _ if cases != tests_dir(source) => source.parent().map(|p| p.join(file)),
+        _ if package || cases != tests_dir(source) => source.parent().map(|p| p.join(file)),
         _ => None,
     };
     [Some(cases.join(file)), beside]
@@ -254,6 +265,38 @@ pub fn cases(source: &Path) -> Vec<TestCase> {
     cases_in(&find_tests_dir(source))
 }
 
+/// Every sample an editor runs `source` on: the scratch inputs `i1`, `i2`,
+/// ... beside it (with `o1` as `i1`'s answer), then the problem's cases,
+/// then `<stem>.samples/`.
+pub fn samples(source: &Path) -> Vec<TestCase> {
+    let folder = source
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut scratch: Vec<TestCase> = std::fs::read_dir(folder)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|n| n.len() > 1 && n.starts_with('i') && n[1..].bytes().all(|b| b.is_ascii_digit()))
+        .filter(|n| folder.join(n).is_file())
+        .map(|n| TestCase {
+            expected: Some(folder.join(format!("o{}", &n[1..]))).filter(|p| p.is_file()),
+            input: folder.join(&n),
+            name: n,
+        })
+        .collect();
+    scratch.sort_by_key(|c| {
+        (
+            c.name[1..].parse::<u64>().unwrap_or(u64::MAX),
+            c.name.clone(),
+        )
+    });
+    scratch.extend(cases(source));
+    scratch.extend(cases_in(&source.with_extension("samples")));
+    scratch
+}
+
 #[cfg(test)]
 mod generated_cases_tests {
     use super::*;
@@ -279,6 +322,26 @@ mod generated_cases_tests {
             Some(package.join("interactor.py"))
         );
         assert_eq!(cases_in(&find_tests_dir(&source)).len(), 1);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_package_finds_its_root_grader_before_its_cases_are_made() {
+        let root = std::env::temp_dir().join(format!("cpl-unmade-{}", std::process::id()));
+        let package = root.join("corpus/problems").join("p2");
+        std::fs::create_dir_all(&package).unwrap();
+        std::fs::write(package.join("tests.toml"), "[[case]]\ninput = \"1\\n\"\n").unwrap();
+        std::fs::write(package.join("grader.cpp"), "").unwrap();
+        let dream = package.join("dream.cp");
+        let graded = "@grader\nfn f(x: Int) -> Int = x\n";
+        assert_eq!(
+            find_grader(&dream, graded),
+            Some(package.join("grader.cpp"))
+        );
+        assert_eq!(
+            find_grader(&package.join("port.cp"), "print(read())\n"),
+            None
+        );
         std::fs::remove_dir_all(&root).unwrap();
     }
 }

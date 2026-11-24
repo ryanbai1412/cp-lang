@@ -5,10 +5,10 @@
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, FERMAT_INVERSE};
-use cpl_diag::Diagnostic;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
 
 use super::shapes::{int, name};
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Inverses<'a> {
@@ -38,11 +38,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 return;
             }
             let (a, p) = (text(&a.value), text(&m.value));
-            let diag = Diagnostic::warning(
-                FERMAT_INVERSE.code,
-                expr.span.shift(self.base),
-                format!("`pow_mod({a}, {p} - 2, {p})` is the inverse of `{a}` modulo `{p}`, by hand"),
-            )
+            let diag = lint_rules::FERMAT_INVERSE.warning(expr.span.shift(self.base), &[&a, &p, &p, &a, &p])
             .with_help(format!(
                 "declare `type Z = Mod<{p}>` (`std.mod`) and write `Z({a}).inv()`: it is this inverse, traps when there is none, and `Z`'s `*`, `+` and `-` reduce on their own"
             ));

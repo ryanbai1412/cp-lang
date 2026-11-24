@@ -23,7 +23,7 @@
  "difficulty": "hard",
  "dream": "none",
  "spec": "none",
- "notes": "No DMOJ AC submission is on file: orig.cpp is the IOI task archive's model solution (2025/day1/worldmap/solutions/model_solution/sub6-2k.cpp, K = 2N) with the sample grader as its main; it passes all 142 official tests under checker.py, which agrees with the archive's checker.cpp on its outputs and mutations of them. dream.tests/grader.cpp + worldmap.h are the sample grader without the judge secrets, which cpl test links into the @grader dream; they sit in dream.tests/ because a grader.cpp beside the stdin port would be linked into it too.",
+ "notes": "No DMOJ AC submission is on file: orig.cpp is the IOI task archive's model solution (2025/day1/worldmap/solutions/model_solution/sub6-2k.cpp, K = 2N) with the sample grader as its main; it passes all 142 official tests under checker.py, which agrees with the archive's checker.cpp on its outputs and mutations of them. grader.cpp + worldmap.h are the sample grader without the judge secrets; cpl links them only into a program with a @grader fn (the dream), not into the stdin port.",
  "dream_stress": {
   "ok": true,
   "cases": 18,

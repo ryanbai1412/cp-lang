@@ -22,7 +22,9 @@ for _ in 0..tests:
     let h_par: [nh]-1..=nh = read()
     domain Node = 0..ng + nh  // G's nodes, then H's
     fn up(p: Int, base: Int) -> ?Node = if p == -1: None else: Some(Node.nth(base + p - 1))
-    let t = Rooted.from_parents([Node] v => if v.ord < ng: up(g_par[v.ord], 0) else: up(h_par[v.ord - ng], ng))
+    let t = Rooted.from_parents(
+        [Node] v => if v.ord < ng: up(g_par[v.ord], 0) else: up(h_par[v.ord - ng], ng)
+    )
     let (domain Shape, shape) = t.shapes()
     let kids = [Node] v => t.children(v).collect()
 

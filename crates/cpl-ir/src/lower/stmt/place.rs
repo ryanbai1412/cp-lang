@@ -211,9 +211,8 @@ impl<'a> Lowerer<'a> {
                         let mut lead = Vec::new();
                         let place = self.settle_indexes(place, &mut lead);
                         let holds = place_to_expr(&place);
-                        let some = self.mk(ExprKind::IsSome(Box::new(holds)), Ty::Bool, span);
-                        let none =
-                            self.mk(ExprKind::Unary(UnOp::Not, Box::new(some)), Ty::Bool, span);
+                        let some = self.mk_is_some(holds, Ty::Bool, span);
+                        let none = self.mk_unary(UnOp::Not, some, Ty::Bool, span);
                         lead.push(Stmt::If(
                             none,
                             Block {

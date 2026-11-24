@@ -281,9 +281,11 @@ def lint_name_matchers(root: Path) -> list[str]:
     instead of asking the checker which fn it calls (`Facts::callee`): a
     user's own `push` fires them. Names a lint writes into its help or fix
     don't count, nor a line that asks the checker (`is_std`, `Calls::is`,
-    `Calls::name`), nor an arm of a `match` on the checker's callee name.
+    `Calls::name`, or `Calls::unresolved` for the written path of a member
+    it could not resolve), nor an arm of a `match` on the checker's callee
+    name.
     `lint_std_names` keeps every such name on `std_fn`."""
-    facts = re.compile(r"\bis_std\(|\.is\(|\.name\(")
+    facts = re.compile(r"\bis_std\(|\.is\(|\.name\(|\.unresolved\(")
     compare = re.compile(r"(==|!=)\s*std_fn::|std_fn::\w+\s*(==|!=)|contains\(std_fn::")
     arm = re.compile(r"std_fn::\w+\s*(=>|\|)|\|\s*std_fn::|matches!\(.*std_fn::")
     written = re.compile(r"\.text\b|as_str\(\)")
@@ -351,6 +353,25 @@ def backend_std_names(root: Path) -> list[str]:
     subdirs = [f"crates/{c}/src" for c in crate_rules(root).get("back end", [])]
     return [f"{_rel(root, p)}:{i} {m.group(1)}" for p in _rs_files(root, *subdirs, tests=False)
             for i, line in enumerate(_lines(p), 1) for m in STD_TYPE_RE.finditer(line)]
+
+
+STD_PUB_NAME_RE = re.compile(r"^pub (?:fn|struct|enum|trait|type) (\w+)")
+NAME_BAN_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
+
+
+def std_names_outside_rt(root: Path) -> list[str]:
+    """Public std names written as string literals in compiler source: the name-ban gate
+    (architecture.md, decision 573). Only cpl-rt may name a primitive."""
+    names = {m.group(1) for rel in _git(root, "ls-files", "std/*.cp")
+             for line in _lines(root / rel) if (m := STD_PUB_NAME_RE.match(line))}
+    hits: set[str] = set()
+    for p in _rs_files(root, *(f"crates/{c}/src" for c in NAME_BAN_CRATES), tests=False):
+        if "test" in p.name:
+            continue
+        for line in _lines(p):
+            if not line.lstrip().startswith("//"):
+                hits.update(n for n in re.findall(r'"(\w+)"', line) if n in names)
+    return sorted(hits)
 
 
 @functools.lru_cache(maxsize=4)
@@ -690,6 +711,14 @@ def v02_port_files(root: Path) -> list[str]:
     sets = root / "corpus/sets/v03.txt"
     v03 = {l.strip() for l in _lines(sets)} if sets.is_file() else set()
     return [p for p in _git(root, "ls-files", "corpus/problems/*/port.cp") if p.split("/")[2] not in v03]
+
+
+def ports_unreported(root: Path) -> list[str]:
+    """Corpus ports landed without their friction report or review
+    (`research/frictions/<id>.md`, `research/reviews/<id>.md`; porting.md steps 4-5)."""
+    have = set(_git(root, "ls-files", "research/frictions/*.md", "research/reviews/*.md"))
+    return [p for p in _git(root, "ls-files", "corpus/problems/*/port.cp")
+            if not {f"research/frictions/{p.split('/')[2]}.md", f"research/reviews/{p.split('/')[2]}.md"} <= have]
 
 
 def spec_std_refs(root: Path) -> list[str]:
@@ -1151,13 +1180,41 @@ def corpus_no_tests(root: Path) -> list[str]:
         if problems.is_dir() else []
 
 
+def corpus_fmt_dirty(root: Path) -> list[str]:
+    """Corpus port.cp, dream.cp and spec.cp files `cpl fmt --check` would change (owner: Content, idioms).
+
+    Rule: idiomatic-code/R9 (handbook/guidelines/idiomatic-code-checklist.md#r9): published code
+    is in the canonical style; `scripts/corpus.py verify` (`lint`) reports each as `fmt-dirty`.
+    Runs $CPL, else the newer of target/debug/cpl and target/release/cpl; with none built it
+    counts a line naming the missing binary, so the gate can't pass blind.
+    """
+    problems = root / "corpus" / "problems"
+    files = [f"corpus/problems/{d.name}/{n}" for d in (sorted(problems.iterdir()) if problems.is_dir() else ())
+             for n in ("port.cp", "dream.cp", "spec.cp") if (d / n).is_file()]
+    if not files:
+        return []
+    env = os.environ.get("CPL")
+    built = [p for p in (root / "target/debug/cpl", root / "target/release/cpl") if p.is_file()]
+    cpl = Path(env) if env and Path(env).is_file() else max(built, key=lambda p: p.stat().st_mtime, default=None)
+    if cpl is None:
+        return ["target/debug/cpl: not built; run `cargo build -p cpl-cli`"]
+    r = subprocess.run([str(cpl.resolve()), "fmt", "--check", "--json", *files], cwd=root, capture_output=True, text=True)
+    try:
+        out = json.loads(r.stdout)["files"]
+    except (ValueError, KeyError):
+        return [f"{cpl}: `cpl fmt --check --json` printed no report"]
+    return sorted(f["path"] for f in out if f["changed"] or f.get("diagnostics") or f.get("error"))
+
+
 def corpus_no_statement(root: Path) -> list[str]:
     """Problem packages whose tests.toml has no statement sample inline (owner: Content, idioms).
 
     Rule: problem-packages/R9 (handbook/guidelines/problem-packages-checklist.md#r9): a
-    package's cases start with its statement's samples as `input` cases. A package whose
+    package's cases start with its statement's samples as `input` (or `input_file`) cases. A package whose
     statement can't be found has none, and can't have valid bounds or tests either, so it
-    is deleted (git history keeps it) rather than listed.
+    is deleted (git history keeps it) rather than listed. A statement with no sample at all is
+    recorded in meta.json as `"statement": {"url", "sha256", "samples": 0}`, pinning the
+    document that was read, and is not listed.
     """
     import tomllib
     problems = root / "corpus" / "problems"
@@ -1170,9 +1227,19 @@ def corpus_no_statement(root: Path) -> list[str]:
             cases = tomllib.loads(t.read_text(encoding="utf-8")).get("case", []) if t.is_file() else []
         except tomllib.TOMLDecodeError:
             cases = []
-        if not any("input" in c for c in cases):
+        if not any("input" in c or "input_file" in c for c in cases) and not _no_sample_statement(d / "meta.json"):
             found.append(d.relative_to(root).as_posix())
     return found
+
+
+def _no_sample_statement(meta: Path) -> bool:
+    """meta.json pins a statement (url and sha256) that has no samples."""
+    try:
+        st = json.loads(meta.read_text(encoding="utf-8")).get("statement")
+    except (OSError, ValueError, AttributeError):
+        return False
+    return (isinstance(st, dict) and bool(st.get("url")) and bool(st.get("sha256"))
+            and type(st.get("samples")) is int and st["samples"] == 0)
 
 
 def corpus_test_files(root: Path) -> list[str]:
@@ -1470,12 +1537,72 @@ def _ungated_lines(lines: list[str]) -> Iterator[tuple[int, str]]:
 
 
 UNWRAP_RE = re.compile(r"\.unwrap\(\)|\.expect\(|\bpanic!\(|\bunreachable!\(")
+# compiler-changes/R16: a crate's one stop for a broken invariant is `fn broken_invariant` in
+# its `src/invariant.rs`; that fn's panic is the only one allowed there.
+INVARIANT_FILE_RE = re.compile(r"^crates/[^/]+/src/invariant\.rs$")
+BROKEN_CALL_RE = re.compile(r"\bbroken_invariant\(")
+# What a renamed panic wrapper needs: to report its caller, or to never return.
+WRAPPER_MARK_RE = re.compile(r"#\[track_caller\]|\)\s*->\s*!\s*(?:\{|where\b|$)")
+WRAPPER_MAX_BODY = 8
+
+
+def _crate_src(root: Path) -> dict[str, list[tuple[int, str]]]:
+    files: dict[str, list[tuple[int, str]]] = defaultdict(list)
+    for rel, i, line in _src_lines(root):
+        files[rel].append((i, line))
+    return files
+
+
+def _broken_wrappers(rel: str, lines: list[tuple[int, str]]) -> Iterator[str]:
+    """Calls to `broken_invariant` that forward a name instead of stating one, and small generic
+    or `Option`/`Result`-taking fns calling it: wrappers that would hide their callers."""
+    for k, (i, line) in enumerate(lines):
+        for m in BROKEN_CALL_RE.finditer(line):
+            rest = line[m.end():].strip() or (lines[k + 1][1].strip() if k + 1 < len(lines) else "")
+            if not rest.startswith('"'):
+                yield f"{rel}:{i}"
+        fn = FN_RE.match(line)
+        if not fn:
+            continue
+        sig, j = line, k
+        while "{" not in lines[j][1] and j + 1 < len(lines) and not lines[j][1].rstrip().endswith(";"):
+            j += 1
+            sig += lines[j][1]
+        end = j + 1
+        while end < len(lines) and not (lines[end][1].strip() == "}" and _indent(lines[end][1]) == len(fn.group(1))):
+            end += 1
+        body = [b for _, b in lines[j + 1:end]]
+        params = sig.split("->")[0]
+        if (len(body) <= WRAPPER_MAX_BODY and any(BROKEN_CALL_RE.search(b) for b in body)
+                and (re.search(r"\bfn\s+\w+\s*<", sig) or re.search(r"\b(?:Option|Result)<", params))):
+            yield f"{rel}:{i}"
 
 
 def unwrap_input(root: Path) -> list[str]:
-    """`.unwrap()`, `.expect(`, `panic!(`, `unreachable!(` in shipped crate code:
-    input errors become diagnostics, invariants go behind one counted helper per crate."""
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root) for _ in UNWRAP_RE.finditer(line)]
+    """`.unwrap()`, `.expect(`, `panic!(`, `unreachable!(` in shipped crate code, and the
+    wrappers that would rename them (handbook/guidelines/compiler-changes-checklist.md#compiler-changes-r16):
+    input errors become diagnostics; an invariant stops through its crate's one
+    `invariant::broken_invariant`, whose own panic is the one not counted, and `invariant_sites`
+    counts its calls. A `#[track_caller]` or `-> !` fn elsewhere, a `broken_invariant` call
+    whose argument is not a literal, and a small generic or `Option`/`Result`-taking
+    fn that calls `broken_invariant` each count."""
+    out = []
+    for rel, lines in _crate_src(root).items():
+        found = [f"{rel}:{i}" for i, line in lines for _ in UNWRAP_RE.finditer(line)]
+        if INVARIANT_FILE_RE.match(rel):
+            out += found[1:]
+            continue
+        out += found
+        out += [f"{rel}:{i}" for i, line in lines if WRAPPER_MARK_RE.search(line)]
+        out += _broken_wrappers(rel, lines)
+    return sorted(out, key=lambda x: (x.rsplit(":", 1)[0], int(x.rsplit(":", 1)[1])))
+
+
+def invariant_sites(root: Path) -> list[str]:
+    """Calls to a crate's `invariant::broken_invariant` (compiler-changes/R16): facts the code
+    trusts but its types don't prove yet. Each one goes when a type makes it unbreakable."""
+    return [f"{rel}:{i}" for rel, lines in _crate_src(root).items() if not INVARIANT_FILE_RE.match(rel)
+            for i, line in lines for _ in BROKEN_CALL_RE.finditer(line)]
 
 
 def unsupported_sites(root: Path) -> list[str]:
@@ -1530,10 +1657,11 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
 def silent_unknowns(root: Path) -> list[str]:
     """Expressions in std, the corpus and spec/conformance the checker typed `Unknown`
     with no diagnostic there, per file in crates/cpl-conform/silent_unknowns.txt
-    (`<count> <file>`), which tests/silent_unknowns.rs keeps equal to the checker's facts."""
+    (`<count> <file>`), which tests/silent_unknowns.rs keeps equal to the checker's facts.
+    Its `cause:` rows count the same spans again by cause, so they are left out."""
     p = root / "crates/cpl-conform/silent_unknowns.txt"
     rows = [line.split(" ", 1) for line in _lines(p)] if p.is_file() else []
-    return [file for n, file in rows for _ in range(int(n))]
+    return [file for n, file in rows if not file.startswith("cause:") for _ in range(int(n))]
 
 
 def corpus_known(root: Path) -> list[str]:
@@ -1665,6 +1793,7 @@ RETRY_FETCHES = {
     "micromamba": r"\"?\S*/micromamba\"? create ",
     "git push race": r"(sh -c 'git pull -q --rebase origin main && git push |push( |$)|push_reservation,)",
     "chat completion": r"post_chat,",
+    "gradle fetch": r"\./gradlew --no-daemon --init-script \S+ prefetch\b",
 }
 _RETRIED = re.compile(r"(?:^|[\s$(=])retry[ (](.*)")
 
@@ -1687,6 +1816,57 @@ def retry_calls(root: Path) -> list[str]:
     return out
 
 
+# Workflows that operate CI or ship, and check no code, so a contestant has nothing to rerun.
+CI_ONLY_WORKFLOWS = {
+    "commit-status.yml": "marks main's status from other runs",
+    "culprit.yml": "bisects failed runs",
+    "unstick.yml": "re-queues stuck runs",
+    "watchdog.yml": "cancels hung runs",
+    "release.yml": "builds and publishes a release",
+    "site.yml": "deploys the built site",
+    "writable-from-docs.yml": "a model writes programs from the docs",
+}
+# Jobs that write to main or stage binaries for other jobs, inside checking workflows.
+CI_ONLY_JOBS = {
+    "ci.yml:regen": "commits regenerated files to main",
+    "ci.yml:tests-build": "archives the test binaries the `tests` shards run",
+}
+CI_CHECK = re.compile(r"(^|[\s;&|(])(\./)?(scripts|editors|research|bench|crates)/\S+\.(sh|py|lua|el|mjs|js)\b|cargo (test|nextest|run)\b"
+                      r"|pnpm .*\b(test|build|smoke|typecheck)\b|npm (test|run|ci)\b|nvim --headless")
+
+
+def ci_jobs_without_recipe(root: Path) -> list[str]:
+    """Checking CI jobs that run a check other than through `just <recipe>`: a red job
+    should be one command to rerun locally, the same one CI ran."""
+    out = []
+    for rel in _git(root, "ls-files", ".github/workflows/*.yml"):
+        if Path(rel).name in CI_ONLY_WORKFLOWS:
+            continue
+        job, in_jobs, block, flagged = None, False, None, set()
+        for i, line in enumerate((root / rel).read_text().splitlines(), 1):
+            if re.match(r"^jobs:\s*$", line):
+                in_jobs = True
+                continue
+            if in_jobs and (m := re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)):
+                job, block = m.group(1), None
+                continue
+            if job is None or job in flagged or f"{Path(rel).name}:{job}" in CI_ONLY_JOBS:
+                continue
+            indent = len(line) - len(line.lstrip())
+            if block is not None and (not line.strip() or indent > block):
+                cmd = line.strip()
+            elif m := re.match(r"^(\s*)(?:- )?run:\s*(\|?)(.*)$", line):
+                block = indent if m.group(2) else None
+                cmd = m.group(3).strip()
+            else:
+                block = None
+                continue
+            if cmd and not cmd.startswith(("#", "just ", ". scripts/retry.sh")) and CI_CHECK.search(cmd):
+                flagged.add(job)
+                out.append(f"{rel}:{i} ({job})")
+    return out
+
+
 # The two sleeps a blocking wait can't replace without a crate: the file-change
 # poll and the judge's rate limit. Every other caller reuses one of them.
 SLEEP_OWNERS = ("crates/cpl-wait/src/files.rs", "crates/cpl-wait/src/pace.rs")
@@ -1699,7 +1879,7 @@ def poll_sleeps(root: Path) -> list[str]:
             if "thread::sleep" in line and rel not in SLEEP_OWNERS]
 
 
-RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
+RETRY_RE = r"--retr(y|ies)\b|\bfor \w+ in [0-9]+( [0-9]+)+; do|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
 
 
 def hardcoded_codes(root: Path) -> list[str]:
@@ -2192,11 +2372,39 @@ def web_hand_copied(root: Path) -> list[str]:
 DIAG_SITE_RE = re.compile(r"\bDiagnostic::(?:error|warning)\(")
 
 
+# A crate's own funnel that takes message text and builds the diagnostic itself:
+# each call passes text the registry should hold, so each call counts.
+DIAG_TEXT_FUNNELS = {
+    "crates/cpl-check/src": re.compile(r"\b[a-z_][a-z0-9_]*\.error\("),
+    "crates/cpl-ir/src": re.compile(r"\b[a-z_][a-z0-9_]*\.error\("),
+    "crates/cpl-lint/src": re.compile(r"\b[a-z_][a-z0-9_]*\.warn\("),
+}
+
+
 def diag_text_outside_registry(root: Path) -> list[str]:
     """Diagnostics built with inline message text outside cpl-diag: each one's wording
-    belongs in the registry row for its code (crates/cpl-diag/src/registry.rs)."""
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
-            if DIAG_SITE_RE.search(line) and _outside(rel, ("crates/cpl-diag/",))]
+    belongs in a cpl_diag::msgs row, and the emit site names the row plus its
+    arguments. Counts each `Diagnostic::error`/`warning` call and each call of a
+    crate's text-taking funnel (`Checker::error`, lower's `error`, lint `warn`)."""
+    out = []
+    for rel, i, line in _src_lines(root):
+        if not _outside(rel, ("crates/cpl-diag/",)):
+            continue
+        funnel = next((r for d, r in DIAG_TEXT_FUNNELS.items() if rel.startswith(d + "/")), None)
+        if DIAG_SITE_RE.search(line) or (funnel and funnel.search(line)):
+            out.append(f"{rel}:{i}")
+    return out
+
+
+TRAP_SITE_RE = re.compile(r"\btrap(?:::<[^>]*>)?\(|\bTrap \{|\.fail\(")
+
+
+def trap_text_outside_registry(root: Path) -> list[str]:
+    """Runtime trap messages written inline in cpl-interp: a trap's text is a
+    user-facing diagnostic (run, trace and explain show it), so it belongs in a
+    cpl_diag::msgs row like any other message."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-interp")
+            if TRAP_SITE_RE.search(line) and not re.search(r"\bfn (?:trap|fail)\b", line)]
 
 
 # The VM's one event model: the `observe::Observer` its `tracer` slot holds.
@@ -2376,8 +2584,10 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "habit_matchers", "lint_std_names", "cpl_env_reads", "dead_code_allows",
-    "corpus_walkers", "poll_sleeps", "retry_calls", "site_spec_snippets",
+    "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "lint_std_names", "cpl_env_reads", "dead_code_allows",
+    "lint_name_matchers",
+    "corpus_no_statement", "dup_fn_bodies", "event_models",
+    "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
@@ -2387,7 +2597,7 @@ HARD_ZERO = frozenset({
     "site_rederived", "browser_lsp_gaps",
     "unrun_script_tests",
     "permits", "written_twice",
-    "plan_delta_lines", "idioms_evidenced_unlinted",
+    "plan_delta_lines", "idioms_evidenced_unlinted", "v02_port_files", "judge_tables",
     "trait_gaps",
     "std_trait_matrix",
     "edge_labels_unrun",
@@ -2398,6 +2608,7 @@ HARD_ZERO = frozenset({
     "sig_gaps",
     "std_lint_findings",
     "corpus_lint_warnings",
+    "judge_tables",
     "std_lint_allows",
     "generate_gaps",
     "xfail_markers",
@@ -2407,6 +2618,8 @@ HARD_ZERO = frozenset({
     "json_outside_cpl_json", "rust_ignore", "dream_unverified", "trace_engine_refs", "lsp_string_types",
     "edit_engines",
     "web_hand_copied",
+    "corpus_no_tests", "cpp_optional_copies",
+    "helper_env_vars",
 })
 # Paid down to the one place the thing lives: above the floor fails, with no baseline.
 HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader
@@ -2426,12 +2639,16 @@ COUNTERS = {
     "corpus_no_tests": ("problem packages without a tests.toml (Content)", corpus_no_tests, True),
     "corpus_no_statement": ("problem packages without an inline statement sample (Content)",
                             corpus_no_statement, True),
+    "corpus_fmt_dirty": ("corpus port, dream and spec files cpl fmt would change (Content)",
+                         corpus_fmt_dirty, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
     "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
+    "std_names_outside_rt": ("public std names as string literals in compiler source, outside cpl-rt",
+                             std_names_outside_rt, True),
     "lint_std_names": ("std fn names as string literals in lint rules, not through std_fn", lint_std_names, True),
     "lint_name_matchers": ("lint rule lines matching a call by its written std fn name, not its callee", lint_name_matchers, True),
     "lint_type_syntax": ("lint rule lines reading a written type instead of checker facts", lint_type_syntax, True),
@@ -2445,6 +2662,7 @@ COUNTERS = {
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
+    "ports_unreported": ("corpus ports without a friction report or review (idioms)", ports_unreported, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),
@@ -2476,6 +2694,7 @@ COUNTERS = {
     "escapes_open": ("escaped bugs whose suite isn't fixed yet", escapes_open, False),
     "uncited_rules": ("lints and gates citing no handbook rule", uncited_rules, True),
     "unwrap_input": ("unwrap/expect/panic!/unreachable! in shipped crate code", unwrap_input, True),
+    "invariant_sites": ("calls to a crate's invariant::broken_invariant", invariant_sites, False),
     "unsupported_sites": ("lowering unsupported( calls and E0501 literals", unsupported_sites, True),
     "lsp_string_types": ("LSP lines reading types out of rendered text", lsp_string_types, True),
     "lint_post_filters": ("entries of cpl-lint after-the-fact tables", lint_post_filters, True),
@@ -2532,9 +2751,12 @@ COUNTERS = {
     "edit_engines": ("text edits applied outside cpl-diag/cpl-fmt", edit_engines, True),
     "codemods_outside_fix": ("scripts rewriting .cp files instead of cpl fix", codemods_outside_fix, True),
     "module_loaders": ("Database::new outside cpl-check", module_loaders, True),
+    "ci_jobs_without_recipe": ("checking CI jobs not run through a just recipe (Infra)", ci_jobs_without_recipe, True),
     "web_hand_copied": ("web/ string arrays copying std names, keywords or codes (Factory)", web_hand_copied, True),
     "diag_text_outside_registry": ("diagnostics with inline text outside cpl-diag's registry (Consumers, Core)",
                                    diag_text_outside_registry, True),
+    "trap_text_outside_registry": ("runtime trap messages with inline text outside cpl-diag's registry (Consumers)",
+                                   trap_text_outside_registry, True),
     "event_models": ("interpreter event sinks beside the one Observer slot (Core, Consumers)", event_models, True),
     "width_tables": ("integer-width match arms outside cpl_ir::IntWidth (Core)", width_tables, True),
     "judge_tables": ("judges named outside cpl-judge's table (Core, Consumers)", judge_tables, True),
@@ -2565,6 +2787,10 @@ def _count(name: str, root: Path) -> int:
     return len(COUNTERS[name][1](root))
 
 
+SLOW_COUNTERS = ("std_model_gaps", "near_dup_fns", "corpus_no_statement", "unwrap_input", "written_twice",
+                 "corpus_walkers")
+
+
 def _counts(names: list[str], root: Path) -> dict[str, int]:
     """Each counter's count, measured in forked processes: serially they take
     longer than the commit tier's whole budget."""
@@ -2574,16 +2800,22 @@ def _counts(names: list[str], root: Path) -> dict[str, int]:
     import multiprocessing
     import traceback
     ctx = multiprocessing.get_context("fork")
-    results = ctx.SimpleQueue()
+    results, todo = ctx.SimpleQueue(), ctx.SimpleQueue()
+    # Workers take the next counter as they finish, the slowest first: fixed
+    # chunks left two slow counters in one worker.
+    for n in sorted(names, key=lambda n: n not in SLOW_COUNTERS):
+        todo.put(n)
+    for _ in range(jobs):
+        todo.put(None)
 
-    def work(chunk: list[str]) -> None:
-        for n in chunk:
+    def work() -> None:
+        while (n := todo.get()) is not None:
             try:
                 results.put((n, _count(n, root), None))
             except BaseException:
                 results.put((n, None, traceback.format_exc()))
 
-    procs = [ctx.Process(target=work, args=(names[i::jobs],)) for i in range(jobs)]
+    procs = [ctx.Process(target=work) for _ in range(jobs)]
     for p in procs:
         p.start()
     counts, failures = {}, []
@@ -2716,6 +2948,7 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 # Files besides this script that define what a counter counts. The bound a
 # counter reads (read_only_copies.rs) is not one: raising it is the bump.
 MEASURED_BY = {
+    "corpus_fmt_dirty": ("crates/cpl-fmt/src",),
     "cpp_deep_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_optional_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
@@ -2822,9 +3055,32 @@ def measure_upstream(root: Path, max_rs_lines: int, ref: str = "origin/main") ->
     head, up = (_git(root, "rev-parse", "-q", "--verify", r, env=_git_env()) for r in ("HEAD", ref))
     if not head or not up or (head == up and os.environ.get("CI")):
         return None
+    # Every commit on a tip whose own debt is over its baseline measures that
+    # tip; once per tip (and per measuring code) is enough.
+    common = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir", env=_git_env())
+    code = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
+    cache = Path(common[0]) / "cpl-ratchet-upstream" / f"{up[0]}-{max_rs_lines}-{code}.json" if common else None
+    if cache and cache.is_file():
+        try:
+            return json.loads(cache.read_text(encoding="utf-8"))
+        except ValueError:
+            pass
+    data = _measure_at(root, up[0], max_rs_lines)
+    if cache:
+        if cache.parent.is_dir():
+            for old in cache.parent.iterdir():
+                old.unlink(missing_ok=True)
+        cache.parent.mkdir(exist_ok=True)
+        tmp = cache.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        tmp.replace(cache)
+    return data
+
+
+def _measure_at(root: Path, rev: str, max_rs_lines: int) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         wt = Path(tmp) / "main"
-        add = subprocess.run(["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(wt), up[0]],
+        add = subprocess.run(["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(wt), rev],
                              capture_output=True, text=True, env=_git_env())
         if add.returncode != 0:
             raise UpstreamUnknown(add.stderr.strip() or f"git worktree add exited {add.returncode}")

@@ -17,7 +17,13 @@ struct Edit(set: ?(s: Int, t: Int), dx: Int, dy: Int)  // set first, then add
 fn tri(k: Int) -> I128 = I128(k) * (k + 1) / 2
 fn pyr(k: Int) -> I128 = I128(k) * (k + 1) * (2 * k + 1) / 6
 
-fn join(a: Sums, b: Sums) -> Sums = Sums(a.xy + b.xy, a.x + b.x, a.y + b.y, a.xx + b.xx, min(a.first, b.first))
+fn join(a: Sums, b: Sums) -> Sums = Sums(
+    a.xy + b.xy,
+    a.x + b.x,
+    a.y + b.y,
+    a.xx + b.xx,
+    min(a.first, b.first),
+)
 
 fn edit(f: Edit, v: Sums, len: Int) -> Sums:
     let k = I128(len)
@@ -27,9 +33,21 @@ fn edit(f: Edit, v: Sums, len: Int) -> Sums:
         let (a, b) = (I128(sx), I128(ty))
         let i1 = tri(v.first + len - 1) - tri(v.first - 1)
         let i2 = pyr(v.first + len - 1) - pyr(v.first - 1)
-        s = Sums(k * a * b + (a + b) * i1 + i2, k * a + i1, k * b + i1, k * a * a + 2 * a * i1 + i2, v.first)
+        s = Sums(
+            k * a * b + (a + b) * i1 + i2,
+            k * a + i1,
+            k * b + i1,
+            k * a * a + 2 * a * i1 + i2,
+            v.first,
+        )
     let (dx, dy) = (I128(f.dx), I128(f.dy))
-    Sums(s.xy + dx * s.y + dy * s.x + k * dx * dy, s.x + k * dx, s.y + k * dy, s.xx + 2 * dx * s.x + k * dx * dx, s.first)
+    Sums(
+        s.xy + dx * s.y + dy * s.x + k * dx * dy,
+        s.x + k * dx,
+        s.y + k * dy,
+        s.xx + 2 * dx * s.x + k * dx * dx,
+        s.first,
+    )
 
 /// `f` after `g`.
 fn then(f: Edit, g: Edit) -> Edit = if f.set != None: f else: Edit(g.set, g.dx + f.dx, g.dy + f.dy)

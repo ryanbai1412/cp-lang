@@ -1011,5 +1011,117 @@ pub(crate) fn narrow_elems(
             break;
         }
     }
+    keep_map_fields(program, &mut narrow);
     narrow
+}
+
+/// A map field keeps narrow entries only when it starts as a fresh empty map and every read goes
+/// through an index or a map method, which convert each entry; any other flow keeps it wide.
+fn keep_map_fields(
+    program: &Program,
+    narrow: &mut BTreeMap<cpl_ir::ElemLoc, cpl_ir::NarrowLayout>,
+) {
+    use cpl_ir::{Arg, ElemLoc, NarrowLayout};
+    narrow
+        .retain(|loc, l| !matches!(l, NarrowLayout::Map(..)) || matches!(loc, ElemLoc::Field(..)));
+    if !narrow.values().any(|l| matches!(l, NarrowLayout::Map(..))) {
+        return;
+    }
+    fn field_of(e: &Expr) -> Option<(usize, usize)> {
+        match (&e.kind, matches!(e.ty, Ty::Map(..) | Ty::HashMap(..))) {
+            (ExprKind::Field(base, f), true) => match base.ty {
+                Ty::Struct(s) => Some((s, *f)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+    fn place_field(p: &Place) -> Option<(usize, usize)> {
+        match &p.kind {
+            PlaceKind::Field(base, f) => match base.ty {
+                Ty::Struct(s) => Some((s, *f)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+    let empty = |e: &Expr| {
+        matches!(&e.kind, ExprKind::Tuple(items) if items.is_empty())
+            && matches!(e.ty, Ty::Map(..) | Ty::HashMap(..))
+    };
+    let mut wide = BTreeSet::new();
+    let mut copies: Vec<((usize, usize), (usize, usize))> = Vec::new();
+    let bodies = [&program.setup, &program.main]
+        .into_iter()
+        .chain(program.fns.iter().map(|f| &f.body))
+        .chain(program.closures.iter().map(|c| &c.body));
+    for body in bodies {
+        crate::walk::deep_stmts(body, &mut |stmt| match stmt {
+            Stmt::Let(_, Some(v)) | Stmt::Return(Some(v)) | Stmt::Give(v) => {
+                wide.extend(field_of(v))
+            }
+            Stmt::Assign(place, op, v) => match (place_field(place), op) {
+                (Some(_), cpl_ir::AssignOp::Set) if empty(v) => {}
+                (Some(dst), cpl_ir::AssignOp::Set) if field_of(v).is_some() => {
+                    copies.extend(field_of(v).map(|src| (dst, src)));
+                }
+                (dst, _) => {
+                    wide.extend(field_of(v));
+                    wide.extend(dst);
+                }
+            },
+            _ => {}
+        });
+        crate::walk::deep_exprs(body, &mut |e| {
+            match &e.kind {
+                ExprKind::Tuple(items) if matches!(e.ty, Ty::Struct(_)) => {
+                    let Ty::Struct(s) = e.ty else { unreachable!() };
+                    for (f, item) in items.iter().enumerate() {
+                        if !empty(item) {
+                            wide.insert((s, f));
+                        }
+                    }
+                }
+                ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                    for arg in args {
+                        if let Arg::Mut(p) = arg {
+                            wide.extend(place_field(p));
+                        }
+                    }
+                }
+                _ => {}
+            }
+            let through = matches!(e.kind, ExprKind::Index(..) | ExprKind::Builtin(..));
+            let mut first = true;
+            crate::walk::children(e, &mut |c| {
+                if !(first && through) {
+                    wide.extend(field_of(c));
+                }
+                first = false;
+            });
+        });
+    }
+    // `a.m = b.m` keeps both narrow only when they hold the same layout.
+    let layout = |n: &BTreeMap<ElemLoc, NarrowLayout>, (s, f): (usize, usize)| {
+        n.get(&ElemLoc::Field(s, f)).cloned()
+    };
+    loop {
+        let before = wide.len();
+        for &(dst, src) in &copies {
+            if wide.contains(&dst)
+                || wide.contains(&src)
+                || layout(narrow, dst) != layout(narrow, src)
+            {
+                wide.insert(dst);
+                wide.insert(src);
+            }
+        }
+        if wide.len() == before {
+            break;
+        }
+    }
+    narrow.retain(|loc, l| match (loc, l) {
+        (ElemLoc::Field(s, f), NarrowLayout::Map(..)) => !wide.contains(&(*s, *f)),
+        _ => true,
+    });
 }

@@ -26,20 +26,14 @@ let trains = [Train] i => if i.ord < m: given[i.ord] else: (
 var leaving = [Station] _ => LiChao(min, over: 0..=1000)
 var after: [Train]?Int = None  // the least cost to finish once train i arrives
 // latest first, departures before arrivals at the same time
-var departs: [0..=1000]List<Train> = []
-var arrives: [0..=1000]List<Train> = []
-for i in Train:
-    departs[trains[i].s].push(i)
-    arrives[trains[i].e].push(i)
-for time in (0..=1000).rev:
-    for i in departs[time]:
-        let t = trains[i]
+let events = [(-trains[i].s, false, i) for i in Train] + [(-trains[i].e, true, i) for i in Train]
+for (_, arrival, i) in events.sorted():
+    let t = trains[i]
+    if not arrival:
         if let cost = after[i]:
             leaving[t.u].add(Line(-2 * a * t.s, a * t.s * t.s + b * t.s + c + cost))
-    for i in arrives[time]:
-        let t = trains[i]
-        if t.v == Station.last:
-            after[i] = t.e
-        elif let wait = leaving[t.v].at(t.e):
-            after[i] = wait + a * t.e * t.e - b * t.e
+    elif t.v == Station.last:
+        after[i] = t.e
+    elif let wait = leaving[t.v].at(t.e):
+        after[i] = wait + a * t.e * t.e - b * t.e
 print(after[Train(m)]!)

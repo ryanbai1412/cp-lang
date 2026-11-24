@@ -904,3 +904,121 @@ fn mut_alias_of_a_map_key_puts_it_only_when_written() {
         assert!(!code.contains("= &m["), "{first}: {code}");
     }
 }
+
+#[test]
+fn a_getter_on_a_struct_with_a_cache_lends_its_field_and_its_filled_cache() {
+    let out = cpp(concat!(
+        "struct T:\n    xs: List<Int>\n    @cache c: List<Int>\n",
+        "    @get pub fn plain(self) -> List<Int> = xs\n",
+        "    @get pub fn cached(self) -> List<Int>:\n",
+        "        if c.is_empty: c = [1, 2, 3]\n",
+        "        c\n",
+        "let t = T([4, 5, 6], [])\n",
+        "var acc = 0\n",
+        "for i in 0..3: acc += t.plain[i] + t.cached[i]\n",
+        "print(acc)\n",
+    ));
+    for f in ["T_plain", "T_cached"] {
+        assert!(
+            out.contains(&format!("const std::vector<ll>& {f}(T& self)")),
+            "{f}:\n{out}"
+        );
+    }
+    let early = cpp(concat!(
+        "struct T:\n    xs: List<Int>\n    @cache c: List<Int>\n",
+        "    @get pub fn first(self) -> List<Int>:\n",
+        "        if xs.is_empty: return [0]\n",
+        "        xs\n",
+        "let t = T([4], [])\n",
+        "print(t.first[0])\n",
+    ));
+    assert!(
+        early.contains("std::vector<ll> T_first(") && !early.contains("& T_first("),
+        "{early}"
+    );
+}
+
+#[test]
+fn a_let_inside_a_capturing_local_fn_lends_like_one_in_a_fn() {
+    let out = cpp(concat!(
+        "fn build(m: 1..=100) -> List<Int>:\n",
+        "    fn attempt(seed: Int) -> List<Int>:\n",
+        "        var h: [0..m]?Int = None\n",
+        "        h[seed % m] = Some(seed)\n",
+        "        h.map(v => v ?? 1)\n",
+        "    attempt(m)\n",
+        "print(build(read()))\n",
+    ));
+    assert!(!out.contains("std::vector<cpl::OptInt> c0_1 = h;"), "{out}");
+    assert!(
+        out.contains("const std::vector<cpl::OptInt>& c0_1 = h;"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_max_by_candidate_moves_into_the_best_and_its_key_lends() {
+    let out = cpp(concat!(
+        "fn attempt(seed: Int) -> List<Int>:\n",
+        "    var h: [0..5]?Int = None\n",
+        "    h[seed % 5] = Some(seed)\n",
+        "    h.map(v => v ?? 1)\n",
+        "print((0..4).map(attempt).map(h => (h.sum(), h)).max(by: p => p.0)!.1)\n",
+    ));
+    assert!(
+        out.contains("const std::tuple<ll, std::vector<ll>>& p = "),
+        "{out}"
+    );
+    assert!(out.contains(">>>(std::move("), "{out}");
+}
+
+#[test]
+fn a_capture_passed_later_by_const_ref_is_lent_to_the_closure() {
+    let out = cpp(concat!(
+        "domain C = 0..4\n",
+        "let p: [C]Int = read()\n",
+        "fn pick(k: Int) -> List<Int>:\n",
+        "    let (mult, plain) = C.partition(c => p[c] > 1)\n",
+        "    let plain = plain.sorted(by: c => p[c])\n",
+        "    fn total(i: Int) -> Int = i + plain.len\n",
+        "    (mult + plain.take(total(k) - k)).map(c => c.ord)\n",
+        "print(pick(read()))\n",
+    ));
+    assert!(out.contains("auto total = [&"), "{out}");
+    assert!(out.contains("std::array<ll, 4> p{};"), "{out}");
+    assert!(!out.contains("p.assign("), "{out}");
+}
+
+#[test]
+fn a_place_a_lent_call_gives_is_copied_into_a_call_that_grows_its_root() {
+    let out = cpp(concat!(
+        "use std.marks.{Arena, Id}\n",
+        "struct Node(l: Id<Node>, r: Id<Node>)\n",
+        "var seg = Arena<Node>()\n",
+        "let leaf = seg.alloc(Node(Id(0), Id(0)))\n",
+        "fn grow(a: Id<Node>, d: Int) -> Id<Node>:\n",
+        "    if d == 0: return a\n",
+        "    seg.alloc(Node(grow(seg[a].l, d - 1), grow(seg[a].r, d - 1)))\n",
+        "print(yes(grow(leaf, 12) == leaf))\n",
+    ));
+    assert!(out.contains("_get(seg, a).l), cpl::isub(d, 1))"), "{out}");
+    assert!(
+        !out.contains("grow(Arena_"),
+        "the arena element is copied, not lent: {out}"
+    );
+}
+
+#[test]
+fn a_never_written_global_sorted_into_a_generator_moves_at_its_last_read() {
+    let out = cpp(concat!(
+        "let n: 2..=100 = read()\n",
+        "let seen: [n](t: Int, x: Int) = read()\n",
+        "let speeds = [b.x - a.x for (a, b) in seen.sorted(by: o => o.t).adjacent]\n",
+        "print(speeds)\n",
+    ));
+    assert!(
+        out.contains("= std::move(seen);"),
+        "seen is read for the last time:\n{out}"
+    );
+    assert!(!out.contains("= seen;"), "no copy of seen:\n{out}");
+}

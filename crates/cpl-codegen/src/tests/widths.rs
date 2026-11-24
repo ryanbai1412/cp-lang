@@ -306,3 +306,54 @@ print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
         "expected tuple array passed to [V](Int, Int) to widen:\n{widened}"
     );
 }
+
+#[test]
+fn a_list_built_by_new_stays_narrow_when_called_on_the_type() {
+    let out = cpp("struct S:
+    pub xs: List<0..=2_000_000_000>
+
+    pub fn new(n: Int) -> S:
+        var xs: List<0..=2_000_000_000> = List.filled(n, 0)
+        S(xs)
+let s = S.new(10)
+print(s.xs[9])
+");
+    assert!(out.contains("std::vector<uint32_t> xs"), "{out}");
+}
+
+#[test]
+fn an_element_of_a_range_typed_list_stores_back_unchecked() {
+    let out = cpp("let n: 1..=100 = read()
+var xs: List<0..=1000> = List.filled(n, 0)
+var ys: List<0..=1000> = List.filled(n, 0)
+for x in xs:
+    ys[0] = x
+print(ys[0])
+");
+    assert!(!out.contains("check_range"), "{out}");
+}
+
+#[test]
+fn an_enum_tag_is_the_smallest_unsigned_type_that_holds_its_variants() {
+    let out = cpp("enum Colour: Red | Blue
+enum Shape:
+    Circle(r: Int)
+    Square(s: Int)
+let n: 1..=5 = read()
+var grid = List.filled(n, Colour.Red)
+grid[0] = Colour.Blue
+let s = if n > 3: Shape.Circle(n) else: Shape.Square(n)
+let area = match s:
+    Circle(r): r * r
+    Square(x): x * x
+print(grid.count(c => c == Colour.Blue), area)
+");
+    assert!(
+        out.contains("enum class Colour : uint8_t { Red, Blue };"),
+        "a two-colour grid must take a byte a cell:\n{out}"
+    );
+    assert!(
+        out.contains("enum Tag : uint8_t { Circle, Square }"),
+        "{out}"
+    );
+}

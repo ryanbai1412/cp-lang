@@ -1,14 +1,13 @@
 //! `[f(x) for x in xs]`: the list a comprehension fills takes its source's
-//! size up front, so it grows once instead of doubling. A filtered one,
-//! `[f(x) for x in xs if p(x)]`, takes at most [`FILTERED_CAP`] of it: it
-//! skips the first doublings and holds at most that many unused slots.
+//! length up front, so it allocates once instead of doubling. A filtered
+//! one, `[f(x) for x in xs if p(x)]`, takes the same bound: pages it never
+//! fills are never touched, so peak RSS stays at what it keeps, and it
+//! evaluates `p` once a round where counting first would run it twice
+//! (wtf26a: 96.4 to 93.7 ms; `bench/rss/filter_comp`, `bench/seq/filter_comp`).
 
 use crate::emit::{Emitter, ADD, PRIMARY};
 use crate::walk;
 use cpl_ir::{Block, ElemLoc, Expr, ExprKind, Iter, Mutation, PlaceKind, Stmt, Ty};
-
-/// The most a list filled under a condition reserves ahead.
-const FILTERED_CAP: usize = 16;
 
 /// `t.push(e)` as a statement.
 fn pushes_to(stmt: &Stmt, slot: usize) -> bool {
@@ -25,8 +24,9 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    /// `t.reserve(n);` for `let t = []` that the next loop pushes to once a
-    /// round over `n` rounds it knows ahead: a list or a plain range.
+    /// `t.reserve(n);` for `let t = []` that the next loop pushes to at most
+    /// once a round over `n` rounds it knows ahead: a list, string, array,
+    /// set, map or range read from a name.
     pub(crate) fn presize(&mut self, stmts: &[Stmt]) -> Option<String> {
         let [Stmt::Let(slot, Some(init)), Stmt::For(_, _, iter, body), ..] = stmts else {
             return None;
@@ -57,42 +57,52 @@ impl<'p> Emitter<'p> {
                 ..
             }) = self.inline_list_call(src)
             {
-                let n = if once {
-                    items.len()
-                } else {
-                    items.len().min(FILTERED_CAP)
-                };
-                return Some(format!("{}.reserve({n});", self.names[*slot]));
+                return Some(format!("{}.reserve({});", self.names[*slot], items.len()));
             }
         }
         let n = match iter {
             Iter::Seq(src, _)
                 if walk::is_simple(src)
-                    && (matches!(src.ty, Ty::List(_) | Ty::ListView(..) | Ty::Str)
-                        || matches!(&src.ty, Ty::Array { dims, .. } if dims.len() == 1)) =>
+                    && (matches!(
+                        src.ty,
+                        Ty::List(_)
+                            | Ty::ListView(..)
+                            | Ty::Str
+                            | Ty::Set(_)
+                            | Ty::HashSet(_)
+                            | Ty::Map(..)
+                            | Ty::HashMap(..)
+                    ) || matches!(&src.ty, Ty::Array { dims, .. } if dims.len() == 1)) =>
             {
                 format!("{}.size()", self.expr(src).at(PRIMARY))
+            }
+            Iter::RangeVal(src, _) if walk::is_simple(src) => {
+                format!("(size_t){}.len()", self.expr(src).at(PRIMARY))
             }
             Iter::Range {
                 lo,
                 hi,
-                step: None,
+                step,
                 closed,
                 ..
-            } if [lo, hi]
-                .iter()
+            } if [Some(lo), Some(hi), step.as_ref()]
+                .into_iter()
+                .flatten()
                 .all(|e| walk::is_simple(e) && e.ty == Ty::Int) =>
             {
-                let (lo, hi) = (self.expr(lo).at(ADD + 1), self.expr(hi).at(ADD));
-                let one = if *closed { " + 1" } else { "" };
-                format!("(size_t)std::max<ll>(0, {hi} - {lo}{one})")
+                if let Some(step) = step {
+                    self.need("steps");
+                    let (lo, hi, by) =
+                        (self.expr(lo).text, self.expr(hi).text, self.expr(step).text);
+                    let to = if *closed { ", true" } else { "" };
+                    format!("(size_t)cpl::steps({lo}, {hi}, {by}{to})")
+                } else {
+                    let (lo, hi) = (self.expr(lo).at(ADD + 1), self.expr(hi).at(ADD));
+                    let one = if *closed { " + 1" } else { "" };
+                    format!("(size_t)std::max<ll>(0, {hi} - {lo}{one})")
+                }
             }
             _ => return None,
-        };
-        let n = if once {
-            n
-        } else {
-            format!("std::min<size_t>({n}, {FILTERED_CAP})")
         };
         Some(format!("{}.reserve({n});", self.names[*slot]))
     }

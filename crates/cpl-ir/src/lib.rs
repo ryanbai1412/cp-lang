@@ -26,6 +26,7 @@ pub mod sites;
 pub mod stress_target;
 pub mod walk;
 
+pub use cpl_rt::{Prim, Scalar};
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
 /// Every diagnostic the front end has for a file: the checker's, and when
 /// it has no error, what lowering rejects. `cpl check`, `cpl run`,
@@ -352,6 +353,10 @@ impl Ty {
         Ty::List(Box::new(elem))
     }
 
+    pub fn range(elem: Ty) -> Ty {
+        Ty::Range(Box::new(elem))
+    }
+
     /// Passed and stored by value without a thought: fits in a register.
     pub fn is_scalar(&self) -> bool {
         matches!(
@@ -430,7 +435,7 @@ impl Ty {
             {
                 Some(Ty::List(e.clone()))
             }
-            (Ty::Opt(a), Ty::Opt(b)) => a.list_meet(b).map(|t| Ty::Opt(Box::new(t))),
+            (Ty::Opt(a), Ty::Opt(b)) => a.list_meet(b).map(Ty::opt),
             (Ty::Tuple(xs), Ty::Tuple(ys)) if self.same_shape(other) => {
                 let met: Vec<_> = xs.iter().zip(ys).map(|(x, y)| x.list_meet(y)).collect();
                 let pick = |(i, m): (usize, &Option<Ty>)| m.clone().unwrap_or(xs[i].clone());
@@ -687,6 +692,9 @@ pub enum ExprKind {
     /// A runtime domain handle `(lo, len)` for `-> (domain C, ...)`.
     DomainVal(DomainId),
     Builtin(Builtin, Vec<Expr>),
+    /// A primitive of the intrinsics table, the body of an `@intrinsic`
+    /// fn (R12.14.3): the VM runs the entry, the C++ is its snippet.
+    Intrinsic(Prim, Vec<Expr>),
     /// O(1) mutable slice view `(place, lo, hi)` into a `List<T>`, 1D `[D]T`, or `MutView<T>`.
     MutSlice(Box<Place>, Box<Expr>, Box<Expr>),
     /// O(1) mutable view `(grid, at, axis)` of a 2D grid's row or column, the cells
@@ -896,7 +904,6 @@ pub enum Builtin {
     SwapInput,
     /// True when only blanks are left on stdin: what `read_all` stops at.
     AtEof,
-    Popcount,
     Ctz,
     Clz,
     BitWidth,
@@ -1348,6 +1355,8 @@ pub enum NarrowLayout {
     /// Leaf element is a `??lo..hi` inside `int32_t`: `INT32_MIN` is the outer `none` and
     /// `INT32_MIN + 1` the inner one, both below the range.
     OptOptI32,
+    /// A map whose key and value, where given, are narrowed 32-bit `Int`s.
+    Map(Option<IntWidth>, Option<IntWidth>),
 }
 
 impl NarrowLayout {
@@ -1356,7 +1365,7 @@ impl NarrowLayout {
         match (self, elem_ty) {
             (NarrowLayout::Int(w), Ty::Int) => Some(w.cpp().to_string()),
             (NarrowLayout::OptI32, Ty::Opt(t)) if **t == Ty::Int => Some("cpl::OptI32".to_string()),
-            (NarrowLayout::OptOptI32, Ty::Opt(t)) if **t == Ty::Opt(Box::new(Ty::Int)) => {
+            (NarrowLayout::OptOptI32, Ty::Opt(t)) if **t == Ty::opt(Ty::Int) => {
                 Some("cpl::OptOptI32".to_string())
             }
             (NarrowLayout::Tuple(ws), Ty::Tuple(ts)) if ws.len() == ts.len() => {

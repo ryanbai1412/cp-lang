@@ -24,7 +24,7 @@ platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 | `cpl bench d` | release runtime against the profile's limits and against a matched C++ file if given |
 | `cpl fmt [files]` | canonical formatting (`tools/fmt-lint.md`) |
 | `cpl lint [files]` | lints with autofixes |
-| `cpl build d` | the C++ for the file's judge, written to `d.cpp` beside the source with its path and size on stdout (`-o out`; `-o -` writes the C++ to stdout); `--checks none\|traps\|all` (what the judge build still traps on; `none` by default, decisions.md 299), `--checked`, `--compiler <toolchain>` (builds with that toolchain through the launcher, as `cpl +<toolchain> build` does; R11.4.2), `--size`, `--judge`, `--copy` (`-c`); `cpl b -c` is `cpl build --copy`, and `cpl r`, `cpl t` are `run`, `test` |
+| `cpl build d` | the C++ for the file's judge, written to `d.cpp` beside the source with its path and size on stdout (`-o out`; `-o -` writes the C++ to stdout); `--checks none\|traps\|all` (what the judge build still traps on; `none` by default, decisions.md 299), `--checked`, `--compiler <toolchain>` (builds with that toolchain through the launcher, as `cpl +<toolchain> build` does; R11.4.2), `--size`, `--full` (the C++ as codegen writes it, not fitted to the judge's size bar), `--judge`, `--copy` (`-c`); `cpl b -c` is `cpl build --copy`, and `cpl r`, `cpl t` are `run`, `test` |
 | `cpl submit d` | `build`, then the cases on that build with the judge's flags; `--copy` (`-c`) puts the file on the clipboard |
 | `cpl migrate [path]...` | rewrites spellings newer versions removed (each `E0503` with a fix) in every `.cp` file under the paths, shows the diff, and lists what needs a hand edit; `--check` changes nothing. Stdlib codemods join as their diagnostics land; recording pins waits on `cp.toml` pins |
 | `cpl judges` | lists judge profiles |
@@ -58,8 +58,11 @@ last two `null` when the judge accepts. `cpl build --json` prints `{"path", "byt
 `limit` and `judge` it was built for, the `checks` it still traps on (`none`,
 `traps` or `all`, as `--checks` names them), and `sizes`:
 each piece's `part`, `name` and `bytes`, adding up to `bytes`. `cpl submit
---json` prints `{"ready", "build", "test"}`: the `build` and `test` reports those two print,
-`null` for a step that did not run. `cpl report --json` prints `{"path", "bytes", "sections", "comparison",
+--json` prints `{"ready", "build", "test", "view": {"panel", "status": {"line", "ok", "label"}}}`:
+the `build` and `test` reports those two print, `null` for a step that did not run, and the
+`view`: one line, its `status` and `panel`, saying whether the file is ready, its size against
+the judge's limit and the samples it passed (`ready to send: a.cpp (4.5 KB, 7% of codeforces's
+limit), 2/2 samples`), the panel adding under it what stopped it. `cpl report --json` prints `{"path", "bytes", "sections", "comparison",
 "issue_url"}`: the report's
 `path` and `bytes`, its `sections`, the `comparison` of the interpreter and
 C++ runs and the prefilled `issue_url`, `null` when there is none. `cpl fmt
@@ -67,6 +70,13 @@ C++ runs and the prefilled `issue_url`, `null` when there is none. `cpl fmt
 "error"}]}` in path order: `changed` when formatting changed the file (or
 would, under `--check`), `ok` when it is formatted, the lexer `diagnostics`
 that stopped formatting and any other `error` (`null` when none).
+`cpl setup <vim | emacs> --grammar` prints, and installs nothing, the highlighting
+an editor reads without `cpl lsp`: Vim's `syntax/cp.vim` (what `cpl setup neovim`
+and `vim` write) or Emacs's font-lock rules as one `read`able list (what
+`cp-mode.el` loads). Both are generated from the lexer's keyword and literal
+tables, so neither is kept by hand; with the server running, its semantic tokens
+take over.
+
 `cpl setup <editor> --json` prints `{"editor", "ok", "message"?, "error"?}`:
 `message`, or `error` in its place when the install or `--check` failed;
 `editor` is the canonical name (`code` reports `vscode`).
@@ -109,9 +119,42 @@ checker lint has no `rule`). The site's lint pages read it.
 give a file a judge for `cpl stress`, each with its `@`, in one order.
 The editor's Stress lens and the site's Stress button read the same list.
 `cpl run --format json` prints `{"stdout", "time_ms", "values": [{"line",
-"name", "value"}]}`: what the program printed, how long it ran and the
-top-level `values` it ended with; with `--trace` it prints the trace
-instead (`tools/trace/trace-schema.json`).
+"name", "value"}], "error"?, "view": {"panel", "lines"?: [{"line", "kind", "label", "hover"?}],
+"diagnostic"?: {"line", "col"?, "code"?, "message", "help"?, "source"?}}}`: what the program printed, how long it ran and the
+top-level `values` it ended with, the trap as a diagnostic when it trapped, and the `view`: each
+line's values as a `live` line labelled with the sample (`--sample NAME`, else the input file's
+name: `i1: n = 2  m = 5`), and a trap as an `error` line and the `diagnostic`; with `--trace` it
+prints the trace instead (`tools/trace/trace-schema.json`).
+
+The view. Every report an editor shows (`--format json`) carries a `view`
+object the editor draws as is, built in Rust in one place
+(`cpl_diag::view`): `{"panel", "status"?: {"line", "ok", "label", "detail"?},
+"lines"?: [{"line", "kind", "label", "hover"?}], "diagnostic"?: {"line",
+"col"?, "code"?, "message", "help"?, "source"?}}`. `panel` is the output
+panel's text as the command's text output lays it out; `status` the verdict
+badge (`2 of 3 samples passed`, its `detail` the hover); each of `lines` a
+mark at the end of a source line, `kind` one of `error`, `differs`,
+`agrees`, `input`, `live`, strongest first, with its full `label` and a
+Markdown `hover`; `diagnostic` the one problem for the editor's problem
+list, `source` naming who reported it (`cpl (i1)`). Lines and columns are
+0-based. An editor only clips a label to its width; showing several
+reports, it keeps the strongest mark on each line and draws a status only
+on a line with no mark.
+`cpl run --samples --format json` prints `{"samples": [{"name", "verdict",
+"time_ms", "output", "expected", "why"}], "passed_count", "case_count",
+"view": {"panel", "status"?: {"line", "ok", "label", "detail"?}, "lines"?:
+[{"line", "kind", "label", "hover"?}], "diagnostic"?: {"line", "col", "code"?,
+"message", "help"?, "source"?}}}`: the file on each sample (`i1` beside it
+with `o1` as its answer, its `.tests/` cases, its `.samples/`), or once on no
+input when it has none; `verdict` is `ok`, `WA`, `RE` or `null` when the
+sample has no answer, and `why` the first difference or the runtime error.
+Its `view` shows the summary as `status`, the values of the sample
+`--values-of` names (default the first) as `live` lines, and the first runtime
+error as an `error` line and the `diagnostic`, its `source` naming the sample.
+`cpl run --samples --list --format json` prints `{"samples": [{"name",
+"input", "expected"?}]}`: the same samples in the same order, each with its
+input file and its answer file when it has one, without running them; an
+editor lists and picks samples from it.
 `cpl vendor --json` prints `{"vendored": [{"module", "path"}]}`, one
 row per std module it copied.
 `cpl judges --json` prints `{"judges": [{"name", "title", "chosen",
@@ -127,13 +170,37 @@ per choice it explains.
 "examples", "links"}]}`; each item carries its `aliases`, the names
 `spec/lib/inventory.md` gives it elsewhere (empty outside std).
 `cpl test --format json` prints `{"passed_count", "case_count", "cases": [{"name",
-"verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
+"verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained", "outcome",
+"message"}], "view": {"panel", "status": {"line", "ok", "label"}}}`: each case's
+`outcome` as a test tree shows it (`passed`, `failed` for a wrong answer, `errored`
+otherwise) and its `message` when it did not pass (`WA: first difference at line 1,
+token 1: expected `7`, got `6``); the view's panel is the text `cpl test` prints and its
+status `2/3 passed`.
+`cpl test --list --json` prints `{"cases": [{"name", "input"}]}`: the
+cases in the order `cpl test` runs them, each `input` its `.in` file; the
+editors' test trees list them so.
+`cpl test --format teamcity` prints TeamCity service messages (`##teamcity[...]`),
+as IntelliJ's test tree and CI servers read them: per case `testStarted` (its
+`locationHint` the absolute `file://` URL of `NAME.in`), `testStdOut`, `testFailed`
+when it fails (a wrong answer with a known answer as a `comparisonFailure` with
+`expected` and `actual`) and `testFinished`; a folder wraps each problem in a suite.
 `cpl stress --format json` prints `{"status", "build"?, "case_count", "saved_count"?,
-"tried"?, "counterexample"?}`: the toolchain that built the solution (`build`, when the
-CLI built one), how many cases ran (`case_count`), then `saved_count` and
-what it `tried` when it found no counterexample, or the `counterexample`.
+"tried"?, "counterexample"?, "view": {"panel", "status"?: {"line", "ok", "label"},
+"lines"?: [{"line", "kind", "label", "hover"?}], "diagnostic"?}}`: the toolchain that built the solution
+(`build`, when the CLI built one), how many cases ran (`case_count`), then `saved_count` and
+what it `tried` when it found no counterexample, or the `counterexample`; and the `view`:
+the text `cpl stress` prints as the panel, a passing run's `stress: 1000 cases passed` as
+the status, and on a failure the lines: each `debug(...)` stage's line `agrees` (`fast =
+brute = [none, 1]`) but the first that `differs` (`fast [0]  ≠  brute [1]  ← first
+difference`), the solution's line of the first divergence `differs` (`tri(k: 1) = 0  ≠
+brute 1  ← first wrong call`), and line 0 the `input` (`counterexample: n = 2  a = [7,
+7]  (fast 0 ≠ brute 1)`), each hover the case and both sides, and the first divergence as
+the `diagnostic` (`{"line", "message", "source"}`, its message the headline `first wrong
+call: ...`) for editors that draw no line marks.
 `cpl locate --json` prints `{"input", "part", "alt", "output", "alt_output",
-"divergence"}`.
+"divergence", "view": {"panel", "lines"?: [{"line", "kind", "label"}], "diagnostic"?:
+{"line", "message", "source"}}}`, its `view` its text and the first divergence marked as
+`cpl stress`'s is.
 `cpl bench --format json` prints `{"status", "time_limit_ms",
 "memory_limit_kb", "runs": [{"shape", "number_count", "status", "time_ms", "peak_kb",
 "error"}]}`.

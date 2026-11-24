@@ -12,7 +12,7 @@ pub(crate) mod effects;
 use crate::lend::{copied_at_test, Tail};
 use crate::walk;
 use cpl_ir::{
-    AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, Place, PlaceKind, Program, Stmt, Ty,
+    Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, Place, PlaceKind, Program, Stmt, Ty,
 };
 use effects::Touch;
 use std::collections::{BTreeMap, BTreeSet};
@@ -289,7 +289,6 @@ pub(crate) const SOURCE_MAY_CHANGE: &str = "what it reads may change while the n
 pub(crate) const SOURCE_READ_WHOLE: &str =
     "what it reads is read whole, so may move, while the name lives";
 /// Why a `let` the table finds no change for still copies.
-pub(crate) const IN_CLOSURE: &str = "a `let` inside a closure owns its value";
 pub(crate) const NAME_MOVED: &str = "the name is moved later, so it owns its value";
 /// Why a `.clone()` of a place copies: it asks for a second value.
 pub(crate) const CLONED: &str = "written `.clone()`, so it is a second value";
@@ -319,13 +318,12 @@ impl crate::emit::Emitter<'_> {
     }
 
     /// Whether the `let` of `slot` can be a reference to the place `init`
-    /// names instead of a copy of it: it is a heap value outside a closure,
-    /// and nothing changes either for as long as the name lives
+    /// names instead of a copy of it: it is a heap value and nothing changes
+    /// either for as long as the name lives
     /// ([`Emitter::source_change`]). `tail` is what the statements after the
     /// `let` in its block do; without one the whole fn is held to that.
     pub(crate) fn lends(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
-        self.closure_id.is_none()
-            && !init.ty.is_scalar()
+        !init.ty.is_scalar()
             && !matches!(init.ty, Ty::Fn(..))
             && !self.spent.contains(&slot)
             && match init.kind {
@@ -354,8 +352,7 @@ impl crate::emit::Emitter<'_> {
         value: &Ty,
         tail: Option<&Tail>,
     ) -> bool {
-        self.closure_id.is_none()
-            && !value.is_scalar()
+        !value.is_scalar()
             && matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_))
             && !self.spent.contains(&slot)
             && self.source_stays(slot, map, tail)
@@ -370,9 +367,6 @@ impl crate::emit::Emitter<'_> {
         tail: Option<&Tail>,
         whole: bool,
     ) -> &'static str {
-        if self.closure_id.is_some() {
-            return IN_CLOSURE;
-        }
         if let Some(why) = self.source_change(slot, init, tail) {
             return why;
         }
@@ -517,6 +511,34 @@ impl crate::emit::Emitter<'_> {
 /// time and may move it: `x = y` or `let x = y` (or `Some(y)`) with `y` dead after it
 /// (`uses::dead_after`), or a `let` whose source is set again before
 /// anything reads it.
+/// Whether a statement of `rest` moves `slot` on whole: returns, gives or
+/// stores it, or puts it in an optional, a tuple or a variant.
+fn moved_on(rest: &[Stmt], slot: usize) -> bool {
+    let whole = |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == slot);
+    let held = |s: &Stmt| match s {
+        Stmt::Return(Some(e)) | Stmt::Give(e) | Stmt::Assign(_, AssignOp::Set, e) => whole(e),
+        _ => false,
+    };
+    let wraps = |e: &Expr| match &e.kind {
+        ExprKind::Some(inner) => whole(inner),
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().any(whole),
+        _ => false,
+    };
+    rest.iter().any(|stmt| {
+        let mut found = held(stmt);
+        walk::stmt_blocks(stmt, &mut |inner| {
+            walk::deep_stmts(inner, &mut |s| found |= held(s))
+        });
+        walk::stmt_exprs(stmt, &mut |e| {
+            walk::deep_expr(e, &mut |e| found |= wraps(e))
+        });
+        walk::stmt_blocks(stmt, &mut |inner| {
+            walk::deep_exprs(inner, &mut |e| found |= wraps(e))
+        });
+        found
+    })
+}
+
 pub(crate) fn last_read(
     program: &Program,
     block: &Block,
@@ -531,7 +553,13 @@ pub(crate) fn last_read(
             }
         }
     }
-    if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
+    if let Stmt::Let(bound, Some(init)) = &block.stmts[k] {
+        // An `if let` payload stays a reference unless the name moves on.
+        if let ExprKind::Unwrap(..) = init.kind {
+            return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
+                || (place_dies(program, block, k, init, outer)
+                    && moved_on(&block.stmts[k + 1..], *bound));
+        }
         let init = match &init.kind {
             ExprKind::Some(inner) => &**inner,
             ExprKind::If(_, a, b) => match some_local(a).or(some_local(b)) {
@@ -614,6 +642,9 @@ fn some_local(e: &Expr) -> Option<usize> {
 fn field_path(e: &Expr) -> Option<(usize, Vec<usize>)> {
     match &e.kind {
         ExprKind::Local(slot) => Some((*slot, Vec::new())),
+        // The payload of an optional is the optional's place: `if let x = t`
+        // binds `*t`, which dies with `t`.
+        ExprKind::Unwrap(base, _) => field_path(base),
         ExprKind::Field(base, f) => field_path(base).map(|(slot, mut fields)| {
             fields.push(*f);
             (slot, fields)
@@ -773,20 +804,31 @@ fn once_lets<'s>(stmt: &'s Stmt, out: &mut Vec<&'s Stmt>) {
             once_lets(inner, out);
         }
     }
-    let mut value = |e: &'s Expr| {
-        if let ExprKind::Do(block) = &e.kind {
-            stmts(block, out);
+    // A value block runs once, and so does one an argument evaluates: each
+    // argument is evaluated once, before the call (`edges.sorted(by: ..)
+    // .adjacent` sorts its own copy in the generator's argument).
+    fn value<'s>(e: &'s Expr, out: &mut Vec<&'s Stmt>) {
+        match &e.kind {
+            ExprKind::Do(block) => stmts(block, out),
+            ExprKind::Call(_, args) => {
+                for arg in args {
+                    if let Arg::Value(a) = arg {
+                        value(a, out);
+                    }
+                }
+            }
+            _ => {}
         }
-    };
+    }
     match stmt {
         Stmt::Let(_, Some(e))
         | Stmt::Assign(_, _, e)
         | Stmt::Expr(e)
         | Stmt::Give(e)
         | Stmt::Return(Some(e))
-        | Stmt::For(_, _, Iter::Seq(e, _) | Iter::RangeVal(e, _), _) => value(e),
+        | Stmt::For(_, _, Iter::Seq(e, _) | Iter::RangeVal(e, _), _) => value(e, out),
         Stmt::If(cond, then, otherwise) => {
-            value(cond);
+            value(cond, out);
             stmts(then, out);
             stmts(otherwise, out);
         }

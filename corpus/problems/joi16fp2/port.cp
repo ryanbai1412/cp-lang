@@ -32,8 +32,8 @@ assert all(express[e] < express[f] for e in E if let f = E.at(e + 1))
 // In each stretch the express stop and then each further semiexpress stop serve the stations
 // up to where the local runs out of time; a further stop serves no more than the one before.
 let spare = k - n
-var reached = 0           // stations served from the express stops themselves
-var gains: List<Int> = [] // stations served by each possible further stop
+var reached = 0            // stations served from the express stops themselves
+var gains: List<Int> = []  // stations served by each possible further stop
 for e in E:
     let Some(f) = E.at(e + 1) else: continue
     let (from, to) = (express[e], express[f])

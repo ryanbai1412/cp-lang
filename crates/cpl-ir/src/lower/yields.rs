@@ -35,19 +35,11 @@ impl<'a> Lowerer<'a> {
         };
         if from {
             let seq = self.expr(value, None);
-            let push_call = self.mk(
-                ExprKind::Mutate(Mutation::Extend, Box::new(acc_place), vec![seq]),
-                Ty::Unit,
-                span,
-            );
+            let push_call = self.mk_mutate(Mutation::Extend, acc_place, vec![seq], Ty::Unit, span);
             out.push(Stmt::Expr(push_call));
         } else {
             let v = self.expect(value, &elem_ty);
-            let push_call = self.mk(
-                ExprKind::Mutate(Mutation::Push, Box::new(acc_place), vec![v]),
-                Ty::Unit,
-                span,
-            );
+            let push_call = self.mk_mutate(Mutation::Push, acc_place, vec![v], Ty::Unit, span);
             out.push(Stmt::Expr(push_call));
         }
     }

@@ -34,9 +34,8 @@ fn merge_edge(parent: State, child: State, edge: Edge, w: Z, mut out: List<Table
     let one_active = not (parent.active and lifted.active)
     let one_resolved = not (parent.resolved and lifted.resolved)
     let edge_ok = not parent.active or edge == Edge.One
-    let resolved_deepest = (
-        not lifted.resolved or parent.depth <= lifted.depth
-    ) and (not parent.resolved or parent.depth > lifted.depth)
+    let resolved_deepest = (not lifted.resolved or parent.depth <= lifted.depth) and
+        (not parent.resolved or parent.depth > lifted.depth)
     let active_clean = not (lifted.active and edge == Edge.Zero and parent.depth > 0)
     if not (one_active and one_resolved and edge_ok and resolved_deepest and active_clean):
         return

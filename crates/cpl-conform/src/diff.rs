@@ -88,9 +88,6 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
         if filter.is_some_and(|f| !id.contains(f)) {
             continue;
         }
-        if std::fs::read_to_string(&prob.spec_path).is_ok_and(|t| variants::same_as_port(&t)) {
-            continue;
-        }
         let smallest = prob
             .tests
             .into_iter()
@@ -190,17 +187,16 @@ pub(crate) fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCom
         .map_err(|e| CppCompileError::Infra(format!("cannot create cache dir: {e}")))?;
     // `CPL_CONFORM_CXXFLAGS` replaces `-O2`, e.g. `-O1 -g -fsanitize=address,undefined`
     // to turn undefined behaviour in emitted C++ into a failing case.
+    // `-Werror=return-type`: a fn that falls off its end is undefined
+    // behaviour g++ only warns about; emitted C++ never does it.
     let flags = cpl_env::CONFORM_CXXFLAGS
         .text()
-        .unwrap_or_else(|| "-O2".into());
+        .unwrap_or_else(|| "-O2".into())
+        + " -Werror=return-type";
     // `CPL_CXX_SYSTEM_KEY` fingerprints the compiler and system headers when the
     // cache outlives them (shared across checkouts and CI runs).
     let system = cpl_env::CXX_SYSTEM_KEY.text().unwrap_or_default();
-    let key = if flags == "-O2" && system.is_empty() {
-        fnv1a_hex(cpp.as_bytes())
-    } else {
-        fnv1a_hex(format!("{system}\0{flags}\0{cpp}").as_bytes())
-    };
+    let key = fnv1a_hex(format!("{system}\0{flags}\0{cpp}").as_bytes());
     let bin = cache_dir.join(&key);
     if bin.is_file() {
         return Ok(bin);
@@ -392,27 +388,31 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         } else {
             variants::build_running(db, &path_str, &text, input)
         };
-        let Some((variant, _)) = built else {
-            return (id, skip("no probe checks"));
-        };
-        // Kept for reproducing a mismatch: `cpl run` it next to the port.
-        let dir = cache_dir.join("variants");
-        let written = dir.join(format!("{}.cp", id.replace('/', "_")));
-        if std::fs::create_dir_all(&dir)
-            .and_then(|_| std::fs::write(&written, &variant))
-            .is_ok()
-        {
-            run_path = written;
-        } else if interactor.is_some() {
-            return (
-                id,
-                CaseOutcome {
-                    status: "error".into(),
-                    detail: format!("cannot write {}", written.display()),
-                },
-            );
+        // With no probe that checks, the variant is the port itself: the corpus target
+        // diffs spec.cp, so this is the only diff (and g++ build) a port gets.
+        match built {
+            None => text,
+            Some((variant, _)) => {
+                // Kept for reproducing a mismatch: `cpl run` it next to the port.
+                let dir = cache_dir.join("variants");
+                let written = dir.join(format!("{}.cp", id.replace('/', "_")));
+                if std::fs::create_dir_all(&dir)
+                    .and_then(|_| std::fs::write(&written, &variant))
+                    .is_ok()
+                {
+                    run_path = written;
+                } else if interactor.is_some() {
+                    return (
+                        id,
+                        CaseOutcome {
+                            status: "error".into(),
+                            detail: format!("cannot write {}", written.display()),
+                        },
+                    );
+                }
+                variant
+            }
         }
-        variant
     } else {
         text
     };
@@ -771,6 +771,25 @@ fn release_checks(text: &str) -> Option<cpl_codegen::Checks> {
     match words.iter().position(|w| *w == "--checks") {
         Some(i) => words.get(i + 1).and_then(|l| cpl_codegen::Checks::parse(l)),
         None => Some(cpl_codegen::Checks::None),
+    }
+}
+
+#[cfg(test)]
+mod compile_tests {
+    use super::*;
+
+    #[test]
+    fn a_fn_that_falls_off_its_end_fails_to_compile() {
+        let cache = std::env::temp_dir().join(format!("cpl-return-type-{}", std::process::id()));
+        let missing = "long long f(long long x) { x += 1; }\nint main() { return (int)f(1); }\n";
+        assert!(matches!(
+            compile_cpp(missing, &cache),
+            Err(CppCompileError::Cxx(_))
+        ));
+        let returns =
+            "long long f(long long x) { return x + 1; }\nint main() { return (int)f(-1); }\n";
+        assert!(compile_cpp(returns, &cache).is_ok());
+        let _ = std::fs::remove_dir_all(cache);
     }
 }
 

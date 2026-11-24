@@ -110,7 +110,7 @@ impl<'a> Lowerer<'a> {
                     let mut elems = Vec::with_capacity(want_items.len());
                     for (i, w) in want_items.iter().enumerate() {
                         let field_ty = got_items[i].clone();
-                        let f = lw.mk(ExprKind::Field(Box::new(held.clone()), i), field_ty, span);
+                        let f = lw.mk_field(held.clone(), i, field_ty, span);
                         match lw.try_coerce(f, w) {
                             Ok(c) => elems.push(c),
                             Err(_) => {
@@ -147,7 +147,7 @@ impl<'a> Lowerer<'a> {
                                 lo: Box::new(lo),
                                 hi: Box::new(hi),
                             },
-                            Ty::Range(Box::new(Ty::Pos(d))),
+                            Ty::range(Ty::Pos(d)),
                             span,
                         ));
                     }
@@ -188,7 +188,7 @@ impl<'a> Lowerer<'a> {
                 let parts: Vec<Expr> = ts
                     .into_iter()
                     .enumerate()
-                    .map(|(i, fty)| self.mk(ExprKind::Field(Box::new(held.clone()), i), fty, span))
+                    .map(|(i, fty)| self.mk_field(held.clone(), i, fty, span))
                     .collect();
                 let encoded = self.encode_product(d, parts, span);
                 if stmts.is_empty() {
@@ -211,9 +211,7 @@ impl<'a> Lowerer<'a> {
                 let parts: Vec<Expr> = rfs
                     .into_iter()
                     .enumerate()
-                    .map(|(i, (_, fty))| {
-                        self.mk(ExprKind::Field(Box::new(held.clone()), i), fty, span)
-                    })
+                    .map(|(i, (_, fty))| self.mk_field(held.clone(), i, fty, span))
                     .collect();
                 let encoded = self.encode_product(d, parts, span);
                 if stmts.is_empty() {
@@ -328,82 +326,6 @@ impl<'a> Lowerer<'a> {
                 };
                 Ok(self.range_list(*lo, *hi, (**elem).clone(), span))
             }
-            // `V.all` (or any `Range<V>`) where a `Bitset<V>` is wanted.
-            (Ty::Struct(sid), Ty::Range(of)) if matches!(of.as_ref(), Ty::Pos(dom) if self.is_bitset_of(*sid, *dom)) =>
-            {
-                let Ty::Pos(dom) = of.as_ref() else {
-                    unreachable!()
-                };
-                let dom = *dom;
-                let sid = *sid;
-                if let ExprKind::Range { lo, hi } = &e.kind {
-                    if matches!(lo.kind, ExprKind::Int(0))
-                        && matches!(hi.kind, ExprKind::DomainLen(d) if d == dom)
-                    {
-                        return Ok(self.domain_bitset_full(dom, span));
-                    }
-                }
-                let Some(new_fn) = self.own_method(sid, "new") else {
-                    return Err(e);
-                };
-                let Some(ins_fn) = self.own_method(sid, "insert") else {
-                    return Err(e);
-                };
-                self.queue_fn(new_fn);
-                self.queue_fn(ins_fn);
-                let bs_ty = Ty::Struct(sid);
-                Ok(self.do_expr(Some(&bs_ty), span, |lw, out| {
-                    let bs = lw.temp(bs_ty.clone());
-                    let init = lw.mk(ExprKind::Call(new_fn, Vec::new()), bs_ty.clone(), span);
-                    out.push(Stmt::Let(bs, Some(init)));
-                    let v_slot = lw.temp(Ty::Pos(dom));
-                    let iter = match e.kind {
-                        ExprKind::Range { lo, hi } => Iter::Range {
-                            lo: *lo,
-                            hi: *hi,
-                            step: None,
-                            rev: false,
-                            closed: false,
-                        },
-                        _ => {
-                            let r = lw.hold(e, out);
-                            let lo =
-                                lw.mk(ExprKind::Field(Box::new(r.clone()), 0), Ty::Pos(dom), span);
-                            let hi = lw.mk(ExprKind::Field(Box::new(r), 1), Ty::Pos(dom), span);
-                            Iter::Range {
-                                lo,
-                                hi,
-                                step: None,
-                                rev: false,
-                                closed: false,
-                            }
-                        }
-                    };
-                    let place = Place {
-                        kind: PlaceKind::Local(bs),
-                        ty: bs_ty.clone(),
-                        span: lw.span(span),
-                    };
-                    let call = lw.mk(
-                        ExprKind::Call(
-                            ins_fn,
-                            vec![Arg::Mut(place), Arg::Value(lw.local(v_slot, span))],
-                        ),
-                        Ty::Unit,
-                        span,
-                    );
-                    let lid = lw.fresh_loop();
-                    out.push(Stmt::For(
-                        lid,
-                        v_slot,
-                        iter,
-                        Block {
-                            stmts: vec![Stmt::Expr(call)],
-                        },
-                    ));
-                    out.push(Stmt::Give(lw.local(bs, span)));
-                }))
-            }
             (Ty::List(elem), Ty::Array { elem: aelem, .. }) if *elem == *aelem => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ArrayToList, vec![e]),
                 ty: want.clone(),
@@ -449,16 +371,14 @@ impl<'a> Lowerer<'a> {
                     let item_slot = lw.temp(e_elem.clone());
                     let item_expr = lw.local(item_slot, span);
                     let coerced = lw.try_coerce(item_expr, &w_elem).unwrap_or_else(|x| x);
-                    let push = lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Push,
-                            Box::new(Place {
-                                kind: PlaceKind::Local(acc_slot),
-                                ty: dst_ty.clone(),
-                                span,
-                            }),
-                            vec![coerced],
-                        ),
+                    let push = lw.mk_mutate(
+                        Mutation::Push,
+                        Place {
+                            kind: PlaceKind::Local(acc_slot),
+                            ty: dst_ty.clone(),
+                            span,
+                        },
+                        vec![coerced],
                         Ty::Unit,
                         span,
                     );
@@ -526,8 +446,9 @@ impl<'a> Lowerer<'a> {
                             let idx_slot = lw.temp(idx_ty.clone());
                             let idx_expr = lw.local(idx_slot, span);
                             let sref = src.clone();
-                            let elem_expr = lw.mk(
-                                ExprKind::Index(Box::new(sref.clone()), vec![idx_expr.clone()]),
+                            let elem_expr = lw.mk_index(
+                                sref.clone(),
+                                vec![idx_expr.clone()],
                                 e_rec.clone(),
                                 span,
                             );
@@ -537,11 +458,7 @@ impl<'a> Lowerer<'a> {
                                 .iter()
                                 .zip(w_fields)
                                 .map(|(&fi, (_, ft))| {
-                                    lw.mk(
-                                        ExprKind::Field(Box::new(el_ref.clone()), fi),
-                                        ft.clone(),
-                                        span,
-                                    )
+                                    lw.mk_field(el_ref.clone(), fi, ft.clone(), span)
                                 })
                                 .collect();
                             let proj_val = lw.mk(ExprKind::Tuple(proj_fields), w_rec.clone(), span);

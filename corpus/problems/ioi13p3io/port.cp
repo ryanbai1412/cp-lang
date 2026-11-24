@@ -20,7 +20,7 @@ let r: 1..=5000 = read()
 let c: 1..=200 = read()
 domain Row = 0..r
 domain Col = 0..c
-domain Gap = 0..c - 1  // the road between columns g and g + 1
+domain Gap = 0..c - 1   // the road between columns g and g + 1
 domain Drop = 0..r - 1  // the road below row d
 var east: [Row, Gap]Wombats = read()
 var south: [Drop, Col]Wombats = read()

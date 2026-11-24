@@ -1031,7 +1031,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             for k in 0..len as usize {
                                 fs.push(kinds[k].box_val(regs_i[base as usize + k]));
                             }
-                            caps.push(CaptureVal::Val(Value::Tuple(TupleVal::Boxed(Rc::new(fs)))));
+                            caps.push(CaptureVal::Val(Value::Tuple(TupleVal::Boxed(
+                                crate::value::Shared::new(fs),
+                            ))));
                         }
                         CapSrc::LocalV(r) => {
                             caps.push(CaptureVal::Val(regs_v[r as usize].clone()));
@@ -1329,16 +1331,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let ctx = fed
                     .as_deref_mut()
                     .expect("FeedYieldExtend outside fed call");
-                let items: Vec<Value> = match seq {
-                    Value::List(xs) => xs.iter().collect(),
-                    Value::Array(arr) => (0..arr.len()).map(|i| arr.get_unchecked_val(i)).collect(),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            "internal: a `yields` fn did something else to its list",
-                        )
-                    }
-                };
+                let items = yielded_items(seq, spans[cur_pc])?;
                 for item in items {
                     store_fed_val(ctx, vm_regs_i, item);
                     // The body may run a yielded closure that writes this frame's locals.
@@ -1470,18 +1463,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     })?;
             }
             Op::Step { idx } => {
-                if let Some(profiler) = &mut self.profiler {
-                    profiler.enter(chunk.steps[idx as usize]);
-                }
+                self.step_event(chunk.steps[idx as usize]);
             }
             Op::FallbackStmt {
                 idx,
                 clear_from_v,
                 in_loop,
             } => {
-                if let Some(stats) = &mut self.vm_stats {
-                    stats.record_with_loop(stmt_tag(chunk.fallback_stmts[idx as usize]), in_loop);
-                }
+                self.fell_back(|| stmt_tag(chunk.fallback_stmts[idx as usize]), in_loop);
                 for (r, held) in regs_v.iter_mut().enumerate().skip(clear_from_v as usize) {
                     // A traced local outlives its last use: the tracer shows it.
                     if !(chunk.traced && chunk.slot_map.contains(&SlotLoc::V(r as u16))) {
@@ -1527,12 +1516,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
             }
             Op::FallbackExprI { idx, dst, in_loop } => {
-                if let Some(stats) = &mut self.vm_stats {
-                    stats.record_with_loop(
-                        expr_tag(chunk.fallback_exprs[idx as usize], self.program),
-                        in_loop,
-                    );
-                }
+                let program = self.program;
+                self.fell_back(
+                    || expr_tag(chunk.fallback_exprs[idx as usize], program),
+                    in_loop,
+                );
                 sync_to_stack(
                     &chunk.slot_map,
                     regs_i,
@@ -1557,12 +1545,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst as usize] = ScalarKind::unbox_val(&val);
             }
             Op::FallbackExprV { idx, dst, in_loop } => {
-                if let Some(stats) = &mut self.vm_stats {
-                    stats.record_with_loop(
-                        expr_tag(chunk.fallback_exprs[idx as usize], self.program),
-                        in_loop,
-                    );
-                }
+                let program = self.program;
+                self.fell_back(
+                    || expr_tag(chunk.fallback_exprs[idx as usize], program),
+                    in_loop,
+                );
                 sync_to_stack(
                     &chunk.slot_map,
                     regs_i,

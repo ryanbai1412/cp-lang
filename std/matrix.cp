@@ -20,8 +20,17 @@ const WIEDEMANN_TRIES = 32
 pub struct Mat<T>:
     pub rows: Int
     pub cols: Int
-    pub data: List<T>
+    cells: List<T>
     ring: ?Ring<T> = None
+    /// Under a [`TropicalProduct`] ring, the entries a product left in a std-owned sentinel form,
+    /// then the largest `|entry|`; `cells` is then `[]` until an entry is set; empty otherwise.
+    raw: List<Int> = []
+
+    /// The entries, row by row, as a new list: `get(r, c)` is `data[r * cols + c]`.
+    /// \(O(\mathit{rows} \cdot \mathit{cols})\); `get` reads one entry in \(O(1)\).
+    @get pub fn data(self) -> List<T>:
+        if self.sentinel: return [ring!.peek!(raw[i]) for i in 0..rows * cols]
+        cells.clone()
 
     /// A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`):
     /// `Mat(over: Semiring(min, +), d)`. `m * m2`, `m ** k` and a `SegTree(*, ...)` of
@@ -137,7 +146,21 @@ pub struct Mat<T>:
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).get(0, 1) == 2`
     /// trap: `Mat<Int>.zeros(2, 2).get(0, 2)`
     /// trap: `Mat<Int>.zeros(2, 2).get(-1, 0)`
-    pub fn get(self, r: Int, c: Int) -> T = data[self.cell(r, c)]
+    pub fn get(self, r: Int, c: Int) -> T:
+        if self.sentinel: return ring!.peek!(raw[self.cell(r, c)])
+        cells[self.cell(r, c)]
+
+    /// Whether a product left the entries in `raw`. Only a lifted `?W` ring has that form, so
+    /// for an `Add` entry type it is `false` at compile time and the accessors test nothing.
+    @get fn sentinel(self) -> Bool:
+        if T: Add: return false
+        raw.len > 0
+
+    /// Bring the entries back from the sentinel form, so they can be changed.
+    fn settle(mut self):
+        if self.sentinel:
+            cells = self.data
+            raw = []
 
     /// Set the entry at `(r, c)` to `val`.
     ///
@@ -146,7 +169,8 @@ pub struct Mat<T>:
     /// example: `var m = Mat<Int>.zeros(2, 2); m.set(1, 0, 5); m.get(1, 0) == 5`
     /// trap: `var m = Mat<Int>.zeros(2, 2); m.set(2, 0, 5)`
     pub fn set(mut self, r: Int, c: Int, val: T):
-        data[self.cell(r, c)] = val
+        self.settle()
+        cells[self.cell(r, c)] = val
 
     /// The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.
     ///
@@ -154,8 +178,9 @@ pub struct Mat<T>:
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `var m = Mat<Int>.identity(2); m.at(0, 0) += 4; m.get(0, 0) == 5`
     /// trap: `var m = Mat<Int>.zeros(2, 2); m.at(0, 2) += 1`
-    pub fn at(self, r: Int, c: Int) -> lends mut T:
-        lend mut data[self.cell(r, c)]
+    pub fn at(mut self, r: Int, c: Int) -> lends mut T:
+        self.settle()
+        lend mut cells[self.cell(r, c)]
 
     /// The flat offset of `(r, c)`, trapping unless `r` is in `0..rows` and `c` in `0..cols`:
     /// every accessor goes through it, so no row spills into the next.
@@ -170,6 +195,7 @@ pub struct Mat<T>:
     /// traps: never
     /// example: `Mat<Int>.from_rows([[1, 2, 3], [4, 5, 6]]).transpose().get(2, 1) == 6`
     pub fn transpose(self) -> Mat<T>:
+        if self.sentinel: return Mat(rows, cols, self.data, ring).transpose()
         var d = List.filled(rows * cols, T.zero)
         // In 16 x 16 tiles, so the strided writes stay in cache.
         let b = 16
@@ -177,7 +203,10 @@ pub struct Mat<T>:
             for bi in 0..rows.ceil_div(b):
                 for bj in 0..cols.ceil_div(b):
                     for i in bi * b..min(rows, bi * b + b):
-                        for j in bj * b..min(cols, bj * b + b): d[j * rows + i] = data[i * cols + j]
+                        for j in bj * b..min(
+                            cols,
+                            bj * b + b,
+                        ): d[j * rows + i] = cells[i * cols + j]
         Mat(cols, rows, d)
 
     /// The matrix-vector product `self * v` under the matrix's semiring: entry `r` folds
@@ -190,6 +219,7 @@ pub struct Mat<T>:
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).mul_vec([1, 1]) == [3, 7]`
     pub fn mul_vec(self, v: List<T>) -> List<T>:
         assert v.len == cols, "vector length must match matrix columns"
+        if self.sentinel: return Mat(rows, cols, self.data, ring).mul_vec(v)
         if T: Add:
             if T: Mul:
                 if ring == None:
@@ -197,13 +227,13 @@ pub struct Mat<T>:
                     for i in 0..rows:
                         var acc = T.zero
                         let off = i * cols
-                        for j in 0..cols: acc = acc + data[off + j] * v[j]
+                        for j in 0..cols: acc = acc + cells[off + j] * v[j]
                         out[i] = acc
                     return out
         let g = ring!
         var out = List.filled(rows, g.zero)
         for i in 0..rows:
-            for j in 0..cols: out[i] = g.plus(out[i], g.times(data[i * cols + j], v[j]))
+            for j in 0..cols: out[i] = g.plus(out[i], g.times(cells[i * cols + j], v[j]))
         out
 
     /// The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`):
@@ -254,7 +284,7 @@ pub struct Mat<T>:
     pub fn det(self, eps: ?T = None) -> T:
         assert rows == cols, "det requires a square matrix"
         let n = rows
-        var m = data.collect()
+        var m = cells.collect()
         var ans = T.one
         let e = eps ?? T.zero
         for col in 0..n:
@@ -283,7 +313,7 @@ pub struct Mat<T>:
     /// example: `Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1e-12]]).rank(eps: 1e-9) == 1`
     pub fn rank(self, eps: ?T = None) -> Int:
         let e = eps ?? T.zero
-        var m = data.collect()
+        var m = cells.collect()
         var r = 0
         for col in 0..cols:
             if r == rows: break
@@ -321,7 +351,7 @@ pub struct Mat<T>:
         let stride = k + 1
         var aug = List.filled(rows * stride, T.zero)
         for i in 0..rows:
-            for j in 0..k: aug[i * stride + j] = data[i * k + j]
+            for j in 0..k: aug[i * stride + j] = cells[i * k + j]
             aug[i * stride + k] = b[i]
         var pivot_row = List.filled(k, -1)
         var r = 0
@@ -391,7 +421,7 @@ pub struct Mat<T>:
         let e = eps ?? T.zero
         var aug = List.filled(n * stride, T.zero)
         for i in 0..n:
-            for j in 0..n: aug[i * stride + j] = data[i * n + j]
+            for j in 0..n: aug[i * stride + j] = cells[i * n + j]
             aug[i * stride + n + i] = T.one
         for col in 0..n:
             let piv = Mat<T>.pivot(aug, col, n, stride, col, e)
@@ -423,7 +453,7 @@ pub struct Mat<T>:
     /// traps: never for a field `T`
     /// example: `let (mat: e, rank: k, pivots: p) = Mat<Mod<7>>.from_rows([[2, 4], [1, 2]]).rref(); k == 1 and p == [0] and e.get(0, 1) == Mod<7>(2) and e.get(1, 1) == Mod<7>(0)`
     pub fn rref(self) -> (mat: Mat<T>, rank: Int, pivots: List<Int>):
-        var m = data.collect()
+        var m = cells.collect()
         var pivots = List<Int>()
         var r = 0
         for col in 0..cols:
@@ -457,7 +487,7 @@ pub struct Mat<T>:
         assert rows == cols, "det_mod requires a square matrix"
         assert m >= 1, "det_mod requires m >= 1"
         let n = rows
-        var a = [Int(x) % m for x in data]
+        var a = [Int(x) % m for x in cells]
         var ans = 1 % m
         for col in 0..n:
             for r in col + 1..n:
@@ -484,7 +514,7 @@ pub struct Mat<T>:
     pub fn char_poly(self) -> List<T>:
         assert rows == cols, "char_poly requires a square matrix"
         let n = rows
-        var h = data.collect()
+        var h = cells.collect()
         for col in 0..n - 2:
             var piv = col + 1
             while piv < n and h[piv * n + col] == T.zero: piv += 1
@@ -531,8 +561,8 @@ pub struct Mat<T>:
         var a = List.filled(n * n, T.zero)
         for i in 0..n:
             for j in i + 1..n:
-                a[i * n + j] = data[i * n + j]
-                a[j * n + i] = T.zero - data[i * n + j]
+                a[i * n + j] = cells[i * n + j]
+                a[j * n + i] = T.zero - cells[i * n + j]
         var res = T.one
         var k = 0
         while k < n:
@@ -576,7 +606,7 @@ pub struct Mat<T>:
         if k == n:
             let d = self.det()
             let inv = self.inverse()!
-            return Mat(n, n, [d * x for x in inv.data])
+            return Mat(n, n, [d * x for x in inv.cells])
         if k < n - 1: return Mat<T>.zeros(n, n)
         let x = self.solve_space(List.filled(n, T.zero))!.1[0]
         let y = self.transpose().solve_space(List.filled(n, T.zero))!.1[0]
@@ -588,7 +618,7 @@ pub struct Mat<T>:
         for i in 0..n:
             if i == c: continue
             for j in 0..n:
-                if j != r: minor.push(data[i * n + j])
+                if j != r: minor.push(cells[i * n + j])
         var cof = Mat(n - 1, n - 1, minor).det()
         if (r + c) % 2 == 1: cof = T.zero - cof
         let lam = cof / (x[r] * y[c])
@@ -599,20 +629,23 @@ pub struct Mat<T>:
 
 /// Two matrices are equal when their shapes and entries are; the semiring is not compared.
 impl Eq for Mat<T>:
-    fn eq(a, b) = a.rows == b.rows and a.cols == b.cols and a.data == b.data
+    fn eq(a, b):
+        if a.rows != b.rows or a.cols != b.cols: return false
+        if not a.sentinel and not b.sentinel: return a.cells == b.cells
+        a.data == b.data
 
 impl Add for Mat<T>:
     fn add(a, b):
         assert a.rows == b.rows and a.cols == b.cols
-        Mat(a.rows, a.cols, [a.data[i] + b.data[i] for i in 0..a.data.len])
+        Mat(a.rows, a.cols, [a.cells[i] + b.cells[i] for i in 0..a.cells.len])
 
 impl Sub for Mat<T>:
     fn sub(a, b):
         assert a.rows == b.rows and a.cols == b.cols
-        Mat(a.rows, a.cols, [a.data[i] - b.data[i] for i in 0..a.data.len])
+        Mat(a.rows, a.cols, [a.cells[i] - b.cells[i] for i in 0..a.cells.len])
 
 impl Mul for Mat<T>:
-    fn mul(a, b):
+    fn mul(a, b) -> Mat<T>:
         assert a.cols == b.rows, "matrix dimensions do not match for multiplication"
         let (r, m, c) = (a.rows, a.cols, b.cols)
         if T: Add:
@@ -624,21 +657,32 @@ impl Mul for Mat<T>:
                             let ai = i * m
                             let oi = i * c
                             for k in 0..m:
-                                let f = a.data[ai + k]
+                                let f = a.cells[ai + k]
                                 let bk = k * c
-                                for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
+                                for j in 0..c: out[oi + j] = out[oi + j] + f * b.cells[bk + j]
                     return Mat(r, c, out)
         let g = a.ring!
         if let flat = g.flat:
-            if let d = flat(a.data, b.data, r, m, c): return Mat(r, c, d, a.ring)
+            if let out = flat(
+                a.cells,
+                a.raw,
+                b.cells,
+                b.raw,
+                r,
+                m,
+                c,
+                g.most,
+            ): return Mat(r, c, [], a.ring, out)
+            if a.sentinel or b.sentinel:
+                return Mat(r, m, a.data, a.ring) * Mat(m, c, b.data, b.ring)
         var acc = List.filled(r * c, g.zero)
         for i in 0..r:
             for k in 0..m:
-                let f = a.data[i * m + k]
+                let f = a.cells[i * m + k]
                 if f == g.zero: continue
                 for j in 0..c: acc[i * c + j] = g.plus(
                     acc[i * c + j],
-                    g.times(f, b.data[k * c + j]),
+                    g.times(f, b.cells[k * c + j]),
                 )
         Mat(r, c, acc, a.ring)
 
@@ -662,7 +706,11 @@ struct Ring<T>:
     plus: (T, T) -> T
     times: (T, T) -> T
     /// The whole product at once, row by row, or `None` to run the loop: a [`TropicalProduct`]'s.
-    flat: ?((List<T>, List<T>, Int, Int, Int) -> ?List<T>) = None
+    var flat: ?((List<T>, List<Int>, List<T>, List<Int>, Int, Int, Int, Bool) -> ?List<Int>) = None
+    /// Whether `flat` adds with `max` (else `min`).
+    var most: Bool = false
+    /// An entry of `flat`'s sentinel form.
+    var peek: ?(Int -> T) = None
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
@@ -676,67 +724,91 @@ fn ring_of<T, S>(over: S) -> ?Ring<T>:
         Some(lift_ring(over))
 
 fn lift_ring<W, S>(over: S) -> Ring<?W>:
-    let add = Monoid<W>.of(over.add)
-    let mul = Monoid<W>.of(over.mul)
-    var g = Ring(
+    var g = lifted(Monoid<W>.of(over.add), Monoid<W>.of(over.mul))
+    if W: TropicalProduct:
+        if same(over.mul, +):
+            g.most = same(over.add, max)
+            if g.most or same(over.add, min):
+                g.flat = Some(
+                    (
+                        a: List<?W>,
+                        fa: List<Int>,
+                        b: List<?W>,
+                        fb: List<Int>,
+                        r: Int,
+                        m: Int,
+                        c: Int,
+                        most: Bool,
+                    ) => W.tropical(a, fa, b, fb, r, m, c, most)
+                )
+                g.peek = Some((v: Int) => W.peek(v))
+    g
+
+/// The semiring over `W` lifted to `?W`, `None` the zero. Kept apart from `lift_ring` so each `W`
+/// has one closure per field, whatever semiring built it: a fn pointer, not a `std::function`.
+fn lifted<W>(add: Monoid<W>, mul: Monoid<W>) -> Ring<?W>:
+    Ring(
         None,
         Some(mul.id),
         (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(add.op(x, y)) else: a) else: b,
         (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(mul.op(x, y)) else: None) else: None,
     )
-    if W: TropicalProduct:
-        if same(over.mul, +):
-            if same(over.add, max):
-                g.flat = Some(
-                    (
-                        a: List<?W>,
-                        b: List<?W>,
-                        r: Int,
-                        m: Int,
-                        c: Int,
-                    ) => W.tropical(a, b, r, m, c, true)
-                )
-            elif same(over.add, min):
-                g.flat = Some(
-                    (
-                        a: List<?W>,
-                        b: List<?W>,
-                        r: Int,
-                        m: Int,
-                        c: Int,
-                    ) => W.tropical(a, b, r, m, c, false)
-                )
-    g
 
 /// A number type whose `Mat` products under `Semiring(max, +)` and `Semiring(min, +)` (entries
 /// `?Self`, `None` the zero) run as one flat pass; `Int` has one. A user number type joins by
 /// implementing it the same way.
 pub trait TropicalProduct:
     /// The `r x c` product of the `r x m` matrix `a` and the `m x c` matrix `b`, both row by row,
-    /// under `max` (`most`) or `min`, and `+`; or `None` when this type has no fast product for these
-    /// entries (then `Mat` runs its loop, which traps on an overflow).
-    fn tropical(a: List<?Self>, b: List<?Self>, r: Int, m: Int, c: Int, most: Bool) -> ?List<?Self>
+    /// under `max` (`most`) or `min`, and `+`, in its sentinel form (entries row by row, then the
+    /// largest `|entry|`); or `None` when this type has no fast product for these entries (then
+    /// `Mat` runs its loop, which traps on an overflow). `fa` and `fb` are `a`'s and `b`'s sentinel
+    /// forms from an earlier product, or `[]` to read `a` and `b`.
+    fn tropical(
+        a: List<?Self>,
+        fa: List<Int>,
+        b: List<?Self>,
+        fb: List<Int>,
+        r: Int,
+        m: Int,
+        c: Int,
+        most: Bool,
+    ) -> ?List<Int>
+
+    /// The entry a sentinel-form `v` holds.
+    fn peek(v: Int) -> ?Self
+
+/// `a` with `None` as `far`, then the largest `|entry|`.
+fn sentinel_form(a: List<?Int>, far: Int) -> List<Int>:
+    var out = List.filled(a.len + 1, far)
+    var reach = 0
+    for i in 0..a.len:
+        if let x = a[i]:
+            out[i] = x
+            reach max= abs(x)
+    out[a.len] = reach
+    out
 
 impl TropicalProduct for Int:
-    /// While every entry is within 2^60 of 0. `None` is held as -2^62 (2^62 under `min`), so no
+    /// While every entry is under 2^60 in size. `None` is held as -2^62 (2^62 under `min`), so no
     /// add can overflow, the pass has no branch, and a sum with `None` stays past every sum of two
-    /// entries; past the bound it is `None`, and the loop traps on an overflow as written.
-    fn tropical(a: List<?Int>, b: List<?Int>, r: Int, m: Int, c: Int, most: Bool) -> ?List<?Int>:
-        let bound = 1 << 60
+    /// entries; past the bound it is `None`, and the loop traps on an overflow as written. A
+    /// product's sentinel form is kept for the next product, so a chain of them converts once.
+    fn tropical(
+        a: List<?Int>,
+        fa: List<Int>,
+        b: List<?Int>,
+        fb: List<Int>,
+        r: Int,
+        m: Int,
+        c: Int,
+        most: Bool,
+    ) -> ?List<Int>:
         let far = if most: -(1 << 62) else: 1 << 62
-        var (lo, hi) = (0, 0)
-        var fa = List.filled(r * m, far)
-        var fb = List.filled(m * c, far)
-        for i in 0..r * m:
-            if let x = a[i]:
-                (lo, hi) = (min(lo, x), max(hi, x))
-                fa[i] = x
-        for i in 0..m * c:
-            if let x = b[i]:
-                (lo, hi) = (min(lo, x), max(hi, x))
-                fb[i] = x
-        if lo < -bound or hi > bound: return None
-        var out = List.filled(r * c, far)
+        if fa.len != r * m + 1: return Int.tropical(a, sentinel_form(a, far), b, fb, r, m, c, most)
+        if fb.len != m * c + 1: return Int.tropical(a, fa, b, sentinel_form(b, far), r, m, c, most)
+        let bound = 1 << 60
+        if fa[r * m] >= bound or fb[m * c] >= bound: return None
+        var out = List.filled(r * c + 1, far)
         unchecked:
             for i in 0..r:
                 let oi = i * c
@@ -749,7 +821,17 @@ impl TropicalProduct for Int:
                     else:
                         for j in 0..c: out[oi + j] min= f + fb[bk + j]
         let edge = far / 2
-        Some([if (v >= edge) == most: Some(v) else: None for v in out])
+        var reach = 0
+        unchecked:
+            for i in 0..r * c:
+                let v = out[i]
+                let kept = (v >= edge) == most
+                out[i] = if kept: v else: far
+                reach max= if kept: abs(v) else: 0
+        out[r * c] = reach
+        Some(out)
+
+    fn peek(v: Int) -> ?Int = if abs(v) == 1 << 62: None else: Some(v)
 
 /// Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
 /// Every operation is \(O(W)\) where W <= 63 (`merge` is \(O(W \cdot \mathit{rank})\)).

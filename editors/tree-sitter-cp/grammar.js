@@ -1,6 +1,12 @@
 // A token-level grammar for CP Lang: enough structure to highlight, nothing the
 // highlighter does not use. Blocks, folding and everything semantic come from
 // `cpl lsp`, so a half-typed line never turns the rest of the file into an error.
+// The words are crates/cpl-syntax's tables, written to editors/words.json by `just gen`.
+const words = require('../words.json');
+const literals = words.literals;
+const oneOf = ws => (ws.length === 1 ? ws[0] : choice(...ws));
+const reserved = words.keywords.filter(w => !literals.includes(w) && w !== 'self');
+
 module.exports = grammar({
   name: 'cp',
 
@@ -56,17 +62,11 @@ module.exports = grammar({
       /[0-9][0-9_]*(\.[0-9][0-9_]*)?([eE][+-]?[0-9][0-9_]*)?/,
     )),
 
-    boolean: _ => choice('true', 'false'),
-    // `none` is the old spelling; it still parses, so the checker can name the fix.
-    none: _ => choice('None', 'none'),
+    boolean: _ => oneOf(literals.filter(w => /^[a-z]/.test(w))),
+    none: _ => oneOf(literals.filter(w => /^[A-Z]/.test(w))),
     self: _ => 'self',
 
-    keyword: _ => choice(
-      'let', 'var', 'fn', 'struct', 'enum', 'domain', 'type', 'const', 'trait',
-      'impl', 'use', 'pub', 'if', 'elif', 'else', 'for', 'while', 'in', 'match',
-      'return', 'break', 'continue', 'and', 'or', 'not', 'assert', 'mut',
-      'lends', 'yield', 'unchecked',
-    ),
+    keyword: _ => oneOf(reserved),
 
     function_definition: $ => prec(2, seq(alias('fn', $.keyword), field('name', $.identifier))),
 

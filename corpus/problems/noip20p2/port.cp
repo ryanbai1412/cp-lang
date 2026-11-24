@@ -25,7 +25,7 @@ fn odd_prefixes(xs: List<Letter>) -> List<Odd>:
 let s: Str = read()
 let n = s.len
 let letters = [Letter(c) for c in s]
-let before = odd_prefixes(letters)          // before[c] = F(s[..c])
+let before = odd_prefixes(letters)               // before[c] = F(s[..c])
 let after = List(odd_prefixes(letters.rev).rev)  // after[c] = F(s[c..])
 let z = z_function(s)
 

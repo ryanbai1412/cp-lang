@@ -6,21 +6,24 @@
 //! array (`diff_by_hand`) and counting components by DFS
 //! (`components_by_dfs`).
 
-use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{
-    File, Finding, Lint, BINOM_BY_HAND, COMPONENTS_BY_DFS, CROSS_BY_HAND, DIFF_BY_HAND,
-    LCA_BY_HAND, MEMO_BY_HAND, RUNS_BY_HAND, TRIAL_DIVISION,
+    File, Finding, BINOM_BY_HAND, COMPONENTS_BY_DFS, CROSS_BY_HAND, DIFF_BY_HAND, LCA_BY_HAND,
+    MEMO_BY_HAND, RUNS_BY_HAND, TRIAL_DIVISION,
 };
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::Span;
 use cpl_syntax::ast::*;
+use std::collections::HashSet;
 
 use super::shapes::{compare, index1, int, is_step, name, single};
+use super::Warn;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandMath {
         src: file.src,
         base: 0,
+        inverse: inverse_tables(file),
         products: Vec::new(),
         memos: Vec::new(),
         out: Vec::new(),
@@ -39,10 +42,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         };
         if let Some((_, f, lookup)) = memos.iter().find(|(name, ..)| name == m) {
             v.base = base;
-            v.warn(
+            v.warn_at(
                 &MEMO_BY_HAND,
                 stmt.span,
-                format!("`{m}` is a memo table kept by hand for `{f}`"),
+&lint_rules::MEMO_BY_HAND, &[&m, &f],
                 format!(
                     "put `@memo(map)` (or `@memo(array)` over bounded parameters) on `fn {f}` and drop `{m}`: the lookup and the store become one attribute"
                 ),
@@ -63,6 +66,8 @@ struct HandMath<'a> {
     base: u32,
     /// Products already read whole, so their inner parts are skipped.
     products: Vec<Span>,
+    /// Tables the file writes std's `inv` of a value into.
+    inverse: HashSet<String>,
     /// (map, fn, lookup) for each `if k in map: return map[k]` at the top of
     /// a fn.
     memos: Vec<(String, String, Span)>,
@@ -102,14 +107,15 @@ fn indexed<'e>(e: &'e Expr, out: &mut Vec<(&'e str, &'e Expr)>) {
     }
 }
 
+impl super::Warn for HandMath<'_> {
+    fn sink(&mut self) -> (&mut Vec<Finding>, u32) {
+        (&mut self.out, self.base)
+    }
+}
+
 impl HandMath<'_> {
     fn text(&self, span: Span) -> &str {
         span.shift(self.base).text(self.src)
-    }
-
-    fn warn(&mut self, lint: &'static Lint, span: Span, msg: String, help: String) {
-        let diag = Diagnostic::warning(lint.code, span.shift(self.base), msg).with_help(help);
-        self.out.push(Finding { lint, diag });
     }
 
     fn trial_division(&mut self, stmt: &Stmt) {
@@ -147,16 +153,16 @@ impl HandMath<'_> {
             || self.text(body.span).contains(&format!("{x} /= {d}"));
         let (msg, help) = if factors {
             (
-                format!("trial division by `{d}` factors `{x}` by hand"),
+                &lint_rules::TRIAL_DIVISION,
                 format!("`factor({x})` from `std.math` returns its `(prime, exponent)` pairs"),
             )
         } else {
             (
-                format!("trial division by `{d}` walks the divisors of `{x}` by hand"),
+                &lint_rules::TRIAL_DIVISION_DIVISORS,
                 format!("`divisors({x})` from `std.math` lists them; `.len` counts them"),
             )
         };
-        self.warn(&TRIAL_DIVISION, stmt.span, msg, help);
+        self.warn_at(&TRIAL_DIVISION, stmt.span, msg, &[&d, &x], help);
     }
 
     fn memo(&mut self, stmt: &Stmt) {
@@ -228,10 +234,10 @@ impl HandMath<'_> {
         if d != d2 || name(target) != Some(u) || name(up) != Some(u) || u == v {
             return;
         }
-        self.warn(
+        self.warn_at(
             &LCA_BY_HAND,
             stmt.span,
-            format!("climbing `{u}` by `{p}` until `{d}` matches is the LCA, by hand"),
+&lint_rules::LCA_BY_HAND, &[&u, &p, &d],
             format!(
                 "build the tree once as a `Rooted` (`std.tree`, e.g. `Rooted.from_parents(par)`): `t.lca({u}, {v})` and `t.dist({u}, {v})` answer each query in O(log n)"
             ),
@@ -255,10 +261,10 @@ impl HandMath<'_> {
         if xs != xs2 || ys != ys2 || xs == ys || t(i) != t(i2) || t(j) != t(j2) || t(i) == t(j) {
             return;
         }
-        self.warn(
+        self.warn_at(
             &CROSS_BY_HAND,
             expr.span,
-            format!("`{}` is a cross product of points kept in two lists", self.text(expr.span)),
+&lint_rules::CROSS_BY_HAND, &[&self.text(expr.span).to_string()],
             "store the points as `Pt` (`std.geometry`): `p.cross(q)` is this product, and `area2(poly)` sums it around a polygon".to_string(),
         );
     }
@@ -290,10 +296,10 @@ impl HandMath<'_> {
                 if g == f && !std::ptr::eq(a, b) && found {
                     self.products.push(expr.span);
                     let (a, b) = (self.text(a.span).to_string(), self.text(b.span).to_string());
-                    self.warn(
+                    self.warn_at(
                         &BINOM_BY_HAND,
                         expr.span,
-                        format!("`{f}[{a}]` over `{f}[{b}]` and `{f}[{a} - {b}]` is `{a}` choose `{b}`, by hand"),
+&lint_rules::BINOM_BY_HAND, &[&f, &a, &f, &b, &f, &a, &b, &a, &b],
                         format!(
                             "`Comb<Z>(limit)` (`std.mod`, with `type Z = Mod<P>`) keeps the factorial tables: `c.choose({a}, {b})` is the binomial, `0` when `{b} > {a}`"
                         ),
@@ -317,7 +323,7 @@ impl HandMath<'_> {
         };
         for &(f, a) in hits {
             for (i, &(g, b)) in hits.iter().enumerate() {
-                let inverse = g.contains(std_fn::INV) || g == format!("i{f}");
+                let inverse = self.inverse.contains(g) || g == format!("i{f}");
                 if g == f || !inverse {
                     continue;
                 }
@@ -332,10 +338,10 @@ impl HandMath<'_> {
                     }
                     self.products.push(expr.span);
                     let k = if kb == format!("{ka} - {kc}") { kc } else { kb };
-                    self.warn(
+                    self.warn_at(
                         &BINOM_BY_HAND,
                         expr.span,
-                        format!("`{f}[..]` over two `{g}[..]` entries is `{ka}` choose `{k}`, by hand"),
+&lint_rules::BINOM_BY_HAND_2, &[&f, &g, &ka, &k],
                         format!(
                             "`Comb<Z>(limit)` (`std.mod`, with `type Z = Mod<P>`) keeps the factorial tables: `c.choose({ka}, {k})` is the binomial, `0` when `{k} > {ka}`"
                         ),
@@ -375,10 +381,10 @@ impl HandMath<'_> {
             return;
         };
         let it = self.text(iter.span);
-        self.warn(
+        self.warn_at(
             &RUNS_BY_HAND,
             stmt.span,
-            format!("`{r}` counts runs of equal values by hand"),
+&lint_rules::RUNS_BY_HAND, &[&r],
             format!(
                 "`{it}.runs()` (`std.seq`) yields each run as `(val, len)`: work on whole runs instead of resetting a counter"
             ),
@@ -416,11 +422,7 @@ impl HandMath<'_> {
             if d != d2 || text(*b1, v1) != text(*b2, v2) || !shifted {
                 continue;
             }
-            let diag = Diagnostic::warning(
-                DIFF_BY_HAND.code,
-                Span::new(s1.span.start + b1, s2.span.end + b2),
-                format!("`{d}` is a difference array kept by hand"),
-            )
+            let diag = lint_rules::DIFF_BY_HAND.warning(Span::new(s1.span.start + b1, s2.span.end + b2), &[&d])
             .with_help(format!(
                 "`Diff<D, T>()` (`std.prefix`) is one: `{d}.add(l..r, x)` for each update, then `{d}.finish()` is the table"
             ));
@@ -473,10 +475,10 @@ impl HandMath<'_> {
         if name(at) != Some(u) || !counts || !visits {
             return;
         }
-        self.warn(
+        self.warn_at(
             &COMPONENTS_BY_DFS,
             stmt.span,
-            format!("a search from each unvisited `{u}` counts components by hand, with `{seen}`"),
+&lint_rules::COMPONENTS_BY_DFS, &[&u, &seen],
             "`let (domain C, comp) = components(adj)` (`std.graph`) labels each vertex with its component; `C.count` is how many there are".to_string(),
         );
     }
@@ -501,4 +503,60 @@ impl Visitor for HandMath<'_> {
         self.cross(expr);
         self.binom(expr);
     }
+}
+
+/// The tables a value holding std's `inv` is pushed or written into:
+/// `inv_fact.push(f.inv())`, `inv[i] = x.inv()`.
+fn inverse_tables(file: &File) -> HashSet<String> {
+    struct Scan<'a> {
+        facts: Option<&'a crate::Facts>,
+        base: u32,
+        out: HashSet<String>,
+    }
+    impl Scan<'_> {
+        fn inverts(&self, e: &Expr) -> bool {
+            struct Inv<'a>(crate::Calls<'a>, bool);
+            impl cpl_syntax::visit::Visitor for Inv<'_> {
+                fn expr(&mut self, e: &Expr) {
+                    self.1 |=
+                        matches!(e.kind, ExprKind::Call { .. }) && self.0.is(e, crate::std_fn::INV);
+                }
+            }
+            let mut inv = Inv(crate::Calls::new(self.facts, self.base), false);
+            cpl_syntax::visit::walk_expr(e, &mut inv);
+            inv.1
+        }
+    }
+    impl Visitor for Scan<'_> {
+        fn expr(&mut self, e: &Expr) {
+            let ExprKind::Call { callee, args } = &e.kind else {
+                return;
+            };
+            let (ExprKind::Field { base, .. }, [v]) = (&callee.kind, &args[..]) else {
+                return;
+            };
+            let pushes = crate::Calls::new(self.facts, self.base).is(e, crate::std_fn::PUSH);
+            if let Some(g) = name(base).filter(|_| pushes && self.inverts(&v.value)) {
+                self.out.insert(g.to_string());
+            }
+        }
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Assign { target, value, .. } = &stmt.kind {
+                let table = match &unparen(target).kind {
+                    ExprKind::Index { base, .. } => name(base),
+                    _ => None,
+                };
+                if let Some(g) = table.filter(|_| self.inverts(value)) {
+                    self.out.insert(g.to_string());
+                }
+            }
+        }
+    }
+    let mut v = Scan {
+        facts: file.facts,
+        base: 0,
+        out: HashSet::new(),
+    };
+    file.walk(&mut v, |v, base| v.base = base);
+    v.out
 }

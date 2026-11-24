@@ -38,6 +38,15 @@ fn names(cpp: &str, ident: &str) -> bool {
     })
 }
 
+/// The deep copies `cpp` spells out, each source copy once though more
+/// than one specialization may write it.
+fn cpp_copies(cpp: &str) -> usize {
+    let mut seen = std::collections::BTreeSet::new();
+    let distinct: Vec<&str> = cpp.lines().filter(|l| seen.insert(l.trim())).collect();
+    let distinct = distinct.join("\n");
+    deep_copies(&distinct) + optional_copies(&distinct)
+}
+
 /// Each way explain's report on `src` disagrees with the C++ it builds.
 fn disagreements(src: &Path, out: &Path) -> Option<Vec<String>> {
     let built = cpl_cli::run(&["build", src.to_str()?, "-o", out.to_str()?]);
@@ -76,11 +85,7 @@ fn disagreements(src: &Path, out: &Path) -> Option<Vec<String>> {
         }
     }
     let listed = rows.iter().filter(|(k, _)| k == "copy").count();
-    // One source copy may be written in more than one specialization.
-    let mut seen = std::collections::BTreeSet::new();
-    let distinct: Vec<&str> = cpp.lines().filter(|l| seen.insert(l.trim())).collect();
-    let distinct = distinct.join("\n");
-    let copies = deep_copies(&distinct) + optional_copies(&distinct);
+    let copies = cpp_copies(&cpp);
     if copies > listed {
         wrong.push(format!(
             "explain lists {listed} copies, the C++ spells out {copies}"
@@ -171,3 +176,47 @@ fn explain_claims_only_what_the_cpp_does_6() {
 fn explain_claims_only_what_the_cpp_does_7() {
     explain_claims_on_shard(7);
 }
+
+/// The copies `cpl explain --json` lists for `src`, and the ones the C++
+/// `cpl build --full` writes for it makes.
+fn listed_and_made(src: &Path, out: &Path) -> (usize, usize) {
+    let built = cpl_cli::run(&[
+        "build",
+        src.to_str().unwrap(),
+        "--full",
+        "-o",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(built.code, 0, "{}: {}", src.display(), built.stderr);
+    let cpp = std::fs::read_to_string(out).unwrap();
+    let explained = cpl_cli::run(&["explain", src.to_str().unwrap(), "--json"]);
+    assert_eq!(explained.code, 0, "{}: {}", src.display(), explained.stderr);
+    let rows = rows(&String::from_utf8_lossy(&explained.stdout));
+    let listed = rows.iter().filter(|(k, _)| k == "copy").count();
+    (listed, cpp_copies(&cpp))
+}
+
+#[test]
+fn explain_lists_the_copies_the_judge_cpp_makes() {
+    let conformance = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/conformance");
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join("explain_counts");
+    std::fs::create_dir_all(&out).unwrap();
+    for case in CASES {
+        let src = conformance.join(case);
+        let (listed, made) = listed_and_made(&src, &out.join("a.cpp"));
+        assert_eq!(
+            listed, made,
+            "{case}: explain lists {listed} copies, the C++ makes {made}"
+        );
+    }
+}
+
+/// Cases whose copies explain once miscounted, against the C++ for the
+/// judge.
+const CASES: &[&str] = &[
+    "std-lazy/rope-matches-brute.cp",
+    "std-lazy/rope-lazy-treap-to-array-matches-brute.cp",
+    "std-hashmap/reserve-keeps-entries.cp",
+    "std-poly/advanced-free-fns-match-brute.cp",
+    "core-01/while-let-tuple-pattern.cp",
+];

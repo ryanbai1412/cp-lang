@@ -1,8 +1,10 @@
 //! Silent unknowns: expressions in std, the corpus and the conformance
 //! suite that the checker typed `Unknown` without reporting anything there.
 //! Each is a fact every tool downstream guesses at, so the list only shrinks:
-//! `silent_unknowns.txt` holds each file's count; a count that grows fails,
-//! and one that falls must be tightened (`BLESS=1` rewrites the list).
+//! `silent_unknowns.txt` holds each file's count and each cause's
+//! (`cause:index`, the kind of expression whose type was lost); a count that
+//! grows fails, and one that falls must be tightened (`BLESS=1` rewrites the
+//! list). A cause with no row has a ceiling of 0.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -38,7 +40,7 @@ fn sources(root: &Path) -> Vec<PathBuf> {
     out
 }
 
-fn found(root: &Path, files: &[PathBuf]) -> Vec<String> {
+fn found(root: &Path, files: &[PathBuf]) -> Vec<(String, &'static str)> {
     let mut out = Vec::new();
     let mut db = cpl_check::Session::new();
     for file in files {
@@ -54,13 +56,14 @@ fn found(root: &Path, files: &[PathBuf]) -> Vec<String> {
         let Some(analysis) = db.analysis(&rel) else {
             continue;
         };
-        for span in analysis.silent_unknowns() {
+        for (span, cause) in analysis.silent_unknown_causes() {
             let at = analysis.lines.line_col(span.start);
             let code = text[span.start as usize..span.end as usize]
                 .lines()
                 .next()
                 .unwrap_or("");
-            out.push(format!("{rel}:{}:{}: {code}", at.line + 1, at.col + 1));
+            let line = format!("{rel}:{}:{}: {code}", at.line + 1, at.col + 1);
+            out.push((line, cause));
         }
     }
     out
@@ -72,17 +75,19 @@ fn silent_unknowns_only_go_down() {
     let files = sources(&root);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let chunk = files.len().div_ceil(threads);
-    let found: Vec<String> = std::thread::scope(|s| {
+    let found: Vec<(String, &str)> = std::thread::scope(|s| {
         let jobs: Vec<_> = (files.chunks(chunk))
             .map(|part| s.spawn(|| found(&root, part)))
             .collect();
         jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
     });
     let mut now: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
-    for line in &found {
+    let causes: Vec<String> = found.iter().map(|(_, c)| format!("cause:{c}")).collect();
+    for ((line, _), cause) in found.iter().zip(&causes) {
         now.entry(line.split(':').next().unwrap())
             .or_default()
             .push(line);
+        now.entry(cause.as_str()).or_default().push(line);
     }
     if std::env::var_os("BLESS").is_some() {
         let body: String = (now.iter())
@@ -106,7 +111,7 @@ fn silent_unknowns_only_go_down() {
         if is > was {
             grew.push(format!(
                 "{file}: {was} -> {is}\n  {}",
-                now[file].join("\n  ")
+                now[file][..now[file].len().min(40)].join("\n  ")
             ));
         } else if is < was {
             fell.push(format!("{file}: {was} -> {is}"));

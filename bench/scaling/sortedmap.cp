@@ -35,7 +35,7 @@ for i in 0..64 * n:
     s += u.len
     e.set(i, i)
     e.clear() // timed: bag.SortedMap.clear
-for r in 0..4096:
+for r in 0..40960:
     var f: SortedMap<Int, Int> = SortedMap()
     f.reserve(n) // timed: bag.SortedMap.reserve
     s += f.len

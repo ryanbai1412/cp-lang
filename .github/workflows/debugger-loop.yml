@@ -54,7 +54,7 @@ jobs:
       - name: Compiler versions
         run: (g++ --version || echo "no g++") | head -1 && rustc --version
       - name: Stress loop tests
-        run: cargo nextest run --no-fail-fast -p cpl-stress -p cpl-cli --test debugger --test runtime_errors --test stress_bench
+        run: just debugger-loop
       - uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
@@ -62,16 +62,10 @@ jobs:
       - name: Neovim stress loop and time travel
         run: |
           cargo build -p cpl-cli
-          root=$PWD cpl=$PWD/target/debug/cpl
-          if [ "$RUNNER_OS" = Windows ]; then root=$(cygpath -m "$PWD"); cpl="$root/target/debug/cpl.exe"; fi
-          nvim --headless --clean -l editors/neovim/test/stress_loop.lua "$cpl" "$root"
-          git clone -q --depth 1 --branch 0.9.0 https://github.com/mfussenegger/nvim-dap "$RUNNER_TEMP/nvim-dap"
-          dap="$RUNNER_TEMP/nvim-dap"
-          if [ "$RUNNER_OS" = Windows ]; then dap=$(cygpath -m "$dap"); fi
-          nvim --headless --clean -l editors/neovim/test/dap_loop.lua "$cpl" "$root" "$dap"
+          just neovim-stress-loop "$RUNNER_TEMP"
       - name: Vim stress loop
         if: runner.os != 'Windows'
-        run: editors/neovim/test/stress_loop_vim.sh "$PWD/target/debug/cpl"
+        run: just vim-stress-loop
 
   # The same loop through the VS Code commands (cp.stress, cp.runAllSamples), in the
   # extension-host suite against the real `cpl lsp`; ci.yml's vscode job runs it too.
@@ -96,9 +90,7 @@ jobs:
       - name: Extension integration tests
         shell: bash
         working-directory: editors/vscode
-        run: |
-          npm ci --no-audit --no-fund
-          if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
+        run: just vscode-integration
 
   # The run configurations' stress then test, on each OS's own JDK and paths.
   jetbrains:

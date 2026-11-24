@@ -22,7 +22,10 @@ for w in W:
 /// Count (`sign = 1`) or forget (`sign = -1`) every window with `j` right behind `i`.
 fn crossing(i: W, j: W, sign: Int):
     let left = List(iterate(Some(i), w => prev[w]).take(longest - 1))
-    let right = RollingHash.new(List(iterate(Some(j), w => next[w]).take(longest - 1)).map(w => len[w]), bases: hasher.bases)
+    let right = RollingHash.new(
+        List(iterate(Some(j), w => next[w]).take(longest - 1)).map(w => len[w]),
+        bases: hasher.bases,
+    )
     var tail = HashVal(0, 0)
     for (a, w) in left.items:
         tail = hasher.combine(hasher.hash_of([len[w]]), tail, a)

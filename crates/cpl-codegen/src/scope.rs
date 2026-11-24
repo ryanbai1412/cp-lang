@@ -198,13 +198,14 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
         }
         _ => {}
     });
-    // The run of field `let`s being followed: the slot and the fields
-    // taken so far.
-    let mut run: Option<(usize, BTreeSet<usize>)> = None;
+    // The run of field `let`s being followed: the slot, the fields taken
+    // so far, and whether one of them owns heap memory (moving only scalars
+    // saves nothing, so the slot can stay a name for its source).
+    let mut run: Option<(usize, BTreeSet<usize>, bool)> = None;
     let mut found = BTreeSet::new();
-    let mut close = |run: &mut Option<(usize, BTreeSet<usize>)>| {
-        if let Some((slot, fields)) = run.take() {
-            if reads.get(&slot) == Some(&fields.len()) && !barred.contains(&slot) {
+    let mut close = |run: &mut Option<(usize, BTreeSet<usize>, bool)>| {
+        if let Some((slot, fields, moves_heap)) = run.take() {
+            if reads.get(&slot) == Some(&fields.len()) && !barred.contains(&slot) && moves_heap {
                 found.insert(slot);
             }
         }
@@ -212,8 +213,9 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
     walk::deep_stmts(body, &mut |stmt| {
         if let Stmt::Let(_, Some(init)) = stmt {
             if let ExprKind::Field(base, index) = &init.kind {
-                if let (ExprKind::Local(slot), Some((of, fields))) = (&base.kind, &mut run) {
+                if let (ExprKind::Local(slot), Some((of, fields, heap))) = (&base.kind, &mut run) {
                     if slot == of && fields.insert(*index) {
+                        *heap |= !init.ty.is_scalar();
                         return;
                     }
                     // A second read of one field: the slot is not spent.
@@ -227,7 +229,7 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
         close(&mut run);
         if let Stmt::Let(slot, Some(init)) = stmt {
             if matches!(init.ty, cpl_ir::Ty::Tuple(_)) {
-                run = Some((*slot, BTreeSet::new()));
+                run = Some((*slot, BTreeSet::new(), false));
             }
         }
     });

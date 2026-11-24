@@ -9,7 +9,6 @@
 // limits: 600 ms, 64 MB
 // original: corpus/submissions/5034409.cpp
 // Bounds: n: 1..=25_000
-// optional_copies: 1
 use std.strings.{Trie}
 
 domain Letter = 'a'..='z'

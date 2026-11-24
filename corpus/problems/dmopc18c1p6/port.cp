@@ -20,7 +20,9 @@ let column_ones = [Col] c => Prefix([Row] r => Int(bits[r, c] == '1'))
 let ones_before: [Col, Row.cuts]Int = [Col, Row.cuts] (c, k) => column_ones[c].at(k)
 
 fn flips(c: Col, a: Row.cuts, s: Row.cuts, b: Row.cuts) -> Int =
-    (ones_before[c, s] - ones_before[c, a]) + (Int(b) - Int(s)) - (ones_before[c, b] - ones_before[c, s])
+    (ones_before[c, s] - ones_before[c, a]) + (Int(b) - Int(s)) - (
+        ones_before[c, b] - ones_before[c, s]
+    )
 
 var fewest: [Row.cuts, Row.cuts]0..=5e4 = 0  // at most n m flips
 for c in Col.rev:
@@ -31,7 +33,9 @@ for c in Col.rev:
             if let b = Row.cuts.at(Int(a) + span):
                 let lo = if let wider = a.prev: max(a, turn[wider, b]) else: a
                 let hi = if let wider = b.next: min(b, turn[a, wider]) else: b
-                let (cost, s) = min((flips(c, a, s, b) + fewest[a, s] + fewest[s, b], s) for s in lo..=hi)!
+                let (cost, s) = min(
+                    (flips(c, a, s, b) + fewest[a, s] + fewest[s, b], s) for s in lo..=hi
+                )!
                 here[a, b] = cost
                 turn[a, b] = s
     fewest = here

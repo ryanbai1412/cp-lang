@@ -37,8 +37,9 @@ for (kind, x1, y1, x2, y2) in strokes:
         2 => vert[v_col.index_of(x1)].add(min(y1, y2)..=max(y1, y2))
         _ => diag[d_gap.index_of(y1.ord - x1.ord)].add(across)
 
-var cells = sum(line.covered for line in hori) + sum(line.covered for line in vert)
-    + sum(line.covered for line in diag)
+var cells = sum(line.covered for line in hori) +
+    sum(line.covered for line in vert) +
+    sum(line.covered for line in diag)
 
 // rows upward: a vertical run goes live on its first row and dies after its last,
 // and the horizontal runs of a row are asked in between
@@ -63,7 +64,9 @@ for d in D:
         var hits: List<Col> = []
         for h in H:
             let x = h_row.get(h).ord - gap
-            if x in 0..cols and Col.nth(x) in run and hori[h].contains(Col.nth(x)): hits.push(Col.nth(x))
+            if x in 0..cols and
+                Col.nth(x) in run and
+                hori[h].contains(Col.nth(x)): hits.push(Col.nth(x))
         for v in V:
             let x = v_col.get(v)
             let y = x.ord + gap

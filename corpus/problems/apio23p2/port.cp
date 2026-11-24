@@ -22,7 +22,11 @@ for i in I:
 
 struct Walk(sum: Int, lo: Int, hi: Int)
 fn step(s: Int) -> Walk = Walk(s, min(0, s), max(0, s))
-fn then(x: Walk, y: Walk) -> Walk = Walk(x.sum + y.sum, min(x.lo, x.sum + y.lo), max(x.hi, x.sum + y.hi))
+fn then(x: Walk, y: Walk) -> Walk = Walk(
+    x.sum + y.sum,
+    min(x.lo, x.sum + y.lo),
+    max(x.hi, x.sum + y.hi),
+)
 
 // Pre(t) is the step into prefix t; Pre(0) starts the walk.
 domain Pre = 0..=n

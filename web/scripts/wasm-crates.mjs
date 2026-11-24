@@ -4,7 +4,8 @@
 // CI (the hosted build is the truth); each crate's owner is the domain whose
 // charter in handbook/domains/ describes it.
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 export const DATA = 'data (std source, strings)';
@@ -143,5 +144,50 @@ export function checkBudgets(rows, budgets, map) {
   return { errors, lower };
 }
 
+/**
+ * The commit gate's crate budgets: `errors` for the crates in `touched` (and the
+ * data segment) over budget, `warnings` for the others, whose growth isn't this commit's.
+ */
+export function touchedOverBudget(rows, budgets, map, touched) {
+  const mine = (crate) => crate === DATA || touched.includes(crate);
+  const errors = checkBudgets(rows.filter(([c]) => mine(c)), budgets, map).errors;
+  const warnings = checkBudgets(rows.filter(([c]) => !mine(c)), budgets, map).errors;
+  const data = dataOverBudget(rows, budgets);
+  return { errors: data ? [data, ...errors.filter((e) => !e.startsWith(DATA))] : errors, warnings };
+}
+
 /** A new budget for a crate measured at `gz`: 2% and 512 B of room, to the next 100. */
 export const budgetFor = (gz) => Math.ceil((gz * 1.02 + 512) / 100) * 100;
+
+/** Why the data segment of a names build's `rows` is over its budget, or null. */
+export function dataOverBudget(rows, budgets) {
+  const gz = rows.find(([crate]) => crate === DATA)?.[2];
+  const budget = budgets[DATA];
+  if (gz === undefined || budget === undefined || gz <= budget) return null;
+  return `${DATA} is ${gz.toLocaleString('en-US')} B gzipped, over its budget of ${budget.toLocaleString('en-US')}:`
+    + ' cut what the browser build embeds (crates/cpl-check/src/std_bundle.rs) or std itself, never the budget';
+}
+
+// `node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b]` (a
+// scripts/build-wasm.sh --names build): the commit gate's check that the data segment
+// and every touched crate are within their budgets; other crates over theirs only warn.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const at = process.argv.indexOf('--data');
+  if (at < 0 || !process.argv[at + 1]) {
+    console.error('usage: node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b]');
+    process.exit(2);
+  }
+  const t = process.argv.indexOf('--touched');
+  const touched = t < 0 ? [] : (process.argv[t + 1] ?? '').split(',').filter(Boolean);
+  const rows = contributors(readFileSync(process.argv[at + 1]));
+  const here = dirname(fileURLToPath(import.meta.url));
+  const budgets = JSON.parse(readFileSync(join(here, 'wasm-crate-budgets.json'), 'utf8'));
+  const map = owners(readCharters(join(here, '../../handbook/domains')));
+  const { errors, warnings } = touchedOverBudget(rows, budgets, map, touched);
+  for (const w of warnings) console.error(`wasm-crates: warning: ${w} (not touched here)`);
+  for (const e of errors) console.error(`wasm-crates: ${e}`);
+  if (errors.length) process.exit(1);
+  const gz = rows.find(([crate]) => crate === DATA)?.[2] ?? 0;
+  console.log(`wasm-crates: ${DATA} is ${gz.toLocaleString('en-US')} B gzipped, within its budget of ${budgets[DATA].toLocaleString('en-US')}`
+    + (touched.length ? `; ${touched.join(', ')} within theirs` : ''));
+}

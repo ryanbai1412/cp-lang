@@ -117,6 +117,58 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.stderr.count("land: main's copy"), 1, r.stderr)
         self.assertIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
 
+    def _hook(self, repo, body):
+        hook = repo / ".githooks" / "pre-commit"
+        hook.parent.mkdir(exist_ok=True)
+        hook.write_text("#!/bin/sh\n" + body)
+        hook.chmod(0o755)
+
+    def test_a_rebase_past_a_gate_change_reruns_the_commit_tier_on_the_rebased_tip(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        # main's new gate: no staged file may be named bad.txt.
+        self._hook(theirs, "! git diff --cached --name-only | grep -qx bad.txt || { echo gate: bad.txt; exit 1; }\n")
+        self.commit(theirs, "gate")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "bad.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("rerunning the commit tier", r.stderr)
+        self.assertIn("gate: bad.txt", r.stderr)
+        self.assertIn("bad.txt", git(ours, "show", "--name-only", "--format=", "HEAD"))
+        self.assertNotIn("bad.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
+    def test_a_rebase_past_no_gate_change_lands_without_rerunning_it(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        self._hook(theirs, "echo gate ran; exit 1\n")
+        self.commit(theirs, "gate")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "--rebase", "origin", "main")
+        (theirs / "other.txt").write_text("y\n")
+        self.commit(theirs, "not a gate")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "src.txt").write_text("source\n")
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("gate ran", r.stderr + r.stdout)
+
+    def test_a_hook_failure_in_a_crate_main_changed_says_to_rebase(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        lib = Path("crates/cpl-x/src/lib.rs")
+        (theirs / lib).parent.mkdir(parents=True)
+        (theirs / lib).write_text("fixed\n")
+        self.commit(theirs, "fix x")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "fetch", "-q", "origin")
+        (ours / ".githooks").mkdir()
+        shutil.copy(HERE.parent / ".githooks" / "pre-commit", ours / ".githooks" / "pre-commit")
+        (ours / "scripts" / "check.sh").write_text("#!/bin/sh\necho 'error: unused  --> crates/cpl-x/src/lib.rs:1:1'\nexit 1\n")
+        (ours / "scripts" / "check.sh").chmod(0o755)
+        r = subprocess.run([str(ours / ".githooks" / "pre-commit")], cwd=ours, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("behind origin/main in crates/cpl-x", r.stderr)
+
     def test_a_ratchet_conflict_keeps_both_sides_tightening(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         (theirs / RATCHET).write_text(json.dumps({"a": 3, "b": 5, "names": ["x"]}, indent=2) + "\n")

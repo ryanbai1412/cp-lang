@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import types
+import tomllib
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -23,6 +24,7 @@ sys.modules["corpus"] = corpus  # make's worker processes find its functions by 
 _SPEC.loader.exec_module(corpus)
 
 GEN = "import sys\nprint(1)\nprint(sys.argv[1])\n"
+REQUIRE_CPL = corpus.require_cpl
 ECHO_CPP = "#include <cstdio>\nint main(){int t,x;scanf(\"%d %d\",&t,&x);printf(\"%d\\n\",x);}\n"
 
 
@@ -36,6 +38,10 @@ class Corpus(unittest.TestCase):
             setattr(corpus, name, str(value))
         (self.root / "sets").mkdir()
         (self.root / "sets" / "small.txt").write_text("p2\n# comment\n")
+        # Fake cpls stand in for the build here; StaleCplTest covers the check on the real one.
+        fresh = mock.patch.object(corpus, "require_cpl", lambda cpl: None)
+        fresh.start()
+        self.addCleanup(fresh.stop)
 
     def package(self, pid, **files):
         d = self.root / "problems" / pid
@@ -46,6 +52,27 @@ class Corpus(unittest.TestCase):
 
 
 class ProblemsTest(Corpus):
+    def test_a_graded_dream_is_what_the_gates_run_without_a_port(self) -> None:
+        dream = "@grader(two_phase)\nfn f(x: Int) -> Int = x\n"
+        alone = corpus.Package.at(self.package("g1", dream_cp=dream, grader_cpp="int main(){}\n"))
+        self.assertEqual(alone.solution, alone.dir / "dream.cp")
+        both = corpus.Package.at(self.package("g2", dream_cp=dream, port_cp="print(1)\n", grader_cpp=""))
+        self.assertEqual(both.solution, both.dir / "port.cp")
+        ungraded = corpus.Package.at(self.package("g3", dream_cp="print(1)\n", grader_cpp=""))
+        self.assertIsNone(ungraded.solution)
+        no_grader = corpus.Package.at(self.package("g4", dream_cp=dream))
+        self.assertIsNone(no_grader.solution)
+
+    def test_build_keeps_a_recorded_statement(self) -> None:
+        st = {"url": "https://example.org/t.pdf", "sha256": "ab" * 32, "samples": 0}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "meta.json")
+            with open(path, "w") as f:
+                json.dump({"statement": st, "notes": "n", "stale": 1}, f)
+            meta = corpus.merged({"problem": "p", "submissions": []}, path)
+        self.assertEqual((meta["statement"], meta["notes"]), (st, "n"))
+        self.assertNotIn("stale", meta)
+
     def test_lists_every_package_sorted_with_its_files(self):
         self.package("p2", port_cp="", gen_py=GEN)
         self.package("p1", dream_cp="", orig_cpp="", tests_toml="")
@@ -66,10 +93,9 @@ class ProblemsTest(Corpus):
         self.assertEqual([p.id for p in corpus.problems(ids=["p3", "p1"])], ["p1", "p3"])
         self.assertEqual([p.id for p in corpus.problems(sets=["small"], ids=["p1"])], [])
 
-    def test_case_inputs_come_from_tests_toml(self):
-        d = self.package("p1", gen_py=GEN, tests_toml='[[case]]\ninput = "1 2"\n\n[[case]]\nseed = 7\nsize = 4\n')
-        pkg = corpus.Package.at(d)
-        self.assertEqual([pkg.case_input(c) for c in pkg.cases()], ["1 2\n", "1\n7\n"])
+    def test_gen_input_runs_gen_py_and_ends_the_input_with_a_newline(self):
+        d = self.package("p1", gen_py=GEN)
+        self.assertEqual(corpus.Package.at(d).gen_input([7, 4]), "1\n7\n")
 
     def test_accepted_cpp_builds_with_the_judges_gxx(self):
         src = self.root / "judged.cpp"
@@ -86,8 +112,6 @@ class ProblemsTest(Corpus):
     def test_a_gen_that_fails_at_a_small_size_is_a_finding(self):
         gen = "import random, sys\nprint(random.randint(1, int(sys.argv[2]) - 1))\n"
         pkg = corpus.Package.at(self.package("p", gen_py=gen, tests_toml="[[case]]\nseed = 1\nsize = 0\n"))
-        found = corpus.check_package(pkg, corpus.Context("cpl", run=False))
-        self.assertIn("size-below-1 p 1", found)
         self.assertIn("gen-fails p size=1", corpus.check_package(pkg, corpus.Context("cpl", run=True)))
 
     def test_a_gxx_older_than_14_is_not_the_reference(self):
@@ -288,6 +312,19 @@ class LsTest(Corpus):
 class CheckTestsTest(Corpus):
     """tests mode runs the port on the cases tests.toml makes, never on a missing tests/."""
 
+    def test_a_package_without_a_port_still_runs_its_reference_on_every_case(self):
+        d = self.package("q", tests_toml="", checker_py="")
+        made = mock.Mock()
+        ctx = mock.Mock(cpl="cpl")
+        with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
+                mock.patch.object(corpus, "make_cases", made), \
+                mock.patch.object(corpus, "cpl_cases", mock.Mock(side_effect=AssertionError("no port to test"))):
+            self.assertEqual(corpus.check_tests(corpus.Package.at(d), ctx), [])
+        made.assert_called_once()
+        with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
+                mock.patch.object(corpus, "make_cases", mock.Mock(side_effect=corpus.ReferenceFails("03", "runs past 20 s"))):
+            self.assertEqual(corpus.check_tests(corpus.Package.at(d), ctx), ["reference-fails q 03"])
+
     def run_tests(self, cases):
         d = self.package("p", port_cp="print(1)\n", tests_toml="", checker_py="")
         calls = []
@@ -329,37 +366,42 @@ class MakeTest(Corpus):
                 mock.patch("concurrent.futures.ProcessPoolExecutor", lambda *a, **k: mock.MagicMock(
                     __enter__=lambda s: type("P", (), {"map": staticmethod(lambda f, js: [f(j) for j in js])})(),
                     __exit__=lambda *a: False)):
-            corpus.make(type("A", (), {"ids": [], "set": None, "out": None, "j": 1, "changed": "staged"}))
+            corpus.make(type("A", (), {"ids": [], "set": None, "out": None, "j": 1, "changed": "staged", "cpl": None}))
         self.assertEqual(made, ["p2"])
 
     def test_makes_every_package_in_worker_processes(self):
         for pid in ("p1", "p2", "p3"):
             self.package(pid, port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "%s"\n' % pid)
         out = self.root / "out"
-        args = mock.Mock(set=None, ids=[], out=str(out), j=2, changed=None)
-        self.assertEqual(corpus.make(args), 0)
-        self.assertEqual([(out / pid / "01.in").read_text() for pid in ("p1", "p2", "p3")], ["p1\n", "p2\n", "p3\n"])
+        args = mock.Mock(set=None, ids=[], out=str(out), j=2, changed=None, cpl="my-cpl")
 
-    def test_concurrent_makes_of_one_package_both_succeed(self):
-        import concurrent.futures, multiprocessing
-        self.package("p", port_cp="", interactor_py="", tests_toml="".join(f'[[case]]\ninput = "{i}"\n\n' for i in range(200)))
-        out = str(self.root / "out")
-        with concurrent.futures.ProcessPoolExecutor(4, mp_context=multiprocessing.get_context("fork")) as pool:
-            self.assertEqual(list(pool.map(corpus.make_one, [("p", out)] * 8)), [None] * 8)
-        self.assertEqual(len(list((self.root / "out" / "p").glob("*.in"))), 200)
+        def make_cases(pkg, out, cpl):
+            Path(out, pkg.id).mkdir(parents=True)
+            Path(out, pkg.id, "cpl").write_text(cpl)
+        with mock.patch.object(corpus, "make_cases", make_cases):
+            self.assertEqual(corpus.make(args), 0)
+        self.assertEqual([(out / pid / "cpl").read_text() for pid in ("p1", "p2", "p3")], ["my-cpl"] * 3)
 
-    def test_a_failed_make_keeps_the_last_cases_whole(self):
-        d = self.package("p", port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "a"\n')
-        out = self.root / "out"
-        corpus.make_cases(next(corpus.problems()), str(out))
-        (d / "tests.toml").write_text('[[case]]\ninput = "b"\n\n[[case]]\ninput = "c"\n')
-        pkg = next(corpus.problems())
-        with mock.patch.object(corpus.Package, "case_input", side_effect=["b\n", RuntimeError("gen.py fails")]):
-            with self.assertRaises(RuntimeError):
-                corpus.make_cases(pkg, str(out))
-        self.assertEqual(sorted(f.name for f in out.iterdir() if not f.name.endswith(".lock")), ["p"])
-        self.assertEqual(sorted(f.name for f in (out / "p").iterdir()), [".stamp", "01.in"])
-        self.assertEqual((out / "p" / "01.in").read_text(), "a\n")
+    def test_make_cases_is_cpl_test_make_and_names_a_failing_case(self):
+        pkg = corpus.Package.at(self.package("p", tests_toml='[[case]]\ninput = "1"\n'))
+        calls = []
+
+        def run(argv, **kw):
+            calls.append(argv)
+            return mock.Mock(returncode=1, stderr="cpl: p: accepted C++ exits 3 on case 02\n")
+        with mock.patch.object(corpus.subprocess, "run", run), self.assertRaises(corpus.ReferenceFails) as e:
+            corpus.make_cases(pkg, "out", "my-cpl")
+        self.assertEqual(calls, [["my-cpl", "test", "--make", str(pkg.dir), "--tests", os.path.join("out", "p")]])
+        self.assertEqual(e.exception.case, "02")
+
+    def test_a_reference_past_its_budget_fails_the_case_it_ran_on(self):
+        pkg = corpus.Package.at(self.package("p", tests_toml='[[case]]\ninput = "1"\n'))
+        failed = mock.Mock(returncode=1, stderr="cpl: p: accepted C++ runs past 20 s on case 03\n")
+        with mock.patch.object(corpus.subprocess, "run", lambda argv, **kw: failed), \
+                self.assertRaises(corpus.ReferenceFails) as e:
+            corpus.make_cases(pkg, "out", "my-cpl")
+        self.assertEqual((e.exception.case, str(e.exception)), ("03", "accepted C++ runs past 20 s on case 03"))
+
 
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
@@ -518,6 +560,16 @@ class StaticModesTest(Corpus):
         pkg = corpus.Package.at(self.package("p1", port_cp="// Source: x\n// Solution: y\nprint(1)\n// Problem: late\n"))
         self.assertEqual(corpus.check_header(pkg, None), ["no-header-problem p1 -"])
 
+    def test_an_inline_input_over_64k_is_a_finding_and_an_input_file_is_not(self):
+        big = "1 " * (32 * 1024 + 1)
+        d = self.package("p1", port_cp="", tests_toml=f'[[case]]\ninput = "1"\n\n[[case]]\ninput = "{big}"\n\n'
+                                                       '[[case]]\ninput_file = "samples/3.in"\n')
+        (d / "samples").mkdir()
+        (d / "samples" / "3.in").write_text(big)
+        found = corpus.check_package(corpus.Package.at(d), self.ctx(""))
+        self.assertEqual([f for f in found if f.startswith("inline-input")],
+                         ["inline-input-over-64k p1 case=2,use=input_file"])
+
     def test_committed_tests_are_a_finding(self):
         d = self.package("p1", port_cp="")
         (d / "tests").mkdir()
@@ -546,7 +598,8 @@ class StaticModesTest(Corpus):
         outs = {"a": lambda: b"yes", "b": lambda: next(flips), "c": lambda: b"yes"}
         ctx = self.ctx("")
         ctx.run = True
-        with mock.patch.object(corpus, "accepted_cpps", return_value=refs), \
+        with mock.patch.object(corpus, "accepted_cpps", return_value=refs), mock.patch.object(corpus, "make_cases"), \
+                mock.patch.object(corpus, "generated", return_value=[mock.Mock(read_bytes=lambda: b"1\n")]), \
                 mock.patch.object(corpus, "built", side_effect=lambda src: src.stem), \
                 mock.patch.object(corpus, "run_out", side_effect=lambda e, d: outs[e]()):
             self.assertEqual(corpus.check_package(pkg, ctx), [])
@@ -554,6 +607,32 @@ class StaticModesTest(Corpus):
             self.assertEqual(corpus.check_package(pkg, ctx), ["needs-checker p1 1"])
             outs["c"] = lambda: None
             self.assertEqual(corpus.check_package(pkg, ctx), ["reference-fails p1 1"])
+
+class LintModeTest(Corpus):
+    def ctx(self, migrate, fmt):
+        cpl = self.root / "cpl"
+        cpl.write_text("#!/bin/sh\ncase $1 in migrate) echo '%s';; fmt) echo '%s';; esac\n" % (migrate, fmt))
+        cpl.chmod(0o755)
+        return corpus.Context(str(cpl), run=False)
+
+    def files(self, *changed):
+        return json.dumps({"files": [{"path": f"x/{name}", "changed": c, "diagnostics": []} for name, c in changed]})
+
+    def test_a_file_fmt_would_change_is_a_finding(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp="", dream_cp=""))
+        ctx = self.ctx(self.files(("port.cp", False), ("dream.cp", False)),
+                       self.files(("port.cp", False), ("dream.cp", True)))
+        self.assertEqual(corpus.check_lint(pkg, ctx), ["fmt-dirty p1 dream.cp"])
+
+    def test_formatted_files_with_current_spellings_pass(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp=""))
+        ctx = self.ctx(self.files(("port.cp", False)), self.files(("port.cp", False)))
+        self.assertEqual(corpus.check_lint(pkg, ctx), [])
+
+    def test_unreadable_fmt_output_is_a_finding(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp=""))
+        self.assertEqual(corpus.check_lint(pkg, self.ctx(self.files(("port.cp", False)), "oops")), ["fmt-error p1 -"])
+
 
 class SeedTest(Corpus):
     def setUp(self):
@@ -566,10 +645,20 @@ class SeedTest(Corpus):
         (self.dir / "tests" / "2.in").write_text("x" * (corpus.INLINE + 1))
         corpus.seed(type("A", (), {"ids": ["p1"]}))
         self.assertFalse((self.dir / "tests").exists())
-        cases = corpus.Package.at(self.dir).cases()
+        cases = tomllib.loads((self.dir / "tests.toml").read_text())["case"]
         self.assertEqual(cases[0], {"input": "tiny\n"})
         self.assertEqual(cases[1], {"seed": 2, "size": 16})
         self.assertEqual([c["size"] for c in cases[2:]], list(corpus.STRESS_SIZES))
+
+    def test_an_inline_case_over_64k_is_seeded_as_an_input_file(self):
+        d = self.package("p3", interactor_py="")
+        (d / "tests").mkdir()
+        big = "x" * (corpus.INLINE_INPUT_LIMIT + 1)
+        (d / "tests" / "1.in").write_text(big)
+        corpus.seed(type("A", (), {"ids": ["p3"]}))
+        cases = tomllib.loads((d / "tests.toml").read_text())["case"]
+        self.assertEqual(cases, [{"input_file": "samples/1.in"}])
+        self.assertEqual((d / "samples" / "1.in").read_text(), big)
 
     def test_a_large_case_without_a_generator_is_not_seeded(self):
         d = self.package("p2")
@@ -578,26 +667,24 @@ class SeedTest(Corpus):
         self.assertEqual(corpus.seed(type("A", (), {"ids": ["p2"]})), 1)
         self.assertTrue((d / "tests").exists())
 
-    def test_stamp_follows_the_list_and_generator(self):
-        (self.dir / "tests.toml").write_text("[[case]]\nseed = 1\nsize = 4\n")
-        first = corpus.stamp(corpus.Package.at(self.dir), None)
-        (self.dir / "tests.toml").write_text("[[case]]\nseed = 2\nsize = 4\n")
-        second = corpus.stamp(corpus.Package.at(self.dir), None)
-        self.assertNotEqual(first, second)
-        (self.dir / "gen.py").write_text("print(2)\n")
-        self.assertNotEqual(second, corpus.stamp(corpus.Package.at(self.dir), None))
 
-    def test_make_writes_inputs_and_reference_answers(self):
-        d = self.package("p3", gen_py=GEN, orig_cpp=ECHO_CPP, tests_toml='[[case]]\ninput = "1 5"\n\n[[case]]\nseed = 7\nsize = 1\n')
-        corpus.make_cases(corpus.Package.at(d), str(self.root / "out"))
-        out = self.root / "out" / "p3"
-        self.assertEqual([(out / f"0{i}.ans").read_text() for i in (1, 2)], ["5\n", "7\n"])
+class NativeTest(Corpus):
+    """`native` builds the port for the judge its package's cp.toml names, as `cpl test` does."""
 
-    def test_make_marks_the_max_cases(self):
-        gen = "import sys\nprint(9 if sys.argv[1] == '--max' else sys.argv[1])\n"
-        d = self.package("p4", gen_py=gen, orig_cpp=ECHO_CPP, tests_toml='[[case]]\nseed = 7\nsize = 1\n\n[[case]]\nargs = ["--max"]\n')
-        corpus.make_cases(corpus.Package.at(d), str(self.root / "out"))
-        self.assertEqual(sorted(p.name for p in (self.root / "out" / "p4").glob("*.max")), ["02.max"])
+    def judge_built(self, d):
+        seen = []
+        ctx = types.SimpleNamespace(cpl="cpl", natives={})
+        with mock.patch.object(corpus.subprocess, "run", lambda cmd, **kw: seen.append(cmd) or types.SimpleNamespace(returncode=1)):
+            self.assertEqual(corpus.native(corpus.Package.at(d), ctx), (None, 0))
+        return seen[0][seen[0].index("--judge") + 1]
+
+    def test_the_packages_judge_reaches_the_build(self):
+        toml = '[judge]\njudge = "noi"\n\n[judge.noi]\nextends = "generic"\nisa = "avx2"\n'
+        self.assertEqual(self.judge_built(self.package("p1", port_cp="", cp_toml=toml)), "noi")
+
+    def test_a_package_without_one_builds_for_codeforces(self):
+        self.assertEqual(self.judge_built(self.package("p2", port_cp="")), "codeforces")
+        self.assertEqual(self.judge_built(self.package("p3", port_cp="", cp_toml="[libs]\n")), "codeforces")
 
 
 class AtMax(unittest.TestCase):
@@ -711,6 +798,66 @@ class DeleteTest(Corpus):
         self.assertEqual(json.loads((subs / "info.json").read_text()), {})
         self.assertIn("named by bench/audit.py", out.getvalue())
 
+    def test_its_v02_snapshot_goes_and_a_path_still_naming_it_fails_the_deletion(self):
+        subs = self.root / "subs"
+        subs.mkdir()
+        for name, value in (("ROOT", self.root), ("SUBS", subs)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        self.package("p2")
+        self.package("p3")
+        (subs / "info.json").write_text(json.dumps({"910000001": {"problem": "p2"}}, indent=4))
+        (subs / "910000001.cpp").write_text("")
+        for pid in ("p2", "p3"):
+            (self.root / "tests" / "v02-snapshot" / pid).mkdir(parents=True)
+            (self.root / "tests" / "v02-snapshot" / pid / "port.cp").write_text("")
+        (self.root / "bench").mkdir()
+        (self.root / "bench" / "audit.py").write_text(f"{PKGS}/p2/port.cp\n{PKGS}/p3/port.cp\n"
+                                                      f"{SUBS_DIR}/910000001.cpp\n")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        subprocess.run(["git", "add", "bench/audit.py"], cwd=self.root, check=True)
+        out = io.StringIO()
+        with mock.patch.object(corpus, "main", mock.Mock(return_value=0)), \
+                mock.patch.object(corpus, "named_by", lambda *_: []), contextlib.redirect_stdout(out):
+            self.assertEqual(corpus.delete(["p2"]), 1)
+        self.assertEqual(sorted(p.name for p in (self.root / "tests" / "v02-snapshot").iterdir()), ["p3"])
+        self.assertIn(f"bench/audit.py:1: still names deleted {PKGS}/p2", out.getvalue())
+        self.assertIn(f"bench/audit.py:3: still names deleted {SUBS_DIR}/910000001.cpp", out.getvalue())
+        self.assertNotIn("p3", out.getvalue())
+
+    def test_a_deletion_nothing_else_names_succeeds(self):
+        subs = self.root / "subs"
+        subs.mkdir()
+        for name, value in (("ROOT", self.root), ("SUBS", subs)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        self.package("p2")
+        (subs / "info.json").write_text("{}")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        with mock.patch.object(corpus, "main", mock.Mock(return_value=0)), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(corpus.delete(["p2"]), 0)
+
+    def test_a_hill_climb_problem_is_refused_before_anything_changes(self):
+        subs = self.root / "subs"
+        subs.mkdir()
+        for name, value in (("ROOT", self.root), ("SUBS", subs)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        (self.root / "corpus").mkdir()
+        (self.root / "corpus" / "hillclimb.json").write_text(json.dumps({"problems": ["p3"]}))
+        self.package("p2", port_cp="")
+        self.package("p3", port_cp="")
+        info = json.dumps({"910000001": {"problem": "p2"}, "910000002": {"problem": "p3"}}, indent=4)
+        (subs / "info.json").write_text(info)
+        (subs / "910000002.cpp").write_text("")
+        before = sorted(str(p.relative_to(self.root)) for p in self.root.rglob("*"))
+        with mock.patch.object(corpus, "main") as build, self.assertRaises(SystemExit) as e:
+            corpus.delete(["p2", "p3"])
+        self.assertIn("p3 is in corpus/hillclimb.json", str(e.exception))
+        build.assert_not_called()
+        self.assertEqual(sorted(str(p.relative_to(self.root)) for p in self.root.rglob("*")), before)
+        self.assertEqual((subs / "info.json").read_text(), info)
+
     def test_an_unknown_id_stops_before_anything_is_removed(self):
         with self.assertRaises(SystemExit) as e:
             corpus.delete(["nope"])
@@ -722,17 +869,117 @@ class VerifyCplTest(Corpus):
         d = self.package("p1", gen_py=GEN)
         args = argparse.Namespace(ids=["p1"], cpl=str(self.root / "no-cpl"), only="tests")
         with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
-                self.assertRaises(SystemExit) as e:
+                mock.patch.object(corpus, "require_cpl", REQUIRE_CPL), self.assertRaises(SystemExit) as e:
+            corpus.verify(args)
+        self.assertIn("cargo build --release -p cpl-cli", str(e.exception))
+
+    def test_the_package_mode_needs_a_cpl_too(self):
+        # package makes the cases with `cpl test --make` to check the seeds and references.
+        d = self.package("p1", gen_py=GEN)
+        args = argparse.Namespace(ids=["p1"], cpl=str(self.root / "no-cpl"), only="package")
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
+                mock.patch.object(corpus, "require_cpl", REQUIRE_CPL), self.assertRaises(SystemExit) as e:
             corpus.verify(args)
         self.assertIn("cargo build --release -p cpl-cli", str(e.exception))
 
 
+class StaleCplTest(unittest.TestCase):
+    """A `cpl` under target/ older than a source it is built from is stale."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.addCleanup(setattr, corpus, "ROOT", corpus.ROOT)
+        corpus.ROOT = str(self.root)
+        for path, text in (("Cargo.toml", "[workspace]\n"),
+                           ("crates/cpl-cli/Cargo.toml", "[dependencies]\ncpl-a.workspace = true\n"),
+                           ("crates/cpl-cli/src/main.rs", ""),
+                           ("crates/cpl-a/Cargo.toml", "[dependencies]\n"),
+                           ("crates/cpl-a/src/lib.rs", ""),
+                           ("crates/cpl-other/Cargo.toml", "[dependencies]\n"),
+                           ("crates/cpl-other/src/lib.rs", ""),
+                           ("target/release/cpl", "")):
+            (self.root / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / path).write_text(text)
+        self.cpl = self.root / "target/release/cpl"
+        for f in self.root.rglob("*"):
+            os.utime(f, (1000, 1000))
+        os.utime(self.cpl, (2000, 2000))
+
+    def stale(self, cpl=None):
+        with self.assertRaises(SystemExit) as e:
+            corpus.require_cpl(str(cpl or self.cpl))
+        return str(e.exception)
+
+    def test_a_cpl_newer_than_its_sources_runs(self):
+        corpus.require_cpl(str(self.cpl))
+
+    def test_a_cpl_older_than_a_dependency_source_says_to_rebuild_it(self):
+        os.utime(self.root / "crates/cpl-a/src/lib.rs", (3000, 3000))
+        self.assertEqual(self.stale(), "corpus: target/release/cpl is stale: run cargo build --release -p cpl-cli")
+
+    def test_a_crate_cpl_does_not_depend_on_leaves_it_fresh(self):
+        os.utime(self.root / "crates/cpl-other/src/lib.rs", (3000, 3000))
+        corpus.require_cpl(str(self.cpl))
+
+    def dep_info(self, *deps):
+        Path(f"{self.cpl}.d").write_text(f"{self.cpl}: " + " ".join(str(self.root / d).replace(" ", "\\ ") for d in deps) + "\n")
+
+    def test_cargo_dep_info_names_inputs_outside_the_crates(self):
+        (self.root / "std").mkdir()
+        (self.root / "std/a b.cp").write_text("")
+        os.utime(self.root / "std/a b.cp", (1000, 1000))
+        self.dep_info("crates/cpl-cli/src/main.rs", "std/a b.cp")
+        corpus.require_cpl(str(self.cpl))
+        os.utime(self.root / "std/a b.cp", (3000, 3000))
+        self.assertEqual(self.stale(), "corpus: target/release/cpl is stale: run cargo build --release -p cpl-cli")
+
+    def test_cargo_dep_info_is_the_whole_list(self):
+        self.dep_info("crates/cpl-cli/src/main.rs")
+        os.utime(self.root / "crates/cpl-a/src/lib.rs", (3000, 3000))
+        corpus.require_cpl(str(self.cpl))
+
+    def test_a_dependency_cargo_recorded_but_is_gone_is_stale(self):
+        self.dep_info("crates/cpl-cli/src/main.rs", "crates/cpl-cli/src/gone.rs")
+        self.assertIn("is stale", self.stale())
+
+    def test_a_cpl_outside_target_is_never_stale(self):
+        cpl = self.root / "elsewhere-cpl"
+        cpl.write_text("")
+        os.utime(cpl, (500, 500))
+        corpus.require_cpl(str(cpl))
+
+    def test_a_missing_cpl_says_to_build_it(self):
+        self.assertIn("cargo build --release -p cpl-cli", self.stale(self.root / "target/release/none"))
+
+    def test_verify_stops_on_a_stale_cpl_before_running_anything(self):
+        os.utime(self.root / "crates/cpl-cli/src/main.rs", (3000, 3000))
+        args = argparse.Namespace(ids=["p1"], cpl=None, only="tests")
+        pkg = types.SimpleNamespace(id="p1")
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([pkg])), \
+                mock.patch.object(corpus, "findings", side_effect=AssertionError("ran a check")), \
+                self.assertRaises(SystemExit) as e:
+            corpus.verify(args)
+        self.assertEqual(str(e.exception), "corpus: target/release/cpl is stale: run cargo build --release -p cpl-cli")
+
+    def test_make_stops_on_a_stale_cpl_before_running_anything(self):
+        os.utime(self.root / "Cargo.toml", (3000, 3000))
+        args = argparse.Namespace(ids=["p1"], cpl=None, set=None, out=None, j=1)
+        pkg = types.SimpleNamespace(id="p1", tests=True)
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([pkg])), \
+                mock.patch.dict(os.environ, {"CPL": ""}), \
+                mock.patch.object(corpus, "make_one", side_effect=AssertionError("made a case")), \
+                self.assertRaises(SystemExit) as e:
+            corpus.make(args)
+        self.assertEqual(str(e.exception), "corpus: target/release/cpl is stale: run cargo build --release -p cpl-cli")
+
 class GenTimeoutTest(unittest.TestCase):
     def test_a_max_generator_gets_the_briefs_60_seconds(self):
         pkg = mock.Mock()
-        pkg.case_input.return_value = "1\n"
+        pkg.gen_input.return_value = "1\n"
         corpus.gen_out(pkg, ["--max"])
-        self.assertEqual(pkg.case_input.call_args.kwargs["timeout"], 60)
+        self.assertEqual(pkg.gen_input.call_args.kwargs["timeout"], 60)
 
 
 class GraderTest(Corpus):
@@ -745,6 +992,128 @@ class GraderTest(Corpus):
                          ["--checker", str(d / "checker.py"), "--grader", str(d / "dream.tests" / "grader.cpp")])
         self.assertEqual(corpus.judge_args(pkg, pkg.port), ["--checker", str(d / "checker.py")])
 
+
+class DanglingReferenceTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        for name, value in (("ROOT", self.root), ("PROBLEMS", self.root / PKGS), ("SUBS", self.root / SUBS_DIR)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        (self.root / PKGS / "p1").mkdir(parents=True)
+        (self.root / SUBS_DIR).mkdir(parents=True)
+        (self.root / SUBS_DIR / "1.cpp").write_text("")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+
+    def track(self, path, text):
+        (self.root / path).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / path).write_text(text)
+        subprocess.run(["git", "add", path], cwd=self.root, check=True)
+
+    def test_a_path_to_a_missing_package_or_submission_is_named(self):
+        self.track("bench/audit.py", f"{PKGS}/p1/port.cp\n{PKGS}/gone/port.cp\n"
+                                     f"{SUBS_DIR}/1.cpp\n'{SUBS_DIR}/2.cpp'.\n")
+        self.assertEqual(corpus.dangling_references(), [("bench/audit.py", 2, f"{PKGS}/gone"),
+                                                        ("bench/audit.py", 4, f"{SUBS_DIR}/2.cpp")])
+
+    def test_existing_targets_prefixes_placeholders_and_foreign_roots_pass(self):
+        self.track("docs/a.md", f"`{PKGS}/p1/`, {PKGS}/p*, {PKGS}/<id>, {SUBS_DIR}/1.cpp,\n"
+                                f"{PKGS}/{{pid}}/x, /tmp/x/{PKGS}/gone, ../{SUBS_DIR}/9.cpp\n")
+        self.assertEqual(corpus.dangling_references(), [])
+
+    def test_a_prefix_nothing_matches_is_named(self):
+        self.track("docs/a.md", f"{PKGS}/q*\n")
+        self.assertEqual(corpus.dangling_references(), [("docs/a.md", 1, f"{PKGS}/q*")])
+
+    def test_only_tracked_files_outside_corpus_count(self):
+        self.track(f"{PKGS}/p1/notes.md", f"{PKGS}/gone\n")
+        (self.root / "loose.md").write_text(f"{PKGS}/gone\n")
+        self.assertEqual(corpus.dangling_references(), [])
+
+    def test_check_fails_on_a_dangling_reference(self):
+        err = io.StringIO()
+        with mock.patch.object(corpus, "generate", return_value={}), mock.patch.object(corpus, "problems", return_value=[]), \
+                mock.patch.object(corpus, "orphan_submissions", return_value=[]), \
+                mock.patch.object(corpus, "dangling_references", return_value=[("bench/a.py", 3, f"{PKGS}/gone")]), \
+                contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(corpus.main("build"), 1)
+        self.assertIn(f"bench/a.py:3: names {PKGS}/gone, which doesn't exist", err.getvalue())
+
+
+
+class MetaFormatTest(unittest.TestCase):
+    GEN = {"problem": "p", "source": "x",
+           "submissions": [{"id": "1", "language": "CPP17", "result": "AC", "time": 0.5, "memory_kb": 4.0, "file": None},
+                           {"id": "2", "language": "PY3", "result": "WA", "time": 1.0, "memory_kb": 8.0, "file": None}],
+           "cpp_ac": 1, "artifacts": {"original": [f"{PKGS}/p/orig.cpp"]}}
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        for name, value in (("ROOT", self.root), ("PROBLEMS", self.root / PKGS), ("SUBS", self.root / SUBS_DIR)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        (self.root / PKGS / "p").mkdir(parents=True)
+        (self.root / PKGS / "p" / "orig.cpp").write_text("")
+        self.path = self.root / PKGS / "p" / "meta.json"
+        for name, value in (("generate", {"p": self.GEN}), ("orphan_submissions", []), ("dangling_references", [])):
+            patcher = mock.patch.object(corpus, name, return_value=value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def run_main(self, mode):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            code = corpus.main(mode)
+        return code, err.getvalue()
+
+    def canonical(self, **hand):
+        return corpus.meta_text({**self.GEN, **corpus.HAND, **hand})
+
+    def test_meta_text_keeps_each_submission_row_on_one_line(self):
+        self.assertEqual(corpus.meta_text({"problem": "p", "submissions": self.GEN["submissions"],
+                                           "artifacts": {"original": ["a.cpp"]}, "tags": [], "notes": "\u00e9"}),
+                         '{\n "problem": "p",\n "submissions": [\n'
+                         '  {"id": "1", "language": "CPP17", "result": "AC", "time": 0.5, "memory_kb": 4.0, "file": null},\n'
+                         '  {"id": "2", "language": "PY3", "result": "WA", "time": 1.0, "memory_kb": 8.0, "file": null}\n ],\n'
+                         ' "artifacts": {\n  "original": [\n   "a.cpp"\n  ]\n },\n "tags": [],\n "notes": "\\u00e9"\n}\n')
+
+    def test_every_committed_meta_json_is_already_canonical(self):
+        for d in sorted(Path(corpus.__file__).resolve().parent.parent.joinpath(PKGS).iterdir()):
+            if (d / "meta.json").is_file():
+                text = (d / "meta.json").read_text()
+                self.assertEqual(text, corpus.meta_text(json.loads(text)), d.name)
+
+    def test_check_fails_a_json_dump_edit_and_build_restores_the_canonical_bytes(self):
+        want = self.canonical(notes="caf\u00e9")
+        self.path.write_text(json.dumps(json.loads(want), indent=2, ensure_ascii=False))
+        code, err = self.run_main("check")
+        self.assertEqual(code, 1)
+        self.assertIn(f"{PKGS}/p/meta.json: not in canonical form; run scripts/corpus.py build", err)
+        self.assertEqual(self.run_main("build"), (0, ""))
+        self.assertEqual(self.path.read_text(), want)
+        self.assertEqual(self.run_main("check"), (0, ""))
+
+    def test_a_wrong_generated_field_is_stale(self):
+        self.path.write_text(self.canonical().replace('"cpp_ac": 1', '"cpp_ac": 2'))
+        code, err = self.run_main("check")
+        self.assertEqual(code, 1)
+        self.assertIn(f"{PKGS}/p/meta.json: stale; run scripts/corpus.py build", err)
+
+    def test_meta_json_that_isnt_json_is_named_and_build_leaves_it(self):
+        self.path.write_text("{")
+        for mode in ("check", "build"):
+            code, err = self.run_main(mode)
+            self.assertEqual(code, 1)
+            self.assertIn(f"{PKGS}/p/meta.json: not JSON", err)
+        self.assertEqual(self.path.read_text(), "{")
+
+    def test_record_writes_the_canonical_form(self):
+        self.path.write_text(json.dumps({**self.GEN, **corpus.HAND}))
+        corpus.record(corpus.Package.at(self.path.parent), "dream_stress", {"ok": True, "cases": 8, "sha": "abc"})
+        self.assertEqual(self.path.read_text(), self.canonical(dream_stress={"ok": True, "cases": 8, "sha": "abc"}))
 
 class OrphanSubmissionTest(unittest.TestCase):
     def test_a_submission_file_no_package_lists_is_an_orphan(self):

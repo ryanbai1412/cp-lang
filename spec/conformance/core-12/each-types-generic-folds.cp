@@ -1,7 +1,6 @@
 // expect: ok, output "bb bb 3"
 // rule: 12.4
 // A struct whose `each` yields its elements gives a generic fold those elements, not the struct's own type (R12.4.1).
-// optional_copies: 3
 struct W(n: Int):
     pub fn each(self) -> yields Str:
         yield "a"

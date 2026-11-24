@@ -60,16 +60,22 @@ fn weaker<Id>(a: ?(ch: Charge, id: Id), b: ?(ch: Charge, id: Id), x: Int) -> ?(c
 @!multitest
 let n: 2..=150_000 = read()
 domain C = 0..n
-let sorted = read<[C](q: Int, x: Int, pin: Char)>()
-    .map(r => Charge(r.x, r.q, r.pin))
-    .sorted(by: c => (c.x, c.q, c.pin))
+let sorted = read<[C](
+    q: Int,
+    x: Int,
+    pin: Char,
+)>().map(r => Charge(r.x, r.q, r.pin)).sorted(by: c => (c.x, c.q, c.pin))
 let ch = [C] c => sorted[c.ord]
 domain Node = 0..=n
 let pin = Node(n)
 fn node(c: C) -> Node = Node(c.ord)
 
 var colour = ParityDsu<Node>()
-for c in C if ch[c].pin == 'A' or ch[c].pin == 'B': colour.unite(node(c), pin, differ: ch[c].pin == 'A')
+for c in C if ch[c].pin == 'A' or ch[c].pin == 'B': colour.unite(
+    node(c),
+    pin,
+    differ: ch[c].pin == 'A',
+)
 if colour.size(pin) == 1: colour.unite(node(C.first!), pin, differ: false)
 
 while colour.components > 1:
@@ -97,7 +103,10 @@ while colour.components > 1:
             while t > 1:
                 hulls[t].add(Charge(x, ch[c].q, ch[c].pin), c)
                 t >>= 1
-    for e in best if let b = e and not colour.same(node(b.i), node(b.j)): colour.unite(node(b.i), node(b.j))
+    for e in best if let b = e and not colour.same(node(b.i), node(b.j)): colour.unite(
+        node(b.i),
+        node(b.j),
+    )
 
 var weakest: ?Ratio = None
 for side in [false, true]:

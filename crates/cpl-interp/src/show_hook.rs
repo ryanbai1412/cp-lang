@@ -205,7 +205,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if self.trace_shown.len() + wanted.len() > 1 << 14 {
             self.trace_shown.clear();
         }
-        let tracer = self.tracer.take();
+        let hushed = self.hush();
         let (stop, countdown) = (self.stop.take(), self.countdown);
         let (stack, frames) = (self.stack.len(), self.call_frames.len());
         for (f, value) in wanted {
@@ -228,7 +228,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
         }
-        self.tracer = tracer;
+        self.unhush(hushed);
         (self.stop, self.countdown) = (stop, countdown);
     }
 

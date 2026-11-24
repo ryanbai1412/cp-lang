@@ -1892,3 +1892,21 @@ fn a_library_view_built_in_method_form_hovers_its_own_methods() {
         "lib.m.cp"
     );
 }
+
+#[test]
+fn hover_names_the_variant_a_match_arm_tests() {
+    let src = "enum Cmd:\n    Add(x: Int)\n    Stop\nwhile true:\n    match read<Cmd>():\n        Add(x) => print(x)\n        Stop => break\n";
+    assert_eq!(hover(src, "Add(x) =>"), "Cmd.Add(Int)");
+    assert_eq!(hover(src, "Stop =>"), "Cmd.Stop");
+    let src =
+        "enum Op:\n    And\n    Or\nlet v = match read<Op>():\n    And: 1\n    Or: 2\nprint(v)\n";
+    assert_eq!(hover(src, "Or: 2"), "Op.Or");
+}
+
+#[test]
+fn hover_shows_a_fns_type_parameter_and_its_bound() {
+    let src = "for i in 0..2:\n    fn slide<S: Seq>(order: S) -> Int:\n        return 0\n    print(slide([1]))\n";
+    assert_eq!(hover(src, "S: Seq"), "type parameter S");
+    assert_eq!(hover(src, "S) ->"), "type parameter S");
+    assert_eq!(hover(src, "Seq>"), "trait Seq");
+}

@@ -312,3 +312,18 @@ fn a_std_getter_types_the_same_after_jumping_into_std() {
         db.diagnostics("b.cp")
     );
 }
+
+#[test]
+fn forms_typed_by_where_they_go_are_never_silent() {
+    let src = "domain V = 0..2\nlet n: Int = read()\nvar g: [V, V]0..=9 = read()\nvar adj: [V]List<Int> = []\nlet e: List<Int> = []\nvar a = [1]\na.push(2)\nlet r = rand(1, 3)\nfor w in read<[n]Int>(): print(w)\nprint(g[V(0), V(1)], adj[V(0)].len, e.len, a.len, r)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}
+
+#[test]
+fn a_silent_unknown_names_its_cause() {
+    let mut db = Database::new();
+    db.set_file("main.cp", "print([])\n");
+    let a = db.analyze("main.cp").unwrap();
+    let causes: Vec<&str> = a.silent_unknown_causes().iter().map(|(_, c)| *c).collect();
+    assert_eq!(causes, ["list"]);
+}

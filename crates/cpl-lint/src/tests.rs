@@ -1853,3 +1853,30 @@ fn a_window_min_by_hand_is_named_but_a_hull_turn_is_not() {
     );
     assert_eq!(l0566(&hull("    while h.len >= 2:\n        if cross(h[h.len - 2], h.last!, p) < 0: break\n        h.pop()\n")), 0);
 }
+
+#[test]
+fn every_lint_message_names_a_lint() {
+    for m in cpl_diag::msgs::lint::ALL {
+        assert!(
+            crate::LINTS.iter().any(|lint| lint.code == m.code),
+            "{:?} has no lint with code {}",
+            m.text,
+            m.code.0
+        );
+    }
+}
+
+/// The prefix array's index set is the checker's, so an alias of
+/// `[C.cuts]Int` reads as the written type does.
+#[test]
+fn prefix_sums_read_the_array_type_from_the_checker() {
+    let aliased = "\
+domain C = 0..=4
+type Cuts = [C.cuts]Int
+let ways: [C]Int = [1, 2, 3, 4, 5]
+var pre: Cuts = 0
+for c in C: pre[c.r] = pre[c.l] + ways[c]
+print(pre[C.last.r] - pre[C.first.l])
+";
+    assert_eq!(taste_codes(aliased), ["L0521"]);
+}

@@ -13,5 +13,5 @@ let n = s.len
 let deleted = [s[0..i] + s[i + 1..n] for i in 0..n]
 let replaced = [s[0..i] + c + s[i + 1..n] for i in 0..n for c in alphabet]
 let inserted = [s[0..i] + c + s[i..n] for i in 0..=n for c in alphabet]
-for w in (deleted + replaced + inserted).sorted().distinct():
+for w in (deleted + replaced + inserted).sorted().deduped():
     if w != s: print(w)

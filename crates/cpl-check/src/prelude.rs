@@ -468,13 +468,7 @@ fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
 /// The words of the language that are written with a library fn: a
 /// program that uses the word gets the fn, as if it had named it.
 /// `prefix(a)` dispatches by what `a` is (`[D]T`, `[R, C]T`, or `List<T>`).
-pub const BUILT_ON: &[(&str, &str)] = &[
-    ("prefix", "Prefix"),
-    ("adjacency", "Bitset"),
-    ("all", "Bitset"),
-    ("without", "Bitset"),
-    ("subsets", "Subset"),
-];
+pub const BUILT_ON: &[(&str, &str)] = &[("prefix", "Prefix"), ("subsets", "Subset")];
 
 /// Internal shape specializations brought in from a stdlib module when a
 /// file uses the unified family name (`prefix`, `Prefix`, `Diff`), without
@@ -564,7 +558,6 @@ pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'stati
         ("max", Some(1)) => "The largest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.\n\ncost: O(n)",
         ("min", _) => "The smallest of its arguments, in O(1) per argument; `min(xs)` gives the smallest element of `xs`.\n\ncost: O(1)",
         ("max", _) => "The largest of its arguments, in O(1) per argument; `max(xs)` gives the largest element of `xs`.\n\ncost: O(1)",
-        ("popcount", _) => "The number of 1 bits, in O(1).\n\ncost: O(1)",
         ("ctz", _) => "The number of 0 bits below the lowest 1 bit, in O(1).\n\ncost: O(1)",
         ("bit_width", _) => "The number of bits needed to write the value, in O(1).\n\ncost: O(1)",
         ("bit_ceil", _) => "The smallest power of two that is at least the value, in O(1).\n\ncost: O(1)",
@@ -690,7 +683,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "rand",
     "some",
     "laws_hold",
-    "popcount",
     "ctz",
     "bit_width",
     "bit_ceil",

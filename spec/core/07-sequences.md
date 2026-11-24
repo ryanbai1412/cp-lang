@@ -152,6 +152,13 @@ let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len 
 - **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)`
   and `Str(w)` build a new sequence keyed from 0. To keep `w`'s keys, build
   a table over them: `[w.keys] k => w[k]` (see R04b.1.6). (R07.4.4)
+- **A slice reads as its source.** `s[r]` is the std struct `Slice<S>`, and
+  a lent `Slice<S>` is accepted wherever a lent `S` is read: a `let` or
+  `var` of type `S` that holds a lend (`rest = rest.drop(1)`), an `?S`
+  slot, and a `[K]T` parameter; a lent `S` view fills a `Slice<S>` slot the
+  same way. A `List<T>` or `Str` parameter still takes only the container,
+  since the callee may grow it (R04b.3.1). Diagnostics name the type
+  `Slice<S>`, as std's signatures write it. (R07.4.17)
 - **Cuts in walk order.** On any keyed view with cuts (`[D]T`, `List`,
   `Str`, slices, `.rev`), `s.cut_after(i)` and `s.cut_before(i)` are the cuts
   on either side of key `i` in walk order: `i.r` and `i.l` walking forward,

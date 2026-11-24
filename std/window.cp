@@ -1,17 +1,16 @@
 //! Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).
 //!
-//! `a.window_fold(k, op)` and `Window(op)` pick their strategy from the op's laws:
-//! a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else uses
-//! two stacks. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo
+//! `a.window_fold(k, op)` and `Window(op)` keep two stacks for every op today; the law-picked
+//! strategies of `lib/sequence-patterns.md` (a `Group` adds and subtracts, a `Selective` op keeps
+//! a monotone deque) wait on law-bound dispatch over op values. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo
 //! and divide-and-conquer DP all accept a `Track`.
 use std.algebra.{Op}
 use std.dsu.{Mark, Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.hashmap.{Counter}
 use std.seq.{Track, collect}
 
-/// One fold of `op` per length-`k` window of `self`, left to right, with `Window(op)`'s
-/// strategy: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else
-/// keeps two stacks.
+/// One fold of `op` per length-`k` window of `self`, left to right, kept the way `Window(op)`
+/// keeps it (two stacks).
 ///
 /// cost: \(O(n)\) amortized calls of `op`
 /// empty: `[List<Int>().window_fold(1, max).collect(), [1, 2].window_fold(3, max).collect()] == [[], []]`
@@ -34,24 +33,54 @@ pub struct Window<T, M>(op: M):
     olds: List<T>
     head: Int
     back: ?T
+    keys: List<Int>
+    oldkeys: List<Int>
 
-    /// An empty window over `op`. The strategy comes from `op`'s laws: a `Group` keeps a running
-    /// total and subtracts on `pop`, a `Selective` op (`min`, `max`, `min(by:)`) keeps a monotone
-    /// deque, and anything else keeps two stacks.
+    /// An empty window over `op`, kept as two stacks: the back folds as it grows, and the front
+    /// holds suffix folds of the older elements.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var w = Window(+); w.all == None`
     pub fn new(op: M) -> Window<T, M>:
-        Window(op, [], [], [], 0, None)
+        Window(op, [], [], [], 0, None, [], [])
 
-    /// Push `x` at the back, as the newest element.
+    /// Push `x` at the back, as the newest element. With `at: place`, `x` is keyed by its place,
+    /// so `expire(before:)` removes it without being told its value. A keyed window keys every
+    /// push, and places never decrease.
     ///
     /// cost: \(O(1)\) amortized calls of `op`
-    /// traps: never (beyond what `op` traps on)
+    /// traps: when `at:` is given to a window that has unkeyed elements or the other way round, or
+    /// when `at` is below the previous place
     /// example: `var w = Window(max); w.push(3); w.push(5); w.all == Some(5)`
-    pub fn push(mut self, x: T):
+    /// example: `var w = Window(max); w.push(4, at: 0); w.push(1, at: 2); w.expire(before: 1); w.all == Some(1)`
+    pub fn push(mut self, x: T, at: ?Int = None):
+        if let k = at:
+            assert keys.len == q.len and oldkeys.len == olds.len, "`push(x, at:)` on a window with unkeyed elements"
+            if keys.len > 0: assert k >= keys.last!, "`push(x, at:)` places never decrease"
+            elif head < oldkeys.len: assert k >= oldkeys.last!, "`push(x, at:)` places never decrease"
+            keys.push(k)
+        else:
+            assert keys.len == 0 and oldkeys.len == 0, "`push(x)` on a keyed window needs `at:`"
         self.push_back(x)
+
+    /// Remove every element pushed `at:` a place below `before`, oldest first. The fold of what
+    /// is left is `all`.
+    ///
+    /// cost: \(O(1)\) amortized calls of `op` per removed element
+    /// empty: `var w = Window(min); w.expire(before: 5); w.all == None`
+    /// traps: when the window has unkeyed elements
+    /// example: `var w = Window(+); w.push(1, at: 0); w.push(2, at: 1); w.push(3, at: 2); w.expire(before: 2); w.all == Some(3)`
+    /// example: `var w = Window(min); w.push(1, at: 0); w.push(2, at: 3); w.expire(before: 1); w.expire(before: 1); w.all == Some(2)`
+    pub fn expire(mut self, before: Int):
+        assert keys.len == q.len and oldkeys.len == olds.len, "`expire` on a window with unkeyed elements"
+        while true:
+            if head == olds.len:
+                if q.len == 0 or keys[0] >= before: return
+                self.flip()
+            if oldkeys[head] >= before: return
+            head += 1
+            front.pop()
 
     /// Pop the front: remove the oldest element, `x`. Passing the leaving element is the same
     /// protocol as `Track.pop(x)`, so a `Window` is a `Track` with no second spelling.
@@ -108,20 +137,25 @@ pub struct Window<T, M>(op: M):
         if let b = back: back = Some(op(b, x))
         else: back = Some(x)
 
+    fn flip(mut self):
+        var k = q.len - 1
+        var acc = q[k]
+        front.push(acc)
+        while k > 0:
+            k -= 1
+            acc = op(q[k], acc)
+            front.push(acc)
+        olds.clear()
+        swap(mut olds, mut q)
+        oldkeys.clear()
+        swap(mut oldkeys, mut keys)
+        head = 0
+        back = None
+
     fn drop_front(mut self, x: T):
         if front.len == 0:
             assert q.len > 0, "`pop` on an empty window"
-            var k = q.len - 1
-            var acc = q[k]
-            front.push(acc)
-            while k > 0:
-                k -= 1
-                acc = op(q[k], acc)
-                front.push(acc)
-            olds.clear()
-            swap(mut olds, mut q)
-            head = 0
-            back = None
+            self.flip()
         assert olds[head] == x, "`pop(x)` is passed the oldest element, and `x` is not it"
         head += 1
         front.pop()

@@ -16,6 +16,111 @@ check-commit:
 check-full:
     scripts/check.sh --full
 
+# The wall-clock budgets (CI: ci-slow `timing`; they report, never block).
+check-timing:
+    scripts/check.sh --timing
+
+# Run one normative spec gate, e.g. `just spec-gate mutants --n 12`.
+spec-gate *args:
+    uv run --quiet python scripts/spec-gate.py {{args}}
+
+# Which tests cover which rule (CI: ci-slow `coverage`).
+coverage-matrix *args:
+    uv run --quiet python scripts/coverage-matrix.py {{args}}
+
+# The mutation score of one file against its tests (CI: ci-slow `dap-mutants`).
+mutation-score *args:
+    uv run --quiet python scripts/mutation-score.py {{args}}
+
+# LSP request latency, in release (CI: ci-slow `lsp-latency`).
+lsp-latency:
+    cargo test --release -p cpl-lsp --test latency -- --nocapture
+
+# `cpl` cold-start time, in release (CI: ci-slow `lsp-latency`).
+cold-start:
+    cargo test --release -p cpl-cli --test cold_start -- --nocapture
+
+# The CLI's golden and contest tests (CI: ci.yml `cli`).
+test-cli:
+    cargo test -p cpl-cli --lib --test golden --test cli
+    cargo test -p cpl-contest
+
+# Each editor's smoke test against the built `cpl` (CI: ci.yml `neovim`, `editors`).
+neovim-smoke cpl="target/debug/cpl":
+    nvim --headless --clean -l editors/neovim/test/smoke.lua "$(realpath {{cpl}})" "$PWD"
+
+vim-smoke cpl="target/debug/cpl":
+    bash editors/neovim/test/smoke_vim.sh "$(realpath {{cpl}})"
+
+emacs-smoke cpl="target/debug/cpl":
+    CPL="$(realpath {{cpl}})" emacs --batch -Q -l editors/emacs/smoke.el
+    uv run --quiet python editors/lsp-smoke.py emacs "$(realpath {{cpl}})" lsp
+
+helix-smoke cpl="target/debug/cpl":
+    editors/helix/smoke.sh "$(realpath {{cpl}})"
+
+zed-smoke cpl="target/debug/cpl":
+    editors/zed/smoke.sh "$(realpath {{cpl}})"
+
+tree-sitter-smoke:
+    editors/tree-sitter-cp/smoke.sh
+
+# The VS Code extension's unit, grammar and host tests (CI: ci.yml `vscode`).
+vscode-test: && vscode-integration
+    cd editors/vscode && npm ci --no-audit --no-fund && npm test
+
+# The VS Code extension's tests in a real host, under xvfb when there is one.
+vscode-integration:
+    cd editors/vscode && npm ci --no-audit --no-fund
+    cd editors/vscode && if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
+
+# The stress and time-travel debugger tests (CI: debugger-loop.yml `loop`).
+debugger-loop:
+    cargo nextest run --no-fail-fast -p cpl-stress -p cpl-cli --test debugger --test runtime_errors --test stress_bench
+
+# Neovim's stress loop and nvim-dap time travel against debug cpl (CI: debugger-loop.yml `loop`).
+neovim-stress-loop tmp="target/tmp":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root=$PWD cpl=$PWD/target/debug/cpl dap="{{tmp}}/nvim-dap"
+    if command -v cygpath >/dev/null; then root=$(cygpath -m "$PWD"); cpl="$root/target/debug/cpl.exe"; fi
+    nvim --headless --clean -l editors/neovim/test/stress_loop.lua "$cpl" "$root"
+    [ -d "$dap" ] || git clone -q --depth 1 --branch 0.9.0 https://github.com/mfussenegger/nvim-dap "$dap"
+    if command -v cygpath >/dev/null; then dap=$(cygpath -m "$dap"); fi
+    nvim --headless --clean -l editors/neovim/test/dap_loop.lua "$cpl" "$root" "$dap"
+
+vim-stress-loop cpl="target/debug/cpl":
+    editors/neovim/test/stress_loop_vim.sh "$(realpath {{cpl}})"
+
+# Every workflow and action parses, with valid expressions and action inputs (CI: the
+# checks gate). A workflow GitHub can't parse runs no jobs, so nothing else reports it.
+workflow-lint:
+    actionlint -shellcheck=
+
+# The JetBrains plugin (CI: jetbrains.yml, release.yml). The fetch is the one retried
+# step, network only; the build and tests then run once, offline.
+jetbrains-fetch *flags:
+    cd editors/jetbrains && . ../../scripts/retry.sh && retry ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle prefetch {{flags}}
+
+jetbrains-gradle *tasks:
+    cd editors/jetbrains && ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle --offline {{tasks}}
+
+# Verify the built plugin against IntelliJ IDEA Community and Ultimate (downloads both).
+jetbrains-verify:
+    cd editors/jetbrains && ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle verifyPlugin
+
+# The LSP handshake the JetBrains plugin starts, against debug cpl.
+jetbrains-handshake cpl="target/debug/cpl":
+    uv run --quiet python editors/lsp-smoke.py jetbrains {{cpl}} lsp
+
+# The acceptance regression suite, e.g. `just acceptance target/ci/cpl --shard 1/3`.
+acceptance *args:
+    uv run --quiet python research/acceptance/regress.py {{args}}
+
+# Follow getting-started from a fresh install on this OS (CI: acceptance.yml `install-cli`).
+acceptance-steps os:
+    research/acceptance/ci-steps.sh "{{os}}"
+
 # Run the Rust workspace test suite via cargo-nextest (or cargo test).
 test *args:
     cargo nextest run --workspace {{args}}
@@ -39,6 +144,25 @@ bench-corpus *args:
 # Build the Next.js web app (web/).
 web-build:
     pnpm --dir web build
+
+# Typecheck and unit-test the web app (CI: ci.yml `site`).
+web-typecheck:
+    pnpm --dir web typecheck
+
+web-test:
+    pnpm --dir web test
+
+# cpl, the browser build and its named copy for wasm-size, in parallel (CI: ci.yml `site`).
+site-binaries out="target/site-binaries":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{out}}"
+    scripts/build-wasm.sh >"{{out}}/wasm.log" 2>&1 & wasm=$!
+    scripts/build-wasm.sh --names "{{out}}/wasm-names" >"{{out}}/wasm-names.log" 2>&1 & names=$!
+    cargo build --profile ci --bin cpl
+    wait "$wasm" || { cat "{{out}}/wasm.log"; exit 1; }
+    wait "$names" || { cat "{{out}}/wasm-names.log"; exit 1; }
+    cat "{{out}}/wasm.log"
 
 # Run the browser smoke suite against the built site (web/out), on a port of its own.
 web-smoke:

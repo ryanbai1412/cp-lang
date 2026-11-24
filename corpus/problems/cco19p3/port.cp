@@ -38,7 +38,8 @@ fn near_half(parts: List<Int>) -> Int:
 // With hub v: the pairs that stay inside one branch or end at the hub, which is each person
 // with everyone behind them. Moving the hub from p to its child v changes only those two terms.
 let chain = t.down(sum(a[v] * (below[v] - a[v]) for v in V), (up, v) =>
-    if let p = t.parent(v): up + a[v] * (everyone - below[v]) - a[p] * below[v] else: up)
+    if let p = t.parent(v): up + a[v] * (everyone - below[v]) - a[p] * below[v] else: up
+)
 
 fn parts(v: V) -> List<Int>:
     var out = [below[c] for c in t.children(v)]

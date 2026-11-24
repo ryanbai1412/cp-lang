@@ -5,10 +5,11 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, CEIL_DIV_FORMULA};
-use cpl_diag::{Diagnostic, Fix};
+use cpl_diag::Fix;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
 
 use super::shapes::binary;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Ceil<'a> {
@@ -23,14 +24,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             };
             let call = format!("ceil_div({a}, {b})");
             let span = expr.span.shift(self.base);
-            let mut diag = Diagnostic::warning(
-                CEIL_DIV_FORMULA.code,
-                span,
-                format!("`{}` rounds `{a} / {b}` up by hand", span.text(self.src)),
-            )
-            .with_help(format!(
-                "write `{call}`; it cannot overflow and is right for any sign"
-            ));
+            let mut diag = lint_rules::CEIL_DIV_FORMULA
+                .warning(span, &[&span.text(self.src), &a, &b])
+                .with_help(format!(
+                    "write `{call}`; it cannot overflow and is right for any sign"
+                ));
             if let Some(divisor) = positive {
                 diag = diag.with_label(divisor.span.shift(self.base), "the divisor");
             }

@@ -37,8 +37,9 @@
 #            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed
 #
-# --commit  1, rustfmt, clippy of the touched crates (and the wasm32 check
-#           when cpl-wasm builds one of them), and the nextest tests
+# --commit  1, rustfmt, clippy of the touched crates (and, when cpl-wasm
+#           builds one of them, the wasm32 check and a names build whose
+#           data segment must stay within its budget), and the nextest tests
 #           of every crate that can reach them except the end-to-end suites
 #           (profile `commit` in .config/nextest.toml), plus the unit tests
 #           of touched scripts and the snippet gate for web/ and docs/. A

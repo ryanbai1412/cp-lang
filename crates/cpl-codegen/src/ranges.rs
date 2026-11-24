@@ -73,6 +73,11 @@ pub(crate) struct Facts<'p> {
     closure_homes: BTreeMap<usize, BTreeSet<Option<usize>>>,
     /// A closure's by-value capture: the variable it holds a copy of.
     captured: BTreeMap<Var, Var>,
+    /// Variables with a store other than a set or a step by one.
+    odd_stores: BTreeSet<Var>,
+    /// Variables only set to bounded values `>= 0` and stepped by one: see
+    /// [`Facts::unit_step`].
+    unit_steps: BTreeSet<Var>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -98,7 +103,7 @@ impl<'p> Facts<'p> {
             for (slot, param) in f.params.iter().enumerate() {
                 let v = (Some(id), false, slot);
                 *facts.stores.entry(v).or_default() += 2;
-                facts.tainted.insert(v);
+                facts.taint(v);
                 if let Some(range) = &param.range {
                     facts.param_ranges.insert(v, range);
                 }
@@ -111,7 +116,7 @@ impl<'p> Facts<'p> {
             for &slot in &c.params {
                 let v = (home, false, slot);
                 *facts.stores.entry(v).or_default() += 2;
-                facts.tainted.insert(v);
+                facts.taint(v);
             }
             facts.block(home, &c.body);
         }
@@ -164,7 +169,58 @@ impl<'p> Facts<'p> {
             }
         }
         facts.nonneg_vars = nonneg;
+        // A closure that captures a local by reference stores to it under
+        // its own slot.
+        for (cid, c) in program.closures.iter().enumerate() {
+            let inner_home = facts.key(Home::Closure(cid));
+            let homes: Vec<_> = facts
+                .closure_homes
+                .get(&cid)
+                .map(|h| h.iter().copied().collect())
+                .unwrap_or_default();
+            for cap in c.captures.iter().filter(|cap| cap.by_ref && !cap.is_global) {
+                if facts.stores((inner_home, false, cap.inner)) > 0 {
+                    for &home in &homes {
+                        facts.odd_stores.insert((home, false, cap.outer));
+                    }
+                }
+            }
+        }
+        let unit: BTreeSet<Var> = facts
+            .stores
+            .keys()
+            .copied()
+            .filter(|v| !facts.odd_stores.contains(v))
+            .filter(|v| {
+                facts.var_stores.get(v).is_some_and(|stores| {
+                    stores.iter().all(|&(home, sop, rhs)| {
+                        !matches!(sop, StoreOp::Set)
+                            || (facts.sign(home, rhs) != Sign::Unknown
+                                && facts
+                                    .upper_bound(home, rhs, 1)
+                                    .is_some_and(|hi| hi < 1 << 62))
+                    })
+                })
+            })
+            .collect();
+        facts.unit_steps = unit;
         facts
+    }
+
+    /// A variable only ever set to a value in `0..2^62` and stepped by one
+    /// (`+= 1`, `-= 1`) stays more than `2^62` from either end of `Int`
+    /// in any run: getting there takes `2^62` steps, centuries at any
+    /// speed. So its step by one needs no overflow check (R09.3.4).
+    pub fn unit_step(&self, v: Var) -> bool {
+        self.unit_steps.contains(&v)
+    }
+
+    fn unit_stepped(&self, fn_id: Option<usize>, e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Local(slot) => self.unit_step(self.local(fn_id, *slot)),
+            ExprKind::Global(id) => self.unit_step((None, true, *id)),
+            _ => false,
+        }
     }
 
     /// The stores the body of one fn makes, on its own.
@@ -172,6 +228,11 @@ impl<'p> Facts<'p> {
         let mut facts = Facts::default();
         facts.block(Some(id), body);
         facts
+    }
+
+    fn taint(&mut self, v: Var) {
+        self.tainted.insert(v);
+        self.odd_stores.insert(v);
     }
 
     fn store(&mut self, fn_id: Option<usize>, place: &Place) {
@@ -194,7 +255,7 @@ impl<'p> Facts<'p> {
                             .push((fn_id, StoreOp::Set, init));
                         self.expr(fn_id, init);
                     } else {
-                        self.tainted.insert(v);
+                        self.taint(v);
                     }
                 }
                 Stmt::Assign(place, op, value) => {
@@ -203,6 +264,14 @@ impl<'p> Facts<'p> {
                         (&place.kind, var(fn_id, &place.kind))
                     {
                         self.init.entry(v).or_insert(value);
+                        let unit = matches!(
+                            (op, &value.kind),
+                            (AssignOp::Set, _)
+                                | (AssignOp::Binary(BinOp::Add | BinOp::Sub), ExprKind::Int(1))
+                        );
+                        if !unit {
+                            self.odd_stores.insert(v);
+                        }
                         let sop = match op {
                             AssignOp::Set => Some(StoreOp::Set),
                             AssignOp::Max => Some(StoreOp::KeepNonNeg),
@@ -243,7 +312,7 @@ impl<'p> Facts<'p> {
                 Stmt::For(_, slot, iter, body) => {
                     let v = (fn_id, false, *slot);
                     *self.stores.entry(v).or_default() += 1;
-                    self.tainted.insert(v);
+                    self.taint(v);
                     match iter {
                         Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
                         Iter::Range {
@@ -340,7 +409,7 @@ impl<'p> Facts<'p> {
                             if let (PlaceKind::Global(_) | PlaceKind::Local(_), Some(v)) =
                                 (&place.kind, var(fn_id, &place.kind))
                             {
-                                self.tainted.insert(v);
+                                self.taint(v);
                             }
                             self.place(fn_id, place);
                         }
@@ -352,7 +421,7 @@ impl<'p> Facts<'p> {
                 if let (PlaceKind::Global(_) | PlaceKind::Local(_), Some(v)) =
                     (&place.kind, var(fn_id, &place.kind))
                 {
-                    self.tainted.insert(v);
+                    self.taint(v);
                 }
                 self.place(fn_id, place);
                 for arg in args {
@@ -364,7 +433,7 @@ impl<'p> Facts<'p> {
                 if let (PlaceKind::Global(_) | PlaceKind::Local(_), Some(v)) =
                     (&place.kind, var(fn_id, &place.kind))
                 {
-                    self.tainted.insert(v);
+                    self.taint(v);
                 }
                 self.place(fn_id, place);
                 if let Some(desc) = desc {
@@ -375,7 +444,7 @@ impl<'p> Facts<'p> {
                     cpl_ir::SortBy::Key(slot, key) => {
                         let v = (fn_id, false, *slot);
                         *self.stores.entry(v).or_default() += 2;
-                        self.tainted.insert(v);
+                        self.taint(v);
                         self.expr(fn_id, key);
                     }
                     cpl_ir::SortBy::Fn { func, .. } => self.expr(fn_id, func),
@@ -481,12 +550,12 @@ impl<'p> Facts<'p> {
             ExprKind::Int(n) => Some(*n),
             ExprKind::Local(slot) => {
                 let v = self.local(fn_id, *slot);
-                let init = self.init(v)?;
+                let init = self.init(v).filter(|_| self.stable(v))?;
                 self.const_int(v.0, init, depth + 1)
             }
             ExprKind::Global(id) => {
                 let v = (None, true, *id);
-                let init = self.init(v)?;
+                let init = self.init(v).filter(|_| self.stable(v))?;
                 self.const_int(None, init, depth + 1)
             }
             _ => None,
@@ -764,10 +833,12 @@ impl<'p> Facts<'p> {
     /// no build needs an overflow check (R09.3.4).
     pub fn fits(&self, fn_id: Option<usize>, op: BinOp, l: &Expr, r: &Expr) -> bool {
         let (a, b) = (self.const_int(fn_id, l, 0), self.const_int(fn_id, r, 0));
-        let one_more = |c: Option<i64>, x: &Expr| c == Some(1) && self.below_max(fn_id, x);
+        let one_more = |c: Option<i64>, x: &Expr| {
+            c == Some(1) && (self.below_max(fn_id, x) || self.unit_stepped(fn_id, x))
+        };
         let trivial = match op {
             BinOp::Add => a == Some(0) || b == Some(0) || one_more(a, r) || one_more(b, l),
-            BinOp::Sub => b == Some(0),
+            BinOp::Sub => b == Some(0) || (b == Some(1) && self.unit_stepped(fn_id, l)),
             BinOp::Mul => matches!(a, Some(-1..=1)) || matches!(b, Some(-1..=1)),
             _ => false,
         };

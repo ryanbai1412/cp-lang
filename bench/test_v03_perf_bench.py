@@ -38,6 +38,10 @@ class Summarize(unittest.TestCase):
         st = bench.summarize([{**fast, "repeats": bench.repeats(0.001, 0.0012, 10)}], min_ms=10)
         self.assertEqual((st["measured_ge_min_ms"], st["max"]), (1, 1.2))
 
+    def test_a_pair_run_once_counts_even_when_its_fastest_run_lands_under_the_floor(self):
+        once = {**row(0.25), "port_ms": 2.48, "orig_ms": 9.81, "repeats": 1}
+        self.assertEqual(bench.summarize([once], min_ms=10)["measured_ge_min_ms"], 1)
+
     def test_a_repeated_pair_counts_even_when_its_fastest_sample_lands_under_the_floor(self):
         fast = {**row(1.07), "port_ms": 1.63, "orig_ms": 1.52, "repeats": 6}
         self.assertEqual(bench.summarize([fast], min_ms=10)["measured_ge_min_ms"], 1)

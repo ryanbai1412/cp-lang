@@ -132,11 +132,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Spec::Array { dims, elem } => {
                 let dims = self.read_dims(dims, span, given)?;
                 let cells = dims.iter().product::<i64>() as usize;
-                let mut data = Vec::with_capacity(cells);
-                for _ in 0..cells {
+                // Each cell goes straight into the packed store, never into a
+                // boxed list first.
+                let mut data = Cells::default();
+                for i in 0..cells {
                     data.push(self.read(elem, span, given)?);
+                    if i == 0 {
+                        data.reserve(cells - 1);
+                    }
                 }
-                Value::Array(Rc::new(Array::from_values(dims, data)))
+                Value::Array(Rc::new(Array { dims, data }))
             }
             Spec::Opt(inner, Some(absent)) => {
                 let absent = self.given(absent, given)?.int();

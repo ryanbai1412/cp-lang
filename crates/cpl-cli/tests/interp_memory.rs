@@ -14,11 +14,13 @@ const PROBLEMS: usize = 6;
 /// entry when its run fits; the test fails while a listed run fits.
 const KNOWN_OVER_MEMORY: &[(&str, &str)] = &[
     (
-        "btoi17p6",
-        "a 200,000-deep recursion: about 6 KB of interpreter stack a call",
+        "cco24p1",
+        "about 335 MB peak on case 11, interpreter overhead (VM memory)",
     ),
-    ("egoi23p7", "about 300 MB peak"),
-    ("sdoi17r2p4", "about 290 MB peak"),
+    (
+        "yac7p3",
+        "about 262 MB peak on case 09, interpreter overhead (VM memory)",
+    ),
 ];
 
 fn repo_root() -> PathBuf {
@@ -30,14 +32,29 @@ fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// Each problem's largest test input, for the problems with the largest.
+/// Each problem's largest test input, for the problems with the largest,
+/// making every package's cases first so the choice never depends on a cache.
 fn largest_inputs(root: &Path) -> Vec<(String, PathBuf)> {
+    let specs = cpl_corpus::files(root, "spec.cp");
+    let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
+    std::thread::scope(|s| {
+        for chunk in specs.chunks(specs.len().div_ceil(threads).max(1)) {
+            s.spawn(move || {
+                for spec in chunk {
+                    let package = spec.parent().unwrap();
+                    let out = cpl_contest::package::cases_dir(package);
+                    if let Err(why) = cpl_contest::package::make(package, &out) {
+                        panic!("making {}'s cases failed: {why}", package.display());
+                    }
+                }
+            });
+        }
+    });
     let mut found = Vec::new();
-    for spec in cpl_corpus::files(root, "spec.cp") {
-        // tests.toml cases are what `scripts/corpus.py make` wrote under target/.
-        let Ok(tests) = std::fs::read_dir(cpl_contest::problem::find_tests_dir(&spec)) else {
-            continue;
-        };
+    for spec in &specs {
+        let dir = cpl_contest::package::cases_dir(spec.parent().unwrap());
+        let tests = std::fs::read_dir(&dir)
+            .unwrap_or_else(|e| panic!("{}: {e}, after making its cases", dir.display()));
         let largest = tests
             .flatten()
             .map(|t| t.path())
@@ -108,6 +125,20 @@ fn largest_input_fits_the_judges_memory(rank: usize) {
             limit / 1024
         ),
         _ => {}
+    }
+}
+
+/// A listed problem the gate no longer runs can't show it fits, so the list
+/// only names problems among the largest inputs.
+#[test]
+#[cfg(target_os = "linux")]
+fn every_problem_known_over_memory_is_one_the_gate_runs() {
+    let inputs = largest_inputs(&repo_root());
+    for (name, _) in KNOWN_OVER_MEMORY {
+        assert!(
+            inputs.iter().any(|(run, _)| run == name),
+            "{name} is no longer among the {PROBLEMS} largest inputs; delete it from KNOWN_OVER_MEMORY"
+        );
     }
 }
 

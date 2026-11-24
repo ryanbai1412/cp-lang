@@ -171,6 +171,10 @@ pub(crate) struct Emitter<'p> {
     pub lends_result: bool,
     /// The fns that return `const T&`, each with the parameter whose place it lends.
     pub lent_roots: BTreeMap<cpl_ir::FnId, usize>,
+    /// The current fn's cold tail branches (see [`crate::frame`]), and its
+    /// C++ return type for the lambda each is emitted as.
+    pub cold: BTreeMap<crate::frame::At, crate::frame::Inputs>,
+    pub cold_ret: String,
     /// The `let`s the `Do` block being written as a lambda owns: they
     /// move into what it gives.
     pub give_owned: Option<BTreeSet<usize>>,
@@ -185,6 +189,8 @@ pub(crate) struct Emitter<'p> {
     pub moves_last: bool,
     /// Each `if` branch being written and the locals dead once it ends.
     pub branch_dead: Vec<(*const Block, BTreeSet<usize>)>,
+    /// Each `for` body and its variable ([`crate::lend::loop_vars`]).
+    pub loop_vars: BTreeMap<*const Block, usize>,
     /// Items of the struct or tuple a `let` builds that read a place the
     /// next statements set before reading it (`let out = T(xs); xs = []`):
     /// each is moved in, not copied.
@@ -335,11 +341,14 @@ impl<'p> Emitter<'p> {
             give_ref: false,
             lends_result: false,
             lent_roots: BTreeMap::new(),
+            cold: BTreeMap::new(),
+            cold_ret: String::new(),
             give_owned: None,
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,
             branch_dead: Vec::new(),
+            loop_vars: crate::lend::loop_vars(program),
             taken_items: BTreeSet::new(),
             pushed_moves: Vec::new(),
             pushers: BTreeMap::new(),
@@ -621,6 +630,28 @@ impl<'p> Emitter<'p> {
     }
 
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
+    /// A recursive fn's cold tail branches, and the return type they keep.
+    fn cold_branches(
+        &mut self,
+        id: usize,
+        f: &Function,
+        lends: bool,
+    ) -> BTreeMap<crate::frame::At, crate::frame::Inputs> {
+        if lends || !self.devirt.recursive_fns.contains(&id) || self.devirt.returns_lambda(id) {
+            return BTreeMap::new();
+        }
+        self.cold_ret =
+            self.ty_with_elem_layout(&f.ret, self.elem_layout(cpl_ir::ElemLoc::FnRet(id)));
+        let scalar = |s: usize| f.locals[s].ty.is_scalar();
+        let present = |s: usize| f.locals[s].ty != Ty::Unit && !self.devirt.dead_local(Some(id), s);
+        crate::frame::cold_suffixes(&crate::frame::Fn {
+            program: self.program,
+            id,
+            scalar: &scalar,
+            present: &present,
+        })
+    }
+
     /// The fn's C++ signature, and the parameter whose place it lends
     /// when it returns `const T&`.
     fn signature(&self, f: &Function) -> (String, Option<usize>) {
@@ -690,7 +721,7 @@ impl<'p> Emitter<'p> {
         let by_ref: Vec<usize> = (0..f.params.len())
             .filter(|&slot| f.locals[slot].ty != Ty::Unit)
             .zip(&params)
-            .filter(|(_, p)| p.contains("const ") && p.contains("& "))
+            .filter(|(_, p)| p.contains("& ") && !p.contains("&& "))
             .map(|(slot, _)| slot)
             .collect();
         if self.devirt.returns_lambda(id) {
@@ -707,16 +738,25 @@ impl<'p> Emitter<'p> {
         (signature, lends)
     }
 
-    /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
-    /// is, like a `@get` of a stored list, lends it: the caller reads it in place and copies
+    /// A fn that gives a field of a parameter it takes by reference (or an element of one) as
+    /// is, last and from its only return, like a `@get` of a stored list, lends it: the caller reads it in place and copies
     /// it only where it keeps it. So does one that gives what such a fn lends from a place of
     /// its own (`a.view` where `A.view` lends `xs`), through any chain of them. The answer is
     /// the parameter the result is a place on.
     fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> Option<usize> {
         use cpl_ir::{ElemLoc, ExprKind, NarrowLayout};
-        let [Stmt::Return(Some(e))] = f.body.stmts.as_slice() else {
+        // What runs before the one return (a cache's fill) only changes
+        // what the place holds.
+        let Some(Stmt::Return(Some(e))) = f.body.stmts.last() else {
             return None;
         };
+        let mut returns = 0;
+        cpl_ir::walk::deep_stmts(&f.body, &mut |s| {
+            returns += matches!(s, Stmt::Return(_)) as usize
+        });
+        if returns != 1 {
+            return None;
+        }
         if f.ret.is_scalar()
             || f.ret == Ty::Unit
             || e.ty != f.ret
@@ -1011,6 +1051,7 @@ impl<'p> Emitter<'p> {
             if let Some(slot) = root {
                 self.lent_roots.insert(id, slot);
             }
+            self.cold = self.cold_branches(id, f, root.is_some());
             let hook = program.is_hook(id);
             protos.push(Proto {
                 name: fn_name(&f.name),

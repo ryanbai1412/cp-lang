@@ -808,3 +808,39 @@ fn plain_text_writes_math_in_unicode_and_links_as_code() {
         "cost: O(n log n); see `up` and `size`, not [a](https://x.y)."
     );
 }
+
+/// site/R4 at commit time: a std entry's facts are labelled rows, so a fact label left in its
+/// prose (a doc block pasted above the wrong item, or a fact stated twice) fails here, not
+/// first in the site build's gen-ref.
+#[test]
+fn every_std_doc_states_each_fact_once_outside_its_prose() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let modules = crate::cli::load(&[root.join("std")]).unwrap();
+    let mut wrong = Vec::new();
+    for module in &modules {
+        for (owner, item) in module.all_items() {
+            let path = module
+                .path
+                .rsplit_once("/std/")
+                .map_or(&*module.path, |(_, p)| p);
+            let at = format!("std/{path}:{} {}", item.line, item.anchor(owner));
+            if item.signature.trim().is_empty() {
+                wrong.push(format!("{at}: no signature"));
+            }
+            for line in DocText::parse(&item.doc).prose.lines() {
+                let label = line.trim().split(':').next().unwrap_or("").trim();
+                if line.contains(':')
+                    && Facts::LABELS.contains(&label.to_ascii_lowercase().as_str())
+                {
+                    wrong.push(format!("{at}: a `{label}:` line left in the prose"));
+                }
+            }
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "{}\nA fact label in prose means a doc block sits above the wrong item or states a fact \
+         twice: move it onto its own item, or drop the repeat (site/R4).",
+        wrong.join("\n")
+    );
+}

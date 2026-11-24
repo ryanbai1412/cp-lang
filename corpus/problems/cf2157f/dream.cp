@@ -19,7 +19,6 @@
 // every member after the group's first position `start` jumping forward to
 // `start`, merging all `n` positions in exact budget.
 
-
 const LAYER_COST = 1000
 
 struct Plan(d: Int, cost: Int, max_w: Int, max_w_cnt: Int)

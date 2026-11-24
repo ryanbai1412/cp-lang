@@ -36,7 +36,6 @@ fn first_bad(xs: [Pos]Int) -> [Pos]Int:
     let suf = cur.rev.scan(min)
     [Pos] i => suf[i.l]
 
-
 @!multitest
 let n: 1..=200_000 = read()
 domain Pos = 0..n

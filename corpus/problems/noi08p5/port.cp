@@ -72,7 +72,14 @@ for plane in 0..2:
             Ask(t, l, r) =>
                 let base = (-t) % p
                 let got = if plane == 0: count(ox, oy, base, base + r, base + l, 3 * p - 1)
-                    else: count(ox, oy, base + p + max(r + 1, p - r), base + 2 * p - 1, 0, base + 2 * p - l)
+                    else: count(
+                        ox,
+                        oy,
+                        base + p + max(r + 1, p - r),
+                        base + 2 * p - 1,
+                        0,
+                        base + 2 * p - l,
+                    )
                 if plane == 0: caught.push(got) else: caught[asked] += got
                 asked += 1
 

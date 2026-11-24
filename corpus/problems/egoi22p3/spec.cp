@@ -27,7 +27,9 @@ let forest = Rooted.forest(rest, from: [home] + g[home].distinct(by: v => parts.
 var open_below: [V]?V = None
 var route: [V]List<V> = []
 for u in forest.order.rev:
-    let open = List(chain(if friend[u]: [u] else: [], forest.children(u).filter_map(c => open_below[c])))
+    let open = List(
+        chain(if friend[u]: [u] else: [], forest.children(u).filter_map(c => open_below[c]))
+    )
     for pair in open.chunks(2) if pair.len == 2:
         let path = forest.path(pair.first!, pair.last!)
         route[path.first!] = path

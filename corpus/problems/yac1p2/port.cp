@@ -26,7 +26,15 @@ for u in t.order.rev:
             for w in Few:
                 for b2 in Few:
                     for w2 in Few:
-                        if Int(b) + Int(b2) < 3 and Int(w) + Int(w2) < 3: calm += down[u, b, w] * down[c, b2, w2]
+                        if Int(b) + Int(b2) < 3 and Int(w) + Int(w2) < 3: calm += down[
+                            u,
+                            b,
+                            w,
+                        ] * down[
+                            c,
+                            b2,
+                            w2,
+                        ]
         for b in Few:
             for w in Few:
                 if let Some(b1) = Few.at(b + mb):

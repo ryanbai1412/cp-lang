@@ -6,7 +6,6 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { serverBinary } from './client';
 import { missingCpl, runCpl } from './cpl';
-import { caseOrder, parseTestReport, TestCase } from './results';
 
 export type Outcome = 'passed' | 'failed' | 'errored' | 'skipped';
 
@@ -54,29 +53,22 @@ export class TestPanel implements vscode.Disposable {
         await this.resolve(item);
     }
 
-    /** A problem's cases: `N.in` in `<stem>.tests/`, in `cpl test`'s order. */
+    /** A problem's cases, in `cpl test`'s order, as `cpl test --list` gives them. */
     private async resolve(item: vscode.TestItem): Promise<void> {
-        const source = item.uri!;
-        const dir = vscode.Uri.file(source.fsPath.replace(/\.cp$/, '.tests'));
-        let names: string[] = [];
-        try {
-            names = (await vscode.workspace.fs.readDirectory(dir)).map(([name]) => name);
-        } catch {
-            // No folder: no cases.
-        }
-        const cases = names
-            .filter(name => name.endsWith('.in'))
-            .map(name => name.slice(0, -'.in'.length))
-            .sort(caseOrder);
+        const source = item.uri!.fsPath;
+        const binary = serverBinary();
+        const listed = binary
+            ? await runCpl(binary, ['test', source, '--list', '--format', 'json'], { cwd: path.dirname(source), timeoutMs: 10000 })
+            : undefined;
+        const cases = (listed?.code === 0 ? JSON.parse(listed.stdout) : { cases: [] }).cases as { name: string; input: string }[];
         if (cases.length === 0) {
             this.controller.items.delete(item.id);
             return;
         }
         item.children.replace(
-            cases.map(name => {
-                const child = this.controller.createTestItem(`${item.id}#${name}`, name, vscode.Uri.joinPath(dir, `${name}.in`));
-                return child;
-            }),
+            cases.map(c =>
+                this.controller.createTestItem(`${item.id}#${c.name}`, c.name, vscode.Uri.file(path.resolve(path.dirname(source), c.input))),
+            ),
         );
     }
 
@@ -142,7 +134,7 @@ export class TestPanel implements vscode.Disposable {
                 signal: abort.signal,
             });
             cancel?.dispose();
-            const cases = parseTestReport(result.stdout);
+            const cases = casesOf(result.stdout);
             if (!cases) {
                 // Errors in the source, or `cpl` itself failed: every case says why.
                 const why = (result.stderr || result.spawnError || result.stdout).trim();
@@ -157,11 +149,10 @@ export class TestPanel implements vscode.Disposable {
                     record(item, 'skipped');
                     continue;
                 }
-                const [outcome, message] = judged(found, item);
                 if (found.output) {
                     run.appendOutput(`${item.label}: ${found.output.replace(/\r?\n/g, '\r\n')}`, undefined, item);
                 }
-                record(item, outcome, message, found.ms);
+                record(item, found.outcome, message(found, item), found.time_ms);
             }
         }
         run.end();
@@ -169,21 +160,38 @@ export class TestPanel implements vscode.Disposable {
     }
 }
 
-/** How one case came out, and the message VS Code shows for it. */
-function judged(found: TestCase, item: vscode.TestItem): [Outcome, vscode.TestMessage | undefined] {
-    // A case with no answer to judge by passes, showing its output.
-    if (found.verdict === undefined || found.verdict === 'ok') {
-        return ['passed', undefined];
+/** One case of `cpl test --format json`, as the CLI judged it. */
+interface TestCase {
+    name: string;
+    outcome: Outcome;
+    message: string | null;
+    expected: string | null;
+    output: string;
+    time_ms: number;
+}
+
+function casesOf(stdout: string): TestCase[] | undefined {
+    try {
+        const cases = JSON.parse(stdout).cases;
+        return Array.isArray(cases) ? cases : undefined;
+    } catch {
+        return undefined;
     }
-    const why = [found.verdict, found.why, found.explained].filter(Boolean).join(': ');
+}
+
+/** The message VS Code shows for a case that did not pass: a diff for a wrong answer. */
+function message(found: TestCase, item: vscode.TestItem): vscode.TestMessage | undefined {
+    if (found.message === null) {
+        return undefined;
+    }
     const message =
-        found.verdict === 'WA' && found.expected !== undefined
-            ? vscode.TestMessage.diff(why, found.expected, found.output)
-            : new vscode.TestMessage(why);
+        found.outcome === 'failed' && found.expected !== null
+            ? vscode.TestMessage.diff(found.message, found.expected, found.output)
+            : new vscode.TestMessage(found.message);
     if (item.uri) {
         message.location = new vscode.Location(item.uri, new vscode.Position(0, 0));
     }
-    return [found.verdict === 'WA' ? 'failed' : 'errored', message];
+    return message;
 }
 
 /** The `<stem>.cp` a `<stem>.tests/N.in` belongs to. */

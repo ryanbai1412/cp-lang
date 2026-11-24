@@ -39,7 +39,11 @@ for op in read<[q]Op>():
         Ask(t, l, r) =>
             let base = -t % cycle
             let up = count(rising, base..=base + r, base + l..=base + l + cycle - 1)
-            let down = count(falling, base + max(r + 1, cycle - r)..=base + cycle - 1, base - l + 1 + m..=base + cycle - l + m)
+            let down = count(
+                falling,
+                base + max(r + 1, cycle - r)..=base + cycle - 1,
+                base - l + 1 + m..=base + cycle - l + m,
+            )
             print(up + down)
         Remove(_, c) =>
             let x = cloud.remove(c)!

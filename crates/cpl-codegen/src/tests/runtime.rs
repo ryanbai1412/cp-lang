@@ -50,6 +50,23 @@ fn an_input_refill_reads_into_its_own_buffer_and_zeroes_nothing() {
 }
 
 #[test]
+fn a_printed_number_and_its_separator_go_out_in_one_write() {
+    let out =
+        cpp("let n: 0..=100 = read()\nfor i in 0..n: print(i, i % 7)\nprint(n, \"x\", n + 1)\n");
+    assert!(
+        out.contains("cpl::put_int(i, ' '); cpl::put_int(i % 7, '\\n');"),
+        "{out}"
+    );
+    assert!(out.contains("cpl::put_int(n, ' '); cpl::put_str("), "{out}");
+    assert!(
+        out.contains("cpl::put_char(' '); cpl::put_int(n + 1, '\\n');"),
+        "{out}"
+    );
+    let body = &out[out.find("void solve()").expect("a solve fn")..];
+    assert!(!body.contains("put_line"), "{body}");
+}
+
+#[test]
 fn a_shift_not_proved_in_range_traps_in_a_checked_build() {
     let out = cpp("let k: Int = read()\nvar x = 3\nx <<= k\nprint(1 << k, x)\n");
     assert!(out.contains("cpl::ishl(1, "), "{out}");
@@ -138,4 +155,22 @@ fn a_sort_by_holds_half_a_buffer_and_no_sorted_copy() {
     assert!(out.contains("std::vector<V> buf(b, b + n / 2)"), "{out}");
     assert!(out.contains("std::vector<uint32_t> order"), "{out}");
     assert!(!out.contains("std::vector<T> sorted"), "{out}");
+}
+
+#[test]
+fn a_sort_by_a_cell_compares_in_place() {
+    // A key read from a domain-indexed table needs no cached keys or order;
+    // one that ends in the element itself sorts unstably, as no order shows.
+    let src = |key: &str| {
+        format!(
+            "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]Int = read()\n\
+             var ord = I.collect()\nord.sort(by: i => {key})\nprint(ord[0].ord)\n"
+        )
+    };
+    let unique = cpp(&src("(a[i], i)"));
+    assert!(unique.contains("std::sort(ord"), "{unique}");
+    assert!(!unique.contains("cpl::sort_by("), "{unique}");
+    let ties = cpp(&src("a[i]"));
+    assert!(ties.contains("cpl::stable_sort_lt(ord"), "{ties}");
+    assert!(!ties.contains("cpl::sort_by("), "{ties}");
 }

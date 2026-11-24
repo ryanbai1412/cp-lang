@@ -215,6 +215,66 @@ fn a_grader_package_is_tested_and_run_through_its_grader() {
     assert_eq!(String::from_utf8_lossy(&ran.stdout), "35\n");
 }
 
+/// A stdin port beside the package's `grader.cpp` declares no `@grader`
+/// fn, so `cpl test` and `cpl run` run it alone, a comment naming
+/// `@grader` notwithstanding.
+#[test]
+fn a_stdin_port_beside_a_grader_runs_without_it() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/grader_package");
+    let port = here.join("port.cp");
+    let tested = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("test")
+        .arg(&port)
+        .output()
+        .expect("cpl runs");
+    let stdout = String::from_utf8_lossy(&tested.stdout);
+    assert!(
+        tested.status.success(),
+        "{stdout}{}",
+        String::from_utf8_lossy(&tested.stderr)
+    );
+    assert!(stdout.contains("2/2 passed"), "{stdout}");
+
+    let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(&port)
+        .arg(here.join("tests/2.in"))
+        .output()
+        .expect("cpl runs");
+    assert!(
+        ran.status.success(),
+        "{}",
+        String::from_utf8_lossy(&ran.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "35\n");
+}
+
+/// A two-phase package's grader runs each phase in its own process, as the
+/// judge does, so a dream whose second phase reads the first's globals fails
+/// `cpl test` instead of passing locally and scoring 0 on the judge.
+#[test]
+fn a_two_phase_dream_cannot_read_its_first_phases_globals() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/two_phase_package");
+    let test = |file: &str| {
+        Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .arg("test")
+            .arg(here.join(file))
+            .output()
+            .expect("cpl runs")
+    };
+    let honest = test("honest.cp");
+    assert!(
+        honest.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&honest.stdout),
+        String::from_utf8_lossy(&honest.stderr)
+    );
+    let leaky = test("leaky.cp");
+    let stdout = String::from_utf8_lossy(&leaky.stdout);
+    assert!(!leaky.status.success(), "{stdout}");
+    assert!(stdout.contains("0/1 passed"), "{stdout}");
+}
+
 /// A file of `@grader` fns with no grader to call them is an error that
 /// names `--grader`, not a run that prints nothing and passes.
 #[test]

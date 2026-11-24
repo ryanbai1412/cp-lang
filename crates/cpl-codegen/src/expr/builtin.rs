@@ -101,10 +101,6 @@ impl<'p> Emitter<'p> {
                 self.need("at_eof");
                 Code::primary("cpl::at_eof()".to_string())
             }
-            Builtin::Popcount => {
-                self.need("bits");
-                Code::primary(format!("cpl::popcount({})", text(0)))
-            }
             Builtin::Ctz => {
                 self.need("bits");
                 Code::primary(format!("cpl::ctz({})", text(0)))

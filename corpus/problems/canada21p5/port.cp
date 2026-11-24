@@ -28,7 +28,9 @@ for i in Off:
 
 // Walk back from "equal": every string at distance d is equally likely.
 let d = (0..n).count(i => s[i] != t[i])
-fn mul(a: [Off, Off]Z, b: [Off, Off]Z) -> [Off, Off]Z = [Off, Off] (i, l) => sum(a[i, j] * b[j, l] for j in Off)
+fn mul(a: [Off, Off]Z, b: [Off, Off]Z) -> [Off, Off]Z = [Off, Off] (i, l) => sum(
+    a[i, j] * b[j, l] for j in Off
+)
 let one: [Off, Off]Z = [Off, Off] (i, j) => Z(Int(i == j))
 let walk = pow(step, k, op: Monoid(one, mul))
 print(walk[Off.first!, Off(d)] / comb.choose(n, d))

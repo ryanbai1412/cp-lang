@@ -10,13 +10,15 @@ use crate::is_std;
 use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{
-    File, Finding, Lint, CONTAINS_THEN_ADD, COPY_COMPREHENSION, LOOP_ARGMAX, MANUAL_MEX,
+    File, Finding, CONTAINS_THEN_ADD, COPY_COMPREHENSION, LOOP_ARGMAX, MANUAL_MEX,
     QUEUE_HEAD_INDEX, SPLIT_RANGE_CHECK,
 };
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::*;
 
 use super::shapes::{compare, int, is_step, name, single};
+use super::Warn;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandLoops {
@@ -75,14 +77,15 @@ fn index_names(e: &Expr) -> Option<(&str, &str)> {
     }
 }
 
+impl super::Warn for HandLoops<'_> {
+    fn sink(&mut self) -> (&mut Vec<Finding>, u32) {
+        (&mut self.out, self.base)
+    }
+}
+
 impl HandLoops<'_> {
     fn text(&self, span: Span) -> &str {
         span.shift(self.base).text(self.src)
-    }
-
-    fn warn(&mut self, lint: &'static Lint, span: Span, msg: String, help: String) {
-        let diag = Diagnostic::warning(lint.code, span.shift(self.base), msg).with_help(help);
-        self.out.push(Finding { lint, diag });
     }
 
     fn starts(&mut self, stmts: &[(u32, &Stmt)]) {
@@ -231,12 +234,9 @@ impl HandLoops<'_> {
                 pick("(lo..hi)")
             ),
         };
-        let mut diag = Diagnostic::warning(
-            LOOP_ARGMAX.code,
-            at,
-            format!("this loop keeps in `{j}` the index of the first {ext} `{t}[{i}]`"),
-        )
-        .with_help(help);
+        let mut diag = lint_rules::LOOP_ARGMAX
+            .warning(at, &[&j, &ext, &t, &i])
+            .with_help(help);
         diag.fixes.extend(fix);
         self.out.push(Finding {
             lint: &LOOP_ARGMAX,
@@ -259,10 +259,10 @@ impl HandLoops<'_> {
         if !single(body).is_some_and(|s| is_step(s, m)) {
             return;
         }
-        self.warn(
+        self.warn_at(
             &MANUAL_MEX,
             stmt.span,
-            format!("`while {t}[{m}]: {m} += 1` searches for the first unmarked value by hand"),
+&lint_rules::MANUAL_MEX, &[&t, &m, &m],
             format!(
                 "write `(lo..=hi).find({m} => not {t}[{m}])` over the values `{m}` can take: it names the search, the mex when `{t}` marks what is present"
             ),
@@ -292,17 +292,11 @@ impl HandLoops<'_> {
             | ExprKind::List(_) => it.to_string(),
             _ => format!("({it})"),
         };
-        let mut diag = Diagnostic::warning(
-            COPY_COMPREHENSION.code,
-            expr.span.shift(self.base),
-            format!(
-                "`{}` copies a sequence one element at a time",
-                self.text(expr.span)
-            ),
-        )
-        .with_help(format!(
-            "write `{it}.collect()`: it copies any sequence into a new `List`"
-        ));
+        let mut diag = lint_rules::COPY_COMPREHENSION
+            .warning(expr.span.shift(self.base), &[&self.text(expr.span)])
+            .with_help(format!(
+                "write `{it}.collect()`: it copies any sequence into a new `List`"
+            ));
         // `collect` takes a `Seq`; `typed.rs` drops the finding where the
         // checker types the iterable as something else. A range always is one.
         if !matches!(iter.kind, ExprKind::Range { .. }) {
@@ -371,11 +365,7 @@ impl HandLoops<'_> {
                 continue;
             }
             let span = Span::new(decl.span.start + decl_base, c.span.end + w_base);
-            let diag = Diagnostic::warning(
-                QUEUE_HEAD_INDEX.code,
-                span,
-                format!("`{q}` is walked as a queue by the head index `{h}`"),
-            )
+            let diag = lint_rules::QUEUE_HEAD_INDEX.warning(span, &[&q, &h])
             .with_help("`bfs(next, from: [s])` from `std.graph` runs the queue and returns the distances and the visit order; a queue run by hand is a `Deque`, which pops from the front");
             self.out.push(Finding {
                 lint: &QUEUE_HEAD_INDEX,
@@ -449,14 +439,11 @@ impl HandLoops<'_> {
             3 => "three".to_string(),
             n => n.to_string(),
         };
-        let mut diag = Diagnostic::warning(
-            SPLIT_RANGE_CHECK.code,
-            expr.span.shift(self.base),
-            format!("a range check written as {count} comparisons"),
-        )
-        .with_help(format!(
-            "write `{chain}`: one chained comparison reads as the range it checks"
-        ));
+        let mut diag = lint_rules::SPLIT_RANGE_CHECK
+            .warning(expr.span.shift(self.base), &[&count])
+            .with_help(format!(
+                "write `{chain}`: one chained comparison reads as the range it checks"
+            ));
         if *pure {
             diag.fixes.push(Fix {
                 title: format!("write `{chain}`"),
@@ -516,11 +503,7 @@ impl HandLoops<'_> {
         // The fix holds where `+=` starts a missing key at 0; the checker's
         // type of the map (the label) decides that in `typed.rs`.
         let bump = format!("{place} += {v1}");
-        let mut diag = Diagnostic::warning(
-            CONTAINS_THEN_ADD.code,
-            stmt.span.shift(self.base),
-            format!("`{place}` is tested for a key before `+=`"),
-        )
+        let mut diag = lint_rules::CONTAINS_THEN_ADD.warning(stmt.span.shift(self.base), &[&place])
         .with_label(m.span.shift(self.base), "the map")
         .with_help(format!(
             "write `{bump}`: on a `Map`, `+=` starts a missing key at `0`, so the test and the `else` are the same step"

@@ -24,7 +24,13 @@ let assign = Action<MaxSub, ?Val>.new(
 
 let (n, m): (1..=500_000, 1..=20_000) = read()
 domain Init = 0..n
-var seq = SeqFold<MaxSub, ?Val, Val>(+, read<[Init]Val>(), act: assign, mirror: x => x.reversed(), lift: MaxSub.of)
+var seq = SeqFold<MaxSub, ?Val, Val>(
+    +,
+    read<[Init]Val>(),
+    act: assign,
+    mirror: x => x.reversed(),
+    lift: MaxSub.of,
+)
 repeat m:
     let op: Str = read()
     if op == "MAX-SUM":

@@ -576,6 +576,35 @@ fn judge_is_the_interactor_as_a_program_on_stdin_and_stdout() {
     assert!(String::from_utf8_lossy(&out.stderr).starts_with("assertion failed: x == secret"));
 }
 
+#[test]
+fn judge_writes_where_it_trapped_to_the_diagnostic_file() {
+    let path = guess("interactor-diagnostic", "10", "lo");
+    let hidden = path.with_file_name("hidden.in");
+    std::fs::write(&hidden, "8 3\n").unwrap();
+    let diagnostic = path.with_file_name("diagnostic.json");
+    let args = [
+        "judge".as_ref(),
+        path.as_os_str(),
+        "--diagnostic".as_ref(),
+        diagnostic.as_os_str(),
+        hidden.as_os_str(),
+    ];
+    let out = cpl(&args, b"? 4\n? 2\n? 3\n! 3\n");
+    assert_eq!(out.status.code(), Some(0));
+    assert!(
+        !diagnostic.exists(),
+        "an accepting judge writes no diagnostic"
+    );
+    let out = cpl(&args, b"! 5\n");
+    assert_eq!(out.status.code(), Some(3));
+    let json = std::fs::read_to_string(&diagnostic).unwrap();
+    assert!(json.contains("\"severity\":\"error\""), "{json}");
+    assert!(
+        json.contains("x == secret") || json.contains("\"span\""),
+        "{json}"
+    );
+}
+
 // The generator is a `#!/bin/sh` script, which `cpl stress` runs through
 // `sh` on every OS (Git for Windows' on Windows).
 #[test]
@@ -1523,6 +1552,68 @@ fn a_judge_without_threads_gets_a_plain_main_and_a_warning() {
         cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"),
         "{cpp}"
     );
+}
+
+/// `popcount` is a std fn, not a method: `mask.popcount()` gets the call spelling.
+#[test]
+fn a_free_function_called_as_a_method_gets_the_call_spelling() {
+    let main = scratch(
+        "free-fn-as-method",
+        "main.cp",
+        b"let mask = 5\nprint(mask.popcount())\n",
+    );
+    let checked = cpl(&["check".as_ref(), main.as_os_str()], b"");
+    let stderr = String::from_utf8_lossy(&checked.stderr);
+    assert!(!checked.status.success(), "{stderr}");
+    assert!(
+        stderr.contains("`popcount` is a free function, not a method: `popcount(mask)`"),
+        "{stderr}"
+    );
+}
+
+/// A std module copied into a user library under another name emits the same
+/// C++ as the original (R12.14.4): `@intrinsic` gives std no privilege.
+#[test]
+fn a_std_module_copied_into_a_library_emits_the_same_cpp() {
+    let main = scratch(
+        "no-privilege",
+        "std.cp",
+        b"print(popcount(7), popcount(U64(11)))\n",
+    );
+    let root = main.parent().unwrap();
+    let lib_dir = root.join("mylib");
+    std::fs::create_dir_all(&lib_dir).unwrap();
+    std::fs::write(root.join("cp.toml"), "[libs]\nmylib = \"mylib\"\n").unwrap();
+    std::fs::write(lib_dir.join("lib.toml"), "name = \"mylib\"\n").unwrap();
+    let math = concat!(env!("CARGO_MANIFEST_DIR"), "/../../std/math.cp");
+    std::fs::copy(math, lib_dir.join("mymath.cp")).unwrap();
+    let copied = root.join("copied.cp");
+    std::fs::write(
+        &copied,
+        "use mylib.mymath.{popcount}\nprint(popcount(7), popcount(U64(11)))\n",
+    )
+    .unwrap();
+    let cpp = |path: &std::path::Path| {
+        let built = cpl(
+            &[
+                "build".as_ref(),
+                path.as_os_str(),
+                "-o".as_ref(),
+                "-".as_ref(),
+            ],
+            b"",
+        );
+        assert!(built.status.success(), "{built:?}");
+        let text = String::from_utf8(built.stdout).unwrap();
+        let body: Vec<&str> = text.lines().filter(|l| !l.starts_with("//")).collect();
+        body.join("\n")
+    };
+    let (std_cpp, lib_cpp) = (cpp(&main), cpp(&copied));
+    assert!(
+        std_cpp.contains("__builtin_popcountll((uint64_t)(7))"),
+        "{std_cpp}"
+    );
+    assert_eq!(std_cpp, lib_cpp);
 }
 
 /// Only programs get the prelude (R11.3.1): a library `use`s what it

@@ -6,11 +6,11 @@ use std::collections::{HashMap, HashSet};
 
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, INT_VERTEX_IDS};
-use cpl_diag::Diagnostic;
 use cpl_syntax::ast::*;
 
 use super::hand_input::parts;
 use super::shapes::squash;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = Ids {
@@ -51,11 +51,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         if ids.iter().any(|i| v.from_zero.contains(i)) {
             continue;
         }
-        let diag = Diagnostic::warning(
-            INT_VERTEX_IDS.code,
-            stmt.span.shift(base),
-            format!("`{table}` spans `0..={n}`, but the ids that index it are read as `1..={n}`: slot 0 is never an id"),
-        )
+        let diag = lint_rules::INT_VERTEX_IDS.warning(stmt.span.shift(base), &[&table, &n, &n])
         .with_help(format!(
             "declare the ids as a domain: `domain V = 1..={n}`, read them as `V` and make `{table}` a `[V]T` (`[V] v => v` for a table that starts as each id); every slot is then an id, and an id out of range traps where it is read"
         ));

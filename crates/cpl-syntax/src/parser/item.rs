@@ -103,15 +103,9 @@ impl<'a> Parser<'a> {
             let at = self.error_span();
             let found = self.peek().describe();
             self.error(
-                Diagnostic::error(
-                    codes::EXPECTED_TOKEN,
-                    at,
-                    format!(
-                        "expected `:` or `=` to start the body of operator `{}`, found {found}",
-                        name.text
-                    ),
-                )
-                .with_help("use `:` for an indented body or `=` for a one-line expression"),
+                msgs::syntax::OP_BODY_START
+                    .error(at, &[&name.text, &found])
+                    .with_help("use `:` for an indented body or `=` for a one-line expression"),
             );
             FnBody::Block(Block {
                 stmts: Vec::new(),
@@ -134,11 +128,7 @@ impl<'a> Parser<'a> {
             return StmtKind::Fn(decl);
         }
         let Some(target) = decl.params.first().and_then(|p| p.ty.clone()) else {
-            self.error(Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                sig_span,
-                "an operator fn needs a type on its first parameter".to_string(),
-            ));
+            self.error(msgs::syntax::OP_NEEDS_TYPE.error(sig_span, &[]));
             return StmtKind::Fn(decl);
         };
         let trait_args = if !is_unary_op
@@ -243,14 +233,7 @@ impl<'a> Parser<'a> {
         } else {
             let at = self.error_span();
             let found = self.peek().describe();
-            let diag = Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                at,
-                format!(
-                    "expected `:` or `=` to start the body of `{}`, found {found}",
-                    name.text
-                ),
-            );
+            let diag = msgs::syntax::FN_BODY_START.error(at, &[&name.text, &found]);
             let diag = self.with_insert_fix(diag, at, ":");
             self.error(diag);
             if self.at(T::Newline) && self.peek_n(1) == T::Indent {
@@ -370,15 +353,9 @@ impl<'a> Parser<'a> {
         if !matches!(self.peek(), T::Dedent | T::Eof) {
             let span = self.span();
             self.error(
-                Diagnostic::error(
-                    codes::UNEXPECTED_TOKEN,
-                    span,
-                    format!(
-                        "`{}` is defined with `=`, so its body is one expression",
-                        name.text
-                    ),
-                )
-                .with_help("use `:` in place of `=` for a body with several statements"),
+                msgs::syntax::EXPR_BODY_ONE
+                    .error(span, &[&name.text])
+                    .with_help("use `:` in place of `=` for a body with several statements"),
             );
             let mut extra = Vec::new();
             while !matches!(self.peek(), T::Dedent | T::Eof) {
@@ -507,12 +484,9 @@ impl<'a> Parser<'a> {
         if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
             let at = self.block_expected_at(self.prev_end());
             self.error(
-                Diagnostic::error(
-                    codes::EXPECTED_BLOCK,
-                    at,
-                    format!("expected an indented block after {after}"),
-                )
-                .with_help("indent the next line by 4 spaces"),
+                msgs::stmt::EXPECTED_BLOCK_AFTER
+                    .error(at, &[&after])
+                    .with_help("indent the next line by 4 spaces"),
             );
             self.skip_line();
             return methods;
@@ -569,10 +543,8 @@ impl<'a> Parser<'a> {
             let span = self.span_from(start);
             self.not_in_language(
                 span,
-                &format!(
-                    "`{}` can't inherit from another struct: there is no inheritance (R08.5.1)",
-                    name.text
-                ),
+                &msgs::syntax::NO_INHERITANCE,
+                &[&name.text],
                 "hold the other struct as a field, and share behaviour through a trait",
             );
         }
@@ -649,7 +621,7 @@ impl<'a> Parser<'a> {
                 methods: Vec::new(),
             });
         }
-        let methods = self.members(&format!("`struct {}`", name.text), |p| {
+        let mut methods = self.members(&format!("`struct {}`", name.text), |p| {
             let mut cached = false;
             if p.at(T::At) && p.peek_n(1) == T::Ident {
                 p.bump();
@@ -686,6 +658,7 @@ impl<'a> Parser<'a> {
                 });
             }
         });
+        laws::derive_laws(&mut methods);
         StmtKind::Struct(StructDecl {
             name,
             generics,

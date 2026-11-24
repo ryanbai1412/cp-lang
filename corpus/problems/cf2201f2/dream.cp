@@ -12,7 +12,6 @@
 // on `Right`, checked in O(1) per query via additive `splitmix64` multiset
 // hashing over the packed 64-bit coordinates.
 
-
 enum Side: Left | Right
 
 @!multitest

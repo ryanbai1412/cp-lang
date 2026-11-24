@@ -19,7 +19,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | [site](domains/site/README.md) | 17 | 0 | 3 |
 | [spec](domains/spec/README.md) | 21 | 0 | 0 |
 | [stdlib](domains/stdlib/README.md) | 19 | 7 | 6 |
-| [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
+| [tech-debt](domains/tech-debt/README.md) | 31 | 0 | 3 |
 | [tools](domains/tools/README.md) | 18 | 10 | 0 |
 
 ## compiler
@@ -259,6 +259,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | rust_ignore | 19 | <= 3 |
 | ir_builtin_names | 86 | <= 66, the floor (decision 266) |
 | prelude_privilege | 24 | only builtin-floor names (decision 266) |
+| std_names_outside_rt | 120 | 0 (name-ban gate, decision 573) |
 | backend_std_names | 17 | 0 |
 | dup_fn_bodies | 5 | 0 |
 | near_dup_fns | 10 | 0 |
@@ -280,7 +281,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | cold_review_median | unmeasured | >= 4 of 5, two rounds per lane |
 | probe_files_touched | cold run 2026-11-22: P1 8, P2 7, P3 11, P4 5 | <= 3 files each |
 | register_rows | 247 | 0 |
-| uncited_rules | 130 | 0 |
+| uncited_rules | 120 | 0 |
 | dead_code_allows | 6 | 0 |
 | external_crates | 5 | <= 5 |
 | corpus_test_files | 2763 | 0 |
@@ -326,6 +327,12 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 | all | 189 | 161 | 21 | 6 | 0 | 3 | 10 |
 
 ## Skipped process (`Skipped:` trailers per lane per day)
+
+Process costing more than 10% of a change is skipped with a trailer
+(`handbook/process/handbook-and-rfcs.md`); this counts them.
+
+Process costing more than 10% of a change is skipped with a trailer
+(`handbook/process/handbook-and-rfcs.md`); this counts them.
 
 Process costing more than 10% of a change is skipped with a trailer
 (`handbook/process/handbook-and-rfcs.md`); this counts them.

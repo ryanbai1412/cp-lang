@@ -198,11 +198,7 @@ impl<'a> Lowerer<'a> {
         if !inclusive {
             hi = self.int_add(hi, -1);
         }
-        self.mk(
-            ExprKind::Builtin(Builtin::Rand, vec![lo, hi]),
-            Ty::Int,
-            span,
-        )
+        self.mk_builtin(Builtin::Rand, [lo, hi], Ty::Int, span)
     }
 
     /// A call of the fn `name` of the loaded module `std.<module>`.

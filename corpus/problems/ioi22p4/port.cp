@@ -45,7 +45,11 @@ for u in gates.rev:
 
 // per source (worth if lit, worth if dark); a toggle swaps the two over a range
 fn join(a: Flip<Z>, b: Flip<Z>) -> Flip<Z> = Flip(a.now + b.now, a.flipped + b.flipped)
-var sources = SegTree<Source, Flip<Z>, Bool>(Monoid(Flip(Z(0), Z(0)), join), [Source] s => Flip.of(lit[s] == 1, worth[Node(Int(s))], Z(0)), act: flip_action<Z>(+))
+var sources = SegTree<Source, Flip<Z>, Bool>(
+    Monoid(Flip(Z(0), Z(0)), join),
+    [Source] s => Flip.of(lit[s] == 1, worth[Node(Int(s))], Z(0)),
+    act: flip_action<Z>(+),
+)
 for _ in 0..q:
     let (l, r): (Source, Source) = read()
     sources.apply(l..=r, true)

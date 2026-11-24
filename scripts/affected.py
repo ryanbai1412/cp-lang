@@ -21,6 +21,7 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci  # noqa: E402
@@ -45,21 +46,50 @@ DATA_TESTS = [(f"{PACKAGES}/*/{leaf}", "package(cpl-lint) & test(/corpus_warning
 # Programs no test reads but that must still pass `cpl check`.
 CHECK_ONLY = ["research/acceptance/solutions/*.cp", f"{PACKAGES}/*/perf.cp"]
 # Package files the commit tier leaves to the corpus audit; CI runs the rest.
-AUDIT_ONLY = [f"{PACKAGES}/*/{leaf}" for leaf in ("gen.py", "tests.toml", "orig.cpp", "meta.json")]
+AUDIT_ONLY = [f"{PACKAGES}/*/{leaf}" for leaf in ("gen.py", "tests.toml", "samples/*", "orig.cpp", "meta.json")]
 # Owner-named tests a touched path runs ahead of the rest of the commit tier,
 # each under SLICE_LIMIT_S warm (ci/R39): name, owner, paths, nextest
 # `binary_id[ test]` entries.
 SLICE_LIMIT_S = 20
 SLICES = [
-    ("vm-trace", "consumers (trace)", ["std/*", "crates/cpl-interp/*", "crates/cpl-ir/*"],
+    ("vm-trace", "consumers (trace)",
+     ["std/*", "crates/cpl-interp/*", "crates/cpl-ir/*", "crates/cpl-cli/tests/programs/*",
+      "crates/cpl-cli/tests/vm_fallbacks*"],
      ["cpl-cli::trace_goldens", "cpl-cli::vm_fallbacks"]),
-    ("corpus-warnings", "consumers", ["std/*"],
+    ("corpus-warnings", "consumers",
+     ["std/*", f"{PACKAGES}/*/spec.cp", "corpus/newcomer/*", "crates/cpl-lint/*", "crates/cpl-check/*"],
      ["cpl-lint corpus_tests::corpus_warnings_only_go_down"]),
     ("ports-check", "content (stdlib)", ["std/*"],
      ["cpl-cli::corpus the_libraries_ports_and_passing_tests_check_clean"]),
-    ("copies", "perf (codegen)", [f"{PACKAGES}/*.cp", "spec/conformance/*.cp", "std/*", "crates/cpl-codegen/*"],
+    ("copies", "perf (codegen)", [f"{PACKAGES}/*.cp", "spec/conformance/*.cp", "std/*", "crates/cpl-codegen/*",
+                                  "crates/cpl-cli/tests/support/cpp_counts.rs"],
      ["cpl-cli::read_only_copies"]),
 ]
+# Globs name the data and crates a slice's tests run; slice_globs adds each test's
+# source and the workspace crates it names. scripts/test_affected.py fails on a
+# path literal in a test that its slice's globs miss.
+
+
+def test_source(test):
+    """`cpl-cli::corpus name` -> crates/cpl-cli/tests/corpus.rs; `cpl-lint mod::name` -> src/mod.rs."""
+    binary, _, name = test.partition(" ")
+    crate, _, target = binary.partition("::")
+    return f"crates/{crate}/tests/{target}.rs" if target else f"crates/{crate}/src/{name.split('::')[0]}.rs"
+
+
+def slice_globs(globs, tests):
+    out = list(globs)
+    for t in tests:
+        src = test_source(t)
+        own = src.split("/")[1]
+        try:
+            text = (Path(ROOT) / src).read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        # Its own crate's change already runs it, through nextest's rdeps.
+        out += [src] + [f"crates/{c}/*" for c in sorted({"cpl-" + d.replace("_", "-")
+                                                          for d in re.findall(r"\bcpl_([a-z_]+)::", text)} - {own})]
+    return out
 EDITOR_CRATES = {"editors/neovim/": "cpl-cli", "editors/vscode/": "cpl-cli",
                  "editors/jetbrains/": "cpl-cli", "editors/tree-sitter-cp/": "cpl-cli",
                  "editors/lsp-matrix.json": "cpl-lsp"}
@@ -135,15 +165,26 @@ def slice_times(output, names):
     return times
 
 
+def build_slices(names):
+    """Compiles the slices' test binaries: the commit hook times this apart from
+    the run, since a cold build after a crate change is slow compiling, not a slow test."""
+    unknown = [n for n in names if n not in {s[0] for s in SLICES}]
+    if unknown:
+        print(f"affected: unknown slice {' '.join(unknown)}; one of {', '.join(s[0] for s in SLICES)}")
+        return 2
+    return subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-run", "-E", slice_filter(names)],
+                          cwd=ROOT).returncode
+
+
 def run_slices(names):
     unknown = [n for n in names if n not in {s[0] for s in SLICES}]
     if unknown:
         print(f"affected: unknown slice {' '.join(unknown)}; one of {', '.join(s[0] for s in SLICES)}")
         return 2
     expr = slice_filter(names)
-    built = subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-run", "-E", expr], cwd=ROOT)
-    if built.returncode:
-        return built.returncode
+    built = build_slices(names)
+    if built:
+        return built
     run = subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "--status-level", "pass",
                           "-E", expr], cwd=ROOT, capture_output=True, text=True)
     sys.stdout.write(run.stdout + run.stderr)
@@ -205,7 +246,7 @@ def select(paths, dirs):
         else:
             sel.update(all=True, reason=path)
             break
-    sel["slices"] = [name for name, _, globs, _ in SLICES if any(matches(p, globs) for p in paths)]
+    sel["slices"] = [name for name, _, globs, tests in SLICES if any(matches(p, slice_globs(globs, tests)) for p in paths)]
     sel["packages"] = sorted(packages)
     sel["script_tests"] = sorted(tests)
     sel["steps"] = sorted(steps)
@@ -226,6 +267,8 @@ def changed_since(base):
 
 
 def main(argv):
+    if argv[:1] == ["--build-slices"]:
+        return build_slices(argv[1:])
     if argv[:1] == ["--run-slices"]:
         return run_slices(argv[1:])
     as_json = "--json" in argv

@@ -1629,17 +1629,6 @@ pub struct Slice<S>(
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = hi <= lo
 
-/// The keys at walk positions `lo..hi` of `s`; an empty slice sits at key `lo` when there is one.
-fn slice_keys<S: Indexed, D>(s: S, lo: Int, hi: Int) -> Range<D>:
-    let ks = s.keys
-    if lo < hi: return ks.nth(lo)..=ks.nth(hi - 1)
-    if lo < ks.len:
-        let k = ks.nth(lo)
-        return k..k
-    if ks.len == 0: return ks
-    let k = ks.nth(ks.len - 1)
-    k..k
-
 /// `s[lo..hi]` (`closed`: `s[lo..=hi]`) on an `Indexed` struct: the walk positions of its keys
 /// from `lo` up to `hi`, with an absent end at the start or the end of `s`'s keys.
 fn key_slice<Q: Indexed<K, V>, K, V>(s: Q, lo: ?K, hi: ?K, closed: Bool) -> Slice<Q>:
@@ -1649,36 +1638,6 @@ fn key_slice<Q: Indexed<K, V>, K, V>(s: Q, lo: ?K, hi: ?K, closed: Bool) -> Slic
     if let Some(k) = hi:
         j = if closed: s.keys[..=k].len else: s.keys[..k].len
     Slice(s, i, j)
-
-impl Seq<T> for Slice<S: Indexed<D, T>>:
-    fn iter(self) -> yields T:
-        for k in slice_keys(src, lo, hi): yield src.at(k)
-
-impl Keyed<D, T> for Slice<S: Indexed<D, T>>:
-    fn items(self) -> yields (D, T):
-        for k in slice_keys(src, lo, hi): yield (k, src.at(k))
-
-impl Sized for Slice<S: Indexed<D, T>>:
-    @get fn len(self) -> Int = hi - lo
-
-impl Bidir<T> for Slice<S: Indexed<D, T>>:
-    fn iter_rev(self) -> yields T:
-        for k in slice_keys(src, lo, hi).rev: yield src.at(k)
-
-impl Positional<T> for Slice<S: Indexed<D, T>>:
-    fn nth(self, k: Int) -> T = src.at(slice_keys(src, lo, hi).nth(k))
-
-impl Indexed<D, T> for Slice<S: Indexed<D, T>>:
-    fn at(self, i: D) -> T:
-        assert i in slice_keys(src, lo, hi), "a key outside the slice"
-        src.at(i)
-    /// \(O(1)\). The slice's keys: a sub-range of the source's keys.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `[5, 6, 7][1..].keys == 1..3`
-    /// order: increasing
-    @get fn keys(self) -> Range<D> = slice_keys(src, lo, hi)
 
 /// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0`). Consuming a view
 /// from the front is `w = w.drop(1)`.
@@ -1737,6 +1696,39 @@ pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(
 /// traps: when `k` is not in `0..self.len`
 /// example: `[5, 6, 7][1..].nth(0) == 6`
 pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
+
+impl<S: Indexed<K, T>, K, T> Seq<T> for Slice<S>:
+    fn iter(self) -> yields T:
+        for i in self.lo..self.hi: yield self.src.nth(i)
+
+impl<S: Indexed<K, T>, K, T> Sized for Slice<S>:
+    @get fn len(self) -> Int = self.hi - self.lo
+
+impl<S: Indexed<K, T>, K, T> Keyed<K, T> for Slice<S>:
+    fn items(self) -> yields (K, T):
+        for i in self.lo..self.hi: yield (self.src.keys.nth(i), self.src.nth(i))
+
+impl<S: Indexed<K, T>, K, T> Bidir<T> for Slice<S>:
+    fn iter_rev(self) -> yields T:
+        for i in (self.lo..self.hi).rev: yield self.src.nth(i)
+
+impl<S: Indexed<K, T>, K, T> Positional<T> for Slice<S>:
+    fn nth(self, k: Int) -> T:
+        assert 0 <= k < self.hi - self.lo, "nth(k) requires 0 <= k < len"
+        self.src.nth(self.lo + k)
+
+impl<S: Indexed<K, T>, K, T> Indexed<K, T> for Slice<S>:
+    fn at(self, i: K) -> T:
+        assert self.lo <= self.src.keys.ord(i) < self.hi, "the key is outside the slice"
+        self.src.at(i)
+    @get fn keys(self) -> Range<K> = self.src.keys.drop(self.lo).take(self.hi - self.lo)
+
+/// \(O(n)\). An owned copy of the slice's elements, in order.
+///
+/// cost: \(O(n)\)
+/// traps: never
+/// example: `[5, 6, 7][1..].to_list() == [6, 7]`
+pub fn to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T> = self.collect()
 
 /// \(O(1)\). `self` keyed by a fresh domain `0..len` of its own (`let t = w.rebase`, keys `t.Idx`),
 /// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
@@ -4108,13 +4100,20 @@ pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
 /// traps: never
 /// example: `[0..5, 1..3, 4..8].outermost() == [0..5, 4..8]`
 pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>:
-    var rs: List<(Int, Range<D>)> = []
-    for r in self: rs.push((rs.len, r))
-    rs.sort(by: p => (p.1.start, -Int(p.1.end), p.0))
-    var out: List<Range<D>> = []
-    for (_, r) in rs:
-        if out.len == 0 or out.last!.r < r.r: out.push(r)
-    out
+    var rs: List<Range<D>> = self.collect()
+    rs.sort(by: r => r.start)
+    // kept in place: a range stays when it reaches past the last kept one; one with the
+    // same left end replaces that one when it is longer
+    var w = 0
+    for i in 0..rs.len:
+        let r = rs[i]
+        if w > 0 and rs[w - 1].start == r.start:
+            if rs[w - 1].r < r.r: rs[w - 1] = r
+        elif w == 0 or rs[w - 1].r < r.r:
+            rs[w] = r
+            w += 1
+    while rs.len > w: rs.pop()
+    rs
 
 /// \(O(1)\). A list's keys: `0..xs.len`, in increasing order.
 ///
@@ -4179,7 +4178,15 @@ fn views_and_trackers_walk_and_show():
     let r = [1, 2, 3].ring.span(2, 2)
     assert r.each().collect() == [2, 0] and "{r}" == "2 0" and not r.is_empty
 
-impl Show for Slice<S: Indexed<D, T>>:
+impl Show for Rebased<S>:
+    fn show(v):
+        var out = ""
+        for x in v.src:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Slice<S>:
     fn show(v):
         var out = ""
         for (_, x) in v.items:

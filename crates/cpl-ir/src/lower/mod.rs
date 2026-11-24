@@ -595,7 +595,6 @@ struct Lowerer<'a> {
     path_to_mod: HashMap<String, ModId>,
     /// The module `std.mod`, when the program uses it.
     std_mod: Option<ModId>,
-    io_mod: Option<ModId>,
     /// The module `std.prefix`, when the program uses `prefix(...)`.
     mod_syms: Vec<HashMap<String, Sym>>,
     /// Each inline `mod`: the module it sits in and its body.
@@ -774,6 +773,8 @@ struct Lowerer<'a> {
     /// type parameter only its return type names: `let x: Int = gen(r)`.
     call_hint: (Option<Ty>, Option<lambda_infer::WantBound>),
     self_struct: Option<StructId>,
+    /// The trait fns a law being lowered names unqualified (`LawInfo::trait_fns`).
+    law_fns: Vec<String>,
     /// Start of the item being lowered; its spans are relative to it.
     offset: u32,
     /// Declared types shown as their source writes them, innermost last.
@@ -800,7 +801,6 @@ impl<'a> Lowerer<'a> {
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
             std_mod: None,
-            io_mod: None,
             mod_syms: Vec::new(),
             inline_mods: HashMap::new(),
             cur_mod: 0,
@@ -911,6 +911,7 @@ impl<'a> Lowerer<'a> {
             gen_env: HashMap::new(),
             call_hint: (None, None),
             self_struct: None,
+            law_fns: Vec::new(),
             offset: 0,
             asked_at: report::Asked::default(),
             sig_param_at: HashMap::new(),
@@ -1158,16 +1159,8 @@ impl<'a> Lowerer<'a> {
 
     fn domain_try_label(&mut self, id: DomainId, label: Expr, span: Span) -> Expr {
         let lo = self.domain_first_label(id, span);
-        let ord = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(label), Box::new(lo)),
-            Ty::Int,
-            span,
-        );
-        self.mk(
-            ExprKind::Builtin(Builtin::PosTryOrd(id), vec![ord]),
-            Ty::opt(Ty::Pos(id)),
-            span,
-        )
+        let ord = self.mk_binary(BinOp::Sub, label, lo, Ty::Int, span);
+        self.mk_builtin(Builtin::PosTryOrd(id), [ord], Ty::opt(Ty::Pos(id)), span)
     }
 
     /// `a + b` on two `Int` expressions.
@@ -1295,6 +1288,64 @@ impl<'a> Lowerer<'a> {
             ty,
             span: self.span(span),
         }
+    }
+
+    // One out-of-line builder per boxed node: each boxing call site
+    // otherwise carries its own allocation and copy.
+    fn mk_binary(&self, op: BinOp, l: Expr, r: Expr, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), ty, span)
+    }
+
+    fn mk_cmp(&self, op: CmpOp, l: Expr, r: Expr, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Cmp(op, Box::new(l), Box::new(r)), ty, span)
+    }
+
+    fn mk_if(&self, c: Expr, t: Expr, e: Expr, ty: Ty, span: Span) -> Expr {
+        self.mk(
+            ExprKind::If(Box::new(c), Box::new(t), Box::new(e)),
+            ty,
+            span,
+        )
+    }
+
+    fn mk_is_some(&self, e: Expr, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::IsSome(Box::new(e)), ty, span)
+    }
+
+    fn mk_some(&self, e: Expr, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Some(Box::new(e)), ty, span)
+    }
+
+    fn mk_unwrap(&self, e: Expr, checked: bool, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Unwrap(Box::new(e), checked), ty, span)
+    }
+
+    fn mk_field(&self, e: Expr, idx: usize, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Field(Box::new(e), idx), ty, span)
+    }
+
+    fn mk_index(&self, e: Expr, at: Vec<Expr>, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Index(Box::new(e), at), ty, span)
+    }
+
+    fn mk_unary(&self, op: UnOp, e: Expr, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Unary(op, Box::new(e)), ty, span)
+    }
+
+    fn mk_mutate(&self, m: Mutation, place: Place, args: Vec<Expr>, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Mutate(m, Box::new(place), args), ty, span)
+    }
+
+    fn mk_call_expr(&self, f: Expr, args: Vec<Arg>, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::CallExpr(Box::new(f), args), ty, span)
+    }
+
+    fn mk_builtin<const N: usize>(&self, b: Builtin, args: [Expr; N], ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Builtin(b, args.into()), ty, span)
+    }
+
+    fn mk_read(&self, spec: Spec, ty: Ty, span: Span) -> Expr {
+        self.mk(ExprKind::Read(Box::new(spec)), ty, span)
     }
 
     /// Whether a struct is a number: it has a `zero`, a `one` and a

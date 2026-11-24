@@ -22,5 +22,6 @@ for i in 0..n:
     let u = Subset<B>.single(B(i % 6)).with(B(i * 5 % 6)).with(B(i * 13 % 6))
     for g in u.subsets: acc += g.len // timed: subset.Subset.subsets
     for g in u.complement().complement().with(B(0)).complement().supersets: acc ^= g.len // timed: subset.Subset.supersets
+    acc += Subset<B>.of([B(i % 6), B(i * 5 % 6)]).len // timed: subset.Subset.of
     acc += t.len
 print(acc)

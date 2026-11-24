@@ -266,17 +266,8 @@
       ]
     },
     "none": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "None"
-        },
-        {
-          "type": "STRING",
-          "value": "none"
-        }
-      ]
+      "type": "STRING",
+      "value": "None"
     },
     "self": {
       "type": "STRING",
@@ -292,6 +283,10 @@
         {
           "type": "STRING",
           "value": "var"
+        },
+        {
+          "type": "STRING",
+          "value": "const"
         },
         {
           "type": "STRING",
@@ -312,18 +307,6 @@
         {
           "type": "STRING",
           "value": "type"
-        },
-        {
-          "type": "STRING",
-          "value": "const"
-        },
-        {
-          "type": "STRING",
-          "value": "trait"
-        },
-        {
-          "type": "STRING",
-          "value": "impl"
         },
         {
           "type": "STRING",
@@ -395,15 +378,23 @@
         },
         {
           "type": "STRING",
+          "value": "unchecked"
+        },
+        {
+          "type": "STRING",
+          "value": "trait"
+        },
+        {
+          "type": "STRING",
+          "value": "impl"
+        },
+        {
+          "type": "STRING",
           "value": "lends"
         },
         {
           "type": "STRING",
           "value": "yield"
-        },
-        {
-          "type": "STRING",
-          "value": "unchecked"
         }
       ]
     },

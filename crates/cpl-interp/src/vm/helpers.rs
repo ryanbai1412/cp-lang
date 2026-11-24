@@ -48,6 +48,18 @@ pub(super) fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
 /// In a traced run a local the VM keeps in a register is left out of the
 /// stack, which the tracer shows, until it is declared, as in the tree-walker.
 #[inline(always)]
+/// The items a `yield from` of `seq` feeds: its elements, in order.
+pub(crate) fn yielded_items(seq: Value, span: Span) -> Res<Vec<Value>> {
+    match seq {
+        Value::List(xs) => Ok(xs.iter().collect()),
+        Value::Array(a) => Ok((0..a.len()).map(|i| a.get_unchecked_val(i)).collect()),
+        _ => trap(
+            span,
+            "internal: a `yields` fn did something else to its list",
+        ),
+    }
+}
+
 pub(crate) fn undeclared(traced: bool, loc: &SlotLoc, held: &Value) -> bool {
     traced && !matches!(loc, SlotLoc::V(_)) && matches!(held, Value::Unit)
 }
@@ -65,10 +77,10 @@ pub(crate) fn read_slot(loc: &SlotLoc, regs_i: &[i64], regs_v: &[Value]) -> Valu
             len,
             kinds,
         } => {
-            let fs = (0..len as usize)
-                .map(|k| kinds[k].box_val(regs_i[b as usize + k]))
-                .collect();
-            Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
+            let fs = crate::value::Shared::collect(len as usize, |k| {
+                kinds[k].box_val(regs_i[b as usize + k])
+            });
+            Value::Tuple(TupleVal::Boxed(fs))
         }
     }
 }
@@ -229,7 +241,7 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
             Cells::Bool(v) | Cells::Char(v) => i64::from(*v.get_unchecked(at)),
             Cells::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
             Cells::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
-            Cells::Float(_) | Cells::SmallIntTuple { .. } => 0,
+            Cells::Float(_) | Cells::SmallIntTuple { .. } | Cells::SmallEnum { .. } => 0,
         }
     }
 }
@@ -261,7 +273,7 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
                 }
             }
             Cells::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
-            Cells::Float(_) | Cells::SmallIntTuple { .. } => {}
+            Cells::Float(_) | Cells::SmallIntTuple { .. } | Cells::SmallEnum { .. } => {}
         }
     }
 }
@@ -527,12 +539,6 @@ pub(super) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
 }
 
 pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res<()> {
-    fn sort_ord<T: Ord>(v: &mut [T], desc: bool) {
-        v.sort_unstable();
-        if desc {
-            v.reverse();
-        }
-    }
     match target {
         Value::List(items) => {
             let items = Rc::make_mut(items);
@@ -541,7 +547,13 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
                 items.reverse();
             }
         }
-        Value::Str(bytes) => sort_ord(Rc::make_mut(bytes).as_mut_slice(), desc),
+        Value::Str(bytes) => {
+            let bytes = Rc::make_mut(bytes);
+            bytes.sort_unstable();
+            if desc {
+                bytes.reverse();
+            }
+        }
         Value::Array(arr) => {
             let a = Rc::make_mut(arr);
             a.data.sort_unstable();
@@ -629,6 +641,7 @@ pub(super) fn take_value(cell: &mut Value, span: Span) -> Res<Value> {
         Value::Str(_) => Value::Str(Rc::default()),
         Value::Map(_) => Value::Map(Rc::default()),
         Value::Set(_) => Value::Set(Rc::default()),
+        Value::Tuple(TupleVal::Boxed(_)) => Value::Moved,
         other => other.clone(),
     };
     Ok(std::mem::replace(cell, empty))
@@ -813,7 +826,7 @@ pub(super) fn walk_place_mut<'a>(
             },
             PlaceStep::Field(f) => match cur {
                 Value::Tuple(TupleVal::Boxed(fs)) => {
-                    cur = &mut Rc::make_mut(fs)[f as usize];
+                    cur = &mut crate::value::Shared::make_mut(fs)[f as usize];
                 }
                 _ => return trap(span, "internal: expected tuple"),
             },
@@ -870,7 +883,7 @@ pub(super) fn store_place_leaf_scalar(
         }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
-                Rc::make_mut(fs)[f as usize] = kind.box_val(raw);
+                crate::value::Shared::make_mut(fs)[f as usize] = kind.box_val(raw);
                 Ok(())
             }
             Value::Tuple(TupleVal::OneInt(x)) if f == 0 => {
@@ -940,7 +953,7 @@ pub(super) fn store_place_leaf_opt_scalar(
         }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
-                Rc::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
+                crate::value::Shared::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
                 Ok(())
             }
             _ => trap(span, "internal: expected tuple"),
@@ -1000,7 +1013,7 @@ pub(super) fn store_place_leaf_val(
         }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
-                Rc::make_mut(fs)[f as usize] = val;
+                crate::value::Shared::make_mut(fs)[f as usize] = val;
                 Ok(())
             }
             _ => trap(span, "internal: expected tuple"),
@@ -1173,7 +1186,7 @@ pub(super) fn assign_place_leaf_scalar(
         }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
-                let slice = Rc::make_mut(fs);
+                let slice = crate::value::Shared::make_mut(fs);
                 let cur = ScalarKind::unbox_val(&slice[f as usize]);
                 let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                 slice[f as usize] = kind.box_val(next);
@@ -1271,10 +1284,6 @@ impl VmStats {
             return None;
         }
         Some(Self::default())
-    }
-
-    pub(crate) fn record(&mut self, tag: String) {
-        self.record_with_loop(tag, false);
     }
 
     pub(crate) fn record_with_loop(&mut self, tag: String, in_loop: bool) {

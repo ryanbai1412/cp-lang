@@ -80,6 +80,13 @@ laws exactly as `Window(op)` chooses it:
 | `Selective` (`min`, `max`, `min(by:)`) | monotone deque | \(O(1)\) amortized |
 | any `Op` (`gcd`, matrix product, `MaxSub`) | two stacks | \(O(1)\) amortized |
 
+A window over positions keys each push by its place and expires by bound
+instead of naming the leaving value: `w.push(x, at: i)` then
+`w.expire(before: i - len)`, oldest first, \(O(1)\) amortized per removed
+element (decision 575). A keyed window keys every push, and places never
+decrease. Today every op keeps two stacks; the law-picked strategies above
+wait on law-bound dispatch over op values.
+
 <!-- given:
   let a = [1, 2, 3, 4]
   let k = 2 -->

@@ -68,6 +68,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
         names,
         [
             "argmin_own_index",
+            "closed_loop_at_int_bounds",
             "closure_param_mod",
             "codegen_names_shadow",
             "dead_field",
@@ -78,6 +79,8 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "grid_keys",
             "grid_parts_generic",
             "hash_churn",
+            "hash_print_order",
+            "interner_prints_in_id_order",
             "interval_default_on_old",
             "items_of_temporary",
             "lent_fields",
@@ -108,11 +111,13 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "same_domain_lengths",
             "same_domain_longer_first",
             "same_domain_mut",
+            "sort_by_permutes",
             "sort_cmp",
             "sort_key_calls",
             "sort_key_one_traps",
             "sort_key_own_list",
             "sorted_ord",
+            "sorted_set_prints",
             "spliced_producer",
             "step_at_int_max",
             "step_not_positive",
@@ -1140,24 +1145,28 @@ const EDGE_FIXTURES: [(&str, &str); 4] = [
     (
         "catalog",
         "var xs = [3, 1, 2]\nvar s = \"hello\"\nvar m = Map<Int, Int>()\nm[1] = 10\nm[5] = 50\n\
-         var st = Set<Int>()\nst.insert(4)\nst.insert(9)\nvar a: [0..3]Int = 0\na[1] = 7\n",
+         var st = Set<Int>()\nst.insert(4)\nst.insert(9)\nvar a: [0..3]Int = 0\na[1] = 7\n\
+         var hm = HashMap<Int, Int>()\nhm[1] = 10\nhm[5] = 50\nvar hs = HashSet<Int>()\nhs.insert(4)\nhs.insert(9)\n",
     ),
     (
         "empty",
         "var xs: List<Int> = []\nvar s = \"\"\nvar m = Map<Int, Int>()\nvar st = Set<Int>()\n\
-         var a: [0..3]Int = 0\n",
+         var a: [0..3]Int = 0\nvar hm = HashMap<Int, Int>()\nvar hs = HashSet<Int>()\n",
     ),
     (
         "extreme",
         "var xs = [-3, 9223372036854775807, -9223372036854775807]\nvar s = \"Zz 9 ~\"\n\
          var m = Map<Int, Int>()\nm[-1] = -10\nm[0] = 9223372036854775807\n\
          var st = Set<Int>()\nst.insert(-4)\nst.insert(0)\nvar a: [0..3]Int = 0\n\
-         a[0] = -9223372036854775807\na[2] = 9223372036854775807\n",
+         a[0] = -9223372036854775807\na[2] = 9223372036854775807\n\
+         var hm = HashMap<Int, Int>()\nhm[-1] = -10\nhm[0] = 9223372036854775807\n\
+         var hs = HashSet<Int>()\nhs.insert(-4)\nhs.insert(0)\n",
     ),
     (
         "repeated",
         "var xs = [2, 2, 2, 2]\nvar s = \"aaaa\"\nvar m = Map<Int, Int>()\nm[7] = 7\n\
-         var st = Set<Int>()\nst.insert(7)\nvar a: [0..3]Int = 5\n",
+         var st = Set<Int>()\nst.insert(7)\nvar a: [0..3]Int = 5\n\
+         var hm = HashMap<Int, Int>()\nhm[7] = 7\nvar hs = HashSet<Int>()\nhs.insert(7)\n",
     ),
 ];
 
@@ -1186,6 +1195,8 @@ fn edge_body(member: &cpl_check::BuiltinMember) -> String {
             Receiver::Map => "m",
             Receiver::Set => "st",
             Receiver::Array => "a",
+            Receiver::HashMap => "hm.keys.sorted()",
+            Receiver::HashSet => "hs.sorted()",
         };
         body.push_str(&format!("\nprint({receiver})"));
     }

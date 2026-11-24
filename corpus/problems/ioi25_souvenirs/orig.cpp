@@ -1,6 +1,6 @@
 // IOI 2025 Day 1 "Souvenirs": the official model solution
 // (https://github.com/ioi/task-archive/blob/master/2025/day1/souvenirs/solutions/model_solution/author_solution.cpp)
-// with souvenirs.h inlined and a sample grader main that reads the port's input.
+// with souvenirs.h inlined and a stdio transaction for interactor.py.
 #include <bits/stdc++.h>
 
 void buy_souvenirs(int N, long long P0);
@@ -70,37 +70,24 @@ void buy_souvenirs(int N, ll P_0) {
     }
 }
 
-// Sample grader (IOI 2025 attachments, with the judge's 5000-call limit): N, then
-// P[0] .. P[N-1]; prints how many souvenirs of each type were bought, or why it stopped.
-static int grader_n, grader_calls;
-static std::vector<long long> grader_p;
-static std::vector<int> grader_q;
-
-static void grader_quit(const char* message) {
-    printf("%s\n", message);
-    exit(0);
-}
-
+// Stdio form of the official manager's protocol (interactor.py): read "N P[0]"; each
+// transaction(M) prints "? M" and reads "k L[0] .. L[k-1] R"; "!" ends the run.
 std::pair<std::vector<int>, long long> transaction(long long M) {
-    if (++grader_calls > 5000) grader_quit("Too many calls");
-    if (M >= grader_p[0] || M < grader_p[grader_n - 1]) grader_quit("Invalid argument");
-    std::vector<int> L;
-    long long R = M;
-    for (int i = 0; i < grader_n; i++)
-        if (R >= grader_p[i]) {
-            R -= grader_p[i];
-            grader_q[i]++;
-            L.push_back(i);
-        }
+    printf("? %lld\n", M);
+    fflush(stdout);
+    int k;
+    if (scanf("%d", &k) != 1) exit(1);
+    std::vector<int> L(k);
+    for (auto& x : L) scanf("%d", &x);
+    long long R;
+    scanf("%lld", &R);
     return {L, R};
 }
-
 int main() {
-    if (scanf("%d", &grader_n) != 1) return 1;
-    grader_p.resize(grader_n);
-    for (auto& x : grader_p) scanf("%lld", &x);
-    grader_q.assign(grader_n, 0);
-    buy_souvenirs(grader_n, grader_p[0]);
-    for (int i = 0; i < grader_n; i++) printf("%s%d", i ? " " : "", grader_q[i]);
-    printf("\n");
+    int n;
+    long long p0;
+    if (scanf("%d %lld", &n, &p0) != 2) return 1;
+    buy_souvenirs(n, p0);
+    printf("!\n");
+    fflush(stdout);
 }

@@ -176,7 +176,7 @@ def one(cpl, case, tmp):
     if not claimed:
         return None
     out = Path(tmp) / (case.stem + ".cpp")
-    if subprocess.run([cpl, "build", str(case), "-o", str(out)], capture_output=True, timeout=120).returncode:
+    if subprocess.run([cpl, "build", str(case), "--full", "-o", str(out)], capture_output=True, timeout=120).returncode:
         return None
     made = deep_copies(out.read_text())
     return case.relative_to(specgate.CONFORMANCE.parent.parent), claimed, made

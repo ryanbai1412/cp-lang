@@ -107,17 +107,9 @@ impl<'a> Lowerer<'a> {
                     let n = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                     self.int_add(n, 1)
                 }
-                _ => self.mk(
-                    ExprKind::Builtin(Builtin::Len, vec![place_to_expr(base_place)]),
-                    Ty::Int,
-                    span,
-                ),
+                _ => self.mk_builtin(Builtin::Len, [place_to_expr(base_place)], Ty::Int, span),
             },
-            _ => self.mk(
-                ExprKind::Builtin(Builtin::Len, vec![place_to_expr(base_place)]),
-                Ty::Int,
-                span,
-            ),
+            _ => self.mk_builtin(Builtin::Len, [place_to_expr(base_place)], Ty::Int, span),
         };
         let key_lo = self.mut_view_key_lo(base_place, span);
         let to_idx = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
@@ -170,16 +162,9 @@ impl<'a> Lowerer<'a> {
         let r_slot = self.temp(range_ty);
         self.cx.pending.push(Stmt::Let(r_slot, Some(range_val)));
         let r_ref = self.local(r_slot, span);
-        let lo_bound = self.mk(
-            ExprKind::Builtin(Builtin::RangeLo, vec![r_ref.clone()]),
-            range_inner.clone(),
-            span,
-        );
-        let hi_bound = self.mk(
-            ExprKind::Builtin(Builtin::RangeHi, vec![r_ref]),
-            range_inner.clone(),
-            span,
-        );
+        let lo_bound =
+            self.mk_builtin(Builtin::RangeLo, [r_ref.clone()], range_inner.clone(), span);
+        let hi_bound = self.mk_builtin(Builtin::RangeHi, [r_ref], range_inner.clone(), span);
         let key_lo = self.mut_view_key_lo(base_place, span);
         let lo = self.slice_bound_at(lo_bound, first, &key_lo, span);
         let hi = self.slice_bound_at(hi_bound, first, &key_lo, span);
@@ -253,22 +238,14 @@ impl<'a> Lowerer<'a> {
         elem: Ty,
         span: Span,
     ) -> Expr {
-        let pos = self.mk(
-            ExprKind::Builtin(Builtin::KeyPos, vec![view.clone(), key]),
-            Ty::Int,
-            span,
-        );
-        self.mk(ExprKind::Index(Box::new(view), vec![pos]), elem, span)
+        let pos = self.mk_builtin(Builtin::KeyPos, [view.clone(), key], Ty::Int, span);
+        self.mk_index(view, vec![pos], elem, span)
     }
 
     /// The smallest key of a view, `0` for a whole list or string.
     pub(in crate::lower) fn key_lo(&mut self, seq: &Expr, span: Span) -> Expr {
         if Self::keyed_view(&seq.ty) {
-            self.mk(
-                ExprKind::Builtin(Builtin::KeyLo, vec![seq.clone()]),
-                Ty::Int,
-                span,
-            )
+            self.mk_builtin(Builtin::KeyLo, [seq.clone()], Ty::Int, span)
         } else {
             self.int_lit(0, span)
         }
@@ -330,16 +307,9 @@ impl<'a> Lowerer<'a> {
             let r_slot = self.temp(range_ty);
             self.cx.pending.push(Stmt::Let(r_slot, Some(range_val)));
             let r_ref = self.local(r_slot, span);
-            let lo_bound = self.mk(
-                ExprKind::Builtin(Builtin::RangeLo, vec![r_ref.clone()]),
-                range_inner.clone(),
-                span,
-            );
-            let hi_bound = self.mk(
-                ExprKind::Builtin(Builtin::RangeHi, vec![r_ref]),
-                range_inner.clone(),
-                span,
-            );
+            let lo_bound =
+                self.mk_builtin(Builtin::RangeLo, [r_ref.clone()], range_inner.clone(), span);
+            let hi_bound = self.mk_builtin(Builtin::RangeHi, [r_ref], range_inner.clone(), span);
             let lo = if matches!(range_inner, Ty::Pos(_) | Ty::Bound(_)) {
                 self.cast(Cast::Ord, lo_bound, Ty::Int)
             } else {
@@ -389,16 +359,9 @@ impl<'a> Lowerer<'a> {
             };
             out.push(Stmt::Let(acc_slot, Some(init)));
             let r_ref = lw.local(r_slot, span);
-            let lo_bound = lw.mk(
-                ExprKind::Builtin(Builtin::RangeLo, vec![r_ref.clone()]),
-                range_inner.clone(),
-                span,
-            );
-            let hi_bound = lw.mk(
-                ExprKind::Builtin(Builtin::RangeHi, vec![r_ref]),
-                range_inner.clone(),
-                span,
-            );
+            let lo_bound =
+                lw.mk_builtin(Builtin::RangeLo, [r_ref.clone()], range_inner.clone(), span);
+            let hi_bound = lw.mk_builtin(Builtin::RangeHi, [r_ref], range_inner.clone(), span);
             let lo_ord = if matches!(range_inner, Ty::Pos(_) | Ty::Bound(_)) {
                 lw.cast(Cast::Ord, lo_bound, Ty::Int)
             } else {
@@ -419,22 +382,21 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => i_ref,
             };
-            let elem = lw.mk(
-                ExprKind::Index(Box::new(lw.local(b_slot, span)), vec![idx_expr]),
+            let elem = lw.mk_index(
+                lw.local(b_slot, span),
+                vec![idx_expr],
                 elem_ty.clone(),
                 span,
             );
             // A `Str` grows by `push` like a list: `acc = acc + c` would copy it each step.
-            let push_stmt = Stmt::Expr(lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(Place {
-                        kind: PlaceKind::Local(acc_slot),
-                        ty: result_ty.clone(),
-                        span: lw.span(span),
-                    }),
-                    vec![elem],
-                ),
+            let push_stmt = Stmt::Expr(lw.mk_mutate(
+                Mutation::Push,
+                Place {
+                    kind: PlaceKind::Local(acc_slot),
+                    ty: result_ty.clone(),
+                    span: lw.span(span),
+                },
+                vec![elem],
                 Ty::Unit,
                 span,
             ));
@@ -521,26 +483,14 @@ impl<'a> Lowerer<'a> {
         out.push(Stmt::Let(hi_slot, Some(hi_e)));
         let (lo_e, hi_e) = (self.local(lo_slot, span), self.local(hi_slot, span));
         let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
-            lw.mk(
-                ExprKind::Cmp(op, Box::new(l.clone()), Box::new(r.clone())),
-                Ty::Bool,
-                span,
-            )
+            lw.mk_cmp(op, l.clone(), r.clone(), Ty::Bool, span)
         };
         let zero = self.int_lit(0, span);
         let below = cmp(self, CmpOp::Lt, &lo_e, &zero);
         let reversed = cmp(self, CmpOp::Lt, &hi_e, &lo_e);
         let beyond = cmp(self, CmpOp::Gt, &hi_e, &len);
-        let bad = self.mk(
-            ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(reversed)),
-            Ty::Bool,
-            span,
-        );
-        let bad = self.mk(
-            ExprKind::Binary(BinOp::Or, Box::new(bad), Box::new(beyond)),
-            Ty::Bool,
-            span,
-        );
+        let bad = self.mk_binary(BinOp::Or, below, reversed, Ty::Bool, span);
+        let bad = self.mk_binary(BinOp::Or, bad, beyond, Ty::Bool, span);
         let message = match first {
             0 => "a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length".to_string(),
             _ => format!("a part `lo..hi` of a row or column indexed from {first} needs {first} <= lo <= hi <= {first} + its length"),
@@ -623,11 +573,7 @@ impl<'a> Lowerer<'a> {
             let hi_e = match hi {
                 Some(h) => to_idx(self, h, true),
                 None => {
-                    let len = self.mk(
-                        ExprKind::Builtin(Builtin::Len, vec![base.clone()]),
-                        Ty::Int,
-                        span,
-                    );
+                    let len = self.mk_builtin(Builtin::Len, [base.clone()], Ty::Int, span);
                     let first = self.key_lo(&base, span);
                     if Self::keyed_view(&base.ty) {
                         self.int_sum(first, len)
@@ -653,11 +599,7 @@ impl<'a> Lowerer<'a> {
                         (Ty::Int, None) => v,
                         (Ty::Int, Some(d)) => {
                             let first = lw.domain_first_label(d, e.span);
-                            lw.mk(
-                                ExprKind::Binary(BinOp::Sub, Box::new(v), Box::new(first)),
-                                Ty::Int,
-                                e.span,
-                            )
+                            lw.mk_binary(BinOp::Sub, v, first, Ty::Int, e.span)
                         }
                         (Ty::Pos(_), _) => lw.cast(Cast::Ord, v, Ty::Int),
                         (Ty::Bound(_), _) => return lw.cast(Cast::Ord, v, Ty::Int),
@@ -726,7 +668,7 @@ impl<'a> Lowerer<'a> {
             let base_ref = lw.local(base_slot, span);
             let len_expr = match dim_dom {
                 Some(d) => lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
-                None => lw.mk(ExprKind::Builtin(Builtin::Len, vec![base_ref.clone()]), Ty::Int, span),
+                None => lw.mk_builtin(Builtin::Len, [base_ref.clone()], Ty::Int, span),
             };
             let to_idx = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
                 let v = lw.expr(e, None);
@@ -760,10 +702,10 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Let(hi_slot, Some(hi_e)));
             let (lo_e, hi_e) = (lw.local(lo_slot, span), lw.local(hi_slot, span));
             let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
-                lw.mk(ExprKind::Cmp(op, Box::new(l.clone()), Box::new(r.clone())), Ty::Bool, span)
+                lw.mk_cmp(op, l.clone(), r.clone(), Ty::Bool, span)
             };
             let or = |lw: &mut Self, l: Expr, r: Expr| {
-                lw.mk(ExprKind::Binary(BinOp::Or, Box::new(l), Box::new(r)), Ty::Bool, span)
+                lw.mk_binary(BinOp::Or, l, r, Ty::Bool, span)
             };
             let zero = lw.int_lit(0, span);
             let below = cmp(lw, CmpOp::Lt, &lo_e, &zero);
@@ -795,25 +737,13 @@ impl<'a> Lowerer<'a> {
                 Some(d) => lw.mk(ExprKind::Cast(Cast::FromOrd(d), Box::new(idx_e)), Ty::Pos(d), span),
                 None => idx_e,
             };
-            let item = lw.mk(
-                ExprKind::Index(Box::new(base_ref), vec![index_arg]),
-                elem_ty.clone(),
-                span,
-            );
+            let item = lw.mk_index(base_ref, vec![index_arg], elem_ty.clone(), span);
             // A `Str` grows by `push` like a list: `acc = acc + c` would copy it each step.
-            let push_stmt = Stmt::Expr(lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(Place {
+            let push_stmt = Stmt::Expr(lw.mk_mutate(Mutation::Push, Place {
                         kind: PlaceKind::Local(acc_slot),
                         ty: out_ty.clone(),
                         span: lw.span(span),
-                    }),
-                    vec![item],
-                ),
-                Ty::Unit,
-                span,
-            ));
+                    }, vec![item], Ty::Unit, span));
             let lid = lw.next_loop;
             lw.next_loop += 1;
             out.push(Stmt::For(

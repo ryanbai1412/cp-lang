@@ -38,7 +38,9 @@ var best = levels.last! - levels.first!
 var top = 0
 for floor in 0..levels.len:
     top max= floor
-    let Some(ceiling) = (top..levels.len).first_true(t => delivers(levels[floor], levels[t])) else: break
+    let Some(ceiling) = (top..levels.len).first_true(
+        t => delivers(levels[floor], levels[t])
+    ) else: break
     top = ceiling
     best min= levels[top] - levels[floor]
 print(best)

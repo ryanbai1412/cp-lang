@@ -57,23 +57,15 @@ impl<'a> Lowerer<'a> {
                 _ => self.int_add(len.clone(), -1),
             };
             let zero = self.int_lit(0, span);
-            let empty = self.mk(
-                ExprKind::Cmp(CmpOp::Eq, Box::new(len), Box::new(zero)),
-                Ty::Bool,
-                span,
-            );
+            let empty = self.mk_cmp(CmpOp::Eq, len, zero, Ty::Bool, span);
             let item = self.mk(
                 ExprKind::Call(nth, vec![Arg::Value(k)]),
                 Ty::Struct(sid),
                 span,
             );
-            let some = self.mk(ExprKind::Some(Box::new(item)), opt_ty.clone(), span);
+            let some = self.mk_some(item, opt_ty.clone(), span);
             let none = self.mk(ExprKind::None, opt_ty.clone(), span);
-            return self.mk(
-                ExprKind::If(Box::new(empty), Box::new(none), Box::new(some)),
-                opt_ty,
-                span,
-            );
+            return self.mk_if(empty, none, some, opt_ty, span);
         }
         if let Some(query) = args.and_then(|args| self.walk_query(base, name, args, span)) {
             return query;
@@ -486,11 +478,7 @@ impl Lowerer<'_> {
         let LibrarySize::Count(len, span) = size;
         let span = *span;
         let now = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
-        let unsized_ = self.mk(
-            ExprKind::Cmp(CmpOp::Eq, Box::new(now), Box::new(self.int_lit(0, span))),
-            Ty::Bool,
-            span,
-        );
+        let unsized_ = self.mk_cmp(CmpOp::Eq, now, self.int_lit(0, span), Ty::Bool, span);
         let define = Stmt::DefDomain {
             id,
             lo: self.int_lit(0, span),

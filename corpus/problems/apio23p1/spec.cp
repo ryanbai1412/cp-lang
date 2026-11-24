@@ -22,7 +22,10 @@ if first[goal] == None:
     return
 var dist = dijkstra(
     trip,
-    from: chain([(V(0), 0.0)], V.filter(v => first[v] != None and power[v] == 0).map(v => (v, 0.0))),
+    from: chain(
+        [(V(0), 0.0)],
+        V.filter(v => first[v] != None and power[v] == 0).map(v => (v, 0.0)),
+    ),
 ).dist
 for _ in 0..min(k, 70):
     var starts: List<(V, F64)> = []

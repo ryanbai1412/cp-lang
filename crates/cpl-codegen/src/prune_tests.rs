@@ -51,7 +51,7 @@ fn the_start_of_a_range_from_a_literal_is_the_literal() {
         "print((0..n * 2).start)\n",
     ));
     let solve = &cpp[cpp.find("void solve").unwrap()..];
-    assert!(solve.contains("put_int(0)"), "{cpp}");
+    assert!(solve.contains("put_int(0, '\\n')"), "{cpp}");
     assert_eq!(solve.matches("::make(").count(), 1, "{cpp}");
 }
 

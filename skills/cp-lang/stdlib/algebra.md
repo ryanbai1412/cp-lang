@@ -31,6 +31,10 @@ A monoid whose `op(a, b) == op(b, a)` is stated; [`Monoid.commutative`] makes on
 
 A lazy update `F` on values `T` folded with `over`.
 
+## `trait Acts<T, F>`
+
+What an `act:` argument is: a stock action or an `Action`, acting with tags `F` on values `T`.
+
 ## `struct Desc<T>(pub x: T)`
 
 `x` with its order reversed.
@@ -46,6 +50,7 @@ Maximum non-empty subarray summary (Kadane monoid).
 - `fn of(v: Int) -> MaxSub` — \(O(1)\); The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
 - `fn join(a: MaxSub, b: MaxSub) -> MaxSub` — \(O(1)\); The summary of `a`'s elements followed by `b`'s (the same as `a + b`).; traps: never (overflow wraps in release, traps in debug)
 - `fn reversed(self) -> MaxSub` — \(O(1)\); The summary of the same elements in reverse order: the best prefix and suffix swap.
+- `fn repeat(self, k: Int) -> MaxSub` — \(O(1)\); The summary of `k` copies of this run, one after another, in \(O(1)\) where `pow` takes \(O(\log k)\) joins: what a range assignment of `k` equal elements stores.; traps: when `k < 0`
 - `fn scale(self, k: Int) -> MaxSub` — \(O(1)\); The summary of the same elements each multiplied by `k` (the same as `self * k`).; traps: when `k < 0`
 - `@get fn try_best(self) -> ?Int` — \(O(1)\); The largest sum of a non-empty contiguous run of the summarized elements, or `None` for the empty summary.
 - `fn monoid() -> Monoid<MaxSub>` — \(O(1)\); `Monoid(MaxSub.zero, MaxSub.join)`, for `SegTree` and `fold`.

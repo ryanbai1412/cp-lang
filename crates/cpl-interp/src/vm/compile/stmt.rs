@@ -247,7 +247,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 match self.traced_feed(*id, *slot, seq, body) {
                     Some((fn_id, feed, args)) => {
                         let eager = self.emit(Op::JmpEager { target: 0 }, seq.span);
-                        let dst = self.emit_traced_call(seq, Callee::Fn(fn_id), args, false);
+                        let dst = self.emit_traced_call(seq.span, Callee::Fn(fn_id), args, false);
                         // `emit_traced_call` ends with its `CallTraced`.
                         let call = self.ops.len() - 1;
                         self.traced_feeds.push((call as u32, feed));
@@ -282,10 +282,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::Expr(e) if self.traced_yield(e).is_some() => {
-                let (acc, list_v, place, arg) = self.traced_yield(e).unwrap();
+                let (acc, list_v, place, arg, each) = self.traced_yield(e).unwrap();
                 let back = match arg.kind {
-                    ExprKind::Local(slot) => slot as u16 + 1,
+                    ExprKind::Local(slot) if !each => slot as u16 + 1,
                     _ => 0,
+                };
+                let path = match each {
+                    true => match self.compile_place_path_to(place, true) {
+                        Some(path) => Some(path),
+                        None => return false,
+                    },
+                    false => None,
                 };
                 let src = self.compile_expr_v(arg);
                 let point = self.trace_points.len() as u32;
@@ -294,6 +301,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     Op::FeedTree {
                         src,
                         back,
+                        each,
                         acc: acc as u16,
                         point,
                         skip: 0,
@@ -301,7 +309,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     e.span,
                 );
                 // Run eagerly, as by a comprehension, the yield keeps its value.
-                self.emit(Op::ListPushLV { list_v, val_v: src }, e.span);
+                match path {
+                    Some(path) => self.emit_extend_from(e, path, src),
+                    None => {
+                        self.emit(Op::ListPushLV { list_v, val_v: src }, e.span);
+                    }
+                }
                 self.emit_trace(TracePoint::Mutated(place, e.span), e.span);
                 let skip = self.ops.len() as u32;
                 if let Op::FeedTree { skip: s, .. } = &mut self.ops[at] {
@@ -413,7 +426,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     pub(super) fn emit_traced_call(
         &mut self,
-        e: &'p Expr,
+        span: Span,
         callee: Callee<'p>,
         args: &'p [Arg],
         scalar: bool,
@@ -462,7 +475,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst_i,
                 lends,
             },
-            e.span,
+            span,
         );
         if scalar {
             dst_i
@@ -480,20 +493,35 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     /// A `yield` of the `yields` fn this chunk is: its list's slot and
     /// register, the place and the value.
-    fn traced_yield(&self, e: &'p Expr) -> Option<(usize, u16, &'p Place, &'p Expr)> {
+    fn traced_yield(&self, e: &'p Expr) -> Option<(usize, u16, &'p Place, &'p Expr, bool)> {
         let acc = *self.feeds.pushers.get(&self.cur_fn?)?;
         let SlotLoc::V(list_v) = self.slot_loc(acc) else {
             return None;
         };
         match &e.kind {
-            ExprKind::Mutate(Mutation::Push, place, args) => match (&place.kind, args.as_slice()) {
-                (PlaceKind::Local(slot), [arg]) if *slot == acc && self.traced_quiet(arg) => {
-                    Some((acc, list_v, place, arg))
+            ExprKind::Mutate(op @ (Mutation::Push | Mutation::Extend), place, args) => {
+                match (&place.kind, args.as_slice()) {
+                    (PlaceKind::Local(slot), [arg]) if *slot == acc && self.traced_quiet(arg) => {
+                        Some((acc, list_v, place, arg, *op == Mutation::Extend))
+                    }
+                    _ => None,
                 }
-                _ => None,
-            },
+            }
             _ => None,
         }
+    }
+
+    /// The eager `yield from` `e`: extends the list at `path` by the
+    /// sequence already in `src`.
+    fn emit_extend_from(&mut self, e: &'p Expr, path: u16, src: u16) {
+        let idx = self.applies.len() as u32;
+        self.applies.push(ApplySpec {
+            expr: e,
+            regs: vec![src],
+        });
+        let dst = self.alloc_v();
+        self.emit(Op::MutatePlace { idx, path, dst }, e.span);
+        self.emit(Op::ClearV { reg: dst }, e.span);
     }
 
     /// Whether the tree-walker can run the body of the fed loop `id` from

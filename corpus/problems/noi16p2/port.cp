@@ -37,7 +37,10 @@ fn split(n: Int, m: Int, crickets: List<Cell>) -> Bool:
         let bottom = top + up.len
         var (i, j) = (0, 0)
         while i < up.len and j < down.len:
-            if up[i].l <= down[j].r and down[j].l <= up[i].r: joined.unite(Run(top + i), Run(bottom + j))
+            if up[i].l <= down[j].r and down[j].l <= up[i].r: joined.unite(
+                Run(top + i),
+                Run(bottom + j),
+            )
             if up[i].r < down[j].r: i += 1 else: j += 1
         top = bottom
     joined.components > 1
@@ -75,4 +78,6 @@ let t: 1..=20 = read()
 repeat t:
     let (n, m, c): (1..=1e9, 1..=1e9, 0..=100_000) = read()
     let crickets: List<Cell> = read<[c](x: 1..=n, y: 1..=m)>().sorted()
-    print(if split(n, m, crickets): 0 elif n * m - c <= 2: -1 elif one_cut(n, m, crickets): 1 else: 2)
+    print(
+        if split(n, m, crickets): 0 elif n * m - c <= 2: -1 elif one_cut(n, m, crickets): 1 else: 2
+    )

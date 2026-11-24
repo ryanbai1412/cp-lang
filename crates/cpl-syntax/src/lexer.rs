@@ -96,13 +96,12 @@ impl<'a> Lexer<'a> {
     fn lone_carriage_return(&mut self, at: usize) {
         let span = Span::new(at as u32, at as u32 + 1);
         self.out.diagnostics.push(
-            Diagnostic::error(
-                codes::UNEXPECTED_TOKEN,
-                span,
-                "a carriage return that does not start a `\\r\\n` line end",
-            )
-            .with_help("lines end in `\\n` or `\\r\\n`; inside a string, write the escape `\\r`")
-            .with_fix("delete the carriage return", span, ""),
+            cpl_diag::msgs::lexer::LONE_CARRIAGE_RETURN
+                .error(span, &[])
+                .with_help(
+                    "lines end in `\\n` or `\\r\\n`; inside a string, write the escape `\\r`",
+                )
+                .with_fix("delete the carriage return", span, ""),
         );
     }
 
@@ -260,13 +259,10 @@ impl<'a> Lexer<'a> {
         }
         let span = Span::new(start as u32, start as u32 + 2);
         self.out.diagnostics.push(
-            Diagnostic::error(
-                codes::UNEXPECTED_TOKEN,
-                span,
-                "`//` starts a comment in CP Lang, so the rest of this line is skipped",
-            )
-            .with_help("`/` on two `Int`s already rounds down: `7 / 2` is 3, `-7 / 2` is -4")
-            .with_fix("replace with `/`", span, "/"),
+            cpl_diag::msgs::lexer::FLOOR_DIV_IS_COMMENT
+                .error(span, &[])
+                .with_help("`/` on two `Int`s already rounds down: `7 / 2` is 3, `-7 / 2` is -4")
+                .with_fix("replace with `/`", span, "/"),
         );
         self.pos += 2;
         self.push(TokenKind::Slash, start);
@@ -322,13 +318,14 @@ impl<'a> Lexer<'a> {
             .is_some_and(|(l, r)| names(l) && !r.starts_with('=') && r.contains("sys.stdin"));
         if io_line || py_io {
             let message = match io_line {
-                true => "C++'s fast-I/O setup: CP Lang's `read()` and `print` are already fast",
-                false => "Python's fast-input setup: CP Lang's `read()` is already fast",
+                true => &cpl_diag::msgs::lexer::CPP_FAST_IO,
+                false => &cpl_diag::msgs::lexer::PY_FAST_INPUT,
             };
             let span = Span::new(begin as u32, line.len() as u32 + begin as u32);
             let whole = Span::new(begin as u32, (end + 1).min(self.src.len()) as u32);
             self.out.diagnostics.push(
-                Diagnostic::error(codes::REMOVED_SYNTAX, span, message)
+                message
+                    .error(span, &[])
                     .with_help("remove the line")
                     .with_fix("remove the line", whole, ""),
             );
@@ -353,11 +350,7 @@ impl<'a> Lexer<'a> {
         let span = Span::new(begin as u32, line.len() as u32 + begin as u32);
         let whole = Span::new(begin as u32, (end + 1).min(self.src.len()) as u32);
         self.out.diagnostics.push(
-            Diagnostic::error(
-                codes::REMOVED_SYNTAX,
-                span,
-                format!("CP Lang has no `{word}`: the prelude is always in scope"),
-            )
+            cpl_diag::msgs::lexer::NO_IMPORT.error(span, &[&word])
             .with_help("remove the line; a std item is brought in with `use std.<module>.{name}`, which `cpl fix` adds")
             .with_fix("remove the line", whole, ""),
         );
@@ -411,12 +404,9 @@ impl<'a> Lexer<'a> {
             span(close, (close_end + 1).min(self.src.len())),
             String::new(),
         ));
-        let mut d = Diagnostic::error(
-            codes::REMOVED_SYNTAX,
-            span(begin, begin + line.len()),
-            "CP Lang has no `main`: the file's top-level lines are the program",
-        )
-        .with_help("remove `int main() {` and its `}`, and move the body out one level");
+        let mut d = cpl_diag::msgs::lexer::NO_MAIN
+            .error(span(begin, begin + line.len()), &[])
+            .with_help("remove `int main() {` and its `}`, and move the body out one level");
         d.fixes.push(cpl_diag::Fix {
             title: "unwrap `main`".into(),
             edits,
@@ -604,16 +594,12 @@ impl<'a> Lexer<'a> {
                 let span = Span::new(start as u32, self.pos as u32);
                 let fix_to = " ".repeat(enclosing as usize);
                 self.out.diagnostics.push(
-                    Diagnostic::error(
-                        codes::BAD_DEDENT,
-                        span,
-                        format!(
-                            "this line is indented {width} spaces, which matches no enclosing block ({})",
-                            levels.join(" or ")
-                        ),
-                    )
-                    .with_help(format!("indent it {enclosing} spaces to continue the enclosing block"))
-                    .with_fix(format!("indent {enclosing} spaces"), span, fix_to),
+                    cpl_diag::msgs::lexer::INDENT_MATCHES_NO_BLOCK
+                        .error(span, &[&width, &levels.join(" or ")])
+                        .with_help(format!(
+                            "indent it {enclosing} spaces to continue the enclosing block"
+                        ))
+                        .with_fix(format!("indent {enclosing} spaces"), span, fix_to),
                 );
                 self.line_indent = enclosing;
                 self.stmt_indent = enclosing;
@@ -817,17 +803,14 @@ impl<'a> Lexer<'a> {
             // Only the outermost is reported: inner ones are the same typo
             // far more often than a second one.
             if self.openers.len() == keep {
-                let mut diag = Diagnostic::error(
-                    codes::UNCLOSED_DELIMITER,
-                    opener.span,
-                    format!("this `{open}` is never closed"),
-                )
-                .with_help(format!("add `{close}` at the end of the expression"))
-                .with_fix(
-                    format!("insert `{close}`"),
-                    Span::point(fix_at as u32),
-                    close,
-                );
+                let mut diag = cpl_diag::msgs::lexer::NEVER_CLOSED
+                    .error(opener.span, &[&open])
+                    .with_help(format!("add `{close}` at the end of the expression"))
+                    .with_fix(
+                        format!("insert `{close}`"),
+                        Span::point(fix_at as u32),
+                        close,
+                    );
                 let others = match single {
                     true => self.closer_candidates(&opener, close_at),
                     false => Vec::new(),
@@ -1105,12 +1088,9 @@ impl<'a> Lexer<'a> {
                 }
                 let text = &self.src[start..self.pos];
                 self.out.diagnostics.push(
-                    Diagnostic::error(
-                        codes::BAD_NUMBER,
-                        Span::new(start as u32, self.pos as u32),
-                        format!("`{text}` isn't a number: a float needs a digit before the point"),
-                    )
-                    .with_help(format!("write `0{text}`")),
+                    cpl_diag::msgs::lexer::FLOAT_NEEDS_LEADING_DIGIT
+                        .error(Span::new(start as u32, self.pos as u32), &[&text])
+                        .with_help(format!("write `0{text}`")),
                 );
                 self.push(Float, start);
                 return;
@@ -1181,8 +1161,7 @@ impl<'a> Lexer<'a> {
             (b'+', b'+', _) => {
                 self.pos += 2;
                 let span = Span::new(start as u32, self.pos as u32);
-                let mut diag =
-                    Diagnostic::error(codes::UNKNOWN_CHAR, span, "CP Lang concatenates with `+`");
+                let mut diag = cpl_diag::msgs::lexer::CONCAT_PLUS_PLUS.error(span, &[]);
                 diag.help = Some("replace `++` with `+`".into());
                 diag.fixes.push(cpl_diag::Fix {
                     title: "replace `++` with `+`".into(),
@@ -1206,11 +1185,7 @@ impl<'a> Lexer<'a> {
                 let ch = self.src[start..].chars().next().unwrap();
                 self.pos += ch.len_utf8();
                 let span = Span::new(start as u32, self.pos as u32);
-                let mut diag = Diagnostic::error(
-                    codes::UNKNOWN_CHAR,
-                    span,
-                    format!("`{ch}` isn't used in CP Lang"),
-                );
+                let mut diag = cpl_diag::msgs::lexer::UNUSED_CHAR.error(span, &[&ch]);
                 diag.help = match ch {
                     '#' => Some("comments start with `//`".into()),
                     _ if !ch.is_ascii() => {
@@ -1339,38 +1314,22 @@ impl<'a> Lexer<'a> {
             let at = Span::new(start as u32, self.pos as u32);
             if c_suffix {
                 self.out.diagnostics.push(
-                    Diagnostic::error(
-                        codes::BAD_NUMBER,
-                        at,
-                        format!(
-                            "`{text}` isn't a number: CP Lang has no `{}` suffix",
-                            &text[digits.len()..]
-                        ),
-                    )
-                    .with_help(format!("every integer is an `Int`: write `{digits}`"))
-                    .with_fix(
-                        format!("write `{digits}`"),
-                        at,
-                        digits.to_string(),
-                    ),
+                    cpl_diag::msgs::lexer::C_INT_SUFFIX
+                        .error(at, &[&text, &&text[digits.len()..]])
+                        .with_help(format!("every integer is an `Int`: write `{digits}`"))
+                        .with_fix(format!("write `{digits}`"), at, digits.to_string()),
                 );
                 self.push(TokenKind::Int, start);
                 return;
             }
+            let at = Span::new(start as u32, self.pos as u32);
             self.out.diagnostics.push(
-                Diagnostic::error(
-                    codes::BAD_NUMBER,
-                    Span::new(start as u32, self.pos as u32),
-                    match self.bytes[digits_end] {
-                        d @ b'2'..=b'9' if text.starts_with("0b") => {
-                            format!(
-                                "`{text}` isn't a number: `{}` isn't a binary digit",
-                                d as char
-                            )
-                        }
-                        _ => format!("`{text}` isn't a number"),
-                    },
-                )
+                match self.bytes[digits_end] {
+                    d @ b'2'..=b'9' if text.starts_with("0b") => {
+                        cpl_diag::msgs::lexer::NOT_A_BINARY_DIGIT.error(at, &[&text, &(d as char)])
+                    }
+                    _ => cpl_diag::msgs::lexer::NOT_A_NUMBER.error(at, &[&text]),
+                }
                 .with_help("numbers look like `42`, `1_000_000`, `1e9`, `0xff`, `0b1010` or `0.5`"),
             );
             self.push(TokenKind::Int, start);
@@ -1395,17 +1354,14 @@ impl<'a> Lexer<'a> {
             .next();
         let ty = ty.unwrap_or("");
         self.out.diagnostics.push(
-            Diagnostic::error(
-                codes::UNCLOSED_DELIMITER,
-                opener.span,
-                "this `[` is never closed",
-            )
-            .with_help(format!("add `]` before `{ty}`"))
-            .with_fix(
-                format!("insert `]` before `{ty}`"),
-                Span::point(self.pos as u32),
-                "]",
-            ),
+            cpl_diag::msgs::lexer::NEVER_CLOSED
+                .error(opener.span, &[&"["])
+                .with_help(format!("add `]` before `{ty}`"))
+                .with_fix(
+                    format!("insert `]` before `{ty}`"),
+                    Span::point(self.pos as u32),
+                    "]",
+                ),
         );
         self.push_empty(TokenKind::RBracket, self.pos);
     }
@@ -1425,10 +1381,10 @@ impl<'a> Lexer<'a> {
         let c_for = line.trim_start().starts_with("for") && line.contains(';');
         let prefix = after.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_');
         let postfix = place && after.trim_start().starts_with(')');
-        let (op, verb, ours) = match &self.src[start..start + 2] {
+        let (op, msg, ours) = match &self.src[start..start + 2] {
             "--" if c_for => return false,
-            "--" => ("--", "decrement", "-="),
-            _ => ("++", "increment", "+="),
+            "--" => ("--", &cpl_diag::msgs::lexer::NO_DECREMENT, "-="),
+            _ => ("++", &cpl_diag::msgs::lexer::NO_INCREMENT, "+="),
         };
         if c_for && (postfix || prefix && after.contains(')')) {
             // The parser reports the whole C-style `for` header once.
@@ -1441,17 +1397,13 @@ impl<'a> Lexer<'a> {
         self.pos += 2;
         let span = Span::new(start as u32, self.pos as u32);
         self.out.diagnostics.push(
-            Diagnostic::error(
-                codes::UNKNOWN_CHAR,
-                span,
-                format!("`{op}` doesn't {verb} in CP Lang"),
-            )
-            .with_help(format!("write `{ours} 1`"))
-            .with_fix(
-                format!("replace `{op}` with ` {ours} 1`"),
-                span,
-                format!(" {ours} 1"),
-            ),
+            msg.error(span, &[])
+                .with_help(format!("write `{ours} 1`"))
+                .with_fix(
+                    format!("replace `{op}` with ` {ours} 1`"),
+                    span,
+                    format!(" {ours} 1"),
+                ),
         );
         true
     }
@@ -1485,26 +1437,22 @@ impl<'a> Lexer<'a> {
             return None;
         }
         let span = Span::new(start as u32, self.pos as u32);
-        let what = match ours {
-            "fn" => "declares a function",
-            "use" => "imports a module",
-            _ => "matches a value",
+        let msg = match ours {
+            "fn" => &cpl_diag::msgs::lexer::FOREIGN_FN,
+            "use" => &cpl_diag::msgs::lexer::FOREIGN_USE,
+            _ => &cpl_diag::msgs::lexer::FOREIGN_MATCH,
         };
         self.out.diagnostics.push(
-            Diagnostic::error(
-                codes::REMOVED_SYNTAX,
-                span,
-                format!("CP Lang {what} with `{ours}`, not `{word}`"),
-            )
-            .with_help(match kind {
-                TokenKind::Fn => format!("write `fn {name}(...)`"),
-                TokenKind::Match => "write `match x:` with `pattern => value` arms".to_string(),
-                _ => format!(
-                    "write `use {}`",
-                    after.split_whitespace().next().unwrap_or(name)
-                ),
-            })
-            .with_fix(format!("replace `{word}` with `{ours}`"), span, ours),
+            msg.error(span, &[&ours, &word])
+                .with_help(match kind {
+                    TokenKind::Fn => format!("write `fn {name}(...)`"),
+                    TokenKind::Match => "write `match x:` with `pattern => value` arms".to_string(),
+                    _ => format!(
+                        "write `use {}`",
+                        after.split_whitespace().next().unwrap_or(name)
+                    ),
+                })
+                .with_fix(format!("replace `{word}` with `{ours}`"), span, ours),
         );
         Some(kind)
     }
@@ -1524,13 +1472,10 @@ impl<'a> Lexer<'a> {
         if !closed {
             let span = Span::new(start as u32, self.pos as u32);
             self.out.diagnostics.push(
-                Diagnostic::error(
-                    codes::UNTERMINATED_STRING,
-                    span,
-                    "this string is never closed",
-                )
-                .with_help("add `\"` at the end of the string")
-                .with_fix("insert `\"`", Span::point(self.pos as u32), "\""),
+                cpl_diag::msgs::lexer::STRING_NEVER_CLOSED
+                    .error(span, &[])
+                    .with_help("add `\"` at the end of the string")
+                    .with_fix("insert `\"`", Span::point(self.pos as u32), "\""),
             );
             self.out.poisoned.push(span);
         }
@@ -1554,14 +1499,9 @@ impl<'a> Lexer<'a> {
         };
         let span = Span::new((start + at) as u32, (start + at + ch.len_utf8()) as u32);
         self.out.diagnostics.push(
-            Diagnostic::error(
-                codes::NON_ASCII,
-                span,
-                format!(
-                    "`{ch}` is not ASCII; a {what} literal holds single-byte ASCII characters only"
-                ),
-            )
-            .with_help("Char is one byte and Str is a flat array of Char; there is no UTF-8"),
+            cpl_diag::msgs::lexer::NON_ASCII_LITERAL
+                .error(span, &[&ch, &what])
+                .with_help("Char is one byte and Str is a flat array of Char; there is no UTF-8"),
         );
     }
 
@@ -1649,12 +1589,9 @@ impl<'a> Lexer<'a> {
         }
         let span = Span::new(start as u32, self.pos as u32);
         self.out.poisoned.push(span);
-        let mut diag = Diagnostic::error(
-            codes::BAD_CHAR_LITERAL,
-            span,
-            "a character is written `'a'`, with exactly one character between the quotes",
-        )
-        .with_help("use double quotes for a string");
+        let mut diag = cpl_diag::msgs::lexer::BAD_CHAR_LITERAL
+            .error(span, &[])
+            .with_help("use double quotes for a string");
         let text = &self.src[start..self.pos];
         if let Some(inner) = text
             .strip_prefix('\'')
@@ -1671,12 +1608,9 @@ impl<'a> Lexer<'a> {
         let Some(first) = self.tab_lines.first().copied() else {
             return;
         };
-        let mut diag = Diagnostic::error(
-            codes::TAB_INDENT,
-            first,
-            "this line is indented with a tab; cp indents with spaces only",
-        )
-        .with_help("replace each tab with 4 spaces");
+        let mut diag = cpl_diag::msgs::lexer::TAB_INDENT
+            .error(first, &[])
+            .with_help("replace each tab with 4 spaces");
         if self.tab_lines.len() > 1 {
             diag = diag.with_note(format!(
                 "{} more lines in this file are indented with tabs",

@@ -1,3 +1,4 @@
+import re
 import importlib.util
 import math
 import os
@@ -171,6 +172,22 @@ class Alias(unittest.TestCase):
         out = {"name": "out", "facts": {"cost": r"\\(O(1)\\)"}}
         doc = {"modules": [{"name": "graph", "items": [{"name": "Complement<V, G>", "members": [out]}]}]}
         self.assertEqual(list(scaling.costs_of(doc)), ["graph.Complement.out"])
+
+    def test_a_struct_declared_twice_names_its_fns_with_its_generics(self):
+        def diff(sig, cost):
+            return {"name": re.search(r"struct (\w+)", sig).group(1), "kind": "struct", "signature": sig,
+                    "members": [{"name": "new", "facts": {"cost": cost}}]}
+        doc = {"modules": [{"name": "prefix", "items": [
+            diff("pub struct Diff<D, T: Add + Sub>", r"\\(O(n)\\)"),
+            diff("pub struct Diff<R, C, T: Add + Sub>(d: [R, C]T)", r"\\(O(n^2)\\)"),
+            {"name": "Diff<D, T>", "kind": "impl", "members": []},
+            diff("pub struct Once<T: Map<K, V>>", r"\\(O(1)\\)")]}]}
+        self.assertEqual(scaling.costs_of(doc), {
+            "prefix.Diff<D,T>.new": r"\\(O(n)\\)", "prefix.Diff<R,C,T>.new": r"\\(O(n^2)\\)",
+            "prefix.Once.new": r"\\(O(1)\\)"})
+        self.assertEqual(scaling.generics("pub struct Once<T: Map<K, V>, U>"), ("T", "U"))
+        self.assertEqual(scaling.timed_lines("f() // timed: prefix.Diff<R,C,T>.new", None),
+                         {"prefix.Diff<R,C,T>.new": {1}})
 
     def test_a_cost_as_another_fn_reads_its_cost(self):
         costs = {"m.T.f": r"\(O(\log n)\)", "m.T.g": "as `f`", "m.U.h": "as [`T.g`](T.g), plus one call",

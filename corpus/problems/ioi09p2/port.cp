@@ -23,7 +23,9 @@ let by_rate = Worker.sort(by: i => rate[i])
 type Plan = (size: Int, by: Worker, points: Int, upto: Int)
 fn bill_times(a: Plan, q: Int) -> Int = ask[a.by].s * a.points * q
 fn better(a: Plan, b: Plan) -> Bool =
-    a.size > b.size or (a.size == b.size and bill_times(a, ask[b.by].q) < bill_times(b, ask[a.by].q))
+    a.size > b.size or (
+        a.size == b.size and bill_times(a, ask[b.by].q) < bill_times(b, ask[a.by].q)
+    )
 
 var hired = MaxHeap<Int>()
 var points = 0

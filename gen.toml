@@ -102,9 +102,17 @@ check = "diff"
 tier = "ci"
 
 [[gen]]
+name = "words"
+files = ["editors/words.json"]
+inputs = ["crates/cpl-syntax/src/token.rs"]
+write = ["scripts/editor-words.py"]
+check = ["scripts/editor-words.py", "--check"]
+tier = "pre-commit"
+
+[[gen]]
 name = "tree-sitter"
 files = ["editors/tree-sitter-cp/src/parser.c"]
-inputs = ["editors/tree-sitter-cp/grammar.js"]
+inputs = ["editors/tree-sitter-cp/grammar.js", "editors/words.json"]
 write = ["tree-sitter", "generate"]
 cwd = "editors/tree-sitter-cp"
 check = "diff"

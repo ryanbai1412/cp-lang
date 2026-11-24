@@ -33,17 +33,24 @@ fn grows_from(pattern: 1..=5) -> Bool:
             if counted[block[a.e]] != Some(v):
                 counted[block[a.e]] = Some(v)
                 size[block[a.e]] += 1
-    fn members(b: B) -> List<V>: [x for e in E if block[e] == b for x in [edges[e].u, edges[e].v]].distinct()
+    fn members(b: B) -> List<V>: [
+        x for e in E if block[e] == b for x in [edges[e].u, edges[e].v]
+    ].distinct()
 
     // Two vertices of `cycle` leave it to two distinct vertices.
     fn has_two_exits(cycle: List<V>) -> Bool:
         let outside = [a.to for u in cycle for a in g.out(u) if not cycle.contains(a.to)]
-        cycle.count(u => g.out(u).any(a => not cycle.contains(a.to))) >= 2 and outside.distinct().len >= 2
+        cycle.count(
+            u => g.out(u).any(a => not cycle.contains(a.to))
+        ) >= 2 and outside.distinct().len >= 2
 
     fn has_fox(vs: List<V>) -> Bool:
         if vs.len > 5: return vs.count(v => g.deg(v) >= 3) >= 2
         (3..=vs.len).any(k => vs.permutations(k).any(cycle =>
-            (0..k).all(i => g.out(cycle[i]).any(a => a.to == cycle[(i + 1) % k])) and has_two_exits(cycle)))
+            (0..k).all(
+                i => g.out(cycle[i]).any(a => a.to == cycle[(i + 1) % k])
+            ) and has_two_exits(cycle)
+        ))
 
     match pattern:
         1 => B.any(b => length[b] > size[b])

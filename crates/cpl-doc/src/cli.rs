@@ -2,7 +2,7 @@
 
 use crate::{examples, extract, html, json, links, Module};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub const USAGE: &str = "\
 usage: cpl doc [options] [path]...
@@ -124,7 +124,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
 pub fn load(paths: &[PathBuf]) -> Result<Vec<Module>, String> {
     let mut files = Vec::new();
     for path in paths {
-        collect(path, &mut files).map_err(|e| format!("can't read {}: {e}", path.display()))?;
+        cpl_syntax::files::collect(path, &mut files)
+            .map_err(|e| format!("can't read {}: {e}", path.display()))?;
     }
     files.sort();
     files.dedup();
@@ -185,27 +186,4 @@ fn run_examples(modules: &[Module], stdout: &mut dyn Write, stderr: &mut dyn Wri
         plural(checked, "example")
     );
     (failed > 0) as u8
-}
-
-/// Adds `path`, or every `.cp` file under it, to `files`.
-fn collect(path: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    if !path.is_dir() {
-        std::fs::metadata(path)?;
-        files.push(path.to_path_buf());
-        return Ok(());
-    }
-    for entry in std::fs::read_dir(path)? {
-        let entry = entry?;
-        let child = entry.path();
-        let name = entry.file_name();
-        let hidden = name.to_string_lossy().starts_with('.');
-        if child.is_dir() {
-            if !hidden && name != "target" {
-                collect(&child, files)?;
-            }
-        } else if child.extension().is_some_and(|e| e == "cp") {
-            files.push(child);
-        }
-    }
-    Ok(())
 }

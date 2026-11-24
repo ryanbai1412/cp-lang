@@ -19,7 +19,7 @@ use std.bitset.{Bitset}
 use std.deque.{Deque}
 use std.dsu.{Dsu}
 use std.heap.{Heap, MinHeap}
-use std.math.{gcd}
+use std.math.{gcd, popcount}
 use std.opt.{is_none_or}
 use std.rand.{shuffle}
 use std.seq.{collect, reverse, count, map, Slice}
@@ -253,7 +253,7 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
     /// order: the arcs in input order
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g[0].len == 2 and g[1].len == 0`
-    pub fn at(self, u: V) -> lends Slice<A> = arcs[start[u.ord]..start[u.ord + 1]]
+    pub fn at(self, u: V) -> lends Slice<List<A>> = arcs[start[u.ord]..start[u.ord + 1]]
 
     /// The weight matrix: `d[u, v]` is the least `.w` over the arcs `u -> v`, `None` without
     /// one. The diagonal holds the least loop weight, or `None`; `floyd_warshall` starts it at

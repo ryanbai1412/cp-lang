@@ -1,5 +1,7 @@
 //! Subsets of a small domain as one machine word: the mask of mask DP with its domain kept.
 
+use std.math.{popcount}
+
 /// A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for `B`'s `k`-th
 /// position). `B.subsets` is the domain of all `2^|B|` of them, so `[B.subsets]T` is a mask-DP
 /// table, and `Subset<B>.empty` is the empty subset (there is no `{}` literal). Every operation here is \(O(1)\) unless it says otherwise.
@@ -26,6 +28,18 @@ pub struct Subset<B>(bits: U64):
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(2)).items.collect() == [B(2)]`
     pub fn single(b: B) -> Subset<B> = Subset(U64(1) << b.ord)
+
+    /// The subset of the members `xs` yields; one yielded twice is in it once. This is how a set
+    /// read from input becomes a `Subset`: `Subset<B>.of(read<[k]B>())`.
+    ///
+    /// cost: \(O(n)\) for the `n` members `xs` yields
+    /// empty: `domain B = 0..4; let xs: List<B> = []; Subset<B>.of(xs).len == 0`
+    /// traps: never
+    /// example: `domain B = 0..4; Subset<B>.of([B(1), B(3), B(1)]).len == 2`
+    pub fn of<S: Seq<B>>(xs: S) -> Subset<B>:
+        var s = Subset<B>.empty
+        for b in xs: s = s.with(b)
+        s
 
     /// Whether `b` is a member; `b in s` calls it and `b not in s` negates it.
     ///

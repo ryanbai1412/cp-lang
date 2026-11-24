@@ -21,11 +21,13 @@ pub(crate) const STD_DIR: &str = "std";
 
 /// The source of one std module, `std_source!("prelude.cp")`; the path
 /// repeats `STD_DIR` because `include_str!` needs a literal.
+#[cfg(test)]
 macro_rules! std_source {
     ($file:literal) => {
         include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../std/", $file))
     };
 }
+#[cfg(test)]
 pub(crate) use std_source;
 
 mod checker;
@@ -249,6 +251,13 @@ impl<'a> Calls<'a> {
     /// Whether `e`, a call or getter, is std's `name`.
     pub fn is(self, e: &cpl_syntax::ast::Expr, name: &str) -> bool {
         is_std(self.facts, e.span.shift(self.base), name)
+    }
+
+    /// The member `e`, a member access or a call of one, is written as when
+    /// the checker could not resolve it: `first` of `xs.first(x => ..)`.
+    pub fn unresolved(self, e: &cpl_syntax::ast::Expr) -> Option<&'a str> {
+        let path = self.facts?.unresolved(e.span.shift(self.base))?;
+        path.last().map(String::as_str)
     }
 
     /// The name of the std fn `e`, a call or getter, calls: `None` for a

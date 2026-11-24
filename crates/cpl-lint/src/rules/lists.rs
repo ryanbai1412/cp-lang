@@ -15,7 +15,8 @@ use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::Calls;
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
 use cpl_check::Ty;
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{
     BinOp, CmpOp, Cond, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, UnOp,
 };
@@ -29,21 +30,6 @@ const LAST: &str = "len - 1";
 
 fn is_list_ty(ty: &Ty) -> bool {
     ty.is_list()
-}
-
-/// `[]`, `[1, 2]`, `List<Int>()`.
-pub(crate) fn is_list_value(expr: &Expr) -> bool {
-    match &unparen(expr).kind {
-        ExprKind::List(_) => true,
-        ExprKind::Call { callee, .. } => match &callee.kind {
-            ExprKind::Generic { base, .. } => {
-                matches!(&base.kind, ExprKind::Name(n) if n == "List")
-            }
-            ExprKind::Name(name) => name == "List",
-            _ => false,
-        },
-        _ => false,
-    }
 }
 
 /// An open scope.
@@ -215,12 +201,10 @@ impl Visitor for Indexes<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         self.binding_list = None;
         match &stmt.kind {
-            StmtKind::Let { pat, ty, init, .. } => {
-                self.binding_list = match ty {
-                    _ if !matches!(pat.kind, PatternKind::Name(_)) => None,
-                    Some(_) => self.declares_list(pat.span),
-                    None => init.as_ref().filter(|e| is_list_value(e)).map(|_| true),
-                };
+            StmtKind::Let { pat, .. } => {
+                self.binding_list = matches!(pat.kind, PatternKind::Name(_))
+                    .then(|| self.declares_list(pat.span))
+                    .flatten();
             }
             StmtKind::Fn(decl) => {
                 // A `@test` is not what a judge times.
@@ -336,11 +320,8 @@ impl Visitor for Indexes<'_> {
             _ => {}
         }
         let written = index.span.shift(self.base).text(self.src);
-        let mut diag = Diagnostic::warning(
-            UNPROVEN_LIST_INDEX.code,
-            expr.span.shift(self.base),
-            format!("`{list}[{written}]` is bounds-checked on every pass of a nested loop"),
-        );
+        let mut diag =
+            lint_rules::UNPROVEN_LIST_INDEX.warning(expr.span.shift(self.base), &[&list, &written]);
         if known.is_none() {
             diag = diag.with_label(base.span.shift(self.base), format!("`{list}` is a `List`"));
         }

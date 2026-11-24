@@ -8,7 +8,8 @@ use crate::std_fn;
 use crate::walk::{unparen, walk_pattern, walk_stmt, Bind, Visitor};
 use crate::{is_std, File, Finding, MANUAL_ADJACENCY_LIST};
 use cpl_check::Ty;
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 const HELP: &str = "read the edges at once, `let es: [E](u: V, v: V) = read()` over `domain V = 1..=n` and `domain E = 0..m`, then build `Graph.undirected(es)` or `Graph.directed(es)` (`std.graph`): one compact block in input order, and every vertex index is proven";
@@ -37,10 +38,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                         .facts
                         .and_then(|f| f.place_type(pat.span.shift(self.base)));
                     let lists = match (ty, &init.kind) {
-                        (Some(Ty::Named { name, args }), ExprKind::Comprehension { body, .. }) => {
-                            name == "List"
-                                && matches!(&args[..], [a] if is_list(a))
-                                && is_empty_list(body)
+                        (Some(ty), ExprKind::Comprehension { body, .. }) if ty.is_list() => {
+                            ty.held_elem().is_some_and(is_list) && is_empty_list(body)
                         }
                         (Some(Ty::Array { elem, .. }), _) => is_list(elem) && is_empty_list(init),
                         _ => false,
@@ -124,12 +123,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         .into_iter()
         .filter(|(name, _)| v.pushed_per_edge.contains(name))
         .map(|(name, span)| {
-            let diag = Diagnostic::warning(
-                MANUAL_ADJACENCY_LIST.code,
-                span,
-                format!("`{name}` is an adjacency list built one read edge at a time"),
-            )
-            .with_help(HELP);
+            let diag = lint_rules::MANUAL_ADJACENCY_LIST
+                .warning(span, &[&name])
+                .with_help(HELP);
             Finding {
                 lint: &MANUAL_ADJACENCY_LIST,
                 diag,

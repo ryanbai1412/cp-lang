@@ -266,6 +266,7 @@ impl Emitter<'_> {
                     cpp: String::new(),
                     first: Vec::new(),
                     body: Default::default(),
+                    slot: None,
                     sink: Some(put.clone()),
                 };
                 self.fused_pushes.push((*p.vec, consumer));

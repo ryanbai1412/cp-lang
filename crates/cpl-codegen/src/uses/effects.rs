@@ -6,7 +6,7 @@
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{Block, Expr, ExprKind, PlaceKind, Program, Stmt};
+use cpl_ir::{Block, Expr, ExprKind, FnId, PlaceKind, Program, Stmt};
 
 use crate::devirt::Devirt;
 use crate::lend::{whole_reads, Tail};
@@ -78,6 +78,9 @@ pub(crate) fn is_cheap_pure_key(e: &Expr) -> bool {
             is_cheap_pure_key(inner)
         }
         ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(is_cheap_pure_key),
+        ExprKind::Index(base, idxs) => {
+            cpl_ir::effects::in_domain(&base.ty, idxs) && is_cheap_pure_key(base)
+        }
         _ => false,
     }
 }
@@ -227,4 +230,70 @@ pub(crate) fn value_closure(
         || c.muts.is_empty()
             && c.captures.iter().all(|cap| !cap.by_ref && !cap.is_global)
             && cpl_ir::effects::pure_body(&c.body, true, &call_ok)
+}
+
+/// `stmt` may call back into the recursion: a call into `reach`, a call of
+/// a fn value, or a closure that makes either.
+pub(crate) fn calls_back(program: &Program, reach: &BTreeSet<FnId>, stmt: &Stmt) -> bool {
+    let b = Block {
+        stmts: vec![stmt.clone()],
+    };
+    let mut hot = false;
+    let mut built = Vec::new();
+    walk::deep_exprs(&b, &mut |e| match &e.kind {
+        ExprKind::Call(callee, _) => hot |= reach.contains(callee),
+        ExprKind::CallExpr(..) => hot = true,
+        ExprKind::Closure(c) => built.push(*c),
+        _ => {}
+    });
+    hot || built.into_iter().any(|c| {
+        let mut inner = false;
+        walk::deep_exprs(&program.closures[c].body, &mut |e| {
+            inner |= matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_))
+                || matches!(e.kind, ExprKind::Call(callee, _) if reach.contains(&callee));
+        });
+        inner
+    })
+}
+
+/// The fns from which a call can come back to `target`, `target` among them.
+pub(crate) fn reaching(program: &Program, target: FnId) -> BTreeSet<FnId> {
+    let calls: Vec<BTreeSet<FnId>> = program
+        .fns
+        .iter()
+        .map(|f| calls_in(program, &f.body))
+        .collect();
+    let mut reach = BTreeSet::from([target]);
+    loop {
+        let before = reach.len();
+        for (id, out) in calls.iter().enumerate() {
+            if !out.is_disjoint(&reach) {
+                reach.insert(id);
+            }
+        }
+        if reach.len() == before {
+            return reach;
+        }
+    }
+}
+
+/// The fns `block` calls, inside the closures it builds too.
+fn calls_in(program: &Program, block: &Block) -> BTreeSet<FnId> {
+    let (mut out, mut seen, mut todo) = (BTreeSet::new(), BTreeSet::new(), vec![block]);
+    while let Some(b) = todo.pop() {
+        let mut built = Vec::new();
+        walk::deep_exprs(b, &mut |e| match &e.kind {
+            ExprKind::Call(callee, _) => {
+                out.insert(*callee);
+            }
+            ExprKind::Closure(c) => built.push(*c),
+            _ => {}
+        });
+        for c in built {
+            if seen.insert(c) {
+                todo.push(&program.closures[c].body);
+            }
+        }
+    }
+    out
 }

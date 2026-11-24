@@ -190,6 +190,26 @@ and re-checks only those and the items whose facts changed under them.
   `crates/cpl-lsp/tests/latency.rs`, where a keystroke in a large program
   re-checks one item.
 
+### compiler-changes/R16: input errors are diagnostics; invariants stop in one named place
+
+Shipped crate code calls no `.unwrap()`, `.expect(`, `panic!` or
+`unreachable!`. What a user program or input can reach is a diagnostic, or
+an `Err` its caller reports, with a test that reaches it. A fact the code
+guarantees is made unbreakable by its types where it can be (a non-empty
+type, a proven index, `let else` with a diagnostic); otherwise it stops
+through its crate's one `invariant::broken_invariant("what held")`, which names
+the fact.
+
+- Reason: a panic is a crash with no place, rule or fix (R9), and a
+  counted, named stop shows what the code still trusts without proof.
+- Example: `db.analyze(path).expect("the file was just set")` became
+  `db.analyze_text(path, text)`, whose type says there is an analysis.
+- Enforced by: the `unwrap_input` ratchet in `scripts/debt-ratchet.py`,
+  which also counts renamed wrappers (a `#[track_caller]` or `-> !` fn, a
+  `broken_invariant` argument that is not a literal, a small generic or
+  `Option`/`Result`-taking fn calling it), and the `invariant_sites` ratchet
+  over the calls.
+
 ## Before you land
 
 - [ ] R1: no std name, one-shape path or edition branch added.
@@ -197,9 +217,11 @@ and re-checks only those and the items whose facts changed under them.
 - [ ] R3: nothing loosened.
 - [ ] R4: `cargo nextest run -p cpl-cli --test differential` passes.
 - [ ] R11: `cpl-conform all --check` shows no regression.
+- [ ] R16: no new unwrap, expect or panic; a reachable failure is a diagnostic with its test.
 - [ ] `cargo nextest run -p cpl-check -p cpl-ir -p cpl-interp` and
       `python3 scripts/debt-ratchet.py --check` pass.
 
 ## Changes
 
 - 2026-11-23: first version.
+- 2026-11-24: R16, from the `unwrap_input` ratchet's target design.

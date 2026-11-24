@@ -2882,3 +2882,47 @@ let v = t.set(t.base, 1, 9)
 print(v.within(t))
 """
 out = "3 9 2"
+
+[case."Acts/Action/action"]
+code = """
+use std.algebra.{Action}
+let neg = Action<Int, Bool>(id: false, compose: (x, y) => x != y, apply: (t, v, n) => if t: -v else: v)
+var g = SegTree(+, [1, 2, 3], act: neg)
+g.apply(0..2, true)
+print(g.all)
+"""
+out = "0"
+
+[case."Acts/AddAction/action"]
+code = """
+var s = SegTree(+, [1, 2, 3], act: add)
+s.apply(0..2, 3)
+print(s.all)
+"""
+out = "12"
+
+[case."Acts/AffineAction/action"]
+code = """
+var f = SegTree(+, [1, 2, 3], act: affine)
+f.apply(0..2, (2, 1))
+print(f.all)
+"""
+out = "11"
+
+[case."Acts/AssignAction/action"]
+code = """
+var a = SegTree(+, [1, 2, 3], act: assign)
+let two: ?Int = Some(2)
+a.apply(0..3, two)
+print(a.all)
+"""
+out = "6"
+
+[case."Acts/FlipAction/action"]
+code = """
+domain I = 0..4
+var st = SegTree(Flip<Int>.op(+), [I] i => Flip.of(i.ord != 2, 1, 0), act: flip)
+st.apply(I(0)..I(2), true)
+print(st.all.now, st.all.flipped)
+"""
+out = "1 3"

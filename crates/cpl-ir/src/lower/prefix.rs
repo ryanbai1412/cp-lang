@@ -61,7 +61,7 @@ impl<'a> Lowerer<'a> {
                 self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
                 return self.err_expr(span);
             };
-            let list = Ty::List(Box::new(elem_ty.clone()));
+            let list = Ty::list(elem_ty.clone());
             let src = self.coerce(src, &list, span);
             let sid = self.instantiate_struct(gid, vec![GenArg::Ty(elem_ty)]);
             let Some(fn_id) = self.own_method(sid, "new") else {

@@ -10,29 +10,21 @@
 //   Then from the right peel solved types off each equation; a lead left alone is solved,
 //   one with more types pays its average again. No type is bought more than i times on
 //   the way, so top each type up to i at its now known price.
-// Stdin: N, then the hidden P[0..N]. Simulates the sample grader's transaction (asserting
-//   its argument range and the 5000-call limit), runs buy_souvenirs, and prints how many
-//   souvenirs of each type were bought.
+// Interaction (interactor.py, the official manager's protocol over stdio): read N and P[0];
+//   transaction(M) prints "? M" and reads the k types bought and the change; "!" ends.
 // original: corpus/problems/ioi25_souvenirs/orig.cpp (the official model solution plus the sample grader)
-// Bounds: n: 2..=100; p: 1..=1e15
+// Bounds: n: 2..=100; p0: 1..=1e15; k: 1..=n; bought: [k]0..n
 
 let n: 2..=100 = read()
 domain T = 0..n
-let p: [T]1..=1e15 = read()
-var calls = 0
-var q: [T]Int = 0
+let p0: 1..=1e15 = read()
 
 fn transaction(m: Int) -> (List<T>, Int):
-    calls += 1
-    assert calls <= 5000
-    assert m < p[T.first!] and m >= p[T.last!]
-    var bought: List<T> = []
-    var r = m
-    for i in T if r >= p[i]:
-        r -= p[i]
-        q[i] += 1
-        bought.push(i)
-    (bought, r)
+    print("?", m)
+    let k: 1..=n = read()
+    let bought: List<T> = read<[k]T>()
+    let change: Int = read()
+    (bought, change)
 
 var counters: [T]Int = 0
 var lead_cost: [T]Int = -1
@@ -71,5 +63,5 @@ fn buy_souvenirs(p0: Int):
     for i in T:
         repeat i.ord - counters[i]: transaction(lead_cost[i])
 
-buy_souvenirs(p[T.first!])
-print(q)
+buy_souvenirs(p0)
+print("!")

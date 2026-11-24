@@ -28,10 +28,6 @@ for i in 0..64 * n:
     e.add(i)
     e.clear() // timed: bag.SortedBag.clear
     s += e.len
-for r in 0..128:
-    var f = SortedBag<Int>.of(xs)
-    f.reserve(2 * n) // timed: bag.SortedBag.reserve
-    s += f.len
 let ys = [i * 31 % n + n / 2 for i in 0..n]
 for r in 0..16:
     var big = SortedBag<Int>.of(xs)

@@ -25,8 +25,8 @@ var after = 0.0  // the sum of chance over the people from i on
 for i in Pos.rev:
     let last = last_of[fav[i]]!
     chance[i] = if fav[i] == coach: 1.0
-                elif fav[i] == josh: 0.0
-                elif last == i: (1.0 + after) / F64(n - i.idx)
-                else: chance[last]
+        elif fav[i] == josh: 0.0
+        elif last == i: (1.0 + after) / F64(n - i.idx)
+        else: chance[last]
     after += chance[i]
 print(if coach == josh: 1.0 else: after / F64(n), precision: 8)

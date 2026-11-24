@@ -165,10 +165,7 @@ impl Ty {
     /// The sequence a view walks: a `.rev`'s or a `Slice`'s source, whose
     /// elements it has (R07.4.5).
     pub fn view_source(&self) -> Option<&Ty> {
-        match self {
-            Ty::Named { name, args } if name == "Slice" && args.len() == 1 => args.first(),
-            _ => self.rev_source(),
-        }
+        self.rev_source()
     }
 
     /// The fields a lambda of several parameters takes from one element of
@@ -194,6 +191,20 @@ impl Ty {
     pub fn rev_source(&self) -> Option<&Ty> {
         match self {
             Ty::Named { name, args } if name == "Rev" && args.len() == 1 => args.first(),
+            _ => None,
+        }
+    }
+
+    /// The element of a sequence made of its values (`List<T>`,
+    /// `Iter<T>`, `Seq<T>`), so read as a count then that many values;
+    /// a `Range<T>` is its two ends instead.
+    pub fn held_elem(&self) -> Option<&Ty> {
+        match self {
+            Ty::Named { name, args }
+                if matches!(name.as_str(), "List" | "Iter" | "Seq") && args.len() == 1 =>
+            {
+                args.first()
+            }
             _ => None,
         }
     }

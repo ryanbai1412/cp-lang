@@ -96,7 +96,7 @@ class StepsTest(unittest.TestCase):
                                                      *(ci.ROOT / ".github/workflows").glob("*.yml")])
         for g in sg.GATES:
             if g not in stepped:
-                self.assertRegex(elsewhere, rf'spec-gate\.py"?,? "?{g}\b|"{g}"\]', f"spec gate {g} is never run")
+                self.assertRegex(elsewhere, rf'spec-gate\.py"?,? "?{g}\b|just spec-gate {g}\b|"{g}"\]', f"spec gate {g} is never run")
 
     def test_every_failure_says_how_to_fix_it(self) -> None:
         from test_check_cache import FIX_HINT
@@ -321,11 +321,13 @@ class TailTest(unittest.TestCase):
         code, ev, _, _, _, _ = self._tail(mode="land", sel_packages="cpl-a", sel_filter="rdeps(cpl-a)",
                                           sel_slices="vm-trace copies", sel_slice_filter="test(=s)")
         self.assertEqual(code, 0)
+        self.assertLess(ev.index("scripts/affected.py --build-slices vm-trace copies"),
+                        ev.index("scripts/affected.py --run-slices vm-trace copies"))
         slices = ev.index("scripts/affected.py --run-slices vm-trace copies")
         train = ev.index(f"cargo nextest run --workspace --no-fail-fast -E (rdeps(cpl-a)) & not ({ci.slow_filter()})"
                          " & not (test(=s))")
         self.assertLess(slices, train)
-        code, ev, _, err, _, _ = self._tail(mode="land", sel_slices="vm-trace", codes={"scripts/affected.py": 1})
+        code, ev, _, err, _, _ = self._tail(mode="land", sel_slices="vm-trace", codes={"scripts/affected.py --run-slices vm-trace": 1})
         self.assertEqual(code, 1)
         self.assertIn("took over 20 s", err)
         self.assertFalse([e for e in ev if e.startswith("cargo nextest")])
@@ -358,8 +360,9 @@ class TailTest(unittest.TestCase):
         self.assertEqual(code, 0)
         conform = next(e for e in ev if e.split()[0].endswith("cpl-conform"))
         self.assertTrue(conform.endswith(" all --check"), conform)
+        make = next(e for e in ev if e.startswith("scripts/corpus.py make") or " scripts/corpus.py make" in e)
         order = [ev.index(e) for e in ("-m unittest scripts/test_ci.py", "cargo build -q -p cpl-cli -p cpl-conform",
-                                         "scripts/corpus.py make", conform)]
+                                         make, conform)]
         self.assertEqual(order, sorted(order))
         self.assertIn("check: conformance part passed in", out)
 
@@ -422,6 +425,23 @@ class TailTest(unittest.TestCase):
             code, _, _, err, _, _ = self._part("full", mode="full")
         self.assertEqual(code, 1)
         self.assertIn("a --full suite failed", err)
+        self.assertTrue(steps.call_args.kwargs["keep_going"])
+
+    def test_keep_going_runs_every_step_and_names_each_failure(self) -> None:
+        calls = []
+
+        def run(cmd, **kw):
+            line = " ".join(map(str, cmd))
+            calls.append(line)
+            return subprocess.CompletedProcess(cmd, int(" metamorphic" in line or " flakes" in line), "", "")
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, "stdout", out), mock.patch.object(sys, "stderr", err), \
+                mock.patch.object(ci.shutil, "which", return_value="/bin/x"):
+            self.assertEqual(ci.run_steps("full", run=run, keep_going=True), 1)
+        for step in ci.STEPS["full"]:
+            self.assertIn(f"==> {step.title}", out.getvalue())
+        self.assertIn("check: failed: spec-gate.py metamorphic", err.getvalue())
+        self.assertIn("check: failed: spec-gate.py flakes --runs 2", err.getvalue())
 
     def test_a_part_needs_fast_and_checks_is_not_a_part(self) -> None:
         self.assertEqual(self._part("fmt", mode="land")[0], 1)
@@ -472,6 +492,18 @@ class CommitTest(unittest.TestCase):
                                   f"cargo nextest run --workspace --profile commit --no-fail-fast -E {expr}"])
         code, ev, _, _, _, _ = self._commit(sel, outs={self.TREE: "cpl-wasm v0.1.0\n"})
         self.assertFalse([e for e in ev if e.startswith("rustc")])
+
+    def test_a_touched_wasm_crate_holds_the_data_segment_to_its_budget(self) -> None:
+        sel = {"packages": "cpl-check", "filter": "rdeps(cpl-check)"}
+        outs = {self.TREE: "cpl-check v0.1.0\n", "rustc --print target-libdir": f"{ci.ROOT}\n"}
+        code, ev, _, _, _, _ = self._commit(sel, outs=outs)
+        self.assertEqual(code, 0)
+        gate = [e for e in ev if e.startswith(("cargo check -q -p cpl-wasm", "scripts/build-wasm.sh", "node web/scripts/wasm-crates.mjs"))]
+        self.assertEqual([g.split()[0] for g in gate], ["cargo", "scripts/build-wasm.sh", "node"])
+        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm --touched cpl_check"))
+        code, _, _, err, _, _ = self._commit(sel, outs=outs, codes={"node": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("cpl.wasm's data segment or a touched crate is over its budget", err)
 
     def test_a_failed_check_names_its_rerun_and_stops_the_tier(self) -> None:
         sel = {"packages": "cpl-fmt", "filter": "x", "site": "1"}

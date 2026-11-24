@@ -5,40 +5,35 @@
 -- and vim.g.cpl_autocomplete = false turn those off.
 vim.filetype.add({ extension = { cp = 'cp' } })
 
--- The solution's line of the first wrong call `cpl stress` or `cpl locate` printed
--- (`solution tri(k: 1) = 0 at line 4` under `first wrong call: ...`), and that headline.
-local function divergence(lines)
-    local headline
-    for _, line in ipairs(lines) do
-        local h = line:match('^%s*(first wrong call: .-)%s*$') or line:match('^%s*(first differing value: .-)%s*$')
-        if h then headline = h end
-        local at = headline and line:match('^%s+solution%s.-%sat line (%d+)%s*$')
-        if at then return { line = tonumber(at), message = headline } end
-    end
-end
-
--- `cpl <args>` in a terminal split. When it names the first wrong call, that line of the
--- file shows it as a warning until the next run.
+-- `cpl <args>` in a terminal split. `cpl stress` and `cpl locate` report as JSON instead, whose
+-- `view` is drawn as is: its panel in the split, its diagnostic (the first wrong call) on that
+-- line of the file until the next run, and the panel's b:cpl_exit its exit code.
 local wrong_call = vim.api.nvim_create_namespace('cpl_divergence')
 local function run_in_terminal(args)
     local source = vim.api.nvim_get_current_buf()
     vim.diagnostic.reset(wrong_call, source)
     vim.cmd('botright new')
-    local term = vim.api.nvim_get_current_buf()
-    vim.fn.termopen(vim.list_extend({ vim.fn['cplang#path']() }, args), {
-        on_exit = function()
-            -- The last of the output can reach the buffer just after the exit (Windows' ConPTY).
-            vim.defer_fn(function()
-                if not (vim.api.nvim_buf_is_valid(term) and vim.api.nvim_buf_is_valid(source)) then return end
-                local found = divergence(vim.api.nvim_buf_get_lines(term, 0, -1, false))
-                if found == nil then return end
-                vim.diagnostic.set(wrong_call, source, { {
-                    lnum = found.line - 1, col = 0, source = 'cpl',
-                    severity = vim.diagnostic.severity.WARN, message = found.message,
-                } })
-            end, 200)
-        end,
-    })
+    local cmd = vim.list_extend({ vim.fn['cplang#path']() }, args)
+    if args[1] ~= 'stress' and args[1] ~= 'locate' then return vim.fn.termopen(cmd) end
+    local panel = vim.api.nvim_get_current_buf()
+    vim.bo[panel].buftype = 'nofile'
+    vim.api.nvim_buf_set_lines(panel, 0, -1, false, { table.concat(cmd, ' ') .. ' ...' })
+    vim.list_extend(cmd, args[1] == 'stress' and { '--format', 'json' } or { '--json' })
+    vim.system(cmd, { text = true }, vim.schedule_wrap(function(r)
+        local ok, report = pcall(vim.json.decode, r.stdout or '')
+        local view = ok and type(report) == 'table' and report.view or { panel = (r.stdout or '') .. (r.stderr or '') }
+        if vim.api.nvim_buf_is_valid(panel) then
+            vim.b[panel].cpl_exit = r.code
+            vim.api.nvim_buf_set_lines(panel, 0, -1, false, vim.split(view.panel .. (r.stderr or ''), '\n', { trimempty = true }))
+        end
+        local d = view.diagnostic
+        if d and vim.api.nvim_buf_is_valid(source) then
+            vim.diagnostic.set(wrong_call, source, { {
+                lnum = d.line, col = d.col or 0, source = d.source or 'cpl',
+                severity = vim.diagnostic.severity.WARN, message = d.message,
+            } })
+        end
+    end))
 end
 
 -- The server's Run, Trace and Stress lenses name `cpl` arguments; run them in a terminal split.

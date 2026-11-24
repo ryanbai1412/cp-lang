@@ -22,14 +22,20 @@ impl Database {
 
     /// Records the cycle that importing `path`, open at `analyzing[at]`,
     /// closes, and returns the error message for that import.
-    pub(super) fn meet_cycle(&mut self, at: usize, name: &str, path: &str) -> String {
+    pub(super) fn meet_cycle(
+        &mut self,
+        at: usize,
+        name: &str,
+        path: &str,
+        span: Span,
+    ) -> Diagnostic {
         self.cycle_floor = self.cycle_floor.min(at);
         let mut cycle = self.analyzing[at..].to_vec();
         cycle.push(path.to_string());
-        let message = if cycle.len() == 3 {
-            format!("`{name}` imports this file, so they import each other")
+        let diag = if cycle.len() == 3 {
+            msgs::IMPORT_EACH_OTHER.error(span, &[&name])
         } else {
-            format!("`{name}` imports this file back: {}", cycle_names(&cycle))
+            msgs::IMPORT_BACK.error(span, &[&name, &cycle_names(&cycle)])
         };
         let ring = &cycle[..cycle.len() - 1];
         let start = (0..ring.len()).min_by_key(|&i| &ring[i]).unwrap_or(0);
@@ -44,7 +50,7 @@ impl Database {
         if !self.cycles.contains(&around) {
             self.cycles.push(around);
         }
-        message
+        diag
     }
 
     /// The error on a `use` of `module` whose cycle closed in a module it
@@ -53,18 +59,14 @@ impl Database {
         let (first, last) = (module.first()?, module.last()?);
         let dotted: Vec<&str> = module.iter().map(|n| n.text.as_str()).collect();
         Some(
-            Diagnostic::error(
-                codes::UNRESOLVED_MODULE,
-                first.span.to(last.span),
-                format!(
-                    "`{}` is in an import cycle: {}",
-                    dotted.join("."),
-                    cycle_names(&self.last_cycle)
+            msgs::IN_IMPORT_CYCLE
+                .error(
+                    first.span.to(last.span),
+                    &[&dotted.join("."), &cycle_names(&self.last_cycle)],
+                )
+                .with_help(
+                    "move what the modules of the cycle share into one that imports none of them",
                 ),
-            )
-            .with_help(
-                "move what the modules of the cycle share into one that imports none of them",
-            ),
         )
     }
 }

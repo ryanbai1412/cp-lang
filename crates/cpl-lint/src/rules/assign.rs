@@ -5,7 +5,8 @@
 use crate::std_fn;
 use crate::walk::{walk_expr, Visitor};
 use crate::{File, Finding, CHMIN_CHMAX_IF, COMPOUND_SELF_REF};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{AssignOp, BinOp, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
 
 /// The calls `min=` and `max=` stand for (R01.6.4).
@@ -47,11 +48,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let place = text(target);
             let op = format!("{}=", op.text());
             let span = Span::new(target.span.start, value.span.end).shift(self.base);
-            let mut diag = Diagnostic::warning(
-                COMPOUND_SELF_REF.code,
-                span,
-                format!("`{place}` is written in terms of itself; this is `{place} {op} ...`"),
-            )
+            let mut diag = lint_rules::COMPOUND_SELF_REF.warning(span, &[&place, &place, &op])
             .with_help(format!(
                 "write `{place} {op} {}`; `{op}` names the place once, so the read and the write cannot drift apart",
                 text(rhs)
@@ -104,11 +101,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let place = text(target);
             let span = Span::new(target.span.start, value.span.end).shift(self.base);
             let rewrite = format!("{place} {f}= {}", text(other));
-            let mut diag = Diagnostic::warning(
-                CHMIN_CHMAX_IF.code,
-                span,
-                format!("`{place}` keeps the {f} of itself and a value; this is `{f}=`"),
-            )
+            let mut diag = lint_rules::CHMIN_CHMAX_IF.warning(span, &[&place, &f, &f])
             .with_help(format!(
                 "write `{rewrite}`; `{f}=` names the place once, so the read and the write cannot drift apart"
             ));
@@ -180,14 +173,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 return;
             };
             let rewrite = format!("{} {f}= {}", text(target), text(value));
-            let mut diag = Diagnostic::warning(
-                CHMIN_CHMAX_IF.code,
-                whole,
-                format!(
-                    "this `if` keeps the {f} in `{}`; this is `{f}=`",
-                    text(target)
-                ),
-            )
+            let mut diag = lint_rules::CHMIN_CHMAX_IF_2.warning(whole, &[&f, &text(target), &f])
             .with_label(target.span.shift(self.base), "the place it updates")
             .with_help(format!(
                 "write `{rewrite}`; `{f}=` names the place once, so the read and the write cannot drift apart"

@@ -11,6 +11,8 @@ pub(super) struct Growth {
     parent: HashMap<FnId, (GenFnId, String, Option<FnId>)>,
     /// The fn whose body is being lowered.
     pub(super) cur: Option<FnId>,
+    /// The module whose code asked for each instance.
+    from: HashMap<FnId, usize>,
 }
 
 impl<'a> Lowerer<'a> {
@@ -91,6 +93,19 @@ impl<'a> Lowerer<'a> {
         id
     }
 
+    /// Whether the fn being lowered is `m`'s, or an instance a fn of `m`
+    /// asked for, directly or through other instances.
+    pub(super) fn lowered_for(&self, m: usize) -> bool {
+        let mut at = self.growth.cur;
+        while let Some(id) = at {
+            if self.sigs[id].mod_id == m || self.growth.from.get(&id) == Some(&m) {
+                return true;
+            }
+            at = self.growth.parent.get(&id).and_then(|p| p.2);
+        }
+        false
+    }
+
     fn record_instance(&mut self, id: FnId, gfid: GenFnId, args: &[GenArg]) {
         let shown: Vec<String> = args
             .iter()
@@ -102,6 +117,7 @@ impl<'a> Lowerer<'a> {
         self.growth
             .parent
             .insert(id, (gfid, shown.join(", "), self.growth.cur));
+        self.growth.from.insert(id, self.cur_mod);
     }
 
     /// E0319 at a call of `name` that would make one more instance in a

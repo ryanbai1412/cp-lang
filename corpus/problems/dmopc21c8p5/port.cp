@@ -38,8 +38,9 @@ var below_lo = 0
 fn fill(x: Int) -> Int = if x <= base: small[x] else: below[x - below_lo]
 for (lo, hi) in levels.rev if hi > base:
     below = [
-        if x <= base: small[x] else: min(fill(i) + fill(x - i) for i in half(x)..=half(x) + k)!
-        for x in lo..=hi
+        if x <= base: small[x] else: min(
+            fill(i) + fill(x - i) for i in half(x)..=half(x) + k
+        )! for x in lo..=hi
     ]
     below_lo = lo
 

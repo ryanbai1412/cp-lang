@@ -55,8 +55,8 @@ elif n <= 10:
     var pizza_pile: [Pizza]Int = 0
     var person_pile: [Person]Int = 0
     var best = n + 1
-    var best_pizza = pizza_pile
-    var best_person = person_pile
+    var best_pizza: [Pizza]Int = 0
+    var best_person: [Person]Int = 0
 
     // Pizzas p.. matched to waiting people, each onto the leftmost pile whose latest person comes later.
     fn search(p: Int):

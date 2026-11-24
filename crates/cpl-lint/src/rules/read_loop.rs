@@ -5,10 +5,12 @@ use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{is_std, File, Finding, READ_LOOP};
-use cpl_diag::{Diagnostic, Span};
+use cpl_check::Ty;
+use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
 use super::shapes::{name, squash};
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = ReadLoop {
@@ -60,11 +62,8 @@ impl ReadLoop<'_> {
     }
 
     /// The item type the loop reads, from its `let` or from `List<T>`.
-    fn item(&self, base: u32, body: &Block, list_ty: Option<&str>) -> Option<(String, String)> {
-        let from_list = || {
-            let t = list_ty?;
-            Some(t.strip_prefix("List<")?.strip_suffix('>')?.to_string())
-        };
+    fn item(&self, base: u32, body: &Block, list_ty: Option<&Ty>) -> Option<(String, String)> {
+        let from_list = || Some(list_ty?.held_elem()?.to_string());
         match body.stmts.as_slice() {
             [s] => {
                 let (xs, v) = push(s, self.facts, base)?;
@@ -133,7 +132,9 @@ impl ReadLoop<'_> {
                 self.item(
                     *f_base,
                     body,
-                    ty.as_ref().map(|t| self.text(*d_base, t.span)),
+                    ty.as_ref()
+                        .and(self.facts)
+                        .and_then(|f| f.place_type(pat.span.shift(*d_base))),
                 ),
             ) else {
                 continue;
@@ -143,11 +144,7 @@ impl ReadLoop<'_> {
                 continue;
             }
             let span = Span::new(decl.span.start + d_base, iter.span.end + f_base);
-            let diag = Diagnostic::warning(
-                READ_LOOP.code,
-                span,
-                format!("`{xs}` is read one item per step of `for _ in {range}`"),
-            )
+            let diag = lint_rules::READ_LOOP.warning(span, &[&xs, &range])
             .with_help(format!(
                 "write `let {xs}: [{range}]{t} = read()`: one read takes every item and checks its bounds (`var` if it changes later)"
             ));

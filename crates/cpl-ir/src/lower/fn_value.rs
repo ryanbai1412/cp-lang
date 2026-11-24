@@ -153,6 +153,7 @@ impl<'a> Lowerer<'a> {
             Some(GenArg::Ty(ty)) => {
                 let ty = ty.clone();
                 builtin_has(&ty, trait_name)
+                    || builtin_seq_has(&ty, trait_name)
                     || self.has_plain_impl(&ty, trait_name)
                     || (matches!(ty, Ty::Bound(_)) && self.has_domain_blanket_impl(trait_name))
             }
@@ -283,6 +284,16 @@ pub(super) fn trait_members(body: &ast::Block) -> (Vec<&ast::FnDecl>, Vec<(&str,
 
 /// Whether a built-in type has a built-in operator or comparison trait, as
 /// the checker's bound says (R08.1.7): `if T: Add:` holds for `Int` and `Str`.
+/// The built-in containers' `Seq` traits, as an impl head's bound reads them.
+fn builtin_seq_has(ty: &Ty, trait_name: &str) -> bool {
+    match trait_name {
+        "Seq" | "Sized" => ty.is_seq(),
+        "Keyed" | "Indexed" | "Bidir" | "Positional" => ty.is_indexed(),
+        "IndexedMut" => ty.is_indexed_mut(),
+        _ => false,
+    }
+}
+
 fn builtin_has(ty: &Ty, trait_name: &str) -> bool {
     let number = matches!(ty, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float);
     let scalar = number || matches!(ty, Ty::Bool | Ty::Char | Ty::Str);

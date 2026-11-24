@@ -248,8 +248,7 @@ impl<'a> Lowerer<'a> {
                         if let Some((idx, fty @ Ty::Fn(..))) =
                             self.field_of(&Ty::Struct(*sid), "lt")
                         {
-                            let lt_fn =
-                                self.mk(ExprKind::Field(Box::new(fv), idx), fty, value.span);
+                            let lt_fn = self.mk_field(fv, idx, fty, value.span);
                             SortBy::Fn {
                                 func: Box::new(lt_fn),
                                 is_order: true,
@@ -377,22 +376,10 @@ impl<'a> Lowerer<'a> {
         self.cx.pending.push(Stmt::Let(slot, Some(k)));
         let k = self.local(slot, span);
         let zero = self.int_lit(0, span);
-        let below = self.mk(
-            ExprKind::Cmp(CmpOp::Lt, Box::new(k.clone()), Box::new(zero)),
-            Ty::Bool,
-            span,
-        );
+        let below = self.mk_cmp(CmpOp::Lt, k.clone(), zero, Ty::Bool, span);
         let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
-        let above = self.mk(
-            ExprKind::Cmp(CmpOp::Gt, Box::new(k.clone()), Box::new(len)),
-            Ty::Bool,
-            span,
-        );
-        let outside = self.mk(
-            ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(above)),
-            Ty::Bool,
-            span,
-        );
+        let above = self.mk_cmp(CmpOp::Gt, k.clone(), len, Ty::Bool, span);
+        let outside = self.mk_binary(BinOp::Or, below, above, Ty::Bool, span);
         let cut = self.cast(Cast::Trust, k, Ty::Bound(id));
         if !trapping {
             return self.spec_opt(Some(outside), cut, span);
@@ -417,16 +404,12 @@ impl<'a> Lowerer<'a> {
         value: Expr,
         span: Span,
     ) -> Expr {
-        let ty = Ty::Opt(Box::new(value.ty.clone()));
-        let some = self.mk(ExprKind::Some(Box::new(value)), ty.clone(), span);
+        let ty = Ty::opt(value.ty.clone());
+        let some = self.mk_some(value, ty.clone(), span);
         match empty {
             Some(empty) => {
                 let none = self.mk(ExprKind::None, ty.clone(), span);
-                self.mk(
-                    ExprKind::If(Box::new(empty), Box::new(none), Box::new(some)),
-                    ty,
-                    span,
-                )
+                self.mk_if(empty, none, some, ty, span)
             }
             None => some,
         }
@@ -436,7 +419,6 @@ impl<'a> Lowerer<'a> {
         &mut self,
         id: DomainId,
         name: &ast::Name,
-        hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
         if let Some(info) = self.sum_enums.get(&id).cloned() {
@@ -465,22 +447,14 @@ impl<'a> Lowerer<'a> {
                 span,
             );
             let zero = self.int_lit(0, span);
-            let empty = self.mk(
-                ExprKind::Cmp(CmpOp::Le, Box::new(len), Box::new(zero)),
-                Ty::Bool,
-                span,
-            );
+            let empty = self.mk_cmp(CmpOp::Le, len, zero, Ty::Bool, span);
             return self.spec_opt(Some(empty), pos, span);
         }
         // An empty domain has no first or last position: asking stops the
         // program in the built C++ as it does in `cpl run`.
         if matches!(name.text.as_str(), "first" | "last") {
             let zero = self.int_lit(0, span);
-            let empty = self.mk(
-                ExprKind::Cmp(CmpOp::Le, Box::new(len.clone()), Box::new(zero)),
-                Ty::Bool,
-                span,
-            );
+            let empty = self.mk_cmp(CmpOp::Le, len.clone(), zero, Ty::Bool, span);
             let message = format!(
                 "`{}` is empty: it has no {} position",
                 self.domains[id], name.text
@@ -524,28 +498,21 @@ impl<'a> Lowerer<'a> {
                 Ty::Bound(id),
                 span,
             ),
-            "all" | "range" => {
-                if let Some(Ty::Struct(sid)) = hint {
-                    if self.is_bitset_of(*sid, id) {
-                        return self.domain_bitset_full(id, span);
-                    }
-                }
-                self.mk(
-                    ExprKind::Range {
-                        lo: Box::new(self.int_lit(0, span)),
-                        hi: Box::new(len),
-                    },
-                    Ty::Range(Box::new(Ty::Pos(id))),
-                    span,
-                )
-            }
+            "all" | "range" => self.mk(
+                ExprKind::Range {
+                    lo: Box::new(self.int_lit(0, span)),
+                    hi: Box::new(len),
+                },
+                Ty::range(Ty::Pos(id)),
+                span,
+            ),
             "rev" => {
                 let range = self.mk(
                     ExprKind::Range {
                         lo: Box::new(self.int_lit(0, span)),
                         hi: Box::new(len),
                     },
-                    Ty::Range(Box::new(Ty::Pos(id))),
+                    Ty::range(Ty::Pos(id)),
                     span,
                 );
                 self.reversed_range(range, span)
@@ -557,7 +524,7 @@ impl<'a> Lowerer<'a> {
                         lo: Box::new(self.int_lit(0, span)),
                         hi: Box::new(hi),
                     },
-                    Ty::Range(Box::new(Ty::Bound(id))),
+                    Ty::range(Ty::Bound(id)),
                     span,
                 )
             }
@@ -614,44 +581,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    pub(in crate::lower) fn is_bitset_of(&self, sid: StructId, dom: DomainId) -> bool {
-        let Some((gid, gargs)) = self.structs[sid].origin_gen.as_ref() else {
-            return false;
-        };
-        self.gen_structs[*gid].decl.name.text == "Bitset"
-            && matches!(
-                gargs.as_slice(),
-                [GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d))] if *d == dom
-            )
-    }
-
-    pub(in crate::lower) fn instantiate_bitset(
-        &mut self,
-        dom: DomainId,
-        span: Span,
-    ) -> Option<StructId> {
-        let Some(Sym::GenStruct(gid)) = self.get_sym("Bitset") else {
-            self.error(
-                codes::UNKNOWN_TYPE,
-                span,
-                "`Bitset` is not in scope (import `std.bitset.{Bitset}`)",
-            );
-            return None;
-        };
-        Some(self.instantiate_struct(gid, vec![GenArg::Domain(dom)]))
-    }
-
-    pub(in crate::lower) fn domain_bitset_full(&mut self, id: DomainId, span: Span) -> Expr {
-        let Some(sid) = self.instantiate_bitset(id, span) else {
-            return self.err_expr(span);
-        };
-        let Some(full_fn) = self.own_method(sid, "full") else {
-            return self.err_expr(span);
-        };
-        self.queue_fn(full_fn);
-        self.mk(ExprKind::Call(full_fn, Vec::new()), Ty::Struct(sid), span)
-    }
-
     /// Lowers `a.inverse()` on a 1D array:
     /// - `[D]?E` (partial injection) -> `[E]?D`, trapping if two positions map to the same value;
     /// - `[D]E` (total bijection) -> `[E]D`, trapping if a value is repeated or missing.
@@ -668,12 +597,8 @@ impl<'a> Lowerer<'a> {
         };
         let opt_slot = self.temp(opt_val.ty.clone());
         let held = self.local(opt_slot, span);
-        let is_some = self.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
-        let unwrapped = self.mk(
-            ExprKind::Unwrap(Box::new(held), false),
-            (*inner_ty).clone(),
-            span,
-        );
+        let is_some = self.mk_is_some(held.clone(), Ty::Bool, span);
+        let unwrapped = self.mk_unwrap(held, false, (*inner_ty).clone(), span);
         let val_slot = self.temp((*inner_ty).clone());
         let val_expr = self.local(val_slot, span);
 
@@ -697,16 +622,15 @@ impl<'a> Lowerer<'a> {
         } else {
             let callee_val = self.expr(fn_ast, None);
             match callee_val.ty.clone() {
-                Ty::Fn(_, ret_ty) => self.mk(
-                    ExprKind::CallExpr(Box::new(callee_val), vec![Arg::Value(val_expr.clone())]),
+                Ty::Fn(_, ret_ty) => self.mk_call_expr(
+                    callee_val,
+                    vec![Arg::Value(val_expr.clone())],
                     *ret_ty,
                     span,
                 ),
-                Ty::Array { elem, .. } => self.mk(
-                    ExprKind::Index(Box::new(callee_val), vec![val_expr.clone()]),
-                    *elem,
-                    span,
-                ),
+                Ty::Array { elem, .. } => {
+                    self.mk_index(callee_val, vec![val_expr.clone()], *elem, span)
+                }
                 _ => {
                     self.error(
                         codes::TYPE_MISMATCH,
@@ -722,7 +646,7 @@ impl<'a> Lowerer<'a> {
         };
 
         let out_ty = if is_map {
-            Ty::Opt(Box::new(applied.ty.clone()))
+            Ty::opt(applied.ty.clone())
         } else {
             Ty::Opt(inner_ty.clone())
         };
@@ -734,10 +658,10 @@ impl<'a> Lowerer<'a> {
             span,
         };
         if is_map {
-            let some_expr = self.mk(ExprKind::Some(Box::new(applied)), out_ty.clone(), span);
+            let some_expr = self.mk_some(applied, out_ty.clone(), span);
             then_stmts.push(Stmt::Assign(res_place, AssignOp::Set, some_expr));
         } else {
-            let some_val = self.mk(ExprKind::Some(Box::new(val_expr)), out_ty.clone(), span);
+            let some_val = self.mk_some(val_expr, out_ty.clone(), span);
             then_stmts.push(Stmt::If(
                 applied,
                 Block {
@@ -789,11 +713,7 @@ impl<'a> Lowerer<'a> {
             Ty::Bound(d) => {
                 let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
                 let one = self.int_lit(1, span);
-                let hi = self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one)),
-                    Ty::Int,
-                    span,
-                );
+                let hi = self.mk_binary(BinOp::Add, len, one, Ty::Int, span);
                 Some((DimSpec::Bound(*d), self.int_lit(0, span), hi))
             }
             Ty::Enum(e) => Some((
@@ -825,11 +745,7 @@ impl<'a> Lowerer<'a> {
                             Ty::Int,
                             span,
                         );
-                        let len = self.mk(
-                            ExprKind::Binary(BinOp::Add, Box::new(diff), Box::new(one)),
-                            Ty::Int,
-                            span,
-                        );
+                        let len = self.mk_binary(BinOp::Add, diff, one, Ty::Int, span);
                         match lo_e.kind {
                             ExprKind::Int(0) => Some((
                                 DimSpec::Int(Box::new(len.clone())),
@@ -837,12 +753,10 @@ impl<'a> Lowerer<'a> {
                                 len,
                             )),
                             ExprKind::Int(c) => {
-                                let hi_excl = self.mk(
-                                    ExprKind::Binary(
-                                        BinOp::Add,
-                                        Box::new(self.int_lit(c, span)),
-                                        Box::new(len.clone()),
-                                    ),
+                                let hi_excl = self.mk_binary(
+                                    BinOp::Add,
+                                    self.int_lit(c, span),
+                                    len.clone(),
                                     Ty::Int,
                                     span,
                                 );
@@ -912,11 +826,7 @@ impl<'a> Lowerer<'a> {
                     let one = lw.int_lit(1, span);
                     (
                         lw.int_lit(0, span),
-                        lw.mk(
-                            ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one)),
-                            Ty::Int,
-                            span,
-                        ),
+                        lw.mk_binary(BinOp::Add, len, one, Ty::Int, span),
                     )
                 }
                 Dim::Enum(e) => (
@@ -924,24 +834,14 @@ impl<'a> Lowerer<'a> {
                     lw.int_lit(lw.enums[*e].variants.len() as i64, span),
                 ),
                 Dim::Int => {
-                    let len = lw.mk(
-                        ExprKind::Builtin(Builtin::Len, vec![lw.local(arr_slot, span)]),
-                        Ty::Int,
-                        span,
-                    );
+                    let len =
+                        lw.mk_builtin(Builtin::Len, [lw.local(arr_slot, span)], Ty::Int, span);
                     (lw.int_lit(0, span), len)
                 }
                 Dim::IntFrom(c) => {
-                    let len = lw.mk(
-                        ExprKind::Builtin(Builtin::Len, vec![lw.local(arr_slot, span)]),
-                        Ty::Int,
-                        span,
-                    );
-                    let hi = lw.mk(
-                        ExprKind::Binary(BinOp::Add, Box::new(lw.int_lit(*c, span)), Box::new(len)),
-                        Ty::Int,
-                        span,
-                    );
+                    let len =
+                        lw.mk_builtin(Builtin::Len, [lw.local(arr_slot, span)], Ty::Int, span);
+                    let hi = lw.mk_binary(BinOp::Add, lw.int_lit(*c, span), len, Ty::Int, span);
                     (lw.int_lit(*c, span), hi)
                 }
                 Dim::Sym(_) => unreachable!(),
@@ -957,11 +857,9 @@ impl<'a> Lowerer<'a> {
             let src_idx_for_arr = |lw: &mut Self, slot: Slot| {
                 let raw = lw.local(slot, span);
                 match src_dim {
-                    Dim::IntFrom(c) => lw.mk(
-                        ExprKind::Binary(BinOp::Sub, Box::new(raw), Box::new(lw.int_lit(c, span))),
-                        Ty::Int,
-                        span,
-                    ),
+                    Dim::IntFrom(c) => {
+                        lw.mk_binary(BinOp::Sub, raw, lw.int_lit(c, span), Ty::Int, span)
+                    }
                     Dim::Enum(e) => {
                         let ord = lw.cast(Cast::EnumOrd(e), raw, Ty::Int);
                         lw.cast(Cast::Raw, ord, Ty::Int)
@@ -973,11 +871,9 @@ impl<'a> Lowerer<'a> {
             let tgt_idx_for_arr = |lw: &mut Self, slot: Slot| {
                 let raw = lw.local(slot, span);
                 match target_dim_copy {
-                    Dim::IntFrom(c) => lw.mk(
-                        ExprKind::Binary(BinOp::Sub, Box::new(raw), Box::new(lw.int_lit(c, span))),
-                        Ty::Int,
-                        span,
-                    ),
+                    Dim::IntFrom(c) => {
+                        lw.mk_binary(BinOp::Sub, raw, lw.int_lit(c, span), Ty::Int, span)
+                    }
                     Dim::Enum(e) => {
                         let ord = lw.cast(Cast::EnumOrd(e), raw, Ty::Int);
                         lw.cast(Cast::Raw, ord, Ty::Int)
@@ -986,19 +882,16 @@ impl<'a> Lowerer<'a> {
                 }
             };
             let i_idx = src_idx_for_arr(lw, i_slot);
-            let cell = lw.mk(
-                ExprKind::Index(Box::new(lw.local(arr_slot, span)), vec![i_idx]),
-                cell_ty.clone(),
-                span,
-            );
+            let cell = lw.mk_index(lw.local(arr_slot, span), vec![i_idx], cell_ty.clone(), span);
             let record_value = |lw: &mut Self, v_slot: Slot, stmts: &mut Vec<Stmt>| {
                 let v_idx = tgt_idx_for_arr(lw, v_slot);
-                let existing = lw.mk(
-                    ExprKind::Index(Box::new(lw.local(inv_slot, span)), vec![v_idx.clone()]),
+                let existing = lw.mk_index(
+                    lw.local(inv_slot, span),
+                    vec![v_idx.clone()],
                     Ty::opt(src_idx_ty.clone()),
                     span,
                 );
-                let is_dup = lw.mk(ExprKind::IsSome(Box::new(existing)), Ty::Bool, span);
+                let is_dup = lw.mk_is_some(existing, Ty::Bool, span);
                 let msg = if is_partial {
                     "inverse requires unique values (duplicate image)"
                 } else {
@@ -1023,28 +916,17 @@ impl<'a> Lowerer<'a> {
                     ty: Ty::opt(src_idx_ty.clone()),
                     span: lw.span(span),
                 };
-                let some_i = lw.mk(
-                    ExprKind::Some(Box::new(lw.local(i_slot, span))),
-                    Ty::opt(src_idx_ty.clone()),
-                    span,
-                );
+                let some_i = lw.mk_some(lw.local(i_slot, span), Ty::opt(src_idx_ty.clone()), span);
                 stmts.push(Stmt::Assign(inv_place, AssignOp::Set, some_i));
             };
             if is_partial {
                 let cell_slot = lw.temp(cell_ty);
                 body.push(Stmt::Let(cell_slot, Some(cell)));
-                let has_val = lw.mk(
-                    ExprKind::IsSome(Box::new(lw.local(cell_slot, span))),
-                    Ty::Bool,
-                    span,
-                );
+                let has_val = lw.mk_is_some(lw.local(cell_slot, span), Ty::Bool, span);
                 let mut then_stmts = Vec::new();
                 let v_slot = lw.temp(val_ty.clone());
-                let unwrapped = lw.mk(
-                    ExprKind::Unwrap(Box::new(lw.local(cell_slot, span)), false),
-                    val_ty.clone(),
-                    span,
-                );
+                let unwrapped =
+                    lw.mk_unwrap(lw.local(cell_slot, span), false, val_ty.clone(), span);
                 then_stmts.push(Stmt::Let(v_slot, Some(unwrapped)));
                 record_value(lw, v_slot, &mut then_stmts);
                 body.push(Stmt::If(
@@ -1081,16 +963,13 @@ impl<'a> Lowerer<'a> {
                 let v_slot = lw.temp(val_ty.clone());
                 let lid2 = lw.open_loop(None);
                 let v_idx = tgt_idx_for_arr(lw, v_slot);
-                let existing = lw.mk(
-                    ExprKind::Index(Box::new(lw.local(inv_slot, span)), vec![v_idx.clone()]),
+                let existing = lw.mk_index(
+                    lw.local(inv_slot, span),
+                    vec![v_idx.clone()],
                     Ty::opt(src_idx_ty.clone()),
                     span,
                 );
-                let unwrapped = lw.mk(
-                    ExprKind::Unwrap(Box::new(existing), false),
-                    src_idx_ty.clone(),
-                    span,
-                );
+                let unwrapped = lw.mk_unwrap(existing, false, src_idx_ty.clone(), span);
                 let out_place = Place {
                     kind: PlaceKind::Index(
                         Box::new(Place {
@@ -1193,11 +1072,8 @@ impl<'a> Lowerer<'a> {
                 }
                 Ty::Set(e) | Ty::HashSet(e) => {
                     let e = (**e).clone();
-                    let list = self.mk(
-                        ExprKind::Builtin(Builtin::Sorted, vec![v]),
-                        Ty::list(e.clone()),
-                        base.span,
-                    );
+                    let list =
+                        self.mk_builtin(Builtin::Sorted, [v], Ty::list(e.clone()), base.span);
                     (list, e)
                 }
                 other => {
@@ -1216,8 +1092,9 @@ impl<'a> Lowerer<'a> {
             Some(c) => self.expect(c, &Ty::Bool),
             None => self.mk(ExprKind::Bool(false), Ty::Bool, span),
         };
-        self.mk(
-            ExprKind::Builtin(Builtin::Reach, vec![seq_val, pred, cyclic]),
+        self.mk_builtin(
+            Builtin::Reach,
+            [seq_val, pred, cyclic],
             Ty::list(Ty::Int),
             span,
         )
@@ -1253,17 +1130,11 @@ impl<'a> Lowerer<'a> {
         let mut dim_specs = Vec::with_capacity(dims.len());
         for (axis, dim) in dims.iter().enumerate() {
             let len_expr = if dims.len() == 1 {
-                self.mk(
-                    ExprKind::Builtin(Builtin::Len, vec![arr.clone()]),
-                    Ty::Int,
-                    span,
-                )
+                self.mk_builtin(Builtin::Len, [arr.clone()], Ty::Int, span)
             } else {
-                self.mk(
-                    ExprKind::Builtin(
-                        Builtin::AxisLen,
-                        vec![arr.clone(), self.int_lit(axis as i64, span)],
-                    ),
+                self.mk_builtin(
+                    Builtin::AxisLen,
+                    [arr.clone(), self.int_lit(axis as i64, span)],
                     Ty::Int,
                     span,
                 )
@@ -1296,11 +1167,7 @@ impl<'a> Lowerer<'a> {
                 }
             })
             .collect();
-        let cell = self.mk(
-            ExprKind::Index(Box::new(arr.clone()), stored.clone()),
-            elem_ty.clone(),
-            span,
-        );
+        let cell = self.mk_index(arr.clone(), stored.clone(), elem_ty.clone(), span);
 
         let mut pre_stmts = vec![Stmt::Let(arr_slot, Some(arr_val))];
         let (out_elem, mut inner_stmts, mapped) =
@@ -1338,11 +1205,8 @@ impl<'a> Lowerer<'a> {
                 let func_slot = self.temp(func.ty.clone());
                 pre_stmts.push(Stmt::Let(func_slot, Some(func)));
                 let func_val = self.local(func_slot, span);
-                let mapped = self.mk(
-                    ExprKind::CallExpr(Box::new(func_val), vec![Arg::Value(cell)]),
-                    out_elem.clone(),
-                    span,
-                );
+                let mapped =
+                    self.mk_call_expr(func_val, vec![Arg::Value(cell)], out_elem.clone(), span);
                 (out_elem, Vec::new(), mapped)
             };
 
@@ -1422,16 +1286,14 @@ impl<'a> Lowerer<'a> {
                     let acc = lw.temp(list_ty.clone());
                     let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
                     out.push(Stmt::Let(acc, Some(empty)));
-                    let push = Stmt::Expr(lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Push,
-                            Box::new(Place {
-                                kind: PlaceKind::Local(acc),
-                                ty: list_ty.clone(),
-                                span: lw.span(span),
-                            }),
-                            vec![mapped],
-                        ),
+                    let push = Stmt::Expr(lw.mk_mutate(
+                        Mutation::Push,
+                        Place {
+                            kind: PlaceKind::Local(acc),
+                            ty: list_ty.clone(),
+                            span: lw.span(span),
+                        },
+                        vec![mapped],
                         Ty::Unit,
                         span,
                     ));
@@ -1462,8 +1324,9 @@ impl<'a> Lowerer<'a> {
             let item = lw.temp(elem_ty.clone());
             let lid = lw.fresh_loop();
             let item_expr = lw.local(item, span);
-            let mapped = lw.mk(
-                ExprKind::CallExpr(Box::new(func_val), vec![Arg::Value(item_expr)]),
+            let mapped = lw.mk_call_expr(
+                func_val,
+                vec![Arg::Value(item_expr)],
                 out_elem.clone(),
                 span,
             );
@@ -1518,8 +1381,9 @@ impl<'a> Lowerer<'a> {
             let item = lw.temp(elem_ty.clone());
             let lid = lw.fresh_loop();
             let item_expr = lw.local(item, span);
-            let keep = lw.mk(
-                ExprKind::CallExpr(Box::new(pred_val), vec![Arg::Value(item_expr.clone())]),
+            let keep = lw.mk_call_expr(
+                pred_val,
+                vec![Arg::Value(item_expr.clone())],
                 Ty::Bool,
                 span,
             );
@@ -1562,34 +1426,31 @@ impl<'a> Lowerer<'a> {
             let item = lw.temp(elem_ty.clone());
             let lid = lw.fresh_loop();
             let item_expr = lw.local(item, span);
-            let cond = lw.mk(
-                ExprKind::CallExpr(Box::new(pred_val), vec![Arg::Value(item_expr.clone())]),
+            let cond = lw.mk_call_expr(
+                pred_val,
+                vec![Arg::Value(item_expr.clone())],
                 Ty::Bool,
                 span,
             );
-            let push_yes = lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(Place {
-                        kind: PlaceKind::Local(yes),
-                        ty: list_ty.clone(),
-                        span: lw.span(span),
-                    }),
-                    vec![item_expr.clone()],
-                ),
+            let push_yes = lw.mk_mutate(
+                Mutation::Push,
+                Place {
+                    kind: PlaceKind::Local(yes),
+                    ty: list_ty.clone(),
+                    span: lw.span(span),
+                },
+                vec![item_expr.clone()],
                 Ty::Unit,
                 span,
             );
-            let push_no = lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(Place {
-                        kind: PlaceKind::Local(no),
-                        ty: list_ty.clone(),
-                        span: lw.span(span),
-                    }),
-                    vec![item_expr],
-                ),
+            let push_no = lw.mk_mutate(
+                Mutation::Push,
+                Place {
+                    kind: PlaceKind::Local(no),
+                    ty: list_ty.clone(),
+                    span: lw.span(span),
+                },
+                vec![item_expr],
                 Ty::Unit,
                 span,
             );
@@ -1653,7 +1514,7 @@ impl Lowerer<'_> {
         match self.struct_walk(sid, span) {
             Some((f, elem)) => self.mk(
                 ExprKind::Call(f, vec![Arg::Value(seq)]),
-                Ty::List(Box::new(elem)),
+                Ty::list(elem),
                 span,
             ),
             None => seq,

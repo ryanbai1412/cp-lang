@@ -24,8 +24,10 @@ let hi = [Wire] w => Int(ends[w].b) + (if ends[w].b < ends[w].a: n else: 0)
 fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
     var upto = part.lo - 1
     let laps = [
-        (lo[w] + s, hi[w] + s) for w in on for s in [-n, 0, n]
-        if lo[w] + s <= part.hi and hi[w] + s >= part.lo
+        (
+            lo[w] + s,
+            hi[w] + s,
+        ) for w in on for s in [-n, 0, n] if lo[w] + s <= part.hi and hi[w] + s >= part.lo
     ]
     for (l, h) in laps.sorted():
         if upto >= part.hi:
@@ -50,7 +52,7 @@ fn covers_ring(on: List<Wire>) -> Bool:
 var holder: [Wire]?Wire = None
 var reach: ?(end: Int, by: Wire) = None
 let order = Wire.collect().sorted(by: w => (lo[w], desc(hi[w])))  // by start, longest first
-for s in [0, n]:  // the circle twice, so a wire past n can hold the ones it wraps over
+for s in [0, n]:                                                  // the circle twice, so a wire past n can hold the ones it wraps over
     for w in order:
         match reach:
             Some(r) if hi[w] + s <= r.end and r.by != w => holder[w] = holder[w] ?? Some(r.by)

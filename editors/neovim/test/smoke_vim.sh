@@ -27,8 +27,11 @@ fn main():
     print(n + 1)
 CP
 
+# The highlighting `cpl setup vim` writes, generated from the lexer's tables.
+mkdir -p "$tmp/rt/syntax"
+"$cpl" setup vim --grammar >"$tmp/rt/syntax/cp.vim"
 "$vim_bin" --clean -Nu NONE -Es \
-    -c "set rtp+=$nvim_dir | let g:cpl_path = '$cpl'" \
+    -c "set rtp+=$nvim_dir,$tmp/rt | let g:cpl_path = '$cpl'" \
     -c "filetype plugin indent on" \
     -c "syntax on" \
     -c "edit $tmp/a.cp" \
@@ -36,7 +39,7 @@ CP
     -c "if &commentstring !=# '// %s' | cquit 3 | endif" \
     -c "if &shiftwidth != 4 | cquit 4 | endif" \
     -c "if &formatprg !=# '$cpl fmt --stdin' | cquit 6 | endif" \
-    -c "if !hlexists('cpKeyword') || !hlexists('cpBoolean') || !hlexists('cpType') | cquit 5 | endif" \
+    -c "if !hlexists('cpBoolean') || synIDattr(synID(1, 1, 1), 'name') !=# 'cpKeyword' || synIDattr(synID(2, 12, 1), 'name') !=# 'cpType' | cquit 5 | endif" \
     -c "qall!"
 
 # `gq` formats through `cpl fmt --stdin`.

@@ -34,10 +34,16 @@ fn users(v: Int, depth: Int) -> Range<User>:
 fn best(u: Int, depth: Int, flags: Int) -> List<?Int>:
     if depth == m:
         let i = User(u - n)
-        return [0, 1].map(b => Some(
-            (if plan[i] != b: switch[i] else: 0)
-            + sum(reach.fold(i..=i, users(u >> (m - d - 1) ^ 1, d + 1)) for d in 0..m if flags.bit(d) != (b == 1))
-        ))
+        return [0, 1].map(
+            b => Some(
+                (if plan[i] != b: switch[i] else: 0) + sum(
+                    reach.fold(
+                        i..=i,
+                        users(u >> (m - d - 1) ^ 1, d + 1),
+                    ) for d in 0..m if flags.bit(d) != (b == 1)
+                )
+            )
+        )
     let half = 1 << (m - depth - 1)
     let unseen: ?Int = None
     var out = [unseen] * (2 * half + 1)

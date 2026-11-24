@@ -33,7 +33,7 @@ impl<'a> Lowerer<'a> {
         } else {
             Builtin::CutBefore
         };
-        let cut = self.mk(ExprKind::Builtin(op, vec![seq, key]), Ty::Int, span);
+        let cut = self.mk_builtin(op, [seq, key], Ty::Int, span);
         match ty.seq_key() {
             Some(Dim::Pos(d)) => self.cast(Cast::Trust, cut, Ty::Bound(d)),
             _ => cut,

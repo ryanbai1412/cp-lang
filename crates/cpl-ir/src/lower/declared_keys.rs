@@ -71,21 +71,13 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             let have = if rank == 1 {
-                self.mk(
-                    ExprKind::Builtin(Builtin::Len, vec![held.clone()]),
-                    Ty::Int,
-                    span,
-                )
+                self.mk_builtin(Builtin::Len, [held.clone()], Ty::Int, span)
             } else {
                 let at = self.int_lit(axis as i64, span);
                 let args = vec![held.clone(), at];
                 self.mk(ExprKind::Builtin(Builtin::AxisLen, args), Ty::Int, span)
             };
-            let wrong = self.mk(
-                ExprKind::Cmp(CmpOp::Ne, Box::new(have), Box::new(want)),
-                Ty::Bool,
-                span,
-            );
+            let wrong = self.mk_cmp(CmpOp::Ne, have, want, Ty::Bool, span);
             let trap = Stmt::Trap(WRONG_KEYS.to_string(), self.span(span));
             out.push(Stmt::If(
                 wrong,

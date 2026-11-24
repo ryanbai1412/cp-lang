@@ -22,7 +22,9 @@ fn rebuilds<R>(d: [V, V]?Int, over: R) -> Bool:
 if not (rebuilds(wide, Semiring(max, min)) and rebuilds(narrow, Semiring(min, max))):
     print("NO")
 else:
-    let edges = [(u:, v:, w: w!) for (u, v) in V.pairs() if fits(u, v) for w in [wide[u, v], narrow[u, v]]]
+    let edges = [
+        (u:, v:, w: w!) for (u, v) in V.pairs() if fits(u, v) for w in [wide[u, v], narrow[u, v]]
+    ]
     let (low, high) = (kruskal(edges).take, kruskal(edges, by: e => desc(e.w)).take)
     let keep = edges.keys.filter(e => low[e] or high[e]).collect()
     print(keep.len)

@@ -61,6 +61,13 @@ exhaustive form, and `plan/STATUS.md` lists what is still open.
   `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`, and
   `@allow(x)` is `with lint(x: allow)`. Each old spelling is error E0503,
   whose fix writes the new one; `cpl migrate` applies them all.
+- std's 2-D and list prefix sums are no longer `_Prefix2`, `_PrefixList`,
+  `_FillPrefix2`, `_FillPrefixList` and `_Diff2`: std declares `Prefix<T>`,
+  `Prefix<R, C, T>`, `FillPrefix<..>` and `Diff<R, C, T>` by those names
+  (same-name structs that differ by arity), so `_Diff2.finish`,
+  `_Prefix2.filling` and `_PrefixList.filling` are `Diff.finish` and
+  `Prefix.filling`. A program that wrote the underscore names writes the
+  public ones.
 
 ## 0.2.2 (2026-11-20)
 

@@ -36,11 +36,9 @@ impl<'a> Lowerer<'a> {
                     let b_slot = lw.temp(elem_ty.clone());
                     let c_slot = lw.temp(elem_ty.clone());
                     let call2 = |lw: &Self, x: Expr, y: Expr| -> Expr {
-                        lw.mk(
-                            ExprKind::CallExpr(
-                                Box::new(lw.local(fn_slot, span)),
-                                vec![Arg::Value(x), Arg::Value(y)],
-                            ),
+                        lw.mk_call_expr(
+                            lw.local(fn_slot, span),
+                            vec![Arg::Value(x), Arg::Value(y)],
                             elem_ty.clone(),
                             span,
                         )
@@ -49,11 +47,7 @@ impl<'a> Lowerer<'a> {
                     let ab_c = call2(lw, ab, lw.local(c_slot, span));
                     let bc = call2(lw, lw.local(b_slot, span), lw.local(c_slot, span));
                     let a_bc = call2(lw, lw.local(a_slot, span), bc);
-                    let ne = lw.mk(
-                        ExprKind::Cmp(CmpOp::Ne, Box::new(ab_c), Box::new(a_bc)),
-                        Ty::Bool,
-                        span,
-                    );
+                    let ne = lw.mk_cmp(CmpOp::Ne, ab_c, a_bc, Ty::Bool, span);
                     let set_false = Stmt::Assign(
                         Place {
                             kind: PlaceKind::Local(ok_slot),
@@ -165,6 +159,7 @@ impl<'a> Lowerer<'a> {
                 let saved_offset = std::mem::replace(&mut lw.offset, law.offset);
                 let saved_env = std::mem::replace(&mut lw.gen_env, struct_env.clone());
                 let saved_self = lw.self_struct.replace(sid);
+                let saved_fns = std::mem::replace(&mut lw.law_fns, law.trait_fns.clone());
 
                 // Resolve each law parameter's sample list slot.
                 let mut pools: Vec<(String, Slot, Ty)> = Vec::new();
@@ -194,6 +189,7 @@ impl<'a> Lowerer<'a> {
                 lw.offset = saved_offset;
                 lw.gen_env = saved_env;
                 lw.self_struct = saved_self;
+                lw.law_fns = saved_fns;
             }
 
             lw.cx.receiver = saved_recv;

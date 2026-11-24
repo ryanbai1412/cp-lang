@@ -7,7 +7,7 @@ domain Row = 0..n
 domain Col = 0..n
 let grid: [Row, Col]Char = read()
 domain Letter = 0..5
-domain Absent = 0..32   // a set of letters, as a mask
+domain Absent = 0..32  // a set of letters, as a mask
 let holding = [Letter] l => Absent.filter(s => (s.ord >> l.ord) % 2 == 1).collect()
 let sign = [Absent] s => if popcount(s.ord) % 2 == 1: -1 else: 1
 fn pairs(len: Int) -> Int = len * (len + 1) / 2

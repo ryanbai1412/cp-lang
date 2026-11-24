@@ -254,27 +254,6 @@ impl<'a> Lowerer<'a> {
                 });
             }
         }
-        // `V.all.without(v)`: lift `Range<V>` to `Bitset<V>` and call `without(v)`.
-        if name.text == "without" && args.len() == 1 {
-            if let Some(Ty::Range(of)) = self.probe_ty_silent(base) {
-                if let Ty::Pos(dom) = of.as_ref() {
-                    let dom = *dom;
-                    if let Some(sid) = self.instantiate_bitset(dom, span) {
-                        let base_expr = self.expr(base, Some(&Ty::Struct(sid)));
-                        let bs = self.coerce(base_expr, &Ty::Struct(sid), base.span);
-                        if let Some(without_fn) = self.own_method(sid, "without") {
-                            self.queue_fn(without_fn);
-                            let v = self.expect(&args[0].value, &Ty::Pos(dom));
-                            return self.mk(
-                                ExprKind::Call(without_fn, vec![Arg::Value(bs), Arg::Value(v)]),
-                                Ty::Struct(sid),
-                                span,
-                            );
-                        }
-                    }
-                }
-            }
-        }
         // A fold over a sequence reads as its method: `xs.sum()` is
         // `sum(xs)`, `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
         let seq_ty = self.probe_ty_silent(base);
@@ -389,11 +368,7 @@ impl<'a> Lowerer<'a> {
                     _ => self.expr(exprs[1], None),
                 };
                 let list_ty = Ty::list(val.ty.clone());
-                return self.mk(
-                    ExprKind::Builtin(Builtin::ListFilled, vec![count, val]),
-                    list_ty,
-                    span,
-                );
+                return self.mk_builtin(Builtin::ListFilled, [count, val], list_ty, span);
             }
             if n == "List" && self.lookup(n).is_none() {
                 return self.list_static_typo(name, span);
@@ -702,7 +677,7 @@ impl<'a> Lowerer<'a> {
                                     lo: Box::new(lo),
                                     hi: Box::new(hi),
                                 },
-                                Ty::Range(Box::new(Ty::Pos(id))),
+                                Ty::range(Ty::Pos(id)),
                                 span,
                             )
                         }
@@ -719,7 +694,7 @@ impl<'a> Lowerer<'a> {
                                     lo: Box::new(lo),
                                     hi: Box::new(hi),
                                 },
-                                Ty::Range(Box::new(Ty::Pos(id))),
+                                Ty::range(Ty::Pos(id)),
                                 span,
                             )
                         }
@@ -766,18 +741,11 @@ impl<'a> Lowerer<'a> {
                         return self.err_expr(span);
                     };
                     let map_ty = self.structs[*id].def.fields[0].1.clone();
-                    let map_expr = self.mk(ExprKind::Field(Box::new(value), 0), map_ty, span);
-                    let found = self.mk(
-                        ExprKind::Builtin(Builtin::MapGet, vec![map_expr, key]),
-                        Ty::opt(Ty::Int),
-                        span,
-                    );
+                    let map_expr = self.mk_field(value, 0, map_ty, span);
+                    let found =
+                        self.mk_builtin(Builtin::MapGet, [map_expr, key], Ty::opt(Ty::Int), span);
                     let zero = self.int_lit(0, span);
-                    return self.mk(
-                        ExprKind::Binary(BinOp::Coalesce, Box::new(found), Box::new(zero)),
-                        Ty::Int,
-                        span,
-                    );
+                    return self.mk_binary(BinOp::Coalesce, found, zero, Ty::Int, span);
                 }
             }
             if let Some(fn_id) = self.own_method(*id, method) {
@@ -1031,82 +999,30 @@ impl<'a> Lowerer<'a> {
         let dlen_l = self.local(dlen_s, span);
         let zero = self.int_lit(0, span);
 
-        let c1 = self.mk(
-            ExprKind::Cmp(CmpOp::Ge, Box::new(lo_l.clone()), Box::new(hi_l.clone())),
-            Ty::Bool,
-            span,
-        );
-        let c2 = self.mk(
-            ExprKind::Cmp(CmpOp::Ge, Box::new(lo_l.clone()), Box::new(dlen_l.clone())),
-            Ty::Bool,
-            span,
-        );
-        let c3 = self.mk(
-            ExprKind::Cmp(CmpOp::Le, Box::new(hi_l.clone()), Box::new(zero.clone())),
-            Ty::Bool,
-            span,
-        );
-        let c12 = self.mk(
-            ExprKind::Binary(BinOp::Or, Box::new(c1), Box::new(c2)),
-            Ty::Bool,
-            span,
-        );
-        let empty = self.mk(
-            ExprKind::Binary(BinOp::Or, Box::new(c12), Box::new(c3)),
-            Ty::Bool,
-            span,
-        );
+        let c1 = self.mk_cmp(CmpOp::Ge, lo_l.clone(), hi_l.clone(), Ty::Bool, span);
+        let c2 = self.mk_cmp(CmpOp::Ge, lo_l.clone(), dlen_l.clone(), Ty::Bool, span);
+        let c3 = self.mk_cmp(CmpOp::Le, hi_l.clone(), zero.clone(), Ty::Bool, span);
+        let c12 = self.mk_binary(BinOp::Or, c1, c2, Ty::Bool, span);
+        let empty = self.mk_binary(BinOp::Or, c12, c3, Ty::Bool, span);
         let empty_s = self.temp(Ty::Bool);
         out.push(Stmt::Let(empty_s, Some(empty)));
         let empty_l = self.local(empty_s, span);
-        let not_empty = self.mk(
-            ExprKind::Unary(UnOp::Not, Box::new(empty_l.clone())),
-            Ty::Bool,
-            span,
-        );
+        let not_empty = self.mk_unary(UnOp::Not, empty_l.clone(), Ty::Bool, span);
 
         let opt_k = Ty::opt(Ty::Pos(d));
-        let lo_gt_zero = self.mk(
-            ExprKind::Cmp(CmpOp::Gt, Box::new(lo_l.clone()), Box::new(zero)),
-            Ty::Bool,
-            span,
-        );
-        let has_lo = self.mk(
-            ExprKind::Binary(
-                BinOp::And,
-                Box::new(not_empty.clone()),
-                Box::new(lo_gt_zero),
-            ),
-            Ty::Bool,
-            span,
-        );
+        let lo_gt_zero = self.mk_cmp(CmpOp::Gt, lo_l.clone(), zero, Ty::Bool, span);
+        let has_lo = self.mk_binary(BinOp::And, not_empty.clone(), lo_gt_zero, Ty::Bool, span);
         let lo_pos = self.cast(Cast::Trust, lo_l, Ty::Pos(d));
-        let lo_some = self.mk(ExprKind::Some(Box::new(lo_pos)), opt_k.clone(), span);
+        let lo_some = self.mk_some(lo_pos, opt_k.clone(), span);
         let lo_none = self.mk(ExprKind::None, opt_k.clone(), span);
-        let lo_expr = self.mk(
-            ExprKind::If(Box::new(has_lo), Box::new(lo_some), Box::new(lo_none)),
-            opt_k.clone(),
-            span,
-        );
+        let lo_expr = self.mk_if(has_lo, lo_some, lo_none, opt_k.clone(), span);
 
-        let hi_lt_len = self.mk(
-            ExprKind::Cmp(CmpOp::Lt, Box::new(hi_l.clone()), Box::new(dlen_l)),
-            Ty::Bool,
-            span,
-        );
-        let has_hi = self.mk(
-            ExprKind::Binary(BinOp::And, Box::new(not_empty), Box::new(hi_lt_len)),
-            Ty::Bool,
-            span,
-        );
+        let hi_lt_len = self.mk_cmp(CmpOp::Lt, hi_l.clone(), dlen_l, Ty::Bool, span);
+        let has_hi = self.mk_binary(BinOp::And, not_empty, hi_lt_len, Ty::Bool, span);
         let hi_pos = self.cast(Cast::Trust, hi_l, Ty::Pos(d));
-        let hi_some = self.mk(ExprKind::Some(Box::new(hi_pos)), opt_k.clone(), span);
+        let hi_some = self.mk_some(hi_pos, opt_k.clone(), span);
         let hi_none = self.mk(ExprKind::None, opt_k.clone(), span);
-        let hi_expr = self.mk(
-            ExprKind::If(Box::new(has_hi), Box::new(hi_some), Box::new(hi_none)),
-            opt_k,
-            span,
-        );
+        let hi_expr = self.mk_if(has_hi, hi_some, hi_none, opt_k, span);
 
         let lo_inc = self.mk(ExprKind::Bool(true), Ty::Bool, span);
         let hi_inc = self.mk(ExprKind::Bool(false), Ty::Bool, span);
@@ -1208,14 +1124,14 @@ impl<'a> Lowerer<'a> {
                                 let lo_e = match lo.as_deref() {
                                     Some(l) => {
                                         let lv = self.expect(l, &key_ty);
-                                        self.mk(ExprKind::Some(Box::new(lv)), opt_k.clone(), span)
+                                        self.mk_some(lv, opt_k.clone(), span)
                                     }
                                     None => self.mk(ExprKind::None, opt_k.clone(), span),
                                 };
                                 let hi_e = match hi.as_deref() {
                                     Some(h) => {
                                         let hv = self.expect(h, &key_ty);
-                                        self.mk(ExprKind::Some(Box::new(hv)), opt_k.clone(), span)
+                                        self.mk_some(hv, opt_k.clone(), span)
                                     }
                                     None => self.mk(ExprKind::None, opt_k.clone(), span),
                                 };
@@ -1229,30 +1145,23 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                         _ => {
-                            let want_r = Ty::Range(Box::new(key_ty.clone()));
+                            let want_r = Ty::range(key_ty.clone());
                             let rv = self.expr(arg, Some(&want_r));
                             let r_slot = self.temp(rv.ty.clone());
                             out.push(Stmt::Let(r_slot, Some(rv)));
                             let r_l = self.local(r_slot, span);
-                            let r_lo = self.mk(
-                                ExprKind::Builtin(Builtin::RangeLo, vec![r_l.clone()]),
-                                Ty::Int,
-                                span,
-                            );
-                            let r_hi = self.mk(
-                                ExprKind::Builtin(Builtin::RangeHi, vec![r_l]),
-                                Ty::Int,
-                                span,
-                            );
+                            let r_lo =
+                                self.mk_builtin(Builtin::RangeLo, [r_l.clone()], Ty::Int, span);
+                            let r_hi = self.mk_builtin(Builtin::RangeHi, [r_l], Ty::Int, span);
                             if let Ty::Pos(d) = key_ty {
                                 self.sorted_domain_bounds(d, r_lo, r_hi, span, out)
                             } else {
                                 let r_lo = self.coerce(r_lo, &key_ty, span);
                                 let r_hi = self.coerce(r_hi, &key_ty, span);
                                 (
-                                    self.mk(ExprKind::Some(Box::new(r_lo)), opt_k.clone(), span),
+                                    self.mk_some(r_lo, opt_k.clone(), span),
                                     self.mk(ExprKind::Bool(true), Ty::Bool, span),
-                                    self.mk(ExprKind::Some(Box::new(r_hi)), opt_k.clone(), span),
+                                    self.mk_some(r_hi, opt_k.clone(), span),
                                     self.mk(ExprKind::Bool(false), Ty::Bool, span),
                                     None,
                                 )
@@ -1313,11 +1222,7 @@ impl<'a> Lowerer<'a> {
         let call = self.mk(ExprKind::Call(fn_id, args), ret_ty.clone(), span);
         if let Some(emp) = view.empty {
             let cond = self.local(emp, span);
-            self.mk(
-                ExprKind::If(Box::new(cond), Box::new(empty_default), Box::new(call)),
-                ret_ty,
-                span,
-            )
+            self.mk_if(cond, empty_default, call, ret_ty, span)
         } else {
             call
         }
@@ -1325,9 +1230,7 @@ impl<'a> Lowerer<'a> {
 
     fn tree_view_key(&mut self, view: &SortedView, val: Expr, span: Span) -> Expr {
         match view.kind {
-            SortedViewKind::Map => {
-                self.mk(ExprKind::Field(Box::new(val), 0), view.key_ty.clone(), span)
-            }
+            SortedViewKind::Map => self.mk_field(val, 0, view.key_ty.clone(), span),
             _ => val,
         }
     }
@@ -1348,63 +1251,35 @@ impl<'a> Lowerer<'a> {
             let cs = lw.temp(opt_e.clone());
             out.push(Stmt::Let(cs, Some(cand)));
             let c_ref = lw.local(cs, span);
-            let c_some = lw.mk(ExprKind::IsSome(Box::new(c_ref.clone())), Ty::Bool, span);
+            let c_some = lw.mk_is_some(c_ref.clone(), Ty::Bool, span);
             let b_ref = lw.local(bound_slot, span);
-            let b_some = lw.mk(ExprKind::IsSome(Box::new(b_ref.clone())), Ty::Bool, span);
-            let both = lw.mk(
-                ExprKind::Binary(BinOp::And, Box::new(c_some), Box::new(b_some)),
-                Ty::Bool,
-                span,
-            );
-            let elem_val = lw.mk(
-                ExprKind::Unwrap(Box::new(c_ref.clone()), false),
-                view.elem_ty.clone(),
-                span,
-            );
+            let b_some = lw.mk_is_some(b_ref.clone(), Ty::Bool, span);
+            let both = lw.mk_binary(BinOp::And, c_some, b_some, Ty::Bool, span);
+            let elem_val = lw.mk_unwrap(c_ref.clone(), false, view.elem_ty.clone(), span);
             let k_val = lw.tree_view_key(view, elem_val, span);
-            let b_val = lw.mk(
-                ExprKind::Unwrap(Box::new(b_ref), false),
-                view.key_ty.clone(),
-                span,
-            );
+            let b_val = lw.mk_unwrap(b_ref, false, view.key_ty.clone(), span);
             let (strict_op, inc_op) = if check_hi {
                 (CmpOp::Lt, CmpOp::Le)
             } else {
                 (CmpOp::Gt, CmpOp::Ge)
             };
-            let inc_cmp = lw.mk(
-                ExprKind::Cmp(inc_op, Box::new(k_val.clone()), Box::new(b_val.clone())),
+            let inc_cmp = lw.mk_cmp(inc_op, k_val.clone(), b_val.clone(), Ty::Bool, span);
+            let strict_cmp = lw.mk_cmp(strict_op, k_val, b_val, Ty::Bool, span);
+            let in_bounds = lw.mk_if(
+                lw.local(inc_slot, span),
+                inc_cmp,
+                strict_cmp,
                 Ty::Bool,
                 span,
             );
-            let strict_cmp = lw.mk(
-                ExprKind::Cmp(strict_op, Box::new(k_val), Box::new(b_val)),
-                Ty::Bool,
-                span,
-            );
-            let in_bounds = lw.mk(
-                ExprKind::If(
-                    Box::new(lw.local(inc_slot, span)),
-                    Box::new(inc_cmp),
-                    Box::new(strict_cmp),
-                ),
-                Ty::Bool,
-                span,
-            );
-            let keep = lw.mk(
-                ExprKind::If(
-                    Box::new(in_bounds),
-                    Box::new(c_ref.clone()),
-                    Box::new(lw.mk(ExprKind::None, opt_e.clone(), span)),
-                ),
+            let keep = lw.mk_if(
+                in_bounds,
+                c_ref.clone(),
+                lw.mk(ExprKind::None, opt_e.clone(), span),
                 opt_e.clone(),
                 span,
             );
-            let res = lw.mk(
-                ExprKind::If(Box::new(both), Box::new(keep), Box::new(c_ref)),
-                opt_e.clone(),
-                span,
-            );
+            let res = lw.mk_if(both, keep, c_ref, opt_e.clone(), span);
             out.push(Stmt::Give(res));
         })
     }
@@ -1434,57 +1309,32 @@ impl<'a> Lowerer<'a> {
                 )
             };
             let s_ref = lw.local(start_slot, span);
-            let s_some = lw.mk(ExprKind::IsSome(Box::new(s_ref.clone())), Ty::Bool, span);
-            let s_val = lw.mk(
-                ExprKind::Unwrap(Box::new(s_ref), false),
-                view.key_ty.clone(),
-                span,
-            );
-            let call_ge = lw.mk(
-                ExprKind::Builtin(ge_op, vec![base_e.clone(), s_val.clone()]),
+            let s_some = lw.mk_is_some(s_ref.clone(), Ty::Bool, span);
+            let s_val = lw.mk_unwrap(s_ref, false, view.key_ty.clone(), span);
+            let call_ge =
+                lw.mk_builtin(ge_op, [base_e.clone(), s_val.clone()], opt_e.clone(), span);
+            let call_gt = lw.mk_builtin(gt_op, [base_e.clone(), s_val], opt_e.clone(), span);
+            let bounded = lw.mk_if(
+                lw.local(start_inc, span),
+                call_ge,
+                call_gt,
                 opt_e.clone(),
                 span,
             );
-            let call_gt = lw.mk(
-                ExprKind::Builtin(gt_op, vec![base_e.clone(), s_val]),
-                opt_e.clone(),
-                span,
-            );
-            let bounded = lw.mk(
-                ExprKind::If(
-                    Box::new(lw.local(start_inc, span)),
-                    Box::new(call_ge),
-                    Box::new(call_gt),
-                ),
-                opt_e.clone(),
-                span,
-            );
-            let open = lw.mk(ExprKind::Builtin(end_op, vec![base_e]), opt_e.clone(), span);
-            let cand = lw.mk(
-                ExprKind::If(Box::new(s_some), Box::new(bounded), Box::new(open)),
-                opt_e.clone(),
-                span,
-            );
+            let open = lw.mk_builtin(end_op, [base_e], opt_e.clone(), span);
+            let cand = lw.mk_if(s_some, bounded, open, opt_e.clone(), span);
             let clipped = lw.tree_view_clip(view, cand, check_hi, span);
             out.push(Stmt::Give(clipped));
         });
         if let Some(emp) = view.empty {
-            self.mk(
-                ExprKind::If(
-                    Box::new(self.local(emp, span)),
-                    Box::new(none_e),
-                    Box::new(body),
-                ),
-                opt_e,
-                span,
-            )
+            self.mk_if(self.local(emp, span), none_e, body, opt_e, span)
         } else {
             body
         }
     }
 
     fn tree_view_collect(&mut self, view: &SortedView, span: Span) -> Expr {
-        let list_ty = Ty::List(Box::new(view.elem_ty.clone()));
+        let list_ty = Ty::list(view.elem_ty.clone());
         let opt_e = Ty::opt(view.elem_ty.clone());
         self.do_expr(Some(&list_ty), span, |lw, out| {
             let out_s = lw.temp(list_ty.clone());
@@ -1496,24 +1346,18 @@ impl<'a> Lowerer<'a> {
             let first = lw.tree_view_end(view, view.rev, span);
             out.push(Stmt::Let(cur_s, Some(first)));
             let cur_ref = lw.local(cur_s, span);
-            let cond = lw.mk(ExprKind::IsSome(Box::new(cur_ref.clone())), Ty::Bool, span);
+            let cond = lw.mk_is_some(cur_ref.clone(), Ty::Bool, span);
             let v_s = lw.temp(view.elem_ty.clone());
-            let v_init = lw.mk(
-                ExprKind::Unwrap(Box::new(cur_ref), false),
-                view.elem_ty.clone(),
-                span,
-            );
+            let v_init = lw.mk_unwrap(cur_ref, false, view.elem_ty.clone(), span);
             let v_ref = lw.local(v_s, span);
-            let push_stmt = Stmt::Expr(lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(Place {
-                        kind: PlaceKind::Local(out_s),
-                        ty: list_ty.clone(),
-                        span: lw.span(span),
-                    }),
-                    vec![v_ref.clone()],
-                ),
+            let push_stmt = Stmt::Expr(lw.mk_mutate(
+                Mutation::Push,
+                Place {
+                    kind: PlaceKind::Local(out_s),
+                    ty: list_ty.clone(),
+                    span: lw.span(span),
+                },
+                vec![v_ref.clone()],
                 Ty::Unit,
                 span,
             ));
@@ -1523,8 +1367,9 @@ impl<'a> Lowerer<'a> {
             } else {
                 Builtin::FirstGt
             };
-            let next_raw = lw.mk(
-                ExprKind::Builtin(step_op, vec![super::stmt::place_to_expr(&view.base), k_val]),
+            let next_raw = lw.mk_builtin(
+                step_op,
+                [super::stmt::place_to_expr(&view.base), k_val],
                 opt_e.clone(),
                 span,
             );
@@ -1587,11 +1432,7 @@ impl<'a> Lowerer<'a> {
                         let d = lw.int_lit(0, span);
                         let len = lw.call_sorted_view(&view, sid, "range_len", Ty::Int, d, span);
                         let zero = lw.int_lit(0, span);
-                        lw.mk(
-                            ExprKind::Cmp(CmpOp::Eq, Box::new(len), Box::new(zero)),
-                            Ty::Bool,
-                            span,
-                        )
+                        lw.mk_cmp(CmpOp::Eq, len, zero, Ty::Bool, span)
                     }
                     _ => lw.err_expr(span),
                 },
@@ -1600,8 +1441,8 @@ impl<'a> Lowerer<'a> {
                     "last" => lw.tree_view_end(&view, !view.rev, span),
                     "is_empty" => {
                         let first = lw.tree_view_end(&view, false, span);
-                        let some = lw.mk(ExprKind::IsSome(Box::new(first)), Ty::Bool, span);
-                        lw.mk(ExprKind::Unary(UnOp::Not, Box::new(some)), Ty::Bool, span)
+                        let some = lw.mk_is_some(first, Ty::Bool, span);
+                        lw.mk_unary(UnOp::Not, some, Ty::Bool, span)
                     }
                     _ => lw.err_expr(span),
                 },
@@ -1671,7 +1512,7 @@ impl<'a> Lowerer<'a> {
                 return;
             };
             elem_ty = view.elem_ty.clone();
-            let list_ty = Ty::List(Box::new(view.elem_ty.clone()));
+            let list_ty = Ty::list(view.elem_ty.clone());
             let res = match view.kind {
                 SortedViewKind::Bag(sid) => {
                     let m = if view.rev {

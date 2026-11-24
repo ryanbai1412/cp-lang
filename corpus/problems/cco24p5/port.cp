@@ -22,8 +22,16 @@ let a: [I]Value = read()
 
 var dp: [End]Int = 0
 dp[End.last!] = 1
-let shift = Action<MinCount<Int>, Int>.new(apply: (d, v, _) => MinCount(v.val + d, v.count), over: MinCount.monoid(), commutes: true)
-var bad = [Side] _ => SegTree<End, MinCount<Int>, Int>(MinCount.monoid(), fill: MinCount(0, 0), act: shift)
+let shift = Action<MinCount<Int>, Int>.new(
+    apply: (d, v, _) => MinCount(v.val + d, v.count),
+    over: MinCount.monoid(),
+    commutes: true,
+)
+var bad = [Side] _ => SegTree<End, MinCount<Int>, Int>(
+    MinCount.monoid(),
+    fill: MinCount(0, 0),
+    act: shift,
+)
 var next_at: [Side, Value]?I = None
 var next_any: [Value]?I = None
 var stop_of: [Side, I]End = End.last!

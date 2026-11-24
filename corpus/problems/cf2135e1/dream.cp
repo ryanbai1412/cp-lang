@@ -13,7 +13,10 @@ type M = Mod<998_244_353>
 // g reads odd_div_sum up to n + 1.
 let lim = 1e6 + 2
 let comb = Comb<M>(lim)
-let odd_div_sum = sieve_multiplicative(lim, (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1))
+let odd_div_sum = sieve_multiplicative(
+    lim,
+    (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1),
+)
 
 @!multitest
 let n: 1..=1e6 = read()
@@ -24,6 +27,7 @@ fn g(i: Int) -> M =
         let narrow = (if i % 2 == 1: 1 else: 0) + (if n % 2 == 1 and i % 4 == 2: 2 else: 0)
         M(odd_div_sum[i] - narrow)
 
-let bad = sum(2 * (2 * g(d) - g(d - 1) - g(d + 1)) * comb.choose(n, (n + d) / 2)
-              for d in (n % 2..=n).step(2))
+let bad = sum(
+    2 * (2 * g(d) - g(d - 1) - g(d + 1)) * comb.choose(n, (n + d) / 2) for d in (n % 2..=n).step(2)
+)
 print(M(2) ** n - bad)

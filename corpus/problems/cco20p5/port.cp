@@ -26,7 +26,11 @@ struct Gaps(end_l: ?Int, start_r: ?Int, span: ?Int):
     const none = Gaps(None, None, None)
     fn join(a: Gaps, b: Gaps) -> Gaps:
         let across = if let (Some(l), Some(r)) = (a.end_l, b.start_r): Some(r - l) else: None
-        Gaps(max(a.end_l, b.end_l), least(a.start_r, b.start_r), least(least(a.span, b.span), across))
+        Gaps(
+            max(a.end_l, b.end_l),
+            least(a.start_r, b.start_r),
+            least(least(a.span, b.span), across),
+        )
 
 // ends: least r first, greatest l on ties; starts: greatest l first, least r on ties
 var ends = SortedBag<(r: Int, l: Desc<Int>)>()
@@ -34,7 +38,10 @@ var starts = SortedBag<(l: Desc<Int>, r: Int)>()
 var lens = SortedBag<Int>()
 var gaps = SegTree<X, Gaps>(Monoid(Gaps.none, Gaps.join))
 
-fn leaf(end_l: ?Int, start_r: ?Int) -> Gaps = Gaps.join(Gaps(end_l, None, None), Gaps(None, start_r, None))
+fn leaf(end_l: ?Int, start_r: ?Int) -> Gaps = Gaps.join(
+    Gaps(end_l, None, None),
+    Gaps(None, start_r, None),
+)
 
 for e in events:
     let (l, r) = (Int(e.l), Int(e.r))

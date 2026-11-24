@@ -11,14 +11,12 @@
 //   min_bad[l] the first right end that fails a query starting at l. O(n + q).
 // Bounds: n, q: 1..=500_000; a: 1..=n; l, r: 1..=n
 
-use std.seq.{next_smaller, prev_smaller}
-
 @!multitest
 let (n, q): (1..=500_000, 1..=500_000) = read()
 domain I = 1..=n
 let a: [I]1..=n = read()
 
-let prev_gt = a.prev_smaller(by: x => desc(x), strict: false)
+let prev_gt = a.prev_smaller(by: desc, strict: false)
 let next_lt = a.next_smaller(strict: false)
 var min_bad: [I]?I = None
 for i in I:

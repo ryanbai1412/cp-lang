@@ -5,7 +5,7 @@
 
 use crate::walk::{self, Effects};
 use crate::{Arg, Block, ClosureDef, Expr, ExprKind, Function, Iter, LoopId, Program, Stmt, Ty};
-use cpl_diag::{codes, Diagnostic};
+use cpl_diag::Diagnostic;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// What a fn does beyond computing its result, counting the fns it calls.
@@ -697,13 +697,9 @@ pub fn escaping_yields(program: &Program) -> Vec<Diagnostic> {
                 return;
             }
             let name = &program.fns[callee].name;
-            diags.push(Diagnostic::error(
-                codes::LENT_ESCAPES,
-                e.span,
-                format!(
-                    "`{name}` yields closures that write its local `{local}`, and this use keeps them after `{name}` returns; loop over it with a plain `for` instead"
-                ),
-            ));
+            diags.push(
+                cpl_diag::msgs::check::LENT_CLOSURES_KEPT.error(e.span, &[name, local, name]),
+            );
         });
     }
     diags

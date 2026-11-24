@@ -145,11 +145,35 @@ fn a_comprehension_reserves_its_source_size() {
         cpp.contains(".reserve((size_t)std::max<ll>(0, n - 0));"),
         "{cpp}"
     );
-    assert!(
-        cpp.contains(".reserve(std::min<size_t>(sq.size(), 16));"),
-        "{cpp}"
-    );
+    assert_eq!(cpp.matches(".reserve(sq.size());").count(), 1, "{cpp}");
     assert_eq!(cpp.matches(".reserve(").count(), 4, "{cpp}");
+}
+
+#[test]
+fn a_filtered_comprehension_reserves_its_whole_known_source() {
+    let cpp = cpp(concat!(
+        "let n: 1..=9 = read()\n",
+        "var s: Set<Int> = Set()\n",
+        "var m: Map<Int, Int> = Map()\n",
+        "for i in 0..n:\n",
+        "    s.add(i * 3)\n",
+        "    m[i] = i\n",
+        "let r = 0..n\n",
+        "let a = [x + 1 for x in s if x > 2]\n",
+        "let b = [k for (k, v) in m if v > 1]\n",
+        "let c = [x for x in r if x > 1]\n",
+        "let d = [i for i in (0..=n).step(2) if i != 4]\n",
+        "print(a.len, b.len, c.len, d.len)\n",
+    ));
+    for want in [
+        ".reserve(s.size());",
+        ".reserve(m.size());",
+        ".reserve((size_t)r.len());",
+        ".reserve((size_t)cpl::steps(0, n, 2, true));",
+    ] {
+        assert!(cpp.contains(want), "{want}\n{cpp}");
+    }
+    assert!(!cpp.contains(".reserve(std::min"), "{cpp}");
 }
 
 #[test]

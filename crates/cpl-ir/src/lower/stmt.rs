@@ -146,11 +146,8 @@ impl<'a> Lowerer<'a> {
         if only_a_value {
             let shown = self.show(&value.ty);
             let span = self.span(span);
-            self.warnings.push(Diagnostic::warning(
-                codes::UNUSED_VALUE,
-                span,
-                format!("this `{shown}` is worked out and then dropped"),
-            ));
+            self.warnings
+                .push(cpl_diag::msgs::check::VALUE_DROPPED.warning(span, &[&shown]));
             if let Some(last) = self.warnings.last_mut() {
                 last.help =
                     Some("use it (`let y = ...` or `print(...)`), or delete the line".into());
@@ -1068,26 +1065,18 @@ impl<'a> Lowerer<'a> {
                     let lo_var = self.mk(ExprKind::Local(lo_slot), Ty::Int, span);
                     let n1 = self.int_add(n, 1);
                     let lo_end = BinOp::Sub;
-                    let lo_end = self.mk(
-                        ExprKind::Binary(lo_end, Box::new(n1.clone()), Box::new(len_var.clone())),
-                        Ty::Int,
-                        span,
-                    );
+                    let lo_end = self.mk_binary(lo_end, n1.clone(), len_var.clone(), Ty::Int, span);
                     let heads = vec![
                         (len_slot, self.int_lit(1, span), n1),
                         (lo_slot, self.int_lit(0, span), lo_end),
                     ];
                     let hi = BinOp::Add;
-                    let hi = self.mk(
-                        ExprKind::Binary(hi, Box::new(lo_var.clone()), Box::new(len_var)),
-                        Ty::Int,
-                        span,
-                    );
+                    let hi = self.mk_binary(hi, lo_var.clone(), len_var, Ty::Int, span);
                     let piece = ExprKind::Range {
                         lo: Box::new(lo_var),
                         hi: Box::new(hi),
                     };
-                    let piece = self.mk(piece, Ty::Range(Box::new(Ty::Pos(dom_id))), span);
+                    let piece = self.mk(piece, Ty::range(Ty::Pos(dom_id)), span);
                     let (label, else_body) = (label.as_ref(), else_body.as_ref());
                     let piece = (piece, Some(RangeInfo::Piece));
                     self.nested_for(label, heads, pat, piece, body, else_body, out);
@@ -1167,6 +1156,13 @@ impl<'a> Lowerer<'a> {
                     (None, None, Some(proj)) => self.map_proj_bind(pat, proj, &mut stmts),
                     (None, None, None) => self.loop_var(pat, elem, &mut stmts),
                 };
+                // An element of a range-typed list keeps its range, so storing it back
+                // into a cell of that range needs no check.
+                if let (ast::PatternKind::Name(_), Iter::Seq(seq, _)) = (&pat.kind, &iter) {
+                    if let Some(RangeInfo::Elem(inner)) = self.expr_range(seq) {
+                        self.cx.local_ranges.insert(slot, *inner);
+                    }
+                }
                 if elem_is_int
                     && body
                         .stmts
@@ -1599,7 +1595,7 @@ pub(super) fn remap_domain_ty(ty: &Ty, from: DomainId, to: DomainId) -> Ty {
     match ty {
         Ty::Pos(d) => Ty::Pos(map_d(*d)),
         Ty::Bound(d) => Ty::Bound(map_d(*d)),
-        Ty::Range(inner) => Ty::Range(Box::new(remap_domain_ty(inner, from, to))),
+        Ty::Range(inner) => Ty::range(remap_domain_ty(inner, from, to)),
         Ty::Array { dims, elem } => Ty::Array {
             dims: dims
                 .iter()
@@ -1614,8 +1610,8 @@ pub(super) fn remap_domain_ty(ty: &Ty, from: DomainId, to: DomainId) -> Ty {
                 .collect(),
             elem: Box::new(remap_domain_ty(elem, from, to)),
         },
-        Ty::List(e) => Ty::List(Box::new(remap_domain_ty(e, from, to))),
-        Ty::Opt(e) => Ty::Opt(Box::new(remap_domain_ty(e, from, to))),
+        Ty::List(e) => Ty::list(remap_domain_ty(e, from, to)),
+        Ty::Opt(e) => Ty::opt(remap_domain_ty(e, from, to)),
         Ty::Tuple(ts) => Ty::Tuple(ts.iter().map(|t| remap_domain_ty(t, from, to)).collect()),
         Ty::Record(fs) => Ty::Record(
             fs.iter()

@@ -57,6 +57,9 @@ impl<'p> Emitter<'p> {
 
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for k in 0..block.stmts.len() {
+            if self.cold_suffix(block, k, out) {
+                break;
+            }
             self.tail = self.tail_at(&block.stmts, k);
             self.slot_written_next = self.slot_written_next(&block.stmts, k);
             self.stmt_owning(block, k, out);
@@ -81,6 +84,48 @@ impl<'p> Emitter<'p> {
             && matches!(op, BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor)
             && matches!(idx[0].kind, ExprKind::Local(s) if s == *slot)
             && !expr_may_alias_root(value, walk::root(base))
+    }
+
+    /// `block.stmts[k..]` as a noinline lambda the block returns through,
+    /// when it is cold (see [`crate::frame`]): its locals leave the
+    /// recursive frame.
+    fn cold_suffix(&mut self, block: &Block, k: usize, out: &mut String) -> bool {
+        let Some(inputs) = self.cold.get(&(block as *const Block, k)).cloned() else {
+            return false;
+        };
+        if self.pushing.is_some()
+            || !self.bodies.is_empty()
+            || self.closure_id.is_some()
+            || self.sites.is_some()
+        {
+            return false;
+        }
+        let params: Vec<String> = inputs
+            .iter()
+            .map(|&(s, by_value)| {
+                format!(
+                    "{} {}",
+                    if by_value { "auto" } else { "auto&&" },
+                    self.names[s]
+                )
+            })
+            .collect();
+        let args: Vec<String> = inputs.iter().map(|&(s, _)| self.names[s].clone()).collect();
+        let head = format!(
+            "return [&]({}) __attribute__((noinline)) -> {} {{",
+            params.join(", "),
+            self.cold_ret
+        );
+        self.line(out, &head);
+        self.indent += 1;
+        for j in k..block.stmts.len() {
+            self.tail = self.tail_at(&block.stmts, j);
+            self.stmt_owning(block, j, out);
+        }
+        self.tail = None;
+        self.indent -= 1;
+        self.line(out, &format!("}}({});", args.join(", ")));
+        true
     }
 
     /// `let l = limbs` in a fn's body, where `limbs` is a parameter taken by
@@ -264,9 +309,24 @@ impl<'p> Emitter<'p> {
                         format!("{kf}({a}) < {kf}({b})"),
                         format!("{kf}({b}) < {kf}({a})"),
                     );
+                    // A key that ends in the element makes equal keys equal
+                    // elements, so no order is told apart; a profile still
+                    // counts the interpreter's comparisons.
+                    let ends_in_elem =
+                        |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == *slot);
+                    let unique = elem.is_scalar()
+                        && match &key.kind {
+                            ExprKind::Tuple(items) => items.last().is_some_and(ends_in_elem),
+                            _ => ends_in_elem(key),
+                        };
+                    let sort = if unique && self.sites.is_none() {
+                        "std::sort"
+                    } else {
+                        "cpl::stable_sort_lt"
+                    };
                     self.line(
                         out,
-                        &format!("cpl::stable_sort_lt({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
+                        &format!("{sort}({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
                     );
                 } else {
                     self.need("sort_by");
@@ -645,6 +705,10 @@ impl<'p> Emitter<'p> {
                     }
                 };
                 let text = self.take_if_overwritten(init, text);
+                // A payload taken from an optional nothing reads again is owned:
+                // a reference into the optional could not be moved on.
+                let taken =
+                    text.starts_with("std::move(") && matches!(init.kind, ExprKind::Unwrap(..));
                 // A kept comprehension's list stays in its buffer: name it.
                 if let ExprKind::Local(built) = init.kind {
                     if reused && self.reused.contains(&built) && built_in(whole, built) {
@@ -684,7 +748,7 @@ impl<'p> Emitter<'p> {
                     // `_t` is a name for a value the program may not use.
                     let cpp = if auto { "auto" } else { &cpp };
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
-                } else if self.lends(*slot, init, tail.as_ref()) {
+                } else if !taken && self.lends(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list.
                     self.line(out, &format!("const {cpp}& {name} = {text};"));

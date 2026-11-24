@@ -1,7 +1,8 @@
 // A SortedSet of n keys: queries, then edits that undo themselves, then whole-set moves.
 let n: Int = read()
 let xs = [i * 7919 % n for i in 0..n]
-var t = SortedSet<Int>.of(xs) // timed: bag.SortedSet.of
+var t = SortedSet<Int>.of(xs)
+for r in 0..3: t = SortedSet<Int>.of(xs) // timed: bag.SortedSet.of
 var s = 0
 let small = (x: Int) => x < n / 2 // within: bag.SortedSet.first_true
 let big = (x: Int) => x < n / 2 // within: bag.SortedSet.last_true
@@ -32,17 +33,14 @@ for i in 0..64 * n:
     s += u.len
     e.add(i)
     e.clear() // timed: bag.SortedSet.clear
-for r in 0..128:
-    var f = SortedSet<Int>.of(xs)
-    f.reserve(2 * n) // timed: bag.SortedSet.reserve
-    s += f.len
 let ys = [i * 31 % n + n / 2 for i in 0..n]
+for r in 0..96:
+    s += t.to_list().len // timed: bag.SortedSet.to_list
 for r in 0..16:
     for x in t.each(): // timed: bag.SortedSet.each
         s += x // timed: bag.SortedSet.each
     for x in t.each_rev(): // timed: bag.SortedSet.each_rev
         s ^= x // timed: bag.SortedSet.each_rev
-    s += t.to_list().len // timed: bag.SortedSet.to_list
     var w = SortedSet<Int>.of(xs)
     let d = w.drain(after: n / 4, while: x => x < n / 2) // timed: bag.SortedSet.drain
     s += d.len

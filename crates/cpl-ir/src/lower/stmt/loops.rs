@@ -389,7 +389,7 @@ impl<'a> Lowerer<'a> {
                 .zip(&shapes)
                 .map(|((slot, _, span), tys)| {
                     let base = self.local(*slot, *span);
-                    self.mk(ExprKind::Field(Box::new(base), i), tys[i].clone(), *span)
+                    self.mk_field(base, i, tys[i].clone(), *span)
                 })
                 .collect();
             let value = if items.len() == 1 {
@@ -417,11 +417,7 @@ impl<'a> Lowerer<'a> {
     ) -> bool {
         let leave_unless = |lw: &mut Self, holds: Expr, stmts: &mut Vec<Stmt>| {
             let span = holds.span;
-            let fails = lw.mk(
-                ExprKind::Unary(UnOp::Not, Box::new(holds)),
-                Ty::Bool,
-                Span::new(0, 0),
-            );
+            let fails = lw.mk_unary(UnOp::Not, holds, Ty::Bool, Span::new(0, 0));
             let fails = Expr { span, ..fails };
             stmts.push(Stmt::If(
                 fails,
@@ -525,28 +521,72 @@ fn drop_unread_let(slot: usize, stmts: &mut Vec<Stmt>) {
 /// `f(a)` after the lets: a loop over a `yields` call is fed by it instead
 /// of walking the list it would build.
 pub(in crate::lower) fn hoist_call_args(iter: Iter, out: &mut Vec<Stmt>) -> Iter {
-    let Iter::Seq(seq, rev) = iter else {
+    let Iter::Seq(mut seq, rev) = iter else {
         return iter;
     };
-    let ExprKind::Do(block) = &seq.kind else {
+    let ExprKind::Do(block) = &mut seq.kind else {
         return Iter::Seq(seq, rev);
     };
-    let hoistable = match block.stmts.split_last() {
-        Some((Stmt::Give(call), lets)) => {
-            matches!(call.kind, ExprKind::Call(..))
-                && lets.iter().all(|s| matches!(s, Stmt::Let(_, Some(_))))
-        }
-        _ => false,
-    };
-    if !hoistable {
+    let lets = block.stmts.len().saturating_sub(1);
+    if !block.stmts[..lets]
+        .iter()
+        .all(|s| matches!(s, Stmt::Let(_, Some(_))))
+    {
         return Iter::Seq(seq, rev);
     }
-    let ExprKind::Do(mut block) = seq.kind else {
-        unreachable!()
-    };
-    let Some(Stmt::Give(call)) = block.stmts.pop() else {
-        unreachable!()
-    };
-    out.extend(block.stmts);
-    Iter::Seq(call, rev)
+    match block.stmts.pop() {
+        Some(Stmt::Give(call)) if matches!(call.kind, ExprKind::Call(..)) => {
+            out.append(&mut block.stmts);
+            Iter::Seq(call, rev)
+        }
+        last => {
+            block.stmts.extend(last);
+            Iter::Seq(seq, rev)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn expr(kind: ExprKind) -> Expr {
+        Expr {
+            kind,
+            ty: Ty::Int,
+            span: Span::default(),
+        }
+    }
+
+    fn walk(stmts: Vec<Stmt>) -> Iter {
+        Iter::Seq(expr(ExprKind::Do(Block { stmts })), false)
+    }
+
+    #[test]
+    fn a_walk_ending_in_a_call_after_lets_is_fed_by_the_call() {
+        let call = expr(ExprKind::Call(0, Vec::new()));
+        let lets = vec![Stmt::Let(0, Some(expr(ExprKind::Int(1))))];
+        let mut out = Vec::new();
+        let iter = hoist_call_args(
+            walk([lets.clone(), vec![Stmt::Give(call.clone())]].concat()),
+            &mut out,
+        );
+        assert_eq!(iter, Iter::Seq(call, false));
+        assert_eq!(out, lets);
+    }
+
+    #[test]
+    fn any_other_walk_is_kept_whole() {
+        let call = || Stmt::Give(expr(ExprKind::Call(0, Vec::new())));
+        for stmts in [
+            vec![],
+            vec![Stmt::Give(expr(ExprKind::Int(1)))],
+            vec![call(), Stmt::Let(0, Some(expr(ExprKind::Int(1))))],
+            vec![Stmt::Let(0, None), call()],
+        ] {
+            let mut out = Vec::new();
+            assert_eq!(hoist_call_args(walk(stmts.clone()), &mut out), walk(stmts));
+            assert!(out.is_empty());
+        }
+    }
 }

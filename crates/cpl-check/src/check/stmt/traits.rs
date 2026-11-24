@@ -47,6 +47,27 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// A scope naming the trait's own fns without `self`, so its laws and default
+    /// bodies call them unqualified: `law assoc(..) = op(op(a, b), c) == ..` (R08.3.1).
+    pub(crate) fn own_fns_scope(&mut self, trait_name: &str, body: &[Stmt]) {
+        let sigs = match self.global(trait_name).as_deref() {
+            Some(Def::Trait { methods, .. }) => methods.clone(),
+            _ => Vec::new(),
+        };
+        self.push_scope();
+        for stmt in body {
+            let StmtKind::Fn(f) = &stmt.kind else {
+                continue;
+            };
+            if f.params.first().is_some_and(|p| p.name.text == "self") {
+                continue;
+            }
+            if let Some(m) = sigs.iter().find(|m| m.name == f.name.text) {
+                self.declare(&f.name.text, f.name.span, m.ty.clone(), false, "fn");
+            }
+        }
+    }
+
     /// Every trait a bound names must exist: `where T: Ord + Bounded`.
     pub(crate) fn bounds_exist(&mut self, bounds: &[ast::Bound]) {
         for bound in bounds {
@@ -79,11 +100,31 @@ impl<'a> Checker<'a> {
                     top_level: false,
                     in_lambda: false,
                 });
+                self.hovers.push(HoverEntry {
+                    span: name.span,
+                    name: name.text.clone(),
+                    ty: Ty::TypeName(name.text.clone()),
+                    keyword: "type",
+                    decl: None,
+                    owner: None,
+                });
                 return Some(methods.clone());
             }
             // A value such as the enum variant `Sign.Neg` doesn't hide the trait `Neg`.
             Some(Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. }) | None
-                if prelude::is_trait(&name.text) || name.text.is_empty() => {}
+                if prelude::is_trait(&name.text) =>
+            {
+                self.hovers.push(HoverEntry {
+                    span: name.span,
+                    name: name.text.clone(),
+                    ty: Ty::TypeName(name.text.clone()),
+                    keyword: "trait",
+                    decl: None,
+                    owner: None,
+                });
+            }
+            Some(Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. }) | None
+                if name.text.is_empty() => {}
             Some(_) => {
                 let message = format!("`{}` is not a trait", name.text);
                 self.error(codes::UNKNOWN_TYPE, name.span, message);

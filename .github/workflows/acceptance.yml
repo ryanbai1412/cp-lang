@@ -23,9 +23,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
+            justfile
             research/acceptance
             editors/lsp-*
           sparse-checkout-cone-mode: false
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
       - name: Install from the site
         if: runner.os != 'Windows'
         run: curl -fsSL https://cp-lang.org/install.sh | sh
@@ -38,7 +42,7 @@ jobs:
         run: echo "$HOME/.cpl/bin" >> "$GITHUB_PATH"
       - name: Follow getting-started
         shell: bash
-        run: research/acceptance/ci-steps.sh "${{ runner.os }}" | tee "ci-${{ runner.os }}.json"
+        run: just acceptance-steps "${{ runner.os }}" | tee "ci-${{ runner.os }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: acceptance-${{ runner.os }}

@@ -29,9 +29,15 @@ fn block(r: Int, c: Int, rows: Int, cols: Int) -> Int:
 let chamber = [[block(r, c, ch, cw) for c in 0..=w - cw] for r in 0..=h - ch]
 // down[j][i]: the least chamber with its corner in the base's window starting at (i, j).
 let along = [row.window_fold(bw - cw - 1, min).collect() for row in chamber]
-let down = [[row[j] for row in along].window_fold(bh - ch - 1, min).collect() for j in 0..along[0].len]
+let down = [
+    [row[j] for row in along].window_fold(bh - ch - 1, min).collect() for j in 0..along[0].len
+]
 
-let (_, r, c) = [(block(r, c, bh, bw) - down[c + 1][r + 1], r, c) for r in 0..=h - bh for c in 0..=w - bw].max()!
-let (_, i, j) = [(chamber[i][j], i, j) for i in r + 1..r + bh - ch for j in c + 1..c + bw - cw].min()!
+let (_, r, c) = [
+    (block(r, c, bh, bw) - down[c + 1][r + 1], r, c) for r in 0..=h - bh for c in 0..=w - bw
+].max()!
+let (_, i, j) = [
+    (chamber[i][j], i, j) for i in r + 1..r + bh - ch for j in c + 1..c + bw - cw
+].min()!
 print(c + 1, r + 1)
 print(j + 1, i + 1)

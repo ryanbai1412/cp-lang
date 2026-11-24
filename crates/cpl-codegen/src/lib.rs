@@ -11,6 +11,7 @@ mod emit;
 mod expr;
 mod flat;
 mod fold;
+mod frame;
 mod fuse;
 mod globals;
 mod inline;
@@ -251,7 +252,7 @@ pub struct Lowered {
 }
 
 pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
-    let target = Target::default();
+    let target = judge_target();
     let prepared = prepared(program, &target);
     let (cpp, copies, called, written) = emit::Emitter::new(&prepared, &target).lowered();
     let mut closures = devirt::explain_closures(&prepared, &written);
@@ -272,9 +273,7 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
 /// Each heap value the judge build's C++ for `program` copies: the span
 /// of the source that is copied, what it is and why the copy must own it.
 pub fn explain_copies(program: &cpl_ir::Program) -> Vec<(cpl_diag::Span, String, &'static str)> {
-    let target = judge_target();
-    let program = prepared(program, &target);
-    emit::Emitter::new(&program, &target).copies()
+    explain_lowered(program).copies
 }
 
 /// [`emit`] for a judge.
@@ -291,13 +290,14 @@ pub fn emit_for(
 
 /// [`emit_for`] with every statement counting its starts and the time until
 /// the next one starts, the books `cpl_interp::profile` keeps. The tally is
-/// written when the program exits, to the file named by `CPL_PROFILE`, a
-/// line `site hits nanos` for each site that ran; the spans are the sites
-/// by number.
+/// written when the program exits, to the file `tally`, a line
+/// `site hits nanos` for each site that ran; the spans are the sites by
+/// number.
 pub fn emit_profiled(
     program: &cpl_ir::Program,
     name: &str,
     target: &Target,
+    tally: &str,
 ) -> (String, Vec<cpl_diag::Span>) {
     let program = prepared(program, target);
     let mut emitter = emit::Emitter::new(&program, target);
@@ -306,7 +306,9 @@ pub fn emit_profiled(
     emitter.counted = cpl_ir::sites::user_stmts(&program);
     emitter.entries = cpl_ir::sites::user_entries(&program);
     let (cpp, sites) = emitter.file_with_sites(name, None);
-    let tally = PROFILE_TALLY.replace("SITES", &sites.len().max(1).to_string());
+    let tally = PROFILE_TALLY
+        .replace("SITES", &sites.len().max(1).to_string())
+        .replace("TALLY_FILE", &expr::string_literal(tally.as_bytes()));
     // Before the first namespace, after every include and `#if` block, so
     // the tally never lands inside a platform-only block.
     let at = cpp.find("\nnamespace ").map_or(0, |at| at + 1);
@@ -331,12 +333,11 @@ struct Frame {
 struct Tally {
     ~Tally() {
         charge(std::chrono::steady_clock::now());
-        const char* path = std::getenv("CPL_PROFILE");
-        FILE* out = path ? std::fopen(path, "w") : stderr;
+        FILE* out = std::fopen(TALLY_FILE, "w");
         if (!out) return;
         for (long long i = 0; i < SITES; ++i)
             if (hits[i]) std::fprintf(out, "%lld %llu %llu\n", i, hits[i], nanos[i]);
-        if (out != stderr) std::fclose(out);
+        std::fclose(out);
     }
 } tally;
 }
@@ -394,6 +395,17 @@ pub struct Fitted {
 impl Fitted {
     /// What was left out to fit, said to the contestant; `None` when nothing was.
     pub fn note(&self, file: &str, bar: &str, judge: &str) -> Option<String> {
+        let left = self.left_out();
+        (!left.is_empty()).then(|| {
+            let note = &cpl_diag::msgs::check::SIZE_AS_WRITTEN;
+            let args: &[&dyn std::fmt::Display] =
+                &[&file, &self.full, &bar, &judge, &left.join(", ")];
+            format!("cpl: {}\n", note.say(args))
+        })
+    }
+
+    /// What was left out to fit, each said as a clause.
+    pub fn left_out(&self) -> Vec<&'static str> {
         let mut left = Vec::new();
         if !self.comments {
             left.push("the comments on the C++ are left out");
@@ -413,14 +425,7 @@ impl Fitted {
         if !self.names.is_empty() {
             left.push("the numbered names are shortened");
         }
-        (!left.is_empty()).then(|| {
-            format!(
-                "cpl: as written, the C++ for `{file}` would be {} bytes, over the {bar} of judge `{judge}`; \
-                 {}\n",
-                self.full,
-                left.join(", ")
-            )
-        })
+        left
     }
 }
 

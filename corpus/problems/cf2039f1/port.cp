@@ -16,7 +16,12 @@ let numbers = Sieve(m)
 let mu = numbers.mobius_table()
 var at, above: [1..=m]Z = 0
 for y in (1..=m).rev:
-    let grown = [(h, 2 * (sum(mu[d] * above[h * d] for d in numbers.divisors(y / h)) - at[h])) for h in numbers.divisors(y)]
+    let grown = [
+        (
+            h,
+            2 * (sum(mu[d] * above[h * d] for d in numbers.divisors(y / h)) - at[h]),
+        ) for h in numbers.divisors(y)
+    ]
     for (h, w) in grown + [(y, 1)]:
         at[h] += w
         for d in numbers.divisors(h): above[d] += w

@@ -46,7 +46,9 @@ else:
     for (u, v, cost) in roads:
         // the roads on the path: every town on it stands for the road above
         // it, except the highest town
-        let path = tree.chains(u, v, edges: true).map(chain => above.fold(chain.range)).fold_from((hi: 0, lo: 0), both)
+        let path = tree.chains(u, v, edges: true).map(
+            chain => above.fold(chain.range)
+        ).fold_from((hi: 0, lo: 0), both)
         let out = if path.hi < cost: path.hi else: path.lo
         if out != 0: best min= base + cost - out
     print(best ?? -1)

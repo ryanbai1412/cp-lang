@@ -6,7 +6,8 @@
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, PUSH_POP_PAIR};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -51,11 +52,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 return;
             }
             let call = format!("{}.push_pop({})", text(heap), text(&x.value));
-            let mut diag = Diagnostic::warning(
-                PUSH_POP_PAIR.code,
-                Span::new(push.span.start, pop.span.end).shift(self.base),
-                format!("a push and then a pop on `{}` is `{call}`", text(heap)),
-            )
+            let mut diag = lint_rules::PUSH_POP_PAIR.warning(Span::new(push.span.start, pop.span.end).shift(self.base), &[&text(heap), &call])
             .with_label(heap.span.shift(self.base), "the heap")
             .with_help(format!(
                 "write `{call}` (`std.heap`): one sift instead of two, it returns the smaller of `{}` and the top, and needs no `!` because a heap is never empty right after a push",

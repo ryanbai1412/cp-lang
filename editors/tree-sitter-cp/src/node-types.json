@@ -98,11 +98,6 @@
     }
   },
   {
-    "type": "none",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "punctuation",
     "named": true,
     "fields": {}
@@ -220,10 +215,6 @@
     "named": false
   },
   {
-    "type": "None",
-    "named": false
-  },
-  {
     "type": "[",
     "named": false
   },
@@ -333,7 +324,7 @@
   },
   {
     "type": "none",
-    "named": false
+    "named": true
   },
   {
     "type": "not",

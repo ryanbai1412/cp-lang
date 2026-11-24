@@ -59,7 +59,7 @@ documented.
 | R04.7 | Middle of a range | supported |  |
 | R04.8 | Decided (decision 137) | supported |  |
 | R05.2 | Open-ended ranges | supported |  |
-| R05.3 | 3. Bindings and places | supported | 1 known gap |
+| R05.3 | 3. Bindings and places | supported |  |
 | R05.4 | 4. Parameters and calls (R4) | supported |  |
 | R05.5 | 5. Returns (R5) | supported |  |
 | R05.6 | 6. `lends` fns and projections | supported |  |
@@ -103,6 +103,7 @@ documented.
 | R11.4 | 11.4 Versions, pins and migration | documented | `cpl migrate` and pinned rebuilds wait (milestone: "full backward compatibility" can wait) |
 | R12.4 | W4. Sequences, views and index spaces (P4) | documented | user-library powers: specified, not promised for the milestone |
 | R12.11 | W10a. Records, associated types and inline bounds (P10) | documented | user-library powers: specified, not promised for the milestone |
+| R12.14 | W14. Inline C++ (P14) | supported |  |
 | R13.1 | 13.1 The output file | supported |  |
 | R13.2 | 13.2 Values | supported |  |
 | R13.3 | 13.3 Functions, closures, generators | supported |  |
@@ -176,7 +177,6 @@ documented.
 
 - core-04/zip-keyed-by-first.cp: fail
 - core-05/exercise-04-var-from-lent-param.cp: fail
-- core-05/map-entry-index-key-lends.cp: fail
 - core-08/law-calls-trait-method.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail

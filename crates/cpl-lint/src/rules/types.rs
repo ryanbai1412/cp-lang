@@ -7,7 +7,8 @@ use crate::{
     File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, REDUNDANT_ARG_NAME,
     TURBOFISH_TYPE_ARGS,
 };
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
 use std::collections::{HashMap, HashSet};
 
@@ -126,14 +127,11 @@ impl Types<'_> {
         if self.last_keyed_line.replace(line) == Some(line) {
             return;
         }
-        let diag = Diagnostic::warning(
-            DOMAIN_KEYED_MAP.code,
-            span.shift(self.base),
-            format!("`{written}` is keyed by the domain `{key}`"),
-        )
-        .with_help(format!(
-            "`{instead}` uses one slot per `{key}` and has no lookup cost"
-        ));
+        let diag = lint_rules::DOMAIN_KEYED_MAP
+            .warning(span.shift(self.base), &[&written, &key])
+            .with_help(format!(
+                "`{instead}` uses one slot per `{key}` and has no lookup cost"
+            ));
         self.findings.push(Finding {
             lint: &DOMAIN_KEYED_MAP,
             diag,
@@ -295,11 +293,7 @@ impl Types<'_> {
                     let span = Span::new(value.span.start, Self::cond_end(cond)).shift(self.base);
                     let mut replacement = String::new();
                     self.format_let_chain(cond, true, &mut replacement);
-                    let mut diag = Diagnostic::warning(
-                        IS_IN_COND_HEADER.code,
-                        span,
-                        format!("`{kw}` headers bind with `let`, not `is`"),
-                    )
+                    let mut diag = lint_rules::IS_IN_COND_HEADER.warning(span, &[&kw])
                     .with_help(format!("write `{kw} {replacement}`; `let` is the one way to bind a name, in a header as anywhere else"));
                     diag.fixes.push(cpl_diag::Fix {
                         title: format!("rewrite to `{replacement}`"),
@@ -322,11 +316,7 @@ impl Types<'_> {
         {
             let span = Span::new(label.span.start, value.span.end).shift(self.base);
             let replacement = format!("{}:", label.text);
-            let mut diag = Diagnostic::warning(
-                REDUNDANT_ARG_NAME.code,
-                span,
-                format!("`{0}: {0}` can be shortened to `{0}:`", label.text),
-            )
+            let mut diag = lint_rules::REDUNDANT_ARG_NAME.warning(span, &[&label.text, &label.text, &label.text])
             .with_help(format!("write `{replacement}`; an argument name with no value passes the variable of that name"));
             diag.fixes.push(cpl_diag::Fix {
                 title: format!("shorten to `{replacement}`"),
@@ -428,14 +418,11 @@ impl Visitor for Types<'_> {
                                 if rest[..rel].chars().all(|c| c.is_whitespace()) {
                                     let cc_start = (start + rel) as u32;
                                     let cc_span = Span::new(cc_start, cc_start + 2);
-                                    let mut diag = Diagnostic::warning(
-                                        TURBOFISH_TYPE_ARGS.code,
-                                        cc_span,
-                                        "generic calls use `<...>` without `::`",
-                                    )
-                                    .with_help(
-                                        "remove `::` to use the canonical `f<T>(...)` spelling",
-                                    );
+                                    let mut diag = lint_rules::TURBOFISH_TYPE_ARGS
+                                        .warning(cc_span, &[])
+                                        .with_help(
+                                            "remove `::` to use the canonical `f<T>(...)` spelling",
+                                        );
                                     diag.fixes.push(cpl_diag::Fix {
                                         title: "remove `::`".into(),
                                         edits: vec![(cc_span, String::new())],
@@ -472,11 +459,7 @@ impl Visitor for Types<'_> {
                 if let Some(count) = count_from(&arg.value, first) {
                     let count = count.span.shift(self.base).text(self.src);
                     let written = expr.span.shift(self.base).text(self.src);
-                    let diag = Diagnostic::warning(
-                        POSITION_ARITHMETIC.code,
-                        expr.span.shift(self.base),
-                        format!("`{written}` builds a `{domain}` from a 0-based count"),
-                    )
+                    let diag = lint_rules::POSITION_ARITHMETIC.warning(expr.span.shift(self.base), &[&written, &domain])
                     .with_help(format!(
                         "write `{domain}.nth({count})`: the `{domain}` that many steps from `{domain}.first`"
                     ));
@@ -499,11 +482,7 @@ impl Visitor for Types<'_> {
                     "-1" => format!("`{value}.prev` is the `{domain}` before `{value}`"),
                     _ => format!("`{value}.offset({offset})` moves `{value}` by `{offset}`"),
                 };
-                let diag = Diagnostic::warning(
-                    POSITION_ARITHMETIC.code,
-                    expr.span.shift(self.base),
-                    format!("`{written}` builds a `{domain}` from a position"),
-                )
+                let diag = lint_rules::POSITION_ARITHMETIC_2.warning(expr.span.shift(self.base), &[&written, &domain])
                 .with_note(format!(
                     "`.ord` counts from 0, and `{domain}(..)` takes a label: they differ unless `{domain}` starts at 0"
                 ))

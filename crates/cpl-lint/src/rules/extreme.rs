@@ -7,7 +7,8 @@ use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{is_std, File, Finding, SORT_FOR_EXTREME};
-use cpl_diag::{Diagnostic, Fix};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -49,11 +50,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 .collect();
             let call = format!("{}.{pick}({})!", at(list), args.join(", "));
             let span = expr.span.shift(self.base);
-            let mut diag = Diagnostic::warning(
-                SORT_FOR_EXTREME.code,
-                span,
-                format!("this sorts a copy of the list to read one element: it is `{call}`"),
-            )
+            let mut diag = lint_rules::SORT_FOR_EXTREME.warning(span, &[&call])
             .with_label(list.span.shift(self.base), "the list")
             .with_help(format!(
                 "write `{call}`: one O(n) pass with no copy instead of an O(n log n) sort, and it traps on an empty list just as the index does"

@@ -4,8 +4,9 @@
 // was moved. The heaviest books take the smallest coefficients, so the weight cost is a sorted dot
 // product. A pile of height h costs 2^h - 1 in wear; over layers that is F' = 2F + (piles - 2).
 // Splitting the piles with the smallest coefficients is never worse, so a layer is just a count k.
-// A layer always adds piles, so a DP over coefficient multisets (counts per value) by size
-// expands each multiset once with its least F, pruned by a lower bound against a greedy bound.
+// The method of the NOI 2023 write-ups (linhanpi's notes; 44863 states at n = 100): a DP over
+// coefficient multisets (counts per value) by size, where layer counts never fall, so a state also
+// keeps its last count, pruned by a lower bound against a greedy bound.
 #include <bits/stdc++.h>
 using namespace std;
 typedef long long ll;
@@ -26,8 +27,8 @@ ll cost(const Counts& c) {
     return s;
 }
 
-Counts grow(const Counts& c, int k) {
-    Counts d(c);
+void grow(const Counts& c, int k, Counts& d) {
+    d.assign(c.begin(), c.end());
     d.push_back(0);
     for (int v = 0; k > 0; v++) {
         int t = min(c[v], k);
@@ -35,6 +36,11 @@ Counts grow(const Counts& c, int k) {
         k -= t;
     }
     while (d.back() == 0) d.pop_back();
+}
+
+Counts grow(const Counts& c, int k) {
+    Counts d;
+    grow(c, k, d);
     return d;
 }
 
@@ -69,36 +75,52 @@ struct Hash {
     }
 };
 
+// A layer's split count never falls: every split pile has a child one level lower, which the next
+// layer splits. So a state is (multiset, last count), and one multiset keeps only the pairs of
+// (wear, last count) that no other pair beats in both.
 ll solve() {
     if (n == 1) return 0;
     Counts c{1};
-    ll F = 0, best = BIG;
-    for (int m = 1; m < n;) {
-        int pick = 1;
+    ll F = 0;
+    for (int m = 1, last = 1; m < n;) {
+        int pick = last;
         ll pl = BIG;
-        for (int k = 1; k <= min(m, n - m); k++) {
+        for (int k = last; k <= min(m, n - m); k++) {
             ll l = lower(grow(c, k), m + k, 2 * F + (m + k - 2), BIG);
             if (l < pl) pl = l, pick = k;
         }
         F = 2 * F + (m + pick - 2);
         c = grow(c, pick);
         m += pick;
+        last = pick;
     }
-    best = F + cost(c);
-    vector<unordered_map<Counts, ll, Hash>> at(n + 1);
-    at[1][Counts{1}] = 0;
+    ll best = F + cost(c);
+    vector<unordered_map<Counts, vector<pair<ll, int>>, Hash>> at(n + 1);
+    at[1][Counts{1}] = {{0, 1}};
+    Counts d;
     for (int m = 1; m < n; m++) {
-        for (auto& [s, G] : at[m]) {
-            if (lower(s, m, G, best) >= best) continue;
-            for (int k = 1; k <= min(m, n - m); k++) {
-                Counts d = grow(s, k);
-                ll H = 2 * G + (m + k - 2);
-                if (m + k == n) {
-                    best = min(best, H + cost(d));
-                    continue;
+        for (auto& [s, front] : at[m]) {
+            ll least = BIG;
+            for (auto [G, last] : front) least = min(least, G);
+            if (lower(s, m, least, best) >= best) continue;
+            for (auto [G, last] : front) {
+                for (int k = last; k <= min(m, n - m); k++) {
+                    ll H = 2 * G + (m + k - 2);
+                    if (H >= best) break;
+                    grow(s, k, d);
+                    if (m + k == n) {
+                        best = min(best, H + cost(d));
+                        continue;
+                    }
+                    auto it = at[m + k].find(d);
+                    if (it == at[m + k].end()) it = at[m + k].emplace(d, vector<pair<ll, int>>()).first;
+                    auto& f = it->second;
+                    bool beaten = false;
+                    for (auto [H2, k2] : f) beaten |= H2 <= H && k2 <= k;
+                    if (beaten) continue;
+                    erase_if(f, [&](const pair<ll, int>& p) { return H <= p.first && k <= p.second; });
+                    f.push_back({H, k});
                 }
-                auto [it, fresh] = at[m + k].emplace(d, H);
-                if (!fresh) it->second = min(it->second, H);
             }
         }
         at[m].clear();

@@ -64,28 +64,15 @@ jobs:
         run: cargo build -p cpl-cli
       - name: Plugin build and tests
         if: steps.plugin.outputs.build == 'true'
-        working-directory: editors/jetbrains
         shell: bash
-        run: |
-          for wait in 0 30 90 180; do
-            sleep "$wait"
-            ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle buildPlugin test && exit 0
-          done
-          exit 1
+        run: just jetbrains-fetch && just jetbrains-gradle buildPlugin test
       - name: Free IntelliJ IDEA gets a diagnostic and a completion through LSP4IJ
         if: runner.os == 'Linux' && steps.plugin.outputs.build == 'true'
-        working-directory: editors/jetbrains
         shell: bash
-        run: |
-          for wait in 0 30 90 180; do
-            sleep "$wait"
-            ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle test -PfreeIde --tests dev.cplang.ide.CpLsp4ijTest && exit 0
-          done
-          exit 1
+        run: just jetbrains-fetch -PfreeIde && just jetbrains-gradle test -PfreeIde --tests dev.cplang.ide.CpLsp4ijTest
       - name: Plugin verifies against IntelliJ IDEA Community and Ultimate
         if: runner.os == 'Linux' && steps.plugin.outputs.build == 'true'
-        working-directory: editors/jetbrains
         shell: bash
-        run: ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle verifyPlugin
+        run: just jetbrains-verify
       - name: The server handshake the plugin starts
-        run: uv run --quiet python editors/lsp-smoke.py jetbrains target/debug/cpl lsp
+        run: just jetbrains-handshake

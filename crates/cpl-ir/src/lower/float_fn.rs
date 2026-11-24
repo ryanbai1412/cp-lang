@@ -14,7 +14,7 @@ impl Lowerer<'_> {
             };
             let a = self.expect(exprs[0], &Ty::Float);
             let b = self.expect(exprs[1], &Ty::Float);
-            return self.mk(ExprKind::Builtin(op, vec![a, b]), Ty::Float, span);
+            return self.mk_builtin(op, [a, b], Ty::Float, span);
         }
         let op = match name {
             "sqrt" => Builtin::Sqrt,
@@ -27,7 +27,7 @@ impl Lowerer<'_> {
             _ => Builtin::Acos,
         };
         match self.one_arg(name, args, &Ty::Float, span) {
-            Some(value) => self.mk(ExprKind::Builtin(op, vec![value]), Ty::Float, span),
+            Some(value) => self.mk_builtin(op, [value], Ty::Float, span),
             None => self.err_expr(span),
         }
     }

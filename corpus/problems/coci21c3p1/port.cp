@@ -11,7 +11,9 @@ let n: 1..=50 = read()
 let k: 1..=n = read()
 let a: [n]1..=1000 = read()
 
-fn repeats(start: Int, len: Int) -> Bool = all(a[i] == a[i + len] for i in start..start + (k - 1) * len)
+fn repeats(start: Int, len: Int) -> Bool = all(
+    a[i] == a[i + len] for i in start..start + (k - 1) * len
+)
 
 fn first_block() -> ?(start: Int, len: Int):
     for start in 0..n:

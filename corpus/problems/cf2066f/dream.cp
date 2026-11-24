@@ -38,9 +38,7 @@ struct Plan(piece: [Seg]Range<PosB.cuts>, free: Seg)
 fn plan(x: Int) -> ?Plan:
     var came: [Seg.cuts, PosB.cuts, Bool]?Back = None
     fn fit(k: Seg.cuts, j: PosB.cuts, spent: Bool) -> Bool =
-        came[k, j, spent] != None or (
-            k == Seg.cuts.first! and j == PosB.cuts.first! and not spent
-        )
+        came[k, j, spent] != None or (k == Seg.cuts.first! and j == PosB.cuts.first! and not spent)
     for s in Seg:
         if total[s] < x:
             for spent in [false, true]:

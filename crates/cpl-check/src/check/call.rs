@@ -37,10 +37,17 @@ impl<'a> Checker<'a> {
         self.io_fixed(&ty)
     }
 
-    /// A bare `read()` or an `ask(..)` takes its type from where its value
-    /// goes (R10.2.1): record that type as the call's, so its facts say
-    /// what it reads.
+    /// A bare `read()` or `[]`, or an `ask(..)`, takes its type
+    /// from where its value goes (R10.2.1): record that type as its own, so
+    /// its facts say what it is.
     pub(crate) fn note_read(&mut self, value: &Expr, want: &Ty) {
+        if matches!(&value.kind, ExprKind::List(items) if items.is_empty())
+            && !want.is_vague()
+            && *want != Ty::Error
+        {
+            self.exprs.types.push((value.span, want.clone()));
+            return;
+        }
         let ExprKind::Call { callee, args } = &value.kind else {
             return;
         };
@@ -632,16 +639,16 @@ impl<'a> Checker<'a> {
             Ty::Str => crate::builtins::builtin_members(crate::builtins::Receiver::Str)
                 .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
             Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2 =>
+                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2
+                    || matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
             {
-                crate::builtins::builtin_members(crate::builtins::Receiver::Map)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
-            }
-            Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
-            {
-                crate::builtins::builtin_members(crate::builtins::Receiver::Set)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+                let receiver = crate::builtins::Receiver::ALL
+                    .into_iter()
+                    .find(|r| r.name() == n);
+                receiver.is_some_and(|r| {
+                    crate::builtins::builtin_members(r)
+                        .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+                })
             }
             Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
                 .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
@@ -1703,6 +1710,7 @@ fn catalog_ty(text: &str, elem: &Option<Ty>, key_value: &[Ty]) -> Option<Ty> {
         "Int" => Some(Ty::Int),
         "Bool" => Some(Ty::Bool),
         "Str" => Some(Ty::Str),
+        "" => Some(Ty::Unit),
         _ => None,
     })
 }

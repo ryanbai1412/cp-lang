@@ -26,7 +26,9 @@ for g in 1..=n:
     dp[0, 0] = 1
     for cur in 0..n:
         let (rows, cols) = (cur + 1, n - cur)
-        fn rows_of(m: [0..=n, 0..=n]Z) -> List<List<Z>> = [[m[i, j] for j in 0..cols] for i in 0..rows]
+        fn rows_of(m: [0..=n, 0..=n]Z) -> List<List<Z>> = [
+            [m[i, j] for j in 0..cols] for i in 0..rows
+        ]
         let joined = convolve_2d(rows_of(claim), rows_of(dp))
         var next: [0..=n, 0..=n]Z = 0
         for i in 0..rows, j in 0..cols:

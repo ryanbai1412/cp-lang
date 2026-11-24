@@ -4,12 +4,14 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, NESTED_LIST_GRID};
-use cpl_diag::Diagnostic;
-use cpl_syntax::ast::{Clause, Expr, ExprKind, PatternKind, Stmt, StmtKind, TypeKind};
+use cpl_check::{Facts, Ty};
+use cpl_diag::msgs::lint_rules;
+use cpl_syntax::ast::{Clause, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Grids<'a> {
         src: &'a str,
+        facts: Option<&'a Facts>,
         base: u32,
         out: Vec<Finding>,
     }
@@ -68,20 +70,20 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             {
                 return;
             }
-            let elem = match ty.as_ref().map(|t| &t.kind) {
-                Some(TypeKind::Named { name, args }) if name.text == "List" => match &args[..] {
-                    [inner] => match &inner.kind {
-                        TypeKind::Named { name, args }
-                            if name.text == "List" && args.len() == 1 =>
-                        {
-                            args[0].span.shift(self.base).text(self.src).to_string()
-                        }
-                        _ => return,
-                    },
-                    _ => return,
+            let elem = match ty {
+                Some(_) => match self
+                    .facts
+                    .and_then(|f| f.place_type(pat.span.shift(self.base)))
+                    .filter(|t| t.is_list())
+                    .and_then(Ty::held_elem)
+                    .filter(|t| t.is_list())
+                    .and_then(Ty::held_elem)
+                {
+                    Some(elem) => elem.to_string(),
+                    None => return,
                 },
                 None if matches!(cell.kind, ExprKind::Int(_)) => "Int".into(),
-                _ => return,
+                None => return,
             };
             let kw = if matches!(stmt.kind, StmtKind::Let { mutable: true, .. }) {
                 "var"
@@ -89,11 +91,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 "let"
             };
             let span = init.span.shift(self.base);
-            let diag = Diagnostic::warning(
-                NESTED_LIST_GRID.code,
-                span,
-                format!("`{name}` is a list of lists for a fixed {rows} by {cols} grid"),
-            )
+            let diag = lint_rules::NESTED_LIST_GRID.warning(span, &[&name, &rows, &cols])
             .with_help(format!(
                 "declare `{kw} {name}: [{rows}, {cols}]{elem} = {fill}` and index `{name}[i, j]`: one block instead of a list per row, and its domain proves each index"
             ));
@@ -105,6 +103,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     }
     let mut v = Grids {
         src: file.src,
+        facts: file.facts,
         base: 0,
         out: Vec::new(),
     };

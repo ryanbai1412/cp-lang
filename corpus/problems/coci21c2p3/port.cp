@@ -16,7 +16,10 @@ let edges: [E](u: V, v: V) = read()
 let tree = Rooted(Graph.undirected(edges), V.first!)
 
 // Tree edge e is hypercube dimension e: a node's label is the XOR of its path's bits.
-let label = tree.down(0, (above, v) => if let a = tree.up_arc(v): above ^ (1 << a.e.ord) else: above)
+let label = tree.down(
+    0,
+    (above, v) => if let a = tree.up_arc(v): above ^ (1 << a.e.ord) else: above,
+)
 
 print(1 << (n - 1))
 for flip in Subset<E> if popcount(flip.ord) % 2 == 0: print([label[v] ^ flip.ord for v in V])

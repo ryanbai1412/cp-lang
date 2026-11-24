@@ -418,12 +418,10 @@ pub fn observe_on_this_thread(
     want: Checkpoints,
 ) -> Checkpointed {
     let ckpt = Clock::of(want);
-    let (observed, clock) = match trace {
-        Some(config) => {
-            let tracer = Some(Box::new(trace::Tracer::new(config, program)));
-            crate::run_from(program, io, output, limits, tracer, false, ckpt)
-        }
-        None => crate::run_from::<Unobserved>(program, io, output, limits, None, false, ckpt),
+    let tracer = trace.map(|config| trace::Tracer::new(config, program));
+    let (observed, clock) = match crate::watch::Watch::of(program, tracer, false) {
+        Some(watch) => crate::run_from(program, io, output, limits, Some(watch), ckpt),
+        None => crate::run_from::<Unobserved>(program, io, output, limits, None, ckpt),
     };
     let (taken, sent) = clock.into_taken();
     Checkpointed {

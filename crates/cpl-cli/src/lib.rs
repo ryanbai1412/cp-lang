@@ -17,6 +17,8 @@ mod migrate;
 mod profile;
 mod replay;
 mod report;
+mod run_view;
+mod samples;
 mod setup;
 mod sha256;
 mod submit;
@@ -179,6 +181,7 @@ pub fn exec<S: AsRef<str>>(
         Some("fix") => fix(&rest, stdout, stderr),
         Some("run") => match RunArgs::parse(&rest) {
             Ok(args) if args.live => run_live(&args, stdin),
+            Ok(args) if args.samples => samples::run(&args, stdout, stderr),
             Ok(args) => {
                 let typed = nothing_piped;
                 if let Some(test) = samples_instead(&args, typed()) {
@@ -219,12 +222,23 @@ pub fn exec<S: AsRef<str>>(
             Err(message) => usage_error(message),
         },
         Some("judge") => {
-            let json = rest.contains(&"--json");
-            let args: Vec<&str> = rest.iter().copied().filter(|a| *a != "--json").collect();
+            let (mut json, mut diagnostic, mut args) = (false, None, Vec::new());
+            let mut rest = rest.iter().copied();
+            while let Some(arg) = rest.next() {
+                match arg {
+                    "--json" => json = true,
+                    "--diagnostic" => match rest.next() {
+                        Some(file) => diagnostic = Some(file),
+                        None => return usage_error("`--diagnostic` takes a file".into()),
+                    },
+                    _ => args.push(arg),
+                }
+            }
+            let say = Say { json, diagnostic };
             match args.as_slice() {
-                [file, input] => judge_file(file, input, json, stdout, stderr),
+                [file, input] => judge_file(file, input, say, stdout, stderr),
                 [file, input, output] | [file, input, output, _] => {
-                    check_output(file, input, output, json, stdout, stderr)
+                    check_output(file, input, output, say, stdout, stderr)
                 }
                 _ => usage_error(
                     "`judge` takes a file and the hidden test: `cpl judge a.cp in.txt`".into(),
@@ -267,10 +281,16 @@ pub fn exec<S: AsRef<str>>(
             let size = rest.contains(&"--size");
             let copy = rest.contains(&"--copy");
             let json = rest.contains(&"--json");
+            let full = rest.contains(&"--full");
             let mut rest: Vec<&str> = rest
                 .iter()
                 .copied()
-                .filter(|arg| !matches!(*arg, "--checked" | "--size" | "--copy" | "--json"))
+                .filter(|arg| {
+                    !matches!(
+                        *arg,
+                        "--checked" | "--size" | "--copy" | "--json" | "--full"
+                    )
+                })
                 .collect();
             let judge = match take_judge(&mut rest, "build") {
                 Ok(judge) => judge,
@@ -298,6 +318,7 @@ pub fn exec<S: AsRef<str>>(
                 size,
                 copy,
                 json,
+                full,
             };
             build_file(file, &options, stdout, stderr)
         }
@@ -395,6 +416,16 @@ struct RunArgs<'a> {
     time_limit: Option<std::time::Duration>,
     /// `--grader FILE`: the judge's grader, linked in to run `@grader` fns.
     grader: Option<&'a str>,
+    /// `--sample NAME`: what the editor's labels call the input.
+    sample: Option<&'a str>,
+    /// `--samples`: run every sample, each judged against its answer.
+    samples: bool,
+    /// `--case NAME` with `--samples`: only that sample.
+    case: Option<&'a str>,
+    /// `--live NAME` with `--samples`: the sample whose values are shown.
+    live_sample: Option<&'a str>,
+    /// `--list` with `--samples`: name the samples instead of running them.
+    list: bool,
 }
 
 fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
@@ -456,6 +487,11 @@ impl<'a> RunArgs<'a> {
             live: false,
             time_limit: None,
             grader: None,
+            sample: None,
+            samples: false,
+            case: None,
+            live_sample: None,
+            list: false,
         };
         let mut paths = Vec::new();
         let mut iter = rest.iter().copied().peekable();
@@ -556,9 +592,27 @@ impl<'a> RunArgs<'a> {
                     }
                 }
                 "--live" => args.live = true,
+                "--samples" => args.samples = true,
+                "--list" => args.list = true,
+                "--case" => {
+                    args.case = Some(
+                        iter.next()
+                            .ok_or("`--case` names a sample: `cpl run a.cp --samples --case i1`")?,
+                    );
+                }
+                "--values-of" => {
+                    args.live_sample = Some(iter.next().ok_or(
+                        "`--values-of` names a sample: `cpl run a.cp --samples --values-of i1`",
+                    )?);
+                }
                 "--grader" => {
                     args.grader = Some(iter.next().ok_or(
                         "`--grader` names the judge's grader: `cpl run a.cp --grader grader.cpp`",
+                    )?);
+                }
+                "--sample" => {
+                    args.sample = Some(iter.next().ok_or(
+                        "`--sample` names the input in the editor's labels: `cpl run a.cp --sample i1`",
                     )?);
                 }
                 "--time-limit" => {
@@ -585,6 +639,10 @@ impl<'a> RunArgs<'a> {
             }
         }
         match paths.as_slice() {
+            [file] if args.samples => args.file = file,
+            [_, ..] if args.samples => {
+                return Err("`--samples` runs the file's samples, so it takes no input file".into())
+            }
             [file] => args.file = file,
             [file, input] => (args.file, args.input) = (file, Some(*input)),
             _ => {
@@ -603,6 +661,22 @@ impl<'a> RunArgs<'a> {
             return Err(
                 "`--test`, `--watch`, `--last`, `--from`, `--depth` and `--full` shape a trace: add `--trace`".into(),
             );
+        }
+        if (args.case.is_some() || args.live_sample.is_some() || args.list) && !args.samples {
+            return Err(
+                "`--case`, `--values-of` and `--list` pick among the samples: add `--samples`"
+                    .into(),
+            );
+        }
+        if args.samples
+            && (args.trace
+                || args.release
+                || args.brute
+                || args.live
+                || args.grader.is_some()
+                || args.format == Some("html"))
+        {
+            return Err("`--samples` runs each sample in the debug interpreter: drop `--trace`, `--release`, `--brute`, `--live`, `--grader` and `--format html`".into());
         }
         if args.checks.is_some() && !args.release {
             return Err(
@@ -754,10 +828,19 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
 /// `cpl judge`: the file's `@interactor`, talking to a solution on
 /// standard input and output. The first line of what it says on failure
 /// is the reason, which is what `cpl stress` reports.
+/// How `cpl judge` reports: one JSON object on stdout with `--json`, and
+/// with `--diagnostic <file>` a trap's diagnostic, as JSON, to that file,
+/// which stress reads since the solution reads the interactor's stdout.
+#[derive(Clone, Copy)]
+struct Say<'a> {
+    json: bool,
+    diagnostic: Option<&'a str>,
+}
+
 fn judge_file(
     path: &str,
     input: &str,
-    json: bool,
+    say: Say,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -777,7 +860,7 @@ fn judge_file(
         return EXIT_USAGE;
     };
     let result = interact::judge_alone(judge, &input);
-    verdict(path, &compiled.text, result, json, stdout, stderr)
+    verdict(path, &compiled.text, result, say, stdout, stderr)
 }
 
 /// `cpl judge <file> <input> <output>`: the file's `@check` on what a
@@ -786,7 +869,7 @@ fn check_output(
     path: &str,
     input: &str,
     output: &str,
-    json: bool,
+    say: Say,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -809,7 +892,7 @@ fn check_output(
     let io = cpl_interp::Io::judge(&input, Box::new(move || printed.take()));
     let mut sink = Vec::new();
     let result = cpl_interp::run_with(&compiled.program, io, &mut sink);
-    verdict(path, &compiled.text, result, json, stdout, stderr)
+    verdict(path, &compiled.text, result, say, stdout, stderr)
 }
 
 /// What `cpl judge` says of the judge's verdict: nothing when it accepts,
@@ -819,7 +902,7 @@ fn verdict(
     path: &str,
     text: &str,
     result: Result<(), cpl_interp::Trap>,
-    json: bool,
+    Say { json, diagnostic }: Say,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -842,8 +925,7 @@ fn verdict(
     } else if let Err(trap) = &result {
         *stderr += &format!("{}\n", trap.message);
         *stderr += &render_trap(path, text, trap);
-        // Stress reads the trap as `cpl check --format json` gives it.
-        if let Some(file) = cpl_env::JUDGE_DIAGNOSTIC.raw() {
+        if let Some(file) = diagnostic {
             let lines = cpl_diag::LineIndex::new(text);
             let json = cpl_diag::json::diagnostic(&trap.to_diagnostic(path, &lines), &lines);
             let _ = std::fs::write(file, json.to_string());
@@ -900,7 +982,7 @@ fn run_release_judged(
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
-    let ruling = match interact::run_built(&program.argv, &program.env, judge, input, stdout) {
+    let ruling = match interact::run_built(&program.argv, judge, input, stdout) {
         Ok(ruling) => ruling,
         Err(error) => {
             *stderr += &format!("cpl: can't run the build of `{}`: {error}\n", args.file);
@@ -1104,13 +1186,12 @@ fn graded(args: &RunArgs, stderr: &mut String) -> Result<Option<std::path::PathB
     if args.brute || args.trace || args.format.is_some() {
         return Ok(None);
     }
-    // Only a file that says `@grader` can have a fn the grader calls.
     let text = std::fs::read_to_string(path).unwrap_or_default();
+    if let Some(grader) = cpl_contest::problem::find_grader(path, &text) {
+        return Ok(Some(grader));
+    }
     if !text.contains("@grader") {
         return Ok(None);
-    }
-    if let Some(grader) = cpl_contest::problem::find_grader(path) {
-        return Ok(Some(grader));
     }
     let compiled = compile(args.file, stderr)?;
     let program = &compiled.program;
@@ -1461,7 +1542,26 @@ fn observe_file(
             }
             error
         });
-        let _ = stdout.write_all(trace::run_report(&recording, &printed, millis, error).as_bytes());
+        let diagnostic = observed
+            .trap
+            .as_ref()
+            .map(|trap| trap.to_diagnostic(path, &lines));
+        let at = diagnostic.as_ref().map(|d| lines.line_col(d.span.start));
+        let mut panel = String::from_utf8_lossy(&printed).into_owned();
+        if let Some(trap) = &observed.trap {
+            panel += &render_trap(path, &compiled.text, trap);
+        }
+        let view = run_view::view(
+            run_view::sample_name(args.sample, args.input),
+            &recording.lives,
+            panel,
+            diagnostic
+                .as_ref()
+                .zip(at)
+                .map(|(d, at)| (d, at.line, at.col)),
+        );
+        let _ = stdout
+            .write_all(trace::run_report(&recording, &printed, millis, error, &view).as_bytes());
         return code;
     }
     let document = trace::single(path, &compiled.text, &recording);

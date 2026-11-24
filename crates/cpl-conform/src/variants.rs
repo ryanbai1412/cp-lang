@@ -40,18 +40,20 @@ const SHOWN: [&str; 7] = [
 ];
 
 /// How a probe prints a var whose type walks in hash order (`HashMap`, `HashSet`, an
-/// `Interner`): that order is undefined (containers.md §2.8), so only an ordered view of it
-/// shows the same in both engines.
-const SHOWN_HASHED: [&str; 4] = [
+/// `Interner`): as itself when it is `Show` (an `Interner` prints in id order), so the diff
+/// sees any print order the engines disagree on; otherwise through an ordered view, since
+/// walking a hash table has no defined order (containers.md §2.8).
+const SHOWN_HASHED: [&str; 5] = [
+    "{}",
     "[(cpl_k, {}[cpl_k]) for cpl_k in {}.keys.sorted()]",
     "{}.keys.sorted()",
     "[cpl_x for cpl_x in {}].sorted()",
     "{}.len",
 ];
 
-/// How a probe prints a var with a hash-ordered type inside it: the sizes, which have no
-/// order to disagree on.
-const SHOWN_HASH_INSIDE: [&str; 2] = ["[cpl_x.len for cpl_x in {}]", "{}.len"];
+/// How a probe prints a var with a hash-ordered type inside it: as itself when it is `Show`,
+/// otherwise the sizes, which have no order to disagree on.
+const SHOWN_HASH_INSIDE: [&str; 3] = ["{}", "[cpl_x.len for cpl_x in {}]", "{}.len"];
 
 /// How a probe prints a var with a `Range` in its type: by its bounds, since a range shows
 /// every element and `0..1e9` would print a billion numbers. A probe never prints a value
@@ -205,13 +207,6 @@ fn probes_shown(text: &str, shown: &[&str]) -> Vec<Probe> {
 }
 
 /// `text` with the `keep` probes inserted, and for each output line the probe it came from.
-/// A port with no probe sites: its variant is the port byte for byte, which
-/// the corpus target already diffs, so it gets no target of its own.
-pub fn same_as_port(text: &str) -> bool {
-    let probes = probes(text);
-    probes.is_empty() && apply(text, &probes, &[]).0 == text
-}
-
 pub fn apply(text: &str, probes: &[Probe], keep: &[bool]) -> (String, Vec<Option<usize>>) {
     let mut out = String::new();
     let mut owner = Vec::new();

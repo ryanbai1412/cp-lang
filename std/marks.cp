@@ -376,9 +376,15 @@ pub struct SparseSet<D>:
 /// Compact 4-byte typed handle into an `Arena<T>`.
 pub struct Id<T>(pub raw: 0..=2_000_000_000)
 
-/// Contiguous pool allocator returning compact 4-byte `Id<T>` handles (for user trees, tries, and persistent nodes).
+/// Contiguous pool allocator returning compact 4-byte `Id<T>` handles (for user trees, tries, and
+/// node pools shared by many structures). `free` hands a node back, and the next `alloc` reuses
+/// its slot, so a pool holds one slot per node live at its peak.
 pub struct Arena<T>:
     _xs: List<T>
+    // Freed slots, reused last-freed first.
+    _free: List<0..=2_000_000_000> = []
+    // Whether each slot is freed; empty until the first `free`.
+    _dead: List<Bool> = []
 
     /// An empty arena with room for `cap` nodes before it reallocates.
     ///
@@ -388,16 +394,15 @@ pub struct Arena<T>:
     pub fn new(cap: Int = 0) -> Arena<T>:
         var xs: List<T> = []
         xs.reserve(cap)
-        Arena(xs)
+        Arena(_xs: xs)
 
-    /// The number of nodes allocated since creation or the last `clear`; valid handles have raw
-    /// values `0..len`.
+    /// The number of live nodes: allocated since creation or the last `clear`, and not freed.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `var a = Arena<Int>(); a.alloc(5); a.alloc(6); a.len == 2`
+    /// example: `var a = Arena<Int>(); a.alloc(5); let j = a.alloc(6); a.free(j); a.len == 1`
     @get pub fn len(self) -> Int:
-        _xs.len
+        _xs.len - _free.len
 
     /// Whether no node is allocated; `len == 0`.
     ///
@@ -405,32 +410,53 @@ pub struct Arena<T>:
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.clear(); a.is_empty`
     @get pub fn is_empty(self) -> Bool:
-        _xs.len == 0
+        _xs.len == _free.len
 
-    /// Visit every node with its handle.
+    /// Visit every live node with its handle.
     ///
     /// cost: \(O(1)\) per step
     /// empty: `Arena<Str>().items.collect() == []`
-    /// order: allocation order, handle `0` first
+    /// order: by handle, `0` first; freed slots are skipped
     /// traps: never
     /// example: `var a = Arena<Str>(); a.alloc("p"); a.alloc("q"); a.items.collect() == [(Id<Str>(0), "p"), (Id<Str>(1), "q")]`
     @get pub fn items(self) -> yields (Id<T>, T):
-        for i in 0.._xs.len: yield (Id(i), _xs[i])
+        for i in 0.._xs.len:
+            if _dead.len == 0 or not _dead[i]: yield (Id(i), _xs[i])
 
-    /// Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.
+    /// Store `x` as a new node and return its handle. The last freed slot is reused first; with
+    /// none freed, handles are issued in order `0, 1, 2, ...`.
     ///
     /// cost: \(O(1)\) amortized
-    /// traps: when the arena already holds `2_000_000_001` nodes
+    /// traps: when the arena already holds `2_000_000_001` slots
     /// example: `var a = Arena<Str>(); a.alloc("p"); a.alloc("q") == Id<Str>(1)`
     pub fn alloc(mut self, x: T) -> Id<T>:
+        if let i = _free.pop():
+            _xs[i] = x
+            _dead[i] = false
+            return Id(i)
         _xs.push(x)
+        if _dead.len > 0: _dead.push(false)
         Id(_xs.len - 1)
+
+    /// Hand the node behind `id` back, so a later `alloc` reuses its slot. `id` and its copies
+    /// are invalid from now on.
+    ///
+    /// cost: \(O(1)\) amortized
+    /// traps: when `id` is not below the slots issued, or is already freed. A freed handle passed
+    /// to `get` or `set` is not detected; it reads whatever node now holds that slot
+    /// example: `var a = Arena<Str>(); let p = a.alloc("p"); a.alloc("q"); a.free(p); a.alloc("r") == p and a.len == 2`
+    pub fn free(mut self, id: Id<T>):
+        assert id.raw < _xs.len, "`free` of a handle this arena never issued"
+        if _dead.len == 0: _dead = [false for _ in 0.._xs.len]
+        assert not _dead[id.raw], "`free` of a node already freed"
+        _dead[id.raw] = true
+        _free.push(id.raw)
 
     /// The node behind `id`; also `arena[id]`.
     ///
     /// cost: \(O(1)\)
-    /// traps: when `id` is not below `len`. A handle issued before a `clear` is not detected while
-    /// it is below `len`; it reads whatever node now holds that slot
+    /// traps: when `id` is not below the slots issued. A handle issued before a `clear` or a
+    /// `free` is not detected; it reads whatever node now holds that slot
     /// example: `var a = Arena<Int>(); let i = a.alloc(5); a.alloc(6); a.get(i) == 5`
     pub fn get(self, id: Id<T>) -> T:
         _xs[id.raw]
@@ -438,12 +464,12 @@ pub struct Arena<T>:
     /// Overwrite the node behind `id` with `x`; also `arena[id] = x`.
     ///
     /// cost: \(O(1)\)
-    /// traps: when `id` is not below `len` (stale handles as in `get`)
+    /// traps: when `id` is not below the slots issued (stale handles as in `get`)
     /// example: `var a = Arena<Int>(); let i = a.alloc(5); a.set(i, 9); a[i] == 9`
     pub fn set(mut self, id: Id<T>, x: T):
         _xs[id.raw] = x
 
-    /// Allocate room for at least `cap` nodes in total; changes no handle or node.
+    /// Allocate room for at least `cap` slots in total; changes no handle or node.
     ///
     /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: when `cap < 0`
@@ -459,6 +485,8 @@ pub struct Arena<T>:
     /// example: `var a = Arena<Int>(); a.alloc(5); a.clear(); a.alloc(7) == Id<Int>(0)`
     pub fn clear(mut self):
         _xs.clear()
+        _free.clear()
+        _dead.clear()
 
 @test
 fn mark_map_and_interner():
@@ -477,7 +505,10 @@ fn mark_map_and_interner():
     var intern = Interner<Str>()
     assert intern.is_empty and intern.get("a") == None
     assert intern.id("a") == 0 and intern.id("b") == 1 and intern.id("a") == 0
-    assert intern.len == 2 and intern.get("b") == 1 and intern.key(0) == "a" and intern.key(1) == "b"
+    assert intern.len == 2 and
+        intern.get("b") == 1 and
+        intern.key(0) == "a" and
+        intern.key(1) == "b"
     intern.clear()
     assert intern.is_empty and intern.id("c") == 0
 

@@ -7,7 +7,8 @@ use crate::facts::Facts;
 use crate::walk::Visitor;
 use crate::{File, Finding, SENTINEL_TABLE};
 use cpl_check::Ty;
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, CmpOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, UnOp};
 
 pub(crate) const LARGE: i128 = 1_000_000_000;
@@ -53,12 +54,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 (Some(Some(Ty::Array { elem, .. })), _) if is_int(elem) => {
                     constant(init).map(|v| (v, init.span))
                 }
-                (
-                    Some(Some(Ty::Named { name, args })),
-                    ExprKind::Comprehension { body, clauses },
-                ) if name == "List"
-                    && matches!(&args[..], [a] if is_int(a))
-                    && clauses.len() == 1 =>
+                (Some(Some(ty)), ExprKind::Comprehension { body, clauses })
+                    if ty.held_elem().is_some_and(is_int) && clauses.len() == 1 =>
                 {
                     constant(body).map(|v| (v, body.span))
                 }
@@ -124,11 +121,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             continue;
         };
         let shown = t.span.text(file.src);
-        let diag = Diagnostic::warning(
-            SENTINEL_TABLE.code,
-            t.span,
-            format!("`{}` is filled with `{shown}` to mean \"not set\"", t.name),
-        )
+        let diag = lint_rules::SENTINEL_TABLE.warning(t.span, &[&t.name, &shown])
         .with_label(*at, "the sentinel is tested here")
         .with_help(format!(
             "declare it `{}` filled with `None`, so an unset entry can't be read as a number; read one with `if let`, `!` or `??`",

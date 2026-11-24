@@ -10,7 +10,7 @@
 //   digit loses a stick and the other gains one, checking the new total in O(1): O(D^2).
 // original: corpus/submissions/3738358.cpp
 const STICKS = [6, 2, 5, 5, 4, 5, 6, 3, 7, 6]
-let reshape = Set([(0, 6), (0, 9), (2, 3), (3, 5), (6, 9)])  // same count, one stick moved
+let reshape = Set([(0, 6), (0, 9), (2, 3), (3, 5), (6, 9)])                  // same count, one stick moved
 let one_off = Set([(0, 8), (1, 7), (3, 9), (5, 6), (5, 9), (6, 8), (8, 9)])  // one stick added or removed
 
 fn linked(pairs: Set<(Int, Int)>, a: Int, b: Int) -> Bool = (min(a, b), max(a, b)) in pairs
@@ -43,8 +43,24 @@ let total = sum(d.weight * d.value for d in digits)
 
 fn gain(d: Digit, to: Int) -> Int = (to - d.value) * d.weight
 
-let moves = [[(a.at, d)] for a in digits for d in 0..10 if linked(reshape, a.value, d) and total + gain(a, d) == 0]
-    + [[(a.at, x), (b.at, y)] for a in digits for x in loses[a.value] for b in digits for y in gains[b.value] if b.at != a.at and total + gain(a, x) + gain(b, y) == 0]
+let moves = [
+    [(a.at, d)] for a in digits for d in 0..10 if linked(
+        reshape,
+        a.value,
+        d,
+    ) and total + gain(a, d) == 0
+] + [
+    [
+        (a.at, x),
+        (b.at, y),
+    ] for a in digits for x in loses[a.value] for b in digits for y in gains[b.value] if b.at != a.at and total + gain(
+        a,
+        x,
+    ) + gain(
+        b,
+        y,
+    ) == 0
+]
 if let changes = moves.first:
     var out = eq.clone()
     for (at, d) in changes: out[at] = Char('0'.ord + d)

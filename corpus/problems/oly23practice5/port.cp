@@ -30,7 +30,12 @@ for i in 0..n:
     if i % 2 == 0: even[a[i]] += 1
     else: odd[a[i]] += 1
 
-var ans = min(n, pen.items.filter(((x, y), extra) => x != y).map(((x, y), extra) => n - even[x] - odd[y] + extra).min() ?? n)
+var ans = min(
+    n,
+    pen.items.filter(((x, y), extra) => x != y).map(
+        ((x, y), extra) => n - even[x] - odd[y] + extra
+    ).min() ?? n,
+)
 
 // every other pair costs no penalty: for each x, the best such y
 let by_odd = (0..=n).collect().sorted(by: y => desc(odd[y]))

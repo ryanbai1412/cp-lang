@@ -15,23 +15,17 @@
   "The cpl executable; its `lsp' subcommand is the language server."
   :type 'string)
 
-;; The reserved words of `TokenKind::keyword' in crates/cpl-syntax/src/token.rs.
-(defconst cp-keywords
-  '("let" "var" "fn" "struct" "enum" "domain" "type" "const" "trait" "impl" "use" "pub"
-    "if" "elif" "else" "for" "while" "in" "match" "return" "break" "continue"
-    "and" "or" "not" "assert" "mut" "self" "lends" "yield" "unchecked"))
+;; The rules come from `cpl setup emacs --grammar', generated from the lexer's own tables.
+(defvar cp--grammar nil "The font-lock rules cpl printed, once read.")
 
-(defconst cp-constants '("true" "false" "None"))
-
-(defconst cp-font-lock-keywords
-  `((,(regexp-opt cp-keywords 'symbols) . font-lock-keyword-face)
-    (,(regexp-opt cp-constants 'symbols) . font-lock-constant-face)
-    ("@[[:alpha:]_][[:alnum:]_]*" . font-lock-preprocessor-face)
-    ("\\_<fn[ \t]+\\([[:alpha:]_][[:alnum:]_]*\\)" 1 font-lock-function-name-face)
-    ("\\_<[[:upper:]][[:alnum:]_]*\\_>" . font-lock-type-face)
-    ("'[[:alpha:]_][[:alnum:]_]*\\_>\\(?:[^']\\|$\\)" . font-lock-constant-face)
-    ("\\_<\\(?:0[xX][[:xdigit:]_]+\\|0[bB][01_]+\\|[0-9][0-9_]*\\(?:\\.[0-9][0-9_]*\\)?\\(?:[eE][+-]?[0-9][0-9_]*\\)?\\)\\_>"
-     . font-lock-constant-face)))
+(defun cp-font-lock-keywords ()
+  "The font-lock rules cpl generates; with `cpl lsp' running, its semantic tokens add to them."
+  (or cp--grammar
+      (setq cp--grammar
+            (with-temp-buffer
+              (when (eql 0 (ignore-errors (call-process cp-cpl-program nil '(t nil) nil "setup" "emacs" "--grammar")))
+                (goto-char (point-min))
+                (ignore-errors (read (current-buffer))))))))
 
 (defvar cp-mode-syntax-table
   (let ((table (make-syntax-table)))

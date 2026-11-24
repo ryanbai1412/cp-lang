@@ -1,13 +1,16 @@
 // Coupon c turns A tokens into (A − p[c])·t[c]. Exchange argument: multiplying
 // coupons (t > 1) are bought in increasing p·t/(t−1). Take them greedily while one
-// doesn't shrink A; past that point every multiplier shrinks A, so fewer than 70
-// more can ever be afforded: a DP over (prefix, count bought) keeps the most tokens.
+// doesn't shrink A; past that point the gap between the next key and A at least
+// doubles per buy, so fewer than 33 more fit: a DP over (prefix, count bought) keeps the
+// most tokens.
 // Plain coupons (t = 1) go last, cheapest first.
+const LIMIT = 1e9  // the statement's bound on A and on every price
+
 @grader
-fn max_coupons(a0: 1..=1e9, prices: List<1..=1e9>, types: List<1..=4>) -> List<Int>:
+fn max_coupons(a0: 1..=LIMIT, prices: List<1..=LIMIT>, types: List<1..=4>) -> List<Int>:
     domain C = 0..prices.len
     let (p, t) = ([C] c => prices[c.ord], [C] c => types[c.ord])
-    let cap = 3e14                                   // more than every price combined
+    let cap = 2e14  // every price combined: n · max p = 2e5 · LIMIT
     fn buy(a: Int, c: C) -> Int = min((a - p[c]) * t[c], cap)
 
     let (mult, plain) = C.partition(c => t[c] > 1)
@@ -21,10 +24,10 @@ fn max_coupons(a0: 1..=1e9, prices: List<1..=1e9>, types: List<1..=4>) -> List<I
         a = buy(a, c)
         free.push(c)
         left = left.drop(1)
-    let rest = List(left)                            // the DP's rows count from 0
+    let rest = List(left)  // the DP's rows count from 0
 
-    domain K = 0..=min(rest.len, 70)
-    var best: [0..=rest.len][K]?Int = None            // most tokens after k of the first i
+    domain K = 0..=min(rest.len, 32)
+    var best: [0..=rest.len][K]?Int = None  // most tokens after k of the first i
     best[0][0] = a
     for (i, c) in rest.items:
         for k in K:
@@ -33,13 +36,15 @@ fn max_coupons(a0: 1..=1e9, prices: List<1..=1e9>, types: List<1..=4>) -> List<I
 
     let cost = plain.map(c => p[c]).scan(+)
     let plains = plain.len
-    fn total(k: K) -> Int = k + (cost.first_gt(best[rest.len][k]!).map(c => Int(c) - 1) ?? plains)
+    fn covered(k: K) -> Int =  // the plain coupons k's tokens pay for
+        (0..plains).first_true(i => cost.cut(i + 1) > best[rest.len][k]!) ?? plains
+    fn total(k: K) -> Int = k + covered(k)
     let k = K.filter(k => best[rest.len][k] != None).max(by: total)!
 
-    var took: List<C> = []                            // walk back: a skip that keeps best was optimal
+    var took: List<C> = []  // walk back: a skip that keeps best was optimal
     var j = k
     for i in (0..rest.len).rev:
         if best[i + 1][j] != best[i][j]:
             took.push(rest[i])
             j = j.prev!
-    return (free + took.reversed() + plain.take(total(k) - k.ord)).map(c => c.ord)
+    return (free + took.reversed() + plain.take(covered(k))).map(c => c.ord)

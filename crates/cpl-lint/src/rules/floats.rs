@@ -7,7 +7,7 @@
 use crate::walk::Visitor;
 use crate::{Facts, File, Finding, FLOAT_EQUALITY};
 use cpl_check::Ty;
-use cpl_diag::Diagnostic;
+use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::{CmpOp, Expr, ExprKind, UnOp};
 
 struct Report<'a> {
@@ -47,11 +47,7 @@ impl Visitor for Report<'_> {
                     CmpOp::Eq => ("==", format!("abs({a} - {b}) < EPS")),
                     _ => ("!=", format!("abs({a} - {b}) >= EPS")),
                 };
-                let diag = Diagnostic::warning(
-                    FLOAT_EQUALITY.code,
-                    lhs.span.to(rhs.span).shift(self.base),
-                    format!("`{symbol}` compares floats bit for bit"),
-                )
+                let diag = lint_rules::FLOAT_EQUALITY.warning(lhs.span.to(rhs.span).shift(self.base), &[&symbol])
                 // The operand read as a float, for the checker to confirm: a
                 // field name a float struct also uses can be an `Int` here.
                 .with_label(float.span.shift(self.base), "a float")

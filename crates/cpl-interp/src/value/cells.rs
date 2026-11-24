@@ -27,6 +27,15 @@ impl SmallFieldKind {
         }
     }
 
+    fn of_bits(bits: i64) -> Self {
+        match bits {
+            0 => Self::Int,
+            1 => Self::OneIntStruct,
+            2 => Self::Bool,
+            _ => Self::Char,
+        }
+    }
+
     #[inline]
     pub fn box_val(self, v: i64) -> Value {
         match self {
@@ -58,12 +67,41 @@ pub(crate) fn try_unbox_small_tuple(v: &Value) -> Option<(u8, [SmallFieldKind; 4
 
 #[inline]
 pub(crate) fn box_small_tuple(stride: u8, kinds: &[SmallFieldKind; 4], slice: &[i64]) -> Value {
-    let n = stride as usize;
-    let mut fs = Vec::with_capacity(n);
-    for i in 0..n {
-        fs.push(kinds[i].box_val(slice[i]));
+    let fs = crate::value::Shared::collect(stride as usize, |i| kinds[i].box_val(slice[i]));
+    Value::Tuple(TupleVal::Boxed(fs))
+}
+
+/// An enum value whose payload is at most three scalar fields, packed as
+/// [`Cells::SmallEnum`] keeps it: its tag, arity and field kinds in the first
+/// word, its fields in the rest.
+#[inline]
+pub(crate) fn try_unbox_small_enum(v: &Value) -> Option<[i64; 4]> {
+    let Value::Enum(tag, payload) = v else {
+        return None;
+    };
+    if payload.len() > 3 {
+        return None;
     }
-    Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
+    let mut word = [0i64; 4];
+    let mut head = i64::from(*tag) | (payload.len() as i64) << 32;
+    for (i, f) in payload.iter().enumerate() {
+        let (k, x) = SmallFieldKind::try_unbox(f)?;
+        head |= (k as i64) << (34 + 2 * i);
+        word[i + 1] = x;
+    }
+    word[0] = head;
+    Some(word)
+}
+
+#[inline]
+pub(crate) fn box_small_enum(word: &[i64]) -> Value {
+    let head = word[0];
+    let arity = ((head >> 32) & 3) as usize;
+    let mut payload = Vec::with_capacity(arity);
+    for i in 0..arity {
+        payload.push(SmallFieldKind::of_bits((head >> (34 + 2 * i)) & 3).box_val(word[i + 1]));
+    }
+    Value::Enum(head as u32, Rc::new(payload))
 }
 
 /// Typed flat backing storage for array and list cells so primitive ones
@@ -77,120 +115,93 @@ pub(crate) enum Cells {
     OptInt(Vec<Option<i64>>),
     Bool(Vec<u8>),
     Char(Vec<u8>),
-    Float(Vec<f64>),
+    /// Each float as [`float_key`], so `<` and `==` on cells are the integers'.
+    Float(Vec<i64>),
     SmallIntTuple {
         stride: u8,
         kinds: [SmallFieldKind; 4],
         data: Vec<i64>,
     },
+    /// Enum values of at most three scalar fields; see [`try_unbox_small_enum`].
+    /// `stride` is always 4, so it shares the tuples' row moves.
+    SmallEnum {
+        stride: u8,
+        data: Vec<i64>,
+    },
     Values(Vec<Value>),
+}
+
+/// The `i64` whose order is `f64::total_cmp`'s; its own inverse.
+#[inline]
+fn float_key(b: i64) -> i64 {
+    b ^ (((b >> 63) as u64) >> 1) as i64
+}
+
+#[inline]
+fn key_of(f: f64) -> i64 {
+    float_key(f.to_bits() as i64)
+}
+
+#[inline]
+fn float_of(k: i64) -> Value {
+    Value::Float(f64::from_bits(float_key(k) as u64))
 }
 
 impl Cells {
     pub fn filled(cells: usize, fill: Value) -> Cells {
-        match fill {
-            Value::Int(v) => Cells::Int(vec![v; cells]),
-            Value::Tuple(TupleVal::OneInt(v)) => Cells::OneIntStruct(vec![v; cells]),
-            Value::Opt(OptVal::None) => Cells::OptInt(vec![None; cells]),
-            Value::Opt(OptVal::Int(v)) => Cells::OptInt(vec![Some(v); cells]),
-            Value::Bool(b) => Cells::Bool(vec![u8::from(b); cells]),
-            Value::Char(c) => Cells::Char(vec![c; cells]),
-            Value::Float(f) => Cells::Float(vec![f; cells]),
-            other => {
-                if let Some((stride, kinds, vals)) = try_unbox_small_tuple(&other) {
-                    let s = stride as usize;
-                    let mut data = Vec::with_capacity(cells * s);
-                    for _ in 0..cells {
-                        data.extend_from_slice(&vals[..s]);
-                    }
-                    Cells::SmallIntTuple {
-                        stride,
-                        kinds,
-                        data,
-                    }
-                } else {
-                    Cells::Values(vec![other; cells])
-                }
-            }
-        }
+        let mut out = Cells::one(fill.clone());
+        out.resize(cells, fill);
+        out
+    }
+
+    /// One cell, packed by its kind.
+    fn one(v: Value) -> Cells {
+        let mut out = match &v {
+            Value::Int(_) => Cells::Int(Vec::new()),
+            Value::Tuple(TupleVal::OneInt(_)) => Cells::OneIntStruct(Vec::new()),
+            Value::Opt(OptVal::None | OptVal::Int(_)) => Cells::OptInt(Vec::new()),
+            Value::Bool(_) => Cells::Bool(Vec::new()),
+            Value::Char(_) => Cells::Char(Vec::new()),
+            Value::Float(_) => Cells::Float(Vec::new()),
+            other => match try_unbox_small_tuple(other) {
+                Some((stride, kinds, _)) => Cells::SmallIntTuple {
+                    stride,
+                    kinds,
+                    data: Vec::new(),
+                },
+                None if try_unbox_small_enum(other).is_some() => Cells::SmallEnum {
+                    stride: 4,
+                    data: Vec::new(),
+                },
+                None => return Cells::Values(vec![v]),
+            },
+        };
+        out.push(v);
+        out
     }
 
     /// Packs `values` by their element kind when they share one.
     pub fn from_values(values: Vec<Value>) -> Cells {
-        match values.first() {
-            Some(Value::Int(_)) if values.iter().all(|v| matches!(v, Value::Int(_))) => {
-                Cells::Int(values.into_iter().map(|v| v.int()).collect())
+        let mut cells = Cells::default();
+        let n = values.len();
+        for (i, v) in values.into_iter().enumerate() {
+            cells.push(v);
+            if i == 0 {
+                cells.reserve(n - 1);
             }
-            Some(Value::Tuple(TupleVal::OneInt(_)))
-                if values
-                    .iter()
-                    .all(|v| matches!(v, Value::Tuple(TupleVal::OneInt(_)))) =>
-            {
-                Cells::OneIntStruct(
-                    values
-                        .into_iter()
-                        .map(|v| match v {
-                            Value::Tuple(TupleVal::OneInt(x)) => x,
-                            _ => unreachable!(),
-                        })
-                        .collect(),
-                )
-            }
-            Some(Value::Bool(_)) if values.iter().all(|v| matches!(v, Value::Bool(_))) => {
-                Cells::Bool(values.into_iter().map(|v| u8::from(v.bool())).collect())
-            }
-            Some(Value::Char(_)) if values.iter().all(|v| matches!(v, Value::Char(_))) => {
-                Cells::Char(
-                    values
-                        .into_iter()
-                        .map(|v| match v {
-                            Value::Char(c) => c,
-                            _ => unreachable!(),
-                        })
-                        .collect(),
-                )
-            }
-            Some(Value::Float(_)) if values.iter().all(|v| matches!(v, Value::Float(_))) => {
-                Cells::Float(values.into_iter().map(|v| v.float()).collect())
-            }
-            Some(first) if try_unbox_small_tuple(first).is_some() => {
-                let (stride, kinds, _) = try_unbox_small_tuple(first).unwrap();
-                let s = stride as usize;
-                let mut data = Vec::with_capacity(values.len() * s);
-                let mut ok = true;
-                for v in &values {
-                    match try_unbox_small_tuple(v) {
-                        Some((st, ks, vals)) if st == stride && ks[..s] == kinds[..s] => {
-                            data.extend_from_slice(&vals[..s]);
-                        }
-                        _ => {
-                            ok = false;
-                            break;
-                        }
-                    }
-                }
-                if ok {
-                    Cells::SmallIntTuple {
-                        stride,
-                        kinds,
-                        data,
-                    }
-                } else {
-                    Cells::Values(values)
-                }
-            }
-            _ => Cells::Values(values),
         }
+        cells
     }
 
     #[cfg_attr(not(target_family = "wasm"), inline)]
     pub fn len(&self) -> usize {
         match self {
-            Cells::Int(v) | Cells::OneIntStruct(v) => v.len(),
+            Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.len(),
             Cells::OptInt(v) => v.len(),
             Cells::Bool(v) | Cells::Char(v) => v.len(),
-            Cells::Float(v) => v.len(),
-            Cells::SmallIntTuple { stride, data, .. } => data.len() / (*stride as usize),
+            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
+                data.len() / (*stride as usize)
+            }
             Cells::Values(v) => v.len(),
         }
     }
@@ -223,7 +234,7 @@ impl Cells {
             }),
             Cells::Bool(v) => v.get(idx).copied().map(|b| Value::Bool(b != 0)),
             Cells::Char(v) => v.get(idx).copied().map(Value::Char),
-            Cells::Float(v) => v.get(idx).copied().map(Value::Float),
+            Cells::Float(v) => v.get(idx).copied().map(float_of),
             Cells::SmallIntTuple {
                 stride,
                 kinds,
@@ -234,6 +245,10 @@ impl Cells {
                 let slice = data.get(off..off + s)?;
                 Some(box_small_tuple(*stride, kinds, slice))
             }
+            Cells::SmallEnum { data, .. } => idx
+                .checked_mul(4)
+                .and_then(|o| data.get(o..o + 4))
+                .map(box_small_enum),
             Cells::Values(v) => v.get(idx).cloned(),
         }
     }
@@ -249,7 +264,7 @@ impl Cells {
             },
             Cells::Bool(v) => Value::Bool(v[idx] != 0),
             Cells::Char(v) => Value::Char(v[idx]),
-            Cells::Float(v) => Value::Float(v[idx]),
+            Cells::Float(v) => float_of(v[idx]),
             Cells::SmallIntTuple {
                 stride,
                 kinds,
@@ -259,6 +274,7 @@ impl Cells {
                 let off = idx * s;
                 box_small_tuple(*stride, kinds, &data[off..off + s])
             }
+            Cells::SmallEnum { data, .. } => box_small_enum(&data[idx * 4..idx * 4 + 4]),
             Cells::Values(v) => v[idx].clone(),
         }
     }
@@ -309,7 +325,7 @@ impl Cells {
             (Cells::OptInt(v), Value::Opt(OptVal::Int(x))) => v[idx] = Some(x),
             (Cells::Bool(v), Value::Bool(b)) => v[idx] = u8::from(b),
             (Cells::Char(v), Value::Char(c)) => v[idx] = c,
-            (Cells::Float(v), Value::Float(f)) => v[idx] = f,
+            (Cells::Float(v), Value::Float(f)) => v[idx] = key_of(f),
             (
                 Cells::SmallIntTuple {
                     stride,
@@ -328,6 +344,10 @@ impl Cells {
                 }
                 self.as_mut_values()[idx] = other;
             }
+            (Cells::SmallEnum { data, .. }, other) => match try_unbox_small_enum(&other) {
+                Some(word) => data[idx * 4..idx * 4 + 4].copy_from_slice(&word),
+                None => self.as_mut_values()[idx] = other,
+            },
             (Cells::Values(v), other) => v[idx] = other,
             (_, other) => {
                 self.as_mut_values()[idx] = other;
@@ -343,9 +363,7 @@ impl Cells {
             (Cells::OptInt(v), Value::Opt(OptVal::Int(x))) => v.contains(&Some(*x)),
             (Cells::Bool(v), Value::Bool(b)) => v.contains(&u8::from(*b)),
             (Cells::Char(v), Value::Char(c)) => v.contains(c),
-            (Cells::Float(v), Value::Float(f)) => {
-                v.iter().any(|x| x.total_cmp(f) == Ordering::Equal)
-            }
+            (Cells::Float(v), Value::Float(f)) => v.contains(&key_of(*f)),
             (Cells::Values(v), _) => v.contains(needle),
             _ => (0..self.len()).any(|i| &self.get_unchecked_val(i) == needle),
         }
@@ -353,11 +371,10 @@ impl Cells {
 
     pub fn reverse(&mut self) {
         match &mut *self {
-            Cells::Int(v) | Cells::OneIntStruct(v) => v.reverse(),
+            Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.reverse(),
             Cells::OptInt(v) => v.reverse(),
             Cells::Bool(v) | Cells::Char(v) => v.reverse(),
-            Cells::Float(v) => v.reverse(),
-            Cells::SmallIntTuple { stride, data, .. } => {
+            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
                 let s = *stride as usize;
                 let n = data.len() / s;
                 for i in 0..n / 2 {
@@ -374,11 +391,10 @@ impl Cells {
 
     pub fn swap(&mut self, i: usize, j: usize) {
         match &mut *self {
-            Cells::Int(v) | Cells::OneIntStruct(v) => v.swap(i, j),
+            Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.swap(i, j),
             Cells::OptInt(v) => v.swap(i, j),
             Cells::Bool(v) | Cells::Char(v) => v.swap(i, j),
-            Cells::Float(v) => v.swap(i, j),
-            Cells::SmallIntTuple { stride, data, .. } => {
+            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
                 let s = *stride as usize;
                 let a = i * s;
                 let b = j * s;
@@ -391,38 +407,7 @@ impl Cells {
     }
 
     pub fn fill(&mut self, val: Value) {
-        match (&mut *self, val) {
-            (Cells::Int(v), Value::Int(x)) => v.fill(x),
-            (Cells::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v.fill(x),
-            (Cells::OptInt(v), Value::Opt(OptVal::None)) => v.fill(None),
-            (Cells::OptInt(v), Value::Opt(OptVal::Int(x))) => v.fill(Some(x)),
-            (Cells::Bool(v), Value::Bool(b)) => v.fill(u8::from(b)),
-            (Cells::Char(v), Value::Char(c)) => v.fill(c),
-            (Cells::Float(v), Value::Float(f)) => v.fill(f),
-            (
-                Cells::SmallIntTuple {
-                    stride,
-                    kinds,
-                    data,
-                },
-                other,
-            ) => {
-                let s = *stride as usize;
-                if let Some((st, ks, vals)) = try_unbox_small_tuple(&other) {
-                    if st == *stride && ks[..s] == kinds[..s] {
-                        for chunk in data.chunks_exact_mut(s) {
-                            chunk.copy_from_slice(&vals[..s]);
-                        }
-                        return;
-                    }
-                }
-                self.as_mut_values().fill(other);
-            }
-            (Cells::Values(v), other) => v.fill(other),
-            (_, other) => {
-                self.as_mut_values().fill(other);
-            }
-        }
+        self.fill_range(0, self.len(), val);
     }
 
     pub fn to_values(&self) -> Vec<Value> {
@@ -443,7 +428,7 @@ impl Cells {
                 .collect(),
             Cells::Bool(v) => v.iter().copied().map(|b| Value::Bool(b != 0)).collect(),
             Cells::Char(v) => v.iter().copied().map(Value::Char).collect(),
-            Cells::Float(v) => v.iter().copied().map(Value::Float).collect(),
+            Cells::Float(v) => v.iter().copied().map(float_of).collect(),
             Cells::SmallIntTuple {
                 stride,
                 kinds,
@@ -454,6 +439,12 @@ impl Cells {
                     .map(|chunk| box_small_tuple(*stride, kinds, chunk))
                     .collect()
             }
+            Cells::SmallEnum { data, .. } => data
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|w| box_small_enum(w))
+                .collect(),
             Cells::Values(v) => v.clone(),
         }
     }
@@ -478,19 +469,10 @@ impl Cells {
 
     pub fn cmp_data(&self, other: &Cells) -> Ordering {
         match (self, other) {
-            (Cells::Int(a), Cells::Int(b)) | (Cells::OneIntStruct(a), Cells::OneIntStruct(b)) => {
-                a.cmp(b)
-            }
+            (Cells::Int(a), Cells::Int(b))
+            | (Cells::OneIntStruct(a), Cells::OneIntStruct(b))
+            | (Cells::Float(a), Cells::Float(b)) => a.cmp(b),
             (Cells::Bool(a), Cells::Bool(b)) | (Cells::Char(a), Cells::Char(b)) => a.cmp(b),
-            (Cells::Float(a), Cells::Float(b)) => {
-                for (x, y) in a.iter().zip(b.iter()) {
-                    let ord = x.total_cmp(y);
-                    if ord != Ordering::Equal {
-                        return ord;
-                    }
-                }
-                a.len().cmp(&b.len())
-            }
             (Cells::Values(a), Cells::Values(b)) => a.cmp(b),
             _ => {
                 let n = self.len().min(other.len());
@@ -518,10 +500,10 @@ impl Cells {
             (Cells::OptInt(v), Value::Opt(OptVal::Int(x))) => v.push(Some(x)),
             (Cells::Bool(v), Value::Bool(b)) => v.push(u8::from(b)),
             (Cells::Char(v), Value::Char(c)) => v.push(c),
-            (Cells::Float(v), Value::Float(f)) => v.push(f),
+            (Cells::Float(v), Value::Float(f)) => v.push(key_of(f)),
             (Cells::Values(v), other) if v.is_empty() => {
                 let cap = v.capacity();
-                *self = Cells::filled(1, other);
+                *self = Cells::one(other);
                 self.reserve(cap.saturating_sub(1));
             }
             (Cells::Values(v), other) => v.push(other),
@@ -541,28 +523,34 @@ impl Cells {
                     _ => self.as_mut_values().push(other),
                 }
             }
+            (Cells::SmallEnum { data, .. }, other) => match try_unbox_small_enum(&other) {
+                Some(word) => data.extend_from_slice(&word),
+                None => self.as_mut_values().push(other),
+            },
             (_, other) => self.as_mut_values().push(other),
         }
     }
 
     pub fn reserve(&mut self, extra: usize) {
         match self {
-            Cells::Int(v) | Cells::OneIntStruct(v) => v.reserve(extra),
+            Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.reserve(extra),
             Cells::OptInt(v) => v.reserve(extra),
             Cells::Bool(v) | Cells::Char(v) => v.reserve(extra),
-            Cells::Float(v) => v.reserve(extra),
-            Cells::SmallIntTuple { stride, data, .. } => data.reserve(extra * *stride as usize),
+            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
+                data.reserve(extra * *stride as usize)
+            }
             Cells::Values(v) => v.reserve(extra),
         }
     }
 
     pub fn truncate(&mut self, len: usize) {
         match self {
-            Cells::Int(v) | Cells::OneIntStruct(v) => v.truncate(len),
+            Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.truncate(len),
             Cells::OptInt(v) => v.truncate(len),
             Cells::Bool(v) | Cells::Char(v) => v.truncate(len),
-            Cells::Float(v) => v.truncate(len),
-            Cells::SmallIntTuple { stride, data, .. } => data.truncate(len * *stride as usize),
+            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
+                data.truncate(len * *stride as usize)
+            }
             Cells::Values(v) => v.truncate(len),
         }
     }
@@ -601,11 +589,10 @@ impl Cells {
             }
         }
         match self {
-            Cells::Int(v) | Cells::OneIntStruct(v) => turn(&mut v[at..], 1, up),
+            Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => turn(&mut v[at..], 1, up),
             Cells::OptInt(v) => turn(&mut v[at..], 1, up),
             Cells::Bool(v) | Cells::Char(v) => turn(&mut v[at..], 1, up),
-            Cells::Float(v) => turn(&mut v[at..], 1, up),
-            Cells::SmallIntTuple { stride, data, .. } => {
+            Cells::SmallIntTuple { stride, data, .. } | Cells::SmallEnum { stride, data } => {
                 let s = *stride as usize;
                 turn(&mut data[at * s..], s, up);
             }
@@ -716,19 +703,15 @@ impl Cells {
     /// Sorts in the order `<` uses on the cells.
     pub fn sort_unstable(&mut self) {
         match self {
-            Cells::Int(v) | Cells::OneIntStruct(v) => v.sort_unstable(),
+            Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.sort_unstable(),
             Cells::OptInt(v) => v.sort_unstable(),
             Cells::Bool(v) | Cells::Char(v) => v.sort_unstable(),
-            Cells::Float(v) => {
-                // As `i64`s ordered like `f64::total_cmp`, so cpl.wasm sorts one integer type.
-                let key = |b: i64| b ^ (((b >> 63) as u64) >> 1) as i64;
-                let mut bits: Vec<i64> = v.iter().map(|x| key(x.to_bits() as i64)).collect();
-                bits.sort_unstable();
-                for (x, b) in v.iter_mut().zip(bits) {
-                    *x = f64::from_bits(key(b) as u64);
-                }
-            }
             Cells::Values(v) => crate::sort::sort_values(v),
+            Cells::SmallEnum { .. } => {
+                let mut vals = self.to_values();
+                crate::sort::sort_values(&mut vals);
+                *self = Cells::from_values(vals);
+            }
             // Every field kind packs into `i64` in its own order, so a tuple's
             // `<` is its row's.
             Cells::SmallIntTuple { stride, data, .. } => {

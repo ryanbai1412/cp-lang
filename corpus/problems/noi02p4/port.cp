@@ -19,7 +19,9 @@ domain Man = 0..n
 let men: [Man]Caveman = read()
 
 fn meet(a: Caveman, b: Caveman, m: Int) -> Bool =
-    linear_congruence(a.pace - b.pace, b.cave - a.cave, m).is_some_and(year => year.r <= min(a.life, b.life))
+    linear_congruence(a.pace - b.pace, b.cave - a.cave, m).is_some_and(
+        year => year.r <= min(a.life, b.life)
+    )
 
 fn peaceful(m: Int) -> Bool = not any(meet(a, b, m) for (a, b) in men.pairs())
 

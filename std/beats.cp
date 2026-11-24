@@ -522,7 +522,7 @@ pub struct HistoricBeatsSegTree<D>:
             return
         let rest = len - mxc[u] - mnc[u]
         let two = mx2[u] == mn1[u]
-        hm[u] = max(hm[u], max(mx1[u] + h1, mn1[u] + h2))
+        hm[u] max= max(mx1[u] + h1, mn1[u] + h2)
         if not two: hm[u] max= mx2[u] + h3
         s[u] += a1 * mxc[u] + a2 * mnc[u] + a3 * rest
         c[u] += c1 * mxc[u] + c2 * mnc[u] + c3 * rest

@@ -23,6 +23,11 @@ for i in 0..8 * n:
     for x in w.items: // timed: window.Window.items
         s += x // timed: window.Window.items
     s += t.state // timed: window.Tracked.state
+var k = Window(max)
+for i in 0..8 * n:
+    k.push(i * 7919 % n, at: i) // timed: window.Window.push
+    k.expire(before: i - 5) // timed: window.Window.expire
+    s += k.all ?? 0
 var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1))
 for i in 0..4 * n:
     u.push((V(i * 7 % n), V(i * 13 % n))) // timed: window.Undoing.push

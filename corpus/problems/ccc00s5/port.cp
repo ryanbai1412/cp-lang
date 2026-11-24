@@ -16,7 +16,12 @@ let sheep = [(x: round(s.x * SCALE), y: round(s.y * SCALE)) for s in read_at]
 
 for p in sheep:
     if sheep.any(q => q.x == p.x and q.y < p.y): continue  // a rival straight below wins everywhere
-    fn cut(q: (x: Int, y: Int)) -> Ratio = Ratio(q.x * q.x + q.y * q.y - p.x * p.x - p.y * p.y, 2 * (q.x - p.x))
+    fn cut(q: (x: Int, y: Int)) -> Ratio = Ratio(
+        q.x * q.x + q.y * q.y - p.x * p.x - p.y * p.y,
+        2 * (q.x - p.x),
+    )
     let lo = ([Ratio(0, 1)] + [cut(q) for q in sheep if q.x < p.x]).max()!
     let hi = ([Ratio(1000 * SCALE, 1)] + [cut(q) for q in sheep if q.x > p.x]).min()!
-    if lo <= hi: print("The sheep at ({fixed(p.x, SCALE, 2)}, {fixed(p.y, SCALE, 2)}) might be eaten.")
+    if lo <= hi: print(
+        "The sheep at ({fixed(p.x, SCALE, 2)}, {fixed(p.y, SCALE, 2)}) might be eaten."
+    )

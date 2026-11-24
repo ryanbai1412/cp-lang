@@ -16,7 +16,7 @@ let conf: [P]1..=1e4 = read()
 let joins: [Joiner](host: P, how: 0..=2) = read()
 
 var pick: [P]Int = [P] p => conf[p]  // best of the group with its person picked
-var skip: [P]Int = 0  // ... and with it left out
+var skip: [P]Int = 0                 // ... and with it left out
 for j in Joiner.rev:
     let (u, (h, how)) = (P(j.label), joins[j])
     let either = max(pick[u], skip[u])

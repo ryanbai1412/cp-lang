@@ -62,10 +62,13 @@ pub struct ExprFacts {
     /// The `m` of each `x.m(..)` that calls a fn of the name because the
     /// built-in member `m` takes fewer arguments: `a.contains(i, x)`.
     pub past_rows: Vec<Span>,
+    /// Each member access the checker could not resolve, with its path as
+    /// written: `t.postorder` on an unknown `t`, `V.sorted` on a domain.
+    pub unresolved: Vec<(Span, Vec<String>)>,
 }
 
 impl ExprFacts {
-    pub(crate) fn mark(&self) -> [usize; 5] {
+    pub(crate) fn mark(&self) -> [usize; 6] {
         let (t, c) = (self.types.len(), self.calls.len());
         let rows = self.past_rows.len();
         [
@@ -74,16 +77,18 @@ impl ExprFacts {
             self.instantiations.len(),
             self.module_members.len(),
             rows,
+            self.unresolved.len(),
         ]
     }
 
     /// Forgets what was recorded since `mark`, as a quiet probe does.
-    pub(crate) fn truncate(&mut self, [t, c, i, m, r]: [usize; 5]) {
+    pub(crate) fn truncate(&mut self, [t, c, i, m, r, u]: [usize; 6]) {
         self.types.truncate(t);
         self.calls.truncate(c);
         self.instantiations.truncate(i);
         self.module_members.truncate(m);
         self.past_rows.truncate(r);
+        self.unresolved.truncate(u);
     }
 }
 
@@ -103,6 +108,8 @@ pub struct Facts {
     /// The callee of each call, by the call's file span.
     callees: BySpan<Callee>,
     instantiations: BySpan<Vec<(String, Ty)>>,
+    /// The written path of each member access the checker could not resolve.
+    unresolved: BySpan<Vec<String>>,
 }
 
 impl Facts {
@@ -119,9 +126,12 @@ impl Facts {
             revision: analysis.revision,
             ..Facts::default()
         };
-        let (mut exprs, mut owners) = (Vec::new(), Vec::new());
+        let (mut exprs, mut owners, mut unresolved) = (Vec::new(), Vec::new(), Vec::new());
         for &(offset, check) in items {
             let shift = |s: Span| s.shift(offset);
+            for (span, path) in &check.exprs.unresolved {
+                unresolved.push((shift(*span), path.clone()));
+            }
             for (span, ty) in &check.exprs.types {
                 exprs.push((shift(*span), ty.clone()));
             }
@@ -150,6 +160,13 @@ impl Facts {
         let (mut callees, mut instantiations) = (Vec::new(), Vec::new());
         for &(offset, check) in items {
             add_calls(offset, check, analysis, &mut callees, &mut instantiations);
+            // A call no declaration answers and the compiler doesn't give.
+            for call in &check.exprs.calls {
+                let resolved = check.resolved.iter().any(|(s, _)| *s == call.name_span);
+                if !resolved && !call.builtin && call.kind != CalleeKind::Ctor {
+                    unresolved.push((call.call.shift(offset), vec![call.name.clone()]));
+                }
+            }
         }
         // The last answer wins, but a vague re-check keeps a known one.
         facts.exprs = BySpan::merged(exprs, |kept, earlier| {
@@ -158,6 +175,7 @@ impl Facts {
             }
         });
         facts.owners = BySpan::new(owners);
+        facts.unresolved = BySpan::new(unresolved);
         facts.callees = BySpan::new(callees);
         facts.instantiations = BySpan::new(instantiations);
         facts
@@ -166,6 +184,13 @@ impl Facts {
     /// What the call at exactly `call` calls.
     pub fn callee(&self, call: Span) -> Option<&Callee> {
         self.callees.get(call)
+    }
+
+    /// The path as written of the member access at exactly `at` when the
+    /// checker could not resolve it: `["t", "postorder"]`. A lint about a
+    /// misspelled member reads this, never the source text.
+    pub fn unresolved(&self, at: Span) -> Option<&[String]> {
+        self.unresolved.get(at).map(Vec::as_slice)
     }
 
     /// The type each generic parameter took at the call `call`, by name.
@@ -280,6 +305,36 @@ mod tests {
             analysis.facts().place_type(Span::new(x, x + 1)),
             Some(&Ty::Int)
         );
+    }
+
+    #[test]
+    fn a_member_it_cannot_resolve_keeps_its_written_path() {
+        let src = "let xs = [3, 1]\nprint(t.postorder, xs.first(x => x > 1), xs.len)\n";
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        let at = |text: &str| {
+            let start = src.find(text).unwrap() as u32;
+            Span::new(start, start + text.len() as u32)
+        };
+        let facts = analysis.facts();
+        assert_eq!(
+            facts.unresolved(at("t.postorder")),
+            Some(&["t".to_string(), "postorder".to_string()][..])
+        );
+        assert_eq!(facts.unresolved(at("xs.len")), None);
+        assert_eq!(
+            facts.unresolved(at("xs.first(x => x > 1)")),
+            Some(&["first".to_string()][..])
+        );
+        let own = "fn f(x: Int) -> Int = x\nprint(f(1), [1].sum())\n";
+        db.set_file("b.cp", own);
+        let analysis = db.analyze("b.cp").unwrap();
+        for call in ["f(1)", "[1].sum()", "print(f(1), [1].sum())"] {
+            let start = own.find(call).unwrap() as u32;
+            let span = Span::new(start, start + call.len() as u32);
+            assert_eq!(analysis.facts().unresolved(span), None, "{call}");
+        }
     }
 
     /// Every expression but a callee, whose answer is `Facts::callee`.

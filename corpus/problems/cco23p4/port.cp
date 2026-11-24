@@ -44,4 +44,5 @@ print(match p:
     "00" => if zeros > ones + 1: -1 else: hits()
     "010" => (hits() + 1) / 2
     "000" => if zeros > 2 * (ones + 1): -1 else: spread([g.len for g in w.split('1')])
-    _ => hits())
+    _ => hits()
+)

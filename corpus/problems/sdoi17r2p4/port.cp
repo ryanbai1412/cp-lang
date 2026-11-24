@@ -17,7 +17,10 @@ domain V = 1..=n
 domain Word = 1..=k
 domain Road = [m]
 let roads: [Road](u: V, v: V, w: 0..=2e4, word: Word) = read()
-let trie = Rooted(Graph.undirected(read<[k - 1](u: Word, v: Word, c: 1..=2e4)>()), root: Word.first!)
+let trie = Rooted(
+    Graph.undirected(read<[k - 1](u: Word, v: Word, c: 1..=2e4)>()),
+    root: Word.first!,
+)
 let leave = Graph.directed(roads)
 let enter = leave.transpose()
 

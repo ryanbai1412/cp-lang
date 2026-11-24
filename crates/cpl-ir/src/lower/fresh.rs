@@ -107,21 +107,9 @@ impl<'a> Lowerer<'a> {
 impl<'a> Lowerer<'a> {
     /// The first key and the length of a `Range<Int>` value.
     pub(super) fn range_lo_len(&mut self, range: Expr, span: Span) -> (Expr, Expr) {
-        let lo = self.mk(
-            ExprKind::Builtin(Builtin::RangeLo, vec![range.clone()]),
-            Ty::Int,
-            span,
-        );
-        let hi = self.mk(
-            ExprKind::Builtin(Builtin::RangeHi, vec![range]),
-            Ty::Int,
-            span,
-        );
-        let len = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(hi), Box::new(lo.clone())),
-            Ty::Int,
-            span,
-        );
+        let lo = self.mk_builtin(Builtin::RangeLo, [range.clone()], Ty::Int, span);
+        let hi = self.mk_builtin(Builtin::RangeHi, [range], Ty::Int, span);
+        let len = self.mk_binary(BinOp::Sub, hi, lo.clone(), Ty::Int, span);
         (lo, len)
     }
 
@@ -147,7 +135,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        if probed.ty != Ty::Range(Box::new(Ty::Int)) {
+        if probed.ty != Ty::range(Ty::Int) {
             return None;
         }
         let id = self.domains.len();
@@ -169,11 +157,7 @@ impl<'a> Lowerer<'a> {
             DimSpec::Pos(d) if self.range_keyed.contains(d) => {
                 let lo = self.mk(ExprKind::DomainLo(*d), Ty::Int, span);
                 let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
-                let hi = self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(len)),
-                    Ty::Int,
-                    span,
-                );
+                let hi = self.mk_binary(BinOp::Add, lo.clone(), len, Ty::Int, span);
                 (Ty::Int, lo, hi)
             }
             DimSpec::Pos(d) => (
@@ -188,17 +172,9 @@ impl<'a> Lowerer<'a> {
             DimSpec::Sym(d) => {
                 let n = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
                 let n1 = self.int_add(n.clone(), 1);
-                let prod = self.mk(
-                    ExprKind::Binary(BinOp::Mul, Box::new(n), Box::new(n1)),
-                    Ty::Int,
-                    span,
-                );
+                let prod = self.mk_binary(BinOp::Mul, n, n1, Ty::Int, span);
                 let two = self.int_lit(2, span);
-                let len = self.mk(
-                    ExprKind::Binary(BinOp::Div, Box::new(prod), Box::new(two)),
-                    Ty::Int,
-                    span,
-                );
+                let len = self.mk_binary(BinOp::Div, prod, two, Ty::Int, span);
                 (Ty::Int, zero, len)
             }
             DimSpec::Enum(e) => {
@@ -223,11 +199,7 @@ impl<'a> Lowerer<'a> {
             }
             DimSpec::Pos(d) if self.range_keyed.contains(d) => {
                 let span = index.span;
-                let ord = self.mk(
-                    ExprKind::Binary(BinOp::Sub, Box::new(index), Box::new(lo)),
-                    Ty::Int,
-                    span,
-                );
+                let ord = self.mk_binary(BinOp::Sub, index, lo, Ty::Int, span);
                 self.cast(Cast::Trust, ord, Ty::Pos(*d))
             }
             DimSpec::IntFrom(from, _) if *from != 0 => self.int_add(index, -from),

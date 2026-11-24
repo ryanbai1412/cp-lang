@@ -12,7 +12,6 @@
 // 64-bit coordinates hashes each multiset injectively with high probability in
 // O(1) per update.
 
-
 enum Side: Left | Right
 
 @!multitest

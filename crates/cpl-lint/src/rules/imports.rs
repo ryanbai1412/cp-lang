@@ -7,23 +7,28 @@
 //! items use is not brought in when another file imports it.
 
 use crate::{File, Finding, REDUNDANT_PRELUDE_IMPORT};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::StmtKind;
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
 /// `(module, name)` for each name `std/prelude.cp` lists, the module
-/// written `std.tree`.
+/// written `std.tree`, read off the prelude the checker reads.
 fn prelude() -> &'static HashSet<(String, String)> {
     static NAMES: OnceLock<HashSet<(String, String)>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        let text = crate::std_source!("prelude.cp");
         let mut found = HashSet::new();
-        for (_, item) in cpl_syntax::parse_file(text).items {
-            for stmt in item.stmts {
-                if let StmtKind::Use { path, names, .. } = stmt.kind {
-                    let module = dotted(&path);
-                    found.extend(names.iter().map(|n| (module.clone(), n.text.clone())));
+        let preludes = cpl_check::loaded_std()
+            .iter()
+            .filter(|(name, _)| *name == "prelude");
+        for (_, text) in preludes {
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in item.stmts {
+                    if let StmtKind::Use { path, names, .. } = stmt.kind {
+                        let module = dotted(&path);
+                        found.extend(names.iter().map(|n| (module.clone(), n.text.clone())));
+                    }
                 }
             }
         }
@@ -125,15 +130,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             )
         };
         let quoted: Vec<String> = dropped.iter().map(|n| format!("`{n}`")).collect();
-        let mut diag = Diagnostic::warning(
-            REDUNDANT_PRELUDE_IMPORT.code,
-            span,
-            format!(
-                "{} is in the prelude: this `use` is not needed",
-                quoted.join(", ")
-            ),
-        )
-        .with_help("every program has the prelude's names without a `use`");
+        let mut diag = lint_rules::REDUNDANT_PRELUDE_IMPORT
+            .warning(span, &[&(quoted.join(", "))])
+            .with_help("every program has the prelude's names without a `use`");
         diag.fixes.push(Fix {
             title: "drop the prelude's names from the `use`".into(),
             edits: vec![(edit, replacement)],

@@ -1,6 +1,6 @@
 //! A dense set of positions of a domain, 64 per word.
 use std.seq.{take_all}
-use std.math.{bit}
+use std.math.{bit, popcount}
 
 /// One bit per position of `D`, in `ceil(K / 64)` words.
 /// `Bitset<D>` is an explicit type you ask for; `[D]Bool` stays one byte

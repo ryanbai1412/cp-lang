@@ -16,7 +16,7 @@ Point update and range fold.
 
 Fields: `t: List<T>`, `lz: List<F>`, `has_lz: List<Bool>`, `size: Int`, `log: Int`, `act: ?Action<T, F>`.
 
-- `fn new<M, A, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>` — \(O(\lvert D \rvert)\); \(O(\log(hi - lo))\) with `over: lo..hi`, which then makes at; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`; a tree
+- `fn new<M, A: Acts<T, F>, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>` — \(O(\lvert D \rvert)\); \(O(\log(hi - lo))\) with `over: lo..hi`, which then makes at; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`; a tree
 - `fn apply(mut self, r: Range<D>, f: F)` — \(O(\log \lvert D \rvert)\); Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f` applied, through the action given to `act:`.; traps: when a non-empty `r` reaches outside `D`
 - `fn apply_all(mut self, f: F)` — \(O(1)\) amortized when the tags commute, else \(O(\lvert D \rvert)\); Apply tag `f` to every position; `apply(D.all, f)`.
 - `fn fold(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.; traps: when a non-empty `r` reaches outside `D`
@@ -112,9 +112,8 @@ One tree of values in a `MergeTrees<D, Z>` pool: a handle, so copying it is O(1)
 
 A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
 
-Fields: `ls: List<Int>`, `rs: List<Int>`, `sm: List<Z>`, `tag: List<Z>`.
-
 - `fn new() -> MergeTrees<D, Z>` — \(O(1)\); An empty pool.
+- `fn reserve(mut self, sets: Int)` — \(O(\mathit{sets} \log \lvert D \rvert)\); Preallocate the nodes for `sets` more calls to `set`, so they do not regrow the pool: a `set` and the `merge`s that later split its position off add at most \(\lceil \log_2 \lvert D \rvert \rceil + 1\) nodes for it, and `scale` and the queries add none.; traps: when `sets < 0`
 - `fn set(mut self, mut t: MergeTree<D>, x: D, v: Z)` — \(O(\log \lvert D \rvert)\) time and new nodes; Sets position `x` of `t` to `v`.
 - `fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z` — \(O(\log \lvert D \rvert)\); The sum of `t` over the positions in `r`.
 - `fn get(self, t: MergeTree<D>, x: D) -> Z` — \(O(\log \lvert D \rvert)\); The value of `t` at `x`.

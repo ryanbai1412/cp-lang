@@ -306,6 +306,13 @@ fn foreign_strip_names_become_trim() {
 }
 
 #[test]
+fn foreign_pad_names_become_resize() {
+    let d = check("var xs = [1]\nxs.pad_to(3, 0)\nxs.pad(4, 0)\nprint(xs)\n");
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["resize", "resize"], "{d:?}");
+}
+
+#[test]
 fn an_optional_print_says_how_to_give_none_a_text() {
     let d = check("let x: ?Int = None\nprint(x + 1)\n");
     assert_eq!(d.len(), 1, "{d:?}");
@@ -562,25 +569,6 @@ fn the_old_copy_spelling_is_one_error_with_the_clone_fix() {
 }
 
 #[test]
-fn a_free_function_called_as_a_method_gets_the_call_spelling() {
-    let src = "let mask = 5\nprint(mask.popcount())\n";
-    let d = check(src);
-    assert_eq!(d.len(), 1, "{d:?}");
-    assert!(
-        d[0].help
-            .as_deref()
-            .unwrap_or("")
-            .contains("`popcount(mask)`"),
-        "{d:?}"
-    );
-    let fix = &d[0].fixes[0].edits[0];
-    let mut fixed = src.to_string();
-    fixed.replace_range(fix.0.start as usize..fix.0.end as usize, &fix.1);
-    assert_eq!(fixed, "let mask = 5\nprint(popcount(mask))\n");
-    assert!(check(&fixed).is_empty(), "{fixed}");
-}
-
-#[test]
 fn a_name_stopped_short_means_the_prelude_name_before_a_std_typo() {
     let d = check("pri\n");
     assert_eq!(d.len(), 1, "{d:?}");
@@ -749,4 +737,17 @@ fn a_tuple_is_not_a_struct_and_the_fix_builds_one() {
         "{:?}",
         check(fixed)
     );
+}
+
+#[test]
+fn a_bitsets_insert_is_its_add() {
+    let src = "use std.bitset.{DynBitset}\nvar b = DynBitset(70)\nb.insert(3)\n";
+    let d = one(src);
+    assert_eq!(d.code, cpl_diag::codes::UNKNOWN_FIELD, "{}", d.message);
+    assert!(
+        d.help.as_deref().is_some_and(|h| h.contains("`add`")),
+        "{:?}",
+        d.help
+    );
+    assert_eq!(fixed(src), src.replace("insert", "add"));
 }

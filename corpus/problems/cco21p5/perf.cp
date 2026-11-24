@@ -1,5 +1,5 @@
-// Tuned: Ints with a `far` sentinel in the tree instead of `?Int`, one sorted list of packed
-//   (found from, town) keys instead of a list per town, and a pointer for the next cut instead
+// Tuned: Ints with a `far` sentinel in the tree instead of `?Int`, one list of towns sorted by
+//   the town each is found from instead of a list per town, and a pointer for the next cut instead
 //   of a binary search.
 //
 // Source: CCO 2021 P5, Bread First Search, https://dmoj.ca/problem/cco21p5
@@ -22,11 +22,8 @@ var earliest: [Town]?Town = None
 for (a, b) in read<[m](Town, Town)>():
     let (lo, hi) = minmax(a, b)
     earliest[hi] min= Some(lo)
-// each town found from an earlier one, as e << 18 | v, sorted by the town e it is found from
-var found: List<Int> = []
-for v in Town:
-    if let e = earliest[v]: found.push(e.ord << 18 | v.ord)
-found.sort()
+// each town found from an earlier one, sorted by the town it is found from
+let found = Town.filter(v => earliest[v] != None).collect().sorted(by: v => earliest[v]!)
 var unseen = found.len
 var later: [Town.cuts]?Town = None
 for v in Town.rev: later[v.l] = min(later[v.r], earliest[v])
@@ -37,11 +34,12 @@ var best = SegTree(min, [Town.cuts] c => if c == Town.cuts.last!: 0 else: far, a
 let end = Town.cuts.last!
 var next = end
 for i in Town.drop(1).rev:
-    while unseen > 0 and found[unseen - 1] >> 18 == i.ord:
+    while unseen > 0 and earliest[found[unseen - 1]]! == i:
         unseen -= 1
-        best.apply(Town.nth(found[unseen] % (1 << 18)).r..=end, 1)
+        best.apply(found[unseen].r..=end, 1)
     if earliest[i] == None: best.apply(i.r..=end, 1)
     // the first cut after i with no town found before i beyond it only moves left as i does
-    while next > i.r and later[Town.cuts(Int(next) - 1)].is_none_or(e => e >= i): next = Town.cuts(Int(next) - 1)
+    while next > i.r and
+        later[Town.cuts(Int(next) - 1)].is_none_or(e => e >= i): next = Town.cuts(Int(next) - 1)
     best.set(i.l, best.fold(next..=end))
 print(best.get(Town(2).l))

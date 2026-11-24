@@ -6,7 +6,8 @@
 
 use crate::walk::{walk_stmt, Bind, Visitor};
 use crate::{File, Finding, MAP_CONTAINS_THEN_INDEX};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{Block, CmpOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -130,11 +131,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let (written, message) = match exit {
                 Some(exit) => (
                     format!("{lookup} else: {exit}"),
-                    format!("`{key} not in {map}` exits, then `{map}[{key}]` looks it up again"),
+                    &lint_rules::MAP_CONTAINS_THEN_INDEX_EXIT,
                 ),
                 None => (
                     format!("if {lookup}:"),
-                    format!("`{key} in {map}` is tested, then `{map}[{key}]` looks it up again"),
+                    &lint_rules::MAP_CONTAINS_THEN_INDEX,
                 ),
             };
             let replaced = match exit {
@@ -146,7 +147,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 Some((_, line)) => edits.push((line, String::new())),
                 None => edits.extend(found.iter().map(|s| (s.shift(base), name.clone()))),
             }
-            let mut diag = Diagnostic::warning(MAP_CONTAINS_THEN_INDEX.code, test.shift(base), message)
+            let mut diag = message.warning(test.shift(base), &[&key, &map, &map, &key])
                 .with_label(found[0].shift(base), "the second lookup")
                 .with_help(format!(
                     "write `{written}` and read `{name}`: one lookup, and no `{map}[{key}]` left to trap when an edit moves it past the test"

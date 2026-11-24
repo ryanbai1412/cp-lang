@@ -30,6 +30,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   routes `max_by` to it.
 - **General fix (stdlib/diag):** none needed beyond the current help. Keep the help on every
   `_by` twin (`min_by`, `sort_by`, `max_by_key`).
+- **Owner:** stdlib.
 - **Severity:** low.
 
 ## `Bitset.insert` is spelled `add`
@@ -48,7 +49,10 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   (`insert` -> `add`), name it in the help with its signature
   (`add(i) -> Bool: true if i was absent`), not only in the method list. This helps every set
   type (`Set`, `Bitset`, `DynBitset`).
+- **Owner:** Consumers/Tools.
 - **Severity:** low.
+- **Status:** fixed by 59bed056c: `s.insert(v)` on a `Bitset` now offers `add`, which returns
+  whether the bit was new.
 
 ## No way to orient a non-tree edge toward its ancestor
 - **Where:** `dream.cp`,
@@ -68,7 +72,9 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   pair, which it can check with `is_anc`, or have `dfs_tree` also give its back edges already
   oriented. This helps every lowpoint, cycle-space and cactus port that walks back edges
   (bridges, 2-edge-connected parts, ear decompositions).
+- **Owner:** stdlib.
 - **Severity:** medium.
+- **Fixed:** `tree.orient(e.u, e.v)` gives `(anc:, desc:)` for any ancestor pair (decision 583).
 
 ## `List.pad_to` is missing; `resized` copies
 - **Where:** `dream.cp`, `diags.pad_to(4 * n - 1, with: diags.last!)`, now
@@ -83,7 +89,9 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
 - **General fix (stdlib):** a mutating `List.resize(n, fill)` next to `resized`, matching the
   `sort`/`sorted` pair. Give `pad`/`pad_to` misses a help line naming it. This helps any
   port that grows a table to a known length (DP rows, layered output).
+- **Owner:** stdlib.
 - **Severity:** low.
+- **Fixed:** `List.resize(n, x)` already pads in place; `pad`/`pad_to` now get a help and fix naming it (decision 583).
 
 ## A `@grader fn` can't return a fixed-size grid
 - **Where:** `dream.cp`, the signature `-> [2 * n][2 * n]1..=n` and the body
@@ -103,6 +111,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
 - **General fix (compiler):** let `[n]T` and nested `[n][m]T` cross to the grader as
   `std::vector` (and nested vectors), with ranged ints crossing as `int`. Also accept `[a][b] (x, y) => e` as the 2-D table form. This helps
   every IOI task that returns a grid or matrix.
+- **Owner:** Core.
 - **Severity:** medium.
 
 ## A root `grader.cpp` is linked into the stdin port
@@ -120,7 +129,36 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
 - **General fix (tools):** link a found `grader.cpp` only when the program has a `@grader fn`,
   or have `corpus.py` pass `--grader` for the dream only. This helps every IOI package that
   pairs a `@grader` dream with a stdin port.
+- **Owner:** Consumers/Tools.
 - **Severity:** medium.
+- **Status:** fixed by 57c83b9a8: a found `grader.cpp` is linked only into a program that
+  declares a `@grader fn`, so `grader.cpp` and `worldmap.h` now sit at the package root.
+
+## The port and the dream build the map differently
+- **Where:** `port.cp:23-33` against `dream.cp:14-26`.
+- **What:** the dream tours the deepest root path last and expands each vertex at its first
+  visit, then pads with `while diags.len < 4 * n - 1: diags.push(diags.last!)`. The port gives
+  each back edge to the end whose roomiest visit is nearer the tour's middle and expands every
+  vertex once, at that visit; its 2n - 1 visits plus n two-diagonal expansions make exactly
+  4n - 1 diagonals, so it needs neither the padding nor the `expanded` set. The port came second
+  and is the better rule; the dream keeps the deep-path order because it is the editorial's
+  argument and both score in full on the package cases.
+- **Cost:** none at runtime (n <= 40); two arguments to check for one problem.
+- **General fix (idioms):** move the dream to the port's rule when the dream is next rewritten.
+- **Severity:** low.
+
+## `cpl run` doesn't find the root `grader.cpp`
+- **Where:** `cpl run dream.cp <input>` in `corpus/problems/ioi25_worldmap` asked for
+  `--grader grader.cpp`, while `cpl test` and `corpus.py verify` found the root grader.
+- **What felt wrong:** two commands looked for the package's grader in different places, so
+  running the dream by hand needed a flag the judge path never did.
+- **Goal it hurts:** coherence, evidence.
+- **Ideal code:** `cpl run dream.cp` in a package finds the grader the way `cpl test` does.
+- **General fix (tools):** one grader lookup shared by `cpl run`, `cpl test` and verify.
+- **Owner:** Consumers/Tools.
+- **Severity:** low.
+- **Status:** fixed by 68f20b8be: all three use one `find_grader`, which finds a tests.toml
+  package's root `grader.cpp` even before its cases are made.
 
 ## Measurements
 

@@ -164,10 +164,13 @@ test('canonical source carries no generated demo bundle',()=>{
   assert.deepEqual(embedded, []);
 });
 
-test('an editor hears each new step line once and every clicked line',()=>{
+test('an editor hears each new step line once and every clicked line, 0-based',()=>{
   const posted=[];const link=T.editorLink(m=>posted.push(plain(m)));
   link.step(3);link.step(3);link.step(5);link.reveal(5);link.reveal(5);
-  assert.deepEqual(posted,[{type:'step',line:3},{type:'step',line:5},{type:'reveal',line:5},{type:'reveal',line:5}]);
+  link.step(0);link.step(undefined);link.step(1.5);link.reveal(0);link.reveal(null);
+  link.step(1);link.reveal(1);
+  assert.deepEqual(posted,[{type:'step',line:2},{type:'step',line:4},{type:'reveal',line:4},{type:'reveal',line:4},
+    {type:'step',line:0},{type:'reveal',line:0}]);
 });
 
 test('a re-run keeps the place by line visit and names the first change', () => {

@@ -8,27 +8,33 @@ typed by the statement's bounds.
 Evidence: stress agrees on 30/30 cases against the v0.2 port and 30/30 against the accepted
 C++, and --max gives the same output.
 
-## Remaining gap: speed
+## Speed
 
-The port is now a flat `Mat<?Int>` over `Semiring(max, +)`: `*` for the 2^b powers and a 1 x |State|
+The port is a flat `Mat<?Int>` over `Semiring(max, +)`: `*` for the 2^b powers and a 1 x |State|
 `Mat` for the best-joy row. std's `TropicalProduct for Int` runs the product: while every entry is
-within 2^60 of 0 it holds `None` as -2^62 (std's own sentinel, never seen by the port) and runs an
+under 2^60 in size it holds `None` as -2^62 (std's own sentinel, never seen by the port) and runs an
 unchecked, branch-free ikj pass; past the bound it leaves the product to the `?Int` loop, which traps
-as written (std-matrix/max-plus-past-the-bound-traps-as-the-loop.cp).
+as written (std-matrix/max-plus-past-the-bound-traps-as-the-loop.cp). A product's result stays in
+that sentinel form, with its largest `|entry|`, until an entry is read or set, so a chain of
+products (the powers, then each best-row step) converts each matrix once, not twice per product.
 
-Measured on --max, five runs each, noi judge (`isa = "avx2"`):
+Measured on --max, noi judge (`isa = "avx2"`), g++ 14 -O2:
 
 | Build | Time | RSS |
 |---|---|---|
 | AC as written (Ofast, unroll-loops, avx2) | 0.12-0.15 s | 21.1 MB |
-| AC with O3 in place of Ofast | 0.12 s | |
-| Port | 0.22-0.25 s | 20.3 MB |
-| Port with Ofast in place of O3 | 0.24-0.28 s | |
+| Port, converting on every product | 0.22-0.25 s | 20.3 MB |
+| Port, sentinel form kept between products | 0.12-0.13 s | 21.4 MB |
 
-So Ofast's reassociation is not the gap. perf on the port: 50% is the ikj inner max loop, 22% the
-`?Int` -> flat copies of both operands (and the bound reduction), 12% filling the output, and the
-rest the flat -> `?Int` copy back. The AC keeps its matrices flat between products; the port pays
-two conversions per product. bench/math/maxplus (200x200 `**` 10^6) is 1.12x its C++.
+With conversions on every product, perf put 50% in the inner max loop, 22% in the `?Int` -> flat
+copies of both operands, 12% in filling the output and the rest in the copy back; each 1 x 250
+best-row step converted the whole 250 x 250 power. Ofast's reassociation was never the gap (the AC
+with O3 in its place also runs in 0.12 s). bench/math/maxplus (200x200 `**` 10^6) is 1.02-1.07x
+its C++.
+
+`corpus.py verify` builds the port for its package's judge (`noi`, avx2), as `cpl test` and the
+judge do, and reports 0 findings; built for `codeforces` instead, without the avx2 target the AC's
+own pragmas give it, the port takes 0.38-0.54 s.
 
 ## Dream
 

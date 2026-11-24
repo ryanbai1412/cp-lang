@@ -14,8 +14,10 @@ use crate::{
     File, Finding, Lint, HAND_ROLLED_GCD, HAND_ROLLED_POW, LAST_VIA_LEN, MANUAL_BIT_TEST,
     MANUAL_DIGIT_LOOP, MANUAL_PAIR_LOOP, MANUAL_STARTS_WITH, SORT_DESC_BY_NEGATION,
 };
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::{lint_rules, Msg};
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::*;
+use std::fmt::Display;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = Spelled {
@@ -54,7 +56,7 @@ impl Spelled<'_> {
         &mut self,
         lint: &'static Lint,
         span: Span,
-        (msg, help): (String, String),
+        (msg, args, help): (&'static Msg, &[&dyn Display], String),
         label: Option<(Span, &str)>,
         fix: Option<(Span, String)>,
     ) {
@@ -67,7 +69,7 @@ impl Spelled<'_> {
                 return;
             }
         }
-        let mut diag = Diagnostic::warning(lint.code, at, msg).with_help(help);
+        let mut diag = msg.warning(at, args).with_help(help);
         if let Some((at, what)) = label {
             diag = diag.with_label(at.shift(self.base), what);
         }
@@ -135,7 +137,8 @@ impl Spelled<'_> {
             &MANUAL_BIT_TEST,
             expr.span,
             (
-                format!("`{}` tests one bit by hand", self.text(expr)),
+                &lint_rules::MANUAL_BIT_TEST,
+                &[&self.text(expr).to_string()],
                 format!("write `{fixed}`; `bit` reads bit `i` of an `Int`"),
             ),
             Some((unparen(x).span, "the tested value")),
@@ -172,10 +175,8 @@ impl Spelled<'_> {
             &MANUAL_STARTS_WITH,
             expr.span,
             (
-                format!(
-                    "`{}` compares a slice with a pattern by hand",
-                    self.text(expr)
-                ),
+                &lint_rules::MANUAL_STARTS_WITH,
+                &[&self.text(expr).to_string()],
                 format!(
                     "write `{fixed}`; it is `false`, not a trap, when the pattern runs past the end"
                 ),
@@ -410,10 +411,7 @@ impl Spelled<'_> {
             self.push(
                 &SORT_DESC_BY_NEGATION,
                 span,
-                (
-                    format!("`.{}` sorts descending by negating the key", method.text),
-                    help,
-                ),
+                (&lint_rules::SORT_DESC_BY_NEGATION, &[&method.text], help),
                 None,
                 fix,
             );
@@ -456,7 +454,7 @@ impl Spelled<'_> {
             &LAST_VIA_LEN,
             expr.span,
             (
-                format!("`{}` reads the last element by its index", self.text(expr)),
+&lint_rules::LAST_VIA_LEN, &[&self.text(expr).to_string()],
                 format!("write `{fixed}`; `.last` is the last element, and `.last(k)` the one `k` before it"),
             ),
             Some((base.span, "the list")),
@@ -532,11 +530,12 @@ impl Spelled<'_> {
             let Some(seq) = self.indexes_only(&body.stmts, inner, &jbody.stmts, [i, j]) else {
                 return;
             };
+            let (i, j, jt) = (i.to_string(), j.to_string(), self.text(jiter).to_string());
             self.push(
                 &MANUAL_PAIR_LOOP,
                 Span::new(inner.span.start, jiter.span.end),
                 (
-                    format!("`for {j} in {}` walks each pair `{i} < {j}` by hand", self.text(jiter)),
+&lint_rules::MANUAL_PAIR_LOOP, &[&j, &jt, &i, &j],
                     format!("write `for (x, y) in {seq}.pairs()`; the body reads `{seq}[{i}]` and `{seq}[{j}]` only"),
                 ),
                 None,
@@ -641,7 +640,7 @@ impl Spelled<'_> {
             &MANUAL_DIGIT_LOOP,
             Span::new(stmt.span.start, cond.span.end),
             (
-                format!("this loop takes `{y}` apart digit by digit"),
+&lint_rules::MANUAL_DIGIT_LOOP, &[&y],
                 format!("write `for d in {call}` (lowest digit first), or `{call}.sum()` for the digit sum"),
             ),
             None,
@@ -676,7 +675,7 @@ impl Spelled<'_> {
                 &HAND_ROLLED_POW,
                 decl.name.span,
                 (
-                    format!("`{}` is fast exponentiation by squaring, written by hand", decl.name.text),
+&lint_rules::HAND_ROLLED_POW, &[&decl.name.text],
                     "call `pow_mod(b, e, m)` from `std.math`; with a fixed modulus, `Mod<P>` makes it `b ** e`".to_string(),
                 ),
                 None,
@@ -717,7 +716,7 @@ impl Spelled<'_> {
                 &HAND_ROLLED_GCD,
                 decl.name.span,
                 (
-                    format!("`{}` is Euclid's algorithm, written by hand", decl.name.text),
+&lint_rules::HAND_ROLLED_GCD, &[&decl.name.text],
                     format!("call `gcd({a}, {b})` from `std.math`; a fold over a list is `xs.fold(gcd)`"),
                 ),
                 None,

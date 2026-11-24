@@ -206,12 +206,9 @@ impl<'a> Parser<'a> {
                     _ => unreachable!("`mixed` is a binary expression"),
                 };
                 self.error(
-                    Diagnostic::error(
-                        codes::UNPARENTHESIZED_COALESCE,
-                        span,
-                        "`??` mixed with `+ - * / %` needs parentheses",
-                    )
-                    .with_help(help),
+                    msgs::syntax::COALESCE_MIXED
+                        .error(span, &[])
+                        .with_help(help),
                 );
             }
         }
@@ -331,12 +328,9 @@ impl<'a> Parser<'a> {
         let span = Span::new(self.start(), self.span_n(1).end);
         let op = if half == T::Amp { "&&" } else { "||" };
         self.error(
-            Diagnostic::error(
-                codes::UNEXPECTED_TOKEN,
-                span,
-                format!("`{op}` is `{word}` in CP Lang"),
-            )
-            .with_fix(format!("replace with `{word}`"), span, word),
+            msgs::syntax::C_LOGIC_OP
+                .error(span, &[&op, &word])
+                .with_fix(format!("replace with `{word}`"), span, word),
         );
         self.bump();
         true
@@ -890,11 +884,7 @@ impl<'a> Parser<'a> {
                         // Mid-edit `xs.`: keep the access so completion and
                         // hover still see the receiver.
                         let span = Span::point(self.prev_end());
-                        self.error(Diagnostic::error(
-                            codes::EXPECTED_NAME,
-                            span,
-                            "expected a field or method name after `.`",
-                        ));
+                        self.error(msgs::syntax::FIELD_AFTER_DOT.error(span, &[]));
                         Name {
                             text: String::new(),
                             span,
@@ -971,26 +961,31 @@ impl<'a> Parser<'a> {
         matches!(self.peek(), T::In | T::Type | T::Domain | T::Use) && !self.at_line_end()
     }
 
-    /// At `@cpp(`: an expression even at a line's start, not a decorator.
+    /// At `@cpp(` or `@intrinsic(`: an expression even at a line's start,
+    /// not a decorator.
     pub(super) fn at_cpp(&self) -> bool {
-        self.at(T::At)
-            && self.peek_n(2) == T::LParen
-            && (self.tokens.get(self.pos + 1)).is_some_and(|t| t.span.text(self.src) == "cpp")
+        self.at(T::At) && self.peek_n(2) == T::LParen && self.body_marker().is_some()
+    }
+
+    /// `cpp` or `intrinsic` after an `@`: a fn body named by a string.
+    fn body_marker(&self) -> Option<&'a str> {
+        let word = self.tokens.get(self.pos + 1)?.span.text(self.src);
+        matches!(word, "cpp" | "intrinsic").then_some(word)
     }
 
     fn primary(&mut self) -> Expr {
         let start = self.start();
         let kind = match self.peek() {
-            T::At
-                if self.peek_n(1) == T::Ident
-                    && self
-                        .tokens
-                        .get(self.pos + 1)
-                        .is_some_and(|t| t.span.text(self.src) == "cpp") =>
-            {
+            T::At if self.peek_n(1) == T::Ident && self.body_marker().is_some() => {
+                let intrinsic = self.body_marker() == Some("intrinsic");
                 self.bump();
                 self.bump();
-                self.expect(T::LParen, "`(` and the C++ snippet after `@cpp`");
+                let what = if intrinsic {
+                    "the intrinsic's name after `@intrinsic`"
+                } else {
+                    "the C++ snippet after `@cpp`"
+                };
+                self.expect(T::LParen, &format!("`(` and {what}"));
                 let code = if self.at(T::Str) {
                     let raw = self.text();
                     let inner = raw
@@ -1001,15 +996,18 @@ impl<'a> Parser<'a> {
                     self.bump();
                     s
                 } else {
-                    self.error(Diagnostic::error(
-                        codes::EXPECTED_EXPR,
-                        self.span(),
-                        "expected a string literal in `@cpp(...)`",
-                    ));
+                    self.error(
+                        msgs::syntax::CPP_NEEDS_STRING
+                            .error(self.span(), &[&if intrinsic { "intrinsic" } else { "cpp" }]),
+                    );
                     String::new()
                 };
                 self.expect(T::RParen, "`)`");
-                ExprKind::Cpp(code)
+                if intrinsic {
+                    ExprKind::Intrinsic(code)
+                } else {
+                    ExprKind::Cpp(code)
+                }
             }
             T::Dot if self.peek_n(1) == T::Int => {
                 self.bump();
@@ -1017,12 +1015,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let span = self.span_from(start);
                 self.sink.push(
-                    Diagnostic::error(
-                        codes::BAD_NUMBER,
-                        span,
-                        format!("`.{digits}` isn't a number; write a leading zero: `0.{digits}`"),
-                    )
-                    .with_help("floats start with a digit, like `0.5`"),
+                    msgs::syntax::LEADING_DOT_FLOAT
+                        .error(span, &[&digits, &digits])
+                        .with_help("floats start with a digit, like `0.5`"),
                 );
                 ExprKind::Float(format!("0.{digits}"))
             }
@@ -1148,14 +1143,9 @@ impl<'a> Parser<'a> {
                     self.pos = super::after_group(self.tokens, self.pos.saturating_sub(1));
                     let span = self.span_from(start);
                     self.error(
-                        Diagnostic::error(
-                            codes::BARE_OP_TUPLE,
-                            span,
-                            format!(
-                                "`({op_text}, ...)` is not an operation; write `each({op_text}, ...)` or `Semiring(...)`"
-                            ),
-                        )
-                        .with_fix("insert `each`", Span::point(span.start), "each"),
+                        msgs::syntax::BARE_OP_TUPLE
+                            .error(span, &[&op_text, &op_text])
+                            .with_fix("insert `each`", Span::point(span.start), "each"),
                     );
                     ExprKind::Error
                 } else if self.eat(T::DotDot) {
@@ -1247,12 +1237,9 @@ impl<'a> Parser<'a> {
                             self.bump();
                         }
                         let span = self.span_from(start);
-                        let mut diag = Diagnostic::error(
-                            codes::REMOVED_SYNTAX,
-                            span,
-                            "statements in parentheses are written as a block, `{ a; b }`",
-                        )
-                        .with_help("a block's value is its last expression");
+                        let mut diag = msgs::syntax::PAREN_STATEMENTS
+                            .error(span, &[])
+                            .with_help("a block's value is its last expression");
                         if depth == 0 {
                             diag.fixes.push(cpl_diag::Fix {
                                 title: "write it as a block".into(),
@@ -1331,13 +1318,10 @@ impl<'a> Parser<'a> {
             T::Bang => {
                 let span = self.span();
                 self.error(
-                    Diagnostic::error(
-                        codes::UNEXPECTED_TOKEN,
-                        span,
-                        "`!` doesn't negate in CP Lang",
-                    )
-                    .with_help("write `not x` to negate, or `x!` to unwrap an optional")
-                    .with_fix("replace with `not `", span, "not "),
+                    msgs::foreign::BANG_NOT
+                        .error(span, &[])
+                        .with_help("write `not x` to negate, or `x!` to unwrap an optional")
+                        .with_fix("replace with `not `", span, "not "),
                 );
                 self.bump();
                 return self.unary();
@@ -1365,12 +1349,9 @@ impl<'a> Parser<'a> {
                     .map_or("here".to_string(), |k| format!("after {}", k.describe()));
                 if let Some(extra) = self.doubled_operator() {
                     let op = self.peek().describe();
-                    let diag = Diagnostic::error(
-                        codes::EXPECTED_EXPR,
-                        self.span(),
-                        format!("expected a value {after}, found {op}"),
-                    )
-                    .with_fix(format!("remove the extra {op}"), extra, "");
+                    let diag = msgs::syntax::DOUBLED_OPERATOR
+                        .error(self.span(), &[&after, &op])
+                        .with_fix(format!("remove the extra {op}"), extra, "");
                     self.error(diag);
                 } else {
                     self.error_expected(codes::EXPECTED_EXPR, &format!("a value {after}"), None);
@@ -1502,11 +1483,7 @@ impl<'a> Parser<'a> {
 
     fn punned_field(&mut self, value: Expr) -> (Name, Expr) {
         let ExprKind::Name(text) = &value.kind else {
-            self.error(Diagnostic::error(
-                codes::EXPECTED_EXPR,
-                value.span,
-                "a record field needs a name: write `name: value`",
-            ));
+            self.error(msgs::syntax::FIELD_NEEDS_NAME.error(value.span, &[]));
             let name = Name {
                 text: "_".into(),
                 span: value.span,
@@ -1570,17 +1547,10 @@ impl<'a> Parser<'a> {
                         let both =
                             Span::new(self.rel(self.tokens[self.pos - 1].span).start, span.end);
                         self.error(
-                            Diagnostic::error(
-                                codes::REMOVED_SYNTAX,
-                                span,
-                                "use `elif`, not `else if`",
-                            )
-                            .with_help("write `elif cond:`")
-                            .with_fix(
-                                "replace with `elif`",
-                                both,
-                                "elif",
-                            ),
+                            msgs::syntax::ELSE_IF
+                                .error(span, &[])
+                                .with_help("write `elif cond:`")
+                                .with_fix("replace with `elif`", both, "elif"),
                         );
                         continue;
                     }
@@ -1617,12 +1587,9 @@ impl<'a> Parser<'a> {
         if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
             let at = self.prev_end();
             self.error(
-                Diagnostic::error(
-                    codes::EXPECTED_BLOCK,
-                    Span::point(at),
-                    "expected indented `pattern => value` arms after `match`",
-                )
-                .with_help("indent the next line by 4 spaces"),
+                msgs::syntax::MATCH_NEEDS_ARMS
+                    .error(Span::point(at), &[])
+                    .with_help("indent the next line by 4 spaces"),
             );
             return ExprKind::Match { scrutinee, arms };
         }
@@ -1733,12 +1700,9 @@ impl<'a> Parser<'a> {
                         if spec.is_none() {
                             let at = Span::new(colon.start, inner.len() as u32);
                             sub.sink.push(shift_signed(
-                                Diagnostic::error(
-                                    codes::UNEXPECTED_TOKEN,
-                                    at,
-                                    format!("`:{written}` is not a number format"),
-                                )
-                                .with_help(
+                                msgs::syntax::BAD_NUMBER_FORMAT
+                                    .error(at, &[&written])
+                                    .with_help(
                                     "a format is a width (`:5`, `:05`), digits after the point \
                                      (`:.3`, `:8.3f`), `:x` or `:b`",
                                 ),

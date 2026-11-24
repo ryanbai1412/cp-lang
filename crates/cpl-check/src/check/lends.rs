@@ -186,8 +186,30 @@ fn foreign_lends<'e>(e: &'e Expr, lends_self: &dyn Fn(&Expr) -> bool, out: &mut 
 
 /// A call that may return a lent value: any method may be a projection
 /// (`b.cur(i)`), and a lowercase fn may be `lends`; the replay asks the types.
+/// `let d = o!` or `d = o!`: the name whose optional the statement unwraps.
+pub(crate) fn unwrapped_name(stmt: &Stmt) -> Option<&str> {
+    let value = match &stmt.kind {
+        StmtKind::Let {
+            init: Some(value), ..
+        }
+        | StmtKind::Assign { value, .. } => value,
+        _ => return None,
+    };
+    match &unparen(value).kind {
+        ExprKind::Unwrap(inner) => match &unparen(inner).kind {
+            ExprKind::Name(src) => Some(src),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 fn call_may_lend(e: &Expr) -> bool {
     match &unparen(e).kind {
+        // `b.cur(0)!` and `o!` lend what the optional lends.
+        ExprKind::Unwrap(inner) => {
+            matches!(unparen(inner).kind, ExprKind::Name(_)) || call_may_lend(inner)
+        }
         ExprKind::Call { callee, .. } => match &unparen(callee).kind {
             ExprKind::Field { .. } => true,
             ExprKind::Name(n) => n.chars().next().is_some_and(|c| c.is_ascii_lowercase()),
@@ -275,6 +297,7 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                 ExprKind::Index { .. } => true,
                 // Any getter may lend (`g.rows`); the replay asks the types.
                 ExprKind::Field { .. } => true,
+                ExprKind::Unwrap(_) => call_may_lend(init),
                 ExprKind::Call { callee, .. } => match &unparen(callee).kind {
                     // Any method may be a projection (`b.range(r)`); the
                     // replay asks the types.
@@ -1497,6 +1520,22 @@ impl<'a> Checker<'a> {
     fn extra_holds(&mut self, value: &Expr) -> Vec<(&'static str, Place, bool, bool)> {
         let e = unparen(value);
         match &e.kind {
+            // `b.cur(0)!` lends what the optional lends.
+            ExprKind::Unwrap(inner) => self.extra_holds(inner),
+            // `o!` or `let p = o` for a lent `o` holds `o`'s source.
+            ExprKind::Name(name) => {
+                let lent = match self.local(name) {
+                    Some(l) => self.lends.views.get(&l.span).cloned(),
+                    None => self.lends.global_views.get(name).cloned(),
+                }
+                .filter(|lent| lent.kind == "lent view");
+                match (lent, self.place(e)) {
+                    (Some(lent), Some(place)) => {
+                        vec![("lent view", place, lent.read_only, !lent.read_only)]
+                    }
+                    _ => Vec::new(),
+                }
+            }
             ExprKind::Mut(inner) => {
                 if let Some(mut place) = self.place(inner) {
                     place.steps.clear();
@@ -1664,6 +1703,43 @@ impl<'a> Checker<'a> {
                 steps: place.steps,
                 mutable: force_mut,
                 at: stmt.span,
+                until: last.span,
+                in_loop: false,
+                is_capture: false,
+            });
+        }
+    }
+
+    /// `if let d = b.cur(0):` / `while let`: the bound name holds what the value
+    /// lends while the body uses it.
+    pub(crate) fn begin_cond_hold(&mut self, cond: &Cond, body: &Block) {
+        let Cond::Let {
+            pat:
+                ast::Pattern {
+                    kind: ast::PatternKind::Name(name),
+                    ..
+                },
+            value,
+            ..
+        } = cond
+        else {
+            return;
+        };
+        let lent: Vec<_> = self
+            .extra_holds(value)
+            .into_iter()
+            .filter(|hold| hold.0 == "lent view")
+            .collect();
+        let Some(last) = body.stmts.iter().rev().find(|s| mentions(s, name)) else {
+            return;
+        };
+        for (_, place, _, force_mut) in lent {
+            self.lends.holds.push(Hold {
+                name: name.clone(),
+                root: place.root,
+                steps: place.steps,
+                mutable: force_mut,
+                at: value.span,
                 until: last.span,
                 in_loop: false,
                 is_capture: false,
@@ -1895,11 +1971,9 @@ impl<'a> Checker<'a> {
                 continue;
             };
             let parts = target_place.steps.len().cmp(&changed_place.steps.len());
-            let (message, help) = super::advice::same_place(&place, target, value, op, parts, why);
-            self.sink.push(
-                Diagnostic::warning(codes::SAME_PLACE_READ_WRITE, place.span, message)
-                    .with_help(help),
-            );
+            self.sink.push(super::advice::same_place(
+                &place, target, value, op, parts, why,
+            ));
         }
     }
 

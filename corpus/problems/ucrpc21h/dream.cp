@@ -21,6 +21,10 @@ fn busiest() -> ?Int:
             if let a2 = Load.at(a - x): next.union(can[a2, b])
             if let b2 = Load.at(b - x): next.union(can[a, b2])
             can[a, b].union(next)
-    (Load, Load).flat_map(((a, b)) => can[a, b].each().map(c => max(Int(a), Int(b), Int(c), total - Int(a) - Int(b) - Int(c)))).min()
+    (Load, Load).flat_map(
+        ((a, b)) => can[a, b].each().map(
+            c => max(Int(a), Int(b), Int(c), total - Int(a) - Int(b) - Int(c))
+        )
+    ).min()
 
 if let day = busiest() and day <= limit: print(2 * day) else: print("Impossible!")

@@ -207,9 +207,9 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | Crate | Job |
 |---|---|
 | `cpl-syntax` | operator table, lexer, error-tolerant parser, lossless tree |
-| `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries. Reads the judge's memory limit from `cpl-judge` for E0904; reads `CPL_STD_DIR` with `cpl-env` |
-| `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout |
-| `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place |
+| `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries. Reads the judge's memory limit from `cpl-judge` for E0904; reads `CPL_STD_DIR` with `cpl-env`; checks `@intrinsic` bodies against `cpl-rt` |
+| `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout; lowers an `@intrinsic` call to its `cpl-rt` primitive |
+| `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place (decision 573); depends on nothing |
 | `cpl-interp` | the one interpreter: register VM, event stream, traces, replay, profiler; WASM build; reads `CPL_VM_STATS` with `cpl-env` |
 | `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles |
 | `cpl-diag` | diagnostic model and renderers; its JSON shape is printed with `cpl-json`. `plain` turns doc text's LaTeX math and intra-doc links into terminal text for hover, the CLI and lint (`cpl_doc::plain` re-exports it) |
@@ -217,7 +217,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries ; `cpl-fmt` and `cpl-lint` read their `cp.toml` tables through `cpl-config`; `cpl-lint` prints its registry (`cpl lint --list --json`) with `cpl-json`; `cpl-stress` runs `cpl-lint` so a clean report can name the bound lints whose witnesses its small cases miss, and waits on its programs with `cpl-wait`; `cpl-stress` and `cpl-judge` read their cache settings with `cpl-env` |
 | `cpl-lsp` | the language server. `lib.rs` only re-exports `Server` and `serve`; dispatch is in `server.rs`. Hover facts come from `cpl-check/src/hover.rs`; the LSP renders them as markdown. Uses `cpl-check`, `cpl-lint`, `cpl-fmt`, `cpl-judge`, `cpl-ir`, and `cpl-doc` for doc text without Markdown math or links (`cpl_doc::plain`). `transport` framing is shared with the DAP in `cpl-cli/src/dap.rs`. `build.rs` lists the std modules for `use std.` completion |
 | `cpl-conform` | one harness: conformance, corpus, doc examples (read by cpl-syntax's doc parser), differential, fuzzing, rewrites (cpl-lint fixes and cpl-fmt keep output), scoreboard; lists the corpus with `cpl-corpus`, judges an interactive corpus case with `cpl-stress`'s interactor judge (decision 556), and waits on its children and on another worker's build with `cpl-wait`; reads its `CPL_CONFORM_*` settings with `cpl-env` |
-| `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`); `cpl watch`, the benchmark's runs and the fetcher's page rate wait with `cpl-wait` |
+| `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`); the one expansion of a package's `tests.toml` into its cases (`package.rs`, which `cpl test`, `scripts/corpus.py make` and the tests share), reading `CPL_GXX_FETCH` with `cpl-env`; `cpl watch`, the benchmark's runs and the fetcher's page rate wait with `cpl-wait` |
 | `cpl-json` | one dependency-free JSON value and printer, shared by every tool that speaks JSON |
 | `cpl-config` | the one dependency-free reader of `cp.toml` (`cpl-check`'s `[libs]`, over disk or the browser's files; `cpl-fmt`, `cpl-lint`, `cpl-judge`, `cpl-contest`'s `[limits]` and template, `cpl-lsp`'s project root): finds the nearest one, yields a table's `key = value` lines, and holds `SCHEMA`, every table and key a tool reads |
 | `cpl-corpus` | the one dependency-free Rust corpus walker: the problem packages under `corpus/problems`, listed as `scripts/corpus.py ls` lists them |

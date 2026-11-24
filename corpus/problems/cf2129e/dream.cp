@@ -37,5 +37,12 @@ fn step(p: Arc, by: Int):
             values.add(f[x], 1)
 
 let windows = [first_arc[x.l.l]..first_arc[x.r.r] for x in asks]
-print(mo(windows, add: p => step(p, 1), remove: p => step(p, -1),
-         answer: qi => values.kth(asks[qi].k - 1 + n - (asks[qi].r - asks[qi].l + 1))), sep: "\n")
+print(
+    mo(
+        windows,
+        add: p => step(p, 1),
+        remove: p => step(p, -1),
+        answer: qi => values.kth(asks[qi].k - 1 + n - (asks[qi].r - asks[qi].l + 1)),
+    ),
+    sep: "\n",
+)

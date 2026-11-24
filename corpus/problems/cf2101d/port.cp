@@ -10,7 +10,6 @@
 //   [bad_l[i]+1..=i] x [i..bad_r[i]]; subtracting adjacent overlaps counts each once. O(n).
 // Bounds: n: 1..=200_000; a: 1..=n
 
-
 @!multitest
 let n: 1..=200_000 = read()
 domain Pos = 0..n
@@ -31,7 +30,7 @@ fn first_bad(xs: [Pos]Int) -> [Pos]Int:
     let suf = cur.rev.scan(min)
     [Pos] i => suf[i.l]
 
-let bad_r = first_bad([Pos] i => a[i])
+let bad_r = first_bad(a)
 let bad_l_rev = first_bad([Pos] i => a[Pos(n - 1 - i.ord)])
 let bad_l = [Pos] i => n - 1 - bad_l_rev[Pos(n - 1 - i.ord)]
 

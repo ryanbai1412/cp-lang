@@ -35,8 +35,8 @@ fn fewest(a_on: Bool, b_on: Bool) -> ?Int:
         for on in Bool:
             if (v == a and on != a_on) or (v == b and on != b_on): continue
             let across = (v == a and b_on) or (v == b and a_on)  // a blue neighbour on the extra edge
-            var no_kid: ?Int = Int(on)  // no blue child so far
-            var one_kid: ?Int = None    // exactly one blue child
+            var no_kid: ?Int = Int(on)                           // no blue child so far
+            var one_kid: ?Int = None                             // exactly one blue child
             for c in tree.children(v):
                 one_kid = min(plus(one_kid, blues[c, false, on]), plus(no_kid, blues[c, true, on]))
                 no_kid = plus(no_kid, blues[c, false, on])

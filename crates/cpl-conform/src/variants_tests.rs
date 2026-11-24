@@ -50,14 +50,6 @@ fn a_probe_that_traps_on_the_input_is_dropped() {
 }
 
 #[test]
-fn a_port_without_probe_sites_is_its_own_variant() {
-    let flat = "let n = 3\nprint(n + 1)\n";
-    assert!(super::same_as_port(flat));
-    let looped = "var s = 0\nfor i in 0..3:\n    s += i\nprint(s)\n";
-    assert!(!super::same_as_port(looped));
-}
-
-#[test]
 fn a_var_that_is_not_show_prints_through_yes_or_a_default() {
     let mut db = Session::new();
     let text = "var seen: [0..3]Bool = false\nvar best: [0..3]?Int = None\nfor i in 0..3:\n    seen[i] = true\n    best[i] = Some(i)\nprint(seen.count(b => b))\n";
@@ -106,4 +98,33 @@ fn a_var_of_ranges_prints_its_bounds_not_its_elements() {
     for line in variant.lines().filter(|l| l.starts_with("print(")) {
         assert!(line != "print(reach)" && line != "print(r)", "{variant}");
     }
+}
+
+#[test]
+fn a_hash_container_never_reaches_a_probe_through_a_value_that_holds_it() {
+    let mut db = Session::new();
+    let text = "struct Tally:\n    seen: HashMap<Int, Int>\n    total: Int\nvar t = Tally(HashMap(), 0)\nfor i in 0..3:\n    t.seen[i] = i\nprint(t.total)\n";
+    assert!(error_lines(&mut db, "probe.cp", &format!("{text}print(t)\n")).is_some());
+    let (variant, _) = build(&mut db, "probe.cp", text).expect("some probe checks");
+    assert!(!variant.contains("print(t)\n"), "{variant}");
+    assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
+}
+
+#[test]
+fn an_interner_prints_as_itself_so_the_diff_sees_its_order() {
+    let mut db = Session::new();
+    let text = "use std.marks.{Interner}\nvar names = Interner<Str>()\nfor w in [\"b\", \"a\", \"b\"]:\n    names.id(w)\nprint(names.len)\n";
+    let (variant, _) = build(&mut db, "probe.cp", text).expect("some probe checks");
+    assert!(variant.contains("print(names)\n"), "{variant}");
+    assert!(!variant.contains("sorted()"), "{variant}");
+    assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
+}
+
+#[test]
+fn a_sorted_set_prints_as_itself_so_the_diff_sees_its_text() {
+    let mut db = Session::new();
+    let text = "use std.bag.{SortedSet}\nvar seen = SortedSet<Int>()\nfor x in [3, 1, 3]:\n    seen.add(x)\nprint(seen.len)\n";
+    let (variant, _) = build(&mut db, "probe.cp", text).expect("some probe checks");
+    assert!(variant.contains("print(seen)\n"), "{variant}");
+    assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
 }

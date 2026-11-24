@@ -1267,7 +1267,7 @@ fn code_lenses_run_trace_test_and_stress_with_the_first_sample_when_asked() {
     let path = file.display().to_string();
     let uri = format!("file://{}", path.replace(' ', "%20"));
     let src = "let (a, b): (Int, Int) = read()\nprint(a + b)\n@alt(program)\nfn slow() = 0\n";
-    let lenses = |options: Value| -> Vec<(String, Vec<String>)> {
+    let lenses = |options: Value| -> Vec<(u64, String, Vec<String>)> {
         let mut server = Server::new();
         server.handle(&request(
             1,
@@ -1300,6 +1300,7 @@ fn code_lenses_run_trace_test_and_stress_with_the_first_sample_when_asked() {
             .map(|l| {
                 assert_eq!(l.at(&["command", "command"]).as_str(), Some("cpl.exec"));
                 (
+                    l.at(&["range", "start", "line"]).as_u64().unwrap(),
                     l.at(&["command", "title"]).as_str().unwrap().to_string(),
                     l.at(&["command", "arguments"])
                         .as_array()
@@ -1320,13 +1321,29 @@ fn code_lenses_run_trace_test_and_stress_with_the_first_sample_when_asked() {
     assert_eq!(
         lenses(obj([("codeLens", true.into())])),
         [
-            ("Run on 2".to_string(), s(&["run", &path, &input])),
+            (0, "Run on 2".to_string(), s(&["run", &path, &input])),
             (
+                0,
+                "Run on all 2 samples".to_string(),
+                s(&["run", &path, "--samples"])
+            ),
+            (
+                0,
                 "Trace on 2".to_string(),
                 s(&["run", &path, &input, "--trace"])
             ),
-            ("Test".to_string(), s(&["test", &path])),
-            ("Stress".to_string(), s(&["stress", &path])),
+            (0, "Test".to_string(), s(&["test", &path])),
+            (0, "Stress".to_string(), s(&["stress", &path])),
+            (
+                2,
+                "Stress the program against slow".to_string(),
+                s(&["stress", &path])
+            ),
+            (
+                2,
+                "Trace".to_string(),
+                s(&["run", &path, &input, "--trace"])
+            ),
         ]
     );
     std::fs::remove_dir_all(dir).unwrap();

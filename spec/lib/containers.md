@@ -298,16 +298,16 @@ agrees with brute-force 0/1 subset sums on random small weight multisets.
 > `first_true`/`last_true` (decision 137, `core/04-indices.md`), not
 > `first_true`/`last_true`. `drain(r)` is `drain_range(r)`.
 
-`SortedBag<K>` is backed by a B+tree of 32-slot nodes over flat arrays with a
-recycled free list (eliminating memory leaks on erase, fixing `cf2066e.md` #2)
-and linked leaves so a `BagCursor`, a leaf slot, steps to `prev` / `next` in
-\(O(1)\) (fixing `cf2066e.md` #1). A leaf slot stores `(key, value, count)`; an
-inner slot stores a separator, a child and the child's element count, which
-keeps `rank` and `nth` at \(O(\log n)\) (decision 558).
+`SortedBag<K>` is backed by an order-statistic B+tree over flat arrays (decision
+579): leaves hold up to 32 keys with their multiplicities and link to their
+neighbours, so a `BagCursor` steps to `prev` / `next` in \(O(1)\) (fixing
+`cf2066e.md` #1); inner nodes keep each child's element count for `rank` and
+`nth`; freed nodes are recycled (fixing `cf2066e.md` #2). `SortedMap` keeps
+each value's index beside its key in the leaf, not in a `HashMap` side table.
 
 <!-- signatures: std/bag.cp -->
 ```cp
-struct BagCursor(id: Int)  // opaque handle into a SortedBag
+struct BagCursor(id: Int, stamp: Int)  // opaque handle into a SortedBag
 
 struct SortedBag<K>                           // O(log n) ops, O(distinct) mem
     fn new() -> SortedBag<K>                  // O(1)
@@ -358,11 +358,12 @@ is false if already present) and exposes the exact same `first_ge`/`first_gt`/
 `each`/`each_rev`. This directly solves `cf2262b.md` (collapsing `Set<I>`,
 `Map<Int, I>`, and `Fenwick<I, Int>` into one `SortedSet<I>`).
 
-Why not mutate `SortedBag` through a cursor (`erase(c)`)? Because a B+tree
-insert or erase shifts slots and splits or merges nodes, which moves entries; keeping
-cursors read-only handles that remain valid until the next mutation avoids
-dangling-cursor traps while giving \(O(1)\) amortized `prev`/`next` and \(O(1)\)
-`entries_rev()` walks (which is exactly what `cf2066e` needs).
+A cursor is valid until the bag's next `add`, `remove` or `clear`: a B+tree
+change may split, merge or shift a leaf, so the slot a cursor names may then
+hold another key. The cursor carries the bag's mutation stamp; using a stale one
+traps on the interpreter and in `--checked` builds, naming the change, and on the
+judge the check is compiled out. Collect keys through cursors, then mutate.
+Cursors stay read-only (no `erase(c)`) for the same reason.
 
 Laws: `SortedBag` matches a sorted `List<K>` on every op; `nth(rank(k))` is
 `first_ge(k)`; `count_range(lo, hi) == rank(hi) - rank(lo)` for `lo <= hi`;
@@ -539,7 +540,8 @@ struct Compressed<D, T>(vals: [D]T)
 `Map<K, V>` and `Set<T>` are the default lookup tables: they already lower to
 the salted hash table when order is never observed (§1). Spell `HashMap<K, V>`
 or `HashSet<T>` only to require hashing whatever the program observes, and
-then walking one has no defined order. `std.hashmap` adds an explicit open-addressing table for `Int`
+then walking one has no defined order. A member that needs order (`first`, `last`, `pop_first`,
+`first_ge`, `range`, `drain`, ...) is an error on one: "a HashMap has no order; use Map". `std.hashmap` adds an explicit open-addressing table for `Int`
 keys when constant factor and memory matter:
 
 <!-- signatures: std/hashmap.cp -->
@@ -873,8 +875,9 @@ fn solve(span: Range<T>, live: List<Edge>):
 After landing the v1 surface above and rewriting the affected ports (`cf2066e`,
 `cf2237h`, `cf2187d`, `cf2262b`, `cf2147h`):
 
-- **B-tree `SortedBag` / `SortedSet`:** done (decision 558): a B+tree of
-  32-slot nodes replaced the treap, and `SortedMap` keeps its values in it.
+- **B-tree `SortedBag` / `SortedSet`:** done (decision 579, superseding 558): an
+  order-statistic B+tree of 32-slot leaves replaced the treap, and `SortedMap`
+  keeps its values beside its keys.
 
 ---
 

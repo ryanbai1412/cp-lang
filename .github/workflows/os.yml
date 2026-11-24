@@ -62,4 +62,4 @@ jobs:
         env:
           FILTER: ${{ inputs.filter || 'all()' }}
           STRESS: ${{ inputs.stress }}
-        run: cargo nextest run --workspace --no-fail-fast -E "$FILTER" ${STRESS:+--stress-count "$STRESS"}
+        run: just test --no-fail-fast -E "$FILTER" ${STRESS:+--stress-count "$STRESS"}

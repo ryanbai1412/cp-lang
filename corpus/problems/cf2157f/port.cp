@@ -11,7 +11,6 @@
 //   (difficulty x, length start - x); passes print last first. O(n) per tried d.
 // Bounds: n: 1..=250_000
 
-
 const LAYER_COST = 1000
 
 struct Plan(d: Int, cost: Int, max_w: Int, max_w_cnt: Int)

@@ -544,3 +544,19 @@ fn a_local_dead_after_a_literal_moves_into_it() {
     ));
     assert!(out.contains("W{n, std::move(vals)}"), "{out}");
 }
+
+#[test]
+fn an_if_let_over_a_fresh_optional_moves_its_payload() {
+    let out = cpp(concat!(
+        "fn f(n: Int) -> ?List<Int> = if n > 0: Some([n]) else: None\n",
+        "fn g(n: Int) -> ?List<Int>:\n",
+        "    if let got = f(n): return Some(got)\n",
+        "    None\n",
+        "print(yes(g(read()) == None))\n",
+    ));
+    assert!(
+        out.contains("std::vector<ll> got = std::move(*t0);"),
+        "{out}"
+    );
+    assert!(!out.contains("& got"), "{out}");
+}

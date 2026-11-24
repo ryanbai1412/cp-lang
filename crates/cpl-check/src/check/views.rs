@@ -94,11 +94,8 @@ impl Checker<'_> {
             }
         }
         if keyed.keys.is_some_and(|(lo, hi)| lo <= v && v < hi) {
-            let message = format!(
-                "`{w}[{v}]` reads source key {v}: a slice keeps its source's keys, so this is not its element {v}"
-            );
             self.sink.push(
-                Diagnostic::warning(codes::LITERAL_SLICE_INDEX, index.span, message).with_help(
+                cpl_diag::msgs::check::SLICE_KEY_READ.warning(index.span, &[&w, &v, &v, &v]).with_help(
                     format!(
                         "write `{w}.nth({v})` (or `{w}.first!`) for the element by position, or `{w}.rebase` to count from 0"
                     ),
@@ -361,7 +358,7 @@ impl Checker<'_> {
         indexed
     }
 
-    /// A member of a `Slice<S>` or a `.rev` the view doesn't declare: the
+    /// A member of a `.rev` the view doesn't declare: the
     /// source's, unless the `.rev` would need to be `Indexed` for it.
     pub(super) fn member_through_view(
         &mut self,
@@ -372,9 +369,6 @@ impl Checker<'_> {
         if let Some(cut) = Self::cut_member(base_ty, &name.text) {
             return Some(cut);
         }
-        if let Some(source) = self.slice_source(base_ty, &name.text) {
-            return Some(self.member_ty(expr, name, source));
-        }
         let source = base_ty.rev_source()?.clone();
         if self.rev_owns(&name.text) {
             return None;
@@ -383,21 +377,6 @@ impl Checker<'_> {
             return Some(Ty::Error);
         }
         Some(self.member_ty(expr, name, source))
-    }
-
-    /// The sequence a `Slice<S>` cuts, for a member `Slice` doesn't declare:
-    /// a slice has its source's members (R07.4.5).
-    pub(super) fn slice_source(&mut self, ty: &Ty, name: &str) -> Option<Ty> {
-        let Ty::Named { name: slice, args } = ty else {
-            return None;
-        };
-        if slice != "Slice" || args.len() != 1 {
-            return None;
-        }
-        let own = self
-            .members_of("Slice")
-            .is_some_and(|m| m.members.iter().any(|(n, _)| n == name));
-        (!own).then(|| args[0].clone())
     }
 }
 

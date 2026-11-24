@@ -46,7 +46,8 @@ fn is_big(i: Int, k: Int) -> Bool:
     (i >= k and bigs.get(Pos(i - k)) == 1) or bigs.suffix(cut(i - k)) >= n - i
 
 let first_big = parallel_bsearch(
-    value_asks.len, 0..n,
+    value_asks.len,
+    0..n,
     reset: () => bigs.clear(),
     apply: t => bigs.add(place[Val(n - t)], 1),
     ok: j => is_big(value_asks[j].at, value_asks[j].passes),
@@ -59,7 +60,9 @@ var place_sum = Fenwick<Pos, Int>()
 fn big_place_sum(k: Int) -> Int:
     let packed_from = (0..=n).first_true(c => count.suffix(cut(c - k)) >= n - c)!
     let packed = n - packed_from
-    (packed_from + n - 1) * packed / 2 + (count.all - packed) * k + place_sum.prefix(cut(packed_from - k))
+    (packed_from + n - 1) * packed / 2 +
+        (count.all - packed) * k +
+        place_sum.prefix(cut(packed_from - k))
 
 fn toggle(v: Val, on: Int):
     count.add(place[v], on)

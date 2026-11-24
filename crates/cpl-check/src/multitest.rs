@@ -4,7 +4,7 @@
 
 use crate::check::HoverEntry;
 use crate::db::{Analysis, Database};
-use cpl_diag::{codes, Diagnostic, Label, Span};
+use cpl_diag::{Label, Span};
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_stmt, Visitor};
 
@@ -112,12 +112,11 @@ impl Database {
             let Some(decl) = analysis.decl_span(&name) else {
                 continue;
             };
-            let message = format!(
-                "`{name}` is declared above `@!multitest`, so a `{domain}` stored in it would outlive its test case"
-            );
-            let mut diag = Diagnostic::error(codes::FRESH_TYPE_LEAKS_TEST, at, message).with_help(
-                format!("declare `{name}` below `@!multitest`, so each test case has its own"),
-            );
+            let mut diag = cpl_diag::msgs::check::FRESH_TYPE_LEAKS
+                .error(at, &[&name, &domain])
+                .with_help(format!(
+                    "declare `{name}` below `@!multitest`, so each test case has its own"
+                ));
             diag.labels.push(Label {
                 span: decl,
                 message: format!("`{name}` is declared here, once for every case"),

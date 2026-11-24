@@ -66,13 +66,6 @@ impl<'p> Emitter<'p> {
         if (nested && escapes) || (self.closure_id.is_some() && returns) {
             return false;
         }
-        // Each nested form wraps the callback in a new lambda type, so a
-        // recursive one instantiates without end (g++ ran out at its template
-        // depth after 115 s): a recursive form walks the list instead.
-        let recursive = |f: usize| self.devirt.recursive_fns.contains(&f);
-        if nested && recursive(*callee) && self.fn_id.is_some_and(recursive) {
-            return false;
-        }
         let feeds = cpl_ir::pushed::Feeds {
             summaries: std::mem::take(&mut self.summaries),
             pushers: std::mem::take(&mut self.pushers),
@@ -105,10 +98,19 @@ impl<'p> Emitter<'p> {
             "std::integral_constant<int, 0>"
         };
         if nested {
+            // A pusher calling itself, through others too, hands on a callback
+            // of one type: a fresh lambda type per level never ends in C++.
+            let (wrap, unwrap) =
+                if self.devirt.recursive_fns.contains(callee) && !decl.contains("auto") {
+                    self.need("fn_ref");
+                    ("cpl::fn_ref(", ")")
+                } else {
+                    ("", "")
+                };
             // What the callback stops with stops this form too.
             self.line(
                 out,
-                &format!("if (int cpl_r = cpl_each_{name}({call}{sep}[&]({decl}) -> {go} {{"),
+                &format!("if (int cpl_r = cpl_each_{name}({call}{sep}{wrap}[&]({decl}) -> {go} {{"),
             );
             self.indent += 1;
             for line in first {
@@ -117,7 +119,7 @@ impl<'p> Emitter<'p> {
             self.block(body, out);
             self.line(out, "return {};");
             self.indent -= 1;
-            self.line(out, "})) return cpl_r;");
+            self.line(out, &format!("}}{unwrap})) return cpl_r;"));
             return true;
         }
         let ret = match self.fn_id {
@@ -388,11 +390,13 @@ impl<'p> Emitter<'p> {
                             }
                             // The last value may be `Int.MAX`, which has
                             // no next one: the loop stops on reaching it.
+                            // `!=` rather than `<` lets the C++ compiler count
+                            // the rounds, as it does for a plain loop.
                             None => {
                                 let go = self.unique(&format!("{var}_go"));
                                 format!(
                                     "for ({cpp} {var} = {start}{extra}, {go} = {var} <= {bound}; {go}; \
-                                     {go} = {var} < {bound} && (++{var}, true)) {{"
+                                     {go} = {var} != {bound} && (++{var}, true)) {{"
                                 )
                             }
                         };
@@ -425,7 +429,7 @@ impl<'p> Emitter<'p> {
                             let go = self.unique(&format!("{var}_go"));
                             format!(
                                 "for ({cpp} {var} = {start}{extra}, {go} = {var} >= {bound}; {go}; \
-                                 {go} = {var} > {bound} && (--{var}, true)) {{"
+                                 {go} = {var} != {bound} && (--{var}, true)) {{"
                             )
                         };
                         self.line(out, &head);

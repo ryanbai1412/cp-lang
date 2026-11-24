@@ -28,6 +28,7 @@ use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use crate::fx::HashMap;
 use crate::modules::{FsLoader, Loader};
 use crate::ty::Ty;
+use cpl_diag::msgs::check as msgs;
 use cpl_diag::{codes, Diagnostic, LineIndex, Sink, Span};
 use cpl_syntax::ast::{self, StmtKind};
 use cpl_syntax::{library_lint, ParsedItem};
@@ -815,16 +816,22 @@ impl Database {
             for stmt in &item.parsed.stmts {
                 if let StmtKind::Mod { name, .. } = &stmt.kind {
                     if let Some((head, body_raw)) = item.text.split_once('\n') {
+                        // Blank and comment-only lines don't set the
+                        // body's indent, as in the lexer's blocks.
+                        let lead = |l: &str| l.len() - l.trim_start().len();
                         let indent = body_raw
                             .lines()
-                            .filter(|l| !l.trim().is_empty())
-                            .map(|l| l.len() - l.trim_start().len())
+                            .filter(|l| {
+                                let t = l.trim_start();
+                                !t.is_empty() && !t.starts_with("//")
+                            })
+                            .map(lead)
                             .min()
                             .unwrap_or(0);
                         let dedented: String = body_raw
                             .lines()
                             .map(|l| {
-                                if l.len() >= indent {
+                                if lead(l) >= indent {
                                     &l[indent..]
                                 } else {
                                     l.trim_start()
@@ -965,12 +972,9 @@ impl Database {
             });
             for (index, decorator) in found.skip(1) {
                 sink.push(
-                    Diagnostic::error(
-                        codes::UNEXPECTED_TOKEN,
-                        decorator.span.shift(ranges[index].span.start),
-                        format!("a second `@!{name}`"),
-                    )
-                    .with_help(help),
+                    msgs::A_SECOND_DIRECTIVE
+                        .error(decorator.span.shift(ranges[index].span.start), &[&name])
+                        .with_help(help),
                 );
             }
         }
@@ -978,11 +982,11 @@ impl Database {
         for (index, item) in items.iter().enumerate() {
             for stmt in &item.parsed.stmts {
                 match &stmt.kind {
-                    StmtKind::With { body: None, .. } if !leading => sink.push(Diagnostic::error(
-                        codes::WITH_NOT_FIRST,
-                        stmt.span.shift(ranges[index].span.start),
-                        "a bare `with` line comes first in its block; indent what it covers under `with ...:`",
-                    ).with_help(crate::check::advice::WITH_FIRST_HELP)),
+                    StmtKind::With { body: None, .. } if !leading => sink.push(
+                        msgs::WITH_NOT_FIRST
+                            .error(stmt.span.shift(ranges[index].span.start), &[])
+                            .with_help(crate::check::advice::WITH_FIRST_HELP),
+                    ),
                     _ if crate::check::runs(stmt) => leading = false,
                     _ => {}
                 }
@@ -999,22 +1003,13 @@ impl Database {
             let overload =
                 decl.kind == DeclKind::Fn && first.is_some_and(|f| f.kind == DeclKind::Fn);
             let mut diag = if overload {
-                Diagnostic::error(
-                    codes::OVERLOAD_BY_TYPE,
-                    decl.span.shift(offset),
-                    format!(
-                        "a second `fn {}`: fns are not overloaded by their parameter types",
-                        decl.name
-                    ),
-                )
-                .with_help("give it its own name, or make one fn with a named argument")
+                msgs::FN_OVERLOAD
+                    .error(decl.span.shift(offset), &[&decl.name])
+                    .with_help("give it its own name, or make one fn with a named argument")
             } else {
-                Diagnostic::error(
-                    codes::DUPLICATE_DEFINITION,
-                    decl.span.shift(offset),
-                    format!("`{}` is already defined in this file", decl.name),
-                )
-                .with_help("rename one of them; a top-level name has one definition")
+                msgs::DEFINED_TWICE
+                    .error(decl.span.shift(offset), &[&decl.name])
+                    .with_help("rename one of them; a top-level name has one definition")
             };
             if let Some(first) = first {
                 diag = diag.with_label(
@@ -1046,12 +1041,7 @@ impl Database {
                                 items[def_index].decls.iter().find(|d| d.name == iname)
                             {
                                 let dspan = decl.span.shift(ranges[def_index].span.start);
-                                let diag = Diagnostic::error(
-                                    codes::DUPLICATE_DEFINITION,
-                                    dspan,
-                                    format!("`{iname}` is already imported by `use` in this file"),
-                                )
-                                .with_label(
+                                let diag = msgs::IMPORTED_TWICE.error(dspan, &[&iname]).with_label(
                                     ispan.shift(ranges[index].span.start),
                                     format!("`{iname}` imported here"),
                                 );
@@ -1069,13 +1059,8 @@ impl Database {
             };
             let offset = ranges[index].span.start;
             sink.push(
-                    Diagnostic::warning(
-                        codes::WIDE_ARRAY,
-                        span.shift(offset),
-                        format!(
-                            "`{name}` stores 8-byte `Int`s, but every value written into it is in {lo}..={hi}"
-                        ),
-                    )
+                    msgs::WIDE_ARRAY
+                        .warning(span.shift(offset), &[&name, &lo, &hi])
                     .with_help(format!(
                         "declare the element range, `{}`: the array then takes the narrowest width that holds it, fewer bytes per cell",
                         item.text[span.start as usize..span.end as usize]
@@ -1088,15 +1073,11 @@ impl Database {
         for (index, range) in ranges.iter().enumerate().take(items.len()) {
             if let Some((span, data, size, bytes)) = padded_array(&items, index) {
                 sink.push(
-                        Diagnostic::warning(
-                            codes::PADDING,
-                            span.shift(range.span.start),
-                            format!(
-                                "each element holds {data} bytes of data in {size}, so {} of this {:.1} MB array is padding",
-                                size - data,
-                                bytes / 1e6
-                            ),
-                        )
+                        msgs::PADDING
+                            .warning(
+                                span.shift(range.span.start),
+                                &[&data, &size, &(size - data), &format_args!("{:.1}", bytes / 1e6)],
+                            )
                         .with_help("store it as `Packed<S>` (data only, unaligned loads) or with `layout: columns` (one array per field)"),
                     );
             }
@@ -1127,11 +1108,8 @@ impl Database {
                 let decl_span = decl.span.shift(ranges[def_index].span.start);
                 let line = lines.line_col(decl_span.start).line + 1;
                 sink.push(
-                    Diagnostic::error(
-                        codes::UNRESOLVED_NAME,
-                        r.span.shift(offset),
-                        format!("`{}` is not visible here: a `let` is visible only from line {line} on, and lambdas are not hoisted", r.name),
-                    )
+                    msgs::LET_NOT_HOISTED
+                        .error(r.span.shift(offset), &[&r.name, &line])
                     .with_label(decl_span, "defined here")
                     .with_help(format!("move `{}` above this, or make it a `fn` (fns are visible in their whole block)", r.name)),
                 );
@@ -1164,11 +1142,8 @@ impl Database {
                     .refs
                     .iter()
                     .find(|o| o.top_level && o.name == r.name);
-                let mut diag = Diagnostic::warning(
-                    code,
-                    r.span.shift(offset),
-                    format!("`{}` is {what}, and this walks it a second time", r.name),
-                );
+                let mut diag = msgs::WALKED_TWICE.warning(r.span.shift(offset), &[&r.name, &what]);
+                diag.code = code;
                 if let Some(o) = earlier {
                     diag = diag
                         .with_label(o.span.shift(ranges[first].span.start), "first walked here");
@@ -1198,17 +1173,18 @@ impl Database {
                     continue;
                 }
                 let line = lines.line_col(decl_span.start).line + 1;
-                let message = if def_index == index {
-                    format!("`{}` is used in its own definition", r.name)
+                let row = if def_index == index {
+                    &msgs::USED_IN_OWN_DEFINITION
                 } else {
-                    format!("`{}` is used here before it is set on line {line}", r.name)
+                    &msgs::USED_BEFORE_SET
                 };
                 let code = if r.in_lambda {
                     codes::UNRESOLVED_NAME
                 } else {
                     codes::USED_BEFORE_SET
                 };
-                let mut diag = Diagnostic::error(code, r.span.shift(offset), message);
+                let mut diag = row.error(r.span.shift(offset), &[&r.name, &line]);
+                diag.code = code;
                 if def_index != index {
                     diag = diag
                         .with_label(decl_span, "set here")
@@ -1229,11 +1205,11 @@ impl Database {
                                     range.span.start + stmt.span.start,
                                     range.span.start + stmt.span.end,
                                 );
-                                sink.push(Diagnostic::error(
-                                    codes::WITH_NOT_FIRST,
-                                    abs,
-                                    "a bare `with` line comes first in its block; indent what it covers under `with ...:`",
-                                ).with_help(crate::check::advice::WITH_FIRST_HELP));
+                                sink.push(
+                                    msgs::WITH_NOT_FIRST
+                                        .error(abs, &[])
+                                        .with_help(crate::check::advice::WITH_FIRST_HELP),
+                                );
                             }
                         }
                         StmtKind::Context { .. }
@@ -1389,23 +1365,17 @@ impl Database {
                     }
                 }
                 Some(_) => diags.push(
-                    Diagnostic::error(
-                        codes::PRIVATE_NAME,
-                        name.span,
-                        format!("`{}` is private to `{module_name}`", name.text),
-                    )
-                    .with_help(format!("declare it `pub` in `{module_name}` to import it")),
+                    msgs::PRIVATE_NAME
+                        .error(name.span, &[&name.text, &module_name])
+                        .with_help(format!("declare it `pub` in `{module_name}` to import it")),
                 ),
                 None => {
                     let public = analysis.public_names();
-                    let mut diag = Diagnostic::error(
-                        codes::UNRESOLVED_NAME,
-                        name.span,
-                        format!("`{module_name}` has no `{}`", name.text),
-                    );
+                    let has_no: &[&dyn std::fmt::Display] = &[&module_name, &name.text];
+                    let mut diag = msgs::MODULE_HAS_NO.error(name.span, has_no);
                     let std = module_name.starts_with("std.");
                     if std && crate::check::removed::is_removed(&name.text) {
-                        diag.message.push_str(": std removed it");
+                        diag.message = msgs::MODULE_HAS_NO_REMOVED.say(has_no);
                         if let Some(at) = self.unlisted(from, names, name) {
                             diag = diag.with_fix(format!("drop `{}`", name.text), at, "");
                         }
@@ -1426,7 +1396,7 @@ impl Database {
                     {
                         diag = diag.with_help(format!("`{}` is in `std.{m}`", name.text));
                     } else if std {
-                        diag.message.push_str(", and not in the stdlib (yet)");
+                        diag.message = msgs::MODULE_HAS_NO_NOT_STD.say(has_no);
                     }
                     diags.push(diag);
                 }
@@ -1456,9 +1426,8 @@ impl Database {
         let (path, text) = self.find_module(from, parts)?;
         let name = parts.join(".");
         if let Some(at) = self.analyzing.iter().position(|p| *p == path) {
-            let message = self.meet_cycle(at, &name, &path);
             diags.push(
-                Diagnostic::error(codes::UNRESOLVED_MODULE, span, message)
+                self.meet_cycle(at, &name, &path, span)
                     .with_help("move what both need into a third module"),
             );
             return None;

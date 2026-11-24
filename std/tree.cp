@@ -9,7 +9,7 @@
 //! structure indexed by `t.Pre` (a `SegTree`, with or without `act:`, a `Fenwick`), and
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
-use std.algebra.{Monoid, MaxSub, Action}
+use std.algebra.{Monoid, MaxSub, Action, Acts}
 use std.algebra.{Reversible}
 use std.algebra.{add}
 use std.dp.{Step}
@@ -627,6 +627,19 @@ pub struct Rooted<V, Pre, A>:
         if let q = par[c]: assert q == p
         else: assert false
         c
+
+    /// The ends of an ancestor pair, the ancestor first, in either order: a tree edge, or an
+    /// edge `dfs_tree` left out of an undirected graph's tree, which always joins a vertex to one
+    /// of its ancestors (a back edge).
+    ///
+    /// cost: \(O(1)\)
+    /// ties: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.orient(3, 3).anc == 3 and t.orient(3, 3).desc == 3`
+    /// traps: when neither `u` nor `v` is an ancestor of the other
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.orient(3, 0).anc == 0 and t.orient(3, 0).desc == 3 and t.orient(1, 4).desc == 4`
+    pub fn orient(self, u: V, v: V) -> (anc: V, desc: V):
+        if self.is_anc(u, v): return (anc: u, desc: v)
+        assert self.is_anc(v, u), "`orient(u, v)` needs one end to be an ancestor of the other"
+        (anc: v, desc: u)
 
     /// The lowest common ancestor of `a` and `b`, by heavy-path climbing.
     ///
@@ -1692,7 +1705,7 @@ fn down_and_up_match_depth_size_and_height():
         for u in V:
             if r.is_anc(v, u):
                 n += 1
-                h = max(h, r.depth(u) - r.depth(v))
+                h max= r.depth(u) - r.depth(v)
         assert sz[v] == n and ht[v] == h
 
 @test
@@ -2434,7 +2447,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); lc.get(1) == 0`
     /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(add); lc.link(0, 1); lc.link(1, 2); lc.apply_path(0, 2, 3); lc.fold_path(0, 2) == 9`
-    pub fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>:
+    pub fn new<A: Acts<T, F>, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>:
         let act = Action<T, F>.of(act, over)
         let val = if let init = a: init else: [V] _ => act.over.id
         LazyLinkCut(
@@ -3765,7 +3778,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); et.get(1) == 0`
     /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(0, 1); et.apply_tree(0, 3); et.fold_tree(1) == 6`
-    pub fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>:
+    pub fn new<A: Acts<T, F>, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>:
         let act = Action<T, F>.of(act, over)
         let val = if let init = a: init else: [V] _ => act.over.id
         LazyEulerTourTree(

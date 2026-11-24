@@ -16,7 +16,7 @@ let edges: [E](u: V, v: V) = read()
 
 let forest = Rooted.forest(Graph.undirected(edges))
 var deepest: [V]Int = 1  // vertices on the longest branch down from v
-var topped: [V]Int = 1  // vertices on the longest path whose highest vertex is v
+var topped: [V]Int = 1   // vertices on the longest path whose highest vertex is v
 for v in forest.order.rev:
     if let p = forest.parent(v):
         topped[p] max= deepest[p] + deepest[v]

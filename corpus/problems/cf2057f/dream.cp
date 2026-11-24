@@ -36,7 +36,9 @@ fn x_range(r: Range<C>, l: 1..=31) -> Range<Int>:
 var ans: [q]Int = a.max()!
 for l in 1..=31:
     var saved = IntervalMap<C, ?Int>.new(None)
-    let windows = [(s, window.fold(s..=e)) for s in Pos if let e = Pos.at(s + (l - 1))].sorted(by: w => w.1)
+    let windows = [
+        (s, window.fold(s..=e)) for s in Pos if let e = Pos.at(s + (l - 1))
+    ].sorted(by: w => w.1)
     for (s, total) in windows:
         let end = if let p = s.prev: cuts.index_of(2 * a[p]).l else: C.last!.r
         saved.assign(cuts.index_of(a[s]).l..end, total)

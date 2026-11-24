@@ -28,7 +28,11 @@ fn then(g: Tag, f: Tag) -> Tag:  // f first, then g
         Path(b.to, a.seen + b.seen)
     Tag([Sign] x => compose_sign(x), g.set)
 
-fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => MaxSub.zero, set: ?Cell = None) -> Tag =
+fn tag(
+    to: Sign -> Sign = x => x,
+    seen: Sign -> MaxSub = _ => MaxSub.zero,
+    set: ?Cell = None,
+) -> Tag =
     Tag([Sign] x => Path(to(x), seen(x)), set)
 
 let record = tag(seen: x => MaxSub.of(Int(x)))
@@ -43,7 +47,12 @@ let a: [I]-1e9..=1e9 = read()
 let unfolded = Monoid<Cell>(Cell(0, MaxSub.zero), (x, _) => x)
 var st = SegTree<I, Cell, Tag>(
     a: [I] i => Cell(a[i], MaxSub.of(a[i])),
-    act: Action<Cell, Tag>(id: tag(), compose: (g, f) => then(g, f), apply: (f, c, _) => run(f, c), over: unfolded),
+    act: Action<Cell, Tag>(
+        id: tag(),
+        compose: (g, f) => then(g, f),
+        apply: (f, c, _) => run(f, c),
+        over: unfolded,
+    ),
 )
 var last: U64 = 0
 fn at(y: U64) -> I = I.nth(Int((y ^ last) % U64(n)))

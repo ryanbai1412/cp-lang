@@ -1,6 +1,7 @@
 //! Statements and blocks.
 
 use super::*;
+use cpl_diag::msgs::stmt as msg;
 
 impl<'a> Parser<'a> {
     /// Parses one statement into `out`. An unexpectedly indented run of
@@ -9,12 +10,9 @@ impl<'a> Parser<'a> {
         if self.at(T::Indent) {
             let span = Span::point(self.span().start);
             self.error(
-                Diagnostic::error(
-                    codes::UNEXPECTED_INDENT,
-                    span,
-                    "this line is indented, but no block starts above it",
-                )
-                .with_help("remove the extra indentation, or end the line above with `:`"),
+                msg::STRAY_INDENT
+                    .error(span, &[])
+                    .with_help("remove the extra indentation, or end the line above with `:`"),
             );
             self.dedent_fix();
             self.recovering = false;
@@ -198,17 +196,10 @@ impl<'a> Parser<'a> {
                 format!("@!{}({})", name.text, rendered.join(", "))
             };
             self.error(
-                Diagnostic::error(
-                    codes::REMOVED_SYNTAX,
-                    span,
-                    format!("use `{replacement}` instead of `{}`", span.text(self.src)),
-                )
-                .with_help(format!("replace with `{replacement}`"))
-                .with_fix(
-                    format!("replace with `{replacement}`"),
-                    span,
-                    replacement,
-                ),
+                msg::USE_DIRECTIVE
+                    .error(span, &[&replacement, &span.text(self.src)])
+                    .with_help(format!("replace with `{replacement}`"))
+                    .with_fix(format!("replace with `{replacement}`"), span, replacement),
             );
         } else if !name.text.is_empty() {
             self.planned(span, &crate::planned::WRAP_LINE);
@@ -239,7 +230,8 @@ impl<'a> Parser<'a> {
         if self.at(T::Semi) && matches!(self.peek_n(1), T::Newline | T::Eof) {
             let semi = self.span();
             self.error(
-                Diagnostic::error(codes::UNEXPECTED_TOKEN, semi, "no `;` after a decorator")
+                msg::SEMI_AFTER_DECORATOR
+                    .error(semi, &[])
                     .with_help(
                         "statements end at the end of the line; `;` is only used inside `{ ... }`",
                     )
@@ -253,11 +245,8 @@ impl<'a> Parser<'a> {
             let known = matches!(name.text.as_str(), "multitest" | "interactive");
             if !known {
                 self.sink.push(
-                    Diagnostic::error(
-                        codes::UNEXPECTED_TOKEN,
-                        span,
-                        format!("unknown directive `@!{}`", name.text),
-                    )
+                    msg::UNKNOWN_DIRECTIVE
+                        .error(span, &[&name.text])
                     .with_help(format!(
                         "the file-level directives are `@!multitest` and `@!interactive`; a decorator is `@{}`",
                         name.text
@@ -270,19 +259,12 @@ impl<'a> Parser<'a> {
                     "move it out of the block, to the top of the file: it holds for every `print`"
                 };
                 self.sink.push(
-                    Diagnostic::error(
-                        codes::UNEXPECTED_TOKEN,
-                        span,
-                        format!("`@!{}` stands at the top level of the file", name.text),
-                    )
-                    .with_help(help),
+                    msg::DIRECTIVE_IN_BLOCK
+                        .error(span, &[&name.text])
+                        .with_help(help),
                 );
             } else if name.text == "interactive" && !args.is_empty() {
-                self.sink.push(Diagnostic::error(
-                    codes::UNEXPECTED_TOKEN,
-                    span,
-                    "`@!interactive` takes nothing",
-                ));
+                self.sink.push(msg::INTERACTIVE_ARGS.error(span, &[]));
             }
         }
         if !directive && name.text == "allow" && self.speculating == 0 {
@@ -291,21 +273,15 @@ impl<'a> Parser<'a> {
                 .map(|a| format!("{}: allow", a.value.span.text(self.src)))
                 .collect();
             let with = format!("with lint({})", lints.join(", "));
-            self.sink.push(
-                Diagnostic::error(
-                    codes::REMOVED_SYNTAX,
-                    span,
-                    "`@allow` was removed in CP Lang 0.3; lints are contexts",
-                )
-                .with_help(format!(
+            self.sink
+                .push(msg::ALLOW_REMOVED.error(span, &[]).with_help(format!(
                     "write `{with}` as the first line of the body, or around the statement"
-                )),
-            );
+                )));
         }
         let removed = match name.text.as_str() {
             "memo" => args.iter().find_map(|arg| match &arg.value.kind {
                 ExprKind::Name(kind) if arg.name.is_none() && (kind == "flat" || kind == "hash") => Some((
-                    format!("`@memo({kind})` was removed in CP Lang 0.2.2"),
+                    msg::MEMO_KIND_REMOVED.error(span, &[kind]),
                     "write bare `@memo`: the table is flat when the arguments are small and hashed otherwise",
                 )),
                 _ => None,
@@ -315,7 +291,7 @@ impl<'a> Parser<'a> {
                 .any(|arg| arg.name.as_ref().is_some_and(|n| n.text == "count"))
                 .then(|| {
                     (
-                        "`@multitest(count:)` was removed in CP Lang 0.2.2".to_string(),
+                        msg::MULTITEST_COUNT_REMOVED.error(span, &[]),
                         "read the count and loop: `for _ in 0..tests:`",
                     )
                 }),
@@ -326,24 +302,23 @@ impl<'a> Parser<'a> {
             {
                 let old = if name.text == "alt" { "@alt(main)" } else { "@brute" };
                 Some((
-                    format!("`{old}` was removed in CP Lang 0.3; write `@alt(program)` or `@alt(f)`"),
+                    msg::ALT_MAIN_REMOVED.error(span, &[&old]),
                     "`@alt(program)` marks a whole slow program for `cpl stress`, `@alt(f)` a slow `f`",
                 ))
             }
             "checker" => Some((
-                "`@checker` was removed in CP Lang 0.3; write `@check`".to_string(),
+                msg::CHECKER_REMOVED.error(span, &[]),
                 "`@check` marks the fn that judges an output",
             )),
             "grader" if self.at(T::Const) => Some((
-                "`@grader const` was removed in CP Lang 0.2.2".to_string(),
+                msg::GRADER_CONST_REMOVED.error(span, &[]),
                 "take the value as a parameter of the `@grader fn`",
             )),
             _ => None,
         };
-        if let Some((message, help)) = removed {
+        if let Some((diag, help)) = removed {
             if self.speculating == 0 {
-                self.sink
-                    .push(Diagnostic::error(codes::REMOVED_SYNTAX, span, message).with_help(help));
+                self.sink.push(diag.with_help(help));
             }
         }
         Decorator {
@@ -391,8 +366,8 @@ impl<'a> Parser<'a> {
             let ellipsis = found == T::Dot && self.prev_kind() == Some(T::DotDot);
             if let (true, Some(prev)) = (ellipsis, prev.filter(|p| p.end == span.start)) {
                 span = Span::new(prev.start, span.end);
-                let message = "`...` is not an expression; write `todo` for an unwritten part";
-                let diag = Diagnostic::error(codes::UNEXPECTED_TOKEN, span, message)
+                let diag = msg::ELLIPSIS
+                    .error(span, &[])
                     .with_help("`todo` has every type and traps when it runs")
                     .with_fix("replace with `todo`", span, "todo");
                 self.error(diag);
@@ -403,22 +378,12 @@ impl<'a> Parser<'a> {
             if self.skip_read_after_c_decl() {
                 return self.end_recovery(start);
             }
-            let mut diag = Diagnostic::error(
-                if found.is_closer() {
-                    codes::UNMATCHED_CLOSER
-                } else {
-                    codes::UNEXPECTED_TOKEN
-                },
-                span,
-                if found.is_closer() {
-                    format!("this {} has no matching opener", found.describe())
-                } else {
-                    format!(
-                        "expected the end of the statement, found {}",
-                        found.describe()
-                    )
-                },
-            );
+            let row = if found.is_closer() {
+                &msg::NO_OPENER
+            } else {
+                &msg::EXPECTED_STMT_END
+            };
+            let mut diag = row.error(span, &[&found.describe()]);
             if found.is_closer() {
                 diag = diag.with_fix("remove it", span, "");
             } else {
@@ -465,11 +430,7 @@ impl<'a> Parser<'a> {
                 let start = self.start();
                 self.skip_line();
                 let span = self.span_from(start);
-                self.error(Diagnostic::error(
-                    codes::UNSUPPORTED,
-                    span,
-                    "CP Lang has no macros; use a generic fn or inline helper instead",
-                ));
+                self.error(msg::NO_MACROS.error(span, &[]));
                 StmtKind::Error
             }
             T::Ident if self.text() == "guard" && self.peek_n(1) == T::Let => {
@@ -528,7 +489,8 @@ impl<'a> Parser<'a> {
                 let span = self.span();
                 self.not_in_language(
                     span,
-                    "there are no macros (R08.5.4)",
+                    &msgs::syntax::NO_MACROS,
+                    &[],
                     "write a generic fn; a lambda argument covers code that takes code",
                 );
                 self.skip_line();
@@ -629,12 +591,9 @@ impl<'a> Parser<'a> {
                     "`if`"
                 };
                 self.error(
-                    Diagnostic::error(
-                        codes::UNEXPECTED_TOKEN,
-                        span,
-                        format!("this `{word}` has no {target} above it at the same indentation"),
-                    )
-                    .with_help(format!("line `{word}` up with its {target}")),
+                    msg::UNALIGNED_ELSE
+                        .error(span, &[&word, &target])
+                        .with_help(format!("line `{word}` up with its {target}")),
                 );
                 self.skip_line();
                 StmtKind::Error
@@ -742,14 +701,7 @@ impl<'a> Parser<'a> {
                 let span = self.span();
                 let word = self.text();
                 let help = crate::token::removed_keyword(word).unwrap_or_default();
-                self.error(
-                    Diagnostic::error(
-                        codes::REMOVED_SYNTAX,
-                        span,
-                        format!("`{word}` was removed in CP Lang 0.2.2"),
-                    )
-                    .with_help(help),
-                );
+                self.error(msg::KEYWORD_REMOVED.error(span, &[&word]).with_help(help));
                 self.recovering = true;
                 self.skip_line();
                 StmtKind::Error
@@ -757,12 +709,9 @@ impl<'a> Parser<'a> {
             T::Mut if self.peek_n(1) == T::Fn => {
                 let span = self.span();
                 self.error(
-                    Diagnostic::error(
-                        codes::EXPECTED_EXPR,
-                        span,
-                        "a fn is not marked `mut`: mark the parameter it changes, `fn f(mut x: T)`",
-                    )
-                    .with_fix("remove `mut`", span, ""),
+                    msg::MUT_FN
+                        .error(span, &[])
+                        .with_fix("remove `mut`", span, ""),
                 );
                 self.recovering = false;
                 self.bump();
@@ -771,12 +720,9 @@ impl<'a> Parser<'a> {
             T::Ident if self.text() == "pure" && self.peek_n(1) == T::Fn => {
                 let span = self.span();
                 self.error(
-                    Diagnostic::error(
-                        codes::UNEXPECTED_TOKEN,
-                        span,
-                        "`pure fn` was removed; write `fn`",
-                    )
-                    .with_fix("remove `pure`", span, ""),
+                    msg::PURE_FN
+                        .error(span, &[])
+                        .with_fix("remove `pure`", span, ""),
                 );
                 self.recovering = false;
                 self.bump();
@@ -811,12 +757,9 @@ impl<'a> Parser<'a> {
         if !mutable && self.at(T::Mut) {
             let span = Span::new(stmt_start, self.span().end);
             self.error(
-                Diagnostic::error(
-                    codes::UNEXPECTED_TOKEN,
-                    span,
-                    "`let mut` is `var` in CP Lang",
-                )
-                .with_fix("replace with `var`", span, "var"),
+                msg::LET_MUT
+                    .error(span, &[])
+                    .with_fix("replace with `var`", span, "var"),
             );
             self.bump();
             mutable = true;
@@ -926,13 +869,7 @@ impl<'a> Parser<'a> {
             } else {
                 let word = if mutable { "var" } else { "let" };
                 let span = self.span_from(stmt_start);
-                self.error(Diagnostic::error(
-                    codes::EXPECTED_TOKEN,
-                    span,
-                    format!(
-                        "`{word}` with a type and no value: write `=` and the value it starts with (R01.10.2)"
-                    ),
-                ));
+                self.error(msg::TYPED_NO_VALUE.error(span, &[&word]));
             }
             None
         };
@@ -1037,11 +974,8 @@ impl<'a> Parser<'a> {
         let guard = if self.at_ident("where") {
             let span = self.span();
             self.error(
-                Diagnostic::error(
-                    codes::REMOVED_SYNTAX,
-                    span,
-                    "`where` guards were removed in CP Lang 0.2.2",
-                )
+                msg::WHERE_GUARD
+                    .error(span, &[])
                 .with_help("put the constraint in the type (`let k: 0..n = read()`) or `assert` it on the next line"),
             );
             self.bump();
@@ -1135,14 +1069,9 @@ impl<'a> Parser<'a> {
         self.bump();
         if self.at(T::Mut) {
             let span = self.span();
-            self.error(
-                Diagnostic::error(
-                    codes::REMOVED_SYNTAX,
-                    span,
-                    "`for mut` was removed in CP Lang 0.2.2",
-                )
-                .with_help("loop over the indexes and assign through them: `for i in 0..xs.len: xs[i] += 1`"),
-            );
+            self.error(msg::FOR_MUT.error(span, &[]).with_help(
+                "loop over the indexes and assign through them: `for i in 0..xs.len: xs[i] += 1`",
+            ));
             self.bump();
         }
         let mut clauses = Vec::new();
@@ -1174,17 +1103,10 @@ impl<'a> Parser<'a> {
                     || (self.at_ident("where") && {
                         let span = self.span();
                         self.error(
-                            Diagnostic::error(
-                                codes::REMOVED_SYNTAX,
-                                span,
-                                "loop filters use `if`, not `where`",
-                            )
-                            .with_help("use `if` to filter a `for` loop")
-                            .with_fix(
-                                "replace `where` with `if`",
-                                span,
-                                "if",
-                            ),
+                            msg::LOOP_WHERE
+                                .error(span, &[])
+                                .with_help("use `if` to filter a `for` loop")
+                                .with_fix("replace `where` with `if`", span, "if"),
                         );
                         self.bump();
                         true
@@ -1551,13 +1473,10 @@ impl<'a> Parser<'a> {
             } else if self.at_let_binding() {
                 let at = self.span();
                 self.error(
-                    Diagnostic::error(
-                        codes::UNEXPECTED_TOKEN,
-                        at,
-                        "a binder after `,` needs its own `let`",
-                    )
-                    .with_help("each binder repeats `let`: `if let a = x, let b = y:`")
-                    .with_fix("insert `let`", Span::point(at.start), "let "),
+                    msg::BINDER_NEEDS_LET
+                        .error(at, &[])
+                        .with_help("each binder repeats `let`: `if let a = x, let b = y:`")
+                        .with_fix("insert `let`", Span::point(at.start), "let "),
                 );
                 self.let_cond()
             } else {
@@ -1573,13 +1492,10 @@ impl<'a> Parser<'a> {
         } else if self.at_ident("where") {
             let span = self.span();
             self.error(
-                Diagnostic::error(
-                    codes::REMOVED_SYNTAX,
-                    span,
-                    "use `and`, not `where`, after `if let`",
-                )
-                .with_help("write `if let pat = value and cond`")
-                .with_fix("replace `where` with `and`", span, "and"),
+                msg::IF_LET_WHERE
+                    .error(span, &[])
+                    .with_help("write `if let pat = value and cond`")
+                    .with_fix("replace `where` with `and`", span, "and"),
             );
             self.bump();
             Some(Box::new(self.more_clauses()))
@@ -1691,21 +1607,14 @@ impl<'a> Parser<'a> {
                 && (next_after_nl.continues_line() || matches!(next_after_nl, T::Gt | T::Shr))
             {
                 self.error(
-                    Diagnostic::error(
-                        codes::EXPECTED_TOKEN,
-                        at,
-                        format!("expected `:` after {after}, found {found}"),
-                    )
+                    msg::EXPECTED_COLON
+                        .error(at, &[&after, &found])
                     .with_help(
                         "for a multi-line condition, wrap it in `(...)` or put the operator at the end of the previous line",
                     ),
                 );
             } else {
-                let mut diag = Diagnostic::error(
-                    codes::EXPECTED_TOKEN,
-                    at,
-                    format!("expected `:` after {after}, found {found}"),
-                );
+                let mut diag = msg::EXPECTED_COLON.error(at, &[&after, &found]);
                 // A line that already ends in `:` lost something else, so
                 // a second `:` would not fix it.
                 let ends_in_colon = self.tokens[self.pos..]
@@ -1773,12 +1682,9 @@ impl<'a> Parser<'a> {
         }
         if self.at_stmt_end() {
             let at = self.block_expected_at(header_end);
-            let mut diag = Diagnostic::error(
-                codes::EXPECTED_BLOCK,
-                at,
-                format!("expected an indented block after {after}"),
-            )
-            .with_help("indent the next line by 4 spaces");
+            let mut diag = msg::EXPECTED_BLOCK_AFTER
+                .error(at, &[&after])
+                .with_help("indent the next line by 4 spaces");
             // A next line no deeper than the header becomes its body.
             let abs = |p: u32| (p as i64 - self.delta) as usize;
             let line = |p: usize| self.src[..p].rfind('\n').map_or(0, |i| i + 1);

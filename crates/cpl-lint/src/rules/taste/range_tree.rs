@@ -1,6 +1,8 @@
 //! L0514 `hand_rolled_range_tree`.
 
 use super::*;
+use cpl_diag::msgs::{lint_rules, Msg};
+use std::fmt::Display;
 
 /// Flags hand-rolled Fenwick loops (`p += p & -p` / `p -= p & -p` with table
 /// indexing) and hand-rolled iterative or recursive segment trees (`2 * p` /
@@ -12,13 +14,12 @@ pub(super) fn hand_rolled_range_trees(file: &File) -> Vec<Finding> {
     }
 
     impl Scan {
-        fn warn(&mut self, span: Span, msg: &str, help: &str) {
+        fn warn_at(&mut self, span: Span, msg: &'static Msg, args: &[&dyn Display], help: &str) {
             self.findings.push(Finding {
                 lint: &HAND_ROLLED_RANGE_TREE,
-                diag: Diagnostic::warning(HAND_ROLLED_RANGE_TREE.code, span.shift(self.base), msg)
-                    .with_help(format!(
-                        "{help}; its index arithmetic is already right and its docs give each cost"
-                    )),
+                diag: msg.warning(span.shift(self.base), args).with_help(format!(
+                    "{help}; its index arithmetic is already right and its docs give each cost"
+                )),
             });
         }
     }
@@ -29,16 +30,16 @@ pub(super) fn hand_rolled_range_trees(file: &File) -> Vec<Finding> {
                 StmtKind::While { body, .. } => {
                     if let Some(var) = fenwick_step_var(body) {
                         if body_indexes_by(body, &var) {
-                            self.warn(
+                            self.warn_at(
                                 stmt.span,
-                                "hand-rolled Fenwick loop",
+&lint_rules::HAND_ROLLED_RANGE_TREE, &[],
                                 "use `Fenwick`, `DualFenwick`, or `RangeFenwick` from `std.fenwick`",
                             );
                         }
                     } else if is_iterative_segtree_loop(body) {
-                        self.warn(
+                        self.warn_at(
                             stmt.span,
-                            "hand-rolled segment tree loop",
+&lint_rules::HAND_ROLLED_RANGE_TREE_2, &[],
                             "use `SegTree` (`std.segtree`) or `LazySegTree` / `DualSegTree` (`std.lazy`)",
                         );
                     }
@@ -46,9 +47,9 @@ pub(super) fn hand_rolled_range_trees(file: &File) -> Vec<Finding> {
                 StmtKind::For { pat, body, .. } => {
                     if let PatternKind::Name(var) = &pat.kind {
                         if is_segtree_build_pull_loop(var, body) {
-                            self.warn(
+                            self.warn_at(
                                 stmt.span,
-                                "hand-rolled segment tree pull loop",
+&lint_rules::HAND_ROLLED_RANGE_TREE_3, &[],
                                 "use `SegTree` (`std.segtree`) or `LazySegTree` / `DualSegTree` (`std.lazy`)",
                             );
                         }
@@ -57,9 +58,9 @@ pub(super) fn hand_rolled_range_trees(file: &File) -> Vec<Finding> {
                 StmtKind::Fn(decl) => {
                     if let FnBody::Block(body) = &decl.body {
                         if is_recursive_segtree_fn(decl, body) {
-                            self.warn(
+                            self.warn_at(
                                 decl.name.span,
-                                "hand-rolled recursive segment tree",
+&lint_rules::HAND_ROLLED_RANGE_TREE_4, &[],
                                 "use `SegTree` (`std.segtree`) or `LazySegTree` / `DualSegTree` (`std.lazy`)",
                             );
                         }

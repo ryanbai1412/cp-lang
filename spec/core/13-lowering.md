@@ -73,6 +73,10 @@ the heap. Locals of plain types live in registers or the stack.
 - Views are ordinary structs holding a pointer (lent) or the value
   (owned) plus their closures; walking them is a loop with no
   allocation. (R13.3.5, permits)
+- A recursive fn's frame is the size of its largest branch at every
+  level. A tail branch that holds locals and cannot call back into the
+  recursion is emitted out of line, so its locals sit in one frame at the
+  leaf instead of every frame on the path. (R13.3.6)
 
 ## 13.4 Ownership
 

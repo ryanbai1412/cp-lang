@@ -106,12 +106,8 @@ impl<'a> Lowerer<'a> {
                                 return (vec![self.err_expr(span)], (**elem).clone());
                             }
                         };
-                        let f0 = self.mk(
-                            ExprKind::Field(Box::new(pair.clone()), 0),
-                            ft0,
-                            indices[0].span,
-                        );
-                        let f1 = self.mk(ExprKind::Field(Box::new(pair), 1), ft1, indices[0].span);
+                        let f0 = self.mk_field(pair.clone(), 0, ft0, indices[0].span);
+                        let f1 = self.mk_field(pair, 1, ft1, indices[0].span);
                         (
                             self.coerce(f0, &Ty::Pos(*d), indices[0].span),
                             self.coerce(f1, &Ty::Pos(*d), indices[0].span),
@@ -126,11 +122,7 @@ impl<'a> Lowerer<'a> {
                     };
                     let a = self.cast(Cast::Ord, u, Ty::Int);
                     let b = self.cast(Cast::Ord, v, Ty::Int);
-                    let sym = self.mk(
-                        ExprKind::Builtin(Builtin::SymIdx, vec![a, b]),
-                        Ty::Int,
-                        span,
-                    );
+                    let sym = self.mk_builtin(Builtin::SymIdx, [a, b], Ty::Int, span);
                     let flat = self.cast(Cast::Raw, sym, Ty::Int);
                     return (vec![flat], (**elem).clone());
                 }
@@ -204,11 +196,7 @@ impl<'a> Lowerer<'a> {
                     if (*dim, &value.ty) == (Dim::Int, &Ty::Bool) {
                         let (one, zero) =
                             (self.int_lit(1, index.span), self.int_lit(0, index.span));
-                        let cell = self.mk(
-                            ExprKind::If(Box::new(value), Box::new(one), Box::new(zero)),
-                            Ty::Int,
-                            index.span,
-                        );
+                        let cell = self.mk_if(value, one, zero, Ty::Int, index.span);
                         out.push(self.cast(Cast::Raw, cell, Ty::Int));
                         continue;
                     }
@@ -232,15 +220,7 @@ impl<'a> Lowerer<'a> {
                                         index.span,
                                     );
                                     let idx_lit = lw.int_lit(tag as i64, index.span);
-                                    acc = lw.mk(
-                                        ExprKind::If(
-                                            Box::new(is_t),
-                                            Box::new(idx_lit),
-                                            Box::new(acc),
-                                        ),
-                                        Ty::Int,
-                                        index.span,
-                                    );
+                                    acc = lw.mk_if(is_t, idx_lit, acc, Ty::Int, index.span);
                                 }
                                 stmts.push(Stmt::Give(acc));
                             });

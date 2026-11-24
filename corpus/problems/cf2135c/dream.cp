@@ -10,7 +10,6 @@
 // forced value (neither an odd cycle nor a pre-assigned vertex) contributes a
 // factor of `lim` to the count; any conflict sets `ans = 0`.
 
-
 type Z = Mod<998_244_353>
 
 @!multitest

@@ -7,6 +7,9 @@ domain V = 1..=read(2..=2e5)
 let g = Graph.undirected(read<[V.count - 1](V, V)>())
 let greedy = Rooted(g, V.first!).reroot(
     each(count: +, taken: or),
-    finish: (s: (count: Int, taken: Bool), _) => (count: s.count + Int(not s.taken), taken: not s.taken),
+    finish: (s: (count: Int, taken: Bool), _) => (
+        count: s.count + Int(not s.taken),
+        taken: not s.taken,
+    ),
 )
 print(max(greedy[r].count - Int(greedy[r].taken) + 1 for r in V if g.deg(r) == 1)!)

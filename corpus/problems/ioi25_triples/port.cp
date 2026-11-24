@@ -7,8 +7,8 @@
 //   h[i] = j - i, pins the triple from one position in O(1); the middle with h[i] = k - j
 //   pairs positions with equal h[x] - x, all pairs in groups of at most sqrt(n) and a solve
 //   per k in the larger ones: O(n sqrt n). Part II: peaks at the midpoints of pairs from a
-//   random even point set make every 3 of its points a mythical triple; keep the best of
-//   8e5 / M tries, by Part I's count.
+//   random even point set make every 3 of its points a mythical triple; of up to 8e5 / M
+//   tries, return the first with K triples by Part I's count, else the best.
 // Stdin: the sample grader's: 1, N, H for count_triples (prints T), or 2, M K for
 //   construct_range (prints N and H). The judge form is `@grader fn count_triples(h:
 //   List<1..2e5>) -> Int` and `@grader fn construct_range(m: 3..=2e5, k: Int) -> List<Int>`;
@@ -24,37 +24,44 @@ use std.rand.{Rng}
 // h[k] = j−i): there i and j share h[x] − x, and a √n split between small groups (all
 // pairs) and large groups (solve for i, j from each k) bounds it. One predicate
 // checks a candidate i < j < k and that `top` holds k−i, so each triple counts once.
-fn sort3(a: Int, b: Int, c: Int) -> (Int, Int, Int):
-    let (lo, hi) = (min(a, b, c), max(a, b, c))
-    (lo, a + b + c - lo - hi, hi)
-
 fn count_triples(h: List<Int>) -> Int:
     let at = 0..h.len
     var found = 0
     fn try(i: Int, j: Int, k: Int, top: Int):
-        if i < j < k and i in at and k in at and h[top] == k - i and sort3(h[i], h[j], h[k]) == sort3(j - i, k - j, k - i):
-            found += 1
+        if i < j < k and
+                i in at and
+                k in at and
+                h[top] == k - i and
+                h[i] + h[j] + h[k] == 2 * (k - i):
+            let other = if top == i: h[j] else: h[i]         // with h[top] = k−i, the other two are
+            if other == j - i or other == k - j: found += 1  // j−i and k−j when they sum to k−i
 
-    for x in at:                                       // x is an end holding k−i
+    for x in at:  // x is an end holding k−i
         let y = x + h[x]
         if y in at:
             try(x, x + h[y], y, top: x)
             if 2 * h[y] != h[x]: try(x, y - h[y], y, top: x)
-            try(x, y, x + h[y], top: y)                // middle holds k−i, h[i] = j−i
+            try(x, y, x + h[y], top: y)  // middle holds k−i, h[i] = j−i
         let w = x - h[x]
         if w in at:
             try(w, x - h[w], x, top: x)
             if 2 * h[w] != h[x]: try(w, w + h[w], x, top: x)
 
-    // Middle holds k−i, crossed; with j−i = k−j it is the case above.
-    fn crossed(i: Int, j: Int, k: Int) = if i in at and h[i] != j - i: try(i, j, k, top: j)
+    // Middle holds k−i, crossed: h[i] = k − j and h[j] = k − i, so i and j share
+    // h[x] − x = k − i − j and k = i + h[j], and only h[k] = j − i is left to check (j − i =
+    // k − j is the case above).
     for (g, group) in at.group(by: x => h[x] - x):
         if group.len <= isqrt(h.len):
-            for a in 0..group.len:
-                for b in a + 1..group.len: crossed(group[a], group[b], group[a] + h[group[b]])
+            for b in 1..group.len:
+                let j = group[b]
+                for a in 0..b:
+                    let (i, k) = (group[a], group[a] + h[j])
+                    if k in at and h[k] == j - i and h[i] != j - i: found += 1
         else:
             for k in at if (k - g - h[k]) % 2 == 0:
-                crossed((k - g - h[k]) / 2, (k - g + h[k]) / 2, k)
+                let (i, j) = ((k - g - h[k]) / 2, (k - g + h[k]) / 2)
+                if i in at and j < k and h[i] == k - j and h[j] == k - i and h[i] != j - i:
+                    found += 1
     found
 
 // Part 2. Take an even point set S and, for each pair x < y in S, put a peak at
@@ -62,15 +69,15 @@ fn count_triples(h: List<Int>) -> Int:
 // peaks at (x+y)/2 < (x+z)/2 < (y+z)/2 with heights (y−x)/2, (z−x)/2, (z−y)/2,
 // which are exactly their pairwise distances: a mythical triple. Midpoints of
 // different pairs can collide (the smaller height wins), so try 8e5 / M random S of
-// about √(6M) points, C(|S|, 3) ≈ M^1.5 triples, and keep the best range. For M = 500
+// about √(6M) points, C(|S|, 3) ≈ M^1.5 triples, and return the first range with K. For M = 500
 // no early seed reaches K = 2000, so take one found by trying 2e6 (as the reference does).
-fn construct_range(m: 3..=2e5, _k: Int) -> List<Int>:
+fn construct_range(m: 3..=2e5, k: Int) -> List<Int>:
     fn attempt(seed: Int) -> List<Int>:
         var rng = Rng.new(seed)
         let size = isqrt(6 * m)
-        let evens = (-m / 2 .. 3 * m / 2).filter(x => x % 2 == 0)
+        let evens = (-m / 2..3 * m / 2).filter(x => x % 2 == 0)
         let s = rng.sample(rng.int(2 * size / 3, 4 * size / 3), from: evens).sorted()
-        var h: [0..m]Int = m                              // m: no pair has put a peak here
+        var h: [0..m]Int = m  // m: no pair has put a peak here
         for (x, y) in s.pairs() if (x + y) / 2 in 0..m and (y - x) / 2 in 1..m:
             h[(x + y) / 2] min= (y - x) / 2
         for i in 0..m if h[i] == m: h[i] = rng.int(1, 2)
@@ -80,6 +87,7 @@ fn construct_range(m: 3..=2e5, _k: Int) -> List<Int>:
     for seed in 0..8e5 / m:
         let h = attempt(seed)
         let count = count_triples(h)
+        if count >= k: return h
         if count > most: (best, most) = (h, count)
     return best
 
@@ -87,7 +95,7 @@ let part: 1..=2 = read()
 if part == 1:
     let n: 3..=2e5 = read()
     let h: [n]1..n = read()
-    print(count_triples(h.map(x => Int(x))))
+    print(count_triples(h))
 else:
     let (m, k) = read<(3..=2e5, 1..=12_000_000)>()
     let h = construct_range(m, k)

@@ -114,7 +114,7 @@ impl<'a> Checker<'a> {
                     Ty::Named { name, args }
                         if matches!(
                             name.as_str(),
-                            "Gen" | "Iter" | "Filter" | "Zip" | "Range" | "Slice" | "Map"
+                            "Gen" | "Iter" | "Filter" | "Zip" | "Range" | "Map"
                         ) && args.len() == 1 =>
                     {
                         args[0].clone()
@@ -145,6 +145,7 @@ impl<'a> Checker<'a> {
                 name: "List".into(),
                 args: vec![first.clone()],
             }),
+            ("laws_hold", [_, _]) => Some(Ty::Bool),
             ("read_line", _) => Some(Ty::Str),
             ("print", _) => {
                 let allow_none = args
@@ -284,20 +285,9 @@ impl<'a> Checker<'a> {
                     _ => None,
                 };
                 if let Some(Ty::Pos(dom)) = v_ty {
-                    let into_bitset = args.iter().any(|a| {
-                        a.name.as_ref().map(|n| n.text.as_str()) == Some("into")
-                            && matches!(&a.value.kind, ExprKind::Name(n) if n == "Bitset")
-                    });
-                    let cell = if into_bitset {
-                        Ty::Named {
-                            name: "Bitset".into(),
-                            args: vec![Ty::Pos(dom.clone())],
-                        }
-                    } else {
-                        Ty::Named {
-                            name: "List".into(),
-                            args: vec![Ty::Pos(dom.clone())],
-                        }
+                    let cell = Ty::Named {
+                        name: "List".into(),
+                        args: vec![Ty::Pos(dom.clone())],
                     };
                     return Some(Ty::Array {
                         index: vec![Ty::Pos(dom)],

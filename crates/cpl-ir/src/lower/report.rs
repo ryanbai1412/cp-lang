@@ -65,10 +65,23 @@ impl<'a> Lowerer<'a> {
         (text, line, note)
     }
 
+    /// Reports `msg` with `args` at `span`, as `error` does.
+    pub(super) fn report(
+        &mut self,
+        msg: &'static cpl_diag::msgs::Msg,
+        span: Span,
+        args: &[&dyn std::fmt::Display],
+    ) {
+        self.error(msg.code, span, msg.say(args));
+    }
+
     pub(super) fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
+        self.error_text(code, span, message.into());
+    }
+
+    fn error_text(&mut self, code: cpl_diag::Code, span: Span, mut message: String) {
         let at = span.shift(self.offset);
         let span = self.span(span);
-        let mut message = message.into();
         let mut notes = Vec::new();
         if self.cur_mod != 0 {
             if let Some((module, line, inside)) = self.library_place(self.cur_mod, at) {
@@ -139,17 +152,13 @@ impl<'a> Lowerer<'a> {
         let inside = (self.cur_mod != 0)
             .then(|| self.library_place(self.cur_mod, span.shift(self.offset)))
             .flatten();
-        let message = match inside {
-            Some((module, _, item)) => {
-                format!("`{item}` (`{module}`) needs a domain for `{param}`, and {what} is not one")
-            }
-            None => format!(
-                "`{param}` indexes an array here, so it must be a domain, and {what} is not one"
-            ),
-        };
         let span = self.span(span);
-        self.diags
-            .push(Diagnostic::error(codes::TYPE_MISMATCH, span, message));
+        let diag = match inside {
+            Some((module, _, item)) => cpl_diag::msgs::check::NOT_A_DOMAIN_IN_LIBRARY
+                .error(span, &[&item, &module, &param, &what]),
+            None => cpl_diag::msgs::check::NOT_A_DOMAIN.error(span, &[&param, &what]),
+        };
+        self.diags.push(diag);
         self.help(format!(
             "declare a domain, as in `domain {param} = 1..=n`, and pass its name"
         ));

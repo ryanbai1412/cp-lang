@@ -670,7 +670,7 @@ fn item_json(entry: &Entry, sort: u8) -> Value {
     let mut members = BTreeMap::from([
         ("label".to_string(), entry.name.as_str().into()),
         ("kind".to_string(), entry.kind.completion_kind().into()),
-        ("detail".to_string(), entry.detail.as_str().into()),
+        ("detail".to_string(), detail_of(entry).into()),
         (
             "sortText".to_string(),
             format!("{sort}{}", entry.name).into(),
@@ -707,6 +707,28 @@ fn member_json(entry: &Entry, sort: u8) -> Value {
         members.insert("sortText".to_string(), text.into());
     }
     item
+}
+
+/// An entry's completion detail. A struct built through its own `new` is
+/// called by its name with `new`'s parameters, so its detail shows that call.
+fn detail_of(entry: &Entry) -> String {
+    let ctor = (entry.kind == Kind::Struct)
+        .then(|| {
+            entry
+                .members
+                .iter()
+                .find(|m| m.name == "new" && !m.instance && m.public)
+        })
+        .flatten()
+        .and_then(|new| {
+            new.detail
+                .split_once("new")
+                .map(|(_, rest)| rest.to_string())
+        });
+    match ctor {
+        Some(call) => format!("{}\n{}{call}", entry.detail, entry.name),
+        None => entry.detail.clone(),
+    }
 }
 
 fn plain(name: &str, kind: Kind, detail: String, doc: &str) -> Entry {
@@ -1108,8 +1130,8 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
         .find(|e| e.name == text[start..end])?;
     let cost = cpl_syntax::doc::Facts::parse(&entry.doc)
         .cost
-        .filter(|c| cpl_syntax::doc::big_o(c).is_some())
-        .map(|c| cpl_diag::plain::text(&c));
+        .map(|c| cpl_diag::plain::text(&c))
+        .filter(|c| cpl_syntax::doc::big_o(c).is_some());
     Some(cpl_check::Hover {
         ty: None,
         signature: false,
@@ -1345,7 +1367,7 @@ fn builtin_receiver(ty: &Ty) -> Option<(Receiver, Vec<(String, String)>)> {
         Ty::Named { name, args } => {
             let receiver = *Receiver::ALL.iter().find(|r| r.name() == name)?;
             let args: Vec<&Ty> = args.iter().collect();
-            let names: &[&str] = if receiver == Receiver::Map {
+            let names: &[&str] = if matches!(receiver, Receiver::Map | Receiver::HashMap) {
                 &["K", "V"]
             } else {
                 &["T"]

@@ -71,7 +71,7 @@ pub(crate) const COMMANDS: &[Command] = &[
             "`@check`; exit status 0 accepts",
         ],
         json: Json::Flag,
-        options: Some(&["--json"]),
+        options: Some(&["--json", "--diagnostic"]),
     },
     Command {
         name: "build",
@@ -90,6 +90,7 @@ pub(crate) const COMMANDS: &[Command] = &[
             "--checked",
             "--compiler",
             "--size",
+            "--full",
             "--copy",
             "--json",
         ]),
@@ -245,7 +246,7 @@ pub(crate) const COMMANDS: &[Command] = &[
         args: "<neovim | vim | vscode | jetbrains>",
         summary: &["install the editor support: `cpl setup neovim`"],
         json: Json::Flag,
-        options: Some(&["--dir", "--vsix", "--zip", "--check", "--json"]),
+        options: Some(&["--dir", "--vsix", "--zip", "--check", "--grammar", "--json"]),
     },
     Command {
         name: "self",
@@ -413,6 +414,8 @@ options:
   --size            say where the bytes go: header, runtime, library fns,
                     your code, by part and by piece (said anyway when the
                     file is over the judge's limit)
+  --full            write the C++ as codegen writes it, with its comments and
+                    names, however far over the judge's size bar, to read it
   -c, --copy        also put the C++ on the clipboard (pbcopy, wl-copy, xclip,
                     xsel or clip, else the command in CPL_CLIPBOARD)
   --json            print one JSON object once it is written: its `path`,
@@ -465,17 +468,21 @@ top of the file once, save the samples as <file>.tests/1.in and 1.out, then
 ";
 
 const JUDGE_USAGE: &str = "\
-usage: cpl judge <file.cp> <input> [--json]
-       cpl judge <file.cp> <input> <output> [answer] [--json]
+usage: cpl judge <file.cp> <input> [options]
+       cpl judge <file.cp> <input> <output> [answer] [options]
 
 With an input alone, runs the file's `@interactor` on it as a judge
 program: it talks to a solution on standard input and output. With an
 output, runs the file's `@check` on that output. The exit status is 0
 when the judge accepts, 3 when it rejects.
 
+options:
   --json    print one JSON object: `accepted`, and when it rejects, the
             `reason` and the `diagnostic` where the judge failed, as
             `cpl check --json` prints one
+  --diagnostic <file>
+            when the judge traps, write its diagnostic there as
+            `cpl check --json` gives it, keeping stdout for the solution
 ";
 
 const LSP_USAGE: &str = "\
@@ -529,6 +536,15 @@ options:
                     again each time the file is saved, on the same input;
                     with no input named, the case `cpl stress` saved last.
                     The page keeps its place and shows the first change
+  --samples         run every sample (`i1` beside the file with `o1` as its
+                    answer, the cases in <file>.tests/, <file>.samples/), each
+                    judged against its answer; with --format json, each
+                    sample's verdict and the `view` an editor shows
+  --case NAME       with --samples: only the sample NAME
+  --values-of NAME  with --samples --format json: the sample whose values
+                    the view shows (default the first)
+  --list            with --samples --format json: name the samples, each
+                    with its input and answer files, without running them
   --brute           run the file's `@alt(program)` fn in place of the solution
   --release         run what a judge runs: the C++ of `cpl build`, built with
                     the judge's flags (those g++ here accepts) on the judge's
@@ -538,6 +554,8 @@ options:
   --checks LEVEL    with --release: what that build traps on, as
                     `cpl build --checks` takes it (none, traps, all)
   --time-limit MS   stop the run after MS milliseconds
+  --sample NAME     with --format json: what the editor's labels call the
+                    input (default: the input file's name)
   --grader FILE     link the judge's grader FILE (a .cpp with the `main`) into
                     the --release build and run that: how a file of
                     `@grader` fns runs. A grader.cpp beside the file's tests

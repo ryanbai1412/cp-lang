@@ -3029,7 +3029,7 @@ fn cover(
 /// example: `planar_faces([Pt(0, 0), Pt(1, 0)], [(0, 1)]) == [[0, 1]]`
 pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>>:
     let keys = pts.keys.collect()
-    let walk = planar_walk([pts[k] for k in keys], [(a.ord, b.ord) for (a, b) in edges])
+    let walk = planar_walk_sorted([pts[k] for k in keys], [(a.ord, b.ord) for (a, b) in edges])
     [[keys[i] for i in f] for f in walk.faces]
 
 struct PlanarWalk:
@@ -3038,9 +3038,7 @@ struct PlanarWalk:
     face_of: List<Int>
     half: List<(Int, Int, Int)>
 
-    fn at(self, u: Int, v: Int) -> Int:
-        let lo = (0..half.len).first_true(mid => (half[mid].0, half[mid].1) >= (u, v)) ?? half.len
-        half[lo].2
+    fn at(self, u: Int, v: Int) -> Int = half[half.first_ge((u, v, 0))!].2
 
     fn side(self, u: Int, v: Int) -> Int:
         return face_of[off[u] + self.at(u, v)]
@@ -3066,7 +3064,6 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
     half.sort()
     var walk = PlanarWalk([], off.clone(), List.filled(off[n], 0), half)
     var done = List.filled(off[n], false)
-    var raw: List<List<Int>> = []
     for u in 0..n:
         for j in 0..adj[u].len:
             if done[off[u] + j]: continue
@@ -3074,13 +3071,20 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
             var (a, k) = (u, j)
             while not done[off[a] + k]:
                 done[off[a] + k] = true
-                walk.face_of[off[a] + k] = raw.len
+                walk.face_of[off[a] + k] = walk.faces.len
                 cyc.push(a)
                 let b = adj[a][k]
                 let deg = adj[b].len
                 k = (walk.at(b, a) + deg - 1) % deg
                 a = b
-            raw.push(least_rotation(cyc))
+            walk.faces.push(cyc)
+    walk
+
+// `planar_walk` with its faces in `planar_faces` order: each cycle from its least vertex, the
+// cycles sorted.
+fn planar_walk_sorted(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
+    var walk = planar_walk(ps, edges)
+    let raw = [least_rotation(f) for f in walk.faces]
     var order = (0..raw.len).collect()
     order.sort(by: f => raw[f])
     var rank = List.filled(raw.len, 0)
@@ -3103,8 +3107,7 @@ fn least_rotation(cyc: List<Int>) -> List<Int>:
 /// traps: as `planar_faces`
 /// example: `point_location_planar([Pt(0, 0), Pt(4, 0), Pt(0, 4)], [(0, 1), (1, 2), (2, 0)], [Pt(1, 1), Pt(0, 0), Pt(5, 5)]) == [Some(0), None, None]`
 pub fn point_location_planar<V>(pts: [V]Pt, edges: List<(V, V)>, queries: List<Pt>) -> List<?Int>:
-    let keys = pts.keys.collect()
-    locate_planar([pts[k] for k in keys], [(a.ord, b.ord) for (a, b) in edges], queries)
+    locate_planar([pts[k] for k in pts.keys], [(a.ord, b.ord) for (a, b) in edges], queries)
 
 struct SweepSeg(a: Pt, b: Pt, id: Int)
 
@@ -3121,7 +3124,7 @@ impl Ord for SweepSeg:
         if c == 0: s.id < t.id else: c > 0
 
 fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> List<?Int>:
-    let walk = planar_walk(ps, edges)
+    let walk = planar_walk_sorted(ps, edges)
     let nf = walk.faces.len
     var outer = List.filled(nf, false)
     var probes = copy(queries)
@@ -3140,24 +3143,19 @@ fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> Li
     let below = sweep_below(ps, edges, walk, probes)
     var parent: List<?Int> = [None for _ in 0..nf]
     for i in 0..probed.len: parent[probed[i]] = below[queries.len + i].0
-    var verts: List<(Int, Int)> = [(p.x, p.y) for p in ps]
-    verts.sort()
-    var upright: List<(Int, Int, Int)> = [
-        (
-            ps[u].x,
-            min(ps[u].y, ps[v].y),
-            max(ps[u].y, ps[v].y),
-        ) for (u, v) in edges if ps[u].x == ps[v].x
-    ]
+    // The vertical pieces of the graph as `(x, low y, high y)`: its vertical edges and, as
+    // pieces of length 0, its vertices. In a planar graph the last piece starting at or below
+    // a point on its line is the one that would hold it.
+    var upright: List<(Int, Int, Int)> = [(p.x, p.y, p.y) for p in ps]
+    for (u, v) in edges:
+        if ps[u].x == ps[v].x: upright.push((ps[u].x, min(ps[u].y, ps[v].y), max(ps[u].y, ps[v].y)))
     upright.sort()
     var out: List<?Int> = []
     for i in 0..queries.len:
         let q = queries[i]
-        let vi = verts.first_ge((q.x, q.y)) ?? verts.len
-        let ui = (0..upright.len).first_true(mid => (upright[mid].0, upright[mid].1) > (q.x, q.y)) ?? upright.len
-        let on_vertex = vi < verts.len and verts[vi] == (q.x, q.y)
+        let ui = upright.first_gt((q.x, q.y, Int.MAX)) ?? upright.len
         let on_upright = ui > 0 and upright[ui - 1].0 == q.x and q.y <= upright[ui - 1].2
-        if on_vertex or on_upright or below[i].1:
+        if on_upright or below[i].1:
             out.push(None)
             continue
         var f = below[i].0
@@ -3175,35 +3173,24 @@ fn sweep_below(
     for (u, v) in edges:
         if ps[u].x < ps[v].x: segs.push((u, v))
         elif ps[v].x < ps[u].x: segs.push((v, u))
-    let m = segs.len
-    var by_start = (0..m).collect()
-    by_start.sort(by: i => ps[segs[i].0].x)
-    var by_end = (0..m).collect()
-    by_end.sort(by: i => ps[segs[i].1].x)
-    var by_x = (0..probes.len).collect()
-    by_x.sort(by: i => probes[i].x)
-    var live = List.filled(m, false)
+    // At each x, the segments ending there leave (0), those starting there join (1), and then
+    // the probes there (2) look.
+    var events: List<(Int, Int, Int)> = [(probes[i].x, 2, i) for i in 0..probes.len]
+    for e in 0..segs.len:
+        events.push((ps[segs[e].0].x, 1, e))
+        events.push((ps[segs[e].1].x, 0, e))
+    events.sort()
     var active = SortedSet<SweepSeg>.new()
     var out: List<(?Int, Bool)> = [(None, false) for _ in 0..probes.len]
-    var si = 0
-    var ei = 0
-    for qi in by_x:
-        let q = probes[qi]
-        while ei < m and ps[segs[by_end[ei]].1].x <= q.x:
-            let e = by_end[ei]
-            if live[e]:
-                let _ = active.remove(SweepSeg(ps[segs[e].0], ps[segs[e].1], e))
-                live[e] = false
-            ei += 1
-        while si < m and ps[segs[by_start[si]].0].x <= q.x:
-            let e = by_start[si]
-            if ps[segs[e].1].x > q.x:
-                let _ = active.add(SweepSeg(ps[segs[e].0], ps[segs[e].1], e))
-                live[e] = true
-            si += 1
+    for (_, kind, i) in events:
+        if kind < 2:
+            let seg = SweepSeg(ps[segs[i].0], ps[segs[i].1], i)
+            let _ = if kind == 0: active.remove(seg) else: active.add(seg)
+            continue
+        let (qi, q) = (i, probes[i])
+        // The segments below `q`, then those through it, then those above.
         let lo = active.last_true(s => turn(s.a, s.b, q) > 0)
-        let hi = active.first_true(s => turn(s.a, s.b, q) <= 0)
-        let on = if let h = hi: turn(h.a, h.b, q) == 0 else: false
+        let on = if let t = active.last_true(s => turn(s.a, s.b, q) >= 0): turn(t.a, t.b, q) == 0 else: false
         out[qi] = (if lo == None: None else: Some(walk.side(segs[lo!.id].0, segs[lo!.id].1)), on)
     out
 

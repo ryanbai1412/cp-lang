@@ -42,10 +42,27 @@ impl<'p> Emitter<'p> {
             _ => return None,
         };
         (place.ty == Ty::Int
-            && matches!(value.kind, ExprKind::Int(_))
+            && matches!(value.kind, ExprKind::Int(1))
+            && self.facts.unit_step((None, true, *id))
             && !self.const_globals.contains(id)
             && !self.dropped_store(place, op))
         .then_some(sym)
+    }
+
+    /// Whether `v op= value` on an `Int` variable is proved to stay an
+    /// `Int`, as `v op value` would be.
+    fn store_fits(&self, place: &Place, op: BinOp, value: &Expr) -> bool {
+        let kind = match place.kind {
+            PlaceKind::Local(slot) => ExprKind::Local(slot),
+            PlaceKind::Global(id) => ExprKind::Global(id),
+            _ => return false,
+        };
+        let read = Expr {
+            kind,
+            ty: place.ty.clone(),
+            span: place.span,
+        };
+        place.ty == Ty::Int && self.facts.fits(self.facts_home(), op, &read, value)
     }
 
     pub(super) fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
@@ -159,6 +176,23 @@ impl<'p> Emitter<'p> {
                     Some(at) => format!("cpl::map_slot_put({b}, {at}, {k})"),
                     None => format!("{b}[{k}]"),
                 };
+                if let Some(cpl_ir::NarrowLayout::Map(_, Some(w))) =
+                    self.place_elem_layout(base).cloned()
+                {
+                    if self.narrow_map_fold(out, op, (&b, &k, &cell), &v.text, w.cpp()) {
+                        if let Some(at) = at.filter(|_| {
+                            matches!(
+                                op,
+                                AssignOp::Max
+                                    | AssignOp::Min
+                                    | AssignOp::Binary(BinOp::Mul | BinOp::BitAnd)
+                            )
+                        }) {
+                            self.line(out, &format!("{at} = cpl::map_slot({b}, {k});"));
+                        }
+                        return;
+                    }
+                }
                 match op {
                     AssignOp::Max => {
                         self.need("map_fold");
@@ -171,6 +205,22 @@ impl<'p> Emitter<'p> {
                     AssignOp::Min => {
                         self.need("map_fold");
                         self.line(out, &format!("cpl::map_min({b}, {k}, {});", v.text));
+                        if let Some(at) = &at {
+                            self.line(out, &format!("{at} = cpl::map_slot({b}, {k});"));
+                        }
+                        return;
+                    }
+                    AssignOp::Binary(BinOp::Mul) if matches!(place.ty, Ty::Int | Ty::I128) => {
+                        let f = self.overflow_checked(&place.ty, BinOp::Mul);
+                        let it = self.temp();
+                        self.line(
+                            out,
+                            &format!(
+                                "if (auto {it} = {b}.find({k}); {it} == {b}.end()) {b}.emplace({k}, {}); \
+                                 else {it}->second = {f}({it}->second, {});",
+                                v.text, v.text
+                            ),
+                        );
                         if let Some(at) = &at {
                             self.line(out, &format!("{at} = cpl::map_slot({b}, {k});"));
                         }
@@ -199,7 +249,20 @@ impl<'p> Emitter<'p> {
                             AssignOp::Binary(BinOp::BitXor) => "^",
                             _ => "+",
                         };
-                        if matches!(base.ty, Ty::HashMap(..))
+                        let checked = matches!(place.ty, Ty::Int | Ty::I128)
+                            && matches!(op, AssignOp::Binary(BinOp::Add | BinOp::Sub));
+                        if checked {
+                            let bop = if sym == "-" { BinOp::Sub } else { BinOp::Add };
+                            let f = self.overflow_checked(&place.ty, bop);
+                            let (tmp, r) = (self.temp(), self.temp());
+                            self.line(out, "{");
+                            self.indent += 1;
+                            self.line(out, &format!("auto {tmp} = {};", v.text));
+                            self.line(out, &format!("auto& {r} = {cell};"));
+                            self.line(out, &format!("{r} = {f}({r}, {tmp});"));
+                            self.indent -= 1;
+                            self.line(out, "}");
+                        } else if matches!(base.ty, Ty::HashMap(..))
                             && expr_may_alias_root(value, walk::root(base))
                         {
                             let tmp = self.temp();
@@ -225,17 +288,31 @@ impl<'p> Emitter<'p> {
             );
         let p = self.place_at(place, into_map);
         let ty = self.ty(&place.ty);
-        // `p = f(p, v)` names the place twice.
+        let narrow = match &place.kind {
+            PlaceKind::Index(base, _) => match self.place_elem_layout(base) {
+                Some(cpl_ir::NarrowLayout::Map(_, Some(w))) => Some(w.cpp()),
+                _ => None,
+            },
+            _ => None,
+        };
+        if narrow.is_some() {
+            self.need("fit");
+        }
+        // `p = f(p, v)` names the place twice; a narrow map cell takes the wide result through `cpl::fit`.
+        let store = |p: &str, new: String| match narrow {
+            Some(w) => format!("{p} = cpl::fit<{w}>({new});"),
+            None => format!("{p} = {new};"),
+        };
         let twice = |this: &mut Self, out: &mut String, make: &dyn Fn(&str, &str) -> String| {
             if this.place_is_plain(place) {
-                this.line(out, &make(&p, &v.text));
+                this.line(out, &store(&p, make(&p, &v.text)));
             } else {
                 let (value_name, r) = (this.temp(), this.temp());
                 this.line(out, "{");
                 this.indent += 1;
                 this.line(out, &format!("{ty} {value_name} = {};", v.text));
                 this.line(out, &format!("auto& {r} = {p};"));
-                this.line(out, &make(&r, &value_name));
+                this.line(out, &store(&r, make(&r, &value_name)));
                 this.indent -= 1;
                 this.line(out, "}");
             }
@@ -247,18 +324,20 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("{p} = std::move({tmp});"));
             }
             AssignOp::Set => {
-                let v = self.as_stored(value, v.text);
+                let text = match self.place_elem_layout(place).cloned() {
+                    Some(l @ cpl_ir::NarrowLayout::Map(..)) => {
+                        self.expr_with_elem_layout(value, Some(&l)).text
+                    }
+                    _ => v.text,
+                };
+                let v = self.as_stored(value, text);
                 self.line(out, &format!("{p} = {v};"))
             }
-            AssignOp::Max => twice(self, out, &|p, v| {
-                format!("{p} = std::max<{ty}>({p}, {v});")
-            }),
-            AssignOp::Min => twice(self, out, &|p, v| {
-                format!("{p} = std::min<{ty}>({p}, {v});")
-            }),
+            AssignOp::Max => twice(self, out, &|p, v| format!("std::max<{ty}>({p}, {v})")),
+            AssignOp::Min => twice(self, out, &|p, v| format!("std::min<{ty}>({p}, {v})")),
             AssignOp::Binary(bop) => match (&place.ty, bop) {
                 (Ty::Int, BinOp::Div | BinOp::Rem) => {
-                    if self.pow2_assign(&p, bop == BinOp::Div, value, out) {
+                    if narrow.is_none() && self.pow2_assign(&p, bop == BinOp::Div, value, out) {
                         return;
                     }
                     let positive =
@@ -270,11 +349,11 @@ impl<'p> Emitter<'p> {
                         (false, false) => "emod",
                     };
                     self.need(helper);
-                    twice(self, out, &|p, v| format!("{p} = cpl::{helper}({p}, {v});"));
+                    twice(self, out, &|p, v| format!("cpl::{helper}({p}, {v})"));
                 }
                 (Ty::Int, BinOp::Pow) => {
                     self.need("ipow");
-                    twice(self, out, &|p, v| format!("{p} = cpl::ipow({p}, {v});"));
+                    twice(self, out, &|p, v| format!("cpl::ipow({p}, {v})"));
                 }
                 (Ty::I128, BinOp::Div | BinOp::Rem) => {
                     let helper = if bop == BinOp::Div {
@@ -283,28 +362,28 @@ impl<'p> Emitter<'p> {
                         "emod128"
                     };
                     self.need(helper);
-                    twice(self, out, &|p, v| format!("{p} = cpl::{helper}({p}, {v});"));
+                    twice(self, out, &|p, v| format!("cpl::{helper}({p}, {v})"));
                 }
                 (Ty::I128 | Ty::U64, BinOp::Pow) => {
                     self.need("wpow");
-                    twice(self, out, &|p, v| format!("{p} = cpl::wpow({p}, {v});"));
+                    twice(self, out, &|p, v| format!("cpl::wpow({p}, {v})"));
                 }
-                (Ty::Float, BinOp::Pow) => {
-                    twice(self, out, &|p, v| format!("{p} = std::pow({p}, {v});"))
-                }
-                (Ty::Int | Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
+                (Ty::Float, BinOp::Pow) => twice(self, out, &|p, v| format!("std::pow({p}, {v})")),
+                (Ty::Int | Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul)
+                    if !self.store_fits(place, bop, value) =>
+                {
                     let f = self.overflow_checked(&place.ty, bop);
-                    twice(self, out, &|p, v| format!("{p} = {f}({p}, {v});"));
+                    twice(self, out, &|p, v| format!("{f}({p}, {v})"));
                 }
                 (Ty::Int, BinOp::Shl) if self.facts.within(self.facts_home(), value, 64) => {
                     self.need("ishl");
-                    twice(self, out, &|p, v| format!("{p} = cpl::ishl({p}, {v});"));
+                    twice(self, out, &|p, v| format!("cpl::ishl({p}, {v})"));
                 }
                 (Ty::Int, BinOp::Shl) => {
                     self.need("ishl");
                     self.need("shamt");
                     twice(self, out, &|p, v| {
-                        format!("{p} = cpl::ishl({p}, cpl::shamt({v}, 64));")
+                        format!("cpl::ishl({p}, cpl::shamt({v}, 64))")
                     });
                 }
                 _ => {
@@ -320,9 +399,56 @@ impl<'p> Emitter<'p> {
                         BinOp::Shr => ">>",
                         _ => "+",
                     };
-                    self.line(out, &format!("{p} {sym}= {};", v.text));
+                    if narrow.is_some() {
+                        twice(self, out, &|p, v| format!("{p} {sym} {v}"));
+                    } else {
+                        self.line(out, &format!("{p} {sym}= {};", v.text));
+                    }
                 }
             },
         }
+    }
+
+    /// `m[k] op= v` into a map whose values are stored narrow: the op runs
+    /// on `ll` and `cpl::fit` stores it back, so a result outside the
+    /// value's range traps under `LOCAL` instead of wrapping into range.
+    /// `max=`, `min=`, `*=` and `&=` on a missing key store `v`, as
+    /// `map_fold` does. False when `op` has no fold here.
+    fn narrow_map_fold(
+        &mut self,
+        out: &mut String,
+        op: AssignOp,
+        (b, k, cell): (&str, &str, &str),
+        v: &str,
+        w: &str,
+    ) -> bool {
+        let wide = match op {
+            AssignOp::Max => "std::max<ll>(@, #)".to_string(),
+            AssignOp::Min => "std::min<ll>(@, #)".to_string(),
+            AssignOp::Binary(bop @ (BinOp::Add | BinOp::Sub | BinOp::Mul)) => {
+                format!("{}(@, #)", self.overflow_checked(&Ty::Int, bop))
+            }
+            AssignOp::Binary(BinOp::BitAnd) => "@ & #".to_string(),
+            AssignOp::Binary(BinOp::BitOr) => "@ | #".to_string(),
+            AssignOp::Binary(BinOp::BitXor) => "@ ^ #".to_string(),
+            _ => return false,
+        };
+        self.need("fit");
+        let (x, it) = (self.temp(), self.temp());
+        let wide = |old: &str| wide.replace('@', &format!("ll({old})")).replace('#', &x);
+        let set = if matches!(
+            op,
+            AssignOp::Max | AssignOp::Min | AssignOp::Binary(BinOp::Mul | BinOp::BitAnd)
+        ) {
+            format!(
+                "if (auto {it} = {b}.find({k}); {it} == {b}.end()) {b}.emplace({k}, cpl::fit<{w}>({x})); \
+                 else {it}->second = cpl::fit<{w}>({});",
+                wide(&format!("{it}->second"))
+            )
+        } else {
+            format!("auto& {it} = {cell}; {it} = cpl::fit<{w}>({});", wide(&it))
+        };
+        self.line(out, &format!("{{ ll {x} = {v}; {set} }}"));
+        true
     }
 }

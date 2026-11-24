@@ -727,10 +727,8 @@ impl Checker<'_> {
             return;
         }
         let w = self.quote(base.span);
-        let message =
-            format!("`0..{w}.len` counts from 0, but the slice `{w}` keeps its source's keys");
         self.sink.push(
-            Diagnostic::warning(codes::LITERAL_SLICE_INDEX, span, message).with_help(format!(
+            cpl_diag::msgs::check::SLICE_COUNTS_FROM_ZERO.warning(span, &[&w, &w]).with_help(format!(
                 "walk it (`for x in {w}`, `for (k, x) in {w}.items`), or `{w}.rebase` to count from 0"
             )),
         );

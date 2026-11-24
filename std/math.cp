@@ -186,43 +186,91 @@ pub fn ceil_div(self: Int, b: Int) -> Int = if b > 0: -((-self) / b) else: -(sel
 /// example: `(-7).divmod(-3) == (3, 2)`
 pub fn divmod(self: Int, d: Int) -> (Int, Int) = (self / d, self % d)
 
-/// The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear sieve.
-/// \(O(n)\) time and memory.
+/// The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality
+/// bitset of \(n / 16\) bytes and the list `primes`. The smallest prime factor table `spf` is
+/// built on its first read and kept: the first call that reads it (`spf`, `factor`, `phi`,
+/// `mobius`, `divisors` and the `*_table` methods) pays \(O(n)\) time and \(4n\) bytes.
+/// `is_prime` and `primes` never build it.
 pub struct Sieve:
-    pub spf: List<0..=2_000_000_000>
-    pub primes: List<0..=2_000_000_000>
+    /// The primes in `2..=n`, ascending.
+    pub primes: List<SieveVal>
+    /// The sieve's bound `n`.
+    top: Int
+    /// Bit `k % 64` of word `k / 64` is set when the odd number `2k + 1` is not prime.
+    odd_composite: List<U64>
+    @cache _spf: List<SieveVal>
 
-    /// A linear sieve up to `n`: the smallest prime factor of every `0..=n` and the primes in
-    /// `2..=n`, ascending.
+    /// A sieve up to `n`: which of `0..=n` are prime, and the primes. `spf` waits for its first reader.
     ///
-    /// `spf[0]` and `spf[1]` are 0. Queries take any `x` in `0..=n` (`1..=n` where 0 is meaningless).
+    /// Queries take any `x` in `0..=n` (`1..=n` where 0 is meaningless).
     ///
-    /// cost: \(O(n)\) time and memory
+    /// cost: \(O(n \log \log n)\) time, \(n / 16\) bytes plus 4 bytes a prime
     /// traps: when `n < 0` or `n > 2_000_000_000`
     /// example: `Sieve(10).is_prime(7) == true`
     /// example: `Sieve(0).is_prime(0) == false`
+    /// example: `Sieve(1).primes.is_empty`
+    /// example: `Sieve(30).primes == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]`
     pub fn new(n: Int) -> Sieve:
+        let bound: SieveVal = n
+        var odd_composite = List.filled(n / 128 + 1, U64(0))
+        odd_composite[0] = U64(1)
+        var count = if n >= 2: 1 else: 0
+        unchecked:
+            var i = 3
+            while i <= n:
+                if (odd_composite[i / 128] >> (i / 2 % 64)) & U64(1) == U64(0):
+                    count += 1
+                    var j = i * i
+                    while j <= n:
+                        odd_composite[j / 128] |= U64(1) << (j / 2 % 64)
+                        j += 2 * i
+                i += 2
+        var primes: List<SieveVal> = List.filled(count, 2)
+        var at = 1
+        unchecked:
+            var i = 3
+            while i <= n:
+                if (odd_composite[i / 128] >> (i / 2 % 64)) & U64(1) == U64(0):
+                    primes[at] = i
+                    at += 1
+                i += 2
+        Sieve(primes, bound, odd_composite, [])
+
+    /// Fill `_spf` by a linear sieve over `primes` on the first call.
+    fn build_spf(self):
+        if not _spf.is_empty: return
+        let n = top
         var spf: List<SieveVal> = List.filled(n + 1, 0)
-        var primes: List<SieveVal> = []
         unchecked:
             for i in 2..=n:
-                if spf[i] == 0:
-                    spf[i] = i
-                    primes.push(i)
+                if spf[i] == 0: spf[i] = i
                 let si = spf[i]
                 for p in primes:
                     if p > si or i * p > n: break
                     spf[i * p] = p
-        Sieve(spf, primes)
+        _spf = spf
 
-    /// Whether `x` is prime, for `0 <= x <= n`: `spf[x] == x` and `x >= 2`.
+    /// The smallest prime factor of every `0..=n`, with `spf[0]` and `spf[1]` 0. The first read
+    /// builds it by a linear sieve over `primes` and keeps it.
+    ///
+    /// cost: \(O(n)\) time and \(4n\) bytes on the first read, then \(O(1)\), lent
+    /// traps: never
+    /// example: `Sieve(12).spf == [0, 0, 2, 3, 2, 5, 2, 7, 2, 3, 2, 11, 2]`
+    @get pub fn spf(self) -> List<SieveVal>:
+        self.build_spf()
+        _spf
+
+    /// Whether `x` is prime, for `0 <= x <= n`, from the primality bitset (no `spf` build).
     ///
     /// cost: \(O(1)\)
     /// traps: when `x` is outside `0..=n`
     /// example: `Sieve(10).is_prime(7) == true`
     /// example: `Sieve(10).is_prime(9) == false`
     /// example: `Sieve(10).is_prime(1) == false`
-    pub fn is_prime(self, x: Int) -> Bool = x >= 2 and spf[x] == x
+    pub fn is_prime(self, x: Int) -> Bool:
+        assert 0 <= x <= top, "`is_prime` takes `x` in `0..=n`"
+        if x % 2 == 0: return x == 2
+        (odd_composite[x / 128] >> (x / 2 % 64)) & U64(1) == U64(0)
 
     /// The prime factorization of `x` in `1..=n` as `(prime, exponent)` pairs, by repeated `spf`.
     ///
@@ -233,6 +281,8 @@ pub struct Sieve:
     /// example: `Sieve(100).factor(97) == [(97, 1)]`
     /// example: `Sieve(100).factor(1) == []`
     pub fn factor(self, x: Int) -> List<(Int, Int)>:
+        self.build_spf()
+        let spf = _spf
         var out = List<(Int, Int)>()
         var rest = x
         while rest > 1:
@@ -275,6 +325,8 @@ pub struct Sieve:
     /// traps: never
     /// example: `Sieve(6).phi_table() == [0, 1, 1, 2, 2, 4, 2]`
     pub fn phi_table(self) -> List<Int>:
+        self.build_spf()
+        let spf = _spf
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
         unchecked:
@@ -292,6 +344,8 @@ pub struct Sieve:
     /// traps: never
     /// example: `Sieve(6).mobius_table() == [0, 1, -1, -1, 0, -1, 1]`
     pub fn mobius_table(self) -> List<Int>:
+        self.build_spf()
+        let spf = _spf
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
         unchecked:
@@ -309,6 +363,8 @@ pub struct Sieve:
     /// traps: never
     /// example: `Sieve(6).div_count_table() == [0, 1, 2, 2, 3, 2, 4]`
     pub fn div_count_table(self) -> List<Int>:
+        self.build_spf()
+        let spf = _spf
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
         var cnt = List.filled(n + 1, 0)
@@ -331,6 +387,8 @@ pub struct Sieve:
     /// traps: when a sum overflows `Int`
     /// example: `Sieve(6).div_sum_table() == [0, 1, 3, 4, 7, 6, 12]`
     pub fn div_sum_table(self) -> List<Int>:
+        self.build_spf()
+        let spf = _spf
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
         var pp_sum = List.filled(n + 1, 0)
@@ -364,6 +422,8 @@ pub struct Sieve:
     /// example: `Sieve(12).divisors(1).collect() == [1]`
     /// example: `Sieve(1000).divisors(720).sum() == 2418`
     pub fn divisors(self, x: Int) -> yields Int:
+        self.build_spf()
+        let spf = _spf
         assert 1 <= x < spf.len
         var d = 1
         while true:
@@ -421,6 +481,30 @@ pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<
                 if m > n: break
                 pe *= p
     res
+
+/// A 64-bit machine word whose bits `popcount` counts: an `Int` as its two's complement, or a
+/// `U64` as it is.
+pub trait Word:
+    fn word(self) -> U64
+
+impl Word for Int:
+    /// cost: \(O(1)\)
+    /// example: `(-1).word() == U64(0) - U64(1)`
+    fn word(self) -> U64 = U64(self)
+
+impl Word for U64:
+    /// cost: \(O(1)\)
+    /// example: `U64(5).word() == U64(5)`
+    fn word(self) -> U64 = self
+
+/// The number of 1 bits in `x`'s 64-bit word, one `popcnt`: a negative `Int` counts its two's
+/// complement.
+///
+/// cost: \(O(1)\)
+/// example: `popcount(7) == 3`
+/// example: `popcount(-1) == 64`
+/// example: `popcount(U64(11)) == 3`
+pub fn popcount<W: Word>(x: W) -> Int = @intrinsic("popcount")
 
 /// The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.
 ///

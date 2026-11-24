@@ -38,6 +38,13 @@ target = "only builtin-floor names (decision 266)"
 milestone = "M2"
 
 [[metric]]
+name = "std_names_outside_rt"
+command = "python3 scripts/debt-ratchet.py --show std_names_outside_rt"
+today = 120
+target = "0 (name-ban gate, decision 573)"
+milestone = "M3"
+
+[[metric]]
 name = "backend_std_names"
 command = "python3 scripts/debt-ratchet.py --show backend_std_names"
 today = 17
@@ -187,7 +194,7 @@ milestone = "M2"
 [[metric]]
 name = "uncited_rules"
 command = "python3 scripts/debt-ratchet.py --list uncited_rules"
-today = 130
+today = 120
 target = "0"
 milestone = "M2"
 

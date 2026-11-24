@@ -13,7 +13,7 @@
 @!multitest
 let n: 2..=50_000 = read()
 domain I = 0..n
-var a: [I]Int = read()
+let a: [I]Int = read()
 let tot = a.sum()
 let half = tot / 2
 let pref = prefix(a)
@@ -33,7 +33,6 @@ else:
         excess
     else:
         0
-    for i in I: a[i] -= b[i]
     print(2)
-    print(a)
+    print([I] i => a[i] - b[i])
     print(b)

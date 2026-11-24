@@ -27,8 +27,8 @@ for r in radius.sorted():
     for j in 0..n:
         for k in 0..=l if ways[j, k] != 0:
             let w = ways[j, k]
-            if k + 1 <= l: next[j + 1, k + 1] += w * (j + 1)                         // a block of its own, in any of j + 1 places
-            if k + r <= l: next[j, k + r] += w * (2 * j)                             // at either end of a block
+            if k + 1 <= l: next[j + 1, k + 1] += w * (j + 1)                             // a block of its own, in any of j + 1 places
+            if k + r <= l: next[j, k + r] += w * (2 * j)                                 // at either end of a block
             if j >= 2 and k + 2 * r - 1 <= l: next[j - 1, k + 2 * r - 1] += w * (j - 1)  // joining two neighbouring blocks
     ways = next
 

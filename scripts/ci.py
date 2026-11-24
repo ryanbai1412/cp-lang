@@ -139,10 +139,14 @@ RATCHET = Step("tech-debt ratchet (scripts/debt-ratchet.py --check)", ("scripts/
 USECASES = Step("use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)",
                 ("scripts/check-usecases.py", "--check"), "use-case catalogue check failed; see above", stdout=False)
 
+# The board's failing cases generate spec/SUBSET.md's known gaps, so whatever
+# rewrites research/scoreboard.json must regenerate it in the same commit.
+SUBSET = gate("subset", fail=_stale("spec/SUBSET.md", "subset"))
+
 # Every checking script check.sh runs, by tier, in order: `commit` before a
 # commit, `checks` after --fast's build, `full` (with --full's slow suites) last.
 STEPS = {
-    "commit": (RATCHET, USECASES),
+    "commit": (RATCHET, USECASES, SUBSET),
     "checks": (
         RATCHET,
         Step("handbook reads for an outsider (scripts/check-handbook.py)", ("scripts/check-handbook.py",),
@@ -158,6 +162,12 @@ STEPS = {
         Step("I/O programs' peak RSS within a fixed chunk of scanf/printf's (bench/rss/run.py --check)",
              ("bench/rss/run.py", "--check", "--cpl", "{cpl}"),
              "an I/O program's peak RSS grows with its input or output; see above"),
+        Step("a tiny program starts within 1.02x of C++'s CPU (bench/startup/run.py --check)",
+             ("bench/startup/run.py", "--check", "--cpl", "{cpl}"),
+             "tiny.cp's startup CPU is over 1.02x tiny.cpp's; see above"),
+        Step("deep recursive fns' stack frames within their bounds (bench/frames.py --check)",
+             ("bench/frames.py", "--check", "--cpl", "{cpl}"),
+             "a recursive fn's g++ -fstack-usage frame is over its bound in bench/frames.py; see above"),
         Step("g++ -O2 compile time of the bench programs within its bars (bench/compile_time.py --check)",
              ("bench/compile_time.py", "--check", "--cpl", "{cpl}"),
              "the bench programs' g++ -O2 time is over a bar in bench/compile_time.py; see above"),
@@ -165,7 +175,7 @@ STEPS = {
              ("bench/scaling.py", "--check", "--cpl", "{cpl}"),
              "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"),
         gate("coverage", fail="a rule lacks the case it needs; see above, then rerun: uv run scripts/spec-gate.py coverage"),
-        gate("subset", fail=_stale("spec/SUBSET.md", "subset")),
+        SUBSET,
         gate("matrix", fail="matrix gate failed; see above"),
         gate("widths", fail=_stale("spec/conformance/widths/", "widths")),
         gate("ownership", fail=_stale("spec/conformance/ownership/", "ownership")),
@@ -294,11 +304,12 @@ def _argv(step: Step, values: dict[str, str]) -> list[str]:
 
 
 def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, healed: bool | None = None,
-              only=None) -> int:
+              only=None, keep_going: bool = False) -> int:
     """Runs the tier's steps, or with `only` the touched steps running those scripts, in order,
-    and stops at the first that fails."""
+    and stops at the first that fails; `keep_going` runs them all and names every failure."""
     if healed is None:
         healed = os.environ.get("CPL_DERIVED_HEALED") == "1"
+    failed: list[str] = []
     with tempfile.TemporaryDirectory(prefix="cpl-ci-") as tmp:
         values = {"cpl": cpl, "tmp": tmp, "nproc": str(os.cpu_count() or 1)}
         for step in touched_steps(only) if only else STEPS[tier]:
@@ -306,7 +317,10 @@ def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, heal
             missing = [c for c in step.needs if not shutil.which(c)]
             if missing:
                 print(f"check: `{missing[0]}` is not installed; {step.title} needs it", file=sys.stderr)
-                return 1
+                if not keep_going:
+                    return 1
+                failed.append(step.title)
+                continue
             kw = {"cwd": ROOT, "text": True}
             if step.env:
                 kw["env"] = {**os.environ, **{k: v.format(**values) for k, v in step.env}}
@@ -329,8 +343,12 @@ def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, heal
                 print(f"warning: {step.fail} (the regen job commits the fix)", file=sys.stderr)
                 continue
             print(f"check: {step.fail}", file=sys.stderr)
-            return 1
-    return 0
+            if not keep_going:
+                return 1
+            failed.append(step.title)
+    for title in failed:
+        print(f"check: failed: {title}", file=sys.stderr)
+    return 1 if failed else 0
 
 
 # The --fast tier after its build: the workspace tests and what overlaps them. Each
@@ -476,24 +494,38 @@ class Tail:
                 self.end_step()
         return 0
 
-    def wasm(self) -> None:
+    def wasm(self) -> bool:
         """The playground build. CI's site job builds cpl-wasm itself, and a lane box
-        without the wasm32 target warns and skips."""
+        without the wasm32 target warns and skips. Whether it checked."""
         self.step("cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)")
         if os.environ.get("CI"):
             print("skipped in CI: the site build job builds cpl-wasm")
-            return
+            return False
         lib = self.run(["rustc", "--print", "target-libdir", "--target", "wasm32-unknown-unknown"],
                        cwd=ROOT, capture_output=True, text=True)
         libdir = lib.stdout.strip() if lib.returncode == 0 else ""
         if not libdir or not Path(libdir).is_dir():
             print("WARNING: skipped; the wasm32 target is not installed (run: rustup target add wasm32-unknown-unknown)",
                   file=sys.stderr)
-            return
+            return False
         env = {**os.environ, "RUSTFLAGS": f"{os.environ.get('RUSTFLAGS', '')} -D warnings"}
         if self.call(["cargo", "check", "-q", "-p", "cpl-wasm", "--target", "wasm32-unknown-unknown"], env=env):
             raise Failed("cpl-wasm does not check for wasm32; rerun:"
                          " RUSTFLAGS=-Dwarnings cargo check -p cpl-wasm --target wasm32-unknown-unknown")
+        return True
+
+    def wasm_data(self, pkgs: list[str]) -> None:
+        """The data segment of a names build of cpl.wasm (std's outlines and every
+        crate's strings) and each touched crate within its budget, so a change that
+        grows one fails at commit and land time, not later in the site job."""
+        self.step("cpl.wasm data segment and touched crates within their budgets (scripts/build-wasm.sh --names)")
+        out = target_dir() / "wasm-data-gate"
+        if self.call(["scripts/build-wasm.sh", "--names", str(out)]):
+            raise Failed(f"scripts/build-wasm.sh --names failed; rerun: scripts/build-wasm.sh --names {out}")
+        touched = ",".join(p.replace("-", "_") for p in pkgs)
+        if self.call(["node", "web/scripts/wasm-crates.mjs", "--data", str(out / "cpl.wasm"), "--touched", touched]):
+            raise Failed("cpl.wasm's data segment or a touched crate is over its budget (named above); rerun:"
+                         f" node web/scripts/wasm-crates.mjs --data {out / 'cpl.wasm'} --touched {touched}")
 
     def _build(self) -> None:
         self.step("cargo fmt --all --check")
@@ -512,6 +544,9 @@ class Tail:
             raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
 
     def _commit(self, sel: dict[str, str], logs: str) -> None:
+        # First: the hook's 25 s cut allows a commit past any other step, so a slice
+        # after them went unrun whenever they were slow (e843b83dc's unparsable std).
+        self._slices(sel.get("slices", "").split())
         self.step("checking scripts (scripts/ci.py steps commit)")
         if run_steps("commit", self.cpl, run=self.run):
             raise Failed("")
@@ -523,7 +558,6 @@ class Tail:
         if gen.returncode:
             print((gen.stdout.strip().splitlines() or [""])[-1].removesuffix("; run: just gen"))
             print("note: not blocking, and no need to regenerate them: CI's regen job rewrites these on main")
-        self._slices(sel.get("slices", "").split())
         not_slow = f" & not ({slow_filter()})"
         if pkgs := sel.get("packages", "").split():
             ps = [a for p in pkgs for a in ("-p", p)]
@@ -537,8 +571,8 @@ class Tail:
                              "normal", "--prefix", "none"], cwd=ROOT, capture_output=True, text=True)
             if tree.returncode:
                 raise Failed(f"cargo tree -p cpl-wasm failed:\n{tree.stderr}")
-            if {line.split()[0] for line in tree.stdout.splitlines() if line.strip()} & set(pkgs):
-                self.wasm()
+            if {line.split()[0] for line in tree.stdout.splitlines() if line.strip()} & set(pkgs) and self.wasm():
+                self.wasm_data(pkgs)
             expr = f"({sel.get('filter', '')}){not_slow}"
             if slice_filter := sel.get("slice_filter"):
                 expr += f" & not ({slice_filter})"
@@ -558,7 +592,7 @@ class Tail:
         if sel.get("audit") == "1":
             self.step("staged corpus packages pass every mode (scripts/corpus.py verify --changed staged)")
             self._cargo_build("cpl-cli")
-            if self.call([sys.executable, "scripts/corpus.py", "make", "--changed", "staged"], stdout=subprocess.DEVNULL):
+            if self.call([sys.executable, "scripts/corpus.py", "make", "--changed", "staged", "--cpl", self.cpl], stdout=subprocess.DEVNULL):
                 raise Failed("scripts/corpus.py make --changed staged failed; rerun it to see which package")
             if self.call([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--skip", "dream,header,package", "--cpl", self.cpl]):
                 raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
@@ -730,7 +764,7 @@ class Tail:
             # Seeded problems (problem-packages/R9) read their cases from
             # target/corpus-tests/; only the corpus suite reads them.
             if {"all", "corpus"} & set(suites):
-                if self.call([sys.executable, "scripts/corpus.py", "make"], stdout=subprocess.DEVNULL):
+                if self.call([sys.executable, "scripts/corpus.py", "make", "--cpl", self.cpl], stdout=subprocess.DEVNULL):
                     raise Failed("scripts/corpus.py make failed; rerun it to see which package")
             # CI keeps main's last green run in $CPL_CONFORM_PREV, so a case newer than
             # research/scoreboard.json still can't regress unseen (ci.yml).
@@ -779,8 +813,8 @@ class Tail:
             if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
                 raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
             self.step("the --full suites (scripts/ci.py steps full)")
-            if run_steps("full", self.cpl, run=self.run):
-                raise Failed("a --full suite failed; the step above names it")
+            if run_steps("full", self.cpl, run=self.run, keep_going=True):
+                raise Failed("a --full suite failed; the lines above name each one")
             return "full part"
         raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
 
@@ -788,6 +822,11 @@ class Tail:
         """The touched paths' owner-named tests, ahead of the rest; one over 20 s fails."""
         if not slices:
             return
+        # A separate step, so the hook's 25 s cut during a cold build allows the commit:
+        # only a slice's tests running out of time refuse it.
+        self.step(f"build of the touched-path slices' tests: {' '.join(slices)}")
+        if self.call([sys.executable, "scripts/affected.py", "--build-slices", *slices]):
+            raise Failed(f"the slices' tests do not build; rerun: uv run scripts/affected.py --build-slices {' '.join(slices)}")
         self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
         if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
             raise Failed("a touched-path slice failed or took over 20 s; the lines above name it, rerun:"

@@ -12,7 +12,7 @@ for i in range(1, n):
     if kind == "rand": p = r.randint(1, i)
     elif kind == "binary":
         p = r.choice([j for j in range(max(1, i - 6), i + 1) if kids[j] < 2] or [i])
-    elif kind == "broom": p = i if i <= n // 3 else r.randint(n // 3, i)
+    elif kind == "broom": p = i if i <= n // 3 else r.randint(max(1, n // 3), i)
     elif kind == "comb": p = r.randint(max(1, i - 3), i)
     elif kind == "star": p = 1
     else: p = (i + 1) // 2

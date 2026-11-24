@@ -44,12 +44,16 @@ for i in W:
 
 fn bits_apart(a: Word, i: W) -> Int = sum(popcount(a[c] ^ dict[i, c]) for c in Quarter)
 
-fn hex(digits: Str) -> U64 = U64(digits[..8].parse_int(base: 16)!) << 32 | U64(digits[8..].parse_int(base: 16)!)
+fn hex(digits: Str) -> U64 = U64(digits[..8].parse_int(base: 16)!) << 32 | U64(
+    digits[8..].parse_int(base: 16)!
+)
 
 var flip = false
 repeat m:
     let (digits, k): (Str, 0..=15) = read()
     let mask = if flip: ~U64(0) else: U64(0)
     let word: Word = [Quarter] c => hex(digits[16 * c.ord..16 * c.ord + 16]) ^ mask
-    flip = any(bits_apart(word, i) <= k for b in Block for i in sharing[b, block(word[quarter(b)], b)])
+    flip = any(
+        bits_apart(word, i) <= k for b in Block for i in sharing[b, block(word[quarter(b)], b)]
+    )
     print(if flip: 1 else: 0)

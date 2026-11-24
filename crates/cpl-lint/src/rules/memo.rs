@@ -8,7 +8,7 @@ use crate::facts::Facts;
 use crate::walk::Visitor;
 use crate::{File, Finding, MEMO_KEY_SPACE};
 use cpl_check::Ty;
-use cpl_diag::Diagnostic;
+use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::{ExprKind, Stmt, StmtKind};
 
 /// The least one memo entry can take: an `Int` result.
@@ -75,17 +75,7 @@ impl Visitor for Memo<'_> {
             .map(|(size, param)| format!("{} for `{}`", count(*size), param.name.text))
             .collect::<Vec<_>>()
             .join(" x ");
-        let diag = Diagnostic::warning(
-            MEMO_KEY_SPACE.code,
-            decl.name.span.shift(self.base),
-            format!(
-                "`@memo` on `{}` can hold {} entries, at least {} of memory; the limit is {} MB",
-                decl.name.text,
-                count(states),
-                bytes(states.saturating_mul(BYTES_PER_ENTRY)),
-                self.memory_mb,
-            ),
-        )
+        let diag = lint_rules::MEMO_KEY_SPACE.warning(decl.name.span.shift(self.base), &[&decl.name.text, &count(states), &(bytes(states.saturating_mul(BYTES_PER_ENTRY))), &self.memory_mb])
         .with_note(format!("one entry per combination of arguments: {product}"))
         .with_help(
             "narrow a parameter's type to the values it really takes, or fill a table in order and keep only the rows the recurrence reads: the memo holds one entry per combination, so each narrower parameter divides its size",

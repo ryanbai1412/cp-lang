@@ -11,25 +11,15 @@ impl Lowerer<'_> {
             // `lo <= x and x < hi`, with `x` evaluated once.
             let mut stmts = Vec::new();
             let value = lw.hold(value, &mut stmts);
-            let ge = lw.mk(
-                ExprKind::Cmp(CmpOp::Le, Box::new(lo), Box::new(value.clone())),
+            let ge = lw.mk_cmp(CmpOp::Le, lo, value.clone(), Ty::Bool, span);
+            let lt = lw.mk_cmp(
+                if closed { CmpOp::Le } else { CmpOp::Lt },
+                value,
+                hi,
                 Ty::Bool,
                 span,
             );
-            let lt = lw.mk(
-                ExprKind::Cmp(
-                    if closed { CmpOp::Le } else { CmpOp::Lt },
-                    Box::new(value),
-                    Box::new(hi),
-                ),
-                Ty::Bool,
-                span,
-            );
-            let both = lw.mk(
-                ExprKind::Binary(BinOp::And, Box::new(ge), Box::new(lt)),
-                Ty::Bool,
-                span,
-            );
+            let both = lw.mk_binary(BinOp::And, ge, lt, Ty::Bool, span);
             if stmts.is_empty() {
                 return both;
             }
@@ -63,11 +53,7 @@ impl Lowerer<'_> {
                 let value = self.expect(item, &Ty::Int);
                 let lo = self.mk(ExprKind::DomainLo(id), Ty::Int, span);
                 let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
-                let hi = self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(len)),
-                    Ty::Int,
-                    span,
-                );
+                let hi = self.mk_binary(BinOp::Add, lo.clone(), len, Ty::Int, span);
                 between(self, value, lo, hi, false)
             }
             _ => {
@@ -97,16 +83,8 @@ impl Lowerer<'_> {
                     let value = self.expect(item, &Ty::Float);
                     let mut stmts = Vec::new();
                     let holder = self.hold(holder, &mut stmts);
-                    let lo = self.mk(
-                        ExprKind::Builtin(Builtin::RangeLo, vec![holder.clone()]),
-                        Ty::Float,
-                        span,
-                    );
-                    let hi = self.mk(
-                        ExprKind::Builtin(Builtin::RangeHi, vec![holder]),
-                        Ty::Float,
-                        span,
-                    );
+                    let lo = self.mk_builtin(Builtin::RangeLo, [holder.clone()], Ty::Float, span);
+                    let hi = self.mk_builtin(Builtin::RangeHi, [holder], Ty::Float, span);
                     let found = between(self, value, lo, hi, false);
                     if stmts.is_empty() {
                         return found;
@@ -139,11 +117,7 @@ impl Lowerer<'_> {
                     }
                 };
                 let value = self.expect(item, &elem);
-                self.mk(
-                    ExprKind::Builtin(Builtin::Contains, vec![holder, value]),
-                    Ty::Bool,
-                    span,
-                )
+                self.mk_builtin(Builtin::Contains, [holder, value], Ty::Bool, span)
             }
         }
     }

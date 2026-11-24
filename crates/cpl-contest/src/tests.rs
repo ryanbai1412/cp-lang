@@ -275,6 +275,63 @@ fn a_problem_without_limits_gets_its_judges_usual_ones() {
 }
 
 #[test]
+fn list_names_the_cases_in_the_order_they_run() {
+    // Editors' test trees list what this prints: `+3` is a number, as Rust
+    // parses a u64, and 2^64 is not.
+    let dir = scratch("list");
+    let tests = dir.join("d.tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    let names = [
+        "stress-7",
+        "hand",
+        "10",
+        "2",
+        "02",
+        "Hand",
+        "+3",
+        "18446744073709551616",
+    ];
+    for name in names {
+        std::fs::write(tests.join(format!("{name}.in")), "").unwrap();
+    }
+    let d = dir.join("d.cp").to_string_lossy().into_owned();
+    let list = |format: &[&str]| {
+        let args: Vec<String> = [&d, "--list"]
+            .into_iter()
+            .chain(format.iter().copied())
+            .map(String::from)
+            .collect();
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            crate::test::run(&args, &mut out, &mut err),
+            0,
+            "{}",
+            String::from_utf8_lossy(&err)
+        );
+        String::from_utf8(out).unwrap()
+    };
+    let order = [
+        "02",
+        "2",
+        "+3",
+        "10",
+        "18446744073709551616",
+        "Hand",
+        "hand",
+        "stress-7",
+    ];
+    assert_eq!(list(&[]), order.map(|n| format!("{n}\n")).concat());
+    let listed = json::parse(&list(&["--format", "json"])).unwrap();
+    let cases = listed.at(&["cases"]).as_array().unwrap();
+    let seen: Vec<&str> = cases
+        .iter()
+        .map(|c| c.at(&["name"]).as_str().unwrap())
+        .collect();
+    assert_eq!(seen, order);
+    assert!(cases[0].at(&["input"]).as_str().unwrap().ends_with("02.in"));
+}
+
+#[test]
 fn cases_are_samples_in_order_then_the_rest_by_name() {
     let dir = scratch("cases");
     let tests = dir.join("d.tests");
@@ -422,6 +479,50 @@ fn the_test_command_judges_with_a_checker_or_an_interactor() {
     assert!(
         wrong[0].at(&["expected"]).as_str().is_some() && wrong[0].at(&["why"]).as_str().is_some(),
         "{out}"
+    );
+    let (code, out, _) = cli(
+        test::run,
+        &[path, "--fast", &solution, "--format", "teamcity"],
+    );
+    assert_eq!(code, 1);
+    let lines: Vec<&str> = out.lines().collect();
+    assert!(
+        lines
+            .iter()
+            .all(|l| l.starts_with("##teamcity[") && l.ends_with(']')),
+        "{out}"
+    );
+    let tests_dir = std::path::absolute(dir.join("d.tests")).unwrap();
+    let started = format!("locationHint='file://{}/", tests_dir.display());
+    assert_eq!(
+        lines
+            .iter()
+            .filter(|l| l.starts_with("##teamcity[testStarted") && l.contains(&started))
+            .count(),
+        3,
+        "{out}"
+    );
+    assert_eq!(
+        lines
+            .iter()
+            .filter(|l| l.starts_with("##teamcity[testFinished"))
+            .count(),
+        3,
+        "{out}"
+    );
+    let failed: Vec<_> = lines
+        .iter()
+        .filter(|l| l.starts_with("##teamcity[testFailed"))
+        .collect();
+    assert_eq!(failed.len(), 1, "{out}");
+    assert!(
+        failed[0].contains(" message='WA: ")
+            && failed[0].contains(" type='comparisonFailure' expected='"),
+        "{out}"
+    );
+    assert!(
+        out.contains("|n"),
+        "a newline in an output is escaped: {out}"
     );
     let (code, _, err) = cli(test::run, &[path, "--format", "xml"]);
     assert_eq!(code, 2);
@@ -1244,4 +1345,67 @@ fn test_and_stress_trap_on_overflow_as_run_does() {
         "{out}"
     );
     std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn test_json_says_how_each_case_shows_in_a_test_tree() {
+    let case = |name: &str, verdict: Option<Verdict>, explained: Option<&str>| test::CaseResult {
+        name: name.into(),
+        verdict,
+        elapsed: Duration::from_millis(3),
+        peak_kb: None,
+        expected: Some("7\n".into()),
+        output: "6\n".into(),
+        explained: explained.map(Into::into),
+    };
+    let results = [
+        case("1", Some(Verdict::Accepted), None),
+        case("2", None, None),
+        case(
+            "3",
+            Some(Verdict::Wrong("first difference at line 1".into())),
+            None,
+        ),
+        case(
+            "4",
+            Some(Verdict::RuntimeError("exit 101".into())),
+            Some("index 5 out of 0..5"),
+        ),
+        case("5", Some(Verdict::TimeLimit), None),
+    ];
+    let json = test::results_json(&results);
+    let shown: Vec<_> = (json.at(&["cases"]).as_array().unwrap().iter())
+        .map(|c| {
+            (
+                c.at(&["outcome"]).as_str().unwrap(),
+                c.at(&["message"]).as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            ("passed", None),
+            ("passed", None),
+            ("failed", Some("WA: first difference at line 1")),
+            ("errored", Some("RE: exit 101: index 5 out of 0..5")),
+            ("errored", Some("TLE")),
+        ]
+    );
+    assert_eq!(
+        json.at(&["view", "panel"]).as_str(),
+        Some(render(&results).as_str())
+    );
+    let status = json.at(&["view", "status"]);
+    assert_eq!(status.at(&["label"]).as_str(), Some("2/5 passed"));
+    assert_eq!(
+        (status.at(&["ok"]).as_bool(), status.at(&["line"]).as_i64()),
+        (Some(false), Some(0))
+    );
+    let passing = test::results_json(&results[..2]);
+    assert_eq!(passing.at(&["view", "status", "ok"]).as_bool(), Some(true));
+    assert_eq!(
+        passing.at(&["view", "status", "label"]).as_str(),
+        Some("2/2 passed")
+    );
 }

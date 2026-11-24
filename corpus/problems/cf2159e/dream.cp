@@ -17,7 +17,7 @@ let inv_c = 1 / c
 fn coeffs_of_power(m: Int) -> List<Z>:
     var f: List<Z> = [c ** m]
     for z in 1..=2 * m:
-        let two_back = f.get(z - 2) ?? 0          // no coefficient below x^0
+        let two_back = f.get(z - 2) ?? 0  // no coefficient below x^0
         f.push((b * f[z - 1] * (m - z + 1) + a * two_back * (2 * m - z + 2)) * comb.inv(z) * inv_c)
     f
 

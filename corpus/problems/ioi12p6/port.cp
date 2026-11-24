@@ -17,9 +17,9 @@ let n: 1..=1e5 = read()
 let c: 0..n = read()
 let r: 0..n = read()  // the late knight's rank
 domain Pos = 0..n
-domain Gap = 0..n - 1   // gap g is between positions g and g + 1
+domain Gap = 0..n - 1  // gap g is between positions g and g + 1
 domain Round = 0..c
-domain Node = 0..n + c  // the leaves, then the rounds
+domain Node = 0..n + c        // the leaves, then the rounds
 let rank: [Gap]0..n = read()  // the fixed knight who fills gap g
 fn leaf(p: Pos) -> Node = Node(p.ord)
 fn node(round: Round) -> Node = Node(n + round.ord)

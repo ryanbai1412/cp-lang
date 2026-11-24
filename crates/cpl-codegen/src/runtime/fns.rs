@@ -27,6 +27,23 @@ template <class F> Rec<F> rec(F f) { return {f}; }
 ",
     },
     Piece {
+        name: "fn_ref",
+        needs: &[],
+        code: "\
+// A recursive generator's callback, by reference and of one type, so its
+// `cpl_each_` form is written once however deep the recursion goes.
+template <class S> struct FnRef;
+template <class R, class... A> struct FnRef<R(A...)> {
+  void* o; R (*f)(void*, A...);
+  template <class L, class = std::enable_if_t<!std::is_same_v<std::decay_t<L>, FnRef>>> FnRef(L& l) : o((void*)&l), f([](void* o, A... a) -> R { return (*(L*)o)((A)a...); }) {}
+  R operator()(A... a) const { return f(o, (A)a...); }
+};
+template <class T> struct FnSig;
+template <class L, class R, class... A> struct FnSig<R (L::*)(A...) const> { using type = R(A...); };
+template <class L> FnRef<typename FnSig<decltype(&std::decay_t<L>::operator())>::type> fn_ref(L&& l) { return {l}; }
+",
+    },
+    Piece {
         name: "lazy",
         needs: &[],
         code: "\

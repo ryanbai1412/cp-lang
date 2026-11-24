@@ -94,7 +94,7 @@ pub struct Decorator {
     pub span: Span,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]
 pub struct Stmt {
     pub kind: StmtKind,
     pub span: Span,
@@ -401,7 +401,7 @@ pub enum Cond {
     Const(Expr),
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]
 pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
@@ -493,6 +493,9 @@ pub enum ExprKind {
     /// `@cpp("...")`: a fn's body written in C++, which the bundle emits as
     /// written (Rbundle.5).
     Cpp(String),
+    /// `@intrinsic("id")`: a fn's body that is one primitive of the
+    /// intrinsics table, run by both engines (R12.14.1).
+    Intrinsic(String),
     Unary {
         op: UnOp,
         expr: Box<Expr>,
@@ -761,7 +764,7 @@ pub enum CmpOp {
     Order,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]
 pub struct Pattern {
     pub kind: PatternKind,
     pub span: Span,
@@ -848,7 +851,7 @@ pub enum PatternKind {
     Error,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]
 pub struct Type {
     pub kind: TypeKind,
     pub span: Span,
@@ -954,6 +957,47 @@ impl TypeKind {
         match self {
             TypeKind::ConstrainedStr { alphabet, .. } => alphabet.as_deref(),
             _ => None,
+        }
+    }
+}
+
+// The AST's big types clone through one out-of-line fn each: a derived
+// `Clone` is `#[inline]`, so every crate that clones one kept its own copy
+// of the whole recursive clone (cpl.wasm carried five of `Expr`'s).
+impl Clone for Stmt {
+    fn clone(&self) -> Self {
+        Stmt {
+            kind: self.kind.clone(),
+            span: self.span,
+            decorators: self.decorators.clone(),
+            public: self.public,
+        }
+    }
+}
+
+impl Clone for Expr {
+    fn clone(&self) -> Self {
+        Expr {
+            kind: self.kind.clone(),
+            span: self.span,
+        }
+    }
+}
+
+impl Clone for Pattern {
+    fn clone(&self) -> Self {
+        Pattern {
+            kind: self.kind.clone(),
+            span: self.span,
+        }
+    }
+}
+
+impl Clone for Type {
+    fn clone(&self) -> Self {
+        Type {
+            kind: self.kind.clone(),
+            span: self.span,
         }
     }
 }

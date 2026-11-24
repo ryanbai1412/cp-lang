@@ -14,6 +14,8 @@
 pub mod ast;
 pub mod const_int;
 pub mod doc;
+pub mod files;
+pub mod grammar;
 mod items;
 mod lexer;
 pub mod library_lint;
@@ -85,6 +87,8 @@ pub fn parse_file(src: &str) -> ParsedFile {
 mod foreign_tests;
 #[cfg(test)]
 mod generator_tests;
+#[cfg(test)]
+mod grammar_tests;
 #[cfg(test)]
 mod layout_tests;
 #[cfg(test)]

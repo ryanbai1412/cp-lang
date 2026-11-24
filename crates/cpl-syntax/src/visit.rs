@@ -325,6 +325,7 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
         | ExprKind::Name(_)
         | ExprKind::SelfValue
         | ExprKind::Cpp(_)
+        | ExprKind::Intrinsic(_)
         | ExprKind::Missing
         | ExprKind::Error => {}
     }

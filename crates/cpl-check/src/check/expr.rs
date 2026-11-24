@@ -50,7 +50,7 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Name(name) => self.name_ty(name, expr.span),
             ExprKind::SelfValue => self.name_ty("self", expr.span),
-            ExprKind::Cpp(_) => self.cpp_outside_body(expr.span),
+            ExprKind::Cpp(_) | ExprKind::Intrinsic(_) => self.cpp_outside_body(expr.span),
             ExprKind::Paren(inner) => self.infer(inner),
             ExprKind::Unary { op, expr: inner } => {
                 let ty = self.infer(inner);
@@ -480,6 +480,7 @@ impl<'a> Checker<'a> {
                     }
                     let branch = self.lend_mark();
                     self.add_cond_facts(cond, false);
+                    self.begin_cond_hold(cond, body);
                     let past = self.present.len();
                     let held = narrow::in_branch(cond, body, &mut |f, x| self.call_writes(f, x));
                     self.present.extend(held.into_iter().map(String::from));

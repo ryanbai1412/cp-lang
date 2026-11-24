@@ -5,6 +5,8 @@
 (require 'cl-lib)
 (add-to-list 'load-path (file-name-directory load-file-name))
 (require 'cp-mode)
+;; Reads the rules `cpl setup emacs --grammar' generates from $CPL.
+(let ((cp-cpl-program (or (getenv "CPL") "cpl"))) (cp-font-lock-keywords))
 
 (defun cp-smoke-check (ok what)
   (unless ok (message "emacs smoke: %s" what) (kill-emacs 1)))

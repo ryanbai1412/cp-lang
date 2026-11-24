@@ -16,11 +16,7 @@ impl<'a> Lowerer<'a> {
                 span: lw.span(span),
             };
             let left = lw.temp(Ty::Int);
-            let count = lw.mk(
-                ExprKind::Read(Box::new(Spec::Plain(Ty::Int))),
-                Ty::Int,
-                span,
-            );
+            let count = lw.mk_read(Spec::Plain(Ty::Int), Ty::Int, span);
             out.push(Stmt::Let(left, Some(count)));
             let acc = lw.temp(list.clone());
             let empty = lw.mk(ExprKind::Tuple(Vec::new()), list.clone(), span);
@@ -36,11 +32,7 @@ impl<'a> Lowerer<'a> {
             ];
             lw.cx.loops.pop();
             let (rest, zero) = (lw.local(left, span), lw.int_lit(0, span));
-            let more = lw.mk(
-                ExprKind::Cmp(CmpOp::Gt, Box::new(rest), Box::new(zero)),
-                Ty::Bool,
-                span,
-            );
+            let more = lw.mk_cmp(CmpOp::Gt, rest, zero, Ty::Bool, span);
             out.push(Stmt::While(lid, more, Block { stmts: body }));
             out.push(Stmt::Give(lw.local(acc, span)));
         });

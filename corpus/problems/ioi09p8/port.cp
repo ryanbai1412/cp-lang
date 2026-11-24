@@ -28,7 +28,10 @@ var from_above = SegTree<Loc, Money>(max)  // best[y] + down * y where y is stoo
 var from_below = SegTree<Loc, Money>(max)  // best[y] - up * y
 
 // Home is stood on from the start, so one side always reaches x with a real value.
-fn reach(x: Loc) -> Int = max(from_above.fold(..=x) - down * x.label, from_below.fold(x..) + up * x.label)
+fn reach(x: Loc) -> Int = max(
+    from_above.fold(..=x) - down * x.label,
+    from_below.fold(x..) + up * x.label,
+)
 
 fn stand(x: Loc, money: Int):
     from_above.at(x) max= money + down * x.label

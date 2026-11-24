@@ -8,6 +8,10 @@
 //! form is implemented, its entry goes: the test that each `example` is
 //! reported fails until then.
 
+use cpl_diag::msgs::{syntax, Msg};
+use cpl_diag::{Diagnostic, Span};
+use std::fmt::Display;
+
 pub struct Planned {
     pub feature: &'static str,
     /// The section of the design that specifies it, as `<file> §<section>`.
@@ -195,13 +199,18 @@ impl Planned {
     }
 
     pub fn message(&self) -> String {
+        self.with_row(|msg, args| msg.say(args))
+    }
+
+    pub fn error(&self, span: Span) -> Diagnostic {
+        self.with_row(|msg, args| msg.error(span, args))
+    }
+
+    fn with_row<R>(&self, f: impl FnOnce(&Msg, &[&dyn Display]) -> R) -> R {
         match self.see {
-            Some(see) if self.deferred() => format!(
-                "not implemented yet, and deferred: {} (see {see})",
-                self.feature
-            ),
-            Some(see) => format!("not implemented yet: {} (see {see})", self.feature),
-            None => format!("not implemented yet: {} (not in the design)", self.feature),
+            Some(see) if self.deferred() => f(&syntax::PLANNED_DEFERRED, &[&self.feature, &see]),
+            Some(see) => f(&syntax::PLANNED, &[&self.feature, &see]),
+            None => f(&syntax::PLANNED_UNDESIGNED, &[&self.feature]),
         }
     }
 }

@@ -48,7 +48,7 @@ impl<'a> Lowerer<'a> {
                     let gid = self.ensure_io_global();
                     let io_ty = self.globals[gid].ty.clone();
                     let io_expr = self.mk(ExprKind::Global(gid), io_ty, span);
-                    Some(self.mk(ExprKind::Field(Box::new(io_expr), 0), Ty::Str, span))
+                    Some(self.mk_field(io_expr, 0, Ty::Str, span))
                 } else {
                     None
                 };
@@ -279,13 +279,8 @@ impl<'a> Lowerer<'a> {
                     .filter_map(|(value, at)| self.fmt_arg(value, crate::FLOAT_DIGITS, at))
                     .collect();
                 let query = self.mk(ExprKind::Print(values, None), Ty::Unit, span);
-                let counted = limit.map(|limit| {
-                    self.mk(
-                        ExprKind::Builtin(Builtin::CountQuery, vec![limit]),
-                        Ty::Unit,
-                        span,
-                    )
-                });
+                let counted = limit
+                    .map(|limit| self.mk_builtin(Builtin::CountQuery, [limit], Ty::Unit, span));
                 let Some(want) = hint.filter(|want| **want != Ty::Unit) else {
                     let Some(counted) = counted else {
                         return query;
@@ -374,7 +369,7 @@ impl<'a> Lowerer<'a> {
                 if self.positional_any("read_line", args, 0, span).is_none() {
                     return self.err_expr(span);
                 }
-                self.mk(ExprKind::Read(Box::new(Spec::Line)), Ty::Str, span)
+                self.mk_read(Spec::Line, Ty::Str, span)
             }
             "min" | "max" => self.min_max(name == "max", args, span),
             "first" => {
@@ -409,7 +404,7 @@ impl<'a> Lowerer<'a> {
                 match value.ty {
                     Ty::Int | Ty::I128 | Ty::Float => {
                         let ty = value.ty.clone();
-                        self.mk(ExprKind::Builtin(Builtin::Abs, vec![value]), ty, span)
+                        self.mk_builtin(Builtin::Abs, [value], ty, span)
                     }
                     Ty::Error => value,
                     _ => {
@@ -434,9 +429,8 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            "popcount" | "ctz" | "clz" | "bit_width" | "bit_ceil" => {
+            "ctz" | "clz" | "bit_width" | "bit_ceil" => {
                 let op = match name {
-                    "popcount" => Builtin::Popcount,
                     "ctz" => Builtin::Ctz,
                     "clz" => Builtin::Clz,
                     "bit_width" => Builtin::BitWidth,
@@ -454,7 +448,7 @@ impl<'a> Lowerer<'a> {
                     Some(exprs) => self.expect(exprs[0], &Ty::Int),
                     None => return self.err_expr(span),
                 };
-                self.mk(ExprKind::Builtin(op, vec![value]), Ty::Int, span)
+                self.mk_builtin(op, [value], Ty::Int, span)
             }
             "swap" => {
                 if args.len() != 2 {
@@ -479,11 +473,7 @@ impl<'a> Lowerer<'a> {
                         span: lw.span(span),
                     };
                     let take = |lw: &mut Self, place: &Place| {
-                        lw.mk(
-                            ExprKind::Mutate(Mutation::Take, Box::new(place.clone()), Vec::new()),
-                            ty.clone(),
-                            span,
-                        )
+                        lw.mk_mutate(Mutation::Take, place.clone(), Vec::new(), ty.clone(), span)
                     };
                     let from_a = take(lw, &pa);
                     out.push(Stmt::Let(tmp, Some(from_a)));
@@ -499,11 +489,7 @@ impl<'a> Lowerer<'a> {
                 Some(exprs) => {
                     let lo = self.expect(exprs[0], &Ty::Int);
                     let hi = self.expect(exprs[1], &Ty::Int);
-                    self.mk(
-                        ExprKind::Builtin(Builtin::Rand, vec![lo, hi]),
-                        Ty::Int,
-                        span,
-                    )
+                    self.mk_builtin(Builtin::Rand, [lo, hi], Ty::Int, span)
                 }
                 None => self.err_expr(span),
             },
@@ -511,7 +497,7 @@ impl<'a> Lowerer<'a> {
                 Some(exprs) => {
                     let val = self.expr(exprs[0], hint);
                     let ty = val.ty.clone();
-                    self.mk(ExprKind::Builtin(Builtin::Copy, vec![val]), ty, span)
+                    self.mk_builtin(Builtin::Copy, [val], ty, span)
                 }
                 None => self.err_expr(span),
             },
@@ -556,7 +542,7 @@ impl<'a> Lowerer<'a> {
                     _ => Builtin::Round,
                 };
                 match self.one_arg(name, args, &Ty::Float, span) {
-                    Some(value) => self.mk(ExprKind::Builtin(op, vec![value]), Ty::Int, span),
+                    Some(value) => self.mk_builtin(op, [value], Ty::Int, span),
                     None => self.err_expr(span),
                 }
             }
@@ -586,7 +572,6 @@ impl<'a> Lowerer<'a> {
             "argmax" | "argmin" if args.len() == 1 && self.lookup(name).is_none() => {
                 self.arg_extreme(name == "argmax", &args[0].value, span)
             }
-            "runs" => self.lower_runs(args, span),
             "counts" => self.lower_counts(args, span),
             "prefix" => self.lower_prefix(args, span),
             "List" => {
@@ -622,26 +607,18 @@ impl<'a> Lowerer<'a> {
                 let val = self.expr(src, None);
                 match val.ty.clone() {
                     Ty::List(_) => val,
-                    Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => self.mk(
-                        ExprKind::Builtin(Builtin::ToList, vec![val]),
-                        Ty::List(elem),
-                        span,
-                    ),
-                    Ty::Str | Ty::StrView => self.mk(
-                        ExprKind::Builtin(Builtin::StrToList, vec![val]),
-                        Ty::list(Ty::Char),
-                        span,
-                    ),
-                    Ty::Array { elem, .. } => self.mk(
-                        ExprKind::Builtin(Builtin::ArrayToList, vec![val]),
-                        Ty::List(elem),
-                        span,
-                    ),
-                    Ty::Set(elem) | Ty::HashSet(elem) => self.mk(
-                        ExprKind::Builtin(Builtin::Sorted, vec![val]),
-                        Ty::List(elem),
-                        span,
-                    ),
+                    Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
+                        self.mk_builtin(Builtin::ToList, [val], Ty::List(elem), span)
+                    }
+                    Ty::Str | Ty::StrView => {
+                        self.mk_builtin(Builtin::StrToList, [val], Ty::list(Ty::Char), span)
+                    }
+                    Ty::Array { elem, .. } => {
+                        self.mk_builtin(Builtin::ArrayToList, [val], Ty::List(elem), span)
+                    }
+                    Ty::Set(elem) | Ty::HashSet(elem) => {
+                        self.mk_builtin(Builtin::Sorted, [val], Ty::List(elem), span)
+                    }
                     Ty::DomainVal | Ty::Range(_) | Ty::Map(..) | Ty::HashMap(..) => {
                         self.collect_iter_to_list(src, span)
                     }
@@ -676,16 +653,14 @@ impl<'a> Lowerer<'a> {
                     let lid = lw.open_loop(None);
                     let slot = lw.temp(elem);
                     let item = lw.local(slot, span);
-                    let ins = lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Insert,
-                            Box::new(Place {
-                                kind: PlaceKind::Local(acc),
-                                ty: ty.clone(),
-                                span: lw.span(span),
-                            }),
-                            vec![item],
-                        ),
+                    let ins = lw.mk_mutate(
+                        Mutation::Insert,
+                        Place {
+                            kind: PlaceKind::Local(acc),
+                            ty: ty.clone(),
+                            span: lw.span(span),
+                        },
+                        vec![item],
                         Ty::Bool,
                         span,
                     );
@@ -746,11 +721,7 @@ impl<'a> Lowerer<'a> {
         let items = match &items.ty {
             Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => {
                 let list_ty = Ty::list((**e).clone());
-                self.mk(
-                    ExprKind::Builtin(Builtin::ToList, vec![items]),
-                    list_ty,
-                    span,
-                )
+                self.mk_builtin(Builtin::ToList, [items], list_ty, span)
             }
             Ty::Range(e) => {
                 let elem = (**e).clone();
@@ -818,18 +789,10 @@ impl<'a> Lowerer<'a> {
             let slot = lw.temp(value.ty.clone());
             out.push(Stmt::Let(slot, Some(value)));
             let held = lw.local(slot, span);
-            let some = lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
-            let inside = lw.mk(ExprKind::Unwrap(Box::new(held), false), *inner, span);
-            let shown = lw.mk(
-                ExprKind::Builtin(Builtin::ShowStr, vec![inside]),
-                Ty::Str,
-                span,
-            );
-            let text = lw.mk(
-                ExprKind::If(Box::new(some), Box::new(shown), Box::new(none_text)),
-                Ty::Str,
-                span,
-            );
+            let some = lw.mk_is_some(held.clone(), Ty::Bool, span);
+            let inside = lw.mk_unwrap(held, false, *inner, span);
+            let shown = lw.mk_builtin(Builtin::ShowStr, [inside], Ty::Str, span);
+            let text = lw.mk_if(some, shown, none_text, Ty::Str, span);
             out.push(Stmt::Give(text));
         })
     }
@@ -892,11 +855,7 @@ impl<'a> Lowerer<'a> {
             }
             ("Int", Ty::Char) => (Cast::CharToInt, Ty::Int),
             ("Int", Ty::Str) => {
-                return self.mk(
-                    ExprKind::Builtin(Builtin::ParseInt, vec![value]),
-                    Ty::Int,
-                    span,
-                );
+                return self.mk_builtin(Builtin::ParseInt, [value], Ty::Int, span);
             }
             ("Int", Ty::Pos(d)) => (Cast::Label(*d), Ty::Int),
             ("Int", Ty::Bound(_)) => (Cast::Ord, Ty::Int),
@@ -908,11 +867,7 @@ impl<'a> Lowerer<'a> {
             ("Int", Ty::Bool) => {
                 let one = self.int_lit(1, span);
                 let zero = self.int_lit(0, span);
-                return self.mk(
-                    ExprKind::If(Box::new(value), Box::new(one), Box::new(zero)),
-                    Ty::Int,
-                    span,
-                );
+                return self.mk_if(value, one, zero, Ty::Int, span);
             }
             ("Int", Ty::Enum(eid))
                 if !self.enums[*eid].variants.is_empty()
@@ -943,11 +898,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     let then = self.int_lit(disc, span);
-                    acc = self.mk(
-                        ExprKind::If(Box::new(cond), Box::new(then), Box::new(acc)),
-                        Ty::Int,
-                        span,
-                    );
+                    acc = self.mk_if(cond, then, acc, Ty::Int, span);
                 }
                 return self.mk(
                     ExprKind::Do(Block {
@@ -974,26 +925,14 @@ impl<'a> Lowerer<'a> {
                 return self.cast(Cast::IntToChar, code, Ty::Char);
             }
             ("Str", Ty::List(elem)) if **elem == Ty::Char => {
-                return self.mk(
-                    ExprKind::Builtin(Builtin::ListToStr, vec![value]),
-                    Ty::Str,
-                    span,
-                );
+                return self.mk_builtin(Builtin::ListToStr, [value], Ty::Str, span);
             }
             ("Str", _) => {
-                return self.mk(
-                    ExprKind::Builtin(Builtin::ShowStr, vec![value]),
-                    Ty::Str,
-                    span,
-                );
+                return self.mk_builtin(Builtin::ShowStr, [value], Ty::Str, span);
             }
             ("Bool", Ty::Int) => {
                 let zero = self.int_lit(0, span);
-                return self.mk(
-                    ExprKind::Cmp(CmpOp::Ne, Box::new(value), Box::new(zero)),
-                    Ty::Bool,
-                    span,
-                );
+                return self.mk_cmp(CmpOp::Ne, value, zero, Ty::Bool, span);
             }
             _ => return self.convert_by_impl(to, value, span),
         };
@@ -1013,7 +952,7 @@ impl<'a> Lowerer<'a> {
             | Ty::HashMap(..)
             | Ty::Set(_)
             | Ty::HashSet(_)
-            | Ty::Range(_) => self.mk(ExprKind::Builtin(Builtin::Len, vec![value]), Ty::Int, span),
+            | Ty::Range(_) => self.mk_builtin(Builtin::Len, [value], Ty::Int, span),
             Ty::Error => value,
             _ => {
                 let message = format!("a `{}` has no length", self.show(&value.ty));
@@ -1032,25 +971,18 @@ impl<'a> Lowerer<'a> {
                     return self.err_expr(span);
                 }
                 let ty = Ty::list((**elem).clone());
-                self.mk(ExprKind::Builtin(Builtin::Sorted, vec![value]), ty, span)
+                self.mk_builtin(Builtin::Sorted, [value], ty, span)
             }
             Ty::Array { elem, .. } => {
                 let elem = elem.clone();
-                let list = self.mk(
-                    ExprKind::Builtin(Builtin::ArrayToList, vec![value]),
-                    Ty::List(elem.clone()),
-                    span,
-                );
-                self.mk(
-                    ExprKind::Builtin(Builtin::Sorted, vec![list]),
-                    Ty::List(elem),
-                    span,
-                )
+                let list =
+                    self.mk_builtin(Builtin::ArrayToList, [value], Ty::List(elem.clone()), span);
+                self.mk_builtin(Builtin::Sorted, [list], Ty::List(elem), span)
             }
             Ty::Set(elem) | Ty::HashSet(elem) => {
                 // A set is walked in order already.
                 let ty = Ty::List(elem.clone());
-                self.mk(ExprKind::Builtin(Builtin::Sorted, vec![value]), ty, span)
+                self.mk_builtin(Builtin::Sorted, [value], ty, span)
             }
             // A range goes up already: its list is what it goes over.
             Ty::Range(elem) => {
@@ -1065,11 +997,7 @@ impl<'a> Lowerer<'a> {
                     return self.err_expr(span);
                 }
                 let list = self.walked_list(Iter::Seq(value, false), elem.clone(), span);
-                self.mk(
-                    ExprKind::Builtin(Builtin::Sorted, vec![list]),
-                    Ty::list(elem),
-                    span,
-                )
+                self.mk_builtin(Builtin::Sorted, [list], Ty::list(elem), span)
             }
             Ty::Error => value,
             other => {
@@ -1089,16 +1017,14 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Let(all, Some(empty)));
             let at = lw.temp(Ty::Pos(d));
             let item = lw.local(at, span);
-            let push = lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(Place {
-                        kind: PlaceKind::Local(all),
-                        ty: list_ty.clone(),
-                        span,
-                    }),
-                    vec![item],
-                ),
+            let push = lw.mk_mutate(
+                Mutation::Push,
+                Place {
+                    kind: PlaceKind::Local(all),
+                    ty: list_ty.clone(),
+                    span,
+                },
+                vec![item],
                 Ty::Unit,
                 span,
             );
@@ -1220,26 +1146,16 @@ impl<'a> Lowerer<'a> {
         };
         self.do_expr(Some(&list_ty), span, |lw, out| {
             let init = match value.ty {
-                Ty::List(_) => lw.mk(
-                    ExprKind::Builtin(Builtin::Copy, vec![value]),
-                    list_ty.clone(),
-                    span,
-                ),
-                Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..) => lw.mk(
-                    ExprKind::Builtin(Builtin::ToList, vec![value]),
-                    list_ty.clone(),
-                    span,
-                ),
-                Ty::Array { .. } => lw.mk(
-                    ExprKind::Builtin(Builtin::ArrayToList, vec![value]),
-                    list_ty.clone(),
-                    span,
-                ),
-                Ty::Set(_) | Ty::HashSet(_) => lw.mk(
-                    ExprKind::Builtin(Builtin::Sorted, vec![value]),
-                    list_ty.clone(),
-                    span,
-                ),
+                Ty::List(_) => lw.mk_builtin(Builtin::Copy, [value], list_ty.clone(), span),
+                Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..) => {
+                    lw.mk_builtin(Builtin::ToList, [value], list_ty.clone(), span)
+                }
+                Ty::Array { .. } => {
+                    lw.mk_builtin(Builtin::ArrayToList, [value], list_ty.clone(), span)
+                }
+                Ty::Set(_) | Ty::HashSet(_) => {
+                    lw.mk_builtin(Builtin::Sorted, [value], list_ty.clone(), span)
+                }
                 _ => lw.walked_list(Iter::Seq(value, false), elem.clone(), span),
             };
             let slot = lw.temp(list_ty.clone());
@@ -1252,132 +1168,6 @@ impl<'a> Lowerer<'a> {
             let sort_expr = lw.sort_place(place, &elem, args, span);
             out.push(Stmt::Expr(sort_expr));
             let res = lw.local(slot, span);
-            out.push(Stmt::Give(res));
-        })
-    }
-
-    /// `runs(seq)` -> `List<(T, Int)>` grouping adjacent equal elements.
-    pub(in crate::lower) fn lower_runs(&mut self, args: &[ast::Arg], span: Span) -> Expr {
-        let Some(exprs) = self.positional_any("runs", args, 1, span) else {
-            return self.err_expr(span);
-        };
-        let seq = self.expr(exprs[0], None);
-        let elem = match seq.ty.seq_elem() {
-            Some(e) => e,
-            None if seq.ty == Ty::Error => return self.err_expr(span),
-            None => {
-                self.error(
-                    codes::TYPE_MISMATCH,
-                    exprs[0].span,
-                    format!("`runs` takes a sequence, not `{}`", self.show(&seq.ty)),
-                );
-                return self.err_expr(span);
-            }
-        };
-        let pair_ty = Ty::Tuple(vec![elem.clone(), Ty::Int]);
-        let res_ty = Ty::list(pair_ty.clone());
-        self.do_expr(Some(&res_ty), span, |lw, out| {
-            let acc = lw.temp(res_ty.clone());
-            out.push(Stmt::Let(
-                acc,
-                Some(lw.mk(ExprKind::Tuple(Vec::new()), res_ty.clone(), span)),
-            ));
-            let lid = lw.open_loop(None);
-            let item_slot = lw.temp(elem.clone());
-            let acc_expr = lw.local(acc, span);
-            let acc_len = lw.mk(
-                ExprKind::Builtin(Builtin::Len, vec![acc_expr.clone()]),
-                Ty::Int,
-                span,
-            );
-            let zero = lw.int_lit(0, span);
-            let nonempty = lw.mk(
-                ExprKind::Cmp(CmpOp::Gt, Box::new(acc_len.clone()), Box::new(zero)),
-                Ty::Bool,
-                span,
-            );
-            let last_idx = lw.int_add(acc_len, -1);
-            let last_elem = lw.mk(
-                ExprKind::Index(Box::new(acc_expr.clone()), vec![last_idx.clone()]),
-                pair_ty.clone(),
-                span,
-            );
-            let last_val = lw.mk(ExprKind::Field(Box::new(last_elem), 0), elem.clone(), span);
-            let eq = lw.mk(
-                ExprKind::Cmp(
-                    CmpOp::Eq,
-                    Box::new(last_val),
-                    Box::new(lw.local(item_slot, span)),
-                ),
-                Ty::Bool,
-                span,
-            );
-            let cond = lw.mk(
-                ExprKind::Binary(BinOp::And, Box::new(nonempty), Box::new(eq)),
-                Ty::Bool,
-                span,
-            );
-            let count_place = Place {
-                kind: PlaceKind::Field(
-                    Box::new(Place {
-                        kind: PlaceKind::Index(
-                            Box::new(Place {
-                                kind: PlaceKind::Local(acc),
-                                ty: res_ty.clone(),
-                                span: lw.span(span),
-                            }),
-                            vec![last_idx],
-                        ),
-                        ty: pair_ty.clone(),
-                        span: lw.span(span),
-                    }),
-                    1,
-                ),
-                ty: Ty::Int,
-                span: lw.span(span),
-            };
-            let inc = Stmt::Assign(
-                count_place,
-                AssignOp::Binary(BinOp::Add),
-                lw.int_lit(1, span),
-            );
-            let pair = lw.mk(
-                ExprKind::Tuple(vec![lw.local(item_slot, span), lw.int_lit(1, span)]),
-                pair_ty.clone(),
-                span,
-            );
-            let push = Stmt::Expr(lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(Place {
-                        kind: PlaceKind::Local(acc),
-                        ty: res_ty.clone(),
-                        span: lw.span(span),
-                    }),
-                    vec![pair],
-                ),
-                Ty::Unit,
-                span,
-            ));
-            lw.cx.loops.pop();
-            let seq_iter = if matches!(seq.ty, Ty::Range(_)) {
-                Iter::RangeVal(seq, false)
-            } else {
-                Iter::Seq(seq, false)
-            };
-            out.push(Stmt::For(
-                lid,
-                item_slot,
-                seq_iter,
-                Block {
-                    stmts: vec![Stmt::If(
-                        cond,
-                        Block { stmts: vec![inc] },
-                        Block { stmts: vec![push] },
-                    )],
-                },
-            ));
-            let res = lw.local(acc, span);
             out.push(Stmt::Give(res));
         })
     }
@@ -1435,20 +1225,12 @@ impl<'a> Lowerer<'a> {
                 let call = self.do_expr(Some(&range), span, |lw, out| {
                     let mut end = || {
                         let slot = lw.temp(Ty::Int);
-                        let read = lw.mk(
-                            ExprKind::Read(Box::new(Spec::Plain(Ty::Int))),
-                            Ty::Int,
-                            span,
-                        );
+                        let read = lw.mk_read(Spec::Plain(Ty::Int), Ty::Int, span);
                         out.push(Stmt::Let(slot, Some(read)));
                         lw.local(slot, span)
                     };
                     let (l, r) = (end(), end());
-                    let bad = lw.mk(
-                        ExprKind::Cmp(CmpOp::Gt, Box::new(l.clone()), Box::new(r.clone())),
-                        Ty::Bool,
-                        span,
-                    );
+                    let bad = lw.mk_cmp(CmpOp::Gt, l.clone(), r.clone(), Ty::Bool, span);
                     let trap = Stmt::Trap(
                         "a `Range` is read as `l r` with `l <= r`".into(),
                         lw.span(span),
@@ -1486,100 +1268,10 @@ impl<'a> Lowerer<'a> {
             return read;
         };
         let opt = Ty::opt(read.ty);
-        self.mk(
-            ExprKind::Read(Box::new(Spec::Parse(Box::new(text), spec))),
-            opt,
-            span,
-        )
+        self.mk_read(Spec::Parse(Box::new(text), spec), opt, span)
     }
 
     /// `read()` of a value shaped like `spec`.
-    /// `read_all<T>(until: f)`: reads `T`s until the input ends or `f` holds for one.
-    pub(in crate::lower) fn read_all(
-        &mut self,
-        ty: &ast::Type,
-        args: &[ast::Arg],
-        span: Span,
-    ) -> Expr {
-        let elem = self.resolve_ty(ty);
-        let Some(spec) = self.spec_of(&elem) else {
-            let message = format!(
-                "`read_all()` can't tell how much a `{}` is",
-                self.show(&elem)
-            );
-            self.error(codes::TYPE_MISMATCH, span, message);
-            return self.err_expr(span);
-        };
-        let test = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
-        let until = match args {
-            [] => None,
-            [a] if a.name.as_ref().is_none_or(|n| n.text == "until") => match &a.value.kind {
-                ast::ExprKind::Name(n) if n == "None" && self.lookup(n).is_none() => None,
-                _ => Some(self.expect(&a.value, &test)),
-            },
-            _ => {
-                self.error(
-                    codes::UNKNOWN_ARG_NAME,
-                    span,
-                    "`read_all` takes only `until:`".to_string(),
-                );
-                return self.err_expr(span);
-            }
-        };
-        let list = Ty::List(Box::new(elem.clone()));
-        self.do_expr(Some(&list), span, |lw, out| {
-            let acc = lw.temp(list.clone());
-            out.push(Stmt::Let(
-                acc,
-                Some(lw.mk(ExprKind::Tuple(Vec::new()), list.clone(), span)),
-            ));
-            let until = until.map(|f| {
-                let slot = lw.temp(test.clone());
-                out.push(Stmt::Let(slot, Some(f)));
-                slot
-            });
-            let lid = lw.open_loop(None);
-            let stop = || Block {
-                stmts: vec![Stmt::Break(None)],
-            };
-            let done = lw.mk(
-                ExprKind::Builtin(Builtin::AtEof, Vec::new()),
-                Ty::Bool,
-                span,
-            );
-            let mut body = vec![Stmt::If(done, stop(), Block { stmts: Vec::new() })];
-            let value = lw.temp(elem.clone());
-            let read = lw.read(spec, span);
-            body.push(Stmt::Let(value, Some(read)));
-            if let Some(f) = until {
-                let call = ExprKind::CallExpr(
-                    Box::new(lw.local(f, span)),
-                    vec![Arg::Value(lw.local(value, span))],
-                );
-                let hit = lw.mk(call, Ty::Bool, span);
-                body.push(Stmt::If(hit, stop(), Block { stmts: Vec::new() }));
-            }
-            let item = lw.local(value, span);
-            let place = Place {
-                kind: PlaceKind::Local(acc),
-                ty: list.clone(),
-                span: lw.span(span),
-            };
-            body.push(Stmt::Expr(lw.mk(
-                ExprKind::Mutate(Mutation::Push, Box::new(place), vec![item]),
-                Ty::Unit,
-                span,
-            )));
-            lw.cx.loops.pop();
-            out.push(Stmt::While(
-                lid,
-                lw.mk(ExprKind::Bool(true), Ty::Bool, span),
-                Block { stmts: body },
-            ));
-            out.push(Stmt::Give(lw.local(acc, span)));
-        })
-    }
-
     /// A spec with each `Range<Int>` inside spelled out as its read of `l r`.
     pub(in crate::lower) fn readable(&mut self, spec: Spec) -> Spec {
         match spec {
@@ -1595,11 +1287,7 @@ impl<'a> Lowerer<'a> {
             Spec::Plain(Ty::Pos(d)) if self.base_one() && self.counted.contains(&d) => {
                 let span = Span::default();
                 let call = self.do_expr(Some(&Ty::Pos(d)), span, |lw, out| {
-                    let read = lw.mk(
-                        ExprKind::Read(Box::new(Spec::Plain(Ty::Int))),
-                        Ty::Int,
-                        span,
-                    );
+                    let read = lw.mk_read(Spec::Plain(Ty::Int), Ty::Int, span);
                     let label = lw.int_add(read, -1);
                     let pos = lw.mk(
                         ExprKind::Cast(Cast::FromLabel(d), Box::new(label)),
@@ -1668,11 +1356,7 @@ impl<'a> Lowerer<'a> {
         let tok_ty = if letters { Ty::Char } else { Ty::Str };
         Some(self.do_expr(Some(&ty), span, |lw, out| {
             let token = lw.temp(tok_ty.clone());
-            let read = lw.mk(
-                ExprKind::Read(Box::new(Spec::Plain(tok_ty.clone()))),
-                tok_ty.clone(),
-                span,
-            );
+            let read = lw.mk_read(Spec::Plain(tok_ty.clone()), tok_ty.clone(), span);
             out.push(Stmt::Let(token, Some(read)));
             for (tag, (_, specs)) in variants.iter().zip(fields).enumerate() {
                 let tags = [tokens[tag].clone()];
@@ -1683,17 +1367,9 @@ impl<'a> Lowerer<'a> {
                         false => lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span),
                     };
                     let tok = lw.local(token, span);
-                    let eq = lw.mk(
-                        ExprKind::Cmp(CmpOp::Eq, Box::new(tok), Box::new(lit)),
-                        Ty::Bool,
-                        span,
-                    );
+                    let eq = lw.mk_cmp(CmpOp::Eq, tok, lit, Ty::Bool, span);
                     cond = Some(match cond {
-                        Some(prev) => lw.mk(
-                            ExprKind::Binary(BinOp::Or, Box::new(prev), Box::new(eq)),
-                            Ty::Bool,
-                            span,
-                        ),
+                        Some(prev) => lw.mk_binary(BinOp::Or, prev, eq, Ty::Bool, span),
                         None => eq,
                     });
                 }

@@ -33,7 +33,7 @@ fn solve_dc(lo: Int, hi: Int) -> List<?Int>:
     res
 
 let best = solve_dc(0, n + 1)
-let hull = upper_hull([Pt(i + 1, y) for (i, v) in best.items if let y = v]).rev.collect()   // CCW for hull_extreme
+let hull = upper_hull([Pt(i + 1, y) for (i, v) in best.items if let y = v]).rev.collect()  // CCW for hull_extreme
 
 let qs: [0..q]Int = read()
 print([dot(hull[hull_extreme(hull, d)], d) for d in qs.map(v => Pt(v, 1))])

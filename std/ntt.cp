@@ -7,7 +7,7 @@
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 use std.algebra.{Monoid, Semiring}
-use std.math.{is_pow2, primitive_root, bit, gcd, lcm, isqrt}
+use std.math.{is_pow2, primitive_root, bit, gcd, lcm, isqrt, popcount}
 use std.mod.{Mod}
 use std.seq.{collect}
 
@@ -235,8 +235,8 @@ impl FastProduct for Int:
         let (na, nb) = (a.len, b.len)
         if min(na, nb) <= 60: return None
         var (ma, mb) = (0, 0)
-        for x in a: ma = max(ma, abs(x))
-        for x in b: mb = max(mb, abs(x))
+        for x in a: ma max= abs(x)
+        for x in b: mb max= abs(x)
         let bound = I128(ma) * I128(mb) * I128(min(na, nb))
         if bound >= I128(10_000_000_000_000) * I128(1_000_000_000_000): return None
         let three = bound >= I128(80_000_000_000_000_000)

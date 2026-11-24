@@ -7,7 +7,7 @@ use crate::emit::{Code, Emitter, COND};
 use crate::uses::effects::{may_touch, Touch};
 use crate::walk;
 use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A container argument that is no place: a temporary C++ destroys at the
 /// end of the statement.
@@ -54,9 +54,32 @@ pub(crate) fn entry_read(e: &Expr) -> Option<(&Expr, &Expr)> {
 /// Locals `block` reads whole, not only through an index, field, variant
 /// payload or tag, length or the elements a `for` walks.
 pub(crate) fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
+    whole_reads_by(block, &|_, _| false)
+}
+
+/// [`whole_reads`], not counting a local passed as argument `i` to fn `f`
+/// when `by_ref(f, i)`: the callee takes it by const reference, so the
+/// C++ cannot move it there.
+fn whole_reads_by(
+    block: &Block,
+    by_ref: &dyn Fn(usize, usize) -> bool,
+) -> std::collections::BTreeSet<usize> {
     let (mut uses, mut parts) = (Vec::new(), Vec::new());
     walk::deep_exprs(block, &mut |e| match &e.kind {
         ExprKind::Local(s) => uses.push(*s),
+        ExprKind::Call(f, args) => {
+            for (i, a) in args.iter().enumerate() {
+                if let cpl_ir::Arg::Value(Expr {
+                    kind: ExprKind::Local(s),
+                    ..
+                }) = a
+                {
+                    if by_ref(*f, i) {
+                        parts.push(*s);
+                    }
+                }
+            }
+        }
         ExprKind::Index(..)
         | ExprKind::Field(..)
         | ExprKind::Payload(..)
@@ -181,32 +204,40 @@ fn gives_own_locals(block: &cpl_ir::Block, ty: &Ty) -> Option<Vec<usize>> {
     (!out.is_empty() && all).then(|| out.into_iter().flatten().collect())
 }
 
-/// The variable `value` reads in place: a path, or a `Do` block that gives
-/// one (see [`gives_outer_place`]).
-pub(crate) fn given_root(value: &Expr) -> Option<(bool, usize)> {
+/// The variable `value` reads in place: a path, a `Do` block that gives
+/// one (see [`gives_outer_place`]), or what a fn in `lent_roots` lends
+/// from its argument (`seg[a].l` through `Arena.get`).
+pub(crate) fn given_root(
+    value: &Expr,
+    lent_roots: &BTreeMap<cpl_ir::FnId, usize>,
+) -> Option<(bool, usize)> {
     match &value.kind {
         ExprKind::Do(block) if gives_outer_place(block, &value.ty) => {
             let mut root = None;
             walk::deep_stmts(block, &mut |s| {
                 if let Stmt::Give(g) = s {
-                    root = root.or_else(|| given_root(g));
+                    root = root.or_else(|| given_root(g, lent_roots));
                 }
             });
             root
         }
-        ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => given_root(of.first()?),
-        _ => storage_root(value),
+        ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => given_root(of.first()?, lent_roots),
+        _ => storage_root(value, lent_roots),
     }
 }
 
 /// The variable whose storage a place lives in, whatever its indices
 /// compute: `self.keys[i * 2]` is in `self`.
-fn storage_root(e: &Expr) -> Option<(bool, usize)> {
+fn storage_root(e: &Expr, lent_roots: &BTreeMap<cpl_ir::FnId, usize>) -> Option<(bool, usize)> {
     match &e.kind {
         ExprKind::Field(base, _)
         | ExprKind::Index(base, _)
         | ExprKind::Unwrap(base, _)
-        | ExprKind::Payload(base, ..) => storage_root(base),
+        | ExprKind::Payload(base, ..) => storage_root(base, lent_roots),
+        ExprKind::Call(callee, args) => match lent_roots.get(callee).map(|&s| &args[s]) {
+            Some(cpl_ir::Arg::Value(arg)) => given_root(arg, lent_roots),
+            _ => None,
+        },
         _ => walk::path_root(e),
     }
 }
@@ -322,6 +353,10 @@ impl<'p> Emitter<'p> {
             .fn_id
             .filter(|_| self.closure_id.is_none())
             .map(|id| &self.sunk[id]);
+        let by_ref = |f: usize, i: usize| {
+            program.fns[f].params.get(i).is_some_and(|p| !p.mutable)
+                && !self.sunk.get(f).is_some_and(|s| s.contains(&i))
+        };
         let def = &program.closures[cid];
         let owners = def
             .captures
@@ -332,7 +367,8 @@ impl<'p> Emitter<'p> {
                 let found = self.uses.of_binding(home, o);
                 if found.mutated {
                     Some((o, CAPTURE_SET))
-                } else if (found.moved && blocks.iter().any(|b| moved_while_live(b, slot, o)))
+                } else if (found.moved
+                    && blocks.iter().any(|b| moved_while_live(b, slot, o, &by_ref)))
                     || sunk.is_some_and(|s| s.contains(&o))
                 {
                     Some((o, CAPTURE_MOVED))
@@ -829,7 +865,12 @@ pub(crate) fn fn_param_only_called(program: &cpl_ir::Program, fn_id: usize, slot
 /// statement from that `let` to the closure's last mention reads `capture`
 /// whole (which may move it). A move before the closure is made or after
 /// its last call leaves a borrowed capture alone.
-fn moved_while_live(body: &Block, slot: usize, capture: usize) -> bool {
+fn moved_while_live(
+    body: &Block,
+    slot: usize,
+    capture: usize,
+    by_ref: &dyn Fn(usize, usize) -> bool,
+) -> bool {
     let mut home = None;
     walk::blocks(body, &mut |b| {
         if b.stmts
@@ -862,9 +903,12 @@ fn moved_while_live(body: &Block, slot: usize, capture: usize) -> bool {
     let (Some(&first), Some(&last)) = (at.first(), at.last()) else {
         return true;
     };
-    whole_reads(&Block {
-        stmts: block.stmts[first..=last].to_vec(),
-    })
+    whole_reads_by(
+        &Block {
+            stmts: block.stmts[first..=last].to_vec(),
+        },
+        by_ref,
+    )
     .contains(&capture)
 }
 
@@ -1312,9 +1356,14 @@ impl Emitter<'_> {
     /// Statement `k` of `block`, moving each variable it reads for the
     /// last time instead of copying it.
     pub(crate) fn stmt_owning(&mut self, block: &Block, k: usize, out: &mut String) {
+        // A loop's variable is a new value each turn, dead past its last
+        // read in the body (moving a `const auto&` one only copies).
         let outer = (self.branch_dead.iter().rev())
             .find(|(b, _)| std::ptr::eq(*b, block))
             .map(|(_, dead)| dead.clone())
+            .or_else(|| {
+                (self.loop_vars.get(&(block as *const Block))).map(|&v| BTreeSet::from([v]))
+            })
             .unwrap_or_default();
         let branches = match &block.stmts[k] {
             Stmt::If(_, then, otherwise) => {
@@ -1322,6 +1371,15 @@ impl Emitter<'_> {
                 self.branch_dead.push((then as *const Block, dead.clone()));
                 self.branch_dead.push((otherwise as *const Block, dead));
                 2
+            }
+            // A block run once ends as a branch does.
+            Stmt::Expr(Expr {
+                kind: ExprKind::Do(inner),
+                ..
+            }) => {
+                let dead = crate::uses::dead_past(self.program, block, k, &outer);
+                self.branch_dead.push((inner as *const Block, dead));
+                1
             }
             _ => 0,
         };
@@ -1339,7 +1397,8 @@ impl Emitter<'_> {
     ) {
         self.moves_last = crate::uses::last_read(self.program, block, k, outer)
             || self.takes_sunk_param(block, k)
-            || self.dies_here(&block.stmts[k]);
+            || self.dies_here(&block.stmts[k])
+            || self.unwraps_into_spent(block, k, outer);
         self.taken_items = self.taken_items(block, k, outer);
         if self.reads_held(&block.stmts[k]) {
             self.moves_last = false;
@@ -1350,6 +1409,16 @@ impl Emitter<'_> {
         self.moves_last = false;
         self.taken_items.clear();
         self.pushed_moves.clear();
+    }
+
+    /// `let t = o!` of an optional read for the last time into a tuple
+    /// whose fields are moved out (`while let (k, s) = xs.pop()`): the
+    /// payload moves, as a copy would only be moved from.
+    fn unwraps_into_spent(&self, block: &Block, k: usize, outer: &BTreeSet<usize>) -> bool {
+        matches!(&block.stmts[k], Stmt::Let(bound, Some(init))
+            if matches!(init.kind, ExprKind::Unwrap(..))
+                && self.spent.contains(bound)
+                && crate::uses::place_dies(self.program, block, k, init, outer))
     }
 
     /// Whether `stmt` reads a variable a lent struct field may point to,
@@ -1492,6 +1561,7 @@ fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
     match &e.kind {
         ExprKind::Local(s) => Some(((false, *s), Vec::new())),
         ExprKind::Global(g) => Some(((true, *g), Vec::new())),
+        ExprKind::Unwrap(base, _) => path_of(base),
         ExprKind::Field(base, f) => path_of(base).map(|(root, mut fields)| {
             fields.push(*f);
             (root, fields)
@@ -1589,4 +1659,21 @@ pub(crate) fn overwritten_before_read(init: &Expr, rest: &[Stmt]) -> bool {
         }
     }
     false
+}
+
+/// Each `for` body of `program` and the variable it binds.
+pub(crate) fn loop_vars(program: &cpl_ir::Program) -> BTreeMap<*const Block, usize> {
+    let mut vars = BTreeMap::new();
+    let bodies = [&program.setup, &program.main]
+        .into_iter()
+        .chain(program.fns.iter().map(|f| &f.body))
+        .chain(program.closures.iter().map(|c| &c.body));
+    for body in bodies {
+        walk::deep_stmts(body, &mut |stmt| {
+            if let Stmt::For(_, slot, _, body) = stmt {
+                vars.insert(body as *const Block, *slot);
+            }
+        });
+    }
+    vars
 }

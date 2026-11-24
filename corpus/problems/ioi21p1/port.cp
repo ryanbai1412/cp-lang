@@ -22,7 +22,11 @@ let days: [Day](l: Box, r: Box, v: -1_000_000_000..=1_000_000_000) = read()
 // A stretch of days as the walk it makes from 0 without walls: where it ends, and the highest
 // and lowest points it touches, the start included.
 struct Walk(end: Int, top: Int, low: Int)
-fn then(a: Walk, b: Walk) -> Walk = Walk(a.end + b.end, max(a.top, a.end + b.top), min(a.low, a.end + b.low))
+fn then(a: Walk, b: Walk) -> Walk = Walk(
+    a.end + b.end,
+    max(a.top, a.end + b.top),
+    min(a.low, a.end + b.low),
+)
 fn step(v: Int) -> Walk = Walk(v, max(v, 0), min(v, 0))
 
 var opens: [Box]List<Day> = []

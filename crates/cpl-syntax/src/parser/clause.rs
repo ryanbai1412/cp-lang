@@ -23,17 +23,10 @@ impl<'a> Parser<'a> {
                     || (self.at_ident("where") && {
                         let span = self.span();
                         self.error(
-                            Diagnostic::error(
-                                codes::REMOVED_SYNTAX,
-                                span,
-                                "comprehension filters use `if`, not `where`",
-                            )
-                            .with_help("use `if` to filter a comprehension or generator")
-                            .with_fix(
-                                "replace `where` with `if`",
-                                span,
-                                "if",
-                            ),
+                            msgs::syntax::WHERE_FILTER
+                                .error(span, &[])
+                                .with_help("use `if` to filter a comprehension or generator")
+                                .with_fix("replace `where` with `if`", span, "if"),
                         );
                         self.bump();
                         true
@@ -96,13 +89,10 @@ impl<'a> Parser<'a> {
         } else if self.at_ident("where") {
             let span = self.span();
             self.error(
-                Diagnostic::error(
-                    codes::REMOVED_SYNTAX,
-                    span,
-                    "use `and`, not `where`, after `if let`",
-                )
-                .with_help("write `if let pat = value and cond`")
-                .with_fix("replace `where` with `and`", span, "and"),
+                msgs::stmt::IF_LET_WHERE
+                    .error(span, &[])
+                    .with_help("write `if let pat = value and cond`")
+                    .with_fix("replace `where` with `and`", span, "and"),
             );
             self.bump();
             Some(Box::new(Cond::Expr(self.coalesce())))

@@ -26,7 +26,11 @@ fn best(keep: List<P>, banned: List<Bool>) -> ?Sub:
     var team = keep.clone()
     for e in Ev:
         if e.ord >= keep.len:
-            team.push(P.all.filter(p => not banned[p.ord] and not team.contains(p)).max(by: p => score[p, e])?)
+            team.push(
+                P.all.filter(
+                    p => not banned[p.ord] and not team.contains(p)
+                ).max(by: p => score[p, e])?
+            )
     let value = sum(team.map(p => score[p, e]).max()! for e in Ev)
     Some(Sub(value, team, keep.len, banned))
 
