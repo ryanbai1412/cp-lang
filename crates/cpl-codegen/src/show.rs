@@ -209,17 +209,17 @@ impl<'p> Emitter<'p> {
                 b.push_str("    }\n");
             }
             Ty::Array { dims, elem } if dims.len() > 1 => {
-                let cell = self.cell("v.d[i]", elem);
+                let cell = self.cell("v.d[cpl_i]", elem);
                 let shown = self.show_stmt(&cell, elem, "digits");
                 b.push_str(&format!(
-                    "    size_t row = (size_t)std::max<ll>(v.n[{}], 1);\n",
+                    "    size_t cpl_row = (size_t)std::max<ll>(v.n[{}], 1);\n",
                     dims.len() - 1
                 ));
-                b.push_str("    for (size_t i = 0; i < v.d.size(); i++) {\n");
+                b.push_str("    for (size_t cpl_i = 0; cpl_i < v.d.size(); cpl_i++) {\n");
                 b.push_str(match sep_of(elem, &self.program.structs) {
-                    Sep::None => "        if (i > 0 && i % row == 0) cpl::put_char('\\n');\n",
-                    Sep::Space => "        if (i > 0) cpl::put_char(i % row == 0 ? '\\n' : ' ');\n",
-                    Sep::Line => "        if (i > 0) cpl::put_char('\\n');\n",
+                    Sep::None => "        if (cpl_i > 0 && cpl_i % cpl_row == 0) cpl::put_char('\\n');\n",
+                    Sep::Space => "        if (cpl_i > 0) cpl::put_char(cpl_i % cpl_row == 0 ? '\\n' : ' ');\n",
+                    Sep::Line => "        if (cpl_i > 0) cpl::put_char('\\n');\n",
                 });
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
@@ -228,32 +228,34 @@ impl<'p> Emitter<'p> {
             | Ty::ListView(elem, _)
             | Ty::Keyed(elem, _)
             | Ty::MutView(elem, _) => {
-                let cell = self.cell("v[i]", elem);
+                let cell = self.cell("v[cpl_i]", elem);
                 let shown = self.show_stmt(&cell, elem, "digits");
-                b.push_str("    for (size_t i = 0; i < v.size(); i++) {\n");
+                b.push_str("    for (size_t cpl_i = 0; cpl_i < v.size(); cpl_i++) {\n");
                 let sep = sep_of(elem, &self.program.structs);
                 if sep != Sep::None {
                     b.push_str(&format!(
-                        "        if (i > 0) cpl::put_char({});\n",
+                        "        if (cpl_i > 0) cpl::put_char({});\n",
                         sep_char(sep)
                     ));
                 }
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
             Ty::Set(elem) | Ty::HashSet(elem) => {
-                let shown = self.show_stmt(&Code::primary("x"), elem, "digits");
-                b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
+                let shown = self.show_stmt(&Code::primary("cpl_x"), elem, "digits");
+                b.push_str("    bool cpl_first = true;\n    for (const auto& cpl_x : v) {\n");
                 b.push_str(&format!(
-                    "        if (!first) cpl::put_char({});\n        first = false;\n",
+                    "        if (!cpl_first) cpl::put_char({});\n        cpl_first = false;\n",
                     sep_char(sep_of(elem, &self.program.structs))
                 ));
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
             Ty::Map(key, value) | Ty::HashMap(key, value) => {
-                let shown_key = self.show_stmt(&Code::primary("x.first"), key, "digits");
-                let shown_value = self.show_stmt(&Code::primary("x.second"), value, "digits");
-                b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
-                b.push_str("        if (!first) cpl::put_char('\\n');\n        first = false;\n");
+                let shown_key = self.show_stmt(&Code::primary("cpl_x.first"), key, "digits");
+                let shown_value = self.show_stmt(&Code::primary("cpl_x.second"), value, "digits");
+                b.push_str("    bool cpl_first = true;\n    for (const auto& cpl_x : v) {\n");
+                b.push_str(
+                    "        if (!cpl_first) cpl::put_char('\\n');\n        cpl_first = false;\n",
+                );
                 b.push_str(&format!("        {shown_key}\n        cpl::put_char(' ');\n        {shown_value}\n    }}\n"));
             }
             // A range is a `Seq`: it shows its elements (R10.3.1).
@@ -269,7 +271,7 @@ impl<'p> Emitter<'p> {
                 };
                 self.need(put);
                 b.push_str(&format!(
-                    "    for (auto i = v.lo; i < v.hi; ++i) {{\n        if (i != v.lo) cpl::put_char(' ');\n        cpl::{put}({cast}i{dlo});\n    }}\n"
+                    "    for (auto cpl_i = v.lo; cpl_i < v.hi; ++cpl_i) {{\n        if (cpl_i != v.lo) cpl::put_char(' ');\n        cpl::{put}({cast}cpl_i{dlo});\n    }}\n"
                 ));
             }
             _ => {}
@@ -307,7 +309,7 @@ impl<'p> Emitter<'p> {
         // showed something: `start` is where the line began.
         let sparse = args.len() > 1 && args.iter().any(|arg| arg.value.ty.may_show_nothing());
         if sparse {
-            parts.push("{ size_t start = cpl::out.size();".to_string());
+            parts.push("{ size_t cpl_line = cpl::out.size();".to_string());
         }
         let shown_values: Vec<&cpl_ir::Expr> = args.iter().map(|a| &a.value).chain(end).collect();
         let marked = self.mark_read_in_place(&shown_values, None, &[]);
@@ -317,9 +319,9 @@ impl<'p> Emitter<'p> {
                 (false, _) => parts.push(shown),
                 (true, false) => parts.push(format!("cpl::put_char(' '); {shown}")),
                 (true, true) if arg.value.ty.may_show_nothing() => parts.push(format!(
-                    "{{ size_t at = cpl::out.size(); if (at > start) cpl::put_char(' '); size_t from = cpl::out.size(); {shown} if (cpl::out.size() == from) cpl::out.resize(at); }}"
+                    "{{ size_t cpl_at = cpl::out.size(); if (cpl_at > cpl_line) cpl::put_char(' '); size_t cpl_from = cpl::out.size(); {shown} if (cpl::out.size() == cpl_from) cpl::out.resize(cpl_at); }}"
                 )),
-                (true, true) => parts.push(format!("if (cpl::out.size() > start) cpl::put_char(' '); {shown}")),
+                (true, true) => parts.push(format!("if (cpl::out.size() > cpl_line) cpl::put_char(' '); {shown}")),
             }
         }
         if sparse {
@@ -406,22 +408,22 @@ impl<'p> Emitter<'p> {
                     let lead = pad(this.indent);
                     if let Some(d) = dom_ident {
                         out.push_str(&format!(
-                            "{lead}int l = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"
+                            "{lead}int cpl_lo = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"
                         ));
                         out.push_str(&format!(
-                            "{lead}int r = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"
+                            "{lead}int cpl_hi = cpl::pos(cpl::read_int() - {d}_lo, {d}_len);\n"
                         ));
                         out.push_str(&format!(
-                            "{lead}if (l > r) cpl::fail(\"range end is before start\");\n"
+                            "{lead}if (cpl_lo > cpl_hi) cpl::fail(\"range end is before start\");\n"
                         ));
-                        out.push_str(&format!("{lead}return {ty}{{l, r + 1}};\n"));
+                        out.push_str(&format!("{lead}return {ty}{{cpl_lo, cpl_hi + 1}};\n"));
                     } else {
-                        out.push_str(&format!("{lead}ll l = cpl::read_int();\n"));
-                        out.push_str(&format!("{lead}ll r = cpl::read_int();\n"));
+                        out.push_str(&format!("{lead}ll cpl_lo = cpl::read_int();\n"));
+                        out.push_str(&format!("{lead}ll cpl_hi = cpl::read_int();\n"));
                         out.push_str(&format!(
-                            "{lead}if (l > r) cpl::fail(\"range end is before start\");\n"
+                            "{lead}if (cpl_lo > cpl_hi) cpl::fail(\"range end is before start\");\n"
                         ));
-                        out.push_str(&format!("{lead}return {ty}{{l, r + 1}};\n"));
+                        out.push_str(&format!("{lead}return {ty}{{cpl_lo, cpl_hi + 1}};\n"));
                     }
                 })
             }
@@ -435,14 +437,14 @@ impl<'p> Emitter<'p> {
                     Spec::Plain(Ty::Pos(d)) => {
                         self.need("at");
                         let d = dom_ident(program, *d);
-                        format!("cpl::pos(x - {d}_lo, {d}_len)")
+                        format!("cpl::pos(cpl_x - {d}_lo, {d}_len)")
                     }
-                    _ => "x".to_string(),
+                    _ => "cpl_x".to_string(),
                 };
                 self.lambda(&ty, |this, out| {
                     let lead = pad(this.indent);
-                    out.push_str(&format!("{lead}ll x = cpl::read_int();\n"));
-                    out.push_str(&format!("{lead}if (x == {absent}) return {ty}();\n"));
+                    out.push_str(&format!("{lead}ll cpl_x = cpl::read_int();\n"));
+                    out.push_str(&format!("{lead}if (cpl_x == {absent}) return {ty}();\n"));
                     out.push_str(&format!("{lead}return {ty}({value});\n"));
                 })
             }
@@ -457,11 +459,11 @@ impl<'p> Emitter<'p> {
                 let value = self.read(inner).text;
                 self.lambda(&ty, |this, out| {
                     let lead = pad(this.indent);
-                    out.push_str(&format!("{lead}cpl::parse_scope scope({text});\n"));
+                    out.push_str(&format!("{lead}cpl::parse_scope cpl_scope({text});\n"));
                     out.push_str(&format!("{lead}try {{\n"));
-                    out.push_str(&format!("{lead}    auto value = {value};\n"));
+                    out.push_str(&format!("{lead}    auto cpl_value = {value};\n"));
                     out.push_str(&format!(
-                        "{lead}    if (scope.whole()) return {ty}(std::move(value));\n"
+                        "{lead}    if (cpl_scope.whole()) return {ty}(std::move(cpl_value));\n"
                     ));
                     out.push_str(&format!("{lead}}} catch (const cpl::parse_failed&) {{}}\n"));
                     out.push_str(&format!("{lead}return {ty}();\n"));

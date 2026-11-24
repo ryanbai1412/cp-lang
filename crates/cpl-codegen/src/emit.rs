@@ -893,7 +893,7 @@ impl<'p> Emitter<'p> {
                 let body = match f.ret {
                     Ty::Unit => format!("{call};\n    cpl::flush();"),
                     _ => format!(
-                        "auto result = cpl::Judge<{}>::to({call});\n    cpl::flush();\n    return result;",
+                        "auto cpl_result = cpl::Judge<{}>::to({call});\n    cpl::flush();\n    return cpl_result;",
                         self.ty(&f.ret)
                     ),
                 };
@@ -1310,7 +1310,7 @@ impl<'p> Emitter<'p> {
             ));
         } else if program.multitest {
             out.push_str(&format!(
-                "    if (prog::setup()) for (ll tests = cpl::read_int(); tests > 0; tests--) {case}\n",
+                "    if (prog::setup()) for (ll cpl_tests = cpl::read_int(); cpl_tests > 0; cpl_tests--) {case}\n",
             ));
         } else {
             out.push_str("    prog::solve();\n");

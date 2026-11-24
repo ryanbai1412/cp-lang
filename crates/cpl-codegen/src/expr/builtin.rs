@@ -151,18 +151,18 @@ impl<'p> Emitter<'p> {
                     let cap = this.temp();
                     let lead = pad(this.indent);
                     out.push_str(&format!("{lead}cpl::Capture {cap};\n"));
-                    out.push_str(&format!("{lead}const auto& sep = {sep};\n"));
-                    out.push_str(&format!("{lead}bool first = true;\n"));
-                    out.push_str(&format!("{lead}for (const auto& item : {seq}) {{\n"));
+                    out.push_str(&format!("{lead}const auto& cpl_sep = {sep};\n"));
+                    out.push_str(&format!("{lead}bool cpl_first = true;\n"));
+                    out.push_str(&format!("{lead}for (const auto& cpl_item : {seq}) {{\n"));
                     out.push_str(&format!(
-                        "{lead}    if (!first) cpl::put_str(sep);\n{lead}    first = false;\n"
+                        "{lead}    if (!cpl_first) cpl::put_str(cpl_sep);\n{lead}    cpl_first = false;\n"
                     ));
-                    let item = Code::primary("item".to_string());
+                    let item = Code::primary("cpl_item".to_string());
                     let stmt = match (&elem, &none_text) {
                         (Ty::Opt(inner), Some(text)) => {
                             let some =
-                                this.show_stmt(&Code::new("*item", UNARY), inner, FLOAT_DIGITS);
-                            format!("if (item) {{ {some} }} else cpl::put_str({text});")
+                                this.show_stmt(&Code::new("*cpl_item", UNARY), inner, FLOAT_DIGITS);
+                            format!("if (cpl_item) {{ {some} }} else cpl::put_str({text});")
                         }
                         _ => this.show_stmt(&item, &elem, FLOAT_DIGITS),
                     };
@@ -177,12 +177,12 @@ impl<'p> Emitter<'p> {
                 let opt = self.ty(&e.ty);
                 let (seq, at) = (text(0), text(1));
                 let elem = if matches!(first_ty, Some(Ty::Str | Ty::StrView)) {
-                    "(cpl::u8)_seq[_idx]"
+                    "(cpl::u8)cpl_seq[cpl_idx]"
                 } else {
-                    "_seq[_idx]"
+                    "cpl_seq[cpl_idx]"
                 };
                 Code::primary(format!(
-                    "([&]() -> {opt} {{ const auto& _seq = {seq}; ll _idx = {at}; return _idx < 0 || _idx >= (ll)_seq.size() ? {opt}() : {opt}({elem}); }}())"
+                    "([&]() -> {opt} {{ const auto& cpl_seq = {seq}; ll cpl_idx = {at}; return cpl_idx < 0 || cpl_idx >= (ll)cpl_seq.size() ? {opt}() : {opt}({elem}); }}())"
                 ))
             }
             Builtin::ShowStr => {
@@ -246,14 +246,14 @@ impl<'p> Emitter<'p> {
                 self.need("fail");
                 let r = text(0);
                 Code::primary(format!(
-                    "([&]() {{ auto r = {r}; if (r.empty()) cpl::fail(\"the range is empty\"); return r.lo; }}())"
+                    "([&]() {{ auto cpl_rng = {r}; if (cpl_rng.empty()) cpl::fail(\"the range is empty\"); return cpl_rng.lo; }}())"
                 ))
             }
             Builtin::LastVal if matches!(first_ty, Some(Ty::Range(_))) => {
                 self.need("fail");
                 let r = text(0);
                 Code::primary(format!(
-                    "([&]() {{ auto r = {r}; if (r.empty()) cpl::fail(\"the range is empty\"); return (decltype(r.lo))(r.hi - 1); }}())"
+                    "([&]() {{ auto cpl_rng = {r}; if (cpl_rng.empty()) cpl::fail(\"the range is empty\"); return (decltype(cpl_rng.lo))(cpl_rng.hi - 1); }}())"
                 ))
             }
             Builtin::FirstVal => helper(self, "first_val"),
