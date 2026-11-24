@@ -1,5 +1,39 @@
 #!/usr/bin/env python3
 import random, sys
+
+if sys.argv[1:] == ["--max"]:
+    # One test at both sums, n = 2e5, m = 4e5, V = 1e9: a Hamiltonian path cut into blocks; the
+    # extra edges stay inside blocks and close only even cycles, so the path edges between blocks
+    # are bridges (a deep DFS) and each block is one bipartite component. A third of the blocks
+    # hold one fixed weight repeated, so the answer is a large power of V.
+    r = random.Random(2135)
+    n, m, V = 200_000, 400_000, 10**9
+    order = list(range(1, n + 1))
+    r.shuffle(order)
+    edges = set()
+    for i in range(n - 1):
+        edges.add((min(order[i], order[i + 1]), max(order[i], order[i + 1])))
+    block = 40
+    a = [-1] * (n + 1)
+    for s in range(0, n, block):
+        if (s // block) % 3 == 0:
+            val = r.randint(0, V - 1)
+            for i in r.sample(range(s, min(n, s + block)), 3):
+                a[order[i]] = val
+    while len(edges) < m:
+        s = r.randrange(0, n, block)
+        e = min(n, s + block)
+        i = r.randrange(s, e)
+        j = i + 2 * r.randint(1, block // 2) + 1
+        if j < e:
+            u, v = order[i], order[j]
+            edges.add((min(u, v), max(u, v)))
+    el = list(edges)
+    r.shuffle(el)
+    out = ["1", f"{n} {m} {V}", " ".join(map(str, a[1:]))]
+    out += [f"{u} {v}" if r.random() < 0.5 else f"{v} {u}" for u, v in el]
+    print("\n".join(out))
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 T = r.randint(1, 3)

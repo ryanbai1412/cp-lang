@@ -1,4 +1,5 @@
 // Source: Codeforces 2135 C (By the Assignment), https://codeforces.com/contest/2135/problem/C
+// limits: 4000 ms, 512 MB
 // Problem: a connected graph, n <= 2e5 vertices, m <= 4e5 edges; some vertices have weights,
 //   the rest (-1) get one in 0..V-1 (V <= 1e9). Count the assignments where every two vertices
 //   have the same XOR of weights along all simple paths between them, modulo 998244353.

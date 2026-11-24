@@ -1,4 +1,5 @@
 // Source: Codeforces 2157C (Meximum Array 2), https://codeforces.com/contest/2157/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: n, k <= 100 and q <= 100 constraints (c, l, r): c = 1 means min(a[l..=r]) = k, c = 2
 //   means mex(a[l..=r]) = k. Print any array of values in 0..=1e9 meeting all of them (one is
 //   guaranteed to exist). Multitest.

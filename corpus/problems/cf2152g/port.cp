@@ -1,4 +1,5 @@
 // Source: Codeforces 2152G (Query Jungle), https://codeforces.com/contest/2152/problem/G
+// limits: 3000 ms, 1024 MB
 // Problem: a tree of n <= 2.5e5 vertices rooted at 1, each with or without a monster. Print the
 //   fewest paths from the root that together visit every monster, initially and after each of
 //   q <= 2.5e5 queries that toggle the monster state of every vertex in v's subtree. Multitest.

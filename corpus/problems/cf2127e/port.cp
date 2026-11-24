@@ -1,4 +1,5 @@
 // Source: Codeforces 2127E (Ancient Tree), https://codeforces.com/contest/2127/problem/E
+// limits: 4000 ms, 256 MB
 // Problem: a tree rooted at 1 with vertex weights w and colors in 1..k, some lost (0). v is cutie
 //   if lca(x, y) = v for some x, y of one color other than v's. Recolor the lost vertices to
 //   minimise the weight of cutie vertices; print it and the coloring. n <= 2e5, sum of n <= 2e5;

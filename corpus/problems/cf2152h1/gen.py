@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """CF 2152H1: trees, 2 <= n, sum n <= 2.5e5, w <= 1e9, q <= 10 queries l <= 1e9."""
 import random, sys
-rng = random.Random(int(sys.argv[1]))
-size = int(sys.argv[2])
+rng = random.Random(0 if sys.argv[1] == "--max" else int(sys.argv[1]))
+size = 0 if sys.argv[1] == "--max" else int(sys.argv[2])
 M = 10 ** 9
 
 
@@ -18,6 +18,13 @@ def case(n, shape, wmax, lmax, q):
     out += [str(rng.randint(max(1, lmax - 100), lmax)) for _ in range(q)]
     return out
 
+
+if sys.argv[1:] == ["--max"]:
+    # One path (the deepest tree) at n = 2.5e5 with weights and queries near 1e9, q = 10.
+    rng.seed(2152)
+    print(1)
+    print("\n".join(case(250000, "path", M, M, 10)))
+    sys.exit()
 
 if size >= 1000:
     N = 250000

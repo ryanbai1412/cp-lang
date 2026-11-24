@@ -1,4 +1,5 @@
 // Source: Codeforces 2150 C (Limited Edition Shop), https://codeforces.com/contest/2150/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: n objects with values in [-1e9, 1e9]; Alice and Bob each have a preference order. In
 //   any order of visits, the visitor buys their favourite remaining object. Over all sets Alice
 //   can end with, print the maximum total value. Multitest, sum of n <= 2e5.
