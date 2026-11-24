@@ -303,13 +303,14 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
 /// Useful for \(O(1)\) LCA and memory-tight static RMQ where \(O(n \log n)\) space is too large.
 pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     n: Int
-    vals: List<T>
+    /// The values it was built over: `a` itself, kept rather than copied.
+    pub values: [D]T
     mask: List<U64>
     nb: Int
     top: List<Int>
     keys: Range<D>
 
-    fn better(self, i: Int, j: Int) -> Int = if before(vals[j], vals[i]): j else: i
+    fn better(self, i: Int, j: Int) -> Int = if before(values[keys.nth(j)], values[keys.nth(i)]): j else: i
 
     fn in_block(self, l: Int, r: Int) -> Int:
         let base = l - l % 64
@@ -330,17 +331,18 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// traps: never (`before` must be a strict weak order, or results are unspecified)
     /// example: `LinearRmq([3, 1, 4]).best(0..3) == 1`
     pub fn new(a: [D]T, before: (T, T) -> Bool = (x, y) => x < y) -> LinearRmq<D, T>:
-        let vals = [a[i] for i in a.keys]
-        let n = vals.len
+        let n = a.len
         let nb = (n + 63) / 64
-        var q = LinearRmq<D, T>(before, n, vals, [], nb, [], a.keys)
+        let keys = a.keys
+        var q = LinearRmq<D, T>(before, n, a, List.filled(n, U64(0)), nb, [], keys)
+        q.top.reserve(nb * max(bit_width(nb), 1))
         for b in 0..nb:
             var cur: U64 = U64(0)
             for i in 64 * b..min(64 * b + 64, n):
-                while cur != U64(0) and before(q.vals[i], q.vals[64 * b + bit_width(cur) - 1]):
+                while cur != U64(0) and before(q.values[keys.nth(i)], q.values[keys.nth(64 * b + bit_width(cur) - 1)]):
                     cur ^= U64(1) << (bit_width(cur) - 1)
                 cur |= U64(1) << (i - 64 * b)
-                q.mask.push(cur)
+                q.mask[i] = cur
         for b in 0..nb: q.top.push(q.in_block(64 * b, min(64 * b + 64, n) - 1))
         var k = 1
         while (1 << k) <= nb:
@@ -387,7 +389,8 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// traps: when `r` is empty or reaches outside `D`
     /// example: `LinearRmq([3, 1, 4], before: (x, y) => x > y).best(0..3) == 4`
     pub fn best(self, r: Range<D>) -> T:
-        vals[self.argbest(r).ord]
+        values[self.argbest(r)]
+
 
     /// The value of the best element of `r` like `best`, or `None` when `r` is empty.
     ///
@@ -400,6 +403,19 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     pub fn try_best(self, r: Range<D>) -> ?T:
         let (lo, hi) = r.ends
         if lo >= hi: None else: Some(self.best(r))
+
+@test
+fn linear_rmq_keeps_its_values_over_any_domain():
+    domain V = 5..=200
+    let a = [V] v => rand(-9, 9)
+    let q = LinearRmq(a)
+    for v in V:
+        assert q.values[v] == a[v]
+    for _ in 0..200:
+        let (x, y) = (rand(5, 200), rand(5, 200))
+        let r = V(min(x, y))..=V(max(x, y))
+        assert q.best(r) == [a[v] for v in r].min()!
+        assert q.values[q.argbest(r)] == q.best(r)
 
 @test
 fn range_min_matches_brute_force():
@@ -490,7 +506,7 @@ impl Show for LinearRmq<D, T>:
     /// example: `"{LinearRmq([3, 1, 2])}" == "3 1 2"`
     fn show(t):
         var out = ""
-        for x in t.vals:
+        for x in t.values:
             if not out.is_empty: out += " "
             out += "{x}"
         out

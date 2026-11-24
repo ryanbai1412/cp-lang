@@ -1908,6 +1908,7 @@ std/strings.cp: SuffixArray.each(self) -> yields Int
 std/strings.cp: SuffixArray.find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int
 std/strings.cp: SuffixArray.is_empty(self) -> Bool
 std/strings.cp: SuffixArray.kth_distinct(self, k: Int) -> ?Range<Int>
+std/strings.cp: SuffixArray.lcp(self) -> List<Int>
 std/strings.cp: SuffixArray.lcp_between(self, i: Int, j: Int) -> Int
 std/strings.cp: SuffixArray.lcp_of_ranks(self, r: Range<Int>) -> Int
 std/strings.cp: SuffixArray.lcp_range(self, i: Int, len: Int) -> Range<Int>
