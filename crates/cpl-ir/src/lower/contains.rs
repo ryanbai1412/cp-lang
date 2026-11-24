@@ -103,7 +103,7 @@ impl Lowerer<'_> {
                     Ty::Map(key, _) | Ty::HashMap(key, _) => (**key).clone(),
                     // `"an" in s`: a `Str` is looked for as a part of the text.
                     Ty::Str | Ty::StrView
-                        if matches!(self.probe_ty_silent(item), Some(Ty::Str | Ty::StrView)) =>
+                        if self.probe_is(item, |t| matches!(t, Ty::Str | Ty::StrView)) =>
                     {
                         Ty::Str
                     }

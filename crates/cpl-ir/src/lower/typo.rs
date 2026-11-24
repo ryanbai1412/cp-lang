@@ -665,7 +665,7 @@ impl<'a> Lowerer<'a> {
         name: &ast::Name,
         hint: Option<&Ty>,
     ) -> bool {
-        if !matches!(self.probe_ty_silent(base), Some(Ty::Str | Ty::StrView)) {
+        if !self.probe_is(base, |t| matches!(t, Ty::Str | Ty::StrView)) {
             return false;
         }
         let ty = match hint {

@@ -125,8 +125,7 @@ impl<'a> Checker<'a> {
     }
 
     fn shared_bare_variant(&mut self, name: &str, span: Span) {
-        if self.local(name).is_some()
-            || !matches!(self.global(name).as_deref(), Some(Def::Variant { .. }))
+        if self.local(name).is_some() || !self.global_is(name, |d| matches!(d, Def::Variant { .. }))
         {
             return;
         }

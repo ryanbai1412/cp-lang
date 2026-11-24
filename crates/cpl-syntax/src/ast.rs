@@ -747,14 +747,6 @@ pub enum BinOp {
     Coalesce,
 }
 
-/// The identifier of the fn item `name`: `Max` for `max`.
-pub fn fn_item_ident(name: &str) -> String {
-    let mut cs = name.chars();
-    cs.next()
-        .map(|c| c.to_uppercase().chain(cs).collect())
-        .unwrap_or_default()
-}
-
 impl Expr {
     /// The fn item a value names, as `type_of(..)` keys it: a name (`max`,
     /// `gcd`) or an operator written bare (`+`).
@@ -777,7 +769,7 @@ impl Expr {
     pub fn fn_item_ident(&self) -> Option<String> {
         match &self.kind {
             ExprKind::Paren(e) => e.fn_item_ident(),
-            ExprKind::Name(n) => Some(fn_item_ident(n)),
+            ExprKind::Name(n) => Some(n.to_string()),
             ExprKind::Lambda { body, .. } => match &body.kind {
                 ExprKind::Binary { op, op_span, .. } if *op_span == self.span => {
                     Some(format!("{op:?}"))

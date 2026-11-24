@@ -197,7 +197,7 @@ impl Checker<'_> {
     pub(crate) fn declared_before(&mut self, name: &str, at: u32) -> bool {
         match self.local(name) {
             Some(local) => local.span.start < at,
-            None => matches!(self.global(name).as_deref(), Some(Def::Value { .. })),
+            None => self.global_is(name, |d| matches!(d, Def::Value { .. })),
         }
     }
 }

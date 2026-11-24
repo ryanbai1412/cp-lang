@@ -180,9 +180,7 @@ impl<'a> Checker<'a> {
         walk_expr(e, &mut touched);
         let mut writes = touched.written.0;
         for name in touched.calls {
-            if self.local(&name).is_some()
-                || !matches!(self.global(&name).as_deref(), Some(Def::Fn { .. }))
-            {
+            if !self.names_fn_item(&name) {
                 continue;
             }
             for write in &self.env.effects(&name).writes {
@@ -294,7 +292,7 @@ impl<'a> Checker<'a> {
         };
         if let ExprKind::Name(n) = &base.kind {
             if matches!(self.local(n).map(|b| &b.ty), Some(Ty::Domain(_)))
-                || matches!(self.global(n).as_deref(), Some(Def::Domain { .. }))
+                || self.global_is(n, |d| matches!(d, Def::Domain { .. }))
             {
                 return;
             }
@@ -324,8 +322,7 @@ impl<'a> Checker<'a> {
             if used == root {
                 return Some(format!("uses `{root}`"));
             }
-            let global_fn = self.local(used).is_none()
-                && matches!(self.global(used).as_deref(), Some(Def::Fn { .. }));
+            let global_fn = self.names_fn_item(used);
             match (outer && global_fn).then(|| self.env.effects(used)) {
                 Some(effects) => effects
                     .does(root)

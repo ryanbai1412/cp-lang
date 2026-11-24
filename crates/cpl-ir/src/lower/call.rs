@@ -219,7 +219,7 @@ impl<'a> Lowerer<'a> {
         }
         // `opt.map(f)` / `opt.filter(p)` on `?T`.
         if let ([arg], op @ ("map" | "filter")) = (args, name.text.as_str()) {
-            if arg.name.is_none() && matches!(self.probe_ty_silent(base), Some(Ty::Opt(_))) {
+            if arg.name.is_none() && self.probe_is(base, |t| matches!(t, Ty::Opt(_))) {
                 return self.lower_opt_map_or_filter(base, &arg.value, op == "map", span);
             }
         }
@@ -241,7 +241,7 @@ impl<'a> Lowerer<'a> {
         // (preserving index domains), and `List<U>` across every other sequence.
         if let ([func], "map") = (args, name.text.as_str()) {
             if func.name.is_none() && !func.mutable {
-                if matches!(self.probe_ty_silent(base), Some(Ty::Array { .. })) {
+                if self.probe_is(base, |t| matches!(t, Ty::Array { .. })) {
                     return self.lower_array_map(base, &func.value, span);
                 }
                 if base_is_seq {

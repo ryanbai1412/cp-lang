@@ -158,7 +158,7 @@ impl<'a> Lowerer<'a> {
             (Some(ty), Some(init))
                 if counted_type(ty)
                     && !matches!(init.kind, ast::ExprKind::List(_))
-                    && matches!(self.probe_ty_silent(init), Some(Ty::Array { .. })) =>
+                    && self.probe_is(init, |t| matches!(t, Ty::Array { .. })) =>
             {
                 self.with_declared_keys(value, ty, init)
             }

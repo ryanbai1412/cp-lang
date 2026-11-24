@@ -274,7 +274,7 @@ impl<'a> Lowerer<'a> {
     /// rather than a value to search for.
     pub(in crate::lower) fn is_test(&mut self, e: &ast::Expr) -> bool {
         matches!(e.kind, ast::ExprKind::Lambda { .. })
-            || matches!(self.probe_ty_silent(e), Some(Ty::Fn(..)))
+            || self.probe_is(e, |t| matches!(t, Ty::Fn(..)))
     }
 
     /// Lowers `xs.first_ge(val, [by:])`, `xs.first_gt(val, [by:])`, `xs.last_le(val, [by:])`,

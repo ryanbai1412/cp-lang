@@ -1619,7 +1619,10 @@ impl<'a> Lowerer<'a> {
                             ..
                         }
                     )
-                    && matches!(self.probe_ty_silent(range), Some(Ty::Range(inner)) if *inner == Ty::Int)
+                    && self.probe_is(
+                        range,
+                        |t| matches!(t, Ty::Range(inner) if **inner == Ty::Int),
+                    )
                 {
                     let (
                         Iter::Range {

@@ -253,6 +253,13 @@ impl<'a> Lowerer<'a> {
             }
         }
         let Ty::Fn(param_tys, ret_ty) = callee.ty.clone() else {
+            // A `type_of(f)` value calls `f`.
+            if let Some(Sym::Fn(id)) = (self.item_types.iter())
+                .find(|(_, s)| Ty::Struct(*s) == callee.ty)
+                .and_then(|(k, _)| self.get_sym(k))
+            {
+                return self.user_call(id, None, args, span);
+            }
             if callee.ty != Ty::Error {
                 self.report(
                     span,

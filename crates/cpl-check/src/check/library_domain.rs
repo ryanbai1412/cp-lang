@@ -150,10 +150,9 @@ impl Checker<'_> {
                     for name in super::lends::names_in(init) {
                         let mutable = match self.local(&name) {
                             Some(local) => local.mutable,
-                            None => matches!(
-                                self.global(&name).as_deref(),
-                                Some(Def::Value { mutable: true, .. })
-                            ),
+                            None => self.global_is(&name, |d| {
+                                matches!(d, Def::Value { mutable: true, .. })
+                            }),
                         };
                         if mutable {
                             if let Some(diag) = self.report(

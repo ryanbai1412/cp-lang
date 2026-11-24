@@ -833,7 +833,10 @@ impl<'a> Lowerer<'a> {
             if args.len() == 1 && args[0].name.is_none() && !args[0].mutable {
                 if let ast::ExprKind::Field { base, name } = &callee.kind {
                     if name.text == "step"
-                        && matches!(self.probe_ty_silent(base), Some(Ty::Range(inner)) if *inner == Ty::Int)
+                        && self.probe_is(
+                            base,
+                            |t| matches!(t, Ty::Range(inner) if **inner == Ty::Int),
+                        )
                     {
                         let range_val = self.expr(base, None);
                         let step_val = self.expr(&args[0].value, Some(&Ty::Int));
@@ -843,7 +846,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        if matches!(self.probe_ty_silent(cur), Some(Ty::Range(inner)) if *inner == Ty::Int) {
+        if self.probe_is(cur, |t| matches!(t, Ty::Range(inner) if **inner == Ty::Int)) {
             let range_val = self.expr(cur, None);
             return Some(self.range_int_sum_closed(range_val, None, span));
         }
@@ -858,7 +861,7 @@ impl<'a> Lowerer<'a> {
         optional: bool,
         span: Span,
     ) -> Option<Expr> {
-        if !matches!(self.probe_ty_silent(seq), Some(Ty::Range(inner)) if *inner == Ty::Int) {
+        if !self.probe_is(seq, |t| matches!(t, Ty::Range(inner) if **inner == Ty::Int)) {
             return None;
         }
         let range = self.expr(seq, None);

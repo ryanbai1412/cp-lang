@@ -130,13 +130,15 @@ impl Checker<'_> {
         if let Some(local) = self.local(name) {
             return matches!(local.keyword, "let" | "var" | "param");
         }
-        matches!(
-            self.global(name).as_deref(),
-            Some(Def::Value {
-                keyword: "let" | "var",
-                ..
-            })
-        )
+        self.global_is(name, |d| {
+            matches!(
+                d,
+                Def::Value {
+                    keyword: "let" | "var",
+                    ..
+                }
+            )
+        })
     }
 
     /// R02.6.6: a getter is read like a field, so every parameter but `self`

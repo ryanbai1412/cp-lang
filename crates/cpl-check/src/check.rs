@@ -472,6 +472,11 @@ impl<'a> Checker<'a> {
         Some(def)
     }
 
+    /// Whether the top-level `name` is a definition `is` accepts.
+    pub(crate) fn global_is(&mut self, name: &str, is: fn(&Def) -> bool) -> bool {
+        self.global(name).is_some_and(|d| is(&d))
+    }
+
     pub(crate) fn global(&mut self, name: &str) -> Option<Arc<Def>> {
         match self.local_defs.get(name) {
             Some(def) => Some(def.clone()),
@@ -849,7 +854,7 @@ impl<'a> Checker<'a> {
         for part in parts {
             match part {
                 Ty::Named { name, args }
-                    if matches!(self.global(name).as_deref(), Some(Def::Struct { .. })) =>
+                    if self.global_is(name, |d| matches!(d, Def::Struct { .. })) =>
                 {
                     packed.extend(args.iter().filter_map(|a| match a {
                         Ty::Pos(d) | Ty::Domain(d) => Some(d.clone()),

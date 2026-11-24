@@ -1543,7 +1543,17 @@ impl<'a> Checker<'a> {
             Ty::Named {
                 name,
                 args: type_args,
-            } => self.construct(&name, type_args, &callee_text, args, call),
+            } => {
+                // A `type_of(f)` value calls as `f` (R08.1.10).
+                if let Some(f) = name
+                    .strip_prefix("type_of(")
+                    .and_then(|f| f.strip_suffix(')'))
+                {
+                    let ty = self.name_ty(f, callee.span);
+                    return self.call_kind(call, callee, ty, args);
+                }
+                self.construct(&name, type_args, &callee_text, args, call)
+            }
             Ty::TypeName(name) => self.construct(&name, Vec::new(), &callee_text, args, call),
             // `V(i)`: a number checked into the domain, or `State(v, k)` for a product domain.
             Ty::Domain(name) => {

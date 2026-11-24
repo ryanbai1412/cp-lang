@@ -38,7 +38,7 @@ impl<'a> Lowerer<'a> {
         {
             if rev.text == "rev"
                 && test.name.is_none()
-                && matches!(self.probe_ty_silent(inner), Some(Ty::Range(_)))
+                && self.probe_is(inner, |t| matches!(t, Ty::Range(_)))
             {
                 let range = self.expr(inner, None);
                 return self.find_first(range, elem, &test.value, method == "find", span);

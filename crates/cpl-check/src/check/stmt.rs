@@ -970,10 +970,7 @@ impl<'a> Checker<'a> {
                     // to match, so a capitalized name is bound to the value.
                     Some(name)
                         if otherwise.is_none()
-                            && !matches!(
-                                self.global(name).as_deref(),
-                                Some(Def::Variant { .. })
-                            ) =>
+                            && !self.global_is(name, |d| matches!(d, Def::Variant { .. })) =>
                     {
                         self.report(
                             pat.span,

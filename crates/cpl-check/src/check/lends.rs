@@ -1437,7 +1437,7 @@ impl<'a> Checker<'a> {
         if let Some(local) = self.local(name) {
             local.keyword != "param" && !self.lends.views.contains_key(&local.span)
         } else if self.in_fn == 0 {
-            matches!(self.global(name).as_deref(), Some(Def::Value { .. }))
+            self.global_is(name, |d| matches!(d, Def::Value { .. }))
                 && !self.lends.global_views.contains_key(name)
         } else {
             false
@@ -1617,11 +1617,11 @@ impl<'a> Checker<'a> {
                 // `lends` fn call: holds all `mut` or heap-typed args.
                 let is_lends_fn = match &unparen(callee).kind {
                     ExprKind::Name(n) => {
-                        matches!(self.global(n).as_deref(), Some(Def::Fn { lends: true, .. }))
+                        self.global_is(n, |d| matches!(d, Def::Fn { lends: true, .. }))
                     }
                     ExprKind::Generic { base, .. } => match &unparen(base).kind {
                         ExprKind::Name(n) => {
-                            matches!(self.global(n).as_deref(), Some(Def::Fn { lends: true, .. }))
+                            self.global_is(n, |d| matches!(d, Def::Fn { lends: true, .. }))
                         }
                         _ => false,
                     },

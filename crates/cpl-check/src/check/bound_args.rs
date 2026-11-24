@@ -242,12 +242,8 @@ impl Checker<'_> {
             let Some(item) = arg.value.fn_item_type() else {
                 continue;
             };
-            if let ast::ExprKind::Name(n) = &arg.value.kind {
-                if self.local(n).is_some()
-                    || !matches!(self.global(n).as_deref(), Some(Def::Fn { .. }))
-                {
-                    continue;
-                }
+            if matches!(&arg.value.kind, ast::ExprKind::Name(n) if !self.names_fn_item(n)) {
+                continue;
             }
             let Some((_, traits)) = bounds.iter().find(|(p, _)| p == m) else {
                 continue;

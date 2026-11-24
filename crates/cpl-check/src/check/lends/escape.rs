@@ -203,7 +203,7 @@ impl<'a> Checker<'a> {
         if name.text == "sort" {
             if let ExprKind::Name(n) = &base.kind {
                 if matches!(self.local(n).map(|b| &b.ty), Some(Ty::Domain(_)))
-                    || matches!(self.global(n).as_deref(), Some(Def::Domain { .. }))
+                    || self.global_is(n, |d| matches!(d, Def::Domain { .. }))
                 {
                     return;
                 }

@@ -289,6 +289,10 @@ impl<'a> Checker<'a> {
             || got.has_error()
             || want.has_error()
             || self.expected_variants(at, want)
+            // `sq` where its own `type_of(sq)` is wanted (R08.1.10).
+            || matches!(want, Ty::Named { name, args } if args.is_empty()
+                && at.fn_item_type().as_ref() == Some(name)
+                && !matches!(&at.kind, ExprKind::Name(n) if !self.names_fn_item(n)))
         {
             return true;
         }

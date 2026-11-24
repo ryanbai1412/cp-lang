@@ -14,7 +14,7 @@ impl<'a> Lowerer<'a> {
     ) -> Result<Place, Place> {
         let bounds = if matches!(range.kind, ast::ExprKind::Range { .. }) {
             self.mut_slice_bounds(&base_place, range, span)
-        } else if matches!(self.probe_ty_silent(range), Some(Ty::Range(_))) {
+        } else if self.probe_is(range, |t| matches!(t, Ty::Range(_))) {
             let range_val = self.expr(range, None);
             self.mut_slice_range_val_bounds(&base_place, range_val, span)
         } else {

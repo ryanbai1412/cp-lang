@@ -354,6 +354,11 @@ impl<'a> Lowerer<'a> {
         (val.ty != Ty::Error).then_some(val.ty)
     }
 
+    /// Whether `e` probes to a type `is` accepts.
+    pub(super) fn probe_is(&mut self, e: &ast::Expr, is: fn(&Ty) -> bool) -> bool {
+        self.probe_ty_silent(e).is_some_and(|t| is(&t))
+    }
+
     /// Lowers `e` only to learn about it: the statements it would hoist ahead of its
     /// statement and the errors it would report are dropped, so the probe never runs.
     fn probe_expr_ty(

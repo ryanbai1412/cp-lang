@@ -566,7 +566,7 @@ impl Checker<'_> {
     /// `Str` or array, and the fn it calls isn't declared `lends`.
     fn owned_call(&mut self, call: &Expr, callee: &Expr) -> bool {
         if let ExprKind::Name(n) = &unparen(callee).kind {
-            if matches!(self.global(n).as_deref(), Some(Def::Fn { lends: true, .. })) {
+            if self.global_is(n, |d| matches!(d, Def::Fn { lends: true, .. })) {
                 return false;
             }
         }

@@ -82,8 +82,7 @@ impl<'a> Lowerer<'a> {
     /// Whether `ty` is the zero-size type of the fn item `name`.
     pub(super) fn is_item_type_of(&self, name: &str, ty: &Ty) -> bool {
         let Ty::Struct(sid) = ty else { return false };
-        let ident = ast::fn_item_ident(name);
-        self.item_types.iter().any(|(k, s)| s == sid && *k == ident)
+        self.item_types.iter().any(|(k, s)| s == sid && k == name)
     }
 
     /// The zero-size type of one fn item, `type_of(f)`: an empty struct the
