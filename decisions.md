@@ -9354,3 +9354,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
   lowering. Charging a generic to the crate that instantiates it
   (`plan/QUESTIONS.md`) would make most transfers unnecessary.
 - **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.
+
+## 640. (reserved, unknown)
