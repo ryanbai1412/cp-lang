@@ -9,7 +9,8 @@ need, and marks each line whose time is a fn's with `// timed: <fn>`, the
 fn named as `cpl doc --format json std` does (`bag.SortedBag.add`); one
 case may time several fns. A header may name the fn a bare `// timed`
 means (`// scaling: bag.SortedBag.add`), hold symbols at a constant
-(`// fixed: K`) or set the base size (`// n: 4096`, default N). Each case runs under `cpl profile --native`, the
+(`// fixed: K`), give one as a formula in n (`// let: k = \\log n; d = \\sqrt n`,
+for a fn whose cost names a size the case derives from n) or set the base size (`// n: 4096`, default N). Each case runs under `cpl profile --native`, the
 judge's C++ with a counter per statement, RUNS times at n and at 4n; the
 time per hit of the timed lines (the fastest run) gives the measured growth.
 The documented growth is the `cost:` formula evaluated at 4n over n, every
@@ -61,41 +62,92 @@ def big_o(cost):
     return m.group(1) if m else None
 
 
-def growth(formula, fixed=(), k=4.0, n=float(N)):
-    """f(k n) / f(n) for a cost formula in the docs' TeX, every symbol not in
-    `fixed` standing for n."""
+BUILTINS = ("lg", "sqrt", "min", "max")
+
+
+def _arg(f, i):
+    """The end of the argument of a function written without parentheses
+    (`\\log n`, `\\log(n + m)`, `\\log \\max(a, b)`) starting at `f[i]`."""
+    m = re.match(r"[A-Za-z_]\w*|\d+", f[i:])
+    j = i + (m.end() if m else 0)
+    if j < len(f) and f[j] == "(" and (not m or m.group(0)[0].isalpha()):
+        depth = 0
+        for j in range(j, len(f)):
+            depth += {"(": 1, ")": -1}.get(f[j], 0)
+            if depth == 0:
+                return j + 1
+    if j == i:
+        raise ValueError(f"no argument at {f[i:]!r}")
+    return j
+
+
+def python(formula):
+    """A cost formula in the docs' TeX as a Python expression over its
+    symbols, each spelt `v_<symbol>`."""
     f = formula
     f = re.sub(r"\\lvert\s*(.*?)\s*\\rvert", r"(\1)", f)
     f = f.replace("\\_", "_").replace("³", "^3").replace("²", "^2")
     f = re.sub(r"\\mathit\{(\w+)\}", r"\1", f)
     f = re.sub(r"(\w+)\.(\w+)", r"\1_\2", f)
     f = re.sub(r"\\deg\s*", "", f)
-    f = re.sub(r"\\sqrt\s*(\w+)", r"sqrt(\1)", f)
     f = re.sub(r"\\(?:operatorname|mathrm)\{(\w+)\}", r"\1", f)
     f = re.sub(r"\\sqrt\{([^}]*)\}", r"sqrt(\1)", f)
-    f = re.sub(r"\\log\^(\d+)\s*(\w+|\([^)]*\))", r"(lg(\2)**\1)", f)
-    f = re.sub(r"\\log\s*(\w+|\([^)]*\))", r"lg(\1)", f)
     f = re.sub(r"\\alpha\s*\(([^)]*)\)", "1", f)
-    f = f.replace("\\cdot", "*").replace("\\times", "*").replace("\\min", "min").replace("\\max", "max")
+    f = f.replace("\\min", "min").replace("\\max", "max")
+    # `\log^k x`, `\log x`, `log_b x` and `\sqrt x`, innermost (rightmost) first
+    op = re.compile(r"\\log\^(\d+)\s*|\\log\s*|\blog_(\w+)\s*|\\sqrt\s*")
+    while ms := list(op.finditer(f)):
+        m = ms[-1]
+        end = _arg(f, m.end())
+        a = f[m.end():end]
+        if m.group(0).startswith("\\sqrt"):
+            r = f"sqrt({a})"
+        elif m.group(1):
+            r = f"(lg({a})**{m.group(1)})"
+        elif m.group(2):
+            r = f"(lg({a})/lg({m.group(2)}))"
+        else:
+            r = f"lg({a})"
+        f = f[:m.start()] + r + f[end:]
+    f = f.replace("\\cdot", "*").replace("\\times", "*")
     f = f.replace("^", "**").replace("{", "(").replace("}", ")").replace("\\,", "")
+    # a symbol written as a function of others (`\mathit{nodes}(\mathit{self})`, `d(x)`) is one symbol
+    while m := re.search(r"\b(?!(?:%s)\()([A-Za-z_]\w*)\(" % "|".join(BUILTINS), f):
+        end = _arg(f, m.start())
+        f = f[:m.start()] + m.group(1) + f[end:]
     f = re.sub(r"([\w)])\s+(?=[\w(])", r"\1*", f)
     if "\\" in f:
         raise ValueError(f"can't read the cost formula {formula!r}")
+    return re.sub(r"\b(?!(?:%s)\()([A-Za-z_]\w*)" % "|".join(BUILTINS), r"v_\1", f)
 
-    def at(x):
-        names = {s: (1.0 if s in fixed else x) for s in re.findall(r"[A-Za-z_]\w*", f)
-                 if s not in ("lg", "sqrt", "min", "max")}
-        return eval(f, {"__builtins__": {}, "lg": lambda v: math.log2(max(v, 2.0)),
-                        "sqrt": math.sqrt, "min": min, "max": max}, names)
 
-    return at(k * n) / at(n)
+def growth(formula, fixed=(), k=4.0, n=float(N), let=None):
+    """f(k n) / f(n) for a cost formula in the docs' TeX. A symbol in `fixed`
+    stands for 1, one in `let` for its formula in `n` (`k = \\log n` when the
+    case's n is 2^k), and every other symbol for n."""
+    let = {s: python(e) for s, e in (let or {}).items()}
+    env = {"__builtins__": {}, "lg": lambda v: math.log2(max(v, 2.0)),
+           "sqrt": math.sqrt, "min": min, "max": max}
+
+    def at(x, f):
+        names = {}
+        for v in set(re.findall(r"\bv_\w+", f)):
+            s = v[2:]
+            names[v] = 1.0 if s in fixed else at(x, let[s]) if s in let and s != "n" else x
+        try:
+            return float(eval(f, env, names))
+        except (ArithmeticError, TypeError, SyntaxError, NameError) as e:
+            raise ValueError(f"can't evaluate the cost formula {formula!r}: {e}") from e
+
+    f = python(formula)
+    return at(k * n, f) / at(n, f)
 
 
 def header(text):
     """The case's `// key: value` header lines."""
     out = {}
     for line in text.splitlines():
-        m = re.match(r"//\s*(scaling|fixed|n):\s*(.*)", line)
+        m = re.match(r"//\s*(scaling|fixed|let|n):\s*(.*)", line)
         if not m:
             break
         out[m.group(1)] = m.group(2).strip()
@@ -150,6 +202,7 @@ def run_case(cpl, case, costs, tmp):
         return [(f"{rel}::", {"fn": None, "ok": False, "why": "no line is marked `// timed`"})]
     n = int(head.get("n", N))
     fixed = tuple(s.strip() for s in head.get("fixed", "").split(",") if s.strip())
+    let = dict((p.strip() for p in d.split("=", 1)) for d in head.get("let", "").split(";") if d.strip())
     out, documented = [], {}
     for fn in groups:
         formula = big_o(costs[fn]) if fn in costs else None
@@ -158,7 +211,7 @@ def run_case(cpl, case, costs, tmp):
                 raise ValueError(f"`{fn}` is no std fn with a cost")
             if not formula:
                 raise ValueError(f"no O(...) in its cost: {costs[fn]}")
-            documented[fn] = (formula, growth(formula, fixed, n=float(n)))
+            documented[fn] = (formula, growth(formula, fixed, n=float(n), let=let))
         except ValueError as e:
             out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}))
     try:

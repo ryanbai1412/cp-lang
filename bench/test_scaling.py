@@ -1,4 +1,5 @@
 import importlib.util
+import math
 import os
 import unittest
 
@@ -17,9 +18,22 @@ class Growth(unittest.TestCase):
     def test_a_fixed_symbol_does_not_grow(self):
         self.assertEqual(scaling.growth("K / 64", fixed=("K",)), 1.0)
 
+    def test_a_let_symbol_grows_as_its_formula_in_n(self):
+        self.assertAlmostEqual(scaling.growth("k 2^k", let={"k": r"\log n"}), 4 * 16 / 14, places=3)
+        self.assertAlmostEqual(scaling.growth(r"\min(k, n - k)", let={"k": "n / 2"}), 4.0, places=3)
+
+    def test_function_arguments_logs_and_bases(self):
+        for formula, want in [(r"\log \max(\lvert x \rvert, \lvert y \rvert)", 16 / 14),
+                              (r"(n + m) \log(n + m)", 4 * 17 / 15), (r"\log \log n", math.log2(16) / math.log2(14)),
+                              (r"\mathit{log\_P} n", 16 / 14), (r"\min(\mathit{nodes}(\mathit{self}), m)", 4.0),
+                              (r"\lvert \mathit{from} \rvert", 4.0)]:
+            self.assertAlmostEqual(scaling.growth(formula, fixed=("P",)), want, places=3, msg=formula)
+
     def test_an_unread_formula_is_an_error(self):
         with self.assertRaises(ValueError):
             scaling.growth(r"\binom{n}{k}")
+        with self.assertRaises(ValueError):
+            scaling.growth("k 2^k")
 
     def test_the_first_big_o_of_a_cost_line(self):
         self.assertEqual(scaling.big_o(r"\(O(\log n)\) expected, \(O(n)\) memory"), r"\log n")
