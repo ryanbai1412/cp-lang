@@ -1,6 +1,7 @@
 //! An impl head's inline bounds (R12.3): `impl Seq<T> for Wrap<S: Seq<T>>`
 //! takes `T` from what `S` is, and gives `Wrap<S>` nothing where `S` is not a
-//! `Seq`.
+//! `Seq`; a bound on any trait, `S: Versioned<D, T>`, binds `D` and `T` from
+//! `S`'s impl of it.
 
 use super::*;
 
@@ -45,7 +46,14 @@ impl<'a> Lowerer<'a> {
                 let (key, elem) = match trait_name {
                     "Seq" | "Bidir" | "Sized" | "Positional" => (None, args.first()),
                     "Keyed" | "Indexed" | "IndexedMut" => (args.first(), args.get(1)),
-                    _ => continue,
+                    _ => {
+                        if let Some(given) = self.impl_trait_args(&seq, trait_name) {
+                            for (arg, ty) in args.iter().zip(&given) {
+                                self.unify_ast_ty(arg, ty, m, &open, env);
+                            }
+                        }
+                        continue;
+                    }
                 };
                 let builtin = match trait_name {
                     "Indexed" | "Bidir" | "Positional" => seq.is_indexed(),
@@ -65,5 +73,62 @@ impl<'a> Lowerer<'a> {
             }
         }
         true
+    }
+
+    /// The args `ty`'s impl of the trait `name` gives it: `Arr<E>`, with
+    /// `impl<D: Domain> Versioned<D, Int> for Arr<D>`, gives `[E, Int]`.
+    pub(super) fn impl_trait_args(&mut self, ty: &Ty, name: &str) -> Option<Vec<Ty>> {
+        let Ty::Struct(sid) = *ty else {
+            return None;
+        };
+        let origin = self.structs[sid].origin_gen.clone();
+        for idx in 0..self.impls.len() {
+            if self.impls[idx].trait_name.as_deref() != Some(name) {
+                continue;
+            }
+            let (m, offset, target) = (
+                self.impls[idx].mod_id,
+                self.impls[idx].offset,
+                self.impls[idx].target,
+            );
+            let ast::TypeKind::Named {
+                name: head,
+                args: targs,
+            } = &target.kind
+            else {
+                continue;
+            };
+            let fits = match self.mod_syms[m].get(&head.text).copied() {
+                Some(Sym::Struct(id)) => id == sid,
+                Some(Sym::GenStruct(g)) => origin.as_ref().is_some_and(|(o, _)| *o == g),
+                _ => false,
+            };
+            if !fits {
+                continue;
+            }
+            let open = self.impl_params(m, target);
+            let mut env = self.structs[sid].env.clone();
+            let given = origin.as_ref().map_or(&[][..], |(_, a)| &a[..]);
+            for (targ, arg) in targs.iter().zip(given) {
+                match &targ.kind {
+                    ast::TypeKind::Named { name, args }
+                        if args.is_empty() && open.contains(&name.text) =>
+                    {
+                        env.insert(name.text.clone(), arg.clone());
+                    }
+                    _ => {}
+                }
+            }
+            let trait_args = self.impls[idx].trait_args.clone();
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, offset),
+                std::mem::replace(&mut self.gen_env, env),
+            );
+            let out = trait_args.iter().map(|t| self.resolve_ty(t)).collect();
+            (self.cur_mod, self.offset, self.gen_env) = saved;
+            return Some(out);
+        }
+        None
     }
 }
