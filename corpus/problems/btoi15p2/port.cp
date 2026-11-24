@@ -1,4 +1,5 @@
 // Source: BOI 2015 P2 (Editor), https://dmoj.ca/problem/btoi15p2
+// limits: 1500 ms, 512 MB
 // Problem: n <= 3e5 operations a_i (|a_i| <= n, a_i != 0): a_i > 0 is an edit setting the
 //   state to a_i (level 0), -L an undo of level L that undoes the latest active operation of
 //   level < L (re-activating what that one undid, recursively). After each operation print
