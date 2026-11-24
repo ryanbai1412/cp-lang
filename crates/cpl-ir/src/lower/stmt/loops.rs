@@ -520,3 +520,33 @@ fn drop_unread_let(slot: usize, stmts: &mut Vec<Stmt>) {
         stmts.remove(at);
     }
 }
+
+/// `for x in { let a = ..; f(a) }`, as a method view's walk lowers, walks
+/// `f(a)` after the lets: a loop over a `yields` call is fed by it instead
+/// of walking the list it would build.
+pub(in crate::lower) fn hoist_call_args(iter: Iter, out: &mut Vec<Stmt>) -> Iter {
+    let Iter::Seq(seq, rev) = iter else {
+        return iter;
+    };
+    let ExprKind::Do(block) = &seq.kind else {
+        return Iter::Seq(seq, rev);
+    };
+    let hoistable = match block.stmts.split_last() {
+        Some((Stmt::Give(call), lets)) => {
+            matches!(call.kind, ExprKind::Call(..))
+                && lets.iter().all(|s| matches!(s, Stmt::Let(_, Some(_))))
+        }
+        _ => false,
+    };
+    if !hoistable {
+        return Iter::Seq(seq, rev);
+    }
+    let ExprKind::Do(mut block) = seq.kind else {
+        unreachable!()
+    };
+    let Some(Stmt::Give(call)) = block.stmts.pop() else {
+        unreachable!()
+    };
+    out.extend(block.stmts);
+    Iter::Seq(call, rev)
+}

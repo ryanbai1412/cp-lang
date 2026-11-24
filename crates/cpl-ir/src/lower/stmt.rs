@@ -1181,6 +1181,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.local_syms.pop();
                 self.cx.scopes.pop();
                 self.cx.loops.pop();
+                let iter = loops::hoist_call_args(iter, out);
                 out.push(Stmt::For(id, slot, iter, Block { stmts }));
                 self.end_loop_else(id, else_flag, else_body.as_ref(), out);
             }

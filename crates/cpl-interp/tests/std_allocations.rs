@@ -167,10 +167,6 @@ const ALLOCATING_TODAY: &[(&str, &str)] = &[
         "the VM boxes each slice view (`Rc<ListViewVal>`)",
     ),
     (
-        "bag.cp SortedRange",
-        "the VM boxes each cursor the walk steps to",
-    ),
-    (
         "heap.cp MeldHeaps",
         "the VM boxes each `MeldNode` and `Meld` struct value",
     ),
