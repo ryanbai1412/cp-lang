@@ -135,15 +135,43 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "view_receiver_runs_once",
         ]
     );
-    let failures: Vec<String> = programs
-        .iter()
-        .filter_map(|program| {
-            check(program, "parity")
-                .err()
-                .map(|why| format!("{}: {why}", program.display()))
-        })
-        .collect();
+    let failures: Vec<String> = parallel(&programs, |program| {
+        check(program, "parity")
+            .err()
+            .map(|why| format!("{}: {why}", program.display()))
+    })
+    .into_iter()
+    .flatten()
+    .collect();
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+/// `f` over `items` on every core, the results in order: each thread
+/// takes the next item as it frees up, so the g++ builds overlap.
+fn parallel<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let mut done: Vec<(usize, R)> = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..threads.min(items.len()).max(1))
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut done = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(item) = items.get(i) else { break };
+                        done.push((i, f(item)));
+                    }
+                    done
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
+    });
+    done.sort_by_key(|(i, _)| *i);
+    done.into_iter().map(|(_, r)| r).collect()
 }
 
 fn programs() -> Vec<PathBuf> {
@@ -1295,6 +1323,7 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
     };
     let mut wrong = Vec::new();
     let mut alone = Vec::new();
+    let mut through = Vec::new();
     for (fixture, values) in EDGE_FIXTURES {
         // Rows that run through, a few to a program so each stays under a judge's 64 KB.
         let mut together: Vec<String> = Vec::new();
@@ -1321,29 +1350,19 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
         for (k, rows) in together.chunks(25).enumerate() {
             let name = format!("{fixture}_{k}");
             let path = write(&name, &rows.concat());
-            if let Err(why) = agree(&name, &path, "traps") {
-                wrong.push(why);
-            }
+            through.push((name, path));
         }
     }
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let chunk = alone.len().div_ceil(threads).max(1);
-    let stopped: Vec<String> = std::thread::scope(|scope| {
-        let handles: Vec<_> = alone
-            .chunks(chunk)
-            .map(|part| {
-                scope.spawn(|| {
-                    part.iter()
-                        .filter_map(|(name, path)| agree(name, path, "all").err())
-                        .collect::<Vec<_>>()
-                })
-            })
-            .collect();
-        handles
+    let ran_through: Vec<String> =
+        parallel(&through, |(name, path)| agree(name, path, "traps").err())
             .into_iter()
-            .flat_map(|h| h.join().unwrap())
-            .collect()
-    });
+            .flatten()
+            .collect();
+    wrong.extend(ran_through);
+    let stopped: Vec<String> = parallel(&alone, |(name, path)| agree(name, path, "all").err())
+        .into_iter()
+        .flatten()
+        .collect();
     wrong.extend(stopped);
     assert!(
         wrong.is_empty(),
