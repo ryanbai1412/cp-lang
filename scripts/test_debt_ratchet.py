@@ -59,6 +59,16 @@ class DebtRatchetTest(unittest.TestCase):
                 "corpus/problems/a/tests/1.ans", "corpus/problems/a/tests/1.in",
                 "corpus/problems/a/tests/sample1.in"])
 
+    def test_corpus_no_max_counts_packages_without_a_max_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for f, text in [("a/port.cp", ""), ("a/gen.py", "if sys.argv[1:] == ['--max']:\n"),
+                            ("b/port.cp", ""), ("b/gen.py", "print(1)\n"), ("c/port.cp", ""),
+                            ("d/port.cp", ""), ("d/interactor.py", ""), ("e/gen.py", "")]:
+                (root / "corpus/problems" / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / "corpus/problems" / f).write_text(text)
+            self.assertEqual(dr.corpus_no_max(root), ["corpus/problems/b", "corpus/problems/c"])
+
     def test_v02_port_files_counts_ports_not_in_the_v03_set(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

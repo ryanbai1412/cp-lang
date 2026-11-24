@@ -973,6 +973,24 @@ def _array_items(text: str) -> int:
     return items + pending
 
 
+def corpus_no_max(root: Path) -> list[str]:
+    """Non-interactive problem packages with a port.cp but no `gen.py --max`.
+
+    Rule: problem-packages/R6 (handbook/guidelines/problem-packages-checklist.md#r6):
+    every package has an input at the statement's bounds, which `scripts/corpus.py
+    verify` (`max`) judges; an interactive package's gen.py prints the interactor's data.
+    """
+    problems = root / "corpus" / "problems"
+    found = []
+    for d in sorted(problems.iterdir()) if problems.is_dir() else ():
+        if not (d / "port.cp").is_file() or (d / "interactor.py").is_file():
+            continue
+        g = d / "gen.py"
+        if not g.is_file() or "--max" not in g.read_text(encoding="utf-8", errors="replace"):
+            found.append(d.relative_to(root).as_posix())
+    return found
+
+
 def corpus_test_files(root: Path) -> list[str]:
     """Literal test data committed under corpus/problems/*/tests/, samples included.
 
@@ -1321,7 +1339,8 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
 
 def corpus_known(root: Path) -> list[str]:
     """Entries of any corpus/*-known.txt: ports a corpus check skips."""
-    return _registered_entries(root, "corpus_known")
+    lists = sorted(p.relative_to(root).as_posix() for p in (root / "corpus").rglob("*-known.txt"))
+    return [rel for rel in lists for _ in range(_list_entries(root, rel))]
 
 
 def known_lists(root: Path) -> list[str]:
@@ -1886,6 +1905,7 @@ COUNTERS = {
     "bench_lists": ("entries in bench/*.txt exemption lists (scoreboard K5)", bench_lists, True),
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
+    "corpus_no_max": ("non-interactive problem packages without a gen.py --max", corpus_no_max, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
     "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),
