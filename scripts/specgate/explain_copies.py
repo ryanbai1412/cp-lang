@@ -26,6 +26,7 @@ COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl:
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.[A-Za-z_]\w*)*")
 PARAM = re.compile(r"(?:std::vector<|std::map<|std::set<|std::unordered_map<|std::deque<|std::string)[^();{}=]*?[&\s](\w+)\s*[,)]")
+ARRAY = re.compile(r"std::array<[^;()]*?>&? (\w+)\s*[=;,)]")
 CAPTURES = re.compile(r"\[([^\[\]]*)\]\(")
 STRUCT = re.compile(r"^struct (\w+)\s*\{")
 
@@ -113,12 +114,74 @@ def tuple_copies(decl):
     return sum(1 for a, x in zip(args, items) if a.startswith(CONTAINERS) and is_place(x))
 
 
+def program(cpp):
+    """`cpp` without the runtime's `namespace cpl { .. }`, whose own helpers
+    (`std::string(sv)` in a view's `to_str`) are not the program's copies."""
+    out, runtime = [], False
+    for line in cpp.splitlines():
+        if line.startswith("namespace cpl {"):
+            runtime = True
+        elif runtime and line.startswith("}  // namespace cpl"):
+            runtime = False
+        elif not runtime:
+            out.append(line)
+    return "\n".join(out)
+
+
+def template_arg(rest):
+    """The type inside the `<..>` that opens `rest`, and what follows it."""
+    depth = 1
+    for i, c in enumerate(rest):
+        depth += {"<": 1, ">": -1}.get(c, 0)
+        if depth == 0:
+            return rest[:i], rest[i + 1 :]
+    return None
+
+
+DOTTED = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+OPTIONAL_GET = re.compile(r"\(std::get<\d+>\(([^()]*)\)\)")
+
+
+def optional_copies(cpp, holders):
+    """An optional of a heap value copied from a place: `std::optional<C>(xs)`
+    (a `?T` argument), `std::optional<T> t0 = best;` and
+    `std::optional<C>(std::get<0>(sp))`. Mirrors optional_copies in
+    crates/cpl-cli/tests/support/cpp_counts.rs and optional_place_copies in
+    crates/cpl-cli/tests/explain_accuracy.rs."""
+    heap = lambda ty: ty.startswith(CONTAINERS + ("std::array<",)) or ty.split("<")[0] in holders
+    place = lambda t: bool(DOTTED.fullmatch(t.strip())) or (t.strip().startswith("cpl::at(") and t.strip().endswith(")") and "::" not in t.strip()[8:])
+    count = 0
+    for line in cpp.splitlines():
+        line = line.strip()
+        decl = line.removeprefix("const ")
+        if decl.startswith("std::optional<") and (got := template_arg(decl[len("std::optional<") :])):
+            ty, rest = got
+            name, eq, init = rest.removesuffix(";").partition(" = ")
+            if heap(ty) and rest.endswith(";") and eq and re.fullmatch(r"\s*\w+", name) and place(init):
+                count += 1
+        at = 0
+        while (at := line.find("std::optional<", at)) >= 0:
+            at += len("std::optional<")
+            if not (got := template_arg(line[at:])):
+                break
+            ty, rest = got
+            arg = rest[1:].split(")", 1)[0] if rest.startswith("(") else None
+            if arg is not None and ty in holders and place(arg):
+                count += 1
+            elif heap(ty) and (m := OPTIONAL_GET.match(rest)) and place(m.group(1)):
+                count += 1
+    return count
+
+
 def deep_copies(cpp):
     """Mirrors deep_copies in crates/cpl-cli/tests/support/cpp_counts.rs, plus
     copies spelled as a constructor call or `cpl::to_list`, tuples holding a
-    container copied from places, and a container assigned from a place."""
-    held, count = set(PARAM.findall(cpp)), len(COPY.findall(cpp))
+    container copied from places, a container assigned from a place, and
+    optionals of heap values copied from places; the runtime's own lines
+    are skipped."""
+    held, count = set(PARAM.findall(cpp)), len(COPY.findall(program(cpp)))
     holders = container_structs(cpp)
+    count += optional_copies(program(cpp), holders)
     for line in cpp.splitlines():
         line = line.strip()
         decl = line.removeprefix("const ")
@@ -158,11 +221,12 @@ def deep_copies(cpp):
         lhs, eq, rhs = line.strip().partition(" = ")
         if eq and rhs.endswith(";") and NAME.fullmatch(lhs) and lhs.rsplit(".", 1)[-1] in held and is_place(rhs[:-1]):
             count += 1
+    arrays = set(ARRAY.findall(program(cpp)))
     for line in cpp.splitlines():
         for caps in CAPTURES.findall(line):
             for cap in re.split(r"\s*,\s*", caps):
                 name, eq, src = cap.partition("=")
-                if eq and not name.startswith("&") and src.strip() in held:
+                if eq and not name.strip().startswith("&") and (src.strip() in held or src.strip() in arrays):
                     count += 1
     return count
 

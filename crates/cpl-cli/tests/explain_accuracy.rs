@@ -6,11 +6,12 @@
 //! counters the copy ratchet uses, so explain can't call a guess proven.
 //! Enforces performance/R17 in handbook/guidelines/performance-checklist.md.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
-use cpp_counts::{deep_copies, is_place, optional_copies, std_functions};
+use cpp_counts::{deep_copies, is_place, optional_copies, std_functions, CONTAINERS};
 
 /// The `.cp` files one directory down from the corpus problems and the
 /// conformance cases.
@@ -45,6 +46,172 @@ fn cpp_copies(cpp: &str) -> usize {
     let distinct: Vec<&str> = cpp.lines().filter(|l| seen.insert(l.trim())).collect();
     let distinct = distinct.join("\n");
     deep_copies(&distinct) + optional_copies(&distinct)
+}
+
+/// The lines of `cpp` outside the runtime's `namespace cpl { .. }`, whose
+/// own helpers (`std::string(sv)` in a view's `to_str`) are not the
+/// program's copies.
+fn program_lines(cpp: &str) -> impl Iterator<Item = &str> {
+    let mut runtime = false;
+    cpp.lines().filter(move |line| {
+        if line.starts_with("namespace cpl {") {
+            runtime = true;
+        } else if runtime && line.starts_with("}  // namespace cpl") {
+            runtime = false;
+            return false;
+        }
+        !runtime
+    })
+}
+
+/// The structs that hold a container field, directly or through another
+/// such struct. Mirrors `container_structs` in
+/// scripts/specgate/explain_copies.py.
+fn container_structs(cpp: &str) -> std::collections::BTreeSet<String> {
+    let mut bodies: Vec<(String, Vec<&str>)> = Vec::new();
+    let mut open = false;
+    for line in cpp.lines().map(str::trim) {
+        if let Some(name) = line
+            .strip_prefix("struct ")
+            .and_then(|r| r.strip_suffix('{'))
+            .map(str::trim)
+            .filter(|n| n.chars().all(|c| c.is_alphanumeric() || c == '_'))
+        {
+            bodies.push((name.to_string(), Vec::new()));
+            open = true;
+        } else if open && line.starts_with('}') {
+            open = false;
+        } else if open {
+            bodies.last_mut().unwrap().1.push(line);
+        }
+    }
+    let mut holders = std::collections::BTreeSet::new();
+    let mut grew = true;
+    while grew {
+        grew = false;
+        for (name, lines) in &bodies {
+            let holds = lines.iter().any(|l| {
+                CONTAINERS.iter().any(|c| l.starts_with(c))
+                    || holders.contains(
+                        l.split(' ')
+                            .next()
+                            .unwrap_or("")
+                            .split('<')
+                            .next()
+                            .unwrap_or(""),
+                    )
+            });
+            if !holders.contains(name) && holds {
+                holders.insert(name.clone());
+                grew = true;
+            }
+        }
+    }
+    holders
+}
+
+/// The type inside the `<..>` that opens `rest`, and what follows it.
+fn template_arg(rest: &str) -> Option<(&str, &str)> {
+    let mut depth = 1;
+    let end = rest.char_indices().find_map(|(i, c)| {
+        depth += match c {
+            '<' => 1,
+            '>' => -1,
+            _ => 0,
+        };
+        (depth == 0).then_some(i)
+    })?;
+    Some((&rest[..end], &rest[end + 1..]))
+}
+
+/// An optional of a heap value copied from a place: declared from one
+/// (`std::optional<std::string> t0 = best;`) or built from a tuple's field
+/// (`std::optional<std::vector<char>>(std::get<0>(sp))`), and a struct
+/// holding one, or a fixed array, wrapped as a `?T` argument
+/// (`std::optional<H>(h2)`; a bare container there is [`optional_copies`]'s). Mirrors `OPTIONAL_*` in
+/// scripts/specgate/explain_copies.py.
+fn optional_place_copies(cpp: &str) -> usize {
+    let holders = container_structs(cpp);
+    let heap = |ty: &str| {
+        CONTAINERS.iter().any(|c| ty.starts_with(c))
+            || ty.starts_with("std::array<")
+            || holders.contains(ty.split('<').next().unwrap_or(""))
+    };
+    program_lines(cpp)
+        .map(str::trim)
+        .map(|line| {
+            let decl = line.strip_prefix("const ").unwrap_or(line);
+            let declared = decl
+                .strip_prefix("std::optional<")
+                .and_then(template_arg)
+                .is_some_and(|(ty, rest)| {
+                    heap(ty)
+                        && rest
+                            .strip_suffix(';')
+                            .and_then(|r| r.split_once(" = "))
+                            .is_some_and(|(name, init)| {
+                                is_place(name) && !name.contains('.') && is_place(init)
+                            })
+                });
+            let from_field = line
+                .match_indices("std::optional<")
+                .filter_map(|(at, _)| template_arg(&line[at + "std::optional<".len()..]))
+                .filter(|(ty, rest)| {
+                    let held = (holders.contains(*ty) || ty.starts_with("std::array<"))
+                        && rest
+                            .strip_prefix('(')
+                            .and_then(|r| r.split_once(')'))
+                            .is_some_and(|(place, _)| is_place(place));
+                    held || heap(ty)
+                        && rest
+                            .strip_prefix("(std::get<")
+                            .and_then(|r| r.split_once(">("))
+                            .and_then(|(n, r)| Some((n, r.split_once("))")?.0)))
+                            .is_some_and(|(n, place)| {
+                                n.chars().all(|c| c.is_ascii_digit()) && is_place(place)
+                            })
+                })
+                .count();
+            usize::from(declared) + from_field
+        })
+        .sum()
+}
+
+/// A fixed array captured by value under a new name, `[wt_2 = wt]`: the
+/// closure holds its own array. Mirrors `ARRAY` in
+/// scripts/specgate/explain_copies.py.
+fn array_capture_copies(cpp: &str) -> usize {
+    let lines: Vec<&str> = program_lines(cpp).collect();
+    let mut arrays = HashSet::new();
+    for line in &lines {
+        for (at, _) in line.match_indices("std::array<") {
+            let Some((_, rest)) = template_arg(&line[at + "std::array<".len()..]) else {
+                continue;
+            };
+            let rest = rest.strip_prefix('&').unwrap_or(rest);
+            let Some(rest) = rest.strip_prefix(' ') else {
+                continue;
+            };
+            let end = rest
+                .find(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .unwrap_or(rest.len());
+            let (name, after) = rest.split_at(end);
+            if !name.is_empty() && after.trim_start().starts_with(['=', ';', ',', ')']) {
+                arrays.insert(name);
+            }
+        }
+    }
+    lines
+        .iter()
+        .flat_map(|line| line.split('[').skip(1))
+        .filter_map(|tail| tail.split_once("]("))
+        .flat_map(|(caps, _)| caps.split(','))
+        .filter(|cap| {
+            cap.split_once('=').is_some_and(|(name, src)| {
+                !name.trim().starts_with('&') && arrays.contains(src.trim())
+            })
+        })
+        .count()
 }
 
 /// The containers [`constructed_copies`] sees built from another value.
@@ -95,7 +262,7 @@ fn place_arg(rest: &str) -> bool {
 /// in scripts/specgate/explain_copies.py. Counted here on top of
 /// [`deep_copies`], not under the `// copies:` headers.
 fn constructed_copies(cpp: &str) -> usize {
-    cpp.lines()
+    program_lines(cpp)
         .map(|line| {
             let sorted = line
                 .match_indices("cpl::sorted(")
@@ -282,7 +449,13 @@ fn listed_and_made(src: &Path, out: &Path) -> (usize, usize) {
     assert_eq!(explained.code, 0, "{}: {}", src.display(), explained.stderr);
     let rows = rows(&String::from_utf8_lossy(&explained.stdout));
     let listed = rows.iter().filter(|(k, _)| k == "copy").count();
-    (listed, cpp_copies(&cpp) + constructed_copies(&cpp))
+    (
+        listed,
+        cpp_copies(&cpp)
+            + constructed_copies(&cpp)
+            + optional_place_copies(&cpp)
+            + array_capture_copies(&cpp),
+    )
 }
 
 #[test]
@@ -315,7 +488,61 @@ const CASES: &[&str] = &[
     "std-models/euler-tour-tree.cp",
     "std-seq/set-union-intersect-subtract.cp",
     "core-04/grid-cols-of-one-row.cp",
+    "core-12/each-types-generic-folds.cp",
+    "std-matrix/bitmat.cp",
+    "std-strings/kmp-rolling-hash61-lcs-all.cp",
+    "std-flow/circulation-infeasible-none.cp",
+    "std-flow/circulation-zero-lower-bounds.cp",
+    "std-flow/matroid-intersection-and-min-cost-circulation-match-brute.cp",
 ];
+
+#[test]
+fn an_optional_of_a_heap_value_from_a_place_is_a_copy() {
+    let cpp = "struct H {\n  std::vector<ll> pre;\n};\nstruct G {\n  H h;\n};\n";
+    let copies = [
+        "std::optional<std::string> t0 = best;",
+        "std::optional<G> t0 = of;",
+        "return std::optional<std::vector<char>>(std::get<0>(sp));",
+        "ll t8 = f(h, std::optional<H>(h2));",
+        "return std::optional<std::array<ll, 5>>(std::get<1>(r));",
+        "ll t8 = f(std::optional<std::array<ll, 2>>(a));",
+    ];
+    for line in copies {
+        assert_eq!(
+            optional_place_copies(&format!("{cpp}{line}\n")),
+            1,
+            "{line}"
+        );
+    }
+    let not_copies = [
+        "std::optional<ll> t0 = best;",
+        "std::optional<std::string> t0 = f(best);",
+        "return std::optional<ll>(std::get<0>(sp));",
+        "ll t8 = f(h, std::optional<std::vector<ll>>(h2));",
+        "namespace cpl {\nstd::optional<std::string> t0 = best;\n}  // namespace cpl",
+    ];
+    for line in not_copies {
+        assert_eq!(
+            optional_place_copies(&format!("{cpp}{line}\n")),
+            0,
+            "{line}"
+        );
+    }
+}
+
+#[test]
+fn a_fixed_array_captured_by_value_is_a_copy() {
+    let cpp = "  std::array<ll, 7> wt = std::move(t11);\n";
+    let copy = "  auto f = [wt_2 = wt](int e) mutable -> ll { return wt_2[e]; };\n";
+    assert_eq!(array_capture_copies(&format!("{cpp}{copy}")), 1);
+    for line in [
+        "  auto f = [&wt_2 = wt](int e) -> ll { return wt_2[e]; };\n",
+        "  auto f = [n_2 = n](int e) -> ll { return e + n_2; };\n",
+        "  auto f = [&](int e) -> ll { return wt[e]; };\n",
+    ] {
+        assert_eq!(array_capture_copies(&format!("{cpp}{line}")), 0, "{line}");
+    }
+}
 
 #[test]
 fn a_container_built_from_a_place_or_sorted_is_a_copy() {
@@ -341,6 +568,7 @@ fn a_container_built_from_a_place_or_sorted_is_a_copy() {
         "auto t = cpl::sorted(f(a));",
         "std::vector<std::string> names;",
         "auto v = std::vector<ll>{k};",
+        "namespace cpl {\nstd::string to_str() const { return std::string(sv); }\n}  // namespace cpl",
     ];
     for line in not_copies {
         assert_eq!(constructed_copies(line), 0, "{line}");

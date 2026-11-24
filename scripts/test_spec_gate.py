@@ -239,6 +239,17 @@ class GatesTest(unittest.TestCase):
         for line in ("a2 = std::array<ll, 4>(a);", "u = std::set<ll>(a);", "a = cpl::sorted(a);",
                      "g = std::vector<std::vector<ll>>(rows[i]);", "m = std::map<ll, ll>(cpl::at(ms, i));"):
             self.assertEqual(ec.deep_copies(line + "\n"), 1, line)
+        holder = "struct H {\n  std::vector<ll> pre;\n};\n"
+        for line in ("std::optional<std::string> t0 = best;", "std::optional<H> t0 = of;", "f(std::optional<H>(h2));",
+                     "f(std::optional<std::vector<ll>>(xs));", "return std::optional<std::vector<char>>(std::get<0>(sp));",
+                     "return std::optional<std::array<ll, 5>>(std::get<1>(r));", "f(std::optional<std::array<ll, 2>>(a));",
+                     "auto s = cpl::to_str(cpl::str_slice(s, 0, q));",
+                     "std::array<ll, 7> wt = std::move(t);\nauto f = [wt_2 = wt](int e) mutable -> ll { return wt_2[e]; };"):
+            self.assertEqual(ec.deep_copies(holder + line + "\n"), 1, line)
+        for line in ("std::optional<ll> t0 = best;", "return std::optional<ll>(std::get<0>(sp));",
+                     "std::array<ll, 7> wt = std::move(t);\nauto f = [&wt_2 = wt](int e) -> ll { return wt_2[e]; };",
+                     "namespace cpl {\nstd::string to_str() const { return std::string(sv); }\n}  // namespace cpl"):
+            self.assertEqual(ec.deep_copies(holder + line + "\n"), 0, line)
         for line in ("auto v = std::vector<ll>(5);", "auto t = cpl::sorted(f(a));", "auto v = std::vector<ll>(s.begin(), s.end());"):
             self.assertEqual(ec.deep_copies(line + "\n"), 0, line)
         rows = {"a.cp": ("a.cp", 2, 1), "b.cp": ("b.cp", 1, 1)}
