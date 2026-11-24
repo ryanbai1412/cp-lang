@@ -3064,9 +3064,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let mut out = Vec::with_capacity(left.len() + right.len());
         let (mut i, mut j) = (0, 0);
         while i < left.len() && j < right.len() {
-            // `desc`: the right one goes first only when it is the larger.
-            let order = self.cmp_ty_val(ty, &right[j], &left[i], span)?;
-            if if desc { order.is_gt() } else { order.is_lt() } {
+            // One `<` per step, as in the C++: the right goes first when smaller (`desc`: larger).
+            let (a, b) = [(&right[j], &left[i]), (&left[i], &right[j])][desc as usize];
+            if self.less_ty_val(ty, a, b, span)? {
                 out.push(right[j].clone());
                 j += 1;
             } else {

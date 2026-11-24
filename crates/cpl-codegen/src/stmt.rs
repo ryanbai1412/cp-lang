@@ -181,27 +181,20 @@ impl<'p> Emitter<'p> {
             Some(desc) => format!("{desc} ? {more} : {less}"),
         };
         match sort_by {
-            SortBy::Natural => match &desc {
-                // Every sort is stable; only a number's ties can't be told apart.
-                None if matches!(
-                    place.ty.seq_elem(),
-                    Some(Ty::Int | Ty::Char | Ty::Bool | Ty::Pos(_) | Ty::Bound(_))
-                ) =>
-                {
-                    self.line(out, &format!("std::sort({seq}.begin(), {seq}.end());"))
-                }
-                None => self.line(
+            SortBy::Natural => {
+                self.need("sorted");
+                let lt = match &desc {
+                    None => String::new(),
+                    Some(desc) => {
+                        let (a, b) = (self.temp(), self.temp());
+                        format!(", [&](const auto& {a}, const auto& {b}) {{ return {desc} ? {b} < {a} : {a} < {b}; }}")
+                    }
+                };
+                self.line(
                     out,
-                    &format!("std::stable_sort({seq}.begin(), {seq}.end());"),
-                ),
-                Some(desc) => {
-                    let (a, b) = (self.temp(), self.temp());
-                    self.line(
-                        out,
-                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {desc} ? {b} < {a} : {a} < {b}; }});"),
-                    );
-                }
-            },
+                    &format!("cpl::sort_seq({seq}.begin(), {seq}.end(){lt});"),
+                );
+            }
             SortBy::Key(slot, key) => {
                 let elem = self.locals()[*slot].ty.clone();
                 let cpp = self.ty(&elem);

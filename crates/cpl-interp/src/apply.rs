@@ -278,4 +278,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         Ok(Ordering::Equal)
     }
+
+    pub(crate) fn less_ty_val(&mut self, ty: &Ty, l: &Value, r: &Value, span: Span) -> Res<bool> {
+        if let Ty::Struct(id) = ty {
+            if let Some(hook) = self.program.structs[*id].ord {
+                return self.user_less(hook, l.clone(), r.clone(), span);
+            }
+        }
+        Ok(self.cmp_ty_val(ty, l, r, span)?.is_lt())
+    }
 }
