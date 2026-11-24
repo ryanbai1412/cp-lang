@@ -95,7 +95,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         if same(op, NoOp()):
             assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
             let left = Monoid<T>(fill!, (x, _) => x)
-            var st = SegTree<D, T, F>.sparse(left, over, fill, Some(Action<T, F>.of(act, left)))
+            let resolved = Action<T, F>.of(act, left)
+            var st = SegTree<D, T, F>.sparse(left, over, fill, Some(resolved))
             st.dual = true
             return st
         let m = Monoid<T>.of(op)
@@ -109,7 +110,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
             let seed = if let init = a: init[D.at(0)] else: fill!
             let left = Monoid<T>(seed, (x, _) => x)
-            var st = SegTree<D, T, F>.build_lazy(left, a, fill, Action<T, F>.of(act, left))
+            let resolved = Action<T, F>.of(act, left)
+            var st = SegTree<D, T, F>.build_lazy(left, a, fill, resolved)
             st.dual = true
             return st
         let m = Monoid<T>.of(op)
@@ -402,8 +404,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..3, 1); s.fold(1..3) == 7`
     pub fn fold(self, r: Range<D>) -> T:
         let (lo, hi) = r.ends
-        if lo >= hi: return m.id
-        if lc.len > 0: return self.fold_at(1, 0, size, self.slot(lo), self.slot(hi - 1) + 1, None)
+        if lc.len > 0: return if lo < hi: self.fold_at(1, 0, size, self.slot(lo), self.slot(hi - 1) + 1, None) else: m.id
         var (l, h) = (lo + size, hi + size)
         var (a, b) = (m.id, m.id)
         if act == None:
