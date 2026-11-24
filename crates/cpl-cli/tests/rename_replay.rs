@@ -6,7 +6,6 @@
 use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 use std::path::Path;
-use std::process::Command;
 
 #[path = "support/corpus_cases.rs"]
 mod corpus_cases;
@@ -204,16 +203,61 @@ fn rename_all(server: &mut Server, src: &str) -> (String, usize, Vec<(String, St
     (text, renamed, odd)
 }
 
-fn run(dir: &Path, name: &str, src: &str, input: &Path) -> String {
-    let file = dir.join(name);
-    std::fs::write(&file, src).unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg("run")
-        .arg(&file)
-        .arg(input)
-        .output()
-        .unwrap();
-    format!("{}{}", String::from_utf8_lossy(&out.stdout), out.status)
+/// What `cpl run` prints on `input` and how it exits, run in process.
+fn run(file: &Path, src: &str, input: &Path) -> String {
+    std::fs::write(file, src).unwrap();
+    let out = cpl_cli::run_with_input(
+        &["run", file.to_str().unwrap(), input.to_str().unwrap()],
+        b"",
+    );
+    format!("{}exit {}", String::from_utf8_lossy(&out.stdout), out.code)
+}
+
+/// Renames every name of port `pid` in a server of its own and runs it
+/// before and after: how many names it renamed, whether it ran, and what
+/// broke.
+/// A port's names renamed, whether it ran, and what broke.
+type Replay = (usize, bool, Vec<String>);
+
+fn replay(root: &Path, dir: &Path, pid: &str) -> Replay {
+    let mut broken = Vec::new();
+    let problem = root.join("corpus/problems").join(pid);
+    let src = std::fs::read_to_string(problem.join("spec.cp")).unwrap();
+    let mut server = Server::new();
+    server.handle(&message(Some(1), "initialize", obj([])));
+    server.handle(&message(None, "initialized", obj([])));
+    let doc = obj([
+        ("uri", URI.into()),
+        ("languageId", "cp".into()),
+        ("version", 1.into()),
+        ("text", src.as_str().into()),
+    ]);
+    server.handle(&message(
+        None,
+        "textDocument/didOpen",
+        obj([("textDocument", doc)]),
+    ));
+    if !errors(&mut server).is_empty() {
+        return (0, false, broken);
+    }
+    let (text, renamed, odd) = rename_all(&mut server, &src);
+    for (word, why) in odd {
+        broken.push(format!("{pid} {word}: {why}"));
+    }
+    let input = cpl_contest::problem::find_tests_dir(&problem.join("spec.cp")).join("01.in");
+    if !input.is_file() {
+        return (renamed, false, broken);
+    }
+    let (before, now) = (
+        run(&dir.join(format!("{pid}-a.cp")), &src, &input),
+        run(&dir.join(format!("{pid}-b.cp")), &text, &input),
+    );
+    if before != now {
+        broken.push(format!(
+            "{pid}: output changed\n  was {before:?}\n  now {now:?}"
+        ));
+    }
+    (renamed, true, broken)
 }
 
 #[test]
@@ -237,44 +281,34 @@ fn renaming_every_name_keeps_each_port_checking_clean_and_printing_the_same() {
     let (mut renamed, mut ran, mut broken) = (0, 0, Vec::new());
     let replayed: Vec<&str> = ids.iter().step_by(step).map(String::as_str).collect();
     corpus_cases::make(&root, &replayed);
-    for pid in replayed {
-        let problem = root.join("corpus/problems").join(pid);
-        let src = std::fs::read_to_string(problem.join("spec.cp")).unwrap();
-        let mut server = Server::new();
-        server.handle(&message(Some(1), "initialize", obj([])));
-        server.handle(&message(None, "initialized", obj([])));
-        let doc = obj([
-            ("uri", URI.into()),
-            ("languageId", "cp".into()),
-            ("version", 1.into()),
-            ("text", src.as_str().into()),
-        ]);
-        server.handle(&message(
-            None,
-            "textDocument/didOpen",
-            obj([("textDocument", doc)]),
-        ));
-        if !errors(&mut server).is_empty() {
-            continue;
-        }
-        let (text, n, odd) = rename_all(&mut server, &src);
+    // Each thread takes the next port as it frees up.
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let mut done: Vec<(usize, Replay)> = std::thread::scope(|s| {
+        let workers: Vec<_> = (0..threads)
+            .map(|_| {
+                let (next, replayed, root, dir) = (&next, &replayed, &root, &dir);
+                s.spawn(move || {
+                    let mut done = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(pid) = replayed.get(i) else { break };
+                        done.push((i, replay(root, dir, pid)));
+                    }
+                    done
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap())
+            .collect()
+    });
+    done.sort_by_key(|(i, _)| *i);
+    for (_, (n, port_ran, port_broken)) in done {
         renamed += n;
-        for (word, why) in odd {
-            broken.push(format!("{pid} {word}: {why}"));
-        }
-        let input = cpl_contest::problem::find_tests_dir(&problem.join("spec.cp")).join("01.in");
-        if input.is_file() {
-            let (before, now) = (
-                run(&dir, "a.cp", &src, &input),
-                run(&dir, "b.cp", &text, &input),
-            );
-            ran += 1;
-            if before != now {
-                broken.push(format!(
-                    "{pid}: output changed\n  was {before:?}\n  now {now:?}"
-                ));
-            }
-        }
+        ran += port_ran as usize;
+        broken.extend(port_broken);
     }
     let _ = std::fs::remove_dir_all(&dir);
     eprintln!("rename: {renamed} names renamed, {ran} ports run before and after");
