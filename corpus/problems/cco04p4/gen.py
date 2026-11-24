@@ -8,6 +8,9 @@ positive length: the accepted reference indexes an empty lap out of bounds.
 import random
 import sys
 
+# --max: laps of 10000 and 9998 unit steps (joint period 49990000) far from the origin.
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["5", "10000"]
 seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 8
 rng = random.Random(seed)
 

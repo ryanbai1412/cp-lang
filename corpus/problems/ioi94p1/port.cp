@@ -1,4 +1,5 @@
 // Source: IOI 1994 P1 (The Triangle), https://dmoj.ca/problem/ioi94p1
+// limits: 600 ms, 16 MB
 // Problem: a number triangle of n <= 100 rows, values 0..99. Print the largest sum on a path
 //   from the top to the base, each step going down-left or down-right.
 // Solution: row by row, each cell adds its value to the better of the (at most two) cells

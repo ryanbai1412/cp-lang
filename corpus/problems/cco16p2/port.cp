@@ -1,4 +1,5 @@
 // Source: CCO 2016 P2 (Splitting Hares), https://dmoj.ca/problem/cco16p2
+// limits: 7000 ms, 1024 MB
 // Problem: 2 <= n <= 4000 distinct points (|x|, |y| <= 1e6) with weights |w| <= 1e4, three may
 //   be collinear. Draw a line and take every point on one side of it, points on the line
 //   included; print the largest total weight.

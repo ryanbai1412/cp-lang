@@ -4,6 +4,9 @@ widest search); K = 1e6 with D = 5001; a random K with D = K digits; or a K whos
 residues (mostly IMPOSSIBLE). Q = 5 numbers, |n| <= 1e18, including +-1e18 and 0."""
 import sys, random
 
+# --max: K = 2 with all 5001 digits in -2500..=2500 (the widest search), Q = 5, |n| up to 1e18.
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "100000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 if S < 100000:
     k = r.randint(2, 2 + S); m = r.randint(1, min(3 * S, 2500)); d = r.randint(1, min(2 * m + 1, 3 * S))

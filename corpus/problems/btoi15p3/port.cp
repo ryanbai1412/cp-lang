@@ -1,4 +1,5 @@
 // Source: Baltic OI 2015 (Network), https://dmoj.ca/problem/btoi15p3
+// limits: 1000 ms, 256 MB
 // Problem: a tree on 3 <= n <= 5e5 computers. Add the fewest links so that the network stays
 //   connected after any one link breaks; print their number and the links (any optimal set).
 // Solution: every leaf needs a new link, so ceil(L / 2) for L leaves is a lower bound, and it

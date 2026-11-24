@@ -1,4 +1,5 @@
 // Source: CCO 2004 Stage 2 Day 2 P1 (Return of Space Turtle), https://dmoj.ca/problem/cco04p4
+// limits: 1000 ms, 32 MB
 // Problem: two points each loop forever around a closed lattice orbit, given as a start and at
 //   most 100 moves of |d| <= 100 units along X or Y, one unit per minute. Print the least
 //   Euclidean distance between them over all whole minutes, to 2 decimals.

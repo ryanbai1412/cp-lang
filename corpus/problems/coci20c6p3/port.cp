@@ -1,4 +1,5 @@
 // Source: COCI 2020/2021 Contest 6 #3 (Anagramistica), https://dmoj.ca/problem/coci20c6p3
+// limits: 1000 ms, 512 MB
 // Problem: n <= 2000 distinct words of <= 10 lowercase letters and k <= 2000. Count the subsets
 //   of the words with exactly k pairs of anagrams, mod 1e9+7.
 // Solution: anagrams form classes (keyed by letter counts) and only class sizes matter: taking
