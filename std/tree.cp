@@ -2445,7 +2445,10 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// empty: `a: None` fills every vertex with the identity
     /// traps: never
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); lc.get(1) == 0`
-    pub fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyLinkCut<V, T, F>:
+    /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
+    /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(add); lc.link(0, 1); lc.link(1, 2); lc.apply_path(0, 2, 3); lc.fold_path(0, 2) == 9`
+    pub fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>:
+        let act = Action<T, F>.of(act, over)
         let val = if let init = a: init else: [V] _ => act.over.id
         LazyLinkCut(
             act,
@@ -3783,7 +3786,10 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// empty: `a: None` fills every vertex with the identity
     /// traps: never
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); et.get(1) == 0`
-    pub fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyEulerTourTree<V, T, F>:
+    /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
+    /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(0, 1); et.apply_tree(0, 3); et.fold_tree(1) == 6`
+    pub fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>:
+        let act = Action<T, F>.of(act, over)
         let val = if let init = a: init else: [V] _ => act.over.id
         LazyEulerTourTree(
             act,
