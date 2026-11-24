@@ -1842,13 +1842,13 @@ impl<'a> Checker<'a> {
             let twin = self.method_twin(base, name, &base_ty);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             let pair = super::advice::iterator_pair_fix(self.src, base.span, name.span);
+            let listed = matches!(&base_ty, Ty::Str | Ty::Array { .. })
+                || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
+            let position = listed
+                .then(|| super::advice::iterator_position_fix(self.src, base.span, name.span))
+                .flatten();
             // `lower_bound(..) - a.begin()`: an earlier fix already rewrites it.
-            let rewritten = self.sink.diagnostics().iter().any(|d| {
-                d.fixes
-                    .iter()
-                    .any(|f| f.edits.iter().any(|(at, _)| at.contains(name.span)))
-            });
-            let diag = match rewritten {
+            let diag = match self.rewritten(name.span) {
                 true => None,
                 false => self.error(codes::UNKNOWN_FIELD, name.span, message),
             };
@@ -1858,6 +1858,12 @@ impl<'a> Checker<'a> {
                     diag.fixes.push(fix);
                 } else if let Some(help) = in_place.clone() {
                     diag.help = Some(help);
+                } else if let Some(help) = super::advice::foreign_method(&name.text) {
+                    diag.help = Some(match (&pair, &position) {
+                        (None, Some(_)) => crate::builtins::ITERATOR_POSITION_HELP.to_string(),
+                        _ => help.to_string(),
+                    });
+                    diag.fixes.extend(pair.or(position));
                 } else if let Some((s, src)) = suggestion {
                     super::advice::suggest_member(diag, src, name.span, s, base_ty == Ty::Str);
                 } else if let Some(help) = super::advice::foreign_call(&name.text)

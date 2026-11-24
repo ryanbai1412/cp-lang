@@ -50,6 +50,9 @@ impl Checker<'_> {
         if let Some(found) = super::advice::index_of(self.src, base.span, name, base_ty) {
             return Some(found);
         }
+        if let Some(found) = super::advice::str_test(self.src, base.span, name, base_ty) {
+            return Some(found);
+        }
         let twin = super::advice::by_twin(self.src, &name.text, name.span);
         let free = crate::builtins::prelude_names().iter().any(|(f, kind)| {
             *f == name.text

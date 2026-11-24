@@ -492,6 +492,15 @@ impl<'a> Checker<'a> {
             .flatten()
     }
 
+    /// Whether an earlier fix already rewrites `span`, so an error there is its echo.
+    fn rewritten(&self, span: Span) -> bool {
+        self.sink.diagnostics().iter().any(|d| {
+            d.fixes
+                .iter()
+                .any(|f| f.edits.iter().any(|(at, _)| at.contains(span)))
+        })
+    }
+
     /// Runs `f` without keeping what it reports or records: for reading a
     /// type out of code that is checked, and reported, somewhere else.
     fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -1004,7 +1013,11 @@ impl<'a> Checker<'a> {
             (code, message)
         };
         let stream = advice::stream_fix(self.src, name, span);
-        if let Some(diag) = self.error(code, span, message) {
+        let diag = match self.rewritten(span) {
+            true => None,
+            false => self.error(code, span, message),
+        };
+        if let Some(diag) = diag {
             match suggestion {
                 _ if narrow => {
                     let range = match name {

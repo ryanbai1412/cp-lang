@@ -1280,15 +1280,26 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
     })?;
     let (arg, rest) = match rest.strip_prefix(", ") {
         Some(r) => {
-            let close = r.find(')')?;
-            let arg = r[..close].trim();
-            (!arg.contains('(')).then_some((Some(arg), &r[close + 1..]))?
+            let mut depth = 0;
+            let close = r.char_indices().find_map(|(i, c)| {
+                match c {
+                    '(' | '[' | '{' => depth += 1,
+                    ')' if depth == 0 => return Some(i),
+                    ')' | ']' | '}' => depth -= 1,
+                    _ => {}
+                }
+                None
+            })?;
+            (Some(r[..close].trim()), &r[close + 1..])
         }
         None => (None, rest.strip_prefix(')')?),
     };
     let since = format!(" - {x}.begin()");
     let (new, extra) = match (f, arg) {
         ("sort" | "reverse", None) => (format!("{x}.{f}()"), 0),
+        ("sort", Some(g)) if g.starts_with("greater<") && g.ends_with(">()") => {
+            (format!("{x}.sort(desc: true)"), 0)
+        }
         ("max_element", None) => (format!("{x}.max()!"), 0),
         ("min_element", None) => (format!("{x}.min()!"), 0),
         ("accumulate", Some("0" | "0LL" | "0ll")) => (format!("{x}.sum()"), 0),
@@ -1310,6 +1321,57 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
         title: format!("write `{new}`"),
         edits: vec![(Span::new(start, end), new)],
     })
+}
+
+/// `a.begin() + i` or `a.end()` as a position in a list: the index `i`, or `a.len`.
+pub(super) fn iterator_position_fix(src: &str, base: Span, name: Span) -> Option<Fix> {
+    let x = src.get(base.start as usize..base.end as usize)?;
+    let rest = src.get(name.end as usize..)?.strip_prefix("()")?;
+    let head = src.get(..base.start as usize)?;
+    let (end, new) = match src.get(name.start as usize..name.end as usize)? {
+        "begin" if rest.starts_with(&format!(", {x}.end()")) => return None,
+        "begin" if rest.starts_with(" + ") => (name.end + 5, String::new()),
+        "begin" => (name.end + 2, "0".to_string()),
+        "end" if head.ends_with(&format!("{x}.begin(), ")) => return None,
+        "end" => (name.end + 2, format!("{x}.len")),
+        _ => return None,
+    };
+    let title = match new.is_empty() {
+        true => "write the index".to_string(),
+        false => format!("write `{new}`"),
+    };
+    Some(Fix {
+        title,
+        edits: vec![(Span::new(base.start, end), new)],
+    })
+}
+
+/// Python's `s.isdigit()`: a test of every character is `s.all(c => c.is_digit)`.
+pub(super) fn str_test(src: &str, base: Span, name: &Name, ty: &Ty) -> Option<(String, Fix)> {
+    let test = match name.text.as_str() {
+        "isdigit" => "is_digit",
+        "isalpha" => "is_alpha",
+        "isalnum" => "is_alnum",
+        "isspace" => "is_space",
+        _ => return None,
+    };
+    if *ty != Ty::Str {
+        return None;
+    }
+    let call = if src.get(name.span.end as usize..)?.starts_with("()") {
+        2
+    } else {
+        0
+    };
+    let b = src.get(base.start as usize..base.end as usize)?;
+    let new = format!("{b}.all(c => c.{test})");
+    let help =
+        format!("`{test}` tests a `Char`; a string tests every character with `all`: `{new}`");
+    let fix = Fix {
+        title: format!("write `{new}`"),
+        edits: vec![(Span::new(base.start, name.span.end + call), new)],
+    };
+    Some((help, fix))
 }
 
 /// `xs.max_by(f)`, the C++/Rust spelling: options are named arguments,

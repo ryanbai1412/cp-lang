@@ -283,6 +283,16 @@ impl<'a> Lowerer<'a> {
     /// `xs.iter()` and `s.chars()`
     /// are left out, since a list or string is iterated as it is.
     pub(super) fn foreign_call_fix(&mut self, ty: &Ty, base: &ast::Expr, method: &str, span: Span) {
+        if matches!(ty, Ty::Str | Ty::List(_)) && method == "end" {
+            let new = format!("{}.len", self.source(base.span));
+            let edit = self.span(Span::new(base.span.start, span.end));
+            if let Some(last) = self.diags.last_mut() {
+                last.help = Some(cpl_check::ITERATOR_POSITION_HELP.to_string());
+                last.fixes.clear();
+                last.fix(format!("write `{new}`"), edit, new);
+            }
+            return;
+        }
         let (help, new) = match (ty, method) {
             (Ty::Opt(_), "unwrap" | "expect") => (
                 "`x!` unwraps an optional, trapping on `None` at this place (R02.4.2)",

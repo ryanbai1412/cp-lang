@@ -124,6 +124,10 @@ pub fn foreign_own(name: &str) -> Option<&'static str> {
     })
 }
 
+/// C++'s `a.begin() + i` or `a.end()` standing for a position in a list.
+pub const ITERATOR_POSITION_HELP: &str =
+    "CP Lang has no iterators: a position is its index, so `a.begin() + i` is `i` and `a.end()` is `a.len`";
+
 /// Rust's `xs.iter()` or `s.chars()`: a call CP Lang leaves out, since
 /// a list or string is iterated as it is.
 pub fn foreign_iter_call(name: &str) -> bool {

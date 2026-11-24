@@ -140,8 +140,16 @@ impl<'a> Checker<'a> {
                         };
                         let help = optional_print_help(ty, &snippet);
                         let span = arg.value.span;
+                        let text = self.src[span.start as usize..span.end as usize].to_string();
                         if let Some(diag) = self.error(codes::MISSING_IMPL, span, message) {
                             diag.help = help;
+                            if matches!(ty, Ty::Bool) {
+                                diag.fix(
+                                    format!("write `yes({text})`"),
+                                    span,
+                                    format!("yes({text})"),
+                                );
+                            }
                             // `print(xs.pop())`: unwrap it, as the help says first.
                             if matches!(ty, Ty::Optional(_)) {
                                 let (open, close) = if snippet.contains(' ') {
