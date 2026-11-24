@@ -6292,7 +6292,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "geometry.polygon_triangulate",
-   "measured": 4.3,
+   "measured": 7.61,
    "n": 2048,
    "ok": true
   },
