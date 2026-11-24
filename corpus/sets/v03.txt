@@ -16,7 +16,10 @@ atcoder_dp_m
 btoi17p2
 btoi19p6
 btoi20p3
+ccc03s4
 ccc04s5
+ccc10s4
+ccc17s4
 ccc20s4
 cco16p3
 ceoi18p1

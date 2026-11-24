@@ -1,14 +1,16 @@
-"""gen.py seed size: CCC 2003 S4. A count N of strings, each 1 to 5000 alphanumeric characters.
-Shapes: random over a small or the full alphabet, one repeated letter, a short period."""
+"""gen.py SEED SIZE | --max: CCC 2003 S4. A count N of strings, each 1 to 5000 alphanumeric characters.
+Shapes: random over a small or the full alphabet, one repeated letter, a short period.
+--max is 5 strings of 5000 random characters."""
 import random, string, sys
 
-seed, size = int(sys.argv[1]), int(sys.argv[2])
+MAX = sys.argv[1] == "--max"
+seed, size = (0, 5000) if MAX else (int(sys.argv[1]), int(sys.argv[2]))
 rng = random.Random(seed)
 full = string.ascii_letters + string.digits
 out = []
-for _ in range(rng.randint(1, 5)):
-    n = rng.randint(1, max(1, min(5000, size)))
-    shape = rng.choice(["small", "full", "one", "period"])
+for _ in range(5 if MAX else rng.randint(1, 5)):
+    n = 5000 if MAX else rng.randint(1, max(1, min(5000, size)))
+    shape = "full" if MAX else rng.choice(["small", "full", "one", "period"])
     if shape == "one":
         s = rng.choice(full) * n
     elif shape == "period":

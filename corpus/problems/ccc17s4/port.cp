@@ -4,38 +4,27 @@
 //   from cost C to max(0, C - D). Print the fewest days to reach a spanning tree of minimum
 //   cost over all trees and all choices of the enhanced pipe.
 // Solution: Kruskal with old pipes ahead of new ones of equal cost keeps as many old pipes as a
-//   cheapest tree can; the days are its new pipes. The enhancer goes on the dearest tree pipe.
-//   If that cost is <= D, an unused old pipe of cost <= D that reconnects the tree without its
-//   dearest new pipes can replace one of them at no cost: one day less. Two DSU passes,
-//   O(M log M).
-
-let (n, m, d): (Int, Int, Int) = read()
+//   cheapest tree can (`kruskal` breaks ties by edge order, and old pipes come first); the days
+//   are its new pipes. The enhancer goes on the dearest tree pipe. If that cost is <= D, an
+//   unused old pipe of cost <= D that reconnects the tree without its dearest new pipes can
+//   replace one of them at no cost: one day less. O(M log M).
+// original: corpus/submissions/4899336.cpp
+let n: 1..=1e5 = read()
+let m: 1..=2e5 = read()
+let d: 0..=1e9 = read()
 domain House = 1..=n
 domain Pipe = 0..m
-let pipes: [Pipe](u: House, v: House, cost: Int) = read()
-fn is_old(p: Pipe) -> Bool = p.ord < n - 1
-let cheapest_first = sorted(Pipe, by: p => (pipes[p].cost, not is_old(p)))
+let pipes: [Pipe](u: House, v: House, w: 1..=1e9) = read()
+let is_old = (p: Pipe) => p.ord < n - 1
 
-var plan = Dsu<House>()
-var chosen: [Pipe]Bool = false
-var dearest = 0
-for p in cheapest_first:
-    if plan.unite(pipes[p].u, pipes[p].v):
-        chosen[p] = true
-        dearest = pipes[p].cost
-var days = sum(1 for p in Pipe if chosen[p] and not is_old(p))
-
-if dearest <= d:
-    // the plan without its new dearest pipes; an old pipe that the enhancer
-    // makes free and that still joins two parts replaces one of them
+let (_, take) = kruskal(pipes)
+let days = Pipe.count(p => take[p] and not is_old(p))
+// the tree without its new dearest pipes; an old pipe the enhancer makes free that still
+// joins two of its parts replaces one of them
+fn saves_a_day(dearest: Int) -> Bool:
+    if dearest > d: return false
     var rest = Dsu<House>()
-    for p in Pipe:
-        if chosen[p] and (is_old(p) or pipes[p].cost < dearest): rest.unite(pipes[p].u, pipes[p].v)
-    for p in Pipe:
-        if not chosen[p] and is_old(p) and pipes[p].cost <= d and not rest.same(
-            pipes[p].u,
-            pipes[p].v,
-        ):
-            days -= 1
-            break
-print(days)
+    for p in Pipe if take[p] and (is_old(p) or pipes[p].w < dearest): rest.unite(pipes[p].u, pipes[p].v)
+    Pipe.any(p => not take[p] and is_old(p) and pipes[p].w <= d and not rest.same(pipes[p].u, pipes[p].v))
+let dearest = max(pipes[p].w for p in Pipe if take[p])
+print(days - Int(dearest.map(saves_a_day) ?? false))
