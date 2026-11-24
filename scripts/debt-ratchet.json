@@ -192,7 +192,7 @@
   "corpus_walkers": 0,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 0,
-  "config_schemas": 1,
+  "config_schemas": 0,
   "std_doc_parsers": 0,
   "edit_engines": 0,
   "codemods_outside_fix": 0,

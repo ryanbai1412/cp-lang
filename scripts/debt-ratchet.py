@@ -2345,7 +2345,8 @@ def json_outside_cpl_json(root: Path) -> list[str]:
 
 
 # The one config module, named by its owner (Consumers' tools child) once it exists.
-CONFIG_MODULES: tuple[str, ...] = ()
+# The one reader of cp.toml and its schema.
+CONFIG_MODULES: tuple[str, ...] = ("crates/cpl-config/",)
 CONFIG_RE = re.compile(r'"cp\.toml"|\btoml::')
 
 
@@ -2694,7 +2695,7 @@ HARD_ZERO = frozenset({
     "stdlib_todo",
     "uncached_installs",
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
-    "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
+    "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",

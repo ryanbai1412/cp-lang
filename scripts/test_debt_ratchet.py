@@ -632,6 +632,7 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/a/src/tests_x.rs", "s.replace_range(0..1, \"\");\n")
             self._write(root, "crates/cpl-diag/src/lib.rs", "fn apply_fixes() { s.replace_range(0..1, \"\"); }\n")
             self._write(root, "crates/cpl-doc/src/lib.rs", 'l.strip_prefix("///");\n')
+            self._write(root, "crates/cpl-config/src/lib.rs", 'pub const FILE: &str = "cp.toml";\n')
             self._write(root, "crates/cpl-check/src/lib.rs", "Database::new();\n")
             self._write(root, "scripts/mod.py", "for p in root.glob('**/*.cp'):\n    p.write_text(fix(p))\n")
             self._write(root, "scripts/read.py", "for p in root.glob('**/*.cp'):\n    out.write_text(p.name)\n")
