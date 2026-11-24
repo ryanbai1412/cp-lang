@@ -149,3 +149,18 @@ fn a_position_indexes_a_built_prefix_as_its_right_cut() {
     let src = "domain D = 0..3\nlet a: [D]Int = [D] v => 1 + Int(v)\nlet p = Prefix(a)\nlet s: Prefix<D, Int> = a.scan(+)\nprint(p[D(1)], s[D(1)], p[D(1).r])\n";
     assert!(check(src).is_empty(), "{:?}", check(src));
 }
+
+#[test]
+fn a_generic_library_domain_is_the_seq_of_its_values() {
+    let src = r#"
+struct Tw<W>(pub a: Int)
+impl Index for Tw<W>:
+    let count = W.count
+    @get fn ord(self) -> Int = a
+    fn nth(k: Int) -> Tw<W> = Tw(k)
+domain V = 0..3
+print(Tw<V>.count(x => x.a > 1), Tw<V>.find(x => x.a > 0).map(x => x.a) ?? -1)
+print(Tw<V>.filter(x => x.a > 0).count(), Tw<V>.min(by: x => -x.a)!.a)
+"#;
+    assert!(check(src).is_empty(), "{:?}", check(src));
+}

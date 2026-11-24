@@ -243,6 +243,10 @@ impl<'a> Checker<'a> {
         if module || self.local(&name.text).is_some() {
             return None;
         }
+        // `Sub<V>.find(p)`: a type with `impl Index` is the `Seq` of its values (R04.2.20).
+        if self.quietly(|c| c.library_domain_walk(base)).is_some() {
+            return None;
+        }
         let base_ty = self.quietly(|c| c.infer(base));
         if self.declares_member(&base_ty, &name.text) {
             return None;
