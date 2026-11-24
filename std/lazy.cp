@@ -4,6 +4,8 @@ use std.rand.Rng
 use std.segtree.{SegTree}
 use std.range.{ends}
 
+const TWO_31 = 2_147_483_648
+
 /// Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTree(op, a, act: flip)`).
 /// Build the toggle action with `flip_action(m)` (tag `Bool`: `true` swaps `now` and `flipped`).
 pub struct Flip<T>(pub now: T, pub flipped: T):
@@ -712,7 +714,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when the total reaches `2^31` elements
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.splice_back(mut u); t.to_list() == [1, 5] and u.is_empty`
     pub fn splice_back(mut self, mut other: LazyTreap<T, F>):
-        assert self.len + other.len < 2_147_483_648, "a LazyTreap holds fewer than `2^31` elements"
+        assert self.len + other.len < TWO_31, "a LazyTreap holds fewer than `2^31` elements"
         let moved = self.copy_from(other, other.root)
         root = self.merge(root, moved)
         other.root = None
@@ -914,7 +916,7 @@ pub struct Rope<D, T>:
         var stack: List<Int> = []
         for i in D:
             let t = r.val.len
-            r.seed = (r.seed * 1103515245 + 12345) % 2147483648
+            r.seed = (r.seed * 1103515245 + 12345) % TWO_31
             r.val.push(src[i])
             r.tg.push(src[i])
             r.has.push(false)

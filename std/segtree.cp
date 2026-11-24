@@ -4,6 +4,8 @@ use std.bag.{SortedBag}
 use std.math.{gcd, bit}
 use std.range.{ends, first_true}
 
+type Pos = 0..=2_000_000_000
+
 struct NoAction
 struct NoOp
 fn same<A, B>(a: A, b: B) -> Bool = a == b
@@ -589,8 +591,8 @@ pub struct MergeSortTree<D, T>:
     pub fn new(a: [D]T) -> MergeSortTree<D, T>:
         let size = bit_ceil(D.count)
         var data: List<T> = []
-        var beg: List<0..=2_000_000_000> = List.filled(2 * size, 0)
-        var fin: List<0..=2_000_000_000> = List.filled(2 * size, 0)
+        var beg: List<Pos> = List.filled(2 * size, 0)
+        var fin: List<Pos> = List.filled(2 * size, 0)
         unchecked:
             for i in D:
                 let p = size + i.ord

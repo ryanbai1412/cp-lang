@@ -779,9 +779,7 @@ fn prefix_and_suffix_folds_cover_outside_ranges():
     for l in V:
         for r in l..=V.last!:
             let range = l..=r
-            var want = Int.MIN
-            for i in V:
-                if i < l or i > r: want max= a[i]
+            let want = V.filter(i => i < l or i > r).map(i => a[i]).max() ?? Int.MIN
             assert max(pref[range.start], suff[range.end]) == want
 
 @test

@@ -1289,8 +1289,7 @@ fn random_tree<V>(any: V) -> [V]List<V>:
     shuffle(mut label)
     for i in 1..V.count:
         let (c, p) = (label[i], label[rand(0, i - 1)])
-        adj[c].push(p)
-        adj[p].push(c)
+        for (a, b) in [(c, p), (p, c)]: adj[a].push(b)
     adj
 
 /// The vertices from `a` to `b`, by climbing parents.
@@ -1656,8 +1655,7 @@ fn a_forest_keeps_each_tree_in_one_range():
         else:
             let p = V(rand(0, i - 1))
             par[V(i)] = Some(p)
-            adj[V(i)].push(p)
-            adj[p].push(V(i))
+            for (a, b) in [(V(i), p), (p, V(i))]: adj[a].push(b)
     shuffle(mut roots)
     let t = Rooted.forest(adj, from: roots)
     assert t.roots.collect() == roots and t.root == roots[0]
@@ -2863,8 +2861,7 @@ fn euler_tour_trees_match_a_brute_forest():
             if op == 0 and not cu.contains(v):
                 et.link(u, v)
                 lz.link(u, v)
-                adj[u].push(v)
-                adj[v].push(u)
+                for (a, b) in [(u, v), (v, u)]: adj[a].push(b)
                 edges.push((u, v))
             elif op == 1 and not edges.is_empty:
                 let k = rand(0, edges.len - 1)
@@ -4059,10 +4056,9 @@ pub fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>:
     var adj: [V]List<V> = []
     var deg: [V]Int = 0
     for e in edges:
-        adj[e.u].push(e.v)
-        adj[e.v].push(e.u)
-        deg[e.u] += 1
-        deg[e.v] += 1
+        for (a, b) in [(e.u, e.v), (e.v, e.u)]:
+            adj[a].push(b)
+            deg[a] += 1
     var out: List<V> = []
     var at = 0
     while deg[V.nth(at)] != 1: at += 1

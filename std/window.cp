@@ -7,6 +7,7 @@
 use std.algebra.{Op}
 use std.dsu.{Mark, Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.hashmap.{Counter}
+use std.seq.{collect}
 
 /// A sliding fold queue over `op`. `push` and `pop` are \(O(1)\) amortized; `all` is \(O(1)\).
 pub struct Window<T, M>(op: M):
@@ -292,7 +293,7 @@ pub struct Sweep<D, S>(pub state: S):
     /// traps: never (beyond what the state traps on)
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(1..4); s.move(2..5); s.range == 2..5`
     pub fn move(mut self, to: Range<D>):
-        let keys = [d for d in D]
+        let keys = D.collect()
         var (l, r) = (0, 0)
         if not to.is_empty:
             l = Int(to.first!) - Int(keys[0])
@@ -317,5 +318,5 @@ pub struct Sweep<D, S>(pub state: S):
     /// order: increasing positions of `D`
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(0..2); s.range.len == 2`
     @get pub fn range(self) -> Range<D>:
-        let keys = [d for d in D]
+        let keys = D.collect()
         if lo < hi: keys[lo]..=keys[hi - 1] else: keys[0]..keys[0]

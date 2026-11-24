@@ -1,6 +1,8 @@
 //! Random numbers from a seed: the same seed gives the same numbers in `cpl run`
 //! and in the built C++. `Rng(seed)` is a splitmix64 stream: \(O(1)\) per draw.
 
+use std.seq.{collect}
+
 pub struct Rng(s: U64):
     /// A deterministic stream of random bits seeded by `seed`.
     ///
@@ -117,6 +119,6 @@ pub struct Rng(s: U64):
     pub fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>:
         let n = from.len
         assert 0 <= k <= n
-        var pos = [i for i in 0..n]
+        var pos = (0..n).collect()
         for i in 0..k: pos.swap_idx(i, self.int(i, n - 1))
         [from.at(pos[i]) for i in 0..k]

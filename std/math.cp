@@ -31,6 +31,8 @@ pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, 
 /// `isqrt(inf)`: the largest `r` with `r * r` in `Int`.
 const SQRT_MAX = 3_037_000_499
 
+type SieveVal = 0..=2_000_000_000
+
 /// The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.
 ///
 /// cost: \(O(1)\)
@@ -201,8 +203,8 @@ pub struct Sieve:
     /// example: `Sieve(10).is_prime(7) == true`
     /// example: `Sieve(0).is_prime(0) == false`
     pub fn new(n: Int) -> Sieve:
-        var spf: List<0..=2_000_000_000> = List.filled(n + 1, 0)
-        var primes: List<0..=2_000_000_000> = []
+        var spf: List<SieveVal> = List.filled(n + 1, 0)
+        var primes: List<SieveVal> = []
         unchecked:
             for i in 2..=n:
                 if spf[i] == 0:
@@ -1895,17 +1897,18 @@ fn mod_log_and_mod_sqrt_match_brute_force():
             let r = mod_sqrt(a, p)
             let has = (0..p).any(x => x * x % p == a)
             if has:
-                assert r != None and r! * r! % p == a
+                let v = r!
+                assert v * v % p == a
             else:
                 assert r == None
-    let big_r = mod_sqrt(2, 998_244_353)
-    assert big_r != None and mul_mod(big_r!, big_r!, 998_244_353) == 2
+    let big_r = mod_sqrt(2, 998_244_353)!
+    assert mul_mod(big_r, big_r, 998_244_353) == 2
     let big_r2 = mod_sqrt(3, 998_244_353)
     assert big_r2 == None
-    let big_r3 = mod_sqrt(9, 998_244_353)
-    assert big_r3 != None and mul_mod(big_r3!, big_r3!, 998_244_353) == 9
-    let big_r4 = mod_sqrt(mul_mod(1234567, 1234567, 998_244_353), 998_244_353)
-    assert big_r4 != None and mul_mod(big_r4!, big_r4!, 998_244_353) == mul_mod(
+    let big_r3 = mod_sqrt(9, 998_244_353)!
+    assert mul_mod(big_r3, big_r3, 998_244_353) == 9
+    let big_r4 = mod_sqrt(mul_mod(1234567, 1234567, 998_244_353), 998_244_353)!
+    assert mul_mod(big_r4, big_r4, 998_244_353) == mul_mod(
         1234567,
         1234567,
         998_244_353,

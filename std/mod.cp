@@ -8,7 +8,7 @@
 //! an `Int`, `*` multiplies in 128 bits.
 use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
-use std.math.{crt_all, factor, gcd, inv_mod, mod_log, mod_sqrt, mul_mod}
+use std.math.{crt_all, factor, gcd, inv_mod, mod_log, mod_sqrt, mul_mod, pow_mod}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
 /// `+ - *` are \(O(1)\); `/` and `inv` are \(O(\log P)\) and need `gcd(x, P) == 1`.
@@ -142,12 +142,7 @@ impl Div for Mod<P>:
 impl Pow for Mod<P>:
     fn pow(a, e: Int) -> Mod<P>:
         if e < 0: return a.inv ** (-e)
-        var (base, acc, k) = (a, Mod(1 % P), e)
-        while k > 0:
-            if k % 2 == 1: acc *= base
-            base = base * base
-            k /= 2
-        acc
+        Mod(pow_mod(a.v, e, P))
 
 impl Show for Mod<P>:
     fn show(a) = "{a.v}"

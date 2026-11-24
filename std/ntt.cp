@@ -50,7 +50,7 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
     assert (P - 1) % n == 0, "modulus p - 1 must be divisible by n"
     var g = Mod<P>(3)
     if P == 754_974_721: g = Mod<P>(11)
-    elif P != 998_244_353 and P != 469_762_049 and P != 167_772_161: g = Mod<P>(primitive_root(P))
+    elif P != NTT_P1 and P != NTT_P3 and P != NTT_P2: g = Mod<P>(primitive_root(P))
     // rate[i] = -w^(3 (P - 1) / 2^(i + 2)): the step between the twiddles of consecutive blocks
     var rate = List.filled(ctz(n), Mod<P>(0))
     for i in 0..rate.len - 1:
@@ -179,14 +179,15 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
     var out = List.filled(n_out, T.zero)
     for i in 0..na:
         for j in 0..nb:
-            var k = -1
+            var at: ?Int = None
             if O: IndexOp:
-                if let x = on.at(i, j): k = x
+                at = on.at(i, j)
             elif not by_divisor or (i > 0 and j > 0):
-                k = on(i, j)
-            if cyclic and k >= 0: k %= na
-            if 0 <= k < n_out:
-                out[k] = out[k] + a[i] * b[j]
+                at = on(i, j)
+            if let k0 = at:
+                let k = if cyclic and k0 >= 0: k0 % na else: k0
+                if 0 <= k < n_out:
+                    out[k] = out[k] + a[i] * b[j]
     out
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
@@ -239,25 +240,28 @@ impl FastProduct for Int:
         let bound = I128(ma) * I128(mb) * I128(min(na, nb))
         if bound >= I128(10_000_000_000_000) * I128(1_000_000_000_000): return None
         let three = bound >= I128(80_000_000_000_000_000)
-        let r1 = residues(Mod<998_244_353>(0), a, b) ?? return None
-        let r2 = residues(Mod<167_772_161>(0), a, b) ?? return None
-        var r3: List<Mod<469_762_049>> = []
-        if three: r3 = residues(Mod<469_762_049>(0), a, b) ?? return None
+        let r1 = residues(Mod<NTT_P1>(0), a, b) ?? return None
+        let r2 = residues(Mod<NTT_P2>(0), a, b) ?? return None
+        var r3: List<Mod<NTT_P3>> = []
+        if three: r3 = residues(Mod<NTT_P3>(0), a, b) ?? return None
         // Garner over p1 = 998_244_353, p2 = 167_772_161, p3 = 469_762_049: 47_450_712 is
         // 1 / p1 mod p2, 115_990_628 is 1 / (p1 p2) mod p3, P12 is p1 p2
         var out = List.filled(na + nb - 1, 0)
         for k in 0..out.len:
             let x1 = r1[k].v
-            let c = x1 + ((r2[k] - Mod<167_772_161>(x1)) * Mod<167_772_161>(47_450_712)).v * 998_244_353
+            let c = x1 + ((r2[k] - Mod<NTT_P2>(x1)) * Mod<NTT_P2>(47_450_712)).v * NTT_P1
             if not three:
                 out[k] = if c > P12 / 2: c - P12 else: c
                 continue
-            let x3 = ((r3[k] - Mod<469_762_049>(c)) * Mod<469_762_049>(115_990_628)).v
+            let x3 = ((r3[k] - Mod<NTT_P3>(c)) * Mod<NTT_P3>(115_990_628)).v
             let w = I128(c) + I128(x3) * I128(P12)
-            out[k] = Int(if w * I128(2) > I128(P12) * I128(469_762_049): w - I128(P12) * I128(469_762_049) else: w)
+            out[k] = Int(if w * I128(2) > I128(P12) * I128(NTT_P3): w - I128(P12) * I128(NTT_P3) else: w)
         Some(out)
 
 const P12 = 167_477_612_308_856_833
+const NTT_P1 = 998_244_353
+const NTT_P2 = 167_772_161
+const NTT_P3 = 469_762_049
 
 // `a * b` modulo `P`, through `Mod<P>`'s NTT product; `None` when `P - 1` lacks the power of two.
 fn residues<P>(_: Mod<P>, a: List<Int>, b: List<Int>) -> ?List<Mod<P>> =
@@ -590,7 +594,7 @@ fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
 
 @test
 fn ntt_round_trip_and_convolve():
-    type Z = Mod<998_244_353>
+    type Z = Mod<NTT_P1>
     var a = [Z(i * 7 + 3) for i in 0..16]
     let orig = a.collect()
     ntt(mut a)
@@ -624,9 +628,9 @@ fn convolve_matches_brute_force_for_every_value_type():
         for i in 0..n:
             for j in 0..m: want[i + j] += a[i] * b[j]
         assert convolve(a, b) == want
-        let az = [Mod<998_244_353>(x) for x in a]
-        let bz = [Mod<998_244_353>(x) for x in b]
-        assert convolve(az, bz) == [Mod<998_244_353>(x) for x in want]
+        let az = [Mod<NTT_P1>(x) for x in a]
+        let bz = [Mod<NTT_P1>(x) for x in b]
+        assert convolve(az, bz) == [Mod<NTT_P1>(x) for x in want]
         let af = [F64(x) for x in a]
         let bf = [F64(x) for x in b]
         let got = convolve(af, bf)
@@ -649,9 +653,9 @@ fn int_convolve_takes_two_or_three_primes_and_folds_the_cyclic_form():
         for i in 0..n:
             for j in 0..n: want_cyc[(i + j) % n] += a[i] * c[j]
         assert convolve(a, c, cyclic: true) == want_cyc
-        let z = [Mod<998_244_353>(x) for x in a]
-        let zc = [Mod<998_244_353>(x) for x in c]
-        assert convolve(z, zc, cyclic: true) == [Mod<998_244_353>(x) for x in want_cyc]
+        let z = [Mod<NTT_P1>(x) for x in a]
+        let zc = [Mod<NTT_P1>(x) for x in c]
+        assert convolve(z, zc, cyclic: true) == [Mod<NTT_P1>(x) for x in want_cyc]
 
 @test
 fn sos_and_bitwise_convolutions():
@@ -688,7 +692,7 @@ fn sos_and_bitwise_convolutions():
         fwht(mut w, inverse: true)
         assert w == a
     // Mod<P> works with sos, fwht, and `convolve` on `^` and `subset`
-    type Z = Mod<998_244_353>
+    type Z = Mod<NTT_P1>
     let ma = [Z(1), Z(2), Z(3), Z(4), Z(5), Z(6), Z(7), Z(8)]
     let mb = [Z(9), Z(10), Z(11), Z(12), Z(13), Z(14), Z(15), Z(16)]
     var mw = ma.collect()

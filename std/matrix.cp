@@ -11,6 +11,9 @@ use std.mod.{Mod}
 use std.rand.{Rng}
 use std.seq.{collect}
 
+const SEED = 998_244_353
+const RAND_HI = 2_000_000_000
+
 /// A dense `rows x cols` matrix stored flat in row-major order.
 pub struct Mat<T>:
     pub rows: Int
@@ -1166,7 +1169,7 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
         _,
     ) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_det entry outside 0..n"
     if n == 0: return Mod<P>(1)
-    var rng = Rng(998_244_353)
+    var rng = Rng(SEED)
     loop:
         let w = wiedemann(n, entries, mut rng)
         if w.singular: return Mod<P>(0)
@@ -1197,7 +1200,7 @@ pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>
         _,
     ) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_solve entry outside 0..n"
     if n == 0: return Some([])
-    var rng = Rng(998_244_353)
+    var rng = Rng(SEED)
     loop:
         let w = wiedemann(n, entries, mut rng)
         if w.singular: return None
@@ -1228,11 +1231,11 @@ fn wiedemann<P>(
     entries: List<(Int, Int, Mod<P>)>,
     mut rng: Rng,
 ) -> (f: List<Mod<P>>, diag: List<Mod<P>>, singular: Bool):
-    var diag = [Mod<P>(rng.int(1, 2_000_000_000)) for _ in 0..n]
+    var diag = [Mod<P>(rng.int(1, RAND_HI)) for _ in 0..n]
     for k in 0..n:
         if diag[k] == Mod<P>(0): diag[k] = Mod<P>(1)
-    let u = [Mod<P>(rng.int(0, 2_000_000_000)) for _ in 0..n]
-    var v = [Mod<P>(rng.int(0, 2_000_000_000)) for _ in 0..n]
+    let u = [Mod<P>(rng.int(0, RAND_HI)) for _ in 0..n]
+    var v = [Mod<P>(rng.int(0, RAND_HI)) for _ in 0..n]
     var seq: List<Mod<P>> = []
     for _ in 0..2 * n:
         var dot = Mod<P>(0)
@@ -1326,23 +1329,25 @@ pub fn simplex(
         with lint(float_equality: allow)
         let x = m + phase - 1
         loop:
-            var s = -1
+            var pick: ?Int = None
             for j in 0..=n:
                 if nn[j] != -phase:
-                    if s == -1 or d[x * w + j] < d[x * w + s] or (
-                        d[x * w + j] == d[x * w + s] and nn[j] < nn[s]
-                    ): s = j
+                    if let t = pick:
+                        if d[x * w + j] < d[x * w + t] or (
+                            d[x * w + j] == d[x * w + t] and nn[j] < nn[t]
+                        ): pick = j
+                    else: pick = j
+            let s = pick!
             if d[x * w + s] >= -eps: return true
-            var r = -1
+            var row: ?Int = None
             for i in 0..m:
                 if d[i * w + s] > eps:
-                    if r == -1:
-                        r = i
-                    else:
+                    if let r = row:
                         let qi = d[i * w + n + 1] / d[i * w + s]
                         let qr = d[r * w + n + 1] / d[r * w + s]
-                        if qi < qr or (qi == qr and bb[i] < bb[r]): r = i
-            if r == -1: return false
+                        if qi < qr or (qi == qr and bb[i] < bb[r]): row = i
+                    else: row = i
+            let r = row ?? return false
             pivot(r, s)
     if m > 0:
         var r = 0

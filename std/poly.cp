@@ -1413,8 +1413,8 @@ fn eval_div_shift_mpe_laws():
         let comp = compose(f_c, g_c, 12)
         var brute = List.filled(12, Z(0))
         var gp: List<Z> = [Z(1)]
-        for i in 0..f_c.len:
-            for j in 0..min(gp.len, 12): brute[j] += f_c[i] * gp[j]
+        for x in f_c:
+            for j in 0..min(gp.len, 12): brute[j] += x * gp[j]
             gp = convolve(gp, g_c)
             if gp.len > 12: gp.truncate(12)
         assert comp == brute

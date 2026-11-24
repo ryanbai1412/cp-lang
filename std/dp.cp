@@ -262,10 +262,12 @@ pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
 /// example: `knuth(2, (i, j) => j - i)[0][2] == 2`
 /// example: `knuth(3, (i, j) => j - i)[0][3] == 5`
 /// example: `knuth(1, (i, j) => j - i) == [[0, 0], [0, 0]]`
+const TWO_31 = 2_147_483_648
+
 pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
     assert n >= 0, "knuth requires n >= 0"
     var dp: List<List<Int>> = []
-    var opt: List<List<0..2_147_483_648>> = []
+    var opt: List<List<0..TWO_31>> = []
     for _ in 0..=n:
         dp.push(List.filled(n + 1, 0))
         opt.push(List.filled(n + 1, 0))
@@ -748,7 +750,7 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.at(0) == Some(4) and c.at(3) == Some(3)`
     pub fn add(mut self, line: Line):
         let sg = self.sign()
-        seed = (seed * 1103515245 + 12345) % 2147483648
+        seed = (seed * 1103515245 + 12345) % TWO_31
         ks.push(sg * line.k)
         ms.push(sg * line.m)
         ps.push(Int.MAX)
@@ -988,12 +990,12 @@ fn knuth_matches_the_cubic_interval_dp():
         let a = [rand(1, 9) for _ in 0..n]
         let pre = a.scan(+)
         let dp = knuth(n, (l, r) => pre[r] - pre[l])
-        var slow = [[0 for _ in 0..=n] for _ in 0..=n]
+        var slow: [0..=n, 0..=n]Int = 0
         for len in 2..=n:
             for i in 0..=n - len:
                 let j = i + len
-                slow[i][j] = pre[j] - pre[i] + [slow[i][k] + slow[k][j] for k in i + 1..j].min()!
-        assert dp == slow
+                slow[i, j] = pre[j] - pre[i] + (i + 1..j).map(k => slow[i, k] + slow[k, j]).min()!
+        assert (0..=n).all(i => (0..=n).all(j => dp[i][j] == slow[i, j]))
 
 @test
 fn aliens_finds_the_exact_count_optimum():
@@ -1046,8 +1048,6 @@ fn monge_paths_match_the_quadratic_dp():
         let got = monge_paths((0..n).collect(), w)
         var best = [0]
         for i in 1..n:
-            var b = best[0] + w(0, i)
-            for j in 1..i: b = min(b, best[j] + w(j, i))
-            best.push(b)
+            best.push((0..i).map(j => best[j] + w(j, i)).min()!)
         assert got.val == best
         for i in 1..n: assert best[got.prev[i]] + w(got.prev[i], i) == best[i]

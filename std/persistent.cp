@@ -885,7 +885,4 @@ fn persistent_segtree_and_range_kth_match_brute():
             let s = [a[i] for i in rng].sorted()
             for k in 0..s.len: assert rk.kth(rng, k) == s[k]
             for x in [-20, -5, 0, 5, 20]:
-                var c = 0
-                for y in s:
-                    if y <= x: c += 1
-                assert rk.count_le(rng, x) == c
+                assert rk.count_le(rng, x) == s.count(y => y <= x)

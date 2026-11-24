@@ -20,8 +20,7 @@ use std.math.{isqrt}
 pub fn mo_order<D>(queries: List<Range<D>>) -> List<Int>:
     let q = queries.len
     if q == 0: return []
-    var hi = queries[0].ends.1
-    for i in 1..q: hi = max(hi, queries[i].ends.1)
+    let hi = queries.map(qr => qr.ends.1).max()!
     let b = max(1, hi / max(1, isqrt(q)))
     var pairs: List<(Int, Int)> = []
     unchecked:
@@ -227,14 +226,14 @@ pub fn mo_rollback<D, M, R>(
         keyed.push((blk * (D.count + 2) + (if inside: 0 else: r + 1), i))
     keyed.sort()
     var res: List<?R> = [None for _ in 0..q]
-    var cur = -1
+    var cur: ?Int = None
     var dirty = false
     var rr = 0
     for (_, i) in keyed:
         let (l, r) = queries[i].ends
         let blk = l / b
         let be = min((blk + 1) * b, D.count)
-        if blk != cur:
+        if cur != Some(blk):
             cur = blk
             if dirty:
                 reset()

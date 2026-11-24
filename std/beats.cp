@@ -524,9 +524,7 @@ pub struct HistoricBeatsSegTree<D>:
 
     fn push(mut self, u: Int, nl: Int, nr: Int):
         let b = 9 * u
-        var any = false
-        for k in 0..9: if tg[b + k] != 0: any = true
-        if not any: return
+        if not (0..9).any(k => tg[b + k] != 0): return
         let mid = (nl + nr) / 2
         let (l, r) = (2 * u, 2 * u + 1)
         let pmax = max(mx1[l], mx1[r])

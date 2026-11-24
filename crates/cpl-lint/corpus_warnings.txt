@@ -1,16 +1,4 @@
 # set code count; see src/corpus_tests.rs
 spec L0506 1
-std L0301 1
-std L0501 1
-std L0503 4
-std L0504 7
-std L0505 1
-std L0506 9
-std L0508 5
-std L0520 2
-std L0532 2
-std L0536 6
-std L0543 2
-std L0545 2
-std L0549 4
+std L0545 1
 std L0567 2

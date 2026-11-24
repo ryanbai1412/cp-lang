@@ -2206,10 +2206,7 @@ pub struct BucketCount:
         if x <= lo: return 0
         if x >= hi: return total
         let i = x - lo
-        var acc = 0
-        for b in 0..i / bs: acc += blk[b]
-        for j in i / bs * bs..i: acc += cnt[j]
-        acc
+        sum(blk[b] for b in 0..i / bs) + sum(cnt[j] for j in i / bs * bs..i)
 
     /// \(O(\sqrt{N})\). The `k`-th smallest element, 0-based like `nth`: `kth(0)` is the smallest.
     ///
@@ -2338,10 +2335,7 @@ fn sorted_bag_matches_sorted_list_on_random_ops():
             assert b.remove(x) == (i < plain.len)
             if i < plain.len: plain = [plain[j] for j in 0..plain.len if j != i]
         elif op == 2:
-            var lt = 0
-            for v in plain:
-                if v < x: lt += 1
-            assert b.rank(x) == lt
+            assert b.rank(x) == plain.count(v => v < x)
         else:
             let k = rand(-1, plain.len)
             assert b.nth(k) == (if 0 <= k < plain.len: Some(plain[k]) else: None)
@@ -2358,11 +2352,7 @@ fn sorted_bag_inversion_count_and_generic_keys():
     for x in a:
         inv += seen.len - seen.rank(x + 1)
         let _ = seen.add(x)
-    var brute = 0
-    for i in 0..a.len:
-        for j in i + 1..a.len:
-            if a[i] > a[j]: brute += 1
-    assert inv == brute
+    assert inv == a.pairs().count(pq => pq.0 > pq.1)
     var words = SortedBag<Str>()
     for w in ["pear", "apple", "fig", "apple"]: let _ = words.add(w)
     assert words.to_list() == ["apple", "apple", "fig", "pear"] and words.distinct == 3
