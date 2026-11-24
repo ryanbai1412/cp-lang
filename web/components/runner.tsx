@@ -201,7 +201,7 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
       {setup && (
         <details className="border-b px-3 py-2 text-xs">
           <summary className="cursor-pointer text-muted-foreground">Setup ({setup.split('\n').length} lines)</summary>
-          <pre className="mt-2 overflow-x-auto font-mono">{setup}</pre>
+          <pre tabIndex={0} className="mt-2 overflow-x-auto font-mono">{setup}</pre>
         </details>
       )}
       <CodeEditor value={source} onChange={setSource} onRun={run} minHeight={editorHeight} className="border-b" checkOnLoad={checkOnLoad} prefix={setup} />
@@ -235,10 +235,10 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
           </div>
         </TabsContent>
         <TabsContent value="cpp" className="px-3 pb-3">
-          <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">{cpp}</pre>
+          <pre tabIndex={0} className="max-h-80 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">{cpp}</pre>
         </TabsContent>
         <TabsContent value="explain" className="px-3 pb-3">
-          <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">{explained}</pre>
+          <pre tabIndex={0} className="max-h-80 overflow-auto rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">{explained}</pre>
         </TabsContent>
       </Tabs>
       )}
@@ -255,7 +255,7 @@ function Output({ result, source, onUseInput }: { result: Result; source: string
   if (result.kind === 'stress') {
     const o = result.outcome;
     if (o.status === 'error') return <pre className={cn(box, 'text-destructive')} role="status">{o.error}</pre>;
-    if (o.status === 'ok') return <pre className={box} role="status">{`All ${o.cases} random cases agree.`}</pre>;
+    if (o.status === 'ok') return <pre tabIndex={0} className={box} role="status">{`All ${o.cases} random cases agree.`}</pre>;
     const c = o.counterexample;
     const d = c.explain && 'divergence' in c.explain ? c.explain.divergence : null;
     return (
@@ -267,7 +267,7 @@ function Output({ result, source, onUseInput }: { result: Result; source: string
           {[['Input', c.input], ['Expected', c.expected], ['Got', c.got]].map(([label, text]) => (
             <div key={label}>
               <p className="mb-1 text-xs text-muted-foreground">{label}</p>
-              <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 font-mono text-xs whitespace-pre-wrap">{text}</pre>
+              <pre tabIndex={0} className="max-h-48 overflow-auto rounded-md bg-muted p-2 font-mono text-xs whitespace-pre-wrap">{text}</pre>
             </div>
           ))}
         </div>
@@ -286,7 +286,7 @@ function Output({ result, source, onUseInput }: { result: Result; source: string
   }
   const errors = result.diagnostics.length ? formatDiagnostics(result.diagnostics, source) : result.stderr;
   return (
-    <pre className={box} role="status">
+    <pre tabIndex={0} className={box} role="status">
       {result.stdout}
       {errors && <span className={result.ok ? 'text-muted-foreground' : 'text-destructive'}>{(result.stdout ? '\n' : '') + errors}</span>}
     </pre>

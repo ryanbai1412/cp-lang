@@ -99,7 +99,7 @@ export function LiveCode({
         )}
       </div>
       {out && (
-        <pre
+        <pre tabIndex={0}
           role="status"
           className={cn(
             "not-prose mt-1.5 max-h-64 overflow-auto rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap",

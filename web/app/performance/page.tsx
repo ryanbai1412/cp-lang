@@ -69,7 +69,7 @@ export default function Page() {
 
       <section className="mt-12">
         <h2 className="text-xl font-semibold tracking-tight">The 20 slowest ports</h2>
-        <div className="mt-4 overflow-x-auto rounded-xl border">
+        <div tabIndex={0} className="mt-4 overflow-x-auto rounded-xl border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-muted-foreground">
               <tr>

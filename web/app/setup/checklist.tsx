@@ -14,7 +14,7 @@ const key = "cpl-setup";
 
 function Code({ children }: { children: string }) {
   return (
-    <pre className="mt-2 overflow-x-auto rounded-md border bg-muted/40 p-3 text-xs">
+    <pre tabIndex={0} className="mt-2 overflow-x-auto rounded-md border bg-muted/40 p-3 text-xs">
       {children}
     </pre>
   );

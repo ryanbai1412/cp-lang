@@ -27,7 +27,7 @@ export default async function Page({ params }: Props) {
       </Link>
       <h1 className="mt-2 font-mono text-3xl font-semibold tracking-tight">cpl {c.name}</h1>
       <p className="mt-2 text-muted-foreground">{c.summary}</p>
-      <pre className="mt-6 overflow-x-auto rounded-xl border bg-muted/30 p-4 text-sm">
+      <pre tabIndex={0} className="mt-6 overflow-x-auto rounded-xl border bg-muted/30 p-4 text-sm">
         {c.help ?? `usage: cpl ${c.usage}`}
       </pre>
       <p className="mt-4 text-xs text-muted-foreground">Generated from {tools.version}.</p>

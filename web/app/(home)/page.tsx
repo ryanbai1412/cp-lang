@@ -96,7 +96,7 @@ function LiveTabs({ items }: { items: Live[] }) {
                 Compare with the C++ ({s.cpp.split("\n").length} lines against{" "}
                 {s.source.trimEnd().split("\n").length})
               </summary>
-              <pre className="overflow-x-auto border-t p-4 font-mono text-xs leading-relaxed">
+              <pre tabIndex={0} className="overflow-x-auto border-t p-4 font-mono text-xs leading-relaxed">
                 {s.cpp}
               </pre>
             </details>
@@ -121,7 +121,7 @@ function Static({
       <div className="flex items-center gap-2 border-b px-3 py-2 text-sm text-muted-foreground">
         {bar}
       </div>
-      <div
+      <div tabIndex={0}
         className="overflow-x-auto p-4 text-[13px] leading-relaxed [&_pre]:!bg-transparent"
         dangerouslySetInnerHTML={{ __html: html }}
       />
@@ -284,7 +284,7 @@ export default async function Home() {
               <p className="border-b px-3 py-2 font-mono text-xs">
                 $ {debug.stress.command}
               </p>
-              <pre className="overflow-x-auto p-3 font-mono text-xs leading-relaxed">
+              <pre tabIndex={0} className="overflow-x-auto p-3 font-mono text-xs leading-relaxed">
                 {debug.stress.output}
               </pre>
               <p className="border-t px-3 py-2 text-sm text-muted-foreground">

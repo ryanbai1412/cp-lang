@@ -29,7 +29,7 @@ export default function Page() {
               <span className="text-sm text-muted-foreground">{j.compiler}</span>
             </div>
             {j.details[0] && (
-              <pre className="mt-3 overflow-x-auto rounded-md bg-muted/40 p-2 text-xs">{j.details[0]}</pre>
+              <pre tabIndex={0} className="mt-3 overflow-x-auto rounded-md bg-muted/40 p-2 text-xs">{j.details[0]}</pre>
             )}
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
               {j.details.slice(1).map((d) => (

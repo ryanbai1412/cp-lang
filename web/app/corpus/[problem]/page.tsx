@@ -60,7 +60,7 @@ function Pane({ title, sub, html, badge }: { title: string; sub: string; html: s
         <span className="text-xs text-muted-foreground">{sub}</span>
         <span className="ml-auto">{badge}</span>
       </header>
-      <div
+      <div tabIndex={0}
         className="max-h-[70vh] overflow-auto text-xs [&_pre]:!bg-transparent [&_pre]:p-4 dark:[&_.shiki]:!text-[var(--shiki-dark)] dark:[&_.shiki_span]:!text-[var(--shiki-dark)]"
         dangerouslySetInnerHTML={{ __html: html }}
       />

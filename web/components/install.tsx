@@ -1,7 +1,7 @@
 import facts from '@/lib/facts.json';
 
 const block = (code: string, note: string) => (
-  <pre className="my-3 overflow-x-auto rounded-md border bg-fd-muted/40 p-3 text-sm">
+  <pre tabIndex={0} className="my-3 overflow-x-auto rounded-md border bg-fd-muted/40 p-3 text-sm">
     <code>{`${code}   # ${note}`}</code>
   </pre>
 );
