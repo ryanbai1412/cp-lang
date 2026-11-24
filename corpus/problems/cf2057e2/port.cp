@@ -28,7 +28,7 @@ var d = [V, V] (i, j) => hop[i, j]!
 var pending: [V, V]List<Q> = []
 for i in Q.sort(by: i => queries[i].k): pending[queries[i].a, queries[i].b].push(i)
 
-var ans: [Q]Int = 0
+var ans: [Q]0..=1e9 = 0
 for e in edges:
     if d[e.u, e.v] > 0:
         for i in V:
