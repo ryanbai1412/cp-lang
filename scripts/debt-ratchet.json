@@ -1,7 +1,6 @@
 {
   "max_rs_lines": 2000,
   "rs_file_size_allowlist": {
-    "crates/cpl-ir/src/lower/stmt.rs": 5761,
     "crates/cpl-ir/src/lower/mod.rs": 4785,
     "crates/cpl-ir/src/lower/expr.rs": 4609,
     "crates/cpl-check/src/check/expr.rs": 3746,
