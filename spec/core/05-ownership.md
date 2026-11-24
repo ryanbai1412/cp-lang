@@ -710,6 +710,7 @@ print(p.x + q.y)
 <details><summary>Answer</summary>Yes. A record of <code>Int</code>s is plain and copies (R1).</details>
 
 **4.**
+<!-- rejects: E0608 -->
 ```python
 fn twice(xs: List<Int>) -> List<Int>:
     var ys = xs
