@@ -133,6 +133,16 @@ class DebtRatchetTest(unittest.TestCase):
                 (root / "corpus/problems" / f).write_text(text)
             self.assertEqual(dr.corpus_no_max(root), [f"{PKGS}/b", f"{PKGS}/c"])
 
+    def test_corpus_no_limits_counts_ports_without_a_limits_line(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for f, text in [("a/port.cp", "// Source: x\n// limits: 2000 ms, 256 MB\n"),
+                            ("b/port.cp", "// Source: x\n"), ("c/port.cp", "// limits: soon\n"),
+                            ("d/dream.cp", "")]:
+                (root / "corpus/problems" / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / "corpus/problems" / f).write_text(text)
+            self.assertEqual(dr.corpus_no_limits(root), [f"{PKGS}/b", f"{PKGS}/c"])
+
     def test_v02_port_files_counts_ports_not_in_the_v03_set(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

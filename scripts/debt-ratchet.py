@@ -1167,6 +1167,20 @@ def corpus_no_max(root: Path) -> list[str]:
     return found
 
 
+def corpus_no_limits(root: Path) -> list[str]:
+    """Problem packages whose port.cp has no `// limits: T ms, M MB` header line (owner: Content).
+
+    Rule: problem-packages/R6 (handbook/guidelines/problem-packages-checklist.md#r6): the
+    `over-limit` gate and `cpl bench` judge a port against its statement's limits, so a port
+    without the line is silently judged against the 2000 ms, 256 MB default.
+    """
+    problems = root / "corpus" / "problems"
+    limits = re.compile(r"^//\s*limits:\s*\d+\s*ms,\s*\d+\s*MB", re.M)
+    return [d.relative_to(root).as_posix() for d in (sorted(problems.iterdir()) if problems.is_dir() else ())
+            if (d / "port.cp").is_file()
+            and not limits.search((d / "port.cp").read_text(encoding="utf-8", errors="replace"))]
+
+
 def corpus_no_tests(root: Path) -> list[str]:
     """Problem packages with no tests.toml (owner: Content, idioms).
 
@@ -2636,6 +2650,7 @@ COUNTERS = {
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "corpus_no_max": ("non-interactive problem packages without a gen.py --max", corpus_no_max, True),
+    "corpus_no_limits": ("problem ports without a `// limits:` header line (Content)", corpus_no_limits, True),
     "corpus_no_tests": ("problem packages without a tests.toml (Content)", corpus_no_tests, True),
     "corpus_no_statement": ("problem packages without an inline statement sample (Content)",
                             corpus_no_statement, True),
