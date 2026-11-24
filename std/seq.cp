@@ -638,6 +638,34 @@ pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V:
 pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
     self[k] = f(self.get(k) ?? init)
 
+/// Add every element of `o` to `self` in place: `self | o`, named as on `Bitset`.
+///
+/// cost: \(O(m \log(n + m))\) for `m` elements in `o`
+/// empty: an empty `o` leaves `self` unchanged
+/// traps: never
+/// example: `var s: Set<Int> = Set(); s.insert(1); var t: Set<Int> = Set(); t.insert(2); s.union(t); s.sorted() == [1, 2]`
+pub fn union<T>(mut self: Set<T>, o: Set<T>):
+    for x in o: self.insert(x)
+
+/// Keep only the elements of `self` that are also in `o`, in place: `self & o`, named as on `Bitset`.
+///
+/// cost: \(O(n \log m)\) for `m` elements in `o`
+/// empty: an empty `o` empties `self`
+/// traps: never
+/// example: `var s: Set<Int> = Set(); s.insert(1); s.insert(2); var t: Set<Int> = Set(); t.insert(2); s.intersect(t); s.sorted() == [2]`
+pub fn intersect<T>(mut self: Set<T>, o: Set<T>):
+    let gone = [x for x in self if not o.contains(x)]
+    for x in gone: self.remove(x)
+
+/// Take every element of `o` out of `self` in place: `self - o`, named as on `Bitset`.
+///
+/// cost: \(O(m \log n)\) for `m` elements in `o`
+/// empty: an empty `o` leaves `self` unchanged
+/// traps: never
+/// example: `var s: Set<Int> = Set(); s.insert(1); s.insert(2); var t: Set<Int> = Set(); t.insert(2); s.subtract(t); s.sorted() == [1]`
+pub fn subtract<T>(mut self: Set<T>, o: Set<T>):
+    for x in o: self.remove(x)
+
 /// Rotate `self` left by `k` in place (or only the subrange `range` when given): what was at
 /// offset `k % len` comes first.
 ///

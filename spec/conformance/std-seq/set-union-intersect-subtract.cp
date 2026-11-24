@@ -1,0 +1,26 @@
+// expect: ok, output "1 2 3 4 5\n3 4\n1 2\n1 2 3\n0\n1 2 3"
+// `Set` algebra is in place and named as on `Bitset`; an empty side is the identity or the absorber.
+fn of(xs: List<Int>) -> Set<Int>:
+    var s: Set<Int> = Set()
+    for x in xs: s.insert(x)
+    s
+let a = of([1, 2, 3, 4])
+let b = of([3, 4, 5])
+var u = a.clone()
+u.union(b)
+print(u.sorted())
+var i = a.clone()
+i.intersect(b)
+print(i.sorted())
+var d = a.clone()
+d.subtract(b)
+print(d.sorted())
+let none: Set<Int> = Set()
+var same = of([1, 2, 3])
+same.union(none)
+same.subtract(none)
+print(same.sorted())
+var gone = of([1, 2, 3])
+gone.intersect(none)
+print(gone.len)
+print(a.sorted().take(3))
