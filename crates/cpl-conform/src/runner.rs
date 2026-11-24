@@ -265,8 +265,18 @@ where
 {
     let workers = std::thread::available_parallelism()
         .map(|n| n.get())
-        .unwrap_or(4)
-        .min(items.len().max(1));
+        .unwrap_or(4);
+    with_db_on(workers, items, work)
+}
+
+/// `parallel_with_db` on at most `workers` threads; 1 runs the items one at a time.
+pub fn with_db_on<T, R, F>(workers: usize, items: &[T], work: F) -> BTreeMap<String, R>
+where
+    T: Sync,
+    R: Send,
+    F: Fn(&mut Database, &T) -> (String, R) + Sync,
+{
+    let workers = workers.clamp(1, items.len().max(1));
     let next = AtomicUsize::new(0);
     let done = AtomicBool::new(false);
     let results: Mutex<BTreeMap<String, R>> = Mutex::new(BTreeMap::new());

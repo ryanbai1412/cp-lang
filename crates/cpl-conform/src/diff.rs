@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Condvar, Mutex};
@@ -533,7 +534,7 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
             .join("conform-cxx"),
     };
 
-    let outcomes = runner::parallel_with_db(&targets, |db, target| {
+    let one = |db: &mut Database, target: &DiffTarget| {
         runner::running(target.id());
         let (id, outcome) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             run_one(db, &cache_dir, target)
@@ -549,6 +550,85 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
             )
         });
         (id, outcome)
+    };
+    let mut outcomes = runner::parallel_with_db(&targets, one);
+    rerun_timed_out_alone(&mut outcomes, &targets, DiffTarget::id, |again| {
+        runner::with_db_on(1, again, |db, t| one(db, t))
     });
     SuiteReport::from_outcomes(outcomes)
+}
+
+/// Runs each case that timed out again, one at a time with the machine to
+/// itself, and keeps that answer. Next to every other case on a loaded
+/// runner, a case well inside its limit run alone can still pass it; a case
+/// that is really too slow or never stops times out again.
+fn rerun_timed_out_alone<'a, T>(
+    outcomes: &mut BTreeMap<String, CaseOutcome>,
+    items: &'a [T],
+    id: impl Fn(&T) -> &str,
+    rerun: impl FnOnce(&[&'a T]) -> BTreeMap<String, CaseOutcome>,
+) {
+    let timed_out: Vec<&T> = items
+        .iter()
+        .filter(|item| {
+            outcomes
+                .get(id(item))
+                .is_some_and(|o| o.status == "error" && o.detail.contains("timed out after"))
+        })
+        .collect();
+    if !timed_out.is_empty() {
+        outcomes.extend(rerun(&timed_out));
+    }
+}
+
+#[cfg(test)]
+mod rerun_tests {
+    use super::*;
+
+    fn outcome(status: &str, detail: &str) -> CaseOutcome {
+        CaseOutcome {
+            status: status.into(),
+            detail: detail.into(),
+        }
+    }
+
+    #[test]
+    fn only_timed_out_cases_run_again_and_keep_the_second_answer() {
+        let mut outcomes = BTreeMap::from([
+            (
+                "slow".to_string(),
+                outcome("error", "the interpreter timed out after 20s"),
+            ),
+            (
+                "hung".to_string(),
+                outcome("error", "the interpreter timed out after 20s"),
+            ),
+            ("wrong".to_string(), outcome("fail", "outputs differ")),
+            ("ok".to_string(), outcome("pass", "")),
+        ]);
+        let items = ["slow", "hung", "wrong", "ok"];
+        let mut reran = Vec::new();
+        rerun_timed_out_alone(
+            &mut outcomes,
+            &items,
+            |s| s,
+            |again| {
+                reran = again.iter().map(|s| **s).collect();
+                again
+                    .iter()
+                    .map(|s| match **s {
+                        "slow" => (s.to_string(), outcome("pass", "")),
+                        _ => (
+                            s.to_string(),
+                            outcome("error", "the interpreter timed out after 20s"),
+                        ),
+                    })
+                    .collect()
+            },
+        );
+        assert_eq!(reran, ["slow", "hung"]);
+        assert_eq!(outcomes["slow"].status, "pass");
+        assert_eq!(outcomes["hung"].status, "error");
+        assert_eq!(outcomes["wrong"].status, "fail");
+    }
 }
